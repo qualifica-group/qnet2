@@ -36,6 +36,15 @@ require_once __DIR__.'/Helpers/RoleAbilityHelpers.php';
 require_once __DIR__.'/Helpers/PaymentMethodHelpers.php';
 require_once __DIR__.'/Helpers/RequestManagementHelpers.php';
 require_once __DIR__.'/Helpers/CampaignHelpers.php';
+require_once __DIR__.'/Helpers/RegistryHelpers.php';
+require_once __DIR__.'/Helpers/RewardedReferentHelpers.php';
+require_once __DIR__.'/Helpers/OpportunityHelpers.php';
+require_once __DIR__.'/Helpers/LeadHelpers.php';
+require_once __DIR__.'/Helpers/ContractHelpers.php';
+require_once __DIR__.'/Helpers/ImportHelpers.php';
+require_once __DIR__.'/Helpers/UserHelpers.php';
+require_once __DIR__.'/Helpers/WorkOrderHelpers.php';
+require_once __DIR__.'/Helpers/StatsHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

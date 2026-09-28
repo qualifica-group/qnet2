@@ -17,10 +17,14 @@ use App\Services\RequestManagement\Report\ReportSiteFilter;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Requests whose CURRENT workflow status belongs to one of $groups, whatever
- * the picked range (spec 0159 D-5, `current_potentials`): the range-free
- * counterpart of WorkflowTransitionIndicator, which instead asks for a
- * transition logged inside the range.
+ * Requests whose CURRENT workflow status belongs to one of $groups — the
+ * status history is never read. Two uses:
+ *
+ * - `current_potentials` ($createdWithinRange false, spec 0159 D-5): whatever
+ *   the picked range.
+ * - `associati`/`trattative_concluse`/`invio_presa_in_carico`
+ *   ($createdWithinRange true, spec 0170 D-1/D-2): `quotes.created_at`
+ *   inside the range, since no closing date exists without the history.
  */
 final class CurrentStatusGroupIndicator implements ReportIndicator
 {
@@ -31,23 +35,30 @@ final class CurrentStatusGroupIndicator implements ReportIndicator
         private readonly ReportBranchQuery $branchQuery,
         private readonly QuoteCountAggregator $aggregator,
         private readonly array $groups,
+        private readonly bool $createdWithinRange,
     ) {}
 
     public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null, RequestModule $module = RequestModule::Requests): IndicatorResult
     {
         return new IndicatorResult(
-            total: $this->aggregator->total($this->query($categoryIds, $actor, $operators, $sites, $module), 'quotes.id'),
-            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $operators, $sites, $module), 'quotes.id'),
+            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites, $module), 'quotes.id'),
+            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites, $module), 'quotes.id'),
         );
     }
 
     /**
      * @param  array<int, int>  $categoryIds
      */
-    private function query(array $categoryIds, ?User $actor, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, RequestModule $module): Builder
+    private function query(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, RequestModule $module): Builder
     {
-        return $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
+        $query = $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
             ->join('quote_workflow_statuses as current_status', 'current_status.id', '=', 'quotes.quote_workflow_status_id')
             ->whereIn('current_status.group', array_map(static fn (WorkflowStatusGroup $group): string => $group->value, $this->groups));
+
+        if (! $this->createdWithinRange) {
+            return $query;
+        }
+
+        return $range->constrain($query, 'quotes.created_at');
     }
 }

@@ -4,7 +4,6 @@ use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -25,30 +24,6 @@ uses(RefreshDatabase::class);
 | transaction: every 422 here is paired with an assertion that nothing
 | moved.
 */
-
-if (! function_exists('taskActorWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function taskActorWith(array $abilities, bool $withViewAll = true): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-
-        if ($withViewAll) {
-            $user->givePermissionTo('tasks.viewAll');
-        }
-
-        return $user;
-    }
-}
 
 // ---------------------------------------------------------------------------
 // AC-024 — create a child outside the parent's range

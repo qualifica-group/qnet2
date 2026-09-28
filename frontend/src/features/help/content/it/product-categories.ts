@@ -354,8 +354,9 @@ const guide: HelpGuide = {
             ['N. Richiami non gestiti, N. Nuovi contatti non gestiti, N. Potenziali associati', 'Ignorano il periodo e guardano alla situazione di oggi. Scelte di default nelle categorie predefinite.'],
             ['N. Richiami non gestiti (nel periodo selezionato), N. Nuovi contatti non gestiti (nel periodo selezionato), N. Potenziali associati (nel periodo selezionato)', 'Stesso dato calcolato sul periodo scelto nel report. Non scelte di default: spuntale se ti servono.'],
             ['Aziende inserite', ''],
-            ['Associati, Trattative Concluse, Invio Presa in carico', 'Contano le richieste passate nel periodo a uno stato chiuso con esito positivo (dettaglio in Gestione Richieste › Statistiche e report).'],
-            ['Aule in gestione, Aule in partenza, Presa Appuntamenti', 'Oggi non hanno un calcolo e mostrano sempre 0.'],
+            ['Associati, Trattative Concluse, Invio Presa in carico', 'Contano le richieste create nel periodo che oggi sono in uno stato chiuso con esito positivo (dettaglio in Gestione Richieste › Statistiche e report).'],
+            ['Presa Appuntamenti', 'Conta i passaggi diretti da "OK App. Fissato" ad "Assegnato" avvenuti nel periodo: ha senso nelle categorie il cui workflow ha questi due stati.'],
+            ['Aule in gestione, Aule in partenza', 'Oggi non hanno un calcolo e mostrano sempre 0.'],
           ],
         },
         {

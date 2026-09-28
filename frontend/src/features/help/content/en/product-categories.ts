@@ -354,8 +354,9 @@ const guide: HelpGuide = {
             ['Unhandled Callbacks, Unhandled New Contacts, Potential Leads', 'They ignore the period and look at the situation today. Selected by default in the predefined categories.'],
             ['Unhandled Callbacks (selected period), Unhandled New Contacts (selected period), Potential Leads (selected period)', 'The same figure calculated on the period picked in the report. Not selected by default: tick them if you need them.'],
             ['Companies entered', ''],
-            ['Associates, Deals closed, Handover sent', 'Count requests that moved in the period to a status closed with a positive outcome (details in Request Management › Statistics and reports).'],
-            ['Classrooms in progress, Classrooms starting, Appointments taken', 'Today they have no calculation and always show 0.'],
+            ['Associates, Deals closed, Handover sent', 'Count requests created in the period that are currently in a status closed with a positive outcome (details in Request Management › Statistics and reports).'],
+            ['Appointments taken', 'Counts direct moves from "OK App. Fissato" to "Assegnato" in the period: it makes sense in categories whose workflow has these two statuses.'],
+            ['Classrooms in progress, Classrooms starting', 'Today they have no calculation and always show 0.'],
           ],
         },
         {

@@ -14,7 +14,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -29,33 +28,6 @@ uses(RefreshDatabase::class);
 | AC-006/AC-008/AC-010 are frontend-only (D-4/D-5/D-7/guides), out of this
 | backend suite.
 */
-
-if (! function_exists('taskActorWith')) {
-    /**
-     * Duplicated (guarded) across the suites that need it, following the
-     * repo idiom (see TaskTableTest.php).
-     *
-     * @param  array<int, string>  $abilities
-     */
-    function taskActorWith(array $abilities, bool $withViewAll = true): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-
-        if ($withViewAll) {
-            $user->givePermissionTo('tasks.viewAll');
-        }
-
-        return $user;
-    }
-}
 
 // ---------------------------------------------------------------------------
 // AC-001 — new advanced filters + exact-id search

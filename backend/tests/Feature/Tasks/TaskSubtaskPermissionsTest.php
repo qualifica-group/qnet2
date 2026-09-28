@@ -1,11 +1,9 @@
 <?php
 
 use App\Models\Task;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -15,30 +13,6 @@ uses(RefreshDatabase::class);
 | (spec 0155, D-5)
 |--------------------------------------------------------------------------
 */
-
-if (! function_exists('taskActorWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function taskActorWith(array $abilities, bool $withViewAll = true): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-
-        if ($withViewAll) {
-            $user->givePermissionTo('tasks.viewAll');
-        }
-
-        return $user;
-    }
-}
 
 it('D-5: GET exposes each subtask\'s own position and permissions.actions', function () {
     $actor = taskActorWith(['view', 'delete']);

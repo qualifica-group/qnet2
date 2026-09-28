@@ -312,23 +312,25 @@ it('counts a transition to pending/validated only when logged inside the range (
     expect($rows['TOTALE'][8])->toBe('1');
 });
 
-it('counts a transition to closed_won only when logged inside the range, under Associati/Trattative Concluse (AC-019)', function () {
+it('counts a request closed_won today and created inside the range, under Associati/Trattative Concluse (spec 0170 D-1/D-2, supersedes AC-019)', function () {
     $categories = reportCategoryTree();
     $workflow = QuoteWorkflow::factory()->create();
     $wonStatus = QuoteWorkflowStatus::factory()->for($workflow, 'workflow')->create(['group' => WorkflowStatusGroup::ClosedWon]);
+    $lostStatus = QuoteWorkflowStatus::factory()->for($workflow, 'workflow')->create(['group' => WorkflowStatusGroup::ClosedLost]);
 
-    // "Associati" (GOL — applicable there): same formula, checked separately
-    // since the two columns never share a branch's applicability list.
-    $wonGol = reportQuote($categories['gol'], null, $wonStatus->id);
-    reportTransitionLog($wonGol->opportunity, $wonStatus->id, Carbon::parse('2026-09-10'));
+    // "Associati" (GOL): closed_won today, no logged transition needed.
+    reportQuote($categories['gol'], null, $wonStatus->id)->forceFill(['created_at' => Carbon::parse('2026-09-10')])->save();
 
-    // "Trattative Concluse" (Consulenza — applicable there).
-    $wonInRange = reportQuote($categories['consulenza'], null, $wonStatus->id);
-    reportTransitionLog($wonInRange->opportunity, $wonStatus->id, Carbon::parse('2026-09-10'));
+    // "Trattative Concluse" (Consulenza): same formula.
+    reportQuote($categories['consulenza'], null, $wonStatus->id)->forceFill(['created_at' => Carbon::parse('2026-09-10')])->save();
 
-    // Chiusa positiva OGGI, ma la transizione loggata e' PRIMA del range: non contata.
-    $wonBeforeRange = reportQuote($categories['consulenza'], null, $wonStatus->id);
-    reportTransitionLog($wonBeforeRange->opportunity, $wonStatus->id, Carbon::parse('2026-08-01'));
+    // Closed_won today but created BEFORE the range: not counted.
+    reportQuote($categories['consulenza'], null, $wonStatus->id)->forceFill(['created_at' => Carbon::parse('2026-08-01')])->save();
+
+    // Moved to closed_won inside the range, then out of it: not counted (the history is not read).
+    $reverted = reportQuote($categories['consulenza'], null, $lostStatus->id);
+    $reverted->forceFill(['created_at' => Carbon::parse('2026-09-10')])->save();
+    reportTransitionLog($reverted->opportunity, $wonStatus->id, Carbon::parse('2026-09-10'));
 
     $actor = reportViewAllActor();
     $run = createReportRun($actor, '2026-09-01', '2026-09-30');
@@ -345,10 +347,10 @@ it('attributes a logged transition to the offer on the SAME workflow only (two o
     $categories = reportCategoryTree();
 
     $workflowA = QuoteWorkflow::factory()->create();
-    $wonA = QuoteWorkflowStatus::factory()->for($workflowA, 'workflow')->create(['group' => WorkflowStatusGroup::ClosedWon]);
+    $pendingA = QuoteWorkflowStatus::factory()->for($workflowA, 'workflow')->create(['group' => WorkflowStatusGroup::Pending]);
 
     $workflowB = QuoteWorkflow::factory()->create();
-    $wonB = QuoteWorkflowStatus::factory()->for($workflowB, 'workflow')->create(['group' => WorkflowStatusGroup::ClosedWon]);
+    $pendingB = QuoteWorkflowStatus::factory()->for($workflowB, 'workflow')->create(['group' => WorkflowStatusGroup::Pending]);
 
     $opportunity = Opportunity::factory()->create();
     OpportunityProductLine::factory()->create([
@@ -357,11 +359,11 @@ it('attributes a logged transition to the offer on the SAME workflow only (two o
         'product_category_id' => $categories['consulenza']->id,
     ]);
 
-    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $wonA->id]);
-    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $wonB->id]);
+    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $pendingA->id]);
+    Quote::factory()->create(['opportunity_id' => $opportunity->id, 'quote_workflow_status_id' => $pendingB->id]);
 
-    // A single logged transition toward workflow A's own closed_won status.
-    reportTransitionLog($opportunity, $wonA->id, Carbon::parse('2026-09-10'));
+    // A single logged transition toward workflow A's own pending status.
+    reportTransitionLog($opportunity, $pendingA->id, Carbon::parse('2026-09-10'));
 
     $actor = reportViewAllActor();
     $run = createReportRun($actor, '2026-09-01', '2026-09-30');
@@ -370,8 +372,8 @@ it('attributes a logged transition to the offer on the SAME workflow only (two o
 
     $rows = reportRowsFor(reportCsvRows(Storage::disk('local')->get($run->fresh()->file_path)), 'Consulenza');
 
-    // Exactly ONE request counted (the offer on workflow A), not two.
-    expect($rows['TOTALE'][14])->toBe('1');
+    // Exactly ONE request counted under "potenziali" (the offer on workflow A), not two.
+    expect($rows['TOTALE'][8])->toBe('1');
 });
 
 // ---------------------------------------------------------------------------

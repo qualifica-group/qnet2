@@ -13,8 +13,8 @@ use App\Models\User;
  * `attributes`/`old` shape RequestManagementService writes for a change made
  * from Gestione Richieste. `quote_workflow_status_id` is outside Quote's
  * #[Fillable], so the automatic log never sees it; without this entry the
- * report's transition indicators (Potenziali, Associati, Trattative concluse,
- * Invio presa in carico) would miss every change made here.
+ * report's transition indicators (Potenziali nel periodo, Presa Appuntamenti)
+ * would miss every change made here.
  */
 final class QuoteStatusChangeLogger
 {

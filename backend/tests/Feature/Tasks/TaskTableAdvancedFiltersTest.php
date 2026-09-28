@@ -10,7 +10,6 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -30,32 +29,6 @@ uses(RefreshDatabase::class);
 | each fixture task, so the mandatory filter never silently hides a row a
 | test's OWN axis expects to see.
 */
-
-if (! function_exists('taskActorWith')) {
-    /**
-     * Duplicated (guarded) across the suites that need it (see TaskTableTest).
-     *
-     * @param  array<int, string>  $abilities
-     */
-    function taskActorWith(array $abilities, bool $withViewAll = true): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-
-        if ($withViewAll) {
-            $user->givePermissionTo('tasks.viewAll');
-        }
-
-        return $user;
-    }
-}
 
 /**
  * `assignment: [all]` is the default (spec 0153, D-1): the caller's own

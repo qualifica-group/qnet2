@@ -4,7 +4,6 @@ use App\Authorization\TasksAuthorization;
 use App\Enums\TaskStatusGroup;
 use App\Models\Task;
 use App\Models\TaskStatus;
-use App\Models\User;
 use App\Services\Tasks\TaskAbilityResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
@@ -40,30 +39,6 @@ beforeEach(function () {
 | same TaskPolicy::complete() the controller invokes, so it stays a useful,
 | narrower proof of the AND-not-OR contract even with the endpoint in place.
 */
-
-if (! function_exists('taskActorWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function taskActorWith(array $abilities, bool $withViewAll = true): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-
-        if ($withViewAll) {
-            $user->givePermissionTo('tasks.viewAll');
-        }
-
-        return $user;
-    }
-}
 
 // ---------------------------------------------------------------------------
 // AC-006 — an assignee sees the 17 protected fields readonly, the 6 free ones editable

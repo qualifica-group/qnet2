@@ -15,13 +15,6 @@ use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
 
-if (! function_exists('fakeMigrationsBaseUrl')) {
-    function fakeMigrationsBaseUrl(): string
-    {
-        return 'https://external-crm.test';
-    }
-}
-
 if (! function_exists('migrationsSuperAdminActor')) {
     function migrationsSuperAdminActor(): User
     {

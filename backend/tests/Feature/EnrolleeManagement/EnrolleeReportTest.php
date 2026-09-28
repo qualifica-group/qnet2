@@ -12,6 +12,7 @@ use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -187,8 +188,10 @@ it('the CSV export row_count reflects only the D-5 perimeter, on top of the D-2 
     $category = reportCategoryTree()['apl'];
     $actor = enrolleeReportActorWith(['enrollee-management.report', 'enrollee-management.viewAny']);
 
-    reportQuote($category, $actor->id, enrolleeStatusId('closed_won'));
-    reportQuote($category, User::factory()->create()->id, enrolleeStatusId('closed_won')); // someone else's, out of D-5
+    $other = User::factory()->create();
+    $createdInRange = ['created_at' => Carbon::parse('2026-09-10')];
+    reportQuote($category, $actor->id, enrolleeStatusId('closed_won'))->forceFill($createdInRange)->save();
+    reportQuote($category, $other->id, enrolleeStatusId('closed_won'))->forceFill($createdInRange)->save(); // someone else's, out of D-5
     reportQuote($category, $actor->id, enrolleeStatusId('open')); // out of D-2
 
     Sanctum::actingAs($actor);
@@ -203,7 +206,11 @@ it('the CSV export row_count reflects only the D-5 perimeter, on top of the D-2 
 
     $csv = Storage::disk('local')->get($run->fresh()->file_path);
     $lines = array_filter(explode("\n", trim($csv, "\xEF\xBB\xBF\n")));
-    expect($lines)->toHaveCount(2); // header + the one TOTALE row in scope
+    // header + TOTALE + the actor's own row: since spec 0170 "Invio Presa in carico"
+    // counts the actor's closed_won request; the other operator's never shows.
+    expect($lines)->toHaveCount(3)
+        ->and($csv)->toContain($actor->name)
+        ->and($csv)->not->toContain($other->name);
 });
 
 // ---------------------------------------------------------------------------

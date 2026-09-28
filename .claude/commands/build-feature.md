@@ -20,7 +20,7 @@ Esegui la spec **$ARGUMENTS** (se vuoto, chiedi quale spec). Presuppone che la s
 - Ogni teammate: implementa + scrive i test (TDD), applica `rules/` del suo dominio + `engineering.md`. Gli hook girano in automatico (Pint/ESLint/typecheck/secret/config-protection/block-no-verify/code-guard): se un hook blocca, il teammate **corregge**, non aggira.
 
 ## 4. Verifica indipendente per ogni microtask
-- Il teammate **`verifier`** **esegue davvero** i test (Pest/Vitest), `tsc --noEmit`, e mappa gli `acceptance_criteria` 1:1 → PASS/FAIL con evidenza. Non scrive codice di produzione.
+- Il teammate **`verifier`** **esegue davvero** la suite completa (`composer test` in parallelo, `npx vitest run`), `npx tsc -b --force --pretty false` (mai `tsc --noEmit`), e mappa gli `acceptance_criteria` 1:1 → PASS/FAIL con evidenza. Non scrive codice di produzione.
 - Se **ROSSO**: **messaggia (`SendMessage`) il teammate owner** con file:riga e cosa fallisce; l'owner corregge. Non si procede al microtask dipendente finché non è verde.
 
 ## 5. Checkpoint a ogni stato verde

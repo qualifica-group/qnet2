@@ -17,12 +17,6 @@ uses(RefreshDatabase::class);
 
 // The shared helpers are defined once, guarded by function_exists, across the
 // Migration feature suite (see CompaniesSourceImportTest).
-if (! function_exists('fakeMigrationsBaseUrl')) {
-    function fakeMigrationsBaseUrl(): string
-    {
-        return 'https://external-crm.test';
-    }
-}
 
 if (! function_exists('migrationsSuperAdminActor')) {
     function migrationsSuperAdminActor(): User

@@ -15,26 +15,6 @@ use Spatie\Permission\Models\Permission;
  */
 uses(RefreshDatabase::class);
 
-if (! function_exists('quoteTableUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function quoteTableUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
-            Permission::findOrCreate("quotes.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("quotes.{$ability}");
-        }
-
-        return $user;
-    }
-}
-
 it('AC-069c: GET /api/tables/quotes/columns declares code as sortable, filterable and searchable', function () {
     $actor = quoteTableUserWith(['viewAny']);
     Sanctum::actingAs($actor);

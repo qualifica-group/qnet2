@@ -26,7 +26,7 @@ use Illuminate\Support\Collection;
  * is always present (as a KEY) in the emitted values (spec 0141 D-3,
  * supersedes rev-2 D-15): a column not configured for the branch is null
  * (NOT calculated, empty cell), a configured STUB column
- * (aule_gestione/aule_partenza/presa_appuntamenti — never implemented in
+ * (aule_gestione/aule_partenza — never implemented in
  * ReportIndicatorRegistry) is 0 same as before, and a configured REAL column
  * is the computed value.
  * That config key is the neutral source both this (calculation) class and

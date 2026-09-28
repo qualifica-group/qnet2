@@ -2,42 +2,12 @@
 
 use App\Models\Quote;
 use App\Models\QuoteLine;
-use App\Models\User;
 use App\Models\WorkOrder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
-
-if (! function_exists('workOrderUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function workOrderUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
-            Permission::findOrCreate("work-orders.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("work-orders.{$ability}");
-        }
-
-        // `viewAll` on top of the requested abilities: these suites predate
-        // the membership scoping (user directive 2026-09-02) and none of them
-        // is about it — the actor must see every commessa, as before. It
-        // widens nothing on its own: every gate still needs its own base
-        // ability, so the 403 assertions below keep their meaning. The
-        // scoping itself is covered by WorkOrderVisibilityTest.
-        $user->givePermissionTo('work-orders.viewAll');
-
-        return $user;
-    }
-}
 
 // ---------------------------------------------------------------------------
 // numbering — POST /api/work-orders (AC-010..012), GET /next-code (AC-013)

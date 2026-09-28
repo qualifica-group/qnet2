@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { compressRichTextImage, RICH_TEXT_IMAGE_MAX_DIMENSION } from '@/components/rich-text/rich-text-image-compress'
 

@@ -32,8 +32,15 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // Building a jsdom per file is the single largest cost of the suite:
+    // `*.test.ts` covers logic (schemas, utilities, api mappers) and runs in
+    // plain node. One of them that needs the DOM opts back in with a
+    // `// @vitest-environment jsdom` docblock on its first line.
+    projects: [
+      { extends: true, test: { name: 'node', environment: 'node', include: ['src/**/*.test.ts'] } },
+      { extends: true, test: { name: 'dom', environment: 'jsdom', include: ['src/**/*.test.tsx'] } },
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'html'],

@@ -33,25 +33,6 @@ if (! function_exists('registryUserWith')) {
     }
 }
 
-if (! function_exists('minimalRegistryProfilePayload')) {
-    /**
-     * @param  array<string, mixed>  $overrides
-     * @return array<string, mixed>
-     */
-    function minimalRegistryProfilePayload(array $overrides = []): array
-    {
-        return array_merge([
-            'type' => 'individual',
-            'first_name' => 'Ada',
-            'last_name' => 'Lovelace',
-            // An anagrafica must carry a phone number at creation (user
-            // directive 2026-09-07): a payload without one is no longer a
-            // valid create, so the minimal one holds it.
-            'contacts' => [['type' => 'phone', 'value' => '+39 02 1112223', 'is_primary' => true]],
-        ], $overrides);
-    }
-}
-
 it('create: 422 when manager_slots has more than 12 filled slots (spec 0080 amendment A1)', function () {
     $actor = registryUserWith(['create']);
     $managers = User::factory()->count(13)->create();

@@ -55,6 +55,7 @@
 - Feature test per ogni endpoint: **happy path, error path, autorizzazione** (utente senza permesso → 403; risorsa altrui → 403/404).
 - Non modificare i test per farli passare (vedi CORE §2).
 - I test fanno parte della Definition of Done ed **eseguili davvero**.
+- **La suite gira in parallelo** (`composer test` = `--parallel` con `XDEBUG_MODE=off`): ogni worker carica solo i SUOI file di test. Una funzione helper usata da piu' di un file di test va in `tests/Helpers/<Dominio>Helpers.php` (caricato da `tests/Pest.php`), mai dichiarata in un file di test e richiamata da un altro: in seriale passa per caso, in parallelo fallisce con `Call to undefined function`. Durante lo sviluppo esegui i test mirati (`XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/<Area>`), mai `php artisan test` nudo (seriale, sotto Xdebug).
 
 ## 7. Manutenzione
 

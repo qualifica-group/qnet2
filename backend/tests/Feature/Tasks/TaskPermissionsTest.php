@@ -19,39 +19,6 @@ uses(RefreshDatabase::class);
 | asserted here once, over all six resources at a time.
 */
 
-if (! function_exists('taskActorWith')) {
-    /**
-     * An actor holding $abilities on `tasks`. `viewAll` is granted on top by
-     * default so a 403 in a suite that is NOT about the membership scoping
-     * always means "missing resource permission" — the separation
-     * WorkOrderSecurityTest/WorkOrderVisibilityTest already draw. Pass
-     * `withViewAll: false` to exercise the scope itself.
-     *
-     * Duplicated (guarded) across the suites that need it, following the
-     * repo idiom for shared Pest helpers (see workOrderUserWith).
-     *
-     * @param  array<int, string>  $abilities
-     */
-    function taskActorWith(array $abilities, bool $withViewAll = true): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-
-        if ($withViewAll) {
-            $user->givePermissionTo('tasks.viewAll');
-        }
-
-        return $user;
-    }
-}
-
 /**
  * The six resource slugs of spec 0101 (D-1), in the order they were frozen.
  *

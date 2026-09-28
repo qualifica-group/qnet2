@@ -19,13 +19,6 @@ uses(RefreshDatabase::class);
  * for the reports-to pivot): split out of UsersSourceImportTest.php to keep
  * that file under the file-size budget (backend.md/engineering.md §6).
  */
-if (! function_exists('fakeMigrationsBaseUrl')) {
-    function fakeMigrationsBaseUrl(): string
-    {
-        return 'https://external-crm.test';
-    }
-}
-
 if (! function_exists('migrationsSuperAdminActor')) {
     function migrationsSuperAdminActor(): User
     {

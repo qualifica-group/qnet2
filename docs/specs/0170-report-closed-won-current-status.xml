@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0170-report-closed-won-current-status" status="approved" owner="utente" date="2026-09-28">
+
+  <goal>
+    Report e statistiche di Gestione Richieste / Iscritti: "Associati", "Trattative Concluse" e "Invio Presa in
+    carico" non leggono piu' lo storico degli stati, ma contano le richieste che OGGI sono chiuse con esito positivo.
+    "Presa Appuntamenti" smette di valere sempre 0 e conta il passaggio diretto da "OK App. Fissato..." ad
+    "Assegnato".
+  </goal>
+
+  <context>
+    - Segnalazione utente 2026-09-28: statistiche con Associati = 2 ma una sola richiesta chiusa con esito positivo.
+      Causa: una richiesta passata ad "Associato SI _ NOI" e spostata 35 secondi dopo in "Numero Inesistente/Errato"
+      restava contata, perche' la formula (spec 0106 D-3, AC-019) guardava la transizione registrata in
+      `activity_log`, non lo stato attuale.
+    - Supera, per le tre colonne closed_won, spec 0106 D-3 / AC-019 e la direttiva 2026-09-18 (stessa formula su
+      tre colonne: resta una sola formula, cambia cosa misura).
+    - `quotes` non ha una data di cambio stato: senza storico non esiste una data di chiusura.
+    - La coppia "OK App. Fissato CPI" -> "Assegnato" esiste oggi solo nel workflow APL; la colonna Presa
+      Appuntamenti e' attiva solo su Consulenza. Le colonne per categoria si scelgono in Categorie prodotto
+      (spec 0141), non in codice.
+  </context>
+
+  <decisions>
+    <decision id="D-1">"Associati", "Trattative Concluse", "Invio Presa in carico" = richieste il cui stato ATTUALE
+      appartiene al gruppo `closed_won`. Nessuna lettura di `activity_log`.</decision>
+    <decision id="D-2">Il periodo si applica alla data di creazione della richiesta (`quotes.created_at`), come
+      "N. Nuovi contatti non gestiti (nel periodo selezionato)". Estremi aperti come spec 0169.</decision>
+    <decision id="D-3">"Presa Appuntamenti" = richieste per cui `activity_log` registra, nel periodo, un cambio
+      DIRETTO (stato precedente -> stato nuovo) da uno stato il cui nome inizia per "OK App. Fissato" allo stato
+      "Assegnato" dello stesso workflow. Una volta avvenuto conta, qualunque sia lo stato attuale. Nomi confrontati
+      senza distinzione maiuscole/minuscole, configurati in `config/request-management-report.php`
+      (`appointment_transition`), mai cablati nell'indicatore.</decision>
+    <decision id="D-4">Vale per ogni categoria che ha la colonna attiva e un workflow con entrambi gli stati; un
+      workflow senza la coppia da' 0. Attribuzione alla singola offerta come spec 0106 D-3 (stesso workflow dello
+      stato corrente).</decision>
+    <decision id="D-5">"N. Potenziali associati (nel periodo selezionato)" resta invariata (legge lo storico):
+      decisione utente 2026-09-28.</decision>
+  </decisions>
+
+  <data_contract>
+    Nessun cambio di endpoint, parametri o shape: cambiano solo i valori delle quattro colonne.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Una richiesta passata a closed_won e poi spostata in un altro stato NON e' contata in
+      Associati / Trattative Concluse / Invio Presa in carico.</criterion>
+    <criterion id="AC-002">Una richiesta oggi in closed_won, creata nel periodo, e' contata anche senza alcuna riga
+      in `activity_log`.</criterion>
+    <criterion id="AC-003">Una richiesta oggi in closed_won creata fuori dal periodo non e' contata.</criterion>
+    <criterion id="AC-004">Presa Appuntamenti conta il passaggio diretto "OK App. Fissato..." -> "Assegnato" nel
+      periodo, anche se oggi la richiesta e' in un altro stato.</criterion>
+    <criterion id="AC-005">Presa Appuntamenti non conta: un passaggio ad "Assegnato" da un altro stato, un
+      passaggio fuori dal periodo, un passaggio tra stati di workflow diversi.</criterion>
+  </acceptance_criteria>
+</spec>

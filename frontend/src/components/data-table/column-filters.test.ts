@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { waitFor } from '@testing-library/react'
 import type { SetFilterValuesFuncParams } from 'ag-grid-community'
 import { beforeEach, describe, expect, it, vi } from 'vitest'

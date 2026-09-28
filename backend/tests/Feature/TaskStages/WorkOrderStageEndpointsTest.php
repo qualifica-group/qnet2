@@ -3,12 +3,10 @@
 use App\Enums\TaskStatusGroup;
 use App\Models\Task;
 use App\Models\TaskStatus;
-use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderStage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -24,28 +22,6 @@ uses(RefreshDatabase::class);
 | helper idiom: a directory-scoped `php artisan test` run never loads
 | WorkOrderCrudTest.php, so the global function would otherwise be undefined.
 */
-
-if (! function_exists('workOrderUserWith')) {
-    /**
-     * @param  array<int, string>  $abilities
-     */
-    function workOrderUserWith(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
-            Permission::findOrCreate("work-orders.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("work-orders.{$ability}");
-        }
-
-        $user->givePermissionTo('work-orders.viewAll');
-
-        return $user;
-    }
-}
 
 it('POST stages: creates a stage accoded at the end, PATCH renames it (AC-005)', function () {
     $actor = workOrderUserWith(['view', 'update']);

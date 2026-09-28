@@ -8,13 +8,6 @@ use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
 
-if (! function_exists('fakeMigrationsBaseUrl')) {
-    function fakeMigrationsBaseUrl(): string
-    {
-        return 'https://external-crm.test';
-    }
-}
-
 // ---------------------------------------------------------------------------
 // AC-007 — AbstractMigrationSource::preview: mapping + pagination + total
 //

@@ -66,5 +66,6 @@ Errori che i modelli AI fanno in modo ricorrente. Vincoli, non consigli.
 - **Ternario, non `&&`, per condizioni numeriche** — `{count > 0 ? <Badge/> : null}`: `{count && <Badge/>}` renderizza un `0` letterale a schermo.
 - **Non definire componenti dentro componenti** — un nuovo tipo a ogni render annulla la reconciliation e smonta i figli. Estrai sempre a livello modulo.
 - **Hoista le prop non-primitive di default** — `const EMPTY: Item[] = []` a livello modulo, non `items ?? []` inline: l'inline crea un nuovo riferimento a ogni render e rompe `memo`/dipendenze stabili.
+- **(test) `*.test.ts` gira in node, `*.test.tsx` in jsdom** (`test.projects` in `vite.config.ts`): creare un jsdom per file costa, e i test di logica (schemi, utility, mapper api) non lo usano. Un `.test.ts` che tocca `window`/`document`/`localStorage` o usa `renderHook` dichiara `// @vitest-environment jsdom` in prima riga; l'errore `document is not defined` significa che manca.
 - **(test) QueryClient stabile per-test, non per-render** — crearlo nella closure del wrapper resetta la cache a ogni render → test flaky. Istanziane uno per test.
 - **Query a11y-role-first; `data-testid` solo per Playwright E2E.** Standard unico: i test interrogano per ruolo accessibile; il `data-testid` è riservato all'E2E, non ai test unit/component.

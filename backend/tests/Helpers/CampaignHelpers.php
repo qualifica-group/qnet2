@@ -27,3 +27,17 @@ if (! function_exists('standaloneClassificationFields')) {
         ];
     }
 }
+
+if (! function_exists('campaignStoreDates')) {
+    /**
+     * The start/end planning dates, now required on every campaign (linked or
+     * standalone — dates are the campaign's own, never inherited). Spread into a
+     * store payload to satisfy the required rules.
+     *
+     * @return array<string, string>
+     */
+    function campaignStoreDates(): array
+    {
+        return ['start_date' => '2026-01-01', 'end_date' => '2026-12-31'];
+    }
+}

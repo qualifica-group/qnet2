@@ -22,33 +22,6 @@ uses(RefreshDatabase::class);
 | SSRM block (spec 0157, D-4).
 */
 
-if (! function_exists('taskActorWith')) {
-    /**
-     * Duplicated (guarded) across the suites that need it, following the
-     * repo idiom (see TaskTableTest.php).
-     *
-     * @param  array<int, string>  $abilities
-     */
-    function taskActorWith(array $abilities, bool $withViewAll = true): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-
-        if ($withViewAll) {
-            $user->givePermissionTo('tasks.viewAll');
-        }
-
-        return $user;
-    }
-}
-
 if (! function_exists('taskTreeTitles')) {
     /**
      * @param  array<string, mixed>  $overrides

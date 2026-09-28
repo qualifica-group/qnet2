@@ -3,10 +3,8 @@
 use App\Enums\TaskStatusGroup;
 use App\Models\Task;
 use App\Models\TaskStatus;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -23,33 +21,6 @@ uses(RefreshDatabase::class);
 | drag INTO a status reserved for the Complete action is refused, and a
 | structural PATCH (end_date included) on a frozen/closed Task is refused.
 */
-
-if (! function_exists('taskActorWith')) {
-    /**
-     * Duplicated (guarded) across the suites that need it, following the
-     * repo idiom (see TaskTableTest.php).
-     *
-     * @param  array<int, string>  $abilities
-     */
-    function taskActorWith(array $abilities, bool $withViewAll = true): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-
-        if ($withViewAll) {
-            $user->givePermissionTo('tasks.viewAll');
-        }
-
-        return $user;
-    }
-}
 
 it('D-3: PATCH with only task_status_id moves the card between two open statuses', function () {
     $actor = taskActorWith(['update', 'view']);

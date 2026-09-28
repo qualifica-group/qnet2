@@ -1,9 +1,7 @@
 <?php
 
-use App\Models\BusinessFunction;
 use App\Models\Opportunity;
 use App\Models\Product;
-use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
@@ -44,22 +42,6 @@ if (! function_exists('quoteHttpNewStatus')) {
     function quoteHttpNewStatus(): QuoteWorkflowStatus
     {
         return QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
-    }
-}
-
-if (! function_exists('quoteHttpRevenueProduct')) {
-    /**
-     * A product whose category already resolves an EFFECTIVE business
-     * function (D-7), so a REVENUE line never trips the 422 coverage guard
-     * (QuoteCoverageTest owns AC-050/051 directly).
-     */
-    function quoteHttpRevenueProduct(): Product
-    {
-        $category = ProductCategory::factory()->create([
-            'business_function_id' => BusinessFunction::factory()->create()->id,
-        ]);
-
-        return Product::factory()->create(['category_id' => $category->id]);
     }
 }
 

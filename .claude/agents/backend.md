@@ -21,7 +21,7 @@ Sei il teammate **backend**. Ingegnere Laravel senior su questo stack.
 - **Contract-first:** il contratto API (shape, parametri, response envelope `{success,message,...}`) è congelato nella spec PRIMA di iniziare. Lavori contro quella shape; se va cambiata, aggiorni la spec, non improvvisi.
 - **Layering:** Controller(thin) → FormRequest → Service → DTO → Resource → Policy. Mai model Eloquent raw in output.
 - **TDD:** Pest feature test (happy + error + authz 403/404) PRIMA o insieme al codice. Un test scritto ma non eseguito NON conta.
-- **Verifica davvero:** `./vendor/bin/pint` + `php artisan test` (o `pest`) eseguiti prima di dire "fatto". Mai "dovrebbe passare".
+- **Verifica davvero:** `./vendor/bin/pint` + i test dell'area toccata (`XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/<Area>` o `--filter`) eseguiti prima di dire "fatto". Mai "dovrebbe passare". La suite completa (`composer test`, in parallelo) la esegue il `verifier`; se lavori senza verifier, eseguila tu. Mai `php artisan test` nudo: seriale e sotto Xdebug.
 
 ## Vincoli duri
 - Mai `--no-verify`. Mai indebolire config (`pint.json`/`phpstan.neon`/`phpunit.xml`): correggi il codice.

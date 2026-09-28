@@ -3,6 +3,44 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TEMPI DEI TEST — SUITE BACKEND IN PARALLELO, VITEST NODE/JSDOM — VERDE, NON COMMITTATO (2026-09-28)
+
+- Causa: `composer test` = `php artisan test` seriale sotto l'Xdebug di Herd (3.4.0alpha2, mode=debug,develop),
+  che puo' anche andare in segfault (signal 11). Ora `composer test` = `XDEBUG_MODE=off` + `--parallel`
+  (`test:coverage` = `XDEBUG_MODE=coverage`, senza timeout Composer). Suite completa: 8632 test in ~1:56 (10 worker).
+  Misura sul sottoinsieme `tests/Feature/Tasks` (625 test): 84.8s seriale+Xdebug -> 31.3s Xdebug off -> 7.9s parallelo.
+- Il parallelo ha fatto emergere 68 fallimenti `Call to undefined function`: helper dichiarati in un file di test e
+  usati da altri. 25 helper (98 copie locali, tutte identiche) spostati in `tests/Helpers/*Helpers.php` e caricati da
+  `tests/Pest.php`; nuovi file: Registry, RewardedReferent, Opportunity, Lead, Contract, Import, User, WorkOrder,
+  Stats. Regola nuova in `rules/backend.md §6`: helper condiviso tra file -> `tests/Helpers`, mai locale.
+- Frontend: `test.projects` in `vite.config.ts`, `*.test.ts` in node, `*.test.tsx` in jsdom; `src/test/setup.ts`
+  carica jest-dom/cleanup/stub solo se esiste `window`; 30 `.test.ts` che usano il DOM hanno
+  `// @vitest-environment jsdom` in prima riga. 6245/6245 verdi; 192s -> ~178s (guadagno modesto: il costo e'
+  nei 578 `.test.tsx`). `pool: 'threads'` e `deps.optimizer` misurati: nessun guadagno sull'intera suite, scartati.
+- Agenti/comandi aggiornati (verifier, backend, frontend, tester-debug, build-feature): test mirati con
+  `XDEBUG_MODE=off ./vendor/bin/pest <path>` durante lo sviluppo, suite completa `composer test` al verifier,
+  `tsc -b --force` al posto di `tsc --noEmit`.
+- Prossimo passo possibile (non fatto): i test dei seeder `Qualifica*` pesano ~350s di CPU (ogni test rilancia il
+  seeder); consolidarli "seed once" come in gym-pro porterebbe la suite verso ~1:30.
+
+## REPORT — ASSOCIATI SU STATO ATTUALE, PRESA APPUNTAMENTI CALCOLATA (SPEC 0170) — VERDE, NON COMMITTATO (2026-09-28)
+
+- Decisioni utente: Associati/Trattative Concluse/Invio Presa in carico = stato ATTUALE `closed_won`, periodo sulla
+  data di creazione richiesta (`quotes.created_at`), nessuna lettura di `activity_log` (D-1/D-2). Presa Appuntamenti =
+  passaggio DIRETTO (old -> new in `activity_log`) "OK App. Fissato..." -> "Assegnato" nel periodo, stesso workflow,
+  per ogni categoria che ha la colonna (D-3/D-4). `potenziali` (nel periodo) resta sullo storico (D-5).
+- BE: `CurrentStatusGroupIndicator` ha il flag `createdWithinRange`; nuovo `AppointmentTransitionIndicator`; sottoquery
+  condivisa `activity_log` nel trait `Indicators/QueriesLoggedStatusTransitions` (usato anche da
+  `WorkflowTransitionIndicator`, ora solo `potenziali`). Nomi stato in `config/request-management-report.php`
+  `appointment_transition` (from_status_prefix / to_status), confronto case-insensitive. Stub rimasti: solo aule_*.
+- Test: nuovo `RequestManagementReportCurrentOutcomeTest` (AC-001..005); AC-019 riscritto (requisito cambiato), AC-020
+  ora prova l'attribuzione D-3 su `potenziali`; `EnrolleeReportTest` CSV: 3 righe (la riga operatore compare perche'
+  Invio Presa in carico ora conta). Guide help IT/EN (request-management, product-categories) e manuale Claude Docs
+  aggiornati.
+- Da sapere: con periodo "oggi" Associati e' 0 per richieste create nei giorni prima (effetto di D-2). La colonna
+  Presa Appuntamenti oggi e' attiva solo su Consulenza, il cui workflow non ha la coppia di stati (vale 0): per APL va
+  spuntata in Categorie prodotto > Colonne report.
+
 ## SMISTAMENTO EQUO — LISTA OPERATORI SELEZIONABILE PER SEDE (SPEC 0168) — VERDE, COMMITTATO (2026-09-25)
 
 - Decisioni utente: gruppi = Sede (D-1), selezione per gruppo (D-2), nessuna persistenza (D-3).
@@ -24,6 +62,25 @@
   competente, il pool e' vuoto (regole 0110/0111/0113 invariate). Proposta aperta all'utente: fallback "tutti gli
   operatori della Sede" quando nessuno e' competente (richiederebbe una nuova spec).
 - Manuale: guide in-app IT/EN (leads, request-management, general, imports) + manuale Claude Docs (rev 93).
+
+## "CATEGORIE ME.PA." MULTISELECT + ETICHETTE ENUM NEI DOCUMENTI — VERDE, NON COMMITTATO (2026-09-25)
+
+- Seguito del fix sotto (domanda utente "ci sono altri campi cosi'?").
+- `categorie_mepa` arrivava da q-crm come `{"display":"select","multiple":true}`: `multiple` non lo legge nessuno, era
+  scelta singola. Migrazione `2026_09_25_140000_promote_legacy_multiple_enum_attributes` (enum con `multiple: true` →
+  `display: multiselect`, valori scalari avvolti in lista in quotes/work_orders/products; `multiple` resta come
+  marcatore per la `down()`, lossy: tiene il primo codice). `AttributesSource::mapConfig()` fa la stessa traduzione
+  per gli import futuri. Applicata al DB locale.
+- `DynamicFieldResolver::quoteAttribute()`: un attributo enum stampa le etichette (lista → "A, B"); codice senza
+  opzione → stampato com'e'. Guide IT/EN `document-layouts` (sezione variables) + manuale Claude Docs rev 94.
+- Test: `tests/Feature/Attributes/PromoteLegacyMultipleEnumAttributesTest.php` (3), `AttributesSourceImportTest` (+1),
+  `VariableResolverTest` (+1), rossi prima del fix. `QuoteWorkflowMigrationTest` rollback 104 -> 105 step (nuova
+  migrazione, convenzione del test). Pest completo 8630/8632 (1 skipped, 1 = quel rollback, poi verde 2/2), Pint pulito.
+- APERTI (segnalati all'utente, non fatti): (1) l'export di Gestione Richieste non congela la categoria del tab
+  (`CreateExportRequest`/`ExportService` non chiamano `scopeToProductCategory`) → colonne `attr.*` vuote e righe
+  non filtrate per categoria; inoltre il tipo sentinella `attribute` esporta una lista come JSON. (2) campi
+  personalizzati enum nei documenti stampano ancora il codice (`customField()`). (3) il pannello richiesta rimanda
+  tutta la mappa attributi: un valore storico fuori dalle opzioni blocca il salvataggio finche' non si corregge.
 
 ## FIX: ATTRIBUTI ENUM MULTISELECT NON SALVABILI (es. "Titolo di Studio") — VERDE, COMMITTATO (2026-09-25)
 

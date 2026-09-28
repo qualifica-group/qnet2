@@ -19,35 +19,23 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 
 /**
- * Shared formula for "N. Potenziali associati" (D-2, `group` in
- * pending/validated) and "Associati"/"Trattative Concluse" (D-3, `group` =
- * closed_won) — one identical implementation behind two report columns, the
- * brief distinguishes them only by category label.
+ * "N. Potenziali associati (nel periodo selezionato)" (spec 0106 D-2):
+ * requests with a logged transition, inside the range, toward a status whose
+ * `group` is one of $groups (pending/validated). Since spec 0170 it is the
+ * only column besides "Presa Appuntamenti" that reads the status history:
+ * the closed_won columns look at the current status instead.
  *
  * transition_resolution (D-3), three steps:
  *  1. targetStatusIds() resolves every status id whose `group` is one of
  *     $groups, GLOBALLY (no workflow filter yet). A branch whose catalogue
- *     has NO status in that group (D-2: e.g. GOL/Autofinanziato/APL for
- *     'validated') naturally resolves to an empty id list, and
- *     `whereIn(..., [])` matches nothing — 0 with no special-casing.
- *  2. whereExists on activity_log, matched via the arrow operator on
- *     `properties->attributes->quote_workflow_status_id` (never
- *     whereRaw/json_extract, AC-023 — the same idiom as
- *     AttributeDateFilterApplier).
- *  3. Disambiguation: the logged target status must belong to the SAME
- *     `quote_workflow_id` as the quote's CURRENT status — compared
- *     null-safely, since two quotes both on the GLOBAL default set
- *     (`quote_workflow_id IS NULL`, e.g. a category with no dedicated
- *     workflow) are on the very same set and must still match, which a
- *     plain `=` would miss (SQL `NULL = NULL` is NULL, not TRUE).
+ *     has NO status in that group naturally resolves to an empty id list,
+ *     and `whereIn(..., [])` matches nothing — 0 with no special-casing.
+ *  2-3. whereExists on activity_log with the D-3 disambiguation:
+ *     QueriesLoggedStatusTransitions.
  */
 final class WorkflowTransitionIndicator implements ReportIndicator
 {
-    private const string LOG_NAME = 'opportunities';
-
-    private const string SUBJECT_TYPE = 'opportunity';
-
-    private const string LOGGED_STATUS_COLUMN = 'a.properties->attributes->quote_workflow_status_id';
+    use QueriesLoggedStatusTransitions;
 
     /**
      * @param  array<int, WorkflowStatusGroup>  $groups
@@ -92,22 +80,8 @@ final class WorkflowTransitionIndicator implements ReportIndicator
         return $this->branchQuery->build($categoryIds, $actor, $operators, $sites, $module)
             ->join('quote_workflow_statuses as current_status', 'current_status.id', '=', 'quotes.quote_workflow_status_id')
             ->whereExists(function (QueryBuilder $sub) use ($targetIds, $range): void {
-                $sub->selectRaw('1')
-                    ->from('activity_log as a')
-                    ->join('quote_workflow_statuses as logged_status', 'logged_status.id', '=', self::LOGGED_STATUS_COLUMN)
-                    ->whereColumn('a.subject_id', 'quotes.opportunity_id')
-                    ->where('a.log_name', self::LOG_NAME)
-                    ->where('a.subject_type', self::SUBJECT_TYPE)
-                    ->whereIn(self::LOGGED_STATUS_COLUMN, $targetIds)
-                    ->where(function (QueryBuilder $sameWorkflow): void {
-                        $sameWorkflow->whereColumn('logged_status.quote_workflow_id', 'current_status.quote_workflow_id')
-                            ->orWhere(function (QueryBuilder $bothGlobal): void {
-                                $bothGlobal->whereNull('logged_status.quote_workflow_id')
-                                    ->whereNull('current_status.quote_workflow_id');
-                            });
-                    });
-
-                $range->constrain($sub, 'a.created_at');
+                $this->loggedTransitionOnCurrentWorkflow($sub, $range)
+                    ->whereIn(self::LOGGED_STATUS_COLUMN, $targetIds);
             });
     }
 }

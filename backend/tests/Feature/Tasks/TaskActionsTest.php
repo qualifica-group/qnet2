@@ -4,7 +4,6 @@ use App\Enums\TaskStatusGroup;
 use App\Enums\TaskStatusSystemKey;
 use App\Models\Task;
 use App\Models\TaskStatus;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -41,35 +40,6 @@ beforeEach(function () {
 | complete/approve, uncomplete/reject LIFT the block instead —,
 | TaskActionAvailability) plus the transitions' target statuses.
 */
-
-if (! function_exists('taskActorWith')) {
-    /**
-     * An actor holding $abilities on `tasks`. `viewAll` is granted on top by
-     * default so a 403 here always means "matrix/deroga refusal", not
-     * "outside the visibility scope" — the separation the sibling Task
-     * suites already draw.
-     *
-     * @param  array<int, string>  $abilities
-     */
-    function taskActorWith(array $abilities, bool $withViewAll = true): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-
-        if ($withViewAll) {
-            $user->givePermissionTo('tasks.viewAll');
-        }
-
-        return $user;
-    }
-}
 
 if (! function_exists('protectedTaskStatus')) {
     function protectedTaskStatus(TaskStatusSystemKey $key): TaskStatus

@@ -37,4 +37,14 @@ return [
     // this map used to hold is frozen, once, inside migration
     // `2026_09_18_110000_add_report_columns_to_product_categories_table`.
 
+    // Spec 0170 D-3: "Presa Appuntamenti" counts a DIRECT move from a status
+    // whose name starts with `from_status_prefix` to the status named
+    // `to_status`, within the same workflow (case-insensitive). The workflow
+    // catalogue has no system key for these two phases, so the names are
+    // configuration, never hard-coded in the indicator.
+    'appointment_transition' => [
+        'from_status_prefix' => 'OK App. Fissato',
+        'to_status' => 'Assegnato',
+    ],
+
 ];

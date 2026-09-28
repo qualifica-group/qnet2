@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import { extractPlainTextFromHtml, looksLikeHtmlValue } from '@/features/activity-log/activity-log-rich-text-value'
 

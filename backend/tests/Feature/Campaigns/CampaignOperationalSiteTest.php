@@ -39,16 +39,6 @@ if (! function_exists('campaignUserWith')) {
     }
 }
 
-if (! function_exists('campaignStoreDates')) {
-    /**
-     * @return array<string, string>
-     */
-    function campaignStoreDates(): array
-    {
-        return ['start_date' => '2026-01-01', 'end_date' => '2026-12-31'];
-    }
-}
-
 if (! function_exists('standaloneCampaignFields')) {
     /**
      * @return array<string, mixed>

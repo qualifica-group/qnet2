@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Attribute;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldValue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -109,6 +110,29 @@ it('resolves a valorized {custom_fields.KEY} and {quote_attributes.CODE} (AC-236
 
     expect($text)->toContain('Notes:Consegna urgente')
         ->and($text)->toContain('Attr:42 mq');
+});
+
+it('renders an enum {quote_attributes.CODE} as its option labels, single and multiselect', function () {
+    $quote = dlrFullQuote();
+    $degree = Attribute::factory()->create(['code' => 'degree', 'type' => 'enum', 'config' => ['display' => 'multiselect']]);
+    $degree->options()->createMany([
+        ['value' => 'high_school', 'label' => 'Diploma', 'sort_order' => 0],
+        ['value' => 'degree', 'label' => 'Laurea', 'sort_order' => 1],
+    ]);
+    $status = Attribute::factory()->create(['code' => 'stato', 'type' => 'enum', 'config' => ['display' => 'select']]);
+    $status->options()->create(['value' => 'open', 'label' => 'Aperta', 'sort_order' => 0]);
+
+    $quote->forceFill(['attribute_values' => ['degree' => ['high_school', 'degree', 'retired'], 'stato' => 'open']])->save();
+
+    $config = dlrDocConfig(['body' => ['blocks' => [
+        dlrTextBlock([dlrRun(['text' => 'Degree:{quote_attributes.degree}|Status:{quote_attributes.stato}'])]),
+    ]]]);
+
+    $text = dlrDocumentText(dlrOpenZip(dlrRender($config, $quote->fresh(['opportunity']))));
+
+    // A code with no option left (deleted after it was saved) prints as itself.
+    expect($text)->toContain('Degree:Diploma, Laurea, retired')
+        ->and($text)->toContain('Status:Aperta');
 });
 
 // ---------------------------------------------------------------------------

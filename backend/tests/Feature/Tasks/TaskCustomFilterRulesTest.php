@@ -7,13 +7,11 @@ use App\Models\ExportRun;
 use App\Models\Task;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
-use App\Models\User;
 use App\Services\ExportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -22,27 +20,6 @@ uses(RefreshDatabase::class);
  * semantics against real + relation columns) and AC-003 (a custom filter
  * ignores filterModel/advancedFilters, and the export gives the SAME rows).
  */
-if (! function_exists('taskActorWith')) {
-    function taskActorWith(array $abilities, bool $withViewAll = true): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-
-        if ($withViewAll) {
-            $user->givePermissionTo('tasks.viewAll');
-        }
-
-        return $user;
-    }
-}
-
 function runTaskExportJob(ExportRun $run): void
 {
     (new GenerateExportJob($run->id))->handle(app(ExportService::class));

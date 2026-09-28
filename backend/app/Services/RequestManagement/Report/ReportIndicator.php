@@ -9,9 +9,8 @@ use App\RequestManagement\RequestModule;
 
 /**
  * One "real" (computed) indicator of the report (spec 0106 data_contract).
- * The four constant-0 stub columns (aule_gestione/aule_partenza/
- * presa_appuntamenti/invio_presa_in_carico, D-5) have no implementation of
- * this contract — ReportBranchRowsBuilder emits their 0 directly, the same
+ * The constant-0 stub columns (aule_gestione/aule_partenza, D-5) have no
+ * implementation of this contract — ReportBranchRowsBuilder emits their 0 directly, the same
  * default every non-applicable column gets too (D-15, rev-2).
  *
  * Spec 0130: $module (defaulting to RequestModule::Requests) flows straight

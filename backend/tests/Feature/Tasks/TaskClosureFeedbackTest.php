@@ -4,10 +4,8 @@ use App\Enums\TaskStatusGroup;
 use App\Enums\TaskStatusSystemKey;
 use App\Models\Task;
 use App\Models\TaskStatus;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -27,39 +25,6 @@ uses(RefreshDatabase::class);
 | a guard that rejects the response but commits the write would satisfy the
 | status code alone.
 */
-
-if (! function_exists('taskActorWith')) {
-    /**
-     * An actor holding $abilities on `tasks`. `viewAll` is granted on top by
-     * default so a 403 in a suite that is NOT about the membership scoping
-     * always means "missing resource permission" — the separation
-     * WorkOrderSecurityTest/WorkOrderVisibilityTest already draw. Pass
-     * `withViewAll: false` to exercise the scope itself.
-     *
-     * Duplicated (guarded) across the suites that need it, following the
-     * repo idiom for shared Pest helpers (see workOrderUserWith).
-     *
-     * @param  array<int, string>  $abilities
-     */
-    function taskActorWith(array $abilities, bool $withViewAll = true): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-
-        if ($withViewAll) {
-            $user->givePermissionTo('tasks.viewAll');
-        }
-
-        return $user;
-    }
-}
 
 /**
  * REQUIREMENT CHANGED (spec 0123, D-4): `closed_positive` used to be one of

@@ -9,13 +9,6 @@ use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
 
-if (! function_exists('fakeMigrationsBaseUrl')) {
-    function fakeMigrationsBaseUrl(): string
-    {
-        return 'https://external-crm.test';
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Spec 0021/0013 — AbstractMigrationSource generically exposes + previews a
 // source's active custom fields (RolesSource's entity_type "roles" is used

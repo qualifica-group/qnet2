@@ -5,8 +5,8 @@ declare(strict_types=1);
 if (! function_exists('seedMigrationsConfig')) {
     /**
      * The `migrations.*` config every source-import Feature test relies on:
-     * a fake base URL (`fakeMigrationsBaseUrl()`, declared locally by each
-     * caller), no token, tight timeouts/retries so a failing HTTP double
+     * a fake base URL (`fakeMigrationsBaseUrl()`, below), no token,
+     * tight timeouts/retries so a failing HTTP double
      * never stalls the suite, and the SAME `import_batch_size` the app's
      * own default already is (App\Migrations\AbstractMigrationSource falls
      * back to 100) — explicit here so the value is asserted, not just
@@ -28,5 +28,12 @@ if (! function_exists('seedMigrationsConfig')) {
             'migrations.retry_sleep_ms' => 1,
             'migrations.import_batch_size' => 100,
         ]);
+    }
+}
+
+if (! function_exists('fakeMigrationsBaseUrl')) {
+    function fakeMigrationsBaseUrl(): string
+    {
+        return 'https://external-crm.test';
     }
 }

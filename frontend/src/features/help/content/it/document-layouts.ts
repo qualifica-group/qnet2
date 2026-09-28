@@ -45,6 +45,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'Sono segnaposti che, alla generazione, diventano i dati reali dell’offerta. Seleziona un testo nell’anteprima e, nel pannello **Variabili**, clicca il dato che ti serve.' },
         { type: 'paragraph', text: 'Gruppi disponibili: **Preventivo**, **Totali**, **Cliente**, **Opportunità**, **Referente**, **Commerciale**, **Segnalatore**, **Supervisore**, **Società**, **Sede** (con banca e IBAN), **Sede operativa**, **Campi personalizzati** e **Attributi offerta**. Gli ultimi due si aggiornano da soli quando aggiungi campi o attributi.' },
+        { type: 'paragraph', text: 'Un attributo a scelta stampa le **etichette** delle opzioni, non i codici; se la scelta è multipla, le etichette sono separate da una virgola.' },
       ],
     },
     {

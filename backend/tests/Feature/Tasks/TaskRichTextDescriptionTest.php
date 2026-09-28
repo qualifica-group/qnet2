@@ -7,7 +7,6 @@ use App\RichText\RichText;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -18,32 +17,6 @@ uses(RefreshDatabase::class);
 | image-processor rules themselves are Unit-tested in tests/Unit/RichText.
 |--------------------------------------------------------------------------
 */
-
-if (! function_exists('taskActorWith')) {
-    /**
-     * Duplicated (guarded) from TaskCrudTest — see its own docblock for why.
-     *
-     * @param  array<int, string>  $abilities
-     */
-    function taskActorWith(array $abilities, bool $withViewAll = true): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'] as $ability) {
-            Permission::findOrCreate("tasks.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("tasks.{$ability}");
-        }
-
-        if ($withViewAll) {
-            $user->givePermissionTo('tasks.viewAll');
-        }
-
-        return $user;
-    }
-}
 
 if (! function_exists('taskPayload')) {
     /**

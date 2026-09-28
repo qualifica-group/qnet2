@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\DocumentLayouts\Rendering;
 
+use App\Models\Attribute;
 use App\Models\Quote;
 
 /**
@@ -23,6 +24,15 @@ use App\Models\Quote;
  */
 final class DynamicFieldResolver
 {
+    /**
+     * Option labels per enum attribute code (null = not an enum, or no such
+     * attribute), memoized for the instance: a layout can reference the same
+     * attribute many times in one render.
+     *
+     * @var array<string, array<string, string>|null>
+     */
+    private array $enumLabels = [];
+
     public function customField(string $key, Quote $quote): string
     {
         return self::scalarToString($quote->custom_fields[$key] ?? null);
@@ -35,9 +45,37 @@ final class DynamicFieldResolver
      */
     public function quoteAttribute(string $key, Quote $quote): string
     {
-        $attributeValues = $quote->attribute_values ?? [];
+        $value = ($quote->attribute_values ?? [])[$key] ?? null;
+        $labels = $value === null ? null : $this->enumLabels($key);
 
-        return self::scalarToString($attributeValues[$key] ?? null);
+        return self::scalarToString($labels === null ? $value : self::toLabels($value, $labels));
+    }
+
+    /**
+     * @return array<string, string>|null
+     */
+    private function enumLabels(string $code): ?array
+    {
+        if (! array_key_exists($code, $this->enumLabels)) {
+            $attribute = Attribute::query()->where('code', $code)->where('type', 'enum')->with('options')->first();
+            $this->enumLabels[$code] = $attribute?->options->pluck('label', 'value')->all();
+        }
+
+        return $this->enumLabels[$code];
+    }
+
+    /**
+     * A stored option code (or a multiselect list of them) swapped for its
+     * label. A code with no option left — deleted after it was saved — prints
+     * as itself rather than vanishing from the document.
+     *
+     * @param  array<string, string>  $labels
+     */
+    private static function toLabels(mixed $value, array $labels): mixed
+    {
+        $label = static fn (mixed $code): mixed => is_scalar($code) ? ($labels[(string) $code] ?? $code) : $code;
+
+        return is_array($value) ? array_map($label, $value) : $label($value);
     }
 
     /**

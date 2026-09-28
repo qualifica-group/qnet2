@@ -318,8 +318,8 @@ const guide: HelpGuide = {
             ],
             [
               'Associati',
-              'Le richieste passate nel periodo a uno stato del gruppo Chiuso con esito positivo.',
-              'Data del cambio di stato; conta anche se la richiesta è poi tornata indietro.',
+              'Le richieste che oggi si trovano in uno stato del gruppo Chiuso con esito positivo.',
+              'Data di creazione della richiesta. Guarda lo stato attuale: una richiesta chiusa positiva e poi spostata in un altro stato non conta.',
             ],
             ['Trattative Concluse', 'Stesso calcolo di Associati.', 'Cambia solo il nome, secondo le categorie che lo usano.'],
             ['Invio Presa in carico', 'Stesso calcolo di Associati.', 'Cambia solo il nome, secondo le categorie che lo usano.'],
@@ -330,7 +330,11 @@ const guide: HelpGuide = {
             ],
             ['Aule in gestione', 'Non ancora calcolata.', 'Vale sempre 0.'],
             ['Aule in partenza', 'Non ancora calcolata.', 'Vale sempre 0.'],
-            ['Presa Appuntamenti', 'Non ancora calcolata.', 'Vale sempre 0.'],
+            [
+              'Presa Appuntamenti',
+              'Le richieste passate direttamente da uno stato "OK App. Fissato" allo stato "Assegnato".',
+              'Data del cambio di stato; conta anche se poi la richiesta cambia stato. Vale 0 nelle categorie il cui workflow non ha questi due stati.',
+            ],
           ],
         },
         {
@@ -380,6 +384,7 @@ const guide: HelpGuide = {
             '**Perché i totali del padre non includono una sottocategoria?** La sottocategoria ha Visibile nei report a no, direttamente o per eredità.',
             "**Perché i numeri di un operatore sono cambiati dopo un trasferimento?** I conteggi guardano l'operatore attuale: le note del vecchio operatore non contano più come telefonate.",
             '**Perché alcune colonne non cambiano con il periodo?** N. Richiami non gestiti, N. Nuovi contatti non gestiti e N. Potenziali associati guardano sempre alla situazione di oggi. Per il dato del periodo usa la loro versione "(nel periodo selezionato)", da attivare in Colonne report della categoria.',
+            '**Perché Associati vale 0 anche se ho richieste chiuse con esito positivo?** Associati, Trattative Concluse e Invio Presa in carico contano le richieste create nel periodo scelto: con il periodo di oggi restano fuori quelle create nei giorni precedenti. Allarga il periodo Dal/Al.',
             '**Perché il Totale complessivo è più basso della somma delle categorie?** Una richiesta presente in più categorie selezionate conta una volta sola nel totale complessivo.',
           ],
         },

@@ -44,20 +44,6 @@ if (! function_exists('campaignUserWith')) {
  *
  * @return array<string, mixed>
  */
-/**
- * The start/end planning dates, now required on every campaign (linked or
- * standalone — dates are the campaign's own, never inherited). Spread into a
- * store payload to satisfy the required rules.
- *
- * @return array<string, string>
- */
-if (! function_exists('campaignStoreDates')) {
-    function campaignStoreDates(): array
-    {
-        return ['start_date' => '2026-01-01', 'end_date' => '2026-12-31'];
-    }
-}
-
 if (! function_exists('standaloneCampaignFields')) {
     function standaloneCampaignFields(): array
     {

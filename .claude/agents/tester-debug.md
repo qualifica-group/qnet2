@@ -22,7 +22,7 @@ Sei il teammate **tester-debug**. QA attivo + debugger. Spawnato **on-demand** p
 - **Flaky:** isola la causa (ordine, stato condiviso, timing); rendi il test deterministico (niente attese a timeout; QueryClient stabile per-test; query per ruolo a11y, `data-testid` solo E2E).
 
 ## Regole / skill
-- Skill on-demand: `tdd-workflow`, `laravel-tdd`, `react-testing`, `e2e-testing`. Esegui davvero: `php artisan test`/`pest`, `vitest run`, Playwright.
+- Skill on-demand: `tdd-workflow`, `laravel-tdd`, `react-testing`, `e2e-testing`. Esegui davvero: `XDEBUG_MODE=off ./vendor/bin/pest <path>` per il mirato, `composer test` per la suite completa (in parallelo), `vitest run`, Playwright.
 
 ## Handoff
 Chiudi con: test aggiunti (cosa coprono), bug riprodotti (con repro e root cause) **messaggiati agli owner**, flaky risolti.

@@ -318,8 +318,8 @@ const guide: HelpGuide = {
             ],
             [
               'Enrolled',
-              'Requests moved in the period to a status of the Closed (positive outcome) group.',
-              'Status change date; it still counts even if the request later moved back.',
+              'Requests that are currently in a status of the Closed (positive outcome) group.',
+              'Request creation date. It looks at the current status: a request closed positively and then moved to another status does not count.',
             ],
             ['Deals Closed', 'Same calculation as Enrolled.', 'Only the name changes, depending on which categories use it.'],
             ['Handover Sent', 'Same calculation as Enrolled.', 'Only the name changes, depending on which categories use it.'],
@@ -330,7 +330,11 @@ const guide: HelpGuide = {
             ],
             ['Classes In Progress', 'Not yet computed.', 'Always 0.'],
             ['Classes Starting', 'Not yet computed.', 'Always 0.'],
-            ['Appointments Booked', 'Not yet computed.', 'Always 0.'],
+            [
+              'Appointments Booked',
+              'Requests moved directly from an "OK App. Fissato" status to the "Assegnato" status.',
+              'Status change date; it still counts if the request later changes status. It is 0 in categories whose workflow lacks these two statuses.',
+            ],
           ],
         },
         {
@@ -380,6 +384,7 @@ const guide: HelpGuide = {
             "**Why don't the parent's totals include a subcategory?** The subcategory has Visible in reports set to no, directly or by inheritance.",
             "**Why did an operator's numbers change after a transfer?** The counts look at the current operator: the previous operator's notes no longer count as calls.",
             "**Why don't some columns change with the period?** Unhandled Callbacks, Unhandled New Contacts and Potential Leads always look at the situation today. For the period figure use their \"(selected period)\" version, which you switch on in the category's Report columns.",
+            '**Why is Enrolled 0 even though I have requests closed with a positive outcome?** Enrolled, Deals Closed and Handover Sent count the requests created in the chosen period: with today as the period, the ones created on earlier days are left out. Widen the From/To period.',
             '**Why is the Overall total lower than the sum of the categories?** A request present in several selected categories counts once in the overall total.',
           ],
         },

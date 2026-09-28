@@ -45,6 +45,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: "Variables are placeholders that, when the document is generated, become the quote's actual data. Select some text in the preview and, in the **Variables** panel, click the piece of data you need." },
         { type: 'paragraph', text: 'Available groups: **Quote**, **Totals**, **Customer**, **Opportunity**, **Referent**, **Salesperson**, **Referrer**, **Supervisor**, **Company**, **Site** (with bank and IBAN), **Operational site**, **Custom fields** and **Quote attributes**. The last two update on their own when you add fields or attributes.' },
+        { type: 'paragraph', text: 'A choice attribute prints its options\' **labels**, not their codes; for a multiple choice, the labels are separated by commas.' },
       ],
     },
     {

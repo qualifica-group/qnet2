@@ -12,36 +12,8 @@ use App\Models\Registry;
 use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
-
-if (! function_exists('statsWidgets')) {
-    /**
-     * The widget list of a domain, fetched as an actor authorized on it.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    function statsWidgets(string $domain): array
-    {
-        Sanctum::actingAs(statsUserWith([$domain]));
-
-        return test()->getJson("/api/stats/{$domain}")->assertOk()->json('data.widgets');
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $widgets
-     * @return array<string, mixed>
-     */
-    function statsWidget(array $widgets, string $key): array
-    {
-        $widget = collect($widgets)->firstWhere('key', $key);
-
-        expect($widget)->not->toBeNull("widget [{$key}] is missing");
-
-        return $widget;
-    }
-}
 
 // ---------------------------------------------------------------------------
 // AC-005 — widget values on a known dataset

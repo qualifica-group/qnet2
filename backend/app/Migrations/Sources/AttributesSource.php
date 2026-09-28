@@ -183,7 +183,7 @@ class AttributesSource extends AbstractMigrationSource
             code: $code,
             name: $name,
             type: $type,
-            config: $this->mapConfig($record),
+            config: $this->mapConfig($record, $type),
             relationTarget: $this->mapRelationTarget($record, $type),
             options: $this->mapOptions($record),
         ));
@@ -260,14 +260,25 @@ class AttributesSource extends AbstractMigrationSource
      * StoreAttributeRequest, which validates `config` only as a nullable array
      * without per-key rules — a non-array or empty blob becomes null.
      *
+     * One translation: q-crm marks a multi-choice enum with `multiple: true`,
+     * a key no layer here reads — the display becomes `multiselect`, the one
+     * every layer recognises (see migration
+     * 2026_09_25_140000_promote_legacy_multiple_enum_attributes).
+     *
      * @param  array<string, mixed>  $record
      * @return array<string, mixed>|null
      */
-    private function mapConfig(array $record): ?array
+    private function mapConfig(array $record, string $type): ?array
     {
         $raw = $record['config'] ?? null;
 
-        return is_array($raw) && $raw !== [] ? $raw : null;
+        if (! is_array($raw) || $raw === []) {
+            return null;
+        }
+
+        return $type === 'enum' && ($raw['multiple'] ?? false) === true
+            ? [...$raw, 'display' => 'multiselect']
+            : $raw;
     }
 
     /**

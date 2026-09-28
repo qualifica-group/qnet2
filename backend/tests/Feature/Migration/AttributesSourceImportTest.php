@@ -17,12 +17,6 @@ uses(RefreshDatabase::class);
 // The shared helpers (fakeMigrationsBaseUrl/seedMigrationsConfig/
 // migrationsSuperAdminActor/runMigrationJobFor) are defined once, guarded by
 // function_exists, across the Migration feature suite (see CompaniesSourceImportTest).
-if (! function_exists('fakeMigrationsBaseUrl')) {
-    function fakeMigrationsBaseUrl(): string
-    {
-        return 'https://external-crm.test';
-    }
-}
 
 if (! function_exists('migrationsSuperAdminActor')) {
     function migrationsSuperAdminActor(): User
@@ -179,6 +173,25 @@ it('forwards the per-type config blob', function () {
     runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'attributes']));
 
     expect(Attribute::query()->where('old_id', 24)->value('config'))->toBe(['min' => 0, 'max' => 100, 'decimals' => 2]);
+});
+
+it('imports a legacy `multiple` ENUM as a multiselect', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/attributes*' => Http::response([
+            'items' => [
+                ['id' => 25, 'code' => 'categorie_mepa', 'name' => 'Categorie ME.PA.', 'type' => 'enum',
+                    'config' => ['display' => 'select', 'multiple' => true],
+                    'options' => [['value' => '1', 'label' => 'Carta', 'sort_order' => 0]]],
+            ],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'attributes']));
+
+    expect(Attribute::query()->where('old_id', 25)->value('config'))->toBe(['display' => 'multiselect', 'multiple' => true]);
 });
 
 it('imports a RELATION attribute with its relation_target', function () {
