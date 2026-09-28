@@ -39,53 +39,59 @@ function seedTaskDependencies(): void
     );
 }
 
-it('seeds the tasks hierarchy with both membership pivots', function (): void {
+/**
+ * Merged scenario: every former test paid seedTaskDependencies() (two
+ * seeders plus factories) AND DemoTaskSeeder again on its own, some of them
+ * twice for an idempotency check. None of the read-only assertions mutate
+ * what they read, and the seeding sequences nest into one another exactly —
+ * seed tasks, seed notes, reseed tasks — so the whole file now runs the
+ * dependencies once and the task/note seeders three times total instead of
+ * eleven.
+ */
+it('seeds the demo tasks and their note threads, staying idempotent on a reseed', function (): void {
+    // Step 1: shared dependencies, once for every assertion below. The
+    // permission grant and the notification fake are no-ops for the tests
+    // that do not care about them.
     seedTaskDependencies();
+    User::query()->get()->each(fn (User $user) => $user->givePermissionTo('tasks.view'));
+    Notification::fake();
 
+    // Step 2: seed the tasks once — every single-run check reads this state.
     test()->seed(DemoTaskSeeder::class);
 
-    $tasks = Task::query()->with(['assignees', 'watchers'])->get();
+    // was: 'seeds the tasks hierarchy with both membership pivots'
+    $tasksWithMembers = Task::query()->with(['assignees', 'watchers'])->get();
 
-    expect($tasks)->toHaveCount(60)
-        ->and($tasks->whereNotNull('parent_task_id'))->toHaveCount(20)
-        ->and($tasks->every(fn (Task $task): bool => $task->creator_id !== null))->toBeTrue()
-        ->and($tasks->every(fn (Task $task): bool => $task->assignees->isNotEmpty()))->toBeTrue()
-        ->and($tasks->contains(fn (Task $task): bool => $task->watchers->isNotEmpty()))->toBeTrue()
-        ->and($tasks->contains(fn (Task $task): bool => $task->is_blocked))->toBeTrue();
-});
+    expect($tasksWithMembers)->toHaveCount(60)
+        ->and($tasksWithMembers->whereNotNull('parent_task_id'))->toHaveCount(20)
+        ->and($tasksWithMembers->every(fn (Task $task): bool => $task->creator_id !== null))->toBeTrue()
+        ->and($tasksWithMembers->every(fn (Task $task): bool => $task->assignees->isNotEmpty()))->toBeTrue()
+        ->and($tasksWithMembers->contains(fn (Task $task): bool => $task->watchers->isNotEmpty()))->toBeTrue()
+        ->and($tasksWithMembers->contains(fn (Task $task): bool => $task->is_blocked))->toBeTrue();
 
-it('classifies the tasks on the seeded vocabulary, never on an invented one', function (): void {
-    seedTaskDependencies();
-
-    test()->seed(DemoTaskSeeder::class);
-
-    $tasks = Task::query()->get();
+    // was: 'classifies the tasks on the seeded vocabulary, never on an invented one'
+    $tasksForClassification = Task::query()->get();
 
     expect(TaskType::count())->toBeGreaterThan(0)
-        ->and($tasks->whereNotNull('task_type_id'))->not->toBeEmpty()
-        ->and($tasks->whereNotNull('task_category_id'))->not->toBeEmpty()
-        ->and($tasks->whereNotNull('task_priority_id'))->not->toBeEmpty()
-        ->and($tasks->whereNotNull('task_importance_id'))->not->toBeEmpty();
+        ->and($tasksForClassification->whereNotNull('task_type_id'))->not->toBeEmpty()
+        ->and($tasksForClassification->whereNotNull('task_category_id'))->not->toBeEmpty()
+        ->and($tasksForClassification->whereNotNull('task_priority_id'))->not->toBeEmpty()
+        ->and($tasksForClassification->whereNotNull('task_importance_id'))->not->toBeEmpty();
 
-    foreach ($tasks as $task) {
+    foreach ($tasksForClassification as $task) {
         expect($task->task_status_id)->toBeIn(TaskStatus::query()->pluck('id')->all())
             ->and($task->task_type_id)->toBeIn([null, ...TaskType::query()->pluck('id')->all()])
             ->and($task->task_category_id)->toBeIn([null, ...TaskCategory::query()->pluck('id')->all()])
             ->and($task->task_priority_id)->toBeIn([null, ...TaskPriority::query()->pluck('id')->all()])
             ->and($task->task_importance_id)->toBeIn([null, ...TaskImportance::query()->pluck('id')->all()]);
     }
-});
 
-it('goes through the real write path: referente coherence and closing dates hold', function (): void {
-    seedTaskDependencies();
+    // was: 'goes through the real write path: referente coherence and closing dates hold'
+    $tasksWithStatus = Task::query()->with('taskStatus')->get();
 
-    test()->seed(DemoTaskSeeder::class);
+    expect($tasksWithStatus->whereNotNull('referent_id'))->not->toBeEmpty();
 
-    $tasks = Task::query()->with('taskStatus')->get();
-
-    expect($tasks->whereNotNull('referent_id'))->not->toBeEmpty();
-
-    foreach ($tasks as $task) {
+    foreach ($tasksWithStatus as $task) {
         if ($task->referent_id !== null) {
             // AC-014: the referente belongs to the Task's own anagrafica.
             expect(DB::table('referent_registry')
@@ -112,44 +118,23 @@ it('goes through the real write path: referente coherence and closing dates hold
             expect(trim((string) $task->closure_feedback))->not->toBe('');
         }
     }
-});
 
-it('sends no notification: seeding is not an assignment anyone should hear about', function (): void {
-    seedTaskDependencies();
-    Notification::fake();
-
-    test()->seed(DemoTaskSeeder::class);
-
+    // was: 'sends no notification: seeding is not an assignment anyone should hear about'
     expect(Task::count())->toBe(60);
     Notification::assertNothingSent();
-});
 
-it('is idempotent: a second run replaces the dataset instead of piling onto it', function (): void {
-    seedTaskDependencies();
-
-    test()->seed(DemoTaskSeeder::class);
-    test()->seed(DemoTaskSeeder::class);
-
-    expect(Task::count())->toBe(60)
-        ->and(DB::table('task_assignee')->count())->toBeGreaterThan(0)
-        ->and(DB::table('task_watcher')->count())->toBeGreaterThan(0);
-});
-
-it('seeds task threads written only by members who may read the task', function (): void {
-    seedTaskDependencies();
-    User::query()->get()->each(fn (User $user) => $user->givePermissionTo('tasks.view'));
-
-    test()->seed(DemoTaskSeeder::class);
+    // Step 3: seed the note threads on top of that first task run.
     test()->seed(DemoTaskNoteSeeder::class);
 
-    $notes = Note::query()->where('notable_type', (new Task)->getMorphClass())->get();
+    // was: 'seeds task threads written only by members who may read the task'
+    $taskNotes = Note::query()->where('notable_type', (new Task)->getMorphClass())->get();
 
-    expect($notes)->not->toBeEmpty()
-        ->and($notes->whereNotNull('parent_id'))->not->toBeEmpty()
+    expect($taskNotes)->not->toBeEmpty()
+        ->and($taskNotes->whereNotNull('parent_id'))->not->toBeEmpty()
         // D-6: a Task has no scoping unit, so no note on it carries one.
-        ->and($notes->whereNotNull('quote_id'))->toBeEmpty();
+        ->and($taskNotes->whereNotNull('quote_id'))->toBeEmpty();
 
-    foreach ($notes->groupBy('notable_id') as $taskId => $thread) {
+    foreach ($taskNotes->groupBy('notable_id') as $taskId => $thread) {
         $task = Task::query()->with(['assignees', 'watchers'])->findOrFail($taskId);
         $memberIds = [
             $task->creator_id,
@@ -162,15 +147,15 @@ it('seeds task threads written only by members who may read the task', function 
             expect($note->user_id)->toBeIn($memberIds);
         }
     }
-});
 
-it('leaves no thread behind when the tasks are reseeded', function (): void {
-    seedTaskDependencies();
-    User::query()->get()->each(fn (User $user) => $user->givePermissionTo('tasks.view'));
+    // Step 4: reseed the tasks — both re-run checks land on this state.
+    // was: 'is idempotent: a second run replaces the dataset instead of piling onto it'
+    // was: 'leaves no thread behind when the tasks are reseeded'
+    test()->seed(DemoTaskSeeder::class);
 
-    test()->seed(DemoTaskSeeder::class);
-    test()->seed(DemoTaskNoteSeeder::class);
-    test()->seed(DemoTaskSeeder::class);
+    expect(Task::count())->toBe(60)
+        ->and(DB::table('task_assignee')->count())->toBeGreaterThan(0)
+        ->and(DB::table('task_watcher')->count())->toBeGreaterThan(0);
 
     expect(Note::withTrashed()->where('notable_type', (new Task)->getMorphClass())->count())->toBe(0);
 });

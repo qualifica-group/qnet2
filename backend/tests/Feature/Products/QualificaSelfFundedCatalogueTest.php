@@ -38,9 +38,16 @@ function selfFundedProduct(string $categoryName, string $name): Product
         ->sole();
 }
 
-it('seeds "Autofinanziato" as a container with one selectable leaf per region', function (): void {
+/**
+ * One scenario instead of one test per property: the catalogue seeder costs
+ * ~1s per run and every check below used to pay for it separately. Reads
+ * that only need a single seed run first, then the seeder re-runs once and
+ * every idempotency/realignment check reads that final state.
+ */
+it('seeds the "Autofinanziato" branch, its list prices and its attributes correctly and idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
+    // Container + one selectable leaf per region (was: 'seeds "Autofinanziato" as a container with one selectable leaf per region')
     $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
     $leaves = ProductCategory::query()->where('parent_id', $autofinanziato->id)->orderBy('name')->get();
 
@@ -48,12 +55,33 @@ it('seeds "Autofinanziato" as a container with one selectable leaf per region', 
         ->and(Product::query()->where('category_id', $autofinanziato->id)->count())->toBe(0)
         ->and($leaves->pluck('name')->all())->toBe(array_keys(SelfFundedCourseCatalogue::COURSES))
         ->and($leaves->every(fn (ProductCategory $leaf): bool => $leaf->is_selectable))->toBeTrue();
-});
 
-it('files each course once per region, never once per site, idempotently', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaCatalogSeeder::class); // re-run: natural key (name, category), no duplicates.
+    // List price, no attribute value of its own (was: 'seeds each course with its list price and no attribute value of its own')
+    $oss = selfFundedProduct('Autofinanziato - Campania', 'OSS - Operatore Socio Sanitario');
 
+    expect($oss->product_type)->toBe(ProductType::Service)
+        ->and((float) $oss->price)->toBe(1900.0)
+        // Cost is filled in later through the CRUD modules.
+        ->and((float) $oss->cost)->toBe(0.0)
+        // Duration and delivery mode are the Offerta's.
+        ->and($oss->attribute_values)->toBeEmpty();
+
+    // Sites quoting different prices: the lowest one, also the most frequent.
+    expect((float) selfFundedProduct('Autofinanziato - Sicilia', 'ASO (Assistente studio odontoiatrico)')->price)->toBe(1200.0)
+        ->and((float) selfFundedProduct('Autofinanziato - Lombardia', 'Sarto')->price)->toBe(400.0);
+
+    // Re-point the workflow criterion at the exact category, the way an
+    // earlier configurator run could have left it: prep for the realignment
+    // check after the re-run below (was: 'matches the "Autofinanziato"
+    // working states on its whole branch, realigning an earlier exact match').
+    $workflow = QuoteWorkflow::query()->where('name', 'Autofinanziato')->firstOrFail();
+    app(QuoteWorkflowService::class)->update($workflow, new UpdateQuoteWorkflowData(criteria: [
+        ['field' => WorkflowStatusCatalogue::DEFAULT_CRITERION_FIELD, 'value_id' => $autofinanziato->id],
+    ]));
+
+    test()->seed(QualificaCatalogSeeder::class); // re-run: natural keys/firstOrCreate, no duplicates; realigns the workflow criterion.
+
+    // Never duplicated per site (was: 'files each course once per region, never once per site, idempotently')
     // The Sicilia sheet lists its six courses for each of nine sites, the
     // Lazio one its single course for three: one product each all the same.
     expect(selfFundedProductsOf('Autofinanziato - Campania'))->toHaveCount(10)
@@ -69,29 +97,8 @@ it('files each course once per region, never once per site, idempotently', funct
             'OSA (Operatore Socio Assistenziale)',
             'Security',
         ]);
-});
 
-it('seeds each course with its list price and no attribute value of its own', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $oss = selfFundedProduct('Autofinanziato - Campania', 'OSS - Operatore Socio Sanitario');
-
-    expect($oss->product_type)->toBe(ProductType::Service)
-        ->and((float) $oss->price)->toBe(1900.0)
-        // Cost is filled in later through the CRUD modules.
-        ->and((float) $oss->cost)->toBe(0.0)
-        // Duration and delivery mode are the Offerta's.
-        ->and($oss->attribute_values)->toBeEmpty();
-
-    // Sites quoting different prices: the lowest one, also the most frequent.
-    expect((float) selfFundedProduct('Autofinanziato - Sicilia', 'ASO (Assistente studio odontoiatrico)')->price)->toBe(1200.0)
-        ->and((float) selfFundedProduct('Autofinanziato - Lombardia', 'Sarto')->price)->toBe(400.0);
-});
-
-it('gives the 22% VAT rate to the courses quoted "+ iva" only, with their net price', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaCatalogSeeder::class); // re-run: the rate is created once.
-
+    // The 22% VAT rate on "+ iva" courses only (was: 'gives the 22% VAT rate to the courses quoted "+ iva" only, with their net price')
     $rate = VatRate::query()->where('rate', SelfFundedCourseCatalogue::VAT_RATE)->sole();
 
     $plusVat = Product::query()
@@ -108,6 +115,49 @@ it('gives the 22% VAT rate to the courses quoted "+ iva" only, with their net pr
             'Tecnico del comportamento Aba - Analisi comportamentale applicata' => 650.0,
         ])
         ->and(Product::query()->whereNotNull('vat_rate_id')->count())->toBe(3);
+
+    // "Modalità di svolgimento" scoped to the branch (was: 'assigns the "Modalità di svolgimento" enum to the Autofinanziato subtree only')
+    $deliveryMode = Attribute::query()->where('code', 'delivery_mode')->get();
+
+    expect($deliveryMode)->toHaveCount(1)
+        ->and($deliveryMode->first()->name)->toBe('Modalità di svolgimento')
+        ->and($deliveryMode->first()->type)->toBe('enum');
+
+    expect($deliveryMode->first()->options()->get()->map->only(['value', 'label'])->all())
+        ->toBe([
+            ['value' => 'in_person', 'label' => 'In presenza'],
+            ['value' => 'online', 'label' => 'Online'],
+        ]);
+
+    // One single assignment, on the container, in the OFFERTA context.
+    $deliveryModePivot = DB::table('attribute_category')->where('attribute_id', $deliveryMode->first()->id)->get();
+
+    expect($deliveryModePivot)->toHaveCount(1)
+        ->and($deliveryModePivot->first()->category_id)->toBe($autofinanziato->id)
+        ->and($deliveryModePivot->first()->context)->toBe(AttributeContext::Quote->value);
+
+    // Inherited by every region, together with the branch attribute assigned
+    // higher up; a sibling of Autofinanziato does not see it.
+    $categoryService = app(ProductCategoryService::class);
+
+    foreach (array_keys(SelfFundedCourseCatalogue::COURSES) as $leafName) {
+        $leaf = ProductCategory::query()->where('name', $leafName)->firstOrFail();
+
+        expect($categoryService->effectiveAttributes($leaf, AttributeContext::Quote)->pluck('code')->all())
+            ->toContain('delivery_mode')
+            ->toContain('total_hours');
+    }
+
+    $dil = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
+
+    expect($categoryService->effectiveAttributes($dil, AttributeContext::Quote)->pluck('code')->all())
+        ->not->toContain('delivery_mode');
+
+    // Working states realigned to the branch (was: 'matches the "Autofinanziato" working states on its whole branch, realigning an earlier exact match')
+    $criterion = QuoteWorkflow::query()->where('name', 'Autofinanziato')->with('criteria')->sole()->criteria->sole();
+
+    expect($criterion->field)->toBe(WorkflowStatusCatalogue::BRANCH_CRITERION_FIELD)
+        ->and($criterion->value_id)->toBe($autofinanziato->id);
 });
 
 it('reuses a 22% VAT rate an operator already created, whatever its name', function (): void {
@@ -145,66 +195,4 @@ it('moves the courses an earlier revision filed on "Autofinanziato" onto their r
         // A rate chosen by hand wins.
         ->and($oss->category_id)->toBe($campania->id)
         ->and($oss->vat_rate_id)->toBe($manualRate->id);
-});
-
-it('assigns the "Modalità di svolgimento" enum to the Autofinanziato subtree only', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaCatalogSeeder::class); // re-run: no duplicate attribute, option nor pivot row.
-
-    $attribute = Attribute::query()->where('code', 'delivery_mode')->get();
-
-    expect($attribute)->toHaveCount(1)
-        ->and($attribute->first()->name)->toBe('Modalità di svolgimento')
-        ->and($attribute->first()->type)->toBe('enum');
-
-    expect($attribute->first()->options()->get()->map->only(['value', 'label'])->all())
-        ->toBe([
-            ['value' => 'in_person', 'label' => 'In presenza'],
-            ['value' => 'online', 'label' => 'Online'],
-        ]);
-
-    $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
-
-    // One single assignment, on the container, in the OFFERTA context.
-    $pivot = DB::table('attribute_category')->where('attribute_id', $attribute->first()->id)->get();
-
-    expect($pivot)->toHaveCount(1)
-        ->and($pivot->first()->category_id)->toBe($autofinanziato->id)
-        ->and($pivot->first()->context)->toBe(AttributeContext::Quote->value);
-
-    // Inherited by every region, together with the branch attribute assigned
-    // higher up; a sibling of Autofinanziato does not see it.
-    $service = app(ProductCategoryService::class);
-
-    foreach (array_keys(SelfFundedCourseCatalogue::COURSES) as $leafName) {
-        $leaf = ProductCategory::query()->where('name', $leafName)->firstOrFail();
-
-        expect($service->effectiveAttributes($leaf, AttributeContext::Quote)->pluck('code')->all())
-            ->toContain('delivery_mode')
-            ->toContain('total_hours');
-    }
-
-    $dil = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
-
-    expect($service->effectiveAttributes($dil, AttributeContext::Quote)->pluck('code')->all())
-        ->not->toContain('delivery_mode');
-});
-
-it('matches the "Autofinanziato" working states on its whole branch, realigning an earlier exact match', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    // The state the previous revision left: the workflow on the exact category.
-    $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
-    $workflow = QuoteWorkflow::query()->where('name', 'Autofinanziato')->firstOrFail();
-    app(QuoteWorkflowService::class)->update($workflow, new UpdateQuoteWorkflowData(criteria: [
-        ['field' => WorkflowStatusCatalogue::DEFAULT_CRITERION_FIELD, 'value_id' => $autofinanziato->id],
-    ]));
-
-    test()->seed(QualificaCatalogSeeder::class);
-
-    // The regional leaves are reached only through the branch criterion.
-    $criterion = QuoteWorkflow::query()->where('name', 'Autofinanziato')->with('criteria')->sole()->criteria->sole();
-
-    expect($criterion->field)->toBe(WorkflowStatusCatalogue::BRANCH_CRITERION_FIELD)
-        ->and($criterion->value_id)->toBe($autofinanziato->id);
 });

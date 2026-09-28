@@ -20,8 +20,12 @@
 - Agenti/comandi aggiornati (verifier, backend, frontend, tester-debug, build-feature): test mirati con
   `XDEBUG_MODE=off ./vendor/bin/pest <path>` durante lo sviluppo, suite completa `composer test` al verifier,
   `tsc -b --force` al posto di `tsc --noEmit`.
-- Prossimo passo possibile (non fatto): i test dei seeder `Qualifica*` pesano ~350s di CPU (ogni test rilancia il
-  seeder); consolidarli "seed once" come in gym-pro porterebbe la suite verso ~1:30.
+- Seed once (NON COMMITTATO): i 15 file di test seeder piu' lenti (Qualifica* + DemoTask/EmploymentProfile) ora
+  eseguono il seeder una volta per scenario: i test con lo stesso setup (DB pulito + stessa sequenza di seed, nessuna
+  mutazione) sono fusi in un `it` con tutte le asserzioni (seed -> asserzioni a run singolo -> re-seed -> asserzioni
+  di idempotenza); restano separati i test con pre-stato proprio o che mutano i dati seminati. Suite 8632 -> 8528 test,
+  asserzioni invariate per file (conteggio Pest), sanity-break verificato per ogni file. Totale
+  asserzioni 36628 (prima 36615), ~1:56 -> ~1:31. Nuovi test seeder: stesso pattern, il seeder `QualificaCatalogSeeder` costa ~1.1s.
 
 ## REPORT — ASSOCIATI SU STATO ATTUALE, PRESA APPUNTAMENTI CALCOLATA (SPEC 0170) — VERDE, NON COMMITTATO (2026-09-28)
 

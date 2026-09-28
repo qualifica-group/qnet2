@@ -22,13 +22,20 @@ function asOperatorOf(Opportunity $opportunity, User $user): Quote
     return Quote::factory()->for($opportunity)->create(['operator_id' => $user->id]);
 }
 
-// Mansionario 2026-09-15: the supervisor matrix follows the CSV literally —
-// prodotti, categorie prodotti, anagrafiche, referenti, Marketing e Lead,
-// Gestione Richieste + report, configuratore di stati, buoni e incentivi,
-// Richieste di modifica, gestione iscritti — no longer "everything but administration".
-it('closes administration and configuration to the supervisor, selects aside', function () {
+/**
+ * `QualificaOperatorSeeder` alone costs ~1s per run (thousands of
+ * PHP-bound queries): every scenario below reads the SAME seeded matrix
+ * with no HTTP call and no DB mutation, so they share a single seed run
+ * instead of paying it once per former test.
+ */
+it('checks the role matrix permissions and visible routes for every mansione', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
+    // Mansionario 2026-09-15: the supervisor matrix follows the CSV literally —
+    // prodotti, categorie prodotti, anagrafiche, referenti, Marketing e Lead,
+    // Gestione Richieste + report, configuratore di stati, buoni e incentivi,
+    // Richieste di modifica, gestione iscritti — no longer "everything but administration".
+    // was: 'closes administration and configuration to the supervisor, selects aside'
     $supervisor = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail();
 
     // `opportunities` left this list with the lead conversion grant (user
@@ -50,15 +57,10 @@ it('closes administration and configuration to the supervisor, selects aside', f
             ->and($supervisor->can("{$resource}.update"))->toBeFalse("{$resource}.update")
             ->and($supervisor->can("{$resource}.delete"))->toBeFalse("{$resource}.delete");
     }
-});
 
-// User directive 2026-09-18: the Utenti and Ruoli sections open to the
-// supervisor with every ability but `create`.
-it('opens users and roles to the supervisor, creation excluded', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
-    $supervisor = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail();
-
+    // User directive 2026-09-18: the Utenti and Ruoli sections open to the
+    // supervisor with every ability but `create`.
+    // was: 'opens users and roles to the supervisor, creation excluded'
     foreach (['users', 'roles'] as $resource) {
         foreach (['viewAny', 'view', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
             expect($supervisor->can("{$resource}.{$ability}"))->toBeTrue("{$resource}.{$ability}");
@@ -74,12 +76,9 @@ it('opens users and roles to the supervisor, creation excluded', function () {
 
     expect($coordinator->can('users.view'))->toBeFalse()
         ->and($coordinator->can('roles.viewAny'))->toBeFalse();
-});
 
-it('lets the supervisor view and edit every module of its mansione', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
-    $supervisor = User::query()->where('email', 'fabrizio.aliberti@qualificagroup.com')->firstOrFail();
+    // was: 'lets the supervisor view and edit every module of its mansione'
+    $supervisorFull = User::query()->where('email', 'fabrizio.aliberti@qualificagroup.com')->firstOrFail();
 
     $modules = [
         'projects', 'campaigns', 'leads', 'request-management', 'products', 'product-categories',
@@ -88,27 +87,22 @@ it('lets the supervisor view and edit every module of its mansione', function ()
 
     foreach ($modules as $resource) {
         foreach (['viewAny', 'view', 'create', 'update'] as $ability) {
-            expect($supervisor->can("{$resource}.{$ability}"))->toBeTrue("{$resource}.{$ability}");
+            expect($supervisorFull->can("{$resource}.{$ability}"))->toBeTrue("{$resource}.{$ability}");
         }
     }
 
     // Gestione Iscritti has no `create` at all (spec 0130 D-8): the rest of the
     // module is theirs.
-    expect($supervisor->can('rewarded-referents.viewAny'))->toBeTrue()
-        ->and($supervisor->can('enrollee-management.view'))->toBeTrue()
-        ->and($supervisor->can('enrollee-management.update'))->toBeTrue();
+    expect($supervisorFull->can('rewarded-referents.viewAny'))->toBeTrue()
+        ->and($supervisorFull->can('enrollee-management.view'))->toBeTrue()
+        ->and($supervisorFull->can('enrollee-management.update'))->toBeTrue();
 
     foreach (['viewAll', 'report', 'assignOperator', 'updateSource', 'delete'] as $ability) {
-        expect($supervisor->can("request-management.{$ability}"))->toBeTrue($ability)
-            ->and($supervisor->can("enrollee-management.{$ability}"))->toBeTrue("enrollee-management.{$ability}");
+        expect($supervisorFull->can("request-management.{$ability}"))->toBeTrue($ability)
+            ->and($supervisorFull->can("enrollee-management.{$ability}"))->toBeTrue("enrollee-management.{$ability}");
     }
-});
 
-it('gives the coordinator the catalogue, anagrafiche and enrollees, not the status configurator nor the rewards', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
-    $coordinator = User::query()->where('email', 'umberto.santamaria@qualificagroup.com')->firstOrFail();
-
+    // was: 'gives the coordinator the catalogue, anagrafiche and enrollees, not the status configurator nor the rewards'
     foreach (['products', 'product-categories', 'registries', 'referents', 'enrollee-management'] as $resource) {
         expect($coordinator->can("{$resource}.view"))->toBeTrue("{$resource}.view")
             ->and($coordinator->can("{$resource}.update"))->toBeTrue("{$resource}.update");
@@ -117,11 +111,8 @@ it('gives the coordinator the catalogue, anagrafiche and enrollees, not the stat
     foreach (['quote-workflows', 'reward-types', 'reward-statuses', 'rewarded-referents', 'field-change-requests'] as $resource) {
         expect($coordinator->can("{$resource}.viewAny"))->toBeFalse("{$resource}.viewAny");
     }
-});
 
-it('restricts the commercial role to request-management plus the selects it reads', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
+    // was: 'restricts the commercial role to request-management plus the selects it reads'
     $commercial = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
 
     expect($commercial->can('request-management.viewAny'))->toBeTrue()
@@ -131,7 +122,7 @@ it('restricts the commercial role to request-management plus the selects it read
         // Deleting a request is not theirs (user directive 2026-07-31).
         ->and($commercial->can('request-management.delete'))->toBeFalse()
         // Nor is seeing the requests of the other commercials: without
-        // `viewAll` the module's D-3 scoping applies (see the test below).
+        // `viewAll` the module's D-3 scoping applies (see the scenario below).
         ->and($commercial->can('request-management.viewAll'))->toBeFalse()
         // Deciding who works a request is supervisory (user directive
         // 2026-08-03): without it the create form's Operatore control is not
@@ -175,11 +166,8 @@ it('restricts the commercial role to request-management plus the selects it read
             expect($commercial->can("{$resource}.{$ability}"))->toBeFalse("{$resource}.{$ability}");
         }
     }
-});
 
-it('restricts the marketing role to the marketing-leads modules plus the selects they read', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
+    // was: 'restricts the marketing role to the marketing-leads modules plus the selects they read'
     $marketing = User::query()->where('email', 'sabino.figurelli@qualificagroup.com')->firstOrFail();
 
     // The "Marketing e Lead" group in full, writes included.
@@ -209,21 +197,49 @@ it('restricts the marketing role to the marketing-leads modules plus the selects
             expect($marketing->can("{$resource}.{$ability}"))->toBeFalse("{$resource}.{$ability}");
         }
     }
-});
 
-it('leaves the marketing menu with the marketing-leads group, tasks and time entries only', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
-    $routes = visibleRoutes(User::query()->where('email', 'sabino.figurelli@qualificagroup.com')->firstOrFail());
-
+    // was: 'leaves the marketing menu with the marketing-leads group, tasks and time entries only'
     // `/dashboard` carries no permission: public to every authenticated user.
     // `/tasks` and `/time-entries` are every role's (user directive 2026-09-24).
-    expect($routes)->toBe(['/dashboard', '/projects', '/campaigns', '/leads', '/imports', '/pipeline-statuses', '/tasks', '/time-entries']);
+    expect(visibleRoutes($marketing))->toBe(['/dashboard', '/projects', '/campaigns', '/leads', '/imports', '/pipeline-statuses', '/tasks', '/time-entries']);
+
+    // was: 'shows the supervisor menu exactly the modules of its mansione'
+    $supervisorRoutes = visibleRoutes($supervisor);
+
+    expect($supervisorRoutes)->not->toContain('/users', '/roles', '/custom-fields', '/migrations')
+        ->and($supervisorRoutes)->not->toContain('/business-functions', '/sectors', '/tags', '/sources')
+        ->and($supervisorRoutes)->not->toContain('/referent-types', '/companies', '/company-sites', '/operational-sites')
+        ->and($supervisorRoutes)->not->toContain('/opportunities', '/attributes', '/vat-rates')
+        ->and($supervisorRoutes)->toContain('/enrollee-management')
+        ->and($supervisorRoutes)->toContain('/dashboard', '/projects', '/campaigns', '/leads', '/request-management', '/field-change-requests')
+        ->and($supervisorRoutes)->toContain('/registries', '/referents', '/products', '/product-categories', '/quote-workflows')
+        ->and($supervisorRoutes)->toContain('/reward-types', '/reward-statuses', '/rewarded-referents');
+
+    // was: 'leaves the commercial menu with request-management, enrollee-management, tasks and time entries only'
+    // `/dashboard` carries no permission at all: it is public to every
+    // authenticated user by design, so it is the only companion entry.
+    // `/field-change-requests` (spec 0078) is NOT one: user directive
+    // 2026-08-04 made that page supervisor-only, so the seed dropped
+    // `field-change-requests.view` — the very permission the navigation entry
+    // is gated on (config/navigation/opportunities.php). The role keeps
+    // `.create`, which carries no menu entry. `/enrollee-management` joined
+    // with the user directive 2026-09-18 (read-only, own enrollees only);
+    // `/tasks` and `/time-entries` with the user directive 2026-09-24.
+    $commercialRoutes = visibleRoutes(User::query()->where('email', 'biagio.fusco@qualificagroup.it')->firstOrFail());
+
+    expect($commercialRoutes)->toBe(['/dashboard', '/request-management', '/enrollee-management', '/tasks', '/time-entries']);
 });
 
-it('blocks the marketing role server-side on the modules its menu hides', function () {
+/**
+ * Same seeder-cost reasoning as the scenario above, for the HTTP-facing
+ * checks: every request below only browses/reads (SSRM rows/columns,
+ * for-select, forbidden writes) and none persists a row, so they share one
+ * seed run instead of one each.
+ */
+it('enforces the role matrix server-side on browse, select and write endpoints', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
+    // was: 'blocks the marketing role server-side on the modules its menu hides'
     Sanctum::actingAs(User::query()->where('email', 'sabino.figurelli@qualificagroup.com')->firstOrFail());
 
     foreach (['projects', 'campaigns', 'leads'] as $domain) {
@@ -244,22 +260,91 @@ it('blocks the marketing role server-side on the modules its menu hides', functi
     foreach (['business-functions', 'referents', 'product-categories', 'operational-sites', 'registries', 'sources', 'users', 'companies'] as $resource) {
         $this->getJson("/api/{$resource}/for-select")->assertOk();
     }
+
+    // was: 'lets the commercial role create a referent, for the create form quick-create "+"'
+    Sanctum::actingAs(User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail());
+
+    // Both endpoints behind the "+" are gated by `referents.create`: the live
+    // duplicate check the dialog runs while typing (shared with the anagrafica
+    // form since the directive 2026-09-09, hence the `identity/` path), and the
+    // write itself.
+    $this->postJson('/api/identity/duplicate-check', ['tax_code' => 'RSSMRA80A01H501U'])->assertOk();
+
+    // `GET /meta/referents` (the dialog's field/permission envelope) rides on
+    // the pre-existing `referents.viewAny`.
+    $this->getJson('/api/meta/referents')->assertOk();
+
+    // was: 'blocks the commercial role server-side on the modules its menu hides'
+    // Its own module answers; every other domain is refused by the definition's
+    // viewAny, so a hand-typed URL or a direct API call gains nothing.
+    $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
+
+    foreach (['opportunities', 'projects', 'campaigns', 'leads', 'products', 'companies'] as $domain) {
+        $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 25])->assertForbidden();
+        $this->getJson("/api/tables/{$domain}/columns")->assertForbidden();
+    }
+
+    // The for-select endpoints the work panel needs answer. Since ADR 0011 was
+    // amended (2026-07-31) they would answer even without the seed's
+    // viewAny-only grants — see the note on the next block.
+    foreach (['registries', 'sources', 'referents', 'operational-sites', 'users'] as $resource) {
+        $this->getJson("/api/{$resource}/for-select")->assertOk();
+    }
+
+    /**
+     * was: 'leaves the select-only resources list-readable, writes excluded'
+     * Documented residual of the viewAny-only grants, pinned so it cannot change
+     * unnoticed: the generic table endpoint authorizes on `<resource>.viewAny`, so
+     * the resources feeding a role's relation controls stay list-readable through a
+     * hand-typed URL even though their menu entry (gated on `<resource>.view`) is
+     * hidden.
+     *
+     * Those grants existed ONLY to keep the selects populated. Since ADR 0011 was
+     * amended (2026-07-31) the selects no longer need them, so dropping them from
+     * QualificaRoleSeeder would close this residual outright — a seed change, still
+     * pending an explicit decision, hence this pins today's behaviour.
+     */
+    $this->getJson('/api/tables/registries/columns')->assertOk();
+
+    Sanctum::actingAs(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail());
+    $this->getJson('/api/tables/users/columns')->assertOk();
+    // The writes behind them are still refused (`referent-types.create`).
+    $this->postJson('/api/referent-types', ['name' => 'Nope'])->assertForbidden();
+
+    // was: 'blocks the supervisor server-side on administration and configuration'
+    // The modules it does not hold answer nothing.
+    // `opportunities` left this list with the lead conversion grant (user
+    // directive 2026-09-16), pinned in QualificaLeadConversionPermissionTest.
+    foreach (['company-sites', 'custom-fields'] as $domain) {
+        $this->getJson("/api/tables/{$domain}/columns")->assertForbidden();
+        $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 25])->assertForbidden();
+    }
+
+    // The option list of a closed module still answers (ADR 0011 amended
+    // 2026-07-31): browsing the module and filling a select are distinct.
+    $this->getJson('/api/companies/for-select')->assertOk();
+
+    // The modules of its mansione do answer.
+    $this->getJson('/api/tables/request-management/columns')->assertOk();
+    $this->getJson('/api/tables/products/columns')->assertOk();
+    $this->getJson('/api/tables/leads/columns')->assertOk();
+
+    // Utenti and Ruoli answer too (user directive 2026-09-18), creation aside.
+    foreach (['users', 'roles'] as $domain) {
+        $this->getJson("/api/tables/{$domain}/columns")->assertOk();
+        $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 25])->assertOk();
+    }
+
+    $this->postJson('/api/roles', ['name' => 'nuovo-ruolo'])->assertForbidden();
 });
 
-it('shows the supervisor menu exactly the modules of its mansione', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
-    $routes = visibleRoutes(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail());
-
-    expect($routes)->not->toContain('/users', '/roles', '/custom-fields', '/migrations')
-        ->and($routes)->not->toContain('/business-functions', '/sectors', '/tags', '/sources')
-        ->and($routes)->not->toContain('/referent-types', '/companies', '/company-sites', '/operational-sites')
-        ->and($routes)->not->toContain('/opportunities', '/attributes', '/vat-rates')
-        ->and($routes)->toContain('/enrollee-management')
-        ->and($routes)->toContain('/dashboard', '/projects', '/campaigns', '/leads', '/request-management', '/field-change-requests')
-        ->and($routes)->toContain('/registries', '/referents', '/products', '/product-categories', '/quote-workflows')
-        ->and($routes)->toContain('/reward-types', '/reward-statuses', '/rewarded-referents');
-});
+/**
+ * The 4 scenarios below all create real Opportunity/Quote/attachment rows,
+ * so they still cost one seed run each: merging them into the read-only
+ * scenarios above would make an "exact list" assertion (D-3 scoping)
+ * dependent on data created by an unrelated block — rule §2, kept separate
+ * when in doubt.
+ */
 
 // The Commercial holds no `request-management.viewAll`, so the module's D-9
 // scoping (RequestManagementTableDefinition::baseQuery) applies to them: the
@@ -314,22 +399,6 @@ it('closes the commercial delete of a request, row action and bulk engine alike'
     $this->assertDatabaseHas('quotes', ['id' => $quote->id]);
 });
 
-it('lets the commercial role create a referent, for the create form quick-create "+"', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
-    Sanctum::actingAs(User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail());
-
-    // Both endpoints behind the "+" are gated by `referents.create`: the live
-    // duplicate check the dialog runs while typing (shared with the anagrafica
-    // form since the directive 2026-09-09, hence the `identity/` path), and the
-    // write itself.
-    $this->postJson('/api/identity/duplicate-check', ['tax_code' => 'RSSMRA80A01H501U'])->assertOk();
-
-    // `GET /meta/referents` (the dialog's field/permission envelope) rides on
-    // the pre-existing `referents.viewAny`.
-    $this->getJson('/api/meta/referents')->assertOk();
-});
-
 it('lets the commercial role write a collaborative note on a request', function () {
     $this->seed(QualificaOperatorSeeder::class);
 
@@ -377,98 +446,4 @@ it('lets the supervisor and the commercial role list, upload and remove request 
         // 2026-07-31) — unlike deleting the request itself.
         $this->deleteJson("/api/attachments/{$attachmentId}")->assertNoContent();
     }
-});
-
-it('leaves the commercial menu with request-management, enrollee-management, tasks and time entries only', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
-    $routes = visibleRoutes(User::query()->where('email', 'biagio.fusco@qualificagroup.it')->firstOrFail());
-
-    // `/dashboard` carries no permission at all: it is public to every
-    // authenticated user by design, so it is the only companion entry.
-    // `/field-change-requests` (spec 0078) is NOT one: user directive
-    // 2026-08-04 made that page supervisor-only, so the seed dropped
-    // `field-change-requests.view` — the very permission the navigation entry
-    // is gated on (config/navigation/opportunities.php). The role keeps
-    // `.create`, which carries no menu entry. `/enrollee-management` joined
-    // with the user directive 2026-09-18 (read-only, own enrollees only);
-    // `/tasks` and `/time-entries` with the user directive 2026-09-24.
-    expect($routes)->toBe(['/dashboard', '/request-management', '/enrollee-management', '/tasks', '/time-entries']);
-});
-
-it('blocks the commercial role server-side on the modules its menu hides', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
-    Sanctum::actingAs(User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail());
-
-    // Its own module answers; every other domain is refused by the definition's
-    // viewAny, so a hand-typed URL or a direct API call gains nothing.
-    $this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
-
-    foreach (['opportunities', 'projects', 'campaigns', 'leads', 'products', 'companies'] as $domain) {
-        $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 25])->assertForbidden();
-        $this->getJson("/api/tables/{$domain}/columns")->assertForbidden();
-    }
-
-    // The for-select endpoints the work panel needs answer. Since ADR 0011 was
-    // amended (2026-07-31) they would answer even without the seed's
-    // viewAny-only grants — see the note on the next test.
-    foreach (['registries', 'sources', 'referents', 'operational-sites', 'users'] as $resource) {
-        $this->getJson("/api/{$resource}/for-select")->assertOk();
-    }
-});
-
-/**
- * Documented residual of the viewAny-only grants, pinned so it cannot change
- * unnoticed: the generic table endpoint authorizes on `<resource>.viewAny`, so
- * the resources feeding a role's relation controls stay list-readable through a
- * hand-typed URL even though their menu entry (gated on `<resource>.view`) is
- * hidden.
- *
- * Those grants existed ONLY to keep the selects populated. Since ADR 0011 was
- * amended (2026-07-31) the selects no longer need them, so dropping them from
- * QualificaRoleSeeder would close this residual outright — a seed change, still
- * pending an explicit decision, hence this test pins today's behaviour.
- */
-it('leaves the select-only resources list-readable, writes excluded', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
-    Sanctum::actingAs(User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail());
-    $this->getJson('/api/tables/registries/columns')->assertOk();
-
-    Sanctum::actingAs(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail());
-    $this->getJson('/api/tables/users/columns')->assertOk();
-    // The writes behind them are still refused (`referent-types.create`).
-    $this->postJson('/api/referent-types', ['name' => 'Nope'])->assertForbidden();
-});
-
-it('blocks the supervisor server-side on administration and configuration', function () {
-    $this->seed(QualificaOperatorSeeder::class);
-
-    Sanctum::actingAs(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->firstOrFail());
-
-    // The modules it does not hold answer nothing.
-    // `opportunities` left this list with the lead conversion grant (user
-    // directive 2026-09-16), pinned in QualificaLeadConversionPermissionTest.
-    foreach (['company-sites', 'custom-fields'] as $domain) {
-        $this->getJson("/api/tables/{$domain}/columns")->assertForbidden();
-        $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 25])->assertForbidden();
-    }
-
-    // The option list of a closed module still answers (ADR 0011 amended
-    // 2026-07-31): browsing the module and filling a select are distinct.
-    $this->getJson('/api/companies/for-select')->assertOk();
-
-    // The modules of its mansione do answer.
-    $this->getJson('/api/tables/request-management/columns')->assertOk();
-    $this->getJson('/api/tables/products/columns')->assertOk();
-    $this->getJson('/api/tables/leads/columns')->assertOk();
-
-    // Utenti and Ruoli answer too (user directive 2026-09-18), creation aside.
-    foreach (['users', 'roles'] as $domain) {
-        $this->getJson("/api/tables/{$domain}/columns")->assertOk();
-        $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 25])->assertOk();
-    }
-
-    $this->postJson('/api/roles', ['name' => 'nuovo-ruolo'])->assertForbidden();
 });

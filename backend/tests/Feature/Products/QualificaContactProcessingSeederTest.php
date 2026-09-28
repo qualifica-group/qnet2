@@ -20,6 +20,12 @@ use Illuminate\Support\Facades\DB;
 // is composed by QualificaQuoteLayoutSeeder (this catalogue's section sits
 // there next to "Dati corso" and "Dati Aula"); this seeder writes the Commessa
 // one.
+//
+// Several tests below are merged into shared scenarios purely to cut the
+// seeder cost: QualificaCatalogSeeder (which composes this catalogue as part
+// of its own run) is PHP-bound and expensive to run from an empty database, so
+// tests with an identical setup (same seed sequence, no mutation of the seeded
+// data) run together and carry all of their original assertions.
 uses(RefreshDatabase::class);
 
 // Guarded: QualificaCourseSiteAttributeTest, split out of this file, declares
@@ -65,20 +71,27 @@ function trainingCodesSharedWithDil(): array
     ));
 }
 
-it('assigns the training set to the Formazione root, idempotently', function (): void {
+/**
+ * Merged scenario (seeder cost): six former tests that all seeded the
+ * catalogue once and re-ran QualificaContactProcessingSeeder once (idempotency:
+ * no duplicate attribute nor pivot row), then only READ the result — sharing
+ * one seed pass instead of paying it six times.
+ */
+it('assigns, scopes and lays out the contact-processing set across Formazione, DIL, GOL and the Commessa context, idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaContactProcessingSeeder::class); // re-run: no duplicate attribute nor pivot row.
+    test()->seed(QualificaContactProcessingSeeder::class); // re-run: no duplicate attribute nor pivot row, across every block below.
 
-    $specs = ContactProcessingAttributeCatalogue::ATTRIBUTES[ContactProcessingAttributeCatalogue::TRAINING_CATEGORY];
-    $codes = array_column($specs, 'code');
+    // was: 'assigns the training set to the Formazione root, idempotently'
+    $trainingSpecs = ContactProcessingAttributeCatalogue::ATTRIBUTES[ContactProcessingAttributeCatalogue::TRAINING_CATEGORY];
+    $trainingCodes = array_column($trainingSpecs, 'code');
 
     $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
-    $attributeIds = Attribute::query()->whereIn('code', $codes)->pluck('id');
+    $trainingAttributeIds = Attribute::query()->whereIn('code', $trainingCodes)->pluck('id');
 
-    expect($attributeIds)->toHaveCount(count($codes));
+    expect($trainingAttributeIds)->toHaveCount(count($trainingCodes));
 
-    $pivot = DB::table('attribute_category')
-        ->whereIn('attribute_id', $attributeIds)
+    $trainingPivot = DB::table('attribute_category')
+        ->whereIn('attribute_id', $trainingAttributeIds)
         ->where('context', AttributeContext::Quote->value)
         ->get();
 
@@ -86,42 +99,175 @@ it('assigns the training set to the Formazione root, idempotently', function ():
     // itself: below the barrier an inherited assignment would never reach it.
     $dil = ProductCategory::query()->where('name', ContactProcessingAttributeCatalogue::DIL_CATEGORY)->firstOrFail();
 
-    expect($pivot)->toHaveCount(count($codes) + count(trainingCodesSharedWithDil()))
-        ->and($pivot->where('category_id', $formazione->id))->toHaveCount(count($codes))
-        ->and($pivot->where('category_id', $dil->id))->toHaveCount(count(trainingCodesSharedWithDil()));
+    expect($trainingPivot)->toHaveCount(count($trainingCodes) + count(trainingCodesSharedWithDil()))
+        ->and($trainingPivot->where('category_id', $formazione->id))->toHaveCount(count($trainingCodes))
+        ->and($trainingPivot->where('category_id', $dil->id))->toHaveCount(count(trainingCodesSharedWithDil()));
 
     // Inherited down the Formazione branch, and nowhere outside it.
-    expect(effectiveCodes('GOL - Molise', AttributeContext::Quote))->toContain(...$codes)
+    expect(effectiveCodes('GOL - Molise', AttributeContext::Quote))->toContain(...$trainingCodes)
         ->and(effectiveCodes('Trattative in Corso', AttributeContext::Quote))->not->toContain('cpi');
-});
 
-it('keeps "DIL" on its own offer fields, cut off the Formazione set', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaContactProcessingSeeder::class); // re-run: no duplicate pivot row.
-
-    $expected = array_column(
+    // was: 'keeps "DIL" on its own offer fields, cut off the Formazione set'
+    $dilExpectedCodes = array_column(
         ContactProcessingAttributeCatalogue::ATTRIBUTES[ContactProcessingAttributeCatalogue::DIL_CATEGORY],
         'code',
     );
-    sort($expected);
+    sort($dilExpectedCodes);
 
     // EXACTLY the ones the client dictated (user directives 2026-09-10 and
     // 2026-09-16) — the barrier keeps out "Dati corso", "Dati Aula" and the
     // rest of the training set every sibling inherits from the root.
-    $effective = effectiveCodes(ContactProcessingAttributeCatalogue::DIL_CATEGORY, AttributeContext::Quote);
-    sort($effective);
+    $dilEffectiveCodes = effectiveCodes(ContactProcessingAttributeCatalogue::DIL_CATEGORY, AttributeContext::Quote);
+    sort($dilEffectiveCodes);
 
-    expect($effective)->toBe($expected);
+    expect($dilEffectiveCodes)->toBe($dilExpectedCodes);
 
     // The Commessa is NOT cut: the directive is about the offer form, and the
     // two inheritance flags are independent columns.
     expect(effectiveCodes(ContactProcessingAttributeCatalogue::DIL_CATEGORY, AttributeContext::WorkOrder))
         ->toContain('cpi', 'profilo_cpi', 'gol_notice');
+
+    // was: 'hands the CPI appointment time to every GOL region, the APL one to three'
+    // One assignment PER CONTEXT, both on the container the whole branch
+    // inherits from — the same attribute row, never a duplicated one.
+    $gol = ProductCategory::query()->where('name', ContactProcessingAttributeCatalogue::GOL_CATEGORY)->firstOrFail();
+    $cpiTime = Attribute::query()->where('code', 'ora_app_cpi')->firstOrFail();
+    $cpiTimeAssignments = DB::table('attribute_category')->where('attribute_id', $cpiTime->id)->get();
+
+    expect(Attribute::query()->where('code', 'ora_app_cpi')->count())->toBe(1)
+        ->and($cpiTime->type)->toBe('text')
+        ->and($cpiTimeAssignments->pluck('category_id')->unique()->values()->all())->toBe([$gol->id])
+        ->and($cpiTimeAssignments->pluck('context')->sort()->values()->all())
+        ->toBe([AttributeContext::Quote->value, AttributeContext::WorkOrder->value]);
+
+    $golRegions = ProductCategory::query()->where('parent_id', $gol->id)->pluck('name');
+    expect($golRegions)->toHaveCount(10);
+
+    foreach ($golRegions as $region) {
+        expect(effectiveCodes($region, AttributeContext::Quote))->toContain('ora_app_cpi');
+    }
+
+    // The APL time is the client's exception: three regions, nowhere else.
+    foreach (['GOL - Lombardia', 'GOL - Lazio', 'GOL - Sicilia'] as $region) {
+        expect(effectiveCodes($region, AttributeContext::Quote))->toContain('ora_app_apl');
+    }
+
+    expect(effectiveCodes('GOL - Molise', AttributeContext::Quote))->not->toContain('ora_app_apl');
+
+    // Neither time leaks outside the GOL branch.
+    expect(effectiveCodes('Formazione', AttributeContext::Quote))->not->toContain('ora_app_cpi')
+        ->and(effectiveCodes('Autofinanziato', AttributeContext::Quote))->not->toContain('ora_app_cpi');
+
+    // was: 'seeds one "Dati Lavorazione Contatto" section per contributing category'
+    $service = app(AttributeLayoutService::class);
+
+    // Spec 0115: a row only where the composition DIFFERS from the ancestor's
+    // — the eight Formazione categories that add a field of their own, or sit
+    // behind a barrier. The two Consulenza leaves carry no attribute at all
+    // since the 2026-09-10 directive, so they compose to nothing.
+    expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(8);
+
+    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
+    $moliseQuoteLayout = $service->resolveWithFallback($molise, AttributeContext::Quote, FormMode::Create);
+    $moliseQuoteSection = contactSectionOf($moliseQuoteLayout);
+
+    expect($moliseQuoteSection['title'])->toBe('Dati Lavorazione Contatto')
+        ->and($moliseQuoteSection['columns'])->toBe(2)
+        ->and(array_column($moliseQuoteSection['rows'][0]['items'], 'attribute_code'))
+        ->toBe(['data_scelta_cpi', 'data_app_apl']);
+
+    // Each category places exactly what it resolves: "DIL" has none of the
+    // training rows below its barrier, Autofinanziato adds its own pair.
+    $placedCodes = fn (array $blob): array => collect(contactSectionOf($blob)['rows'])
+        ->flatMap(fn (array $row): array => array_column($row['items'], 'attribute_code'))
+        ->all();
+
+    $dilCategory = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
+    expect($placedCodes($service->resolveWithFallback($dilCategory, AttributeContext::Quote, FormMode::Create)))->toBe([
+        'data_scelta_cpi', 'data_app_apl',
+        'dote_activation_date', 'dote_expiry_date',
+        ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS, 'subsidy_type',
+        'id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE,
+    ]);
+
+    $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
+    expect($placedCodes($service->resolveWithFallback($autofinanziato, AttributeContext::Quote, FormMode::Create)))
+        ->toContain('course_time_preference', 'price', 'cpi');
+
+    // was: 'mirrors the whole set into the Commessa context, on the same categories'
+    $workOrderAttributeIds = Attribute::query()->whereIn('code', $trainingCodes)->pluck('id');
+
+    // The SAME attribute rows carry both contexts: one pivot row each, never a
+    // parallel catalogue.
+    expect($workOrderAttributeIds)->toHaveCount(count($trainingCodes));
+
+    $workOrderPivot = DB::table('attribute_category')
+        ->whereIn('attribute_id', $workOrderAttributeIds)
+        ->where('context', AttributeContext::WorkOrder->value)
+        ->get();
+
+    // Same split as the Offerta side: the set on the root, "DIL"'s three on
+    // itself — the assignment is context-agnostic, the barrier is not.
+    expect($workOrderPivot)->toHaveCount(count($trainingCodes) + count(trainingCodesSharedWithDil()))
+        ->and($workOrderPivot->where('category_id', $formazione->id))->toHaveCount(count($trainingCodes))
+        ->and($workOrderPivot->where('category_id', $dil->id))->toHaveCount(count(trainingCodesSharedWithDil()));
+
+    // Inherited down the branch through `inherits_work_order_attributes`, and
+    // scoped exactly as on the Offerta side.
+    expect(effectiveCodes('GOL - Molise', AttributeContext::WorkOrder))
+        ->toContain(...$trainingCodes)
+        ->toContain('ora_app_cpi')
+        ->not->toContain('ora_app_apl');
+
+    expect(effectiveCodes('GOL - Lazio', AttributeContext::WorkOrder))->toContain('ora_app_apl');
+
+    expect(effectiveCodes('Autofinanziato', AttributeContext::WorkOrder))
+        ->toContain('cpi', 'course_time_preference', 'price');
+
+    // Empty in the Commessa too: the retirement is context-wide.
+    foreach (ContactProcessingAttributeCatalogue::CONSULTING_CATEGORIES as $name) {
+        expect(effectiveCodes($name, AttributeContext::WorkOrder))->toBe([], $name);
+    }
+
+    // was: 'seeds the Commessa section per contributing category, alone in its own form'
+    // Spec 0115: a row only where the composition differs from the ancestor's.
+    // One fewer than the Offerta's eight — "Autoimpiego" adds its
+    // self-employment flag in the `quote` context alone, so on the Commessa it
+    // has nothing its parent does not already say.
+    expect(AttributeLayout::query()->where('context', AttributeContext::WorkOrder->value)->count())->toBe(7);
+
+    $moliseWorkOrderLayout = $service->resolveWithFallback($molise, AttributeContext::WorkOrder, FormMode::Create);
+
+    // Nothing else contributes to the Commessa form: this catalogue's section
+    // is the whole of it, unlike the Offerta where it comes third.
+    expect(array_column($moliseWorkOrderLayout['sections'], 'id'))->toBe(['contact-processing'])
+        ->and($moliseWorkOrderLayout['sections'][0]['title'])->toBe('Dati Lavorazione Contatto')
+        ->and(array_column($moliseWorkOrderLayout['sections'][0]['rows'][0]['items'], 'attribute_code'))
+        ->toBe(['data_scelta_cpi', 'data_app_apl']);
+
+    // Same catalogue, same effective set in both contexts: the section comes
+    // out identical, so a divergence here means one context resolved something
+    // the other did not. Only its position differs — the Offerta stacks it
+    // after the two training sections, when the category has them.
+    foreach (['GOL - Lazio', 'Autofinanziato', 'GOL - Molise'] as $name) {
+        $category = ProductCategory::query()->where('name', $name)->firstOrFail();
+
+        $commessa = contactSectionOf($service->resolveWithFallback($category, AttributeContext::WorkOrder, FormMode::Create));
+        $offerta = contactSectionOf($service->resolveWithFallback($category, AttributeContext::Quote, FormMode::Create));
+
+        expect(array_diff_key($commessa, ['sort_order' => null]))
+            ->toBe(array_diff_key($offerta, ['sort_order' => null]), $name);
+    }
 });
 
-it('keeps the self-funded and consulting sets on their own categories', function (): void {
+/**
+ * Merged scenario (seeder cost): three former tests that only read after a
+ * single seed(QualificaCatalogSeeder::class) pass, no re-run needed.
+ */
+it('keeps Autofinanziato, DIL, Consulenza and "Titolo di Studio" scoped exactly as the catalogue declares them', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
+    // was: 'keeps the self-funded and consulting sets on their own categories'
     // Autofinanziato resolves the branch set AND its own two fields.
     expect(effectiveCodes('Autofinanziato', AttributeContext::Quote))
         ->toContain('cpi')
@@ -141,46 +287,8 @@ it('keeps the self-funded and consulting sets on their own categories', function
     }
 
     expect(effectiveCodes('Consulenza', AttributeContext::Quote))->toBe([]);
-});
 
-it('hands the CPI appointment time to every GOL region, the APL one to three', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaContactProcessingSeeder::class); // re-run: no duplicate attribute nor pivot row.
-
-    // One assignment PER CONTEXT, both on the container the whole branch
-    // inherits from — the same attribute row, never a duplicated one.
-    $gol = ProductCategory::query()->where('name', ContactProcessingAttributeCatalogue::GOL_CATEGORY)->firstOrFail();
-    $cpiTime = Attribute::query()->where('code', 'ora_app_cpi')->firstOrFail();
-    $assignments = DB::table('attribute_category')->where('attribute_id', $cpiTime->id)->get();
-
-    expect(Attribute::query()->where('code', 'ora_app_cpi')->count())->toBe(1)
-        ->and($cpiTime->type)->toBe('text')
-        ->and($assignments->pluck('category_id')->unique()->values()->all())->toBe([$gol->id])
-        ->and($assignments->pluck('context')->sort()->values()->all())
-        ->toBe([AttributeContext::Quote->value, AttributeContext::WorkOrder->value]);
-
-    $regions = ProductCategory::query()->where('parent_id', $gol->id)->pluck('name');
-    expect($regions)->toHaveCount(10);
-
-    foreach ($regions as $region) {
-        expect(effectiveCodes($region, AttributeContext::Quote))->toContain('ora_app_cpi');
-    }
-
-    // The APL time is the client's exception: three regions, nowhere else.
-    foreach (['GOL - Lombardia', 'GOL - Lazio', 'GOL - Sicilia'] as $region) {
-        expect(effectiveCodes($region, AttributeContext::Quote))->toContain('ora_app_apl');
-    }
-
-    expect(effectiveCodes('GOL - Molise', AttributeContext::Quote))->not->toContain('ora_app_apl');
-
-    // Neither time leaks outside the GOL branch.
-    expect(effectiveCodes('Formazione', AttributeContext::Quote))->not->toContain('ora_app_cpi')
-        ->and(effectiveCodes('Autofinanziato', AttributeContext::Quote))->not->toContain('ora_app_cpi');
-});
-
-it('places each appointment time right under its own date', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
+    // was: 'places each appointment time right under its own date'
     $service = app(AttributeLayoutService::class);
     $rowsOf = function (string $categoryName) use ($service): array {
         $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
@@ -206,6 +314,15 @@ it('places each appointment time right under its own date', function (): void {
 
     // Outside the GOL branch the times row drops entirely.
     expect($rowsOf('Autofinanziato'))->not->toContain(['ora_app_cpi']);
+
+    // was: 'promotes the imported "Titolo di Studio" to a pick list while it carries no value'
+    $degree = Attribute::query()->where('code', ContactProcessingAttributeCatalogue::DEGREE_ATTRIBUTE)->firstOrFail();
+
+    expect($degree->type)->toBe('enum')
+        ->and($degree->options()->pluck('label')->all())->toBe([
+            'Assolvimento obbligo scolastico', 'Licenza Elementare',
+            'Licenza Media', 'Diploma', 'Laurea', 'Qualifica Professionale',
+        ]);
 });
 
 it('retires "Corso di interesse" from every category without deleting the imported row', function (): void {
@@ -306,140 +423,6 @@ it('adopts the q-crm row instead of minting a parallel one', function (): void {
     test()->seed(QualificaContactProcessingSeeder::class);
 
     expect(Attribute::query()->where('code', 'cpi')->value('name'))->toBe('Rinominato a mano');
-});
-
-it('promotes the imported "Titolo di Studio" to a pick list while it carries no value', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $degree = Attribute::query()->where('code', ContactProcessingAttributeCatalogue::DEGREE_ATTRIBUTE)->firstOrFail();
-
-    expect($degree->type)->toBe('enum')
-        ->and($degree->options()->pluck('label')->all())->toBe([
-            'Assolvimento obbligo scolastico', 'Licenza Elementare',
-            'Licenza Media', 'Diploma', 'Laurea', 'Qualifica Professionale',
-        ]);
-});
-
-it('seeds one "Dati Lavorazione Contatto" section per contributing category', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaContactProcessingSeeder::class); // re-run: the configured layout is left alone.
-
-    $service = app(AttributeLayoutService::class);
-
-    // Spec 0115: a row only where the composition DIFFERS from the ancestor's
-    // — the eight Formazione categories that add a field of their own, or sit
-    // behind a barrier. The two Consulenza leaves carry no attribute at all
-    // since the 2026-09-10 directive, so they compose to nothing.
-    expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(8);
-
-    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
-    $layout = $service->resolveWithFallback($molise, AttributeContext::Quote, FormMode::Create);
-    $section = contactSectionOf($layout);
-
-    expect($section['title'])->toBe('Dati Lavorazione Contatto')
-        ->and($section['columns'])->toBe(2)
-        ->and(array_column($section['rows'][0]['items'], 'attribute_code'))
-        ->toBe(['data_scelta_cpi', 'data_app_apl']);
-
-    // Each category places exactly what it resolves: "DIL" has none of the
-    // training rows below its barrier, Autofinanziato adds its own pair.
-    $placed = fn (array $blob): array => collect(contactSectionOf($blob)['rows'])
-        ->flatMap(fn (array $row): array => array_column($row['items'], 'attribute_code'))
-        ->all();
-
-    $dil = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
-    expect($placed($service->resolveWithFallback($dil, AttributeContext::Quote, FormMode::Create)))->toBe([
-        'data_scelta_cpi', 'data_app_apl',
-        'dote_activation_date', 'dote_expiry_date',
-        ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS, 'subsidy_type',
-        'id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE,
-    ]);
-
-    $autofinanziato = ProductCategory::query()->where('name', 'Autofinanziato')->firstOrFail();
-    expect($placed($service->resolveWithFallback($autofinanziato, AttributeContext::Quote, FormMode::Create)))
-        ->toContain('course_time_preference', 'price', 'cpi');
-});
-
-it('mirrors the whole set into the Commessa context, on the same categories', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaContactProcessingSeeder::class); // re-run: no duplicate pivot row.
-
-    $specs = ContactProcessingAttributeCatalogue::ATTRIBUTES[ContactProcessingAttributeCatalogue::TRAINING_CATEGORY];
-    $codes = array_column($specs, 'code');
-
-    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
-    $attributeIds = Attribute::query()->whereIn('code', $codes)->pluck('id');
-
-    // The SAME attribute rows carry both contexts: one pivot row each, never a
-    // parallel catalogue.
-    expect($attributeIds)->toHaveCount(count($codes));
-
-    $pivot = DB::table('attribute_category')
-        ->whereIn('attribute_id', $attributeIds)
-        ->where('context', AttributeContext::WorkOrder->value)
-        ->get();
-
-    // Same split as the Offerta side: the set on the root, "DIL"'s three on
-    // itself — the assignment is context-agnostic, the barrier is not.
-    $dil = ProductCategory::query()->where('name', ContactProcessingAttributeCatalogue::DIL_CATEGORY)->firstOrFail();
-
-    expect($pivot)->toHaveCount(count($codes) + count(trainingCodesSharedWithDil()))
-        ->and($pivot->where('category_id', $formazione->id))->toHaveCount(count($codes))
-        ->and($pivot->where('category_id', $dil->id))->toHaveCount(count(trainingCodesSharedWithDil()));
-
-    // Inherited down the branch through `inherits_work_order_attributes`, and
-    // scoped exactly as on the Offerta side.
-    expect(effectiveCodes('GOL - Molise', AttributeContext::WorkOrder))
-        ->toContain(...$codes)
-        ->toContain('ora_app_cpi')
-        ->not->toContain('ora_app_apl');
-
-    expect(effectiveCodes('GOL - Lazio', AttributeContext::WorkOrder))->toContain('ora_app_apl');
-
-    expect(effectiveCodes('Autofinanziato', AttributeContext::WorkOrder))
-        ->toContain('cpi', 'course_time_preference', 'price');
-
-    // Empty in the Commessa too: the retirement is context-wide.
-    foreach (ContactProcessingAttributeCatalogue::CONSULTING_CATEGORIES as $name) {
-        expect(effectiveCodes($name, AttributeContext::WorkOrder))->toBe([], $name);
-    }
-});
-
-it('seeds the Commessa section per contributing category, alone in its own form', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaContactProcessingSeeder::class); // re-run: the layout is left alone.
-
-    $service = app(AttributeLayoutService::class);
-
-    // Spec 0115: a row only where the composition differs from the ancestor's.
-    // One fewer than the Offerta's eight — "Autoimpiego" adds its
-    // self-employment flag in the `quote` context alone, so on the Commessa it
-    // has nothing its parent does not already say.
-    expect(AttributeLayout::query()->where('context', AttributeContext::WorkOrder->value)->count())->toBe(7);
-
-    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
-    $blob = $service->resolveWithFallback($molise, AttributeContext::WorkOrder, FormMode::Create);
-
-    // Nothing else contributes to the Commessa form: this catalogue's section
-    // is the whole of it, unlike the Offerta where it comes third.
-    expect(array_column($blob['sections'], 'id'))->toBe(['contact-processing'])
-        ->and($blob['sections'][0]['title'])->toBe('Dati Lavorazione Contatto')
-        ->and(array_column($blob['sections'][0]['rows'][0]['items'], 'attribute_code'))
-        ->toBe(['data_scelta_cpi', 'data_app_apl']);
-
-    // Same catalogue, same effective set in both contexts: the section comes
-    // out identical, so a divergence here means one context resolved something
-    // the other did not. Only its position differs — the Offerta stacks it
-    // after the two training sections, when the category has them.
-    foreach (['GOL - Lazio', 'Autofinanziato', 'GOL - Molise'] as $name) {
-        $category = ProductCategory::query()->where('name', $name)->firstOrFail();
-
-        $commessa = contactSectionOf($service->resolveWithFallback($category, AttributeContext::WorkOrder, FormMode::Create));
-        $offerta = contactSectionOf($service->resolveWithFallback($category, AttributeContext::Quote, FormMode::Create));
-
-        expect(array_diff_key($commessa, ['sort_order' => null]))
-            ->toBe(array_diff_key($offerta, ['sort_order' => null]), $name);
-    }
 });
 
 it('never overwrites a Commessa layout configured by hand, nor the Offerta one for it', function (): void {

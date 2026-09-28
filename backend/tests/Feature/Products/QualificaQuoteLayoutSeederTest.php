@@ -110,10 +110,142 @@ function codesOfSection(array $layout, string $sectionId): array
         ->all();
 }
 
-it('AC-013: seeds an offer layout only where the composition differs from the ancestor, idempotently', function (): void {
+/**
+ * One scenario instead of ten: the catalogue seeder costs ~1s per run and
+ * every check below is a read against the state it leaves behind (or, for
+ * the two idempotency checks, against a single explicit re-run of the
+ * layout seeder alone) — none of them mutates a row, so they all share the
+ * same catalogue seed instead of paying for it separately.
+ */
+it('composes the offer layout only where it differs from the ancestor, and a second run changes nothing', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
+
+    // AC-014: an inheriting category renders exactly what its ancestor does.
+    // Yisu adds nothing to Formazione; the seven plain regions add nothing to
+    // GOL. Same blob, resolved rather than copied.
+    expect(quoteLayoutOf('Yisu'))->toBe(quoteLayoutOf('Formazione'));
+    expect(quoteLayoutOf('GOL - Molise'))->toBe(quoteLayoutOf('GOL'));
+    // And the three that DO add one still differ, or the reduction would have
+    // eaten a field.
+    expect(quoteLayoutOf('GOL - Lombardia'))->not->toBe(quoteLayoutOf('GOL'));
+
+    // Moves the course and classroom fields off the product form entirely.
+    // User directive 2026-09-08: both sets live on the Offerta now. Nothing
+    // assigns nor lays them out on the product side any more.
+    expect(AttributeLayout::query()->where('context', AttributeContext::Product->value)->count())->toBe(0);
+
+    $hierarchy = app(CategoryHierarchy::class);
+
+    foreach (['Formazione', 'GOL - Molise', 'Autofinanziato'] as $name) {
+        $category = ProductCategory::query()->where('name', $name)->firstOrFail();
+
+        expect($hierarchy->effectiveAttributes($category, AttributeContext::Product)->all())
+            ->toBe([], $name);
+    }
+
+    // Orders the three catalogue sections, each pruned to what the category resolves.
+    $sectionIds = fn (string $name): array => array_column(quoteLayoutOf($name)['sections'], 'id');
+
+    // A regional leaf: what the operator records working the contact, the
+    // course duration, then the classroom edition — the reading order of the
+    // request form (user directive 2026-09-10, which reversed the previous one).
+    expect($sectionIds('GOL - Molise'))->toBe(['contact-processing', 'course-data', 'classroom-data'])
+        ->and($sectionIds('Autofinanziato'))->toBe(['contact-processing', 'course-data', 'classroom-data']);
+
+    // "Modalità di svolgimento" is confined to its own subtree, the duration
+    // reaches the whole branch.
+    expect(codesOfSection(quoteLayoutOf('GOL - Molise'), 'course-data'))->toBe(['total_hours'])
+        ->and(codesOfSection(quoteLayoutOf('Autofinanziato'), 'course-data'))->toBe(['total_hours', 'delivery_mode'])
+        ->and(codesOfSection(quoteLayoutOf('GOL - Molise'), 'classroom-data'))
+        ->toBe(ClassroomAttributeCatalogue::codes());
+
+    // Sort order follows the array order, with no gap left by a dropped
+    // section — "DIL" is the single-section case since the Consulenza leaves
+    // were emptied: below its barrier the two training sections prune away.
+    expect(array_column(quoteLayoutOf('GOL - Molise')['sections'], 'sort_order'))->toBe([0, 1, 2])
+        ->and(array_column(quoteLayoutOf('DIL')['sections'], 'sort_order'))->toBe([0]);
+
+    // Gives "DIL" an offer form of its own fields, in the client order.
+    $dilLayout = quoteLayoutOf('DIL');
+
+    // The two training sections are pruned whole: below the inheritance
+    // barrier DIL resolves neither of their codes.
+    expect(array_column($dilLayout['sections'], 'id'))->toBe(['contact-processing'])
+        ->and(codesOfSection($dilLayout, 'contact-processing'))->toBe([
+            'data_scelta_cpi', 'data_app_apl',
+            'dote_activation_date', 'dote_expiry_date',
+            ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS,
+            'subsidy_type',
+            'id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE,
+        ]);
+
+    // Places every attribute the category resolves, leaving none to the synthesized section.
+    foreach ([...QUOTE_LAYOUT_OWN_CATEGORIES, ...QUOTE_LAYOUT_INHERITING_CATEGORIES] as $name) {
+        $category = ProductCategory::query()->where('name', $name)->firstOrFail();
+
+        $effective = $hierarchy->effectiveAttributes($category, AttributeContext::Quote)->pluck('code')->sort()->values()->all();
+
+        $placed = collect(quoteLayoutOf($name)['sections'])
+            ->flatMap(fn (array $section): array => collect($section['rows'])
+                ->flatMap(fn (array $row): array => array_column($row['items'], 'attribute_code'))
+                ->all())
+            ->sort()
+            ->values()
+            ->all();
+
+        // An unplaced attribute would be demoted to the renderer's synthesized,
+        // collapsed "other information" section: this is the guard that a
+        // catalogue cannot grow a field without a section to hold it.
+        expect($placed)->toBe($effective, $name);
+    }
+
+    // Pairs the classroom fields two per row in a two-column section.
+    $classroomSection = collect(quoteLayoutOf('GOL - Molise')['sections'])->firstWhere('id', 'classroom-data');
+
+    // Every catalogue row but the last one: the self-employment flag sits alone
+    // on it and only "Autoimpiego" resolves that code.
+    expect($classroomSection['title'])->toBe('Dati Aula')
+        ->and($classroomSection['columns'])->toBe(2)
+        ->and($classroomSection['rows'])->toHaveCount(count(ClassroomAttributeCatalogue::ROWS) - 1)
+        ->and(array_column($classroomSection['rows'][0]['items'], 'attribute_code'))->toBe(['teacher', 'classroom_status'])
+        ->and(array_column($classroomSection['rows'][0]['items'], 'width'))->toBe(['half', 'half']);
+
+    // The one category carrying it keeps the same section, one row longer.
+    $selfEmployment = collect(quoteLayoutOf('Autoimpiego')['sections'])->firstWhere('id', 'classroom-data');
+    $selfEmploymentRows = $selfEmployment['rows'];
+
+    expect($selfEmploymentRows)->toHaveCount(count(ClassroomAttributeCatalogue::ROWS))
+        ->and(array_column($selfEmploymentRows[count($selfEmploymentRows) - 1]['items'], 'attribute_code'))->toBe(['interest_expression']);
+
+    $courseSection = collect(quoteLayoutOf('Autofinanziato')['sections'])->firstWhere('id', 'course-data');
+
+    expect($courseSection['title'])->toBe('Dati corso')
+        ->and(array_column($courseSection['rows'][0]['items'], 'attribute_code'))->toBe(['total_hours', 'delivery_mode']);
+
+    // Renders in every form mode through the shared scope.
+    $service = app(AttributeLayoutService::class);
+    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
+
+    foreach (FormMode::cases() as $mode) {
+        expect($service->resolveWithFallback($molise, AttributeContext::Quote, $mode))->not->toBeNull($mode->value);
+    }
+
+    // Leaves a category outside the two branches flat. The two Consulenza
+    // leaves joined this list with the 2026-09-10 directive that emptied
+    // them: no attribute, so no layout to compose.
+    foreach (['Consulenza', 'Trattative in Corso', 'Presa Appuntamenti', 'APL', 'Orientamento Specialistico'] as $name) {
+        $category = ProductCategory::query()->where('name', $name)->firstOrFail();
+
+        expect($service->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All))
+            ->toBeNull($name);
+    }
+
+    // AC-015: a snapshot right before the explicit re-run, to prove it changes nothing.
+    $before = AttributeLayout::query()->orderBy('id')->get()->map->only(['product_category_id', 'context', 'form_mode', 'layout']);
+
     test()->seed(QualificaQuoteLayoutSeeder::class); // re-run: the configured layout is left alone.
 
+    // AC-013: seeds an offer layout only where the composition differs from the ancestor, idempotently.
     foreach (QUOTE_LAYOUT_OWN_CATEGORIES as $name) {
         $category = ProductCategory::query()->where('name', $name)->firstOrFail();
 
@@ -137,26 +269,8 @@ it('AC-013: seeds an offer layout only where the composition differs from the an
 
     expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())
         ->toBe(count(QUOTE_LAYOUT_OWN_CATEGORIES));
-});
 
-it('AC-014: an inheriting category renders exactly the sections its ancestor does', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    // Yisu adds nothing to Formazione; the seven plain regions add nothing to
-    // GOL. Same blob, resolved rather than copied.
-    expect(quoteLayoutOf('Yisu'))->toBe(quoteLayoutOf('Formazione'));
-    expect(quoteLayoutOf('GOL - Molise'))->toBe(quoteLayoutOf('GOL'));
-
-    // And the three that DO add one still differ, or the reduction would have
-    // eaten a field.
-    expect(quoteLayoutOf('GOL - Lombardia'))->not->toBe(quoteLayoutOf('GOL'));
-});
-
-it('AC-015: a second run of the whole catalogue changes nothing', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    $before = AttributeLayout::query()->orderBy('id')->get()->map->only(['product_category_id', 'context', 'form_mode', 'layout']);
-
-    test()->seed(QualificaQuoteLayoutSeeder::class);
+    // AC-015: a second run of the whole catalogue changes nothing.
     $after = AttributeLayout::query()->orderBy('id')->get()->map->only(['product_category_id', 'context', 'form_mode', 'layout']);
 
     expect($after->all())->toBe($before->all());
@@ -174,127 +288,6 @@ it('AC-016: a hand-edited layout on an inheriting category survives the seeder',
 
     expect(app(AttributeLayoutService::class)->resolveExact($yisu, AttributeContext::Quote, LayoutFormScope::All))
         ->toBe($handEdited);
-});
-
-it('moves the course and classroom fields off the product form entirely', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    // User directive 2026-09-08: both sets live on the Offerta now. Nothing
-    // assigns nor lays them out on the product side any more.
-    expect(AttributeLayout::query()->where('context', AttributeContext::Product->value)->count())->toBe(0);
-
-    $hierarchy = app(CategoryHierarchy::class);
-
-    foreach (['Formazione', 'GOL - Molise', 'Autofinanziato'] as $name) {
-        $category = ProductCategory::query()->where('name', $name)->firstOrFail();
-
-        expect($hierarchy->effectiveAttributes($category, AttributeContext::Product)->all())
-            ->toBe([], $name);
-    }
-});
-
-it('orders the three catalogue sections, each pruned to what the category resolves', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $sectionIds = fn (string $name): array => array_column(quoteLayoutOf($name)['sections'], 'id');
-
-    // A regional leaf: what the operator records working the contact, the
-    // course duration, then the classroom edition — the reading order of the
-    // request form (user directive 2026-09-10, which reversed the previous one).
-    expect($sectionIds('GOL - Molise'))->toBe(['contact-processing', 'course-data', 'classroom-data'])
-        ->and($sectionIds('Autofinanziato'))->toBe(['contact-processing', 'course-data', 'classroom-data']);
-
-    // "Modalità di svolgimento" is confined to its own subtree, the duration
-    // reaches the whole branch.
-    expect(codesOfSection(quoteLayoutOf('GOL - Molise'), 'course-data'))->toBe(['total_hours'])
-        ->and(codesOfSection(quoteLayoutOf('Autofinanziato'), 'course-data'))->toBe(['total_hours', 'delivery_mode'])
-        ->and(codesOfSection(quoteLayoutOf('GOL - Molise'), 'classroom-data'))
-        ->toBe(ClassroomAttributeCatalogue::codes());
-
-    // Sort order follows the array order, with no gap left by a dropped
-    // section — "DIL" is the single-section case since the Consulenza leaves
-    // were emptied: below its barrier the two training sections prune away.
-    expect(array_column(quoteLayoutOf('GOL - Molise')['sections'], 'sort_order'))->toBe([0, 1, 2])
-        ->and(array_column(quoteLayoutOf('DIL')['sections'], 'sort_order'))->toBe([0]);
-});
-
-it('gives "DIL" an offer form of its own fields, in the client order', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $layout = quoteLayoutOf('DIL');
-
-    // The two training sections are pruned whole: below the inheritance
-    // barrier DIL resolves neither of their codes.
-    expect(array_column($layout['sections'], 'id'))->toBe(['contact-processing'])
-        ->and(codesOfSection($layout, 'contact-processing'))->toBe([
-            'data_scelta_cpi', 'data_app_apl',
-            'dote_activation_date', 'dote_expiry_date',
-            ContactProcessingAttributeCatalogue::DIL_REMAINING_HOURS,
-            'subsidy_type',
-            'id_corso', ContactProcessingAttributeCatalogue::COURSE_SITE,
-        ]);
-});
-
-it('places every attribute the category resolves, leaving none to the synthesized section', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $hierarchy = app(CategoryHierarchy::class);
-
-    foreach ([...QUOTE_LAYOUT_OWN_CATEGORIES, ...QUOTE_LAYOUT_INHERITING_CATEGORIES] as $name) {
-        $category = ProductCategory::query()->where('name', $name)->firstOrFail();
-
-        $effective = $hierarchy->effectiveAttributes($category, AttributeContext::Quote)->pluck('code')->sort()->values()->all();
-
-        $placed = collect(quoteLayoutOf($name)['sections'])
-            ->flatMap(fn (array $section): array => collect($section['rows'])
-                ->flatMap(fn (array $row): array => array_column($row['items'], 'attribute_code'))
-                ->all())
-            ->sort()
-            ->values()
-            ->all();
-
-        // An unplaced attribute would be demoted to the renderer's synthesized,
-        // collapsed "other information" section: this is the guard that a
-        // catalogue cannot grow a field without a section to hold it.
-        expect($placed)->toBe($effective, $name);
-    }
-});
-
-it('pairs the classroom fields two per row in a two-column section', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $section = collect(quoteLayoutOf('GOL - Molise')['sections'])->firstWhere('id', 'classroom-data');
-
-    // Every catalogue row but the last one: the self-employment flag sits alone
-    // on it and only "Autoimpiego" resolves that code.
-    expect($section['title'])->toBe('Dati Aula')
-        ->and($section['columns'])->toBe(2)
-        ->and($section['rows'])->toHaveCount(count(ClassroomAttributeCatalogue::ROWS) - 1)
-        ->and(array_column($section['rows'][0]['items'], 'attribute_code'))->toBe(['teacher', 'classroom_status'])
-        ->and(array_column($section['rows'][0]['items'], 'width'))->toBe(['half', 'half']);
-
-    // The one category carrying it keeps the same section, one row longer.
-    $selfEmployment = collect(quoteLayoutOf('Autoimpiego')['sections'])->firstWhere('id', 'classroom-data');
-    $rows = $selfEmployment['rows'];
-
-    expect($rows)->toHaveCount(count(ClassroomAttributeCatalogue::ROWS))
-        ->and(array_column($rows[count($rows) - 1]['items'], 'attribute_code'))->toBe(['interest_expression']);
-
-    $courseSection = collect(quoteLayoutOf('Autofinanziato')['sections'])->firstWhere('id', 'course-data');
-
-    expect($courseSection['title'])->toBe('Dati corso')
-        ->and(array_column($courseSection['rows'][0]['items'], 'attribute_code'))->toBe(['total_hours', 'delivery_mode']);
-});
-
-it('renders in every form mode through the shared scope', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $service = app(AttributeLayoutService::class);
-    $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
-
-    foreach (FormMode::cases() as $mode) {
-        expect($service->resolveWithFallback($molise, AttributeContext::Quote, $mode))->not->toBeNull($mode->value);
-    }
 });
 
 it('never overwrites a layout configured by hand', function (): void {
@@ -374,17 +367,4 @@ it('recomposes the training-first order the previous revision seeded', function 
     // order, instead of staying frozen on the old one.
     expect(array_column(quoteLayoutOf('GOL - Molise')['sections'], 'id'))
         ->toBe(['contact-processing', 'course-data', 'classroom-data']);
-});
-
-it('leaves a category outside the two branches flat', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    // The two Consulenza leaves joined this list with the 2026-09-10 directive
-    // that emptied them: no attribute, so no layout to compose.
-    foreach (['Consulenza', 'Trattative in Corso', 'Presa Appuntamenti', 'APL', 'Orientamento Specialistico'] as $name) {
-        $category = ProductCategory::query()->where('name', $name)->firstOrFail();
-
-        expect(app(AttributeLayoutService::class)->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All))
-            ->toBeNull($name);
-    }
 });

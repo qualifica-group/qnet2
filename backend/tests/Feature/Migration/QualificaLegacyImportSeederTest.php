@@ -106,13 +106,24 @@ function seedCatalogThenLegacy(): void
     test()->seed(QualificaLegacyImportSeeder::class);
 }
 
-it('runs the fixed source list as one inline mass run and completes it', function () {
+/**
+ * Merged scenario (seeder cost): eight former tests that all share the exact
+ * same setup — seedMigrationsConfig() + a super-admin actor + the same fixed
+ * fakeLegacyCatalogues() payload — differing only in whether they read after
+ * ONE run or after a RE-RUN (idempotency). They now pay that setup once
+ * (single run) plus one re-run, instead of twelve seeder passes.
+ */
+it('imports the fixed legacy source list as one mass run, mirrored across every catalogue it touches, idempotently', function () {
     seedMigrationsConfig();
     migrationsSuperAdminActor();
     fakeLegacyCatalogues();
 
     seedCatalogThenLegacy();
+    // Read before the re-run below, exactly where the merged 're-running...'
+    // scenario originally took its own "before" snapshot.
+    $sourceCountAfterFirst = Source::query()->count();
 
+    // was: 'runs the fixed source list as one inline mass run and completes it'
     $massRun = MassMigrationRun::query()->sole();
 
     expect($massRun->sources)->toBe(QualificaLegacyImportSeeder::SOURCES)
@@ -121,72 +132,13 @@ it('runs the fixed source list as one inline mass run and completes it', functio
         // Child runs created in plan order: the phase order is the contract.
         ->and(MigrationRun::query()->orderBy('id')->pluck('source')->all())->toBe(QualificaLegacyImportSeeder::SOURCES)
         ->and(Tag::query()->where('old_id', 71)->value('name'))->toBe('Legacy Tag');
-});
 
-it('imports the legacy vat rates as part of the fixed source list', function () {
-    seedMigrationsConfig();
-    migrationsSuperAdminActor();
-    fakeLegacyCatalogues();
-
-    seedCatalogThenLegacy();
-    seedCatalogThenLegacy(); // re-run: skipped by old_id, never duplicated.
-
-    expect(QualificaLegacyImportSeeder::SOURCES)->toContain('vat-rates')
-        ->and(VatRate::query()->where('old_id', 61)->count())->toBe(1)
-        ->and(VatRate::query()->where('old_id', 61)->value('name'))->toBe('IVA 22%')
-        ->and((float) VatRate::query()->where('old_id', 61)->value('rate'))->toBe(22.0);
-});
-
-it('imports the legacy payment methods as part of the fixed source list', function () {
-    seedMigrationsConfig();
-    migrationsSuperAdminActor();
-    fakeLegacyCatalogues();
-
-    seedCatalogThenLegacy();
-    seedCatalogThenLegacy(); // re-run: skipped by old_id, never duplicated.
-
-    expect(QualificaLegacyImportSeeder::SOURCES)->toContain('payment-methods')
-        ->and(PaymentMethod::query()->where('old_id', 41)->count())->toBe(1)
-        ->and(PaymentMethod::query()->where('old_id', 41)->value('name'))->toBe('Bonifico bancario')
-        ->and(PaymentMethod::query()->where('old_id', 41)->value('payment_days'))->toBe(30);
-});
-
-it('imports the legacy company sites linked to their imported company', function () {
-    seedMigrationsConfig();
-    migrationsSuperAdminActor();
-    fakeLegacyCatalogues();
-
-    seedCatalogThenLegacy();
-    seedCatalogThenLegacy(); // re-run: skipped by old_id, never duplicated.
-
-    $site = CompanySite::query()->where('old_id', 31)->sole();
-
-    expect(QualificaLegacyImportSeeder::SOURCES)->toContain('company-sites')
-        ->and($site->name)->toBe('Sede di Melfi')
-        // Phase 2 runs after phase 1 in this seed: the company_id is remapped
-        // onto the company the SAME run imported, not left unlinked.
-        ->and($site->company_id)->toBe(Company::query()->where('old_id', 21)->value('id'));
-});
-
-it('adopts a catalogue source instead of duplicating it, and imports the legacy-only one', function () {
-    seedMigrationsConfig();
-    migrationsSuperAdminActor();
-    fakeLegacyCatalogues();
-
-    seedCatalogThenLegacy();
-
+    // was: 'adopts a catalogue source instead of duplicating it, and imports the legacy-only one'
     expect(Source::query()->where('name', 'Passaparola')->count())->toBe(1)
         ->and(Source::query()->where('name', 'Passaparola')->value('old_id'))->toBe(81)
         ->and(Source::query()->where('name', 'Fiera')->value('old_id'))->toBe(82);
-});
 
-it('nests the imported product taxonomy under the Consulenza root, keeping its own hierarchy', function () {
-    seedMigrationsConfig();
-    migrationsSuperAdminActor();
-    fakeLegacyCatalogues();
-
-    seedCatalogThenLegacy();
-
+    // was: 'nests the imported product taxonomy under the Consulenza root, keeping its own hierarchy'
     $consulenza = ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->sole();
     $legacyRoot = ProductCategory::query()->where('old_id', 51)->sole();
     $legacyChild = ProductCategory::query()->where('old_id', 52)->sole();
@@ -197,6 +149,54 @@ it('nests the imported product taxonomy under the Consulenza root, keeping its o
         // The static catalogue's own tree keeps its shape.
         ->and(ProductCategory::query()->where('name', 'Formazione')->value('parent_id'))->toBeNull()
         ->and(ProductCategory::query()->where('name', 'Trattative in Corso')->value('parent_id'))->toBe($consulenza->id);
+
+    // was: 'links the imported attributes onto the imported category in the declared context'
+    $importedAttribute = Attribute::query()->where('old_id', 91)->sole();
+    $importedCategory = ProductCategory::query()->where('old_id', 51)->sole();
+
+    $attributeLinks = DB::table('attribute_category')->where('category_id', $importedCategory->id)->get();
+
+    expect($importedAttribute->code)->toBe('durata')
+        ->and($attributeLinks)->toHaveCount(1)
+        ->and($attributeLinks[0]->attribute_id)->toBe($importedAttribute->id)
+        ->and($attributeLinks[0]->context)->toBe('product');
+
+    seedCatalogThenLegacy(); // re-run: skipped by old_id, never duplicated — shared by every block below.
+
+    // was: 'imports the legacy vat rates as part of the fixed source list'
+    expect(QualificaLegacyImportSeeder::SOURCES)->toContain('vat-rates')
+        ->and(VatRate::query()->where('old_id', 61)->count())->toBe(1)
+        ->and(VatRate::query()->where('old_id', 61)->value('name'))->toBe('IVA 22%')
+        ->and((float) VatRate::query()->where('old_id', 61)->value('rate'))->toBe(22.0);
+
+    // was: 'imports the legacy payment methods as part of the fixed source list'
+    expect(QualificaLegacyImportSeeder::SOURCES)->toContain('payment-methods')
+        ->and(PaymentMethod::query()->where('old_id', 41)->count())->toBe(1)
+        ->and(PaymentMethod::query()->where('old_id', 41)->value('name'))->toBe('Bonifico bancario')
+        ->and(PaymentMethod::query()->where('old_id', 41)->value('payment_days'))->toBe(30);
+
+    // was: 'imports the legacy company sites linked to their imported company'
+    $legacySite = CompanySite::query()->where('old_id', 31)->sole();
+
+    expect(QualificaLegacyImportSeeder::SOURCES)->toContain('company-sites')
+        ->and($legacySite->name)->toBe('Sede di Melfi')
+        // Phase 2 runs after phase 1 in this seed: the company_id is remapped
+        // onto the company the SAME run imported, not left unlinked.
+        ->and($legacySite->company_id)->toBe(Company::query()->where('old_id', 21)->value('id'));
+
+    // was: 're-running the seeders never duplicates an imported catalogue'
+    expect(Source::query()->count())->toBe($sourceCountAfterFirst)
+        ->and(Tag::query()->where('name', 'Legacy Tag')->count())->toBe(1)
+        ->and(ProductCategory::query()->where('name', 'Bandi')->count())->toBe(1)
+        // Already nested by the first run: the second one moves nothing.
+        ->and(ProductCategory::query()->where('old_id', 51)->value('parent_id'))
+        ->toBe(ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->value('id'))
+        // Scoped to the imported category: the catalogue itself now owns an
+        // unrelated pivot row (the "Ore complessive" attribute on Formazione),
+        // so a global count no longer isolates the legacy import.
+        ->and(DB::table('attribute_category')->where('category_id', ProductCategory::query()->where('old_id', 51)->value('id'))->count())->toBe(1)
+        ->and(MassMigrationRun::query()->count())->toBe(2)
+        ->and(MassMigrationRun::query()->latest('id')->first()->status)->toBe(MigrationStatus::Completed);
 });
 
 it('adopts the static catalogue nodes the legacy tree repeats, and never moves an adopted root', function () {
@@ -234,48 +234,6 @@ it('adopts the static catalogue nodes the legacy tree repeats, and never moves a
         ->and(ProductCategory::query()->where('name', 'GOL')->value('parent_id'))->toBe($formazione->id)
         ->and(ProductCategory::query()->where('name', 'Orientamento Specialistico')->value('parent_id'))
         ->toBe($apl->id);
-});
-
-it('links the imported attributes onto the imported category in the declared context', function () {
-    seedMigrationsConfig();
-    migrationsSuperAdminActor();
-    fakeLegacyCatalogues();
-
-    seedCatalogThenLegacy();
-
-    $attribute = Attribute::query()->where('old_id', 91)->sole();
-    $category = ProductCategory::query()->where('old_id', 51)->sole();
-
-    $links = DB::table('attribute_category')->where('category_id', $category->id)->get();
-
-    expect($attribute->code)->toBe('durata')
-        ->and($links)->toHaveCount(1)
-        ->and($links[0]->attribute_id)->toBe($attribute->id)
-        ->and($links[0]->context)->toBe('product');
-});
-
-it('re-running the seeders never duplicates an imported catalogue', function () {
-    seedMigrationsConfig();
-    migrationsSuperAdminActor();
-    fakeLegacyCatalogues();
-
-    seedCatalogThenLegacy();
-    $afterFirst = Source::query()->count();
-
-    seedCatalogThenLegacy();
-
-    expect(Source::query()->count())->toBe($afterFirst)
-        ->and(Tag::query()->where('name', 'Legacy Tag')->count())->toBe(1)
-        ->and(ProductCategory::query()->where('name', 'Bandi')->count())->toBe(1)
-        // Already nested by the first run: the second one moves nothing.
-        ->and(ProductCategory::query()->where('old_id', 51)->value('parent_id'))
-        ->toBe(ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->value('id'))
-        // Scoped to the imported category: the catalogue itself now owns an
-        // unrelated pivot row (the "Ore complessive" attribute on Formazione),
-        // so a global count no longer isolates the legacy import.
-        ->and(DB::table('attribute_category')->where('category_id', ProductCategory::query()->where('old_id', 51)->value('id'))->count())->toBe(1)
-        ->and(MassMigrationRun::query()->count())->toBe(2)
-        ->and(MassMigrationRun::query()->latest('id')->first()->status)->toBe(MigrationStatus::Completed);
 });
 
 it('skips the import when no external system is configured', function () {

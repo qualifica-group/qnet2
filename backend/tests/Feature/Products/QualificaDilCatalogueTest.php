@@ -41,41 +41,16 @@ function setDilWorkflowCriteria(array $criteria): void
     app(QuoteWorkflowService::class)->update($workflow, new UpdateQuoteWorkflowData(criteria: $criteria));
 }
 
-it('seeds "DIL - Lombardia" as the selectable leaf of a "DIL" container, idempotently', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaCatalogSeeder::class); // re-run: natural keys, no duplicates.
-
-    $dil = dilCategory('DIL');
-    $lombardy = dilCategory(DIL_LOMBARDY);
-
-    expect($dil->is_selectable)->toBeFalsy()
-        ->and($lombardy->parent_id)->toBe($dil->id)
-        ->and($lombardy->is_selectable)->toBeTruthy()
-        ->and(ProductCategory::query()->where('name', DIL_LOMBARDY)->count())->toBe(1)
-        // A container hosts no product: the single "DIL" offer is no longer seeded.
-        ->and(Product::query()->where('category_id', $dil->id)->exists())->toBeFalse();
-});
-
-it('files every DIL course on "DIL - Lombardia", the repeated name split by duration', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaCatalogSeeder::class); // re-run: natural key (name, category), no duplicates.
-
-    $names = Product::query()->where('category_id', dilCategory(DIL_LOMBARDY)->id)->pluck('name');
-
-    expect($names)->toHaveCount(count(DilCourseCatalogue::COURSES[DIL_LOMBARDY]))
-        ->and($names->unique())->toHaveCount($names->count())
-        ->and($names->all())->toContain(
-            'Google Workspace',
-            'Consulenza olistica di base',
-            'Make-up Artist Professionale (30 ore)',
-            'Make-up Artist Professionale (40 ore)',
-        )
-        ->and($names->all())->not->toContain('Make-up Artist Professionale');
-});
-
-it('gives "DIL - Lombardia" exactly the offer fields and form of "DIL"', function (): void {
+/**
+ * One scenario instead of one test per property: the catalogue seeder costs
+ * ~1s per run and every check below used to pay for it separately. Reads
+ * that only need a single seed run first, then the seeder re-runs once and
+ * every idempotency/realignment check reads that final state.
+ */
+it('seeds the "DIL" container and its Lombardy leaf correctly, idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
+    // Offer fields and form inherited from the container (was: 'gives "DIL - Lombardia" exactly the offer fields and form of "DIL"')
     $hierarchy = app(CategoryHierarchy::class);
     $layouts = app(AttributeLayoutService::class);
     $dil = dilCategory('DIL');
@@ -91,6 +66,40 @@ it('gives "DIL - Lombardia" exactly the offer fields and form of "DIL"', functio
     // DIL's barrier still holds for its child: no Formazione-only field.
     expect($hierarchy->effectiveAttributes($lombardy, AttributeContext::Quote)->pluck('code')->all())
         ->not->toContain('delivery_mode');
+
+    // Re-point the workflow criterion at the leaf, the way the configurator
+    // would: prep for the "left alone" check after the re-run below (was:
+    // 'leaves a DIL workflow re-pointed from the configurator alone').
+    setDilWorkflowCriteria([['field' => WorkflowStatusCatalogue::DEFAULT_CRITERION_FIELD, 'value_id' => $lombardy->id]]);
+
+    test()->seed(QualificaCatalogSeeder::class); // re-run: natural keys, no duplicates; leaves the leaf-scoped criterion alone.
+
+    // Container + selectable leaf (was: 'seeds "DIL - Lombardia" as the selectable leaf of a "DIL" container, idempotently')
+    expect($dil->is_selectable)->toBeFalsy()
+        ->and($lombardy->parent_id)->toBe($dil->id)
+        ->and($lombardy->is_selectable)->toBeTruthy()
+        ->and(ProductCategory::query()->where('name', DIL_LOMBARDY)->count())->toBe(1)
+        // A container hosts no product: the single "DIL" offer is no longer seeded.
+        ->and(Product::query()->where('category_id', $dil->id)->exists())->toBeFalse();
+
+    // Every course filed on the leaf, duplicates split by duration (was: 'files every DIL course on "DIL - Lombardia", the repeated name split by duration')
+    $names = Product::query()->where('category_id', $lombardy->id)->pluck('name');
+
+    expect($names)->toHaveCount(count(DilCourseCatalogue::COURSES[DIL_LOMBARDY]))
+        ->and($names->unique())->toHaveCount($names->count())
+        ->and($names->all())->toContain(
+            'Google Workspace',
+            'Consulenza olistica di base',
+            'Make-up Artist Professionale (30 ore)',
+            'Make-up Artist Professionale (40 ore)',
+        )
+        ->and($names->all())->not->toContain('Make-up Artist Professionale');
+
+    // Left untouched: it already targets a leaf (was: 'leaves a DIL workflow re-pointed from the configurator alone')
+    $criterion = QuoteWorkflow::query()->where('name', 'DIL')->with('criteria')->firstOrFail()->criteria->sole();
+
+    expect($criterion->field)->toBe(WorkflowStatusCatalogue::DEFAULT_CRITERION_FIELD)
+        ->and($criterion->value_id)->toBe($lombardy->id);
 });
 
 it('converges an installation seeded while "DIL" hosted its own offer', function (): void {
@@ -114,18 +123,4 @@ it('converges an installation seeded while "DIL" hosted its own offer', function
         ->and($workflow->criteria->first()->field)->toBe(WorkflowStatusCatalogue::BRANCH_CRITERION_FIELD)
         ->and($workflow->criteria->first()->value_id)->toBe($dil->id)
         ->and(QuoteWorkflow::query()->where('name', 'DIL')->count())->toBe(1);
-});
-
-it('leaves a DIL workflow re-pointed from the configurator alone', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $lombardy = dilCategory(DIL_LOMBARDY);
-    setDilWorkflowCriteria([['field' => WorkflowStatusCatalogue::DEFAULT_CRITERION_FIELD, 'value_id' => $lombardy->id]]);
-
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $criterion = QuoteWorkflow::query()->where('name', 'DIL')->with('criteria')->firstOrFail()->criteria->sole();
-
-    expect($criterion->field)->toBe(WorkflowStatusCatalogue::DEFAULT_CRITERION_FIELD)
-        ->and($criterion->value_id)->toBe($lombardy->id);
 });

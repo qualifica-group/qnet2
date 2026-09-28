@@ -25,6 +25,10 @@ use Illuminate\Support\Facades\Storage;
 // together, in the order their dependencies require — and, since the user
 // directive 2026-09-08, that the chain produces NO fabricated row: the sample
 // pipeline is QualificaSampleDataSeeder's own business now.
+//
+// The seeder itself is the expensive part of this suite, so tests that share
+// an identical setup (same pre-state, same seed sequence) are merged into one
+// scenario, carrying all of their original assertions.
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
@@ -37,9 +41,21 @@ beforeEach(function (): void {
     Storage::fake(config('attachments.disk'));
 });
 
-it('composes structure, catalogue and operators in one run', function (): void {
+/**
+ * Merged scenario (seeder cost): three former tests that share the exact same
+ * setup — an operational site standing in for the (here no-op) legacy import,
+ * one seed(QualificaProductionDataSeeder::class) run, then only reads — so
+ * they pay the seeder once instead of three times.
+ */
+it('composes structure, catalogue and operators in one run, with a super-admin and the operators\' sites in place', function (): void {
+    // was: 'gives the operators their operational sites, so they are selectable as operators'
+    // The sites are imported by the legacy step, which is a no-op here: stand
+    // one in first, exactly as the import would have left it.
+    $site = OperationalSite::factory()->create(['alias' => 'FRATTAMAGGIORE 1 (HQ)']);
+
     test()->seed(QualificaProductionDataSeeder::class);
 
+    // was: 'composes structure, catalogue and operators in one run'
     expect(CustomFieldDefinition::query()->where('entity_type', 'company-sites')->count())->toBe(36)
         ->and(CustomFieldDefinition::query()->where('entity_type', 'products')->count())->toBe(2)
         ->and(Source::query()->where('name', 'Passaparola')->count())->toBe(1)
@@ -53,24 +69,14 @@ it('composes structure, catalogue and operators in one run', function (): void {
         // Step 9 runs last: a staff account reports to the operators of step 7.
         ->and(User::query()->where('email', 'jessica.virgolini@qualificagroup.com')->with('employment.reportsTo')->sole()
             ->employment->reportsTo->pluck('email')->all())->toBe(['fabrizio.aliberti@qualificagroup.com', 'rosa.falzarano@qualificagroup.com']);
-});
 
-it('seeds the super-admin before the legacy import, so an actor always exists', function (): void {
-    test()->seed(QualificaProductionDataSeeder::class);
-
+    // was: 'seeds the super-admin before the legacy import, so an actor always exists'
     // The import runs on behalf of a super-admin; TestUsersSeeder is the step
     // that guarantees one, which is why it precedes it.
     expect(User::query()->whereHas('roles', fn ($query) => $query->where('name', UserService::PRIVILEGED_ROLE))->exists())
         ->toBeTrue();
-});
 
-it('gives the operators their operational sites, so they are selectable as operators', function (): void {
-    // The sites are imported by the legacy step, which is a no-op here: stand
-    // one in first, exactly as the import would have left it.
-    $site = OperationalSite::factory()->create(['alias' => 'FRATTAMAGGIORE 1 (HQ)']);
-
-    test()->seed(QualificaProductionDataSeeder::class);
-
+    // was: 'gives the operators their operational sites, so they are selectable as operators'
     // Spec 0103: the Operatore select filters users on this very pivot
     // membership, so an account without an employment profile never appears
     // in the list.
@@ -80,7 +86,13 @@ it('gives the operators their operational sites, so they are selectable as opera
     expect($employment->primaryOperationalSiteId)->toBe($site->getKey());
 });
 
-it('seeds no fabricated row: the sample pipeline is a separate entry point', function (): void {
+/**
+ * Merged scenario (seeder cost): two former tests that share the exact same
+ * pre-state — a business function standing in for the (here no-op) legacy
+ * import — one carrying its assertions after the first run, the other after
+ * a re-run, exactly as each originally did.
+ */
+it('seeds no fabricated row on the first run, and duplicates nothing on a re-run', function (): void {
     // User directive 2026-09-08: the two *Sample* steps left this chain for
     // QualificaSampleDataSeeder. Standing in the business function the import
     // would have brought is what USED to make them seed — with it present and
@@ -89,15 +101,12 @@ it('seeds no fabricated row: the sample pipeline is a separate entry point', fun
 
     test()->seed(QualificaProductionDataSeeder::class);
 
+    // was: 'seeds no fabricated row: the sample pipeline is a separate entry point'
     expect(Lead::query()->count())->toBe(0)
         ->and(Opportunity::query()->count())->toBe(0)
         ->and(Quote::query()->count())->toBe(0);
-});
 
-it('is idempotent: a second run duplicates nothing', function (): void {
-    BusinessFunction::factory()->create(['name' => 'Formazione']);
-
-    test()->seed(QualificaProductionDataSeeder::class);
+    // was: 'is idempotent: a second run duplicates nothing'
     test()->seed(QualificaProductionDataSeeder::class);
 
     expect(Source::query()->count())->toBe(10)

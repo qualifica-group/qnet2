@@ -37,46 +37,89 @@ function standInSites(array $aliases): array
         ->all();
 }
 
-it('creates every roster account with its role, standalone and without imported data', function (): void {
+/**
+ * Merged scenario: six of the twelve tests below share the exact same
+ * setup — no pre-seeded Sede/ProductCategory, no mutation that could bleed
+ * into another test's read — so instead of paying QualificaOperatorSeeder
+ * once (or twice, for the re-run checks) per test, it runs twice total for
+ * all six. The other six build a distinct pre-state (different Sedi/
+ * categories) or mutate the seeded data before a re-run, so they stay
+ * separate rather than risk one test's fixture bleeding into another's.
+ */
+it('seeds every roster account, its role and its anagrafica, and converges on a re-run', function (): void {
+    // Step 1: seed once — every single-run check below reads this state.
     test()->seed(QualificaOperatorSeeder::class);
 
+    // was: 'creates every roster account with its role, standalone and without imported data'
     foreach (OperatorRoster::OPERATORS as [, , $email, , $role]) {
         expect(User::query()->where('email', $email)->firstOrFail()->getRoleNames()->all())->toBe([$role]);
     }
 
     expect(User::query()->count())->toBe(count(OperatorRoster::OPERATORS));
-});
 
-it('writes first and last name onto the anagrafica too, converging on a re-run', function (): void {
-    test()->seed(QualificaOperatorSeeder::class);
-    test()->seed(QualificaOperatorSeeder::class);
-
-    $user = User::query()->where('email', 'mariaclelia.bernardi@qualificagroup.com')->with('personalData')->sole();
-
-    expect($user->name)->toBe('Maria Clelia Bernardi')
-        ->and($user->personalData->type)->toBe(PersonalDataTypeEnum::Individual)
-        ->and($user->personalData->first_name)->toBe('Maria Clelia')
-        ->and($user->personalData->last_name)->toBe('Bernardi')
-        ->and(PersonalData::query()->count())->toBe(count(OperatorRoster::OPERATORS));
-});
-
-it('never seeds the accounts highlighted as non-existent', function (): void {
-    test()->seed(QualificaOperatorSeeder::class);
-
+    // was: 'never seeds the accounts highlighted as non-existent'
     expect(User::query()->whereIn('name', ['Miriam Del Giudice', 'Maddalena Vitale', 'Elisa Finizio', 'Imma Pascale'])->exists())->toBeFalse()
         ->and(User::query()->count())->toBe(67);
-});
 
-it('sets the shared password on creation only, so an operator change survives a re-run', function (): void {
+    // was: 'grants every commercial their own and physical-Sede enrollees, and the teaching supervisor both modules by Sede'
+    $commercial = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
+    $formerEnrollee = User::query()->where('email', 'marco.fedele@qualificagroup.com')->firstOrFail();
+
+    expect($formerEnrollee->getRoleNames()->all())->toBe(['commerciale']);
+
+    foreach ([$commercial, $formerEnrollee] as $user) {
+        foreach (['viewAny', 'view'] as $ability) {
+            expect($user->can("enrollee-management.{$ability}"))->toBeTrue("{$user->email}: {$ability}");
+        }
+
+        foreach (['update', 'viewAll', 'export', 'report'] as $ability) {
+            expect($user->can("enrollee-management.{$ability}"))->toBeFalse("{$user->email}: {$ability}");
+        }
+
+        expect($user->can('request-management.viewSite'))->toBeFalse()
+            ->and($user->can('request-management.report'))->toBeFalse()
+            ->and($user->can('enrollee-management.viewSite'))->toBeFalse("{$user->email}: viewSite")
+            ->and($user->can('enrollee-management.viewPrimarySite'))->toBeTrue("{$user->email}: viewPrimarySite");
+    }
+
+    $teaching = seededOperator('marlena.jaruga@qualificagroup.com');
+
+    expect($teaching->employment->productLines)->toBeEmpty()
+        ->and($teaching->can('request-management.viewSite'))->toBeTrue()
+        ->and($teaching->can('request-management.viewAll'))->toBeFalse()
+        ->and($teaching->can('enrollee-management.viewSite'))->toBeTrue();
+
+    // was: 'gives the coordinator unrestricted requests without the field-change-requests page'
+    $coordinator = User::query()->where('email', 'michela.fabozzi@qualificagroup.com')->firstOrFail();
+
+    expect($coordinator->can('request-management.viewAll'))->toBeTrue()
+        ->and($coordinator->can('request-management.report'))->toBeTrue()
+        ->and($coordinator->can('leads.viewAny'))->toBeTrue()
+        ->and($coordinator->can('field-change-requests.view'))->toBeFalse()
+        ->and($coordinator->can('field-change-requests.manage'))->toBeFalse();
+
+    // was: 'sets the shared password on creation only, so an operator change survives a re-run'
+    // First half: the shared password holds right after the first seed.
+    $passwordUser = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
+    expect(Hash::check('Qualifica2026!', $passwordUser->password))->toBeTrue();
+
+    $passwordUser->forceFill(['password' => Hash::make('changed-by-hand')])->save();
+
+    // Step 2: re-seed — natural key, no duplicates; a hand-made change to a
+    // field the seeder only sets on creation must survive the re-run.
     test()->seed(QualificaOperatorSeeder::class);
 
-    $user = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
-    expect(Hash::check('Qualifica2026!', $user->password))->toBeTrue();
+    // was: 'writes first and last name onto the anagrafica too, converging on a re-run'
+    $anagraficaUser = User::query()->where('email', 'mariaclelia.bernardi@qualificagroup.com')->with('personalData')->sole();
 
-    $user->forceFill(['password' => Hash::make('changed-by-hand')])->save();
-    test()->seed(QualificaOperatorSeeder::class);
+    expect($anagraficaUser->name)->toBe('Maria Clelia Bernardi')
+        ->and($anagraficaUser->personalData->type)->toBe(PersonalDataTypeEnum::Individual)
+        ->and($anagraficaUser->personalData->first_name)->toBe('Maria Clelia')
+        ->and($anagraficaUser->personalData->last_name)->toBe('Bernardi')
+        ->and(PersonalData::query()->count())->toBe(count(OperatorRoster::OPERATORS));
 
-    expect(Hash::check('changed-by-hand', $user->fresh()->password))->toBeTrue()
+    // was: 'sets the shared password on creation only...' (second half)
+    expect(Hash::check('changed-by-hand', $passwordUser->fresh()->password))->toBeTrue()
         ->and(User::query()->where('email', 'marco.baldi@qualificagroup.com')->count())->toBe(1);
 });
 
@@ -155,37 +198,6 @@ it('converges on a re-run: no duplicated memberships nor competence rows', funct
 // commercial role. Spec 0165 D-5: the commercial reaches the offers they
 // operate plus the enrollees of their PHYSICAL Sede, and the former
 // "commerciale-iscritti" (Marco Fedele) is merged into the commercial role.
-it('grants every commercial their own and physical-Sede enrollees, and the teaching supervisor both modules by Sede', function (): void {
-    test()->seed(QualificaOperatorSeeder::class);
-
-    $commercial = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
-    $formerEnrollee = User::query()->where('email', 'marco.fedele@qualificagroup.com')->firstOrFail();
-
-    expect($formerEnrollee->getRoleNames()->all())->toBe(['commerciale']);
-
-    foreach ([$commercial, $formerEnrollee] as $user) {
-        foreach (['viewAny', 'view'] as $ability) {
-            expect($user->can("enrollee-management.{$ability}"))->toBeTrue("{$user->email}: {$ability}");
-        }
-
-        foreach (['update', 'viewAll', 'export', 'report'] as $ability) {
-            expect($user->can("enrollee-management.{$ability}"))->toBeFalse("{$user->email}: {$ability}");
-        }
-
-        expect($user->can('request-management.viewSite'))->toBeFalse()
-            ->and($user->can('request-management.report'))->toBeFalse()
-            ->and($user->can('enrollee-management.viewSite'))->toBeFalse("{$user->email}: viewSite")
-            ->and($user->can('enrollee-management.viewPrimarySite'))->toBeTrue("{$user->email}: viewPrimarySite");
-    }
-
-    $teaching = seededOperator('marlena.jaruga@qualificagroup.com');
-
-    expect($teaching->employment->productLines)->toBeEmpty()
-        ->and($teaching->can('request-management.viewSite'))->toBeTrue()
-        ->and($teaching->can('request-management.viewAll'))->toBeFalse()
-        ->and($teaching->can('enrollee-management.viewSite'))->toBeTrue();
-});
-
 it('lists in Gestione Iscritti the own and physical-Sede rows of the commercials, every Sede of the teaching supervisor', function (): void {
     $sites = standInSites(['FRATTAMAGGIORE 1 (HQ)', 'Frattamaggiore 2', 'Roma']);
     test()->seed(QualificaOperatorSeeder::class);
@@ -219,18 +231,6 @@ it('lists in Gestione Iscritti the own and physical-Sede rows of the commercials
         ->and($rowIds($formerEnrollee))->toBe($sorted($frattamaggiore))
         ->and($rowIds($teaching))->toBe($sorted($roma))
         ->and($rowIds($supervisor))->toBe($sorted($commercialOwn, $frattamaggiore, $roma, $elsewhere));
-});
-
-it('gives the coordinator unrestricted requests without the field-change-requests page', function (): void {
-    test()->seed(QualificaOperatorSeeder::class);
-
-    $coordinator = User::query()->where('email', 'michela.fabozzi@qualificagroup.com')->firstOrFail();
-
-    expect($coordinator->can('request-management.viewAll'))->toBeTrue()
-        ->and($coordinator->can('request-management.report'))->toBeTrue()
-        ->and($coordinator->can('leads.viewAny'))->toBeTrue()
-        ->and($coordinator->can('field-change-requests.view'))->toBeFalse()
-        ->and($coordinator->can('field-change-requests.manage'))->toBeFalse();
 });
 
 it('deletes the retired roles, detaching whoever still held them', function (): void {

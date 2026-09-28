@@ -19,35 +19,21 @@ beforeEach(function (): void {
     config(['migrations.base_url' => null]);
 });
 
-it('provisions one active workflow per catalogue category, idempotently', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaCatalogSeeder::class); // re-run: natural key (name / signature), no duplicates.
-
-    $expected = array_keys(WorkflowStatusCatalogue::WORKFLOWS);
-
-    expect(QuoteWorkflow::query()->count())->toBe(count($expected));
-
-    foreach ($expected as $categoryName) {
-        $workflow = QuoteWorkflow::query()->where('name', $categoryName)->with('criteria')->first();
-        $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
-
-        expect($workflow)->not->toBeNull($categoryName)
-            ->and($workflow->is_active)->toBeTrue($categoryName)
-            // Matched on its own category alone — by exact category, or by
-            // whole branch for the categories that declare it (spec 0092).
-            ->and($workflow->criteria)->toHaveCount(1, $categoryName)
-            ->and($workflow->criteria->first()->field)
-            ->toBe(WorkflowStatusCatalogue::criterionFieldFor($categoryName), $categoryName)
-            ->and($workflow->criteria->first()->value_id)->toBe($category->id, $categoryName);
-    }
-});
-
-it('seeds a GOL region column in the sheet order, between the pinned system rows', function (): void {
+/**
+ * Merged scenario: QualificaCatalogSeeder costs ~1s per run (thousands of
+ * PHP-bound queries), and every check below only reads back the state it
+ * leaves behind — none of them mutate it. Instead of paying the seeder once
+ * per assertion group, it runs twice total: once for every read-only check,
+ * once more to prove the re-run converges (the former idempotency test).
+ */
+it('seeds catalogue workflows, statuses and criteria per category, and converges on a re-run', function (): void {
+    // Step 1: seed once — every single-run check below reads this state.
     test()->seed(QualificaCatalogSeeder::class);
 
-    $workflow = QuoteWorkflow::query()->where('name', 'GOL - Lombardia')->firstOrFail();
-    $statuses = QuoteWorkflowStatus::query()
-        ->where('quote_workflow_id', $workflow->id)
+    // was: 'seeds a GOL region column in the sheet order, between the pinned system rows'
+    $golWorkflow = QuoteWorkflow::query()->where('name', 'GOL - Lombardia')->firstOrFail();
+    $golStatuses = QuoteWorkflowStatus::query()
+        ->where('quote_workflow_id', $golWorkflow->id)
         ->orderBy('sort_order')
         ->get();
 
@@ -55,28 +41,25 @@ it('seeds a GOL region column in the sheet order, between the pinned system rows
     // promoted onto pinned system rows, the rest stay custom. No extra row is
     // added — 'validated' is a group, not a system row (user directive
     // 2026-08-07), and the GOL block classifies no state under it.
-    $all = WorkflowStatusCatalogue::statusesFor('GOL - Lombardia');
-    $custom = WorkflowStatusCatalogue::customStatusesFor('GOL - Lombardia');
+    $golAll = WorkflowStatusCatalogue::statusesFor('GOL - Lombardia');
+    $golCustom = WorkflowStatusCatalogue::customStatusesFor('GOL - Lombardia');
 
-    expect($statuses)->toHaveCount(count($all))
-        ->and(count($custom))->toBe(count($all) - 3)
-        ->and($statuses->first()->system_key)->toBe('open')
-        ->and($statuses->slice(-2)->pluck('system_key')->all())->toBe(['closed_won', 'closed_lost'])
-        ->and($statuses->pluck('system_key')->filter()->values()->all())->not->toContain('validated');
+    expect($golStatuses)->toHaveCount(count($golAll))
+        ->and(count($golCustom))->toBe(count($golAll) - 3)
+        ->and($golStatuses->first()->system_key)->toBe('open')
+        ->and($golStatuses->slice(-2)->pluck('system_key')->all())->toBe(['closed_won', 'closed_lost'])
+        ->and($golStatuses->pluck('system_key')->filter()->values()->all())->not->toContain('validated');
 
-    expect($statuses->slice(1, count($custom))->pluck('name')->values()->all())
-        ->toBe(array_column($custom, 'name'));
+    expect($golStatuses->slice(1, count($golCustom))->pluck('name')->values()->all())
+        ->toBe(array_column($golCustom, 'name'));
 
     // First and last custom row of the column, as the sheet lists them —
     // 'Nuovo Contatto' is no longer here: it now labels the pinned open row.
-    expect($statuses->get(1)->name)->toBe('Da Richiamare')
-        ->and($statuses->get(count($custom))->name)->toBe('In Standby');
-});
+    expect($golStatuses->get(1)->name)->toBe('Da Richiamare')
+        ->and($golStatuses->get(count($golCustom))->name)->toBe('In Standby');
 
-it('labels the pinned system rows with the sheet states, never the generic defaults', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $pinned = function (string $workflowName): array {
+    // was: 'labels the pinned system rows with the sheet states, never the generic defaults'
+    $pinnedRowsOf = function (string $workflowName): array {
         $workflow = QuoteWorkflow::query()->where('name', $workflowName)->firstOrFail();
 
         return QuoteWorkflowStatus::query()
@@ -92,7 +75,7 @@ it('labels the pinned system rows with the sheet states, never the generic defau
     // sheet paints it verde acceso, i.e. the `validated` group, which is
     // pinned to nothing (user directive 2026-08-07), so closed_won falls to
     // the next verde chiaro state.
-    expect($pinned('GOL - Lombardia'))->toBe([
+    expect($pinnedRowsOf('GOL - Lombardia'))->toBe([
         // "Percorso 101" is unfilled in the 2026-09-08 sheet, i.e. OPEN: the
         // first loss of the column is the one below it.
         'closed_lost' => 'Autofinanziato',
@@ -100,76 +83,66 @@ it('labels the pinned system rows with the sheet states, never the generic defau
         'open' => 'Nuovo Contatto',
     ]);
 
-    expect($pinned('Consulenza'))->toBe([
+    expect($pinnedRowsOf('Consulenza'))->toBe([
         'closed_lost' => 'Persa',
         'closed_won' => 'VINTO',
         'open' => 'Nuovo Contatto',
     ]);
 
-    expect($pinned('Autoimpiego'))->toBe([
+    expect($pinnedRowsOf('Autoimpiego'))->toBe([
         'closed_lost' => 'Non ha i Requisiti',
         'closed_won' => 'Associato SI _ NOI',
         'open' => 'Nuovo Contatto',
     ]);
 
-    expect($pinned('Yisu'))->toBe([
+    expect($pinnedRowsOf('Yisu'))->toBe([
         'closed_lost' => 'Non ha i Requisiti',
         'closed_won' => 'Associato SI _ NOI',
         'open' => 'Nuovo Contatto',
     ]);
 
-    expect($pinned('Autofinanziato'))->toBe([
+    expect($pinnedRowsOf('Autofinanziato'))->toBe([
         'closed_lost' => 'Non risponde',
         'closed_won' => 'OK_Iscritto',
         'open' => 'Nuovo Contatto',
     ]);
-});
 
-it('promotes a state onto a pinned row instead of duplicating it as a custom one', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $workflow = QuoteWorkflow::query()->where('name', 'Consulenza')->firstOrFail();
-    $statuses = QuoteWorkflowStatus::query()
-        ->where('quote_workflow_id', $workflow->id)
+    // was: 'promotes a state onto a pinned row instead of duplicating it as a custom one'
+    $consulenzaWorkflow = QuoteWorkflow::query()->where('name', 'Consulenza')->firstOrFail();
+    $consulenzaStatuses = QuoteWorkflowStatus::query()
+        ->where('quote_workflow_id', $consulenzaWorkflow->id)
         ->get();
 
     // One row per name, and the promoted ones carry their sheet description
     // and colour onto the system row.
-    expect($statuses->pluck('name')->duplicates())->toBeEmpty();
+    expect($consulenzaStatuses->pluck('name')->duplicates())->toBeEmpty();
 
-    $vinto = $statuses->firstWhere('name', 'VINTO');
+    $vinto = $consulenzaStatuses->firstWhere('name', 'VINTO');
 
     expect($vinto->system_key)->toBe('closed_won')
         ->and($vinto->color)->toBe('green')
         ->and($vinto->description)->toBe('Trattativa conclusa positivamente.');
-});
 
-it('seeds Consulenza on the BRANCH criterion, so the states reach the whole branch (user directive 2026-09-01)', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
+    // was: 'seeds Consulenza on the BRANCH criterion, so the states reach the whole branch (user directive 2026-09-01)'
+    $consulenzaWorkflowWithCriteria = QuoteWorkflow::query()->where('name', 'Consulenza')->with('criteria')->firstOrFail();
+    $consulenzaRoot = ProductCategory::query()->where('name', 'Consulenza')->firstOrFail();
 
-    $workflow = QuoteWorkflow::query()->where('name', 'Consulenza')->with('criteria')->firstOrFail();
-    $root = ProductCategory::query()->where('name', 'Consulenza')->firstOrFail();
-
-    expect($workflow->criteria)->toHaveCount(1)
-        ->and($workflow->criteria->first()->field)->toBe('product_category_branch_id')
-        ->and($workflow->criteria->first()->value_id)->toBe($root->id)
+    expect($consulenzaWorkflowWithCriteria->criteria)->toHaveCount(1)
+        ->and($consulenzaWorkflowWithCriteria->criteria->first()->field)->toBe('product_category_branch_id')
+        ->and($consulenzaWorkflowWithCriteria->criteria->first()->value_id)->toBe($consulenzaRoot->id)
         // The root is a container: an exact-category criterion could never
         // match, since no product sits directly on it.
-        ->and($root->children()->exists())->toBeTrue();
-});
+        ->and($consulenzaRoot->children()->exists())->toBeTrue();
 
-it('seeds the consulting pick list with the client mapping (user directive 2026-09-01)', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $workflow = QuoteWorkflow::query()->where('name', 'Consulenza')->firstOrFail();
-    $statuses = QuoteWorkflowStatus::query()
-        ->where('quote_workflow_id', $workflow->id)
+    // was: 'seeds the consulting pick list with the client mapping (user directive 2026-09-01)'
+    $consulenzaOrderedStatuses = QuoteWorkflowStatus::query()
+        ->where('quote_workflow_id', $consulenzaWorkflow->id)
         ->orderBy('sort_order')
         ->get();
 
     // The pinned rows anchor the set: `open` first, the two closed outcomes
     // last, so VINTO/Persa sit at the tail rather than mid-list.
-    expect($statuses->pluck('name')->all())->toBe([
+    expect($consulenzaOrderedStatuses->pluck('name')->all())->toBe([
         'Nuovo Contatto',
         'Da Richiamare',
         'In trattativa',
@@ -184,7 +157,7 @@ it('seeds the consulting pick list with the client mapping (user directive 2026-
         'Persa',
     ]);
 
-    expect($statuses->mapWithKeys(fn (QuoteWorkflowStatus $status): array => [$status->name => $status->group->value])->all())
+    expect($consulenzaOrderedStatuses->mapWithKeys(fn (QuoteWorkflowStatus $status): array => [$status->name => $status->group->value])->all())
         ->toBe([
             'Nuovo Contatto' => WorkflowStatusGroup::Open->value,
             'Da Richiamare' => WorkflowStatusGroup::Open->value,
@@ -203,32 +176,29 @@ it('seeds the consulting pick list with the client mapping (user directive 2026-
     // 'In trattativa' is azzurro in the 2026-09-08 sheet, i.e. `pending`: a
     // plain GROUP on a custom row, pinned to nothing. It lost the `validated`
     // classification the retired VALIDATED_STATUSES override gave it.
-    expect($statuses->firstWhere('name', 'In trattativa')->system_key)->toBeNull();
-});
+    expect($consulenzaOrderedStatuses->firstWhere('name', 'In trattativa')->system_key)->toBeNull();
 
-it('seeds the APL pick list on the APL branch (user directive 2026-09-07)', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $workflow = QuoteWorkflow::query()->where('name', 'APL')->with('criteria')->firstOrFail();
-    $category = ProductCategory::query()->where('name', 'APL')->firstOrFail();
+    // was: 'seeds the APL pick list on the APL branch (user directive 2026-09-07)'
+    $aplWorkflow = QuoteWorkflow::query()->where('name', 'APL')->with('criteria')->firstOrFail();
+    $aplCategory = ProductCategory::query()->where('name', 'APL')->firstOrFail();
 
     // "APL" is a ROOT that groups its offers: the product sits on its
     // "Orientamento Specialistico" child, so an exact-category criterion would
     // never match a single offer — only the branch one reaches it.
-    expect($workflow->criteria)->toHaveCount(1)
-        ->and($workflow->criteria->first()->field)->toBe('product_category_branch_id')
-        ->and($workflow->criteria->first()->value_id)->toBe($category->id)
-        ->and($category->parent_id)->toBeNull()
-        ->and($category->children()->pluck('name')->all())->toBe(['Orientamento Specialistico']);
+    expect($aplWorkflow->criteria)->toHaveCount(1)
+        ->and($aplWorkflow->criteria->first()->field)->toBe('product_category_branch_id')
+        ->and($aplWorkflow->criteria->first()->value_id)->toBe($aplCategory->id)
+        ->and($aplCategory->parent_id)->toBeNull()
+        ->and($aplCategory->children()->pluck('name')->all())->toBe(['Orientamento Specialistico']);
 
-    $statuses = QuoteWorkflowStatus::query()
-        ->where('quote_workflow_id', $workflow->id)
+    $aplStatuses = QuoteWorkflowStatus::query()
+        ->where('quote_workflow_id', $aplWorkflow->id)
         ->orderBy('sort_order')
         ->get();
 
     // The pinned rows anchor the set: `open` first, the two closed outcomes
     // last, so "Assegnato"/"Percorso 101" sit at the tail rather than mid-list.
-    expect($statuses->pluck('name')->all())->toBe([
+    expect($aplStatuses->pluck('name')->all())->toBe([
         'Nuovo Contatto',
         'Da Richiamare',
         'Attesa esito SFL/ADI',
@@ -253,25 +223,22 @@ it('seeds the APL pick list on the APL branch (user directive 2026-09-07)', func
 
     // "Assegnato" is the block's ONLY positive outcome, so it takes over the
     // pinned closed_won row; every other closed state is a loss.
-    expect($statuses->pluck('group')->map(fn (WorkflowStatusGroup $group): string => $group->value)->countBy()->sortKeys()->all())
+    expect($aplStatuses->pluck('group')->map(fn (WorkflowStatusGroup $group): string => $group->value)->countBy()->sortKeys()->all())
         ->toBe([
             WorkflowStatusGroup::ClosedLost->value => 13,
             WorkflowStatusGroup::ClosedWon->value => 1,
             WorkflowStatusGroup::Open->value => 6,
         ]);
 
-    $assegnato = $statuses->firstWhere('name', 'Assegnato');
+    $assegnato = $aplStatuses->firstWhere('name', 'Assegnato');
 
     expect($assegnato->system_key)->toBe('closed_won')
         ->and($assegnato->color)->toBe('green')
-        ->and($statuses->firstWhere('name', 'Percorso 101')->system_key)->toBe('closed_lost')
-        ->and($statuses->first()->system_key)->toBe('open');
-});
+        ->and($aplStatuses->firstWhere('name', 'Percorso 101')->system_key)->toBe('closed_lost')
+        ->and($aplStatuses->first()->system_key)->toBe('open');
 
-it('classifies each status from the sheet legend (2026-09-08 revision)', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $byName = function (string $workflowName): Collection {
+    // was: 'classifies each status from the sheet legend (2026-09-08 revision)'
+    $statusesNamedIn = function (string $workflowName): Collection {
         $workflow = QuoteWorkflow::query()->where('name', $workflowName)->firstOrFail();
 
         return QuoteWorkflowStatus::query()
@@ -280,38 +247,35 @@ it('classifies each status from the sheet legend (2026-09-08 revision)', functio
             ->keyBy('name');
     };
 
-    $statuses = $byName('GOL - Lombardia');
+    $golLegendStatuses = $statusesNamedIn('GOL - Lombardia');
 
     // No fill: "Aperto".
-    expect($statuses['In Standby']->group)->toBe(WorkflowStatusGroup::Open)
-        ->and($statuses['In Standby']->color)->toBe('slate')
+    expect($golLegendStatuses['In Standby']->group)->toBe(WorkflowStatusGroup::Open)
+        ->and($golLegendStatuses['In Standby']->color)->toBe('slate')
         // Azzurro: "Potenziali Prossimi Associati" — the working phase.
-        ->and($statuses['Attesa Attivazione DOTE']->group)->toBe(WorkflowStatusGroup::Pending)
-        ->and($statuses['Attesa Attivazione DOTE']->color)->toBe('blue')
+        ->and($golLegendStatuses['Attesa Attivazione DOTE']->group)->toBe(WorkflowStatusGroup::Pending)
+        ->and($golLegendStatuses['Attesa Attivazione DOTE']->color)->toBe('blue')
         // Verde chiaro: "Associati del giorno/settimana/mese".
-        ->and($statuses['Associato SI _ NOI']->group)->toBe(WorkflowStatusGroup::ClosedWon)
-        ->and($statuses['Associato SI _ NOI']->color)->toBe('green')
+        ->and($golLegendStatuses['Associato SI _ NOI']->group)->toBe(WorkflowStatusGroup::ClosedWon)
+        ->and($golLegendStatuses['Associato SI _ NOI']->color)->toBe('green')
         // Pesca: "Chiuso".
-        ->and($statuses['Irreperibile']->group)->toBe(WorkflowStatusGroup::ClosedLost)
-        ->and($statuses['Irreperibile']->color)->toBe('red');
+        ->and($golLegendStatuses['Irreperibile']->group)->toBe(WorkflowStatusGroup::ClosedLost)
+        ->and($golLegendStatuses['Irreperibile']->color)->toBe('red');
 
     // Verde acceso, the sheet's own "solo per ok da caricare": the ONE state
     // painted `validated`, and a plain custom row — no system key is pinned to
     // that group (user directive 2026-08-07).
-    $autoimpiego = $byName('Autoimpiego');
+    $autoimpiegoLegendStatuses = $statusesNamedIn('Autoimpiego');
 
-    expect($autoimpiego['OK_Da Caricare']->group)->toBe(WorkflowStatusGroup::Validated)
-        ->and($autoimpiego['OK_Da Caricare']->color)->toBe('emerald')
-        ->and($autoimpiego['OK_Da Caricare']->system_key)->toBeNull();
+    expect($autoimpiegoLegendStatuses['OK_Da Caricare']->group)->toBe(WorkflowStatusGroup::Validated)
+        ->and($autoimpiegoLegendStatuses['OK_Da Caricare']->color)->toBe('emerald')
+        ->and($autoimpiegoLegendStatuses['OK_Da Caricare']->system_key)->toBeNull();
 
     // Never note-requiring: the sheet carries no such marker.
-    expect($statuses->pluck('requires_note')->unique()->all())->toBe([false]);
-});
+    expect($golLegendStatuses->pluck('requires_note')->unique()->all())->toBe([false]);
 
-it('splits Orientamento from APL-Orientamento, which the sheet paints differently', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $status = function (string $workflowName, string $statusName): ?QuoteWorkflowStatus {
+    // was: 'splits Orientamento from APL-Orientamento, which the sheet paints differently'
+    $statusNamedIn = function (string $workflowName, string $statusName): ?QuoteWorkflowStatus {
         $workflow = QuoteWorkflow::query()->where('name', $workflowName)->firstOrFail();
 
         return QuoteWorkflowStatus::query()
@@ -321,20 +285,17 @@ it('splits Orientamento from APL-Orientamento, which the sheet paints differentl
     };
 
     // Campania keeps the sheet's own "APL-Orientamento", pesca: a closed loss.
-    expect($status('GOL - Campania', 'APL-Orientamento')->group)->toBe(WorkflowStatusGroup::ClosedLost)
-        ->and($status('GOL - Campania', 'Orientamento'))->toBeNull();
+    expect($statusNamedIn('GOL - Campania', 'APL-Orientamento')->group)->toBe(WorkflowStatusGroup::ClosedLost)
+        ->and($statusNamedIn('GOL - Campania', 'Orientamento'))->toBeNull();
 
     // Lazio and Sicilia call it "Orientamento" and paint it azzurro: pending.
     foreach (['GOL - Lazio', 'GOL - Sicilia'] as $workflowName) {
-        expect($status($workflowName, 'Orientamento')->group)->toBe(WorkflowStatusGroup::Pending, $workflowName)
-            ->and($status($workflowName, 'APL-Orientamento'))->toBeNull($workflowName);
+        expect($statusNamedIn($workflowName, 'Orientamento')->group)->toBe(WorkflowStatusGroup::Pending, $workflowName)
+            ->and($statusNamedIn($workflowName, 'APL-Orientamento'))->toBeNull($workflowName);
     }
-});
 
-it('scopes the descriptions per block, so one name reads differently per category', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $descriptionOf = function (string $workflowName, string $statusName): string {
+    // was: 'scopes the descriptions per block, so one name reads differently per category'
+    $descriptionOfStatus = function (string $workflowName, string $statusName): string {
         $workflow = QuoteWorkflow::query()->where('name', $workflowName)->firstOrFail();
 
         return QuoteWorkflowStatus::query()
@@ -343,43 +304,94 @@ it('scopes the descriptions per block, so one name reads differently per categor
             ->value('description');
     };
 
-    expect($descriptionOf('GOL - Molise', 'Da Richiamare'))
+    expect($descriptionOfStatus('GOL - Molise', 'Da Richiamare'))
         ->toStartWith('Contatto da ricontattare per completare la lavorazione')
-        ->and($descriptionOf('Autoimpiego', 'Da Richiamare'))
+        ->and($descriptionOfStatus('Autoimpiego', 'Da Richiamare'))
         ->toStartWith('Candidato da ricontattare per completare la lavorazione')
-        ->and($descriptionOf('Consulenza', 'Da Richiamare'))
+        ->and($descriptionOfStatus('Consulenza', 'Da Richiamare'))
         ->toStartWith('Contatto da ricontattare per fornire informazioni');
-});
 
-it('gives the regions sharing one column the same status list', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $names = static fn (string $workflowName): array => QuoteWorkflowStatus::query()
+    // was: 'gives the regions sharing one column the same status list'
+    $namesOfColumn = static fn (string $workflowName): array => QuoteWorkflowStatus::query()
         ->whereIn('quote_workflow_id', QuoteWorkflow::query()->where('name', $workflowName)->select('id'))
         ->orderBy('sort_order')
         ->pluck('name')
         ->all();
 
-    $molise = $names('GOL - Molise');
+    $moliseNames = $namesOfColumn('GOL - Molise');
 
     // Abruzzo has no column of its own: it was bound to the same list
     // off-sheet (user directive 2026-09-08).
     foreach (['GOL - Puglia', 'GOL - Calabria', 'GOL - Basilicata', 'GOL - Abruzzo'] as $workflowName) {
-        expect($names($workflowName))->toBe($molise, $workflowName);
+        expect($namesOfColumn($workflowName))->toBe($moliseNames, $workflowName);
     }
 
     // Autoimpiego and Yisu share the "uguale per tutte le regioni" block too.
-    expect($names('Yisu'))->toBe($names('Autoimpiego'));
-});
+    expect($namesOfColumn('Yisu'))->toBe($namesOfColumn('Autoimpiego'));
 
-it('leaves the categories absent from the sheet on the global default set', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
+    // was: 'leaves the categories absent from the sheet on the global default set'
     // No column in the sheet: no workflow, so their opportunities fall back to
     // the global default set (QuoteWorkflowResolver). "DIL" left this list on
     // 2026-09-10: block 5 of the sheet gave it a column of its own.
     foreach (['Formazione', 'Trattative in Corso', 'Presa Appuntamenti'] as $categoryName) {
         expect(QuoteWorkflow::query()->where('name', $categoryName)->exists())->toBeFalse($categoryName);
+    }
+
+    // was: 'seeds the DIL set on the DIL branch, pinned rows around the column'
+    $dilCategory = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
+    $dilWorkflow = QuoteWorkflow::query()->where('name', 'DIL')->with('criteria')->firstOrFail();
+
+    // Matched on the whole BRANCH, like Consulenza/APL (user directive
+    // 2026-09-17): DIL is a container, its courses sit on "DIL - Lombardia".
+    expect($dilWorkflow->criteria)->toHaveCount(1)
+        ->and($dilWorkflow->criteria->first()->field)->toBe(WorkflowStatusCatalogue::BRANCH_CRITERION_FIELD)
+        ->and($dilWorkflow->criteria->first()->value_id)->toBe($dilCategory->id);
+
+    $dilStatuses = QuoteWorkflowStatus::query()
+        ->where('quote_workflow_id', $dilWorkflow->id)
+        ->orderBy('sort_order')
+        ->get();
+
+    $dilAll = WorkflowStatusCatalogue::statusesFor('DIL');
+    $dilCustom = WorkflowStatusCatalogue::customStatusesFor('DIL');
+
+    // Every row of the column once — three promoted onto the pinned system
+    // rows, the rest custom between them. The column classifies nothing as
+    // validated, which is a group and not a system row.
+    expect($dilStatuses)->toHaveCount(count($dilAll))
+        ->and(count($dilCustom))->toBe(count($dilAll) - 3)
+        ->and($dilStatuses->first()->system_key)->toBe('open')
+        ->and($dilStatuses->first()->name)->toBe('Nuovo Contatto')
+        ->and($dilStatuses->slice(-2)->pluck('system_key')->all())->toBe(['closed_won', 'closed_lost'])
+        ->and($dilStatuses->slice(-2)->pluck('name')->all())->toBe(['Associato SI _ NOI', 'Non interessato/a'])
+        ->and($dilStatuses->pluck('system_key')->filter()->values()->all())->not->toContain('validated');
+
+    expect($dilStatuses->slice(1, count($dilCustom))->pluck('name')->values()->all())
+        ->toBe(array_column($dilCustom, 'name'));
+
+    // The CPI confirmation every region carries is absent from this column.
+    expect($dilStatuses->pluck('name')->all())->not->toContain('OK App. Fissato CPI');
+
+    // Step 2: re-seed — natural key (name / signature), no duplicates.
+    // was: 'provisions one active workflow per catalogue category, idempotently'
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $expectedCategories = array_keys(WorkflowStatusCatalogue::WORKFLOWS);
+
+    expect(QuoteWorkflow::query()->count())->toBe(count($expectedCategories));
+
+    foreach ($expectedCategories as $categoryName) {
+        $reseededWorkflow = QuoteWorkflow::query()->where('name', $categoryName)->with('criteria')->first();
+        $reseededCategory = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
+
+        expect($reseededWorkflow)->not->toBeNull($categoryName)
+            ->and($reseededWorkflow->is_active)->toBeTrue($categoryName)
+            // Matched on its own category alone — by exact category, or by
+            // whole branch for the categories that declare it (spec 0092).
+            ->and($reseededWorkflow->criteria)->toHaveCount(1, $categoryName)
+            ->and($reseededWorkflow->criteria->first()->field)
+            ->toBe(WorkflowStatusCatalogue::criterionFieldFor($categoryName), $categoryName)
+            ->and($reseededWorkflow->criteria->first()->value_id)->toBe($reseededCategory->id, $categoryName);
     }
 });
 
@@ -419,42 +431,4 @@ it('transcribes the DIL column of the sheet, its duplicated row folded', functio
         ['Autofinanziato', WorkflowStatusGroup::ClosedLost->value],
         ['In Standby', WorkflowStatusGroup::Open->value],
     ]);
-});
-
-it('seeds the DIL set on the DIL branch, pinned rows around the column', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $dil = ProductCategory::query()->where('name', 'DIL')->firstOrFail();
-    $workflow = QuoteWorkflow::query()->where('name', 'DIL')->with('criteria')->firstOrFail();
-
-    // Matched on the whole BRANCH, like Consulenza/APL (user directive
-    // 2026-09-17): DIL is a container, its courses sit on "DIL - Lombardia".
-    expect($workflow->criteria)->toHaveCount(1)
-        ->and($workflow->criteria->first()->field)->toBe(WorkflowStatusCatalogue::BRANCH_CRITERION_FIELD)
-        ->and($workflow->criteria->first()->value_id)->toBe($dil->id);
-
-    $statuses = QuoteWorkflowStatus::query()
-        ->where('quote_workflow_id', $workflow->id)
-        ->orderBy('sort_order')
-        ->get();
-
-    $all = WorkflowStatusCatalogue::statusesFor('DIL');
-    $custom = WorkflowStatusCatalogue::customStatusesFor('DIL');
-
-    // Every row of the column once — three promoted onto the pinned system
-    // rows, the rest custom between them. The column classifies nothing as
-    // validated, which is a group and not a system row.
-    expect($statuses)->toHaveCount(count($all))
-        ->and(count($custom))->toBe(count($all) - 3)
-        ->and($statuses->first()->system_key)->toBe('open')
-        ->and($statuses->first()->name)->toBe('Nuovo Contatto')
-        ->and($statuses->slice(-2)->pluck('system_key')->all())->toBe(['closed_won', 'closed_lost'])
-        ->and($statuses->slice(-2)->pluck('name')->all())->toBe(['Associato SI _ NOI', 'Non interessato/a'])
-        ->and($statuses->pluck('system_key')->filter()->values()->all())->not->toContain('validated');
-
-    expect($statuses->slice(1, count($custom))->pluck('name')->values()->all())
-        ->toBe(array_column($custom, 'name'));
-
-    // The CPI confirmation every region carries is absent from this column.
-    expect($statuses->pluck('name')->all())->not->toContain('OK App. Fissato CPI');
 });

@@ -24,13 +24,41 @@ $formazione = fn (): ProductCategory => ProductCategory::query()
 
 $apl = fn (): ProductCategory => ProductCategory::query()->where('name', 'APL')->firstOrFail();
 
-it('leaves the categories unassigned, without failing, when the functions are absent', function () use ($formazione, $apl): void {
-    // No import ran: the legacy business functions do not exist.
+/**
+ * One scenario instead of three: the catalogue seeder costs ~1s per run, and
+ * the "APL" track below never touches "Formazione"'s row, so the baseline
+ * (no function imported), the single link and its idempotent re-run share one
+ * seed instead of three.
+ */
+it('leaves both roots unassigned with no imported function, then links only "APL" once its function exists, without ever touching "Formazione"', function () use ($formazione, $apl): void {
+    // Baseline: no import ran, the legacy business functions do not exist
+    // (was: 'leaves the categories unassigned, without failing, when the functions are absent').
     test()->seed(QualificaCatalogSeeder::class);
 
     expect(BusinessFunction::query()->count())->toBe(0)
         ->and($formazione()->business_function_id)->toBeNull()
         ->and($apl()->business_function_id)->toBeNull();
+
+    // Only one of the two functions made it through the legacy import
+    // (was: 'links each category independently, so a missing function never blocks the other').
+    $function = BusinessFunction::factory()->create(['name' => 'APL']);
+
+    test()->seed(QualificaBusinessFunctionLinkSeeder::class);
+
+    expect($apl()->business_function_id)->toBe($function->id)
+        ->and($formazione()->business_function_id)->toBeNull();
+
+    // Idempotent re-run: already linked, no change; the sibling subcategories
+    // and the Consulenza root keep resolving nothing of their own
+    // (was: 'assigns the "APL" root to the function of the same name, idempotently').
+    test()->seed(QualificaBusinessFunctionLinkSeeder::class);
+
+    expect($apl()->business_function_id)->toBe($function->id)
+        ->and($apl()->businessFunction->name)->toBe('APL')
+        ->and(ProductCategory::query()->where('name', 'Orientamento Specialistico')->value('business_function_id'))
+        ->toBeNull()
+        ->and(ProductCategory::query()->whereNull('parent_id')->where('name', 'Consulenza')->value('business_function_id'))
+        ->toBeNull();
 });
 
 it('assigns the root once the imported function exists, idempotently', function () use ($formazione): void {
@@ -80,34 +108,4 @@ it('picks the lowest id when the legacy catalogue holds the name twice', functio
     test()->seed(QualificaBusinessFunctionLinkSeeder::class);
 
     expect($formazione()->business_function_id)->toBe($first->id);
-});
-
-it('assigns the "APL" root to the function of the same name, idempotently', function () use ($apl): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $function = BusinessFunction::factory()->create(['name' => 'APL']);
-
-    test()->seed(QualificaBusinessFunctionLinkSeeder::class);
-    test()->seed(QualificaBusinessFunctionLinkSeeder::class); // re-run: already linked, no change.
-
-    // The row sits on the APL root; its child carries none — it resolves the
-    // function own-or-inherited — and no other branch is touched.
-    expect($apl()->business_function_id)->toBe($function->id)
-        ->and($apl()->businessFunction->name)->toBe('APL')
-        ->and(ProductCategory::query()->where('name', 'Orientamento Specialistico')->value('business_function_id'))
-        ->toBeNull()
-        ->and(ProductCategory::query()->whereNull('parent_id')->where('name', 'Consulenza')->value('business_function_id'))
-        ->toBeNull();
-});
-
-it('links each category independently, so a missing function never blocks the other', function () use ($formazione, $apl): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    // Only one of the two functions made it through the legacy import.
-    $function = BusinessFunction::factory()->create(['name' => 'APL']);
-
-    test()->seed(QualificaBusinessFunctionLinkSeeder::class);
-
-    expect($apl()->business_function_id)->toBe($function->id)
-        ->and($formazione()->business_function_id)->toBeNull();
 });

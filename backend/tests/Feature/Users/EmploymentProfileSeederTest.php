@@ -26,13 +26,20 @@ uses(RefreshDatabase::class);
 // Seeder
 // ---------------------------------------------------------------------------
 
-it('seeds at least 2 managers and every other seeded user reports to one or more of them (no self-reference)', function () {
+/**
+ * Both scenarios below start from the exact same pre-seed state (no
+ * companies/sites/categories seeded beforehand) and only read after a
+ * single `DemoEmploymentProfileSeeder` run, so they share that run instead
+ * of paying its cost twice.
+ */
+it('seeds the manager hierarchy and leaves lookup-dependent columns empty when no lookups exist', function () {
     $this->seed(RolePermissionSeeder::class);
     $this->seed(DemoRolesSeeder::class);
     $this->seed(DemoUsersSeeder::class);
 
     $this->seed(DemoEmploymentProfileSeeder::class);
 
+    // was: 'seeds at least 2 managers and every other seeded user reports to one or more of them (no self-reference)'
     $managers = EmploymentProfile::where('is_manager', true)->get();
     expect($managers->count())->toBeGreaterThanOrEqual(2);
 
@@ -57,6 +64,11 @@ it('seeds at least 2 managers and every other seeded user reports to one or more
     // Spec 0166 D-2: at least one demo subordinate reports to more than one
     // manager.
     expect($subordinates->contains(fn (EmploymentProfile $profile): bool => count($profile->reportsToIds) > 1))->toBeTrue();
+
+    // was: 'leaves the company FK, the site membership and the competence rows empty when no lookups are seeded'
+    expect(EmploymentProfile::whereNotNull('company_id')->count())->toBe(0);
+    expect(EmploymentProfile::has('operationalSites')->count())->toBe(0);
+    expect(EmploymentProfile::has('productLines')->count())->toBe(0);
 });
 
 it('fills the company FK and the site membership pivot from the seeded lookups', function () {
@@ -86,18 +98,6 @@ it('fills the company FK and the site membership pivot from the seeded lookups',
                 $profile->primaryOperationalSiteId === null ? 0 : 1
             );
         });
-});
-
-it('leaves the company FK, the site membership and the competence rows empty when no lookups are seeded', function () {
-    $this->seed(RolePermissionSeeder::class);
-    $this->seed(DemoRolesSeeder::class);
-    $this->seed(DemoUsersSeeder::class);
-
-    $this->seed(DemoEmploymentProfileSeeder::class);
-
-    expect(EmploymentProfile::whereNotNull('company_id')->count())->toBe(0);
-    expect(EmploymentProfile::has('operationalSites')->count())->toBe(0);
-    expect(EmploymentProfile::has('productLines')->count())->toBe(0);
 });
 
 /**
@@ -169,31 +169,13 @@ it('does not seed competence rows on categories that are not selectable', functi
         ->and(EmploymentProductLine::count())->toBeGreaterThanOrEqual(1);
 });
 
-it('is idempotent — re-running does not duplicate employment rows, site memberships nor competence rows', function () {
-    $this->seed(RolePermissionSeeder::class);
-    $this->seed(DemoRolesSeeder::class);
-    $this->seed(DemoUsersSeeder::class);
-    OperationalSite::factory()->count(4)->create();
-    ProductCategory::factory()->count(3)->create([
-        'business_function_id' => BusinessFunction::factory()->create()->id,
-    ]);
-    $this->seed(DemoEmploymentProfileSeeder::class);
-    $countBefore = EmploymentProfile::count();
-    $membershipsBefore = DB::table('employment_profile_operational_site')->count();
-    $linesBefore = EmploymentProductLine::count();
-
-    $this->seed(DemoEmploymentProfileSeeder::class);
-
-    expect(EmploymentProfile::count())->toBe($countBefore);
-    expect(DB::table('employment_profile_operational_site')->count())->toBe($membershipsBefore);
-    expect(EmploymentProductLine::count())->toBe($linesBefore);
-});
-
 /**
- * AC-019 (spec 0129): re-seeding twice never duplicates rows, and the
- * canonical demo account always ends up with the wildcard flag.
+ * AC-019 (spec 0129): merges the two idempotency scenarios — the second's
+ * seeder chain (with `DemoUserSeeder`) is a strict superset of the first's,
+ * and both only assert on relative "before vs after the 2nd run" snapshots,
+ * so a shared setup and a single re-seed pair cannot change either result.
  */
-it('0129 AC-019: re-seeding twice keeps the same row count and always yields a profile with the wildcard flag', function () {
+it('is idempotent — re-running twice never duplicates rows and keeps the wildcard flag on the canonical demo account', function () {
     $this->seed(RolePermissionSeeder::class);
     $this->seed(DemoRolesSeeder::class);
     $this->seed(DemoUserSeeder::class);
@@ -204,10 +186,18 @@ it('0129 AC-019: re-seeding twice keeps the same row count and always yields a p
     ]);
 
     $this->seed(DemoEmploymentProfileSeeder::class);
+    $countBefore = EmploymentProfile::count();
+    $membershipsBefore = DB::table('employment_profile_operational_site')->count();
     $linesBefore = EmploymentProductLine::count();
 
     $this->seed(DemoEmploymentProfileSeeder::class);
 
+    // was: 'is idempotent — re-running does not duplicate employment rows, site memberships nor competence rows'
+    expect(EmploymentProfile::count())->toBe($countBefore);
+    expect(DB::table('employment_profile_operational_site')->count())->toBe($membershipsBefore);
+    expect(EmploymentProductLine::count())->toBe($linesBefore);
+
+    // was: '0129 AC-019: re-seeding twice keeps the same row count and always yields a profile with the wildcard flag'
     expect(EmploymentProductLine::count())->toBe($linesBefore);
     expect(EmploymentProfile::where('covers_all_product_categories', true)->count())->toBeGreaterThanOrEqual(1);
     expect(User::where('email', 'demo@app.com')->first()?->employment?->covers_all_product_categories)->toBeTrue();
