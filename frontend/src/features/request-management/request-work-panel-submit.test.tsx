@@ -92,12 +92,12 @@ function legacyVatPanel(): RequestWorkPanelWithPermissions {
   }
 }
 
-function renderPanel(id = 4001) {
+function renderPanel(id = 4001, onSaved?: () => void) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <ConfirmDialogProvider>
-        <RequestWorkPanelScreen id={id} />
+        <RequestWorkPanelScreen id={id} onSaved={onSaved} />
       </ConfirmDialogProvider>
     </QueryClientProvider>,
   )
@@ -140,6 +140,42 @@ describe('RequestWorkPanelScreen — a submit the panel cannot send', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[1])
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
+  })
+
+  /**
+   * User directive 2026-09-28: a saved request is left, the host takes the
+   * operator back to the table (whose category tab is persisted).
+   */
+  it('hands control back to the host once the save lands', async () => {
+    const stored = panel()
+    fetchRequestWorkPanelMock.mockResolvedValue(stored)
+    updateRequestWorkMock.mockResolvedValue(stored)
+    const onSaved = vi.fn()
+
+    renderPanel(4001, onSaved)
+
+    await waitFor(() => expect(screen.getByLabelText('Email')).toHaveValue('client@acme.test'))
+
+    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '+39 02 1234567' } })
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+  })
+
+  it('keeps the operator on the panel when the server refuses the save', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel())
+    updateRequestWorkMock.mockRejectedValue(new Error('network'))
+    const onSaved = vi.fn()
+
+    renderPanel(4001, onSaved)
+
+    await waitFor(() => expect(screen.getByLabelText('Email')).toHaveValue('client@acme.test'))
+
+    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '+39 02 1234567' } })
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+
+    await within(screen.getByRole('banner')).findByRole('alert')
+    expect(onSaved).not.toHaveBeenCalled()
   })
 
   /**

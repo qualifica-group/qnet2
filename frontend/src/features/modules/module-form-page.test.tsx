@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import i18n from '@/i18n'
 import ModuleFormPage from '@/features/modules/module-form-page'
@@ -18,6 +18,8 @@ vi.mock('@/features/modules/module-registry', () => ({
           // The one module whose FormScreen renders its own visible heading
           // (user directive 2026-08-03): the host must not render a second.
           formOwnsHeader: domain === 'request-management',
+          // User directive 2026-09-28: a created request lands back on the table.
+          returnToListOnSave: domain === 'request-management',
           domain,
           basePath: `/${domain}`,
           defaultMode: 'page',
@@ -25,12 +27,17 @@ vi.mock('@/features/modules/module-registry', () => ({
           DetailScreen: ({ id }: { id: number }) => <div>detail-{id}</div>,
           FormScreen: ({
             mode,
+            onSuccess,
           }: {
             mode: { type: string; id?: number; params?: Record<string, string | number> }
+            onSuccess: (id: number) => void
           }) => (
             <div>
               <div>{`form-${mode.type}${mode.type === 'edit' ? `-${mode.id}` : ''}`}</div>
               {mode.type === 'create' && <div>{`params:${JSON.stringify(mode.params ?? null)}`}</div>}
+              <button type="button" onClick={() => onSuccess(9)}>
+                save
+              </button>
             </div>
           ),
         }
@@ -122,5 +129,32 @@ describe('ModuleFormPage', () => {
     expect(
       screen.queryByText('Client details and product lines of the new request.'),
     ).not.toBeInTheDocument()
+  })
+
+  describe('after a successful save', () => {
+    function renderSaveAt(domain: string) {
+      render(
+        <MemoryRouter initialEntries={[`/${domain}/new`]}>
+          <Routes>
+            <Route path={`/${domain}`} element={<div>list-page</div>} />
+            <Route path={`/${domain}/new`} element={<ModuleFormPage domain={domain} />} />
+            <Route path={`/${domain}/:id`} element={<div>detail-page</div>} />
+          </Routes>
+        </MemoryRouter>,
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'save' }))
+    }
+
+    it("opens the saved record's detail page by default", () => {
+      renderSaveAt('projects')
+
+      expect(screen.getByText('detail-page')).toBeInTheDocument()
+    })
+
+    it('goes back to the list for a returnToListOnSave module', () => {
+      renderSaveAt('request-management')
+
+      expect(screen.getByText('list-page')).toBeInTheDocument()
+    })
   })
 })

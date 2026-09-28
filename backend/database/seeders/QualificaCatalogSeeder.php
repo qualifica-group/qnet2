@@ -12,6 +12,7 @@ use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\CatalogRootRules;
 use Database\Seeders\QualificaCatalog\CategoryInheritanceRules;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ReportColumnsCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
@@ -33,7 +34,9 @@ use Illuminate\Database\Seeder;
  *     rules are classified on the third level, today the `GOL - <Regione>`
  *     rows, the `Autofinanziato - <Regione>` rows and "DIL - Lombardia" —
  *     plus the subcategories that host their offer directly, "Autoimpiego",
- *     "Yisu" and "Orientamento Specialistico" (see SELECTABLE_SUBCATEGORIES).
+ *     "Yisu" and "Orientamento Specialistico", and the two Consulenza leaves
+ *     "Trattative in Corso" and "Presa Appuntamenti" (see
+ *     SELECTABLE_SUBCATEGORIES).
  *     The "Formazione" branch also carries its OFFERTA-context attributes (spec 0061/0084) — the
  *     "Dati corso" pair of QualificaCatalog\CourseDataAttributeCatalogue and
  *     the "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue,
@@ -201,9 +204,16 @@ class QualificaCatalogSeeder extends Seeder
      * catalogue that files the products, so a rename breaks loudly instead of
      * silently demoting a node.
      *
+     * The two Consulenza leaves are targets too (user directive 2026-09-28):
+     * they have no children to group, so the opportunities are classified on
+     * them directly. No product is seeded there, unlike the single-offer ones.
+     *
      * @var list<string>
      */
-    private const array SELECTABLE_SUBCATEGORIES = CatalogProducts::SINGLE_OFFER_CATEGORIES;
+    private const array SELECTABLE_SUBCATEGORIES = [
+        ...CatalogProducts::SINGLE_OFFER_CATEGORIES,
+        ...ContactProcessingAttributeCatalogue::CONSULTING_CATEGORIES,
+    ];
 
     /**
      * OFFERTA-context attributes (spec 0061/0084): category name => list of

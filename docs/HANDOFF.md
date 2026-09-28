@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GESTIONE RICHIESTE: RITORNO ALLA TABELLA DOPO IL SALVATAGGIO — NON COMMITTATO (2026-09-28)
+
+- Direttiva utente 2026-09-28: dopo creazione o modifica di una richiesta il sistema torna alla tabella, sul tab
+  categoria di partenza (persistito in localStorage da `useRequestManagementCategoryPreference`, nessun cambio li').
+- `ModuleDetailScreenProps.onSaved?` (nuovo, `features/modules/types.ts`): un DetailScreen che salva da se'
+  (solo il work panel) lo chiama; `useModuleOpener` lo cabla nel ramo `view` -> chiude lo Sheet + `onSaved` del caller.
+- `ModuleRegistryEntry.returnToListOnSave?` (nuovo): `ModuleFormPage` naviga a `basePath` invece che al dettaglio;
+  attivo solo su `request-management` (create in page mode). In modal il create chiudeva gia' lo Sheet.
+- `RequestWorkPanelScreen`/`useRequestWorkForm(panel, onSaved?)`: `onSaved` dopo il PATCH riuscito (non su 422/errore).
+  Le pagine dettaglio `request-management/:id` e `enrollee-management/:id` passano `navigate(LIST_PATH)`
+  (Gestione Iscritti condivide il pannello: stesso comportamento).
+- Guide in-app IT/EN `request-management` + manuale Claude Docs (passi "Crea richiesta" e "Salva") aggiornati.
+- Test: `request-work-panel-submit` (+2), `module-form-page` (+2), `use-module-opener` (+1). Vitest
+  request-management/pages/modules/help verdi (534 + 104), ESLint pulito, `tsc -b --force` pulito.
+
 ## SPEC 0174 MIGRAZIONE COSTI LEGACY -> PRODOTTI SOLO COSTO — NON COMMITTATO (2026-09-28)
 
 - Spec `docs/specs/0174-legacy-cost-products-migration.xml` (decisioni utente D-1/D-2/D-3).
@@ -25,6 +40,16 @@
   Endpoint legacy provato via tinker sul DB locale (non via HTTP: `route:list` legacy rotto da errore preesistente).
 - Guide IT/EN `migrations` + manuale Claude Docs (rev 111, sezione Migrazioni) aggiornati.
 - Da fare in locale: `php artisan migrate`, poi Migrazioni: `vat-rates` prima di `cost-products`.
+
+## SEED PRODUZIONE — "TRATTATIVE IN CORSO" E "PRESA APPUNTAMENTI" SELEZIONABILI — VERDE, NON COMMITTATO (2026-09-28)
+
+- Richiesta: "aggiungere due categorie sotto Consulenza". Esistevano gia' in `QualificaCatalogSeeder::CATALOG` (dal
+  2026-07-28) ma come contenitori; decisione utente: renderle SELEZIONABILI (nome invariato, nessun prodotto seedato).
+- `QualificaCatalogSeeder::SELECTABLE_SUBCATEGORIES` = `CatalogProducts::SINGLE_OFFER_CATEGORIES` +
+  `ContactProcessingAttributeCatalogue::CONSULTING_CATEGORIES`. Il realign delle sottocategorie a ogni run porta a
+  `is_selectable = true` anche i DB gia' seedati (nuovo test dedicato).
+- Test: `QualificaCatalogSeederTest` aggiornato (requisito cambiato) + test di riallineamento. Suite completa parallela:
+  8592 verdi, 1 skipped. Pint pulito. Manuale: nessun impatto (le guide non elencano queste categorie).
 
 ## SEED PRODUZIONE — "NON RISPONDE" RICLASSIFICATO APERTO — VERDE, NON COMMITTATO (2026-09-28)
 

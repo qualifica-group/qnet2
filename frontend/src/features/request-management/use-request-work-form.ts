@@ -120,7 +120,7 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
  * PATCH submit (`buildRequestWorkPayload`), 422 mapped onto each field
  * (accessible triad via `MetaField`/`FormMessage`, frontend.md §10).
  */
-export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
+export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions, onSaved?: () => void) {
   const { t } = useTranslation()
   const module = useRequestModule()
   const queryClient = useQueryClient()
@@ -232,6 +232,7 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions) {
         queryClient.invalidateQueries({ queryKey: opportunityDetailQueryKey(panel.opportunity_id) })
         toast.success(t('requestManagement.workPanel.saved', { defaultValue: 'Working data saved.' }))
         form.reset(buildDefaultValues(updated))
+        onSaved?.()
       } catch (error) {
         if (!applyServerValidationErrors(error, form.setError, errorFields)) {
           setSubmitError(

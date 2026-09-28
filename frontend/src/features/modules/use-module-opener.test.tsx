@@ -35,10 +35,11 @@ vi.mock('@/features/modules/module-registry', () => ({
           basePath: '/projects',
           defaultMode: 'modal',
           labelKey: 'navigation.projects',
-          DetailScreen: ({ id, onEdit }: { id: number; onEdit?: () => void }) => (
+          DetailScreen: ({ id, onEdit, onSaved }: { id: number; onEdit?: () => void; onSaved?: () => void }) => (
             <div>
               <div>{`detail-${id}`}</div>
               {onEdit && <button onClick={onEdit}>detail-edit</button>}
+              {onSaved && <button onClick={onSaved}>detail-save</button>}
             </div>
           ),
           FormScreen: ({
@@ -148,6 +149,17 @@ function renderViewAfterCreateHarness() {
         <ViewAfterCreateHarness />
       </MemoryRouter>
     </QueryClientProvider>,
+  )
+}
+
+/** A `DetailScreen` that saves the record itself (the request work panel): the host leaves the record. */
+function SavedHarness({ onSaved }: { onSaved: () => void }) {
+  const { openView, sheet } = useModuleOpener('projects', { onSaved })
+  return (
+    <div>
+      <button onClick={() => openView({ id: 5 } as TableRow)}>view</button>
+      {sheet}
+    </div>
   )
 }
 
@@ -413,5 +425,24 @@ describe('useModuleOpener', () => {
       expect(screen.getByTestId('location')).toHaveTextContent('/projects/new')
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
+  })
+
+  it('modal mode: a detail screen that saved the record closes the Sheet and notifies the caller', () => {
+    currentMode = 'modal'
+    const onSaved = vi.fn()
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/projects']}>
+          <SavedHarness onSaved={onSaved} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'view' }))
+    fireEvent.click(screen.getByRole('button', { name: 'detail-save' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(onSaved).toHaveBeenCalledTimes(1)
   })
 })

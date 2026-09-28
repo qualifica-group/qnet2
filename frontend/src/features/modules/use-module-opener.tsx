@@ -188,6 +188,13 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
     [onSaved, viewAfterCreate],
   )
 
+  // A `DetailScreen` that saved the record itself (the request work panel):
+  // the record is left, never kept open on top of the refreshed grid.
+  const handleDetailSaved = useCallback(() => {
+    closeSheet()
+    onSaved?.()
+  }, [closeSheet, onSaved])
+
   const openDetailPage = useCallback(
     (path: string) => {
       closeSheet()
@@ -238,6 +245,7 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
               <DetailScreen
                 id={Number(sheetState.row.id)}
                 onEdit={() => setSheetState({ kind: 'edit', row: sheetState.row })}
+                onSaved={handleDetailSaved}
               />
             </>
           )}

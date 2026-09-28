@@ -53,11 +53,12 @@ export default function ModuleFormPage({ domain, variant }: ModuleFormPageProps)
   const isEdit = id !== undefined && !isDuplicate
   const entityId = parseEntityId(id)
 
+  const returnToListOnSave = entry?.returnToListOnSave ?? false
   const onSuccess = useCallback(
     (savedId: number) => {
-      void navigate(`${basePath}/${savedId}`)
+      void navigate(returnToListOnSave ? basePath : `${basePath}/${savedId}`)
     },
-    [navigate, basePath],
+    [navigate, basePath, returnToListOnSave],
   )
 
   const onCancel = useCallback(() => {

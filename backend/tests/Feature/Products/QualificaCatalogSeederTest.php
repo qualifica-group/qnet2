@@ -47,7 +47,6 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
     $containers = [
         'Formazione', 'Consulenza',
         'GOL', 'APL', 'DIL',
-        'Trattative in Corso', 'Presa Appuntamenti',
     ];
     foreach ($containers as $name) {
         expect(ProductCategory::query()->where('name', $name)->value('is_selectable'))
@@ -64,6 +63,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',
         'Orientamento Specialistico',
+        // The two Consulenza leaves (user directive 2026-09-28).
+        'Presa Appuntamenti', 'Trattative in Corso',
         'Yisu',
     ]);
 
@@ -317,6 +318,22 @@ it('realigns a container category seeded as selectable before the flag existed',
 
     expect(ProductCategory::query()->where('name', 'Formazione')->value('is_selectable'))->toBeFalsy()
         ->and(ProductCategory::query()->where('name', 'GOL')->value('is_selectable'))->toBeFalsy();
+});
+
+it('realigns the two Consulenza leaves seeded as containers into selectable ones (user directive 2026-09-28)', function (): void {
+    // The state of an installation seeded by the previous version: both
+    // leaves already there, as containers.
+    $consulenza = ProductCategory::factory()->create(['name' => 'Consulenza', 'is_selectable' => false]);
+
+    foreach (['Trattative in Corso', 'Presa Appuntamenti'] as $name) {
+        ProductCategory::factory()->create(['name' => $name, 'parent_id' => $consulenza->id, 'is_selectable' => false]);
+    }
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect(ProductCategory::query()->where('name', 'Trattative in Corso')->value('is_selectable'))->toBeTruthy()
+        ->and(ProductCategory::query()->where('name', 'Presa Appuntamenti')->value('is_selectable'))->toBeTruthy()
+        ->and(ProductCategory::query()->where('name', 'Consulenza')->value('is_selectable'))->toBeFalsy();
 });
 
 it('never re-selects a third-level node an operator has deliberately turned into a container', function (): void {

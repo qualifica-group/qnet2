@@ -49,7 +49,7 @@ const guide: HelpGuide = {
             "In **Anagrafica cliente** scegli un'**Anagrafica esistente** oppure inserisci un nuovo cliente.",
             'In **Attribuzione** scegli la **Fonte** (obbligatoria) e, se serve, **Segnalatore** e **Sede operativa**.',
             'Compila le **Informazioni aggiuntive**, se presenti.',
-            'Premi **Crea richiesta**.',
+            'Premi **Crea richiesta**: torni alla tabella, sulla scheda categoria che avevi aperto.',
           ],
         },
         {
@@ -82,7 +82,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Premi **Salva**. In fondo trovi le schede **Note**, **Documenti** e **Storico**.',
+          text: 'In fondo trovi le schede **Note**, **Documenti** e **Storico**. Premi **Salva**: torni alla tabella, sulla scheda categoria da cui eri partito (ad esempio **GOL Abruzzo**).',
         },
         {
           type: 'warning',

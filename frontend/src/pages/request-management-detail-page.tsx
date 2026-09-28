@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -20,6 +20,7 @@ const LIST_PATH = '/request-management'
 export default function RequestManagementDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams()
+  const navigate = useNavigate()
   const entityId = parseEntityId(id)
 
   if (entityId === null) {
@@ -40,7 +41,7 @@ export default function RequestManagementDetailPage() {
       />
 
       <div className="flex flex-1 flex-col overflow-hidden rounded-xl border shadow-sm">
-        <RequestWorkPanelScreen id={entityId} />
+        <RequestWorkPanelScreen id={entityId} onSaved={() => void navigate(LIST_PATH)} />
       </div>
     </div>
   )

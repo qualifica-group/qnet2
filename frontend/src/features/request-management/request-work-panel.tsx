@@ -79,6 +79,8 @@ const SOURCE_FIELD = 'source_id'
 /** Props shape matches the module registry's `ModuleDetailScreenProps` (spec 0042), so this mounts as-is as the module's `DetailScreen`. */
 interface RequestWorkPanelScreenProps {
   id: number
+  /** Called after a successful save: the host leaves the panel (spec 0042 `ModuleDetailScreenProps`). */
+  onSaved?: () => void
 }
 
 /** Loading placeholder mirroring the panel's real layout: identity bar + two-column body. */
@@ -119,7 +121,7 @@ export function RequestWorkPanelSkeleton() {
  * actor's `ResourcePermissions` so every field's gating comes from the same
  * server-derived source as everywhere else.
  */
-export function RequestWorkPanelScreen({ id }: RequestWorkPanelScreenProps) {
+export function RequestWorkPanelScreen({ id, onSaved }: RequestWorkPanelScreenProps) {
   const { t } = useTranslation()
   const module = useRequestModule()
   const { data: panel, isLoading, isError, refetch } = useEntityDetail(
@@ -146,23 +148,24 @@ export function RequestWorkPanelScreen({ id }: RequestWorkPanelScreenProps) {
 
   return (
     <ResourcePermissionsProvider permissions={panel.permissions}>
-      <RequestWorkPanelBody panel={panel} />
+      <RequestWorkPanelBody panel={panel} onSaved={onSaved} />
     </ResourcePermissionsProvider>
   )
 }
 
 interface RequestWorkPanelBodyProps {
   panel: RequestWorkPanelWithPermissions
+  onSaved?: () => void
 }
 
-function RequestWorkPanelBody({ panel }: RequestWorkPanelBodyProps) {
+function RequestWorkPanelBody({ panel, onSaved }: RequestWorkPanelBodyProps) {
   const { t } = useTranslation()
   const module = useRequestModule()
   const { canAction, canResource } = useResourcePermissions()
   const canUpdate = canResource('update')
   const canViewActivity = canAction('view_activity')
   const { form, onSubmit, submitError, isSubmitting, vatRatePercentFor, rememberVatRatePercent } =
-    useRequestWorkForm(panel)
+    useRequestWorkForm(panel, onSaved)
   const queryClient = useQueryClient()
   const transfer = useRequestTransfer(panel)
   // Spec 0097 rev-2 D-7/AC-011: the Sede and the operator slot are two

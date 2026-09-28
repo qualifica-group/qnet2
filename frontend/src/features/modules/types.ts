@@ -63,6 +63,13 @@ export interface ModuleDetailScreenProps {
    * edit affordance.
    */
   onEdit?: () => void
+  /**
+   * Called after the screen saved the record itself — only a `DetailScreen`
+   * that is its own edit surface (the request work panel) ever calls it. The
+   * host leaves the record: the Sheet closes (modal), the page navigates back
+   * to the list.
+   */
+  onSaved?: () => void
 }
 
 export interface ModuleFormScreenProps {
@@ -120,6 +127,12 @@ export interface ModuleRegistryEntry {
    * to `false`.
    */
   formOwnsHeader?: boolean
+  /**
+   * When `true`, a successful save on the dedicated form page navigates back
+   * to the list (`basePath`) instead of the saved record's detail page — the
+   * modal host already closes its Sheet either way. Defaults to `false`.
+   */
+  returnToListOnSave?: boolean
   /**
    * Optional extra actions rendered as a real child component in the generic
    * detail page's header, between "Back" and "Edit" (e.g. leads' "Create/Go

@@ -49,7 +49,7 @@ const guide: HelpGuide = {
             'In **Client details** pick an **Existing registry** or enter a new client.',
             'In **Attribution** pick the **Source** (required) and, if needed, **Reporter** and **Operational site**.',
             'Fill in the **Additional information**, if present.',
-            'Press **Create request**.',
+            'Press **Create request**: you go back to the table, on the category tab you had open.',
           ],
         },
         {
@@ -82,7 +82,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Press **Save**. At the bottom you find the **Notes**, **Documents** and **History** tabs.',
+          text: 'At the bottom you find the **Notes**, **Documents** and **History** tabs. Press **Save**: you go back to the table, on the category tab you started from (for example **GOL Abruzzo**).',
         },
         {
           type: 'warning',

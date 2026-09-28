@@ -56,4 +56,7 @@ export const moduleScreen: ModuleRegistryEntry = {
   // on its right (user directive 2026-08-03) — the hosts must not render a
   // second one above it.
   formOwnsHeader: true,
+  // User directive 2026-09-28: a created request lands back on the table
+  // (whose category tab is persisted), not on the new record's page.
+  returnToListOnSave: true,
 }
