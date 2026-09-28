@@ -44,14 +44,12 @@ class TableFilterStateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // `present` (not `required`) so an empty {} is valid: it clears the
-            // saved filters, mirroring an explicit reset.
-            'filterModel' => ['present', 'array'],
+            // Each key is independently OPTIONAL: absent means "leave what is
+            // persisted for it untouched" (see filterModel()/advancedFilters());
+            // present (even `{}`) replaces it. The advanced-filters panel sends
+            // only `advancedFilters`, a column filter change only `filterModel`.
+            'filterModel' => ['sometimes', 'array'],
             'filterModel.*' => ['array'],
-
-            // Advanced filters (spec 0032) are independently OPTIONAL: absent
-            // means "leave the persisted advanced filters untouched" (see
-            // advancedFilters()); present (even `{}`) replaces them.
             'advancedFilters' => ['sometimes', 'nullable', 'array'],
 
             'product_category_id' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
@@ -79,6 +77,12 @@ class TableFilterStateRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            if (! $this->has('filterModel') && ! $this->has('advancedFilters')) {
+                $validator->errors()->add('filterModel', 'Send filterModel, advancedFilters or both.');
+
+                return;
+            }
+
             $filterModel = $this->input('filterModel');
 
             if (! is_array($filterModel)) {
@@ -110,12 +114,17 @@ class TableFilterStateRequest extends FormRequest
     }
 
     /**
-     * The validated filterModel (empty array when none/cleared).
+     * The validated filterModel, or null when the key is ABSENT from the
+     * request (keep the persisted one); an explicit `{}` is `[]` (clear it).
      *
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null
      */
-    public function filterModel(): array
+    public function filterModel(): ?array
     {
+        if (! $this->has('filterModel')) {
+            return null;
+        }
+
         /** @var array<string, mixed> $model */
         $model = $this->validated('filterModel', []);
 

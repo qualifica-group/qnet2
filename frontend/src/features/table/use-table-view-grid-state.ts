@@ -1,8 +1,9 @@
-import { useCallback, useImperativeHandle, useMemo, useState, type Ref } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useMemo, useState, type Ref } from 'react'
 import type { GridApi, GridReadyEvent } from 'ag-grid-community'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { createSsrmDatasource } from '@/features/table/ssrm-datasource'
 import { useTableToolbarState, type TableToolbarState } from '@/features/table/use-table-toolbar-state'
+import { useTableLocalFilters } from '@/features/table/use-table-local-filters'
 import { useTableAdvancedFilters } from '@/features/table/advanced-filters/use-table-advanced-filters'
 import type { UseAdvancedFiltersResult } from '@/features/table/advanced-filters/use-advanced-filters'
 import type { AdvancedFilterDescriptor, AdvancedFilterValues } from '@/features/table/advanced-filters/types'
@@ -142,10 +143,18 @@ export function useTableViewGridState(
   )
   const searchEnabled = searchable.length > 0
 
+  // The quick search and active custom filter kept in the browser across a
+  // reload; column/advanced filters are restored from the config instead.
+  const localFilters = useTableLocalFilters({ domain, productCategoryId, opportunityId, quoteId })
+
   // Client-only toolbar state (search term + ⌘K, floating filters, fullscreen,
   // live row count), owned by a dedicated hook so this component stays a thin
   // orchestrator (engineering.md §6).
-  const toolbar = useTableToolbarState({ gridApi, searchEnabled })
+  const toolbar = useTableToolbarState({
+    gridApi,
+    searchEnabled,
+    initialSearch: localFilters.initial.search,
+  })
 
   // Feeds the toolbar's own "N rows" counter AND, additively, the caller's
   // `onRowCountChanged` (spec 0067 D-9) — composed here so `DataTable` keeps
@@ -163,11 +172,19 @@ export function useTableViewGridState(
     [setRowCount, onRowCountChanged],
   )
 
-  // The domain's active custom filter (spec 0158), in memory only. Built
+  // The domain's active custom filter (spec 0158), restored from the browser. Built
   // BEFORE `useTableAdvancedFilters` so its `notifyExternalChange` can be
   // wired into the panel's `onApplied` below without a callback cycle
   // between the two hooks (see `use-table-custom-filters.ts`).
-  const customFilterState = useCustomFilterState()
+  const customFilterState = useCustomFilterState(localFilters.initial.customFilter)
+
+  // Mirror both into browser storage on every change (clearing removes the entry).
+  const { persist: persistLocalFilters } = localFilters
+  const { searchInput } = toolbar
+  const activeCustomFilter = customFilterState.state
+  useEffect(() => {
+    persistLocalFilters({ search: searchInput, customFilter: activeCustomFilter })
+  }, [persistLocalFilters, searchInput, activeCustomFilter])
 
   // The domain's advanced filter catalog (spec 0032); empty ⇒ the toolbar
   // hides the toggle entirely and the panel never mounts. Draft/applied

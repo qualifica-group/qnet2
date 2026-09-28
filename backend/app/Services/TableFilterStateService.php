@@ -53,26 +53,25 @@ class TableFilterStateService
     }
 
     /**
-     * Persist the actor's applied filterModel (and, optionally, advanced
-     * filters) for this domain (idempotent upsert on (user_id, domain)). Keys
-     * outside the respective allow-list are dropped defensively (the
-     * FormRequest already 422s them).
+     * Persist the actor's applied filterModel and/or advanced filters for
+     * this domain (idempotent upsert on (user_id, domain)). Keys outside the
+     * respective allow-list are dropped defensively (the FormRequest already
+     * 422s them).
      *
-     * `$advancedFilters` is independently optional: null (the key was ABSENT
-     * from the request) leaves the persisted advanced filters untouched; an
-     * array (even empty) replaces them. Both empty after allow-listing clears
-     * the saved state entirely, so there is never an orphan row.
+     * Each argument is independently optional: null (the key was ABSENT from
+     * the request) leaves what is persisted for it untouched; an array (even
+     * empty) replaces it. Both empty after allow-listing clears the saved
+     * state entirely, so there is never an orphan row.
      *
-     * @param  array<string, mixed>  $filterModel
+     * @param  array<string, mixed>|null  $filterModel
      * @param  array<string, mixed>|null  $advancedFilters
      */
-    public function save(TableDefinition $definition, User $actor, array $filterModel, ?array $advancedFilters = null): void
+    public function save(TableDefinition $definition, User $actor, ?array $filterModel, ?array $advancedFilters = null): void
     {
-        $filtered = $this->allowlistFilters($definition, $filterModel);
+        $stored = $filterModel === null || $advancedFilters === null ? $this->rowFor($definition, $actor) : null;
 
-        $filteredAdvanced = $advancedFilters === null
-            ? $this->allowlistAdvanced($definition, $this->rowFor($definition, $actor)?->advanced_filters ?? [])
-            : $this->allowlistAdvanced($definition, $advancedFilters);
+        $filtered = $this->allowlistFilters($definition, $filterModel ?? $stored?->filters ?? []);
+        $filteredAdvanced = $this->allowlistAdvanced($definition, $advancedFilters ?? $stored?->advanced_filters ?? []);
 
         if ($filtered === [] && $filteredAdvanced === []) {
             $this->reset($definition, $actor);

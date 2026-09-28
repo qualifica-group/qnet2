@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TABELLE — FILTRI MANTENUTI AL RELOAD (AVANZATI FIX 422 + RICERCA/PERSONALIZZATO IN BROWSER) — VERDE, COMMITTATO (2026-09-28)
+
+- Richiesta utente: tutte le tabelle AG Grid mantengono i filtri attivi dopo il reload. Filtri di colonna e avanzati
+  erano gia' persistiti lato server (`user_table_filters`); si perdevano ricerca rapida e filtro personalizzato (spec
+  0158, "in memoria"). Attivare un filtro personalizzato azzera i filtri colonna e salva `{}`: al reload la tabella
+  tornava senza alcun filtro. Decisioni utente: persistenza in **localStorage** (non server), ricerca inclusa.
+  Cambia la decisione "non persistito" della spec 0158 per il filtro personalizzato.
+- FE: `features/table/table-local-filters-storage.ts` (chiave `table-filters:<userId>:<domain>:<productCategoryId>:
+  <opportunityId>:<quoteId>`, parse Zod difensivo, entry rimossa quando vuota) + `use-table-local-filters.ts` (legge
+  `AuthContext` direttamente: senza provider nessuna persistenza, i test esistenti non cambiano). Seed iniziale in
+  `useTableToolbarState({ initialSearch })` e `useCustomFilterState(initial)`; effetto di scrittura in
+  `use-table-view-grid-state.ts`. La prima richiesta SSRM e' gia' filtrata. Il cambio tab categoria rimonta la
+  tabella (`key`), quindi la lettura al mount basta.
+- Test: `table-local-filters-storage.test.ts`, `table-view-local-filters.test.tsx` (sanity-break verificato);
+  features/table + components/data-table 468/468, ESLint e `tsc -b --force` puliti. Guida `general` IT/EN e manuale
+  Claude Docs aggiornati.
+- BUG trovato in browser (Playwright): i FILTRI AVANZATI non si salvavano mai. Il pannello invia solo
+  `{advancedFilters}`, ma `TableFilterStateRequest` esigeva `filterModel` (`present`) -> 422 silenzioso. Ora
+  `filterModel` e' `sometimes` come `advancedFilters` (assente = resta il salvato, `{}` = svuota); senza nessuna
+  delle due chiavi -> 422. `TableFilterStateService::save(?array $filterModel, ?array $advancedFilters)`.
+  Test: `tests/Feature/Table/TableFilterStatePartialSaveTest.php` (4, falliti col 422 prima del fix); Table 278/278,
+  Leads/Tasks/Quotes/Opportunities/RequestManagement 211/211, Pint pulito. Verificato in browser su Lead
+  (Fonte + Stato lead restano al reload) e Utenti (ricerca + Ruoli).
+- Da sapere: un filtro personalizzato salvato che referenzia una colonna non piu' filtrabile fa fallire la richiesta
+  righe finche' l'utente non toglie la chip; il logout non svuota le chiavi (sono per utente).
+- APERTO (segnalato, non fatto): `use-advanced-filters.ts` salva con `useSaveTableFilters(domain)` senza scope: sulle
+  tab categoria di Gestione Richieste la cache della tab resta vecchia, e tornando alla tab senza reload riappaiono
+  i filtri avanzati precedenti. Il reload e' corretto.
+
 ## TEMPI DEI TEST — SUITE BACKEND IN PARALLELO, VITEST NODE/JSDOM — VERDE, NON COMMITTATO (2026-09-28)
 
 - Causa: `composer test` = `php artisan test` seriale sotto l'Xdebug di Herd (3.4.0alpha2, mode=debug,develop),

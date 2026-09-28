@@ -28,14 +28,15 @@ export interface UseCustomFilterStateResult {
 }
 
 /**
- * Owns the in-memory (never persisted) state of the domain's active custom
- * filter (spec 0158 "DETTAGLIO CONGELATO" FE section): activating one clears
+ * Owns the state of the domain's active custom filter (spec 0158 "DETTAGLIO
+ * CONGELATO" FE section), seeded from `initial` (the caller's browser-persisted
+ * copy, see `use-table-local-filters.ts`): activating one clears
  * the column/advanced filters via the caller-supplied `mutateOthers`, and a
  * later, independent column/advanced filter change deactivates it again.
  */
-export function useCustomFilterState(): UseCustomFilterStateResult {
-  const [state, setState] = useState<CustomFilterState | null>(null)
-  const stateRef = useRef<CustomFilterState | null>(null)
+export function useCustomFilterState(initial: CustomFilterState | null = null): UseCustomFilterStateResult {
+  const [state, setState] = useState<CustomFilterState | null>(initial)
+  const stateRef = useRef<CustomFilterState | null>(initial)
   const suppressRef = useRef(false)
 
   const activate = useCallback(

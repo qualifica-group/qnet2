@@ -60,7 +60,7 @@ const guide: HelpGuide = {
             ['**Schermo intero**', 'Allarga l’elenco a tutta la finestra; **Esc** per uscire.'],
           ],
         },
-        { type: 'paragraph', text: 'QNet ricorda da solo le colonne e i filtri che hai impostato.' },
+        { type: 'paragraph', text: 'QNet ricorda da solo le colonne e tutti i filtri attivi (di colonna, avanzati, ricerca e filtro personalizzato), anche se ricarichi la pagina. Colonne, filtri di colonna e avanzati valgono su qualsiasi dispositivo; ricerca e filtro personalizzato restano solo sul browser che stai usando.' },
         { type: 'paragraph', text: 'Per conservare una combinazione di filtri, con **Filtri salvati**:' },
         { type: 'steps', items: ['Applica i filtri che ti servono.', 'Apri **Filtri salvati** e scrivi un nome in **Nome vista**.', 'Scegli **Privata** oppure **Condivisa** con i colleghi (serve il permesso "Pubblica filtri condivisi").', 'Premi **Salva vista**. Per riusarla, clicca il suo nome sotto **Le mie viste**, **Preferiti** o **Condivise**.'] },
         { type: 'paragraph', text: 'Da **Filtri salvati** puoi anche creare un **filtro personalizzato**: scegli **Nuovo filtro personalizzato**, componi le condizioni in due gruppi — "Tutte queste condizioni (E)" e "Oppure una di queste (O)" — e premi **Applica**, oppure **Salva vista** per riusarlo. Applicarne uno sostituisce i filtri di colonna e i filtri avanzati; cambiare un filtro di colonna o avanzato lo disattiva. La stella su ogni vista la segna come **preferita**, mostrata in cima all\'elenco.' },

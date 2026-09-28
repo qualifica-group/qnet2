@@ -16,6 +16,8 @@ interface UseTableToolbarStateArgs {
   gridApi: GridApi | null
   /** Whether the domain exposes a global quick-search (drives the ⌘K binding). */
   searchEnabled: boolean
+  /** The search text restored from a previous visit, applied to the very first SSRM request. */
+  initialSearch?: string
 }
 
 export interface TableToolbarState {
@@ -53,13 +55,14 @@ export interface TableToolbarState {
 export function useTableToolbarState({
   gridApi,
   searchEnabled,
+  initialSearch = '',
 }: UseTableToolbarStateArgs): TableToolbarState {
   const [fullscreen, setFullscreen] = useState(false)
   const [rowCount, setRowCount] = useState<number | null>(null)
-  const [searchInput, setSearchInput] = useState('')
+  const [searchInput, setSearchInput] = useState(initialSearch)
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false)
 
-  const searchTermRef = useRef('')
+  const searchTermRef = useRef(initialSearch.trim())
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const searchShortcut = useMemo(() => searchShortcutLabel(), [])

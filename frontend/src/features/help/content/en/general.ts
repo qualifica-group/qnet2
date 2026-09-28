@@ -60,7 +60,7 @@ const guide: HelpGuide = {
             ['**Full screen**', 'Expands the list to the whole window; **Esc** to exit.'],
           ],
         },
-        { type: 'paragraph', text: 'qnet remembers on its own the columns and filters you set.' },
+        { type: 'paragraph', text: 'qnet remembers on its own the columns and every active filter (column, advanced, search and custom filter), even when you reload the page. Columns, column and advanced filters follow you on any device; search and the custom filter stay only in the browser you are using.' },
         { type: 'paragraph', text: 'To keep a combination of filters, with **Saved filters**:' },
         { type: 'steps', items: ['Apply the filters you need.', 'Open **Saved filters** and type a name in **View name**.', 'Choose **Private** or **Shared** with your colleagues (needs the "Publish shared filters" permission).', 'Press **Save view**. To reuse it, click its name under **My views**, **Favorites** or **Shared**.'] },
         { type: 'paragraph', text: 'From **Saved filters** you can also build a **custom filter**: choose **New custom filter**, compose conditions in two groups — "All of these conditions (AND)" and "Or any of these (OR)" — and press **Apply**, or **Save view** to reuse it. Applying one replaces the column and advanced filters; changing a column or advanced filter turns it off. The star on any view marks it as a **favorite**, shown at the top of the list.' },
