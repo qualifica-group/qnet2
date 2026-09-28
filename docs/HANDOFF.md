@@ -21,6 +21,16 @@
   Manuale Claude Docs aggiornato (rev 109): nuova sottosezione "Documenti dell'anagrafica" + elenco in "Documenti".
 - Preesistente, non toccato: ESLint `registry-form-metadata.test.tsx:271` (`_omit` inutilizzato).
 - Da verificare a mano: upload dal dettaglio (pagina e Sheet) e dall'azione di riga, badge conteggio.
+- Rev.2 (stessa spec): scheda "Documenti anagrafica" in SOLA LETTURA nei dettagli Opportunita', Offerte e Commesse,
+  come "Documenti opportunita'" in Offerte/Contratti. Hook condiviso `registries/use-registry-documents-tab.tsx`
+  (`useRegistryDocumentsTab(registryId)`: `null` senza anagrafica o senza `registries.viewDocuments`). Commessa:
+  nuovo `registry: {id, name} | null` in `WorkOrderResource` (via `quote.opportunity.registry`, aggiunto a
+  `WorkOrderService::DETAIL_RELATIONS`); `WorkOrderDetail.registry` opzionale lato FE (come `QuoteDetail.registry`).
+  i18n `registries.detail.registryDocumentsTab`. Test: `WorkOrderDocumentsTest` (+1), hook (3), dettagli
+  opportunita' (+1), offerta (+2), commessa (+2); sanity-break verificato. Pest WorkOrders+Contracts 304 verdi, Pint
+  pulito; Vitest quotes/opportunities/work-orders/registries/contracts/help/i18n 141 file 1237 verdi; tsc 0 errori.
+  Guide IT/EN `registries` + manuale Claude Docs (rev 110) aggiornati.
+  Nota: il gate `registries.viewDocuments` e' solo UI; `/api/attachments` non ha controllo per record (come ovunque).
 
 ## TEAM OPPORTUNITA' PERSO ALLA SCELTA DELL'ANAGRAFICA + TEAM OFFERTA STALE — VERDE, NON COMMITTATO (2026-09-28)
 

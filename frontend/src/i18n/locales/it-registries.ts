@@ -22,6 +22,9 @@ export const registries = {
     subtitle: "Visualizzazione in sola lettura dell'anagrafica selezionata.",
     loadError: "Impossibile caricare l'anagrafica. Riprova.",
     details: 'Dettagli',
+    // Scheda in sola lettura dei documenti dell'anagrafica nei dettagli di
+    // Opportunita', Offerte e Commesse (spec 0173).
+    registryDocumentsTab: 'Documenti anagrafica',
     // Etichette della striscia KPI: sono SUE, non quelle del form, perche' le
     // sezioni sotto portano gia' "Referenti"/"Settori" sulle righe che ne
     // elencano i nomi.

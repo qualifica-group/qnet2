@@ -70,6 +70,7 @@ class WorkOrderResource extends JsonResource
             'task_template' => $this->summarizeTaskTemplate(),
             'quote' => $this->summarizeQuote(),
             'contract' => $this->summarizeContract(),
+            'registry' => $this->summarizeRegistry(),
             'quote_lines' => $this->summarizeQuoteLines(),
             // Cast to object, non array: un array PHP vuoto serializza come
             // `[]`, e il form legge la chiave come una MAPPA (Zod
@@ -182,6 +183,24 @@ class WorkOrderResource extends JsonResource
         }
 
         return ['id' => $contract->id, 'code' => $this->quote->code, 'title' => $this->quote->title];
+    }
+
+    /**
+     * The client of the commessa, reached through `quote.opportunity` (a work
+     * order has no `registry_id` of its own). Spec 0173: the detail mounts its
+     * documents read-only.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    private function summarizeRegistry(): ?array
+    {
+        $registry = $this->quote?->opportunity?->registry;
+
+        if ($registry === null) {
+            return null;
+        }
+
+        return ['id' => $registry->id, 'name' => $registry->name];
     }
 
     /**

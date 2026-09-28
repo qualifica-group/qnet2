@@ -68,6 +68,9 @@ class WorkOrderService
         // null on the (majority) commessa generated without one, so this
         // never N+1s the detail read either way.
         'taskTemplate',
+        // Spec 0173: the `registry` summary WorkOrderResource exposes, whose
+        // documents the detail mounts read-only.
+        'quote.opportunity.registry',
     ];
 
     public function __construct(

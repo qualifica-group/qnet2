@@ -85,6 +85,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'paragraph',
+          text: 'The same files are also shown on the Opportunity, Quote and Work order records of that registry, in the Registry documents tab: there they are read-only, you upload and delete them only from the registry.',
+        },
+        {
           type: 'tip',
           text: 'The Documents tab and action appear only with the Registries View documents permission; uploading or deleting files also needs the Documents permissions. Deleting a registry also deletes its documents.',
         },

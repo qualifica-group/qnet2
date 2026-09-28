@@ -279,6 +279,22 @@ describe('QuoteDetailView — related records', () => {
   })
 })
 
+/** Spec 0173: the anagrafica's documents, read-only, beside the opportunity's. */
+describe('QuoteDetailView — registry documents', () => {
+  it("shows the Registry documents tab when the offer's registry is known", () => {
+    renderDetail(<QuoteDetailView quote={quoteFixture({ registry: { id: 1, name: 'Acme S.p.A.' } })} />)
+
+    expect(screen.getByRole('tab', { name: 'Opportunity documents' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Registry documents' })).toBeInTheDocument()
+  })
+
+  it('omits the Registry documents tab without a registry', () => {
+    renderDetail(<QuoteDetailView quote={quoteFixture({ registry: null })} />)
+
+    expect(screen.queryByRole('tab', { name: 'Registry documents' })).not.toBeInTheDocument()
+  })
+})
+
 /** Spec 0144 AC-015/AC-016: cost-to-product association, read-only. */
 describe('QuoteDetailView — Margine per prodotto', () => {
   it('shows the margin per product block computed from the persisted net amounts', () => {

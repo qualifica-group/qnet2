@@ -111,6 +111,17 @@ it('AC-010: viewDocuments is a synced ability and permissions.actions.view_docum
         ->assertJsonPath('permissions.actions.view_documents', false);
 });
 
+it('spec 0173 AC-006: the detail exposes the client registry reached through quote.opportunity', function () {
+    $actor = workOrderDocumentActor(['view', 'viewAll']);
+    $workOrder = WorkOrder::factory()->create();
+    $registry = $workOrder->quote->opportunity->registry;
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/work-orders/{$workOrder->id}")
+        ->assertOk()
+        ->assertJsonPath('data.registry', ['id' => $registry->id, 'name' => $registry->name]);
+});
+
 it('AC-011: deleting a work order removes its attachment rows and their binaries', function () {
     $workOrder = WorkOrder::factory()->create();
     $attachment = $workOrder->attach(UploadedFile::fake()->create('da-cancellare.pdf', 8, 'application/pdf'));

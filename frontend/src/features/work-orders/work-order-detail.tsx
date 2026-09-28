@@ -10,6 +10,7 @@ import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesSection } from '@/features/notes/notes-section'
+import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { WorkOrderDetailHeader, WorkOrderDetailStats } from '@/features/work-orders/work-order-detail-header'
@@ -24,13 +25,14 @@ interface WorkOrderDetailViewProps {
 }
 
 /**
- * The record's collaboration tabs (Notes | Documents | Activity), each gated
- * by its OWN authorization source and absent entirely when unauthorized
- * (spec 0134 D-3).
+ * The record's collaboration tabs (Notes | Documents | Registry documents |
+ * Activity), each gated by its OWN authorization source and absent entirely
+ * when unauthorized (spec 0134 D-3; the read-only registry one is spec 0173).
  */
 function useCollaborationTabs(workOrder: WorkOrderDetailWithPermissions): RecordCollaborationTab[] {
   const { t } = useTranslation()
   const { can } = useAbilities()
+  const registryDocumentsTab = useRegistryDocumentsTab(workOrder.registry?.id)
   const tabs: RecordCollaborationTab[] = []
 
   /*
@@ -62,6 +64,10 @@ function useCollaborationTabs(workOrder: WorkOrderDetailWithPermissions): Record
         />
       ),
     })
+  }
+
+  if (registryDocumentsTab) {
+    tabs.push(registryDocumentsTab)
   }
 
   if (workOrder.permissions.actions.view_activity) {

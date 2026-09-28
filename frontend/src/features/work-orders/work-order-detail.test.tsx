@@ -295,6 +295,20 @@ describe('WorkOrderDetailView — collaboration', () => {
     expect(screen.queryByRole('tab', { name: 'Notes' })).not.toBeInTheDocument()
   })
 
+  it("shows the read-only Registry documents tab on the commessa's registry with registries.viewDocuments (spec 0173)", () => {
+    canMock.mockImplementation((permission: string) => permission === 'registries.viewDocuments')
+    render(<WorkOrderDetailView workOrder={workOrder({ registry: { id: 7, name: 'Acme S.p.A.' } })} />)
+
+    expect(screen.getByRole('tab', { name: 'Registry documents' })).toBeInTheDocument()
+  })
+
+  it('omits the Registry documents tab when the payload carries no registry', () => {
+    canMock.mockImplementation((permission: string) => permission === 'registries.viewDocuments')
+    render(<WorkOrderDetailView workOrder={workOrder({ registry: null })} />)
+
+    expect(screen.queryByRole('tab', { name: 'Registry documents' })).not.toBeInTheDocument()
+  })
+
   it('mounts the Activity log section only inside the collaboration card, reading its own view_activity gate', () => {
     canMock.mockImplementation((): boolean => false)
     render(

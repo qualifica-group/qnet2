@@ -30,6 +30,7 @@ import {
 } from '@/features/quotes/quote-product-margins-calc'
 import { QuoteProductMargins } from '@/features/quotes/quote-product-margins'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
 
@@ -55,11 +56,14 @@ interface QuoteDetailViewProps {
  * The documents are the parent Opportunity's, mounted READ-ONLY exactly as the
  * Contract detail mounts them (spec 0072 AC-047, user directive 2026-08-31
  * "quelli che trovo in contratti"): an offer never owns an attachment, so it
- * must not offer to add or remove one — also unconditional. Only Attività is
- * gated on its own action flag and absent entirely when unauthorized.
+ * must not offer to add or remove one — also unconditional. The anagrafica's
+ * documents (spec 0173) follow, read-only too, gated on
+ * `registries.viewDocuments`. Attività is gated on its own action flag and
+ * absent entirely when unauthorized.
  */
 function useCollaborationTabs(quote: QuoteDetailWithPermissions): RecordCollaborationTab[] {
   const { t } = useTranslation()
+  const registryDocumentsTab = useRegistryDocumentsTab(quote.registry?.id)
   const tabs: RecordCollaborationTab[] = [
     {
       value: 'notes',
@@ -88,6 +92,10 @@ function useCollaborationTabs(quote: QuoteDetailWithPermissions): RecordCollabor
       ),
     },
   ]
+
+  if (registryDocumentsTab) {
+    tabs.push(registryDocumentsTab)
+  }
 
   if (quote.permissions.actions.view_activity) {
     tabs.push(activityLogTab('quotes', quote.id, t('activityLog.title')))

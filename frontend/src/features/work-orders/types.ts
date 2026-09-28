@@ -157,6 +157,12 @@ export interface WorkOrderDetail {
   quote: WorkOrderQuoteRef | null
   /** The detail names this record, not the offer underneath it. */
   contract: WorkOrderContractRef | null
+  /**
+   * Spec 0173: the client reached through `quote.opportunity`, whose documents
+   * the detail mounts read-only. Optional (like `QuoteDetail.registry`) so the
+   * pre-existing fixtures stay valid; a missing key reads as `null`.
+   */
+  registry?: { id: number; name: string } | null
   quote_lines: WorkOrderQuoteLine[]
   /** Spec 0124 D-9: `null` when the commessa was not generated from a Modello di Task. */
   task_template: WorkOrderTaskTemplateRef | null

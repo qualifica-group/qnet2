@@ -85,6 +85,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'paragraph',
+          text: "Gli stessi file si consultano anche dal dettaglio di Opportunità, Offerte e Commesse di quell'anagrafica, nella scheda Documenti anagrafica: lì sono in sola lettura, si caricano ed eliminano solo dall'anagrafica.",
+        },
+        {
           type: 'tip',
           text: "La scheda e l'azione Documenti compaiono solo con il permesso Visualizza documenti delle Anagrafiche; per caricare o eliminare file servono anche i permessi sui Documenti. Eliminando un'anagrafica si eliminano anche i suoi documenti.",
         },

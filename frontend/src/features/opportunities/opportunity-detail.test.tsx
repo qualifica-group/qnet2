@@ -280,6 +280,14 @@ describe('OpportunityDetailView — collaboration', () => {
     expect(screen.getByText('documents:opportunity:1')).toBeInTheDocument()
   })
 
+  it("shows the read-only Registry documents tab on the opportunity's registry with registries.viewDocuments (spec 0173)", () => {
+    canMock.mockImplementation((permission: string) => permission === 'registries.viewDocuments')
+    render(<OpportunityDetailView opportunity={opportunity()} />)
+
+    expect(screen.getByRole('tab', { name: 'Registry documents' })).toBeInTheDocument()
+    expect(screen.getByText('documents:registry:10')).toBeInTheDocument()
+  })
+
   it("shows the Activity log tab, reading the opportunity's own view_activity gate", () => {
     render(
       <OpportunityDetailView

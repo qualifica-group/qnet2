@@ -4,6 +4,8 @@
   <goal>
     Gestione documenti sulle Anagrafiche identica a Opportunita': scheda "Documenti" nella colonna laterale del
     dettaglio e azione "Documenti" (con badge del conteggio) nella riga della tabella.
+    Rev.2 (2026-09-28): i documenti dell'anagrafica si vedono, in sola lettura, anche nel dettaglio di Opportunita',
+    Offerte e Commesse (scheda "Documenti anagrafica"), come "Documenti opportunita'" in Offerte/Contratti.
   </goal>
 
   <context>
@@ -23,6 +25,11 @@
     <decision id="D-3">Tabella: azione `documents` (icona `paperclip`, `count_field = documents_count`) dopo `edit`,
       quindi inline (view, edit, documents); `documents_count` conta solo la collection `documents`.</decision>
     <decision id="D-4">Eliminare un'anagrafica elimina i suoi allegati e i file (hook di `HasAttachments`).</decision>
+    <decision id="D-5">Rev.2: scheda "Documenti anagrafica" (`useRegistryDocumentsTab`) nei dettagli Opportunita'
+      (`registry_id`), Offerta (`registry.id`, proiezione gia' esistente) e Commessa (nuovo `registry` nel
+      WorkOrderResource, via `quote.opportunity.registry`). Sempre sola lettura (canUpload/canDelete false), come
+      "Documenti opportunita'". Visibile solo con `registries.viewDocuments` e con un'anagrafica; il gate e' lato UI:
+      la lista allegati resta autorizzata da `attachments.viewAny`, senza controllo per record (come D-1).</decision>
   </decisions>
 
   <data_contract>
@@ -31,6 +38,7 @@
     GET /api/tables/registries/columns: `actions` + `{ key: documents, permission: registries.viewDocuments,
     count_field: documents_count }`.
     /api/attachments: `attachable_type = registry` ammesso.
+    Rev.2: GET /api/work-orders/{id} (e create/update): + `registry: { id, name } | null`.
   </data_contract>
 
   <acceptance_criteria>
@@ -41,11 +49,16 @@
     <criterion id="AC-004">Eliminando l'anagrafica spariscono righe allegato e file.</criterion>
     <criterion id="AC-005">FE: scheda Documenti nel dettaglio solo con `view_documents`, su alias `registry`;
       azione di riga apre `DocumentsDialog` e alla chiusura aggiorna la griglia.</criterion>
+    <criterion id="AC-006">Il dettaglio Commessa espone `registry` {id, name} dell'anagrafica dell'opportunita'.</criterion>
+    <criterion id="AC-007">FE: scheda "Documenti anagrafica" in sola lettura su alias `registry` nei dettagli
+      Opportunita'/Offerta/Commessa; assente senza `registries.viewDocuments` o senza anagrafica.</criterion>
   </acceptance_criteria>
 
   <tests>
     Backend: `tests/Feature/Registries/RegistryDocumentsTest.php`.
     Frontend: `registry-detail.test.tsx` (documents tab), `registries-table.test.tsx` (documents row action).
+    Rev.2: `WorkOrderDocumentsTest` (AC-006); `use-registry-documents-tab.test.tsx`, `opportunity-detail.test.tsx`,
+    `quote-detail.test.tsx`, `work-order-detail.test.tsx` (AC-007).
   </tests>
 
 </spec>

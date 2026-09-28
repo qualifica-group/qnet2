@@ -22,6 +22,9 @@ export const registries = {
     subtitle: 'Read-only view of the selected registry.',
     loadError: 'Unable to load the registry. Please try again.',
     details: 'Details',
+    // Read-only tab of the registry's documents on the Opportunity, Quote and
+    // Work order details (spec 0173).
+    registryDocumentsTab: 'Registry documents',
     // The KPI strip's own labels, not the form's: the sections below already
     // carry "Referents"/"Sectors" on the rows that list their names.
     stats: {

@@ -18,6 +18,7 @@ import {
 import { OpportunityDetailSections } from '@/features/opportunities/opportunity-detail-sections'
 import { OpportunityQuotesSection } from '@/features/opportunities/opportunity-quotes-section'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { OpportunityDetailWithPermissions as OpportunityDetailData } from '@/features/opportunities/types'
 
@@ -31,12 +32,14 @@ interface OpportunityDetailViewProps {
 }
 
 /**
- * The record's collaboration tabs (Notes | Documents | Activity), each gated
+ * The record's collaboration tabs (Notes | Documents | Registry documents |
+ * Activity, spec 0173 for the read-only registry one), each gated
  * by its OWN authorization source and absent entirely when unauthorized.
  */
 function useCollaborationTabs(opportunity: OpportunityDetailData): RecordCollaborationTab[] {
   const { t } = useTranslation()
   const { can } = useAbilities()
+  const registryDocumentsTab = useRegistryDocumentsTab(opportunity.registry_id)
   const tabs: RecordCollaborationTab[] = []
 
   if (can('request-management.view')) {
@@ -77,6 +80,10 @@ function useCollaborationTabs(opportunity: OpportunityDetailData): RecordCollabo
         />
       ),
     })
+  }
+
+  if (registryDocumentsTab) {
+    tabs.push(registryDocumentsTab)
   }
 
   if (opportunity.permissions.actions.view_activity) {
