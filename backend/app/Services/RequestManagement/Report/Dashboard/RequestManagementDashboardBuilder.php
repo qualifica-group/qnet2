@@ -32,8 +32,8 @@ use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
  *
  * The same holds for the operator selection (spec 0108, D-1) and for the Sede
  * selection (spec 0112, D-3): $operators and $sites are handed down UNTOUCHED
- * to all three calls below — the two `rows()` and the synthetic summary branch
- * — so the tiles, the section tiles and the per-operator charts are all
+ * to both calls below — `rows()` and the synthetic summary branch — so the
+ * tiles, the section tiles and the per-operator charts are all
  * computed on the same narrowed perimeter, and none of them can end up
  * describing a different set of requests than the CSV generated from the very
  * same filters.
@@ -75,28 +75,27 @@ final class RequestManagementDashboardBuilder
         $operators ??= ReportOperatorFilter::all();
         $sites ??= ReportSiteFilter::all();
 
-        // Step 1: every selected branch's own TOTALE row — also the source
-        // of the selected-branch list itself (the overall tiles need it
-        // regardless of $rowMode, D-3).
-        $totalsByBranch = $this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::TotalOnly, $operators, $sites, $module);
-        $branches = array_map(static fn (array $pair): ReportBranch => $pair['branch'], $totalsByBranch);
+        // Step 1: every selected branch computed ONCE, with every row: the
+        // row mode only picks rows, never changes a value (spec 0106
+        // AC-032), so the TOTALE row and the GA2 rows come out of the same
+        // indicator results — TOTALE first, then the GA2 rows (D-3).
+        $branchRows = $this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::All, $operators, $sites, $module);
+        $branches = array_map(static fn (array $pair): ReportBranch => $pair['branch'], $branchRows);
         $range = ReportDateRange::fromRequest($dateFrom, $dateTo);
 
         // Step 2: the overall tiles — the SAME builder, on a synthetic union
-        // branch (D-8), never a sum of the per-category totals.
-        $summary = $this->buildOverallSummary($branches, $actor, $range, $operators, $sites, $module);
+        // branch (D-8), never a sum of the per-category totals. With a single
+        // branch that union IS the branch (same ids per column), so its
+        // TOTALE row is reused instead of recomputed.
+        $summary = count($branchRows) === 1
+            ? $this->summaryOf($branchRows[0]['rows'][0])
+            : $this->buildOverallSummary($branches, $actor, $range, $operators, $sites, $module);
 
-        // Step 3: the GA2 rows of each branch, fetched only when $rowMode
-        // actually asks for an operator breakdown (D-3).
-        $operatorRows = $rowMode === RequestManagementReportRowMode::TotalOnly
-            ? []
-            : $this->operatorRowsByBranchKey($actor, $dateFrom, $dateTo, $categoryKeys, $operators, $sites, $module);
-
-        // Step 4: one section per selected category, in the report's own
-        // branch order (D-10).
+        // Step 3: one section per selected category, in the report's own
+        // branch order (D-10); $rowMode decides which charts are drawn.
         $categories = array_map(
-            fn (array $pair): DashboardCategory => $this->buildCategory($pair['branch'], $pair['rows'][0], $operatorRows, $rowMode),
-            $totalsByBranch,
+            fn (array $pair): DashboardCategory => $this->buildCategory($pair['branch'], $pair['rows'][0], array_slice($pair['rows'], 1), $rowMode),
+            $branchRows,
         );
 
         return new RequestManagementDashboardResult($summary, $categories);
@@ -128,7 +127,7 @@ final class RequestManagementDashboardBuilder
     /**
      * One section: the branch's own TOTALE row as tiles, plus its charts.
      *
-     * @param  array<string, array<int, ReportRow>>  $operatorRows
+     * @param  array<int, ReportRow>  $operatorRows
      */
     private function buildCategory(ReportBranch $branch, ReportRow $total, array $operatorRows, RequestManagementReportRowMode $rowMode): DashboardCategory
     {
@@ -136,7 +135,7 @@ final class RequestManagementDashboardBuilder
             key: $branch->key,
             label: $branch->label,
             summary: $this->summaryOf($total),
-            charts: $this->chartsOf($branch, $total, $operatorRows[$branch->key] ?? [], $rowMode),
+            charts: $this->chartsOf($branch, $total, $operatorRows, $rowMode),
         );
     }
 
@@ -205,21 +204,6 @@ final class RequestManagementDashboardBuilder
                 $operatorRows,
             )),
         );
-    }
-
-    /**
-     * @param  array<int, string>  $categoryKeys
-     * @return array<string, array<int, ReportRow>>
-     */
-    private function operatorRowsByBranchKey(?User $actor, ?string $dateFrom, ?string $dateTo, array $categoryKeys, ReportOperatorFilter $operators, ReportSiteFilter $sites, RequestModule $module): array
-    {
-        $rowsByKey = [];
-
-        foreach ($this->generator->rows($actor, $dateFrom, $dateTo, $categoryKeys, RequestManagementReportRowMode::OperatorsOnly, $operators, $sites, $module) as $pair) {
-            $rowsByKey[$pair['branch']->key] = $pair['rows'];
-        }
-
-        return $rowsByKey;
     }
 
     /**

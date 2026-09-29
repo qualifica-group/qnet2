@@ -188,9 +188,11 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // spec 0177's `2026_09_29_100000_add_must_set_password_to_users_table`
     // (115th) and `2026_09_29_100100_create_password_setup_tokens_table` (116th),
     // then `2026_09_29_120000_prune_receive_transfer_notifications_permissions`
-    // (117th), the removal of the dedicated transfer-notification grant.
+    // (117th), the removal of the dedicated transfer-notification grant, then
+    // `2026_09_29_130000_add_created_at_index_to_opportunities_and_registries`
+    // (118th), the stress-test sort index.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 117]);
+    Artisan::call('migrate:rollback', ['--step' => 118]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

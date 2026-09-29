@@ -3,6 +3,32 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## STRESS TEST 1M RICHIESTE: API LENTE — NON COMMITTATO (2026-09-29)
+
+- Misurato con harness fuori repo (kernel HTTP + DB::listen, super-admin) sul DB locale con ~1M
+  richieste/opportunita'/anagrafiche. Lead, commesse, contratti, task, segnatempo: tutti < 400 ms (tabelle
+  piccole). Lento solo cio' che tocca quotes/opportunities/registries.
+- Dashboard report (`RequestManagementDashboardBuilder`): una sola `rows(All)` invece di TotalOnly +
+  OperatorsOnly (ricalcolava tutto due volte); con un solo ramo il riepilogo riusa la sua riga TOTALE.
+  `QuoteCountAggregator::partitioned()`: totale = somma dei gruppi per gli indicatori partizionati per
+  operatore (spec 0106 D-10 rev. 2026-09-29; "Aziende inserite" tiene la query propria, AC-015).
+  `ReportBranchRowsBuilder` calcola una volta le colonne con la stessa formula. 13,9 s -> 2,4 s (1 categoria).
+- Tab categoria (`RequestCategoryTabsResolver`): conta da `quotes` raggruppando per id, nomi letti dopo.
+  Admin 4,5 s -> 2,5 s, commerciale 0,34 -> 0,20 s. APERTO (decisione utente): sotto il secondo serve
+  cache breve o contatori caricati dopo le tab.
+- Statistiche (`Aggregates::topRelated`, 17 widget): top N raggruppato sulla FK, etichette lette dopo
+  (opportunita' 11,5 s -> ~3 s). Valori filtro (`OpportunityRelationColumns`/`QuoteRelationColumns`):
+  GROUP BY label al posto di DISTINCT (MariaDB materializzava il semi-join), nomi manager via EXISTS sul
+  pivot, "(Vuoti)" manager controllato solo sul pivot (user_id cascade).
+- Migrazione `2026_09_29_130000_add_created_at_index_to_opportunities_and_registries` (sort di default delle
+  griglie senza indice); rollback count di `QuoteWorkflowMigrationTest` -> 118. Applicata al DB locale
+  (insieme alla `..._120000_prune_receive_transfer_notifications_permissions`, non ancora eseguita li').
+- Verifica: Pest completo 8789 verdi (1 skipped), Pint pulito. Manuale: nessun impatto (stessi valori).
+- Ancora lenti (non toccati): ricerca rapida Gestione Richieste 56-62 s (LIKE %x% su 6 campi via 3
+  tabelle, serve spec), ordinamento per cognome 6,7 s, pagine profonde (OFFSET), controllo "(Vuoti)" sulle
+  relazioni sempre valorizzate (~3,7 s, scansione anti-join completa). Ambiente: `innodb_buffer_pool_size`
+  128 MB in locale (my.cnf vuoto): con 2 GB i report scendono ancora ~40%.
+
 ## CATEGORIA PRODOTTO IN CELLA: SOSTITUZIONE DIRETTA SU CATEGORIA A RIGA SINGOLA — NON COMMITTATO (2026-09-29)
 
 - Segnalazione utente: dalla griglia Gestione Richieste (ruolo commerciale) non si cambiava la categoria, dal form si'.

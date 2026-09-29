@@ -28,6 +28,10 @@ final class Aggregates
 
     private const string BUCKET_ALIAS = 'bucket';
 
+    private const string RELATED_ID_ALIAS = 'related_id';
+
+    private const string TOP_ALIAS = 'top_related';
+
     /**
      * Top-N breakdown of `$query` (a query on the OWNING table) grouped by a
      * belongs-to relation, labelled with the related row's own column.
@@ -54,13 +58,22 @@ final class Aggregates
             $columns[] = "{$relatedTable}.{$colorColumn}";
         }
 
-        $rows = $query
-            ->join($relatedTable, "{$relatedTable}.id", '=', $foreignKey)
-            ->select($columns)
+        // Rank on the bare foreign key first (an index-only GROUP BY), then
+        // label just the top N: joining the related table BEFORE grouping made
+        // the database group 1M rows by a varchar label (10s on 1M opportunities).
+        $top = $query
+            ->selectRaw($query->getGrammar()->wrap($foreignKey).' as '.self::RELATED_ID_ALIAS)
             ->selectRaw('COUNT(*) as '.self::COUNT_ALIAS)
-            ->groupBy($columns)
+            ->whereNotNull($foreignKey)
+            ->groupBy($foreignKey)
             ->orderByDesc(self::COUNT_ALIAS)
-            ->limit($limit)
+            ->limit($limit);
+
+        $rows = $query->newQuery()
+            ->fromSub($top, self::TOP_ALIAS)
+            ->join($relatedTable, "{$relatedTable}.id", '=', self::TOP_ALIAS.'.'.self::RELATED_ID_ALIAS)
+            ->select([...$columns, self::TOP_ALIAS.'.'.self::COUNT_ALIAS])
+            ->orderByDesc(self::TOP_ALIAS.'.'.self::COUNT_ALIAS)
             ->get();
 
         return $rows

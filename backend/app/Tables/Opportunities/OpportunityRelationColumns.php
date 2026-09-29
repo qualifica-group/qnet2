@@ -5,6 +5,7 @@ namespace App\Tables\Opportunities;
 use App\Tables\Concerns\HandlesBlankSetFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -168,7 +169,16 @@ final class OpportunityRelationColumns
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
         if ($columnId === 'managers') {
-            return $this->withBlanks($this->distinctManagerNames($search, $query, $limit), 'managers', $search, $query);
+            // "No manager" is answered by the pivot alone: `user_id` cascades on
+            // delete, so the join to `users` that whereDoesntHave() adds is pure cost
+            // (23s against 3.7s on 1M opportunities).
+            return $this->withBlankEntry(
+                $this->distinctManagerNames($search, $query, $limit),
+                $search,
+                fn (): bool => (clone $query)->whereNotExists(static function (QueryBuilder $pivot): void {
+                    $pivot->selectRaw('1')->from('opportunity_user')->whereColumn('opportunity_user.opportunity_id', 'opportunities.id');
+                })->exists(),
+            );
         }
 
         if (array_key_exists($columnId, self::AGGREGATED_RELATIONS)) {
@@ -195,7 +205,7 @@ final class OpportunityRelationColumns
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
             })
-            ->distinct()
+            ->groupBy('name')
             ->orderBy('name')
             ->limit($limit)
             ->pluck('name')
@@ -253,13 +263,18 @@ final class OpportunityRelationColumns
     {
         $opportunityIds = (clone $query)->select('opportunities.id');
 
+        // EXISTS per user rather than a join + DISTINCT: the join fanned 3M pivot
+        // rows out before de-duplicating a few hundred names.
         return DB::table('users')
-            ->join('opportunity_user', 'opportunity_user.user_id', '=', 'users.id')
-            ->whereIn('opportunity_user.opportunity_id', $opportunityIds)
+            ->whereExists(static function (QueryBuilder $pivot) use ($opportunityIds): void {
+                $pivot->selectRaw('1')->from('opportunity_user')
+                    ->whereColumn('opportunity_user.user_id', 'users.id')
+                    ->whereIn('opportunity_user.opportunity_id', $opportunityIds);
+            })
             ->when($search !== null && $search !== '', function ($builder) use ($search): void {
                 $builder->where('users.name', 'like', '%'.$this->escapeLike($search).'%');
             })
-            ->distinct()
+            ->groupBy('users.name')
             ->orderBy('users.name')
             ->limit($limit)
             ->pluck('users.name')

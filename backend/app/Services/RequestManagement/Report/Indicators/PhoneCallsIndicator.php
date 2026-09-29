@@ -44,10 +44,7 @@ final class PhoneCallsIndicator implements ReportIndicator
 
     public function compute(array $categoryIds, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites = null, RequestModule $module = RequestModule::Requests): IndicatorResult
     {
-        return new IndicatorResult(
-            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites, $module), 'notes.id'),
-            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites, $module), 'notes.id'),
-        );
+        return $this->aggregator->partitioned($this->query($categoryIds, $actor, $range, $operators, $sites, $module), 'notes.id');
     }
 
     /**

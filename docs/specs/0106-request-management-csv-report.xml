@@ -260,9 +260,10 @@
       Il TOTALE di categoria NON e' la somma delle righe GA2 quando le righe possono duplicarsi, ma
       dentro un singolo ramo la somma e' esatta per costruzione: `quotes.operator_id` e' una colonna
       singola, quindi il raggruppamento per operatore PARTIZIONA le richieste distinte del ramo
-      (compreso il gruppo `operator_id IS NULL`). Il totale si calcola comunque con la propria
-      aggregazione sull'intero insieme del ramo, come impone il brief, e i test verificano che le
-      due strade coincidano (AC-014). Fa eccezione "Aziende inserite": la stessa anagrafica puo'
+      (compreso il gruppo `operator_id IS NULL`). Rev. 2026-09-29 (direttiva utente, stress test su
+      1M richieste): per questi indicatori il totale E' la somma dei gruppi, ricavata dalla stessa
+      query raggruppata (`QuoteCountAggregator::partitioned()`), perche' la seconda aggregazione
+      raddoppiava il costo per un numero identico; AC-014 resta la verifica. Fa eccezione "Aziende inserite": la stessa anagrafica puo'
       essere collegata a richieste di operatori diversi, quindi il suo totale ha una query dedicata
       con `count(distinct registries.id)` e puo' essere MINORE della somma delle righe GA2 (AC-015).
       Tra rami diversi la somma non e' mai valida: una richiesta classificata su due categorie conta

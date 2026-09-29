@@ -50,10 +50,7 @@ final class WorkflowTransitionIndicator implements ReportIndicator
     {
         $targetIds = $this->targetStatusIds();
 
-        return new IndicatorResult(
-            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites, $targetIds, $module), 'distinct quotes.id'),
-            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites, $targetIds, $module), 'distinct quotes.id'),
-        );
+        return $this->aggregator->partitioned($this->query($categoryIds, $actor, $range, $operators, $sites, $targetIds, $module), 'distinct quotes.id');
     }
 
     /**

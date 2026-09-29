@@ -88,6 +88,7 @@ final class ReportBranchRowsBuilder
     private function computeIndicators(ReportBranch $branch, ?User $actor, ReportDateRange $range, ReportOperatorFilter $operators, ?ReportSiteFilter $sites, RequestModule $module): array
     {
         $results = [];
+        $computed = [];
 
         foreach ((array) config('request-management-report.indicator_columns') as $column) {
             $indicator = $this->indicators->resolve($column);
@@ -96,7 +97,10 @@ final class ReportBranchRowsBuilder
             $categoryIds = $branch->categoryIdsFor($column);
 
             if ($indicator !== null && $categoryIds !== null && $categoryIds !== []) {
-                $results[$column] = $indicator->compute($categoryIds, $actor, $range, $operators, $sites, $module);
+                // Columns sharing one formula (associati/trattative_concluse/
+                // invio_presa_in_carico) on the same ids are computed once.
+                $key = spl_object_id($indicator).':'.implode(',', $categoryIds);
+                $results[$column] = $computed[$key] ??= $indicator->compute($categoryIds, $actor, $range, $operators, $sites, $module);
             }
         }
 

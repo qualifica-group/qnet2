@@ -39,10 +39,7 @@ final class AppointmentTransitionIndicator implements ReportIndicator
     {
         $pairs = $this->statusPairs();
 
-        return new IndicatorResult(
-            total: $this->aggregator->total($this->query($categoryIds, $actor, $range, $operators, $sites, $pairs, $module), 'distinct quotes.id'),
-            byOperator: $this->aggregator->byOperator($this->query($categoryIds, $actor, $range, $operators, $sites, $pairs, $module), 'distinct quotes.id'),
-        );
+        return $this->aggregator->partitioned($this->query($categoryIds, $actor, $range, $operators, $sites, $pairs, $module), 'distinct quotes.id');
     }
 
     /**
