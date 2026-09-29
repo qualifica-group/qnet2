@@ -119,7 +119,7 @@ export const table = {
     rootCategoryStep: 'Passo 1: scegli la categoria genitore.',
     categoryStep: 'Passo 2: scegli una categoria prodotto di {{name}}.',
     singleModeReached:
-      'Questa categoria prodotto è gestita a riga singola: rimuovi quella presente per sceglierne un\'altra.',
+      'Questa categoria prodotto è gestita a riga singola: la categoria che scegli sostituisce quella presente.',
     categorySearch: 'Cerca categorie prodotto…',
     empty: 'Nessun risultato.',
     error: 'Impossibile caricare le opzioni.',

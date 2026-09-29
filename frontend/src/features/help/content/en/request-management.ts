@@ -32,6 +32,10 @@ const guide: HelpGuide = {
             ['Working status', "The quote's working status."],
           ],
         },
+        {
+          type: 'paragraph',
+          text: 'Click the **Product category** cell to change it without opening the request: pick the parent category, then the product category. If the current category is managed as a single row (for example Formazione), the one you pick replaces it; otherwise it is added to the others. The **X** removes a category.',
+        },
       ],
     },
     {

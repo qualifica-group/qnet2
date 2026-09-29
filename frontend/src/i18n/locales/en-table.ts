@@ -118,7 +118,7 @@ export const table = {
     back: 'Back to the parent categories',
     rootCategoryStep: 'Step 1: pick the parent category.',
     categoryStep: 'Step 2: pick a product category of {{name}}.',
-    singleModeReached: 'This product category is managed as a single row: remove the current one to pick another.',
+    singleModeReached: 'This product category is managed as a single row: the category you pick replaces the current one.',
     categorySearch: 'Search product categories…',
     empty: 'No results.',
     error: 'Could not load the options.',

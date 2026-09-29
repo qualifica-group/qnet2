@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CATEGORIA PRODOTTO IN CELLA: SOSTITUZIONE DIRETTA SU CATEGORIA A RIGA SINGOLA — NON COMMITTATO (2026-09-29)
+
+- Segnalazione utente: dalla griglia Gestione Richieste (ruolo commerciale) non si cambiava la categoria, dal form si'.
+  Root cause: NON permessi (backend verificato: `product_lines` editabile, PATCH riuscito su 39/40 richieste del
+  commerciale id 12, l'unico 422 e' la coerenza prodotti di interesse, voluta). Era `ProductLinesCellEditor`: con una
+  coppia che risolve a `single` (es. Formazione) disabilitava ricerca e opzioni finche' non si rimuoveva la coppia.
+- Decisione utente: sostituzione diretta. In `single` la scelta sostituisce la coppia (`[next]`), in `multiple` si
+  aggiunge come prima; la categoria gia' presente resta non selezionabile. Messaggio `singleModeReached` riscritto
+  IT/EN e mostrato SOTTO il testo del passo. Spec 0077 nuovo AC-046. Backend invariato.
+- Test: `product-lines-cell-editor.test.tsx` (test INV-3 aggiornato: requisito cambiato; + duplicato in single;
+  multiple ora verifica l'append). Vitest product-lines/help/request-management/table/data-table verdi, ESLint e
+  `tsc -b --force` puliti.
+- Manuale: guida in-app request-management IT/EN (paragrafo sulla cella Categoria prodotto nella sezione overview);
+  Manuale Utente QNet Claude Docs aggiornato (paragrafo dopo la tabella colonne di Gestione Richieste + riga
+  "a riga singola" della tabella modalita' di gestione).
+
 ## DETTAGLIO RICHIESTA INESISTENTE / NON VISIBILE: STATO "RECORD NON DISPONIBILE" — NON COMMITTATO (2026-09-29)
 
 - Segnalazione utente: `/request-management/203001` (404/403) mostrava "Impossibile caricare il record." + Riprova.

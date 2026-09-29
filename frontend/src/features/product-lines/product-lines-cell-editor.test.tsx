@@ -190,7 +190,7 @@ describe('ProductLinesCellEditor (spec 0132 AC-020)', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('INV-3: a single-mode card already holding its pair refuses a second one, including a new root pick', async () => {
+  it('INV-3 / spec 0077 AC-046: on a single-mode card a new pick replaces the current pair instead of adding one', async () => {
     const onValueChange = vi.fn()
     renderEditor(
       [{ root_category_id: 70, root_category_name: 'Single root', product_category_id: 71, product_category_name: 'Luce singola' }],
@@ -198,20 +198,43 @@ describe('ProductLinesCellEditor (spec 0132 AC-020)', () => {
     )
 
     expect(
-      screen.getByText('This product category is managed as a single row: remove the current one to pick another.'),
+      screen.getByText('This product category is managed as a single row: the category you pick replaces the current one.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Search parent category…' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: 'Search parent category…' })).toBeEnabled()
 
-    const option = await screen.findByRole('option', { name: 'Multi root' })
-    expect(option).toBeDisabled()
+    fireEvent.click(await screen.findByRole('option', { name: 'Multi root' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Gas' }))
 
-    fireEvent.click(option)
+    expect(onValueChange).toHaveBeenCalledWith([
+      { root_category_id: 6, root_category_name: 'Multi root', product_category_id: 9, product_category_name: 'Gas' },
+    ])
+  })
+
+  it('INV-3: on a single-mode card the pair already there stays refused as a duplicate', async () => {
+    const onValueChange = vi.fn()
+    renderEditor(
+      [{ root_category_id: 70, root_category_name: 'Single root', product_category_id: 71, product_category_name: 'Luce singola' }],
+      onValueChange,
+    )
+
+    fireEvent.click(await screen.findByRole('option', { name: 'Single root' }))
+
+    const current = await screen.findByRole('option', { name: 'Luce singola' })
+    expect(current).toBeDisabled()
+    fireEvent.click(current)
     expect(onValueChange).not.toHaveBeenCalled()
   })
 
   it('INV-3: a multiple-mode card stays free to add another pair', async () => {
-    renderEditor([PAIR], vi.fn())
+    const onValueChange = vi.fn()
+    renderEditor([PAIR], onValueChange)
 
-    expect(await screen.findByRole('option', { name: 'Multi root' })).toBeEnabled()
+    fireEvent.click(await screen.findByRole('option', { name: 'Multi root' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Gas' }))
+
+    expect(onValueChange).toHaveBeenCalledWith([
+      PAIR,
+      { root_category_id: 6, root_category_name: 'Multi root', product_category_id: 9, product_category_name: 'Gas' },
+    ])
   })
 })

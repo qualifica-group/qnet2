@@ -384,6 +384,12 @@
       La modalità si risolve dall'albero categorie già in cache, non dal `meta` dell'item scelto
       nella sessione. Il grandfathering D-5 resta lato server: un record storico non conforme si salva
       finché non ne vengono reinviate le righe (AC-016/AC-044 invariati).</criterion>
+    <criterion id="AC-046">Dato l'editor inline di cella `product_lines` in griglia su una richiesta la cui
+      coppia risolve a `single`, quando si sceglie un'altra Categoria Prodotto, allora la nuova coppia
+      SOSTITUISCE quella presente (mai una seconda riga), come la modifica in place della riga unica del
+      form; la categoria già presente resta non selezionabile. Direttiva utente 2026-09-29: prima la
+      scelta era bloccata finché non si rimuoveva la coppia. Verifica: test Vitest
+      `product-lines-cell-editor.test.tsx`.</criterion>
 
   </acceptance_criteria>
 

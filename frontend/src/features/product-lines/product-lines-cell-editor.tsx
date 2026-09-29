@@ -125,11 +125,11 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
   const selectedKeys = useMemo(() => new Set(pairs.map(pairKey)), [pairs])
   const orphanedProducts = useMemo(() => uncoveredProducts(data, pairs), [data, pairs])
 
-  // Spec 0077 INV-3 (user directive 2026-08-07): the form fields have hidden
-  // "Add" on a `single`-mode card since 2026-08-05 — this editor was the last
-  // channel where the second pair could still be picked, only to be refused by
-  // the server on commit. Resolved off the SAME cached category tree the form
-  // reads, so a pair loaded from the grid row carries the mode too.
+  // Spec 0077 INV-3: a `single`-mode card holds exactly one pair, so a pick
+  // REPLACES it — the same in-place edit the form's single row offers (spec
+  // 0077 AC-046, user directive 2026-09-29), never a second pair the server
+  // would refuse on commit. Resolved off the SAME cached category tree the
+  // form reads, so a pair loaded from the grid row carries the mode too.
   const treeQuery = useProductCategoryTree()
   const categoryTree = treeQuery.data ?? EMPTY_TREE
   const singleRowReached = pairs.length > 0 && resolveRowSetManagementMode(pairs, categoryTree) === 'single'
@@ -172,12 +172,6 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
   }
 
   const pick = (option: FlatCategoryOption) => {
-    // Defense in depth: the options are already disabled once the single-mode
-    // card holds its one pair, this guards a programmatic call too.
-    if (singleRowReached) {
-      return
-    }
-
     if (!pickingCategory) {
       setRootCategory({ id: option.id, name: option.name })
       setStep('product_category')
@@ -196,7 +190,7 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
     // A category already on the request is a server-side 422 (no repeats):
     // adding it again would only make the commit fail.
     if (!selectedKeys.has(pairKey(next))) {
-      onValueChange([...pairs, next])
+      onValueChange(singleRowReached ? [next] : [...pairs, next])
     }
 
     startOver()
@@ -259,18 +253,18 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
           aria-label={
             pickingCategory ? t('table.productLinesEditor.categorySearch') : t('productLines.rootCategorySearch')
           }
-          disabled={singleRowReached}
           className="h-7 text-xs"
         />
       </div>
 
       <p className="px-2 pb-1 text-xs text-muted-foreground">
-        {singleRowReached
-          ? t('table.productLinesEditor.singleModeReached')
-          : pickingCategory
-            ? t('table.productLinesEditor.categoryStep', { name: rootCategory.name })
-            : t('table.productLinesEditor.rootCategoryStep')}
+        {pickingCategory
+          ? t('table.productLinesEditor.categoryStep', { name: rootCategory.name })
+          : t('table.productLinesEditor.rootCategoryStep')}
       </p>
+      {singleRowReached ? (
+        <p className="px-2 pb-1 text-xs text-muted-foreground">{t('table.productLinesEditor.singleModeReached')}</p>
+      ) : null}
 
       <div
         role="listbox"
@@ -300,11 +294,10 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
           options.map((option) => {
             const alreadySelected = pickingCategory && selectedKeys.has(pairKey({ product_category_id: option.id }))
             const containerDisabled = pickingCategory && option.disabled === true
-            // Three distinct reasons to refuse a pick: the category is already
-            // there (`aria-selected`), it is a non-selectable container shown
-            // only as context, or the card is full (INV-3) — none of which is
-            // a selection state on its own, only a disabled one.
-            const blocked = alreadySelected || containerDisabled || singleRowReached
+            // Two distinct reasons to refuse a pick: the category is already
+            // there (`aria-selected`), or it is a non-selectable container
+            // shown only as context — only the first is a selection state.
+            const blocked = alreadySelected || containerDisabled
 
             return (
               <button
