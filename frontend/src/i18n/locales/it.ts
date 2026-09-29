@@ -198,9 +198,9 @@ export const it: TranslationResources = {
       newPassword: 'Nuova password',
       confirmPassword: 'Ripeti la password',
       passwordEditHint:
-        "Lascia vuoto per mantenere la password attuale. La nuova password sarà provvisoria: al prossimo accesso l'utente dovrà cambiarla.",
+        "Lascia vuoto per mantenere la password attuale. La nuova password sarà provvisoria: al prossimo accesso all'utente verrà consigliato di cambiarla.",
       passwordCreateHint:
-        "Lascia vuoto: l'utente riceverà un'email con il link per scegliere la password. Se la compili è una password provvisoria: comunicala tu, al primo accesso dovrà cambiarla.",
+        "Lascia vuoto: l'utente riceverà un'email con il link per scegliere la password. Se la compili è una password provvisoria: comunicala tu, al primo accesso gli verrà chiesto di cambiarla.",
       save: 'Salva',
       saving: 'Salvataggio…',
       cancel: 'Annulla',
@@ -396,11 +396,15 @@ export const it: TranslationResources = {
     // Primo accesso (spec 0177).
     setPasswordTitle: 'Imposta la tua password',
     setPasswordSubtitle: 'Scegli la password per accedere a QNet.',
+    welcomeTitle: 'Benvenuto in QNet, {{name}}!',
+    welcomeText: 'Per motivi di sicurezza ti consigliamo di scegliere una nuova password personale.',
+    firstAccessLater: 'Più tardi',
+    firstAccessSave: 'Salva password',
+    firstAccessSaving: 'Salvataggio…',
+    firstAccessSaved: 'Password aggiornata.',
     setPasswordSubmit: 'Imposta password',
     setPasswordSuccess: 'Password impostata. Ora puoi accedere.',
     setPasswordLinkInvalid: "Questo link non è valido o è scaduto. Chiedi un nuovo invito all'amministratore o usa Password dimenticata.",
-    firstAccessTitle: 'Scegli la tua nuova password',
-    firstAccessSubtitle: 'Per sicurezza, al primo accesso devi sostituire la password provvisoria.',
   },
   authorization: {
     loadError: 'Impossibile caricare i permessi. Riprova.',

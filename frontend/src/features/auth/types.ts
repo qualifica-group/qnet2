@@ -90,6 +90,12 @@ export interface ResetPasswordPayload {
 /** POST /auth/set-password: same shape as the password-reset payload (spec 0177). */
 export type SetPasswordPayload = ResetPasswordPayload
 
+/** PUT /auth/me/first-password payload (spec 0177 rev. 2). */
+export interface FirstPasswordPayload {
+  password: string
+  password_confirmation: string
+}
+
 export interface LoginResult {
   token: string
   token_type: string

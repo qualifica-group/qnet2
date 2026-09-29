@@ -7,6 +7,7 @@ import type {
   ImpersonationState,
   LoginPayload,
   LoginResult,
+  FirstPasswordPayload,
   ResetPasswordPayload,
   SetPasswordPayload,
   UpdateProfilePayload,
@@ -46,6 +47,11 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<User
 
 export async function changePassword(payload: ChangePasswordPayload): Promise<void> {
   await apiClient.put('/auth/me/password', payload)
+}
+
+/** Sets the personal password at first access (spec 0177 rev. 2): no current password needed. */
+export async function setFirstPassword(payload: FirstPasswordPayload): Promise<void> {
+  await apiClient.put('/auth/me/first-password', payload)
 }
 
 /** Uploads the current user's avatar (multipart). Returns the updated user. */

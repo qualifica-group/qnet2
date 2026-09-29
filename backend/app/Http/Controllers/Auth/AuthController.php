@@ -7,6 +7,7 @@ use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Http\Requests\Auth\SetFirstPasswordRequest;
 use App\Http\Requests\Auth\SetPasswordRequest;
 use App\Http\Requests\Auth\UpdatePasswordRequest;
 use App\Http\Requests\Auth\UpdateProfileRequest;
@@ -191,6 +192,16 @@ class AuthController extends BaseApiController
         $this->authService->changePassword($request->user(), $request->validated()['password']);
 
         return $this->ok(null, __('auth.password_updated'));
+    }
+
+    /**
+     * Primo accesso: scelta facoltativa della nuova password (senza password attuale).
+     */
+    public function setFirstPassword(SetFirstPasswordRequest $request): JsonResponse
+    {
+        $this->authService->changePassword($request->user(), $request->validated()['password']);
+
+        return $this->ok(null, __('auth.first_password_updated'));
     }
 
     /**

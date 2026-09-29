@@ -75,6 +75,10 @@ Route::prefix('auth')->group(function () {
         // (throttle:6,1) matches the public password-reset flow above.
         Route::middleware('throttle:6,1')->put('me/password', [AuthController::class, 'updatePassword']);
 
+        // Optional first-access password choice (spec 0177 rev. 2): no current
+        // password asked, accepted only while `must_set_password` is true.
+        Route::middleware('throttle:6,1')->put('me/first-password', [AuthController::class, 'setFirstPassword']);
+
         // Self-service avatar (settings page): any authenticated user manages
         // their own avatar; no extra permission required.
         Route::post('me/avatar', [AuthController::class, 'uploadAvatar']);
@@ -90,8 +94,7 @@ Route::prefix('auth')->group(function () {
     });
 });
 
-// `password.set` (spec 0177) blocks users pending their first password change.
-Route::middleware(['auth:sanctum', 'password.set'])->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
     // Level 0 — backend-driven navigation.
     Route::get('navigation', [NavigationController::class, 'index']);
 

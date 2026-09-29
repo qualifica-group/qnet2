@@ -207,9 +207,9 @@ export const en = {
       newPassword: 'New password',
       confirmPassword: 'Confirm password',
       passwordEditHint:
-        'Leave blank to keep the current password. The new password will be temporary: the user must change it at their next sign-in.',
+        'Leave blank to keep the current password. The new password will be temporary: at their next sign-in the user will be asked to change it.',
       passwordCreateHint:
-        'Leave blank: the user will receive an email with a link to choose their password. If you fill it in, it is a temporary password: you communicate it, and the user must change it at first sign-in.',
+        'Leave blank: the user will receive an email with a link to choose their password. If you fill it in, it is a temporary password: you communicate it, and at first sign-in the user will be asked to change it.',
       save: 'Save',
       saving: 'Saving…',
       cancel: 'Cancel',
@@ -407,11 +407,15 @@ export const en = {
     // First access (spec 0177).
     setPasswordTitle: 'Set your password',
     setPasswordSubtitle: 'Choose the password to sign in to QNet.',
+    welcomeTitle: 'Welcome to QNet, {{name}}!',
+    welcomeText: 'For security reasons we recommend choosing a new personal password.',
+    firstAccessLater: 'Later',
+    firstAccessSave: 'Save password',
+    firstAccessSaving: 'Saving…',
+    firstAccessSaved: 'Password updated.',
     setPasswordSubmit: 'Set password',
     setPasswordSuccess: 'Password set. You can now sign in.',
     setPasswordLinkInvalid: 'This link is invalid or has expired. Ask your administrator for a new invite or use "Forgot password?".',
-    firstAccessTitle: 'Choose your new password',
-    firstAccessSubtitle: 'For security, at first sign-in you must replace the temporary password.',
   },
   // Metadata-driven authorization (spec 0004): shared strings used by `MetaField`
   // and any form consuming `useResourceMeta`/`ResourcePermissions`.

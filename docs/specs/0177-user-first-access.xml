@@ -57,14 +57,15 @@
       <item>Notifica `App\Notifications\WelcomeUserNotification` (ShouldQueue, mail, localizzata) con due varianti: INVITO (pulsante "Imposta la password" -> `{frontend_url}/set-password?token=..&amp;email=..`, scadenza in ore) e PROVVISORIA (pulsante "Accedi" -> `{frontend_url}/login`, testo: la password provvisoria te la comunica l'amministratore; al primo accesso dovrai sceglierne una nuova). Viste `emails.welcome-user` + `emails.welcome-user-plain` sul layout mail esistente. Traduzioni IT in `lang/it.json`.</item>
       <item>Endpoint pubblico `POST /api/auth/set-password` (throttle:6,1) che consuma il token del broker `users_setup`, imposta la password, azzera `must_set_password`, revoca i token Sanctum esistenti.</item>
       <item>Endpoint `POST /api/users/{user}/resend-welcome` (authz `UserPolicy::update`): solo se `must_set_password = true`; invia SEMPRE la variante INVITO con un nuovo token (invalida il precedente).</item>
-      <item>Enforcement server-side del cambio obbligatorio: middleware `EnsurePasswordIsSet` (alias `password.set`) sul gruppo `auth:sanctum` principale di routes/api.php. Utente con `must_set_password = true` e token NON di impersonificazione -> 403. Le rotte del gruppo `/api/auth/*` restano raggiungibili (me, abilities, logout, refresh, me/password, impersonation).</item>
-      <item>Il flag si azzera anche con: `PUT /api/auth/me/password` (cambio dal primo accesso), `POST /api/auth/reset-password` (password dimenticata: attiva anche un invito scaduto).</item>
+      <item>Rev. 2 2026-09-29 (decisione utente, UX): NESSUN blocco server-side. Il cambio al primo accesso e' CONSIGLIATO e RIMANDABILE: l'utente entra nell'app e trova una finestra di benvenuto ("Benvenuto in QNet, {nome}! Per motivi di sicurezza ti consigliamo di scegliere una nuova password personale.") con Nuova password + Ripeti password e i pulsanti "Piu' tardi" / "Salva password". La finestra ricompare a ogni accesso (e a ogni ricarica della pagina) finche' `must_set_password` e' true. Rimossi middleware `password.set` e pagina `/first-access`.</item>
+      <item>Endpoint `PUT /api/auth/me/first-password` (auth:sanctum, throttle:6,1): solo nuova password + conferma, accettato SOLO se `must_set_password = true` e il token NON e' di impersonificazione; nuova password diversa dall'attuale; azzera il flag e revoca gli altri token (tiene quello corrente), come `changePassword`.</item>
+      <item>Il flag si azzera anche con: `PUT /api/auth/me/password` (cambio dalle impostazioni), `POST /api/auth/reset-password` (password dimenticata: attiva anche un invito scaduto).</item>
       <item>`UpdatePasswordRequest`: la nuova password deve essere diversa da quella attuale (`different:current_password`), vale per tutti i cambi password self-service.</item>
       <item>Reset della password di un ALTRO utente via `PUT/PATCH /api/users/{user}` con `password` -> la password e' provvisoria: `must_set_password = true`. Se l'attore modifica se stesso il flag non cambia. Nessuna email in questo caso.</item>
       <item>`UserResource`: nuovo campo `must_set_password: boolean` (quindi anche in `GET /api/auth/me` e `GET /api/users/{user}`).</item>
       <item>FE form utente (creazione): password e conferma facoltative con descrizione della doppia modalita'; se valorizzata, min 8 caratteri + conferma uguale; payload senza `password`/`password_confirmation` quando vuota. Edit: descrizione aggiornata ("la nuova password sara' provvisoria").</item>
       <item>FE pagina pubblica `/set-password` (SetPasswordPage) sul modello di `reset-password-page.tsx`, riusando `ResetPasswordForm` parametrizzato sulla chiamata API (niente form duplicato). Esito positivo -> messaggio + link al login.</item>
-      <item>FE primo accesso: `ProtectedRoute` reindirizza a `/first-access` quando `user.must_set_password` e la sessione non e' un'impersonificazione. Pagina `FirstAccessPage` (AuthShell) con `PasswordForm` esistente (password attuale = provvisoria, nuova, conferma) + pulsante Esci; a successo aggiorna `me` e va alla dashboard. Da `/first-access` un utente senza flag viene rimandato alla dashboard.</item>
+      <item>FE primo accesso: `FirstAccessDialog` (Dialog di components/ui) montato nel layout autenticato, aperto quando `user.must_set_password` e la sessione non e' un'impersonificazione e l'utente non l'ha rimandato in questa sessione di pagina. "Piu' tardi" la chiude (stato locale, ricompare al prossimo accesso/ricarica); "Salva password" chiama `PUT /auth/me/first-password`, a successo aggiorna `me` e mostra un toast. `ProtectedRoute` torna al comportamento originale.</item>
       <item>FE dettaglio utente: badge "In attesa di primo accesso" + azione "Reinvia email di benvenuto" (visibile se `must_set_password` e permesso update), toast di esito.</item>
       <item>Rev. 2026-09-29 (decisione utente): gli account del production seed (`TestUsersSeeder`, `QualificaOperatorSeeder`, `QualificaStaffSeeder`) che ricevono la password condivisa `config('seeding.password')` sono marcati `must_set_password = true` (concern `Database\Seeders\Concerns\AssignsSeedPassword`), senza email. Attivo in produzione e locale, spento in staging: `config('seeding.force_password_change')` / env `SEED_FORCE_PASSWORD_CHANGE`, default true salvo `APP_ENV=staging`. Operatori: solo alla creazione; staff: solo creazione; TestUsers: a ogni run (il seeder ripristina a ogni run la password condivisa). Nessuna sistemazione degli ambienti gia' seedati.</item>
       <item>Manuale utente (§4-bis): guide in-app IT+EN `users.ts` (sezioni `create-user`, `reset-password`, nuova sezione `welcome-email`) e `general.ts` (primo accesso); manuale Claude Docs "Manuale Utente QNet" sezioni Utenti e Accesso.</item>
@@ -121,15 +122,14 @@
       <response status="200">`data` include `must_set_password: boolean`.</response>
     </endpoint>
 
-    <middleware name="password.set" class="App\Http\Middleware\EnsurePasswordIsSet">
-      Applicato al gruppo `Route::middleware('auth:sanctum')` principale (NON al prefisso `auth`).
-      Blocca con 403 { success: false, message: "Devi scegliere una nuova password prima di continuare." }
-      quando user.must_set_password = true e currentAccessToken()->impersonated_by = null.
-    </middleware>
+    <endpoint method="PUT" path="/api/auth/me/first-password" auth="auth:sanctum" throttle="6,1">
+      <request>{ password: string (Password::defaults()), password_confirmation: string }</request>
+      <response status="200">{ success: true, message: "Password aggiornata.", data: null }. Effetti: password, must_set_password = false, revoca gli ALTRI token (il corrente resta valido).</response>
+      <errors>403 envelope { success:false, message } se must_set_password = false o token di impersonificazione; 422 { errors: { password: [msg] } } password non valida, conferma diversa o uguale a quella attuale; 429 throttle.</errors>
+    </endpoint>
 
     <frontend_routes>
       /set-password?token=&amp;email=  pubblica (fuori da ProtectedRoute)
-      /first-access                   dentro ProtectedRoute, fuori da AppLayout
     </frontend_routes>
 
     <types lang="ts">
@@ -137,6 +137,7 @@
       UserDetail (features/users/types.ts) + `must_set_password: boolean`
       CreateUserPayload: `password?: string; password_confirmation?: string`
       SetPasswordPayload = ResetPasswordPayload ({ token, email, password, password_confirmation })
+      FirstPasswordPayload = { password: string; password_confirmation: string }
     </types>
   </data_contract>
 
@@ -148,8 +149,8 @@
     <criterion id="AC-004">Dato un token di invito valido, `POST /api/auth/set-password` imposta la password (login successivo ok), azzera `must_set_password`, rimuove il token (secondo utilizzo -> 422 su email) e revoca i token Sanctum esistenti.</criterion>
     <criterion id="AC-005">`POST /api/auth/set-password` con token errato, con email diversa, o con token piu' vecchio di 72h -> 422 su `email`; la password non cambia.</criterion>
     <criterion id="AC-006">Un token del broker di reset password non e' accettato da `/api/auth/set-password` e un token di invito non e' accettato da `/api/auth/reset-password` (tabelle separate).</criterion>
-    <criterion id="AC-007">Dato un utente con `must_set_password` = true e un token normale, una rotta del gruppo protetto principale (es. `GET /api/navigation`) risponde 403 con envelope; `GET /api/auth/me`, `GET /api/auth/me/abilities`, `POST /api/auth/logout` e `PUT /api/auth/me/password` restano accessibili.</criterion>
-    <criterion id="AC-008">Dato un admin che impersona un utente con `must_set_password` = true, le rotte del gruppo protetto rispondono normalmente (nessun 403 da password.set).</criterion>
+    <criterion id="AC-007">(rev. 2) Dato un utente con `must_set_password` = true e un token normale, le rotte del gruppo protetto (es. `GET /api/navigation`) rispondono normalmente: nessun blocco server-side. `PUT /api/auth/me/first-password` con password valida e diversa dall'attuale -> 200, password cambiata (login con la nuova ok), flag false, altri token revocati, token corrente ancora valido.</criterion>
+    <criterion id="AC-008">(rev. 2) `PUT /api/auth/me/first-password` -> 403 se `must_set_password` = false o se il token e' di impersonificazione; 422 su `password` se la conferma e' diversa o se la nuova coincide con l'attuale (flag invariato).</criterion>
     <criterion id="AC-009">`PUT /api/auth/me/password` con password attuale corretta e nuova diversa azzera `must_set_password`; con nuova uguale all'attuale -> 422 su `password` e flag invariato.</criterion>
     <criterion id="AC-010">Il reset da "password dimenticata" (`POST /api/auth/reset-password`) azzera `must_set_password` di un utente in attesa di invito.</criterion>
     <criterion id="AC-011">`POST /api/users/{user}/resend-welcome`: con users.update e utente in attesa -> 200, nuova notifica variante invito, il token precedente non e' piu' valido; utente gia' attivato -> 422 su `user`; senza permesso -> 403.</criterion>
@@ -161,15 +162,15 @@
     <!-- Frontend (Vitest) -->
     <criterion id="AC-016">Form utente in creazione: salvando con password vuote il payload non contiene `password`/`password_confirmation` e la validazione passa; con password &lt; 8 caratteri o conferma diversa mostra l'errore di campo.</criterion>
     <criterion id="AC-017">`/set-password` senza token/email mostra "link non valido"; con token invia `POST /auth/set-password` e a successo mostra il messaggio di conferma con link al login; errore 422 su email -> messaggio link non valido o scaduto.</criterion>
-    <criterion id="AC-018">`ProtectedRoute`: utente con `must_set_password` = true (non in impersonificazione) navigando in un'area protetta viene reindirizzato a `/first-access`; con flag false o in impersonificazione vede la pagina richiesta.</criterion>
-    <criterion id="AC-019">`/first-access`: invio valido chiama `PUT /auth/me/password`, aggiorna l'utente corrente e porta alla dashboard; il pulsante Esci effettua il logout.</criterion>
+    <criterion id="AC-018">(rev. 2) `FirstAccessDialog`: con `must_set_password` = true (non in impersonificazione) la finestra di benvenuto e' aperta con il nome dell'utente; con flag false o in impersonificazione non compare; "Piu' tardi" la chiude.</criterion>
+    <criterion id="AC-019">(rev. 2) `FirstAccessDialog`: invio valido chiama `PUT /auth/me/first-password` con password e conferma, aggiorna l'utente corrente e chiude la finestra con un toast; conferma diversa o &lt; 8 caratteri -> errore di campo senza chiamata; 422 dal server -> errore sul campo password.</criterion>
     <criterion id="AC-020">Dettaglio utente: con `must_set_password` = true e permesso update compaiono badge "In attesa di primo accesso" e azione "Reinvia email di benvenuto" che chiama `POST /users/{id}/resend-welcome` e mostra un toast; con flag false o senza permesso l'azione non compare.</criterion>
     <criterion id="AC-021">Guide in-app IT ed EN aggiornate con gli stessi id di sezione; `help-content-parity.test.ts` verde.</criterion>
   </acceptance_criteria>
 
   <constraints>
     <item>Nessuna nuova dipendenza. Solo Laravel Password broker, Notifications, Sanctum gia' presenti; FE solo componenti in components/ui e features/auth esistenti.</item>
-    <item>Authz server-side: resend-welcome via UserPolicy::update; set-password pubblico ma validato dal broker; `throttle:6,1` ammesso SOLO su set-password (endpoint di credenziali, regola backend.md §2).</item>
+    <item>Authz server-side: resend-welcome via UserPolicy::update; set-password pubblico ma validato dal broker; `throttle:6,1` ammesso SOLO su set-password e me/first-password (endpoint di credenziali, regola backend.md §2).</item>
     <item>`must_set_password` mai mass-assignable (forceFill). Il token non viene mai loggato. La password provvisoria non viene mai inviata via email.</item>
     <item>Email in coda (ShouldQueue), inviate dopo il commit; lingua = locale dell'utente (HasLocalePreference).</item>
     <item>Link frontend costruiti da `config('app.frontend_url')`, nessun URL hard-coded; scadenza da `config('auth.passwords.users_setup.expire')`.</item>

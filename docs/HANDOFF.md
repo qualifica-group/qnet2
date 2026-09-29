@@ -3,10 +3,11 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## SPEC 0177 PRIMO ACCESSO UTENTE + EMAIL DI BENVENUTO — NON COMMITTATO (2026-09-29)
+## SPEC 0177 PRIMO ACCESSO UTENTE + EMAIL DI BENVENUTO — REV. 1 COMMITTATA (70f4b270), REV. 2 NON COMMITTATA (2026-09-29)
 
 - Spec `docs/specs/0177-user-first-access.xml` (approvata). Decisioni utente: modalita' "Entrambi" (invito con
-  link di default, password provvisoria facoltativa con cambio obbligatorio), reinvio dal dettaglio utente.
+  link di default, password provvisoria facoltativa), reinvio dal dettaglio utente. REV. 2 (UX, decisione utente
+  dopo prova): il cambio al primo accesso e' CONSIGLIATO e RIMANDABILE, niente piu' blocco server-side ne' pagina.
 - Stato = `users.must_set_password` (bool, default false, NON fillable, solo forceFill). Nessun backfill: utenti
   esistenti, `UsersSource` (migrazione legacy), seeder e factory restano false e senza email. Il flag si accende
   SOLO da `POST /api/users` (`UserController::store` -> `App\Services\Users\UserOnboardingService::start`, dopo
@@ -16,12 +17,14 @@
   `password_reset_tokens`. Notifica `WelcomeUserNotification` (token null = variante password provvisoria, link
   al login, password MAI nel contenuto). Viste `emails.welcome-user(-plain)`.
 - Rotte: `POST /api/auth/set-password` (pubblica, throttle:6,1), `POST /api/users/{user}/resend-welcome`
-  (UserPolicy::update, 422 `user` se gia' attivato). Middleware `password.set` (`EnsurePasswordIsSet`) sul gruppo
-  `auth:sanctum` principale: 403 se flag e token non di impersonificazione; `/api/auth/*` escluso.
-  `UpdatePasswordRequest`: nuova password `different:current_password`.
-- FE: `/set-password` (pubblica, `ResetPasswordForm` parametrizzato), `/first-access` (dentro ProtectedRoute,
-  fuori AppLayout, `PasswordForm` con `onSuccess`); `ProtectedRoute` redirect se `must_set_password` e non
-  `impersonator`. Dettaglio utente: badge "In attesa di primo accesso" + "Reinvia email di benvenuto"
+  (UserPolicy::update, 422 `user` se gia' attivato), `PUT /api/auth/me/first-password` (rev. 2, throttle:6,1, solo
+  nuova+conferma; `SetFirstPasswordRequest`: 403 con envelope via `failedAuthorization()` se niente flag o token
+  di impersonificazione, 422 se uguale all'attuale; riusa `AuthService::changePassword`).
+  `UpdatePasswordRequest`: nuova password `different:current_password`. Middleware `password.set` RIMOSSO (rev. 2).
+- FE: `/set-password` (pubblica, `ResetPasswordForm` parametrizzato). Rev. 2: `features/auth/first-access-dialog.tsx`
+  montato in `layouts/app-layout.tsx` ("Benvenuto in QNet, {nome}!", Nuova/Ripeti password, "Piu' tardi" =
+  stato locale -> ricompare a ogni accesso/ricarica; nascosta in impersonificazione). Pagina `/first-access` e
+  redirect in `ProtectedRoute` RIMOSSI. Dettaglio utente: badge "In attesa di primo accesso" + "Reinvia email di benvenuto"
   (`use-resend-welcome-email.ts`). Password facoltativa in creazione (`user-schema.ts`, `user-form-payload.ts`).
 - Manuale: guide in-app IT/EN `users.ts` (`create-user`, `reset-password`, nuova `welcome-email`) e `general.ts`;
   Claude Docs "Manuale Utente QNet" aggiornato (Primi passi > Primo accesso; Utenti > campo password,
@@ -37,7 +40,9 @@
   solo se `APP_ENV=staging` (produzione e locale si', staging no). Se lo staging usa un altro `APP_ENV`, impostare
   la env a false. Gli ambienti gia' seedati non vengono sistemati (decisione utente). AC-022 in
   `tests/Feature/Spec0177/SeedPasswordChangeTest.php`; la suite completa e' verde (8768 passed).
-- Aperti: `frontend/src/i18n/locales/en.ts` a 495 righe (hard limit 500) -> split al prossimo intervento;
+- Rev. 2 verificata: `composer test` 8768 passed / 1 skipped; Spec0177 21/21; vitest 6491/6491; eslint e
+  `tsc -b --force` puliti. Manuale Claude Docs e guide in-app riallineati (consigliato, "Piu' tardi").
+- Aperti: `frontend/src/i18n/locales/en.ts` a 499 righe (hard limit 500) -> split al prossimo intervento;
   colonna/filtro "In attesa di primo accesso" nella tabella Utenti fuori scope (evoluzione possibile).
 
 ## SEED: ACCOUNT PRIVILEGIATI NEL PRODUCTION — NON COMMITTATO (2026-09-29)

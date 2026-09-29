@@ -24,12 +24,7 @@ interface PasswordValues {
   confirmPassword: string
 }
 
-interface PasswordFormProps {
-  /** Runs after a successful change (first-access flow, spec 0177). */
-  onSuccess?: () => void
-}
-
-export function PasswordForm({ onSuccess }: PasswordFormProps) {
+export function PasswordForm() {
   const { t } = useTranslation()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -63,7 +58,6 @@ export function PasswordForm({ onSuccess }: PasswordFormProps) {
       })
       form.reset()
       toast.success(t('settings.passwordChanged'))
-      onSuccess?.()
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, ['current_password', 'password'])) {
         setServerError(t('settings.genericError'))

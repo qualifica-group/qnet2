@@ -31,7 +31,7 @@ const guide: HelpGuide = {
             ['**Active**', 'If turned off, the account cannot sign in.'],
           ],
         },
-        { type: 'paragraph', text: 'On creation the user automatically receives a welcome email. There are two modes: **without a password** the email contains the link to choose the password; **with a temporary password** the email contains the link to sign in and you tell the user the password yourself (it is never sent by email). In both cases the user must choose their own password at first sign-in.' },
+        { type: 'paragraph', text: 'On creation the user automatically receives a welcome email. There are two modes: **without a password** the email contains the link to choose the password; **with a temporary password** the email contains the link to sign in and you tell the user the password yourself (it is never sent by email). In both cases the user gets in right away and sees a welcome window recommending they choose their own password; they can postpone it with **Later**.' },
         { type: 'tip', text: "If a section doesn't appear, your role does not let you see its fields." },
       ],
     },
@@ -91,7 +91,7 @@ const guide: HelpGuide = {
       title: "Resetting a user's password",
       blocks: [
         { type: 'steps', items: ["Open the user's record with **Edit**.", 'In the **Authentication** section, type the **New password** and then **Repeat password**.', 'Click **Save**.'] },
-        { type: 'note', text: 'If you leave the password fields empty, the current password stays unchanged. A password you set is temporary: the user must change it at their next sign-in. Alternatively, the person can reset it themselves with **Forgot your password?** on the sign-in page.' },
+        { type: 'note', text: 'If you leave the password fields empty, the current password stays unchanged. A password you set is temporary: at their next sign-in the user will be advised to change it. Alternatively, the person can reset it themselves with **Forgot your password?** on the sign-in page.' },
       ],
     },
     {
@@ -100,7 +100,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: "Until a user has completed the first sign-in, their record shows the **Awaiting first sign-in** label." },
         { type: 'steps', items: ["Open the user's record.", 'Click **Resend welcome email** (you need the edit permission on users).', 'The message "Welcome email sent." appears.'] },
-        { type: 'list', items: ['The link in the email is valid for **72 hours**.', 'Every new send invalidates the previous link.', 'Resending always sends the link to choose the password, even if the user was created with a temporary password.', 'Alternatively the user can use **Forgot your password?** on the sign-in page.'] },
+        { type: 'list', items: ['The link in the email is valid for **72 hours**.', 'Every new send invalidates the previous link.', 'Resending always sends the link to choose the password, even if the user was created with a temporary password.', 'While the user postpones the choice, the label stays and the welcome window reappears at every sign-in.', 'Alternatively the user can use **Forgot your password?** on the sign-in page.'] },
         { type: 'note', text: 'The label and the button disappear once the user chooses their own password.' },
       ],
     },

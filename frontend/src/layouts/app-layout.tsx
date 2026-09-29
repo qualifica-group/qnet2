@@ -9,6 +9,7 @@ import { useNotificationTitle } from '@/features/notifications/use-notification-
 import { HelpButton } from '@/features/help/components/help-button'
 import { useAuth } from '@/features/auth/use-auth'
 import { ImpersonationBanner } from '@/features/auth/impersonation-banner'
+import { FirstAccessDialog } from '@/features/auth/first-access-dialog'
 import { VersionUpdateBanner } from '@/components/version-update-banner'
 import { TopLoadingBar } from '@/components/top-loading-bar'
 import { Separator } from '@/components/ui/separator'
@@ -32,6 +33,7 @@ export function AppLayout() {
     <BreadcrumbTitleProvider>
       <UserDetailSheetProvider>
         <TopLoadingBar />
+        <FirstAccessDialog />
         <SidebarProvider>
           <AppSidebar />
           <SidebarInset>

@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Middleware\CaptureCustomFields;
-use App\Http\Middleware\EnsurePasswordIsSet;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -23,7 +22,6 @@ return Application::configure(basePath: dirname(__DIR__))
         // Fail-closed hard gate for the "Migrazioni" section (spec 0013).
         $middleware->alias([
             'super-admin' => EnsureSuperAdmin::class,
-            'password.set' => EnsurePasswordIsSet::class,
         ]);
 
         // API-only app: there is no `login` route to redirect a guest to. The

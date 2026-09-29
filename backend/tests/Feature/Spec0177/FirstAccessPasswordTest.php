@@ -81,37 +81,65 @@ it('AC-006: reset and invite tokens are not interchangeable', function () {
         ->assertUnprocessable()->assertJsonValidationErrors('email');
 });
 
-it('AC-007: a pending user is blocked from the protected API but keeps the auth self-service routes', function () {
+it('AC-007: a pending user is not blocked and can choose a password via first-password', function () {
     $user = firstAccessPendingUser();
     $token = $user->createToken('api')->plainTextToken;
+    $other = $user->createToken('other');
 
-    $this->withToken($token)->getJson('/api/navigation')
-        ->assertForbidden()
-        ->assertJsonPath('success', false)
-        ->assertJsonPath('message', __('auth.must_set_password'));
+    $this->withToken($token)->getJson('/api/navigation')->assertOk();
+
+    Auth::forgetGuards();
+    $this->withToken($token)->putJson('/api/auth/me/first-password', [
+        'password' => 'Brand-New-Pass1!',
+        'password_confirmation' => 'Brand-New-Pass1!',
+    ])->assertOk()->assertJsonPath('message', __('auth.first_password_updated'));
+
+    $user->refresh();
+    expect($user->must_set_password)->toBeFalse()
+        ->and(Hash::check('Brand-New-Pass1!', $user->password))->toBeTrue()
+        ->and($user->tokens()->whereKey($other->accessToken->id)->exists())->toBeFalse()
+        ->and($user->tokens()->count())->toBe(1);
 
     Auth::forgetGuards();
     $this->withToken($token)->getJson('/api/auth/me')->assertOk();
-    Auth::forgetGuards();
-    $this->withToken($token)->getJson('/api/auth/me/abilities')->assertOk();
-    Auth::forgetGuards();
-    $this->withToken($token)->putJson('/api/auth/me/password', [
-        'current_password' => 'password',
-        'password' => 'Brand-New-Pass1!',
-        'password_confirmation' => 'Brand-New-Pass1!',
-    ])->assertOk();
-    Auth::forgetGuards();
-    $this->withToken($token)->postJson('/api/auth/logout')->assertOk();
+    $this->postJson('/api/auth/login', ['email' => $user->email, 'password' => 'Brand-New-Pass1!', 'device_name' => 'test'])
+        ->assertOk();
 });
 
-it('AC-008: an impersonation session of a pending user is not blocked', function () {
+it('AC-008: first-password is 403 without the flag or under impersonation, 422 on bad input', function () {
+    $payload = ['password' => 'Brand-New-Pass1!', 'password_confirmation' => 'Brand-New-Pass1!'];
+
+    $plain = User::factory()->create();
+    $this->withToken($plain->createToken('api')->plainTextToken)
+        ->putJson('/api/auth/me/first-password', $payload)
+        ->assertForbidden()
+        ->assertJsonPath('success', false);
+
+    Auth::forgetGuards();
     $admin = User::factory()->create();
     $target = firstAccessPendingUser();
-
     $issued = $target->createToken('impersonation');
     $issued->accessToken->forceFill(['impersonated_by' => $admin->id])->save();
+    $this->withToken($issued->plainTextToken)
+        ->putJson('/api/auth/me/first-password', $payload)
+        ->assertForbidden()
+        ->assertJsonPath('success', false);
+    expect($target->fresh()->must_set_password)->toBeTrue();
 
-    $this->withToken($issued->plainTextToken)->getJson('/api/navigation')->assertOk();
+    Auth::forgetGuards();
+    $token = $target->createToken('api')->plainTextToken;
+    $this->withToken($token)->putJson('/api/auth/me/first-password', [
+        'password' => 'Brand-New-Pass1!',
+        'password_confirmation' => 'different',
+    ])->assertUnprocessable()->assertJsonValidationErrors('password');
+
+    Auth::forgetGuards();
+    $this->withToken($token)->putJson('/api/auth/me/first-password', [
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ])->assertUnprocessable()->assertJsonValidationErrors('password');
+
+    expect($target->fresh()->must_set_password)->toBeTrue();
 });
 
 it('AC-009: changing the password clears the flag; reusing the current one is a 422', function () {
