@@ -8,6 +8,7 @@ use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductTypology;
 use App\Models\Quote;
 use App\Models\Source;
 use App\Models\User;
@@ -61,6 +62,8 @@ it('composes structure, catalogue and operators in one run, with a super-admin a
         ->and(Source::query()->where('name', 'Passaparola')->count())->toBe(1)
         ->and(ProductCategory::query()->where('name', 'GOL - Molise')->count())->toBe(1)
         ->and(Product::query()->count())->toBe(303)
+        // Before the legacy import: its products are filed by typology NAME.
+        ->and(ProductTypology::query()->orderBy('name')->pluck('name')->all())->toBe(['Consulenza', 'Ente'])
         ->and(User::query()->where('email', 'ciro.cacciapuoti@qualificagroup.com')->exists())->toBeTrue()
         ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->exists())->toBeTrue()
         // Step 8 runs after step 7: the staff lands, the roster keeps its mansione.
@@ -111,6 +114,8 @@ it('seeds no fabricated row on the first run, and duplicates nothing on a re-run
 
     expect(Source::query()->count())->toBe(10)
         ->and(Product::query()->count())->toBe(303)
+        // Before the legacy import: its products are filed by typology NAME.
+        ->and(ProductTypology::query()->orderBy('name')->pluck('name')->all())->toBe(['Consulenza', 'Ente'])
         ->and(ProductCategory::query()->where('name', 'Formazione')->count())->toBe(1)
         ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->count())->toBe(1);
 });

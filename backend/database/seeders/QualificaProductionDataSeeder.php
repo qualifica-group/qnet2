@@ -36,8 +36,12 @@ use Illuminate\Database\Seeder;
  *                                    is the same kind of row, not because the
  *                                    order matters.
  *   4. TestUsersSeeder             — the named super-admin account.
+ *      ProductTypologySeeder       — the two product typologies ("Ente",
+ *                                    "Consulenza") the imported products
+ *                                    are filed under by their legacy `folder`.
  *   5. QualificaLegacyImportSeeder — the support tables pulled from the legacy
- *                                    system through the Migrazioni engine.
+ *                                    system through the Migrazioni engine,
+ *                                    the sellable products included.
  *   6. QualificaBusinessFunctionLinkSeeder — assigns step 2's "Formazione"
  *                                    root and its "APL" subcategory to the
  *                                    business functions step 5 imports, and
@@ -60,6 +64,9 @@ use Illuminate\Database\Seeder;
  *     it, and nests its imported taxonomy under step 2's "Consulenza" root;
  *   - step 5 acts on behalf of a super-admin, which step 4 guarantees exists
  *     (it runs `permissions:sync` and `roles:create-super-admin` itself);
+ *   - step 5 resolves each product's typology BY NAME (ProductsSource), so
+ *     the typologies land before it: without "Consulenza" every consultancy
+ *     product would fall back on the default typology with a warning;
  *   - step 6 needs BOTH sides: step 2's category and step 5's function. Step 2
  *     already ran it once at its own end (a no-op here, the import had not run
  *     yet), which is why it is repeated — not moved — after step 5;
@@ -87,6 +94,7 @@ class QualificaProductionDataSeeder extends Seeder
         $this->callWith(QualificaCatalogSeeder::class, ['askForLegacyImport' => false]);
         $this->call(QualificaTaskTaxonomySeeder::class);
         $this->call(TestUsersSeeder::class);
+        $this->call(ProductTypologySeeder::class);
         $this->call(QualificaLegacyImportSeeder::class);
         $this->call(QualificaBusinessFunctionLinkSeeder::class);
         $this->call(QualificaOperatorSeeder::class);

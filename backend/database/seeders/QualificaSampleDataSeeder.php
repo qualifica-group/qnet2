@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Opportunity;
+use Database\Seeders\Support\SampleCategoryCoverage;
 use Illuminate\Database\Seeder;
 
 /**
@@ -43,6 +44,16 @@ use Illuminate\Database\Seeder;
  *   8. QualificaSampleTimeEntrySeeder — day-to-day Segnatempo on the open
  *                                      Tasks, Commesse and Opportunita'.
  *
+ * COVERAGE (user directive 2026-09-29): on top of the batch sizes, every run
+ * guarantees at least one row per SELLABLE product category at each level —
+ * Opportunita', Offerta and, on a branch sold under a contract, Contratto and
+ * Commessa (SampleCategoryCoverage). Step 2 opens one deal per category not
+ * yet carried to its deepest level, and steps 4 to 6 take those deals through
+ * the chain first. The Anagrafiche those deals need come from step 1: one
+ * extra lead per category to cover. Once every category is covered a run
+ * adds nothing beyond the batch. Every Commessa of step 6 is stamped from one
+ * of the loaded Modelli di Task, which generates its tasks.
+ *
  * The order is a contract, not a preference: steps 2 and 3 both consume step
  * 1's Anagrafiche, and an anagrafica carries ONE open opportunity at a time
  * (user directive 2026-08-31) — so each of the two takes what the previous
@@ -73,6 +84,8 @@ use Illuminate\Database\Seeder;
  */
 class QualificaSampleDataSeeder extends Seeder
 {
+    public function __construct(private readonly SampleCategoryCoverage $coverage) {}
+
     public function run(
         int $leads = QualificaSampleLeadSeeder::DEFAULT_LEADS,
         int $convertedLeads = QualificaSampleLeadSeeder::DEFAULT_CONVERTED_LEADS,
@@ -85,12 +98,17 @@ class QualificaSampleDataSeeder extends Seeder
         int $timeEntries = QualificaSampleTimeEntrySeeder::DEFAULT_TIME_ENTRIES,
     ): void {
         $sinceOpportunityId = (int) Opportunity::query()->max('id');
+        $coverageLeads = count($this->coverage->incompleteCategoryIds());
+
+        if ($coverageLeads > 0) {
+            $this->command?->info(sprintf('%d product categories to cover: %d extra leads provide their registries.', $coverageLeads, $coverageLeads));
+        }
 
         $this->callWith(QualificaSampleLeadSeeder::class, [
-            'leads' => $leads,
+            'leads' => $leads + $coverageLeads,
             'convertedLeads' => $convertedLeads,
         ]);
-        $this->callWith(QualificaSampleOpportunitySeeder::class, ['opportunities' => $opportunities]);
+        $this->callWith(QualificaSampleOpportunitySeeder::class, ['opportunities' => $opportunities, 'sinceOpportunityId' => $sinceOpportunityId]);
         $this->callWith(QualificaSampleRequestSeeder::class, ['requests' => $requests]);
         $this->callWith(QualificaSampleQuoteSeeder::class, ['quotes' => $quotes, 'sinceOpportunityId' => $sinceOpportunityId]);
         $this->callWith(QualificaSampleContractSeeder::class, ['contracts' => $contracts, 'sinceOpportunityId' => $sinceOpportunityId]);

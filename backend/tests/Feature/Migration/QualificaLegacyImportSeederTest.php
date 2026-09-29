@@ -102,6 +102,13 @@ function fakeLegacyCatalogues(): void
             ],
             'pagination' => ['total' => 2],
         ]),
+        fakeMigrationsBaseUrl().'/products*' => Http::response([
+            'items' => [[
+                'id' => 101, 'name' => 'Bando Sviluppo Impresa', 'price' => 1200, 'cost' => 300,
+                'category_id' => 52, 'vat_rate_id' => 61, 'product_type' => 'service',
+            ]],
+            'pagination' => ['total' => 1],
+        ]),
         fakeMigrationsBaseUrl().'/cost-products*' => Http::response([
             'items' => [[
                 'id' => 'vehicles:3', 'source' => 'vehicles', 'source_id' => 3, 'name' => 'Tagliando Smart',
@@ -226,6 +233,15 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         ->and($vehicle->usages->all())->toBe([ProductUsage::Cost])
         ->and($vehicle->vat_rate_id)->toBe(VatRate::query()->where('old_id', 61)->value('id'))
         ->and($vehicle->attribute_values)->toBe(['cost_license_plate' => 'FE700FV']);
+
+    // User directive 2026-09-29: the sellable catalogue lands once, filed on
+    // its migrated category with its migrated VAT rate.
+    $service = Product::query()->where('old_source', 'services')->where('old_id', 101)->sole();
+
+    expect(QualificaLegacyImportSeeder::SOURCES)->toContain('products')
+        ->and($service->name)->toBe('Bando Sviluppo Impresa')
+        ->and($service->category_id)->toBe($legacyChild->id)
+        ->and($service->vat_rate_id)->toBe(VatRate::query()->where('old_id', 61)->value('id'));
 
     // was: 're-running the seeders never duplicates an imported catalogue'
     expect(Source::query()->count())->toBe($sourceCountAfterFirst)

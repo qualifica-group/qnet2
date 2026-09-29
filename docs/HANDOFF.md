@@ -3,6 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEED: PRODOTTI NEL PRODUCTION + COPERTURA CATEGORIE NEL SAMPLE — COMMITTATO (2026-09-29)
+
+- Production: `QualificaLegacyImportSeeder::SOURCES` include ora `products` (fase 5, dopo
+  `product-category-attributes`); `QualificaProductionDataSeeder` chiama `ProductTypologySeeder` prima
+  dell'import (la tipologia si risolve per NOME da `folder`).
+- Sample (`qualifica:seed-sample`), decisioni utente: copre ogni categoria VENDIBILE (selezionabile + BF
+  effettiva + almeno un prodotto proprio SALE), IN AGGIUNTA al batch (le size contano le righe oltre la
+  copertura); livello piu' profondo = Commessa se `generates_contract`, altrimenti Offerta (Formazione).
+  Classe `Database\Seeders\Support\SampleCategoryCoverage` (incomplete/unquoted/uncontracted/unprogrammed +
+  `pickCovering`). La catena aggiunge 1 lead per categoria da coprire; lo step Opportunita' apre i deal di
+  copertura SOLO se riceve `sinceOpportunityId` (dalla catena); Offerte di copertura mai perse, Contratti di
+  copertura sempre "validato"; `PicksDemoOffers::pickOfferFor()`.
+- Commesse: ognuna con un Modello di Task attivo, il meno usato prima (tutti usati prima di ripetere); il
+  generatore gira come l'attore del seed (`Auth::setUser` ripristinato) con notifiche soppresse.
+- Test: nuovo `QualificaSampleCategoryCoverageTest`; conteggi aggiornati (requisito cambiato: +1 lead/
+  contratto/commessa per la categoria del fixture) in `QualificaSampleDataSeederTest`,
+  `SeedSampleDataCommandTest`, `QualificaSampleDealFlowSeederTest`; import `products` in
+  `QualificaLegacyImportSeederTest`, tipologie in `QualificaProductionDataSeederTest`.
+- Da sapere: `QualificaSampleQuoteSeeder` e' a 347 righe (>300 soft). Non ancora eseguito sul DB locale reale.
+
 ## FIX MIGRAZIONE PRODOTTI: TIPOLOGIA DA `folder` LEGACY — NON COMMITTATO (2026-09-29)
 
 - `ProductsSource` ignorava `folder` del legacy (`"Ente"`/`"Consulenza"`): ogni prodotto finiva sulla tipologia

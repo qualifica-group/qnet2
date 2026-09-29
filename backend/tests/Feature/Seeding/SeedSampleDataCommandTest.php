@@ -20,7 +20,9 @@ use Symfony\Component\Console\Command\Command as ConsoleCommand;
 // 2026-09-08): the batch sizes as flags, so a bigger dataset is one run rather
 // than several. What is pinned here is the wiring — the flags reaching the
 // seeders' own run() parameters — not the chain itself, which
-// QualificaSampleDataSeederTest already covers.
+// QualificaSampleDataSeederTest already covers. The fixture's one category
+// starts uncovered, so a first run adds on top of the flags one lead for its
+// Anagrafica, one contract and one commessa (user directive 2026-09-29).
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
@@ -44,14 +46,14 @@ it('sizes every step from its own flag', function (): void {
         '--time-entries' => 5,
     ])->assertSuccessful();
 
-    expect(Lead::query()->count())->toBe(9)
+    expect(Lead::query()->count())->toBe(10)
         ->and(Lead::query()->has('opportunity')->count())->toBe(2)
         // 2 converted + 3 lead-less + 2 born with a request.
         ->and(Opportunity::query()->count())->toBe(7)
         // 2 born with a request + 3 on the deals that had none.
         ->and(Quote::query()->count())->toBe(5)
-        ->and(Contract::query()->count())->toBe(2)
-        ->and(WorkOrder::query()->count())->toBe(1)
+        ->and(Contract::query()->count())->toBe(3)
+        ->and(WorkOrder::query()->count())->toBe(2)
         ->and(Task::query()->count())->toBe(4)
         // 5 + the one the single completed Task logs.
         ->and(TimeEntry::query()->count())->toBe(6);
@@ -60,11 +62,11 @@ it('sizes every step from its own flag', function (): void {
 it('falls back to the seeders own defaults when no flag is given', function (): void {
     test()->artisan('qualifica:seed-sample')->assertSuccessful();
 
-    expect(Lead::query()->count())->toBe(40)
+    expect(Lead::query()->count())->toBe(41)
         ->and(Opportunity::query()->count())->toBe(30)
         ->and(Quote::query()->count())->toBe(23)
-        ->and(Contract::query()->count())->toBe(8)
-        ->and(WorkOrder::query()->count())->toBe(4)
+        ->and(Contract::query()->count())->toBe(9)
+        ->and(WorkOrder::query()->count())->toBe(5)
         ->and(Task::query()->count())->toBe(30)
         ->and(TimeEntry::query()->count())->toBe(70);
 });
@@ -75,7 +77,7 @@ it('sizes every domain at once from --size, a per-domain flag still winning', fu
     // next to the 4 converted leads.
     test()->artisan('qualifica:seed-sample', ['--size' => 4, '--time-entries' => 1])->assertSuccessful();
 
-    expect(Lead::query()->count())->toBe(12)
+    expect(Lead::query()->count())->toBe(13)
         ->and(Lead::query()->has('opportunity')->count())->toBe(4)
         // 4 converted + 4 lead-less + 4 born with a request.
         ->and(Opportunity::query()->count())->toBe(12)
@@ -101,9 +103,10 @@ it('appends on a second run, like the seeder it drives', function (): void {
     test()->artisan('qualifica:seed-sample', $flags)->assertSuccessful();
     test()->artisan('qualifica:seed-sample', $flags)->assertSuccessful();
 
-    expect(Lead::query()->count())->toBe(12)
+    // The coverage row is paid once, on the first run.
+    expect(Lead::query()->count())->toBe(13)
         ->and(Quote::query()->count())->toBe(4)
-        ->and(Contract::query()->count())->toBe(2)
+        ->and(Contract::query()->count())->toBe(3)
         ->and(WorkOrder::query()->count())->toBe(2)
         ->and(Task::query()->count())->toBe(4)
         ->and(TimeEntry::query()->count())->toBe(6);

@@ -18,6 +18,7 @@ use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\QuoteService;
 use Database\Seeders\Concerns\ResolvesSeedActor;
+use Database\Seeders\Support\SampleCategoryCoverage;
 use Faker\Factory as FakerFactory;
 use Faker\Generator;
 use Illuminate\Database\Seeder;
@@ -51,6 +52,11 @@ use Illuminate\Support\Collection;
  * stay on its `open` row, some move to a non-system open/pending row, some
  * close negatively. Closing positively is left to
  * QualificaSampleContractSeeder, the step that owns what that close triggers.
+ *
+ * COVERAGE FIRST (user directive 2026-09-29): on top of `$quotes`, one offer
+ * on a deal carrying each sellable category no offer covers yet
+ * (SampleCategoryCoverage). Those never close negatively, or the category
+ * could not go on to its contract.
  *
  * `$sinceOpportunityId` confines the step to the rows the running chain has
  * just created (QualificaSampleDataSeeder passes its watermark), so real
@@ -91,21 +97,15 @@ class QualificaSampleQuoteSeeder extends Seeder
         private readonly QuoteService $quotes,
         private readonly QuoteWorkflowResolver $workflowResolver,
         private readonly CategoryHierarchy $hierarchy,
+        private readonly SampleCategoryCoverage $coverage,
     ) {}
 
     public function run(int $quotes = self::DEFAULT_QUOTES, int $sinceOpportunityId = 0): void
     {
         // Step 1: the actor QuoteService writes on behalf of, and the batch's
-        // opportunities still without an offer.
+        // opportunities still without an offer — the coverage ones first.
         $actor = $this->resolveActor();
-
-        $opportunities = Opportunity::query()
-            ->where('id', '>', $sinceOpportunityId)
-            ->doesntHave('quotes')
-            ->with(['productLines', 'registry'])
-            ->orderBy('id')
-            ->limit($quotes)
-            ->get();
+        [$opportunities, $coveringIds] = $this->pickOpportunities($quotes, $sinceOpportunityId);
 
         if ($actor === null || $opportunities->isEmpty()) {
             $this->command?->warn('Sample quotes skipped: no user, or no opportunity without an offer.');
@@ -135,11 +135,40 @@ class QualificaSampleQuoteSeeder extends Seeder
                 $this->buildQuoteData($faker, $seeded, $opportunity, $offerLines, $costProducts, $users),
                 $actor,
             );
-            $this->applyOutcome(self::OUTCOMES[$seeded % count(self::OUTCOMES)], $quote, $faker, $actor);
+            $outcome = self::OUTCOMES[$seeded % count(self::OUTCOMES)];
+            $covering = isset($coveringIds[$opportunity->id]);
+            $this->applyOutcome($covering && $outcome === self::OUTCOME_LOST ? self::OUTCOME_BASELINE : $outcome, $quote, $faker, $actor);
             $seeded++;
         }
 
         $this->command?->info(sprintf('%d sample quotes seeded.', $seeded));
+    }
+
+    /**
+     * The batch's opportunities with no offer: one per category still
+     * without an offer, then up to $limit more.
+     *
+     * @return array{0: Collection<int, Opportunity>, 1: array<int, true>} the opportunities, and the ids of the covering ones
+     */
+    private function pickOpportunities(int $limit, int $sinceOpportunityId): array
+    {
+        $candidates = Opportunity::query()
+            ->where('id', '>', $sinceOpportunityId)
+            ->doesntHave('quotes')
+            ->with(['productLines', 'registry'])
+            ->orderBy('id')
+            ->get();
+
+        $covering = $this->coverage->pickCovering(
+            $candidates,
+            $this->coverage->unquotedCategoryIds(),
+            static fn (Opportunity $opportunity): array => $opportunity->productLines->pluck('product_category_id')->all(),
+        );
+
+        return [
+            $covering->merge($candidates->diff($covering)->take($limit)),
+            array_fill_keys($covering->modelKeys(), true),
+        ];
     }
 
     /**

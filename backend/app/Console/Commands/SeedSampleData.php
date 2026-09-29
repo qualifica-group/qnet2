@@ -26,6 +26,10 @@ use InvalidArgumentException;
  * and N requests (an anagrafica carries ONE open opportunity at a time). A
  * per-domain flag still wins over it.
  *
+ * On top of the sizes, the seeder always covers every sellable product
+ * category with at least one opportunity, offer, contract and work order
+ * (user directive 2026-09-29): the sizes count the rows beyond that coverage.
+ *
  * A front-end, never a second implementation: the flags become the
  * seeder's own `run()` parameters and the chain does the rest, so
  * `db:seed --class=QualificaSampleDataSeeder` (defaults) and this command
@@ -55,7 +59,7 @@ class SeedSampleData extends Command
         {--time-entries= : How many further time entries to log on the new tasks, work orders and opportunities}
         {--force : Run without asking for confirmation in production}';
 
-    protected $description = 'Append a batch of sample rows (leads, opportunities, requests, quotes, contracts, work orders, tasks, time entries) on top of the production seed';
+    protected $description = 'Append a batch of sample rows (leads, opportunities, requests, quotes, contracts, work orders, tasks, time entries) on top of the production seed, covering every sellable product category';
 
     public function handle(): int
     {

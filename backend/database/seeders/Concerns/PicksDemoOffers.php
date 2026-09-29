@@ -97,7 +97,33 @@ trait PicksDemoOffers
      */
     protected function pickOffer(Generator $faker, int $index): array
     {
-        $primary = $this->offers[$index % count($this->offers)];
+        return $this->drawOffer($faker, $index, $this->offers[$index % count($this->offers)]);
+    }
+
+    /**
+     * The same draw as pickOffer(), with $categoryId as the primary line —
+     * how the sample chain covers one given category (user directive
+     * 2026-09-29). Null when $categoryId is not an offer.
+     *
+     * @return array{product_lines: list<array{business_function_id: int, product_category_id: int}>, products_of_interest: list<int>}|null
+     */
+    protected function pickOfferFor(Generator $faker, int $index, int $categoryId): ?array
+    {
+        foreach ($this->offers as $offer) {
+            if ($offer['product_category_id'] === $categoryId) {
+                return $this->drawOffer($faker, $index, $offer);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array{business_function_id: int, product_category_id: int, root_category_id: int, management_mode: CategoryManagementMode, product_ids: list<int>}  $primary
+     * @return array{product_lines: list<array{business_function_id: int, product_category_id: int}>, products_of_interest: list<int>}
+     */
+    private function drawOffer(Generator $faker, int $index, array $primary): array
+    {
         $lines = [$primary, ...$this->companionLines($faker, $index, $primary)];
         $productLines = [];
         $productIds = [];

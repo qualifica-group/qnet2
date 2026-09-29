@@ -124,7 +124,9 @@ describe('QualificaSampleContractSeeder', function (): void {
 
         app(QualificaSampleContractSeeder::class)->run(contracts: 2);
 
-        expect(Contract::query()->count())->toBe(2);
+        // User directive 2026-09-29: the category no contract covers yet gets
+        // its own on top of the batch.
+        expect(Contract::query()->count())->toBe(3);
     });
 });
 

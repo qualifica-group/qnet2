@@ -20,6 +20,7 @@ use App\Services\ContractService;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\QuoteService;
 use Database\Seeders\Concerns\ResolvesSeedActor;
+use Database\Seeders\Support\SampleCategoryCoverage;
 use Faker\Factory as FakerFactory;
 use Faker\Generator;
 use Illuminate\Database\Eloquent\Builder;
@@ -45,6 +46,11 @@ use Illuminate\Support\Collection;
  * expiry), disdetto, sospeso (the offer reopened, BR-2). Half of the rotation
  * is "validato" on purpose: it is the closed_won group "Programma" requires
  * (spec 0095), i.e. what QualificaSampleWorkOrderSeeder feeds on.
+ *
+ * COVERAGE FIRST (user directive 2026-09-29): on top of `$contracts`, one
+ * contract on an offer carrying each contract-generating sellable category no
+ * contract covers yet (SampleCategoryCoverage), always walked to "validato" so
+ * the next step can program it.
  *
  * `$sinceOpportunityId` confines the step to the running chain's own batch,
  * so a real offer is never closed by a seed. Unseeded Faker: the chain
@@ -91,6 +97,7 @@ class QualificaSampleContractSeeder extends Seeder
         private readonly ContractEligibility $eligibility,
         private readonly ContractService $contracts,
         private readonly ContractActionService $contractActions,
+        private readonly SampleCategoryCoverage $coverage,
     ) {}
 
     public function run(int $contracts = self::DEFAULT_CONTRACTS, int $sinceOpportunityId = 0): void
@@ -98,7 +105,7 @@ class QualificaSampleContractSeeder extends Seeder
         // Step 1: the actor, and the batch's offers the system would turn
         // into a contract on a positive close.
         $actor = $this->resolveActor();
-        $candidates = $this->closableQuotes($sinceOpportunityId, $contracts);
+        [$candidates, $coveringIds] = $this->closableQuotes($sinceOpportunityId, $contracts);
 
         if ($actor === null || $candidates->isEmpty()) {
             $this->command?->warn('Sample contracts skipped: no user, or no open offer on a branch sold under a contract.');
@@ -119,24 +126,29 @@ class QualificaSampleContractSeeder extends Seeder
                 continue;
             }
 
-            // Step 3: walk the contract onto its lifecycle shape.
-            $this->applyShape(self::SHAPES[$seeded % count(self::SHAPES)], $contract, $quote, $faker, $actor);
+            // Step 3: walk the contract onto its lifecycle shape; a covering
+            // one is always validated, so its category reaches the Commessa.
+            $shape = isset($coveringIds[$quote->id]) ? self::SHAPE_VALIDATED : self::SHAPES[$seeded % count(self::SHAPES)];
+            $this->applyShape($shape, $contract, $quote, $faker, $actor);
             $seeded++;
         }
 
-        $this->command?->info(sprintf('%d sample contracts seeded.', $seeded));
+        $this->command?->info(sprintf('%d sample contracts seeded, %d of them to cover a category.', $seeded, count($coveringIds)));
 
-        if ($seeded < $contracts) {
+        if ($seeded - count($coveringIds) < $contracts) {
             $this->command?->warn(sprintf('%d were requested: only open offers of this batch on a branch sold under a contract can open one.', $contracts));
         }
     }
 
     /**
-     * @return Collection<int, Quote>
+     * The batch's closable offers: one per category still without a
+     * contract, then up to $limit more.
+     *
+     * @return array{0: Collection<int, Quote>, 1: array<int, true>} the offers, and the ids of the covering ones
      */
-    private function closableQuotes(int $sinceOpportunityId, int $limit): Collection
+    private function closableQuotes(int $sinceOpportunityId, int $limit): array
     {
-        return Quote::query()
+        $candidates = Quote::query()
             ->where('opportunity_id', '>', $sinceOpportunityId)
             ->doesntHave('contract')
             ->has('offerLines')
@@ -144,11 +156,22 @@ class QualificaSampleContractSeeder extends Seeder
                 WorkflowStatusGroup::ClosedWon->value,
                 WorkflowStatusGroup::ClosedLost->value,
             ]))
+            ->with('opportunity.productLines')
             ->orderBy('id')
             ->get()
             ->filter(fn (Quote $quote): bool => $this->eligibility->allowsContract($quote))
-            ->take($limit)
             ->values();
+
+        $covering = $this->coverage->pickCovering(
+            $candidates,
+            $this->coverage->uncontractedCategoryIds(),
+            static fn (Quote $quote): array => $quote->opportunity->productLines->pluck('product_category_id')->all(),
+        );
+
+        return [
+            $covering->merge($candidates->diff($covering)->take($limit)),
+            array_fill_keys($covering->modelKeys(), true),
+        ];
     }
 
     private function applyShape(string $shape, Contract $contract, Quote $quote, Generator $faker, User $actor): void

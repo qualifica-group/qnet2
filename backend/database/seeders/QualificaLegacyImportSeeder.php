@@ -43,9 +43,10 @@ class QualificaLegacyImportSeeder extends Seeder
     /**
      * The catalogues imported here, in MigrationOrder phase order — a
      * later entry resolves its references against the earlier ones via
-     * `old_id`. Deliberately a fixed subset of the mass-import plan: users,
-     * referents and `products` are operational data, not template data. The
-     * legacy costs (`cost-products`, spec 0174) are in, by user request.
+     * `old_id`. Deliberately a fixed subset of the mass-import plan: users
+     * and referents are operational data, not template data. The legacy
+     * costs (`cost-products`, spec 0174) and the sellable catalogue
+     * (`products`, user directive 2026-09-29) are in, by user request.
      *
      * @var list<string>
      */
@@ -79,6 +80,9 @@ class QualificaLegacyImportSeeder extends Seeder
         // Phase 5 — the association pass that back-fills that pivot, once both
         // anchors have their `old_id`.
         'product-category-attributes',
+        // The sellable catalogue: remaps its category through the phase-4
+        // `product-categories` and its VAT through the phase-1 `vat-rates`.
+        'products',
         // The legacy costs (spec 0174): cost-only products under their own
         // "Costi" root, VAT remapped through the phase-1 `vat-rates`. That root
         // carries no `old_id`, so nestImportedCategories() never moves it.
