@@ -7,7 +7,9 @@ use App\Models\CommissionConfiguration;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\CustomFieldDefinition;
+use App\Models\DocumentBundle;
 use App\Models\DocumentLayout;
+use App\Models\EmailTemplate;
 use App\Models\FieldChangeRequest;
 use App\Models\Lead;
 use App\Models\OperationalSite;
@@ -248,6 +250,15 @@ return [
         ],
         'work-orders' => [
             'model' => WorkOrder::class,
+        ],
+        // spec 0175: i due configuratori del modulo email della Commessa.
+        // `outbound-emails` non e' qui (D-15): un invio non lascia voce nel
+        // log attivita', la tab "Email" e' gia' lo storico.
+        'email-templates' => [
+            'model' => EmailTemplate::class,
+        ],
+        'document-bundles' => [
+            'model' => DocumentBundle::class,
         ],
         // spec 0101: il modulo Task e i suoi cinque configuratori.
         'tasks' => [

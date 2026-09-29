@@ -30,6 +30,7 @@ export const campaignColumnRenderers: TableRendererMap = {
   city: (params) => <RelationCell {...params} />,
   geo_scope: (params) => <GeoScopeCell {...params} withPlace />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
+  source: (params) => <RelationCell {...params} />,
   start_date: (params) => <DateCell {...params} />,
   end_date: (params) => <DateCell {...params} />,
   total_budget: (params) => <CurrencyCell {...params} />,

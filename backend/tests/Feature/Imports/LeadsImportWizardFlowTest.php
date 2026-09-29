@@ -7,6 +7,7 @@ use App\Jobs\StageImportJob;
 use App\Models\Campaign;
 use App\Models\ImportRun;
 use App\Models\ImportRunRow;
+use App\Models\Source;
 use App\Models\User;
 use App\Services\ImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -74,7 +75,7 @@ it('AC-015: the full leads wizard flow responds with the envelope and expected s
     Storage::fake('local');
     Queue::fake();
     $actor = leadsImportActorWith(['import']);
-    $campaign = Campaign::factory()->create();
+    $campaign = Campaign::factory()->for(Source::factory())->create();
     Sanctum::actingAs($actor);
 
     // Step 1: POST /api/imports/leads -> 201 analyzing.

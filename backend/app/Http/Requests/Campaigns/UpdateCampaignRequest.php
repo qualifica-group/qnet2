@@ -82,6 +82,7 @@ class UpdateCampaignRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string'],
             'partner_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'operational_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('operational_sites', 'id')],
+            'source_id' => ['sometimes', 'nullable', 'integer', Rule::exists('sources', 'id')],
             'pipeline_status_id' => $this->derivedFieldRules(Rule::exists('pipeline_statuses', 'id')),
             'country_id' => $this->countryIdRules(),
             'state_id' => $this->geoLevelRules('state_id', 'states'),

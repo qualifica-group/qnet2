@@ -88,11 +88,12 @@ export const leads = {
     operationalSiteSearch: 'Cerca sedi…',
     source: 'Fonte',
     sourceSearch: 'Cerca fonti…',
+    sourceRequired: 'Seleziona la fonte.',
     operator: 'Operatore',
     operatorSearch: 'Cerca operatori…',
     hints: {
       operationalSite: 'La sede operativa a cui è associato il lead.',
-      source: "Il canale o l'origine da cui proviene il lead.",
+      source: "Il canale o l'origine da cui proviene il lead. Obbligatoria: precompilata dalla fonte della campagna, se presente; resta modificabile.",
       operator: "L'utente interno incaricato di seguire il lead.",
       operatorFilteredBySite: 'Gli operatori mostrati sono limitati a quelli della Sede scelta.',
     },

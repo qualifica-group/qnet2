@@ -29,6 +29,7 @@ const SERVER_ERROR_FIELDS = [
   'description',
   'partner_id',
   'operational_site_id',
+  'source_id',
   'pipeline_status_id',
   'country_id',
   'state_id',
@@ -86,6 +87,7 @@ function mapCampaignToFormValues(
     description: campaign.description,
     partner_id: campaign.partner_id,
     operational_site_id: campaign.operational_site_id,
+    source_id: campaign.source_id,
     pipeline_status_id: campaign.pipeline_status_id,
     // Spec 0132: `root_category_id` starts `null` — the shared `ProductLinesField`
     // resolves it at render time from the cached category tree.
@@ -174,6 +176,7 @@ export function useCampaignForm({ mode, onSuccess, initialCode }: UseCampaignFor
       description: null,
       partner_id: null,
       operational_site_id: null,
+      source_id: null,
       pipeline_status_id: null,
       // User directive 2026-07-29 (mirrors project/opportunity/request-management
       // create forms): a bare create is always standalone, so it opens on ONE

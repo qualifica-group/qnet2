@@ -9,7 +9,9 @@ use App\Authorization\CompanySitesAuthorization;
 use App\Authorization\ContractsAuthorization;
 use App\Authorization\ContractStatusesAuthorization;
 use App\Authorization\CustomFieldsAuthorization;
+use App\Authorization\DocumentBundlesAuthorization;
 use App\Authorization\DocumentLayoutsAuthorization;
+use App\Authorization\EmailTemplatesAuthorization;
 use App\Authorization\EnrolleeManagementAuthorization;
 use App\Authorization\LeadsAuthorization;
 use App\Authorization\OperationalSitesAuthorization;
@@ -98,6 +100,9 @@ return [
         'quote-workflows' => QuoteWorkflowsAuthorization::class,
         // spec 0093: le Commesse, collegate a un'offerta e alle sue righe.
         'work-orders' => WorkOrdersAuthorization::class,
+        // spec 0175: le email della Commessa e i loro due configuratori.
+        'email-templates' => EmailTemplatesAuthorization::class,
+        'document-bundles' => DocumentBundlesAuthorization::class,
         'request-management' => RequestManagementAuthorization::class,
         // Spec 0130: "Gestione Iscritti" — same field/action catalogue as
         // request-management, own resource() (see the class docblock).

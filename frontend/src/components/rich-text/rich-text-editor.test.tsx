@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, createRef } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Node, mergeAttributes } from '@tiptap/core'
 import i18n from '@/i18n'
 import { RichTextEditor } from '@/components/rich-text/rich-text-editor'
+import type { RichTextEditorHandle } from '@/components/rich-text/rich-text-editor'
 import { RICH_TEXT_PROSE_CLASS } from '@/components/rich-text/rich-text-prose'
 
 // jsdom has no layout engine: ProseMirror's view queries these when syncing
@@ -313,5 +314,73 @@ describe('RichTextEditor (spec 0128 AC-017/AC-018/AC-019)', () => {
     // an attribute the D-1 sanitizer would strip on the node itself.
     expect(RICH_TEXT_PROSE_CLASS).toContain('[&_[data-type="mention"]]:bg-accent')
     expect(RICH_TEXT_PROSE_CLASS).toContain('[&_[data-type="mention"]]:text-accent-foreground')
+  })
+
+  describe('allowImages={false} (spec 0175 D-11: email composer body has no images)', () => {
+    it('renders no Image toolbar button', () => {
+      render(<RichTextEditor value={null} onChange={vi.fn()} allowImages={false} />, { wrapper: wrapper() })
+
+      expect(screen.queryByRole('button', { name: 'Image' })).not.toBeInTheDocument()
+      // Every other control stays available.
+      expect(screen.getByRole('button', { name: 'Bold' })).toBeInTheDocument()
+    })
+
+    it('does not insert a pasted image (no image node in the schema)', async () => {
+      const onChange = vi.fn()
+      const { container } = render(
+        <RichTextEditor value={null} onChange={onChange} allowImages={false} />,
+        { wrapper: wrapper() },
+      )
+      const editorDom = container.querySelector('.ProseMirror') as HTMLElement
+
+      pasteFiles(editorDom, [pngFile()])
+
+      // No custom paste/drop wiring runs at all (D-11): nothing is inserted.
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(onChange).not.toHaveBeenCalledWith(expect.stringContaining('data:image'))
+      expect(toastErrorMock).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('ref handle (spec 0175 AC-022: placeholder picker inserts at the cursor)', () => {
+    it('insertText replaces the current selection with plain text and focuses the editor', async () => {
+      const onChange = vi.fn()
+      const ref = createRef<RichTextEditorHandle>()
+      const { container } = render(<RichTextEditor ref={ref} value="<p>hello</p>" onChange={onChange} />, {
+        wrapper: wrapper(),
+      })
+      const editorDom = container.querySelector('.ProseMirror') as HTMLElement
+      selectAll(editorDom)
+
+      ref.current?.insertText('{work_order.code}')
+
+      expect(onChange).toHaveBeenLastCalledWith(expect.stringContaining('{work_order.code}'))
+      expect(onChange).not.toHaveBeenLastCalledWith(expect.stringContaining('hello'))
+      // Tiptap's own `focus` command defers the actual `view.focus()` to a
+      // `requestAnimationFrame` (React focus timing quirk, upstream comment).
+      await waitFor(() => expect(document.activeElement).toBe(editorDom))
+    })
+
+    it('insertText on an empty editor inserts at the (start) cursor position', () => {
+      const onChange = vi.fn()
+      const ref = createRef<RichTextEditorHandle>()
+      render(<RichTextEditor ref={ref} value={null} onChange={onChange} />, { wrapper: wrapper() })
+
+      ref.current?.insertText('{sender.email}')
+
+      expect(onChange).toHaveBeenLastCalledWith(expect.stringContaining('{sender.email}'))
+    })
+
+    it('focus moves DOM focus onto the editor', async () => {
+      const ref = createRef<RichTextEditorHandle>()
+      const { container } = render(<RichTextEditor ref={ref} value={null} onChange={vi.fn()} />, {
+        wrapper: wrapper(),
+      })
+      const editorDom = container.querySelector('.ProseMirror') as HTMLElement
+
+      ref.current?.focus()
+
+      await waitFor(() => expect(document.activeElement).toBe(editorDom))
+    })
   })
 })

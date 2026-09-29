@@ -37,6 +37,8 @@ export const navigation = {
   contractStatuses: 'Stati Contratto',
   contracts: 'Contratti',
   workOrders: 'Commesse',
+  emailTemplates: 'Modelli email',
+  documentBundles: 'Modelli documenti',
   tasks: 'Task',
   taskStatuses: 'Stati Task',
   taskTypes: 'Tipologie Task',

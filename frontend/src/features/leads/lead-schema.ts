@@ -45,7 +45,14 @@ function baseFields(t: TFunction) {
       .nullable()
       .refine((value): boolean => value !== null, { message: t('leads.form.campaignRequired') }),
     operational_site_id: z.number().nullable(),
-    source_id: z.number().nullable(),
+    // Spec 0176 D-2: required — prefilled from the chosen Campaign's own
+    // Fonte when it has one (still freely editable/clearable afterward), but
+    // never derived silently: an empty Fonte blocks the submit exactly like
+    // Anagrafica/Campagna above.
+    source_id: z
+      .number()
+      .nullable()
+      .refine((value): boolean => value !== null, { message: t('leads.form.sourceRequired') }),
     operator_id: z.number().nullable(),
     notes: z.string().max(NOTES_MAX_LENGTH, t('leads.form.notesMax')).nullable(),
     extra_fields: z.array(extraFieldEntrySchema(t)),

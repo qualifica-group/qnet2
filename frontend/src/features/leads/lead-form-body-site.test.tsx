@@ -48,11 +48,17 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: canMock, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
-/** The Campaign's for-select item, carrying its Sede's `meta` (the only field this suite's picker exercises). */
+/**
+ * The Campaign's for-select item, carrying its Sede's AND Fonte's `meta`
+ * (spec 0176 D-2 mirrors the Sede prefill chain 1:1).
+ */
 const CAMPAIGN_ITEM: CampaignForSelectItem = {
   id: 20,
   label: 'Spring push',
-  meta: { operational_site: { id: 55, label: 'Warehouse A' } },
+  meta: {
+    operational_site: { id: 55, label: 'Warehouse A' },
+    source: { id: 77, name: 'Referral' },
+  },
 }
 
 /**
@@ -201,5 +207,40 @@ describe('LeadFormBody — Sede prefill from Campaign (project -> campaign -> le
 
     fireEvent.click(screen.getByTestId('select-Source'))
     expect(screen.getByTestId('select-Site')).toHaveTextContent('8')
+  })
+})
+
+describe('LeadFormBody — Fonte prefill from Campaign (spec 0176 D-2)', () => {
+  it('prefills the Source field from the picked Campaign meta, still editable', async () => {
+    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await waitFor(() => expect(screen.getByTestId('select-Campaign')).toBeInTheDocument())
+    expect(screen.getByTestId('select-Source')).toHaveTextContent('')
+
+    fireEvent.click(screen.getByTestId('select-Campaign'))
+
+    await waitFor(() => expect(screen.getByTestId('select-Source')).toHaveTextContent('77'))
+
+    // The prefill is not a lock: the user can still override it manually.
+    fireEvent.click(screen.getByTestId('select-Source'))
+    expect(screen.getByTestId('select-Source')).toHaveTextContent('3')
+  })
+
+  it('sends the campaign-prefilled source_id in the create payload', async () => {
+    createLeadMock.mockResolvedValue(lead())
+
+    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
+    fireEvent.click(screen.getByTestId('select-Registry'))
+    fireEvent.click(screen.getByTestId('select-Campaign'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(createLeadMock).toHaveBeenCalledTimes(1))
+    expect(createLeadMock.mock.calls[0][0].source_id).toBe(77)
   })
 })

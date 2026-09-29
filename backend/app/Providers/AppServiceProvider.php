@@ -9,6 +9,7 @@ use App\CustomFields\CustomFieldRequestBag;
 use App\FieldChangeRequests\ProtectedFieldRegistry;
 use App\Imports\Recognition\CampaignRecognizer;
 use App\Mail\StagingMailRedirector;
+use App\Mail\Transport\MicrosoftGraphTransport;
 use App\Models\Address;
 use App\Models\Attachment;
 use App\Models\Attribute;
@@ -23,13 +24,16 @@ use App\Models\Contract;
 use App\Models\ContractStatus;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
+use App\Models\DocumentBundle;
 use App\Models\DocumentLayout;
+use App\Models\EmailTemplate;
 use App\Models\EmploymentProfile;
 use App\Models\FieldChangeRequest;
 use App\Models\Lead;
 use App\Models\Note;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
+use App\Models\OutboundEmail;
 use App\Models\PaymentMethod;
 use App\Models\PersonalData;
 use App\Models\PipelineStatus;
@@ -68,11 +72,13 @@ use App\Models\UserTablePreference;
 use App\Models\VatRate;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderStage;
+use App\Services\Graph\GraphMailClient;
 use App\Services\Opportunities\OpportunityDefaultStatusResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\QuoteWorkflows\CategoryBranchResolver;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -258,6 +264,16 @@ class AppServiceProvider extends ServiceProvider
             // above.
             'task_template_stage' => TaskTemplateStage::class,
             'work_order_stage' => WorkOrderStage::class,
+            // Spec 0175 (work-order emails module): EmailTemplate/DocumentBundle
+            // both use LogsModelActivity, same reasoning as document_layout
+            // above. DocumentBundle and OutboundEmail are also HasAttachments
+            // owners, so their aliases must match
+            // config('attachments.attachable_types'). OutboundEmail carries no
+            // activity log (D-15) but still needs its alias: it is itself an
+            // `attachable` owner (its own `email_attachments` collection).
+            'email_template' => EmailTemplate::class,
+            'document_bundle' => DocumentBundle::class,
+            'outbound_email' => OutboundEmail::class,
         ]);
 
         Gate::before(function (User $user, string $ability): ?bool {
@@ -267,6 +283,24 @@ class AppServiceProvider extends ServiceProvider
 
             return null;
         });
+
+        // Registers the "microsoft-graph" Symfony transport (spec 0175, D-1):
+        // config('mail.mailers.microsoft-graph') resolves through this
+        // factory instead of one of Laravel's built-in transports, so
+        // SendOutboundEmailJob's `Mail::mailer('microsoft-graph')->send()`
+        // stays a plain Mailable send -- Mail::fake() and
+        // StagingMailRedirector's alwaysTo() apply exactly as they do to
+        // every other mailer.
+        Mail::extend('microsoft-graph', fn (array $config): MicrosoftGraphTransport => new MicrosoftGraphTransport(
+            new GraphMailClient(
+                tenant: (string) ($config['tenant'] ?? ''),
+                clientId: (string) ($config['client'] ?? ''),
+                clientSecret: (string) ($config['secret'] ?? ''),
+                baseUrl: (string) ($config['base_url'] ?? 'https://graph.microsoft.com/v1.0'),
+                authUrl: (string) ($config['auth_url'] ?? 'https://login.microsoftonline.com'),
+                timeout: (int) ($config['timeout'] ?? 30),
+            ),
+        ));
 
         // Staging safety net: with MAIL_ALWAYS_TO set, every email is funnelled
         // to that one mailbox instead of the real contacts. No-op when unset.

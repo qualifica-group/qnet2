@@ -4,6 +4,7 @@ namespace App\Imports\Leads;
 
 use App\Enums\ContactTypeEnum;
 use App\Imports\Recognition\CampaignRecognizer;
+use App\Services\Leads\LeadSourceResolver;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -22,14 +23,20 @@ use Illuminate\Support\Facades\Validator;
  * row with a `campaign_code` KEY (empty cell included), so its presence — not
  * a new parameter — tells the two modes apart. A Lead structurally cannot
  * exist without a campaign, hence an error and never a warning/placeholder.
+ *
+ * Spec 0176 (D-5) adds the source check: the run's Fonte, else the row
+ * campaign's; a row left with neither is rejected, the lead requiring one.
  */
 final class LeadRowValidator
 {
+    public function __construct(private readonly LeadSourceResolver $sourceResolver) {}
+
     /**
      * @param  array<string, mixed>  $mapped
+     * @param  array<string, mixed>  $globalConfig  the run's configuration-step values
      * @return array<int, string> motivated error messages; empty = row accepted
      */
-    public function validate(array $mapped): array
+    public function validate(array $mapped, array $globalConfig = []): array
     {
         $errors = [];
 
@@ -37,7 +44,7 @@ final class LeadRowValidator
             $errors[] = 'A row needs a first name + last name, a company name, or at least one contact (email or phone).';
         }
 
-        return array_merge($errors, $this->campaignErrors($mapped), $this->contactFormatErrors($mapped));
+        return array_merge($errors, $this->campaignErrors($mapped), $this->sourceErrors($mapped, $globalConfig), $this->contactFormatErrors($mapped));
     }
 
     /**
@@ -61,6 +68,33 @@ final class LeadRowValidator
         }
 
         return [];
+    }
+
+    /**
+     * A row whose campaign is unresolved is already rejected by
+     * campaignErrors(): the source is only checked once there is a campaign
+     * to inherit it from.
+     *
+     * @param  array<string, mixed>  $mapped
+     * @param  array<string, mixed>  $globalConfig
+     * @return array<int, string>
+     */
+    private function sourceErrors(array $mapped, array $globalConfig): array
+    {
+        $campaignId = LeadRowCampaign::resolve($mapped, $globalConfig);
+
+        if ($campaignId === null) {
+            return [];
+        }
+
+        $sourceId = $globalConfig['source_id'] ?? null;
+        $sourceId = $sourceId === null || $sourceId === '' ? null : (int) $sourceId;
+
+        if ($this->sourceResolver->resolve($sourceId, $campaignId) !== null) {
+            return [];
+        }
+
+        return ['The source is missing: set it in the import configuration or on the campaign.'];
     }
 
     /**

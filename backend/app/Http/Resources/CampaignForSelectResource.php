@@ -14,7 +14,8 @@ use Illuminate\Http\Request;
  * before this spec, per the 0023 note). `meta.operational_site` (prefill-
  * modifiable sede) carries {id, label} — same shape ProjectForSelectResource
  * exposes — so the Lead form can prefill the Sede from the chosen campaign,
- * with no extra request.
+ * with no extra request. `meta.source` ({id, name}, spec 0176) does the same
+ * for the Fonte the lead inherits.
  *
  * Spec 0094, D-1/D-2: `meta.product_category_ids` is NEW — the EFFECTIVE
  * product-category ids (the linked project's when derived, else the
@@ -39,6 +40,7 @@ class CampaignForSelectResource extends ForSelectResource
             'meta' => [
                 'operational_site' => $this->summarizeOperationalSite($this->operationalSite),
                 'product_category_ids' => $this->effectiveProductCategoryIds(),
+                'source' => $this->source === null ? null : ['id' => $this->source->id, 'name' => $this->source->name],
             ],
         ];
     }

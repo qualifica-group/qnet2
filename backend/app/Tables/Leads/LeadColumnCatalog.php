@@ -30,11 +30,12 @@ final class LeadColumnCatalog
             // Inline cell-editing (spec 0054, D-1/D-6): all 5 relation
             // columns are editable via a `/for-select`-fed dropdown.
             // `registry`/`campaign` mirror their FK's NOT NULL constraint
-            // (never nullable inline); the other 3 accept null.
+            // and `source` is mandatory (spec 0176, D-3): never nullable
+            // inline; the other 2 accept null.
             self::derivedColumn('registry', 'leads.columns.registry', 'registry_id', 'registries'),
             self::derivedColumn('campaign', 'leads.columns.campaign', 'campaign_id', 'campaigns'),
             self::derivedColumn('operational_site', 'leads.columns.operationalSite', 'operational_site_id', 'operational-sites', nullable: true),
-            self::derivedColumn('source', 'leads.columns.source', 'source_id', 'sources', nullable: true),
+            self::derivedColumn('source', 'leads.columns.source', 'source_id', 'sources'),
             // `relation.scope` (direttiva utente 2026-09-10): the inline
             // picker offers the operators the ASSIGNMENT would consider for
             // this lead — those of the Sede of its campaign (spec 0113, D-3)

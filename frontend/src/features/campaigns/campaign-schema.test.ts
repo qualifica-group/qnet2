@@ -29,6 +29,7 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     description: null,
     partner_id: null,
     operational_site_id: null,
+    source_id: null,
     pipeline_status_id: 1,
     product_lines: [{ root_category_id: null, product_category_id: 4 }],
     country_id: 10,
@@ -214,6 +215,20 @@ describe('buildCreateCampaignSchema — geo hierarchy (spec 0027 BR-4/BR-5)', ()
   it('accepts a full valid geo tuple', () => {
     const schema = buildCreateCampaignSchema(i18n.t, EMPTY_CUSTOM_FIELDS_SCHEMA)
     const result = schema.safeParse(baseValues({ state_id: 3, province_id: 5, city_id: 9 }))
+    expect(result.success).toBe(true)
+  })
+})
+
+describe('buildCreateCampaignSchema — Fonte (spec 0176 D-1)', () => {
+  it('accepts a standalone campaign with no Fonte (optional)', () => {
+    const schema = buildCreateCampaignSchema(i18n.t, EMPTY_CUSTOM_FIELDS_SCHEMA)
+    const result = schema.safeParse(baseValues({ source_id: null }))
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a campaign with a Fonte set', () => {
+    const schema = buildCreateCampaignSchema(i18n.t, EMPTY_CUSTOM_FIELDS_SCHEMA)
+    const result = schema.safeParse(baseValues({ source_id: 7 }))
     expect(result.success).toBe(true)
   })
 })

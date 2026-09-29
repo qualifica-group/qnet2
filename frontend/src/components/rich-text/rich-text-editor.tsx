@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import type { Editor, Extensions } from '@tiptap/react'
 import { cn } from '@/lib/utils'
@@ -21,8 +21,25 @@ export interface RichTextEditorProps {
   id?: string
   /** `compact` for inline contexts (notes); `default` for a full-page field (task/template). */
   minHeight?: RichTextEditorMinHeight
+  /**
+   * Whether the `image` node/toolbar button/paste-drop insert are available
+   * (spec 0175 D-11: the email composer body has no images). Default true
+   * (existing notes/task/template consumers unchanged).
+   */
+  allowImages?: boolean
   'aria-invalid'?: boolean
   'aria-describedby'?: string
+}
+
+/**
+ * Imperative escape hatch (spec 0175 AC-022: the email template form's
+ * placeholder picker inserts `{categoria.chiave}` at the caret, from a
+ * control outside the editor's own DOM subtree).
+ */
+export interface RichTextEditorHandle {
+  /** Inserts plain text at the current cursor position/selection, focusing the editor first. */
+  insertText: (text: string) => void
+  focus: () => void
 }
 
 const MIN_HEIGHT_CLASS: Record<RichTextEditorMinHeight, string> = {
@@ -50,17 +67,21 @@ function toChangeValue(editor: Editor): string | null {
  * sanitizes on save (constraints) — this component never bypasses React's own
  * escaping, it only ever reads/writes through the editor's own HTML output.
  */
-export function RichTextEditor({
-  value,
-  onChange,
-  placeholder,
-  disabled = false,
-  extraExtensions,
-  id,
-  minHeight = 'default',
-  'aria-invalid': ariaInvalid,
-  'aria-describedby': ariaDescribedBy,
-}: RichTextEditorProps) {
+export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor(
+  {
+    value,
+    onChange,
+    placeholder,
+    disabled = false,
+    extraExtensions,
+    id,
+    minHeight = 'default',
+    allowImages = true,
+    'aria-invalid': ariaInvalid,
+    'aria-describedby': ariaDescribedBy,
+  }: RichTextEditorProps,
+  ref,
+) {
   // Tracks the HTML this component itself last emitted, so an external reset
   // (e.g. `form.reset()` loading a different record) is told apart from the
   // parent simply echoing back our own change — resetting on the latter would
@@ -68,7 +89,7 @@ export function RichTextEditor({
   const lastEmittedRef = useRef<string | null>(value)
 
   const editor = useEditor({
-    extensions: createRichTextExtensions({ placeholder, extraExtensions }),
+    extensions: createRichTextExtensions({ placeholder, extraExtensions, allowImages }),
     content: value ?? '',
     editable: !disabled,
     editorProps: {
@@ -90,6 +111,19 @@ export function RichTextEditor({
   })
 
   const { insertFiles } = useRichTextImageInsert(editor)
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      insertText: (text) => {
+        editor?.chain().focus().insertContent({ type: 'text', text }).run()
+      },
+      focus: () => {
+        editor?.commands.focus()
+      },
+    }),
+    [editor],
+  )
 
   useEffect(() => {
     if (!editor || value === lastEmittedRef.current) {
@@ -129,9 +163,12 @@ export function RichTextEditor({
   // Native paste/drop listeners on the ProseMirror DOM node (not React's
   // synthetic `onPaste`/`onDrop` on EditorContent's wrapper, which sits one
   // level above the actual contentEditable element ProseMirror manages).
+  // Skipped entirely when images are disallowed (D-11): there is no `image`
+  // node in the schema to insert into, so a pasted file must fall through to
+  // Tiptap's own default paste handling instead of being swallowed here.
   useEffect(() => {
     const dom = editor?.view.dom
-    if (!dom) {
+    if (!dom || !allowImages) {
       return
     }
 
@@ -158,7 +195,7 @@ export function RichTextEditor({
       dom.removeEventListener('paste', handlePaste)
       dom.removeEventListener('drop', handleDrop)
     }
-  }, [editor, insertFiles])
+  }, [editor, insertFiles, allowImages])
 
   return (
     <div
@@ -169,7 +206,7 @@ export function RichTextEditor({
         disabled && 'pointer-events-none opacity-50',
       )}
     >
-      <RichTextToolbar editor={editor} disabled={disabled} onPickImages={insertFiles} />
+      <RichTextToolbar editor={editor} disabled={disabled} onPickImages={insertFiles} allowImages={allowImages} />
       <EditorContent
         editor={editor}
         className={cn(
@@ -181,4 +218,4 @@ export function RichTextEditor({
       />
     </div>
   )
-}
+})

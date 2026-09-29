@@ -167,7 +167,7 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         ->and($legacyChild->parent_id)->toBe($legacyRoot->id)
         // The static catalogue's own tree keeps its shape.
         ->and(ProductCategory::query()->where('name', 'Formazione')->value('parent_id'))->toBeNull()
-        ->and(ProductCategory::query()->where('name', 'Trattative in Corso')->value('parent_id'))->toBe($consulenza->id);
+        ->and(ProductCategory::query()->where('name', 'Presa Appuntamenti')->value('parent_id'))->toBe($consulenza->id);
 
     // was: 'links the imported attributes onto the imported category in the declared context'
     $importedAttribute = Attribute::query()->where('old_id', 91)->sole();

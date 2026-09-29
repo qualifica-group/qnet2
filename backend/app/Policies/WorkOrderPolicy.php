@@ -65,11 +65,35 @@ class WorkOrderPolicy extends BasePolicy
     }
 
     /**
+     * Gates the "Email" tab and its history (spec 0175, D-14): unlike
+     * viewDocuments above, this one DOES take the record — D-3 requires the
+     * same membership scoping as view/update/delete, not just the resource
+     * permission, since the tab surfaces other actors' sent/queued/failed
+     * emails.
+     */
+    public function viewEmails(User $user, WorkOrder $workOrder): bool
+    {
+        return $user->can($this->permission('viewEmails')) && $this->isInScope($user, $workOrder);
+    }
+
+    /**
+     * Gates drafting/editing/sending an email from this commessa (spec 0175,
+     * D-14): same permission + membership-scoping shape as viewEmails above.
+     * Ownership of a single draft (D-3: only its own author may edit/delete
+     * it) is a separate, per-record check the email endpoints enforce on the
+     * OutboundEmail itself, not here.
+     */
+    public function sendEmail(User $user, WorkOrder $workOrder): bool
+    {
+        return $user->can($this->permission('sendEmail')) && $this->isInScope($user, $workOrder);
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewDocuments'];
+        return [...parent::abilities(), 'viewAll', 'viewDocuments', 'viewEmails', 'sendEmail'];
     }
 
     private function isInScope(User $user, Model $model): bool

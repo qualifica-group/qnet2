@@ -2,6 +2,7 @@ import { type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
+import type { ForSelectItem } from '@/features/for-select/types'
 
 interface ImportConfigRelationSelectProps {
   /** Resource segment of the for-select endpoint, e.g. `campaigns` -> `/campaigns/for-select`. */
@@ -10,6 +11,13 @@ interface ImportConfigRelationSelectProps {
   onChange: (next: number | null) => void
   /** Resolved label of the global field, used as the select's accessible trigger name. */
   triggerLabel: string
+  /**
+   * Fired alongside `onChange` (pick/clear) with the full selected
+   * `ForSelectItem`, including `meta` — spec 0176's Campaign -> Fonte prefill
+   * reads `meta.source` off it, mirroring the Lead form's own
+   * `RelationSelectField.onItemChange`.
+   */
+  onItemChange?: (item: ForSelectItem | null) => void
 }
 
 /**
@@ -24,6 +32,7 @@ export function ImportConfigRelationSelect({
   value,
   onChange,
   triggerLabel,
+  onItemChange,
 }: ImportConfigRelationSelectProps): ReactElement {
   const { t } = useTranslation('importWizard')
   const { renderAction, selectedItemFor } = useQuickCreateAction(resource)
@@ -33,6 +42,7 @@ export function ImportConfigRelationSelect({
       resource={resource}
       value={value}
       onChange={(next) => onChange(next)}
+      onItemChange={onItemChange}
       selectedItem={selectedItemFor(value)}
       labels={{
         placeholder: t('config.select.placeholder'),

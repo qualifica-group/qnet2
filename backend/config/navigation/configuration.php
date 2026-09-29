@@ -70,5 +70,23 @@ return [
             'route' => '/document-layouts',
             'permission' => 'document-layouts.view',
         ],
+        [
+            // Email templates (spec 0175, D-14): the "Modello email"
+            // subject/body pairs the Commessa email composer resolves.
+            'key' => 'email-templates',
+            'label' => 'navigation.emailTemplates',
+            'icon' => 'mail',
+            'route' => '/email-templates',
+            'permission' => 'email-templates.view',
+        ],
+        [
+            // Document bundles (spec 0175, D-14): the "Modello documenti"
+            // file sets the composer can attach in bulk (D-7c).
+            'key' => 'document-bundles',
+            'label' => 'navigation.documentBundles',
+            'icon' => 'folder-archive',
+            'route' => '/document-bundles',
+            'permission' => 'document-bundles.view',
+        ],
     ],
 ];

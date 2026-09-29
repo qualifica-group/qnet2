@@ -7,6 +7,10 @@ enum HttpStatusEnum: int
     // Success
     case OK = 200;
     case CREATED = 201;
+    // Spec 0175: POST .../emails/{email}/send answers 202 -- the row moves to
+    // `queued` synchronously, but delivery itself happens later in
+    // SendOutboundEmailJob (D-12), so the request is "accepted", not "done".
+    case ACCEPTED = 202;
     case NO_CONTENT = 204;
 
     // Client errors

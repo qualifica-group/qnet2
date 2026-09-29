@@ -13,6 +13,7 @@ use App\Models\ImportRunRow;
 use App\Models\Lead;
 use App\Models\Product;
 use App\Models\Registry;
+use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -186,8 +187,8 @@ it('AC-005: configure with a mapped campaign_code and global product_ids is 422'
 // ---------------------------------------------------------------------------
 
 it('AC-006: each staged row resolves its OWN campaign from the file code', function () {
-    $first = Campaign::factory()->create();
-    $second = Campaign::factory()->create();
+    $first = Campaign::factory()->for(Source::factory())->create();
+    $second = Campaign::factory()->for(Source::factory())->create();
 
     $one = stageCampaignFileRow(['Email' => 'a@example.com', 'Nome' => 'Mario', 'Cognome' => 'Rossi', 'Codice campagna' => $first->code]);
     $two = stageCampaignFileRow(['Email' => 'b@example.com', 'Nome' => 'Anna', 'Cognome' => 'Verdi', 'Codice campagna' => $second->code]);
@@ -201,7 +202,7 @@ it('AC-006: each staged row resolves its OWN campaign from the file code', funct
 });
 
 it('AC-007: the code match is case-insensitive and space-tolerant, and stores the canonical code', function () {
-    $campaign = Campaign::factory()->create();
+    $campaign = Campaign::factory()->for(Source::factory())->create();
 
     $outcome = stageCampaignFileRow([
         'Email' => 'a@example.com', 'Nome' => 'Mario', 'Cognome' => 'Rossi',
@@ -279,7 +280,7 @@ it('AC-011: the duplicate match is scoped to the ROW campaign, not the run', fun
 });
 
 it('AC-012: with no campaign column mapped the run keeps its pre-0108 single-campaign behaviour', function () {
-    $campaign = Campaign::factory()->create();
+    $campaign = Campaign::factory()->for(Source::factory())->create();
 
     $outcome = stageCampaignFileRow(
         ['Email' => 'a@example.com', 'Nome' => 'Mario', 'Cognome' => 'Rossi', 'Codice campagna' => 'ignored'],

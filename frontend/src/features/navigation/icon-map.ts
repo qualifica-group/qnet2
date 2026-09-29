@@ -38,6 +38,8 @@ import {
   Star,
   Shapes,
   LayoutTemplate,
+  Mail,
+  FolderArchive,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -91,6 +93,9 @@ const iconMap: Record<string, LucideIcon> = {
   // through to the neutral Circle fallback, in the sidebar too.
   shapes: Shapes,
   'layout-template': LayoutTemplate,
+  // Spec 0175: "Modelli email" / "Modelli documenti" under Configurazione.
+  mail: Mail,
+  'folder-archive': FolderArchive,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

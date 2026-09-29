@@ -79,6 +79,10 @@ const guide: HelpGuide = {
           text: 'I duplicati si riconoscono da email, telefono, codice fiscale e partita IVA.',
         },
         {
+          type: 'paragraph',
+          text: 'Se scegli la Campagna qui (non dal file), la Fonte si precompila con quella della campagna, se ne ha una, e resta modificabile; in tal caso la Fonte diventa obbligatoria. Una riga senza Fonte effettiva (vuota nella configurazione e campagna, della riga o del file, senza Fonte) va in errore in revisione.',
+        },
+        {
           type: 'tip',
           text: 'Attiva **Salva questa mappatura come modello riutilizzabile**. Con un file uguale, la volta dopo ti basta cliccare **Applica**.',
         },

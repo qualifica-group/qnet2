@@ -228,6 +228,8 @@ function campaign(
     partner: null,
     operational_site_id: null,
     operational_site: null,
+    source_id: null,
+    source: null,
     derived_from_project: false,
     pipeline_status_id: 1,
     pipeline_status: { id: 1, name: 'Active', color: 'blue' },
@@ -438,6 +440,58 @@ describe('CampaignForm — 422 duplicate code (spec 0025 AC-012)', () => {
     expect(screen.queryByText('Something went wrong. Please try again.')).not.toBeInTheDocument()
 
     vi.restoreAllMocks()
+  })
+})
+
+describe('CampaignForm — Fonte (spec 0176 D-1, optional)', () => {
+  it('renders the Fonte field, editable in create', async () => {
+    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await waitFor(() => expect(screen.getByTestId('select-Source')).toBeInTheDocument())
+    expect(screen.getByTestId('select-Source')).not.toBeDisabled()
+  })
+
+  it('submits successfully with no Fonte chosen (optional)', async () => {
+    createCampaignMock.mockResolvedValue(campaign())
+
+    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await waitFor(() => expect(screen.getByLabelText('Code')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Spring push' } })
+    fireEvent.click(screen.getByTestId('select-Status'))
+    fillRequiredClassification()
+    fireEvent.click(screen.getByTestId('geo-select'))
+    fillRequiredDates()
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(createCampaignMock).toHaveBeenCalledTimes(1))
+    const payload = createCampaignMock.mock.calls[0][0] as Record<string, unknown>
+    expect(payload.source_id).toBeNull()
+  })
+
+  it('sends the picked Fonte in the create payload', async () => {
+    createCampaignMock.mockResolvedValue(campaign())
+
+    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await waitFor(() => expect(screen.getByLabelText('Code')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Spring push' } })
+    fireEvent.click(screen.getByTestId('select-Status'))
+    fillRequiredClassification()
+    fireEvent.click(screen.getByTestId('geo-select'))
+    fillRequiredDates()
+    fireEvent.click(screen.getByTestId('select-Source'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(createCampaignMock).toHaveBeenCalledTimes(1))
+    const payload = createCampaignMock.mock.calls[0][0] as Record<string, unknown>
+    expect(payload.source_id).toBe(3)
   })
 })
 

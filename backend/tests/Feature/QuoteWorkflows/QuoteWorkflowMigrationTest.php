@@ -178,11 +178,15 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // and `2026_09_28_100100_add_old_id_to_task_templates_table` (108th), the
     // nested sub-item FK and the legacy-import anchor on task templates, then
     // spec 0171 rev.2's `2026_09_28_130000_add_title_is_manual_to_quotes_table`
-    // (109th), the offer's manual-title flag, and spec 0174's
+    // (109th), the offer's manual-title flag, spec 0174's
     // `2026_09_28_140000_add_old_source_to_products_table` (110th), the
-    // legacy-table anchor of migrated products.
+    // legacy-table anchor of migrated products, then spec 0175's three new
+    // tables `2026_09_28_150000_create_email_templates_table` (111th),
+    // `2026_09_28_150100_create_document_bundles_table` (112th) and
+    // `2026_09_28_150200_create_outbound_emails_table` (113th), and spec
+    // 0176's `2026_09_28_160000_add_source_id_to_campaigns_table` (114th).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 110]);
+    Artisan::call('migrate:rollback', ['--step' => 114]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

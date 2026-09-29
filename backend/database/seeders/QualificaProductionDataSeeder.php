@@ -40,7 +40,9 @@ use Illuminate\Database\Seeder;
  *                                    system through the Migrazioni engine.
  *   6. QualificaBusinessFunctionLinkSeeder — assigns step 2's "Formazione"
  *                                    root and its "APL" subcategory to the
- *                                    business functions step 5 imports.
+ *                                    business functions step 5 imports, and
+ *                                    "Presa Appuntamenti" to the "Consulenza"
+ *                                    function it creates itself.
  *   7. QualificaOperatorSeeder     — the client's real operators (the
  *                                    "Mansionario Operatori"), with their
  *                                    roles, Sedi and product-category

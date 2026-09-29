@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * WorkOrder entity (spec 0093, D-1): "Commessa", numbered `COM-0001...`,
@@ -164,5 +165,17 @@ class WorkOrder extends BaseModel
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
+    }
+
+    /**
+     * This commessa's email history and drafts (spec 0175, D-2/D-10): every
+     * `OutboundEmail` sent or drafted from its "Email" tab, newest first is
+     * the caller's own concern — no default ordering here.
+     *
+     * @return MorphMany<OutboundEmail, $this>
+     */
+    public function outboundEmails(): MorphMany
+    {
+        return $this->morphMany(OutboundEmail::class, 'emailable');
     }
 }

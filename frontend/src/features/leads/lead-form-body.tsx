@@ -69,13 +69,23 @@ export function LeadFormBody({ mode, onSuccess, onCancel }: LeadFormBodyProps) {
   const siteId = useWatch({ control: form.control, name: 'operational_site_id' })
 
   const [autoFilledSite, setAutoFilledSite] = useState<RelationFieldRef | null>(null)
+  // Same project -> campaign -> lead prefill chain, for the Fonte (spec 0176
+  // D-2): a campaign with its own Fonte prefills it, still freely editable
+  // afterward; a campaign with none leaves the current value untouched.
+  const [autoFilledSource, setAutoFilledSource] = useState<RelationFieldRef | null>(null)
   const applyCampaignSitePrefill = (item: ForSelectItem | null) => {
     const campaign = item as CampaignForSelectItem | null
     const site = campaign?.meta?.operational_site
-    if (site == null) return
-    form.setValue('operational_site_id', site.id, { shouldDirty: true, shouldValidate: true })
-    setAutoFilledSite({ id: site.id, name: site.label })
-    previousSiteIdRef.current = site.id
+    if (site != null) {
+      form.setValue('operational_site_id', site.id, { shouldDirty: true, shouldValidate: true })
+      setAutoFilledSite({ id: site.id, name: site.label })
+      previousSiteIdRef.current = site.id
+    }
+    const source = campaign?.meta?.source
+    if (source != null) {
+      form.setValue('source_id', source.id, { shouldDirty: true, shouldValidate: true })
+      setAutoFilledSource({ id: source.id, name: source.name })
+    }
   }
 
   // Prodotti di interesse <-> Campagna coherence (spec 0094, D-5): a
@@ -267,7 +277,8 @@ export function LeadFormBody({ mode, onSuccess, onCancel }: LeadFormBodyProps) {
                   hint={t('leads.form.hints.source')}
                   resource={SOURCES_FOR_SELECT_RESOURCE}
                   searchPlaceholder={t('leads.form.sourceSearch')}
-                  selected={original?.source ?? null}
+                  selected={autoFilledSource ?? (original?.source ?? null)}
+                  required
                   {...selectLabels}
                 />
               </div>

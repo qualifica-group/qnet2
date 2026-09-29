@@ -5,6 +5,7 @@ use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\Registry;
+use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -171,6 +172,7 @@ it('AC-010: convert_to_opportunity absent keeps the legacy behavior, no opportun
     $response = $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
     ])->assertCreated();
 
     expect(Lead::count())->toBe(1);
@@ -206,6 +208,7 @@ it('AC-012: a campaign with no product line -> 422, transaction rolled back', fu
     $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
         'operator_id' => $operator->id,
         'operational_site_id' => $site->id,
         'convert_to_opportunity' => true,

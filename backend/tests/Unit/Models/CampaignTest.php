@@ -30,7 +30,9 @@ it('creates the campaigns table with the expected columns', function () {
         'total_budget', 'target_lead', 'created_at', 'updated_at',
     ]))->toBeTrue();
     expect(Schema::hasColumn('campaigns', 'registry_id'))->toBeFalse();
-    expect(Schema::hasColumn('campaigns', 'source_id'))->toBeFalse();
+    // Spec 0176 changed the requirement: the campaign names the Fonte its
+    // leads inherit (optional).
+    expect(Schema::hasColumn('campaigns', 'source_id'))->toBeTrue();
     // Spec 0094, D-1/D-2: the former single-pair columns are DROPPED — the
     // collection now lives in campaign_product_lines.
     expect(Schema::hasColumn('campaigns', 'business_function_id'))->toBeFalse();

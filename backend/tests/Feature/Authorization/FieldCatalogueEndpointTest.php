@@ -111,6 +111,12 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // module resource — title/type mandatory, `code`/`quote_id` writable
         // only on create, D-1/D-5).
         'work-orders',
+        // spec 0175 `email-templates` AND `document-bundles`
+        // (EmailTemplatesAuthorization: name/module/subject/body mandatory,
+        // `module` writable only on create, D-10; DocumentBundlesAuthorization:
+        // name mandatory, description/is_active optional — both are the
+        // Commessa email module's configurators, D-14).
+        'email-templates', 'document-bundles',
         // spec 0101 the Task module and its five configurators
         // (TasksAuthorization: title/task_status_id mandatory, `creator_id`
         // server-set and `completion_percentage` derived from the status, so

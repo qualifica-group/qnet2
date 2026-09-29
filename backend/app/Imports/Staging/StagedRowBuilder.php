@@ -72,7 +72,7 @@ final class StagedRowBuilder
         // Step 2: run the definition's recognizers, merging resolved values
         // into BOTH the mapped values (so validateRow/persistRow see them
         // directly) and the row's own `resolved` record (for the review UI).
-        $context = new ImportRowContext($rowNumber, $this->actor);
+        $context = new ImportRowContext($rowNumber, $this->actor, $this->globalConfig);
         [$resolved, $messages, $needsReview] = $this->runRecognizers($context, $mappedValues, $skipRecognizers);
         $mappedValues = [...$mappedValues, ...$resolved];
 

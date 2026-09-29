@@ -37,8 +37,11 @@ final class MigrationOrder
         // referenced by its consumer modules (quotes first), not referencing;
         // `task-templates` (spec 0172, D-13) remaps its stages/items ONLY
         // within the single record being imported (no old_id of their own),
-        // so it references nothing else either.
-        ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'roles'],
+        // so it references nothing else either. `email-templates` and
+        // `document-bundles` (spec 0175, D-13) are likewise plain, unlinked
+        // lookups — `document-bundles` additionally copies its own files in,
+        // referencing nothing outside the pair of legacy tables it reads.
+        ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'roles', 'email-templates', 'document-bundles'],
 
         // Phase 2 — entities that reference the phase 1 anchors via old_id:
         // users (companies/sites/functions/roles), company-sites (companies)

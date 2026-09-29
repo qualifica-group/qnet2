@@ -12,6 +12,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Lead;
 use App\Models\User;
 use App\Services\Leads\LeadProductInterestWriter;
+use App\Services\Leads\LeadSourceResolver;
 use App\Services\Opportunities\ProductCategoryCoherence;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -57,6 +58,7 @@ class LeadService
     public function __construct(
         private readonly ConvertLeadToOpportunity $converter,
         private readonly LeadProductInterestWriter $productInterestWriter,
+        private readonly LeadSourceResolver $sourceResolver,
         // AC-034: the OTHER half of the coherence rule (mirrors
         // OpportunityService's own pairing) — a `campaign_id` change that
         // orphans a persisted product of interest, checked only when
@@ -78,7 +80,12 @@ class LeadService
     public function create(CreateLeadData $data, ?User $actor = null): Lead
     {
         $lead = DB::transaction(function () use ($data, $actor): Lead {
-            $lead = Lead::create($data->attributes());
+            // Spec 0176 (D-2): a lead saved without its own Fonte inherits
+            // the campaign's.
+            $lead = Lead::create([
+                ...$data->attributes(),
+                'source_id' => $this->sourceResolver->resolve($data->sourceId, $data->campaignId),
+            ]);
 
             // "Prodotti di interesse" (spec 0094, D-5): synced before a
             // possible conversion, so ConvertLeadToOpportunity always finds
@@ -100,6 +107,13 @@ class LeadService
     public function update(Lead $lead, UpdateLeadData $data): Lead
     {
         $attributes = $data->submittedAttributes();
+
+        // Spec 0176 (D-2/D-3): a submitted empty Fonte falls back to the
+        // campaign's — the submitted campaign when it changes too.
+        if ($data->sourceIdSubmitted) {
+            $campaignId = $data->campaignIdSubmitted ? $data->campaignId : $lead->campaign_id;
+            $attributes['source_id'] = $this->sourceResolver->resolve($data->sourceId, $campaignId);
+        }
 
         DB::transaction(function () use ($lead, $data, $attributes): void {
             // AC-034: captured BEFORE the save() overwrites `campaign_id`,

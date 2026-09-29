@@ -67,7 +67,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email'];
     }
 
     /**
@@ -118,6 +118,12 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             'view_activity' => $model !== null && $actor->can('work-orders.viewActivity'),
             // Spec 0134: gates the DocumentsSection tab in the detail.
             'view_documents' => $model !== null && $actor->can('work-orders.viewDocuments'),
+            // Spec 0175, D-14: gates the "Email" tab / "Nuova email" button in
+            // the detail. Membership scoping is already satisfied by reaching
+            // this response at all (GET .../{workOrder} itself requires
+            // WorkOrderPolicy::view, which applies the same isInScope rule).
+            'view_emails' => $model !== null && $actor->can('work-orders.viewEmails'),
+            'send_email' => $model !== null && $actor->can('work-orders.sendEmail'),
         ];
     }
 }

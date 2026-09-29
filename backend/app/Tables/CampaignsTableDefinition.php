@@ -66,6 +66,7 @@ class CampaignsTableDefinition extends AbstractTableDefinition
      */
     private const array DERIVED_RELATIONS = [
         'project' => ['relation' => 'project', 'table' => 'projects', 'fk' => 'project_id'],
+        'source' => ['relation' => 'source', 'table' => 'sources', 'fk' => 'source_id'],
     ];
 
     public function __construct(
@@ -115,6 +116,7 @@ class CampaignsTableDefinition extends AbstractTableDefinition
             'productLines.businessFunction',
             'productLines.productCategory',
             'operationalSite.addresses.city',
+            'source',
         ]);
     }
 
@@ -201,6 +203,7 @@ class CampaignsTableDefinition extends AbstractTableDefinition
             'product_category' => $this->summarizeNames($productLines->pluck('productCategory')),
             'business_function' => $this->summarizeNames($productLines->pluck('businessFunction')),
             'operational_site' => $this->summarizeOperationalSite($row->operationalSite),
+            'source' => $this->summarize($row->source),
             'start_date' => $row->start_date,
             'end_date' => $row->end_date,
             'total_budget' => $row->total_budget,
@@ -423,8 +426,8 @@ class CampaignsTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * ORDER BY the linked project's name via a correlated subquery — only
-     * `project` is declared sortable (spec 0023 table_definitions);
+     * ORDER BY the related row's name (project, or source — spec 0176) via a
+     * correlated subquery (spec 0023 table_definitions);
      * `pipeline_status` is never asked to sort (not in
      * sortableColumnIds()).
      *
@@ -434,7 +437,7 @@ class CampaignsTableDefinition extends AbstractTableDefinition
     {
         $config = self::DERIVED_RELATIONS[$columnId] ?? null;
 
-        if ($config === null || $columnId !== 'project') {
+        if ($config === null) {
             return false;
         }
 
@@ -449,7 +452,7 @@ class CampaignsTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Excel-like distinct values (spec 0004/0005). `project` is a
+     * Excel-like distinct values (spec 0004/0005). `project`/`source` are a
      * plain related-row name; `pipeline_status` is delegated to
      * CampaignPipelineStatusResolver (AC-032); `business_function`/
      * `product_category` (spec 0094, AC-026/AC-027) are delegated to

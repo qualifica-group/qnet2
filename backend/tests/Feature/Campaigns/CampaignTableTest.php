@@ -56,7 +56,7 @@ it('GET /api/tables/campaigns/columns: 200 with the declared columns, 403 withou
     $ids = collect($data['columns'])->pluck('id')->all();
     expect($ids)->toBe([
         'id', 'code', 'project', 'name', 'pipeline_status', 'business_function', 'product_category',
-        'country', 'state', 'province', 'city', 'geo_scope', 'operational_site',
+        'country', 'state', 'province', 'city', 'geo_scope', 'operational_site', 'source',
         'start_date', 'end_date', 'total_budget', 'target_lead', 'created_at',
     ]);
 
@@ -73,7 +73,10 @@ it('GET /api/tables/campaigns/columns: 200 with the declared columns, 403 withou
         ->and($columns['business_function']['sortable'])->toBeFalse()
         ->and($columns['business_function']['filterType'])->toBe('set')
         ->and($columns['product_category']['sortable'])->toBeFalse()
-        ->and($columns['product_category']['filterType'])->toBe('set');
+        ->and($columns['product_category']['filterType'])->toBe('set')
+        // Spec 0176: the campaign's Fonte, a plain relation-name column.
+        ->and($columns['source']['sortable'])->toBeTrue()
+        ->and($columns['source']['filterType'])->toBe('set');
 });
 
 // ---------------------------------------------------------------------------

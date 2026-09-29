@@ -3,6 +3,7 @@
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\Registry;
+use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -44,6 +45,7 @@ it('create: extra_fields is persisted and exposed by LeadResource', function () 
     $response = $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
         'extra_fields' => ['Origine' => 'Fiera Milano', 'Note' => 'VIP'],
     ])->assertCreated()
         ->assertJsonPath('data.extra_fields', ['Origine' => 'Fiera Milano', 'Note' => 'VIP']);
@@ -62,6 +64,7 @@ it('create: without extra_fields, it stays null', function () {
     $response = $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
     ])->assertCreated()
         ->assertJsonPath('data.extra_fields', null);
 
@@ -77,6 +80,7 @@ it('create: extra_fields must be an array of strings -> 422', function () {
     $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
         'extra_fields' => ['Origine' => ['not', 'a', 'string']],
     ])->assertStatus(422)->assertJsonValidationErrors('extra_fields.Origine');
 

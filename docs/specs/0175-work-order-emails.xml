@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0175-work-order-emails" status="implemented" owner="utente" date="2026-09-28">
+
+  <goal>
+    Dal dettaglio di una Commessa l'utente compone, salva come bozza e invia email via Microsoft Graph a nome della
+    propria casella, partendo da un Modello email con segnaposto e allegando file caricati, documenti della
+    commessa o dell'anagrafica, Modelli documenti o il PDF dell'offerta. Ogni invio resta nello storico della
+    commessa. Modelli email e Modelli documenti sono due nuove tabelle di appoggio, migrate dal QNet legacy.
+  </goal>
+
+  <context>
+    Nomi verificati il 2026-09-28.
+    Legacy (`/Users/Repository/qnet`):
+    - La commessa e' `Order` (`orders`). Composer Livewire `App\Livewire\Quotations\InviaEmail` (source=2), unico
+      per offerta, commessa e opportunita'.
+    - `email_templates`(id, title, body HTML TinyMCE): nessun oggetto, nessun segnaposto, nessun permesso.
+    - `email_orders`: una bozza per commessa, sovrascritta a ogni salvataggio. Destinatari = stringa separata da
+      virgole. Dello storico restano solo `email_send`/`user_send`.
+      `email_orders_attachments`: file caricati o copiati dai Modelli documenti.
+    - `modello_documenti`(id, title) + `modello_documenti_allegati`(id_modello, document, name, title). File su
+      `storage/app/public/documents/{tenant}/modelli_mdg/{id_modello}/`.
+    - Invio sincrono, un messaggio per destinatario, tramite `App\Services\GraphLargeAttachmentMailer`
+      (client credentials `mail.mailers.microsoft-graph.{tenant,client,secret}` = env
+      `MAIL_MSGRAPH_TENANT/CLIENT/SECRET`; bozza, poi upload session a chunk da 3.2 MB, poi send).
+      From = casella M365 esistente; errore Graph `ErrorInvalidUser` se la casella non esiste.
+    - `email_order_reminders` (reinvio ricorrente) esiste: fuori scope (D-9).
+    qnet-2:
+    - `WorkOrder` (`work_orders`, traits HasAttachments/HasNotes/LogsModelActivity). Il cliente si raggiunge con
+      `quote.opportunity.registry`. Il referente dell'opportunita' con `quote.opportunity.referent`, il team con
+      `supervisors()`/`participants()`.
+    - `WorkOrderPolicy` (resource `work-orders`, scope di appartenenza `WorkOrderVisibilityScope::isVisibleTo`,
+      abilities extra `viewAll`, `viewDocuments`). `WorkOrdersAuthorization::actions()/actionPermissions()` alimenta
+      `permissions.actions.*` del dettaglio. `php artisan permissions:sync` raccoglie le abilities delle Policy.
+    - Rotte commessa in `backend/routes/api/work-orders.php` (`api.php` e' al limite delle 500 righe).
+    - Allegati polimorfici `attachments` + `AttachmentService::{storeFor,copyTo,delete}` e
+      `config/attachments.php` (disk privato, max_size 10240 KB, allowlist MIME, alias `attachable_types` + morph
+      map in `AppServiceProvider`). I documenti usano la collection `documents` (commessa alias `work_order`,
+      anagrafica alias `registry`, spec 0173). `AttachmentPolicy` ha gia' il carve-out della collection `rich_text`.
+    - Contatti: `Contact` polimorfico su `PersonalData` (`HasContacts`), `ContactTypeEnum::{Email,Pec}`. Utenti:
+      `users.email`.
+    - Segnaposto: `DocumentLayoutVariableCatalog` (categorie quote/client/opportunity/referent/commercial/reporter/
+      supervisor/company/company_site/...) e `Rendering\VariableResolver::substitute(text, Quote, User)` con token
+      `{categoria.chiave}`: token sconosciuto -> stringa vuota, PII del cliente mascherata per permesso.
+    - PDF offerta: `QuoteDocumentLayoutResolver` + `QuoteDocumentGenerator::generate()` +
+      `DocxToPdfConverter::convert()` (come `QuoteDocumentController`, gate `quotes.view`).
+    - Rich text: `RichTextSanitizer::sanitize($html, allowMentions)` (symfony/html-sanitizer), editor Tiptap 3
+      `components/rich-text/RichTextEditor`.
+    - Mail: `config/mail.php` (default `log`), `StagingMailRedirector` (`MAIL_ALWAYS_TO`) agganciato a
+      `Mailer::alwaysTo()`. Non esistono Mailable. Coda `database`.
+    - Migrazioni legacy: `App\Migrations\Sources\*` + `ExternalApiClient::get()` (solo JSON) +
+      `MigrationOrder::PHASES`. Lato legacy i controller `Api\V2\*MigrationController` sotto
+      `routes/apiV2.php` prefix `migration`.
+    - Tabelle di appoggio di riferimento: modulo `task-importances` (TableDefinition + registry moduli FE +
+      guida help).
+  </context>
+
+  <decisions>
+    D-1  (utente) Canale: Microsoft Graph come nel legacy. Implementato come transport Laravel custom
+         `microsoft-graph` (Symfony `AbstractTransport` + HTTP client Laravel, nessuna nuova dipendenza) registrato
+         con `Mail::extend`. Stessa config legacy `mail.mailers.microsoft-graph` / env `MAIL_MSGRAPH_*`. Passando
+         da `Mail`, restano validi `Mail::fake()` nei test e `MAIL_ALWAYS_TO` in staging. Il mailer usato si sceglie
+         con `config('outbound_emails.mailer')` (env `OUTBOUND_EMAIL_MAILER`, default `microsoft-graph`; in dev
+         `log`). Allegati sotto 3 MB inline, sopra con upload session a chunk (come `GraphLargeAttachmentMailer`).
+    D-2  (utente) Storico per invio + bozze: tabella `outbound_emails` polimorfica (`emailable`), una riga per
+         email. Stati: `draft` -> `queued` -> `sent` | `failed`. Una bozza si modifica e si elimina solo finche'
+         e' `draft`. Un'email `failed` si puo' reinviare (torna `queued`). `sent` e' immutabile.
+    D-3  Visibilita': le bozze le vede e le modifica solo il loro autore; queued/sent/failed le vede chiunque abbia
+         `work-orders.viewEmails` e veda la commessa (scope di appartenenza).
+    D-4  (utente) Segnaposto `{categoria.chiave}` in oggetto e corpo del Modello email, risolti dal server quando
+         nel composer si sceglie il modello. Il testo risolto resta poi modificabile e non viene ririsolto
+         all'invio. Categorie: `work_order` (code, title, type, start_date, callback_date, description),
+         `sender` (name, email) e le categorie dell'offerta collegata riusate da `DocumentLayoutVariableCatalog`
+         via `VariableResolver` (quote, client, opportunity, referent, commercial, reporter, supervisor, company,
+         company_site), escluse totals/document/custom_fields/quote_attributes. Nel corpo i valori sono
+         HTML-escaped. Token sconosciuto -> vuoto (come spec 0070).
+    D-5  (utente) Destinatari A/CC/CCN, un solo messaggio. Suggerimenti: email e PEC dei contatti
+         dell'anagrafica cliente (solo con `registries.view`), dei referenti dell'anagrafica e del referente
+         dell'opportunita' (solo con `referents.view`), `users.email` di responsabili e partecipanti della
+         commessa. Si possono aggiungere indirizzi liberi (validazione `email:rfc`). Massimo 50 indirizzi in
+         totale.
+    D-6  (utente) Mittente = `users.email` dell'utente che invia, non modificabile. Salvato in `from_address`
+         (snapshot) + `sender_user_id`. Se Graph rifiuta la casella, lo stato diventa `failed` con un messaggio
+         leggibile.
+    D-7  (utente) Allegati da 4 sorgenti, tutti COPIATI come `Attachment` dell'email (alias `outbound_email`,
+         collection `email_attachments`), cosi' lo storico resta integro anche se l'originale viene cancellato:
+         (a) upload, stessi limiti di `config/attachments.php`; (b) documenti `documents` della commessa e
+         dell'anagrafica cliente (con i rispettivi gate `work-orders.viewDocuments` / `registries.viewDocuments`);
+         (c) tutti i file di un Modello documenti; (d) PDF dell'offerta collegata generato col layout risolto da
+         `QuoteDocumentLayoutResolver` (gate `quotes.view` sulla quote, 422 se non c'e' layout).
+         Totale allegati per email <= `config('outbound_emails.max_total_attachments_kb')`
+         (default 25600 = 25 MB, assunzione da confermare), controllato al send e su ogni aggiunta.
+    D-8  La collection `email_attachments` e' chiusa agli endpoint generici `/api/attachments` (stesso carve-out
+         di `rich_text` in `AttachmentPolicy`): si scarica solo dall'endpoint annidato dell'email, autorizzato
+         dalla commessa.
+    D-9  (utente) Reinvio ricorrente ("Ripeti invio Email") fuori scope: spec successiva.
+    D-10 (utente) Solo la Commessa. Tabelle e servizi restano polimorfici (`emailable`, `email_templates.module`)
+         per estenderli a offerta e opportunita' in futuro senza cambiare lo schema.
+    D-11 Corpo di modelli ed email = HTML sanitizzato con `RichTextSanitizer` (senza mention). Immagini nel corpo
+         fuori scope: `<img>` viene rimosso lato server e nel composer l'editor non permette immagini. I corpi
+         legacy (TinyMCE) vengono sanificati in migrazione: tabelle e stili persi, con warning di riga se il
+         contenuto cambia.
+    D-12 Invio in coda: job `SendOutboundEmailJob` con `tries = 1`, perche' un send Graph ripetuto dopo un
+         timeout duplicherebbe l'email. In caso di errore lo stato diventa `failed` con `error_message` e il
+         reinvio e' manuale (D-2).
+    D-13 (utente) Migrazione legacy: nuove sorgenti `email-templates` (title -> name, body sanificato,
+         subject = name, module `work_orders`) e `document-bundles` (title -> name, file inclusi). Il legacy espone
+         i file in base64 dentro il JSON, perche' `ExternalApiClient` parla solo JSON. Un file oltre
+         `attachments.max_size` o con MIME fuori allowlist viene saltato con warning. Fase 1 di
+         `MigrationOrder` (nessuna dipendenza). Idempotenza su `old_id`.
+    D-14 Permessi nuovi: `email-templates.*` e `document-bundles.*` (CRUD standard BasePolicy),
+         `work-orders.viewEmails` (tab Email e storico) e `work-orders.sendEmail` (bozze, allegati, invio). Tutti
+         e due richiedono anche lo scope di appartenenza della commessa. Menu: "Configurazione" -> "Modelli email",
+         "Modelli documenti".
+    D-15 Nessuna voce nel log attivita' della commessa per l'invio: lo storico e' la tab Email.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Tabella di appoggio `email_templates` + modulo CRUD "Modelli email" (tabella SSRM, dettaglio, form con editor e picker segnaposto).</item>
+      <item>Tabella di appoggio `document_bundles` + modulo CRUD "Modelli documenti" (file gestiti con `DocumentsSection`, alias `document_bundle`).</item>
+      <item>Tabella `outbound_emails` + allegati `email_attachments`; API annidate sotto la commessa per bozze, allegati, invio e storico.</item>
+      <item>Catalogo segnaposto `work_orders` + endpoint di render del modello.</item>
+      <item>Transport Laravel `microsoft-graph`, Mailable `OutboundEmailMessage`, job `SendOutboundEmailJob`, config `config/outbound_emails.php`.</item>
+      <item>FE: tab "Email" nel dettaglio commessa (lista storico e bozze) + composer (dialog) + dettaglio in sola lettura di un'email inviata.</item>
+      <item>Permessi (D-14), i18n IT/EN, guide in-app IT/EN (`work-orders` aggiornata, nuove `email-templates` e `document-bundles`), manuale Claude Docs.</item>
+      <item>Migrazione legacy: 2 controller legacy + 2 sorgenti qnet-2 (D-13).</item>
+    </in>
+    <out>
+      <item>Reinvio ricorrente / reminder (D-9).</item>
+      <item>Email da offerta e opportunita' (D-10), anche se lo schema le prevede.</item>
+      <item>Immagini inline nel corpo, firme email, tabelle HTML (D-11).</item>
+      <item>Tracking di consegna/apertura, ricezione delle risposte, inbox IMAP.</item>
+      <item>SMTP o caselle per utente/azienda; mittente diverso da `users.email` (D-6).</item>
+      <item>Migrazione dello storico legacy `email_orders` / `email_orders_attachments` / reminders.</item>
+      <item>Voce nel log attivita' della commessa per l'invio (D-15).</item>
+      <item>Invio massivo da tabella commesse.</item>
+    </out>
+  </scope>
+
+  <data_model>
+    email_templates: id, name varchar(191), module varchar(32) (enum `EmailTemplateModule`: `work_orders`),
+      subject varchar(255), body longtext (HTML sanificato), description text null, is_active bool default true,
+      old_id bigint unsigned null unique, timestamps. unique(module, name). LogsModelActivity.
+    document_bundles: id, name varchar(191) unique, description text null, is_active bool default true,
+      old_id bigint unsigned null unique, timestamps. HasAttachments (alias `document_bundle`, collection
+      `documents`). LogsModelActivity.
+    outbound_emails: id, emailable_type varchar, emailable_id bigint (morph, index), email_template_id FK null
+      nullOnDelete, status varchar(16) (enum `OutboundEmailStatus`: draft|queued|sent|failed),
+      sender_user_id FK users restrictOnDelete, from_address varchar(191) null (valorizzato al send),
+      to_recipients json, cc_recipients json, bcc_recipients json (array di stringhe email), subject varchar(255)
+      null, body longtext null, queued_at / sent_at / failed_at timestamp null, error_message text null,
+      timestamps. index(emailable_type, emailable_id, status). HasAttachments (alias `outbound_email`,
+      collection `email_attachments`).
+  </data_model>
+
+  <data_contract>
+    Envelope di progetto `{ success, message, data }`; le liste delle tabelle di appoggio passano da
+    `POST /api/tables/{domain}/rows` (TableDefinition `email-templates`, `document-bundles`).
+
+    <!-- Tipi condivisi -->
+    <type name="OutboundEmailAttachment">{ id: int, original_name: string, mime_type: string, size: int }</type>
+    <type name="OutboundEmail">
+      { id: int, status: "draft"|"queued"|"sent"|"failed", email_template_id: int|null,
+        sender: { id: int, name: string }, from_address: string|null,
+        to: string[], cc: string[], bcc: string[], subject: string|null, body: string|null,
+        attachments: OutboundEmailAttachment[], attachments_total_size: int,
+        queued_at: string|null, sent_at: string|null, failed_at: string|null, error_message: string|null,
+        created_at: string, updated_at: string,
+        can: { update: bool, delete: bool, send: bool } }
+    </type>
+    <type name="OutboundEmailListItem">
+      { id, status, sender: { id, name }, to: string[], subject: string|null, attachments_count: int,
+        sent_at, failed_at, updated_at }
+    </type>
+
+    <!-- Modelli email -->
+    <endpoint method="GET" path="/api/email-templates/{emailTemplate}">
+      <response status="200">data: { id, name, module, subject, body, description, is_active, created_at, updated_at } + permissions (okWithPermissions)</response>
+      <errors>403 senza email-templates.view; 404</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/email-templates">
+      <request>{ name: string req max 191, module: "work_orders" req, subject: string req max 255, body: string req (HTML, max come rich_text), description: string|null, is_active: bool }</request>
+      <response status="201">data: EmailTemplate</response>
+      <errors>403 senza email-templates.create; 422 (name duplicato per module, campi mancanti)</errors>
+    </endpoint>
+    <endpoint method="PUT|PATCH" path="/api/email-templates/{emailTemplate}"><request>come POST, `module` immutabile (prohibited)</request><response status="200">data: EmailTemplate</response><errors>403 / 404 / 422</errors></endpoint>
+    <endpoint method="DELETE" path="/api/email-templates/{emailTemplate}"><response status="204"/><errors>403 / 404</errors></endpoint>
+    <endpoint method="GET" path="/api/email-templates/for-select">
+      <request>ADR 0011: ?module=work_orders&amp;search=&amp;offset=&amp;limit=&amp;ids[]= (solo is_active)</request>
+      <response status="200">ADR 0011 (non-envelope): { items: [{ id, label: name }], pagination } — `EmailTemplateForSelectResource extends ForSelectResource`</response>
+      <errors>401; 422 module non valido. Gate: auth:sanctum (i nomi dei modelli non sono sensibili, come gli altri for-select).</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/email-templates/variables">
+      <request>?module=work_orders</request>
+      <response status="200">data: [{ key, label, variables: [{ variable: "{work_order.code}", label, type, example }] }]</response>
+      <errors>403 senza email-templates.view</errors>
+    </endpoint>
+
+    <!-- Modelli documenti: CRUD standard; i file passano dagli endpoint /api/attachments esistenti (attachable_type=document_bundle, collection=documents) -->
+    <endpoint method="GET|POST|PUT|PATCH|DELETE" path="/api/document-bundles[/{documentBundle}]">
+      <request>{ name: string req max 191 unique, description: string|null, is_active: bool }</request>
+      <response status="200|201|204">data: { id, name, description, is_active, files_count, created_at, updated_at }</response>
+      <errors>403 senza document-bundles.*; 404; 422</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/document-bundles/for-select"><request>ADR 0011: ?search=&amp;offset=&amp;limit=&amp;ids[]= (solo is_active)</request><response status="200">ADR 0011: { items: [{ id, label: name, meta: { files_count } }], pagination } — `DocumentBundleForSelectResource extends ForSelectResource`</response></endpoint>
+
+    <!-- Email della commessa: tutte con Route::scopeBindings(); {email} deve appartenere a {workOrder} -->
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/emails">
+      <request>?page=1 (20 per pagina, ordine updated_at desc). Include le bozze del SOLO attore (D-3).</request>
+      <response status="200">data: OutboundEmailListItem[], meta: { current_page, last_page, total }</response>
+      <errors>403 senza work-orders.viewEmails o commessa fuori scope; 404</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/emails/compose-context">
+      <response status="200">
+        data: { sender: { name, email },
+                recipient_suggestions: [{ email, label, source: "registry"|"referent"|"supervisor"|"participant" }],
+                documents: [{ id, original_name, size, source: "work_order"|"registry" }],
+                quote_pdf_available: bool,
+                max_total_attachments_kb: int }
+      </response>
+      <errors>403 senza work-orders.sendEmail o fuori scope</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/emails/render-template">
+      <request>{ email_template_id: int req (attivo, module work_orders) }</request>
+      <response status="200">data: { subject: string, body: string } (segnaposto risolti, D-4)</response>
+      <errors>403; 422 modello inesistente/inattivo/di altro module</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/emails">
+      <request>{ email_template_id: int|null, to: string[] (email:rfc), cc: string[], bcc: string[], subject: string|null max 255, body: string|null } — tutto opzionale in bozza</request>
+      <response status="201">data: OutboundEmail (status draft)</response>
+      <errors>403; 422 (indirizzo non valido, >50 destinatari)</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/emails/{email}"><response status="200">data: OutboundEmail</response><errors>403; 404 (email di altra commessa o bozza di altro utente)</errors></endpoint>
+    <endpoint method="PATCH" path="/api/work-orders/{workOrder}/emails/{email}"><request>come POST</request><response status="200">data: OutboundEmail</response><errors>403 non autore; 409 stato != draft; 422</errors></endpoint>
+    <endpoint method="DELETE" path="/api/work-orders/{workOrder}/emails/{email}"><response status="204"/><errors>403 non autore; 409 stato != draft</errors></endpoint>
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/emails/{email}/attachments">
+      <request>multipart: file (limiti config/attachments.php)</request>
+      <response status="201">data: OutboundEmail</response>
+      <errors>403; 409 stato != draft; 422 file non valido o totale oltre il limite</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/emails/{email}/attachments/import">
+      <request>{ source: "documents"|"document_bundle"|"quote_pdf", attachment_ids?: int[] (source=documents: devono essere documents della commessa o della sua anagrafica), document_bundle_id?: int (source=document_bundle, attivo) }</request>
+      <response status="201">data: OutboundEmail</response>
+      <errors>403 (gate della sorgente, D-7); 409 stato != draft; 422 (id estranei, bundle inattivo, nessun layout offerta, totale oltre il limite)</errors>
+    </endpoint>
+    <endpoint method="DELETE" path="/api/work-orders/{workOrder}/emails/{email}/attachments/{attachment}"><response status="200">data: OutboundEmail</response><errors>403; 404 allegato di altra email; 409 stato != draft</errors></endpoint>
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/emails/{email}/attachments/{attachment}/download"><response status="200">stream del file</response><errors>403 senza viewEmails / bozza altrui; 404</errors></endpoint>
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/emails/{email}/send">
+      <request>{} — invia lo stato salvato (il FE salva prima con PATCH)</request>
+      <response status="202">data: OutboundEmail (status queued)</response>
+      <errors>403 non autore o senza sendEmail; 409 stato non in [draft, failed]; 422 (almeno un destinatario in to, subject e body obbligatori, utente senza email, totale allegati oltre il limite)</errors>
+    </endpoint>
+  </data_contract>
+
+  <plan>
+    Nessun commit ne' cambio branch senza ordine esplicito dell'utente (CLAUDE.md 3.6). Ogni owner tocca SOLO la
+    propria write surface; i file condivisi li tocca solo il microtask di fondamenta indicato.
+    Wave 1 (parallelo):
+      BE-01 backend  Fondamenta: 3 migrazioni, model EmailTemplate/DocumentBundle/OutboundEmail + factory, enum
+                     EmailTemplateModule/OutboundEmailStatus, morph map + config/attachments.php (document_bundle,
+                     outbound_email), carve-out `email_attachments` in AttachmentPolicy, EmailTemplatePolicy,
+                     DocumentBundlePolicy, WorkOrderPolicy (viewEmails, sendEmail), WorkOrdersAuthorization
+                     (view_emails, send_email), config/outbound_emails.php, navigation (configuration.php),
+                     config/activity-log.php, config/authorization.php + config/tables.php (registrazioni), file di
+                     rotte vuoti requireati (email-templates, document-bundles, work-order-emails), lang permessi.
+                     AC-001, AC-011, AC-016.
+      UI-01 ui-design components/rich-text (prop per disabilitare le immagini + API di inserimento testo al cursore)
+                     + nuovo components/ui/email-recipients-input.tsx (chip, suggerimenti, validazione email).
+      FE-01 frontend Registrazioni condivise FE: i18n namespace (email-templates, document-bundles,
+                     work-order-emails) wired in it.ts/en.ts, navigation/permissions labels, icon-map `mail`,
+                     HELP_GUIDE_KEYS (+ guide stub IT/EN), features/{email-templates,document-bundles}/for-select-api.ts
+                     + types minimi.
+    Wave 2 (parallelo):
+      BE-02 backend  Modulo email-templates (CRUD, TableDefinition + column catalog, for-select, variables,
+                     WorkOrderEmailVariableCatalog + WorkOrderEmailVariableResolver). AC-002, AC-003, AC-005 (servizio).
+      BE-03 backend  Modulo document-bundles (CRUD, TableDefinition, for-select). AC-004.
+      BE-04 backend  Transport `microsoft-graph` (Mail::extend), config/mail.php, OutboundEmailMessage,
+                     SendOutboundEmailJob. AC-013, AC-015.
+      FE-02/03 frontend Moduli email-templates poi document-bundles (features/, pages/, router.tsx, breadcrumbs.tsx). AC-022.
+      FE-04 frontend Tab Email + composer + dettaglio (features/work-order-emails/, integrazione in
+                     features/work-orders/work-order-detail.tsx). AC-019..AC-021.
+    Wave 3 (parallelo):
+      BE-05 backend  API work-orders/{workOrder}/emails (controller, request, resource, service). AC-005..AC-012, AC-014.
+      BE-06 backend  Migrazione legacy (controller legacy in /Users/Repository/qnet, sorgenti qnet-2,
+                     config/migrations.php, MigrationOrder). AC-017, AC-018.
+    Wave 4: DOC-01 guide in-app IT/EN definitive, manuale Claude Docs, HANDOFF. AC-023.
+    Gate: verifier a fine di ogni wave.
+  </plan>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Migrazioni: `email_templates`, `document_bundles`, `outbound_emails` create con le colonne di data_model; il rollback le rimuove.</criterion>
+    <criterion id="AC-002">Modelli email CRUD: con i permessi `email-templates.*` crea/modifica/elimina; nome duplicato nello stesso module -> 422; senza permesso -> 403; body salvato sanificato (script e img rimossi); `module` non modificabile in update.</criterion>
+    <criterion id="AC-003">GET /email-templates/variables?module=work_orders restituisce le categorie di D-4 (work_order, sender, quote, client, ...) e NON totals/document.</criterion>
+    <criterion id="AC-004">Modelli documenti CRUD + file: con `document-bundles.*` si crea il bundle e si caricano file via /api/attachments (alias document_bundle); files_count corretto; senza permesso -> 403.</criterion>
+    <criterion id="AC-005">render-template: dato un modello con `{work_order.code}`, `{client.name}`, `{sender.name}` e `{foo.bar}`, restituisce oggetto e corpo con i valori reali della commessa e dell'utente, `{foo.bar}` vuoto, e i valori HTML-escaped nel corpo (un titolo commessa con `<b>` non diventa markup).</criterion>
+    <criterion id="AC-006">Authz email: senza `work-orders.viewEmails` la lista risponde 403; senza `work-orders.sendEmail` create/patch/attachments/send rispondono 403; su una commessa fuori scope di appartenenza tutte rispondono 403; un {email} di un'altra commessa risponde 404 (scopeBindings).</criterion>
+    <criterion id="AC-007">Bozze private: la bozza dell'utente A non compare nella lista dell'utente B e GET/PATCH/DELETE di B su quella bozza rispondono 404/403; le email sent di A sono visibili a B con viewEmails.</criterion>
+    <criterion id="AC-008">Bozza: POST crea `draft` con to/cc/bcc; indirizzo non valido o piu' di 50 destinatari -> 422; PATCH/DELETE su un'email `sent` -> 409.</criterion>
+    <criterion id="AC-009">compose-context: sender = users.email dell'attore; i suggerimenti includono email/PEC dei contatti dell'anagrafica, dei referenti e di responsabili/partecipanti; senza `registries.view` quelli dell'anagrafica sono assenti; documents elenca solo i `documents` della commessa e dell'anagrafica, rispettando i gate viewDocuments.</criterion>
+    <criterion id="AC-010">Allegati: upload e import (documents / document_bundle / quote_pdf) creano copie `email_attachments` sull'email; un attachment_id non della commessa ne' della sua anagrafica -> 422; quote_pdf senza layout -> 422; superare max_total_attachments_kb -> 422; eliminare l'originale dopo la copia non tocca l'allegato dell'email.</criterion>
+    <criterion id="AC-011">`email_attachments` chiusa agli endpoint generici: GET /api/attachments/{id}, download e DELETE su un allegato email rispondono 403; l'endpoint annidato di download funziona per chi ha viewEmails.</criterion>
+    <criterion id="AC-012">Send: una bozza valida passa a `queued`, `from_address` = users.email dell'attore, `SendOutboundEmailJob` viene messo in coda (Queue::fake); senza destinatari in `to`, oggetto o corpo -> 422 e lo stato resta draft.</criterion>
+    <criterion id="AC-013">Job: con Mail::fake invia UN `OutboundEmailMessage` con from, to/cc/bcc, oggetto, corpo HTML e tutti gli allegati; lo stato passa a `sent` con sent_at; se il mailer lancia un'eccezione lo stato diventa `failed` con error_message e il job non ritenta (tries=1).</criterion>
+    <criterion id="AC-014">Reinvio: un'email `failed` si reinvia con /send (torna `queued`); una `sent` -> 409.</criterion>
+    <criterion id="AC-015">Transport Graph (Http::fake): acquisisce il token client-credentials (poi lo prende dalla cache), crea il messaggio su `/users/{from}/messages` con to/cc/bcc/subject/html, carica gli allegati sotto 3 MB in un solo POST e quelli piu' grandi con upload session a chunk, infine chiama `/send`; se Graph risponde con `ErrorInvalidUser` solleva un'eccezione con messaggio leggibile (casella mittente non valida).</criterion>
+    <criterion id="AC-016">Permessi: `permissions:sync` registra email-templates.*, document-bundles.*, work-orders.viewEmails, work-orders.sendEmail; `WorkOrderResource` espone `permissions.actions.view_emails` e `send_email`.</criterion>
+    <criterion id="AC-017">Migrazione `email-templates`: un template legacy diventa EmailTemplate con name = subject = title, module work_orders, body sanificato (warning se il body cambia), old_id; il re-run e' idempotente (skipped).</criterion>
+    <criterion id="AC-018">Migrazione `document-bundles`: un modello legacy con 2 file diventa DocumentBundle con 2 attachments `documents`; un file oltre max_size o con MIME non ammesso viene saltato con warning; il re-run non duplica bundle ne' file.</criterion>
+    <criterion id="AC-019">FE tab Email: visibile solo con `permissions.actions.view_emails`; lista con stato (badge), oggetto, destinatari, data; il pulsante "Nuova email" e' visibile solo con `send_email`; click su un'email inviata apre il dettaglio in sola lettura con gli allegati scaricabili.</criterion>
+    <criterion id="AC-020">FE composer: scegliere un modello chiama render-template e riempie oggetto e corpo (con conferma se c'e' gia' del testo); i destinatari A/CC/CCN accettano suggerimenti e indirizzi liberi validati; "Salva bozza" fa PATCH; "Invia" salva e poi chiama send, chiude il dialog e aggiorna la lista; gli errori 422 compaiono sul campo (triade aria).</criterion>
+    <criterion id="AC-021">FE allegati nel composer: upload, "Da documenti" (selezione multipla dei documenti di commessa e anagrafica), "Da modello documenti" (select) e "PDF offerta" (solo se quote_pdf_available); mostra il totale rispetto al limite; si puo' rimuovere un allegato.</criterion>
+    <criterion id="AC-022">FE moduli "Modelli email" e "Modelli documenti": tabella, dettaglio e form sotto Configurazione, gated dai permessi; il form del modello email ha il picker segnaposto che inserisce `{categoria.chiave}` nell'oggetto e alla posizione del cursore nel corpo.</criterion>
+    <criterion id="AC-023">Guide in-app IT/EN aggiornate (`work-orders`) e nuove (`email-templates`, `document-bundles`, chiavi in HELP_GUIDE_KEYS); parity test verde; manuale Claude Docs aggiornato.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: Graph via `Illuminate\Support\Facades\Http` + Symfony Mailer gia' presente; editor Tiptap esistente.</item>
+    <item>Authz server-side su ogni endpoint (Policy/FormRequest); `Route::scopeBindings()` sulle rotte annidate; rotte in un nuovo file `routes/api/work-order-emails.php` richiesto da `work-orders.php` (api.php e' al limite).</item>
+    <item>Segreti Graph solo in `.env` (`MAIL_MSGRAPH_*`), mai loggati; `error_message` non contiene token ne' risposte Graph raw.</item>
+    <item>Valori dei segnaposto HTML-escaped nel corpo; corpo sanificato con `RichTextSanitizer` a ogni salvataggio (modello ed email).</item>
+    <item>Invio solo in coda (`SendOutboundEmailJob`, tries=1); mai nella request.</item>
+    <item>File &lt;= 300 righe (500 hard); Pest in parallelo, helper condivisi in `tests/Helpers`; FE: TanStack Query, RHF+Zod, i18n IT/EN, UI compatta (ui-design.md).</item>
+    <item>Seed: nessun dato fake nel `DatabaseSeeder`; eventuali demo in `DemoEmailTemplateSeeder` via `DemoDataSeeder`.</item>
+  </constraints>
+
+</spec>

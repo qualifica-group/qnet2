@@ -3,6 +3,77 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX MIGRAZIONE PRODOTTI: TIPOLOGIA DA `folder` LEGACY — NON COMMITTATO (2026-09-29)
+
+- `ProductsSource` ignorava `folder` del legacy (`"Ente"`/`"Consulenza"`): ogni prodotto finiva sulla tipologia
+  di default. Ora `folder` -> `product_typology_id` risolto per NOME della tipologia, case-insensitive (niente
+  stringhe hardcoded, spec 0099 AC-054); assente -> default silenzioso; senza match -> default + warning.
+  Colonna preview `folder` aggiunta. Test in `ProductsSourceImportTest` (2 nuovi).
+- Da sapere: i prodotti gia' migrati vengono SALTATI al re-import (idempotenza su old_source/old_id), quindi
+  la tipologia errata va corretta cancellandoli e rimigrando. Aperti (segnalati, non fatti): `product_type`
+  legacy arriva `"service"` minuscolo -> warning spurio su ogni riga; il campo custom `folder` del template
+  Qualifica (opzioni `ente`/`consulenza`) riceverebbe il valore grezzo `"Consulenza"` via auto-persist.
+
+## SPEC 0176 FONTE OBBLIGATORIA SUL LEAD, EREDITATA DALLA CAMPAGNA — NON COMMITTATO (2026-09-28)
+
+- Spec `docs/specs/0176-lead-source-required.xml`. Decisioni utente: Fonte facoltativa sulla Campagna; sul Lead
+  precompilata dalla campagna ma modificabile; nessun backfill; import = precompilata dalla campagna, modificabile.
+- BE: migrazione `2026_09_28_160000_add_source_id_to_campaigns_table` (FK restrictOnDelete, `SourceService::delete`
+  blocca Fonti usate da campagne); `Campaign::source()`, `Source::campaigns()`; campaign request/DTO/resource
+  (`source_id`, `source {id,name}`), for-select `meta.source`, colonna tabella `source` (set, ordinabile).
+  `App\Services\Leads\LeadSourceResolver::resolve(?sourceId, ?campaignId)` = unica regola "propria, altrimenti
+  della campagna": usata da Store/UpdateLeadRequest (`Rule::requiredIf`), `LeadService::create/update`,
+  `LeadRowValidator` (errore di riga "The source is missing"). `ImportRowContext` ha ora `globalConfig`
+  (passato da `StagedRowBuilder`). Ceiling permessi Lead: `source_id` mandatory + required; inline `source` non
+  nullable. PATCH senza `source_id` resta valido (lead legacy senza Fonte).
+- Test: nuovi `LeadSourceRequiredTest`, `CampaignSourceTest`, `LeadImportSourceTest`; fixture esistenti aggiornate
+  (requisito cambiato). `QuoteWorkflowMigrationTest` rollback `--step 114` (coordinato con la sessione 0175).
+  Suite BE completa verde.
+- FE (teammate): form Campagna (select Fonte), form Lead (Fonte obbligatoria + prefill da `meta.source`), wizard
+  import (prefill Fonte dalla campagna), guide in-app IT/EN. Manuale Claude Docs aggiornato (campi Lead,
+  creazione Campagna, configurazione import).
+
+## SEED PRODUZIONE: VIA "TRATTATIVE IN CORSO", FUNZIONE "CONSULENZA" — NON COMMITTATO (2026-09-28)
+
+- `QualificaCatalogSeeder::CATALOG`: "Consulenza" ha una sola foglia, "Presa Appuntamenti";
+  `ContactProcessingAttributeCatalogue::CONSULTING_CATEGORIES = ['Presa Appuntamenti']`.
+  Il seeder NON cancella la riga "Trattative in Corso" dove esiste gia' (firstOrCreate): va eliminata a mano.
+- `QualificaBusinessFunctionLinkSeeder`: `OWN_FUNCTIONS = ['Consulenza']` (creata se nessuna funzione con quel nome
+  esiste, altrimenti adottata), link `'Presa Appuntamenti' => 'Consulenza'`; `link()` ora salta anche lo slot gia'
+  coperto da un antenato (invariante spec 0023, una funzione per catena).
+- Test aggiornati (requisito cambiato, dichiarato): Catalog/ContactProcessing/QuoteLayout/Workflow/LegacyImport/
+  BusinessFunctionLink seeder test. `composer test` verde (8681 pass). Manuale: nessun impatto.
+- Aperto: "Questa categoria ha sottocategorie o prodotti" all'eliminazione. `product-categories-table.tsx` mappa ogni
+  409/422 su `deleteInUse`, ma il 409 arriva anche per opportunita' collegate; le FK restrict (progetti, campagne,
+  provvigioni, `employment_product_lines`) danno 500. In locale "Trattative in Corso" si elimina (204): serve sapere
+  quale categoria/ambiente.
+
+## SPEC 0175 EMAIL DALLA COMMESSA — VERDE, NON COMMITTATO (2026-09-28)
+
+- Spec `docs/specs/0175-work-order-emails.xml` (implemented). Verifier finale VERDE: ambito 0175 416/416 Pest,
+  vitest/tsc senza errori nei file 0175, Pint pulito, AC-001..AC-023 PASS. I rossi del run completo sono della
+  spec 0176 (campaigns.source_id) di un'altra sessione sullo stesso working tree.
+- BE: tabelle `email_templates`, `document_bundles`, `outbound_emails`; moduli CRUD SSRM `email-templates`,
+  `document-bundles` (TableDefinition + for-select ADR 0011, `GET /email-templates/variables`); segnaposto
+  `WorkOrderEmailVariableCatalog`/`WorkOrderEmailVariableResolver` (valori e()-escaped nel body), `EmailHtmlSanitizer`
+  (RichTextSanitizer + strip img); API `routes/api/work-order-emails.php` (bozze private dell'autore = 404 per gli altri,
+  409 fuori da draft, send draft|failed -> queued 202, allegati upload/import documents|document_bundle|quote_pdf con
+  limite `outbound_emails.max_total_attachments_kb`, download annidato); invio `SendOutboundEmailJob` (tries=1) via
+  mailer `microsoft-graph` (`App\Mail\Transport\MicrosoftGraphTransport` + `App\Services\Graph\GraphMailClient`,
+  env `MAIL_MSGRAPH_*`, `OUTBOUND_EMAIL_MAILER`); `StagingMailRedirector` copre anche il mailer outbound.
+  Permessi `email-templates.*`, `document-bundles.*`, `work-orders.viewEmails|sendEmail`.
+- Migrazione: sorgenti `email-templates`, `document-bundles` (fase 1 + `QualificaLegacyImportSeeder`); legacy
+  `/Users/Repository/qnet` controller `EmailTemplateMigrationController`, `DocumentBundleMigrationController`
+  (NON committati, come 0174).
+- FE: `features/{email-templates,document-bundles,work-order-emails}`, tab Email in `work-order-detail.tsx`,
+  `RichTextEditorHandle`/`allowImages`, `EmailRecipientsInput`, hook condiviso `src/hooks/use-caret-insertion.ts`.
+- Manuale: guide in-app IT/EN email-templates, document-bundles, migrations; guida work-orders lasciata "in sviluppo"
+  (bozza sezione Email pronta nello scratchpad della sessione); manuale Claude Docs: sezioni Modelli email/Modelli
+  documenti + nota migrazioni.
+- Da verificare: invio reale Graph solo con credenziali M365 in un ambiente di test (i test usano Http::fake).
+  Fuori scope (spec successive): reinvio ricorrente, email da offerta/opportunita', immagini nel corpo.
+- Migrazioni: dopo 0175+0176 `QuoteWorkflowMigrationTest` conta 114 step di rollback.
+
 ## GESTIONE RICHIESTE: RITORNO ALLA TABELLA DOPO IL SALVATAGGIO — NON COMMITTATO (2026-09-28)
 
 - Direttiva utente 2026-09-28: dopo creazione o modifica di una richiesta il sistema torna alla tabella, sul tab

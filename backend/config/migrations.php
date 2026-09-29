@@ -6,6 +6,8 @@ use App\Migrations\Sources\BusinessFunctionsSource;
 use App\Migrations\Sources\CompaniesSource;
 use App\Migrations\Sources\CompanySitesSource;
 use App\Migrations\Sources\CostProductsSource;
+use App\Migrations\Sources\DocumentBundlesSource;
+use App\Migrations\Sources\EmailTemplatesSource;
 use App\Migrations\Sources\OperationalSitesSource;
 use App\Migrations\Sources\PaymentMethodsSource;
 use App\Migrations\Sources\ProductCategoriesSource;
@@ -86,6 +88,10 @@ return [
         'product-category-attributes' => ProductCategoryAttributesSource::class,
         'products' => ProductsSource::class,
         'cost-products' => CostProductsSource::class,
+        // spec 0175: "Modelli email" / "Modelli documenti", independent
+        // phase-1 anchors (D-13).
+        'email-templates' => EmailTemplatesSource::class,
+        'document-bundles' => DocumentBundlesSource::class,
     ],
 
 ];

@@ -65,6 +65,8 @@ const RewardTypesPage = lazyRoute(() => import('@/pages/reward-types-page'))
 const RewardStatusesPage = lazyRoute(() => import('@/pages/reward-statuses-page'))
 const RewardedReferentsPage = lazyRoute(() => import('@/pages/rewarded-referents-page'))
 const DocumentLayoutsPage = lazyRoute(() => import('@/pages/document-layouts-page'))
+const EmailTemplatesPage = lazyRoute(() => import('@/pages/email-templates-page'))
+const DocumentBundlesPage = lazyRoute(() => import('@/pages/document-bundles-page'))
 const RequestManagementDetailPage = lazyRoute(() => import('@/pages/request-management-detail-page'))
 const LeadImportPage = lazyRoute(() => import('@/pages/lead-import-page'))
 const LeadImportHistoryPage = lazyRoute(() => import('@/pages/lead-import-history-page'))
@@ -343,6 +345,19 @@ export const router = createBrowserRouter([
           {
             path: 'document-layouts',
             element: <DocumentLayoutsPage />,
+          },
+          // Email templates / document bundles (spec 0175, D-14): supporting
+          // CRUD tables the work order email composer consumes. Only the
+          // list route is declared by hand; `new`/`:id`/`:id/edit` come from
+          // the module registry (both `*-screens.tsx` export `moduleScreen`,
+          // AC-012).
+          {
+            path: 'email-templates',
+            element: <EmailTemplatesPage />,
+          },
+          {
+            path: 'document-bundles',
+            element: <DocumentBundlesPage />,
           },
           {
             path: 'request-management',

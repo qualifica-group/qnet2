@@ -5,6 +5,7 @@ use App\Models\Lead;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Registry;
+use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -61,6 +62,7 @@ it('create: products_of_interest from the campaign covered category persists; GE
     $response = $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
         'products_of_interest' => [$product->id],
     ])->assertCreated();
 
@@ -86,6 +88,7 @@ it('create: a product whose category is not covered by the campaign -> 422 with 
     $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
         'products_of_interest' => [$outsideProduct->id],
     ])
         ->assertStatus(422)
@@ -109,6 +112,7 @@ it('coverage is exact-match only: a product in a CHILD of the covered category i
     $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
         'products_of_interest' => [$childProduct->id],
     ])->assertStatus(422)->assertJsonValidationErrors('products_of_interest');
 
@@ -181,6 +185,7 @@ it('a lead with zero products of interest remains savable on every other field (
     $response = $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
     ])->assertCreated();
 
     $response->assertJsonPath('data.products_of_interest', []);

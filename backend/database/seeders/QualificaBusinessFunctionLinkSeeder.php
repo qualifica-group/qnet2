@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
+use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Database\Seeder;
 
 /**
@@ -17,11 +18,14 @@ use Illuminate\Database\Seeder;
  *     hosts its own offer and its own function, so the row sits on the node
  *     itself. Own-or-inherited means its own wins over anything the Consulenza
  *     root may carry, and it reaches nothing else — the sibling subcategories
- *     keep resolving the root's.
+ *     keep resolving the root's;
+ *   - "Presa Appuntamenti", the Consulenza leaf (user directive 2026-09-28):
+ *     linked to "Consulenza", the one function this seeder CREATES itself
+ *     (OWN_FUNCTIONS) instead of expecting it from the import.
  *
  * The category is resolved by NAME at any depth: `name` is the catalogue's
  * natural key (QualificaCatalogSeeder seeds every node with `firstOrCreate` on
- * it), and only one of the two links is a root.
+ * it), and only one of the links is a root.
  *
  * Runs LAST, after QualificaLegacyImportSeeder, because the business functions
  * are not part of the static catalogue: they are imported from the external
@@ -37,7 +41,9 @@ use Illuminate\Database\Seeder;
  * independent: a missing "APL" function never holds back the "Formazione" one.
  * Nor does it ever STEAL an occupied slot: a category already pointing at some
  * other function keeps it, so an assignment made by hand survives the re-run,
- * in line with the rest of QualificaCatalogSeeder.
+ * in line with the rest of QualificaCatalogSeeder. The same holds for a slot
+ * its branch already fills: an ancestor's function is inherited, and a second
+ * one on the chain would break the spec 0023 one-per-chain invariant.
  */
 class QualificaBusinessFunctionLinkSeeder extends Seeder
 {
@@ -52,13 +58,43 @@ class QualificaBusinessFunctionLinkSeeder extends Seeder
     private const array LINKS = [
         'Formazione' => 'Formazione',
         'APL' => 'APL',
+        'Presa Appuntamenti' => 'Consulenza',
     ];
+
+    /**
+     * Business functions the legacy system does not supply, created here when
+     * no function of that name exists yet (user directive 2026-09-28). `name`
+     * is the natural key, as for the imported ones.
+     *
+     * @var list<string>
+     */
+    private const array OWN_FUNCTIONS = ['Consulenza'];
+
+    public function __construct(private readonly CategoryHierarchy $hierarchy) {}
 
     public function run(): void
     {
+        // Step 1: the functions this seeder owns, before any link needs them.
+        foreach (self::OWN_FUNCTIONS as $functionName) {
+            $this->ensureFunction($functionName);
+        }
+
+        // Step 2: the category links, own and imported functions alike.
         foreach (self::LINKS as $categoryName => $functionName) {
             $this->link($categoryName, $functionName);
         }
+    }
+
+    private function ensureFunction(string $functionName): void
+    {
+        if (BusinessFunction::query()->where('name', $functionName)->exists()) {
+            return;
+        }
+
+        // A per-model create, so the activity log records it like any other.
+        BusinessFunction::query()->create(['name' => $functionName]);
+
+        $this->command?->info(sprintf('Business function "%s" created.', $functionName));
     }
 
     private function link(string $categoryName, string $functionName): void
@@ -71,8 +107,10 @@ class QualificaBusinessFunctionLinkSeeder extends Seeder
             return;
         }
 
-        // Step 2: an occupied slot is left alone — only a free one is filled.
-        if ($category->business_function_id !== null) {
+        // Step 2: an occupied slot is left alone — only a free one is filled,
+        // and one the branch already fills from an ancestor is not free.
+        if ($category->business_function_id !== null
+            || $this->hierarchy->inheritedBusinessFunctionFor($category->parent_id) !== null) {
             return;
         }
 

@@ -102,6 +102,52 @@ class AttachmentService
     }
 
     /**
+     * Store an in-memory binary (not an HTTP upload) as an attachment of
+     * $owner — spec 0175, D-7d: the quote PDF `QuoteDocumentGenerator`/
+     * `DocxToPdfConverter` render is never persisted on its own, only ever
+     * as a copy directly on the OutboundEmail it is imported into. Same
+     * write-then-persist consistency shape as persist(): the binary is
+     * written first, the row inside a transaction, and a failed insert
+     * removes the just-written binary so no orphan file survives.
+     */
+    public function storeBinary(Model $owner, string $collection, string $filename, string $mimeType, string $contents, User $uploader): Attachment
+    {
+        $disk = (string) config('attachments.disk');
+        $directory = trim((string) config('attachments.directory'), '/');
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $storedName = (string) Str::uuid().($extension !== '' ? '.'.$extension : '');
+        $path = $directory !== '' ? $directory.'/'.$storedName : $storedName;
+
+        if (! Storage::disk($disk)->put($path, $contents)) {
+            abort(500, 'Failed to store the generated file.');
+        }
+
+        try {
+            return DB::transaction(function () use ($owner, $collection, $filename, $mimeType, $extension, $uploader, $disk, $path, $contents): Attachment {
+                $attachment = new Attachment([
+                    'collection' => $collection,
+                    'disk' => $disk,
+                    'path' => $path,
+                    'original_name' => $filename,
+                    'mime_type' => $mimeType,
+                    'extension' => $extension !== '' ? $extension : null,
+                    'size' => strlen($contents),
+                    'uploaded_by' => $uploader->id,
+                ]);
+
+                $attachment->attachable()->associate($owner);
+                $attachment->save();
+
+                return $attachment;
+            });
+        } catch (Throwable $exception) {
+            Storage::disk($disk)->delete($path);
+
+            throw $exception;
+        }
+    }
+
+    /**
      * Delete the attachment metadata and its stored binary.
      *
      * The row is deleted first inside a transaction; the file is removed only

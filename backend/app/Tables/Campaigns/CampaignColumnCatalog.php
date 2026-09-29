@@ -70,6 +70,7 @@ final class CampaignColumnCatalog
             self::displayOnlyColumn('city', 'campaigns.columns.city'),
             self::displayOnlyColumn('geo_scope', 'campaigns.columns.geo_scope'),
             self::displayOnlyColumn('operational_site', 'campaigns.columns.operational_site'),
+            self::derivedColumn('source', 'campaigns.columns.source', sortable: true),
             [
                 'id' => 'start_date',
                 'label' => 'campaigns.columns.start_date',

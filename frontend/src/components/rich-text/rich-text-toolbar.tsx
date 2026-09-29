@@ -31,6 +31,8 @@ export interface RichTextToolbarProps {
   editor: Editor | null
   disabled?: boolean
   onPickImages: (files: File[]) => void
+  /** Hides the image button/picker (spec 0175 D-11: email composer body has no images). Default true. */
+  allowImages?: boolean
 }
 
 interface ToolbarState {
@@ -88,7 +90,7 @@ const TOGGLE_BUTTONS: ToggleButtonConfig[] = [
  * selection without manual transaction listeners. Wraps on narrow widths
  * (`flex-wrap`) instead of scrolling (ui-design.md §6.1).
  */
-export function RichTextToolbar({ editor, disabled, onPickImages }: RichTextToolbarProps) {
+export function RichTextToolbar({ editor, disabled, onPickImages, allowImages = true }: RichTextToolbarProps) {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [linkOpen, setLinkOpen] = useState(false)
@@ -213,30 +215,34 @@ export function RichTextToolbar({ editor, disabled, onPickImages }: RichTextTool
           </div>
         </PopoverContent>
       </Popover>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-xs"
-        aria-label={t('richText.toolbar.image', { defaultValue: 'Immagine' })}
-        disabled={disabled}
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <ImagePlus className="size-3.5" aria-hidden="true" />
-      </Button>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={RICH_TEXT_ALLOWED_IMAGE_MIME_TYPES.join(',')}
-        multiple
-        hidden
-        onChange={(event) => {
-          const files = Array.from(event.target.files ?? [])
-          event.target.value = ''
-          if (files.length > 0) {
-            onPickImages(files)
-          }
-        }}
-      />
+      {allowImages ? (
+        <>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label={t('richText.toolbar.image', { defaultValue: 'Immagine' })}
+            disabled={disabled}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <ImagePlus className="size-3.5" aria-hidden="true" />
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={RICH_TEXT_ALLOWED_IMAGE_MIME_TYPES.join(',')}
+            multiple
+            hidden
+            onChange={(event) => {
+              const files = Array.from(event.target.files ?? [])
+              event.target.value = ''
+              if (files.length > 0) {
+                onPickImages(files)
+              }
+            }}
+          />
+        </>
+      ) : null}
     </div>
   )
 }

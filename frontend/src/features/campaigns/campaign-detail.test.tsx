@@ -55,6 +55,8 @@ function campaign(
     partner: null,
     operational_site_id: null,
     operational_site: null,
+    source_id: null,
+    source: null,
     derived_from_project: false,
     pipeline_status_id: 3,
     pipeline_status: { id: 3, name: 'Active', color: 'blue' },
@@ -160,6 +162,21 @@ describe('CampaignDetailView — linked records', () => {
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(3)
+  })
+})
+
+/** Spec 0176 AC-008: the Fonte, when set, shows as plain text (not a link), mirroring the Lead detail's own treatment. */
+describe('CampaignDetailView — Fonte (spec 0176)', () => {
+  it('shows the Fonte name when set', () => {
+    render(<CampaignDetailView campaign={campaign({ source_id: 4, source: { id: 4, name: 'Referral' } })} />)
+
+    expect(screen.getByText('Referral')).toBeInTheDocument()
+  })
+
+  it('shows the empty placeholder when the campaign has no Fonte', () => {
+    render(<CampaignDetailView campaign={campaign({ source_id: null, source: null })} />)
+
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
   })
 })
 

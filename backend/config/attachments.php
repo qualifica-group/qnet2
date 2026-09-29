@@ -2,9 +2,11 @@
 
 use App\Models\CompanySite;
 use App\Models\Contract;
+use App\Models\DocumentBundle;
 use App\Models\DocumentLayout;
 use App\Models\Note;
 use App\Models\Opportunity;
+use App\Models\OutboundEmail;
 use App\Models\Registry;
 use App\Models\Task;
 use App\Models\TaskTemplate;
@@ -130,6 +132,19 @@ return [
         // record's own content may create/remove those attachments.
         'note' => Note::class,
         'task_template' => TaskTemplate::class,
+        // Document bundle files (spec 0175, D-7c): "Modello documenti", the
+        // Commessa email composer's bulk-attach source. Alias already in the
+        // global morph map (AppServiceProvider) for LogsModelActivity — this
+        // entry only opens the upload boundary.
+        'document_bundle' => DocumentBundle::class,
+        // An email's own allegati (spec 0175, D-7/D-8): uploaded ONLY through
+        // the nested work-orders/{workOrder}/emails/{email}/attachments
+        // endpoints, never directly here — the `email_attachments` collection
+        // is closed off to this generic boundary regardless (AttachmentPolicy
+        // carve-out, same treatment as `rich_text`). Listed anyway because
+        // AttachmentService/HasAttachments resolve the owner through this
+        // same allowlist internally.
+        'outbound_email' => OutboundEmail::class,
     ],
 
 ];

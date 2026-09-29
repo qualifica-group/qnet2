@@ -126,7 +126,7 @@ class LeadsImportDefinition extends AbstractImportDefinition
      */
     public function validateRow(array $row, ImportRowContext $context): array
     {
-        return $this->rowValidator->validate($row);
+        return $this->rowValidator->validate($row, $context->globalConfig);
     }
 
     /**

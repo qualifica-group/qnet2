@@ -78,6 +78,7 @@ class StoreCampaignRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'partner_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'operational_site_id' => ['nullable', 'integer', Rule::exists('operational_sites', 'id')],
+            'source_id' => ['nullable', 'integer', Rule::exists('sources', 'id')],
             'pipeline_status_id' => $linked
                 ? ['prohibited']
                 : ['nullable', 'integer', Rule::exists('pipeline_statuses', 'id')],

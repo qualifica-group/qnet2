@@ -77,6 +77,8 @@ class CampaignResource extends JsonResource
             'partner' => $this->summarize($this->partner),
             'operational_site_id' => $this->operational_site_id,
             'operational_site' => $this->summarizeOperationalSite($this->operationalSite),
+            'source_id' => $this->source_id,
+            'source' => $this->summarize($this->source),
             'derived_from_project' => $derivedFromProject,
             'pipeline_status_id' => $pipelineStatus?->id,
             'pipeline_status' => $pipelineStatus === null ? null : [

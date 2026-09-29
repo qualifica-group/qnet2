@@ -334,7 +334,7 @@ it('seeds catalogue workflows, statuses and criteria per category, and converges
     // No column in the sheet: no workflow, so their opportunities fall back to
     // the global default set (QuoteWorkflowResolver). "DIL" left this list on
     // 2026-09-10: block 5 of the sheet gave it a column of its own.
-    foreach (['Formazione', 'Trattative in Corso', 'Presa Appuntamenti'] as $categoryName) {
+    foreach (['Formazione', 'Presa Appuntamenti'] as $categoryName) {
         expect(QuoteWorkflow::query()->where('name', $categoryName)->exists())->toBeFalse($categoryName);
     }
 

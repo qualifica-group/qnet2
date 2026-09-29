@@ -36,15 +36,18 @@ if (! function_exists('leadUserWith')) {
 // create (AC-010/AC-011/AC-012/AC-016)
 // ---------------------------------------------------------------------------
 
-it('create: with registry_id and campaign_id only -> 201, optional fields are null (AC-010)', function () {
+// Spec 0176 changed the requirement: `source_id` joined the mandatory fields.
+it('create: with registry_id, campaign_id and source_id only -> 201, optional fields are null (AC-010)', function () {
     $actor = leadUserWith(['create']);
     $registry = Registry::factory()->create();
     $campaign = Campaign::factory()->create();
+    $source = Source::factory()->create();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => $source->id,
     ])->assertCreated();
 
     $leadId = $response->json('data.id');
@@ -53,7 +56,7 @@ it('create: with registry_id and campaign_id only -> 201, optional fields are nu
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
         'operational_site_id' => null,
-        'source_id' => null,
+        'source_id' => $source->id,
         'operator_id' => null,
         'notes' => null,
     ]);
@@ -118,7 +121,7 @@ it('create: missing lead status still returns derived not-associated status', fu
     $campaign = Campaign::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/leads', ['registry_id' => $registry->id, 'campaign_id' => $campaign->id])
+    $this->postJson('/api/leads', ['registry_id' => $registry->id, 'campaign_id' => $campaign->id, 'source_id' => Source::factory()->create()->id])
         ->assertCreated()
         ->assertJsonPath('data.lead_status', 'not_associated');
 });
@@ -132,6 +135,7 @@ it('create: 403 without leads.create, no row created (AC-012)', function () {
     $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
     ])->assertForbidden();
 
     expect(Lead::count())->toBe(0);

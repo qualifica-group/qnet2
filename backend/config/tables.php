@@ -9,7 +9,9 @@ use App\Tables\CompanySitesTableDefinition;
 use App\Tables\ContractsTableDefinition;
 use App\Tables\ContractStatusesTableDefinition;
 use App\Tables\CustomFieldsTableDefinition;
+use App\Tables\DocumentBundlesTableDefinition;
 use App\Tables\DocumentLayoutsTableDefinition;
+use App\Tables\EmailTemplatesTableDefinition;
 use App\Tables\EnrolleeManagementTableDefinition;
 use App\Tables\FieldChangeRequestsTableDefinition;
 use App\Tables\LeadImportsTableDefinition;
@@ -128,6 +130,10 @@ return [
         // spec 0150: la pagina "Notifiche", una riga per ciascuna delle
         // notifiche dell'attore (scoped in baseQuery, mai globale).
         'notifications' => NotificationsTableDefinition::class,
+        // spec 0175: "Modelli email" e "Modelli documenti", le tabelle di
+        // appoggio del modulo email dalla Commessa.
+        'email-templates' => EmailTemplatesTableDefinition::class,
+        'document-bundles' => DocumentBundlesTableDefinition::class,
     ],
 
 ];

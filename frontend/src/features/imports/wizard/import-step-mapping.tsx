@@ -10,6 +10,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { FieldHint } from '@/components/field-hint'
+import type { CampaignForSelectMeta } from '@/features/campaigns/for-select-api'
+import type { ForSelectItem } from '@/features/for-select/types'
 import { StepAlert, StepSectionHeader } from '@/features/imports/wizard/wizard-ui'
 import { ImportCampaignSource } from '@/features/imports/wizard/import-campaign-source'
 import {
@@ -40,6 +42,18 @@ import type {
 
 /** Stable empty fallback so the `columns` useMemo dependency keeps its identity. */
 const EMPTY_COLUMNS: DetectedColumn[] = []
+
+/** Global field ids the Campaign -> Fonte prefill below reasons about (spec 0176 D-5), kept as named constants rather than sprinkled string literals. */
+const CAMPAIGN_GLOBAL_FIELD_ID = 'campaign_id'
+const SOURCE_GLOBAL_FIELD_ID = 'source_id'
+/** Stable single-element array so the required-marker prop below keeps a stable reference across renders. */
+const SOURCE_REQUIRED_FIELD_IDS: string[] = [SOURCE_GLOBAL_FIELD_ID]
+
+/** Reads `meta.source` off a picked Campaign for-select item, mirroring the Lead form's own `applyCampaignSitePrefill`. */
+function campaignSourceId(item: ForSelectItem | null): number | null {
+  const source = (item as (ForSelectItem & { meta?: CampaignForSelectMeta }) | null)?.meta?.source
+  return source?.id ?? null
+}
 
 /**
  * Drops from the submitted `global_config` every field now fed per row from a
@@ -168,6 +182,14 @@ export function ImportStepMapping({
   // be configured this way, and the request is never sent (AC-033).
   const fieldsMissingColumn = fromFileFieldIds.filter((fieldId) => !mappedFromFileIds.includes(fieldId))
 
+  // Spec 0176 D-5: mirrors `import-mapping-schema.ts`'s own run-level check
+  // exactly (same `mappedFromFileIds` source), so the required marker below
+  // never disagrees with what actually blocks the submit.
+  const sourceRequiredRunLevel =
+    !mappedFromFileIds.includes(CAMPAIGN_GLOBAL_FIELD_ID) &&
+    globalFields.some((field) => field.id === CAMPAIGN_GLOBAL_FIELD_ID) &&
+    globalFields.some((field) => field.id === SOURCE_GLOBAL_FIELD_ID)
+
   // Switching a field's source keeps the two representations in sync: going
   // back to "one per run" unmaps the column that fed it, going to "from file"
   // clears the run-wide value and whatever depends on it.
@@ -190,6 +212,26 @@ export function ImportStepMapping({
         form.setValue(`mapping.${column.index}` as FieldPath<ImportMappingFormValues>, IGNORE_TARGET)
       }
     }
+  }
+
+  // Spec 0176 D-5: picking the run-wide Campaign prefills the run-wide Fonte
+  // from the campaign's own `meta.source`, still freely editable afterward —
+  // mirrors the Lead form's own Campaign -> Fonte prefill chain
+  // (`applyCampaignSitePrefill`). Event-driven (`onItemChange` only ever
+  // fires from a user pick, never on mount/load), so a resumed run's saved
+  // Fonte is never clobbered.
+  function handleGlobalConfigItemChange(fieldId: string, item: ForSelectItem | null) {
+    if (fieldId !== CAMPAIGN_GLOBAL_FIELD_ID) {
+      return
+    }
+    if (!globalFields.some((candidate) => candidate.id === SOURCE_GLOBAL_FIELD_ID)) {
+      return
+    }
+    const sourceId = campaignSourceId(item)
+    if (sourceId == null) {
+      return
+    }
+    form.setValue(`global_config.${SOURCE_GLOBAL_FIELD_ID}` as FieldPath<ImportMappingFormValues>, sourceId)
   }
 
   const handleSubmit = form.handleSubmit((values) => {
@@ -346,6 +388,8 @@ export function ImportStepMapping({
                   globalFields={globalFields}
                   control={form.control}
                   fromFileFieldIds={fromFileFieldIds}
+                  onItemChange={handleGlobalConfigItemChange}
+                  dynamicRequiredFieldIds={sourceRequiredRunLevel ? SOURCE_REQUIRED_FIELD_IDS : undefined}
                 />
               </>
             ) : null}

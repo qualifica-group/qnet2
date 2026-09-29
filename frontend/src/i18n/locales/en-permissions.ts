@@ -63,6 +63,10 @@ export const permissions = {
     deleteAny: 'Delete others\' notes',
     // Spec 0158 D-3: publish a filter view as shared (`table-filter-views.publish`).
     publish: 'Publish shared filters',
+    // Spec 0175 D-14: the work order's Email tab (history) and send composer,
+    // on top of BasePolicy's CRUD (`work-orders.viewEmails`/`sendEmail`).
+    viewEmails: 'View emails',
+    sendEmail: 'Send email',
   },
   resources: {
     users: 'Users',
@@ -85,6 +89,9 @@ export const permissions = {
     contracts: 'Contracts',
     'custom-fields': 'Custom Fields',
     'document-layouts': 'Layouts',
+    // Spec 0175: supporting tables of the work order's email composer.
+    'email-templates': 'Email templates',
+    'document-bundles': 'Document bundles',
     // Spec 0130: validated/closed-won subset of Request Management, own permissions.
     'enrollee-management': 'Enrollee Management',
     'field-change-requests': 'Change Requests',

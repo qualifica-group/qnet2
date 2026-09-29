@@ -14,7 +14,7 @@ use Database\Seeders\QualificaQuoteLayoutSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 // The offer form (spec 0062) the client's catalogue seeds on the Formazione
-// branch and the two Consulenza leaves: three sections from three catalogues.
+// branch and the Consulenza leaf: three sections from three catalogues.
 // Section order: user directive 2026-09-10.
 //
 // REQUIREMENT CHANGED (spec 0115): a layout IS now inherited, as an attribute
@@ -26,7 +26,7 @@ uses(RefreshDatabase::class);
 /**
  * The categories whose composition differs from their ancestor's, so they own
  * a layout row: the root, the levels adding a field of their own, and DIL
- * behind its barrier. The two Consulenza leaves are NOT here — they carry no
+ * behind its barrier. The Consulenza leaf is NOT here — it carries no
  * attribute at all since the 2026-09-10 directive, so there is nothing to
  * compose (see 'leaves the empty Consulenza leaves flat' below).
  *
@@ -230,10 +230,11 @@ it('composes the offer layout only where it differs from the ancestor, and a sec
         expect($service->resolveWithFallback($molise, AttributeContext::Quote, $mode))->not->toBeNull($mode->value);
     }
 
-    // Leaves a category outside the two branches flat. The two Consulenza
-    // leaves joined this list with the 2026-09-10 directive that emptied
-    // them: no attribute, so no layout to compose.
-    foreach (['Consulenza', 'Trattative in Corso', 'Presa Appuntamenti', 'APL', 'Orientamento Specialistico'] as $name) {
+    // Leaves a category outside the two branches flat. The Consulenza leaf
+    // joined this list with the 2026-09-10 directive that emptied it: no
+    // attribute, so no layout to compose. "Trattative in Corso" left it with
+    // the category itself (user directive 2026-09-28).
+    foreach (['Consulenza', 'Presa Appuntamenti', 'APL', 'Orientamento Specialistico'] as $name) {
         $category = ProductCategory::query()->where('name', $name)->firstOrFail();
 
         expect($service->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All))

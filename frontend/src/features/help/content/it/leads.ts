@@ -21,7 +21,7 @@ const guide: HelpGuide = {
             ['**Campagna**', 'Obbligatoria.'],
             ['**Sede**', 'La sede operativa del lead.'],
             ['**Operatore**', "Chi segue il lead; l'elenco mostra solo gli operatori della sede scelta."],
-            ['**Fonte**', 'Il canale da cui arriva il lead.'],
+            ['**Fonte**', 'Obbligatoria. Precompilata dalla Fonte della campagna, se presente; modificabile.'],
             ['Prodotti di interesse', 'Limitati alle categorie della campagna.'],
             ['**Note**', 'Testo libero, massimo 5000 caratteri.'],
             ['Campi extra / Dati importati', 'Coppie **Chiave** e **Valore**, di solito da un import.'],

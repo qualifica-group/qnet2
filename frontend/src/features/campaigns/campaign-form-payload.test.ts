@@ -21,6 +21,7 @@ function values(overrides: Partial<CampaignFormValues> = {}): CampaignFormValues
     description: null,
     partner_id: null,
     operational_site_id: null,
+    source_id: null,
     pipeline_status_id: 1,
     product_lines: [{ root_category_id: null, product_category_id: 4 }],
     country_id: 10,
@@ -49,6 +50,8 @@ function original(overrides: Partial<CampaignDetail> = {}): CampaignDetail {
     partner: null,
     operational_site_id: null,
     operational_site: null,
+    source_id: null,
+    source: null,
     derived_from_project: false,
     pipeline_status_id: 1,
     pipeline_status: { id: 1, name: 'Active', color: 'blue' },
@@ -82,6 +85,7 @@ describe('buildCreatePayload — standalone (BR-2/BR-5)', () => {
       description: null,
       partner_id: null,
       operational_site_id: null,
+      source_id: null,
       pipeline_status_id: 1,
       product_lines: [{ product_category_id: 4 }],
       country_id: 10,
@@ -285,6 +289,17 @@ describe('buildUpdatePayload — geo per-level diff (spec 0027 BR-5)', () => {
       values({ operational_site_id: 81 }),
       original({ operational_site_id: 81 }),
     )
+    expect(payload).toEqual({})
+  })
+
+  /** Spec 0176: source_id is an always-own field too, diffed exactly like operational_site_id/partner_id. */
+  it('includes the changed source_id', () => {
+    const payload = buildUpdatePayload(values({ source_id: 4 }), original({ source_id: null }))
+    expect(payload).toEqual({ source_id: 4 })
+  })
+
+  it('omits source_id when unchanged', () => {
+    const payload = buildUpdatePayload(values({ source_id: 4 }), original({ source_id: 4 }))
     expect(payload).toEqual({})
   })
 

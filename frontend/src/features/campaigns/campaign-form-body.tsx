@@ -13,6 +13,7 @@ import { MetaField } from '@/features/authorization/MetaField'
 import { PROJECT_STATUSES_FOR_SELECT_RESOURCE } from '@/features/pipeline-statuses/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
+import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { ProductLinesField } from '@/features/product-lines/product-lines-field'
 import { useCampaignForm } from '@/features/campaigns/use-campaign-form'
 import { CampaignProjectField } from '@/features/campaigns/campaign-project-field'
@@ -179,6 +180,17 @@ export function CampaignFormBody({ mode, onSuccess, onCancel, initialCode }: Cam
                     ? { id: original.operational_site.id, name: original.operational_site.label }
                     : null
                 }
+              />
+
+              <CampaignRelationField
+                control={form.control}
+                name="source_id"
+                metaKey="source_id"
+                label={t('campaigns.form.source')}
+                hint={t('campaigns.form.hints.source')}
+                resource={SOURCES_FOR_SELECT_RESOURCE}
+                searchPlaceholder={t('campaigns.form.sourceSearch')}
+                selected={original?.source ?? null}
               />
             </div>
           </FormSection>

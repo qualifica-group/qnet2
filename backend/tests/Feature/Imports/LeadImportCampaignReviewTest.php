@@ -10,6 +10,7 @@ use App\Models\ImportRunRow;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Province;
+use App\Models\Source;
 use App\Models\State;
 use App\Models\User;
 use App\Services\Import\ImportOpportunityConvertibility;
@@ -105,7 +106,7 @@ function campaignReviewCoveredCategory(Campaign $campaign): ProductCategory
 
 it('AC-013: pinning a campaign on an unmatched row makes it valid again and records the canonical code', function () {
     $actor = campaignReviewActor();
-    $campaign = Campaign::factory()->create();
+    $campaign = Campaign::factory()->for(Source::factory())->create();
     $run = campaignReviewRun($actor);
     $row = campaignReviewRow(
         $run,

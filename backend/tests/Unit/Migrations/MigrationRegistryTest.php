@@ -7,6 +7,8 @@ use App\Migrations\Sources\BusinessFunctionsSource;
 use App\Migrations\Sources\CompaniesSource;
 use App\Migrations\Sources\CompanySitesSource;
 use App\Migrations\Sources\CostProductsSource;
+use App\Migrations\Sources\DocumentBundlesSource;
+use App\Migrations\Sources\EmailTemplatesSource;
 use App\Migrations\Sources\OperationalSitesSource;
 use App\Migrations\Sources\PaymentMethodsSource;
 use App\Migrations\Sources\ProductCategoriesSource;
@@ -65,17 +67,19 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'product-category-attributes' => ProductCategoryAttributesSource::class,
         'products' => ProductsSource::class,
         'cost-products' => CostProductsSource::class,
+        'email-templates' => EmailTemplatesSource::class,
+        'document-bundles' => DocumentBundlesSource::class,
     ]);
 });
 
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(20)
+    expect($sources)->toHaveCount(22)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'company-sites', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
             'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'attributes', 'product-categories',
-            'product-category-attributes', 'products', 'cost-products',
+            'product-category-attributes', 'products', 'cost-products', 'email-templates', 'document-bundles',
         ]);
 });

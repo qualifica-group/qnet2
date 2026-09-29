@@ -63,8 +63,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',
         'Orientamento Specialistico',
-        // The two Consulenza leaves (user directive 2026-09-28).
-        'Presa Appuntamenti', 'Trattative in Corso',
+        // The Consulenza leaf (user directive 2026-09-28).
+        'Presa Appuntamenti',
         'Yisu',
     ]);
 
@@ -121,9 +121,10 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
     foreach ($formazioneSubs as $name) {
         expect(ProductCategory::query()->where('name', $name)->where('parent_id', $formazione->id)->count())->toBe(1);
     }
-    foreach (['Trattative in Corso', 'Presa Appuntamenti'] as $name) {
-        expect(ProductCategory::query()->where('name', $name)->where('parent_id', $consulenza->id)->count())->toBe(1);
-    }
+    // REQUIREMENT CHANGED (user directive 2026-09-28): "Trattative in Corso"
+    // is no longer seeded, "Presa Appuntamenti" is the branch's only leaf.
+    expect(ProductCategory::query()->where('parent_id', $consulenza->id)->pluck('name')->all())
+        ->toBe(['Presa Appuntamenti']);
 
     // GOL regions (was: 'provisions the regional GOL declinations as children of the GOL subcategory')
     $gol = ProductCategory::query()->where('name', 'GOL')->first();
@@ -320,19 +321,15 @@ it('realigns a container category seeded as selectable before the flag existed',
         ->and(ProductCategory::query()->where('name', 'GOL')->value('is_selectable'))->toBeFalsy();
 });
 
-it('realigns the two Consulenza leaves seeded as containers into selectable ones (user directive 2026-09-28)', function (): void {
-    // The state of an installation seeded by the previous version: both
-    // leaves already there, as containers.
+it('realigns the Consulenza leaf seeded as a container into a selectable one (user directive 2026-09-28)', function (): void {
+    // The state of an installation seeded by the previous version: the leaf
+    // already there, as a container.
     $consulenza = ProductCategory::factory()->create(['name' => 'Consulenza', 'is_selectable' => false]);
-
-    foreach (['Trattative in Corso', 'Presa Appuntamenti'] as $name) {
-        ProductCategory::factory()->create(['name' => $name, 'parent_id' => $consulenza->id, 'is_selectable' => false]);
-    }
+    ProductCategory::factory()->create(['name' => 'Presa Appuntamenti', 'parent_id' => $consulenza->id, 'is_selectable' => false]);
 
     test()->seed(QualificaCatalogSeeder::class);
 
-    expect(ProductCategory::query()->where('name', 'Trattative in Corso')->value('is_selectable'))->toBeTruthy()
-        ->and(ProductCategory::query()->where('name', 'Presa Appuntamenti')->value('is_selectable'))->toBeTruthy()
+    expect(ProductCategory::query()->where('name', 'Presa Appuntamenti')->value('is_selectable'))->toBeTruthy()
         ->and(ProductCategory::query()->where('name', 'Consulenza')->value('is_selectable'))->toBeFalsy();
 });
 

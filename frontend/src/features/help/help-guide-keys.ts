@@ -1,8 +1,9 @@
 /**
- * The 50 help guide keys of the first release (spec 0143 context): the 49
- * navigation keys that carry a route, plus the always-visible `general`
- * guide. Frozen list — a new navigable module needs both a new entry here
- * and its `content/{it,en}/<key>.ts` pair (parity test enforces the latter).
+ * The help guide keys of every navigable module (spec 0143 context: the 49
+ * navigation keys of the first release, plus the always-visible `general`
+ * guide) — extended per spec as new modules ship (spec 0175: `email-templates`,
+ * `document-bundles`). A new navigable module needs both a new entry here and
+ * its `content/{it,en}/<key>.ts` pair (parity test enforces the latter).
  */
 export const GENERAL_HELP_KEY = 'general'
 
@@ -19,6 +20,8 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'quote-workflows',
   'quotes',
   'work-orders',
+  'email-templates',
+  'document-bundles',
   'contract-statuses',
   'contracts',
   'request-management',

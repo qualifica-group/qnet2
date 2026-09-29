@@ -11,6 +11,7 @@ use App\Migrations\Sources\Concerns\MapsExternalProductRecord;
 use App\Migrations\Support\ExternalApiClient;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductTypology;
 use App\Services\ProductService;
 use RuntimeException;
 
@@ -35,6 +36,12 @@ use RuntimeException;
  * absent/blank value leaves it null so ProductService::create() falls back to
  * the sequential PRD-0001 generator (mirrors every other optional passthrough
  * field here), never duplicating the sequence across re-imports.
+ *
+ * `folder` (the legacy Ente/Consulenza split) maps to `product_typology_id`,
+ * resolved against the typology NAME case-insensitively: typologies are
+ * ordinary editable records (spec 0099, AC-054), so no legacy label is
+ * hard-coded here. Absent → the service default typology; unmatched → the
+ * default plus a non-fatal warning, mirroring `product_type`.
  *
  * `old_source` (spec 0174, D-4) is always `services`: CostProductsSource
  * imports other legacy tables whose ids overlap, so idempotence is keyed on
@@ -87,6 +94,7 @@ class ProductsSource extends AbstractMigrationSource
             ['id' => 'product_type', 'label' => 'Product type', 'type' => 'string'],
             ['id' => 'vat_rate_id', 'label' => 'VAT rate (external id)', 'type' => 'number'],
             ['id' => 'supplier_id', 'label' => 'Supplier (external id, not remapped)', 'type' => 'number'],
+            ['id' => 'folder', 'label' => 'Folder (product typology)', 'type' => 'string'],
         ];
     }
 
@@ -112,6 +120,7 @@ class ProductsSource extends AbstractMigrationSource
             'product_type' => $record['product_type'] ?? null,
             'vat_rate_id' => $record['vat_rate_id'] ?? null,
             'supplier_id' => $record['supplier_id'] ?? null,
+            'folder' => $record['folder'] ?? null,
         ];
     }
 
@@ -145,6 +154,7 @@ class ProductsSource extends AbstractMigrationSource
             vatRateId: $this->resolveVatRate($record['vat_rate_id'] ?? null, $warnings),
             supplierId: $this->unresolvableReference('supplier_id', $record['supplier_id'] ?? null, $warnings),
             code: $this->trimmedText($record['code'] ?? null),
+            productTypologyId: $this->resolveTypology($record['folder'] ?? null, $warnings),
         ));
 
         $product->old_id = $externalId;
@@ -169,6 +179,31 @@ class ProductsSource extends AbstractMigrationSource
 
         if ($id === null) {
             throw new RuntimeException("Unresolved category_id (external id {$externalRef}); migrate product-categories first.");
+        }
+
+        return $id;
+    }
+
+    /**
+     * Resolve the legacy `folder` label to a product typology by name,
+     * case-insensitively. Null lets ProductService apply the default typology:
+     * silently when the legacy row carries no folder, with a non-fatal warning
+     * when the label matches no configured typology.
+     *
+     * @param  array<int, string>  $warnings
+     */
+    private function resolveTypology(mixed $externalFolder, array &$warnings): ?int
+    {
+        $folder = $this->trimmedText($externalFolder);
+
+        if ($folder === null) {
+            return null;
+        }
+
+        $id = ProductTypology::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($folder)])->value('id');
+
+        if ($id === null) {
+            $warnings[] = "Unknown folder '{$folder}'; no product typology with that name, defaulted.";
         }
 
         return $id;

@@ -127,6 +127,20 @@ abstract class AbstractMigrationSource implements MigrationSource
     }
 
     /**
+     * Page size eachRecord() requests during import (independent of the
+     * user-controlled preview `per_page`). Overridable per source:
+     * config('migrations.import_batch_size') (default 100) is right for a
+     * plain JSON listing, but a source whose payload embeds heavy data per
+     * row (e.g. DocumentBundlesSource's base64-encoded file content, spec
+     * 0175 D-13) must request far fewer rows per page to keep each response
+     * a reasonable size.
+     */
+    protected function importBatchSize(): int
+    {
+        return (int) config('migrations.import_batch_size', 100);
+    }
+
+    /**
      * Paginate the external listing, invoking $handle for every record. Shared
      * by the import pass and any source's afterImport() relinking pass, so both
      * walk the external contract the same way.
@@ -136,7 +150,7 @@ abstract class AbstractMigrationSource implements MigrationSource
     protected function eachRecord(callable $handle): void
     {
         $page = 1;
-        $perPage = (int) config('migrations.import_batch_size', 100);
+        $perPage = $this->importBatchSize();
 
         do {
             $payload = $this->fetchPage($page, $perPage);

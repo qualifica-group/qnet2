@@ -113,8 +113,8 @@ function lead(overrides: Partial<LeadDetailWithPermissions> = {}): LeadDetailWit
     lead_status: 'not_associated',
     operational_site_id: null,
     operational_site: null,
-    source_id: null,
-    source: null,
+    source_id: 1,
+    source: { id: 1, name: 'Web' },
     operator_id: null,
     operator: null,
     notes: 'Original note.',
@@ -365,6 +365,7 @@ describe('LeadForm — convert to opportunity (spec 0044, AC-040..AC-043)', () =
     await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
     fireEvent.click(screen.getByTestId('select-Registry'))
     fireEvent.click(screen.getByTestId('select-Campaign'))
+    fireEvent.click(screen.getByTestId('select-Source'))
 
     // The control is ON by default; submit straight away with Operator/Site empty.
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -386,6 +387,7 @@ describe('LeadForm — convert to opportunity (spec 0044, AC-040..AC-043)', () =
     await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
     fireEvent.click(screen.getByTestId('select-Registry'))
     fireEvent.click(screen.getByTestId('select-Campaign'))
+    fireEvent.click(screen.getByTestId('select-Source'))
     // Turn the default-ON control OFF so Operator/Site stay optional.
     fireEvent.click(screen.getByRole('switch', { name: 'Automatically convert to Opportunity' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -408,6 +410,7 @@ describe('LeadForm — convert to opportunity (spec 0044, AC-040..AC-043)', () =
 
     fireEvent.click(screen.getByTestId('select-Registry'))
     fireEvent.click(screen.getByTestId('select-Campaign'))
+    fireEvent.click(screen.getByTestId('select-Source'))
     // The control is ON by default; just fill the Operator/Site it requires.
     fireEvent.click(screen.getByTestId('select-Operator'))
     fireEvent.click(screen.getByTestId('select-Site'))

@@ -206,7 +206,8 @@ class QualificaSampleLeadSeeder extends Seeder
             // LeadService — hence a real site rather than null wherever the
             // legacy import provided one.
             operationalSiteId: $this->pick($lookups['sites'], $index)?->id,
-            sourceId: $registry->source_id,
+            // Spec 0176: the Fonte is mandatory on a lead.
+            sourceId: $registry->source_id ?? $this->pick($lookups['sources'], $index)?->id,
             operatorId: $this->pick($lookups['operators'], $index)?->id,
             notes: $faker->boolean(40) ? $faker->sentence() : null,
             convertToOpportunity: $convert,

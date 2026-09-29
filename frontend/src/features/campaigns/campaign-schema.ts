@@ -44,6 +44,10 @@ function baseFields(t: TFunction) {
     // The Sede: same prefill-not-lock treatment as partner_id above — picking
     // a project prefills it from `meta.operational_site`, still freely editable.
     operational_site_id: z.number().nullable(),
+    // Spec 0176 D-1: optional, the campaign's own field — the lead form
+    // inherits it as a prefill (never a lock) when the operator picks this
+    // campaign. Never derived/required here.
+    source_id: z.number().nullable(),
     // Derived (BR-2): required when standalone, forced null/read-only when linked;
     // held nullable so the controlled selects can represent "unset" — the
     // required-when-standalone superRefine below mirrors the backend's rule.

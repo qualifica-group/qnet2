@@ -55,6 +55,18 @@ describe('campaignColumnRenderers geo relation columns (country/state/province/c
   })
 })
 
+describe('campaignColumnRenderers.source', () => {
+  it('renders the Fonte relation name', () => {
+    renderCell('source', { id: 4, name: 'Referral' })
+    expect(screen.getByText('Referral')).toBeInTheDocument()
+  })
+
+  it('renders an em dash when unset', () => {
+    renderCell('source', null)
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+})
+
 describe('campaignColumnRenderers.geo_scope', () => {
   it('renders the scope badge with the matching place name picked from sibling columns', () => {
     renderCell('geo_scope', 'city', {

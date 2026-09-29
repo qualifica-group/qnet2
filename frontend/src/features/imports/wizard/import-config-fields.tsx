@@ -9,6 +9,10 @@ import { ImportConfigMultiSelect } from '@/features/imports/wizard/import-config
 import { ImportConfigRelationSelect } from '@/features/imports/wizard/import-config-relation-select'
 import type { ImportMappingFormValues } from '@/features/imports/wizard/import-mapping-schema'
 import type { ImportGlobalFieldDescriptor } from '@/features/imports/wizard/types'
+import type { ForSelectItem } from '@/features/for-select/types'
+
+/** Stable empty fallback so an omitted `dynamicRequiredFieldIds` never allocates a fresh array reference per render. */
+const EMPTY_REQUIRED_FIELD_IDS: string[] = []
 
 interface ImportConfigFieldsProps {
   globalFields: ImportGlobalFieldDescriptor[]
@@ -20,6 +24,21 @@ interface ImportConfigFieldsProps {
    * reason spelled out (AC-034).
    */
   fromFileFieldIds?: string[]
+  /**
+   * Fired for a single-value relation field's pick/clear, with the field id
+   * and the full selected item (spec 0176): lets the caller react to it, e.g.
+   * the Campaign field's `meta.source` prefilling `source_id`. Omitted, no
+   * field forwards `onItemChange` at all.
+   */
+  onItemChange?: (fieldId: string, item: ForSelectItem | null) => void
+  /**
+   * Global field ids to render with the required marker regardless of the
+   * static catalog flag (spec 0176 D-5: `source_id` becomes required only
+   * while the Campaign is chosen run-wide, a per-form-state condition the
+   * static catalog cannot express). Omitted, every field's marker follows
+   * its own `required` flag verbatim.
+   */
+  dynamicRequiredFieldIds?: string[]
 }
 
 /**
@@ -30,7 +49,13 @@ interface ImportConfigFieldsProps {
  * form under the `global_config.<id>` path, so the single mapping submit
  * persists these together with the column mapping and dedup strategy.
  */
-export function ImportConfigFields({ globalFields, control, fromFileFieldIds = [] }: ImportConfigFieldsProps) {
+export function ImportConfigFields({
+  globalFields,
+  control,
+  fromFileFieldIds = [],
+  onItemChange,
+  dynamicRequiredFieldIds = EMPTY_REQUIRED_FIELD_IDS,
+}: ImportConfigFieldsProps) {
   // Global-field labels arrive from the backend as default-namespace i18n keys
   // (`imports.leads.global.*`) — resolve them through the default translator.
   const { t: tLabel } = useTranslation()
@@ -46,7 +71,9 @@ export function ImportConfigFields({ globalFields, control, fromFileFieldIds = [
           name={`global_config.${globalField.id}` as FieldPath<ImportMappingFormValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel required={globalField.required}>{tLabel(globalField.label)}</FormLabel>
+              <FormLabel required={globalField.required || dynamicRequiredFieldIds.includes(globalField.id)}>
+                {tLabel(globalField.label)}
+              </FormLabel>
               {/*
                 `FormControl` (Radix `Slot`) clones its `id`/`aria-describedby`/
                 `aria-invalid` onto this single child (frontend.md §10's
@@ -60,6 +87,7 @@ export function ImportConfigFields({ globalFields, control, fromFileFieldIds = [
                   control={control}
                   value={field.value as number | number[] | null}
                   onChange={field.onChange}
+                  onItemChange={onItemChange ? (item) => onItemChange(globalField.id, item) : undefined}
                   triggerLabel={tLabel(globalField.label)}
                   dependencyFromFile={
                     globalField.depends_on != null && fromFileFieldIds.includes(globalField.depends_on)
@@ -88,6 +116,7 @@ interface ImportConfigFieldControlProps extends AccessibleControlProps {
   control: Control<ImportMappingFormValues>
   value: number | number[] | null
   onChange: (next: number | number[] | null) => void
+  onItemChange?: (item: ForSelectItem | null) => void
   triggerLabel: string
   /** True when this field's `depends_on` target is fed per row from the file (spec 0108). */
   dependencyFromFile?: boolean
@@ -100,6 +129,7 @@ function ImportConfigFieldControl({
   control,
   value,
   onChange,
+  onItemChange,
   triggerLabel,
   dependencyFromFile,
   id,
@@ -144,6 +174,7 @@ function ImportConfigFieldControl({
         resource={field.for_select_resource}
         value={(value as number | null) ?? null}
         onChange={onChange}
+        onItemChange={onItemChange}
         triggerLabel={triggerLabel}
       />
     )

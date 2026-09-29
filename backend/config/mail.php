@@ -53,6 +53,24 @@ return [
             'transport' => 'ses',
         ],
 
+        // OutboundEmail's mailer (spec 0175, D-1): a custom Symfony
+        // transport (App\Mail\Transport\MicrosoftGraphTransport, registered
+        // via Mail::extend in AppServiceProvider) that sends AS the mailbox
+        // named by `from` -- client-credentials auth, no SMTP. Same shape as
+        // the legacy `App\Services\GraphLargeAttachmentMailer` config
+        // (`/Users/Repository/qnet`), same env names (MAIL_MSGRAPH_*).
+        // Which mailer OutboundEmail actually uses is `config('outbound_emails.mailer')`,
+        // not necessarily this one (dev defaults to `log`).
+        'microsoft-graph' => [
+            'transport' => 'microsoft-graph',
+            'tenant' => env('MAIL_MSGRAPH_TENANT'),
+            'client' => env('MAIL_MSGRAPH_CLIENT'),
+            'secret' => env('MAIL_MSGRAPH_SECRET'),
+            'base_url' => env('MAIL_MSGRAPH_BASE_URL', 'https://graph.microsoft.com/v1.0'),
+            'auth_url' => env('MAIL_MSGRAPH_AUTH_URL', 'https://login.microsoftonline.com'),
+            'timeout' => (int) env('MAIL_MSGRAPH_TIMEOUT', 30),
+        ],
+
         'postmark' => [
             'transport' => 'postmark',
             // 'message_stream_id' => env('POSTMARK_MESSAGE_STREAM_ID'),

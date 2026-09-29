@@ -2,6 +2,7 @@
 
 namespace App\DataObjects\Shared;
 
+use App\Enums\EmailTemplateModule;
 use App\Enums\ProductUsage;
 
 /**
@@ -65,6 +66,15 @@ use App\Enums\ProductUsage;
  *   ProductService::forSelect (the Offerta line picker narrowed to the
  *   products usable on its tab). Null by default (no filter), so every
  *   other consumer is unaffected.
+ * - `emailTemplateModule` (spec 0175, D-14): ADDITIVE, consumed ONLY by
+ *   EmailTemplateService::forSelect — REQUIRED by that endpoint's own
+ *   FormRequest (data_contract: "filtro obbligatorio module"), but null by
+ *   default so every other consumer is unaffected. Read from an
+ *   `email_template_module` source key (NOT the bare `module` key
+ *   DocumentLayoutForSelectRequest already passes through unmodified with
+ *   its OWN, incompatible enum) — EmailTemplateForSelectRequest::toData()
+ *   renames its wire-format `?module=` into that key before calling
+ *   fromValidated().
  */
 final readonly class ForSelectQuery
 {
@@ -90,6 +100,7 @@ final readonly class ForSelectQuery
         public array $competenceCategoryIds = [],
         public ?int $registryId = null,
         public ?ProductUsage $productUsage = null,
+        public ?EmailTemplateModule $emailTemplateModule = null,
     ) {}
 
     /**
@@ -141,6 +152,7 @@ final readonly class ForSelectQuery
             competenceCategoryIds: $competenceCategoryIds,
             registryId: isset($data['registry_id']) ? (int) $data['registry_id'] : null,
             productUsage: isset($data['usage']) ? ProductUsage::from((string) $data['usage']) : null,
+            emailTemplateModule: isset($data['email_template_module']) ? EmailTemplateModule::from((string) $data['email_template_module']) : null,
         );
     }
 

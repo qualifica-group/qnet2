@@ -35,7 +35,8 @@ class SourceService
 
     /**
      * Restrictive delete (spec 0024 BR-2/D-4, spec 0040 BR-3): a source
-     * referenced by at least one lead OR opportunity cannot be removed.
+     * referenced by at least one lead, opportunity OR campaign (spec 0176)
+     * cannot be removed.
      */
     public function delete(Source $source): void
     {
@@ -45,6 +46,10 @@ class SourceService
 
         if ($source->opportunities()->exists()) {
             abort(409, 'This source has opportunities and cannot be deleted.');
+        }
+
+        if ($source->campaigns()->exists()) {
+            abort(409, 'This source has campaigns and cannot be deleted.');
         }
 
         $source->delete();

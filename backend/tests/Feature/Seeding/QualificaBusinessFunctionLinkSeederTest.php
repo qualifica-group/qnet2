@@ -9,7 +9,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 // The "Formazione" root category and the "APL" subcategory are assigned to the
 // business function of the same name — functions the external qnet CRM
 // supplies, so the link runs after the import and is never fatal when one of
-// them is missing.
+// them is missing. "Presa Appuntamenti" is assigned to "Consulenza", which the
+// seeder creates itself (user directive 2026-09-28).
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
@@ -35,7 +36,9 @@ it('leaves both roots unassigned with no imported function, then links only "APL
     // (was: 'leaves the categories unassigned, without failing, when the functions are absent').
     test()->seed(QualificaCatalogSeeder::class);
 
-    expect(BusinessFunction::query()->count())->toBe(0)
+    // REQUIREMENT CHANGED (user directive 2026-09-28): the one function the
+    // seeder owns exists even without the import.
+    expect(BusinessFunction::query()->pluck('name')->all())->toBe(['Consulenza'])
         ->and($formazione()->business_function_id)->toBeNull()
         ->and($apl()->business_function_id)->toBeNull();
 
@@ -80,8 +83,10 @@ it('assigns the root, so the whole Formazione branch inherits the function', fun
 
     // The link sits on the root alone: descendants resolve it own-or-inherited
     // (CategoryHierarchy::effectiveBusinessFunction), they do not carry a row.
-    expect(ProductCategory::query()->whereNotNull('business_function_id')->pluck('name')->all())
-        ->toBe(['Formazione'])
+    // "Presa Appuntamenti" carries its own (user directive 2026-09-28): it is
+    // outside the Formazione branch.
+    expect(ProductCategory::query()->whereNotNull('business_function_id')->orderBy('id')->pluck('name')->all())
+        ->toBe(['Formazione', 'Presa Appuntamenti'])
         ->and($formazione()->businessFunction->name)->toBe('Formazione');
 });
 
@@ -108,4 +113,39 @@ it('picks the lowest id when the legacy catalogue holds the name twice', functio
     test()->seed(QualificaBusinessFunctionLinkSeeder::class);
 
     expect($formazione()->business_function_id)->toBe($first->id);
+});
+
+it('creates the "Consulenza" function once and links "Presa Appuntamenti" to it, idempotently', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+    test()->seed(QualificaBusinessFunctionLinkSeeder::class); // re-run: neither duplicated nor relinked.
+
+    $function = BusinessFunction::query()->where('name', 'Consulenza')->sole();
+
+    expect(ProductCategory::query()->where('name', 'Presa Appuntamenti')->value('business_function_id'))->toBe($function->id)
+        ->and(ProductCategory::query()->whereNull('parent_id')->where('name', 'Consulenza')->value('business_function_id'))
+        ->toBeNull();
+});
+
+it('adopts a "Consulenza" function that already exists instead of creating a second one', function (): void {
+    $existing = BusinessFunction::factory()->create(['name' => 'Consulenza']);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect(BusinessFunction::query()->where('name', 'Consulenza')->count())->toBe(1)
+        ->and(ProductCategory::query()->where('name', 'Presa Appuntamenti')->value('business_function_id'))->toBe($existing->id);
+});
+
+it('leaves "Presa Appuntamenti" inheriting when its branch already carries a function', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $presaAppuntamenti = ProductCategory::query()->where('name', 'Presa Appuntamenti')->firstOrFail();
+    $presaAppuntamenti->update(['business_function_id' => null]);
+
+    // One function per root-to-leaf chain (spec 0023): the root's wins.
+    $rootFunction = BusinessFunction::factory()->create(['name' => 'Area Consulenza']);
+    ProductCategory::query()->whereKey($presaAppuntamenti->parent_id)->update(['business_function_id' => $rootFunction->id]);
+
+    test()->seed(QualificaBusinessFunctionLinkSeeder::class);
+
+    expect($presaAppuntamenti->fresh()->business_function_id)->toBeNull();
 });

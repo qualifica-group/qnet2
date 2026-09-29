@@ -134,9 +134,9 @@ class QualificaQuoteLayoutSeeder extends Seeder
 
         $branchIds = [$root->id, ...$this->hierarchy->descendantIds($root->id)];
 
-        // The Formazione branch alone: the two Consulenza leaves carry no
+        // The Formazione branch alone: the Consulenza leaf carries no
         // attribute since the 2026-09-10 directive, so composing a layout for
-        // them would prune to nothing anyway.
+        // it would prune to nothing anyway.
         $categories = ProductCategory::query()->whereIn('id', $branchIds)->get();
 
         // Root-first: seedLayout() asks what each category INHERITS, which is

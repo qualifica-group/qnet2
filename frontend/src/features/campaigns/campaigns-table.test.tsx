@@ -31,6 +31,8 @@ const mockCampaign: CampaignDetailWithPermissions = {
   partner: null,
   operational_site_id: null,
   operational_site: null,
+  source_id: null,
+  source: null,
   derived_from_project: false,
   pipeline_status_id: 1,
   pipeline_status: { id: 1, name: 'Active', color: null },

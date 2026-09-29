@@ -6,6 +6,7 @@ use App\Jobs\RunMigrationJob;
 use App\Models\MigrationRun;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductTypology;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\VatRate;
@@ -163,6 +164,60 @@ it('defaults an absent product_type and warns on an unknown one', function () {
     $fresh = $run->fresh();
     expect($fresh->created_rows)->toBe(2)
         ->and(collect($fresh->report)->firstWhere('level', 'warning'))->not->toBeNull();
+});
+
+it('maps the legacy folder onto the product typology by name, case-insensitively', function () {
+    seedMigrationsConfig();
+    ProductCategory::factory()->create(['old_id' => 5]);
+    $institution = ProductTypology::query()->where('code', 'institution')->firstOrFail();
+    $consultancy = ProductTypology::factory()->create(['code' => 'consultancy', 'name' => 'Consulenza']);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/products*' => Http::response([
+            'items' => [
+                ['id' => 1, 'name' => 'Consulting', 'category_id' => 5, 'folder' => 'Consulenza'],
+                ['id' => 2, 'name' => 'Certification', 'category_id' => 5, 'folder' => ' ente '],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'products']);
+
+    runMigrationJobFor($run);
+
+    expect(Product::query()->where('old_id', 1)->value('product_typology_id'))->toBe($consultancy->id)
+        ->and(Product::query()->where('old_id', 2)->value('product_typology_id'))->toBe($institution->id)
+        ->and($run->fresh()->report)->toBeNull();
+});
+
+it('defaults an absent folder and warns on one matching no typology', function () {
+    seedMigrationsConfig();
+    ProductCategory::factory()->create(['old_id' => 5]);
+    $institution = ProductTypology::query()->where('code', 'institution')->firstOrFail();
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/products*' => Http::response([
+            'items' => [
+                ['id' => 3, 'name' => 'No folder', 'category_id' => 5],
+                ['id' => 4, 'name' => 'Unknown folder', 'category_id' => 5, 'folder' => 'Archivio'],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'products']);
+
+    runMigrationJobFor($run);
+
+    expect(Product::query()->where('old_id', 3)->value('product_typology_id'))->toBe($institution->id)
+        ->and(Product::query()->where('old_id', 4)->value('product_typology_id'))->toBe($institution->id);
+
+    $fresh = $run->fresh();
+    expect($fresh->created_rows)->toBe(2)
+        ->and(collect($fresh->report)->where('level', 'warning'))->toHaveCount(1);
 });
 
 it('re-importing the same product is idempotent (skip, no duplicate)', function () {

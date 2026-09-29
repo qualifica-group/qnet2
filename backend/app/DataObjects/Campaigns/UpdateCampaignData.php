@@ -47,6 +47,8 @@ final readonly class UpdateCampaignData
         public bool $partnerIdSubmitted = false,
         public ?int $operationalSiteId = null,
         public bool $operationalSiteIdSubmitted = false,
+        public ?int $sourceId = null,
+        public bool $sourceIdSubmitted = false,
         public ?int $pipelineStatusId = null,
         public bool $pipelineStatusIdSubmitted = false,
         public ?array $productLines = null,
@@ -85,6 +87,8 @@ final readonly class UpdateCampaignData
             partnerIdSubmitted: array_key_exists('partner_id', $data),
             operationalSiteId: self::nullableInt($data, 'operational_site_id'),
             operationalSiteIdSubmitted: array_key_exists('operational_site_id', $data),
+            sourceId: self::nullableInt($data, 'source_id'),
+            sourceIdSubmitted: array_key_exists('source_id', $data),
             pipelineStatusId: self::nullableInt($data, 'pipeline_status_id'),
             pipelineStatusIdSubmitted: array_key_exists('pipeline_status_id', $data),
             productLines: array_key_exists('product_lines', $data) ? self::normalizeProductLines($data['product_lines']) : null,
@@ -137,6 +141,10 @@ final readonly class UpdateCampaignData
 
         if ($this->operationalSiteIdSubmitted) {
             $attributes['operational_site_id'] = $this->operationalSiteId;
+        }
+
+        if ($this->sourceIdSubmitted) {
+            $attributes['source_id'] = $this->sourceId;
         }
 
         if ($this->pipelineStatusIdSubmitted) {

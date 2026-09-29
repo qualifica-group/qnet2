@@ -12,7 +12,7 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     registry_id: 1,
     campaign_id: 2,
     operational_site_id: null,
-    source_id: null,
+    source_id: 3,
     operator_id: null,
     notes: null,
     extra_fields: [],
@@ -51,12 +51,21 @@ describe('buildCreateLeadSchema', () => {
     }
   })
 
-  it('accepts the 4 optional fields left null', () => {
+  /** Spec 0176 D-2: Fonte is required exactly like Anagrafica/Campagna, unless inherited from the campaign at submit time. */
+  it('rejects a missing source_id', () => {
+    const schema = buildCreateLeadSchema(i18n.t)
+    const result = schema.safeParse(baseValues({ source_id: null }))
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.join('.') === 'source_id')).toBe(true)
+    }
+  })
+
+  it('accepts the 3 optional fields left null', () => {
     const schema = buildCreateLeadSchema(i18n.t)
     const result = schema.safeParse(
       baseValues({
         operational_site_id: null,
-        source_id: null,
         operator_id: null,
         notes: null,
       }),
@@ -64,7 +73,7 @@ describe('buildCreateLeadSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('accepts the 4 optional fields when set', () => {
+  it('accepts the 3 optional fields when set', () => {
     const schema = buildCreateLeadSchema(i18n.t)
     const result = schema.safeParse(
       baseValues({

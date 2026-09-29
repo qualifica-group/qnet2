@@ -83,6 +83,10 @@ export function CampaignDetailSections({ campaign }: CampaignDetailSectionsProps
               <DetailEmpty />
             )}
           </RecordField>
+
+          <RecordField label={t('campaigns.form.source')}>
+            {campaign.source?.name ?? <DetailEmpty />}
+          </RecordField>
         </RecordFieldList>
       </RecordSection>
 

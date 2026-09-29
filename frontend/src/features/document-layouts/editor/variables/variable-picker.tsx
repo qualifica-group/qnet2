@@ -21,8 +21,8 @@ function matches(text: string, search: string): boolean {
  * Searchable, category-grouped variable catalog (AC-122): filters by both
  * `variable` (the raw `{category.key}` token) and `label` (the localized
  * name), and inserts at the active run's caret via `onInsert` — the caret
- * placement itself is `use-caret-insertion.ts`'s job, this component only
- * reports WHICH variable was picked.
+ * placement itself is the shared `hooks/use-caret-insertion.ts`'s job, this
+ * component only reports WHICH variable was picked.
  */
 export function VariablePicker({ catalog, isLoading, disabled, onInsert }: VariablePickerProps) {
   const { t } = useTranslation()

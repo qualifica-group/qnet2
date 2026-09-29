@@ -25,6 +25,7 @@ const guide: HelpGuide = {
             'Apri **Marketing e Lead › Campagne** e clicca **Nuova campagna**.',
             'Compila **Codice** e **Denominazione**.',
             'In **Collegamento al progetto** scegli un **Progetto**, se serve.',
+            'Indica una **Fonte**, se serve (facoltativa): i lead generati da questa campagna la ereditano, precompilata e modificabile.',
             'Completa date, **Budget totale** e **Target lead**.',
             'Clicca **Salva**.',
           ],

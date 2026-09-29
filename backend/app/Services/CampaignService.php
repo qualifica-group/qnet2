@@ -81,6 +81,7 @@ class CampaignService
         'province',
         'city',
         'operationalSite.addresses.city',
+        'source',
     ];
 
     public function loadDetail(Campaign $campaign): Campaign
@@ -250,18 +251,20 @@ class CampaignService
 
     /**
      * The for-select projection query (spec 0024, ADR 0011): id/code/name/
-     * operational_site_id plus `project_id` (spec 0094 — needed to resolve
+     * operational_site_id/source_id plus `project_id` (spec 0094 — needed to resolve
      * the EFFECTIVE product-line categories, own or read through the linked
      * project) and the relations CampaignForSelectResource reads: the site's
-     * composed label, and the campaign's own/linked-project's product lines.
+     * composed label, the source (spec 0176), and the campaign's own/linked-
+     * project's product lines.
      *
      * @return Builder<Campaign>
      */
     private function forSelectBaseQuery(): Builder
     {
         return Campaign::query()
-            ->select(['id', 'code', 'name', 'project_id', 'operational_site_id'])
+            ->select(['id', 'code', 'name', 'project_id', 'operational_site_id', 'source_id'])
             ->with([
+                'source',
                 'operationalSite.addresses.city',
                 'operationalSite.addresses.state',
                 'productLines',

@@ -34,16 +34,15 @@ use Illuminate\Database\Seeder;
  *     rules are classified on the third level, today the `GOL - <Regione>`
  *     rows, the `Autofinanziato - <Regione>` rows and "DIL - Lombardia" —
  *     plus the subcategories that host their offer directly, "Autoimpiego",
- *     "Yisu" and "Orientamento Specialistico", and the two Consulenza leaves
- *     "Trattative in Corso" and "Presa Appuntamenti" (see
- *     SELECTABLE_SUBCATEGORIES).
+ *     "Yisu" and "Orientamento Specialistico", and the Consulenza leaf
+ *     "Presa Appuntamenti" (see SELECTABLE_SUBCATEGORIES).
  *     The "Formazione" branch also carries its OFFERTA-context attributes (spec 0061/0084) — the
  *     "Dati corso" pair of QualificaCatalog\CourseDataAttributeCatalogue and
  *     the "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue,
  *     both moved off the PRODUCT by the user directive 2026-09-08 — assigned
  *     to the root and inherited by every descendant. The rest of the same
  *     context, plus the whole COMMESSA one ("Dati Lavorazione Contatto",
- *     scoped to Formazione / Autofinanziato / the two Consulenza leaves), is
+ *     scoped to Formazione / Autofinanziato / the Consulenza leaf), is
  *     delegated to QualificaContactProcessingSeeder, and the offer FORM that
  *     groups all three sets into sections (spec 0062) to
  *     QualificaQuoteLayoutSeeder;
@@ -67,11 +66,12 @@ use Illuminate\Database\Seeder;
  *     QualificaWorkflowSeeder as the last step: one QuoteWorkflow per
  *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
  *     category and carrying its own working-state pick list;
- *   - the business function links (spec 0023) of the "Formazione" root and of
- *     the "APL" subcategory, delegated to QualificaBusinessFunctionLinkSeeder
- *     as the very last step: those functions are imported from the external
- *     qnet CRM, not seeded here, so each link is a documented no-op whenever
- *     the import did not run.
+ *   - the business function links (spec 0023) of the "Formazione" root, of
+ *     the "APL" subcategory and of "Presa Appuntamenti", delegated to
+ *     QualificaBusinessFunctionLinkSeeder as the very last step: the first
+ *     two functions are imported from the external qnet CRM, not seeded
+ *     here, so those links are a documented no-op whenever the import did
+ *     not run; "Consulenza" is created by that seeder itself.
  *
  * Deliberately separate from QualificaTemplateSeeder, which provisions
  * STRUCTURE ONLY (the custom field definitions) and creates no domain row.
@@ -169,8 +169,9 @@ class QualificaCatalogSeeder extends Seeder
                 'DIL - Lombardia',
             ],
         ],
+        // "Trattative in Corso" is no longer a category (user directive
+        // 2026-09-28): "Presa Appuntamenti" is the branch's only leaf.
         'Consulenza' => [
-            'Trattative in Corso' => [],
             'Presa Appuntamenti' => [],
         ],
         // A branch of its own, never under "Consulenza" (user directive
@@ -204,9 +205,9 @@ class QualificaCatalogSeeder extends Seeder
      * catalogue that files the products, so a rename breaks loudly instead of
      * silently demoting a node.
      *
-     * The two Consulenza leaves are targets too (user directive 2026-09-28):
-     * they have no children to group, so the opportunities are classified on
-     * them directly. No product is seeded there, unlike the single-offer ones.
+     * The Consulenza leaf is a target too (user directive 2026-09-28): it has
+     * no children to group, so the opportunities are classified on it
+     * directly. No product is seeded there, unlike the single-offer ones.
      *
      * @var list<string>
      */

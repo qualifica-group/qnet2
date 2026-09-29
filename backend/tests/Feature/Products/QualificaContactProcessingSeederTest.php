@@ -105,7 +105,7 @@ it('assigns, scopes and lays out the contact-processing set across Formazione, D
 
     // Inherited down the Formazione branch, and nowhere outside it.
     expect(effectiveCodes('GOL - Molise', AttributeContext::Quote))->toContain(...$trainingCodes)
-        ->and(effectiveCodes('Trattative in Corso', AttributeContext::Quote))->not->toContain('cpi');
+        ->and(effectiveCodes('Presa Appuntamenti', AttributeContext::Quote))->not->toContain('cpi');
 
     // was: 'keeps "DIL" on its own offer fields, cut off the Formazione set'
     $dilExpectedCodes = array_column(
@@ -163,7 +163,7 @@ it('assigns, scopes and lays out the contact-processing set across Formazione, D
 
     // Spec 0115: a row only where the composition DIFFERS from the ancestor's
     // — the eight Formazione categories that add a field of their own, or sit
-    // behind a barrier. The two Consulenza leaves carry no attribute at all
+    // behind a barrier. The Consulenza leaf carries no attribute at all
     // since the 2026-09-10 directive, so they compose to nothing.
     expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(8);
 
@@ -279,8 +279,8 @@ it('keeps Autofinanziato, DIL, Consulenza and "Titolo di Studio" scoped exactly 
         ->not->toContain('course_time_preference')
         ->not->toContain('price');
 
-    // REQUIREMENT CHANGED (user directive 2026-09-10): the two Consulenza
-    // leaves are EMPTY — the company-appointment set is retired, and they
+    // REQUIREMENT CHANGED (user directive 2026-09-10): the Consulenza
+    // leaf is EMPTY — the company-appointment set is retired, and they
     // inherit nothing from their root either.
     foreach (ContactProcessingAttributeCatalogue::CONSULTING_CATEGORIES as $name) {
         expect(effectiveCodes($name, AttributeContext::Quote))->toBe([], $name);

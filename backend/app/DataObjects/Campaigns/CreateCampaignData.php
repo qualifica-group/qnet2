@@ -53,6 +53,7 @@ final readonly class CreateCampaignData
         public ?int $countryId = null,
         public ?int $provinceId = null,
         public ?int $cityId = null,
+        public ?int $sourceId = null,
     ) {}
 
     /**
@@ -71,6 +72,7 @@ final readonly class CreateCampaignData
             description: $data['description'] ?? null,
             partnerId: isset($data['partner_id']) ? (int) $data['partner_id'] : null,
             operationalSiteId: isset($data['operational_site_id']) ? (int) $data['operational_site_id'] : null,
+            sourceId: isset($data['source_id']) ? (int) $data['source_id'] : null,
             pipelineStatusId: isset($data['pipeline_status_id']) ? (int) $data['pipeline_status_id'] : null,
             productLines: array_key_exists('product_lines', $data) ? self::normalizeProductLines($data['product_lines']) : null,
             stateId: isset($data['state_id']) ? (int) $data['state_id'] : null,
@@ -143,6 +145,7 @@ final readonly class CreateCampaignData
             'description' => $this->description,
             'partner_id' => $this->partnerId,
             'operational_site_id' => $this->operationalSiteId,
+            'source_id' => $this->sourceId,
             'pipeline_status_id' => $linked ? null : $this->pipelineStatusId,
             'country_id' => $this->countryId,
             'state_id' => $this->stateId,

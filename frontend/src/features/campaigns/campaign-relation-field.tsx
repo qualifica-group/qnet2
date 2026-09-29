@@ -13,9 +13,11 @@ import type { CampaignRelationRef } from '@/features/campaigns/types'
  * fields rendered by `<GeoSelect>`, following BR-5 instead. `business_function_id`/
  * `product_category_id` left this group too (spec 0094): they are now the
  * `product_lines` row collection, rendered by `ProductLinesField` directly in
- * `CampaignFormBody` (not through this thin wrapper).
+ * `CampaignFormBody` (not through this thin wrapper). `source_id` (spec 0176)
+ * joined the always-own/editable pair: an optional Fonte, never derived from
+ * the linked project, that the Lead form inherits as a prefill.
  */
-type CampaignRelationFieldName = 'partner_id' | 'operational_site_id' | 'pipeline_status_id'
+type CampaignRelationFieldName = 'partner_id' | 'operational_site_id' | 'source_id' | 'pipeline_status_id'
 
 interface CampaignRelationFieldProps {
   control: Control<CampaignFormValues>

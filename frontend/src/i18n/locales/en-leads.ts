@@ -88,11 +88,12 @@ export const leads = {
     operationalSiteSearch: 'Search sites…',
     source: 'Source',
     sourceSearch: 'Search sources…',
+    sourceRequired: 'Select the source.',
     operator: 'Operator',
     operatorSearch: 'Search operators…',
     hints: {
       operationalSite: 'The operational site this lead belongs to.',
-      source: 'The channel or origin the lead came from.',
+      source: 'The channel or origin the lead came from. Required: prefilled from the campaign\'s source when it has one; still editable.',
       operator: 'The internal user in charge of following up on this lead.',
       operatorFilteredBySite: 'The operators shown are limited to those of the chosen Site.',
     },

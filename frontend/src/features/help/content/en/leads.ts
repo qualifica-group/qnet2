@@ -21,7 +21,7 @@ const guide: HelpGuide = {
             ['**Campaign**', 'Required.'],
             ['**Site**', "The lead's operational site."],
             ['**Operator**', 'Who follows the lead; the list shows only the operators of the chosen site.'],
-            ['**Source**', 'The channel the lead came from.'],
+            ['**Source**', "Required. Prefilled from the campaign's Source, if it has one; editable."],
             ['Products of interest', "Limited to the campaign's categories."],
             ['**Notes**', 'Free-form text, up to 5000 characters.'],
             ['Extra fields / Imported data', '**Key** and **Value** pairs, usually from an import.'],

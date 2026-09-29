@@ -6,7 +6,7 @@ namespace Database\Seeders\QualificaCatalog;
  * The client's "Dati Lavorazione Contatto" attributes (OPPORTUNITY context,
  * spec 0061): what the operator records while working a request, scoped to the
  * categories that actually use it — the Formazione branch, the self-funded
- * offer, the "DIL" subcategory and the two Consulenza leaves. Pure data, like
+ * offer, the "DIL" subcategory and the Consulenza leaf. Pure data, like
  * ClassroomAttributeCatalogue: QualificaContactProcessingSeeder assigns them
  * and groups them into the section named below.
  *
@@ -50,14 +50,15 @@ final class ContactProcessingAttributeCatalogue
     public const string GOL_CATEGORY = 'GOL';
 
     /**
-     * The two Consulenza leaves. They carry NO attribute at all any more (user
-     * directive 2026-09-10) — kept named because the tests assert precisely
-     * that emptiness, and because RETIRED_ATTRIBUTES has to keep withdrawing
-     * from them on every re-seed.
+     * The Consulenza leaf — "Trattative in Corso" is no longer a category
+     * (user directive 2026-09-28). It carries NO attribute at all any more
+     * (user directive 2026-09-10) — kept named because the tests assert
+     * precisely that emptiness, and because RETIRED_ATTRIBUTES has to keep
+     * withdrawing from it on every re-seed.
      *
      * @var list<string>
      */
-    public const array CONSULTING_CATEGORIES = ['Trattative in Corso', 'Presa Appuntamenti'];
+    public const array CONSULTING_CATEGORIES = ['Presa Appuntamenti'];
 
     /**
      * The "Formazione" subcategory carrying a set of its OWN instead of the
@@ -70,7 +71,7 @@ final class ContactProcessingAttributeCatalogue
     /**
      * Codes the client retired from the set — "Corso di interesse", i.e. the
      * `corso` row adopted from q-crm (user directive 2026-08-03); "Sede", i.e.
-     * `training_site`; and the whole company-appointment set the two Consulenza
+     * `training_site`; and the whole company-appointment set the Consulenza
      * leaves used to carry, which the client wants EMPTY — no field of their
      * own and nothing inherited (user directive 2026-09-10). The ASSIGNMENT is
      * removed from every category on re-seed, so an installation provisioned by

@@ -68,6 +68,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   'reward-statuses': 'navigation.rewardStatuses',
   'rewarded-referents': 'navigation.rewardedReferents',
   'document-layouts': 'navigation.documentLayouts',
+  'email-templates': 'navigation.emailTemplates',
+  'document-bundles': 'navigation.documentBundles',
   imports: 'navigation.imports',
   'pipeline-statuses': 'navigation.pipelineStatuses',
   'field-change-requests': 'navigation.fieldChangeRequests',

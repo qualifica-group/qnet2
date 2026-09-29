@@ -4,6 +4,8 @@ namespace App\Http\Requests\Leads;
 
 use App\DataObjects\Leads\UpdateLeadData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Models\Lead;
+use App\Services\Leads\LeadSourceResolver;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -13,7 +15,9 @@ use Illuminate\Validation\Rule;
  * Validates the payload for PUT/PATCH /api/leads/{lead} (spec 0024, spec 0041
  * D-1). Every field is `sometimes` (partial PATCH); `registry_id`/
  * `campaign_id`, IF submitted, cannot be null (BR-1 — mandatory fields never
- * accept an empty value once touched). Lead status is derived and is not
+ * accept an empty value once touched). `source_id`, IF submitted, is required
+ * unless the lead's campaign (the submitted one, else the current one) names
+ * a Fonte to inherit (spec 0176, D-2/D-3). Lead status is derived and is not
  * accepted in the write contract.
  *
  * `products_of_interest` (spec 0094, D-5): `sometimes|array`, no `min:1` —
@@ -46,7 +50,7 @@ class UpdateLeadRequest extends FormRequest
             'registry_id' => ['sometimes', 'required', 'integer', Rule::exists('registries', 'id')],
             'campaign_id' => ['sometimes', 'required', 'integer', Rule::exists('campaigns', 'id')],
             'operational_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('operational_sites', 'id')],
-            'source_id' => ['sometimes', 'nullable', 'integer', Rule::exists('sources', 'id')],
+            'source_id' => ['sometimes', Rule::requiredIf(fn (): bool => ! $this->campaignNamesSource()), 'nullable', 'integer', Rule::exists('sources', 'id')],
             'operator_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'extra_fields' => ['sometimes', 'nullable', 'array'],
@@ -61,6 +65,19 @@ class UpdateLeadRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
         });
+    }
+
+    private function campaignNamesSource(): bool
+    {
+        /** @var Lead $lead */
+        $lead = $this->route('lead');
+        $campaignId = $this->has('campaign_id') ? $this->input('campaign_id') : $lead->campaign_id;
+
+        if (! is_numeric($campaignId)) {
+            return false;
+        }
+
+        return app(LeadSourceResolver::class)->resolve(null, (int) $campaignId) !== null;
     }
 
     protected function authorizationResource(): string

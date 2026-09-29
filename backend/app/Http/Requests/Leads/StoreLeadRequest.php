@@ -4,6 +4,7 @@ namespace App\Http\Requests\Leads;
 
 use App\DataObjects\Leads\CreateLeadData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Services\Leads\LeadSourceResolver;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -11,8 +12,9 @@ use Illuminate\Validation\Rule;
 
 /**
  * Validates the payload for POST /api/leads (spec 0024, spec 0041 D-1).
- * `registry_id`/`campaign_id` are required (BR-1); the other relations are
- * optional, `notes` is a plain nullable text. Lead status is derived and is
+ * `registry_id`/`campaign_id` are required (BR-1); `source_id` is required
+ * unless the campaign names a Fonte the lead inherits (spec 0176, D-2); the
+ * other relations are optional, `notes` is a plain nullable text. Lead status is derived and is
  * not accepted in the write contract.
  *
  * `convert_to_opportunity` (spec 0044) is a request-level flag, not a Lead
@@ -52,7 +54,7 @@ class StoreLeadRequest extends FormRequest
             'registry_id' => ['required', 'integer', Rule::exists('registries', 'id')],
             'campaign_id' => ['required', 'integer', Rule::exists('campaigns', 'id')],
             'operational_site_id' => ['nullable', 'integer', Rule::exists('operational_sites', 'id')],
-            'source_id' => ['nullable', 'integer', Rule::exists('sources', 'id')],
+            'source_id' => [Rule::requiredIf(fn (): bool => ! $this->campaignNamesSource()), 'nullable', 'integer', Rule::exists('sources', 'id')],
             'operator_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'notes' => ['nullable', 'string', 'max:5000'],
             'extra_fields' => ['nullable', 'array'],
@@ -68,6 +70,17 @@ class StoreLeadRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
         });
+    }
+
+    private function campaignNamesSource(): bool
+    {
+        $campaignId = $this->input('campaign_id');
+
+        if (! is_numeric($campaignId)) {
+            return false;
+        }
+
+        return app(LeadSourceResolver::class)->resolve(null, (int) $campaignId) !== null;
     }
 
     protected function authorizationResource(): string

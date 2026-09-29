@@ -25,6 +25,13 @@ export interface CampaignForSelectOperationalSite {
 export interface CampaignForSelectMeta {
   operational_site: CampaignForSelectOperationalSite | null
   /**
+   * The campaign's own Fonte (spec 0176), feeding the Lead form's Fonte
+   * prefill on selection, mirroring `operational_site` above. Optional/absent
+   * for backward compatibility with fixtures predating the delta, mirroring
+   * `product_category_ids` below; `null` when the campaign has none.
+   */
+  source?: { id: number; name: string } | null
+  /**
    * The EFFECTIVE product categories the campaign classifies itself with —
    * already resolved through the linked project when there is one (spec 0094).
    * The Lead form scopes its "prodotti di interesse" picker on these, so it

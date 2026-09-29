@@ -45,6 +45,17 @@ class Source extends BaseModel
     }
 
     /**
+     * The campaigns naming this source (spec 0176, D-1: restrict-on-delete —
+     * SourceService::delete() guards on this before deleting).
+     *
+     * @return HasMany<Campaign, $this>
+     */
+    public function campaigns(): HasMany
+    {
+        return $this->hasMany(Campaign::class);
+    }
+
+    /**
      * The opportunities against this source (spec 0040, BR-3: restrict-on-
      * delete — SourceService::delete() guards on this before deleting).
      *

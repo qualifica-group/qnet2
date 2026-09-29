@@ -47,6 +47,9 @@ export interface CampaignDetail {
   /** The campaign's own Sede: prefilled (never locked) from the linked project's on selection, always editable (directive: project -> campaign -> lead prefill chain). */
   operational_site_id: number | null
   operational_site: CampaignOperationalSiteRef | null
+  /** The campaign's own Fonte (spec 0176), optional, never derived from the linked project: the Lead form inherits it as a prefill (never a lock) when this campaign is picked. */
+  source_id: number | null
+  source: CampaignRelationRef | null
   derived_from_project: boolean
   pipeline_status_id: number | null
   pipeline_status: PipelineStatusRef | null
@@ -117,6 +120,7 @@ export interface CreateCampaignPayload {
   description?: string | null
   partner_id?: number | null
   operational_site_id?: number | null
+  source_id?: number | null
   pipeline_status_id?: number | null
   product_lines?: CampaignProductLineInput[]
   country_id?: number | null

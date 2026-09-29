@@ -18,6 +18,10 @@ export interface ImportMappingFormValues {
   global_config: ImportConfigFormValues
 }
 
+/** Global field ids the Campaign -> Fonte run-level required rule below reasons about (spec 0176 D-5). */
+const CAMPAIGN_GLOBAL_FIELD_ID = 'campaign_id'
+const SOURCE_GLOBAL_FIELD_ID = 'source_id'
+
 /** Whether a global-config value counts as "unset" for the required check (spec 0094 AC-052: `[]` counts as missing). */
 function isGlobalConfigValueMissing(value: number | number[] | null | undefined): boolean {
   return value == null || (Array.isArray(value) && value.length === 0)
@@ -70,6 +74,32 @@ export function buildImportMappingSchema(
             message: t('config.errors.required'),
           })
         }
+      }
+
+      // Spec 0176 D-5: the catalog keeps `source_id` optional (it is only
+      // ever required when the row's EFFECTIVE Fonte would otherwise be
+      // missing, a per-row staging concern), but the wizard itself marks it
+      // required whenever the Campaign is chosen run-wide — a run-level
+      // campaign with no Fonte of its own guarantees every row fails at
+      // staging, so the operator fixes it here instead. A per-row (file)
+      // campaign is unaffected: each row still resolves its own effective
+      // Fonte server-side (D-5).
+      const campaignField = globalFields.find((field) => field.id === CAMPAIGN_GLOBAL_FIELD_ID)
+      const sourceField = globalFields.find((field) => field.id === SOURCE_GLOBAL_FIELD_ID)
+      const campaignIsRunLevel =
+        campaignField != null &&
+        !(campaignField.required_unless_mapped != null && mappedTargets.includes(campaignField.required_unless_mapped))
+      if (
+        campaignField &&
+        sourceField &&
+        campaignIsRunLevel &&
+        isGlobalConfigValueMissing(values.global_config[SOURCE_GLOBAL_FIELD_ID])
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['global_config', SOURCE_GLOBAL_FIELD_ID],
+          message: t('config.errors.required'),
+        })
       }
     })
 }

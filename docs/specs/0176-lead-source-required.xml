@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0176-lead-source-required" status="approved" owner="utente" date="2026-09-28">
+
+  <goal>
+    La Fonte di un Lead diventa obbligatoria in creazione, modifica e importazione. La Campagna acquista una Fonte
+    facoltativa: quando c'e', il Lead la eredita (precompilata ma modificabile).
+  </goal>
+
+  <context>
+    Nomi verificati il 2026-09-28.
+    - `leads.source_id` nullable FK `sources` (restrictOnDelete); `campaigns` non ha `source_id`.
+    - Lead: StoreLeadRequest/UpdateLeadRequest, CreateLeadData/UpdateLeadData, LeadService, LeadsAuthorization
+      (ceiling `source_id` non required), LeadColumnCatalog `source` (inline, nullable).
+    - Campagna: Store/UpdateCampaignRequest, Create/UpdateCampaignData, CampaignService (DETAIL_RELATIONS,
+      forSelectBaseQuery), CampaignResource, CampaignForSelectResource (meta.operational_site), CampaignColumnCatalog,
+      CampaignsAuthorization.
+    - Import: LeadImportFieldCatalog GLOBAL_FIELDS `source_id` (required false), LeadRowPersister::attachLead,
+      LeadRowValidator, ImportRowContext, StagedRowBuilder. `required_unless_mapped` significa "vietato se mappato"
+      e non si applica alla Fonte.
+    - Frontend: lead-form-body (prefill sede da `meta.operational_site` della campagna), campaign-form-body,
+      import-step-mapping / import-config-fields.
+  </context>
+
+  <decisions>
+    D-1  (utente) Nuova colonna `campaigns.source_id` nullable FK `sources` restrictOnDelete, facoltativa in form,
+         dettaglio e tabella Campagne. Eliminare una Fonte usata da una campagna e' bloccato come per i lead.
+    D-2  (utente) Lead create/edit: la Fonte e' precompilata dalla campagna quando la si sceglie, ma resta
+         modificabile. Lato server: se `source_id` e' assente/null e la campagna (quella inviata o, in modifica,
+         quella del lead) ha una Fonte, il Lead la eredita; altrimenti 422 su `source_id`.
+    D-3  In modifica la regola vale quando `source_id` e' inviato (PATCH parziali senza `source_id` restano validi).
+         La modifica inline in tabella non puo' svuotare la Fonte.
+    D-4  (utente) Nessun backfill dei lead esistenti senza Fonte.
+    D-5  (utente) Import: scegliendo la campagna nel wizard la Fonte si precompila con quella della campagna, resta
+         modificabile. Fonte effettiva per riga = Fonte del wizard, altrimenti Fonte della campagna della riga
+         (anche campagna da file, spec 0108); se nessuna delle due -> errore di riga allo staging.
+         Il wizard marca la Fonte obbligatoria quando la campagna e' scelta nel wizard.
+    D-6  Il ceiling dei permessi di campo del Lead marca `source_id` come required (asterisco coerente in UI).
+  </decisions>
+
+  <contract>
+    Campaign write (POST /api/campaigns, PATCH /api/campaigns/{id}): `source_id: int|null` (exists:sources).
+    CampaignResource: `source_id: int|null`, `source: {id, name}|null`.
+    Campaign for-select item meta: `source: {id, name}|null` (accanto a operational_site, product_category_ids).
+    Campaigns table: colonna `source` (nome Fonte, filtro set).
+    POST /api/leads: `source_id` required salvo eredita' dalla campagna (D-2).
+    PATCH /api/leads/{id}: se `source_id` inviato, required salvo eredita' (D-3).
+  </contract>
+
+  <acceptance>
+    AC-001  Campagna: create/update salvano `source_id`; resource e for-select meta espongono la Fonte; colonna
+            tabella Fonte. Una Fonte usata da una campagna non si elimina.
+    AC-002  POST lead senza `source_id` e campagna senza Fonte -> 422 su `source_id`.
+    AC-003  POST lead senza `source_id` e campagna con Fonte -> lead creato con la Fonte della campagna.
+    AC-004  POST lead con `source_id` diverso da quello della campagna -> vince quello inviato.
+    AC-005  PATCH lead con `source_id: null` -> eredita dalla campagna se ha Fonte, altrimenti 422; PATCH senza
+            `source_id` su un lead senza Fonte resta valido.
+    AC-006  Import: riga senza Fonte (wizard vuoto, campagna senza Fonte) -> errore di riga; campagna con Fonte ->
+            lead con la Fonte della campagna; Fonte del wizard valorizzata -> vince.
+    AC-007  UI Lead: scegliendo una campagna con Fonte il campo si precompila; il form non si invia senza Fonte.
+    AC-008  UI Campagna: selettore Fonte nel form, Fonte nel dettaglio.
+    AC-009  UI Import: scegliendo la campagna nel wizard la Fonte si precompila; obbligatoria se la campagna e'
+            scelta nel wizard.
+  </acceptance>
+
+</spec>

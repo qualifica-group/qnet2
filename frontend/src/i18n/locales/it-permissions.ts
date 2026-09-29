@@ -66,6 +66,10 @@ export const permissions = {
     deleteAny: 'Elimina note altrui',
     // Spec 0158 D-3: pubblicare una vista di filtri come condivisa (`table-filter-views.publish`).
     publish: 'Pubblica filtri condivisi',
+    // Spec 0175 D-14: tab Email della commessa (storico) e composer di invio,
+    // oltre al CRUD di BasePolicy (`work-orders.viewEmails`/`sendEmail`).
+    viewEmails: 'Vedere le email',
+    sendEmail: 'Inviare email',
   },
   resources: {
     users: 'Utenti',
@@ -88,6 +92,9 @@ export const permissions = {
     contracts: 'Contratti',
     'custom-fields': 'Campi personalizzati',
     'document-layouts': 'Layout',
+    // Spec 0175: tabelle di appoggio del composer email della commessa.
+    'email-templates': 'Modelli email',
+    'document-bundles': 'Modelli documenti',
     // Spec 0130: sottoinsieme validato/chiuso-vinto di Gestione Richieste, permessi propri.
     'enrollee-management': 'Gestione Iscritti',
     'field-change-requests': 'Richieste di modifica',

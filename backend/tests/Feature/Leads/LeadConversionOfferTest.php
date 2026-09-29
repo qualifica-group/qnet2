@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\Registry;
+use App\Models\Source;
 use App\Models\VatRate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -75,6 +76,7 @@ it('AC-060: a campaign with 3 product lines converts into an Opportunity with th
     $response = $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
         'convert_to_opportunity' => true,
     ])->assertCreated();
 
@@ -97,6 +99,7 @@ it('AC-061: the lead products of interest are transferred to the Opportunity', f
     $response = $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
         'convert_to_opportunity' => true,
         'products_of_interest' => [$product->id],
     ])->assertCreated();
@@ -120,6 +123,7 @@ it('AC-062: at least one product of interest generates ONE Offerta with one REVE
     $response = $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
         'convert_to_opportunity' => true,
         'products_of_interest' => [$productA->id, $productB->id],
     ])->assertCreated();
@@ -154,6 +158,7 @@ it('AC-063: the generated offer lines freeze the unit of measure from the produc
     $response = $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
         'convert_to_opportunity' => true,
         'products_of_interest' => [$product->id],
     ])->assertCreated();
@@ -175,6 +180,7 @@ it('AC-064: the generated Offerta carries a QUO- code, an initial workflow statu
     $response = $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
         'convert_to_opportunity' => true,
         'products_of_interest' => [$product->id],
     ])->assertCreated();
@@ -215,6 +221,7 @@ it('AC-066: a duplicated product of interest produces a single offer line', func
     $response = $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
         'convert_to_opportunity' => true,
         // A repeated id in the submitted payload: the pivot's own unique
         // constraint (AC-005) already collapses it to one row, and the
@@ -244,6 +251,7 @@ it('AC-067: a single-managed derivation with 2+ products of interest -> 422, no 
     $this->postJson('/api/leads', [
         'registry_id' => $registry->id,
         'campaign_id' => $campaign->id,
+        'source_id' => Source::factory()->create()->id,
         'convert_to_opportunity' => true,
         'products_of_interest' => [$productA->id, $productB->id],
     ])->assertStatus(422)->assertJsonValidationErrors('offer_lines');

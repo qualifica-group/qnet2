@@ -7,6 +7,7 @@ use App\Http\Requests\Attachments\IndexAttachmentRequest;
 use App\Http\Requests\Attachments\StoreAttachmentRequest;
 use App\Http\Resources\AttachmentResource;
 use App\Models\Attachment;
+use App\Models\OutboundEmail;
 use App\RichText\RichText;
 use App\Services\AttachmentService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -36,11 +37,12 @@ class AttachmentController extends BaseApiController
      * GET /api/attachments — list the files owned by one polymorphic owner,
      * optionally narrowed to a named collection, newest first.
      *
-     * The `rich_text` collection (spec 0128, D-6) is never browsable here: an
-     * explicit `collection=rich_text` is refused by the policy outright, and
-     * the default "no collection" query excludes those rows so the generic
-     * documents tab never surfaces images that only belong to a field's own
-     * content.
+     * Neither the `rich_text` (spec 0128, D-6) nor the `email_attachments`
+     * (spec 0175, D-8) collection is ever browsable here: an explicit
+     * `collection=...` for either is refused by the policy outright, and the
+     * default "no collection" query excludes both so the generic documents
+     * tab never surfaces images/allegati that only belong to a field's own
+     * content or to an email's own history.
      */
     public function index(IndexAttachmentRequest $request): JsonResponse
     {
@@ -54,9 +56,12 @@ class AttachmentController extends BaseApiController
                 ->when(
                     $request->filled('collection'),
                     fn ($query) => $query->where('collection', $collection),
-                    fn ($query) => $query->where(fn ($noRichText) => $noRichText
+                    fn ($query) => $query->where(fn ($excluded) => $excluded
                         ->whereNull('collection')
-                        ->orWhere('collection', '!=', RichText::ATTACHMENT_COLLECTION)),
+                        ->orWhereNotIn('collection', [
+                            RichText::ATTACHMENT_COLLECTION,
+                            OutboundEmail::ATTACHMENT_COLLECTION,
+                        ])),
                 )
                 ->latest()
                 ->get();

@@ -12,6 +12,7 @@ import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesSection } from '@/features/notes/notes-section'
 import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
+import { useWorkOrderEmailsTab } from '@/features/work-order-emails/use-work-order-emails-tab'
 import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { WorkOrderDetailHeader, WorkOrderDetailStats } from '@/features/work-orders/work-order-detail-header'
 import { WorkOrderDetailSections } from '@/features/work-orders/work-order-detail-sections'
@@ -26,13 +27,19 @@ interface WorkOrderDetailViewProps {
 
 /**
  * The record's collaboration tabs (Notes | Documents | Registry documents |
- * Activity), each gated by its OWN authorization source and absent entirely
- * when unauthorized (spec 0134 D-3; the read-only registry one is spec 0173).
+ * Email | Activity), each gated by its OWN authorization source and absent
+ * entirely when unauthorized (spec 0134 D-3; the read-only registry one is
+ * spec 0173; Email is spec 0175).
  */
 function useCollaborationTabs(workOrder: WorkOrderDetailWithPermissions): RecordCollaborationTab[] {
   const { t } = useTranslation()
   const { can } = useAbilities()
   const registryDocumentsTab = useRegistryDocumentsTab(workOrder.registry?.id)
+  const workOrderEmailsTab = useWorkOrderEmailsTab(
+    workOrder.id,
+    workOrder.permissions.actions.view_emails,
+    workOrder.permissions.actions.send_email,
+  )
   const tabs: RecordCollaborationTab[] = []
 
   /*
@@ -68,6 +75,10 @@ function useCollaborationTabs(workOrder: WorkOrderDetailWithPermissions): Record
 
   if (registryDocumentsTab) {
     tabs.push(registryDocumentsTab)
+  }
+
+  if (workOrderEmailsTab) {
+    tabs.push(workOrderEmailsTab)
   }
 
   if (workOrder.permissions.actions.view_activity) {

@@ -130,6 +130,14 @@ export interface CreateRichTextExtensionsOptions {
    * descriptions).
    */
   extraExtensions?: Extensions
+  /**
+   * Whether the `image` node is part of the schema at all (spec 0175 D-11:
+   * the email composer body has no images). Default true (existing
+   * notes/task/template behavior unchanged). False leaves no `image` node
+   * type to parse into, so a pasted/dropped/HTML `<img>` is silently dropped
+   * by the DOM parser exactly like an out-of-allow-list remote `src` already is.
+   */
+  allowImages?: boolean
 }
 
 /**
@@ -142,6 +150,7 @@ export interface CreateRichTextExtensionsOptions {
 export function createRichTextExtensions({
   placeholder,
   extraExtensions = [],
+  allowImages = true,
 }: CreateRichTextExtensionsOptions = {}): Extensions {
   return [
     StarterKit.configure({
@@ -155,7 +164,7 @@ export function createRichTextExtensions({
         isAllowedUri: (url) => safeUrl(url, RICH_TEXT_ALLOWED_LINK_PROTOCOLS) !== undefined,
       },
     }),
-    RichTextImage,
+    ...(allowImages ? [RichTextImage] : []),
     ...(placeholder ? [Placeholder.configure({ placeholder })] : []),
     ...extraExtensions,
   ]

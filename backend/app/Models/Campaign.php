@@ -43,6 +43,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'province_id',
     'city_id',
     'operational_site_id',
+    'source_id',
     'start_date',
     'end_date',
     'total_budget',
@@ -140,6 +141,15 @@ class Campaign extends BaseModel
     public function operationalSite(): BelongsTo
     {
         return $this->belongsTo(OperationalSite::class);
+    }
+
+    /**
+     * The Fonte its leads inherit (spec 0176, D-2): prefilled on the lead form
+     * and used server-side when a lead is saved without its own source.
+     */
+    public function source(): BelongsTo
+    {
+        return $this->belongsTo(Source::class);
     }
 
     /**

@@ -79,6 +79,10 @@ const guide: HelpGuide = {
           text: 'Duplicates are recognized by email, phone, tax code and VAT number.',
         },
         {
+          type: 'paragraph',
+          text: "If you pick the Campaign here (not from the file), the Source is prefilled from the campaign's own, if it has one, and stays editable; in that case the Source becomes required. A row with no effective Source (empty here and on its campaign, row or file, with none of its own) is rejected as an error at review.",
+        },
+        {
           type: 'tip',
           text: 'Turn on **Save this mapping as a reusable template**. Next time, with a matching file, just click **Apply**.',
         },

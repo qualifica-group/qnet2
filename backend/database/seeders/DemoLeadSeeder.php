@@ -81,7 +81,8 @@ class DemoLeadSeeder extends Seeder
             registryId: $registries[$index % $registries->count()]->id,
             campaignId: $campaigns[$index % $campaigns->count()]->id,
             operationalSiteId: $this->maybePick($sites, $index, $faker, 60)?->id,
-            sourceId: $this->maybePick($sources, $index + 1, $faker, 70)?->id,
+            // Spec 0176: the Fonte is mandatory on a lead.
+            sourceId: $this->maybePick($sources, $index + 1, $faker, 100)?->id,
             operatorId: $this->maybePick($operators, $index + 2, $faker, 50)?->id,
             notes: $faker->boolean(40) ? $faker->sentence() : null,
         );

@@ -57,3 +57,7 @@ Route::delete('work-orders/{workOrder}', [WorkOrderController::class, 'destroy']
 // inherits the SAME `auth:sanctum` group api.php's own require already
 // established, exactly as if inlined there.
 require __DIR__.'/work-order-task-board.php';
+
+// Commessa emails (spec 0175): same file-size-split reasoning as
+// work-order-task-board.php above.
+require __DIR__.'/work-order-emails.php';

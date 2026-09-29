@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { HexColorField } from '@/features/document-layouts/editor/shared/hex-color-field'
 import { IntegerField } from '@/features/document-layouts/editor/shared/integer-field'
-import { useCaretInsertion } from '@/features/document-layouts/editor/variables/use-caret-insertion'
+import { useCaretInsertion } from '@/hooks/use-caret-insertion'
 import { FONT_SIZE_MAX, FONT_SIZE_MIN } from '@/features/document-layouts/layout-config-defaults'
 import type { DocumentLayoutRun } from '@/features/document-layouts/layout-config'
 
@@ -26,7 +26,8 @@ interface RunEditorProps {
  * One run's controls (AC-121): text (or a read-only note when `field` is
  * set, AC-125), bold/italic/underline toggles, font family, size and color.
  * Registers itself as the variable picker's active insertion target on
- * focus via `onActivate` — caret tracking itself is `use-caret-insertion.ts`.
+ * focus via `onActivate` — caret tracking itself is the shared
+ * `hooks/use-caret-insertion.ts` (spec 0175, migrated out of this module).
  */
 export function RunEditor({ run, onChange, onRemove, onActivate, disabled }: RunEditorProps) {
   const { t } = useTranslation()

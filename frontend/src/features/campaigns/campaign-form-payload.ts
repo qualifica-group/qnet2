@@ -86,6 +86,7 @@ export function buildCreatePayload(values: CampaignFormValues): CreateCampaignPa
     description: values.description,
     partner_id: values.partner_id,
     operational_site_id: values.operational_site_id,
+    source_id: values.source_id,
     ...(linked
       ? {}
       : {
@@ -161,6 +162,9 @@ export function buildUpdatePayload(
   }
   if (values.operational_site_id !== original.operational_site_id) {
     payload.operational_site_id = values.operational_site_id
+  }
+  if (values.source_id !== original.source_id) {
+    payload.source_id = values.source_id
   }
   if (!linked) {
     // A linked→standalone transition (BR-2): the campaign's own derived
