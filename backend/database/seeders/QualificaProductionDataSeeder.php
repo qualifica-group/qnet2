@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use Database\Seeders\Concerns\SeedsWithoutMail;
 use Illuminate\Database\Seeder;
 
 /**
@@ -86,7 +87,16 @@ use Illuminate\Database\Seeder;
  */
 class QualificaProductionDataSeeder extends Seeder
 {
+    use SeedsWithoutMail;
+
     public function run(): void
+    {
+        // No email leaves the import: the write paths it goes through still
+        // leave their in-app notifications.
+        $this->withoutMail($this->seedProductionData(...));
+    }
+
+    private function seedProductionData(): void
     {
         $this->call(QualificaTemplateSeeder::class);
         // No prompt: step 5 below already runs the import, and the actor it

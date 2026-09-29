@@ -11,7 +11,7 @@ use App\Models\User;
 use App\Services\Contracts\ContractActionAvailability;
 use App\Services\WorkOrderService;
 use Database\Seeders\Concerns\ResolvesSeedActor;
-use Database\Seeders\Concerns\SeedsWithoutNotifications;
+use Database\Seeders\Concerns\SeedsWithoutMail;
 use Database\Seeders\Support\SampleCategoryCoverage;
 use Faker\Factory as FakerFactory;
 use Faker\Generator;
@@ -41,7 +41,7 @@ use Illuminate\Support\Facades\Auth;
  * fewest commesse use first, so every template ends up used (user directive
  * 2026-09-29). WorkOrderTaskGenerator acts as the authenticated user, as on
  * the endpoint: the seed actor stands in for it, and the task-assignment
- * mails are suppressed.
+ * mails are suppressed (the in-app notifications stay).
  *
  * COVERAGE FIRST (user directive 2026-09-29): on top of `$workOrders`, one
  * commessa on a contract carrying each contract-generating sellable category
@@ -52,7 +52,7 @@ use Illuminate\Support\Facades\Auth;
 class QualificaSampleWorkOrderSeeder extends Seeder
 {
     use ResolvesSeedActor;
-    use SeedsWithoutNotifications;
+    use SeedsWithoutMail;
 
     /** The batch size when the caller names none (`--work-orders` of qualifica:seed-sample). */
     public const int DEFAULT_WORK_ORDERS = 4;
@@ -83,7 +83,7 @@ class QualificaSampleWorkOrderSeeder extends Seeder
         $templateIds = $this->templateIdsByUsage();
 
         // Step 2: one "Programma" per contract, as the actor.
-        $this->withoutNotifications(fn () => $this->actingAs($actor, function () use ($contracts, $faker, $actor, $templateIds): void {
+        $this->withoutMail(fn () => $this->actingAs($actor, function () use ($contracts, $faker, $actor, $templateIds): void {
             foreach ($contracts as $index => $contract) {
                 $templateId = $templateIds === [] ? null : $templateIds[$index % count($templateIds)];
                 $this->workOrders->create($this->buildData($faker, $index, $contract, $actor->id, $templateId));

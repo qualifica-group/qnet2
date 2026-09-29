@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEED SENZA EMAIL, CON NOTIFICHE IN-APP — NON COMMITTATO (2026-09-29)
+
+- Direttiva utente: nei seeder nessuna email deve partire; le notifiche in-app vanno bene.
+- `Concerns/SeedsWithoutNotifications` (faceva `Notification::fake()`: bloccava ANCHE le in-app) rinominato in
+  `Concerns/SeedsWithoutMail::withoutMail(callable)`. Durante il callback il dispatcher e'
+  `Database\Seeders\Support\MailSuppressingChannelManager`: `send()` -> `sendNow()` (ignora `ShouldQueue`, altrimenti
+  il job mail finirebbe a un worker col dispatcher reale) e canale `mail` no-op. Il dispatcher precedente e' ripristinato.
+- Applicato agli orchestratori `DemoDataSeeder`, `QualificaSampleDataSeeder` (quindi anche `qualifica:seed-sample`),
+  `QualificaProductionDataSeeder`, e ai leaf che gia' lo usavano (`DemoTaskSeeder` — rimossa la sua copia privata —,
+  `QualificaSampleTaskSeeder`, `QualificaSampleWorkOrderSeeder`). Un leaf lanciato da solo con `--class` fuori da
+  questi (es. `DemoOpportunitySeeder`) NON e' coperto: se serve, aggiungere il trait anche li'.
+- Test: `tests/Feature/Seeding/SeedsWithoutMailTest.php` (nuovo); `DemoTaskSeederTest` aggiornato (requisito cambiato:
+  ora in-app > 0 e zero `MessageSending`). Suite completa verde (8771 pass, 1 skip). Manuale: nessun impatto.
+
 ## SPEC 0177 PRIMO ACCESSO UTENTE + EMAIL DI BENVENUTO — REV. 1 COMMITTATA (70f4b270), REV. 2 NON COMMITTATA (2026-09-29)
 
 - Spec `docs/specs/0177-user-first-access.xml` (approvata). Decisioni utente: modalita' "Entrambi" (invito con

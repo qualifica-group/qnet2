@@ -6,6 +6,7 @@ use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\WorkOrder;
+use Database\Seeders\Concerns\SeedsWithoutMail;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,12 +16,21 @@ use Illuminate\Database\Seeder;
  * so it is self-contained on a fresh database, then layers the generated users
  * and their related records on top. Run on demand:
  * `php artisan db:seed --class=DemoDataSeeder`.
+ *
+ * No email leaves the seed (SeedsWithoutMail): the write paths it goes through
+ * still leave their in-app notifications.
  */
 class DemoDataSeeder extends Seeder
 {
+    use SeedsWithoutMail;
     use WithoutModelEvents;
 
     public function run(): void
+    {
+        $this->withoutMail($this->seedDemoData(...));
+    }
+
+    private function seedDemoData(): void
     {
         $this->call(DatabaseSeeder::class);
 

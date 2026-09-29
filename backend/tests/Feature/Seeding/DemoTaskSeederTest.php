@@ -16,8 +16,9 @@ use Database\Seeders\DemoTaskSeeder;
 use Database\Seeders\QualificaTaskTaxonomySeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Event;
 
 uses(RefreshDatabase::class);
 
@@ -50,11 +51,14 @@ function seedTaskDependencies(): void
  */
 it('seeds the demo tasks and their note threads, staying idempotent on a reseed', function (): void {
     // Step 1: shared dependencies, once for every assertion below. The
-    // permission grant and the notification fake are no-ops for the tests
-    // that do not care about them.
+    // permission grant and the mail counter are no-ops for the tests that do
+    // not care about them.
     seedTaskDependencies();
     User::query()->get()->each(fn (User $user) => $user->givePermissionTo('tasks.view'));
-    Notification::fake();
+    $mailsSent = 0;
+    Event::listen(MessageSending::class, function () use (&$mailsSent): void {
+        $mailsSent++;
+    });
 
     // Step 2: seed the tasks once — every single-run check reads this state.
     test()->seed(DemoTaskSeeder::class);
@@ -119,9 +123,11 @@ it('seeds the demo tasks and their note threads, staying idempotent on a reseed'
         }
     }
 
-    // was: 'sends no notification: seeding is not an assignment anyone should hear about'
-    expect(Task::count())->toBe(60);
-    Notification::assertNothingSent();
+    // Requirement changed (user directive 2026-09-29): the seed leaves the
+    // in-app notifications of the real write path, but sends no email.
+    expect(Task::count())->toBe(60)
+        ->and(DB::table('notifications')->count())->toBeGreaterThan(0)
+        ->and($mailsSent)->toBe(0);
 
     // Step 3: seed the note threads on top of that first task run.
     test()->seed(DemoTaskNoteSeeder::class);

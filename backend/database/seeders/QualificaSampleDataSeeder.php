@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Opportunity;
+use Database\Seeders\Concerns\SeedsWithoutMail;
 use Database\Seeders\Support\SampleCategoryCoverage;
 use Illuminate\Database\Seeder;
 
@@ -84,6 +85,8 @@ use Illuminate\Database\Seeder;
  */
 class QualificaSampleDataSeeder extends Seeder
 {
+    use SeedsWithoutMail;
+
     public function __construct(private readonly SampleCategoryCoverage $coverage) {}
 
     public function run(
@@ -96,6 +99,22 @@ class QualificaSampleDataSeeder extends Seeder
         int $workOrders = QualificaSampleWorkOrderSeeder::DEFAULT_WORK_ORDERS,
         int $tasks = QualificaSampleTaskSeeder::DEFAULT_TASKS,
         int $timeEntries = QualificaSampleTimeEntrySeeder::DEFAULT_TIME_ENTRIES,
+    ): void {
+        // No email leaves the chain: the write paths it goes through still
+        // leave their in-app notifications.
+        $this->withoutMail(fn () => $this->seedChain($leads, $convertedLeads, $opportunities, $requests, $quotes, $contracts, $workOrders, $tasks, $timeEntries));
+    }
+
+    private function seedChain(
+        int $leads,
+        int $convertedLeads,
+        int $opportunities,
+        int $requests,
+        int $quotes,
+        int $contracts,
+        int $workOrders,
+        int $tasks,
+        int $timeEntries,
     ): void {
         $sinceOpportunityId = (int) Opportunity::query()->max('id');
         $coverageLeads = count($this->coverage->incompleteCategoryIds());

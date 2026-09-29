@@ -15,12 +15,12 @@ use App\Services\Tasks\TaskActionService;
 use App\Services\Tasks\TaskWriteLock;
 use App\Services\TaskService;
 use Database\Seeders\Concerns\PicksTaskRecordLinks;
+use Database\Seeders\Concerns\SeedsWithoutMail;
 use Database\Seeders\DemoCatalog\DemoTaskCatalogue;
 use DateTimeImmutable;
 use Faker\Factory as FakerFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Notification;
 
 /**
  * Development seed for the Tasks module (spec 0101/0116): a hierarchy of
@@ -47,6 +47,7 @@ use Illuminate\Support\Facades\Notification;
 class DemoTaskSeeder extends Seeder
 {
     use PicksTaskRecordLinks;
+    use SeedsWithoutMail;
 
     private const int ROOT_TASKS = 40;
 
@@ -109,26 +110,10 @@ class DemoTaskSeeder extends Seeder
         }
 
         // Step 3: the root activities, then the breakdown hanging off them —
-        // silently, since the real write path notifies every assignee/watcher.
-        $this->withoutNotifications(fn () => $this->seedSubtasks($this->seedRoots()));
-    }
-
-    /**
-     * TaskService notifies assignees and watchers by mail (spec 0119, voci 7
-     * and 8): seeding 60 Tasks must not queue those mails. The previous
-     * notification channel is restored afterwards, so a caller that faked it
-     * (or a later seeder in the same process) keeps its own.
-     */
-    private function withoutNotifications(callable $seed): void
-    {
-        $notifications = Notification::getFacadeRoot();
-        Notification::fake();
-
-        try {
-            $seed();
-        } finally {
-            Notification::swap($notifications);
-        }
+        // without mail, since the real write path notifies every
+        // assignee/watcher (spec 0119, voci 7 and 8): the in-app
+        // notifications stay, 60 Tasks must not send their emails.
+        $this->withoutMail(fn () => $this->seedSubtasks($this->seedRoots()));
     }
 
     private function clearExistingTasks(): void
@@ -255,9 +240,9 @@ class DemoTaskSeeder extends Seeder
     /**
      * D-11 (spec 0123): a direct model write, bypassing TaskService::update()
      * and its D-4 guard — the seed IS the record, not a client PATCHing it.
-     * No notification (the whole seed runs inside withoutNotifications()
-     * already); the same loadDetail() the real write path returns, so the
-     * caller sees the same shape either branch of Step 3 takes.
+     * No notification (a direct write, not the notifying write path); the
+     * same loadDetail() the real write path returns, so the caller sees the
+     * same shape either branch of Step 3 takes.
      */
     private function applyActionOnlyStatus(Task $task, TaskStatus $status): Task
     {

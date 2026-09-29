@@ -16,7 +16,7 @@ use App\Models\WorkOrder;
 use App\Services\Tasks\TaskCompletionService;
 use App\Services\TaskService;
 use Database\Seeders\Concerns\ResolvesSeedActor;
-use Database\Seeders\Concerns\SeedsWithoutNotifications;
+use Database\Seeders\Concerns\SeedsWithoutMail;
 use Database\Seeders\DemoCatalog\DemoTaskCatalogue;
 use DateTimeImmutable;
 use Faker\Factory as FakerFactory;
@@ -42,14 +42,14 @@ use Illuminate\Support\Collection;
  * 0127 D-1/D-2), writes the Task's segnatempo in the same transaction. The two
  * action-only phases (spec 0123, D-4) are never forced with a direct write.
  *
- * Mails are suppressed (SeedsWithoutNotifications): the write path notifies
- * every assignee. `$sinceOpportunityId` confines the step to the running
+ * Mails are suppressed (SeedsWithoutMail): the write path notifies
+ * every assignee, in-app only. `$sinceOpportunityId` confines the step to the running
  * chain's own batch.
  */
 class QualificaSampleTaskSeeder extends Seeder
 {
     use ResolvesSeedActor;
-    use SeedsWithoutNotifications;
+    use SeedsWithoutMail;
 
     /** The batch size when the caller names none (`--tasks` of qualifica:seed-sample). */
     public const int DEFAULT_TASKS = 30;
@@ -112,7 +112,7 @@ class QualificaSampleTaskSeeder extends Seeder
         $faker = FakerFactory::create('it_IT');
 
         // Step 2: the batch, with the write path's mails suppressed.
-        $this->withoutNotifications(function () use ($tasks, $faker, $actor, $taskTypes, $workOrders, $opportunities, $statuses): void {
+        $this->withoutMail(function () use ($tasks, $faker, $actor, $taskTypes, $workOrders, $opportunities, $statuses): void {
             for ($index = 0; $index < $tasks; $index++) {
                 $outcome = self::OUTCOMES[$index % count(self::OUTCOMES)];
                 $task = $index % self::WORK_ORDER_STRIDE === 0 && $workOrders->isNotEmpty()
