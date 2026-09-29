@@ -216,3 +216,25 @@ it('isolates a failed referent row (missing last_name) without blocking the vali
         ->and($fresh->failed_rows)->toBe(1)
         ->and(collect($fresh->report)->firstWhere('level', 'error'))->not->toBeNull();
 });
+
+it('leaves the gender blank when the external value is missing, instead of assuming male', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/referents*' => Http::response([
+            'items' => [
+                ['id' => 20, 'contact_scope' => 'internal', 'first_name' => 'Blank', 'last_name' => 'Gender'],
+                ['id' => 21, 'contact_scope' => 'internal', 'first_name' => 'Anna', 'last_name' => 'Bianchi', 'gender' => 'female'],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'referents']));
+
+    $blank = Referent::query()->where('old_id', 20)->with('personalData')->first();
+    $female = Referent::query()->where('old_id', 21)->with('personalData')->first();
+
+    expect($blank->personalData->gender)->toBeNull()
+        ->and($female->personalData->gender?->value)->toBe('female');
+});

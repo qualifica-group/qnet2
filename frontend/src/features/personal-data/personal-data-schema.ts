@@ -34,7 +34,7 @@ export function buildPersonalDataSchema(t: TFunction) {
       birth_city_id: z.number().nullable().optional(),
       // Individual only: the comune of residence, referenced by id.
       residence_city_id: z.number().nullable().optional(),
-      // Individual only (default male); a company card carries no gender.
+      // Individual only, optional; a company card carries no gender.
       gender: z.enum(['male', 'female']).optional(),
     })
     .superRefine((values, ctx) => {

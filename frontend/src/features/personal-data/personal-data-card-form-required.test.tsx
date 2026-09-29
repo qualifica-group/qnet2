@@ -80,6 +80,17 @@ describe('PersonalDataCardForm — required markers', () => {
 
     expect(screen.getByText(i18n.t('personalData.form.taxCode')).textContent).not.toContain('*')
   })
+
+  it('starts the gender blank on a new individual card, never pre-selecting male', () => {
+    renderCard()
+
+    expect(emptyPersonalDataDraft().gender).toBeNull()
+    const genderTrigger = screen.getByRole('combobox', {
+      name: new RegExp(i18n.t('personalData.form.gender')),
+    })
+    expect(genderTrigger).toHaveTextContent(i18n.t('personalData.form.genderPlaceholder'))
+    expect(genderTrigger).not.toHaveTextContent('Male')
+  })
 })
 
 describe('PersonalDataCardForm — highlight on a refused save', () => {

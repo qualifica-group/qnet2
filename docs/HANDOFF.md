@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SESSO ANAGRAFICA SENZA DEFAULT — NON COMMITTATO (2026-09-29)
+
+- Decisione utente: il sesso di una scheda persona fisica NON e' piu' preimpostato a maschio; se non compilato resta
+  vuoto (null). Tolti tutti i fallback `'male'` in FE (`drafts.ts`, `personal-data-card-form.tsx`,
+  `request-create-payload.ts`, `use-request-work-form.ts`, `request-work-payload.ts`); select con placeholder
+  `personalData.form.genderPlaceholder` (IT/EN). BE: tolto `#[IsDefault]` da `GenderEnum::Male`; l'import legacy
+  `ReferentsSource` lascia null un sesso vuoto/sconosciuto (warning "left blank"). Colonna gia' nullable, nessuna migrazione.
+- I dati gia' salvati come maschio per effetto del vecchio default restano tali (non distinguibili da una scelta reale).
+- Verifica: Pest 224 + 294 verdi, Pint pulito; Vitest 861 verdi, ESLint e `tsc -b --force` puliti. Manuale Claude Docs aggiornato.
+
 ## SEED SENZA EMAIL, CON NOTIFICHE IN-APP — NON COMMITTATO (2026-09-29)
 
 - Direttiva utente: nei seeder nessuna email deve partire; le notifiche in-app vanno bene.

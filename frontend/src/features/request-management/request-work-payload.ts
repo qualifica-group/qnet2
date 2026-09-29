@@ -122,10 +122,9 @@ function toClientIdentityPayload(source: ClientIdentitySource): RequestClientIde
     birth_date: source.birth_date,
     birth_city_id: source.birth_city_id,
     residence_city_id: source.residence_city_id,
-    // Same normalization the draft applies (individual defaults to male, a
-    // company carries none), so a legacy null on the loaded card does not read
-    // as an edit on both sides of the comparison.
-    gender: source.type === 'company' ? null : (source.gender ?? 'male'),
+    // Same normalization the draft applies (a company carries no gender), so
+    // both sides of the comparison agree.
+    gender: source.type === 'company' ? null : source.gender,
   }
 }
 

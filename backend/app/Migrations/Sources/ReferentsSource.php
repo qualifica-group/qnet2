@@ -187,28 +187,26 @@ class ReferentsSource extends AbstractMigrationSource
     }
 
     /**
-     * Map the external sex onto GenderEnum. A referent is always an individual
-     * card, so an absent/blank value falls back to the enum default (male); an
-     * unknown value is a non-fatal warning and likewise falls back, so the row
-     * never fails on gender alone.
+     * Map the external sex onto GenderEnum. An absent/blank value stays null (no
+     * gender is assumed); an unknown value is a non-fatal warning and is left
+     * null too, so the row never fails on gender alone.
      *
      * @param  array<int, string>  $warnings
      */
-    private function resolveGender(mixed $raw, array &$warnings): string
+    private function resolveGender(mixed $raw, array &$warnings): ?string
     {
-        $default = (GenderEnum::default() ?? GenderEnum::Male)->value;
         $value = trim((string) ($raw ?? ''));
 
         if ($value === '') {
-            return $default;
+            return null;
         }
 
         $case = GenderEnum::tryFrom($value);
 
         if ($case === null) {
-            $warnings[] = "Unresolved gender '{$value}', defaulted to {$default}.";
+            $warnings[] = "Unresolved gender '{$value}', left blank.";
 
-            return $default;
+            return null;
         }
 
         return $case->value;

@@ -93,8 +93,8 @@ export function PersonalDataCardForm({
       birth_date: value.birth_date ?? '',
       birth_city_id: value.birth_city_id ?? null,
       residence_city_id: value.residence_city_id ?? null,
-      // Individual cards always carry a gender (default male); company: none.
-      gender: value.gender ?? 'male',
+      // Blank until chosen: no gender is assumed for an individual card.
+      gender: value.gender ?? undefined,
     },
   })
 
@@ -150,7 +150,7 @@ export function PersonalDataCardForm({
     residence_city_id: isCompany ? null : (watched.residence_city_id ?? null),
     residence_city: value.residence_city,
     // Gender is an individual-only attribute: a company card carries none.
-    gender: isCompany ? null : (watched.gender ?? 'male'),
+    gender: isCompany ? null : (watched.gender ?? null),
     contacts: value.contacts,
     addresses: value.addresses,
   }

@@ -87,13 +87,13 @@ export function PersonalDataIndividualFields({
                     {t('personalData.form.gender')}
                   </FormLabel>
                   <Select
-                    value={field.value}
+                    value={field.value ?? ''}
                     onValueChange={field.onChange}
                     disabled={genderGate.disabled || genderGate.readOnly}
                   >
                     <FormControl>
                       <SelectTrigger className="w-full">
-                        <SelectValue />
+                        <SelectValue placeholder={t('personalData.form.genderPlaceholder')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

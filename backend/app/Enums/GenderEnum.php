@@ -2,7 +2,6 @@
 
 namespace App\Enums;
 
-use App\Enums\Attributes\IsDefault;
 use App\Enums\Attributes\Label;
 use App\Enums\Concerns\HasMeta;
 
@@ -17,7 +16,6 @@ enum GenderEnum: string
     use HasMeta;
 
     #[Label('Male')]
-    #[IsDefault(true)]
     case Male = 'male';
 
     #[Label('Female')]

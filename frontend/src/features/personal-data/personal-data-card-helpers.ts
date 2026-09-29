@@ -11,8 +11,7 @@ import type { PersonalDataDraft } from '@/features/personal-data/types'
 /**
  * The text inputs the focus may land on, in reading order. The remaining card
  * controls (the type toggle, the gender select, the two comune pickers) carry
- * no RHF-registered element to focus, and none of them can be the missing
- * required field: the type and the gender always hold a value.
+ * no RHF-registered element to focus.
  */
 const FOCUSABLE_FIELDS = [
   'company_name',

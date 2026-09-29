@@ -56,7 +56,7 @@ export function emptyPersonalDataDraft(
     birth_date: null,
     birth_city_id: null,
     residence_city_id: null,
-    gender: type === 'company' ? null : 'male',
+    gender: null,
     contacts: [],
     addresses: [],
   }
@@ -121,9 +121,8 @@ export function cardToDraft(card: PersonalDataCard): PersonalDataDraft {
     birth_city: card.birth_city,
     residence_city_id: card.residence_city_id,
     residence_city: card.residence_city,
-    // Mirror emptyPersonalDataDraft: an individual always carries a gender
-    // (default male; backfills a legacy null), a company carries none.
-    gender: card.gender ?? (card.type === 'company' ? null : 'male'),
+    // A company carries no gender; an individual keeps its own, blank if unset.
+    gender: card.type === 'company' ? null : card.gender,
     contacts: card.contacts.map(contactToDraft),
     addresses: card.addresses.map(addressToDraft),
   }

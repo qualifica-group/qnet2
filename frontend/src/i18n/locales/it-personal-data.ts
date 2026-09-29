@@ -52,6 +52,7 @@ export const personalData = {
     residenceCity: personalDataFieldLabels.residence_city_id,
     residenceCityPlaceholder: 'Cerca il comune di residenza',
     gender: personalDataFieldLabels.gender,
+    genderPlaceholder: 'Seleziona il sesso',
     save: 'Salva',
     saving: 'Salvataggio…',
     create: 'Crea scheda',

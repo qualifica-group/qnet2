@@ -51,6 +51,7 @@ export const personalData = {
     residenceCity: personalDataFieldLabels.residence_city_id,
     residenceCityPlaceholder: 'Search the town of residence',
     gender: personalDataFieldLabels.gender,
+    genderPlaceholder: 'Select the gender',
     save: 'Save',
     saving: 'Saving…',
     create: 'Create card',
