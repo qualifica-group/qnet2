@@ -33,8 +33,16 @@ interface ProductLinesFieldProps {
  */
 export function ProductLinesField({ value, onChange, disabled = false }: ProductLinesFieldProps) {
   const { t } = useTranslation()
-  const { addRow, removeRow, setRowRootCategory, setRowProductCategory, rootCategoryFor, canAddRow } =
-    useProductLinesField({ value, onChange })
+  const {
+    addRow,
+    removeRow,
+    setRowRootCategory,
+    setRowProductCategory,
+    rootCategoryFor,
+    otherRowsFilled,
+    singleRootsBlocked,
+    canAddRow,
+  } = useProductLinesField({ value, onChange })
   // The category quick-create is the only one left (spec 0132 scope: the
   // function quick-create is removed, not replaced).
   const productCategoryQuickCreate = useQuickCreateAction(PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE)
@@ -61,6 +69,7 @@ export function ProductLinesField({ value, onChange, disabled = false }: Product
                     value={rootCategoryId}
                     onChange={(id) => setRowRootCategory(index, id)}
                     disabled={disabled}
+                    otherRowsFilled={otherRowsFilled(index)}
                     triggerLabel={t('productLines.rootCategory', { n: index + 1 })}
                   />
                 </div>
@@ -115,6 +124,9 @@ export function ProductLinesField({ value, onChange, disabled = false }: Product
       </Button>
 
       <p className="text-xs text-muted-foreground">{t('productLines.hint')}</p>
+      {singleRootsBlocked ? (
+        <p className="text-xs text-muted-foreground">{t('productLines.singleRootBlocked')}</p>
+      ) : null}
     </div>
   )
 }

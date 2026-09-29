@@ -213,3 +213,13 @@ function findNode(
 
   return null
 }
+
+/**
+ * Whether a ROOT may not be picked for a row because the card already holds
+ * another one (spec 0077 AC-047, user directive 2026-09-29): a `single` root
+ * would turn a card of N rows into a `single` card of N+1, which INV-3
+ * refuses on save. Read off the root itself — it owns `management_mode`.
+ */
+export function isSingleRootBlocked(root: ProductCategoryTreeNode, otherRowsFilled: boolean): boolean {
+  return otherRowsFilled && root.management_mode === 'single'
+}

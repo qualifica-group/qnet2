@@ -21,6 +21,8 @@ export const productLines = {
   businessFunctionSearch: 'Cerca funzioni aziendali…',
   productCategorySearch: 'Cerca categorie prodotto…',
   rootCategorySearch: 'Cerca categoria genitore…',
+  /** Spec 0077 AC-047: why a `single` root is disabled beside other rows. */
+  singleRootBlocked: 'Le categorie genitore gestite a riga singola non si possono aggiungere accanto ad altre righe.',
   selectPlaceholder: 'Seleziona…',
   selectEmpty: 'Nessun risultato trovato.',
   selectError: 'Impossibile caricare le opzioni.',

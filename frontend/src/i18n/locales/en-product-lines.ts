@@ -21,6 +21,8 @@ export const productLines = {
   businessFunctionSearch: 'Search business functions…',
   productCategorySearch: 'Search product categories…',
   rootCategorySearch: 'Search parent category…',
+  /** Spec 0077 AC-047: why a `single` root is disabled beside other rows. */
+  singleRootBlocked: 'Parent categories managed as a single row cannot be added beside other rows.',
   selectPlaceholder: 'Select…',
   selectEmpty: 'No results found.',
   selectError: 'Unable to load the options.',

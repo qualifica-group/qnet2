@@ -225,6 +225,29 @@ describe('ProductLinesCellEditor (spec 0132 AC-020)', () => {
     expect(onValueChange).not.toHaveBeenCalled()
   })
 
+  it('AC-047: on a multiple-mode card holding a pair, a single-mode root is disabled with the reason', async () => {
+    const onValueChange = vi.fn()
+    renderEditor([PAIR], onValueChange)
+
+    const singleRoot = await screen.findByRole('option', { name: 'Single root' })
+    expect(singleRoot).toBeDisabled()
+    expect(
+      screen.getByText('Parent categories managed as a single row cannot be added beside other rows.'),
+    ).toBeInTheDocument()
+
+    fireEvent.click(singleRoot)
+    expect(onValueChange).not.toHaveBeenCalled()
+  })
+
+  it('AC-047: an empty card keeps the single-mode root pickable, with no note', async () => {
+    renderEditor([], vi.fn())
+
+    expect(await screen.findByRole('option', { name: 'Single root' })).toBeEnabled()
+    expect(
+      screen.queryByText('Parent categories managed as a single row cannot be added beside other rows.'),
+    ).not.toBeInTheDocument()
+  })
+
   it('INV-3: a multiple-mode card stays free to add another pair', async () => {
     const onValueChange = vi.fn()
     renderEditor([PAIR], onValueChange)

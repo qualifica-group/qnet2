@@ -2,11 +2,14 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
+import { isSingleRootBlocked } from '@/features/product-lines/category-tree-scope'
 
 export interface ProductCategoryRootSelectProps {
   value: number | null
   onChange: (rootCategoryId: number) => void
   disabled?: boolean
+  /** Another row of the card already holds a category: `single` roots are listed disabled (spec 0077 AC-047). */
+  otherRowsFilled?: boolean
   /** Accessible name of the trigger — a repeated row editor has no visible label of its own. */
   triggerLabel: string
 }
@@ -23,6 +26,7 @@ export function ProductCategoryRootSelect({
   value,
   onChange,
   disabled = false,
+  otherRowsFilled = false,
   triggerLabel,
 }: ProductCategoryRootSelectProps) {
   const { t } = useTranslation()
@@ -33,8 +37,13 @@ export function ProductCategoryRootSelect({
     if (!tree) {
       return []
     }
-    return tree.map((root) => ({ id: root.id, name: root.name, depth: 0 }))
-  }, [tree])
+    return tree.map((root) => ({
+      id: root.id,
+      name: root.name,
+      depth: 0,
+      disabled: isSingleRootBlocked(root, otherRowsFilled),
+    }))
+  }, [tree, otherRowsFilled])
 
   return (
     <SearchableSelect

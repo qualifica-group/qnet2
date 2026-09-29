@@ -245,7 +245,7 @@ const guide: HelpGuide = {
           headers: ['Rule', 'Concrete effect'],
           rows: [
             ['Generates quote', 'Says whether the branch works with offers and appears as a column in the list. Today the Offers panel is available on every opportunity regardless.'],
-            ['Management mode: Single', 'An opportunity or request has only one Product Category row; Add product row does not allow a second one. The offer also has a single product row, and a product from another category is rejected.'],
+            ['Management mode: Single', 'An opportunity or request has only one Product Category row; Add product row does not allow a second one and, when another row already exists, the category cannot be picked. In the Request Management Product category cell, the category you pick replaces the current one. The offer also has a single product row, and a product from another category is rejected.'],
             ['Management mode: Multiple', 'No limit on the number of rows.'],
             ['Single offer per opportunity', 'A second offer on the same opportunity is rejected. Opportunities that already have more than one keep them.'],
             ['Generates a contract', 'On: a positive close opens a contract. Off: no contract, but a positive close is still possible. Contracts already open remain. If a card covers several categories, one without a contract is enough to prevent it.'],

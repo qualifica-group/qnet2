@@ -15,9 +15,17 @@
 - Test: `product-lines-cell-editor.test.tsx` (test INV-3 aggiornato: requisito cambiato; + duplicato in single;
   multiple ora verifica l'append). Vitest product-lines/help/request-management/table/data-table verdi, ESLint e
   `tsc -b --force` puliti.
-- Manuale: guida in-app request-management IT/EN (paragrafo sulla cella Categoria prodotto nella sezione overview);
-  Manuale Utente QNet Claude Docs aggiornato (paragrafo dopo la tabella colonne di Gestione Richieste + riga
-  "a riga singola" della tabella modalita' di gestione).
+- Seconda direttiva (stesso giorno, spec 0077 AC-047), tabella E form: con un'altra riga gia' classificata le RADICI
+  `single` sono elencate ma disabilitate (nota `productLines.singleRootBlocked`), perche' renderebbero `single` una
+  scheda con piu' righe. Helper `isSingleRootBlocked()` in `category-tree-scope.ts`; form: `otherRowsFilled(index)`
+  / `singleRootsBlocked` in `useProductLinesField` -> prop `otherRowsFilled` di `ProductCategoryRootSelect`; griglia:
+  `addingBesidePairs` nell'editor. Vale per tutti i form con `ProductLinesField` (opportunita', richieste, progetti,
+  campagne). Due test di `product-lines-field-management-mode.test.tsx` sceglievano una radice single sulla riga 2
+  (requisito cambiato): ora usano una seconda radice multipla aggiunta al fixture. 1507 test verdi.
+- Manuale: guida in-app request-management IT/EN (paragrafo sulla cella Categoria prodotto nella sezione overview)
+  e product-categories IT/EN (riga "Modalita' di gestione: Singola"); Manuale Utente QNet Claude Docs aggiornato
+  (paragrafo dopo la tabella colonne di Gestione Richieste + riga "a riga singola" della tabella modalita').
+  PDF derivato non rigenerato.
 
 ## DETTAGLIO RICHIESTA INESISTENTE / NON VISIBILE: STATO "RECORD NON DISPONIBILE" — NON COMMITTATO (2026-09-29)
 

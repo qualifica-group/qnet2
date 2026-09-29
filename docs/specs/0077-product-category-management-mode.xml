@@ -390,6 +390,13 @@
       form; la categoria già presente resta non selezionabile. Direttiva utente 2026-09-29: prima la
       scelta era bloccata finché non si rimuoveva la coppia. Verifica: test Vitest
       `product-lines-cell-editor.test.tsx`.</criterion>
+    <criterion id="AC-047">Data una scheda (form con `ProductLinesField` o editor di cella `product_lines`
+      in griglia) con ALMENO un'altra riga già classificata, quando si sceglie la categoria genitore di
+      una riga, allora le radici in modalità `"single"` sono elencate ma disabilitate, con una nota che ne
+      spiega il motivo: sceglierle renderebbe `single` una scheda con più righe (INV-3). Con una sola riga
+      (o nessuna) restano selezionabili; in griglia, se la coppia presente è già `single`, vale AC-046
+      (sostituzione). Direttiva utente 2026-09-29. Verifica: test Vitest
+      `product-lines-field-management-mode.test.tsx`, `product-lines-cell-editor.test.tsx`.</criterion>
 
   </acceptance_criteria>
 

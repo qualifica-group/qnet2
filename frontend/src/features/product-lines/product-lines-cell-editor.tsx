@@ -43,7 +43,11 @@ import { Input } from '@/components/ui/input'
 import { flattenCategoryTree, pruneToPickable, type FlatCategoryOption } from '@/features/product-categories/flatten-tree'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
-import { resolveRowSetManagementMode, selectableIdsUnderRoot } from '@/features/product-lines/category-tree-scope'
+import {
+  isSingleRootBlocked,
+  resolveRowSetManagementMode,
+  selectableIdsUnderRoot,
+} from '@/features/product-lines/category-tree-scope'
 import type { TableRow } from '@/features/table/types'
 import { cn } from '@/lib/utils'
 
@@ -133,14 +137,24 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
   const treeQuery = useProductCategoryTree()
   const categoryTree = treeQuery.data ?? EMPTY_TREE
   const singleRowReached = pairs.length > 0 && resolveRowSetManagementMode(pairs, categoryTree) === 'single'
+  // Spec 0077 AC-047: on a `multiple` card that already holds a pair, a pick
+  // ADDS a pair, so a `single` root would leave two rows under a single mode.
+  const addingBesidePairs = pairs.length > 0 && !singleRowReached
 
   const pickingCategory = step === 'product_category' && rootCategory !== null
 
   // Step 1: every root (top-level node, no parent) — always the full list
-  // (spec 0132 D-1), never pruned or disabled.
+  // (spec 0132 D-1), never pruned; a `single` root is listed disabled when
+  // the pick would add a pair beside the existing ones (AC-047).
   const rootOptions = useMemo<FlatCategoryOption[]>(
-    () => categoryTree.map((root) => ({ id: root.id, name: root.name, depth: 0 })),
-    [categoryTree],
+    () =>
+      categoryTree.map((root) => ({
+        id: root.id,
+        name: root.name,
+        depth: 0,
+        disabled: isSingleRootBlocked(root, addingBesidePairs),
+      })),
+    [categoryTree, addingBesidePairs],
   )
 
   // Step 2: the chosen root's own `is_selectable` descendants, with its
@@ -265,6 +279,9 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
       {singleRowReached ? (
         <p className="px-2 pb-1 text-xs text-muted-foreground">{t('table.productLinesEditor.singleModeReached')}</p>
       ) : null}
+      {addingBesidePairs && !pickingCategory ? (
+        <p className="px-2 pb-1 text-xs text-muted-foreground">{t('productLines.singleRootBlocked')}</p>
+      ) : null}
 
       <div
         role="listbox"
@@ -293,11 +310,12 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
         ) : (
           options.map((option) => {
             const alreadySelected = pickingCategory && selectedKeys.has(pairKey({ product_category_id: option.id }))
-            const containerDisabled = pickingCategory && option.disabled === true
             // Two distinct reasons to refuse a pick: the category is already
-            // there (`aria-selected`), or it is a non-selectable container
-            // shown only as context — only the first is a selection state.
-            const blocked = alreadySelected || containerDisabled
+            // there (`aria-selected`), or the option is listed disabled — a
+            // non-selectable container shown only as context, or a `single`
+            // root beside existing pairs (AC-047) — only the first is a
+            // selection state.
+            const blocked = alreadySelected || option.disabled === true
 
             return (
               <button

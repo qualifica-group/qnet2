@@ -34,7 +34,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Clicca la cella **Categoria prodotto** per cambiarla senza aprire la richiesta: scegli la categoria genitore, poi la categoria prodotto. Se la categoria presente è gestita a riga singola (ad esempio Formazione), quella che scegli la sostituisce; altrimenti viene aggiunta alle altre. Con la **X** rimuovi una categoria.",
+          text: "Clicca la cella **Categoria prodotto** per cambiarla senza aprire la richiesta: scegli la categoria genitore, poi la categoria prodotto. Se la categoria presente è gestita a riga singola (ad esempio Formazione), quella che scegli la sostituisce; altrimenti viene aggiunta alle altre, e le categorie a riga singola non sono selezionabili (vale anche per la seconda riga del form). Con la **X** rimuovi una categoria.",
         },
       ],
     },

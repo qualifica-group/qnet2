@@ -245,7 +245,7 @@ const guide: HelpGuide = {
           headers: ['Regola', 'Effetto concreto'],
           rows: [
             ['Prevede preventivo', "Dice se il ramo lavora con le offerte e compare come colonna nell'elenco. Oggi il pannello Offerte è comunque disponibile su ogni opportunità."],
-            ['Modalità di gestione: Singola', "Opportunità o richiesta con una sola riga Categoria Prodotto; Aggiungi riga prodotto non ne permette una seconda. Anche l'offerta ha una sola riga prodotto e un prodotto di un'altra categoria viene rifiutato."],
+            ['Modalità di gestione: Singola', "Opportunità o richiesta con una sola riga Categoria Prodotto; Aggiungi riga prodotto non ne permette una seconda e, se c'è già un'altra riga, la categoria non è selezionabile. Nella cella Categoria prodotto di Gestione Richieste la categoria scelta sostituisce quella presente. Anche l'offerta ha una sola riga prodotto e un prodotto di un'altra categoria viene rifiutato."],
             ['Modalità di gestione: Multipla', 'Nessun limite di righe.'],
             ['Offerta unica per opportunità', 'Una seconda offerta sulla stessa opportunità viene rifiutata. Le opportunità che ne hanno già più di una le conservano.'],
             ['Prevede un contratto', 'Attiva: la chiusura positiva apre un contratto. Spenta: nessun contratto, ma la chiusura positiva resta possibile. I contratti già aperti restano. Se una scheda copre più categorie, basta una senza contratto per non crearlo.'],

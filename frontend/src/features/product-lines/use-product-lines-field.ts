@@ -41,6 +41,15 @@ export function useProductLinesField({ value, onChange }: UseProductLinesFieldAr
   const rootCategoryFor = (row: ProductLineRow): number | null =>
     row.root_category_id ?? (row.product_category_id !== null ? rootCategoryIdFor(categoryTree, row.product_category_id) : null)
 
+  /**
+   * Spec 0077 AC-047: whether any row OTHER than `index` already has a root
+   * — then a `single` root is not offered to `index`, it would make the card
+   * `single` with more than one row (INV-3).
+   */
+  const otherRowsFilled = (index: number): boolean =>
+    value.some((row, rowIndex) => rowIndex !== index && rootCategoryFor(row) !== null)
+  const singleRootsBlocked = value.some((_, index) => otherRowsFilled(index))
+
   const addRow = () => {
     // Defense in depth: the caller already hides/disables "Add" once
     // `canAddRow` is false (AC-041), this guards a direct call too.
@@ -79,6 +88,9 @@ export function useProductLinesField({ value, onChange }: UseProductLinesFieldAr
     setRowRootCategory,
     setRowProductCategory,
     rootCategoryFor,
+    otherRowsFilled,
+    /** Some row is offered no `single` root (AC-047): drives the explanatory note. */
+    singleRootsBlocked,
     /** `false` once the resolved mode is `single` (AC-041); consumed to hide/disable "Add". */
     canAddRow,
     /** The resolved mode for this row set, `null` while indeterminate (spec 0077, point 4). */

@@ -25,6 +25,7 @@ const SINGLE_CATEGORY_ID = 901
 const MULTI_ROOT_ID = 800
 const MULTI_CATEGORY_A = 801
 const MULTI_CATEGORY_B = 802
+const OTHER_MULTI_ROOT_ID = 700
 
 /**
  * Two roots: one `single` mode, one `multiple`. `management_mode` is already
@@ -64,6 +65,12 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
           node({ id: 801, name: 'Multi category A', parent_id: 800 }),
           node({ id: 802, name: 'Multi category B', parent_id: 800 }),
         ],
+      }),
+      node({
+        id: 700,
+        name: 'Other multi root',
+        is_selectable: false,
+        children: [node({ id: 701, name: 'Other multi category', parent_id: 700 })],
       }),
     ],
   }
@@ -172,17 +179,16 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7, spec 01
     // Its category waits for that pick, as row 1's did.
     expect(screen.getByTestId('disabled-Product category 2')).toHaveTextContent('true')
 
-    fireEvent.click(screen.getByRole('button', { name: `select Parent category 2 ${SINGLE_ROOT_ID}` }))
+    fireEvent.click(screen.getByRole('button', { name: `select Parent category 2 ${OTHER_MULTI_ROOT_ID}` }))
 
     // A DIFFERENT root on the second row: nothing bounces it back to the
     // first row's, and row 1 stays untouched.
     await waitFor(() =>
-      expect(screen.getByTestId('value-Parent category 2')).toHaveTextContent(String(SINGLE_ROOT_ID)),
+      expect(screen.getByTestId('value-Parent category 2')).toHaveTextContent(String(OTHER_MULTI_ROOT_ID)),
     )
     expect(screen.getByTestId('value-Parent category 1')).toHaveTextContent(String(MULTI_ROOT_ID))
     expect(screen.getByTestId('value-Product category 1')).toHaveTextContent(String(MULTI_CATEGORY_A))
-    // "Add" stays available: multiple mode allows further rows (row 2 has not
-    // yet picked its single-mode category).
+    // "Add" stays available: multiple mode allows further rows.
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
   })
 
@@ -194,10 +200,10 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7, spec 01
       ],
     })
 
-    fireEvent.click(screen.getByRole('button', { name: `select Parent category 1 ${SINGLE_ROOT_ID}` }))
+    fireEvent.click(screen.getByRole('button', { name: `select Parent category 1 ${OTHER_MULTI_ROOT_ID}` }))
 
     await waitFor(() =>
-      expect(screen.getByTestId('value-Parent category 1')).toHaveTextContent(String(SINGLE_ROOT_ID)),
+      expect(screen.getByTestId('value-Parent category 1')).toHaveTextContent(String(OTHER_MULTI_ROOT_ID)),
     )
     // Only the edited row loses its category (it was scoped by the old root).
     expect(screen.getByTestId('value-Product category 1')).toHaveTextContent('')
@@ -242,6 +248,39 @@ describe('ProductLinesField management-mode enforcement (spec 0077 MT-7, spec 01
     })
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add product line' })).toBeDisabled())
+  })
+
+  it('AC-047: beside a filled row, a single-mode root is listed disabled for the other rows, with the reason', async () => {
+    renderHarness({
+      defaultValue: [
+        { root_category_id: MULTI_ROOT_ID, product_category_id: MULTI_CATEGORY_A },
+        { root_category_id: null, product_category_id: null },
+      ],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('options-Parent category 2')).toHaveTextContent(
+        `${SINGLE_ROOT_ID}:disabled,${MULTI_ROOT_ID},${OTHER_MULTI_ROOT_ID}`,
+      ),
+    )
+    // Row 1 is blocked too: row 2 has no root yet, so it stays free.
+    expect(screen.getByTestId('options-Parent category 1')).toHaveTextContent(
+      `${SINGLE_ROOT_ID},${MULTI_ROOT_ID},${OTHER_MULTI_ROOT_ID}`,
+    )
+    expect(
+      screen.getByText('Parent categories managed as a single row cannot be added beside other rows.'),
+    ).toBeInTheDocument()
+  })
+
+  it('AC-047: a lone row keeps every root, single-mode included, and shows no note', () => {
+    renderHarness({ defaultValue: [{ root_category_id: null, product_category_id: null }] })
+
+    expect(screen.getByTestId('options-Parent category 1')).toHaveTextContent(
+      `${SINGLE_ROOT_ID},${MULTI_ROOT_ID},${OTHER_MULTI_ROOT_ID}`,
+    )
+    expect(
+      screen.queryByText('Parent categories managed as a single row cannot be added beside other rows.'),
+    ).not.toBeInTheDocument()
   })
 
   it('leaves rows unconstrained while no category has resolved a mode (indeterminate, point 4)', () => {
