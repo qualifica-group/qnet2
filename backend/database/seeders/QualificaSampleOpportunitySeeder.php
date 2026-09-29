@@ -81,7 +81,12 @@ class QualificaSampleOpportunitySeeder extends Seeder
         // User directive 2026-08-31: an anagrafica carries ONE open
         // opportunity at a time, and the lead step right before this one has
         // already converted some of its own registries — those are off limits.
-        $registries = $this->freeRegistries($this->openOpportunityGuard);
+        // The pool is bounded by the most this run can take: the batch plus
+        // one deal per category still incomplete (the coverage upper bound).
+        $registries = $this->freeRegistries(
+            $this->openOpportunityGuard,
+            $opportunities + ($sinceOpportunityId === null ? 0 : count($this->coverage->incompleteCategoryIds())),
+        );
         $this->loadOffers($this->hierarchy);
 
         // Step 1: without the mandatory Anagrafica (spec 0040, D-4) or an

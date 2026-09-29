@@ -15,6 +15,14 @@
       /request-management/{id}; chi non vede nessuno dei due non riceve alcun link
       ma un messaggio che gli dice di farsi abilitare al modulo.
     - I supervisori sono in copia SOLO sul trasferimento, mai sulle assegnazioni.
+
+  REVISIONE 2026-09-29 (decisione utente): la copia di supervisione del trasferimento va a
+  chi ha `{module}.viewAll` ("vede tutte le gestioni"), non piu' al permesso dedicato
+  `receiveTransferNotifications`, che viene RIMOSSO (policy + migrazione
+  `2026_09_29_120000_prune_receive_transfer_notifications_permissions`). Motivo: i ruoli
+  "proprie richieste" ereditavano l'intero modulo, quindi ogni operatore riceveva ogni
+  trasferimento. Precedente e nuovo operatore restano invariati. AC-020/AC-021 sono
+  riformulati sotto con il prefisso (rev. 2026-09-29).
 -->
 <spec id="0081-assignment-and-transfer-notifications" status="draft" owner="nicola" date="2026-08-04">
 
@@ -338,8 +346,8 @@
     <criterion id="AC-017">`action_url` e' SEMPRE un path interno; nessuna notifica introdotta persiste un URL assoluto nel payload `database`.</criterion>
     <criterion id="AC-018">Trasferendo una richiesta, il PRECEDENTE operatore riceve `database` + `mail` con il testo "non sei piu' l'operatore", contenente contatto, sede di origine, sede di destinazione, nuovo operatore, autore e data.</criterion>
     <criterion id="AC-019">Trasferendo una richiesta priva di operatore precedente, il trasferimento riesce e nessuna notifica "precedente operatore" viene spedita.</criterion>
-    <criterion id="AC-020">Il permesso `request-management.receiveTransferNotifications` esiste dopo `permissions:sync` ed e' assegnato al ruolo `supervisor` da `TestUsersSeeder`.</criterion>
-    <criterion id="AC-021">Un utente che ha `request-management.receiveTransferNotifications` (per ruolo o diretto) riceve la copia del trasferimento; un utente che ha il ruolo `supervisor` con quel permesso REVOCATO non la riceve.</criterion>
+    <criterion id="AC-020">(rev. 2026-09-29) `permissions:sync` non crea piu' `*.receiveTransferNotifications`; la migrazione di pulizia elimina le righe esistenti. Il ruolo `supervisor` del seed ha `request-management.viewAll`, un operatore "proprie richieste" no.</criterion>
+    <criterion id="AC-021">(rev. 2026-09-29) Un utente che ha `{module}.viewAll` (per ruolo o diretto) riceve la copia del trasferimento; revocato il permesso non la riceve. Un utente non coinvolto senza `viewAll` (anche con `viewSite`) non riceve nulla.</criterion>
     <criterion id="AC-022">Il nuovo operatore riceve UNA sola notifica di trasferimento (quella con il testo "nuovo contatto assegnato"), mai anche la copia supervisore ne' la notifica generica di assegnazione.</criterion>
     <criterion id="AC-023">L'attore del trasferimento non riceve nulla, nemmeno se ha il permesso o e' il nuovo operatore.</criterion>
     <criterion id="AC-024">Nessun utente ha il permesso: il trasferimento riesce e notifica solo precedente + nuovo operatore, senza eccezioni.</criterion>

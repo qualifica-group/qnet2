@@ -82,11 +82,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'In fondo trovi le schede **Note**, **Documenti** e **Storico**. Premi **Salva**: torni alla tabella, sulla scheda categoria da cui eri partito (ad esempio **GOL Abruzzo**).',
+          text: 'In fondo trovi le schede **Note**, **Documenti** e **Storico**. Premi **Salva**: torni alla tabella, sulla scheda categoria da cui eri partito (ad esempio **GOL Abruzzo**). Lo stesso vale per **Trasferisci contatto**, accanto a **Salva**: a trasferimento concluso torni alla tabella, perché il contatto passa alla nuova sede e al nuovo operatore.',
         },
         {
           type: 'warning',
           text: 'Per chiudere con esito positivo serve il codice fiscale oppure la partita IVA del cliente.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Se apri il link di una richiesta che non esiste più vedi **Record non trovato**; se la richiesta non rientra nella tua visibilità vedi **Accesso negato**. In entrambi i casi torna alla tabella con **Indietro**.',
         },
       ],
     },
@@ -117,6 +121,32 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: 'Se nessun operatore è abilitato su tutte le richieste scelte, **Assegna a operatore** non è disponibile: usa **Smistamento equo**.',
+        },
+      ],
+    },
+    {
+      id: 'transfer-notifications',
+      title: 'Chi riceve le notifiche di trasferimento',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Quando un contatto viene trasferito, la notifica (campanella ed email) arriva solo a:',
+        },
+        {
+          type: 'table',
+          headers: ['Chi', 'Cosa riceve'],
+          rows: [
+            ['Chi aveva il contatto', 'Avviso che il contatto non è più suo e a chi è passato.'],
+            ['Chi riceve il contatto', 'Avviso che il contatto gli è stato assegnato.'],
+            [
+              'Chi ha il permesso **Visualizza tutti**',
+              'Riepilogo di ogni trasferimento del modulo, anche quando non è coinvolto.',
+            ],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Gli altri utenti non ricevono nulla, anche se lavorano sulla stessa sede. Chi esegue il trasferimento non riceve mai la propria notifica, e nessuno la riceve due volte.',
         },
       ],
     },

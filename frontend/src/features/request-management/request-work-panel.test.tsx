@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AxiosError, type AxiosResponse } from 'axios'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { RequestWorkPanelScreen } from '@/features/request-management/request-work-panel'
@@ -251,6 +252,24 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Could not load the record.'))
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+  })
+
+  it.each([
+    [404, 'Record not found', 'does not exist or has been deleted'],
+    [403, 'Access denied', 'You do not have the necessary permissions'],
+  ])('shows the record-unavailable state, without retry, on a %i', async (status, title, description) => {
+    fetchRequestWorkPanelMock.mockRejectedValue(
+      new AxiosError('failed', undefined, undefined, undefined, {
+        status,
+        data: { success: false, message: 'x' },
+      } as AxiosResponse),
+    )
+
+    renderPanel()
+
+    expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument()
+    expect(screen.getByText(new RegExp(description))).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
   })
 })
 

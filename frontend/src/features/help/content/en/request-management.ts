@@ -82,11 +82,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'At the bottom you find the **Notes**, **Documents** and **History** tabs. Press **Save**: you go back to the table, on the category tab you started from (for example **GOL Abruzzo**).',
+          text: 'At the bottom you find the **Notes**, **Documents** and **History** tabs. Press **Save**: you go back to the table, on the category tab you started from (for example **GOL Abruzzo**). The same goes for **Transfer contact**, next to **Save**: once the transfer is done you go back to the table, because the contact moves to the new site and operator.',
         },
         {
           type: 'warning',
           text: 'Closing with a positive outcome requires the client\'s tax code or VAT number.',
+        },
+        {
+          type: 'paragraph',
+          text: 'If you open the link of a request that no longer exists you see **Record not found**; if the request is outside your visibility you see **Access denied**. In both cases go back to the table with **Back**.',
         },
       ],
     },
@@ -117,6 +121,32 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: 'If no operator is enabled on every selected request, **Assign to operator** is unavailable: use **Balanced split**.',
+        },
+      ],
+    },
+    {
+      id: 'transfer-notifications',
+      title: 'Who receives transfer notifications',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'When a contact is transferred, the notification (bell and email) only goes to:',
+        },
+        {
+          type: 'table',
+          headers: ['Who', 'What they receive'],
+          rows: [
+            ['Whoever had the contact', 'A notice that the contact is no longer theirs, and who it went to.'],
+            ['Whoever receives the contact', 'A notice that the contact was assigned to them.'],
+            [
+              'Whoever holds the **View all** permission',
+              'A summary of every transfer in the module, even when not involved.',
+            ],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Other users receive nothing, even if they work on the same site. Whoever performs the transfer never receives their own notification, and nobody receives it twice.',
         },
       ],
     },

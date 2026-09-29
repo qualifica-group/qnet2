@@ -64,8 +64,9 @@ export interface ModuleDetailScreenProps {
    */
   onEdit?: () => void
   /**
-   * Called after the screen saved the record itself — only a `DetailScreen`
-   * that is its own edit surface (the request work panel) ever calls it. The
+   * Called after the screen saved (or transferred) the record itself — only a
+   * `DetailScreen` that is its own edit surface (the request work panel) ever
+   * calls it. The
    * host leaves the record: the Sheet closes (modal), the page navigates back
    * to the list.
    */

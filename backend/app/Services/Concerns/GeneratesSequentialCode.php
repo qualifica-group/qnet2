@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Concerns;
 
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -30,10 +31,9 @@ trait GeneratesSequentialCode
         // concurrent create racing on the same next sequence); a genuinely
         // empty prefix locks nothing and relies on the column's unique
         // constraint to reject a rare double-first-insert race.
-        $lastCode = DB::table($table)
-            ->where($column, 'like', $prefix.'-%')
+        $lastCode = $this->lastCodeQuery($table, $column, $prefix)
             ->lockForUpdate()
-            ->max($column);
+            ->value($column);
 
         return $this->formatNextCode(is_string($lastCode) ? $lastCode : null, $prefix);
     }
@@ -47,11 +47,23 @@ trait GeneratesSequentialCode
      */
     protected function peekNextSequentialCode(string $table, string $column, string $prefix): string
     {
-        $lastCode = DB::table($table)
-            ->where($column, 'like', $prefix.'-%')
-            ->max($column);
+        $lastCode = $this->lastCodeQuery($table, $column, $prefix)->value($column);
 
         return $this->formatNextCode(is_string($lastCode) ? $lastCode : null, $prefix);
+    }
+
+    /**
+     * The codes of $prefix, numerically highest first. The sequence is padded
+     * to a MINIMUM width, so past 9999 it grows a digit and a string MAX()
+     * would rank "{prefix}-9999" above "{prefix}-10000", handing out a code
+     * that already exists: longer first, then highest, is the numeric order.
+     */
+    private function lastCodeQuery(string $table, string $column, string $prefix): Builder
+    {
+        return DB::table($table)
+            ->where($column, 'like', $prefix.'-%')
+            ->orderByRaw('LENGTH('.DB::getQueryGrammar()->wrap($column).') DESC')
+            ->orderByDesc($column);
     }
 
     /**
@@ -64,6 +76,15 @@ trait GeneratesSequentialCode
             ? 1
             : ((int) substr($lastCode, strlen($prefix) + 1)) + 1;
 
-        return sprintf('%s-%0'.self::CODE_PAD_LENGTH.'d', $prefix, $nextSequence);
+        return $this->formatSequentialCode($prefix, $nextSequence);
+    }
+
+    /**
+     * "{prefix}-{seq:4}" for $sequence — for a caller that assigns a whole run
+     * of codes after nextSequentialCode() (the bulk sample seeder).
+     */
+    protected function formatSequentialCode(string $prefix, int $sequence): string
+    {
+        return sprintf('%s-%0'.self::CODE_PAD_LENGTH.'d', $prefix, $sequence);
     }
 }

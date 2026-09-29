@@ -3,6 +3,85 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## DETTAGLIO RICHIESTA INESISTENTE / NON VISIBILE: STATO "RECORD NON DISPONIBILE" — NON COMMITTATO (2026-09-29)
+
+- Segnalazione utente: `/request-management/203001` (404/403) mostrava "Impossibile caricare il record." + Riprova.
+  Direttiva: gestire come q-net (`q-net/src/app/pages/errors/*`): logo brand in maschera `bg-primary`, titolo,
+  descrizione, nessun Riprova. Backend invariato (gia' 404 envelope / 403 da `assertInScope`).
+- Nuovi: `lib/record-unavailable-reason.ts` (`recordUnavailableReason(error)` -> `'notFound' | 'forbidden' | null`,
+  solo axios 404/403) e `components/detail/record-unavailable.tsx` (`<RecordUnavailable reason title description />`,
+  card `bg-card`, badge icona sul logo: `SearchX` 404 / `Lock` 403; testi passati dal chiamante). Verificato sul
+  DB locale: 203001 esiste -> 403 per utente senza viewAll (id 12), 200 per id 1; id inesistente -> 404. `RequestWorkPanelScreen` lo usa prima del ramo errore generico (vale anche per
+  Gestione Iscritti). i18n: `requestManagement.workPanel.unavailable.{notFound,forbidden}.{title,description}`
+  (non in `common`: `en.ts` e' a 499 righe, limite 500).
+- `app/query-client.ts`: niente retry automatico sulle query in 404/403 (prima 1 retry = ~1s di skeleton inutile).
+- Guida in-app IT/EN `request-management` > "Lavorare una richiesta": paragrafo sui due stati. Manuale Claude Docs
+  NON aggiornato (connettore senza accesso al doc): sezione Gestione Richieste da allineare.
+- Prossimo passo proposto: estendere `RecordUnavailable` alle altre schermate di dettaglio (`useEntityDetail` +
+  `DetailError`, ~30 moduli) e alla pagina Gestione Iscritti nella guida.
+
+## GESTIONE RICHIESTE: RITORNO ALLA TABELLA DOPO "TRASFERISCI CONTATTO" DAL PANNELLO — NON COMMITTATO (2026-09-29)
+
+- Bug utente: trasferendo il contatto dal pannello "Lavora" si restava sul pannello (ricaricato), che l'operatore
+  non puo' piu' gestire (fuori dal suo perimetro D-3 senza `viewAll`).
+- Fix FE: `useRequestTransfer(panel, onTransferred?)` al successo chiama l'uscita dell'host (lo stesso `onSaved`
+  del salvataggio) invece di invalidare `requestManagementKeys.panel`: in modale chiude lo Sheet + `refreshGrid`
+  (righe + tab categoria), in pagina `navigate(LIST_PATH)`. Vale anche per Gestione Iscritti (stesso pannello).
+  Doc aggiornata di `ModuleDetailScreenProps.onSaved` e `RequestWorkPanelScreenProps.onSaved` (save o transfer).
+- Test: `request-work-panel-transfer.test.tsx` (requisito cambiato: prima "refreshes the panel", ora "leaves the
+  panel", niente refetch; su errore `onSaved` non chiamato). Vitest request-management/modules/pages 539 verdi,
+  help 106 verdi, ESLint e `tsc -b --force` puliti.
+- Manuale: guida in-app IT/EN `request-management` (sezione lavorazione) + manuale Claude Docs (dopo il passo "Salva").
+
+## SEED BULK DI RICHIESTE (1M PER TEST DI VOLUME) + FIX CODICI OLTRE 9999 — NON COMMITTATO (2026-09-29)
+
+- Direttiva utente: >1M richieste nella griglia Gestione Richieste per test di volume; scelta la modalita' bulk.
+  `php artisan qualifica:seed-sample --bulk --requests=1000000` (default 1000). Con `--bulk` qualsiasi altro flag di
+  dimensione -> INVALID. Seeder `QualificaSampleBulkRequestSeeder`: crea fino a 150 MODELLI dal write path reale
+  (`Support/SampleRequestTemplates`: Lead seeder + Request seeder in transazione poi ROLLBACK, righe lette prima),
+  poi copia con INSERT multi-riga, 500 richieste per transazione, id assegnati da MAX(id) (DB senza altri scrittori).
+  Ogni copia: anagrafica propria (`Support/BulkRegistryRows`: registry + personal_data + email/phone primari),
+  codice QUO sequenziale, titolo/nome via `RevenueProductTitleBuilder::compose()`, team/Fonte/Sede ruotati,
+  created_at negli ultimi 365 giorni in orario 08-19 (evita il buco DST: app UTC, MySQL locale in Europe/Rome).
+  Niente activity log ne' notifiche. Misurato su MySQL locale: ~1.800 richieste/s, 75 MB costanti (1M ~10-15 min).
+- BUG REALE CORRETTO (decisione utente): `GeneratesSequentialCode` usava MAX(code) su stringa -> oltre 9999
+  ("QUO-9999" > "QUO-10000") ogni nuovo codice collideva (500). Ora ordina per LENGTH poi valore
+  (`lastCodeQuery()`), vale per Offerte/Commesse/Progetti/Campagne/Prodotti. Costo: scansione dell'indice del
+  prefisso a ogni creazione. Nuovo `formatSequentialCode()`; `QuoteService::CODE_PREFIX` ora public.
+- `PicksFreeRegistries::freeRegistries($guard, $limit)`: a chunk e si ferma a $limit (prima caricava TUTTE le
+  anagrafiche: OOM con 1M). Request seeder passa `$requests`, Opportunity seeder batch + categorie incomplete.
+- `RevenueProductTitleBuilder`: `compose()`, `opportunityCode()`, `quoteRevenueProductNames()` pubblici.
+- Test: nuovo `QualificaSampleBulkRequestSeederTest` (12), 2 nuovi in `ProjectCodeGenerationTest` (PRJ-10000/10001).
+  Suite completa 8789 verdi (1 skipped), Pint pulito. 1M NON ancora eseguito sul DB locale (lo lancia l'utente).
+- Manuale: nessun impatto (comando di sviluppo; il fix dei codici non cambia nulla di visibile sotto 10.000).
+
+## NOTIFICHE DI TRASFERIMENTO SOLO A COINVOLTI + "VISUALIZZA TUTTI" — NON COMMITTATO (2026-09-29)
+
+- Decisione utente: la notifica di trasferimento arriva a chi aveva il contatto, a chi lo riceve e a chi ha
+  `{module}.viewAll`; nessun altro. Causa del "arriva a tutti": il blocco `OWN_REQUESTS` del catalogo ruoli dava
+  l'intero modulo meno le negate, quindi anche `receiveTransferNotifications` a ogni operatore.
+- BE: `RequestTransferService::supervisors()` usa `SUPERVISORY_ABILITY = 'viewAll'`; rimossi
+  `RequestManagementPolicy::receiveTransferNotifications()` e l'ability (Enrollees ora 16 abilita');
+  migrazione `2026_09_29_120000_prune_receive_transfer_notifications_permissions` (cancella `%.receiveTransferNotifications`,
+  down no-op). Rollback count di `QuoteWorkflowMigrationTest` -> 117. Spec 0081 rev. 2026-09-29 (AC-020/021).
+- Guide in-app IT/EN: nuova sezione `transfer-notifications` in request-management, riga in enrollee-management.
+  Manuale Claude Docs aggiornato (Gestione Richieste > azioni sulle righe, Gestione Iscritti).
+- Verifica: Pest suite completa verde (unico rosso era il rollback count, corretto e rieseguito), Pint pulito;
+  Vitest help 106 verdi, ESLint e `tsc -b --force` puliti.
+
+## TAB CATEGORIA GESTIONE RICHIESTE SEMPRE AGGIORNATE — NON COMMITTATO (2026-09-29)
+
+- Bug utente: cambiando la categoria di una richiesta dal pannello "Lavora", al ritorno in tabella la barra delle
+  tab categoria (elenco + contatori `requests_count`) restava vecchia fino a F5. Le righe SSRM erano gia' fresche
+  (verificato con Pest e con Playwright headless sul dev): la causa era `useRequestManagementCategories` con
+  `staleTime` 5 min e nessuna invalidazione.
+- Fix FE: tolto lo `staleTime` (rilettura a ogni mount della tabella, cache mostrata nel frattempo; il cambio tab non
+  rimonta l'owner, quindi niente refetch li'); nuovo `useInvalidateRequestManagementCategories` chiamato dentro
+  `refreshGrid` di `RequestManagementTable` (salvataggio modale, delete, assegnazioni, trasferimento). Vale anche per
+  Gestione Iscritti (stesso componente, chiave `module.key`).
+- Verifica: Vitest request-management 451 verdi (+2 test in `request-management-table.test.tsx`), ESLint e
+  `tsc -b --force` puliti. Manuale: nessun impatto.
+
 ## SESSO ANAGRAFICA SENZA DEFAULT — NON COMMITTATO (2026-09-29)
 
 - Decisione utente: il sesso di una scheda persona fisica NON e' piu' preimpostato a maschio; se non compilato resta

@@ -41,12 +41,19 @@ use Spatie\Permission\Models\Permission;
  * dialog only offers Sede + Operatore).
  *
  * Spec 0130: every call is parameterized by `RequestModule` — the D-3 row
- * scope, the `receiveTransferNotifications` permission and the notification's
- * deep link (RequestTransferredNotification) all come off it. Defaults to
- * `Requests`, so the refactor is at parity for Gestione Richieste.
+ * scope, the `viewAll` grant that selects the supervisory audience and the
+ * notification's deep link (RequestTransferredNotification) all come off it.
+ * Defaults to `Requests`, so the refactor is at parity for Gestione Richieste.
  */
 final class RequestTransferService
 {
+    /**
+     * The grant that makes a user part of the supervisory audience (decisione
+     * utente 2026-09-29): whoever sees EVERY record of the module is told of
+     * every transfer; everyone else only hears about the ones they lose or gain.
+     */
+    private const string SUPERVISORY_ABILITY = 'viewAll';
+
     public function __construct(
         private readonly RequestOperatorWriter $operatorWriter,
     ) {}
@@ -55,7 +62,7 @@ final class RequestTransferService
      * @param  array<int, int>  $requestIds  Offerta (Quote) ids
      * @param  RequestModule  $module  spec 0130: governs the D-3 row scope,
      *                                 the recipients of the supervisory copy
-     *                                 (`{module}.receiveTransferNotifications`)
+     *                                 (`{module}.viewAll`)
      *                                 and the notification's deep link.
      *                                 Defaults to `Requests`, at parity for
      *                                 every pre-0130 caller.
@@ -281,11 +288,13 @@ final class RequestTransferService
     }
 
     /**
-     * Everyone holding `{module}.receiveTransferNotifications` (spec 0081,
-     * decisione utente 2026-08-04; parameterized by module since spec 0130)
-     * — a PERMISSION, not the `supervisor` role this service used to
-     * hardcode: the grant survives roles being renamed or split, and it can
-     * be revoked per role from the roles screen.
+     * Everyone holding `{module}.viewAll` (decisione utente 2026-09-29, it
+     * replaces the dedicated `receiveTransferNotifications` grant of spec
+     * 0081, which every role scoped to its own records inherited with the
+     * whole module and so spammed every operator): who sees all the module's
+     * records is told of all its transfers. A PERMISSION, not the
+     * `supervisor` role this service used to hardcode: the grant survives
+     * roles being renamed or split.
      *
      * The actor, the incoming operator and every outgoing operator are
      * removed: they each already receive their own, more specific text, and
@@ -301,7 +310,7 @@ final class RequestTransferService
      */
     private function supervisors(User $actor, User $newOperator, Collection $previousOperators, RequestModule $module): Collection
     {
-        $permission = $module->permission('receiveTransferNotifications');
+        $permission = $module->permission(self::SUPERVISORY_ABILITY);
 
         if (! Permission::query()->where('name', $permission)->exists()) {
             return new Collection;

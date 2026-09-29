@@ -174,8 +174,7 @@ vi.mock('@/features/assignment/api', () => ({
     .mockResolvedValue({ product_category_ids: [], operational_site_id: null, campaign_ids: [] }),
 }))
 
-function renderTable() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+function renderTable(client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   return render(
     <QueryClientProvider client={client}>
       {/* The work panel's anagraphic section mounts `ContactsManager`, whose
@@ -353,6 +352,36 @@ describe('RequestManagementTable category tabs (spec 0064)', () => {
       expect(screen.getByRole('tab', { name: /GOL - Lombardia/ })).toHaveAttribute('aria-selected', 'true'),
     )
     expect(capturedScope).toEqual({ productCategoryId: 12 })
+  })
+
+  // Bug fix 2026-09-29: moving a request to another category from the work
+  // page left the strip and its counts stale on the way back (5-minute cache).
+  it('re-reads the categories when the table mounts again on the same cache (back from the work page)', async () => {
+    fetchRequestManagementCategoriesMock.mockResolvedValue([
+      { id: 12, name: 'GOL - Lombardia', requests_count: 128 },
+    ])
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const first = renderTable(client)
+    await screen.findByRole('tab', { name: /GOL - Lombardia/ })
+    first.unmount()
+    fetchRequestManagementCategoriesMock.mockResolvedValue([
+      { id: 12, name: 'GOL - Lombardia', requests_count: 127 },
+      { id: 14, name: 'GOL - Molise', requests_count: 1 },
+    ])
+
+    renderTable(client)
+
+    expect(await screen.findByRole('tab', { name: /GOL - Molise/ })).toBeInTheDocument()
+    expect(fetchRequestManagementCategoriesMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('re-reads the categories after a write made with the table still mounted', async () => {
+    renderTable()
+    await waitFor(() => expect(fetchRequestManagementCategoriesMock).toHaveBeenCalledTimes(1))
+
+    fireEvent.click(screen.getByText('trigger-delete'))
+
+    await waitFor(() => expect(fetchRequestManagementCategoriesMock).toHaveBeenCalledTimes(2))
   })
 
   it('falls back to "Tutte" without error when the persisted category is gone from the live list', async () => {

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use Database\Seeders\QualificaSampleBulkRequestSeeder;
 use Database\Seeders\QualificaSampleContractSeeder;
 use Database\Seeders\QualificaSampleDataSeeder;
 use Database\Seeders\QualificaSampleLeadSeeder;
@@ -30,6 +31,12 @@ use InvalidArgumentException;
  * category with at least one opportunity, offer, contract and work order
  * (user directive 2026-09-29): the sizes count the rows beyond that coverage.
  *
+ * `--bulk` (user directive 2026-09-29: a million requests to test on) swaps
+ * the whole chain for QualificaSampleBulkRequestSeeder: `--requests` only,
+ * each on an Anagrafica of its own, written by multi-row INSERTs copied from
+ * templates the real write path produced. Any other size flag is refused
+ * rather than silently ignored.
+ *
  * A front-end, never a second implementation: the flags become the
  * seeder's own `run()` parameters and the chain does the rest, so
  * `db:seed --class=QualificaSampleDataSeeder` (defaults) and this command
@@ -46,6 +53,9 @@ class SeedSampleData extends Command
     /** Leads per `--size` unit: N converted + N free for the opportunities + N free for the requests. */
     private const int LEADS_PER_SIZE = 3;
 
+    /** The size flags `--bulk` has no use for. */
+    private const array CHAIN_ONLY_OPTIONS = ['size', 'leads', 'converted-leads', 'opportunities', 'quotes', 'contracts', 'work-orders', 'tasks', 'time-entries'];
+
     protected $signature = 'qualifica:seed-sample
         {--size= : How many rows of EVERY domain to append (a per-domain flag below still wins)}
         {--leads= : How many leads to append}
@@ -57,6 +67,7 @@ class SeedSampleData extends Command
         {--work-orders= : How many validated contracts are programmed into a work order}
         {--tasks= : How many tasks to append on the new work orders and opportunities (the completed ones log their own time entry)}
         {--time-entries= : How many further time entries to log on the new tasks, work orders and opportunities}
+        {--bulk : Seed ONLY --requests, in bulk (one new registry each, no activity log or notifications): for volume tests}
         {--force : Run without asking for confirmation in production}';
 
     protected $description = 'Append a batch of sample rows (leads, opportunities, requests, quotes, contracts, work orders, tasks, time entries) on top of the production seed, covering every sellable product category';
@@ -72,7 +83,7 @@ class SeedSampleData extends Command
         // Step 2: the batch sizes — the per-domain flag, else `--size`, else
         // the seeder's own default.
         try {
-            $sizes = $this->batchSizes();
+            $sizes = $this->option('bulk') ? $this->bulkSizes() : $this->batchSizes();
         } catch (InvalidArgumentException $exception) {
             $this->components->error($exception->getMessage());
 
@@ -81,12 +92,30 @@ class SeedSampleData extends Command
 
         // Step 3: the chain itself, driven exactly as `db:seed --class=`
         // drives it — same seeder, same order, same output.
-        $this->laravel->make(QualificaSampleDataSeeder::class)
+        $this->laravel->make($this->option('bulk') ? QualificaSampleBulkRequestSeeder::class : QualificaSampleDataSeeder::class)
             ->setContainer($this->laravel)
             ->setCommand($this)
             ->__invoke($sizes);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * `--bulk` seeds requests alone: its only size is `--requests`.
+     *
+     * @return array{requests: int}
+     *
+     * @throws InvalidArgumentException another size flag, or a malformed `--requests`
+     */
+    private function bulkSizes(): array
+    {
+        foreach (self::CHAIN_ONLY_OPTIONS as $name) {
+            if ($this->option($name) !== null) {
+                throw new InvalidArgumentException(sprintf('--bulk seeds requests only: drop --%s.', $name));
+            }
+        }
+
+        return ['requests' => $this->positiveOption('requests', QualificaSampleBulkRequestSeeder::DEFAULT_REQUESTS)];
     }
 
     /**

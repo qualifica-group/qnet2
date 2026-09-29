@@ -31,6 +31,10 @@ const guide: HelpGuide = {
               'Chi vede cosa',
               'Senza altri permessi vedi solo le richieste di cui sei operatore. **Visualizza sede fisica** aggiunge quelle della tua sede fisica (non delle sedi remote); **Visualizza per sede** quelle di tutte le tue sedi; **Visualizza tutti** tutte.',
             ],
+            [
+              'Notifiche di trasferimento',
+              'Stesse regole di Gestione Richieste; il riepilogo di ogni trasferimento arriva a chi ha **Visualizza tutti** in Gestione Iscritti.',
+            ],
           ],
         },
         {

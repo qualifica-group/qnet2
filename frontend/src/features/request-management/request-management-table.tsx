@@ -32,6 +32,7 @@ import { RequestDashboardPanel } from '@/features/request-management/request-das
 import { RequestDashboardToggle } from '@/features/request-management/request-dashboard-toggle'
 import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
 import { useInvalidateRequestDashboard } from '@/features/request-management/use-request-dashboard'
+import { useInvalidateRequestManagementCategories } from '@/features/request-management/use-request-management-categories'
 import { useRequestManagementCategoryTab } from '@/features/request-management/use-request-management-category-tab'
 import { useQuoteAssignmentScope } from '@/features/request-management/use-quote-assignment-scope'
 import { useRequestManagerGa1Assignment } from '@/features/request-management/use-request-manager-ga1-assignment'
@@ -126,8 +127,15 @@ export function RequestManagementTable() {
   const isDashboardOpen = dashboard.isOpen && can(module.permission('report'))
   const invalidateDashboard = useInvalidateRequestDashboard()
 
+  const invalidateCategories = useInvalidateRequestManagementCategories()
+
   const tableRef = useRef<TableViewHandle>(null)
-  const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
+  // A write can move the request across categories, so the tab strip and its
+  // counts are re-read together with the rows.
+  const refreshGrid = useCallback(() => {
+    tableRef.current?.refresh()
+    invalidateCategories()
+  }, [invalidateCategories])
   // What every bulk write does once it lands: re-read the rows and drop the
   // now-stale checkbox selection.
   const clearSelectionAndRefresh = useCallback(() => {

@@ -44,7 +44,7 @@ class QuoteService
 {
     use GeneratesSequentialCode;
 
-    private const string CODE_PREFIX = 'QUO';
+    public const string CODE_PREFIX = 'QUO';
 
     private const string CODE_TABLE = 'quotes';
 

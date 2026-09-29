@@ -39,16 +39,32 @@ final class RevenueProductTitleBuilder
             fn (Builder $query) => $query->where('quotes.opportunity_id', $opportunity->id),
         );
 
-        return $this->compose(self::OPPORTUNITY_CODE_PREFIX.$opportunity->id, $names);
+        return $this->compose($this->opportunityCode($opportunity->id), $names);
     }
 
     public function forQuote(Quote $quote): string
     {
-        $names = $this->revenueProductNames(
+        return $this->compose($quote->code, $this->quoteRevenueProductNames($quote));
+    }
+
+    /**
+     * The code an Opportunity's title starts with.
+     */
+    public function opportunityCode(int $opportunityId): string
+    {
+        return self::OPPORTUNITY_CODE_PREFIX.$opportunityId;
+    }
+
+    /**
+     * The product names forQuote() titles $quote with.
+     *
+     * @return array<int, string>
+     */
+    public function quoteRevenueProductNames(Quote $quote): array
+    {
+        return $this->revenueProductNames(
             fn (Builder $query) => $query->where('quote_lines.quote_id', $quote->id),
         );
-
-        return $this->compose($quote->code, $names);
     }
 
     /**
@@ -77,9 +93,13 @@ final class RevenueProductTitleBuilder
     }
 
     /**
+     * The title a record coded $code carries with $names on its REVENUE lines:
+     * public for the bulk sample seeder, whose rows copy a template's lines and
+     * so are titled from its names without a query per row.
+     *
      * @param  array<int, string>  $names
      */
-    private function compose(string $code, array $names): string
+    public function compose(string $code, array $names): string
     {
         if ($names === []) {
             return $code;

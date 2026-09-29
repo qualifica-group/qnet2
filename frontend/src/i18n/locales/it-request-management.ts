@@ -197,6 +197,16 @@ export const requestManagement = {
   },
   workPanel: {
     loadError: 'Impossibile caricare il record.',
+    unavailable: {
+      notFound: {
+        title: 'Record non trovato',
+        description: 'Il record che cerchi non esiste o è stato eliminato.',
+      },
+      forbidden: {
+        title: 'Accesso negato',
+        description: 'Non hai i permessi necessari per visualizzare questo record.',
+      },
+    },
     saving: 'Salvataggio…',
     save: 'Salva',
     saved: 'Dati di lavorazione salvati.',

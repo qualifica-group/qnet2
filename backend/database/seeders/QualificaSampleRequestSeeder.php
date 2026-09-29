@@ -104,7 +104,7 @@ class QualificaSampleRequestSeeder extends Seeder
         $users = User::query()->orderBy('id')->get();
         $actor = $users->first();
 
-        $registries = $this->freeRegistries($this->openOpportunityGuard);
+        $registries = $this->freeRegistries($this->openOpportunityGuard, $requests);
         $this->loadOffers($this->hierarchy);
 
         // Step 2: without a free Anagrafica or an offer to fill the mandatory

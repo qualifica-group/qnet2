@@ -16,8 +16,8 @@ use Spatie\Permission\Models\Permission;
 // require `enrollee-management.update` + the action's own specific ability,
 // ignore ids outside the D-3 perimeter or outside the D-2 status filter (same
 // semantics as Gestione Richieste), and the transfer notifies the holders of
-// `enrollee-management.receiveTransferNotifications`, never
-// `request-management.receiveTransferNotifications`.
+// `enrollee-management.viewAll`, never `request-management.viewAll`
+// (decisione utente 2026-09-29, replacing `receiveTransferNotifications`).
 
 uses(RefreshDatabase::class);
 
@@ -51,7 +51,7 @@ if (! function_exists('bulkActor')) {
      */
     function bulkActor(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'update', 'viewAll', 'assignOperator', 'assignManagerGa1', 'transferContact', 'receiveTransferNotifications'] as $ability) {
+        foreach (['viewAny', 'view', 'update', 'viewAll', 'assignOperator', 'assignManagerGa1', 'transferContact'] as $ability) {
             Permission::findOrCreate("enrollee-management.{$ability}");
             Permission::findOrCreate("request-management.{$ability}");
         }
@@ -192,14 +192,14 @@ it('transfer reaches only requests in D-2/D-3 scope and leaves the rest untouche
         ->and($outOfState->fresh()->operational_site_id)->toBeNull();
 });
 
-it('transfer notifies holders of enrollee-management.receiveTransferNotifications, never request-management\'s', function () {
+it('transfer notifies holders of enrollee-management.viewAll, never request-management\'s', function () {
     Notification::fake();
 
     $actor = bulkActor(['viewAny', 'viewAll', 'update', 'transferContact']);
     $enrolleeSupervisor = User::factory()->create();
-    $enrolleeSupervisor->givePermissionTo('enrollee-management.receiveTransferNotifications');
+    $enrolleeSupervisor->givePermissionTo('enrollee-management.viewAll');
     $requestSupervisor = User::factory()->create();
-    $requestSupervisor->givePermissionTo('request-management.receiveTransferNotifications');
+    $requestSupervisor->givePermissionTo('request-management.viewAll');
     $destination = OperationalSite::factory()->withAddress()->create();
     $newOperator = User::factory()->create();
     $quote = bulkQuote('closed_won');

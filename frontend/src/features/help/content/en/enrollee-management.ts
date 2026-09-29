@@ -31,6 +31,10 @@ const guide: HelpGuide = {
               'Who sees what',
               'With no other permission you only see the requests you operate. **View physical site** adds those of your physical site (not your remote sites); **View by site** those of all your sites; **View all** every one.',
             ],
+            [
+              'Transfer notifications',
+              'Same rules as Request Management; the summary of every transfer goes to whoever holds **View all** in Enrollee Management.',
+            ],
           ],
         },
         {

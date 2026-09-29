@@ -1,11 +1,10 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { AssignOperatorsDialogInput } from '@/features/leads/assign-operators-dialog'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { transferRequests } from '@/features/request-management/api'
-import { requestManagementKeys } from '@/features/request-management/query-keys'
 import { useRequestModule } from '@/features/request-management/request-module'
 import { useQuoteAssignmentScope } from '@/features/request-management/use-quote-assignment-scope'
 import type { RequestWorkPanel } from '@/features/request-management/types'
@@ -18,12 +17,15 @@ import type { RequestWorkPanel } from '@/features/request-management/types'
  * `AssignOperatorsDialog` (`lockedMode="single"`) the table's row/bulk
  * actions already drive. Extracted out of `RequestWorkPanelBody`
  * (engineering.md §1.3/§2) so the panel component stays render-only.
+ *
+ * `onTransferred` is the host's "leave the record" callback, the same one a
+ * save fires: the Sheet closes onto the refreshed grid, the page navigates
+ * back to the list.
  */
-export function useRequestTransfer(panel: RequestWorkPanel) {
+export function useRequestTransfer(panel: RequestWorkPanel, onTransferred?: () => void) {
   const { t } = useTranslation()
   const module = useRequestModule()
   const { canAction } = useResourcePermissions()
-  const queryClient = useQueryClient()
   const [isOpen, setIsOpen] = useState(false)
 
   // `transfer_contact` already reflects the endpoint's own double gate
@@ -52,13 +54,11 @@ export function useRequestTransfer(panel: RequestWorkPanel) {
     },
     onSuccess: (result) => {
       toast.success(t('requestManagement.transfer.success', { count: result.transferred }))
-      // Transferring the panel's OWN request can move it out of the actor's
-      // D-3 scope, same precedent as reassigning the operator from the
-      // attribution section (request-attribution-section.tsx: "Changing the
-      // operator REASSIGNS the request..."): the invalidated refetch may then
-      // 403 for an actor without `{module}.viewAll` — the intended semantics
-      // of handing the request over, not a bug to guard against.
-      void queryClient.invalidateQueries({ queryKey: requestManagementKeys.panel(module.key, panel.id) })
+      // User directive 2026-09-29: a transferred request is handed over, so
+      // the panel is left, never reloaded. Transferring it usually moves it
+      // out of the actor's D-3 scope: a refetch here would land on a record
+      // the actor can no longer work (403 without `{module}.viewAll`).
+      onTransferred?.()
     },
   })
 

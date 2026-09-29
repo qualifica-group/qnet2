@@ -19,20 +19,41 @@ use Illuminate\Support\Collection;
  */
 trait PicksFreeRegistries
 {
+    /** Anagrafiche read per query: the pool can hold a million bulk-seeded rows. */
+    private const int FREE_REGISTRY_CHUNK = 1000;
+
     /**
-     * The anagrafiche with no blocking open opportunity, in id order.
+     * The first $limit anagrafiche with no blocking open opportunity, in id
+     * order — walked in chunks and stopped as soon as $limit are found, never
+     * loaded whole.
      *
      * @return Collection<int, Registry>
      */
-    protected function freeRegistries(RegistryOpenOpportunityGuard $guard): Collection
+    protected function freeRegistries(RegistryOpenOpportunityGuard $guard, int $limit): Collection
     {
-        /** @var Collection<int, Registry> $registries */
-        $registries = Registry::query()->orderBy('id')->get();
+        /** @var Collection<int, Registry> $free */
+        $free = new Collection;
 
-        $busy = $guard->openOpportunityIdsByRegistry($registries->modelKeys());
+        if ($limit < 1) {
+            return $free;
+        }
 
-        return $registries
-            ->reject(static fn (Registry $registry): bool => isset($busy[$registry->getKey()]))
-            ->values();
+        Registry::query()->chunkById(self::FREE_REGISTRY_CHUNK, static function (Collection $registries) use ($guard, $limit, $free): bool {
+            $busy = $guard->openOpportunityIdsByRegistry($registries->modelKeys());
+
+            foreach ($registries as $registry) {
+                if (! isset($busy[$registry->getKey()])) {
+                    $free->push($registry);
+                }
+
+                if ($free->count() === $limit) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        return $free;
     }
 }

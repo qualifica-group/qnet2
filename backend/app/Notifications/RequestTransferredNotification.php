@@ -21,8 +21,8 @@ use Illuminate\Support\Carbon;
 /**
  * Sent on a "Trasferisci contatto" (spec 0079) to THREE disjoint audiences,
  * each with its own text (spec 0081): the operator who lost the contact, the
- * one who gained it, and everyone holding
- * `request-management.receiveTransferNotifications`. The recipient sets and
+ * one who gained it, and everyone holding the module's `viewAll` grant
+ * (decisione utente 2026-09-29). The recipient sets and
  * the exclusion of the actor are built by the caller
  * (RequestTransferService::dispatchNotifications()); `$recipientRole` only
  * selects which of the three stories this copy tells.

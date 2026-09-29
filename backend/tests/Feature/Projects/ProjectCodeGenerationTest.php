@@ -208,3 +208,32 @@ it('next-code: 403 without projects.create', function () {
 
     $this->getJson('/api/projects/next-code')->assertForbidden();
 });
+
+// Past PRJ-9999 the sequence grows a digit: a string MAX() ranks "PRJ-9999"
+// above "PRJ-10000" and would hand out a code that already exists. The trait
+// is shared by every coded module, so one module covers it.
+
+it('create: the sequence keeps counting past 9999 (PRJ-10000, then PRJ-10001)', function () {
+    $actor = projectUserWith(['create']);
+    $status = PipelineStatus::factory()->create();
+    $countryId = Country::factory()->create()->id;
+    Project::factory()->create(['code' => 'PRJ-9999']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/projects', ['name' => 'Five digits', 'pipeline_status_id' => $status->id, 'country_id' => $countryId, ...projectStoreExtras()])
+        ->assertCreated()
+        ->assertJsonPath('data.code', 'PRJ-10000');
+
+    $this->postJson('/api/projects', ['name' => 'Next', 'pipeline_status_id' => $status->id, 'country_id' => $countryId, ...projectStoreExtras()])
+        ->assertCreated()
+        ->assertJsonPath('data.code', 'PRJ-10001');
+});
+
+it('next-code: suggests the numeric successor once the codes outgrow four digits', function () {
+    Sanctum::actingAs(projectUserWith(['create']));
+    Project::factory()->create(['code' => 'PRJ-9999']);
+    Project::factory()->create(['code' => 'PRJ-10000']);
+
+    $this->getJson('/api/projects/next-code')
+        ->assertOk()->assertJsonPath('data.code', 'PRJ-10001');
+});

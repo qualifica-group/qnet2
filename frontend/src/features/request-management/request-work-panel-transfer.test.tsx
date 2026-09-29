@@ -85,12 +85,12 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
   ),
 }))
 
-function renderPanel(id = 4001) {
+function renderPanel(id = 4001, onSaved?: () => void) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <ConfirmDialogProvider>
-        <RequestWorkPanelScreen id={id} />
+        <RequestWorkPanelScreen id={id} onSaved={onSaved} />
       </ConfirmDialogProvider>
     </QueryClientProvider>,
   )
@@ -176,13 +176,14 @@ describe('RequestWorkPanelScreen — "Trasferisci contatto" button (spec 0079 ad
     expect(screen.getByRole('button', { name: 'Operator' })).toBeInTheDocument()
   })
 
-  it('transfers the single record, toasts and refreshes the panel on success', async () => {
+  it('transfers the single record, toasts and leaves the panel on success', async () => {
     transferRequestsMock.mockResolvedValue({ transferred: 1 })
     fetchRequestWorkPanelMock.mockResolvedValue(
       panel({ id: 9, permissions: { ...FULL_PERMISSIONS, actions: { transfer_contact: true } } }),
     )
+    const onSaved = vi.fn()
 
-    renderPanel(9)
+    renderPanel(9, onSaved)
 
     const [headerButton] = await screen.findAllByRole('button', { name: 'Transfer contact' })
     fireEvent.click(headerButton)
@@ -196,10 +197,10 @@ describe('RequestWorkPanelScreen — "Trasferisci contatto" button (spec 0079 ad
       }),
     )
     expect(toast.success).toHaveBeenCalledWith('1 request(s) transferred.')
-    // The success handler invalidates the panel's own query (D-3 precedent,
-    // request-attribution-section.tsx): an active query refetches on
-    // invalidation, so the fetch fires again beyond the initial mount.
-    await waitFor(() => expect(fetchRequestWorkPanelMock).toHaveBeenCalledTimes(2))
+    // User directive 2026-09-29: the host leaves the record (back to the
+    // table), and the handed-over panel is never re-read.
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(fetchRequestWorkPanelMock).toHaveBeenCalledTimes(1)
   })
 
   it('toasts the generic error and keeps the dialog open on failure', async () => {
@@ -207,8 +208,9 @@ describe('RequestWorkPanelScreen — "Trasferisci contatto" button (spec 0079 ad
     fetchRequestWorkPanelMock.mockResolvedValue(
       panel({ permissions: { ...FULL_PERMISSIONS, actions: { transfer_contact: true } } }),
     )
+    const onSaved = vi.fn()
 
-    renderPanel()
+    renderPanel(4001, onSaved)
 
     const [, footerButton] = await screen.findAllByRole('button', { name: 'Transfer contact' })
     fireEvent.click(footerButton)
@@ -219,6 +221,7 @@ describe('RequestWorkPanelScreen — "Trasferisci contatto" button (spec 0079 ad
       expect(toast.error).toHaveBeenCalledWith('Unable to transfer the contact. Please try again.'),
     )
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(onSaved).not.toHaveBeenCalled()
   })
 })
 
