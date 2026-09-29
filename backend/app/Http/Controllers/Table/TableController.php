@@ -17,6 +17,7 @@ use App\Services\TableCellUpdateService;
 use App\Services\TableFilterStateService;
 use App\Services\TablePreferenceService;
 use App\Services\TableService;
+use App\Support\Cache\AggregateCache;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
@@ -49,6 +50,7 @@ class TableController extends BaseApiController
         private readonly TableFilterStateService $filters,
         private readonly TableBulkDeleteService $bulkDelete,
         private readonly TableCellUpdateService $cellUpdate,
+        private readonly AggregateCache $aggregateCache,
     ) {}
 
     /**
@@ -304,19 +306,26 @@ class TableController extends BaseApiController
             $this->scopeToOpportunity($definition, $payload['opportunityId']);
             $this->scopeToQuote($definition, $payload['quoteId']);
 
-            $result = $this->service->distinctValues(
-                $definition,
-                $actor,
-                $payload['columnId'],
-                $payload['search'],
-                $payload['filterModel'],
-                $payload['limit'],
-            );
+            // Per actor always: grid visibility rules are evaluated per user (spec
+            // 0178, D-5). The column id goes into the hash too: an `attr.*` id is
+            // user-defined and could push the key past the store's 255 chars. The
+            // locale is part of the key: some columns list translated labels.
+            $key = "values:user:{$actor->getKey()}:{$domain}:".app()->getLocale().':'.sha1((string) json_encode($payload));
 
-            return $this->ok([
-                'values' => $result->values,
-                'hasMore' => $result->hasMore,
-            ]);
+            $data = $this->aggregateCache->remember($key, function () use ($definition, $actor, $payload): array {
+                $result = $this->service->distinctValues(
+                    $definition,
+                    $actor,
+                    $payload['columnId'],
+                    $payload['search'],
+                    $payload['filterModel'],
+                    $payload['limit'],
+                );
+
+                return ['values' => $result->values, 'hasMore' => $result->hasMore];
+            }, $actor);
+
+            return $this->ok($data);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

@@ -46,6 +46,7 @@ class UserForSelectRequest extends FormRequest
             'limit' => ['sometimes', 'integer', 'min:1', "max:{$maxLimit}"],
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
+            'include_total' => ['sometimes', 'boolean'],
             'operational_site_id' => ['sometimes', 'integer', 'exists:operational_sites,id'],
             'competence_category_ids' => ['sometimes', 'array'],
             'competence_category_ids.*' => ['integer', 'exists:product_categories,id'],

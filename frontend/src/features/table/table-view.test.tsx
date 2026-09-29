@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from 'react'
+import { createRef, type ComponentProps, type ReactNode } from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -7,7 +7,7 @@ import i18n from '@/i18n'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { UiScaleContext } from '@/features/appearance/ui-scale-context'
-import { TableView } from '@/features/table/table-view'
+import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { fetchTableConfig, fetchTableRows, saveTableFilters } from '@/features/table/api'
 import type { TableConfig, TableRow } from '@/features/table/types'
 
@@ -84,11 +84,11 @@ const CONFIG: TableConfig = {
 }
 
 /** Builds a minimal SSRM `getRows` params stub, mirroring `ssrm-datasource.test.ts`. */
-function stubParams(): IServerSideGetRowsParams<TableRow> {
+function stubParams(startRow = 0): IServerSideGetRowsParams<TableRow> {
   return {
     request: {
-      startRow: 0,
-      endRow: 25,
+      startRow,
+      endRow: startRow + 25,
       rowGroupCols: [],
       valueCols: [],
       pivotCols: [],
@@ -325,5 +325,30 @@ describe('TableView — advancedFiltersOverride (spec 0151 D-2, AC-008)', () => 
       'quotes',
       expect.objectContaining({ advancedFilters: { assignment: 'requested_by_me' } }),
     )
+  })
+})
+
+describe('TableView — known total (spec 0178)', () => {
+  // AC-007 / D-2: the refresh every domain adapter calls after its own write
+  // forgets the block-0 total, so a page > 1 recounts instead of reusing it.
+  it('refresh() makes the next page > 1 request recount (no knownTotal)', async () => {
+    const ref = createRef<TableViewHandle>()
+    fetchTableRowsMock.mockResolvedValue({
+      items: [],
+      export_link: null,
+      pagination: { total: 60, offset: 0, limit: 25, total_pages: 3 },
+    })
+    renderTableView({ ref })
+    await screen.findByRole('grid')
+    const { datasource } = dataTablePropsSpy.mock.calls.at(-1)?.[0] as CapturedDataTableProps
+
+    await datasource.getRows(stubParams(0))
+    await datasource.getRows(stubParams(25))
+    expect(fetchTableRowsMock.mock.calls[1][1]).toHaveProperty('knownTotal', 60)
+
+    act(() => ref.current?.refresh())
+    await datasource.getRows(stubParams(25))
+
+    expect(fetchTableRowsMock.mock.calls[2][1]).not.toHaveProperty('knownTotal')
   })
 })

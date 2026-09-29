@@ -43,6 +43,7 @@ class QuoteOfferLineForSelectController extends BaseApiController
                 $result->total,
                 $result->offset,
                 $result->limit,
+                hasMore: $result->hasMore,
             );
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);

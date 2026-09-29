@@ -102,12 +102,22 @@ class TableService
             $definition->applyKanbanGroupScope($query, $kanbanGroup);
         }
 
-        $total = (clone $query)->count();
-        // Spec 0156, D-3: computed over the SAME filtered-but-unsorted query
-        // as $total, never the paginated page — a footer total that agreed
-        // with the page instead of the filtered set would be the wrong
-        // number the moment a second page exists.
-        $aggregates = $definition->aggregates(clone $query);
+        // Spec 0178, D-1: on a later page the client already holds the total of
+        // block 0 for this same filter signature, so the count and the
+        // aggregates (no `meta` is emitted) are skipped. Block 0 always counts.
+        $knownTotal = $payload['knownTotal'] ?? null;
+
+        if ($offset > 0 && $knownTotal !== null) {
+            $total = (int) $knownTotal;
+            $aggregates = [];
+        } else {
+            $total = (clone $query)->count();
+            // Spec 0156, D-3: computed over the SAME filtered-but-unsorted query
+            // as $total, never the paginated page — a footer total that agreed
+            // with the page instead of the filtered set would be the wrong
+            // number the moment a second page exists.
+            $aggregates = $definition->aggregates(clone $query);
+        }
 
         $this->queryBuilder->applySorting($definition, $query, $payload['sortModel'] ?? []);
 

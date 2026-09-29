@@ -90,23 +90,14 @@ class CompanyService
             });
         }
 
-        $total = (clone $base)->count();
+        $window = $query->page($base, static fn ($ordered) => $ordered->orderBy('denomination')->orderBy('id'));
 
         /** @var Collection<int, Company> $page */
-        $page = $base->orderBy('denomination')
-            ->orderBy('id')
-            ->offset($query->offset)
-            ->limit($query->limit)
-            ->get();
+        $page = $window->items;
 
         $items = $this->appendHydratedIds($page, $query);
 
-        return new ForSelectResult(
-            items: $items,
-            total: $total,
-            offset: $query->offset,
-            limit: $query->limit,
-        );
+        return $window->withItems($items);
     }
 
     /**

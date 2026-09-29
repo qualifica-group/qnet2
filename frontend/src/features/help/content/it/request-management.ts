@@ -19,6 +19,10 @@ const guide: HelpGuide = {
           text: 'In alto trovi una scheda per ogni categoria prodotto, più **Tutte**: scegline una per vedere solo le richieste di quella categoria.',
         },
         {
+          type: 'paragraph',
+          text: 'I numeri sulle schede si aggiornano entro pochi secondi dalle modifiche fatte dagli altri utenti; le tue modifiche le vedi subito, appena torni alla tabella.',
+        },
+        {
           type: 'table',
           headers: ['Colonna', 'Significato'],
           rows: [
@@ -161,6 +165,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: 'Le statistiche mostrano l\'andamento del lavoro sulle richieste in un periodo scelto, a schermo o in un file CSV/Excel. Pannello e file usano gli stessi filtri e gli stessi calcoli, quindi i numeri coincidono.',
+        },
+        {
+          type: 'paragraph',
+          text: 'I numeri delle statistiche a schermo si aggiornano entro pochi secondi dalle modifiche degli altri utenti; il file CSV è invece sempre calcolato al momento in cui lo generi.',
         },
         {
           type: 'paragraph',

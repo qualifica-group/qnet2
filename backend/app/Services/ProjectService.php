@@ -192,23 +192,14 @@ class ProjectService
             });
         }
 
-        $total = (clone $base)->count();
+        $window = $query->page($base, static fn ($ordered) => $ordered->orderBy('name')->orderBy('id'));
 
         /** @var Collection<int, Project> $page */
-        $page = $base->orderBy('name')
-            ->orderBy('id')
-            ->offset($query->offset)
-            ->limit($query->limit)
-            ->get();
+        $page = $window->items;
 
         $items = $this->appendHydratedIds($page, $query);
 
-        return new ForSelectResult(
-            items: $items,
-            total: $total,
-            offset: $query->offset,
-            limit: $query->limit,
-        );
+        return $window->withItems($items);
     }
 
     /**

@@ -43,6 +43,7 @@ class WorkOrderForSelectRequest extends FormRequest
             'limit' => ['sometimes', 'integer', 'min:1', "max:{$maxLimit}"],
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
+            'include_total' => ['sometimes', 'boolean'],
             'registry_id' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
         ];
     }

@@ -57,6 +57,7 @@ const guide: HelpGuide = {
             'Conta solo le richieste che oggi sono in uno stato del gruppo **Validato** o **Chiuso con esito positivo**.',
             'Ha un proprio permesso **Genera report** e filtri memorizzati separati.',
             'Il file generato si chiama enrollee-management-report-DAL_AL (o -from-DAL / -to-AL con un solo estremo, nessuna data se il periodo è vuoto).',
+            'I numeri delle schede e delle statistiche si aggiornano entro pochi secondi dalle modifiche degli altri utenti; le tue modifiche le vedi subito tornando alla tabella. Il file CSV è sempre calcolato al momento in cui lo generi.',
             '**N. Nuovi contatti non gestiti** (con o senza periodo) vale sempre 0: nessuna richiesta qui è in stato Aperto.',
             '**N. Richiami non gestiti** (con o senza periodo) conta solo le richieste in Validato; **N. Potenziali associati** senza periodo conta le richieste che oggi sono in Validato.',
           ],

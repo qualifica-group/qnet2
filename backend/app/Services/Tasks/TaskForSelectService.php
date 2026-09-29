@@ -39,21 +39,12 @@ final class TaskForSelectService
             $base->where('tasks.title', 'like', '%'.$query->search.'%');
         }
 
-        $total = (clone $base)->count();
+        $window = $query->page($base, static fn ($ordered) => $ordered->orderBy('tasks.title')->orderBy('tasks.id'));
 
         /** @var Collection<int, Task> $page */
-        $page = $base->orderBy('tasks.title')
-            ->orderBy('tasks.id')
-            ->offset($query->offset)
-            ->limit($query->limit)
-            ->get();
+        $page = $window->items;
 
-        return new ForSelectResult(
-            items: $this->appendHydratedIds($page, $query),
-            total: $total,
-            offset: $query->offset,
-            limit: $query->limit,
-        );
+        return $window->withItems($this->appendHydratedIds($page, $query));
     }
 
     /**

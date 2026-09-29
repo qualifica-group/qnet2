@@ -42,21 +42,12 @@ final class QuoteOfferLineForSelectService
             });
         }
 
-        $total = (clone $base)->count();
+        $window = $query->page($base, static fn ($ordered) => $ordered->orderBy('sort_order')->orderBy('id'));
 
         /** @var Collection<int, QuoteLine> $page */
-        $page = $base->orderBy('sort_order')
-            ->orderBy('id')
-            ->offset($query->offset)
-            ->limit($query->limit)
-            ->get();
+        $page = $window->items;
 
-        return new ForSelectResult(
-            items: $this->appendHydratedIds($page, $query, $quoteId),
-            total: $total,
-            offset: $query->offset,
-            limit: $query->limit,
-        );
+        return $window->withItems($this->appendHydratedIds($page, $query, $quoteId));
     }
 
     /**

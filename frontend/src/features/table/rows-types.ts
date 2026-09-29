@@ -78,6 +78,13 @@ export interface TableRowsPayload {
    */
   treeParentId?: number | null
   /**
+   * Total already learned from block 0 for the same request signature (spec
+   * 0178 D-1). Sent only with `startRow > 0`; the server then skips
+   * `count()`/`aggregates()` and answers without `meta`. Never sent with
+   * `startRow = 0`.
+   */
+  knownTotal?: number
+  /**
    * Custom filter rules (spec 0158), sent in place of `filterModel`/
    * `advancedFilters` when a custom filter is the active one: the backend
    * ignores both (including advanced-filter defaults) whenever this key is

@@ -3,7 +3,41 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## STRESS TEST 1M RICHIESTE: API LENTE — NON COMMITTATO (2026-09-29)
+## SPEC 0178 CONTEGGIO UNICO + CACHE AGGREGATI (100 UTENTI, 1M RECORD, NO REDIS) — NON COMMITTATO (2026-09-29)
+
+- Decisioni utente: niente Redis, store `database`; ritardo ammesso sui numeri aggregati (fresco 10 s, max
+  5 min); chi scrive vede numeri esatti; CSV report sempre live (nota in spec 0107 D-2); tabelle di
+  appoggio NON in cache (D-8, misurato: <1 ms/query e con store database la cache costa quanto la query).
+- (A) Griglie: `knownTotal` su POST tables/{domain}/rows: con startRow>0 il server salta count()+aggregates()
+  e rimanda il totale; startRow=0 conta sempre. FE `ssrm-datasource.ts` memorizza il totale per firma
+  (filtri/search/scope, non sort), `resetKnownTotal()` chiamato da `refreshGrid()`. Limite noto: le due
+  `refreshServerSide({purge:false})` dirette (dettaglio premi, notifiche) non azzerano.
+- (B) `App\Support\Cache\AggregateCache::remember(key, compute, actor)`: lock sul primo calcolo, un solo
+  refresh differito (`defer`), ricalcolo sincrono se l'attore ha scritto dopo il calcolo, errori dello store
+  assorbiti, solo array/scalari (lezione CustomFieldProvider). Middleware `RecordActorWrite` (api, terminate):
+  scritture 2xx tranne rows/values/form-context. `cache:prune-expired` orario a blocchi. Config
+  `config/aggregate-cache.php`. Chiavi: tab/dashboard/report per `RequestManagementScope::scopeFingerprint()`
+  (sedi hashate; DEVE cambiare con scopeToActor), stats `global` o `user:{id}` (`StatsDefinition::cacheScope`),
+  values per utente; lingua nella chiave dove ci sono etichette (report, stats, values).
+- (C) Tendine for-select operative (15 resource D-7): `include_total=0` -> limit+1, `total: null` +
+  `pagination.has_more`; `ForSelectQuery::page()`, `paginatedResponse(?int $total, ..., ?bool $hasMore)`.
+  FE `use-for-select.ts` invia include_total=0, fallback sul totale per i resource non migrati.
+- Test preesistenti adattati per cambio requisito (cache): `RequestManagementReportOperatorsEndpointTest` e
+  `ProductUsageTest` (`Cache::flush()` dopo dati creati via factory), for-select FE (includeTotal).
+- Verifica: Pest completo 8895 passati / 1 skipped (8896), Pint pulito; Vitest 6525/6525 (852 file),
+  `tsc -b --force` pulito. ESLint: 2 errori PREESISTENTI in file non toccati (`quotes/column-renderers.tsx:11`,
+  `registries/registry-form-metadata.test.tsx:271`). Flaky preesistente: `DemoOpportunitySeederTest` INV-1/INV-2
+  (seeder casuale a volte senza opportunita' multi-riga).
+- Misura 1M (store database, super-admin), fredda -> cache: tab 2,4 s -> 7 ms, dashboard 3,8 s -> 17 ms,
+  filtri report ~1 s -> 3-7 ms, stats opportunita' 4,8 s -> 7 ms, values anagrafica 5,6 s -> 10 ms,
+  tendina offerte con ricerca 1,58 -> 0,83 s, pagina 2 griglia senza count.
+- Guide in-app IT/EN request-management + enrollee-management aggiornate (contatori entro pochi secondi, CSV
+  live). Manuale Claude Docs: da aggiornare stesse frasi (Gestione Richieste: schede categoria e statistiche;
+  Gestione Iscritti: statistiche).
+- Prossimi passi: spec ricerca full-text (ricerca rapida Gestione Richieste ancora 27-31 s anche senza count),
+  ordinamenti su colonne collegate, configurazione server (buffer pool, OPcache, FPM).
+
+## STRESS TEST 1M RICHIESTE: API LENTE — COMMITTATO (2026-09-29)
 
 - Misurato con harness fuori repo (kernel HTTP + DB::listen, super-admin) sul DB locale con ~1M
   richieste/opportunita'/anagrafiche. Lead, commesse, contratti, task, segnatempo: tutti < 400 ms (tabelle
@@ -14,8 +48,7 @@
   operatore (spec 0106 D-10 rev. 2026-09-29; "Aziende inserite" tiene la query propria, AC-015).
   `ReportBranchRowsBuilder` calcola una volta le colonne con la stessa formula. 13,9 s -> 2,4 s (1 categoria).
 - Tab categoria (`RequestCategoryTabsResolver`): conta da `quotes` raggruppando per id, nomi letti dopo.
-  Admin 4,5 s -> 2,5 s, commerciale 0,34 -> 0,20 s. APERTO (decisione utente): sotto il secondo serve
-  cache breve o contatori caricati dopo le tab.
+  Admin 4,5 s -> 2,5 s, commerciale 0,34 -> 0,20 s. Poi in cache con la spec 0178 (7 ms a cache calda).
 - Statistiche (`Aggregates::topRelated`, 17 widget): top N raggruppato sulla FK, etichette lette dopo
   (opportunita' 11,5 s -> ~3 s). Valori filtro (`OpportunityRelationColumns`/`QuoteRelationColumns`):
   GROUP BY label al posto di DISTINCT (MariaDB materializzava il semi-join), nomi manager via EXISTS sul

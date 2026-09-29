@@ -13,6 +13,8 @@ use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\Dashboard\RequestManagementDashboardBuilder;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use App\Services\RequestManagement\Report\ReportSiteFilter;
+use App\Services\RequestManagement\RequestManagementScope;
+use App\Support\Cache\AggregateCache;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -31,7 +33,9 @@ use Throwable;
  */
 class RequestManagementDashboardController extends BaseApiController
 {
-    public function __construct(private readonly RequestManagementDashboardBuilder $builder) {}
+    public function __construct(private readonly RequestManagementDashboardBuilder $builder,
+        private readonly AggregateCache $cache,
+    ) {}
 
     public function __invoke(RequestDashboardRequest $request): JsonResponse
     {
@@ -49,15 +53,22 @@ class RequestManagementDashboardController extends BaseApiController
             $operatorKeys = $request->operatorKeys();
             $siteKeys = $request->siteKeys();
 
-            $result = $this->builder->build(
+            // The charts and tiles are the heavy part: cached per visibility
+            // scope + validated parameters (spec 0178 D-5), as the plain array
+            // the response already serialises. Auth and validation ran above.
+            $payload = $this->cache->remember(
+                $this->cacheKey($actor, $module, $dateFrom, $dateTo, $categoryKeys, $rowMode, $operatorKeys, $siteKeys),
+                fn (): array => (new RequestManagementDashboardResource($this->builder->build(
+                    $actor,
+                    $dateFrom,
+                    $dateTo,
+                    $categoryKeys,
+                    RequestManagementReportRowMode::from($rowMode),
+                    ReportOperatorFilter::fromKeysOrAll($operatorKeys),
+                    ReportSiteFilter::fromKeysOrAll($siteKeys),
+                    $module,
+                )))->resolve(),
                 $actor,
-                $dateFrom,
-                $dateTo,
-                $categoryKeys,
-                RequestManagementReportRowMode::from($rowMode),
-                ReportOperatorFilter::fromKeysOrAll($operatorKeys),
-                ReportSiteFilter::fromKeysOrAll($siteKeys),
-                $module,
             );
 
             return $this->ok([
@@ -73,10 +84,54 @@ class RequestManagementDashboardController extends BaseApiController
                     // null means "every Sede", i.e. an unfiltered response.
                     'site_keys' => $siteKeys,
                 ],
-                ...(new RequestManagementDashboardResource($result))->resolve(),
+                ...$payload,
             ]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
+    }
+
+    /**
+     * `rm-dash:{scope}:{sha1 of the validated parameters and locale}`: keys
+     * are sorted and normalised so equivalent requests share one entry, and
+     * the locale is part of it because labels are translated.
+     *
+     * @param  array<int, string>  $categoryKeys
+     * @param  array<int, string>|null  $operatorKeys
+     * @param  array<int, string>|null  $siteKeys
+     */
+    private function cacheKey(
+        User $actor,
+        RequestModule $module,
+        ?string $dateFrom,
+        ?string $dateTo,
+        array $categoryKeys,
+        string $rowMode,
+        ?array $operatorKeys,
+        ?array $siteKeys,
+    ): string {
+        $params = [
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'category_keys' => $this->sorted($categoryKeys),
+            'row_mode' => $rowMode,
+            'operator_keys' => $operatorKeys === null ? null : $this->sorted($operatorKeys),
+            'site_keys' => $siteKeys === null ? null : $this->sorted($siteKeys),
+            'locale' => app()->getLocale(),
+        ];
+
+        return 'rm-dash:'.RequestManagementScope::scopeFingerprint($actor, $module).':'.sha1((string) json_encode($params));
+    }
+
+    /**
+     * @param  array<int, string>  $keys
+     * @return array<int, string>
+     */
+    private function sorted(array $keys): array
+    {
+        $keys = array_values(array_unique($keys));
+        sort($keys);
+
+        return $keys;
     }
 }

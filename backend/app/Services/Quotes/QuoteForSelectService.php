@@ -39,21 +39,12 @@ final class QuoteForSelectService
             });
         }
 
-        $total = (clone $base)->count();
+        $window = $query->page($base, static fn ($ordered) => $ordered->orderBy('code')->orderBy('id'));
 
         /** @var Collection<int, Quote> $page */
-        $page = $base->orderBy('code')
-            ->orderBy('id')
-            ->offset($query->offset)
-            ->limit($query->limit)
-            ->get();
+        $page = $window->items;
 
-        return new ForSelectResult(
-            items: $this->appendHydratedIds($page, $query),
-            total: $total,
-            offset: $query->offset,
-            limit: $query->limit,
-        );
+        return $window->withItems($this->appendHydratedIds($page, $query));
     }
 
     /**

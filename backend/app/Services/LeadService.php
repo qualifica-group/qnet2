@@ -194,23 +194,14 @@ class LeadService
             });
         }
 
-        $total = (clone $base)->count();
+        $window = $query->page($base, fn ($ordered) => $ordered->orderBy($this->registryNameSubquery())->orderBy('id'));
 
         /** @var Collection<int, Lead> $page */
-        $page = $base->orderBy($this->registryNameSubquery())
-            ->orderBy('id')
-            ->offset($query->offset)
-            ->limit($query->limit)
-            ->get();
+        $page = $window->items;
 
         $items = $this->appendHydratedForSelectIds($page, $query);
 
-        return new ForSelectResult(
-            items: $items,
-            total: $total,
-            offset: $query->offset,
-            limit: $query->limit,
-        );
+        return $window->withItems($items);
     }
 
     /**

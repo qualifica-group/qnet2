@@ -26,11 +26,12 @@ abstract class BaseApiController
     /** HELPERS */
     public function paginatedResponse(
         mixed $items,
-        int $total,
+        ?int $total,
         int $offset = 1,
         int $limit = self::MAX_LIMIT,
         ?string $exportLink = null,
-        ?array $meta = null
+        ?array $meta = null,
+        ?bool $hasMore = null
     ): JsonResponse {
         $payload = [
             'items' => $items,
@@ -39,9 +40,13 @@ abstract class BaseApiController
                 'total' => $total,
                 'offset' => $offset,
                 'limit' => $limit,
-                'total_pages' => (int) ceil($total / $limit),
+                'total_pages' => $total === null ? null : (int) ceil($total / $limit),
             ],
         ];
+
+        if (! is_null($hasMore)) {
+            $payload['pagination']['has_more'] = $hasMore;
+        }
 
         if (! is_null($meta)) {
             $payload['meta'] = $meta;

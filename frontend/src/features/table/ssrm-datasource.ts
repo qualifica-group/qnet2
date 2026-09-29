@@ -10,6 +10,36 @@ import type { AdvancedFilterValues } from '@/features/table/advanced-filters/typ
 const DEFAULT_BLOCK_SIZE = 25
 
 /**
+ * Serializes a value with object keys sorted at every level, so two
+ * structurally equal filter payloads always yield the same string
+ * regardless of key insertion order.
+ */
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`
+  if (value !== null && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    const entries = Object.keys(record)
+      .filter((key) => record[key] !== undefined)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    return `{${entries.join(',')}}`
+  }
+  return JSON.stringify(value) ?? 'null'
+}
+
+/**
+ * Total learned from block 0 for one request signature (spec 0178 D-1). No
+ * aggregates: the footer state already holds the last ones (AC-008).
+ */
+interface KnownTotalMemo {
+  signature: string
+  total: number
+}
+
+/** Datasource plus the reset hook `refreshGrid` calls before a purge (spec 0178 D-2). */
+export type SsrmDatasource = IServerSideDatasource<TableRow> & { resetKnownTotal(): void }
+
+/**
  * Options accepted by `createSsrmDatasource`. Every entry beyond `domain` is a
  * no-op for a domain/call site that does not use it — kept as an options
  * object (rather than positional parameters) so a new one never forces every
@@ -58,7 +88,7 @@ export interface SsrmDatasourceOptions {
 export function createSsrmDatasource(
   domain: string,
   options: SsrmDatasourceOptions = {},
-): IServerSideDatasource<TableRow> {
+): SsrmDatasource {
   const {
     getSearch,
     getAdvancedFilters,
@@ -70,7 +100,16 @@ export function createSsrmDatasource(
     treeData,
   } = options
 
+  // Spec 0178 D-1: the block-0 total, valid only for the signature it was
+  // counted under. Lives in the closure: one datasource per domain/scope.
+  let memo: KnownTotalMemo | null = null
+
   return {
+    // Spec 0178 D-2: after a write, even a page > 1 must recount.
+    resetKnownTotal(): void {
+      memo = null
+    },
+
     async getRows(params: IServerSideGetRowsParams<TableRow>): Promise<void> {
       const { request } = params
       const startRow = request.startRow ?? 0
@@ -106,6 +145,23 @@ export function createSsrmDatasource(
           ? Number(request.groupKeys[request.groupKeys.length - 1])
           : undefined
 
+      // Spec 0178 D-1: everything that changes the row COUNT, and nothing else
+      // (sortModel is deliberately excluded: ordering never changes the count).
+      const signature = stableStringify({
+        filterModel,
+        search,
+        advancedFilters,
+        customFilterRules,
+        productCategoryId,
+        opportunityId,
+        quoteId,
+        tree: treeData ?? false,
+        treeParentId,
+      })
+      // Block 0 always recounts server-side; later blocks reuse the memo only
+      // when it was counted under the same signature.
+      const knownTotal = startRow > 0 && memo?.signature === signature ? memo.total : undefined
+
       try {
         const response = await fetchTableRows(domain, {
           startRow,
@@ -120,9 +176,15 @@ export function createSsrmDatasource(
           ...(quoteId != null ? { quoteId } : {}),
           ...(treeData ? { tree: true } : {}),
           ...(treeParentId != null ? { treeParentId } : {}),
+          ...(knownTotal !== undefined ? { knownTotal } : {}),
         })
 
-        onAggregates?.(response.meta?.aggregates)
+        // Spec 0178 AC-008: a response served with knownTotal carries no
+        // `meta`; keep the footer's last aggregates instead of clearing them.
+        if (knownTotal === undefined) {
+          memo = { signature, total: response.pagination.total }
+          onAggregates?.(response.meta?.aggregates)
+        }
         params.success({
           rowData: response.items,
           rowCount: response.pagination.total,

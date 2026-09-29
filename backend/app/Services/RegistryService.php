@@ -213,23 +213,14 @@ class RegistryService
             $base->where('name', 'like', '%'.$query->search.'%');
         }
 
-        $total = (clone $base)->count();
+        $window = $query->page($base, static fn ($ordered) => $ordered->orderBy('name')->orderBy('id'));
 
         /** @var Collection<int, Registry> $page */
-        $page = $base->orderBy('name')
-            ->orderBy('id')
-            ->offset($query->offset)
-            ->limit($query->limit)
-            ->get();
+        $page = $window->items;
 
         $items = $this->appendHydratedForSelectIds($page, $query);
 
-        return new ForSelectResult(
-            items: $items,
-            total: $total,
-            offset: $query->offset,
-            limit: $query->limit,
-        );
+        return $window->withItems($items);
     }
 
     /**

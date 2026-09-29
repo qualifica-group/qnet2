@@ -44,6 +44,11 @@ abstract class AbstractStatsDefinition implements StatsDefinition
         return Gate::forUser($actor)->allows('viewAny', $this->modelClass());
     }
 
+    public function cacheScope(User $actor): string
+    {
+        return 'global';
+    }
+
     /**
      * Total rows of the domain's model — the usual denominator of the
      * percent stats and of the distributions.

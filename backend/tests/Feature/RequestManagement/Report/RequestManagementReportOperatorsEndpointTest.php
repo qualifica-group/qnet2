@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\ReportOperatorFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Sanctum;
@@ -170,6 +171,8 @@ it('appends "Non assegnato" last, and only when such a request exists (AC-012)',
         ->toBe([['key' => (string) $ada->id, 'label' => 'Ada Rossi', 'site_keys' => []]]);
 
     operatorsEndpointQuote($tree['gol'], null);
+    // The request is created behind the HTTP layer (no actor write is recorded), and the picker is cached (spec 0178).
+    Cache::flush();
 
     expect($this->getJson('/api/request-management/report/operators', $italian)->json('data.operators'))->toBe([
         ['key' => (string) $ada->id, 'label' => 'Ada Rossi', 'site_keys' => []],

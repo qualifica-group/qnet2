@@ -78,6 +78,10 @@ class TableRowsRequest extends FormRequest
             'startRow' => ['required', 'integer', 'min:0'],
             'endRow' => ['required', 'integer', 'max:'.($this->intInput('startRow') + $maxLimit)],
 
+            // Spec 0178, D-1: total remembered by the client from block 0,
+            // honoured by TableService::rows() only when startRow > 0.
+            'knownTotal' => ['sometimes', 'nullable', 'integer', 'min:0'],
+
             'sortModel' => ['sometimes', 'array'],
             'sortModel.*' => ['array'],
             'sortModel.*.colId' => ['required_with:sortModel.*', 'string', Rule::in($sortable)],

@@ -4,6 +4,8 @@ namespace App\DataObjects\Shared;
 
 use App\Enums\EmailTemplateModule;
 use App\Enums\ProductUsage;
+use Closure;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Validated query for a for-select endpoint (GET /api/{resource}/for-select).
@@ -75,6 +77,9 @@ use App\Enums\ProductUsage;
  *   its OWN, incompatible enum) — EmailTemplateForSelectRequest::toData()
  *   renames its wire-format `?module=` into that key before calling
  *   fromValidated().
+ * - `includeTotal` (spec 0178, D-7): ADDITIVE, true by default (today's
+ *   behaviour). Only the D-7 requests accept `include_total`; when false the
+ *   service skips the COUNT and reads `limit + 1` rows (see `page()`).
  */
 final readonly class ForSelectQuery
 {
@@ -101,6 +106,7 @@ final readonly class ForSelectQuery
         public ?int $registryId = null,
         public ?ProductUsage $productUsage = null,
         public ?EmailTemplateModule $emailTemplateModule = null,
+        public bool $includeTotal = true,
     ) {}
 
     /**
@@ -153,7 +159,37 @@ final readonly class ForSelectQuery
             registryId: isset($data['registry_id']) ? (int) $data['registry_id'] : null,
             productUsage: isset($data['usage']) ? ProductUsage::from((string) $data['usage']) : null,
             emailTemplateModule: isset($data['email_template_module']) ? EmailTemplateModule::from((string) $data['email_template_module']) : null,
+            includeTotal: filter_var($data['include_total'] ?? true, FILTER_VALIDATE_BOOLEAN),
         );
+    }
+
+    /**
+     * Read the requested window from an already FILTERED builder (spec 0178,
+     * D-7). With `includeTotal` it counts and pages exactly as before; without
+     * it no COUNT runs: `limit + 1` rows are read and the extra one only tells
+     * `hasMore`, never reaching `items`. `$order` is applied after the count so
+     * the COUNT stays unordered.
+     *
+     * @param  Builder<*>  $filtered
+     * @param  Closure(Builder<*>): Builder<*>  $order
+     */
+    public function page(Builder $filtered, Closure $order): ForSelectResult
+    {
+        $total = $this->includeTotal ? (clone $filtered)->count() : null;
+
+        $rows = $order($filtered)
+            ->offset($this->offset)
+            ->limit($this->includeTotal ? $this->limit : $this->limit + 1)
+            ->get();
+
+        $hasMore = null;
+
+        if (! $this->includeTotal) {
+            $hasMore = $rows->count() > $this->limit;
+            $rows = $rows->take($this->limit)->values();
+        }
+
+        return new ForSelectResult($rows, $total, $this->offset, $this->limit, $hasMore);
     }
 
     public function hasCompetenceCategoryIds(): bool

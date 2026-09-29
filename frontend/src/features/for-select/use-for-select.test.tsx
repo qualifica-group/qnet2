@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import {
@@ -9,7 +9,8 @@ import {
 } from '@/features/for-select/use-for-select'
 import type {
   ForSelectItem,
-  PaginatedResponse,
+  ForSelectPagination,
+  ForSelectResponse,
 } from '@/features/for-select/types'
 
 const fetchForSelectMock = vi.fn()
@@ -22,12 +23,12 @@ vi.mock('@/features/for-select/api', () => ({
 
 function page(
   items: ForSelectItem[],
-  pagination: { total: number; offset: number; limit: number },
-): PaginatedResponse<ForSelectItem> {
+  pagination: Partial<ForSelectPagination> & { offset: number; limit: number },
+): ForSelectResponse<ForSelectItem> {
   return {
     items,
     export_link: null,
-    pagination: { ...pagination, total_pages: 1 },
+    pagination: { total: null, total_pages: null, ...pagination },
   }
 }
 
@@ -61,6 +62,7 @@ describe('useForSelect', () => {
       offset: 0,
       limit: 25,
       ids: [7],
+      includeTotal: false,
     })
   })
 
@@ -114,6 +116,70 @@ describe('useForSelect', () => {
       { wrapper: wrapper() },
     )
     expect(fetchForSelectMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('useForSelect include_total / has_more (spec 0178 D-7, AC-028)', () => {
+  async function loadFirstPage(pagination: Parameters<typeof page>[1]) {
+    fetchForSelectMock.mockResolvedValue(page([{ id: 1, label: 'A' }], pagination))
+    const hook = renderHook(
+      () => useForSelect({ resource: 'quotes', search: '' }),
+      { wrapper: wrapper() },
+    )
+    await waitFor(() => expect(hook.result.current.isSuccess).toBe(true))
+    return hook.result.current
+  }
+
+  it('asks the server to skip the total on every list request', async () => {
+    await loadFirstPage({ offset: 0, limit: 25, has_more: true })
+    expect(fetchForSelectMock.mock.calls[0][1]).toMatchObject({ includeTotal: false })
+  })
+
+  it('has a next page when has_more is true, even with a null total', async () => {
+    const result = await loadFirstPage({ offset: 0, limit: 25, has_more: true })
+    expect(result.hasNextPage).toBe(true)
+  })
+
+  it('stops when has_more is false', async () => {
+    const result = await loadFirstPage({ offset: 25, limit: 25, has_more: false })
+    expect(result.hasNextPage).toBe(false)
+  })
+
+  it('requests the next offset as offset + limit when has_more is true', async () => {
+    fetchForSelectMock
+      .mockResolvedValueOnce(page([{ id: 1, label: 'A' }], { offset: 0, limit: 25, has_more: true }))
+      .mockResolvedValueOnce(page([{ id: 2, label: 'B' }], { offset: 25, limit: 25, has_more: false }))
+    const { result } = renderHook(
+      () => useForSelect({ resource: 'quotes', search: '' }),
+      { wrapper: wrapper() },
+    )
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    act(() => {
+      void result.current.fetchNextPage()
+    })
+    await waitFor(() => expect(result.current.data?.pages).toHaveLength(2))
+    expect(fetchForSelectMock.mock.calls[1][1]).toMatchObject({ offset: 25 })
+    expect(result.current.hasNextPage).toBe(false)
+  })
+
+  it('falls back to offset + limit < total when has_more is absent', async () => {
+    const more = await loadFirstPage({ total: 30, offset: 0, limit: 25 })
+    expect(more.hasNextPage).toBe(true)
+  })
+
+  it('falls back to no next page when has_more is absent and total is reached', async () => {
+    const done = await loadFirstPage({ total: 25, offset: 0, limit: 25 })
+    expect(done.hasNextPage).toBe(false)
+  })
+
+  it('does not send include_total on the labels-by-ids query', async () => {
+    fetchForSelectMock.mockResolvedValue(page([{ id: 5, label: 'Alice' }], { offset: 0, limit: 1 }))
+    const { result } = renderHook(
+      () => useForSelectLabels({ resource: 'quotes', ids: [5] }),
+      { wrapper: wrapper() },
+    )
+    await waitFor(() => expect(result.current.size).toBe(1))
+    expect(fetchForSelectMock.mock.calls[0][1]).not.toHaveProperty('includeTotal')
   })
 })
 

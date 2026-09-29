@@ -17,3 +17,7 @@ Artisan::command('inspire', function () {
 // minute, which is infrastructure outside this repo (AC-030, a manual,
 // operator-side verification).
 Schedule::command('tasks:generate-recurrences')->dailyAt('01:00')->withoutOverlapping();
+
+// Spec 0178, D-6: the `database` cache store never removes expired rows that
+// are not read again; hourly, chunked, no-op on other stores.
+Schedule::command('cache:prune-expired')->hourly()->withoutOverlapping();

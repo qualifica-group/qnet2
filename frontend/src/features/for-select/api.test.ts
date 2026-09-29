@@ -41,6 +41,18 @@ describe('fetchForSelect', () => {
     )
   })
 
+  it('sends include_total=0 only when includeTotal is false (spec 0178 D-7)', async () => {
+    getMock.mockResolvedValue(
+      paginated({ items: [], export_link: null, pagination: { total: null, offset: 0, limit: 25, total_pages: null, has_more: false } }),
+    )
+
+    await fetchForSelect('quotes', { includeTotal: false })
+    await fetchForSelect('quotes', {})
+
+    expect(getMock.mock.calls[0][1]?.params).toEqual({ offset: 0, limit: 25, include_total: 0 })
+    expect(getMock.mock.calls[1][1]?.params).toEqual({ offset: 0, limit: 25 })
+  })
+
   it('omits empty search and empty ids from the request params', async () => {
     getMock.mockResolvedValue(
       paginated({

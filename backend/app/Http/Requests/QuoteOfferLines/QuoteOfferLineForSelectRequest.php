@@ -43,6 +43,7 @@ class QuoteOfferLineForSelectRequest extends FormRequest
             'limit' => ['sometimes', 'integer', 'min:1', "max:{$maxLimit}"],
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
+            'include_total' => ['sometimes', 'boolean'],
             'except_work_order_id' => ['sometimes', 'nullable', 'integer', 'exists:work_orders,id'],
         ];
     }

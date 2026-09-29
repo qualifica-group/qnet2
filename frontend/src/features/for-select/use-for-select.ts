@@ -47,13 +47,20 @@ export function useForSelect({
         // Hydrate selected values only on the first page to label current
         // selections that fall outside the searched window.
         ids: pageParam === 0 ? ids : undefined,
+        // Spec 0178 D-7: the list only needs "is there a next page", so skip the COUNT.
+        includeTotal: false,
         params,
       }),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {
-      const { offset, limit, total } = lastPage.pagination
+      const { offset, limit, total, has_more } = lastPage.pagination
       const nextOffset = offset + limit
-      return nextOffset < total ? nextOffset : undefined
+      // Spec 0178 D-7: has_more when the server honoured include_total=0;
+      // a resource not migrated ignores it and still answers the total.
+      if (typeof has_more === 'boolean') {
+        return has_more ? nextOffset : undefined
+      }
+      return total !== null && nextOffset < total ? nextOffset : undefined
     },
     enabled,
   })

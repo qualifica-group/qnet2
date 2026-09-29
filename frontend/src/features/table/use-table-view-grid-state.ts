@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useImperativeHandle, useMemo, useState, type Ref } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react'
 import type { GridApi, GridReadyEvent } from 'ag-grid-community'
 import { useAbilities } from '@/features/auth/use-abilities'
-import { createSsrmDatasource } from '@/features/table/ssrm-datasource'
+import { createSsrmDatasource, type SsrmDatasource } from '@/features/table/ssrm-datasource'
 import { useTableToolbarState, type TableToolbarState } from '@/features/table/use-table-toolbar-state'
 import { useTableLocalFilters } from '@/features/table/use-table-local-filters'
 import { useTableAdvancedFilters } from '@/features/table/advanced-filters/use-table-advanced-filters'
@@ -58,7 +58,7 @@ export interface UseTableViewGridStateResult {
   advancedFilterDescriptors: AdvancedFilterDescriptor[]
   advancedFilters: UseAdvancedFiltersResult
   aggregates: TableRowsAggregates | undefined
-  datasource: ReturnType<typeof createSsrmDatasource>
+  datasource: SsrmDatasource
 }
 
 /**
@@ -114,7 +114,12 @@ export function useTableViewGridState(
   // Purges and reloads the SSRM cache; shared by the imperative handle (used
   // by domain adapters after their own CRUD mutations) and the generic
   // bulk-delete flow below.
+  // The datasource is built further down (it depends on hooks that themselves
+  // call `refreshGrid`), so it is reached through a ref to avoid a cycle.
+  const datasourceRef = useRef<SsrmDatasource | null>(null)
   const refreshGrid = useCallback(() => {
+    // Spec 0178 D-2: forget the block-0 total so a page > 1 recounts after a write.
+    datasourceRef.current?.resetKnownTotal()
     gridApi?.refreshServerSide({ purge: true })
   }, [gridApi])
 
@@ -239,6 +244,9 @@ export function useTableViewGridState(
       treeData,
     ],
   )
+  useEffect(() => {
+    datasourceRef.current = datasource
+  }, [datasource])
 
   useImperativeHandle(ref, () => ({ refresh: refreshGrid, clearSelection }), [
     refreshGrid,

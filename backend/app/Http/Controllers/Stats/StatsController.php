@@ -7,6 +7,8 @@ namespace App\Http\Controllers\Stats;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Models\User;
 use App\Stats\StatsRegistry;
+use App\Stats\Widgets\Widget;
+use App\Support\Cache\AggregateCache;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,7 +26,10 @@ use Throwable;
  */
 class StatsController extends BaseApiController
 {
-    public function __construct(private readonly StatsRegistry $registry) {}
+    public function __construct(
+        private readonly StatsRegistry $registry,
+        private readonly AggregateCache $cache,
+    ) {}
 
     public function __invoke(Request $request, string $domain): JsonResponse
     {
@@ -35,7 +40,14 @@ class StatsController extends BaseApiController
             $actor = $request->user();
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
 
-            return $this->ok(['widgets' => $definition->widgets()]);
+            // The locale is part of the key: widget and enum labels are translated.
+            $widgets = $this->cache->remember(
+                "stats:{$domain}:{$definition->cacheScope($actor)}:".app()->getLocale(),
+                fn () => array_map(static fn (Widget $widget) => $widget->toArray(), $definition->widgets()),
+                $actor,
+            );
+
+            return $this->ok(['widgets' => $widgets]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['domain' => $domain]);
         }

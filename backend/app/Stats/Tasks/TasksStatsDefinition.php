@@ -7,6 +7,7 @@ namespace App\Stats\Tasks;
 use App\Enums\TaskListStatus;
 use App\Models\Task;
 use App\Models\TimeEntry;
+use App\Models\User;
 use App\Services\Tasks\TaskVisibilityScope;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
@@ -40,6 +41,12 @@ class TasksStatsDefinition extends AbstractStatsDefinition
     public function modelClass(): string
     {
         return Task::class;
+    }
+
+    /** Widgets are narrowed by TaskVisibilityScope, so each actor has their own numbers. */
+    public function cacheScope(User $actor): string
+    {
+        return 'user:'.$actor->getKey();
     }
 
     /**

@@ -39,6 +39,13 @@ interface StatsDefinition
     public function authorizeViewAny(User $actor): bool;
 
     /**
+     * The cache partition of this panel's aggregates (spec 0178, D-3):
+     * `global` when every viewer sees the same numbers, `user:{id}` when the
+     * widgets are narrowed to the actor.
+     */
+    public function cacheScope(User $actor): string;
+
+    /**
      * The widgets, in display order. An empty list is legal (the frontend
      * renders its empty state).
      *

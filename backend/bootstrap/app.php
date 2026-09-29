@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\CaptureCustomFields;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\RecordActorWrite;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
@@ -39,6 +40,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // api/* request. Pure capture (no auth logic), appended so it never
         // reorders the existing pipeline.
         $middleware->api(append: [CaptureCustomFields::class]);
+
+        // spec 0178, D-4: remembers successful writes per actor so cached
+        // aggregates are recomputed for whoever just changed the data.
+        $middleware->api(append: [RecordActorWrite::class]);
 
         // User directive 2026-08-03: the API answers in the language the
         // client is using. PREPENDED so the locale is already set when

@@ -309,24 +309,15 @@ class ProductService
             $base->whereJsonContains('usages', $query->productUsage->value);
         }
 
-        $total = (clone $base)->count();
+        $window = $query->page($base, static fn ($ordered) => $ordered->orderBy('name')->orderBy('id'));
 
         /** @var Collection<int, Product> $page */
-        $page = $base->orderBy('name')
-            ->orderBy('id')
-            ->offset($query->offset)
-            ->limit($query->limit)
-            ->get();
+        $page = $window->items;
 
         $items = $this->appendHydratedIds($page, $query);
         $items->load(['category:id,name', 'vatRate:id,name,rate', 'unitOfMeasure:id,name,symbol', 'productTypology:id,name']);
 
-        return new ForSelectResult(
-            items: $items,
-            total: $total,
-            offset: $query->offset,
-            limit: $query->limit,
-        );
+        return $window->withItems($items);
     }
 
     /**

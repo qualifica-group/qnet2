@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0178-volume-performance-cache" status="implemented" owner="utente" date="2026-09-29">
+
+  <goal>
+    Il gestionale regge 100 utenti contemporanei su ~1M richieste/opportunita'/anagrafiche senza Redis:
+    (A) le griglie SSRM contano le righe una sola volta per combinazione di filtri invece che a ogni pagina;
+    (B) gli aggregati pesanti (tab categoria, dashboard e filtri del report, statistiche delle griglie,
+    valori dei filtri a insieme) si calcolano una volta e si riusano per pochi secondi, senza valanghe di
+    ricalcoli simultanei, restando esatti per chi ha appena salvato.
+  </goal>
+
+  <context>
+    Stress test 2026-09-29 (harness fuori repo, super-admin, DB locale ~1M righe), dopo le ottimizzazioni
+    query gia' committate: tab categoria 2,5 s, dashboard report 2,4 s (1 categoria), filtri report
+    sites/operators/categories ~1 s ciascuno, statistiche opportunita' 3,3 s, valori filtro fino a 6 s,
+    `count(*)` della griglia 0,2 s senza filtri e fino a 29 s con la ricerca, ripetuto a ogni pagina.
+    Con 100 utenti ogni richiesta lenta occupa un processo PHP e il DB per tutta la sua durata.
+
+    Decisioni utente 2026-09-29:
+    - Niente Redis. Store di cache = `database`, gia' configurato (`CACHE_STORE=database`, tabelle `cache` e
+      `cache_locks` presenti). Il codice non dipende dallo store: Redis in futuro solo via `.env`.
+    - Ritardo di pochi secondi ammesso sui numeri aggregati: finestra FRESCA 10 s, massima 5 min
+      (stale-while-revalidate). Sostituisce "tab sempre aggiornate" (fix FE del 2026-09-29, che resta:
+      rilettura a ogni mount + invalidazione dopo le scritture).
+    - Chi salva vede numeri esatti: un attore che ha eseguito una scrittura DOPO il calcolo del valore in
+      cache ottiene un ricalcolo sincrono (costo solo suo: ~0,2 s commerciale, ~2,5 s chi vede tutto).
+    - Report: la dashboard usa la cache, l'export CSV calcola SEMPRE al momento. Spec 0107 D-2 (stessi
+      numeri a parita' di filtri) resta vera sul CALCOLO; nel tempo la dashboard puo' essere indietro al
+      massimo della finestra rispetto a un CSV dello stesso istante (nota da aggiungere a 0107).
+
+    Codice reale verificato:
+    - SSRM: `App\Http\Requests\Table\TableRowsRequest` (startRow/endRow/sortModel/filterModel/search/
+      advancedFilters/customFilterRules/productCategoryId/opportunityId/quoteId/tree/treeParentId/
+      kanbanGroup), `App\Services\TableService::rows()` (riga 105: `(clone $query)->count()` a ogni
+      chiamata, poi `$definition->aggregates()` spec 0156 sullo stesso insieme),
+      `TableController::rows()` -> `BaseApiController::paginatedResponse(items,total,offset,limit,meta)`
+      con `pagination{total,offset,limit,total_pages}` e `meta.aggregates` opzionale.
+      FE: `features/table/ssrm-datasource.ts` (`createSsrmDatasource`, `params.success({rowData,
+      rowCount: response.pagination.total})`, `onAggregates`), istanza unica in
+      `features/table/use-table-view-grid-state.ts` (useMemo), `refreshGrid()` =
+      `refreshServerSide({ purge: true })` (riga 118) usato dopo ogni scrittura via `ref.refresh()`.
+      Griglia paginata: `cacheBlockSize` = dimensione pagina (`components/data-table/data-table.tsx`),
+      ogni cambio di filtro/ordinamento/ricerca riparte da `startRow = 0`.
+    - Aggregati: `App\Services\RequestManagement\RequestCategoryTabsResolver::resolve()` (GET
+      `{module}/product-categories`), `RequestManagementReportController::{categories,operators,sites,
+      dashboard}` -> `ReportCategoryAvailabilityResolver`, `ReportOperatorAvailabilityResolver`,
+      `ReportSiteAvailabilityResolver`, `Dashboard\RequestManagementDashboardBuilder::build()`; CSV via
+      `RequestManagementReportGenerator::generate()` (job). Visibilita' =
+      `RequestManagementScope::scopeToActor()` (viewAll / operatore / sedi viewSite o viewPrimarySite,
+      filtro stato per modulo). `StatsController` -> `StatsDefinition::widgets()` (17 definizioni; tutte
+      globali tranne `TasksStatsDefinition` che scopa su `Auth::user()`). Valori filtro:
+      `TableController::values()` -> `TableService::distinctValues()`.
+    - Lezione gia' pagata (`App\CustomFields\CustomFieldProvider`): una Collection Eloquent serializzata
+      nello store `database`/`file` torna `__PHP_Incomplete_Class`. In cache SOLO array/scalari.
+    - `Cache::flexible()` (vendor Laravel) calcola in modo SINCRONO e SENZA lock su chiave assente/scaduta:
+      non basta contro la valanga a freddo. Lo store `database` non elimina da solo le righe scadute mai
+      rilette. Scheduler presente (`routes/console.php`).
+  </context>
+
+  <decisions>
+    <decision id="D-1">
+      Conteggio unico lato CLIENT (non cache lato server): il datasource memorizza il totale del blocco 0
+      per la "firma" della richiesta (filterModel, search, advancedFilters, customFilterRules, scope
+      productCategoryId/opportunityId/quoteId, tree/treeParentId; NON sortModel: l'ordine non cambia il
+      conteggio) e lo invia come `knownTotal` sulle pagine successive. Il server con `startRow > 0` e
+      `knownTotal` presente salta `count()` e `aggregates()` e rimanda `knownTotal` come `total`. Con
+      `startRow = 0` conta SEMPRE (ignora `knownTotal`). Esatto quanto oggi, nessuna cache, nessun dato
+      condiviso tra utenti; `knownTotal` influenza solo il numero rimandato al client stesso.
+    </decision>
+    <decision id="D-2">
+      `refreshGrid()` azzera la memoria del totale prima di `refreshServerSide`, cosi' dopo una scrittura
+      anche una pagina > 1 riconta. Le due chiamate dirette `refreshServerSide({ purge: false })` fuori dal
+      framework tabellare (dettaglio premi, notifiche) NON azzerano: li' il totale si riallinea al primo
+      ritorno a pagina 1 o al cambio filtro (limite accettato, vedi scope/out).
+    </decision>
+    <decision id="D-3">
+      Un solo servizio `App\Support\Cache\AggregateCache` per tutti gli aggregati. Voce salvata = array
+      `{value, computed_at}` con `value` array/scalare. Lettura: assente -> lock sulla chiave (attesa
+      massima configurata), riletta dopo il lock, calcolo e scrittura (un solo calcolo anche con N richieste
+      simultanee); eta' &lt;= fresh -> restituita; fresh &lt; eta' &lt;= stale -> restituita SUBITO e ricalcolata
+      dopo la risposta (`defer`) da un solo processo (lock non bloccante); eta' > stale -> come assente.
+      Scaduto il tempo di attesa del lock, la richiesta calcola da se'. Qualsiasi eccezione dello store di
+      cache (lettura, scrittura, lock) viene registrata nel log e la richiesta calcola direttamente: la cache
+      non fa mai fallire una risposta.
+    </decision>
+    <decision id="D-4">
+      Esattezza per chi scrive: il middleware `RecordActorWrite` registra `actor-wrote:{userId}` = istante
+      della scrittura dopo ogni richiesta API con metodo POST/PUT/PATCH/DELETE e risposta 2xx, ESCLUSE le
+      POST di sola lettura del framework tabellare (`tables/{domain}/rows`, `tables/{domain}/values`) e
+      `request-management|enrollee-management/form-context`. Se l'attore che legge ha scritto dopo
+      `computed_at`, `AggregateCache` ricalcola in modo sincrono (sotto lock) e salva: ne beneficia anche
+      chi condivide la chiave. Un falso positivo costa solo un ricalcolo; un falso negativo lascerebbe il
+      numero vecchio, per questo la regola e' per metodo HTTP e non per model event (le righe prodotto
+      si scrivono anche con delete/insert di massa che non emettono eventi).
+    </decision>
+    <decision id="D-5">
+      Chiavi per AMBITO DI VISIBILITA', mai piu' larghe dei dati che l'attore puo' vedere:
+      - Gestione Richieste/Iscritti (tab, dashboard, filtri report): impronta da
+        `RequestManagementScope::scopeFingerprint(User, RequestModule)` = modulo + `all` per viewAll,
+        altrimenti `op:{id}` + `sites:{id ordinati}` (stessa regola di scopeToActor, un solo posto).
+        Dashboard: + hash dei parametri validati (date, categorie, row_mode, operatori, sedi).
+      - Statistiche: `StatsDefinition::cacheScope(User): string`, default `global` in
+        `AbstractStatsDefinition`, `TasksStatsDefinition` -> `user:{id}`.
+      - Valori filtro: `user:{id}` + dominio + colonna + hash di (filterModel, search, limit e scope
+        productCategoryId/opportunityId/quoteId). Per utente: le griglie applicano regole di visibilita'
+        per dominio che qui non si ricostruiscono.
+      L'autorizzazione (403) e la validazione (422) avvengono PRIMA della lettura in cache.
+    </decision>
+    <decision id="D-6">
+      Pulizia: comando `cache:prune-expired` elimina dalla tabella dello store `database` le righe con
+      `expiration` passata, a blocchi (cancellazioni limitate per non tenere lock lunghi sulla tabella);
+      schedulato ogni ora (`withoutOverlapping`). No-op su store diversi da database. La connessione della
+      cache resta configurabile senza codice (`DB_CACHE_CONNECTION`, gia' in `config/cache.php`).
+    </decision>
+    <decision id="D-7">
+      Tendine for-select (41 endpoint `GET /api/{resource}/for-select`, ognuno con il proprio
+      `(clone $base)->count()` nel servizio): il frontend (`features/for-select/use-for-select.ts`) usa il
+      totale SOLO per sapere se esiste la pagina successiva, e ogni tasto digitato rilancia la pagina 0,
+      quindi il D-1 non basterebbe. Parametro opzionale `include_total` (default true, parita'): con
+      `include_total=0` il servizio legge `limit + 1` righe, non conta, e risponde `pagination.total = null`
+      + `pagination.has_more`. Helper condiviso sul DTO `ForSelectQuery` (una riga per servizio).
+      Applicato ai for-select su tabelle che crescono con l'operativita' (decisione da confermare, vedi
+      scope): quotes, opportunities, registries, leads, tasks, work-orders, projects, campaigns, companies,
+      company-sites, referents, products, quote-offer-lines, users, mentionable users. Le tendine di
+      tabelle di configurazione (stati, aliquote, unita', tipi, priorita'...) restano invariate: il loro
+      conteggio costa meno di 1 ms.
+    </decision>
+    <decision id="D-8">
+      Tabelle di appoggio (stati workflow, categorie, fonti, funzioni, sedi, citta', aliquote...) NON in
+      cache. Misura 2026-09-29 (prima pagina Gestione Richieste, commerciale): ~12 query su queste tabelle,
+      sotto 1 ms ciascuna, 1-2 ms in tutto su ~93 ms. Con lo store `database` una lettura di cache e' essa
+      stessa una query sullo stesso MariaDB: guadagno nullo, piu' il rischio di un'invalidazione mancata
+      (import, seeder, update di massa senza eventi). Da rivalutare solo con uno store in memoria (Redis/APCu).
+    </decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>(A) `knownTotal` su POST /api/tables/{domain}/rows (BE) + memoria del totale nel datasource SSRM e azzeramento in refreshGrid (FE).</item>
+      <item>(B) `AggregateCache`, config `config/aggregate-cache.php`, middleware `RecordActorWrite`, comando + schedule di pulizia.</item>
+      <item>(B) Cache applicata a: tab categoria (Richieste e Iscritti), dashboard report, filtri report categories/operators/sites, statistiche (tutti i domini), valori filtro di tutte le griglie.</item>
+      <item>(C) `include_total` / `has_more` sulle tendine for-select delle tabelle operative (D-7) + `use-for-select.ts`.</item>
+      <item>Nota in spec 0107 D-2 (ritardo ammesso dashboard vs CSV); guide in-app IT/EN request-management + enrollee-management (contatori aggiornati entro pochi secondi).</item>
+    </in>
+    <out>
+      <item>Redis, APCu, code/worker per il ricalcolo (il ricalcolo differito usa `defer` nella stessa richiesta).</item>
+      <item>Ricerca rapida full-text (spec separata), ordinamenti su colonne collegate, paginazione profonda (keyset).</item>
+      <item>Cache delle RIGHE delle griglie e dei dettagli: solo conteggi e aggregati.</item>
+      <item>Export CSV del report e ogni altro export: calcolati sempre al momento.</item>
+      <item>Azzeramento del totale sulle due `refreshServerSide({ purge: false })` dirette (dettaglio premi, notifiche) — D-2.</item>
+      <item>Configurazione server (buffer pool, OPcache, FPM): indicata all'utente, non versionata qui.</item>
+      <item>Kanban e altri chiamanti del rows endpoint che non inviano `knownTotal`: comportamento invariato.</item>
+      <item>Cache delle tabelle di appoggio (D-8).</item>
+      <item>Tendine for-select delle tabelle di configurazione; liste paginate su tabelle piccole o per-utente (notifiche, segnatempo giorni, email commessa, registro attivita', revisione import): invariate, da riprendere se crescono.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/tables/{domain}/rows">
+      <request>
+        Invariato + campo opzionale `knownTotal`: integer >= 0. Considerato solo con `startRow > 0`;
+        con `startRow = 0` ignorato (si conta sempre).
+      </request>
+      <response status="200">
+        Shape invariata: `{ items, export_link, pagination: { total, offset, limit, total_pages }, meta? }`.
+        Con `startRow > 0` e `knownTotal`: `pagination.total = knownTotal`, `total_pages` calcolato da esso,
+        `meta` ASSENTE (niente `aggregates`: il client tiene gli ultimi ricevuti).
+        Senza `knownTotal` o con `startRow = 0`: identico a oggi.
+      </response>
+      <errors>
+        422 se `knownTotal` non e' intero o e' negativo. Resto invariato (403 viewAny, 404 dominio).
+      </errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/{request-management|enrollee-management}/product-categories">
+      <response status="200">Shape invariata. Valori da AggregateCache (D-3/D-4/D-5).</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/{request-management|enrollee-management}/report/{dashboard|categories|operators|sites}">
+      <response status="200">Shape invariata. Valori da AggregateCache.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/stats/{domain}">
+      <response status="200">Shape invariata. Valori da AggregateCache.</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/{domain}/values">
+      <response status="200">Shape invariata. Valori da AggregateCache.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/{resource}/for-select (solo i resource elencati in D-7)">
+      <request>
+        Invariato + `include_total` opzionale: boolean (0/1/true/false), default true.
+      </request>
+      <response status="200">
+        `include_total` assente o true: identico a oggi.
+        `include_total=0`: `pagination = { total: null, offset, limit, total_pages: null, has_more: boolean }`,
+        `items` al massimo `limit` elementi (la riga in piu' letta serve solo a `has_more`); gli `ids`
+        idratati sulla prima pagina restano come oggi e non influenzano `has_more`.
+      </response>
+      <errors>422 se `include_total` non e' booleano.</errors>
+    </endpoint>
+    <config file="config/aggregate-cache.php">
+      `fresh_seconds` (env AGGREGATE_CACHE_FRESH_SECONDS, default 10), `stale_seconds` (default 300),
+      `lock_seconds` (durata massima del lock, default 30), `lock_wait_seconds` (attesa massima, default 5), `prune_chunk` (righe per blocco di pulizia, default 1000).
+    </config>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- (A) conteggio unico -->
+    <criterion id="AC-001">Dato startRow=0 e knownTotal=5 su una griglia con 12 righe visibili, quando si chiede rows, allora pagination.total=12 e viene eseguita una query di conteggio.</criterion>
+    <criterion id="AC-002">Dato startRow=25 e knownTotal=12, quando si chiede rows, allora pagination.total=12, total_pages coerente, meta assente e NESSUNA query `count(*)` ne' di aggregates eseguita (verificato con DB::listen).</criterion>
+    <criterion id="AC-003">Dato startRow=25 senza knownTotal, allora la risposta e' identica a oggi (conteggio eseguito, meta.aggregates presente per un dominio con aggregates()).</criterion>
+    <criterion id="AC-004">knownTotal=-1 oppure "abc" produce 422 senza eseguire la query delle righe.</criterion>
+    <criterion id="AC-005">FE datasource: la richiesta del blocco 0 non contiene knownTotal; la richiesta di un blocco successivo con la stessa firma contiene knownTotal = total del blocco 0 e passa lo stesso rowCount alla griglia.</criterion>
+    <criterion id="AC-006">FE datasource: cambiando search, filterModel, filtri avanzati, regole custom o scope, la richiesta successiva con startRow>0 NON contiene knownTotal; cambiando solo sortModel lo contiene.</criterion>
+    <criterion id="AC-007">FE: dopo refreshGrid() la prima richiesta (anche con startRow>0) non contiene knownTotal.</criterion>
+    <criterion id="AC-008">FE: una risposta servita con knownTotal (meta assente) non chiama onAggregates con undefined: il footer mantiene gli ultimi aggregati.</criterion>
+    <!-- (B) AggregateCache -->
+    <criterion id="AC-010">Chiave assente: il calcolo avviene una volta e il valore e' salvato; una seconda lettura entro fresh_seconds non richiama il calcolo.</criterion>
+    <criterion id="AC-011">Eta' tra fresh e stale: la lettura restituisce il valore VECCHIO; dopo l'esecuzione dei callback differiti il valore salvato e' quello nuovo e il calcolo e' avvenuto una sola volta.</criterion>
+    <criterion id="AC-012">Eta' oltre stale_seconds: la lettura ricalcola in modo sincrono e restituisce il valore nuovo.</criterion>
+    <criterion id="AC-013">Chiave assente con lock gia' posseduto da un altro processo che nel frattempo salva il valore: la lettura restituisce quel valore senza richiamare il proprio calcolo.</criterion>
+    <criterion id="AC-014">Lock non ottenuto entro lock_wait_seconds: la lettura calcola comunque e restituisce il valore (nessuna eccezione).</criterion>
+    <criterion id="AC-029">Se lo store di cache lancia un'eccezione in lettura, scrittura o lock, la lettura restituisce il valore calcolato direttamente e l'endpoint risponde 200 con lo stesso payload.</criterion>
+    <criterion id="AC-015">Un valore di tipo oggetto (es. Model o Collection) passato ad AggregateCache e' rifiutato con eccezione in fase di sviluppo/test; i valori delle tab letti dallo store `database` tornano array identici a quelli calcolati (regressione CustomFieldProvider).</criterion>
+    <!-- (B) esattezza per chi scrive -->
+    <criterion id="AC-016">RecordActorWrite: PATCH/PUT/DELETE/POST 2xx registra actor-wrote per l'utente; una risposta 4xx/5xx non registra; POST tables/{domain}/rows, POST tables/{domain}/values e POST {module}/form-context non registrano; una GET non registra.</criterion>
+    <criterion id="AC-017">Un attore che ha scritto dopo computed_at riceve un valore ricalcolato in modo sincrono; un altro attore con la stessa chiave, entro fresh_seconds prima del ricalcolo, riceve il valore in cache.</criterion>
+    <criterion id="AC-018">End-to-end tab: un operatore cambia la categoria di una sua richiesta (PATCH request-management/{quote}) e rilegge le tab: i conteggi riflettono il cambio.</criterion>
+    <!-- (B) applicazione e isolamento -->
+    <criterion id="AC-019">Tab: due operatori senza viewAll ottengono ciascuno i propri conteggi (nessuna fuga tra chiavi); due attori viewAll condividono la chiave (il secondo non ricalcola entro fresh_seconds); modulo Iscritti e modulo Richieste hanno chiavi distinte.</criterion>
+    <criterion id="AC-020">Dashboard: parametri diversi (date, categorie, row_mode, operatori, sedi) -> chiavi diverse; stesso ambito e stessi parametri -> un solo calcolo entro fresh_seconds. Un export CSV generato subito dopo una modifica riflette la modifica anche se la dashboard e' ancora in cache.</criterion>
+    <criterion id="AC-021">Filtri report categories/operators/sites: in cache per ambito; un attore senza permesso report riceve 403 anche se la chiave del suo ambito esiste gia'.</criterion>
+    <criterion id="AC-022">Statistiche: un dominio globale e' calcolato una volta per tutti gli attori entro fresh_seconds; le statistiche dei task restano per attore (due attori con task diversi vedono numeri diversi).</criterion>
+    <criterion id="AC-023">Valori filtro: filterModel, search o scope diversi -> chiavi diverse; due utenti diversi non condividono mai la voce; un 422 di validazione non legge ne' scrive la cache.</criterion>
+    <criterion id="AC-024">cache:prune-expired elimina a blocchi di prune_chunk righe le righe scadute della tabella cache e conserva quelle valide; e' schedulato ogni ora.</criterion>
+    <!-- (C) tendine for-select -->
+    <criterion id="AC-026">Per ogni resource di D-7, con include_total=0 e piu' righe di limit: nessuna query count(*) eseguita, items = limit, has_more = true, total = null; all'ultima pagina has_more = false.</criterion>
+    <criterion id="AC-027">Senza include_total (o true) ogni for-select risponde identico a oggi (total intero, nessun has_more richiesto); include_total="x" produce 422.</criterion>
+    <criterion id="AC-028">FE use-for-select: invia include_total=0 e decide la pagina successiva da has_more; senza has_more (resource non migrato) usa ancora offset + limit contro total.</criterion>
+    <criterion id="AC-025">(Verifica operativa, harness sul DB da 1M) a cache calda: tab admin, dashboard 1 categoria, statistiche opportunita' e filtri report sotto 100 ms lato server; pagina 2 di una griglia con ricerca attiva senza query count.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Solo Cache/Lock/defer di Laravel gia' installato; store da `CACHE_STORE`.</item>
+    <item>In cache solo array/scalari (mai Model/Collection).</item>
+    <item>Autorizzazione e validazione sempre prima della cache; chiavi mai piu' larghe dell'ambito visibile (D-5).</item>
+    <item>Carico DB aggiunto limitato a operazioni per chiave primaria sulle tabelle `cache`/`cache_locks`; nessuna scrittura su tabelle di dominio.</item>
+    <item>Nessun `throttle` aggiunto (backend.md §2). Magic value in `config/aggregate-cache.php`.</item>
+    <item>Test Pest su store `database` dove si verifica la serializzazione (AC-015), store di test di default altrove; Vitest per il datasource. File entro 300/500 righe.</item>
+  </constraints>
+
+</spec>

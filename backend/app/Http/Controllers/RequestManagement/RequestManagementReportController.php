@@ -16,6 +16,8 @@ use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\ReportCategoryAvailabilityResolver;
 use App\Services\RequestManagement\Report\ReportOperatorAvailabilityResolver;
 use App\Services\RequestManagement\Report\ReportSiteAvailabilityResolver;
+use App\Services\RequestManagement\RequestManagementScope;
+use App\Support\Cache\AggregateCache;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -51,6 +53,7 @@ class RequestManagementReportController extends BaseApiController
         private readonly ReportCategoryAvailabilityResolver $availability,
         private readonly ReportOperatorAvailabilityResolver $operatorAvailability,
         private readonly ReportSiteAvailabilityResolver $siteAvailability,
+        private readonly AggregateCache $cache,
     ) {}
 
     /**
@@ -67,7 +70,11 @@ class RequestManagementReportController extends BaseApiController
             $actor = $request->user();
             abort_unless($actor->can($module->permission('report')), 403);
 
-            return $this->ok(['categories' => $this->availability->available($actor, $module)]);
+            return $this->ok(['categories' => $this->cache->remember(
+                $this->availabilityKey('categories', $actor, $module),
+                fn (): array => $this->availability->available($actor, $module),
+                $actor,
+            )]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -86,7 +93,11 @@ class RequestManagementReportController extends BaseApiController
             $actor = $request->user();
             abort_unless($actor->can($module->permission('report')), 403);
 
-            return $this->ok(['operators' => $this->operatorAvailability->available($actor, $module)]);
+            return $this->ok(['operators' => $this->cache->remember(
+                $this->availabilityKey('operators', $actor, $module),
+                fn (): array => $this->operatorAvailability->available($actor, $module),
+                $actor,
+            )]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -106,7 +117,11 @@ class RequestManagementReportController extends BaseApiController
             $actor = $request->user();
             abort_unless($actor->can($module->permission('report')), 403);
 
-            return $this->ok(['sites' => $this->siteAvailability->available($actor, $module)]);
+            return $this->ok(['sites' => $this->cache->remember(
+                $this->availabilityKey('sites', $actor, $module),
+                fn (): array => $this->siteAvailability->available($actor, $module),
+                $actor,
+            )]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -206,6 +221,15 @@ class RequestManagementReportController extends BaseApiController
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['exportRun' => $exportRun->id]);
         }
+    }
+
+    /**
+     * Cache key of a picker's options (spec 0178 D-5): per visibility scope and
+     * per locale, since the labels are translated. The CSV run never reads it.
+     */
+    private function availabilityKey(string $picker, User $actor, RequestModule $module): string
+    {
+        return "rm-report-{$picker}:".RequestManagementScope::scopeFingerprint($actor, $module).':'.app()->getLocale();
     }
 
     /**

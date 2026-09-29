@@ -258,3 +258,143 @@ describe('createSsrmDatasource', () => {
     expect(params.success).not.toHaveBeenCalled()
   })
 })
+
+describe('createSsrmDatasource knownTotal memory (spec 0178)', () => {
+  const PAGE_RESPONSE = {
+    items: [],
+    export_link: null,
+    pagination: { total: 60, offset: 0, limit: 25, total_pages: 3 },
+    meta: { aggregates: { sum: 1 } },
+  }
+  const KNOWN_RESPONSE = {
+    items: [],
+    export_link: null,
+    pagination: { total: 60, offset: 25, limit: 25, total_pages: 3 },
+  }
+
+  beforeEach(() => {
+    fetchRowsMock.mockReset()
+  })
+
+  it('AC-005: block 0 has no knownTotal; block 1 with same signature sends it and reuses rowCount', async () => {
+    fetchRowsMock.mockResolvedValueOnce(PAGE_RESPONSE)
+    fetchRowsMock.mockResolvedValueOnce(KNOWN_RESPONSE)
+    const ds = createSsrmDatasource('quotes')
+    await ds.getRows(stubParams({}))
+    const second = stubParams({ startRow: 25, endRow: 50 })
+    await ds.getRows(second)
+
+    expect(fetchRowsMock.mock.calls[0][1]).not.toHaveProperty('knownTotal')
+    expect(fetchRowsMock.mock.calls[1][1]).toHaveProperty('knownTotal', 60)
+    expect(second.success).toHaveBeenCalledWith({ rowData: [], rowCount: 60 })
+  })
+
+  it('AC-005: block 0 never sends knownTotal even when a memo exists', async () => {
+    fetchRowsMock.mockResolvedValue(PAGE_RESPONSE)
+    const ds = createSsrmDatasource('quotes')
+    await ds.getRows(stubParams({}))
+    await ds.getRows(stubParams({}))
+
+    expect(fetchRowsMock.mock.calls[1][1]).not.toHaveProperty('knownTotal')
+  })
+
+  it('AC-006: changing only sortModel keeps knownTotal', async () => {
+    fetchRowsMock.mockResolvedValue(PAGE_RESPONSE)
+    const ds = createSsrmDatasource('quotes')
+    await ds.getRows(stubParams({}))
+    await ds.getRows(stubParams({ startRow: 25, endRow: 50, sortModel: [{ colId: 'id', sort: 'desc' }] }))
+
+    expect(fetchRowsMock.mock.calls[1][1]).toHaveProperty('knownTotal', 60)
+  })
+
+  it('AC-005: a first request at startRow > 0 sends none but saves the total for the next block', async () => {
+    fetchRowsMock.mockResolvedValueOnce(PAGE_RESPONSE)
+    fetchRowsMock.mockResolvedValueOnce(KNOWN_RESPONSE)
+    const ds = createSsrmDatasource('quotes')
+    await ds.getRows(stubParams({ startRow: 25, endRow: 50 }))
+    await ds.getRows(stubParams({ startRow: 50, endRow: 75 }))
+
+    expect(fetchRowsMock.mock.calls[0][1]).not.toHaveProperty('knownTotal')
+    expect(fetchRowsMock.mock.calls[1][1]).toHaveProperty('knownTotal', 60)
+  })
+
+  it.each([
+    ['search', { getSearch: () => 'b' }],
+    ['advancedFilters', { getAdvancedFilters: () => ({ status: [1] }) as never }],
+    ['customFilterRules', { getCustomFilterRules: () => ({ combinator: 'and', rules: [] }) as never }],
+  ] as const)('AC-006: a changed %s drops knownTotal', async (_name, changed) => {
+    fetchRowsMock.mockResolvedValue(PAGE_RESPONSE)
+    let current: Parameters<typeof createSsrmDatasource>[1] = { getSearch: () => 'a' }
+    const holder: NonNullable<Parameters<typeof createSsrmDatasource>[1]> = {
+      getSearch: () => (current?.getSearch ?? (() => 'a'))(),
+      getAdvancedFilters: () => current?.getAdvancedFilters?.() ?? {},
+      getCustomFilterRules: () => current?.getCustomFilterRules?.() ?? null,
+    }
+    const ds = createSsrmDatasource('quotes', holder)
+    await ds.getRows(stubParams({}))
+    current = { ...current, ...changed }
+    await ds.getRows(stubParams({ startRow: 25, endRow: 50 }))
+
+    expect(fetchRowsMock.mock.calls[1][1]).not.toHaveProperty('knownTotal')
+  })
+
+  it('AC-006: a changed filterModel drops knownTotal', async () => {
+    fetchRowsMock.mockResolvedValue(PAGE_RESPONSE)
+    const ds = createSsrmDatasource('quotes')
+    await ds.getRows(stubParams({ filterModel: { a: { filter: 1 } } }))
+    await ds.getRows(stubParams({ startRow: 25, endRow: 50, filterModel: { a: { filter: 2 } } }))
+
+    expect(fetchRowsMock.mock.calls[1][1]).not.toHaveProperty('knownTotal')
+  })
+
+  it('AC-006: the same filterModel with a different key order keeps knownTotal', async () => {
+    fetchRowsMock.mockResolvedValue(PAGE_RESPONSE)
+    const ds = createSsrmDatasource('quotes')
+    await ds.getRows(stubParams({ filterModel: { a: 1, b: 2 } }))
+    await ds.getRows(stubParams({ startRow: 25, endRow: 50, filterModel: { b: 2, a: 1 } }))
+
+    expect(fetchRowsMock.mock.calls[1][1]).toHaveProperty('knownTotal', 60)
+  })
+
+  it('AC-006: a changed tree parent drops knownTotal', async () => {
+    fetchRowsMock.mockResolvedValue(PAGE_RESPONSE)
+    const ds = createSsrmDatasource('tasks', { treeData: true })
+    await ds.getRows(stubParams({ groupKeys: ['1'] }))
+    await ds.getRows(stubParams({ startRow: 25, endRow: 50, groupKeys: ['2'] }))
+
+    expect(fetchRowsMock.mock.calls[1][1]).not.toHaveProperty('knownTotal')
+  })
+
+  it('AC-006: a different scope (separate datasource instance) never shares the memory', async () => {
+    fetchRowsMock.mockResolvedValue(PAGE_RESPONSE)
+    await createSsrmDatasource('quotes', { productCategoryId: 1 }).getRows(stubParams({}))
+    await createSsrmDatasource('quotes', { productCategoryId: 2 }).getRows(
+      stubParams({ startRow: 25, endRow: 50 }),
+    )
+
+    expect(fetchRowsMock.mock.calls[1][1]).not.toHaveProperty('knownTotal')
+  })
+
+  it('AC-007: after resetKnownTotal() the next request with startRow > 0 has no knownTotal', async () => {
+    fetchRowsMock.mockResolvedValue(PAGE_RESPONSE)
+    const ds = createSsrmDatasource('quotes')
+    await ds.getRows(stubParams({}))
+    ds.resetKnownTotal()
+    await ds.getRows(stubParams({ startRow: 25, endRow: 50 }))
+
+    expect(fetchRowsMock.mock.calls[1][1]).not.toHaveProperty('knownTotal')
+  })
+
+  it('AC-008: a response without meta does not call onAggregates; a counted one does', async () => {
+    fetchRowsMock.mockResolvedValueOnce(PAGE_RESPONSE)
+    fetchRowsMock.mockResolvedValueOnce(KNOWN_RESPONSE)
+    const onAggregates = vi.fn()
+    const ds = createSsrmDatasource('quotes', { onAggregates })
+    await ds.getRows(stubParams({}))
+    expect(onAggregates).toHaveBeenCalledTimes(1)
+    expect(onAggregates).toHaveBeenLastCalledWith({ sum: 1 })
+
+    await ds.getRows(stubParams({ startRow: 25, endRow: 50 }))
+    expect(onAggregates).toHaveBeenCalledTimes(1)
+  })
+})

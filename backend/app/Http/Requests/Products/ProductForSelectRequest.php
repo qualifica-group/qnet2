@@ -42,6 +42,7 @@ class ProductForSelectRequest extends FormRequest
             'limit' => ['sometimes', 'integer', 'min:1', "max:{$maxLimit}"],
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
+            'include_total' => ['sometimes', 'boolean'],
             'category_ids' => ['sometimes', 'array'],
             'category_ids.*' => ['integer', 'exists:product_categories,id'],
             'usage' => ['sometimes', 'nullable', Rule::enum(ProductUsage::class)],

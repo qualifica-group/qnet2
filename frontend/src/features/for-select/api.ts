@@ -2,7 +2,7 @@ import { apiClient } from '@/api/client'
 import type {
   ForSelectItem,
   ForSelectParams,
-  PaginatedResponse,
+  ForSelectResponse,
 } from '@/features/for-select/types'
 
 /** Default page size requested per for-select fetch (server caps at 100). */
@@ -18,10 +18,10 @@ export const FOR_SELECT_PAGE_SIZE = 25
 export async function fetchForSelect(
   resource: string,
   params: ForSelectParams = {},
-): Promise<PaginatedResponse<ForSelectItem>> {
-  const { search, offset = 0, limit = FOR_SELECT_PAGE_SIZE, ids, params: extraParams } = params
+): Promise<ForSelectResponse<ForSelectItem>> {
+  const { search, offset = 0, limit = FOR_SELECT_PAGE_SIZE, ids, includeTotal, params: extraParams } = params
 
-  const { data } = await apiClient.get<PaginatedResponse<ForSelectItem>>(
+  const { data } = await apiClient.get<ForSelectResponse<ForSelectItem>>(
     `/${resource}/for-select`,
     {
       params: {
@@ -29,6 +29,7 @@ export async function fetchForSelect(
         limit,
         ...(search ? { search } : {}),
         ...(ids && ids.length > 0 ? { ids } : {}),
+        ...(includeTotal === false ? { include_total: 0 } : {}),
         ...extraParams,
       },
       // Serialize `ids` as repeated `ids[]=1&ids[]=2` (Laravel array convention).

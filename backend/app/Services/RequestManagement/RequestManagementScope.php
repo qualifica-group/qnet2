@@ -240,6 +240,35 @@ final class RequestManagementScope
     }
 
     /**
+     * Cache-key identity of the rows $user can see (spec 0178 D-5): the module
+     * plus `all` for a viewAll actor, otherwise the actor id and the ordered
+     * visible Sede ids. Two actors with the same fingerprint see exactly the
+     * same rows, so they may share an aggregate; a null actor gets `none`,
+     * which never equals a real actor's fingerprint.
+     *
+     * It MUST change together with scopeToActor(): both encode the same
+     * tiers (viewAll / operator / visibleSiteIds()) and a drift would let a
+     * cached aggregate leak rows across scopes.
+     */
+    public static function scopeFingerprint(?User $user, RequestModule $module): string
+    {
+        if ($user === null) {
+            return "{$module->value}:none";
+        }
+
+        if ($user->can($module->permission('viewAll'))) {
+            return "{$module->value}:all";
+        }
+
+        $siteIds = self::visibleSiteIds($user, $module);
+        sort($siteIds);
+
+        // Hashed: the fingerprint ends up in a cache key capped at 255 chars,
+        // and an actor may belong to any number of Sedi.
+        return "{$module->value}:op:{$user->id}:sites:".($siteIds === [] ? '' : sha1(implode(',', $siteIds)));
+    }
+
+    /**
      * The query-builder shape of isInStatusScope(): a subquery rather than a
      * join, so it never collides with a caller's own join/alias on
      * `quote_workflow_statuses` and composes with any pre-existing condition

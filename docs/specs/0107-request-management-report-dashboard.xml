@@ -17,10 +17,10 @@
     <entity name="Dipendenza da 0106">
       Tutto il calcolo esiste gia' in `backend/app/Services/RequestManagement/Report/`. La cucitura
       tra calcolo e formattazione CSV e' pulita e va sfruttata cosi' com'e':
-      - `ReportBranchResolver::resolve(): array<int, ReportBranch>` — i sei rami da config, con il
+      - `ReportBranchResolver::resolve(): array&lt;int, ReportBranch&gt;` — i sei rami da config, con il
         sottoalbero di categorie gia' espanso.
       - `ReportBranchRowsBuilder::build(ReportBranch $branch, ?User $actor, ReportDateRange $range,
-        RequestManagementReportRowMode $rowMode): array<int, ReportRow>` — le righe GIA' CALCOLATE
+        RequestManagementReportRowMode $rowMode): array&lt;int, ReportRow&gt;` — le righe GIA' CALCOLATE
         di un ramo. E' il punto di riuso.
       - `ReportRow` = `{ public readonly string $label, public readonly array $values }` — value
         object NEUTRO: nessuna stringa CSV, nessun ordine di colonna, nessuna intestazione.
@@ -83,6 +83,10 @@
       query propria sulle quote, o ricalcolare il breakdown per operatore.
       Se una regola cambia in un indicatore di 0106, la dashboard deve cambiare da sola senza che
       nessuno la tocchi. AC-010 lo blinda con un test che confronta i due output.
+      Rev. 2026-09-29 (spec 0178): il calcolo di dashboard e CSV resta lo stesso; la dashboard puo'
+      essere servita da cache fino a 10 secondi (max 5 minuti se nessuno la legge) mentre il CSV e'
+      sempre calcolato al momento, quindi nel tempo la dashboard puo' essere indietro di quella
+      finestra rispetto a un CSV dello stesso istante.
     </decision>
 
     <decision id="D-2-bis">
@@ -90,7 +94,7 @@
       di esso il riuso di D-2 non e' realizzabile pulito. Tre interventi, e solo questi:
       1. `RequestManagementReportGenerator::generate()` scrive in STREAMING (apre il file prima del
          loop, `fputcsv` a ogni riga): non esiste mai una collezione completa di righe da riusare.
-         Si estrae un metodo pubblico `rows(...): array<int, array{branch: ReportBranch, rows: array<int, ReportRow>}>`;
+         Si estrae un metodo pubblico `rows(...): array&lt;int, array{branch: ReportBranch, rows: array&lt;int, ReportRow&gt;}&gt;`;
          `generate()` lo chiama e scrive. Cosi' il filtro su `categoryKeys` vive in UN punto invece
          di essere ricopiato nella dashboard.
          Effetto collaterale accettato: le righe vengono accumulate prima della scrittura invece che
@@ -148,8 +152,8 @@
       Permesso: si riusa `request-management.report`. La dashboard espone esattamente gli stessi
       aggregati del CSV: un permesso separato permetterebbe di vedere i numeri a chi non puo'
       scaricarli, distinzione senza sostanza.
-      A differenza degli altri moduli — dove `StatsToggleButton` NON e' avvolto da `<Can>` perche' la
-      pagina intera e' gia' gated — qui il bottone VA gated con `<Can permission="request-management.report">`:
+      A differenza degli altri moduli — dove `StatsToggleButton` NON e' avvolto da `&lt;Can&gt;` perche' la
+      pagina intera e' gia' gated — qui il bottone VA gated con `&lt;Can permission="request-management.report"&gt;`:
       il permesso nasce non assegnato, e un bottone che apre un pannello sempre in errore e' peggio
       di un bottone assente. L'autorizzazione server-side resta comunque obbligatoria (l'UI nasconde,
       il backend autorizza).

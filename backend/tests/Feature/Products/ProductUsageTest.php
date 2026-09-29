@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Quotes\ProductOfferLineResolver;
 use App\Services\QuoteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
@@ -333,6 +334,8 @@ it('AC-010: the values endpoint lists only the usages present among the scoped p
         ->assertJsonPath('data.values', ['SALE']);
 
     Product::factory()->costOnly()->create();
+    // The product is created behind the HTTP layer (no actor write is recorded), and the values are cached (spec 0178).
+    Cache::flush();
 
     $this->postJson('/api/tables/products/values', ['columnId' => 'usages'])
         ->assertOk()

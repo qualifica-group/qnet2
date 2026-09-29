@@ -5,10 +5,35 @@
  */
 
 /** Reuse the canonical pagination/envelope shapes already defined for lists. */
-export type {
-  Pagination,
-  PaginatedResponse,
-} from '@/features/notifications/types'
+export type { Pagination } from '@/features/notifications/types'
+
+/**
+ * Pagination block of a for-select response (spec 0178 D-7). With
+ * `include_total=0` the server skips the COUNT and answers `total` and
+ * `total_pages` as null plus `has_more`; a resource that does not honour the
+ * parameter still answers the totals and omits `has_more`.
+ */
+export interface ForSelectPagination {
+  total: number | null
+  offset: number
+  limit: number
+  total_pages: number | null
+  has_more?: boolean
+}
+
+/** Raw for-select body: the paginated envelope with the D-7 pagination block. */
+export interface ForSelectResponse<T> {
+  items: T[]
+  export_link: string | null
+  pagination: ForSelectPagination
+}
+
+/**
+ * Alias kept for the per-resource for-select wrappers that already import it
+ * from here: it now carries the nullable-total shape instead of the shared
+ * list `PaginatedResponse` (which other features rely on with a numeric total).
+ */
+export type PaginatedResponse<T> = ForSelectResponse<T>
 
 /**
  * Minimal projection of an entity option as returned by
@@ -43,6 +68,11 @@ export interface ForSelectParams {
    * to the searched page, deduplicated, and NOT counted in `pagination.total`.
    */
   ids?: number[]
+  /**
+   * When false the request carries `include_total=0` (spec 0178 D-7) so the
+   * server skips the COUNT. Omitted (default) keeps the historic behaviour.
+   */
+  includeTotal?: boolean
   /**
    * Extra, resource-specific query parameters (spec 0032 `dependency.param`):
    * a parent filter's value forwarded to a dependent field's for-select

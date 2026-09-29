@@ -19,6 +19,10 @@ const guide: HelpGuide = {
           text: 'At the top there is a tab for every product category, plus **All**: pick one to see only the requests of that category.',
         },
         {
+          type: 'paragraph',
+          text: 'The numbers on the tabs update within a few seconds of changes made by other users; your own changes show up right away when you return to the table.',
+        },
+        {
           type: 'table',
           headers: ['Column', 'Meaning'],
           rows: [
@@ -161,6 +165,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: 'The statistics show how work on requests progressed over a chosen period, on screen or in a CSV/Excel file. The panel and the file use the same filters and the same calculations, so the numbers match.',
+        },
+        {
+          type: 'paragraph',
+          text: 'The on-screen statistics update within a few seconds of changes made by other users; the CSV file, instead, is always calculated at the moment you generate it.',
         },
         {
           type: 'paragraph',

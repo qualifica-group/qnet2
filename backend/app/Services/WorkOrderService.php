@@ -129,21 +129,12 @@ class WorkOrderService
             });
         }
 
-        $total = (clone $base)->count();
+        $window = $query->page($base, static fn ($ordered) => $ordered->orderBy('code')->orderBy('id'));
 
         /** @var Collection<int, WorkOrder> $page */
-        $page = $base->orderBy('code')
-            ->orderBy('id')
-            ->offset($query->offset)
-            ->limit($query->limit)
-            ->get();
+        $page = $window->items;
 
-        return new ForSelectResult(
-            items: $this->appendHydratedForSelectIds($page, $query),
-            total: $total,
-            offset: $query->offset,
-            limit: $query->limit,
-        );
+        return $window->withItems($this->appendHydratedForSelectIds($page, $query));
     }
 
     /**

@@ -219,9 +219,8 @@ final class NoteService
             $filtered->where(fn (Builder $q) => $q->where('name', 'like', $term)->orWhere('email', 'like', $term));
         }
 
-        $total = (clone $filtered)->count();
-
-        $page = $filtered->orderBy('name')->orderBy('id')->offset($query->offset)->limit($query->limit)->get();
+        $window = $query->page($filtered, static fn ($ordered) => $ordered->orderBy('name')->orderBy('id'));
+        $page = $window->items;
 
         if ($query->hasIds()) {
             $missingIds = array_values(array_diff($query->ids, $page->pluck('id')->all()));
@@ -231,7 +230,7 @@ final class NoteService
             }
         }
 
-        return new ForSelectResult($page, $total, $query->offset, $query->limit);
+        return $window->withItems($page);
     }
 
     private function authorizedRecord(User $user, string $entityType, int $entityId): Model
