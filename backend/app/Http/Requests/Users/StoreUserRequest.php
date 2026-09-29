@@ -68,7 +68,8 @@ class StoreUserRequest extends FormRequest
             'email' => ['required', 'email', Rule::unique('users', 'email')],
             'locale' => ['required', Rule::in(LocaleEnum::values())],
             'is_active' => ['sometimes', 'boolean'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+            // Optional (spec 0177): absent/empty = invite mode, present = temporary password.
+            'password' => ['nullable', 'confirmed', Password::defaults()],
             'roles' => ['sometimes', 'array'],
             // Role IDS the current actor may assign (for-select, ADR 0011): a non
             // super-admin cannot assign `super-admin` (privilege escalation), even

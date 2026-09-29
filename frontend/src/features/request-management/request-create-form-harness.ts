@@ -52,6 +52,7 @@ const TEST_ACTOR: User = {
   locale: 'en',
   roles: [],
   avatar_url: null,
+  must_set_password: false,
   employment: { primary_operational_site_id: TEST_ACTOR_SITE_ID },
   created_at: null,
   module_open_preferences: { mode: 'custom', overrides: {} },

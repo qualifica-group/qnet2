@@ -184,9 +184,11 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // tables `2026_09_28_150000_create_email_templates_table` (111th),
     // `2026_09_28_150100_create_document_bundles_table` (112th) and
     // `2026_09_28_150200_create_outbound_emails_table` (113th), and spec
-    // 0176's `2026_09_28_160000_add_source_id_to_campaigns_table` (114th).
+    // 0176's `2026_09_28_160000_add_source_id_to_campaigns_table` (114th), then
+    // spec 0177's `2026_09_29_100000_add_must_set_password_to_users_table`
+    // (115th) and `2026_09_29_100100_create_password_setup_tokens_table` (116th).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 114]);
+    Artisan::call('migrate:rollback', ['--step' => 116]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

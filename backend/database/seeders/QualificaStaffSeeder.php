@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\LocaleEnum;
 use App\Models\User;
+use Database\Seeders\Concerns\AssignsSeedPassword;
 use Database\Seeders\Concerns\SyncsPersonName;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue;
 use Database\Seeders\QualificaCatalog\StaffRoster;
@@ -24,7 +25,7 @@ use Illuminate\Database\Seeder;
  */
 class QualificaStaffSeeder extends Seeder
 {
-    use SyncsPersonName;
+    use AssignsSeedPassword, SyncsPersonName;
 
     public function run(): void
     {
@@ -53,7 +54,7 @@ class QualificaStaffSeeder extends Seeder
         $user->name = "{$firstName} {$lastName}";
         $user->locale = LocaleEnum::It->value;
         $user->email_verified_at = now();
-        $user->password = config('seeding.password');
+        $this->assignSeedPassword($user);
 
         $user->save();
         $user->syncRoles([OperatorRoleCatalogue::BASE_ROLE]);

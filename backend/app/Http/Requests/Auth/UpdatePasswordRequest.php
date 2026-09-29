@@ -19,7 +19,15 @@ class UpdatePasswordRequest extends FormRequest
     {
         return [
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+            'password' => ['required', 'confirmed', 'different:current_password', Password::defaults()],
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return ['password.different' => __('The new password must be different from the current one.')];
     }
 }

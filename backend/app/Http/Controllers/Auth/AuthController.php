@@ -7,6 +7,7 @@ use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Http\Requests\Auth\SetPasswordRequest;
 use App\Http\Requests\Auth\UpdatePasswordRequest;
 use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Http\Requests\Auth\UploadAvatarRequest;
@@ -117,6 +118,22 @@ class AuthController extends BaseApiController
         }
 
         return $this->ok(null, __('passwords.reset'));
+    }
+
+    /**
+     * Primo accesso: imposta la password a partire da un token di invito.
+     */
+    public function setPassword(SetPasswordRequest $request): JsonResponse
+    {
+        $status = $this->authService->setPassword($request->validated());
+
+        if ($status !== Password::PASSWORD_RESET) {
+            throw ValidationException::withMessages([
+                'email' => [__($status)],
+            ]);
+        }
+
+        return $this->ok(null, __('passwords.set'));
     }
 
     /**

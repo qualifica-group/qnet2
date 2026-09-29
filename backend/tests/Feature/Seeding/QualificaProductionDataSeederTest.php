@@ -67,7 +67,11 @@ it('composes structure, catalogue and operators in one run, with a super-admin a
         ->and(User::query()->where('email', 'ciro.cacciapuoti@qualificagroup.com')->exists())->toBeTrue()
         ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->exists())->toBeTrue()
         // Step 8 runs after step 7: the staff lands, the roster keeps its mansione.
-        ->and(User::query()->where('email', 'nicola.eliseo@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([OperatorRoleCatalogue::BASE_ROLE])
+        ->and(User::query()->where('email', 'giuseppe.agus@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([OperatorRoleCatalogue::BASE_ROLE])
+        // User directive 2026-09-29: two super-admins, two `admin` accounts.
+        ->and(User::query()->where('email', 'nicola.eliseo@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([UserService::PRIVILEGED_ROLE])
+        ->and(User::query()->where('email', 'mario.esposito@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([OperatorRoleCatalogue::ADMIN_ROLE])
+        ->and(User::query()->where('email', 'enrico.ferrante@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([OperatorRoleCatalogue::ADMIN_ROLE])
         ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->sole()->getRoleNames()->all())->toBe([OperatorRoleCatalogue::SUPERVISOR_ROLE])
         // Step 9 runs last: a staff account reports to the operators of step 7.
         ->and(User::query()->where('email', 'jessica.virgolini@qualificagroup.com')->with('employment.reportsTo')->sole()

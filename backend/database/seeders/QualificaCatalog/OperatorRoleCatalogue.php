@@ -28,6 +28,18 @@ final class OperatorRoleCatalogue
     public const string BASE_ROLE = 'operatore-base';
 
     /**
+     * Access to everything through its permissions (user directive
+     * 2026-09-29), without being the privileged `super-admin`: what only that
+     * role may do — assign it, the Migrazioni section — stays out of reach.
+     * Not a mansione, hence not in ROLES: it holds the WHOLE catalogue, and
+     * the visibility tiers are unions (`viewAll` over `viewSite` over "own"),
+     * so holding them all only ever widens what it sees.
+     */
+    public const string ADMIN_ROLE = 'admin';
+
+    public const string ADMIN_DESCRIPTION = 'Amministratore (accesso completo)';
+
+    /**
      * Roles deleted on every run so an already-seeded installation does not
      * keep them as empty duplicates: the English names the former
      * TestUsersSeeder created, replaced by the Italian ones above (user

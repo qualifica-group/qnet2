@@ -8,7 +8,7 @@ namespace Database\Seeders\QualificaCatalog;
  * QualificaStaffSeeder, which creates each account with the base role
  * (Task and Segnatempo only).
  *
- * The CSV lists the WHOLE staff: the 68 accounts it shares with
+ * The CSV lists the WHOLE staff: the 71 accounts it shares with
  * OperatorRoster and TestUsersSeeder are left out here, so this list never
  * competes with the mansionario over a role. Names and accents as in the
  * CSV (re-encoded from ISO-8859-1), emails lowercased.
@@ -66,16 +66,13 @@ final class StaffRoster
         ['Francesco', 'Di Maio', 'francesco.dimaio@qualificagroup.com'],
         ['Claudia', 'Di Natale', 'claudia.dinatale@qualificagroup.com'],
         ['Raffaele', 'Distico', 'raffaele.distico@qualificagroup.com'],
-        ['Nicola', 'Eliseo', 'nicola.eliseo@qualificagroup.com'],
         ['Giuliana', 'Ercolini', 'giuliana.ercolini@qualificagroup.com'],
         ['Marco', 'Esposito', 'marco.esposito@qualificagroup.com'],
-        ['Mario', 'Esposito', 'mario.esposito@qualificagroup.com'],
         ['Nicoletta', 'Esposito', 'nicoletta.esposito@qualificagroup.com'],
         ['Deborah', 'Farina', 'deborah.farina@qualificagroup.com'],
         ['Gaetano', 'Farina', 'gaetano.farina@qualificagroup.com'],
         ['Antonino', 'Fasone', 'antonino.fasone@qualificagroup.com'],
         ['Annabella', 'Ferrante', 'annabella.ferrante@qualificagroup.com'],
-        ['Enrico', 'Ferrante', 'enrico.ferrante@qualificagroup.com'],
         ['Giulia', 'Fiorentini', 'giulia.fiorentini@qualificagroup.com'],
         ['Ferdinando', 'Flagiello', 'ferdinando.flagiello@qualificagroup.com'],
         ['Antonio', 'Foglia', 'antonio.foglia@qualificagroup.com'],

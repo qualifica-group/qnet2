@@ -123,6 +123,7 @@ function user(overrides: Partial<UserDetailWithPermissions> = {}): UserDetailWit
     is_active: true,
     roles: [],
     avatar_url: null,
+    must_set_password: false,
     created_at: null,
     permissions: permissionsWithPippo(),
     ...overrides,

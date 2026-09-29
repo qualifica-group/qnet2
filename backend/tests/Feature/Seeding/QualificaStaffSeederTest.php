@@ -41,7 +41,7 @@ it('never lists an account the operator roster or the super-admin already own', 
 
 it('leaves an existing account untouched: name, role and password', function (): void {
     $existing = User::factory()->create([
-        'email' => 'nicola.eliseo@qualificagroup.com',
+        'email' => 'giuseppe.agus@qualificagroup.com',
         'name' => 'Nome scelto a mano',
         'password' => Hash::make('changed-by-hand'),
     ]);
@@ -53,7 +53,7 @@ it('leaves an existing account untouched: name, role and password', function ():
     expect($existing->name)->toBe('Nome scelto a mano')
         ->and($existing->getRoleNames()->all())->toBe([])
         ->and(Hash::check('changed-by-hand', $existing->password))->toBeTrue()
-        ->and($existing->personalData()->where('last_name', 'Eliseo')->exists())->toBeFalse()
+        ->and($existing->personalData()->where('last_name', 'Agus')->exists())->toBeFalse()
         ->and(User::query()->count())->toBe(count(StaffRoster::USERS));
 });
 

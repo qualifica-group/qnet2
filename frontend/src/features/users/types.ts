@@ -129,6 +129,8 @@ export interface UserDetail {
   roles: UserRole[]
   /** Absolute URL to the authenticated avatar download endpoint, or null. */
   avatar_url: string | null
+  /** True while the user has not completed the first access (spec 0177). */
+  must_set_password: boolean
   /**
    * The user's personal-data card (with its contacts and addresses), present only
    * when the backend loaded it (whenLoaded). Absent/null when the user has none.
@@ -181,7 +183,7 @@ export interface EmploymentPayload {
   break_daily_minutes: number | null
 }
 
-/** Payload for POST /users (create). `password` is required here. */
+/** Payload for POST /users (create). Password omitted = invite mode, present = temporary password (spec 0177). */
 export interface CreateUserPayload {
   email: string
   locale: UserLocale
@@ -189,8 +191,8 @@ export interface CreateUserPayload {
   is_active: boolean
   /** Role IDS to assign (for-select standard, ADR 0011). */
   roles?: number[]
-  password: string
-  password_confirmation: string
+  password?: string
+  password_confirmation?: string
   /**
    * The nested personal-data card written atomically with the user (ADR 0012).
    * Required: `users.name` is derived server-side from this card (the user form

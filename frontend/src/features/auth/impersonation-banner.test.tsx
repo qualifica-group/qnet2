@@ -25,6 +25,7 @@ function user(overrides: Partial<User> = {}): User {
     locale: 'en',
     roles: [],
     avatar_url: null,
+    must_set_password: false,
     created_at: null,
     module_open_preferences: DEFAULT_MODULE_OPEN_PREFERENCES,
     ui_scale: 40,

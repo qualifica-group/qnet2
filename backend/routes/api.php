@@ -58,6 +58,8 @@ Route::prefix('auth')->group(function () {
     Route::middleware('throttle:6,1')->group(function () {
         Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
         Route::post('reset-password', [AuthController::class, 'resetPassword']);
+        // First access (spec 0177): consumes the invite token of the users_setup broker.
+        Route::post('set-password', [AuthController::class, 'setPassword']);
     });
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -88,7 +90,8 @@ Route::prefix('auth')->group(function () {
     });
 });
 
-Route::middleware('auth:sanctum')->group(function () {
+// `password.set` (spec 0177) blocks users pending their first password change.
+Route::middleware(['auth:sanctum', 'password.set'])->group(function () {
     // Level 0 — backend-driven navigation.
     Route::get('navigation', [NavigationController::class, 'index']);
 
@@ -224,6 +227,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin avatar management on the user form. Gated by `users.update`
     // server-side (see UserController), same as editing the user.
+    Route::post('users/{user}/resend-welcome', [UserController::class, 'resendWelcome']);
     Route::post('users/{user}/avatar', [UserController::class, 'uploadAvatar']);
     Route::delete('users/{user}/avatar', [UserController::class, 'deleteAvatar']);
 

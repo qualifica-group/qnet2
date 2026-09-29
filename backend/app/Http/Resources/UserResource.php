@@ -51,6 +51,7 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'locale' => $this->locale,
             'is_active' => $this->is_active,
+            'must_set_password' => (bool) $this->must_set_password,
             // Roles as {id, name} objects: the edit form drives the for-select
             // picker by id (ADR 0011) while the detail view still renders names —
             // both without a second lookup. `name` stays the membership identity.

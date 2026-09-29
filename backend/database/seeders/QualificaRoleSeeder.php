@@ -50,7 +50,11 @@ class QualificaRoleSeeder extends Seeder
             );
         }
 
-        // Step 4: drop the roles the Italian names replaced. A model delete, so
+        // Step 4: the `admin` role, outside the mansioni: the whole catalogue,
+        // no field restriction.
+        $this->syncFieldPermissions($this->syncRole(Catalogue::ADMIN_ROLE, Catalogue::ADMIN_DESCRIPTION, $catalogue), [], []);
+
+        // Step 5: drop the roles the Italian names replaced. A model delete, so
         // spatie detaches their permissions and memberships and the field
         // matrix cascades with the row.
         Role::query()->whereIn('name', Catalogue::RETIRED_ROLES)->get()->each->delete();

@@ -69,7 +69,7 @@ export function UserDetailView({ userId, onEdit }: UserDetailProps) {
         side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
       >
         <RecordCard>
-          <UserDetailHeader user={user} onEdit={onEdit} />
+          <UserDetailHeader user={user} onEdit={onEdit} canUpdate={user.permissions.resource.update} />
           <UserDetailStats user={user} assignment={assignment} />
           <UserDetailSections user={user} assignment={assignment} />
         </RecordCard>

@@ -99,6 +99,14 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
+
+        // First-access invite (spec 0177): own token table, 72h validity.
+        'users_setup' => [
+            'provider' => 'users',
+            'table' => 'password_setup_tokens',
+            'expire' => 4320,
+            'throttle' => 60,
+        ],
     ],
 
     /*

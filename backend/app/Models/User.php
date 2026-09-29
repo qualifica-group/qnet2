@@ -137,6 +137,9 @@ class User extends Authenticatable implements HasLocalePreference
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            // Spec 0177 — first-access flag. Guarded (not in $fillable): written
+            // only via forceFill() by the onboarding/password services.
+            'must_set_password' => 'boolean',
             // Spec 0013 — external data migration: the source system's id for
             // a migrated user, guarded (not in $fillable) so it is only ever
             // set by property assignment post-create, never mass-assigned.

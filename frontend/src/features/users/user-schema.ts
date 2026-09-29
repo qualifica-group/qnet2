@@ -113,15 +113,20 @@ function baseFields(t: TFunction) {
 }
 
 /**
- * Create schema: password is required and must match its confirmation.
+ * Create schema: password is optional (spec 0177). Empty = invite mode; when
+ * provided it is a temporary password: length rule + matching confirmation.
  * `customFieldsSchema` is the toolbox-built schema for `custom_fields` (spec 0021).
  */
 export function buildCreateUserSchema(t: TFunction, customFieldsSchema: CustomFieldsSchema) {
   return z
     .object({
       ...baseFields(t),
-      password: z.string().min(PASSWORD_MIN_LENGTH, t('users.form.passwordMinLength')),
-      password_confirmation: z.string().min(1, t('users.form.confirmPasswordRequired')),
+      password: z
+        .string()
+        .refine((value) => value === '' || value.length >= PASSWORD_MIN_LENGTH, {
+          message: t('users.form.passwordMinLength'),
+        }),
+      password_confirmation: z.string(),
       custom_fields: asCustomFieldsField(customFieldsSchema),
     })
     .refine((values) => values.password === values.password_confirmation, {

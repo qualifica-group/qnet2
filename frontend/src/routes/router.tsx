@@ -9,6 +9,8 @@ import ModuleDetailPage from '@/features/modules/module-detail-page'
 const LoginPage = lazyRoute(() => import('@/pages/login-page'))
 const ForgotPasswordPage = lazyRoute(() => import('@/pages/forgot-password-page'))
 const ResetPasswordPage = lazyRoute(() => import('@/pages/reset-password-page'))
+const SetPasswordPage = lazyRoute(() => import('@/pages/set-password-page'))
+const FirstAccessPage = lazyRoute(() => import('@/pages/first-access-page'))
 const DashboardPage = lazyRoute(() => import('@/pages/dashboard-page'))
 const NotificationsPage = lazyRoute(() => import('@/pages/notifications-page'))
 const UsersPage = lazyRoute(() => import('@/pages/users-page'))
@@ -90,8 +92,14 @@ export const router = createBrowserRouter([
     element: <ResetPasswordPage />,
   },
   {
+    path: '/set-password',
+    element: <SetPasswordPage />,
+  },
+  {
     element: <ProtectedRoute />,
     children: [
+      // Outside AppLayout: the forced password change has no app chrome (spec 0177).
+      { path: 'first-access', element: <FirstAccessPage /> },
       {
         element: <AppLayout />,
         children: [

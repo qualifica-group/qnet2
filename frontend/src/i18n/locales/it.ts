@@ -166,6 +166,11 @@ export const it: TranslationResources = {
       title: 'Dettaglio utente',
       subtitle: "Visualizzazione in sola lettura dell'utente selezionato.",
       loadError: "Impossibile caricare l'utente. Riprova.",
+      // Primo accesso (spec 0177).
+      pendingFirstAccess: 'In attesa di primo accesso',
+      resendWelcome: 'Reinvia email di benvenuto',
+      resendWelcomeSuccess: 'Email di benvenuto inviata.',
+      resendWelcomeError: "Impossibile inviare l'email di benvenuto. Riprova.",
       // Sezione Rapporto di lavoro in sola lettura (spec 0015).
       employment: usersDetailEmployment,
     },
@@ -192,7 +197,10 @@ export const it: TranslationResources = {
       password: "La password dell'account",
       newPassword: 'Nuova password',
       confirmPassword: 'Ripeti la password',
-      passwordEditHint: 'Lascia vuoto per mantenere la password attuale.',
+      passwordEditHint:
+        "Lascia vuoto per mantenere la password attuale. La nuova password sarà provvisoria: al prossimo accesso l'utente dovrà cambiarla.",
+      passwordCreateHint:
+        "Lascia vuoto: l'utente riceverà un'email con il link per scegliere la password. Se la compili è una password provvisoria: comunicala tu, al primo accesso dovrà cambiarla.",
       save: 'Salva',
       saving: 'Salvataggio…',
       cancel: 'Annulla',
@@ -385,6 +393,14 @@ export const it: TranslationResources = {
     passwordMinLength: 'La password deve avere almeno 8 caratteri.',
     resetLinkInvalid: 'Questo link di reset non è valido o è scaduto. Richiedine uno nuovo.',
     tooManyRequests: 'Troppe richieste. Attendi un momento e riprova.',
+    // Primo accesso (spec 0177).
+    setPasswordTitle: 'Imposta la tua password',
+    setPasswordSubtitle: 'Scegli la password per accedere a QNet.',
+    setPasswordSubmit: 'Imposta password',
+    setPasswordSuccess: 'Password impostata. Ora puoi accedere.',
+    setPasswordLinkInvalid: "Questo link non è valido o è scaduto. Chiedi un nuovo invito all'amministratore o usa Password dimenticata.",
+    firstAccessTitle: 'Scegli la tua nuova password',
+    firstAccessSubtitle: 'Per sicurezza, al primo accesso devi sostituire la password provvisoria.',
   },
   authorization: {
     loadError: 'Impossibile caricare i permessi. Riprova.',

@@ -29,6 +29,7 @@ vi.mock('@/features/auth/use-auth', () => ({
       locale: 'en',
       roles: [],
       avatar_url: null,
+      must_set_password: false,
       personal_data: null,
       created_at: null,
       module_open_preferences: DEFAULT_MODULE_OPEN_PREFERENCES,

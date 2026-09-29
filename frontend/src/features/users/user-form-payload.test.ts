@@ -93,6 +93,7 @@ function original(overrides: Partial<UserDetailWithPermissions> = {}): UserDetai
     is_active: true,
     roles: [],
     avatar_url: null,
+    must_set_password: false,
     created_at: null,
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
@@ -403,5 +404,21 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
 
     expect(payload.employment?.primary_operational_site_id).toBe(8)
     expect(payload.employment?.remote_operational_site_ids).toEqual([11, 12])
+  })
+})
+
+describe('buildCreatePayload — optional password (spec 0177 AC-016)', () => {
+  it('omits password and confirmation when both are empty (invite mode)', () => {
+    const payload = buildCreatePayload({ ...formValues, password: '', password_confirmation: '' }, draft())
+
+    expect('password' in payload).toBe(false)
+    expect('password_confirmation' in payload).toBe(false)
+  })
+
+  it('sends both when a temporary password was typed', () => {
+    const payload = buildCreatePayload(formValues, draft())
+
+    expect(payload.password).toBe(TEST_PASSWORD)
+    expect(payload.password_confirmation).toBe(TEST_PASSWORD)
   })
 })

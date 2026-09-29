@@ -16,11 +16,18 @@ import {
 import { resetPassword } from '@/features/auth/api'
 import { AuthNotice } from '@/features/auth/auth-notice'
 import { PasswordInput } from '@/features/auth/password-input'
+import type { ResetPasswordPayload } from '@/features/auth/types'
 
 interface ResetPasswordFormProps {
   token: string
   email: string
   onSuccess: () => void
+  /** API call consuming the token; defaults to the password-reset endpoint (set-password reuses this form, spec 0177). */
+  submit?: (payload: ResetPasswordPayload) => Promise<void>
+  /** Submit button label; defaults to the reset wording. */
+  submitLabel?: string
+  /** Error shown when the backend rejects the token; defaults to the reset wording. */
+  linkInvalidMessage?: string
 }
 
 interface ResetPasswordValues {
@@ -28,7 +35,14 @@ interface ResetPasswordValues {
   confirmPassword: string
 }
 
-export function ResetPasswordForm({ token, email, onSuccess }: ResetPasswordFormProps) {
+export function ResetPasswordForm({
+  token,
+  email,
+  onSuccess,
+  submit = resetPassword,
+  submitLabel,
+  linkInvalidMessage,
+}: ResetPasswordFormProps) {
   const { t } = useTranslation()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -54,7 +68,7 @@ export function ResetPasswordForm({ token, email, onSuccess }: ResetPasswordForm
   const onSubmit = async (values: ResetPasswordValues) => {
     setServerError(null)
     try {
-      await resetPassword({
+      await submit({
         token,
         email,
         password: values.password,
@@ -69,7 +83,7 @@ export function ResetPasswordForm({ token, email, onSuccess }: ResetPasswordForm
         }
         // An invalid/expired token is reported by the backend under `email`.
         if (errors?.email?.length) {
-          setServerError(t('auth.resetLinkInvalid'))
+          setServerError(linkInvalidMessage ?? t('auth.resetLinkInvalid'))
         }
       } else {
         setServerError(t('auth.genericError'))
@@ -116,7 +130,9 @@ export function ResetPasswordForm({ token, email, onSuccess }: ResetPasswordForm
           className="w-full transition-transform active:translate-y-px"
           disabled={form.formState.isSubmitting}
         >
-          {form.formState.isSubmitting ? t('auth.resetting') : t('auth.resetPasswordSubmit')}
+          {form.formState.isSubmitting
+            ? t('auth.resetting')
+            : (submitLabel ?? t('auth.resetPasswordSubmit'))}
         </Button>
       </form>
     </Form>

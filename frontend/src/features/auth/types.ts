@@ -18,6 +18,8 @@ export interface User {
   roles: { id: number; name: string }[]
   /** Absolute URL to the authenticated avatar download endpoint, or null. */
   avatar_url: string | null
+  /** True until the user completes the first access (spec 0177): forces the password change. */
+  must_set_password: boolean
   /**
    * The user's personal-data card (registry + contacts + addresses), or null
    * when none has been created yet. Same shape as the Users module (ADR 0013).
@@ -84,6 +86,9 @@ export interface ResetPasswordPayload {
   password: string
   password_confirmation: string
 }
+
+/** POST /auth/set-password: same shape as the password-reset payload (spec 0177). */
+export type SetPasswordPayload = ResetPasswordPayload
 
 export interface LoginResult {
   token: string

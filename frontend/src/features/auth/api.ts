@@ -8,6 +8,7 @@ import type {
   LoginPayload,
   LoginResult,
   ResetPasswordPayload,
+  SetPasswordPayload,
   UpdateProfilePayload,
   User,
 } from '@/features/auth/types'
@@ -23,6 +24,10 @@ export async function forgotPassword(payload: ForgotPasswordPayload): Promise<vo
 
 export async function resetPassword(payload: ResetPasswordPayload): Promise<void> {
   await apiClient.post('/auth/reset-password', payload)
+}
+
+export async function setPassword(payload: SetPasswordPayload): Promise<void> {
+  await apiClient.post('/auth/set-password', payload)
 }
 
 export async function logout(): Promise<void> {

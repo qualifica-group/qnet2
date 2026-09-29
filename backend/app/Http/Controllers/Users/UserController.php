@@ -12,10 +12,12 @@ use App\Http\Requests\Users\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\AvatarService;
+use App\Services\Users\UserOnboardingService;
 use App\Services\UserService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -39,6 +41,7 @@ class UserController extends BaseApiController
 
     public function __construct(
         private readonly UserService $service,
+        private readonly UserOnboardingService $onboarding,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
     ) {}
@@ -68,7 +71,10 @@ class UserController extends BaseApiController
         try {
             $this->authorize('create', User::class);
 
-            $user = $this->service->create($request->user(), $request->toData(), $request->toProfile(), $request->toEmployment());
+            $data = $request->toData();
+            $user = $this->service->create($request->user(), $data, $request->toProfile(), $request->toEmployment());
+
+            $this->startOnboarding($user, $data->password !== null);
 
             return $this->okWithPermissions(
                 new UserResource($user),
@@ -92,6 +98,23 @@ class UserController extends BaseApiController
             $user = $this->service->update($request->user(), $user, $request->toData(), $request->toProfile(), $request->toEmployment());
 
             return $this->okWithPermissions(new UserResource($user), $this->buildPermissions($request->user(), $user));
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__, ['user' => $user->id]);
+        }
+    }
+
+    /**
+     * POST /api/users/{user}/resend-welcome — resend the invite email while the
+     * user has not completed the first access (spec 0177).
+     */
+    public function resendWelcome(User $user): JsonResponse
+    {
+        try {
+            $this->authorize('update', $user);
+
+            $this->onboarding->resendWelcome($user);
+
+            return $this->ok(null, __('auth.welcome_resent'));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['user' => $user->id]);
         }
@@ -156,5 +179,22 @@ class UserController extends BaseApiController
     private function buildPermissions(User $actor, ?User $model): array
     {
         return $this->permissionsBuilder->build($this->authorization->resolve('users'), $actor, $model);
+    }
+
+    /**
+     * The user is already committed: a failing email dispatch must not turn the
+     * 201 into an error (the admin can resend). Only ids/class are logged, never
+     * the token or exception payload.
+     */
+    private function startOnboarding(User $user, bool $temporaryPassword): void
+    {
+        try {
+            $this->onboarding->start($user, $temporaryPassword);
+        } catch (Throwable $exception) {
+            Log::warning('Welcome email dispatch failed after user creation.', [
+                'user' => $user->id,
+                'exception' => $exception::class,
+            ]);
+        }
     }
 }

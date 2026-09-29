@@ -8,6 +8,7 @@ use App\Models\OperationalSite;
 use App\Models\ProductCategory;
 use App\Models\User;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\Concerns\AssignsSeedPassword;
 use Database\Seeders\Concerns\SyncsPersonName;
 use Database\Seeders\QualificaCatalog\OperatorRoster;
 use Illuminate\Database\Seeder;
@@ -37,7 +38,7 @@ use Illuminate\Support\Str;
  */
 class QualificaOperatorSeeder extends Seeder
 {
-    use SyncsPersonName;
+    use AssignsSeedPassword, SyncsPersonName;
 
     /** @var Collection<int, OperationalSite> */
     private Collection $sites;
@@ -80,7 +81,7 @@ class QualificaOperatorSeeder extends Seeder
         $user->email_verified_at ??= now();
 
         if (! $user->exists) {
-            $user->password = config('seeding.password');
+            $this->assignSeedPassword($user);
         }
 
         $user->save();

@@ -182,6 +182,7 @@ function user(overrides: Partial<UserDetailWithPermissions> = {}): UserDetailWit
     is_active: true,
     roles: [],
     avatar_url: null,
+    must_set_password: false,
     created_at: null,
     // `useUserFormMeta` is mocked above, so this value is never actually read;
     // present only to satisfy `UserFormMode`'s edit-variant type.

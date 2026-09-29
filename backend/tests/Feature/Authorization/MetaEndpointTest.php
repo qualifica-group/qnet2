@@ -86,8 +86,8 @@ it('200: create-context permissions.fields are editable when the actor may creat
         ->assertOk()
         ->assertJsonPath('permissions.fields.email.editable', true)
         ->assertJsonPath('permissions.fields.email.required', true)
-        // password is only required in create-context, which this is.
-        ->assertJsonPath('permissions.fields.password.required', true);
+        // password is optional even in create-context (spec 0177: absent = invite mode).
+        ->assertJsonPath('permissions.fields.password.required', false);
 });
 
 // ---------------------------------------------------------------------------

@@ -1,9 +1,11 @@
 import { useTranslation } from 'react-i18next'
-import { Boxes, MapPin, Shield, Target, UserCog } from 'lucide-react'
+import { Boxes, MapPin, Send, Shield, Target, UserCog } from 'lucide-react'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/user-avatar'
+import { useResendWelcomeEmail } from '@/features/users/use-resend-welcome-email'
 import type { AssignmentSummary } from '@/features/users/user-assignment'
 import type { UserDetail } from '@/features/users/types'
 
@@ -17,11 +19,15 @@ interface UserDetailHeaderProps {
   user: UserDetail
   /** Opens the module's existing edit surface; absent = no edit affordance. */
   onEdit?: () => void
+  /** Whether the actor may update this user: gates the resend-welcome action (spec 0177). */
+  canUpdate?: boolean
 }
 
 /** Identity band: avatar, name, email subtitle, account/role pills, edit action. */
-export function UserDetailHeader({ user, onEdit }: UserDetailHeaderProps) {
+export function UserDetailHeader({ user, onEdit, canUpdate = false }: UserDetailHeaderProps) {
   const { t } = useTranslation()
+  const resendWelcome = useResendWelcomeEmail(user.id)
+  const showResend = user.must_set_password && canUpdate
   const isManager = user.employment?.is_manager ?? false
 
   return (
@@ -34,6 +40,9 @@ export function UserDetailHeader({ user, onEdit }: UserDetailHeaderProps) {
           <Badge variant={user.is_active ? 'secondary' : 'outline'}>
             {t(user.is_active ? 'users.form.is_active' : 'users.form.header.inactive')}
           </Badge>
+          {user.must_set_password ? (
+            <Badge variant="outline">{t('users.detail.pendingFirstAccess')}</Badge>
+          ) : null}
           {isManager ? (
             <Badge variant="outline" className="gap-1.5">
               <UserCog aria-hidden="true" />
@@ -48,7 +57,25 @@ export function UserDetailHeader({ user, onEdit }: UserDetailHeaderProps) {
           ))}
         </>
       }
-      actions={onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+      actions={
+        showResend || onEdit ? (
+          <>
+            {showResend ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={resendWelcome.isPending}
+                onClick={() => resendWelcome.mutate()}
+              >
+                <Send className="size-3.5" aria-hidden="true" />
+                {t('users.detail.resendWelcome')}
+              </Button>
+            ) : null}
+            {onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+          </>
+        ) : null
+      }
     />
   )
 }

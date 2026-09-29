@@ -175,6 +175,11 @@ export const en = {
       title: 'User details',
       subtitle: 'Read-only view of the selected user.',
       loadError: 'Unable to load the user. Please try again.',
+      // First access (spec 0177).
+      pendingFirstAccess: 'Awaiting first sign-in',
+      resendWelcome: 'Resend welcome email',
+      resendWelcomeSuccess: 'Welcome email sent.',
+      resendWelcomeError: 'Unable to send the welcome email. Please try again.',
       // Read-only Employment section (spec 0015).
       employment: usersDetailEmployment,
     },
@@ -201,7 +206,10 @@ export const en = {
       password: 'Password',
       newPassword: 'New password',
       confirmPassword: 'Confirm password',
-      passwordEditHint: 'Leave blank to keep the current password.',
+      passwordEditHint:
+        'Leave blank to keep the current password. The new password will be temporary: the user must change it at their next sign-in.',
+      passwordCreateHint:
+        'Leave blank: the user will receive an email with a link to choose their password. If you fill it in, it is a temporary password: you communicate it, and the user must change it at first sign-in.',
       save: 'Save',
       saving: 'Saving…',
       cancel: 'Cancel',
@@ -396,6 +404,14 @@ export const en = {
     passwordMinLength: 'Password must be at least 8 characters.',
     resetLinkInvalid: 'This reset link is invalid or has expired. Request a new one.',
     tooManyRequests: 'Too many requests. Please wait a moment and try again.',
+    // First access (spec 0177).
+    setPasswordTitle: 'Set your password',
+    setPasswordSubtitle: 'Choose the password to sign in to QNet.',
+    setPasswordSubmit: 'Set password',
+    setPasswordSuccess: 'Password set. You can now sign in.',
+    setPasswordLinkInvalid: 'This link is invalid or has expired. Ask your administrator for a new invite or use "Forgot password?".',
+    firstAccessTitle: 'Choose your new password',
+    firstAccessSubtitle: 'For security, at first sign-in you must replace the temporary password.',
   },
   // Metadata-driven authorization (spec 0004): shared strings used by `MetaField`
   // and any form consuming `useResourceMeta`/`ResourcePermissions`.

@@ -3,6 +3,55 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0177 PRIMO ACCESSO UTENTE + EMAIL DI BENVENUTO — NON COMMITTATO (2026-09-29)
+
+- Spec `docs/specs/0177-user-first-access.xml` (approvata). Decisioni utente: modalita' "Entrambi" (invito con
+  link di default, password provvisoria facoltativa con cambio obbligatorio), reinvio dal dettaglio utente.
+- Stato = `users.must_set_password` (bool, default false, NON fillable, solo forceFill). Nessun backfill: utenti
+  esistenti, `UsersSource` (migrazione legacy), seeder e factory restano false e senza email. Il flag si accende
+  SOLO da `POST /api/users` (`UserController::store` -> `App\Services\Users\UserOnboardingService::start`, dopo
+  il commit; un dispatch fallito non fa fallire la 201) e da `PATCH /api/users/{user}` con password su un ALTRO
+  utente (`UserService::update`). Si spegne con set-password, `PUT /auth/me/password`, reset password dimenticata.
+- Token di invito: broker `users_setup` su tabella dedicata `password_setup_tokens` (72h), mai mescolato con
+  `password_reset_tokens`. Notifica `WelcomeUserNotification` (token null = variante password provvisoria, link
+  al login, password MAI nel contenuto). Viste `emails.welcome-user(-plain)`.
+- Rotte: `POST /api/auth/set-password` (pubblica, throttle:6,1), `POST /api/users/{user}/resend-welcome`
+  (UserPolicy::update, 422 `user` se gia' attivato). Middleware `password.set` (`EnsurePasswordIsSet`) sul gruppo
+  `auth:sanctum` principale: 403 se flag e token non di impersonificazione; `/api/auth/*` escluso.
+  `UpdatePasswordRequest`: nuova password `different:current_password`.
+- FE: `/set-password` (pubblica, `ResetPasswordForm` parametrizzato), `/first-access` (dentro ProtectedRoute,
+  fuori AppLayout, `PasswordForm` con `onSuccess`); `ProtectedRoute` redirect se `must_set_password` e non
+  `impersonator`. Dettaglio utente: badge "In attesa di primo accesso" + "Reinvia email di benvenuto"
+  (`use-resend-welcome-email.ts`). Password facoltativa in creazione (`user-schema.ts`, `user-form-payload.ts`).
+- Manuale: guide in-app IT/EN `users.ts` (`create-user`, `reset-password`, nuova `welcome-email`) e `general.ts`;
+  Claude Docs "Manuale Utente QNet" aggiornato (Primi passi > Primo accesso; Utenti > campo password,
+  reimpostazione, Email di benvenuto e primo accesso).
+- Verificato (verifier indipendente): `composer test` 8763 passed / 1 skipped; Spec0177 17/17; vitest 6490/6490;
+  eslint e `tsc -b --force` puliti; Pint pulito. Test esistenti aggiornati per requisito cambiato:
+  `MetaEndpointTest` (password non piu' required in create), `QuoteWorkflowMigrationTest` (rollback step +2).
+- Rev. production seed (decisione utente 2026-09-29): chi riceve la password condivisa del seed viene marcato
+  `must_set_password` tramite il concern `Database\Seeders\Concerns\AssignsSeedPassword`, senza email.
+  Riguarda `TestUsersSeeder` (a ogni run, perche' ogni run ripristina la password), `QualificaOperatorSeeder`
+  (solo alla creazione) e `QualificaStaffSeeder` (solo creazione).
+  Toggle `config('seeding.force_password_change')` / env `SEED_FORCE_PASSWORD_CHANGE`: il default e' true, false
+  solo se `APP_ENV=staging` (produzione e locale si', staging no). Se lo staging usa un altro `APP_ENV`, impostare
+  la env a false. Gli ambienti gia' seedati non vengono sistemati (decisione utente). AC-022 in
+  `tests/Feature/Spec0177/SeedPasswordChangeTest.php`; la suite completa e' verde (8768 passed).
+- Aperti: `frontend/src/i18n/locales/en.ts` a 495 righe (hard limit 500) -> split al prossimo intervento;
+  colonna/filtro "In attesa di primo accesso" nella tabella Utenti fuori scope (evoluzione possibile).
+
+## SEED: ACCOUNT PRIVILEGIATI NEL PRODUCTION — NON COMMITTATO (2026-09-29)
+
+- `TestUsersSeeder::TEST_USERS`: super-admin = Ciro Cacciapuoti + Nicola Eliseo; ruolo `admin` = Mario Esposito +
+  Enrico Ferrante. Tolti da `StaffRoster` (create-only, non competono sul ruolo). `TestUsersSeeder` ora chiama
+  `QualificaRoleSeeder` (gira prima degli step 7-8 nella catena).
+- Ruolo `admin` (`OperatorRoleCatalogue::ADMIN_ROLE`/`ADMIN_DESCRIPTION`): TUTTO il catalogo permessi, nessuna
+  restrizione di campo, sincronizzato a parte in `QualificaRoleSeeder` (step 4) — NON e' in `ROLES` (non e' una
+  mansione: i test delle mansioni ne verificano i limiti). Resta fuori da cio' che e' solo super-admin
+  (assegnare super-admin, Migrazioni, impersonare un super-admin).
+- DB esistente: rilanciare il production seed promuove i 4 account (upsert per email) e RIPRISTINA la loro
+  password condivisa (`config('seeding.password')`), come gia' per Ciro.
+
 ## SEED: PRODOTTI NEL PRODUCTION + COPERTURA CATEGORIE NEL SAMPLE — COMMITTATO (2026-09-29)
 
 - Production: `QualificaLegacyImportSeeder::SOURCES` include ora `products` (fase 5, dopo

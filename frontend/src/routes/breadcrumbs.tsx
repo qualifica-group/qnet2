@@ -81,6 +81,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   login: 'auth.signInTitle',
   'forgot-password': 'auth.forgotPasswordTitle',
   'reset-password': 'auth.resetPasswordTitle',
+  'set-password': 'auth.setPasswordTitle',
+  'first-access': 'auth.firstAccessTitle',
 }
 
 function humanize(segment: string): string {

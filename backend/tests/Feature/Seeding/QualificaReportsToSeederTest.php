@@ -7,6 +7,7 @@ use Database\Seeders\QualificaCatalog\StaffRoster;
 use Database\Seeders\QualificaOperatorSeeder;
 use Database\Seeders\QualificaReportsToSeeder;
 use Database\Seeders\QualificaStaffSeeder;
+use Database\Seeders\TestUsersSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 // Who each operator reports to (user directive 2026-09-25): the mansionario's
@@ -19,15 +20,19 @@ function managerEmailsOf(string $email): array
         ->employment->reportsTo->pluck('email')->sort()->values()->all();
 }
 
+/** In the production chain's order: the named accounts first (TestUsersSeeder owns Nicola Eliseo). */
 function seedAccountsAndReportsTo(): void
 {
+    test()->seed(TestUsersSeeder::class);
     test()->seed(QualificaOperatorSeeder::class);
     test()->seed(QualificaStaffSeeder::class);
     test()->seed(QualificaReportsToSeeder::class);
 }
 
-it('names only accounts the operator or staff roster seeds, and never the operator itself', function (): void {
-    $known = collect(OperatorRoster::OPERATORS)->pluck(2)->merge(collect(StaffRoster::USERS)->pluck(2));
+it('names only accounts the chain seeds, and never the operator itself', function (): void {
+    $known = collect(OperatorRoster::OPERATORS)->pluck(2)
+        ->merge(collect(StaffRoster::USERS)->pluck(2))
+        ->merge(collect(TestUsersSeeder::TEST_USERS)->pluck('email'));
 
     foreach (ReportsToRoster::MANAGERS as $email => $managers) {
         expect($known)->toContain($email)

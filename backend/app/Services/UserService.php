@@ -13,6 +13,7 @@ use App\Services\Assignment\OperatorCompetence;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 class UserService
@@ -136,6 +137,8 @@ class UserService
             // ADR 0013). Seed only a non-null placeholder here to satisfy the
             // constraint at INSERT; writeProfile() below sets the real name.
             $attributes['name'] = '';
+            // Invite mode (spec 0177): unknown random placeholder, never communicated.
+            $attributes['password'] ??= Str::password(32);
 
             $user = User::create($attributes);
 
@@ -179,6 +182,12 @@ class UserService
             // attribute changed, so the HasCustomFields write pipeline (spec 0021)
             // persists a custom-fields-only edit. A clean save runs no UPDATE query.
             $user->fill($attributes)->save();
+
+            // An admin-set password on ANOTHER account is provisional (spec 0177):
+            // the owner must replace it at next access. Self-edits leave the flag alone.
+            if ($data->password !== null && $user->id !== $actor->id) {
+                $user->forceFill(['must_set_password' => true])->save();
+            }
 
             if ($data->hasRoles()) {
                 $roles = $this->guard->authorizedRoleNames($actor, $data->roles);

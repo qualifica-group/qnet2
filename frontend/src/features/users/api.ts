@@ -42,6 +42,12 @@ export async function updateUser(
   return data.data
 }
 
+/** Re-sends the welcome (invite) email to a user awaiting first access (spec 0177). Returns the backend message. */
+export async function resendWelcomeEmail(id: number): Promise<string | null> {
+  const { data } = await apiClient.post<ApiResponse<null>>(`/users/${id}/resend-welcome`)
+  return data.message || null
+}
+
 /** Deletes a user. Backend responds 204 with no body. */
 export async function deleteUser(id: number): Promise<void> {
   await apiClient.delete(`/users/${id}`)

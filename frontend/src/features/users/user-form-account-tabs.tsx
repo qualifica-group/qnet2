@@ -158,7 +158,9 @@ export function CredentialsTabContent({ control, isEdit }: CredentialsTabContent
         metaKey="password"
         label={t(isEdit ? 'users.form.newPassword' : 'users.form.password')}
         description={
-          isEdit ? <FormDescription>{t('users.form.passwordEditHint')}</FormDescription> : undefined
+          <FormDescription>
+            {t(isEdit ? 'users.form.passwordEditHint' : 'users.form.passwordCreateHint')}
+          </FormDescription>
         }
       >
         {({ field, disabled, readOnly }) => (
