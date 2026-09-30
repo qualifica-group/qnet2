@@ -37,7 +37,7 @@ export function UnitsOfMeasureTable() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(UNITS_OF_MEASURE_DOMAIN, {
+  const { openCreate, openView, sheet } = useModuleOpener(UNITS_OF_MEASURE_DOMAIN, {
     onSaved: refreshGrid,
   })
 
@@ -70,9 +70,6 @@ export function UnitsOfMeasureTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -83,7 +80,7 @@ export function UnitsOfMeasureTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

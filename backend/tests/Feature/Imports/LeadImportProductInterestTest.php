@@ -10,6 +10,7 @@ use App\Models\ImportRunRow;
 use App\Models\Lead;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -132,6 +133,7 @@ it("AC-051: configure with product_ids inside the campaign's covered categories 
     $campaign = Campaign::factory()->create();
     $category = importCoveredCategory($campaign);
     $product = Product::factory()->create(['category_id' => $category->id]);
+    $source = Source::factory()->create();
     $run = ImportRun::factory()->create([
         'user_id' => $actor->id, 'resource' => 'leads', 'status' => ImportStatus::Configuring,
         'detected_columns' => [['name' => 'Email', 'index' => 0, 'duplicate' => false]],
@@ -140,12 +142,12 @@ it("AC-051: configure with product_ids inside the campaign's covered categories 
 
     $this->putJson("/api/imports/leads/{$run->id}/configure", [
         'column_mapping' => ['Email' => 'email'],
-        'global_config' => ['campaign_id' => $campaign->id, 'product_ids' => [$product->id]],
+        'global_config' => ['campaign_id' => $campaign->id, 'source_id' => $source->id, 'product_ids' => [$product->id]],
         'dedup_strategy' => 'create_new',
     ])->assertOk()
         ->assertJsonPath('data.import_run.status', 'staging');
 
-    expect($run->fresh()->global_config)->toBe(['campaign_id' => $campaign->id, 'product_ids' => [$product->id]]);
+    expect($run->fresh()->global_config)->toBe(['campaign_id' => $campaign->id, 'source_id' => $source->id, 'product_ids' => [$product->id]]);
 });
 
 // ---------------------------------------------------------------------------

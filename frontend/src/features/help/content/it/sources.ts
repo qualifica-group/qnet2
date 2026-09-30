@@ -18,7 +18,7 @@ const guide: HelpGuide = {
       title: 'Creare, modificare ed eliminare',
       blocks: [
         { type: 'steps', items: ['Apri **Configurazione › Fonti** e premi **Nuova fonte**.', 'Scrivi il **Nome**.', 'Premi **Salva**.'] },
-        { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza**, **Modifica** ed **Elimina**, se il tuo ruolo lo consente.' },
+        { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza** ed **Elimina**, se il tuo ruolo lo consente. Per modificare apri la scheda con **Visualizza** e premi **Modifica**.' },
         { type: 'note', text: 'Se una fonte è già usata da qualche record, non puoi eliminarla: un messaggio ne spiega il motivo.' },
         { type: 'tip', text: 'Se il campo **Fonte** su un record è protetto, chi lo usa può proporne la modifica dalla guida **Richieste di modifica**.' },
       ],

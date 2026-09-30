@@ -65,7 +65,7 @@ export function RegistriesTable() {
     invalidateStats()
   }, [refreshGrid, invalidateStats])
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(REGISTRIES_DOMAIN, { onSaved })
+  const { openCreate, openView, sheet } = useModuleOpener(REGISTRIES_DOMAIN, { onSaved })
 
   const runDelete = useCallback(
     async (row: TableRow) => {
@@ -93,9 +93,6 @@ export function RegistriesTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -109,7 +106,7 @@ export function RegistriesTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   // Documents are edited from inside the dialog (upload/delete); refresh the

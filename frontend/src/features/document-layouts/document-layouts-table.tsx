@@ -40,7 +40,7 @@ export function DocumentLayoutsTable() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(DOCUMENT_LAYOUTS_DOMAIN, {
+  const { openCreate, openView, sheet } = useModuleOpener(DOCUMENT_LAYOUTS_DOMAIN, {
     onSaved: refreshGrid,
   })
 
@@ -77,9 +77,6 @@ export function DocumentLayoutsTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -90,7 +87,7 @@ export function DocumentLayoutsTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

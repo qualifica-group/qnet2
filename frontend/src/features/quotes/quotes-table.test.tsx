@@ -37,7 +37,6 @@ vi.mock('@/features/modules/use-module-opener', () => ({
     openCreate: openCreateMock,
     openCreateWith: vi.fn(),
     openView: vi.fn(),
-    openEdit: vi.fn(),
     openDuplicate: vi.fn(),
     sheet: null,
   }),

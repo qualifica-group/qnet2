@@ -9,7 +9,6 @@ const activityProps = vi.hoisted(() => ({ current: null as null | Record<string,
 const opener = vi.hoisted(() => ({
   openCreate: vi.fn(),
   openView: vi.fn(),
-  openEdit: vi.fn(),
 }))
 const toastError = vi.hoisted(() => vi.fn())
 
@@ -50,19 +49,17 @@ describe('CommissionConfigurationsTable', () => {
     activityProps.current = null
   })
 
-  it('opens create/view/edit/activity actions', () => {
+  it('opens create/view/activity actions', () => {
     render(<CommissionConfigurationsTable />)
     fireEvent.click(screen.getByRole('button', { name: 'New configuration' }))
     expect(opener.openCreate).toHaveBeenCalled()
     const onAction = tableProps.current?.onAction as (action: { key: string }, selectedRow: { id: number; name: string }) => void
     act(() => {
       onAction({ key: 'view' }, row)
-      onAction({ key: 'edit' }, row)
       onAction({ key: 'activity' }, row)
       onAction({ key: 'unknown' }, row)
     })
     expect(opener.openView).toHaveBeenCalledWith(row)
-    expect(opener.openEdit).toHaveBeenCalledWith(row)
     expect(activityProps.current?.row).toEqual(row)
     act(() => (activityProps.current?.onOpenChange as (open: boolean) => void)(false))
     expect(activityProps.current?.row).toBeNull()

@@ -43,7 +43,7 @@ export function CustomFieldsTable() {
     refreshGrid()
   }, [refreshGrid])
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(CUSTOM_FIELDS_DOMAIN, {
+  const { openCreate, openView, sheet } = useModuleOpener(CUSTOM_FIELDS_DOMAIN, {
     onSaved,
   })
 
@@ -74,9 +74,6 @@ export function CustomFieldsTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -87,7 +84,7 @@ export function CustomFieldsTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

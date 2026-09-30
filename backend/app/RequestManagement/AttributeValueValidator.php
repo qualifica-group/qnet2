@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\RequestManagement;
 
 use App\CustomFields\CustomFieldEntityRegistry;
+use App\CustomFields\Table\TableFieldSchema;
 use Closure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -97,9 +98,30 @@ final class AttributeValueValidator
                 $attribute->isRequired ? 'required' : 'nullable',
                 ...$this->typeRules($attribute),
             ];
+
+            if ($attribute->type === 'table') {
+                $rules = [...$rules, ...$this->nestedTableRules($attribute)];
+            }
         }
 
         return $rules;
+    }
+
+    /**
+     * The table cells' own rules (spec 0180), keyed under the attribute so a
+     * failure points at `attribute_values.<code>.rows.N.<col>`.
+     *
+     * @return array<string, array<int, mixed>>
+     */
+    private function nestedTableRules(ApplicableAttribute $attribute): array
+    {
+        $nested = [];
+
+        foreach (TableFieldSchema::fromConfig($attribute->config, $attribute->isRequired)->rules() as $key => $rules) {
+            $nested["attribute_values.{$attribute->code}.{$key}"] = $rules;
+        }
+
+        return $nested;
     }
 
     /**
@@ -120,6 +142,7 @@ final class AttributeValueValidator
             'time' => ['string', 'date_format:H:i,H:i:s'],
             'email' => ['string', 'email', 'max:191'],
             'url' => ['string', 'url', 'max:2048'],
+            'table' => ['array'],
             default => ['string'],
         };
     }

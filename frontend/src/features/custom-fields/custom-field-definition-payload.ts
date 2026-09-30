@@ -43,6 +43,11 @@ function buildValidation(values: CustomFieldDefinitionFormValues): CustomFieldVa
   })
 }
 
+/** A `table` value cannot be promoted to an index (server rejects `is_indexed=true`), so it is always sent as false. */
+function isIndexedFor(values: CustomFieldDefinitionFormValues): boolean {
+  return values.type === 'table' ? false : values.is_indexed
+}
+
 /** Builds the create payload: identity fields + the per-type config/validation/relation_target/options projection. */
 export function buildCreatePayload(
   values: CustomFieldDefinitionFormValues,
@@ -62,7 +67,7 @@ export function buildCreatePayload(
     config: buildFieldDefinitionConfig(values),
     validation: buildValidation(values),
     relation_target: buildFieldDefinitionRelationTarget(values),
-    is_indexed: values.is_indexed,
+    is_indexed: isIndexedFor(values),
     is_active: values.is_active,
     options: buildFieldDefinitionOptions(values),
   }
@@ -104,7 +109,7 @@ export function buildUpdatePayload(
   if (tab !== undefined) payload.tab = tab
 
   if (values.sort_order !== original.sort_order) payload.sort_order = values.sort_order
-  if (values.is_indexed !== original.is_indexed) payload.is_indexed = values.is_indexed
+  if (isIndexedFor(values) !== original.is_indexed) payload.is_indexed = isIndexedFor(values)
   if (values.is_active !== original.is_active) payload.is_active = values.is_active
 
   const nextConfig = buildFieldDefinitionConfig(values)

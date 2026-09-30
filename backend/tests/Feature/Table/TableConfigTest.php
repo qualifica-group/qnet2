@@ -298,7 +298,7 @@ it('resolves geo set-filter options from the names actually in use', function ()
 });
 
 it('hides action keys the user has no permission for in the config catalogue', function () {
-    // Only viewAny + view: edit/delete actions must NOT be advertised.
+    // Only viewAny + view: the delete action must NOT be advertised.
     $user = userWithUserAbilities(['viewAny', 'view']);
     Sanctum::actingAs($user);
 
@@ -322,7 +322,7 @@ it('exposes all action keys to a user with the full ability set', function () {
     $data = $this->getJson('/api/tables/users/columns')->json('data');
     $actionKeys = collect($data['actions'])->pluck('key')->all();
 
-    expect($actionKeys)->toEqualCanonicalizing(['view', 'edit', 'delete']);
+    expect($actionKeys)->toEqualCanonicalizing(['view', 'delete']);
 });
 
 /**

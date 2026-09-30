@@ -14,7 +14,7 @@ import type { User } from '@/features/auth/types'
 
 /**
  * AC-021 (spec 0058), split out of `reward-types-table.test.tsx`
- * (engineering.md §6, soft 300-line limit): view/edit/create must respect the
+ * (engineering.md §6, soft 300-line limit): view/create must respect the
  * user's `module_open_preferences` (spec 0042 `resolveOpenMode`), not just
  * declare `defaultMode: 'modal'` structurally. This suite needs a DIFFERENT
  * mock shape from the rest of the domain's table tests — `@/features/auth/
@@ -107,24 +107,24 @@ vi.mock('@/features/reward-types/api', () => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-const EDIT_ACTION: TableActionDefinition = {
-  key: 'edit',
-  label: 'actions.edit',
-  icon: 'pencil',
+const VIEW_ACTION: TableActionDefinition = {
+  key: 'view',
+  label: 'actions.view',
+  icon: 'eye',
   type: 'action',
   confirm: false,
 }
 
-const ROW: TableRow = { id: 1, actions: ['edit'], name: 'Buono Amazon' }
+const ROW: TableRow = { id: 1, actions: ['view'], name: 'Buono Amazon' }
 
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<{ refresh: () => void }, { domain: string; onAction?: RowActionHandler }>(
     function TableViewStub({ domain, onAction }, ref) {
       useImperativeHandle(ref, () => ({ refresh: () => {} }))
-      const Cell = onAction ? createRowActionsRenderer([EDIT_ACTION], onAction) : null
+      const Cell = onAction ? createRowActionsRenderer([VIEW_ACTION], onAction) : null
       return (
         <div role="region" aria-label={`table-${domain}`}>
-          {/* RowActions calls useConfirm() unconditionally; EDIT_ACTION never
+          {/* RowActions calls useConfirm() unconditionally; VIEW_ACTION never
               confirms, so a resolved-true stub is enough — not asserted here. */}
           <ConfirmContext.Provider value={() => Promise.resolve(true)}>
             {Cell ? <Cell {...({ data: ROW } as ICellRendererParams)} /> : null}
@@ -163,9 +163,9 @@ describe('RewardTypesTable — open mode preference (AC-021)', () => {
     currentUser.module_open_preferences = NATIVE_MODE_PREFERENCES
 
     renderTable()
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'View' }))
 
-    expect(screen.getByRole('button', { name: 'save-form' })).toBeInTheDocument()
+    expect(screen.getByText('detail-screen')).toBeInTheDocument()
     expect(navigateMock).not.toHaveBeenCalled()
   })
 
@@ -173,10 +173,10 @@ describe('RewardTypesTable — open mode preference (AC-021)', () => {
     currentUser.module_open_preferences = { mode: 'page', overrides: {} }
 
     renderTable()
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'View' }))
 
-    expect(navigateMock).toHaveBeenCalledWith('/reward-types/1/edit')
-    expect(screen.queryByRole('button', { name: 'save-form' })).not.toBeInTheDocument()
+    expect(navigateMock).toHaveBeenCalledWith('/reward-types/1')
+    expect(screen.queryByText('detail-screen')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'New reward type' }))
     expect(navigateMock).toHaveBeenCalledWith('/reward-types/new')
@@ -187,9 +187,9 @@ describe('RewardTypesTable — open mode preference (AC-021)', () => {
     currentUser.module_open_preferences = prefs
 
     renderTable()
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'View' }))
 
-    expect(navigateMock).toHaveBeenCalledWith('/reward-types/1/edit')
-    expect(screen.queryByRole('button', { name: 'save-form' })).not.toBeInTheDocument()
+    expect(navigateMock).toHaveBeenCalledWith('/reward-types/1')
+    expect(screen.queryByText('detail-screen')).not.toBeInTheDocument()
   })
 })

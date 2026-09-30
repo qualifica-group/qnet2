@@ -154,7 +154,7 @@ it('rows expose is_default, the derived primary_contact/geo/postal_code/company 
         ->and($row)->toHaveKey('logo_url')
         ->and($row['company'])->toBe(['id' => $company->id, 'name' => 'Acme Holding'])
         ->and(collect($row['primary_contact'])->pluck('value'))->toContain('finance@acme.test')
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete']);
 });
 
 it('a site with no company has a null company row field', function () {

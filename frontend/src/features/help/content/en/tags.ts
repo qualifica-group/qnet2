@@ -17,7 +17,7 @@ const guide: HelpGuide = {
       title: 'Creating, editing and deleting',
       blocks: [
         { type: 'steps', items: ['Open **Configuration › Tags** and press **New tag**.', 'Type the **Name**.', 'Press **Save**.'] },
-        { type: 'paragraph', text: 'On the list rows you find **View**, **Edit** and **Delete**, if your role allows it.' },
+        { type: 'paragraph', text: 'On the list rows you find **View** and **Delete**, if your role allows it. To edit, open the record with **View** and press **Edit**.' },
         { type: 'note', text: 'If a tag is already linked to at least one record, you cannot delete it: a message explains why.' },
       ],
     },

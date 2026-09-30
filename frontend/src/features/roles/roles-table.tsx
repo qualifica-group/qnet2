@@ -26,7 +26,7 @@ const SYSTEM_ROLE = 'super-admin'
 /**
  * Thin Roles adapter over the generic table. It mounts `<TableView>` with the
  * `roles` domain, its custom cell renderers and a row-action handler, and
- * delegates the open mode (modal Sheet vs dedicated page) of view/edit/create
+ * delegates the open mode (modal Sheet vs dedicated page) of view/create
  * to `useModuleOpener`, resolved from the user's preference (spec 0042). It
  * still owns the delete flow (confirm + toast + grid refresh) and the SSRM
  * grid refresh after every mutation. Permission gating is an affordance only;
@@ -48,7 +48,7 @@ export function RolesTable() {
     refreshGrid()
   }, [refreshGrid])
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(ROLES_DOMAIN, { onSaved })
+  const { openCreate, openView, sheet } = useModuleOpener(ROLES_DOMAIN, { onSaved })
 
   const runDelete = useCallback(
     async (row: TableRow) => {
@@ -77,9 +77,6 @@ export function RolesTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -90,17 +87,17 @@ export function RolesTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
-  // Hide edit/delete on the protected super-admin system role (mutations are
+  // Hide delete on the protected super-admin system role (mutations are
   // forbidden server-side; this avoids offering dead-end actions). The backend
   // already omits them, this is a belt-and-braces affordance.
   const decorateRow = useCallback((row: TableRow): TableRow => {
     if (row.name === SYSTEM_ROLE) {
       return {
         ...row,
-        actions: row.actions.filter((key) => key !== 'edit' && key !== 'delete'),
+        actions: row.actions.filter((key) => key !== 'delete'),
       }
     }
     return row

@@ -35,7 +35,7 @@ const guide: HelpGuide = {
       title: 'Creare, modificare, riordinare ed eliminare',
       blocks: [
         { type: 'steps', items: ['Apri **Configurazione › Modalità di Pagamento** e premi **Nuova modalità di pagamento**.', 'Compila i campi (vedi tabella sopra).', 'Premi **Salva**.'] },
-        { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza**, **Modifica** ed **Elimina**, se il tuo ruolo lo consente. **Riordina** cambia l’ordine con cui le modalità compaiono nei menu a tendina.' },
+        { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza** ed **Elimina**, se il tuo ruolo lo consente. Per modificare apri la scheda con **Visualizza** e premi **Modifica**. **Riordina** cambia l’ordine con cui le modalità compaiono nei menu a tendina.' },
         { type: 'warning', text: 'Non puoi eliminare una modalità di pagamento già usata: disattivala invece.' },
       ],
     },

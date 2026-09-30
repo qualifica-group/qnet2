@@ -32,7 +32,7 @@ const guide: HelpGuide = {
           items: [
             'Premi **Nuova tipologia**.',
             'Compila **Nome** e **Colore** e premi **Salva**.',
-            'Per modificare, scegli **Modifica** sulla riga, cambia i dati e premi **Salva**.',
+            'Per modificare, apri la scheda con **Visualizza**, premi **Modifica**, cambia i dati e premi **Salva**.',
             'Per eliminare, scegli **Elimina** e conferma.',
           ],
         },

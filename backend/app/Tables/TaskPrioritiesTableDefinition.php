@@ -125,10 +125,6 @@ class TaskPrioritiesTableDefinition extends AbstractTableDefinition
             $allowed[] = 'view';
         }
 
-        if (Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = 'edit';
-        }
-
         if (Gate::forUser($actor)->allows('delete', $row)) {
             $allowed[] = 'delete';
         }

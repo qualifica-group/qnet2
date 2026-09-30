@@ -82,7 +82,7 @@ export function LeadsTable() {
     invalidateStats()
   }, [refreshGrid, invalidateStats])
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(LEADS_DOMAIN, { onSaved })
+  const { openCreate, openView, sheet } = useModuleOpener(LEADS_DOMAIN, { onSaved })
 
   // Lead -> opportunity conversion (spec 0140): converts the row directly,
   // no Opportunity form. Reuses the same `onSaved` (grid refresh + stats
@@ -117,9 +117,6 @@ export function LeadsTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -133,7 +130,7 @@ export function LeadsTable() {
           break
       }
     },
-    [openView, openEdit, runDelete, startConversion],
+    [openView, runDelete, startConversion],
   )
 
   const isBusy = useCallback(

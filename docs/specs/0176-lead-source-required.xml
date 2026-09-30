@@ -35,6 +35,14 @@
          (anche campagna da file, spec 0108); se nessuna delle due -> errore di riga allo staging.
          Il wizard marca la Fonte obbligatoria quando la campagna e' scelta nel wizard.
     D-6  Il ceiling dei permessi di campo del Lead marca `source_id` come required (asterisco coerente in UI).
+    D-7  (utente, delta 2026-09-30, supera la parte "wizard" di D-5) Import: la Fonte e' obbligatoria nel wizard
+         SEMPRE, anche con la campagna dal file (multicampagna, spec 0108). `LeadImportFieldCatalog` marca
+         `source_id` required; `ConfigureImportRequest` risponde 422 su `global_config.source_id`. La
+         precompilazione dalla campagna scelta nel wizard resta. Il fallback per riga alla Fonte della campagna
+         resta come difesa in staging/commit (run gia' configurati).
+    D-8  (utente, delta 2026-09-30) Auto-mapping: "Nome" -> `full_name`, salvo che il file abbia anche una colonna
+         che mappa su `last_name` ("Cognome"): allora "Nome" -> `first_name` (`config('imports.contextual_aliases')`,
+         applicato da `ColumnMapper`). "Indirizzo e-mail" -> `email` (alias).
   </decisions>
 
   <contract>
@@ -60,6 +68,10 @@
     AC-008  UI Campagna: selettore Fonte nel form, Fonte nel dettaglio.
     AC-009  UI Import: scegliendo la campagna nel wizard la Fonte si precompila; obbligatoria se la campagna e'
             scelta nel wizard.
+    AC-010  (D-7) PUT configure con `campaign_code` mappato e senza `global_config.source_id` -> 422 su
+            `global_config.source_id`; il wizard marca la Fonte obbligatoria anche in modalita' "Dal file".
+    AC-011  (D-8) Header "Nome" da solo -> `full_name`; "Nome" + "Cognome" -> `first_name`/`last_name`;
+            "Indirizzo e-mail" -> `email`.
   </acceptance>
 
 </spec>

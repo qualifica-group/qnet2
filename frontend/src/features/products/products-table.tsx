@@ -51,7 +51,7 @@ export function ProductsTable() {
     invalidateStats()
   }, [refreshGrid, invalidateStats])
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(PRODUCTS_DOMAIN, { onSaved })
+  const { openCreate, openView, sheet } = useModuleOpener(PRODUCTS_DOMAIN, { onSaved })
 
   const runDelete = useCallback(
     async (row: TableRow) => {
@@ -79,9 +79,6 @@ export function ProductsTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -92,7 +89,7 @@ export function ProductsTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

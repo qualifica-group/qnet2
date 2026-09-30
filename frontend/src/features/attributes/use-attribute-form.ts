@@ -19,6 +19,7 @@ import {
   emptyFieldDefinitionValues,
   hydrateFieldDefinitionValues,
 } from '@/features/custom-fields/field-definition-defaults'
+import { applyTableConfigServerErrors } from '@/features/custom-fields/table-definition-errors'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
 
 /** Server-side field names mapped onto the form for 422 handling. */
@@ -141,6 +142,7 @@ export function useAttributeForm({ mode, onSuccess }: UseAttributeFormArgs) {
       toast.success(t('attributes.form.created'))
       onSuccess(created)
     } catch (error) {
+      applyTableConfigServerErrors(error, form.setError)
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
         setServerError(t('attributes.form.genericError'))
       }

@@ -46,10 +46,6 @@ final class TaskRowActionResolver
             $allowed[] = 'view';
         }
 
-        if (Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = 'edit';
-        }
-
         if ($this->authorizeDelete($actor, $row)) {
             $allowed[] = 'delete';
         }

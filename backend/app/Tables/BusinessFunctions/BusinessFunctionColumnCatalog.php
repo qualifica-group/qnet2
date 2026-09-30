@@ -153,14 +153,6 @@ final class BusinessFunctionColumnCatalog
                 'permission' => 'business-functions.view',
             ],
             [
-                'key' => 'edit',
-                'label' => 'actions.edit',
-                'icon' => 'pencil',
-                'type' => 'link',
-                'confirm' => false,
-                'permission' => 'business-functions.update',
-            ],
-            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',

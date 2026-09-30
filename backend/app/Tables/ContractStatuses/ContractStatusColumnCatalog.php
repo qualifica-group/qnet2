@@ -133,14 +133,6 @@ final class ContractStatusColumnCatalog
                 'permission' => 'contract-statuses.view',
             ],
             [
-                'key' => 'edit',
-                'label' => 'actions.edit',
-                'icon' => 'pencil',
-                'type' => 'link',
-                'confirm' => false,
-                'permission' => 'contract-statuses.update',
-            ],
-            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',

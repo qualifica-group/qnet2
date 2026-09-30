@@ -84,6 +84,8 @@ class UpdateCustomFieldRequest extends FormRequest
             $this->enforceFieldPermissions($validator);
             $this->validateEnumOptions($validator);
             $this->validateRelationTarget($validator);
+            $this->validateTableConfig($validator);
+            $this->rejectIndexedTable($validator);
         });
     }
 
@@ -129,6 +131,27 @@ class UpdateCustomFieldRequest extends FormRequest
     private function customFieldableEntityTypes(): array
     {
         return array_column(app(CustomFieldEntityRegistry::class)->entities(), 'entity_type');
+    }
+
+    protected function shouldValidateTableConfig(): bool
+    {
+        return $this->has('config') || $this->has('type');
+    }
+
+    protected function tableConfigInput(): mixed
+    {
+        /** @var CustomFieldDefinition $customField */
+        $customField = $this->route('customField');
+
+        return $this->has('config') ? $this->input('config') : $customField->config;
+    }
+
+    protected function indexedInput(): bool
+    {
+        /** @var CustomFieldDefinition $customField */
+        $customField = $this->route('customField');
+
+        return $this->has('is_indexed') ? $this->boolean('is_indexed') : (bool) $customField->is_indexed;
     }
 
     protected function authorizationResource(): string

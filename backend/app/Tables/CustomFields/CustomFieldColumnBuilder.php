@@ -95,6 +95,10 @@ final class CustomFieldColumnBuilder
             $column['badges'] = $enum['badges'];
         }
 
+        if ($handler->columnType() === 'table') {
+            $column['table'] = $handler->toMeta($definition)['config'] ?? [];
+        }
+
         return $column;
     }
 

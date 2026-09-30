@@ -115,7 +115,7 @@ it('AC-015: the full leads wizard flow responds with the envelope and expected s
     // Step 3: PUT configure -> staging, dispatches StageImportJob.
     $this->putJson("/api/imports/leads/{$run->id}/configure", [
         'column_mapping' => leadsWizardColumnMapping(),
-        'global_config' => ['campaign_id' => $campaign->id],
+        'global_config' => ['campaign_id' => $campaign->id, 'source_id' => $campaign->source_id],
         'dedup_strategy' => 'create_new',
     ])->assertOk()
         ->assertJsonPath('data.import_run.status', 'staging');
@@ -124,7 +124,7 @@ it('AC-015: the full leads wizard flow responds with the envelope and expected s
 
     $run->refresh();
     expect($run->column_mapping)->toBe(leadsWizardColumnMapping())
-        ->and($run->global_config)->toBe(['campaign_id' => $campaign->id])
+        ->and($run->global_config)->toBe(['campaign_id' => $campaign->id, 'source_id' => $campaign->source_id])
         ->and($run->dedup_strategy)->toBe('create_new');
 
     // Simulate StageImportJob's effect: 1 valid + 1 error staged row.
@@ -201,7 +201,7 @@ it('403 without leads.import on every wizard endpoint', function () {
     $this->postJson('/api/imports/leads', ['file' => UploadedFile::fake()->create('leads.csv', 5, 'text/csv')])->assertForbidden();
     $this->getJson("/api/imports/leads/{$run->id}")->assertForbidden();
     $this->putJson("/api/imports/leads/{$run->id}/configure", [
-        'column_mapping' => ['Email' => 'email'], 'global_config' => ['campaign_id' => $campaign->id], 'dedup_strategy' => 'create_new',
+        'column_mapping' => ['Email' => 'email'], 'global_config' => ['campaign_id' => $campaign->id, 'source_id' => Source::factory()->create()->id], 'dedup_strategy' => 'create_new',
     ])->assertForbidden();
     $this->postJson("/api/imports/leads/{$run->id}/rows")->assertForbidden();
     $this->getJson("/api/imports/leads/{$run->id}/summary")->assertForbidden();
@@ -369,7 +369,7 @@ it('two identically-named file columns get distinct ColumnAnalysis keys, both in
 
     $this->putJson("/api/imports/leads/{$run->id}/configure", [
         'column_mapping' => ['Email' => 'email', 'Email#1' => '__extra__'],
-        'global_config' => ['campaign_id' => $campaign->id],
+        'global_config' => ['campaign_id' => $campaign->id, 'source_id' => Source::factory()->create()->id],
         'dedup_strategy' => 'create_new',
     ])->assertOk();
 

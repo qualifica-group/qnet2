@@ -3,6 +3,61 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## IMPORT LEAD: FONTE SEMPRE OBBLIGATORIA + AUTO-MAPPING "NOME"/"INDIRIZZO E-MAIL" — VERDE, NON COMMITTATO (2026-09-30)
+
+- Delta spec 0176 (D-7/D-8, AC-010/011). `LeadImportFieldCatalog`: `source_id` `required => true` (anche con
+  `campaign_code` mappato); 422 su `global_config.source_id` dal flusso generico di `ConfigureImportRequest`.
+  Fallback per riga alla Fonte della campagna invariato (difesa per run gia' configurati).
+- Auto-mapping: `config/imports.php` alias `nome` -> `full_name`, `indirizzo e mail` -> `email`; nuova chiave
+  `contextual_aliases` (`first_name` <- `nome` quando `last_name` e' matchato), applicata da
+  `ColumnMapper::applyContextualAliases()` (Step 2 di `suggest`).
+- FE: rimossa la regola dinamica D-5 (`dynamicRequiredFieldIds` in `ImportConfigFields`, blocco in
+  `import-mapping-schema.ts`, `sourceRequiredRunLevel` in `import-step-mapping.tsx`): il required arriva dal catalogo.
+  Prefill Fonte dalla campagna invariato.
+- Test adeguati (requisito cambiato): payload configure con `source_id` in LeadsImportWizardFlowTest,
+  LeadImportProductInterestTest, LeadImportCampaignFromFileTest (AC-003 + nuovo 422); nuovi casi in ColumnMapperTest;
+  FE import-step-mapping-source.test / import-config-fields.test.
+- Verifica: `composer test` 9033 passed; Vitest imports+help 361 passed; `tsc -b --force` pulito; ESLint 0 errori;
+  Pint ok. Manuale: guide in-app imports IT/EN + Claude Docs (passaggio Mappatura) aggiornati.
+
+## SPEC 0180 CAMPO FLESSIBILE `table` (TABELLA RIPETIBILE) — VERDE, NON COMMITTATO (2026-09-30)
+
+- Spec `docs/specs/0180-table-field-type.xml` (D-1 Attributi + Campi personalizzati; D-2 solo colonne scalari;
+  D-3 promemoria email e D-4 migrazione `orderiso_verificas` in spec successive; D-5 colonne modificabili con dati).
+- BE: nucleo `App\CustomFields\Table\TableFieldSchema` (`fromConfig(config, required)`, `rules()` chiavi relative,
+  `normalize()`, `resolve()`, costanti COLUMN_TYPES/SUMMARY_COLUMN_TYPES/SUMMARY_STRATEGIES/RESERVED_KEYS) +
+  `TableFieldConfigValidator`; handler `Types\TableFieldType` (columnType `table`, filterType `text`, sort/filtro su
+  `<key>->summary`) + interfaccia opzionale `Types\ProvidesNestedValidationRules`; `CustomFieldValidator` unisce le
+  regole annidate e confronta i permessi DOPO `normalizeForStore`. Attributi: rami `table` in
+  `AttributeValueValidator`/`AttributeValueNormalizer`, `AttributeColumnBuilder` (sola lettura), cell-edit escluso in
+  `WritesAttributeCells`; `DynamicFieldResolver` stampa il summary. `config/custom-fields.php`: `table.max_columns`=20,
+  `table.max_rows`=200. `AttributesSource` sample: record `table` (14 tipi).
+- Storage/contratto: scrittura `{rows:[{id?,<col>..}]}`, persistito/letto `{rows:[{id uuid,..}], summary}`; errori
+  `custom_fields|attribute_values.<key>.rows.N.<col>`. Sugli attributi non c'e' read-resolve centrale: una colonna
+  rimossa resta nello stored finche' il record non e' riscritto (invisibile in UI, il FE rende per config).
+- FE: `SCALAR_FIELD_COMPONENT_REGISTRY` (nuovo) + `table: TableFieldControl` (desktop tabella con
+  `contain-inline-size`, mobile card), `buildTableFieldSchema` (riusato in `attribute-values-schema.ts`),
+  `applyTableServerErrors` chiamato centralmente da `applyServerValidationErrors` (`features/auth/form-errors.ts`);
+  editor admin `DefinitionTableColumnsEditor` nei form Campo personalizzato e Attributo; `TableSummaryCell` in
+  `column-defaults.tsx`; `ColumnType` + `'table'`, `CELL_EDITOR_REGISTRY` ora `Partial` (table senza editor);
+  `readonly-table-value.tsx` nel dettaglio commessa. i18n `customFields.tableField.*`/`tableEditor.*`.
+- Verifica: Pest completo 9028 pass / 0 fail / 1 skip; Vitest completo 862 file / 6576 pass; `tsc -b --force`,
+  ESLint, Pint puliti; Playwright sul dev (admin Campo personalizzato + Attributo, nessun salvataggio) a 375/768/1024
+  senza scroll di pagina, scroll interno al campo, radio a selezione singola. Test aggiornati per requisito cambiato:
+  `AttributeTableTest` badge 13->14, `FieldTypeRegistryTest` + `table`.
+- Manuale: guide in-app `custom-fields`/`attributes` IT+EN (sezioni `table-field`, `table-field-fill`); manuale Claude
+  Docs aggiornato (tipi, Tabella, Attributi, compilazione); **PDF derivato da rigenerare**.
+- Rev. 2 (decisione utente 2026-09-30, AC-022 rivisto + AC-025): le colonne griglia type=table portano
+  `table` = config della definizione (`CustomFieldColumnBuilder`/`AttributeColumnBuilder::resolved()`); la cella
+  (`TableSummaryCell` + `format-table-row-inline.ts`) mostra in linea la riga selezionata se `selectable` e riga
+  selezionata, altrimenti summary + conteggio; tooltip Radix (hover + focus) con `ReadonlyTableValue` in entrambi i
+  casi; senza `column.table` degrada a summary senza tooltip. Verifica: Pest CustomFields 131 / RequestManagement
+  806 / Attributes 54; Vitest data-table+custom-fields+request-management+table+work-orders 1265, help 106;
+  `tsc -b --force` pulito. Rev. 2 NON verificata nel browser (servono dati demo con un attributo Tabella).
+- Aperti/fuori scope: promemoria email (D-3), migrazione verifiche legacy (D-4; bug legacy `setAttivo` non scoped);
+  nessuna UI per `color` opzioni/`config` per-colonna (conservati nel round-trip); `min-w-0` sul `<main>` del layout
+  e' un fix generale possibile ma non fatto (fuori scope).
+
 ## STRESS TEST 100 UTENTI: INTERVENTI S1/S2/S4/S5/S6 — COMMITTATO (2026-09-30)
 
 - Fonte: report "QNet stress test 100 utenti" del 2026-09-29. S3 (buffer pool, FPM, OPcache, `php artisan
@@ -40,6 +95,26 @@
   riallineare le costanti di `RequestClientSearch`.
 - Prossimi passi: rilanciare lo stress test con gli stessi script; valutare split di
   `RequestManagementTableDefinition.php` (499 righe, al limite dei 500).
+
+## RIMOSSA L'AZIONE DI RIGA "MODIFICA" DALLE TABELLE CON DETTAGLIO — VERDE (2026-09-30)
+
+- Direttiva utente 2026-09-30: ogni modulo ha la sua pagina/scheda di dettaglio (tutti i `*-screens.tsx` hanno
+  `detailOwnsEditAction: true` e inoltrano `onEdit`), quindi `edit` non e' piu' una row action. Stesso schema gia'
+  usato da Opportunita'/Offerte/Commesse (2026-08-05/09-02).
+- Backend: tolto `edit` dal catalogo `actions()` (40 `*ColumnCatalog`/`RolesTableDefinition`) e da `actionsFor()`
+  (+ `TaskRowActionResolver`, mappa di `CommissionConfigurationsTableDefinition`). Docblock aggiornati.
+- Frontend: tolti i `case 'edit'` dalle 38 tabelle + Configurazioni provvigioni; `'edit'` fuori da
+  `ACTIONS_OPENING_DETAIL` (contratti) e dal `decorateRow` dei ruoli. `useModuleOpener` non espone piu'
+  `openEdit` (dead code): l'edit in Sheet si raggiunge solo da `DetailScreen.onEdit`; in page mode dal pulsante
+  Modifica della pagina. Le route `:id/edit` restano.
+- Test cambiati per requisito (non tampering): array azioni attese senza `edit` (24 file Pest); Vitest su opener,
+  sectors/campaigns/leads/projects (edit via Visualizza -> Modifica), products/referents/registries (edit di riga
+  ignorato), reward-types open-mode (ora sulla view).
+- Guide in-app IT+EN aggiornate (general, sectors, tags, sources, payment-methods, business-functions,
+  commission-configurations, products, product-categories, roles, users, custom-fields, reward-types, task-*).
+  Manuale Claude Docs: NON accessibile dalla sessione -> da aggiornare a mano (vedi riepilogo in chat).
+- Verifica: Pest parallelo 8930 pass/1 skip; Vitest 6525/6526 (unico rosso: timeout 5 s su
+  `role-field-permissions-personal-data`, non toccato, verde in isolamento); `tsc -b --force` ok; ESLint e Pint ok.
 
 ## FIX AZIONI DI RIGA TASK (icone + label) — VERDE, NON COMMITTATO (2026-09-30)
 

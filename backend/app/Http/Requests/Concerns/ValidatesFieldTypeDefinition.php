@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Concerns;
 
 use App\CustomFields\CustomFieldEntityRegistry;
+use App\CustomFields\Table\TableFieldConfigValidator;
 use Illuminate\Contracts\Validation\Validator;
 
 /**
@@ -85,6 +86,32 @@ trait ValidatesFieldTypeDefinition
     }
 
     /**
+     * TABLE requires a config that satisfies the TableFieldConfig contract
+     * (spec 0180); errors are keyed by the contract's `config.*` paths.
+     */
+    protected function validateTableConfig(Validator $validator): void
+    {
+        if ($this->fieldTypeDefinitionType() !== 'table' || ! $this->shouldValidateTableConfig()) {
+            return;
+        }
+
+        foreach ((new TableFieldConfigValidator)->validate($this->tableConfigInput()) as $key => $message) {
+            $validator->errors()->add($key, $message);
+        }
+    }
+
+    /**
+     * A TABLE field cannot be indexed: its value is a JSON document, not a
+     * scalar column. Custom field requests only (attributes have no index).
+     */
+    protected function rejectIndexedTable(Validator $validator): void
+    {
+        if ($this->fieldTypeDefinitionType() === 'table' && $this->indexedInput()) {
+            $validator->errors()->add('is_indexed', 'A table field cannot be indexed.');
+        }
+    }
+
+    /**
      * The `type` this request's submission would produce. A CREATE request
      * reads the raw input; a PARTIAL update overrides this to fall back to
      * the model's currently persisted `type` when not submitted.
@@ -111,5 +138,33 @@ trait ValidatesFieldTypeDefinition
     protected function shouldValidateRelationTarget(): bool
     {
         return true;
+    }
+
+    /**
+     * Whether the table `config` should be checked — always true for a
+     * CREATE request; a PARTIAL update overrides this to fire when `config`
+     * or `type` is submitted (the latter covers a type change to table).
+     */
+    protected function shouldValidateTableConfig(): bool
+    {
+        return true;
+    }
+
+    /**
+     * The `config` the definition would end up with; a PARTIAL update
+     * overrides this to fall back to the persisted config.
+     */
+    protected function tableConfigInput(): mixed
+    {
+        return $this->input('config');
+    }
+
+    /**
+     * The `is_indexed` flag the definition would end up with; a PARTIAL
+     * update overrides this to fall back to the persisted flag.
+     */
+    protected function indexedInput(): bool
+    {
+        return $this->boolean('is_indexed');
     }
 }

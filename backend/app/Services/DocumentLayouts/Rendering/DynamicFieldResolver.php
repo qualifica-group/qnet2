@@ -87,6 +87,7 @@ final class DynamicFieldResolver
     {
         return match (true) {
             $value === null => '',
+            is_array($value) && array_key_exists('rows', $value) => self::scalarToString($value['summary'] ?? null),
             is_bool($value) => $value ? '1' : '0',
             is_array($value) => implode(', ', array_map(static fn (mixed $item): string => (string) $item, $value)),
             default => (string) $value,

@@ -80,8 +80,8 @@ const guide: HelpGuide = {
       id: 'edit-deactivate-delete',
       title: 'Modificare, disattivare ed eliminare',
       blocks: [
-        { type: 'paragraph', text: 'Ogni riga dell’elenco ha un menu azioni con **Visualizza**, **Modifica**, **Elimina**, **Attività** e **Impersona**. Vedi solo le azioni permesse dal tuo ruolo.' },
-        { type: 'list', items: ['**Modificare:** scegli **Modifica**, cambia i dati e fai clic su **Salva**.', '**Disattivare:** apri **Modifica** e spegni **Attivo**. La persona non può più accedere, ma scheda e storico restano. In alto compare **Non attivo**.', '**Eliminare:** scegli **Elimina** e conferma.', '**Attività:** mostra lo storico delle modifiche fatte sulla scheda.'] },
+        { type: 'paragraph', text: 'Ogni riga dell’elenco ha un menu azioni con **Visualizza**, **Elimina**, **Attività** e **Impersona**. Vedi solo le azioni permesse dal tuo ruolo.' },
+        { type: 'list', items: ['**Modificare:** apri la scheda con **Visualizza**, premi **Modifica**, cambia i dati e fai clic su **Salva**.', '**Disattivare:** apri **Modifica** e spegni **Attivo**. La persona non può più accedere, ma scheda e storico restano. In alto compare **Non attivo**.', '**Eliminare:** scegli **Elimina** e conferma.', '**Attività:** mostra lo storico delle modifiche fatte sulla scheda.'] },
         { type: 'warning', text: 'Non puoi eliminare il tuo stesso account, né l’ultimo utente con ruolo super-admin.' },
         { type: 'tip', text: 'Se una persona lascia l’azienda, disattivala invece di eliminarla. Così conservi lo storico del suo lavoro.' },
       ],
@@ -90,7 +90,7 @@ const guide: HelpGuide = {
       id: 'reset-password',
       title: 'Reimpostare la password di un utente',
       blocks: [
-        { type: 'steps', items: ['Apri la scheda dell’utente con **Modifica**.', 'Nella sezione **Autenticazione** scrivi la **Nuova password** e poi **Ripeti la password**.', 'Fai clic su **Salva**.'] },
+        { type: 'steps', items: ['Apri la scheda dell’utente con **Visualizza** e premi **Modifica**.', 'Nella sezione **Autenticazione** scrivi la **Nuova password** e poi **Ripeti la password**.', 'Fai clic su **Salva**.'] },
         { type: 'note', text: 'Se lasci vuoti i campi password, la password attuale resta invariata. La password che imposti tu è provvisoria: al prossimo accesso all’utente verrà consigliato di cambiarla. In alternativa, la persona può reimpostarla da sola con **Password dimenticata?** nella pagina di accesso.' },
       ],
     },

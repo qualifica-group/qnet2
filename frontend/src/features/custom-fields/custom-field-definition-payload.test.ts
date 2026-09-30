@@ -3,6 +3,7 @@ import {
   buildCreatePayload,
   buildUpdatePayload,
 } from '@/features/custom-fields/custom-field-definition-payload'
+import { emptyTableDefinition } from '@/features/custom-fields/field-definition-table'
 import type { CustomFieldDefinitionFormValues } from '@/features/custom-fields/custom-field-definition-schema'
 import type { CustomFieldDefinitionDetail } from '@/features/custom-fields/types'
 
@@ -58,6 +59,7 @@ function baseValues(
     validation: emptyValidation(),
     relation_target: { entity_type: '', cardinality: 'one', for_select_resource: '' },
     options: [],
+    table: emptyTableDefinition(),
     ...overrides,
   }
 }

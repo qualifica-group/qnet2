@@ -53,7 +53,7 @@ export function OperationalSitesTable() {
     invalidateStats()
   }, [refreshGrid, invalidateStats])
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(OPERATIONAL_SITES_DOMAIN, {
+  const { openCreate, openView, sheet } = useModuleOpener(OPERATIONAL_SITES_DOMAIN, {
     onSaved,
   })
 
@@ -85,9 +85,6 @@ export function OperationalSitesTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -98,7 +95,7 @@ export function OperationalSitesTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

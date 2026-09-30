@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0180-table-field-type" status="draft" owner="utente" date="2026-09-30">
+
+  <goal>
+    Un nuovo tipo di campo flessibile `table` (tabella ripetibile): l'amministratore definisce le colonne
+    (etichetta, chiave, tipo, obbligatorieta', opzioni) e l'utente compila N righe per record. Disponibile sia
+    come Campo personalizzato (spec 0021) sia come Attributo del catalogo (spec 0017/0098, contesto Commessa
+    incluso). Caso guida: le verifiche ispettive delle commesse ISO del legacy (`orderiso_verificas`).
+  </goal>
+
+  <context>
+    - Legacy (`/Users/Repository/qnet`): `orderiso_verificas` = N righe per commessa con `data_verifica` (data),
+      `ispettore_verifica` (testo libero), `sup_vi` (1 On Site / 2 Off Site), `fase_vi` (1 Stage 1 / 2 Stage 2),
+      `invio_alert` (bool), `attivo` (radio: una sola riga). Bug legacy: `Manageorder::setAttivo` azzera `attivo`
+      su TUTTE le commesse (update non scoped) — NON va riprodotto: qui la riga selezionata e' per singolo record.
+    - Registro tipi unico: `App\CustomFields\FieldTypeRegistry` da `config/custom-fields.php` `types` (13 tipi oggi).
+      Interfaccia `App\CustomFields\Types\FieldTypeHandler` (validationRules/normalizeForStore/resolveForRead/
+      columnType/filterType/applyFilter/applySort/distinctValues/toMeta), handler accoppiati a
+      `CustomFieldDefinition`.
+    - Campi personalizzati: write pipeline type-agnostica `CustomFieldValidator` (regole per chiave
+      `custom_fields.<key>`, guard permessi che confronta submitted vs persistito) + `CustomFieldWriter`
+      (normalizeForStore, merge in `custom_field_values.values`). Griglia: `CustomFieldAwareTableDefinition` +
+      `Tables\CustomFields\CustomFieldColumnBuilder` (type/filterType dall'handler, searchable se filterType=text).
+      Promozione indice `is_indexed` via `CustomFieldIndexDdlBuilder` su path `$.<key>`.
+    - Attributi: `App\Models\Attribute` (type dallo stesso registry, `config`, `options()` in `attribute_options`).
+      Validazione/normalizzazione NON passano dagli handler: `App\RequestManagement\AttributeValueValidator::typeRules`
+      e `AttributeValueNormalizer::normalizeValue` fanno `match` sul tipo. Commessa: `work_orders.attribute_values`
+      (JSON) via `Services\WorkOrders\WorkOrderAttributeValueWriter`; stessi validator/normalizer per prodotti,
+      offerte, richieste. Griglia gestione richieste: `Tables\RequestManagement\AttributeColumnBuilder::mapping()`.
+    - Validazione definizione condivisa: `Http\Requests\Concerns\ValidatesFieldTypeDefinition` (usata da
+      Store/Update CustomField e Store/Update Attribute).
+    - Documenti: `Services\DocumentLayouts\Rendering\DynamicFieldResolver::scalarToString` fa `implode` di array
+      con cast `(string)` degli elementi — un valore tabella (array annidato) lo romperebbe.
+    - FE: `features/custom-fields/field-component-registry.tsx` (`CUSTOM_FIELD_COMPONENT_REGISTRY`, riusato dagli
+      attributi via `features/attributes/attribute-control-bridge.tsx`); `build-custom-fields-schema.ts` (Zod
+      dinamico, riusato da work-orders/quotes/products/request-management); `custom-fields-values.ts`
+      (`isEmptyCustomFieldValue`/`isEqualCustomFieldValue`); admin: `custom-field-definition-form-body.tsx` e
+      `features/attributes/attribute-form-body.tsx` riusano `features/custom-fields/components/definition-*`;
+      griglia: `components/data-table/column-defaults.tsx` (colonne dinamiche `source` custom|attribute per `type`);
+      dettaglio commessa: `features/work-orders/work-order-detail-attributes.tsx` (`formatAttributeValue`).
+    - Decisioni utente (2026-09-30): D-1 tipo disponibile in Attributi + Campi personalizzati; D-2 colonne solo di
+      tipo semplice (niente relation, niente table annidata); D-3 promemoria email in spec successiva; D-4
+      migrazione dati legacy `orderiso_verificas` in spec successiva. D-5 (proposta, da confermare
+      nell'approvazione): le colonne sono modificabili anche con valori esistenti — una colonna rimossa sparisce
+      dalla lettura, nessuna conversione retroattiva dei valori al cambio tipo.
+  </context>
+
+  <scope>
+    <in>
+      <item>Tipo `table` nel `FieldTypeRegistry`: handler `App\CustomFields\Types\TableFieldType`.</item>
+      <item>Nucleo definizione-agnostico `App\CustomFields\Table\TableFieldSchema` (costruito dal solo `config`): regole annidate, normalizzazione righe (id UUID, valori per tipo colonna via handler scalari esistenti), calcolo `summary`, lettura filtrata alle colonne definite. Usato sia dall'handler (campi personalizzati) sia dal percorso attributi.</item>
+      <item>Interfaccia opzionale `App\CustomFields\Types\ProvidesNestedValidationRules` (regole annidate per chiave relativa) consumata da `CustomFieldValidator` e da `AttributeValueValidator`, cosi' gli errori puntano alla singola cella.</item>
+      <item>`CustomFieldValidator::guardFieldPermissions`: confronto submitted vs persistito DOPO `normalizeForStore` dell'handler (type-agnostico), cosi' un valore tabella invariato su campo non editabile non e' visto come modificato.</item>
+      <item>Validazione del `config` di un campo `table` in `ValidatesFieldTypeDefinition` (entrambe le famiglie) + `is_indexed=true` rifiutato per `table`.</item>
+      <item>Attributi: rami `table` in `AttributeValueValidator` e `AttributeValueNormalizer`; mapping `table` in `AttributeColumnBuilder` (colonna in sola lettura).</item>
+      <item>Griglie: colonna `type:'table'`; sort/filtro testo sul `summary`. Cella (rev. 2, decisione utente 2026-09-30): con `selectable` configurato e una riga selezionata mostra i valori di quella riga in linea (etichette leggibili); altrimenti riepilogo + numero righe. In entrambi i casi un tooltip (hover e focus da tastiera) mostra la vista tabellare di tutte le righe.</item>
+      <item>Documenti: `DynamicFieldResolver` rende un valore tabella come il suo `summary` (stringa vuota se null).</item>
+      <item>FE: `TableFieldControl` (form: tabella compatta su desktop, card su mobile; aggiungi/rimuovi riga; radio di selezione), schema Zod `table`, uguaglianza profonda, editor admin delle colonne (`DefinitionTableColumnsEditor`) in entrambi i form definizione, cella griglia `TableSummaryCell`, sola lettura nel dettaglio commessa (mini tabella).</item>
+      <item>i18n IT/EN (tipo `table`, editor colonne, errori) + guide in-app `custom-fields` e `attributes` IT/EN + indicazione sezioni manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Promemoria/notifiche email sulle righe (D-3): spec successiva.</item>
+      <item>Migrazione `orderiso_verificas` e attributo "Verifiche ispettive" preconfigurato (D-4): spec successiva.</item>
+      <item>Colonne `relation`, `enum` multiselect, `table` annidata (D-2).</item>
+      <item>Modifica inline della tabella nelle griglie SSRM (la colonna e' in sola lettura; si edita dal form).</item>
+      <item>Filtri/sort su singole colonne della tabella (solo sul `summary`); promozione indice (`is_indexed`) per `table`.</item>
+      <item>Riepilogo "prossima data futura" (dipende dalla data corrente: un valore calcolato in scrittura diventerebbe stale).</item>
+      <item>Righe della tabella come variabili ciclabili nei modelli documento (solo `summary`).</item>
+      <item>Montaggio di `CustomFieldsSection` nel form commessa (le commesse usano gli Attributi).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- 1. CONFIG della definizione (custom_field_definitions.config / attributes.config) quando type=table -->
+    <shape name="TableFieldConfig">
+      {
+        columns: [                                   // 1..TABLE_MAX_COLUMNS (20), ordine = ordine di visualizzazione
+          { key: string,                             // regex ^[a-z][a-z0-9_]{0,63}$, unica, != "id", != selectable.key
+            label: string (max 191),
+            type: 'text'|'textarea'|'integer'|'decimal'|'boolean'|'enum'|'date'|'datetime'|'time'|'email'|'url'|'color',
+            required?: boolean (default false),
+            config?: object,                         // stesso config per-tipo gia' esistente (min/max/decimals/maxLength...); enum: display select|radio (no multiselect)
+            options?: [{ value: string, label: string, color?: string|null }]   // obbligatorie e non vuote sse type=enum, value unici
+          }
+        ],
+        selectable?: { key: string, label: string } | null,   // colonna radio "una sola riga"; key con stessa regex, distinta dalle colonne
+        summary?: { column: string, strategy: 'selected'|'max'|'min' } | null,
+                                                     // column = key di una colonna di tipo date|datetime|time|integer|decimal|text|enum;
+                                                     // strategy=selected richiede selectable
+        min_rows?: integer >= 0 (default 0),
+        max_rows?: integer 1..TABLE_MAX_ROWS (200) (default TABLE_MAX_ROWS), >= min_rows
+      }
+      Costanti in config/custom-fields.php: `table.max_columns` = 20, `table.max_rows` = 200.
+    </shape>
+
+    <!-- 2. VALORE in scrittura (custom_fields.<key> oppure attribute_values.<code>) -->
+    <shape name="TableFieldInput">
+      null | { rows: [ { id?: uuid|null, <column.key>: valore scalare del tipo colonna | null, <selectable.key>?: boolean } ] }
+      - Riga senza id -> il server assegna un UUID v4. id presenti: formato uuid, distinti.
+      - Chiavi non definite nelle colonne: scartate. `summary` eventualmente inviato: ignorato (calcolato dal server).
+      - Campo obbligatorio (validation.required / pivot is_required) => almeno max(1, min_rows) righe.
+    </shape>
+
+    <!-- 3. VALORE persistito e letto (API detail, mapRow griglia) -->
+    <shape name="TableFieldValue">
+      null | { rows: [ { id: uuid, <column.key>: valore normalizzato | null, <selectable.key>: boolean } ], summary: string|number|null }
+      - `<selectable.key>` presente in ogni riga solo se `selectable` e' configurato; al massimo una riga true.
+      - summary: selected = valore della colonna summary nella riga selezionata (null se nessuna);
+        max/min = massimo/minimo dei valori non null della colonna (confronto numerico per integer/decimal,
+        lessicografico per date/datetime/time/text/enum); null se nessuna riga o nessun valore; null se summary non configurato.
+      - In lettura restano solo le chiavi delle colonne definite al momento (D-5).
+    </shape>
+
+    <endpoint method="POST|PATCH" path="/api/custom-fields , /api/attributes (+ /{id})">
+      <request>Invariato; `type:'table'` ammesso; `config` validato secondo TableFieldConfig.</request>
+      <response status="200">Invariata (okWithPermissions, `config` restituito com'e').</response>
+      <errors>422 `config.columns` (mancanti, >20, key duplicata/invalida/riservata, type non ammesso), `config.columns.N.options` (enum senza opzioni / value duplicati), `config.selectable.key` (collisione), `config.summary.column` (inesistente o tipo non ammesso), `config.summary.strategy` (selected senza selectable), `config.max_rows`/`config.min_rows`; 422 `is_indexed` true con type=table (solo custom fields).</errors>
+    </endpoint>
+
+    <endpoint method="POST|PATCH" path="(scrittura di qualsiasi entita' con custom_fields o attribute_values, es. /api/work-orders/{id})">
+      <request>custom_fields.&lt;key&gt; / attribute_values.&lt;code&gt; = TableFieldInput</request>
+      <response status="200">data.custom_fields.&lt;key&gt; / data.attribute_values.&lt;code&gt; = TableFieldValue</response>
+      <errors>422 con chiavi: `&lt;prefix&gt;.&lt;key&gt;` (non array / required senza righe), `&lt;prefix&gt;.&lt;key&gt;.rows` (min_rows/max_rows/piu' di una riga selezionata), `&lt;prefix&gt;.&lt;key&gt;.rows.N.id` (non uuid / duplicato), `&lt;prefix&gt;.&lt;key&gt;.rows.N.&lt;col&gt;` (required, tipo, enum fuori opzioni, min/max...). prefix = custom_fields | attribute_values. 422 campo non editabile modificato (invariato).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/{domain}/columns + POST rows/values">
+      <response status="200">Colonna custom/attribute con type=table: `{ id, type:'table', filterType:'text', sortable:true, filterable:true, editable:false, source, table: TableFieldConfig }` (rev. 2: `table` = config della definizione/attributo, con colonne, opzioni enum inline e selectable, per rendere la cella senza chiamate extra; presente solo nelle colonne type=table). Cella in rows = TableFieldValue. Sort/filtro testo applicati su `<jsonColumn>-><key>->summary` (path bound, allow-list = definizioni). `/values` per colonna table: [] (nessun set filter).</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/meta/{resource}">
+      <response status="200">FieldDescriptor custom `type:'table'`, `config` = TableFieldConfig (nessun `options` di primo livello).</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Backend: registro e definizione -->
+    <criterion id="AC-001">Dato `config/custom-fields.php`, quando si risolve `table` dal `FieldTypeRegistry`, allora si ottiene `TableFieldType` con storageType=json, columnType=table, filterType=text; `table` compare tra i tipi ammessi da Store Custom Field e Store Attribute. (Pest unit registry)</criterion>
+    <criterion id="AC-002">Dato un POST /api/custom-fields e un POST /api/attributes con type=table e config valido (5 colonne del caso verifiche, selectable, summary selected), quando si invia, allora 201 e `config` persistito identico. (Pest feature, entrambe le famiglie)</criterion>
+    <criterion id="AC-003">Dato type=table, quando config viola ciascuna regola di TableFieldConfig (nessuna colonna, 21 colonne, key duplicata, key `id`, type `relation`, enum senza options, options value duplicati, selectable.key uguale a una colonna, summary.column inesistente, summary su colonna boolean, strategy selected senza selectable, min_rows > max_rows, max_rows > 200), allora 422 con la chiave d'errore del contratto e nessuna definizione creata. (Pest feature dataset)</criterion>
+    <criterion id="AC-004">Dato un custom field type=table, quando si invia is_indexed=true, allora 422 `is_indexed` e nessun job di promozione dispatchato. (Pest feature)</criterion>
+
+    <!-- Backend: scrittura/lettura valori -->
+    <criterion id="AC-005">Dato un campo personalizzato table su un'entita' custom-fieldable, quando si salva `{rows:[2 righe senza id]}`, allora `custom_field_values.values.<key>` = `{rows:[...], summary}` con 2 id UUID v4 distinti, valori normalizzati per tipo (integer->int, boolean->bool, testo trim) e la GET di dettaglio restituisce lo stesso TableFieldValue. (Pest feature)</criterion>
+    <criterion id="AC-006">Dato un valore persistito con righe con id, quando si ri-salva inviando gli stessi id con un valore modificato e una riga in meno, allora gli id conservati restano invariati, la riga omessa sparisce, nessun nuovo id per le righe esistenti. (Pest feature)</criterion>
+    <criterion id="AC-007">Dato un campo table, quando una cella viola le regole (required mancante, data non Y-m-d, enum fuori opzioni, integer fuori min/max), allora 422 con chiave `custom_fields.&lt;key&gt;.rows.N.&lt;col&gt;` (N = indice riga) e nulla persistito. (Pest feature dataset)</criterion>
+    <criterion id="AC-008">Dato selectable configurato, quando due righe hanno `<selectable.key>`=true, allora 422 `custom_fields.&lt;key&gt;.rows`; quando una sola, allora persistita true su quella e false su tutte le altre righe dello STESSO record, senza toccare altri record (regressione del bug legacy). (Pest feature)</criterion>
+    <criterion id="AC-009">Dato summary {column: inspection_date, strategy}, quando si salva, allora summary = data della riga selezionata (selected) / data massima (max) / minima (min); null con zero righe o riga selezionata assente. (Pest unit su TableFieldSchema, dataset strategie)</criterion>
+    <criterion id="AC-010">Dato un campo required (o min_rows=2 / max_rows=3), quando si inviano 0 righe (o 1 / 4), allora 422 sulla chiave del campo o `.rows`; in update un campo required non reinviato non fallisce (semantica `sometimes` invariata). (Pest feature)</criterion>
+    <criterion id="AC-011">Dato un campo table NON editabile per il ruolo con valore persistito, quando il client reinvia lo stesso valore letto (con summary), allora nessun 422; quando cambia una cella, allora 422 `custom_fields.&lt;key&gt;` 'field not editable'. (Pest feature)</criterion>
+    <criterion id="AC-012">Dato un attributo table assegnato a una categoria nel contesto work_order, quando si fa PATCH /api/work-orders/{id} con `attribute_values.<code>` valido, allora `work_orders.attribute_values.<code>` = TableFieldValue (id, normalizzazione, summary come AC-005/AC-009); con una cella invalida 422 `attribute_values.&lt;code&gt;.rows.N.&lt;col&gt;`. (Pest feature)</criterion>
+    <criterion id="AC-013">Data una definizione a cui e' stata rimossa una colonna dopo aver salvato valori, quando si legge il record, allora la colonna rimossa non compare nelle righe e la lettura non fallisce. (Pest feature, D-5)</criterion>
+
+    <!-- Backend: griglie e documenti -->
+    <criterion id="AC-014">Dato un campo personalizzato table, quando si chiama GET /api/tables/{domain}/columns, allora la colonna `custom.<key>` ha type=table, filterType=text; POST rows con sort sulla colonna ordina per summary asc/desc e un filtro testo `contains` filtra sul summary; POST values per la colonna restituisce []. Funziona su SQLite (test) con path bound. (Pest feature)</criterion>
+    <criterion id="AC-015">Dato un attributo table nella griglia gestione richieste, quando si leggono le colonne, allora type=table, filterType=text, editable=false, e un tentativo di cell-edit sulla colonna viene rifiutato con 422 senza modificare `attribute_values`. (Pest feature)</criterion>
+    <criterion id="AC-016">Dato un modello documento che usa la variabile di un campo/attributo table, quando si rende, allora la variabile vale il summary come stringa (vuota se null) e nessuna eccezione "Array to string conversion". (Pest unit DynamicFieldResolver)</criterion>
+
+    <!-- Frontend -->
+    <criterion id="AC-017">Dato un descriptor type=table con 5 colonne e selectable, quando `CustomFieldsSection` lo rende, allora compare una tabella con intestazioni = label colonne + colonna radio, pulsante "Aggiungi riga" che aggiunge una riga vuota, pulsante rimuovi per riga, e selezionare il radio di una riga deseleziona le altre; onChange emette `{rows:[...]}` con gli id esistenti preservati. (Vitest + RTL, query per ruolo)</criterion>
+    <criterion id="AC-018">Dato lo stesso campo a 375px (matchMedia mobile), quando si rende, allora ogni riga e' una card con i campi impilati e nessuna tabella larga; su desktop tabella con overflow orizzontale contenuto nel campo. (Vitest render per breakpoint + verifica manuale 375/768/1024)</criterion>
+    <criterion id="AC-019">Dato lo schema Zod dinamico, quando una riga ha una cella required vuota / due righe selezionate / righe &lt; min_rows, allora l'errore e' sul path `<key>.rows.N.<col>` / `<key>.rows` e l'errore di cella e' annunciato con la triade ARIA (aria-invalid, aria-describedby, role=alert); gli errori 422 del server con chiave annidata vengono mappati sulla stessa cella. (Vitest)</criterion>
+    <criterion id="AC-020">Dato il payload di update, quando il valore tabella e' invariato (deep equal, ordine righe significativo), allora la chiave non viene inviata; quando cambia una cella, allora viene inviato l'intero `{rows}`. (Vitest su custom-fields-values/payload)</criterion>
+    <criterion id="AC-021">Dato il form admin (Campo personalizzato e Attributo) con tipo "Tabella", quando l'utente aggiunge/riordina/rimuove colonne, sceglie il tipo di ciascuna, marca obbligatoria, per una colonna "Scelta" inserisce le opzioni, attiva "Selezione riga" con etichetta e sceglie colonna+strategia di riepilogo, allora il payload inviato rispetta TableFieldConfig; con errori (key duplicata, enum senza opzioni) il submit e' bloccato con messaggio sul campo; gli errori 422 `config.*` del server sono mostrati sul controllo relativo. (Vitest su entrambi i form)</criterion>
+    <criterion id="AC-022">[rev. 2] Dato una riga griglia con colonna type=table: (a) con `table.selectable` e una riga con `<selectable.key>`=true, quando si rende la cella, allora mostra in linea i valori delle colonne di quella riga separati da " · " (date in formato locale, enum come label dell'opzione, boolean come Si'/No con l'etichetta della colonna, celle vuote omesse), troncati con ellissi; (b) senza selectable o senza riga selezionata, allora mostra summary formattato + numero righe (es. "12/10/2026 · 3") o solo "N righe" se summary null; (c) in entrambi i casi, al passaggio del mouse e al focus da tastiera sulla cella, un tooltip mostra la tabella in sola lettura di tutte le righe (intestazioni = label colonne, riga selezionata evidenziata non solo col colore); con valore null o zero righe la cella e' vuota e nessun tooltip. (Vitest cella)</criterion>
+    <criterion id="AC-025">[rev. 2] Dato un campo personalizzato table e un attributo table, quando si chiama GET /api/tables/{domain}/columns (griglia dell'entita' custom-fieldable e griglia gestione richieste), allora la colonna type=table include `table` = config della definizione (columns con label/type/options, selectable, summary); le colonne di altri tipi non hanno la chiave `table`. (Pest feature)</criterion>
+    <criterion id="AC-023">Dato il dettaglio commessa con un attributo table valorizzato, quando si apre, allora le righe sono mostrate in una mini tabella in sola lettura con etichette colonna, enum come label e booleani come Si/No tradotti. (Vitest)</criterion>
+    <criterion id="AC-024">Dato i18n e guide, quando si esegue la suite, allora le chiavi IT/EN del tipo `table`, dell'editor colonne e degli errori esistono in entrambe le lingue e `help-content-parity.test.ts` e' verde con le sezioni aggiornate di `custom-fields` e `attributes`. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza (BE/FE). UUID con `Illuminate\Support\Str::uuid()`; FE senza librerie nuove (react-hook-form `useFieldArray` per editor admin, stato righe controllato nel control).
+    - OCP: nessun `if type === 'table'` in `CustomFieldValidator`/`CustomFieldWriter`/decorator griglia; l'unica eccezione ammessa e' il `match` per tipo gia' esistente nel percorso attributi (`AttributeValueValidator`/`AttributeValueNormalizer`/`AttributeColumnBuilder`) e in `DynamicFieldResolver`.
+    - Validazione/normalizzazione delle celle delegata agli handler scalari esistenti (definizione transitoria per colonna, opzioni enum da `config.columns[].options` come relazione non persistita): nessuna duplicazione delle regole per tipo.
+    - Injection-safe: il path JSON del summary e' composto da chiavi allow-listed (definizioni), mai da input; nessun whereRaw/orderByRaw su input.
+    - Authz invariata: permessi per campo (`custom.<key>` / attributi) e policy di risorsa esistenti; nessun endpoint nuovo.
+    - Compatibilita' MySQL 8 (prod) e SQLite (dev/test) per sort/filtro JSON.
+    - UI compatta (ui-design.md §2): testo xs/sm, padding minimi, token di superficie; responsive 375/768/1024 senza scroll orizzontale di pagina.
+    - Identificatori in inglese; file entro 300/500 righe (TableFieldControl e l'editor admin divisi in sotto-componenti se servono).
+    - Manuale (§4-bis): guide in-app `custom-fields` e `attributes` IT/EN aggiornate; manuale Claude Docs: sezioni "Campi personalizzati" e "Attributi" aggiornate (via connettore se disponibile, altrimenti segnalate).
+  </constraints>
+
+</spec>

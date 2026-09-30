@@ -1,6 +1,6 @@
 import {
   AlignLeft, Calendar, CalendarClock, Clock, Hash, Link, List, Mail, Palette,
-  Sigma, ToggleRight, Type, Waypoints, type LucideIcon,
+  Sigma, Table2, ToggleRight, Type, Waypoints, type LucideIcon,
 } from 'lucide-react'
 import type { CustomFieldType } from '@/features/custom-fields/types'
 
@@ -24,4 +24,5 @@ export const FIELD_TYPE_ICONS: Record<CustomFieldType, LucideIcon> = {
   email: Mail,
   url: Link,
   color: Palette,
+  table: Table2,
 }

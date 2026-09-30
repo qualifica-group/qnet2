@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { ClipboardList } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
+import { ReadonlyTableValue } from '@/features/custom-fields/components/readonly-table-value'
 import { formatDateTime } from '@/features/table/cell-renderers'
+import type { TableFieldConfig, TableFieldValue } from '@/features/custom-fields/types'
 import type { ApplicableAttributeSummary } from '@/features/work-orders/types'
 
 /**
@@ -45,6 +47,8 @@ function formatAttributeScalar(
       const option = attribute.options.find((candidate) => candidate.value === String(rawValue))
       return option?.label ?? String(rawValue)
     }
+    case 'table':
+      return null
     case 'datetime':
       return formatDateTime(rawValue) || String(rawValue)
     case 'relation': {
@@ -59,6 +63,34 @@ function formatAttributeScalar(
     default:
       return String(rawValue)
   }
+}
+
+/** A `table` attribute with a usable definition and value, else null (falls back to the generic formatter). */
+function readTableAttribute(
+  attribute: ApplicableAttributeSummary,
+  rawValue: unknown,
+): { config: TableFieldConfig; value: TableFieldValue } | null {
+  const config = attribute.config as Partial<TableFieldConfig> | null
+  if (attribute.type !== 'table' || !config || !Array.isArray(config.columns)) {
+    return null
+  }
+  const value = rawValue as Partial<TableFieldValue> | null
+  if (!value || typeof value !== 'object' || !Array.isArray(value.rows)) {
+    return null
+  }
+  return { config: config as TableFieldConfig, value: value as TableFieldValue }
+}
+
+function renderAttributeValue(
+  attribute: ApplicableAttributeSummary,
+  rawValue: unknown,
+  t: TFunction,
+): React.ReactNode {
+  const table = readTableAttribute(attribute, rawValue)
+  if (table) {
+    return <ReadonlyTableValue config={table.config} value={table.value} />
+  }
+  return formatAttributeValue(attribute, rawValue, t) ?? <DetailEmpty />
 }
 
 interface WorkOrderDetailAttributesSectionProps {
@@ -98,7 +130,7 @@ export function WorkOrderDetailAttributesSection({
       <RecordFieldList>
         {attributes.map((attribute) => (
           <RecordField key={attribute.id} label={attribute.name}>
-            {formatAttributeValue(attribute, values[attribute.code], t) ?? <DetailEmpty />}
+            {renderAttributeValue(attribute, values[attribute.code], t)}
           </RecordField>
         ))}
       </RecordFieldList>

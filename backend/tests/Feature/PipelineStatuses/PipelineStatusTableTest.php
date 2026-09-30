@@ -81,5 +81,5 @@ it('rows expose name/color/sort_order/created_at + per-row actions', function ()
     expect($row)->not->toBeNull()
         ->and($row['color'])->toBe('#ff0000')
         ->and($row['sort_order'])->toBe(1)
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete']);
 });

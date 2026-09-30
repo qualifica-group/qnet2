@@ -69,6 +69,7 @@ class UpdateAttributeRequest extends FormRequest
             $this->enforceFieldPermissions($validator);
             $this->validateEnumOptions($validator);
             $this->validateRelationTarget($validator);
+            $this->validateTableConfig($validator);
         });
     }
 
@@ -106,6 +107,19 @@ class UpdateAttributeRequest extends FormRequest
     protected function shouldValidateRelationTarget(): bool
     {
         return $this->has('relation_target');
+    }
+
+    protected function shouldValidateTableConfig(): bool
+    {
+        return $this->has('config') || $this->has('type');
+    }
+
+    protected function tableConfigInput(): mixed
+    {
+        /** @var Attribute $attribute */
+        $attribute = $this->route('attribute');
+
+        return $this->has('config') ? $this->input('config') : $attribute->config;
     }
 
     protected function authorizationResource(): string

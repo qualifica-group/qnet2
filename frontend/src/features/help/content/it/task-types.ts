@@ -44,7 +44,7 @@ const guide: HelpGuide = {
           items: [
             'Premi **Nuova tipologia**.',
             'Compila i campi e premi **Salva**.',
-            'Per modificare, scegli **Modifica** sulla riga, cambia i dati e premi **Salva**.',
+            'Per modificare, apri la scheda con **Visualizza**, premi **Modifica**, cambia i dati e premi **Salva**.',
             'Per disattivare, apri **Modifica** e spegni **Attiva**: i task che la usano restano intatti.',
           ],
         },

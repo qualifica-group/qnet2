@@ -80,7 +80,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "If you pick the Campaign here (not from the file), the Source is prefilled from the campaign's own, if it has one, and stays editable; in that case the Source becomes required. A row with no effective Source (empty here and on its campaign, row or file, with none of its own) is rejected as an error at review.",
+          text: 'Columns are matched automatically from their header: for example **Nome** goes to **Full name** (to **First name** when the file also has a **Cognome** column) and **Indirizzo e-mail** goes to **Email**. You can always change the match.',
+        },
+        {
+          type: 'paragraph',
+          text: "The **Source** is always required, even when the campaign comes from the file, and applies to every imported row. If you pick the Campaign here (not from the file), the Source is prefilled from the campaign's own, if it has one, and stays editable.",
         },
         {
           type: 'tip',

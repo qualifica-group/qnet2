@@ -131,7 +131,7 @@ it('rows expose the derived geo/street/postal_code fields and per-row actions', 
         ->and($row['region'])->toBe('Lombardia')
         ->and($row['postal_code'])->toBe('20100')
         ->and($row['is_active'])->toBeTrue()
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete']);
 });
 
 it('a site with no address has null derived fields', function () {

@@ -89,7 +89,7 @@ it('rows expose id/name/symbol/code/description + per-row actions', function () 
     expect($row)->not->toBeNull()
         ->and($row['symbol'])->toBe('kg')
         ->and($row['code'])->toBe('kilogram')
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete']);
 });
 
 // ---------------------------------------------------------------------------

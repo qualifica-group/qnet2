@@ -102,14 +102,6 @@ final class QuoteWorkflowColumnCatalog
                 'permission' => 'quote-workflows.view',
             ],
             [
-                'key' => 'edit',
-                'label' => 'actions.edit',
-                'icon' => 'pencil',
-                'type' => 'link',
-                'confirm' => false,
-                'permission' => 'quote-workflows.update',
-            ],
-            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',

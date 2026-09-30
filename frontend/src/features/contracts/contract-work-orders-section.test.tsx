@@ -22,7 +22,6 @@ vi.mock('@/features/auth/use-abilities', () => ({
 }))
 
 const openViewMock = vi.fn()
-const openEditMock = vi.fn()
 const useModuleOpenerMock = vi.fn()
 vi.mock('@/features/modules/use-module-opener', () => ({
   useModuleOpener: (...args: unknown[]) => {
@@ -31,7 +30,6 @@ vi.mock('@/features/modules/use-module-opener', () => ({
       openCreate: vi.fn(),
       openCreateWith: vi.fn(),
       openView: openViewMock,
-      openEdit: openEditMock,
       openDuplicate: vi.fn(),
       sheet: null,
     }
@@ -77,7 +75,6 @@ beforeEach(() => {
   canMock.mockReturnValue(true)
   useModuleOpenerMock.mockReset()
   openViewMock.mockReset()
-  openEditMock.mockReset()
   deleteWorkOrderMock.mockReset()
   refreshMock.mockReset()
 })

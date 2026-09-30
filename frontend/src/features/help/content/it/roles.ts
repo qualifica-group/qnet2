@@ -16,7 +16,7 @@ const guide: HelpGuide = {
       id: 'create-edit-role',
       title: 'Creare o modificare un ruolo',
       blocks: [
-        { type: 'steps', items: ['Apri **Amministrazione › Ruoli**.', 'Fai clic su **Nuovo ruolo**, oppure scegli **Modifica** su una riga.', 'In **Dettagli ruolo** scrivi il **Nome**. Se vuoi, scegli subito gli utenti in **Membri**.', 'Nella sezione **Permessi** scegli cosa può fare il ruolo.', 'Fai clic su **Salva**.'] },
+        { type: 'steps', items: ['Apri **Amministrazione › Ruoli**.', 'Fai clic su **Nuovo ruolo**, oppure apri un ruolo con **Visualizza** e premi **Modifica**.', 'In **Dettagli ruolo** scrivi il **Nome**. Se vuoi, scegli subito gli utenti in **Membri**.', 'Nella sezione **Permessi** scegli cosa può fare il ruolo.', 'Fai clic su **Salva**.'] },
         {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],

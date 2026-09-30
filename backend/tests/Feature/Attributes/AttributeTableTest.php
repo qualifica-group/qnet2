@@ -58,7 +58,7 @@ it('returns the 5 columns in order with the declared flags, 403 without viewAny'
         ->and($columns['id']['filterType'])->toBeNull()
         ->and($columns['type']['type'])->toBe('badge')
         ->and($columns['type']['filterType'])->toBe('set')
-        ->and($columns['type']['badges'])->toHaveCount(13)
+        ->and($columns['type']['badges'])->toHaveCount(14)
         // The frontend owns the type catalogue copy: the column declares the
         // enum key so cell badge and Set Filter localize instead of showing
         // the raw label key.
@@ -80,7 +80,7 @@ it('rows expose id/code/name/type/options_count/created_at + per-row actions', f
     expect($row)->not->toBeNull()
         ->and($row['type'])->toBe('enum')
         ->and($row['options_count'])->toBe(3)
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete']);
 });
 
 it('exposes the duplicate row action only to actors who can create attributes', function (array $abilities, bool $expected) {

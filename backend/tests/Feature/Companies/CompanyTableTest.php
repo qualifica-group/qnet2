@@ -124,7 +124,7 @@ it('rows expose the derived geo/postal_code fields and per-row actions', functio
         ->and($row['region'])->toBe('Lombardia')
         ->and($row['country'])->toBe('Italia')
         ->and($row['postal_code'])->toBe('20100')
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete']);
 });
 
 it('a company with no address has null derived geo/postal_code fields', function () {

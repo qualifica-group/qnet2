@@ -36,7 +36,7 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Creating, editing, deactivating or deleting',
       blocks: [
-        { type: 'paragraph', text: 'From the list, press the button to create a new business function, or use **View**, **Edit** and **Delete** on the row (if your role allows it).' },
+        { type: 'paragraph', text: 'From the list, press the button to create a new business function, or use **View** and **Delete** on the row (if your role allows it). To edit, open the record with **View** and press **Edit**.' },
         { type: 'warning', text: 'A business function with child functions cannot be deleted: move the child functions under another parent first, or delete them.' },
       ],
     },

@@ -22,6 +22,7 @@ export type CustomFieldType =
   | 'email'
   | 'url'
   | 'color'
+  | 'table'
 
 /** Runtime list of {@link CustomFieldType}, driving the admin form's `type` picker. */
 export const CUSTOM_FIELD_TYPES: readonly CustomFieldType[] = [
@@ -38,6 +39,7 @@ export const CUSTOM_FIELD_TYPES: readonly CustomFieldType[] = [
   'email',
   'url',
   'color',
+  'table',
 ]
 
 /**
@@ -49,6 +51,7 @@ export const CUSTOM_FIELD_TYPES: readonly CustomFieldType[] = [
  * - boolean: display ('checkbox'|'switch')
  * - enum: display ('select'|'multiselect'|'radio'|'badge')
  * - date/datetime/time/email/url/color: no extra config (native HTML input)
+ * - table: columns/selectable/summary/min_rows/max_rows (see {@link TableFieldConfig})
  */
 export interface CustomFieldConfig {
   minLength?: number
@@ -61,6 +64,62 @@ export interface CustomFieldConfig {
   step?: number
   decimals?: number
   display?: 'checkbox' | 'switch' | 'select' | 'multiselect' | 'radio' | 'badge'
+  columns?: TableFieldColumn[]
+  selectable?: TableFieldSelectable | null
+  summary?: TableFieldSummary | null
+  min_rows?: number
+  max_rows?: number
+}
+
+/** Column types a `table` field accepts (spec 0180 D-2: simple types only, no relation/nested table). */
+export type TableColumnType = Exclude<CustomFieldType, 'relation' | 'table'>
+
+/** One column of a `table` definition; `config`/`options` reuse the per-type shapes of a plain field. */
+export interface TableFieldColumn {
+  key: string
+  label: string
+  type: TableColumnType
+  required?: boolean
+  config?: CustomFieldConfig | null
+  options?: CustomFieldOption[]
+}
+
+/** The "only one row" radio column of a `table` definition. */
+export interface TableFieldSelectable {
+  key: string
+  label: string
+}
+
+export type TableSummaryStrategy = 'selected' | 'max' | 'min'
+
+/** Which column, and how, feeds the grid summary of a `table` value. */
+export interface TableFieldSummary {
+  column: string
+  strategy: TableSummaryStrategy
+}
+
+/** `config` of a `type:'table'` definition (spec 0180 data_contract). */
+export interface TableFieldConfig {
+  columns: TableFieldColumn[]
+  selectable?: TableFieldSelectable | null
+  summary?: TableFieldSummary | null
+  min_rows?: number
+  max_rows?: number
+}
+
+/** A cell value: a scalar of the column type, `null` when unset. */
+export type TableFieldCell = string | number | boolean | null
+
+/** One row: `id` assigned by the server (absent on new rows), then one entry per column key (+ the selectable key). */
+export interface TableFieldRow {
+  id?: string | null
+  [columnKey: string]: TableFieldCell | undefined
+}
+
+/** Wire/read value of a `table` field; `summary` is server-computed and never sent. */
+export interface TableFieldValue {
+  rows: TableFieldRow[]
+  summary?: string | number | null
 }
 
 /** A selectable value for an `enum` custom field. */
@@ -101,9 +160,16 @@ export interface CustomFieldDescriptor extends FieldDescriptor {
 /**
  * The wire value of a custom field: a scalar (text/textarea/integer/decimal),
  * a boolean, a relation id or id[] (single/multi), or an enum value or
- * value[] (single/multi). `null` represents "not set".
+ * value[] (single/multi), or a {@link TableFieldValue}. `null` represents "not set".
  */
-export type CustomFieldValue = string | number | boolean | string[] | number[] | null
+export type CustomFieldValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | number[]
+  | TableFieldValue
+  | null
 
 /** Shape a host form must extend to mount `<CustomFieldsSection>` (§CustomFieldsSection.tsx). */
 export interface CustomFieldsFormShape {

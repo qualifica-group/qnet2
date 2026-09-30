@@ -46,8 +46,6 @@ const EMPTY_COLUMNS: DetectedColumn[] = []
 /** Global field ids the Campaign -> Fonte prefill below reasons about (spec 0176 D-5), kept as named constants rather than sprinkled string literals. */
 const CAMPAIGN_GLOBAL_FIELD_ID = 'campaign_id'
 const SOURCE_GLOBAL_FIELD_ID = 'source_id'
-/** Stable single-element array so the required-marker prop below keeps a stable reference across renders. */
-const SOURCE_REQUIRED_FIELD_IDS: string[] = [SOURCE_GLOBAL_FIELD_ID]
 
 /** Reads `meta.source` off a picked Campaign for-select item, mirroring the Lead form's own `applyCampaignSitePrefill`. */
 function campaignSourceId(item: ForSelectItem | null): number | null {
@@ -181,14 +179,6 @@ export function ImportStepMapping({
   // "From file" chosen, but no column carries that field yet: the run cannot
   // be configured this way, and the request is never sent (AC-033).
   const fieldsMissingColumn = fromFileFieldIds.filter((fieldId) => !mappedFromFileIds.includes(fieldId))
-
-  // Spec 0176 D-5: mirrors `import-mapping-schema.ts`'s own run-level check
-  // exactly (same `mappedFromFileIds` source), so the required marker below
-  // never disagrees with what actually blocks the submit.
-  const sourceRequiredRunLevel =
-    !mappedFromFileIds.includes(CAMPAIGN_GLOBAL_FIELD_ID) &&
-    globalFields.some((field) => field.id === CAMPAIGN_GLOBAL_FIELD_ID) &&
-    globalFields.some((field) => field.id === SOURCE_GLOBAL_FIELD_ID)
 
   // Switching a field's source keeps the two representations in sync: going
   // back to "one per run" unmaps the column that fed it, going to "from file"
@@ -389,7 +379,6 @@ export function ImportStepMapping({
                   control={form.control}
                   fromFileFieldIds={fromFileFieldIds}
                   onItemChange={handleGlobalConfigItemChange}
-                  dynamicRequiredFieldIds={sourceRequiredRunLevel ? SOURCE_REQUIRED_FIELD_IDS : undefined}
                 />
               </>
             ) : null}

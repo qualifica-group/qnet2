@@ -42,7 +42,7 @@ export function RewardStatusesTable() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(REWARD_STATUSES_DOMAIN, {
+  const { openCreate, openView, sheet } = useModuleOpener(REWARD_STATUSES_DOMAIN, {
     onSaved: refreshGrid,
   })
 
@@ -83,9 +83,6 @@ export function RewardStatusesTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -96,7 +93,7 @@ export function RewardStatusesTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

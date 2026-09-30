@@ -35,7 +35,7 @@ const guide: HelpGuide = {
       title: 'Creating, editing, reordering and deleting',
       blocks: [
         { type: 'steps', items: ['Open **Configuration › Payment Methods** and press **New payment method**.', 'Fill in the fields (see the table above).', 'Press **Save**.'] },
-        { type: 'paragraph', text: 'On the list rows you find **View**, **Edit** and **Delete**, if your role allows it. **Reorder** changes the order in which the methods appear in drop-downs.' },
+        { type: 'paragraph', text: 'On the list rows you find **View** and **Delete**, if your role allows it. To edit, open the record with **View** and press **Edit**. **Reorder** changes the order in which the methods appear in drop-downs.' },
         { type: 'warning', text: 'You cannot delete a payment method that is already in use: deactivate it instead.' },
       ],
     },

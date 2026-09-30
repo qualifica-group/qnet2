@@ -211,14 +211,6 @@ final class CampaignColumnCatalog
                 'permission' => 'campaigns.view',
             ],
             [
-                'key' => 'edit',
-                'label' => 'actions.edit',
-                'icon' => 'pencil',
-                'type' => 'link',
-                'confirm' => false,
-                'permission' => 'campaigns.update',
-            ],
-            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',

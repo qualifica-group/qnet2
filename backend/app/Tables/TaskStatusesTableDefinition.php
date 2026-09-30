@@ -119,8 +119,8 @@ class TaskStatusesTableDefinition extends AbstractTableDefinition
     /**
      * Allowed action keys for a single row, via TaskStatusPolicy.
      * `delete` is OMITTED for one of the three protected rows (D-8c — never
-     * deletable); `edit` REMAINS (name/color/icon/completion_percentage are
-     * still editable, AC-043).
+     * deletable). No `edit` row action (user directive 2026-09-30): editing
+     * starts from the detail page.
      *
      * @return array<int, string>
      */
@@ -131,10 +131,6 @@ class TaskStatusesTableDefinition extends AbstractTableDefinition
 
         if (Gate::forUser($actor)->allows('view', $row)) {
             $allowed[] = 'view';
-        }
-
-        if (Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = 'edit';
         }
 
         if (! $row->isSystem() && Gate::forUser($actor)->allows('delete', $row)) {

@@ -9,9 +9,8 @@ import type { ImportRunDetail } from '@/features/imports/wizard/types'
 /**
  * Spec 0176 D-5/AC-009: picking the run-wide Campaign prefills the run-wide
  * Fonte from the campaign's own `meta.source` (still freely editable
- * afterward), and the wizard marks Fonte required — blocking the submit —
- * only while the Campaign is chosen run-wide, never when it is read per row
- * from the file. Split out of `import-step-mapping-campaign.test.tsx`
+ * afterward), and Fonte is always required — blocking the submit — whether
+ * the Campaign is chosen run-wide or read per row from the file. Split out of `import-step-mapping-campaign.test.tsx`
  * (engineering.md §6 size split): that file owns the Campaign source-toggle
  * mechanics (AC-030..034), this one owns the Fonte delta layered on top.
  */
@@ -138,7 +137,7 @@ function campaignAndSourceRun(): ImportRunDetail {
       {
         id: 'source_id',
         label: 'Source',
-        required: false,
+        required: true,
         for_select_resource: 'sources',
         default: null,
       },
@@ -178,7 +177,7 @@ beforeEach(() => {
   useForSelectLabelsMock.mockReturnValue(new Map())
 })
 
-describe('ImportStepMapping — Fonte prefill and required-when-run-level (spec 0176)', () => {
+describe('ImportStepMapping — Fonte prefill and always required (spec 0176)', () => {
   it('prefills the run-wide Source from the picked Campaign meta, still editable', async () => {
     renderStep()
 
@@ -197,8 +196,8 @@ describe('ImportStepMapping — Fonte prefill and required-when-run-level (spec 
     renderStep()
 
     // First pick the Campaign that HAS a Fonte, then manually override the
-    // prefilled Source — mirrors a real edit before the run-level guard
-    // (under test) is exercised by a second Campaign pick.
+    // prefilled Source — mirrors a real edit before a second Campaign pick
+    // (under test) could clobber it.
     fireEvent.click(screen.getByRole('button', { name: 'Campaign' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Source' })).toHaveTextContent('77'))
 
@@ -214,19 +213,18 @@ describe('ImportStepMapping — Fonte prefill and required-when-run-level (spec 
     expect(screen.getByRole('button', { name: 'Source' })).toHaveTextContent('3')
   })
 
-  it('shows the required marker on Source while the Campaign is run-level', () => {
+  it('shows the required marker on Source with a run-level Campaign', () => {
     renderStep()
 
     const label = screen.getByText('Source').closest('label')
     expect(label).toHaveTextContent('*')
   })
 
-  it('blocks the submit and flags Source when the run-level Campaign has no Fonte set', async () => {
+  it('blocks the submit and flags Source when no Fonte is set', async () => {
     const { onSubmit } = renderStep()
 
-    // Neither Campaign nor Source picked: the run-level rule fires on Source
-    // exactly like the catalog's own native rule fires on the required
-    // Campaign field — both surface as a "This field is required." alert.
+    // Neither Campaign nor Source picked: both required global fields surface
+    // a "This field is required." alert.
     fireEvent.click(screen.getByRole('button', { name: 'Save mapping and continue' }))
 
     await waitFor(() =>
@@ -235,11 +233,20 @@ describe('ImportStepMapping — Fonte prefill and required-when-run-level (spec 
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('does not require Source once the Campaign is read per row from the file', async () => {
+  it('still requires Source when the Campaign is read per row from the file', async () => {
     const { onSubmit } = renderStep({ 'Codice campagna': 'campaign_code' })
 
     const label = screen.getByText('Source').closest('label')
-    expect(label).not.toHaveTextContent('*')
+    expect(label).toHaveTextContent('*')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save mapping and continue' }))
+
+    await waitFor(() => expect(screen.getByText('This field is required.')).toBeInTheDocument())
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('submits a per-row Campaign run once the Source is set', async () => {
+    const { onSubmit } = renderStep({ 'Codice campagna': 'campaign_code' }, { source_id: 3 })
 
     fireEvent.click(screen.getByRole('button', { name: 'Save mapping and continue' }))
 

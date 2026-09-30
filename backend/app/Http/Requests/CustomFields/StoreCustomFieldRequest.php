@@ -75,6 +75,8 @@ class StoreCustomFieldRequest extends FormRequest
             $this->enforceFieldPermissions($validator);
             $this->validateEnumOptions($validator);
             $this->validateRelationTarget($validator);
+            $this->validateTableConfig($validator);
+            $this->rejectIndexedTable($validator);
         });
     }
 

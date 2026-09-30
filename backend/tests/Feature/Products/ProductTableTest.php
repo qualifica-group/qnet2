@@ -100,7 +100,7 @@ it('rows expose id/name/description/cost/price/category{id,name}/created_at + pe
 
     expect($row)->not->toBeNull()
         ->and($row['category'])->toBe(['id' => $category->id, 'name' => 'Electronics'])
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete']);
 });
 
 it('rows expose product_type (defaulting to SERVICE) and its badge metadata', function () {

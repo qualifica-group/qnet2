@@ -88,14 +88,6 @@ final class RewardTypeColumnCatalog
                 'permission' => 'reward-types.view',
             ],
             [
-                'key' => 'edit',
-                'label' => 'actions.edit',
-                'icon' => 'pencil',
-                'type' => 'link',
-                'confirm' => false,
-                'permission' => 'reward-types.update',
-            ],
-            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',

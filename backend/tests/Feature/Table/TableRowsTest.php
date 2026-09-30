@@ -227,10 +227,10 @@ it('computes per-row actions[] from the actor permissions', function () {
     $rows = collect($this->postJson('/api/tables/users/rows', rowsPayload())
         ->assertOk()->json('items'))->keyBy('id');
 
-    // Another row: view + edit + delete allowed.
-    expect($rows[$other->id]['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
-    // Own row: delete must be excluded (no self-delete), view+edit remain.
-    expect($rows[$actor->id]['actions'])->toEqualCanonicalizing(['view', 'edit']);
+    // Another row: view + delete allowed (no `edit` row action: editing starts from the detail).
+    expect($rows[$other->id]['actions'])->toEqualCanonicalizing(['view', 'delete']);
+    // Own row: delete must be excluded (no self-delete), view remains.
+    expect($rows[$actor->id]['actions'])->toEqualCanonicalizing(['view']);
 });
 
 it('limits per-row actions[] to view-only for a read-only actor', function () {

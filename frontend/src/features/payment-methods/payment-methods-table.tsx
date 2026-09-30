@@ -40,7 +40,7 @@ export function PaymentMethodsTable() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(PAYMENT_METHODS_DOMAIN, {
+  const { openCreate, openView, sheet } = useModuleOpener(PAYMENT_METHODS_DOMAIN, {
     onSaved: refreshGrid,
   })
 
@@ -71,9 +71,6 @@ export function PaymentMethodsTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -84,7 +81,7 @@ export function PaymentMethodsTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

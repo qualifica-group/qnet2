@@ -6,13 +6,14 @@
  * server-side definition. These types are domain-agnostic: the frontend renders
  * whatever schema the backend returns for a given domain.
  */
+import type { TableFieldConfig } from '@/features/custom-fields/types'
 import type {
   AdvancedFilterDescriptor,
   AdvancedFilterValues,
 } from '@/features/table/advanced-filters/types'
 
 /** Field type that drives the default cell rendering/formatting. */
-export type ColumnType = 'text' | 'number' | 'datetime' | 'enum' | 'tags' | 'badge' | 'boolean'
+export type ColumnType = 'text' | 'number' | 'datetime' | 'enum' | 'tags' | 'badge' | 'boolean' | 'table'
 
 /**
  * A row's identifier. Every domain but `notifications` uses a numeric,
@@ -109,6 +110,8 @@ export interface TableColumn {
    * `type`/`filterType` instead. Absent for native columns.
    */
   source?: 'custom' | 'attribute'
+  /** Definition of a `type:'table'` column (spec 0180): columns, selectable, summary. Absent on older payloads. */
+  table?: TableFieldConfig
   /**
    * AG Grid filter type advertised per column in the config catalog. When
    * present it drives the filter component; otherwise it falls back to `type`.

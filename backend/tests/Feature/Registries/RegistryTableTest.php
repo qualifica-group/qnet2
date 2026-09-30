@@ -107,7 +107,7 @@ it('rows expose source/is_supplier/agreement_status/size_class/primary_contact a
         ->and($row['is_supplier'])->toBeTrue()
         ->and($row['agreement_status'])->toBe('agreed')
         ->and($row['size_class'])->toBe('small')
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete']);
 
     expect($row['primary_contact'])->toBeArray()->toHaveCount(1)
         ->and($row['primary_contact'][0]['value'])->toBe('ada@example.com');

@@ -63,6 +63,7 @@ class StoreAttributeRequest extends FormRequest
             $this->enforceFieldPermissions($validator);
             $this->validateEnumOptions($validator);
             $this->validateRelationTarget($validator);
+            $this->validateTableConfig($validator);
         });
     }
 

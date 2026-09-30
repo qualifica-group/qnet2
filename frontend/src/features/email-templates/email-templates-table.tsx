@@ -37,7 +37,7 @@ export function EmailTemplatesTable() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(EMAIL_TEMPLATES_DOMAIN, {
+  const { openCreate, openView, sheet } = useModuleOpener(EMAIL_TEMPLATES_DOMAIN, {
     onSaved: refreshGrid,
   })
 
@@ -66,9 +66,6 @@ export function EmailTemplatesTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -79,7 +76,7 @@ export function EmailTemplatesTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

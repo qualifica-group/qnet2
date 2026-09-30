@@ -136,10 +136,6 @@ class RewardStatusesTableDefinition extends AbstractTableDefinition
             $allowed[] = 'view';
         }
 
-        if (Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = 'edit';
-        }
-
         if (! $row->isSystem() && Gate::forUser($actor)->allows('delete', $row)) {
             $allowed[] = 'delete';
         }

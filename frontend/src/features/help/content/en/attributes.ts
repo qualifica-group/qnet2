@@ -39,12 +39,32 @@ const guide: HelpGuide = {
             'Email',
             'URL',
             'Colour',
+            'Table',
           ],
         },
         {
           type: 'note',
           text: 'An Option list requires at least one option, with all values different; a Relation requires the linked module.',
         },
+      ],
+    },
+    {
+      id: 'table-field',
+      title: 'Table attribute',
+      blocks: [
+        { type: 'paragraph', text: 'The Table type collects several rows sharing the same columns, for example the inspection audits of a work order (audit date, inspector, On/Off Site support, Stage 1/Stage 2 phase). The attribute form shows the Columns editor.' },
+        {
+          type: 'list',
+          items: [
+            'Add columns (up to 20), move them up and down or remove them. For each one enter Label, Key (suggested from the label: lowercase letters, numbers and underscores; id is reserved), Type and whether it is Required.',
+            'Column types: Text, Long text, Integer, Decimal, Yes/No, Choice (with Value and Label options), Date, Date and time, Time, Email, URL, Colour.',
+            'Row selection: adds a selection column; in each record at most one row can be selected.',
+            'Grid summary: the column to show in lists and the strategy (Selected row, Maximum, Minimum), or no summary. Selected row requires row selection.',
+            'Minimum and maximum rows (up to 200).',
+          ],
+        },
+        { type: 'paragraph', text: 'In the record form (for example the work order) the table is filled in with Add row; on smartphones each row is a card. If the attribute is required at least one row is needed; errors appear on the single cell. In lists, if row selection is on and a row is selected, the cell shows the values of that row inline (dates in the local format, choices with their label, Yes/No with the column name); otherwise it shows the summary and the number of rows (for example "12/10/2026 · 3"). With no rows the cell is empty. Hovering the cell or moving keyboard focus onto it opens a panel with the full table, with the selected row highlighted. The column cannot be edited in the grid. In the detail view the table is read-only, with the selected row highlighted.' },
+        { type: 'note', text: 'Columns can be changed even when data already exists: a removed column is no longer shown, while changing a column type does not convert the values already saved.' },
       ],
     },
     {

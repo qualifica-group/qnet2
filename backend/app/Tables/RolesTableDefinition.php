@@ -20,8 +20,8 @@ use Spatie\Permission\Guard;
  * derived `permissions` tags column with a `set` filter whose options are the
  * assignable form-module permission catalogue (AssignablePermissionCatalogue —
  * indirect sub-entity permissions are excluded). mapRow exposes only safe fields, and
- * actionsFor calls RolePolicy (view→view, update→edit, delete→delete) while
- * hiding edit/delete on the protected `super-admin` system role (affordance vs
+ * actionsFor calls RolePolicy (view→view, delete→delete) while
+ * hiding delete on the protected `super-admin` system role (affordance vs
  * the hard guard enforced in RoleService).
  *
  * The `users_count` AGGREGATE column (distinct-values resolution + the
@@ -171,14 +171,6 @@ class RolesTableDefinition extends AbstractTableDefinition
                 'permission' => 'roles.view',
             ],
             [
-                'key' => 'edit',
-                'label' => 'actions.edit',
-                'icon' => 'pencil',
-                'type' => 'link',
-                'confirm' => false,
-                'permission' => 'roles.update',
-            ],
-            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',
@@ -287,7 +279,7 @@ class RolesTableDefinition extends AbstractTableDefinition
 
     /**
      * Allowed action keys for a single row, computed via RolePolicy. The
-     * protected `super-admin` system role never offers edit/delete (it cannot be
+     * protected `super-admin` system role never offers delete (it cannot be
      * mutated — RoleService enforces the hard guard), so the UI never advertises
      * a dead-end action.
      *
@@ -302,10 +294,6 @@ class RolesTableDefinition extends AbstractTableDefinition
 
         if (Gate::forUser($actor)->allows('view', $row)) {
             $allowed[] = 'view';
-        }
-
-        if (! $isSystemRole && Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = 'edit';
         }
 
         if (! $isSystemRole && Gate::forUser($actor)->allows('delete', $row)) {

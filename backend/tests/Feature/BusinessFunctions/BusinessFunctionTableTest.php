@@ -123,7 +123,7 @@ it('rows expose manager/parent/users/operational_sites objects and per-row actio
         ->and($row['users'][0])->toMatchArray(['id' => $member->id, 'name' => 'Member One'])
         ->and($row['operational_sites'])->toHaveCount(1)
         ->and($row['operational_sites'][0]['id'])->toBe($site->id)
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete'])
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete'])
         ->and($row)->not->toHaveKey('password');
 });
 

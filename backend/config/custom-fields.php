@@ -9,6 +9,7 @@ use App\CustomFields\Types\EmailFieldType;
 use App\CustomFields\Types\EnumFieldType;
 use App\CustomFields\Types\IntegerFieldType;
 use App\CustomFields\Types\RelationFieldType;
+use App\CustomFields\Types\TableFieldType;
 use App\CustomFields\Types\TextareaFieldType;
 use App\CustomFields\Types\TextFieldType;
 use App\CustomFields\Types\TimeFieldType;
@@ -45,6 +46,15 @@ return [
         'email' => EmailFieldType::class,
         'url' => UrlFieldType::class,
         'color' => ColorFieldType::class,
+        'table' => TableFieldType::class,
+    ],
+
+    /*
+    | Hard limits of the `table` field type (spec 0180).
+    */
+    'table' => [
+        'max_columns' => 20,
+        'max_rows' => 200,
     ],
 
 ];

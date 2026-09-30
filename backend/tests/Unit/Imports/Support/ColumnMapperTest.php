@@ -81,3 +81,38 @@ it('is a pure function: the same input always yields the same suggestion', funct
 
     expect($first)->toEqual($second);
 });
+
+/**
+ * @return array<int, array{id: string, label: string, required: bool, group: ?string, type: string}>
+ */
+function importMapperNameFields(): array
+{
+    return array_map(
+        static fn (string $id): array => ['id' => $id, 'label' => $id, 'required' => false, 'group' => null, 'type' => 'text'],
+        ['full_name', 'first_name', 'last_name', 'email'],
+    );
+}
+
+it('maps a lone "Nome" to full_name and "Indirizzo e-mail" to email', function () {
+    $fileColumns = [
+        ['name' => 'Nome', 'index' => 0, 'duplicate' => false],
+        ['name' => 'Indirizzo e-mail', 'index' => 1, 'duplicate' => false],
+    ];
+
+    $suggestion = (new ColumnMapper)->suggest($fileColumns, importMapperNameFields());
+
+    expect($suggestion->mapping)->toBe(['Nome' => 'full_name', 'Indirizzo e-mail' => 'email'])
+        ->and($suggestion->conflicts)->toBe([]);
+});
+
+it('maps "Nome" to first_name when the file also has a "Cognome" column', function () {
+    $fileColumns = [
+        ['name' => 'Nome', 'index' => 0, 'duplicate' => false],
+        ['name' => 'Cognome', 'index' => 1, 'duplicate' => false],
+    ];
+
+    $suggestion = (new ColumnMapper)->suggest($fileColumns, importMapperNameFields());
+
+    expect($suggestion->mapping)->toBe(['Cognome' => 'last_name', 'Nome' => 'first_name'])
+        ->and($suggestion->conflicts)->toBe([]);
+});

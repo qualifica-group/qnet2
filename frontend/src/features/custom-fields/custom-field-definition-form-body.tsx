@@ -8,6 +8,7 @@ import { DefinitionOrganizationFields } from '@/features/custom-fields/component
 import { DefinitionPresentationFields } from '@/features/custom-fields/components/definition-presentation-fields'
 import { DefinitionOptionsEditor } from '@/features/custom-fields/components/definition-options-editor'
 import { DefinitionRelationTargetEditor } from '@/features/custom-fields/components/definition-relation-target-editor'
+import { DefinitionTableColumnsEditor } from '@/features/custom-fields/components/definition-table-columns-editor'
 import { DefinitionTypeConfigFields } from '@/features/custom-fields/components/definition-type-config-fields'
 import { DefinitionValidationEditor } from '@/features/custom-fields/components/definition-validation-editor'
 import { useCustomFieldDefinitionForm } from '@/features/custom-fields/use-custom-field-definition-form'
@@ -66,6 +67,8 @@ export function CustomFieldDefinitionFormBody({
             <DefinitionOptionsEditor control={form.control} optionsError={optionsError} />
           )}
 
+          <DefinitionTableColumnsEditor control={form.control} type={type} />
+
           {type === 'relation' && (
             <DefinitionRelationTargetEditor control={form.control} entities={entities} />
           )}
@@ -76,7 +79,7 @@ export function CustomFieldDefinitionFormBody({
 
           <DefinitionOrganizationFields control={form.control} />
 
-          <DefinitionFlagsFields control={form.control} />
+          <DefinitionFlagsFields control={form.control} type={type} />
 
           {serverError && (
             <p className="text-sm font-medium text-destructive" role="alert">

@@ -103,7 +103,7 @@ export function ProductCategoriesTable() {
     invalidateStats()
   }, [refreshGrid, invalidateStats])
 
-  const { openCreate, openView, openEdit, openDuplicate, sheet } = useModuleOpener(PRODUCT_CATEGORIES_DOMAIN, {
+  const { openCreate, openView, openDuplicate, sheet } = useModuleOpener(PRODUCT_CATEGORIES_DOMAIN, {
     onSaved,
   })
 
@@ -137,9 +137,6 @@ export function ProductCategoriesTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'duplicate':
           openDuplicate(row)
           break
@@ -157,7 +154,7 @@ export function ProductCategoriesTable() {
           break
       }
     },
-    [openView, openEdit, openDuplicate, runDelete],
+    [openView, openDuplicate, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

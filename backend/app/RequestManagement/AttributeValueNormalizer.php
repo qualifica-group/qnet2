@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\RequestManagement;
 
+use App\CustomFields\Table\TableFieldSchema;
 use Illuminate\Support\Collection;
 
 /**
@@ -52,6 +53,7 @@ final class AttributeValueNormalizer
             'boolean' => (bool) $value,
             'enum' => $this->normalizeEnum($value, $attribute),
             'relation' => $this->normalizeRelation($value, $attribute),
+            'table' => TableFieldSchema::fromConfig($attribute->config, $attribute->isRequired)->normalize($value),
             'text', 'textarea', 'color', 'date', 'datetime', 'time', 'email', 'url' => trim((string) $value),
             default => $value,
         };

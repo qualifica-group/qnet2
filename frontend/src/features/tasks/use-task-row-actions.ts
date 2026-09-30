@@ -48,7 +48,7 @@ export function useTaskRowActions({
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
   const [notesRowId, setNotesRowId] = useState<number | null>(null)
 
-  const { openCreate, openCreateWith, openView, openEdit, openDuplicate, sheet } = useModuleOpener(TASKS_DOMAIN, {
+  const { openCreate, openCreateWith, openView, openDuplicate, sheet } = useModuleOpener(TASKS_DOMAIN, {
     onSaved: onMutated,
     forceMode,
     viewAfterCreate: true,
@@ -83,9 +83,6 @@ export function useTaskRowActions({
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -102,7 +99,7 @@ export function useTaskRowActions({
           break
       }
     },
-    [openView, openEdit, openDuplicate, runDelete],
+    [openView, openDuplicate, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

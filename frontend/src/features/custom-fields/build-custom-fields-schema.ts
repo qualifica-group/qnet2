@@ -2,7 +2,13 @@ import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
-import { rawKey, type CustomFieldDescriptor, type CustomFieldValue } from '@/features/custom-fields/types'
+import { getTableConfig, isRowSelected, toColumnDescriptor } from '@/features/custom-fields/table-field-model'
+import {
+  rawKey,
+  type CustomFieldDescriptor,
+  type CustomFieldValue,
+  type TableFieldConfig,
+} from '@/features/custom-fields/types'
 
 /**
  * Dynamic Zod schema for a resource's custom fields (spec 0021 AC-023),
@@ -101,6 +107,53 @@ function buildRelationSchema(descriptor: CustomFieldDescriptor) {
   return descriptor.relation?.cardinality === 'many' ? z.array(z.number()) : z.number().nullable()
 }
 
+/**
+ * `table`: `{ rows }` (nullable). Cells reuse the per-type builders through a
+ * synthesized column descriptor; a missing cell reads as unset. Errors land on
+ * `rows.N.<col>` (cell) and `rows` (min/max rows, more than one selected row),
+ * the same paths the server uses. `summary` is stripped: it is server-computed.
+ */
+export function buildTableFieldSchema(config: TableFieldConfig, t: TFunction) {
+  const cellShape: Record<string, z.ZodTypeAny> = { id: z.string().nullish() }
+  for (const column of config.columns) {
+    const unset = column.type === 'boolean' ? false : null
+    cellShape[column.key] = z.preprocess(
+      (cell) => (cell === undefined ? unset : cell),
+      buildFieldSchema(toColumnDescriptor(column), t),
+    )
+  }
+  if (config.selectable) {
+    cellShape[config.selectable.key] = z.boolean().optional()
+  }
+
+  const rowSchema = z.object(cellShape).superRefine((row, ctx) => {
+    for (const column of config.columns) {
+      if (column.required && isEmptyCustomFieldValue((row as Record<string, unknown>)[column.key])) {
+        ctx.addIssue({ code: 'custom', path: [column.key], message: t('customFields.validation.required') })
+      }
+    }
+  })
+
+  return z
+    .object({ rows: z.array(rowSchema) })
+    .nullable()
+    .superRefine((value, ctx) => {
+      if (value === null) {
+        return
+      }
+      const { min_rows: minRows, max_rows: maxRows } = config
+      if (minRows !== undefined && value.rows.length < minRows) {
+        ctx.addIssue({ code: 'custom', path: ['rows'], message: t('customFields.validation.minRows', { min: minRows }) })
+      }
+      if (maxRows !== undefined && value.rows.length > maxRows) {
+        ctx.addIssue({ code: 'custom', path: ['rows'], message: t('customFields.validation.maxRows', { max: maxRows }) })
+      }
+      if (value.rows.filter((row) => isRowSelected(row, config)).length > 1) {
+        ctx.addIssue({ code: 'custom', path: ['rows'], message: t('customFields.validation.singleSelected') })
+      }
+    })
+}
+
 function buildFieldSchema(descriptor: CustomFieldDescriptor, t: TFunction): z.ZodTypeAny {
   switch (descriptor.type) {
     // text/textarea + the string-backed scalars (date/datetime/time/email/url/
@@ -125,6 +178,8 @@ function buildFieldSchema(descriptor: CustomFieldDescriptor, t: TFunction): z.Zo
       return buildEnumSchema(descriptor, t)
     case 'relation':
       return buildRelationSchema(descriptor)
+    case 'table':
+      return buildTableFieldSchema(getTableConfig(descriptor), t)
     default:
       return z.unknown()
   }

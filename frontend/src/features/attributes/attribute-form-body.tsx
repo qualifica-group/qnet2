@@ -11,6 +11,7 @@ import { DefinitionFieldPreview } from '@/features/custom-fields/components/defi
 import { DefinitionOptionsEditor } from '@/features/custom-fields/components/definition-options-editor'
 import { DefinitionPresentationFields } from '@/features/custom-fields/components/definition-presentation-fields'
 import { DefinitionRelationTargetEditor } from '@/features/custom-fields/components/definition-relation-target-editor'
+import { DefinitionTableColumnsEditor } from '@/features/custom-fields/components/definition-table-columns-editor'
 import { DefinitionTypeConfigFields } from '@/features/custom-fields/components/definition-type-config-fields'
 import { DefinitionTypePicker } from '@/features/custom-fields/components/definition-type-picker'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
@@ -83,6 +84,8 @@ export function AttributeFormBody({ mode, onSuccess, onCancel }: AttributeFormBo
           {type === 'enum' && (
             <DefinitionOptionsEditor control={form.control} optionsError={optionsError} />
           )}
+
+          <DefinitionTableColumnsEditor control={form.control} type={type} />
 
           {type === 'relation' && (
             <DefinitionRelationTargetEditor control={form.control} entities={entities} />

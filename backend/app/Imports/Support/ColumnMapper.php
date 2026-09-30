@@ -17,7 +17,9 @@ use Illuminate\Support\Str;
  * to-space), never fuzzy similarity — that is GeoResolver's job for geo
  * names. Each field also matches on a curated alias list
  * (`config('imports.column_aliases')`), centralized there rather than
- * scattered across every ImportDefinition.
+ * scattered across every ImportDefinition; `config('imports.
+ * contextual_aliases')` re-targets an alias whose meaning depends on another
+ * matched field ("Nome" beside "Cognome" is the given name, not the full one).
  */
 final class ColumnMapper
 {
@@ -33,10 +35,13 @@ final class ColumnMapper
         // Step 1: match every column against the normalized field/alias lookup
         $matchesByField = $this->matchColumns($fileColumns, $columnKeys, $lookup);
 
-        // Step 2: a field matched by 2+ columns is a conflict, not a mapping
+        // Step 2: re-target the contextual aliases whose sibling field matched too
+        $matchesByField = $this->applyContextualAliases($fileColumns, $columnKeys, $matchesByField, $fields);
+
+        // Step 3: a field matched by 2+ columns is a conflict, not a mapping
         [$mapping, $conflicts] = $this->splitConflicts($matchesByField);
 
-        // Step 3: derive the remaining diagnostics from the resolved mapping
+        // Step 4: derive the remaining diagnostics from the resolved mapping
         return new MappingSuggestion(
             mapping: $mapping,
             missingRequired: $this->missingRequiredFieldIds($fields, $mapping),
@@ -89,6 +94,54 @@ final class ColumnMapper
         }
 
         return $matches;
+    }
+
+    /**
+     * @param  array<int, array{name: string, index: int, duplicate: bool}>  $fileColumns
+     * @param  array<int, string>  $columnKeys
+     * @param  array<string, array<int, string>>  $matchesByField
+     * @param  array<int, array{id: string, label: string, required: bool, group: ?string, type: string}>  $fields
+     * @return array<string, array<int, string>>
+     */
+    private function applyContextualAliases(array $fileColumns, array $columnKeys, array $matchesByField, array $fields): array
+    {
+        $fieldIds = array_column($fields, 'id');
+
+        foreach (config('imports.contextual_aliases', []) as $fieldId => $rule) {
+            if (! in_array($fieldId, $fieldIds, true) || ! isset($matchesByField[$rule['when_matched']])) {
+                continue;
+            }
+
+            $aliases = array_map(fn (string $alias): string => $this->normalize($alias), $rule['aliases']);
+
+            foreach (array_values($fileColumns) as $index => $column) {
+                if (in_array($this->normalize($column['name']), $aliases, true)) {
+                    $matchesByField = $this->withoutColumn($matchesByField, $columnKeys[$index]);
+                    $matchesByField[$fieldId][] = $columnKeys[$index];
+                }
+            }
+        }
+
+        return $matchesByField;
+    }
+
+    /**
+     * @param  array<string, array<int, string>>  $matchesByField
+     * @return array<string, array<int, string>>
+     */
+    private function withoutColumn(array $matchesByField, string $columnKey): array
+    {
+        $remaining = [];
+
+        foreach ($matchesByField as $fieldId => $matchedColumnKeys) {
+            $kept = array_values(array_diff($matchedColumnKeys, [$columnKey]));
+
+            if ($kept !== []) {
+                $remaining[$fieldId] = $kept;
+            }
+        }
+
+        return $remaining;
     }
 
     /**

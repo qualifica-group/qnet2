@@ -77,7 +77,6 @@ const guide: HelpGuide = {
           headers: ['Row action', 'What it does'],
           rows: [
             ['View', 'Read-only card, with rules, attributes, account managers and a layout preview.'],
-            ['Edit', 'Opens the form.'],
             ['Attribute layout', 'Opens the layout editor.'],
             ['Duplicate', "Opens the create form pre-filled with the category's data (see Duplicating a category)."],
             ['Delete', 'Deletes after confirmation (see the constraints further below).'],
@@ -383,7 +382,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'To move a category open Edit and change the Parent category (you cannot choose the category itself or one of its descendants). To move several at once:',
+          text: 'To move a category open it, press Edit and change the Parent category (you cannot choose the category itself or one of its descendants). To move several at once:',
         },
         {
           type: 'steps',

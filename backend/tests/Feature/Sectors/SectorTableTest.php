@@ -71,7 +71,7 @@ it('rows expose id/name/parent{id,name}|null/created_at + per-row actions', func
 
     $childRow = collect($response->json('items'))->firstWhere('name', 'Child');
     expect($childRow['parent'])->toBe(['id' => $root->id, 'name' => 'Root'])
-        ->and($childRow['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
+        ->and($childRow['actions'])->toEqualCanonicalizing(['view', 'delete']);
 });
 
 it('rows: no N+1 on the parent relation', function () {

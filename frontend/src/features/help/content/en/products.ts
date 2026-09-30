@@ -29,7 +29,7 @@ const guide: HelpGuide = {
             'Open Products › Products.',
             'Type in the Search… field at the top of the table.',
             'Narrow the list with the column filters: Category, Typology, Business function or Offer usage.',
-            'From the row Actions menu choose View to see the card, or Edit to change it.',
+            'From the row Actions menu choose View to see the card; to change it press Edit in the card.',
           ],
         },
       ],
@@ -188,7 +188,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'To change the data use Edit. To delete a product choose Delete from the Actions menu and confirm.',
+          text: 'To change the data press Edit in the card. To delete a product choose Delete from the Actions menu and confirm.',
         },
       ],
     },

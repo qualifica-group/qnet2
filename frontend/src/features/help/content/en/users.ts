@@ -80,8 +80,8 @@ const guide: HelpGuide = {
       id: 'edit-deactivate-delete',
       title: 'Editing, deactivating and deleting',
       blocks: [
-        { type: 'paragraph', text: 'Every row in the list has an actions menu with **View**, **Edit**, **Delete**, **Activity** and **Impersonate**. You only see the actions your role allows.' },
-        { type: 'list', items: ['**Edit:** choose **Edit**, change the data and click **Save**.', '**Deactivate:** open **Edit** and turn off **Active**. The person can no longer sign in, but their record and history remain. **Inactive** appears at the top.', '**Delete:** choose **Delete** and confirm.', '**Activity:** shows the history of changes made to the record.'] },
+        { type: 'paragraph', text: 'Every row in the list has an actions menu with **View**, **Delete**, **Activity** and **Impersonate**. You only see the actions your role allows.' },
+        { type: 'list', items: ['**Edit:** open the record with **View**, press **Edit**, change the data and click **Save**.', '**Deactivate:** open **Edit** and turn off **Active**. The person can no longer sign in, but their record and history remain. **Inactive** appears at the top.', '**Delete:** choose **Delete** and confirm.', '**Activity:** shows the history of changes made to the record.'] },
         { type: 'warning', text: 'You cannot delete your own account, nor the last user with the super-admin role.' },
         { type: 'tip', text: 'If a person leaves the company, deactivate them instead of deleting them. This keeps the history of their work.' },
       ],
@@ -90,7 +90,7 @@ const guide: HelpGuide = {
       id: 'reset-password',
       title: "Resetting a user's password",
       blocks: [
-        { type: 'steps', items: ["Open the user's record with **Edit**.", 'In the **Authentication** section, type the **New password** and then **Repeat password**.', 'Click **Save**.'] },
+        { type: 'steps', items: ["Open the user's record with **View** and press **Edit**.", 'In the **Authentication** section, type the **New password** and then **Repeat password**.', 'Click **Save**.'] },
         { type: 'note', text: 'If you leave the password fields empty, the current password stays unchanged. A password you set is temporary: at their next sign-in the user will be advised to change it. Alternatively, the person can reset it themselves with **Forgot your password?** on the sign-in page.' },
       ],
     },

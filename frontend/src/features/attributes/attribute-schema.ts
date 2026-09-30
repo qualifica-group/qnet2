@@ -10,6 +10,10 @@ import {
   type FieldDefinitionSchemaMessages,
 } from '@/features/custom-fields/field-definition-schema'
 import {
+  fieldDefinitionTableFields,
+  validateTableDefinition,
+} from '@/features/custom-fields/field-definition-table-schema'
+import {
   asCustomFieldsField,
   type CustomFieldsSchema,
 } from '@/features/custom-fields/build-custom-fields-schema'
@@ -68,6 +72,7 @@ function baseFields(t: TFunction) {
     config: fieldDefinitionConfigFields(),
     relation_target: fieldDefinitionRelationTargetFields(),
     options: z.array(fieldDefinitionOptionFields(schemaMessages(t), NAME_MAX_LENGTH)),
+    table: fieldDefinitionTableFields(),
   }
 }
 
@@ -82,6 +87,9 @@ export function buildCreateAttributeSchema(t: TFunction, customFieldsSchema: Cus
       }
       if (values.type === 'relation') {
         validateRelationTarget(values.relation_target, messages, ctx)
+      }
+      if (values.type === 'table') {
+        validateTableDefinition(values.table, t, ctx)
       }
     })
 }

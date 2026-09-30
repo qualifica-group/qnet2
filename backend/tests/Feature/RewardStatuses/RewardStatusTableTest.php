@@ -139,7 +139,7 @@ it('rows: view/edit/delete/viewActivity actions present only with the matching p
     $response = $this->postJson('/api/tables/reward-statuses/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
     $row = collect($response->json('items'))->firstWhere('name', 'Consegnato');
 
-    expect($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete', 'activity']);
+    expect($row['actions'])->toEqualCanonicalizing(['view', 'delete', 'activity']);
 });
 
 it('rows: delete is ABSENT on the system row, even with the permission (BR-3, AC-012)', function () {
@@ -151,7 +151,7 @@ it('rows: delete is ABSENT on the system row, even with the permission (BR-3, AC
 
     expect($systemRow)->not->toBeNull()
         ->and($systemRow['actions'])->not->toContain('delete')
-        ->and($systemRow['actions'])->toContain('edit');
+        ->and($systemRow['actions'])->toContain('view');
 });
 
 it('columns: the delete action config carries confirm=true (AC-012)', function () {

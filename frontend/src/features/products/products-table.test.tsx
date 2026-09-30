@@ -120,12 +120,12 @@ describe('ProductsTable — navigation to the dedicated pages (AC-A1)', () => {
     expect(screen.getByText('location:/products/4')).toBeInTheDocument()
   })
 
-  it('navigates to the edit page on the edit row action', async () => {
+  it('ignores the retired edit row action: editing starts from the detail page', async () => {
     renderPage()
 
     fireEvent.click(screen.getByRole('button', { name: 'row-edit' }))
 
-    expect(screen.getByText('location:/products/4/edit')).toBeInTheDocument()
+    expect(screen.getByText('location:/products')).toBeInTheDocument()
   })
 
   it('navigates to the create page from the New product button', async () => {

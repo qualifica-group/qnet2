@@ -11,9 +11,6 @@ import type { ImportMappingFormValues } from '@/features/imports/wizard/import-m
 import type { ImportGlobalFieldDescriptor } from '@/features/imports/wizard/types'
 import type { ForSelectItem } from '@/features/for-select/types'
 
-/** Stable empty fallback so an omitted `dynamicRequiredFieldIds` never allocates a fresh array reference per render. */
-const EMPTY_REQUIRED_FIELD_IDS: string[] = []
-
 interface ImportConfigFieldsProps {
   globalFields: ImportGlobalFieldDescriptor[]
   control: Control<ImportMappingFormValues>
@@ -31,14 +28,6 @@ interface ImportConfigFieldsProps {
    * field forwards `onItemChange` at all.
    */
   onItemChange?: (fieldId: string, item: ForSelectItem | null) => void
-  /**
-   * Global field ids to render with the required marker regardless of the
-   * static catalog flag (spec 0176 D-5: `source_id` becomes required only
-   * while the Campaign is chosen run-wide, a per-form-state condition the
-   * static catalog cannot express). Omitted, every field's marker follows
-   * its own `required` flag verbatim.
-   */
-  dynamicRequiredFieldIds?: string[]
 }
 
 /**
@@ -54,7 +43,6 @@ export function ImportConfigFields({
   control,
   fromFileFieldIds = [],
   onItemChange,
-  dynamicRequiredFieldIds = EMPTY_REQUIRED_FIELD_IDS,
 }: ImportConfigFieldsProps) {
   // Global-field labels arrive from the backend as default-namespace i18n keys
   // (`imports.leads.global.*`) — resolve them through the default translator.
@@ -71,7 +59,7 @@ export function ImportConfigFields({
           name={`global_config.${globalField.id}` as FieldPath<ImportMappingFormValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel required={globalField.required || dynamicRequiredFieldIds.includes(globalField.id)}>
+              <FormLabel required={globalField.required}>
                 {tLabel(globalField.label)}
               </FormLabel>
               {/*

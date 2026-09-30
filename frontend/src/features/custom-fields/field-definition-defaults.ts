@@ -4,6 +4,7 @@ import type {
   FieldDefinitionOptionRow,
   FieldDefinitionRelationTargetBag,
 } from '@/features/custom-fields/field-definition-form-values'
+import { emptyTableDefinition, hydrateTableDefinition } from '@/features/custom-fields/field-definition-table'
 import type { CustomFieldConfig, CustomFieldRelationTarget, CustomFieldType } from '@/features/custom-fields/types'
 
 /**
@@ -49,6 +50,7 @@ export function emptyFieldDefinitionValues(): FieldDefinitionFormValues {
     config: emptyFieldDefinitionConfig(),
     relation_target: emptyFieldDefinitionRelationTarget(),
     options: [],
+    table: emptyTableDefinition(),
   }
 }
 
@@ -117,5 +119,6 @@ export function hydrateFieldDefinitionValues(
               is_default: option.is_default,
             }))
         : [],
+    table: hydrateTableDefinition(source.config),
   }
 }

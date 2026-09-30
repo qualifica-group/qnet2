@@ -107,11 +107,10 @@ const CAMPAIGN_FIELD: ImportGlobalFieldDescriptor = {
 interface RenderFieldsOptions {
   initialCampaignId?: number | null
   onItemChange?: (fieldId: string, item: unknown) => void
-  dynamicRequiredFieldIds?: string[]
 }
 
 function renderFields(globalFields: ImportGlobalFieldDescriptor[], options: RenderFieldsOptions = {}) {
-  const { initialCampaignId = null, onItemChange, dynamicRequiredFieldIds } = options
+  const { initialCampaignId = null, onItemChange } = options
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
   function Harness() {
@@ -131,7 +130,6 @@ function renderFields(globalFields: ImportGlobalFieldDescriptor[], options: Rend
           globalFields={globalFields}
           control={form.control}
           onItemChange={onItemChange}
-          dynamicRequiredFieldIds={dynamicRequiredFieldIds}
         />
       </Form>
     )
@@ -201,30 +199,5 @@ describe('ImportConfigFields — onItemChange (spec 0176)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Campaign' }))
 
     expect(onItemChange).toHaveBeenCalledWith('campaign_id', CAMPAIGN_ITEM_WITH_SOURCE)
-  })
-})
-
-/** Spec 0176 D-5: `source_id` shows the required marker only while the caller marks it so, regardless of its own static catalog flag. */
-describe('ImportConfigFields — dynamicRequiredFieldIds (spec 0176)', () => {
-  const SOURCE_FIELD: ImportGlobalFieldDescriptor = {
-    id: 'source_id',
-    label: 'Source',
-    required: false,
-    for_select_resource: 'sources',
-    default: null,
-  }
-
-  it('renders the required marker for a field named in dynamicRequiredFieldIds', () => {
-    renderFields([SOURCE_FIELD], { dynamicRequiredFieldIds: ['source_id'] })
-
-    const label = screen.getByText('Source').closest('label')
-    expect(label).toHaveTextContent('*')
-  })
-
-  it('renders no required marker when the field is not named', () => {
-    renderFields([SOURCE_FIELD])
-
-    const label = screen.getByText('Source').closest('label')
-    expect(label).not.toHaveTextContent('*')
   })
 })

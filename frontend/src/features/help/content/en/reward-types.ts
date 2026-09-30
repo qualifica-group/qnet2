@@ -32,7 +32,7 @@ const guide: HelpGuide = {
           items: [
             'Press **New reward type**.',
             'Fill in **Name** and **Color** and press **Save**.',
-            'To edit, choose **Edit** on the row, change the data and press **Save**.',
+            'To edit, open the record with **View**, press **Edit**, change the data and press **Save**.',
             'To delete, choose **Delete** and confirm.',
           ],
         },

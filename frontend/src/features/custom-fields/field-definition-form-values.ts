@@ -1,4 +1,5 @@
 import type { CustomFieldType } from '@/features/custom-fields/types'
+import type { TableDefinitionBag } from '@/features/custom-fields/field-definition-table'
 
 /**
  * Minimal form-values shape shared by every "field definition" form: the
@@ -51,4 +52,6 @@ export interface FieldDefinitionFormValues {
   config: FieldDefinitionConfigBag
   relation_target: FieldDefinitionRelationTargetBag
   options: FieldDefinitionOptionRow[]
+  /** Only meaningful when `type === 'table'` (spec 0180). */
+  table: TableDefinitionBag
 }

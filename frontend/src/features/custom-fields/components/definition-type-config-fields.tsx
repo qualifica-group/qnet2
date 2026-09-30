@@ -22,7 +22,7 @@ interface DefinitionTypeConfigFieldsProps<T extends FieldDefinitionFormValues> {
 
 /**
  * Types with no `config` options, so the config panel renders nothing:
- * `relation` (its target lives in a dedicated editor) and the string-backed
+ * `relation` and `table` (their settings live in dedicated editors) and the string-backed
  * scalars (date/datetime/time/email/url/color), which are plain native inputs.
  */
 const TYPES_WITHOUT_CONFIG: readonly CustomFieldType[] = [
@@ -33,6 +33,7 @@ const TYPES_WITHOUT_CONFIG: readonly CustomFieldType[] = [
   'email',
   'url',
   'color',
+  'table',
 ]
 
 /** Formats a nullable numeric config value for a controlled `<input type="number">` (mirrors `ProductFormBody`'s pattern). */

@@ -6,6 +6,7 @@ namespace App\CustomFields;
 
 use App\Authorization\AuthorizationRegistry;
 use App\Authorization\FieldPermission;
+use App\CustomFields\Types\ProvidesNestedValidationRules;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldValue;
 use App\Models\User;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator as ValidatorFacade;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Validates the write pipeline's pending `custom_fields` payload (spec 0021
@@ -89,8 +91,8 @@ class CustomFieldValidator
         );
 
         if ($actor !== null) {
-            $validator->after(function (ValidationContract $validator) use ($entityType, $model, $values, $actor): void {
-                $this->guardFieldPermissions($validator, $entityType, $model, $values, $actor);
+            $validator->after(function (ValidationContract $validator) use ($definitions, $entityType, $model, $values, $actor): void {
+                $this->guardFieldPermissions($validator, $definitions, $entityType, $model, $values, $actor);
             });
         }
 
@@ -112,8 +114,15 @@ class CustomFieldValidator
         $rules = [];
 
         foreach ($definitions as $key => $definition) {
-            $handlerRules = $this->typeRegistry->resolve($definition->type)->validationRules($definition);
+            $handler = $this->typeRegistry->resolve($definition->type);
+            $handlerRules = $handler->validationRules($definition);
             $rules["custom_fields.{$key}"] = $isUpdate ? ['sometimes', ...$handlerRules] : $handlerRules;
+
+            if ($handler instanceof ProvidesNestedValidationRules) {
+                foreach ($handler->nestedValidationRules($definition) as $suffix => $nestedRules) {
+                    $rules["custom_fields.{$key}.{$suffix}"] = $nestedRules;
+                }
+            }
         }
 
         return $rules;
@@ -121,9 +130,11 @@ class CustomFieldValidator
 
     /**
      * @param  array<string, mixed>  $submitted
+     * @param  Collection<string, CustomFieldDefinition>  $definitions
      */
     private function guardFieldPermissions(
         ValidationContract $validator,
+        Collection $definitions,
         string $entityType,
         Model $model,
         array $submitted,
@@ -151,7 +162,7 @@ class CustomFieldValidator
                 continue;
             }
 
-            if ($this->normalize($submitted[$key]) !== $this->normalize($current[$key] ?? null)) {
+            if ($this->changed($definitions->get($key), $submitted[$key], $current[$key] ?? null)) {
                 $validator->errors()->add("custom_fields.{$key}", 'field not editable');
             }
         }
@@ -179,14 +190,40 @@ class CustomFieldValidator
     }
 
     /**
+     * Compares submitted vs persisted AFTER the handler's normalizeForStore,
+     * so a structured value re-sent as read (server-computed keys, ids) is not
+     * seen as modified. Defensive: a value the handler cannot normalize is
+     * treated as changed.
+     */
+    private function changed(?CustomFieldDefinition $definition, mixed $submitted, mixed $current): bool
+    {
+        if ($definition !== null) {
+            $handler = $this->typeRegistry->resolve($definition->type);
+
+            try {
+                $submitted = $handler->normalizeForStore($submitted, $definition);
+                $current = $handler->normalizeForStore($current, $definition);
+            } catch (Throwable) {
+                return true;
+            }
+        }
+
+        return $this->normalize($submitted) !== $this->normalize($current);
+    }
+
+    /**
      * Scalar/array-shape-tolerant normalization: null/''/[] all compare as
      * "nothing", and scalar lists (multiselect/relation-many) compare by
      * content rather than submission order.
      */
     private function normalize(mixed $value): mixed
     {
+        if (is_array($value) && ! array_is_list($value)) {
+            return $value === [] ? null : array_map(fn (mixed $item): mixed => $this->normalize($item), $value);
+        }
+
         if (is_array($value)) {
-            $normalized = array_map(fn (mixed $item): mixed => $this->normalize($item), array_values($value));
+            $normalized = array_map(fn (mixed $item): mixed => $this->normalize($item), $value);
             sort($normalized);
 
             return $normalized === [] ? null : $normalized;

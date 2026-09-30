@@ -43,7 +43,7 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Editing, suspending and deleting',
       blocks: [
-        { type: 'paragraph', text: 'From the list you can use **View**, **Edit** and **Delete** on the row, if your role allows it.' },
+        { type: 'paragraph', text: 'From the list you can use **View** and **Delete** on the row, if your role allows it. To edit, open the record with **View** and press **Edit**.' },
         { type: 'warning', text: 'A configuration in use cannot be deleted: set it to **Suspended** instead.' },
       ],
     },

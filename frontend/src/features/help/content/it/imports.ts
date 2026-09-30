@@ -80,7 +80,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Se scegli la Campagna qui (non dal file), la Fonte si precompila con quella della campagna, se ne ha una, e resta modificabile; in tal caso la Fonte diventa obbligatoria. Una riga senza Fonte effettiva (vuota nella configurazione e campagna, della riga o del file, senza Fonte) va in errore in revisione.',
+          text: 'Le colonne si associano da sole in base all\'intestazione: ad esempio **Nome** va su **Nome completo** (su **Nome** se il file ha anche una colonna **Cognome**) e **Indirizzo e-mail** va su **Email**. Puoi sempre cambiare l\'associazione.',
+        },
+        {
+          type: 'paragraph',
+          text: 'La **Fonte** è sempre obbligatoria, anche quando la campagna arriva dal file, e vale per tutte le righe importate. Se scegli la Campagna qui (non dal file), la Fonte si precompila con quella della campagna, se ne ha una, e resta modificabile.',
         },
         {
           type: 'tip',

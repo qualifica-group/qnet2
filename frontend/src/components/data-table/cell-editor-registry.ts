@@ -83,7 +83,8 @@ function richSelectParams(column: TableColumn, multiSelect: boolean): Record<str
   }
 }
 
-export const CELL_EDITOR_REGISTRY: Record<CellEditorKind, CellEditorSpec> = {
+/** `table` columns (spec 0180) are read-only: no entry, so they resolve to no editor. */
+export const CELL_EDITOR_REGISTRY: Partial<Record<CellEditorKind, CellEditorSpec>> = {
   text: { cellEditor: 'agTextCellEditor' },
   number: { cellEditor: 'agNumberCellEditor' },
   // AG Grid ships no datetime-local editor (spec 0055 D-4): this repo's own

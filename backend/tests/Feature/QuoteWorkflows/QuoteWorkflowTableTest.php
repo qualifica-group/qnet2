@@ -64,7 +64,7 @@ it('rows: 200 with the expected row shape when the actor has viewAny (AC-019)', 
         ->and($row['statuses_count'])->toBe(4)
         ->and($row['is_active'])->toBeTrue()
         ->and($row)->toHaveKey('updated_at')
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete']);
 });
 
 it('columns: 200 with the declared columns, 403 without viewAny', function () {

@@ -30,7 +30,7 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Modificare, sospendere ed eliminare',
       blocks: [
-        { type: 'paragraph', text: 'Dall’elenco puoi usare **Visualizza**, **Modifica** ed **Elimina** sulla riga, se il tuo ruolo lo consente.' },
+        { type: 'paragraph', text: 'Dall’elenco puoi usare **Visualizza** ed **Elimina** sulla riga, se il tuo ruolo lo consente. Per modificare apri la scheda con **Visualizza** e premi **Modifica**.' },
         { type: 'warning', text: 'Una configurazione in uso non si può eliminare: impostala su **Sospesa**.' },
       ],
     },

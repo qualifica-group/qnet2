@@ -55,7 +55,6 @@ vi.mock('@/features/modules/use-module-opener', () => ({
       openCreate: vi.fn(),
       openCreateWith: stub.openCreateWith,
       openView: stub.openView,
-      openEdit: vi.fn(),
       openDuplicate: vi.fn(),
       sheet: options?.forceMode === undefined ? null : <div>subtask-sheet</div>,
     }

@@ -101,14 +101,6 @@ final class PipelineStatusColumnCatalog
                 'permission' => 'pipeline-statuses.view',
             ],
             [
-                'key' => 'edit',
-                'label' => 'actions.edit',
-                'icon' => 'pencil',
-                'type' => 'link',
-                'confirm' => false,
-                'permission' => 'pipeline-statuses.update',
-            ],
-            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',

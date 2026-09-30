@@ -142,7 +142,7 @@ it('rows expose id/name/description/items_count/is_active + per-row actions', fu
         ->and($row['description'])->toBe('Standard')
         ->and($row['items_count'])->toBe(2)
         ->and($row['is_active'])->toBeTrue()
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete']);
 });
 
 // ---------------------------------------------------------------------------

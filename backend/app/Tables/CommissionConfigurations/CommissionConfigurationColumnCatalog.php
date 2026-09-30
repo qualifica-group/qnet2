@@ -40,7 +40,6 @@ final class CommissionConfigurationColumnCatalog
     {
         return [
             ['key' => 'view', 'label' => 'actions.view', 'icon' => 'eye', 'type' => 'link', 'confirm' => false, 'permission' => 'commission-configurations.view'],
-            ['key' => 'edit', 'label' => 'actions.edit', 'icon' => 'pencil', 'type' => 'link', 'confirm' => false, 'permission' => 'commission-configurations.update'],
             ['key' => 'delete', 'label' => 'actions.delete', 'icon' => 'trash', 'type' => 'danger', 'confirm' => true, 'permission' => 'commission-configurations.delete'],
             ['key' => 'activity', 'label' => 'actions.activity', 'icon' => 'history', 'type' => 'action', 'confirm' => false, 'permission' => 'commission-configurations.viewActivity'],
         ];

@@ -44,7 +44,7 @@ const guide: HelpGuide = {
           items: [
             'Press **New task type**.',
             'Fill in the fields and press **Save**.',
-            'To edit, choose **Edit** on the row, change the data and press **Save**.',
+            'To edit, open the record with **View**, press **Edit**, change the data and press **Save**.',
             'To deactivate, open **Edit** and turn off **Active**: the tasks using it stay intact.',
           ],
         },

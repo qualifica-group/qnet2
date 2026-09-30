@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import type { CustomFieldValue } from '@/features/custom-fields/types'
+import { buildTableFieldSchema } from '@/features/custom-fields/build-custom-fields-schema'
+import { toTableConfig } from '@/features/custom-fields/table-field-model'
+import type { CustomFieldConfig, CustomFieldValue } from '@/features/custom-fields/types'
 import type { ApplicableAttribute } from '@/features/request-management/types'
 
 /**
@@ -70,6 +72,8 @@ function buildAttributeScalarSchema(attribute: ApplicableAttribute, t: TFunction
         attribute,
         t('attributeValues.validation.enumInvalid', { defaultValue: 'Select a valid option.' }),
       )
+    case 'table':
+      return buildTableFieldSchema(toTableConfig(attribute.config as CustomFieldConfig | null), t)
     case 'relation':
       return z.union([z.number(), z.array(z.number()), z.null()])
     // text/textarea + the string-backed scalars (date/datetime/time/email/url/color).

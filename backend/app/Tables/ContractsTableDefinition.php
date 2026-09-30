@@ -251,10 +251,9 @@ class ContractsTableDefinition extends AbstractTableDefinition
      * own lifecycle (ContractActionAvailability — the same rule the detail's
      * action bar reads, user directive 2026-08-31, so grid and detail can
      * never offer a different set). No `create`/`delete` action exists (D-6,
-     * BR-8): `edit` is offered only when `contracts.update` allows it
-     * (renewal/expiry/payment notes/comments — the only PATCH-able fields),
-     * and the 4 domain actions plus `change_status` are each gated on their
-     * own ability.
+     * BR-8), nor an `edit` one (user directive 2026-09-30: editing starts
+     * from the detail page); the 4 domain actions plus `change_status` are
+     * each gated on their own ability.
      *
      * `$row` arrives with `contractStatus` already eager-loaded (see
      * `baseQuery()`), so the availability check never N+1s across the page.
@@ -268,10 +267,6 @@ class ContractsTableDefinition extends AbstractTableDefinition
 
         if (Gate::forUser($actor)->allows('view', $row)) {
             $allowed[] = 'view';
-        }
-
-        if ($this->actionAvailability->mayEdit($row) && Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = 'edit';
         }
 
         if ($this->actionAvailability->mayValidate($row) && Gate::forUser($actor)->allows('validate', $row)) {

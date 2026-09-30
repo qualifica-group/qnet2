@@ -40,7 +40,7 @@ export function SourcesTable() {
   // `SourceFormScreen`. Page mode never calls this.
   const onSaved = useCallback(() => refreshGrid(), [refreshGrid])
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(SOURCES_DOMAIN, { onSaved })
+  const { openCreate, openView, sheet } = useModuleOpener(SOURCES_DOMAIN, { onSaved })
 
   const runDelete = useCallback(
     async (row: TableRow) => {
@@ -67,9 +67,6 @@ export function SourcesTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -80,7 +77,7 @@ export function SourcesTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

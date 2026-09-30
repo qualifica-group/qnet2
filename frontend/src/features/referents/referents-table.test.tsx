@@ -126,12 +126,12 @@ describe('ReferentsTable — navigation to the dedicated pages (AC-A1)', () => {
     expect(screen.getByText('location:/referents/7')).toBeInTheDocument()
   })
 
-  it('navigates to the edit page on the edit row action', async () => {
+  it('ignores the retired edit row action: editing starts from the detail page', async () => {
     renderPage()
 
     fireEvent.click(screen.getByRole('button', { name: 'row-edit' }))
 
-    expect(screen.getByText('location:/referents/7/edit')).toBeInTheDocument()
+    expect(screen.getByText('location:/referents')).toBeInTheDocument()
   })
 
   it('navigates to the create page from the New referent button', async () => {

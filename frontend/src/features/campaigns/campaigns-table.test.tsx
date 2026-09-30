@@ -206,10 +206,14 @@ describe('CampaignsTable — Sheet-based CRUD (AC-024)', () => {
     expect(await screen.findAllByText('Spring outreach')).not.toHaveLength(0)
   })
 
-  it('opens the edit sheet on the edit action', async () => {
+  it('ignores the retired edit row action and opens the edit sheet from the detail Edit button', async () => {
     renderTable()
 
     fireEvent.click(screen.getByText('trigger-edit'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('trigger-view'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
 
     expect(await screen.findByText('Edit campaign')).toBeInTheDocument()
   })
@@ -282,7 +286,8 @@ describe('CampaignsTable — mutation success closes the sheet and refreshes (AC
   it('closes the edit sheet on cancel without refreshing the grid', async () => {
     renderTable()
 
-    fireEvent.click(screen.getByText('trigger-edit'))
+    fireEvent.click(screen.getByText('trigger-view'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
     expect(await screen.findByText('Edit campaign')).toBeInTheDocument()
 
     fireEvent.click(await screen.findByText('stub-cancel'))

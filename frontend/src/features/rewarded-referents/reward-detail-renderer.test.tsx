@@ -71,7 +71,6 @@ vi.mock('@/features/modules/use-module-opener', () => ({
     openView: (row: TableRow) => openViewMock(domain, row),
     openCreate: vi.fn(),
     openCreateWith: vi.fn(),
-    openEdit: vi.fn(),
     openDuplicate: vi.fn(),
     sheet: null,
   }),

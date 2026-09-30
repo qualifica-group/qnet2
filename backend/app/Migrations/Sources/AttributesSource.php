@@ -85,7 +85,7 @@ class AttributesSource extends AbstractMigrationSource
         return [
             'items' => $this->exampleRecords(),
             'pagination' => [
-                'total' => 13,
+                'total' => 14,
                 'offset' => 0,
                 'limit' => (int) config('migrations.default_per_page', 50),
                 'total_pages' => 1,
@@ -94,7 +94,7 @@ class AttributesSource extends AbstractMigrationSource
     }
 
     /**
-     * One representative record per registered attribute type (13 in total),
+     * One representative record per registered attribute type (14 in total),
      * matching exactly the shape processRow()/AttributeService accept.
      *
      * @return array<int, array<string, mixed>>
@@ -127,6 +127,16 @@ class AttributesSource extends AbstractMigrationSource
             ['id' => 11, 'code' => 'contact_email', 'name' => 'Contact email', 'type' => 'email'],
             ['id' => 12, 'code' => 'website', 'name' => 'Website', 'type' => 'url'],
             ['id' => 13, 'code' => 'brand_color', 'name' => 'Brand color', 'type' => 'color'],
+            ['id' => 14, 'code' => 'inspections', 'name' => 'Inspections', 'type' => 'table',
+                'config' => [
+                    'columns' => [
+                        ['key' => 'inspection_date', 'label' => 'Date', 'type' => 'date', 'required' => true],
+                        ['key' => 'inspector', 'label' => 'Inspector', 'type' => 'text'],
+                    ],
+                    'selectable' => ['key' => 'active', 'label' => 'Active'],
+                    'summary' => ['column' => 'inspection_date', 'strategy' => 'selected'],
+                    'max_rows' => 50,
+                ]],
         ];
     }
 

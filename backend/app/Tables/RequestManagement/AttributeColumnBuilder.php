@@ -108,7 +108,7 @@ final class AttributeColumnBuilder
             'visible' => false,
             'sortable' => true,
             'filterable' => true,
-            'editable' => true,
+            'editable' => ! $this->isTable($attributeRow),
             'editableField' => self::EDITABLE_FIELD,
             'nullable' => true,
             'source' => 'attribute',
@@ -133,7 +133,7 @@ final class AttributeColumnBuilder
             'filterable' => true,
             'filterType' => $mapping['filterType'],
             'hasFilterValues' => true,
-            'editable' => $editable,
+            'editable' => $editable && ! $this->isTable($attributeRow),
             'options' => $this->optionsFor($attributeRow),
             'source' => 'attribute',
         ];
@@ -146,6 +146,10 @@ final class AttributeColumnBuilder
 
         if ($badges !== null) {
             $column['badges'] = $badges;
+        }
+
+        if ($mapping['type'] === 'table') {
+            $column['table'] = $attributeRow['config'] ?? [];
         }
 
         $relation = $this->relationFragment($attributeRow);
@@ -177,6 +181,7 @@ final class AttributeColumnBuilder
                 ? ['type' => 'tags', 'filterType' => 'set', 'editor' => 'multiselect']
                 : ['type' => 'text', 'filterType' => 'set', 'editor' => 'relation'],
             'date', 'datetime' => ['type' => 'datetime', 'filterType' => 'date', 'editor' => (string) $attributeRow['type']],
+            'table' => ['type' => 'table', 'filterType' => 'text', 'editor' => null],
             default => ['type' => 'text', 'filterType' => 'text', 'editor' => null],
         };
     }
@@ -214,6 +219,17 @@ final class AttributeColumnBuilder
         $resource = $attributeRow['relation_target']['for_select_resource'] ?? null;
 
         return is_string($resource) && $resource !== '' ? ['resource' => $resource] : null;
+    }
+
+    /**
+     * A table is edited from the form only (spec 0180): its grid cell is
+     * read-only, so the raw declaration also fails the cell-edit allow-list.
+     *
+     * @param  array<string, mixed>  $attributeRow
+     */
+    private function isTable(array $attributeRow): bool
+    {
+        return $attributeRow['type'] === 'table';
     }
 
     /**

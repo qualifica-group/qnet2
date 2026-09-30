@@ -23,7 +23,8 @@ use Illuminate\Support\Facades\Gate;
  * options resolved via UserService::assignableRoleNames($actor) (so a non
  * super-admin never sees `super-admin`), mapRow returning the same real fields
  * (never password/remember_token), and actionsFor calling UserPolicy
- * (view→view, update→edit, delete→delete; delete already forbids self-delete).
+ * (view→view, delete→delete; delete already forbids self-delete; no `edit`
+ * row action — editing starts from the detail page, user directive 2026-09-30).
  *
  * Only REAL columns of the `users` table are exposed (id, name, email, locale,
  * created_at) plus the derived `roles` field. `sortable`/`filterable` below are
@@ -248,10 +249,6 @@ class UsersTableDefinition extends AbstractTableDefinition
 
         if (Gate::forUser($actor)->allows('view', $row)) {
             $allowed[] = 'view';
-        }
-
-        if (Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = 'edit';
         }
 
         if (Gate::forUser($actor)->allows('delete', $row)) {

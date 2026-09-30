@@ -39,12 +39,32 @@ const guide: HelpGuide = {
             'Email',
             'URL',
             'Colore',
+            'Tabella',
           ],
         },
         {
           type: 'note',
           text: "Un Elenco di opzioni richiede almeno un'opzione, con valori tutti diversi; una Relazione richiede il modulo collegato.",
         },
+      ],
+    },
+    {
+      id: 'table-field',
+      title: 'Attributo di tipo Tabella',
+      blocks: [
+        { type: 'paragraph', text: 'Il tipo Tabella raccoglie più righe con le stesse colonne, ad esempio le verifiche ispettive di una commessa (data verifica, ispettore, supporto On/Off Site, fase Stage 1/Stage 2). Nel form dell\'attributo compare l\'editor Colonne.' },
+        {
+          type: 'list',
+          items: [
+            "Aggiungi le colonne (fino a 20), spostale su e giù o rimuovile. Per ognuna indica Etichetta, Chiave (proposta dall'etichetta: minuscole, numeri e trattini bassi; id è riservata), Tipo e se è Obbligatoria.",
+            'Tipi di colonna: Testo, Testo lungo, Intero, Decimale, Sì/No, Scelta (con opzioni Valore ed Etichetta), Data, Data e ora, Ora, Email, URL, Colore.',
+            'Selezione riga: aggiunge una colonna di selezione; in ogni record si può selezionare al massimo una riga.',
+            'Riepilogo in griglia: la colonna da mostrare negli elenchi e la strategia (Riga selezionata, Massimo, Minimo), oppure nessun riepilogo. Riga selezionata richiede la selezione riga.',
+            'Righe minime e massime (fino a 200).',
+          ],
+        },
+        { type: 'paragraph', text: 'Nel form del record (ad esempio la commessa) la tabella si compila con Aggiungi riga; su smartphone ogni riga è una scheda. Se l\'attributo è obbligatorio serve almeno una riga; gli errori compaiono sulla singola cella. Negli elenchi, se c\'è la selezione riga e una riga è selezionata, la cella mostra in linea i valori di quella riga (date nel formato locale, scelte con la loro etichetta, Sì/No con il nome della colonna); altrimenti mostra il riepilogo e il numero di righe (ad esempio "12/10/2026 · 3"). Senza righe la cella è vuota. Passando con il mouse o col focus da tastiera sulla cella compare un riquadro con la tabella completa, con la riga selezionata evidenziata. La colonna non è modificabile in griglia. Nel dettaglio la tabella è in sola lettura, con la riga selezionata evidenziata.' },
+        { type: 'note', text: "Le colonne si possono modificare anche con dati già inseriti: una colonna rimossa non viene più mostrata, mentre cambiare il tipo di una colonna non converte i valori già salvati." },
       ],
     },
     {

@@ -55,7 +55,7 @@ it('lists all registered types via has()/all()', function (): void {
         ->and($registry->has('unknown'))->toBeFalse()
         ->and($registry->all())->toBe([
             'text', 'textarea', 'integer', 'decimal', 'boolean', 'enum', 'relation',
-            'date', 'datetime', 'time', 'email', 'url', 'color',
+            'date', 'datetime', 'time', 'email', 'url', 'color', 'table',
         ]);
 });
 

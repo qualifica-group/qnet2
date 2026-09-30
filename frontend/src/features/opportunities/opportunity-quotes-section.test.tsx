@@ -24,7 +24,6 @@ vi.mock('@/features/auth/use-abilities', () => ({
 
 const openCreateWithMock = vi.fn()
 const openViewMock = vi.fn()
-const openEditMock = vi.fn()
 const useModuleOpenerMock = vi.fn()
 vi.mock('@/features/modules/use-module-opener', () => ({
   useModuleOpener: (...args: unknown[]) => {
@@ -33,7 +32,6 @@ vi.mock('@/features/modules/use-module-opener', () => ({
       openCreate: vi.fn(),
       openCreateWith: openCreateWithMock,
       openView: openViewMock,
-      openEdit: openEditMock,
       openDuplicate: vi.fn(),
       sheet: null,
     }
@@ -154,7 +152,6 @@ beforeEach(() => {
   canMock.mockReturnValue(true)
   openCreateWithMock.mockReset()
   openViewMock.mockReset()
-  openEditMock.mockReset()
   useModuleOpenerMock.mockReset()
   deleteQuoteMock.mockReset()
   toastSuccessMock.mockReset()
@@ -285,7 +282,8 @@ describe('OpportunityQuotesSection — row actions (AC-060/061/065)', () => {
   it('ignores an edit action key', () => {
     renderPanel(3)
     act(() => screen.getByRole('button', { name: 'edit row' }).click())
-    expect(openEditMock).not.toHaveBeenCalled()
+    expect(openViewMock).not.toHaveBeenCalled()
+    expect(openCreateWithMock).not.toHaveBeenCalled()
   })
 
   it('opens the activity dialog for the row, reusing ResourceActivityDialog(resource="quotes")', () => {

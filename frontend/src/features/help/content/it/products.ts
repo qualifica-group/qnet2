@@ -29,7 +29,7 @@ const guide: HelpGuide = {
             'Apri Prodotti › Prodotti.',
             'Scrivi nel campo Cerca… in alto nella tabella.',
             "Restringi l'elenco con i filtri sulle colonne: Categoria, Tipologia, Funzione aziendale o Utilizzo in offerta.",
-            'Dal menu Azioni della riga scegli Visualizza per vedere la scheda, oppure Modifica per cambiarla.',
+            'Dal menu Azioni della riga scegli Visualizza per vedere la scheda; per cambiarla premi Modifica nella scheda.',
           ],
         },
       ],
@@ -188,7 +188,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Per cambiare i dati usa Modifica. Per eliminare un prodotto scegli Elimina dal menu Azioni e conferma.',
+          text: 'Per cambiare i dati premi Modifica nella scheda. Per eliminare un prodotto scegli Elimina dal menu Azioni e conferma.',
         },
       ],
     },

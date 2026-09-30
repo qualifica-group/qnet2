@@ -82,7 +82,6 @@ export interface UseModuleOpenerResult {
   /** Opens the create form seeding the target module's form with `params` (spec 0045). */
   openCreateWith: (params: ModuleCreateParams) => void
   openView: (row: TableRow) => void
-  openEdit: (row: TableRow) => void
   /** Opens the create form pre-filled from `row` (row action "duplicate"): the source is still fetched fresh, submit still goes through the create path. */
   openDuplicate: (row: TableRow) => void
   /** The modal Sheet when the effective mode (resolved, or `forceMode` when set) is `'modal'`, `null` in `'page'` mode. Render it once, anywhere in the table adapter's tree. */
@@ -93,11 +92,12 @@ export interface UseModuleOpenerResult {
  * Domain-generic replacement for the `SheetState`/`navigate` pair every
  * `*-table.tsx` used to hard-code (spec 0042). Resolves the module's
  * effective open mode (`useModuleOpenMode`, overridable per call site via
- * `options.forceMode`, spec 0067 D-3) and instrades view/edit/create
+ * `options.forceMode`, spec 0067 D-3) and instrades view/create/duplicate
  * accordingly: `'modal'` mounts the registry's `DetailScreen`/`FormScreen`
  * inside an owned `<Sheet>` (AC-011/018, same `sheet-width:${domain}` layout
  * key as before); `'page'` navigates to the module's deep-link routes
- * (AC-011/019) and never mounts a Sheet.
+ * (AC-011/019) and never mounts a Sheet. Edit has no row-level entry (user
+ * directive 2026-09-30): it is reached only from the detail's own Edit button.
  */
 export function useModuleOpener(domain: string, options: UseModuleOpenerOptions = {}): UseModuleOpenerResult {
   const { t } = useTranslation()
@@ -147,17 +147,6 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
         setSheetState({ kind: 'view', row })
       } else {
         void navigate(`${basePath}/${row.id}`)
-      }
-    },
-    [mode, navigate, basePath],
-  )
-
-  const openEdit = useCallback(
-    (row: TableRow) => {
-      if (mode === OPEN_MODE_MODAL) {
-        setSheetState({ kind: 'edit', row })
-      } else {
-        void navigate(`${basePath}/${row.id}/edit`)
       }
     },
     [mode, navigate, basePath],
@@ -295,5 +284,5 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
       </Sheet>
     ) : null
 
-  return { openCreate, openCreateWith, openView, openEdit, openDuplicate, sheet }
+  return { openCreate, openCreateWith, openView, openDuplicate, sheet }
 }

@@ -133,14 +133,6 @@ final class RegistryColumnCatalog
                 'permission' => 'registries.view',
             ],
             [
-                'key' => 'edit',
-                'label' => 'actions.edit',
-                'icon' => 'pencil',
-                'type' => 'link',
-                'confirm' => false,
-                'permission' => 'registries.update',
-            ],
-            [
                 'key' => 'documents',
                 'label' => 'actions.documents',
                 'icon' => 'paperclip',

@@ -34,7 +34,8 @@ trait WritesAttributeCells
     public function editableColumnIds(User $actor): array
     {
         $ids = $this->inner->editableColumnIds($actor);
-        $attributes = $this->categoryAttributes();
+        // A table attribute is edited from the form only (spec 0180).
+        $attributes = $this->categoryAttributes()->reject(static fn (array $row): bool => $row['type'] === 'table');
 
         if ($attributes->isEmpty() || ! $this->attributeColumns->valuesEditable($actor, $this->inner->domain())) {
             return $ids;

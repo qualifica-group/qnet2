@@ -5,6 +5,7 @@ import { type Control, useWatch } from 'react-hook-form'
 import { FormSection } from '@/components/form-section'
 import { DynamicIcon } from '@/features/custom-fields/dynamic-icon'
 import { CUSTOM_FIELD_COMPONENT_REGISTRY } from '@/features/custom-fields/field-component-registry'
+import { buildTableConfig } from '@/features/custom-fields/field-definition-table'
 import type { FieldDefinitionFormValues } from '@/features/custom-fields/field-definition-form-values'
 import {
   type CustomFieldConfig,
@@ -39,6 +40,16 @@ function buildConfig(values: Partial<FieldDefinitionFormValues>): CustomFieldCon
   if (bag.transform) config.transform = bag.transform
   if (bag.display) config.display = bag.display as CustomFieldConfig['display']
   return config
+}
+
+/** Preview config of a `table`: only columns complete enough to render (key + label), so half-typed rows do not break the control. */
+function buildTablePreviewConfig(values: Partial<FieldDefinitionFormValues>): CustomFieldConfig {
+  const table = values.table
+  if (!table) {
+    return {}
+  }
+  const usable = table.columns.filter((column) => column?.key && column.label)
+  return buildTableConfig({ ...table, columns: usable, selectable_enabled: table.selectable_enabled && Boolean(table.selectable_key && table.selectable_label) })
 }
 
 /** Maps the form's enum option rows to runtime options, dropping incomplete rows. */
@@ -82,7 +93,7 @@ export function DefinitionFieldPreview<T extends FieldDefinitionFormValues>({
     help_text: values.help_text?.trim() || null,
     placeholder: values.placeholder?.trim() || null,
     icon: values.icon || null,
-    config: buildConfig(values),
+    config: type === 'table' ? buildTablePreviewConfig(values) : buildConfig(values),
     options: buildOptions(values),
     relation:
       type === 'relation'

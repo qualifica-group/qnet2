@@ -20,7 +20,7 @@ export function CommissionConfigurationsTable() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
   const refresh = useCallback(() => tableRef.current?.refresh(), [])
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener('commission-configurations', { onSaved: refresh })
+  const { openCreate, openView, sheet } = useModuleOpener('commission-configurations', { onSaved: refresh })
   const remove = useCallback(async (row: TableRow) => {
     setDeletingId(Number(row.id))
     try {
@@ -39,10 +39,9 @@ export function CommissionConfigurationsTable() {
   }, [refresh, t])
   const handleAction: RowActionHandler = useCallback((action: TableActionDefinition, row: TableRow) => {
     if (action.key === 'view') openView(row)
-    if (action.key === 'edit') openEdit(row)
     if (action.key === 'delete') void remove(row)
     if (action.key === 'activity') setActivityRow(row)
-  }, [openEdit, openView, remove])
+  }, [openView, remove])
   return (
     <div className="flex flex-1 flex-col gap-4">
       <PageHeader actions={<Can permission="commission-configurations.create"><Button onClick={openCreate}><Plus aria-hidden="true" />{t('commissionConfigurations.form.new')}</Button></Can>} />

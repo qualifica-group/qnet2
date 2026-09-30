@@ -56,7 +56,7 @@ export function UsersTable() {
     invalidateStats()
   }, [refreshGrid, invalidateStats])
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(USERS_DOMAIN, { onSaved })
+  const { openCreate, openView, sheet } = useModuleOpener(USERS_DOMAIN, { onSaved })
 
   const runDelete = useCallback(
     async (row: TableRow) => {
@@ -100,9 +100,6 @@ export function UsersTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -116,7 +113,7 @@ export function UsersTable() {
           break
       }
     },
-    [openView, openEdit, runDelete, runImpersonate],
+    [openView, runDelete, runImpersonate],
   )
 
   // Hide the delete action on the current user's own row (self-delete is

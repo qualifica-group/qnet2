@@ -31,7 +31,7 @@ const guide: HelpGuide = {
       title: 'Creating, editing and deleting',
       blocks: [
         { type: 'steps', items: ['Open **Configuration › Sectors** and press **New sector**.', 'Fill in **Name** and, if needed, **Parent sector**.', 'Press **Save**.'] },
-        { type: 'paragraph', text: 'On the list rows you find **View**, **Edit** and **Delete**, if your role allows it.' },
+        { type: 'paragraph', text: 'On the list rows you find **View** and **Delete**, if your role allows it. To edit, open the record with **View** and press **Edit**.' },
         { type: 'warning', text: 'A sector with sub-sectors cannot be deleted.' },
       ],
     },

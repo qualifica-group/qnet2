@@ -46,7 +46,7 @@ export function BusinessFunctionsTable() {
     invalidateStats()
   }, [refreshGrid, invalidateStats])
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(
+  const { openCreate, openView, sheet } = useModuleOpener(
     BUSINESS_FUNCTIONS_DOMAIN,
     { onSaved },
   )
@@ -79,9 +79,6 @@ export function BusinessFunctionsTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -92,7 +89,7 @@ export function BusinessFunctionsTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

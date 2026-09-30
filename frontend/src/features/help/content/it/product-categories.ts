@@ -77,7 +77,6 @@ const guide: HelpGuide = {
           headers: ['Azione sulla riga', 'Cosa fa'],
           rows: [
             ['Visualizza', 'Scheda in sola lettura, con regole, attributi, gestori account e anteprima del layout.'],
-            ['Modifica', 'Apre il form.'],
             ['Layout attributi', "Apre l'editor del layout."],
             ['Duplica', 'Apre il form di creazione già compilato con i dati della categoria (vedi Duplicare una categoria).'],
             ['Elimina', 'Elimina dopo conferma (vedi i vincoli più avanti).'],
@@ -383,7 +382,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Per spostare una categoria apri Modifica e cambia la Categoria padre (non puoi scegliere la categoria stessa né una sua discendente). Per spostarne molte:',
+          text: 'Per spostare una categoria aprila, premi Modifica e cambia la Categoria padre (non puoi scegliere la categoria stessa né una sua discendente). Per spostarne molte:',
         },
         {
           type: 'steps',

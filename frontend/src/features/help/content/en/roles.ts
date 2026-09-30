@@ -16,7 +16,7 @@ const guide: HelpGuide = {
       id: 'create-edit-role',
       title: 'Creating or editing a role',
       blocks: [
-        { type: 'steps', items: ['Open **Administration › Roles**.', 'Click **New role**, or choose **Edit** on a row.', 'In **Role details** type the **Name**. If you want, pick the users right away in **Members**.', 'In the **Permissions** section, choose what the role can do.', 'Click **Save**.'] },
+        { type: 'steps', items: ['Open **Administration › Roles**.', 'Click **New role**, or open a role with **View** and press **Edit**.', 'In **Role details** type the **Name**. If you want, pick the users right away in **Members**.', 'In the **Permissions** section, choose what the role can do.', 'Click **Save**.'] },
         {
           type: 'table',
           headers: ['Field', 'What to enter'],

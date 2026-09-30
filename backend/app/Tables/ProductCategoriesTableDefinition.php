@@ -241,10 +241,6 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
         }
 
         if (Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = 'edit';
-        }
-
-        if (Gate::forUser($actor)->allows('update', $row)) {
             $allowed[] = 'layout';
         }
 

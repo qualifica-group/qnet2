@@ -356,14 +356,6 @@ final class TaskColumnCatalog
                 'confirm' => false,
                 'permission' => 'tasks.view',
             ],
-            [
-                'key' => 'edit',
-                'label' => 'actions.edit',
-                'icon' => 'pencil',
-                'type' => 'link',
-                'confirm' => false,
-                'permission' => 'tasks.update',
-            ],
             // Spec 0156, D-4/D-5: opens the create form precompiled from the
             // row (no new endpoint — FE-only), gated the same as the form
             // itself (create + view the source row).

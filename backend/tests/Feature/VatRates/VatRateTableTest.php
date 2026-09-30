@@ -85,7 +85,7 @@ it('rows expose id/name/rate/created_at + per-row actions', function () {
     $row = collect($response->json('items'))->firstWhere('name', 'IVA 22%');
 
     expect($row)->not->toBeNull()
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete']);
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete']);
 });
 
 it('422 on the values endpoint when columnId is not filterable', function () {

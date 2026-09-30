@@ -65,11 +65,10 @@ function LocationProbe() {
 }
 
 function Harness() {
-  const { openCreate, openCreateWith, openView, openEdit, sheet } = useModuleOpener('projects')
+  const { openCreate, openCreateWith, openView, sheet } = useModuleOpener('projects')
   return (
     <div>
       <button onClick={() => openView({ id: 5 } as TableRow)}>view</button>
-      <button onClick={() => openEdit({ id: 7 } as TableRow)}>edit</button>
       <button onClick={() => openCreate()}>create</button>
       {/*
         Passed straight to `onClick`, exactly as the 24 production call sites do
@@ -99,16 +98,15 @@ function renderHarness() {
 
 /**
  * spec 0067 D-3/AC-060: the panel forces `forceMode: 'modal'` regardless of
- * the resolved mode, so `create`/`view`/`edit` never navigate.
+ * the resolved mode, so `create`/`view` (and the detail's edit) never navigate.
  */
 function ForcedHarness() {
-  const { openCreate, openCreateWith, openView, openEdit, sheet } = useModuleOpener('projects', {
+  const { openCreate, openCreateWith, openView, sheet } = useModuleOpener('projects', {
     forceMode: 'modal',
   })
   return (
     <div>
       <button onClick={() => openView({ id: 5 } as TableRow)}>view</button>
-      <button onClick={() => openEdit({ id: 7 } as TableRow)}>edit</button>
       <button onClick={() => openCreate()}>create</button>
       <button onClick={() => openCreateWith({ opportunity_id: 3 })}>create-with-params</button>
       {sheet}
@@ -130,10 +128,10 @@ function renderForcedHarness() {
 
 /** spec 0126 D-8/AC-015: `viewAfterCreate` swaps the panel to the saved id's view instead of closing it. */
 function ViewAfterCreateHarness() {
-  const { openCreate, openEdit, sheet } = useModuleOpener('projects', { viewAfterCreate: true })
+  const { openCreate, openView, sheet } = useModuleOpener('projects', { viewAfterCreate: true })
   return (
     <div>
-      <button onClick={() => openEdit({ id: 7 } as TableRow)}>edit</button>
+      <button onClick={() => openView({ id: 7 } as TableRow)}>view</button>
       <button onClick={() => openCreate()}>create</button>
       {sheet}
       <LocationProbe />
@@ -173,7 +171,7 @@ describe('useModuleOpener', () => {
       currentMode = 'page'
     })
 
-    it('AC-019: view/edit/create navigate to the deep-link routes and mount no Sheet', () => {
+    it('AC-019: view/create navigate to the deep-link routes and mount no Sheet', () => {
       renderHarness()
 
       // No Sheet is returned in page mode.
@@ -181,9 +179,6 @@ describe('useModuleOpener', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'view' }))
       expect(screen.getByTestId('location')).toHaveTextContent('/projects/5')
-
-      fireEvent.click(screen.getByRole('button', { name: 'edit' }))
-      expect(screen.getByTestId('location')).toHaveTextContent('/projects/7/edit')
 
       fireEvent.click(screen.getByRole('button', { name: 'create' }))
       expect(screen.getByTestId('location')).toHaveTextContent('/projects/new')
@@ -248,13 +243,12 @@ describe('useModuleOpener', () => {
       fireEvent.click(screen.getByRole('button', { name: 'view' }))
       expect(screen.getByRole('button', { name: 'Open detail page' })).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
-      fireEvent.click(screen.getByRole('button', { name: 'edit' }))
+      fireEvent.click(screen.getByRole('button', { name: 'detail-edit' }))
       fireEvent.click(screen.getByRole('button', { name: 'Open detail page' }))
 
       // The harness stays mounted across the navigation, like a detail page
       // reused for another id: the link itself must close the Sheet.
-      expect(screen.getByTestId('location')).toHaveTextContent('/projects/7')
+      expect(screen.getByTestId('location')).toHaveTextContent('/projects/5')
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
@@ -340,10 +334,11 @@ describe('useModuleOpener', () => {
       expect(screen.getByTestId('location')).toHaveTextContent('/projects')
     })
 
-    it('edit opens the Sheet and never navigates, even though the resolved mode is page', () => {
+    it("the detail's edit swaps the Sheet to the form and never navigates, even though the resolved mode is page", () => {
       renderForcedHarness()
 
-      fireEvent.click(screen.getByRole('button', { name: 'edit' }))
+      fireEvent.click(screen.getByRole('button', { name: 'view' }))
+      fireEvent.click(screen.getByRole('button', { name: 'detail-edit' }))
 
       expect(screen.getByText('form-edit')).toBeInTheDocument()
       expect(screen.getByTestId('location')).toHaveTextContent('/projects')
@@ -399,7 +394,8 @@ describe('useModuleOpener', () => {
     it('AC-015: modal mode, saving an edit still closes the panel (viewAfterCreate only applies to create)', () => {
       renderViewAfterCreateHarness()
 
-      fireEvent.click(screen.getByRole('button', { name: 'edit' }))
+      fireEvent.click(screen.getByRole('button', { name: 'view' }))
+      fireEvent.click(screen.getByRole('button', { name: 'detail-edit' }))
       expect(screen.getByText('form-edit')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'save' }))

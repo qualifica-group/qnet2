@@ -148,7 +148,7 @@ it('rows: view/edit/delete/activity actions present only with the matching permi
     $response = $this->postJson('/api/tables/payment-methods/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
     $row = collect($response->json('items'))->firstWhere('name', 'Full Actions');
 
-    expect($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete', 'activity']);
+    expect($row['actions'])->toEqualCanonicalizing(['view', 'delete', 'activity']);
 });
 
 it('rows: an actor with only viewAny sees no row actions (AC-054)', function () {

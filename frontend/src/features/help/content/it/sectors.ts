@@ -31,7 +31,7 @@ const guide: HelpGuide = {
       title: 'Creare, modificare ed eliminare',
       blocks: [
         { type: 'steps', items: ['Apri **Configurazione › Settori** e premi **Nuovo settore**.', 'Compila **Nome** e, se serve, **Settore padre**.', 'Premi **Salva**.'] },
-        { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza**, **Modifica** ed **Elimina**, se il tuo ruolo lo consente.' },
+        { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza** ed **Elimina**, se il tuo ruolo lo consente. Per modificare apri la scheda con **Visualizza** e premi **Modifica**.' },
         { type: 'warning', text: 'Un settore con sotto-settori non si può eliminare.' },
       ],
     },

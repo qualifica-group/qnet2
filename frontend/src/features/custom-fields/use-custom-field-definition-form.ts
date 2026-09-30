@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { applyTableConfigServerErrors } from '@/features/custom-fields/table-definition-errors'
 import {
   createCustomFieldDefinition,
   updateCustomFieldDefinition,
@@ -163,6 +164,7 @@ export function useCustomFieldDefinitionForm({ mode, onSuccess }: UseCustomField
       toast.success(t('customFields.form.created'))
       onSuccess(created)
     } catch (error) {
+      applyTableConfigServerErrors(error, form.setError)
       if (!applyServerValidationErrors(error, form.setError, [...SERVER_ERROR_FIELDS])) {
         setServerError(t('customFields.form.genericError'))
       }

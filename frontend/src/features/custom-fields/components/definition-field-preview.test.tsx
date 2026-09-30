@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { useForm } from 'react-hook-form'
 import i18n from '@/i18n'
 import { DefinitionFieldPreview } from '@/features/custom-fields/components/definition-field-preview'
+import { emptyTableDefinition } from '@/features/custom-fields/field-definition-table'
 import type { CustomFieldDefinitionFormValues } from '@/features/custom-fields/custom-field-definition-schema'
 
 /** Minimal create-shape defaults, overlaid per test. */
@@ -48,6 +49,7 @@ function baseValues(
     },
     relation_target: { entity_type: '', cardinality: 'one', for_select_resource: '' },
     options: [],
+    table: emptyTableDefinition(),
     ...overrides,
   }
 }

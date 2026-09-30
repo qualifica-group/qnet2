@@ -259,14 +259,6 @@ final class ContractColumnCatalog
                 'permission' => 'contracts.view',
             ],
             [
-                'key' => 'edit',
-                'label' => 'actions.edit',
-                'icon' => 'pencil',
-                'type' => 'link',
-                'confirm' => false,
-                'permission' => 'contracts.update',
-            ],
-            [
                 'key' => 'validate',
                 'label' => 'contracts.actions.validate',
                 'icon' => 'check-circle',

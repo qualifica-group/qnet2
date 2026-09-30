@@ -42,7 +42,7 @@ export function VatRatesTable() {
     refreshGrid()
   }, [refreshGrid])
 
-  const { openCreate, openView, openEdit, sheet } = useModuleOpener(VAT_RATES_DOMAIN, { onSaved })
+  const { openCreate, openView, sheet } = useModuleOpener(VAT_RATES_DOMAIN, { onSaved })
 
   const runDelete = useCallback(
     async (row: TableRow) => {
@@ -69,9 +69,6 @@ export function VatRatesTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'delete':
           void runDelete(row)
           break
@@ -82,7 +79,7 @@ export function VatRatesTable() {
           break
       }
     },
-    [openView, openEdit, runDelete],
+    [openView, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

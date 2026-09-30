@@ -159,10 +159,14 @@ describe('SectorsTable — adapter (AC-020)', () => {
     expect(await screen.findAllByText('Applications')).not.toHaveLength(0)
   })
 
-  it('opens the edit sheet on the edit action', async () => {
+  it('ignores the retired edit row action and opens the edit sheet from the detail Edit button', async () => {
     renderTable()
 
     fireEvent.click(screen.getByText('trigger-edit'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('trigger-view'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
 
     expect(await screen.findByText('Edit sector')).toBeInTheDocument()
   })

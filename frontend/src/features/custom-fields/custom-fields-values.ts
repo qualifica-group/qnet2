@@ -1,4 +1,5 @@
-import type { CustomFieldValue } from '@/features/custom-fields/types'
+import { isTableFieldValue, readRows } from '@/features/custom-fields/table-field-model'
+import type { CustomFieldValue, TableFieldRow } from '@/features/custom-fields/types'
 
 /**
  * Value-level helpers shared by the dynamic schema and the payload builders
@@ -17,11 +18,29 @@ export function isEmptyCustomFieldValue(value: unknown): boolean {
   if (Array.isArray(value)) {
     return value.length === 0
   }
+  if (isTableFieldValue(value)) {
+    return !Array.isArray(value.rows) || value.rows.length === 0
+  }
   return false
 }
 
-/** Order-independent equality for arrays (enum multiselect / relation many), strict for scalars. */
+/** Row order is significant; `summary` is server-computed so it never counts as a change. */
+function isEqualTableRows(a: TableFieldRow[], b: TableFieldRow[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((row, index) => {
+      const other = b[index]
+      const keys = new Set([...Object.keys(row), ...Object.keys(other)])
+      return [...keys].every((key) => (row[key] ?? null) === (other[key] ?? null))
+    })
+  )
+}
+
+/** Order-independent equality for arrays (enum multiselect / relation many), deep and order-sensitive for tables, strict for scalars. */
 export function isEqualCustomFieldValue(a: CustomFieldValue, b: CustomFieldValue): boolean {
+  if (isTableFieldValue(a) || isTableFieldValue(b)) {
+    return isEqualTableRows(readRows(a), readRows(b))
+  }
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) {
       return false

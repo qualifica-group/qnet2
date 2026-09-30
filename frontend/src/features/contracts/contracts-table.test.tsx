@@ -25,7 +25,6 @@ vi.mock('@/features/modules/use-module-opener', () => ({
     openCreate: vi.fn(),
     openCreateWith: vi.fn(),
     openView: openViewMock,
-    openEdit: vi.fn(),
     openDuplicate: vi.fn(),
     sheet: null,
   }),
@@ -49,7 +48,7 @@ const VALIDATE_ACTION: TableActionDefinition = {
 
 const ROW: TableRow = {
   id: 7,
-  actions: ['view', 'activity', 'validate', 'program', 'terminate', 'reactivate', 'edit', 'change_status'],
+  actions: ['view', 'activity', 'validate', 'program', 'terminate', 'reactivate', 'change_status'],
   title: 'Contratto Acme',
   code: 'QUO-0007',
 }

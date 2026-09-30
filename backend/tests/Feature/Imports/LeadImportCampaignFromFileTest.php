@@ -151,9 +151,21 @@ it('AC-003: configure with a mapped campaign_code and no global campaign_id stag
 
     $this->putJson("/api/imports/leads/{$run->id}/configure", [
         'column_mapping' => campaignFileMapping(),
-        'global_config' => [],
+        'global_config' => ['source_id' => Source::factory()->create()->id],
         'dedup_strategy' => 'create_new',
     ])->assertOk()->assertJsonPath('data.import_run.status', 'staging');
+});
+
+it('configure with a mapped campaign_code still requires the run-wide source', function () {
+    $actor = campaignFileImportActor();
+    $run = campaignFileRun($actor);
+    Sanctum::actingAs($actor);
+
+    $this->putJson("/api/imports/leads/{$run->id}/configure", [
+        'column_mapping' => campaignFileMapping(),
+        'global_config' => [],
+        'dedup_strategy' => 'create_new',
+    ])->assertStatus(422)->assertJsonValidationErrors('global_config.source_id');
 });
 
 it('AC-004: configure with BOTH a mapped campaign_code and a global campaign_id is 422', function () {

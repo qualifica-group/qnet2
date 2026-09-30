@@ -155,7 +155,7 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
     {
         $allowed = [];
 
-        foreach (['view' => 'view', 'update' => 'edit', 'delete' => 'delete', 'viewActivity' => 'activity'] as $ability => $action) {
+        foreach (['view' => 'view', 'delete' => 'delete', 'viewActivity' => 'activity'] as $ability => $action) {
             if (Gate::forUser($actor)->allows($ability, $row)) {
                 $allowed[] = $action;
             }

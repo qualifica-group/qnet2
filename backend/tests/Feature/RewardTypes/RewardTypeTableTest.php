@@ -158,7 +158,7 @@ it('rows: view/edit/delete/viewActivity actions present only with the matching p
     $response = $this->postJson('/api/tables/reward-types/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
     $row = collect($response->json('items'))->firstWhere('name', 'Buono Amazon');
 
-    expect($row['actions'])->toEqualCanonicalizing(['view', 'edit', 'delete', 'activity']);
+    expect($row['actions'])->toEqualCanonicalizing(['view', 'delete', 'activity']);
 });
 
 it('rows: no action present when the actor holds no permission (AC-011)', function () {

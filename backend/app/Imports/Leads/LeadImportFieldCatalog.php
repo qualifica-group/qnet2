@@ -61,11 +61,14 @@ final class LeadImportFieldCatalog
      * CampaignRecognizer and a global value is rejected outright — the two
      * modes are mutually exclusive, never a silent fallback.
      *
+     * `source_id` is required in BOTH campaign modes: the operator picks the
+     * Fonte at upload time, and it wins over the one each campaign carries.
+     *
      * @var array<int, array{id: string, required: bool, for_select_resource: string, multiple?: bool, depends_on?: string, required_unless_mapped?: string}>
      */
     private const array GLOBAL_FIELDS = [
         ['id' => 'campaign_id', 'required' => true, 'for_select_resource' => 'campaigns', 'required_unless_mapped' => 'campaign_code'],
-        ['id' => 'source_id', 'required' => false, 'for_select_resource' => 'sources'],
+        ['id' => 'source_id', 'required' => true, 'for_select_resource' => 'sources'],
         ['id' => 'product_ids', 'required' => false, 'for_select_resource' => 'products', 'multiple' => true, 'depends_on' => 'campaign_id'],
     ];
 

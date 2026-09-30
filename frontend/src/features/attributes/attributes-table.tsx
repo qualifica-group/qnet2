@@ -42,7 +42,7 @@ export function AttributesTable() {
     refreshGrid()
   }, [refreshGrid])
 
-  const { openCreate, openView, openEdit, openDuplicate, sheet } = useModuleOpener(ATTRIBUTES_DOMAIN, { onSaved })
+  const { openCreate, openView, openDuplicate, sheet } = useModuleOpener(ATTRIBUTES_DOMAIN, { onSaved })
 
   const runDelete = useCallback(
     async (row: TableRow) => {
@@ -73,9 +73,6 @@ export function AttributesTable() {
         case 'view':
           openView(row)
           break
-        case 'edit':
-          openEdit(row)
-          break
         case 'duplicate':
           openDuplicate(row)
           break
@@ -89,7 +86,7 @@ export function AttributesTable() {
           break
       }
     },
-    [openView, openEdit, openDuplicate, runDelete],
+    [openView, openDuplicate, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])

@@ -9,6 +9,10 @@ import {
   validateRelationTarget,
   type FieldDefinitionSchemaMessages,
 } from '@/features/custom-fields/field-definition-schema'
+import {
+  fieldDefinitionTableFields,
+  validateTableDefinition,
+} from '@/features/custom-fields/field-definition-table-schema'
 
 /**
  * Zod schema for the custom field DEFINITION admin form (spec 0021 AC-025),
@@ -85,6 +89,7 @@ function baseFields(t: TFunction) {
     validation: validationFields(),
     relation_target: fieldDefinitionRelationTargetFields(),
     options: z.array(fieldDefinitionOptionFields(schemaMessages(t), LABEL_MAX_LENGTH)),
+    table: fieldDefinitionTableFields(),
   }
 }
 
@@ -97,6 +102,9 @@ export function buildCreateCustomFieldDefinitionSchema(t: TFunction) {
     }
     if (values.type === 'relation') {
       validateRelationTarget(values.relation_target, messages, ctx)
+    }
+    if (values.type === 'table') {
+      validateTableDefinition(values.table, t, ctx)
     }
   })
 }

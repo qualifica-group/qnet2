@@ -92,10 +92,12 @@ return [
     | ImportDefinition classes.
     */
     'column_aliases' => [
-        'full_name' => ['nome completo', 'full name', 'nominativo'],
-        'first_name' => ['nome', 'first name'],
+        // "Nome" alone carries the whole name; next to a "Cognome" column it
+        // is re-targeted to `first_name` by `contextual_aliases` below.
+        'full_name' => ['nome completo', 'full name', 'nominativo', 'nome'],
+        'first_name' => ['first name'],
         'last_name' => ['cognome', 'last name'],
-        'email' => ['e mail', 'indirizzo email'],
+        'email' => ['e mail', 'indirizzo email', 'indirizzo e mail'],
         // Spec 0139: one telephone field — a "cellulare" column maps here too.
         'phone' => ['telefono', 'tel', 'cellulare', 'cell'],
         'company_name' => ['ragione sociale', 'azienda', 'company'],
@@ -112,6 +114,20 @@ return [
         // its name — "campagna" is an alias of the code column on purpose,
         // a file holding names there produces motivated per-row errors.
         'campaign_code' => ['codice campagna', 'campagna', 'campaign code', 'cod campagna'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Contextual column aliases (App\Imports\Support\ColumnMapper)
+    |--------------------------------------------------------------------------
+    |
+    | Header variants whose meaning depends on the rest of the file: field id
+    | => the sibling field that must ALSO be matched, and the aliases that
+    | then move to this field instead of their `column_aliases` target.
+    | "Nome" is the full name on its own, the given name beside "Cognome".
+    */
+    'contextual_aliases' => [
+        'first_name' => ['when_matched' => 'last_name', 'aliases' => ['nome']],
     ],
 
 ];

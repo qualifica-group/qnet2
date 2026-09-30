@@ -13,6 +13,7 @@ import type { ColDef, EditableCallbackParams, ICellRendererParams } from 'ag-gri
 import appI18n from '@/i18n'
 import { resolveCellEditorSpec, type CellEditorKind } from '@/components/data-table/cell-editor-registry'
 import { formatBadgeFilterValue, formatBooleanFilterValue } from '@/components/data-table/column-filters'
+import { TableSummaryCell } from '@/components/data-table/table-summary-cell'
 import { RelationIdCell } from '@/components/data-table/relation-id-cell'
 import { BadgeCell } from '@/features/table/cell-renderers'
 import { formatDateTimeOptionalTime } from '@/lib/formatting/date-display'
@@ -133,6 +134,9 @@ export function resolveCellRenderer(
     return (params: ICellRendererParams) => (
       <BadgeCell {...params} badges={column.badges} enumKey={column.enumKey} />
     )
+  }
+  if (isDynamicColumn(column) && column.type === 'table') {
+    return (params: ICellRendererParams) => <TableSummaryCell {...params} table={column.table} />
   }
   const relationResource = dynamicRelationResource(column)
   return relationResource

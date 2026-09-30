@@ -3,6 +3,7 @@ import type {
   CustomFieldOptionInput,
   CustomFieldRelationTarget,
 } from '@/features/custom-fields/types'
+import { buildTableConfig } from '@/features/custom-fields/field-definition-table'
 import type { FieldDefinitionFormValues } from '@/features/custom-fields/field-definition-form-values'
 
 /**
@@ -24,7 +25,7 @@ function omitEmpty<T extends Record<string, unknown>>(input: T): Partial<T> | un
 }
 
 export function buildFieldDefinitionConfig(
-  values: Pick<FieldDefinitionFormValues, 'type' | 'config'>,
+  values: Pick<FieldDefinitionFormValues, 'type' | 'config' | 'table'>,
 ): CustomFieldConfig | undefined {
   const config = values.config
   switch (values.type) {
@@ -49,6 +50,8 @@ export function buildFieldDefinitionConfig(
     case 'enum':
       // The form types `display` loosely as string; narrow to the config union.
       return omitEmpty({ display: config.display as CustomFieldConfig['display'] })
+    case 'table':
+      return buildTableConfig(values.table)
     default:
       return undefined
   }

@@ -284,14 +284,6 @@ final class ProductCategoryColumnCatalog
                 'permission' => 'product-categories.view',
             ],
             [
-                'key' => 'edit',
-                'label' => 'actions.edit',
-                'icon' => 'pencil',
-                'type' => 'link',
-                'confirm' => false,
-                'permission' => 'product-categories.update',
-            ],
-            [
                 'key' => 'layout',
                 'label' => 'actions.layout',
                 'icon' => 'layout-grid',
