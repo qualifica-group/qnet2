@@ -521,3 +521,55 @@ it('spec 0182 E-10: an adopted category takes the quote/work-order flags too', f
         ->and($adopted->inherits_quote_attributes)->toBeFalse()
         ->and($adopted->inherits_work_order_attributes)->toBeFalse();
 });
+
+it('spec 0183 F-6: adopting a category closes the quote/work-order barriers of its manual children only', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [
+                ['id' => 70, 'name' => 'APL', 'parent_id' => null, 'inherits_attributes' => true],
+                ['id' => 71, 'name' => 'Legacy child', 'parent_id' => 70, 'inherits_attributes' => true],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+    $apl = ProductCategory::factory()->create(['name' => 'APL', 'parent_id' => null]);
+    $manual = ProductCategory::factory()->create([
+        'name' => 'Orientamento Specialistico', 'parent_id' => $apl->id,
+        'inherits_product_attributes' => true, 'inherits_quote_attributes' => true, 'inherits_work_order_attributes' => true,
+    ]);
+
+    foreach ([1, 2] as $pass) {
+        $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'product-categories']);
+        runMigrationJobFor($run);
+
+        $manual->refresh();
+        expect($manual->inherits_product_attributes)->toBeTrue()
+            ->and($manual->inherits_quote_attributes)->toBeFalse()
+            ->and($manual->inherits_work_order_attributes)->toBeFalse();
+    }
+
+    $legacyChild = ProductCategory::query()->where('old_id', 71)->first();
+    expect($legacyChild->parent_id)->toBe($apl->id)
+        ->and($legacyChild->inherits_quote_attributes)->toBeTrue()
+        ->and($legacyChild->inherits_work_order_attributes)->toBeTrue();
+});
+
+it('spec 0183 F-9: a record whose parent_id is its own id is imported as a root, idempotently', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [['id' => 2, 'name' => 'SOA', 'parent_id' => 2, 'inherits_attributes' => true]],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    foreach ([1, 2] as $pass) {
+        $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'product-categories']);
+        runMigrationJobFor($run);
+    }
+
+    expect(ProductCategory::query()->where('name', 'SOA')->count())->toBe(1)
+        ->and(ProductCategory::query()->where('old_id', 2)->first()->parent_id)->toBeNull()
+        ->and(json_encode($run->fresh()->report))->not->toContain('detached');
+});

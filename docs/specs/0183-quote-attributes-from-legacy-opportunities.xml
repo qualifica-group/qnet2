@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0183-quote-attributes-from-legacy-opportunities" status="approved" owner="utente" date="2026-09-30">
+
+  <goal>
+    Dopo l'import dal legacy, ogni categoria prodotto ha nel contesto OFFERTA esattamente i campi che la pagina
+    opportunita' legacy mostra nelle "Info preliminari" per le card dei suoi prodotti, con le etichette/opzioni della
+    pagina e disposti nelle stesse sezioni; i campi e i layout scritti a mano del ramo Formazione restano intatti.
+  </goal>
+
+  <context>
+    - Legacy (`/Users/Repository/qnet`): pagina `opportunities/detail.blade.php` (`Livewire/Opportunities/Detail.php`
+      `checkInfoPreliminari()`), blocchi per card in `Livewire/PreliminaryInfo/*` + `views/livewire/preliminary-info/*`
+      (tabelle `pre_info_*`). Export: `Support/Migration/MigrationAttributeCards::quoteAttributes()`, dizionario
+      `Api/V2/AttributeMigrationController` + `Support/Migration/Attributes/*`, layout
+      `Api/V2/AttributeLayoutMigrationController` + `Support/Migration/{MigrationAttributeLayouts,MigrationLayoutSections}`
+      (oggi SOLO contesto work_order).
+    - qnet-2: Offerta risolta da `App\Quotes\QuoteAttributeResolver` (categorie delle righe offerta) +
+      `AttributeLayoutMerger`; form `features/quotes/quote-dynamic-fields-section.tsx`. `AttributeLayoutsSource` accetta
+      gia' context `quote`. Seeder manuali che girano PRIMA dell'import (`QualificaProductionDataSeeder`):
+      `QualificaCatalogSeeder` (CATALOG_QUOTE_ATTRIBUTES), `QualificaContactProcessingSeeder`, `QualificaQuoteLayoutSeeder`
+      (layout quote del ramo Formazione, categorie senza old_id). `AttributesSource` adotta per code senza sovrascrivere;
+      `ProductCategoriesSource` adotta per nome (es. "APL" manuale da legacy 68 con figlie R&amp;S/PAL/Tirocini/Formazione
+      Apprendistato, accanto alla figlia manuale "Orientamento Specialistico").
+    - Stato attuale verificato (e2e 0182 + DB dev): link quote per card gia' dai soli prodotti propri; NESSUN layout quote
+      dal legacy (Offerte piatte, es. Ente_Iso 44 campi senza sezioni); ISO sedi appiattite in 5 campi singoli; mancano
+      campi di R&amp;S, Partnership, Progetti; `degree` R&amp;S adotta l'enum manuale della Formazione; "Orientamento
+      Specialistico" (manuale) eredita i 19 campi R&amp;S da APL adottato.
+    - Decisioni utente (2026-09-30): F-1 le "Note" libere delle info preliminari NON si importano (card 1, 4, 8, 9, 10,
+      11 restano senza campi Offerta; nessuna "Note" su SOA, Avvalimenti, GDPR, Gare, Partnership); F-2 gruppi ISO
+      assegnati per categoria-norma; F-3 la card 16 Formazione GOL NON viene importata nel contesto Offerta; F-4 i campi
+      e i layout manuali (ramo Formazione, codici adottati) NON vengono toccati.
+    - Decisioni del lead approvate dall'utente (2026-09-30): F-5 R&amp;S usa un proprio codice `res_degree`
+      "Titolo di Studio" (text) al posto di `degree` (che resta il campo manuale della Formazione); F-6 quando
+      `ProductCategoriesSource` adotta per nome una categoria manuale, le sue figlie manuali (senza old_id) ricevono
+      `inherits_quote_attributes=false` e `inherits_work_order_attributes=false`, cosi' mantengono esattamente i campi che
+      avevano prima dell'import (Orientamento Specialistico non eredita R&amp;S/PAL); F-7 fuori scope: allegati/file
+      (ISO "Allegati", GDPR visura/check list), anagrafica della persona (card 16), dati Formalab in sola lettura;
+      F-8 i dati indirizzo della tabella sedi ISO (Indirizzo, Cap, Citta', Provincia) diventano colonne di testo della
+      tabella (nel legacy vengono dall'anagrafica cliente: il valore andra' ricostruito nella migrazione valori);
+      F-9 bug trovato: le categorie legacy con parent_id uguale al proprio id (2 "SOA", 7 "AVVALIMENTI", 8) vengono
+      importate come radici (parent null), non con un ciclo su se stesse.
+      F-10 (decisione utente 2026-09-30): ordine delle sezioni come nel legacy anche quando un'Offerta/Commessa unisce
+      piu' categorie. Il legacy esporta `sort_order` canonici e confrontabili tra categorie: card*100 + posizione*10
+      (ISO Offerta: certificazione 200, organizzazione 210, grp1..grp6 220..270, consulenza 280; stessa regola per le
+      altre card e per la Commessa; "Dati contrattuali" 9990). `AttributeLayoutsSource` salva i layout importati con
+      `canonical_order: true`; `AttributeLayoutMerger` ordina le sezioni unite per sort_order (stabile) SOLO se tutti i layout
+      coinvolti hanno `canonical_order: true`, altrimenti concatena come prima (i layout manuali, numerati 0..n per
+      categoria, non si mescolano); un salvataggio del layout dall'editor (API) rimuove il flag; "Altre informazioni"
+      resta ultima. [rev. 2 dopo verifica: l'ordinamento incondizionato mescolava le sezioni dei layout manuali Formazione]
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy dizionario (contesto Offerta): etichette e tipi della pagina per ISO, SOA, Avvalimenti, GDPR, R&amp;S, Gare, Partnership, Progetti, Istruzione; ISO tabella sedi `pre_info_iso_addresses`; R&amp;S `descrizione_azienda`, `res_degree`; Partnership i campi mancanti mostrati; Progetti `responsabile_progetto`, `note_stato`, tabella `pre_info_progetti_ruoli`. Nuovi attributi in coda, nessun id esistente spostato.</item>
+      <item>Legacy `quoteAttributes()`: esattamente i campi della pagina per card; ISO: campi generali + tabella sedi + consulenza + SOLO i gruppi della norma della categoria (F-2); card 16 senza link quote (F-3); card 1, 4, 8-11 senza link quote (F-1).</item>
+      <item>Legacy `attribute-layouts`: anche voci `context:"quote"` (id `CATEGORIA-quote-all`) per le categorie con prodotti propri che hanno campi Offerta, sezioni per card come da contratto.</item>
+      <item>qnet-2 `ProductCategoriesSource`: F-6 nel path di adozione e F-9 (parent su se stessa = radice); test.</item>
+      <item>E2E su DB temporaneo CON i seeder manuali eseguiti prima dell'import (scenario production seeder): Offerta = contratto sulle categorie legacy; ramo Formazione, codici manuali e "Orientamento Specialistico" identici a prima dell'import.</item>
+      <item>Guida in-app `migrations` IT/EN e manuale aggiornati.</item>
+    </in>
+    <out>
+      <item>Valori delle offerte/opportunita' (`pre_info_*` -> `quotes.attribute_values`).</item>
+      <item>F-1 note, F-3 card 16, F-7 file/anagrafica/Formalab; modifiche ai seeder manuali (F-4).</item>
+      <item>Pulizia dei link gia' importati su un DB esistente (import additivo).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <shape name="ISO (card 2) - campi e gruppi">
+      Generali ("Informazioni relativa alla certificazione"): application_filed "Campo di applicazione" textarea; active_order
+      "N° cantieri/Commesse Attive" integer; oldente "Ente Vecchio" text; newente "Ente Richiesto Emissione" text;
+      data_endcertificate "Data Scadenza Certificato" date; data_firstaudit "Data I° Audit" date; data_requestemission
+      "Data Emissione Richiesta Entro" date; urgent "Urgente" enum radio 1=Si,0=No; note_emission "Note Motivazione Emissione"
+      textarea; application_field_note "Note" text.
+      Organizzazione ("Dati organizzazione che richiede la certificazione"): legal_request_certification
+      "La sede legale è oggetto della certificazione?" enum radio 1=Si,0=No; NUOVO pre_info_iso_addresses "Sedi" table
+      {columns: indirizzo "Indirizzo" text, cap "Cap" text, citta "Città" text, provincia "Provincia" text, tipo_sede
+      "Tipo Sede" enum (1 Consegna, 2 Fatturazione, 3 Sede Operativa), request_certification "Cert. Richiesta" boolean,
+      performed_activities "Attività Svolte" text, employees_per_site "N. Add. per Siti" integer} (F-8).
+      I vecchi `province_id`, `sede_id`, `request_certification`, `performed_activities`, `employees_per_site` NON sono piu'
+      collegati all'Offerta.
+      Gruppi (etichette della pagina, senza suffissi "(grpN)"): grp1 "Info per standard 1090/9001/13549/14001/16636/27001/45001/ECOLABEL/EMAS/SA8000";
+      grp2 "Info per standard BRC/IFS/22000/22005"; grp3 "Info per standard 50001"; grp4 "Info per standard 37001";
+      grp5 "Info per standard 39001"; grp6 "Info per standard Parità di genere + 30415". Campi dei gruppi come oggi, con
+      etichette complete della pagina; grp2_surface_mq integer.
+      Consulenza ("Tipologia di consulenza richiesta"): certify_or_advice "Tipologia di consulenza" enum radio (1 Solo Certificato,
+      2 Consulenza di Gestione, 3 Certificato + Consulenza); assistance_in_verification "Affiancamento in Verifica" enum 1=Si,0=No;
+      num_gu_advice_init "N° G/U Consulenza Iniziale" integer; num_gu_advice_survillance "N° G/U Consulenza Sorveglianza" integer.
+      F-2 regola norma->gruppi (da `PreliminaryInfo/Iso.php:266-275`): la categoria il cui nome/descrizione identifica UNA
+      norma riceve i gruppi in cui la norma compare (9001, 14001, 45001, 27001, EMAS, Ecolabel, 1090, 16636 -> grp1;
+      SA8000, 13549 -> grp1+grp2; BRC, IFS, 22000, 22005 -> grp2; 50001 -> grp3; 37001 -> grp4; 39001 -> grp5;
+      30415 e UNI/PdR 125 (Parità di genere) -> grp6); [rev. 2, decisione utente 2026-09-30] le categorie generiche o multi-standard (ISO radice, Ente_Iso,
+      STANDARD MULTIPLI, PROGETTI-) ricevono tutti i gruppi; le categorie di una norma che non compare in nessun gruppo
+      legacy (es. 13485, 17025, 9100, Fgas, Marcatura CE, Ecovadis, D.lgs 231/01) non ricevono nessun gruppo. La tabella di corrispondenza categoria->gruppi
+      calcolata va riportata nel report del teammate legacy.
+    </shape>
+    <shape name="Altre card (contesto Offerta)">
+      - 3 SOA: servizio_soa "Servizio Soa", categoria_soa "Categorie Soa", classificazione "Elenco Classifica" (opzioni
+        invariate), note_lavorazione "Note Lavorazione" textarea, accordi_pagamento "Eventuali Accordi di Pagamento" textarea.
+      - 5 Avvalimenti: oggetto_gara "Oggetto Gara" text, recezione "Recezione" text, scadenza "Scadenza" date,
+        servizi_richiesti "Categoria o Servizi Richiesti" text, importo "Importo" text (invariati).
+      - 6 GDPR: numero_dipendenti "N° Dipendenti" integer, check_list "Check list compilata?" enum 1=Si,0=No,
+        attivita_prevalente "Attività Prevalente" text.
+      - 7 R&amp;S: NUOVO descrizione_azienda "Descrizione Sintetica Azienda" textarea; employees_number "Numero di Dipendenti";
+        professional_profile "Profilo Professionale"; number_workers_required "Numero Lavoratori Richiesti"; area
+        "Area/Dipartimento"; riporta "Riporta a"; position_responsability "Posizione, Responsabilità e Funzioni Principali"
+        textarea; NUOVO res_degree "Titolo di Studio" text (F-5, `degree` scollegato da R&amp;S); experience "Esperienza";
+        competences "Competenze Tecniche/Informatiche" textarea; minimum_age "Età Minima"; maximum_age "Età Massima";
+        contract_profile "Contratto di lavoro applicato (CCNL)"; employment_level "Livello di Inquadramento"; contract_type
+        "Tipologia del Contratto" (opzione 4 "Altro (specificare)"); contract_type_spec; salary "Retribuzione Mensile Lorda";
+        working_hours_text "Orari di Lavoro"; working_hours (opzione 4 "Trasferte (specificare regioni, giorni e indennità
+        prevista)"); working_hours_spec. Tipi esistenti invariati salvo dove la pagina li contraddice.
+      - 12 Gare: invariata (nome_albo, tempi_lavorazioni, busta_amministrativa, data_ricezione, data_scadenza,
+        categorie_mepa, sottocategorie_mepa).
+      - 13 Partnership: esistenti + NUOVI ps_user_id "Operatore" relation users one, ps_date_first_tel_call "T. 1° Chiamata"
+        date, ps_date_tel_recall "T. Richiamo" date, ps_partner "Partner (Cognome e Nome)" text, ps_email "Email" email,
+        ps_phone "Telefono" text, ps_regione "Regione" text, ps_citta "Città" text, ps_fonte "Fonte" text;
+        data_first_contact etichetta "Note Interesse".
+      - 14 Progetti: esistenti (title, description, 4 date, settore, tipo, obiettivi, status_progetto/step, strategie...)
+        + NUOVI responsabile_progetto "Responsabile Progetto" relation users one, note_stato "Note &amp; Stato" textarea,
+        pre_info_progetti_ruoli "Ruoli e Responsabilità" table {ruolo "Ruolo" text, utente "Utente" text, mansione
+        "Mansione" text}; `ruolo`, `mansione` singoli non piu' collegati.
+      - 15 Istruzione: invariata (persone, ds, dsga).
+      - 1, 4, 8, 9, 10, 11, 16, 17-19, 0: nessun link quote.
+    </shape>
+    <shape name="Layout Offerta (GET /api/v2/migration/attribute-layouts, voci context quote)">
+      Stessa shape della 0181 con `context:"quote"`, `form_mode:"all"`, id `CATEGORIA-quote-all`; una voce per categoria
+      con prodotti propri che ha almeno un campo Offerta. Sezioni per card in ordine di card ("a | b" riga di due half;
+      textarea e tabelle full):
+      - ISO: 1 "Informazioni relativa alla certificazione": application_filed; active_order | urgent; oldente | newente;
+        data_endcertificate | data_firstaudit; data_requestemission; note_emission; application_field_note.
+        2 "Dati organizzazione che richiede la certificazione": legal_request_certification; pre_info_iso_addresses.
+        3..8 una sezione per ogni gruppo assegnato (titolo = titolo del gruppo, campi a coppie). 9 "Tipologia di consulenza
+        richiesta": certify_or_advice | assistance_in_verification; num_gu_advice_init | num_gu_advice_survillance.
+      - SOA "Informazioni Preliminari SOA": servizio_soa | categoria_soa; classificazione; note_lavorazione; accordi_pagamento.
+      - Avvalimenti "Info Preliminari Avvalimenti": oggetto_gara; recezione; scadenza | importo; servizi_richiesti.
+      - GDPR "Info Preliminari GDPR": numero_dipendenti | check_list; attivita_prevalente.
+      - R&amp;S: "Anagrafica Azienda/Sede Legale": descrizione_azienda; employees_number. "Job Description": professional_profile;
+        number_workers_required | area; riporta; position_responsability; res_degree | experience; competences;
+        minimum_age | maximum_age. "Profilo Contrattuale": contract_profile | employment_level; contract_type |
+        contract_type_spec; salary; working_hours_text; working_hours | working_hours_spec.
+      - Gare "Info Preliminari Gara": nome_albo | tempi_lavorazioni; busta_amministrativa; data_ricezione | data_scadenza;
+        categorie_mepa; sottocategorie_mepa.
+      - Partnership: "Pratica": date | ps_user_id; ps_date_first_tel_call | ps_date_tel_recall; stato. "Interesse": interesse |
+        date_recall; data_first_contact. "Partner": ps_partner | ps_email; ps_phone | ps_regione; ps_citta | ps_fonte.
+        "Stato pratica": date_meet_dir | stato_pratica_ufficio; com_stato_pratica.
+      - Progetti: "Progetto": title; description; inizio_programmato | fine_programmata; inizio_effettivo | fine_effettiva.
+        "Classificazione": settore | tipo_progetto; responsabile_progetto. "Obiettivi": obiettivi; note_stato.
+        "Ruoli e Responsabilità": pre_info_progetti_ruoli. "Step e strategie": status_progetto; sistema provvigionale,
+        strategie commerciali, SWOT, strategie miglioramento (codici esistenti, full).
+      - Istruzione "Info Preliminari Istruzione": persone; ds | dsga.
+      Ogni codice compare una volta sola per layout e appartiene ai link quote della categoria.
+    </shape>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Legacy `attributes` via HTTP: i codici del contratto (nuovi e modificati) hanno nome/tipo/opzioni/config esatti; nuovi in coda, nessun id esistente spostato, nessun code duplicato; `degree` invariato. (verifica HTTP + diff con l'output 0182)</criterion>
+    <criterion id="AC-002">Legacy `product-categories` via HTTP: link quote = campi della pagina per le card dei propri prodotti; ISO: gruppi secondo F-2 (es. categoria 50001 -> solo grp3; 9001 -> grp1; STANDARD MULTIPLI -> tutti), tabella sedi e nessuno dei 5 campi sedi singoli; R&amp;S con res_degree e senza degree; card 1, 4, 8-11, 16 senza link quote; link work_order invariati rispetto alla 0182. (verifica HTTP)</criterion>
+    <criterion id="AC-003">Legacy `attribute-layouts` via HTTP: voci quote per le categorie con campi Offerta, sezioni del contratto; voci work_order invariate rispetto alla 0182; nessuna violazione (codice fuori link o ripetuto). (verifica HTTP)</criterion>
+    <criterion id="AC-004">qnet-2 `ProductCategoriesSource` (F-6): adottando per nome una categoria manuale, le sue figlie senza old_id ricevono barriere quote e work_order false; le figlie con old_id e la categoria adottata seguono i flag legacy. (Pest, Http::fake)</criterion>
+    <criterion id="AC-005">E2E via HTTP reale su DB SQLite temporaneo con `QualificaCatalogSeeder` (e i suoi seeder figli) eseguito PRIMA dell'import legacy, 2 passate: per categorie rappresentative (una ISO per norma: 9001, 50001, 37001, 30415/PdR125, STANDARD MULTIPLI/Ente_Iso; SOA; Avvalimenti; GDPR; R&amp;S; Gare; Partnership; Progetti; Istruzione) set effettivo quote e layout quote risolto = contratto, nessuna "Altre informazioni"; ramo Formazione (categorie manuali, loro link, layout quote/work_order, tipi/opzioni dei codici manuali come profilo_cpi, ora_app_cpi, degree) IDENTICO allo stato subito dopo i seeder; "Orientamento Specialistico" con lo stesso set effettivo di prima dell'import; reimport idempotente. (evidenza script)</criterion>
+    <criterion id="AC-007">F-10: un'Offerta con righe 9001 + 50001 + 37001 mostra le sezioni nell'ordine Certificazione, Organizzazione, gruppo 1, gruppo 3, gruppo 4, Tipologia di consulenza; il merger ordina per sort_order in modo stabile (Pest su `AttributeLayoutMerger`); layout manuali del ramo Formazione risolti come prima (e2e).</criterion>
+    <criterion id="AC-006">Suite Pest completa verde; Vitest help/migrations/i18n verde; guida in-app `migrations` e manuale aggiornati.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Autorizzazione utente a modificare le API legacy (solo migrazione `Api/V2` + supporti); nessuna scrittura/migrazione DB legacy; nessuna nuova dipendenza.
+    - Seeder manuali qnet-2 intoccati (F-4). File entro 300/500 righe per i file nuovi.
+    - E2E solo su DB temporaneo; token mai stampato.
+  </constraints>
+
+</spec>

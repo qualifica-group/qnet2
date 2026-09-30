@@ -27,7 +27,9 @@ use RuntimeException;
  * configured (category, context, form_mode) layout — authored by hand or by a
  * previous import — is never overwritten, which also makes a re-import
  * idempotent. A layout the validator rejects fails the row with its message
- * and writes nothing. The layout has no `old_id` of its own: the synthetic
+ * and writes nothing. Imported layouts are stored with `canonical_order`
+ * (spec 0183 F-10): their section `sort_order` is comparable across
+ * categories, which the multi-category merge relies on. The layout has no `old_id` of its own: the synthetic
  * external id ("<category_id>-<context>-<form_mode>") only labels the report.
  */
 class AttributeLayoutsSource extends AbstractMigrationSource
@@ -156,7 +158,7 @@ class AttributeLayoutsSource extends AbstractMigrationSource
         $category = ProductCategory::query()->findOrFail($categoryId);
 
         try {
-            $this->service->upsert($category, $attributeContext, $scope, $layout);
+            $this->service->upsert($category, $attributeContext, $scope, $layout, canonicalOrder: true);
         } catch (ValidationException $exception) {
             throw new RuntimeException('Invalid layout: '.collect($exception->errors())->flatten()->implode(' '));
         }

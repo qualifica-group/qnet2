@@ -134,6 +134,27 @@ it('AC-002: PUT with a valid layout upserts, GET returns the same normalized blo
     expect(AttributeLayout::query()->where('product_category_id', $category->id)->count())->toBe(1);
 });
 
+it('spec 0183 F-10: a PUT removes the canonical_order flag of an imported layout', function () {
+    $actor = productCategoryUserWith(['view', 'update']);
+    $category = ProductCategory::factory()->create();
+    $attribute = Attribute::factory()->create(['code' => 'material', 'type' => 'text']);
+    $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
+    AttributeLayout::factory()->for($category, 'productCategory')->create([
+        'context' => 'quote', 'form_mode' => 'create',
+        'layout' => [...attributeLayoutBlob(['material']), 'canonical_order' => true],
+    ]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->putJson("/api/product-categories/{$category->id}/attribute-layouts", [
+        'context' => 'quote',
+        'form_mode' => 'create',
+        'layout' => [...attributeLayoutBlob(['material']), 'canonical_order' => true],
+    ])->assertOk();
+
+    expect($response->json('data.layout'))->not->toHaveKey('canonical_order')
+        ->and(AttributeLayout::query()->sole()->layout)->not->toHaveKey('canonical_order');
+});
+
 // ---------------------------------------------------------------------------
 // AC-003 — unknown attribute_code -> 422, keyed attribute_layout, no write
 // ---------------------------------------------------------------------------

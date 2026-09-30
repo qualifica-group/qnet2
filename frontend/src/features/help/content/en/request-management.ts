@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'At the top there is a tab for every product category, plus **All**: pick one to see only the requests of that category.',
+          text: 'At the top there is a tab for every product category, plus **All**: pick one to see only the requests of that category. The tabs that do not fit on the row move into **More (N)**, on the right: open it, type part of the name to filter the list and pick the category with a click or with the arrow keys and **Enter**. The chosen category always stays visible among the tabs.',
         },
         {
           type: 'paragraph',

@@ -335,6 +335,10 @@ const guide: HelpGuide = {
           type: 'tip',
           text: 'An unplaced field is not lost: it appears at the bottom, in the Other information section.',
         },
+        {
+          type: 'note',
+          text: 'When a quote or work order contains products from several categories, their sections are merged and sorted by position: for example, with ISO 9001 and 50001 lines the groups of both standards appear before the consultancy type section.',
+        },
       ],
     },
     {

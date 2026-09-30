@@ -3,6 +3,53 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GESTIONE RICHIESTE — SCHEDE CATEGORIA PRIORITY+ "ALTRE (N)" — VERDE, NON COMMITTATO (2026-09-30)
+
+- Richiesta utente: con tante categorie lo strip ripiegava su una `Select` inutilizzabile. Ora layout priority+ (stile
+  CRM): le schede che entrano restano inline, le altre in **Altre (N)** (popover con ricerca case/accent-insensitive,
+  frecce/Invio/Esc, conteggio per categoria); la categoria selezionata e' sempre inline (prende il posto delle ultime).
+- Nuovi in `features/request-management/`: `category-tab-fit.ts` (`fitCategoryTabs` puro + `filterCategoriesByName`),
+  `use-category-tab-fit.ts` (misura via layer nascosto `data-tab-measure`, `useLayoutEffect` + ResizeObserver),
+  `request-management-category-picker.tsx` (`RequestManagementCategoryPicker`, `CategoryMoreButton`).
+  Riscritto `request-management-category-tabs.tsx` (props invariate; non usa piu' `FormTabStrip`, che resta per quote).
+- i18n `requestManagement.categoryTabs.{more,pickerLabel,searchPlaceholder,noMatch}` IT/EN. Guida `request-management`
+  IT/EN (sezione `overview`) e manuale Claude Docs (paragrafo dopo "scheda per ogni categoria") aggiornati.
+- Verifica: Vitest `features/request-management` + `features/help` + `form-tab-strip` 78 file/578 test verdi; eslint
+  pulito; `tsc -b --force` EXIT 0; controllo visivo Playwright su harness temporaneo (rimosso) a 1280/768/375: nessuno
+  scroll orizzontale, pinning della selezionata ok.
+
+## SPEC 0183 CAMPI FLESSIBILI OFFERTA DALLE OPPORTUNITA' LEGACY — VERDE, NON COMMITTATO (2026-09-30)
+
+- Spec `docs/specs/0183-quote-attributes-from-legacy-opportunities.xml` (F-1 note libere NON importate; F-2 rev. 2 gruppi
+  ISO per norma: generiche 1/70/74/80 tutti i gruppi, norme fuori gruppo nessun gruppo; F-3 card 16 Formazione GOL
+  senza campi Offerta; F-4 seeder manuali intoccati; F-5 R&S `res_degree` al posto di `degree`; F-6 adozione per nome:
+  figlie manuali con barriere quote/work_order false; F-7 file/anagrafica/Formalab fuori scope; F-8 tabella Sedi ISO
+  con colonne indirizzo testo; F-9 categorie legacy auto-padre (2, 7, 8) importate come radici).
+- LEGACY (non committato): nuovi `Support/Migration/Attributes/QuoteAttributes.php`, `Support/Migration/IsoStandardGroups.php`
+  (`GENERIC_CATEGORY_IDS=[1,70,74,80]`), `Support/Migration/MigrationQuoteLayoutSections.php`; modificati
+  `AttributeDictionary`, `MigrationAttributeCards` (306 righe, >300 soft), `MigrationAttributeLayouts`,
+  `AttributeLayoutMigrationController` (voci `context:quote`, id `<cat>-quote-all`), `ProductCategoryMigrationController`.
+  353 attributi (nuovi 339-353: pre_info_iso_addresses, descrizione_azienda, res_degree, ps_*, responsabile_progetto,
+  note_stato, pre_info_progetti_ruoli); 194 voci layout (109 work_order invariate + 85 quote).
+- qnet-2: `ProductCategoriesSource::cutManualChildrenFromLegacyFields()` (F-6) e auto-parent = radice (F-9); test in
+  `ProductCategoriesSourceImportTest`. Guida `migrations` IT/EN e manuale Claude Docs aggiornati.
+- Verifica: scenario production seeder (seeder manuali poi import HTTP reale, 2 passate idempotenti) su SQLite
+  temporaneo: 37 attributi e 24 categorie manuali identici allo snapshot, Orientamento Specialistico invariato (vuoto);
+  17 categorie Offerta = contratto, 0 "Altre informazioni"; Commessa invariata rispetto alla 0182. Pest 9049 pass / 0 fail;
+  Vitest help/migrations/i18n 305; `tsc -b --force`, Pint, `php -l` puliti. Non verificati riga per riga tutti i nomi/
+  opzioni del contratto (campione + diff HTTP del teammate legacy).
+- F-10 (ordine sezioni come nel legacy su piu' categorie): legacy esporta `sort_order` canonici (card*100+pos*10,
+  ISO Offerta 200..280, "Dati contrattuali" 9990); `AttributeLayoutsSource` salva i layout con `canonical_order: true`
+  (`AttributeLayoutService::upsert(..., canonicalOrder: true)`, costante `CANONICAL_ORDER_KEY`); il PUT da API/editor lo
+  rimuove; `AttributeLayoutMerger` ordina per sort_order (stabile) SOLO se tutti i layout contribuenti hanno il flag,
+  altrimenti concatena (layout manuali Formazione invariati: 62/62 risoluzioni identiche a HEAD). Guida
+  `product-categories` IT/EN + manuale con la nota sull'ordine. Pest completo 9053 pass / 0 fail.
+  I layout gia' importati nel DB di sviluppo non hanno il flag: serve reimport da zero dei layout per vedere l'ordine.
+- DB di sviluppo `qnet2`: la categoria 186 "SOA" ha ancora parent_id=186 (ciclo creato dall'import precedente): F-9
+  vale per i nuovi import; va corretta a mano o con reimport da zero.
+- Aperti: valori opportunita'/offerte (`pre_info_*`); regola "contenitore con una sola card" (categorie SOA vuote) non
+  applicata, in attesa di decisione utente.
+
 ## SPEC 0182 CAMPI FLESSIBILI COMMESSA DI TUTTE LE CARD DAL LEGACY — VERDE, NON COMMITTATO (2026-09-30)
 
 - Spec `docs/specs/0182-all-cards-work-order-attributes-migration.xml` (estende 0181; E-1 stato per radice

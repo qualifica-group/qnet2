@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'In alto trovi una scheda per ogni categoria prodotto, più **Tutte**: scegline una per vedere solo le richieste di quella categoria.',
+          text: 'In alto trovi una scheda per ogni categoria prodotto, più **Tutte**: scegline una per vedere solo le richieste di quella categoria. Le schede che non entrano nella riga finiscono in **Altre (N)**, a destra: aprilo, scrivi parte del nome per filtrare l\'elenco e scegli la categoria col clic o con le frecce e **Invio**. La categoria scelta resta sempre visibile tra le schede.',
         },
         {
           type: 'paragraph',

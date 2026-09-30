@@ -109,6 +109,7 @@ it('AC-007: imports a layout for a category whose codes are linked, idempotently
         ->and($run->created_rows)->toBe(1)
         ->and($layout->context)->toBe(AttributeContext::WorkOrder)
         ->and($layout->form_mode)->toBe(LayoutFormScope::All)
+        ->and($layout->layout['canonical_order'])->toBeTrue()
         ->and($layout->layout['sections'][0]['title'])->toBe('Details')
         ->and($layout->layout['sections'][0]['rows'][0]['items'][0]['attribute_code'])->toBe('standard');
 

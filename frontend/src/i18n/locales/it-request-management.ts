@@ -12,6 +12,10 @@ export const requestManagement = {
   forbidden: 'Non hai il permesso di visualizzare Gestione Richieste.',
   categoryTabs: {
     all: 'Tutte',
+    more: 'Altre ({{count}})',
+    pickerLabel: 'Categorie prodotto',
+    searchPlaceholder: 'Cerca categoria…',
+    noMatch: 'Nessuna categoria trovata.',
   },
   columns: {
     source: 'Fonte',

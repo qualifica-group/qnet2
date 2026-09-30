@@ -31,6 +31,9 @@ use Illuminate\Validation\ValidationException;
  */
 final class AttributeLayoutService
 {
+    /** Top-level blob key set only by the import (see upsert()). */
+    public const string CANONICAL_ORDER_KEY = 'canonical_order';
+
     public function __construct(
         private readonly AttributeLayoutValidator $validator,
         private readonly CategoryHierarchy $hierarchy,
@@ -188,23 +191,29 @@ final class AttributeLayoutService
      * a canonical, type-normalized copy and returns it (idempotent: two
      * identical PUTs leave exactly one row).
      *
+     * `$canonicalOrder` (spec 0183 F-10) marks a layout whose sections share
+     * the imported numbering scheme, so AttributeLayoutMerger may sort across
+     * categories by `sort_order`. Only the migration import passes true;
+     * normalize() drops any such key sent by a client, so a layout saved
+     * through the API or the editor always goes back to a local numbering.
+     *
      * @param  array<string, mixed>|null  $layout
      * @return array{sections: array<int, array<string, mixed>>}|null
      *
      * @throws ValidationException
      */
-    public function upsert(ProductCategory $category, AttributeContext $context, LayoutFormScope $scope, ?array $layout): ?array
+    public function upsert(ProductCategory $category, AttributeContext $context, LayoutFormScope $scope, ?array $layout, bool $canonicalOrder = false): ?array
     {
         $this->validator->validate($category, $context, $layout);
 
-        return DB::transaction(function () use ($category, $context, $scope, $layout): ?array {
+        return DB::transaction(function () use ($category, $context, $scope, $layout, $canonicalOrder): ?array {
             if ($layout === null || ($layout['sections'] ?? []) === []) {
                 $this->find($category, $context, $scope)?->delete();
 
                 return null;
             }
 
-            $normalized = $this->normalize($layout);
+            $normalized = $this->normalize($layout, $canonicalOrder);
 
             AttributeLayout::query()->updateOrCreate(
                 [
@@ -235,15 +244,16 @@ final class AttributeLayoutService
      * the "same normalized blob" idempotence (AC-002).
      *
      * @param  array<string, mixed>  $layout
-     * @return array{sections: array<int, array<string, mixed>>}
+     * @return array{sections: array<int, array<string, mixed>>, canonical_order?: true}
      */
-    private function normalize(array $layout): array
+    private function normalize(array $layout, bool $canonicalOrder): array
     {
         return [
             'sections' => array_values(array_map(
                 $this->normalizeSection(...),
                 $layout['sections'],
             )),
+            ...($canonicalOrder ? [self::CANONICAL_ORDER_KEY => true] : []),
         ];
     }
 

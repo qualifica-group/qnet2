@@ -9,6 +9,7 @@ use App\Models\AttributeLayout;
 use App\Models\ProductCategory;
 use App\RequestManagement\AttributeLayoutMerger;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 // Spec 0062, layout-contract/opportunity-layout-resolution (AC-008; spec 0084
@@ -169,4 +170,82 @@ it('AC-009: the barrier stops a contributing category from borrowing its ancesto
 
     // Flat rendering: below the barrier there is no layout to inherit.
     expect($resolved)->toBeNull();
+});
+
+/**
+ * @param  array<string, int>  $sectionsByCode  attribute code => its section's sort_order
+ */
+function mergerLayoutWithSortOrders(ProductCategory $category, array $sectionsByCode, bool $canonical = true): void
+{
+    $sections = [];
+
+    foreach ($sectionsByCode as $code => $sortOrder) {
+        $sections[] = [
+            'id' => (string) Str::uuid(),
+            'title' => "Section {$code}",
+            'description' => null,
+            'variant' => 'default',
+            'collapsible' => false,
+            'default_collapsed' => false,
+            'columns' => 1,
+            'sort_order' => $sortOrder,
+            'rows' => [['id' => (string) Str::uuid(), 'items' => [['attribute_code' => $code, 'width' => 'full']]]],
+        ];
+    }
+
+    AttributeLayout::factory()->for($category, 'productCategory')
+        ->create(['context' => 'quote', 'form_mode' => 'edit', 'layout' => ['sections' => $sections, ...($canonical ? ['canonical_order' => true] : [])]]);
+}
+
+function mergerCategoryWithCodes(array $codes): ProductCategory
+{
+    $category = ProductCategory::factory()->create();
+
+    foreach ($codes as $index => $code) {
+        $attribute = Attribute::query()->firstOrCreate(['code' => $code], Attribute::factory()->make(['code' => $code])->getAttributes());
+        $category->attributes()->attach($attribute->id, ['is_required' => false, 'sort_order' => $index, 'context' => 'quote']);
+    }
+
+    return $category;
+}
+
+it('spec 0183 F-10: canonical layouts are merged ordered by their original sort_order, "Altre informazioni" stays last', function (): void {
+    $first = mergerCategoryWithCodes(['a', 'b', 'c', 'orphan']);
+    $second = mergerCategoryWithCodes(['d']);
+    mergerLayoutWithSortOrders($first, ['a' => 200, 'b' => 210, 'c' => 280]);
+    mergerLayoutWithSortOrders($second, ['d' => 240]);
+
+    $sections = app(AttributeLayoutMerger::class)
+        ->resolve([$first->id, $second->id], AttributeContext::Quote, FormMode::Edit)['sections'];
+
+    expect(array_column($sections, 'title'))->toBe(['Section a', 'Section b', 'Section d', 'Section c', 'Altre informazioni'])
+        ->and(array_column($sections, 'sort_order'))->toBe([0, 1, 2, 3, 4]);
+});
+
+it('spec 0183 F-10: canonical layouts with equal sort_order keep category order', function (): void {
+    $first = mergerCategoryWithCodes(['a']);
+    $second = mergerCategoryWithCodes(['b']);
+    mergerLayoutWithSortOrders($first, ['a' => 100]);
+    mergerLayoutWithSortOrders($second, ['b' => 100]);
+
+    $sections = app(AttributeLayoutMerger::class)
+        ->resolve([$second->id, $first->id], AttributeContext::Quote, FormMode::Edit)['sections'];
+
+    expect(array_column($sections, 'title'))->toBe(['Section b', 'Section a']);
+});
+
+it('spec 0183 F-10: layouts without canonical_order (even mixed) keep the plain concatenation', function (): void {
+    $first = mergerCategoryWithCodes(['a', 'b']);
+    $second = mergerCategoryWithCodes(['d', 'e']);
+
+    foreach ([[false, false], [true, false]] as [$firstCanonical, $secondCanonical]) {
+        AttributeLayout::query()->delete();
+        mergerLayoutWithSortOrders($first, ['a' => 0, 'b' => 1], $firstCanonical);
+        mergerLayoutWithSortOrders($second, ['d' => 0, 'e' => 1], $secondCanonical);
+
+        $sections = app(AttributeLayoutMerger::class)
+            ->resolve([$first->id, $second->id], AttributeContext::Quote, FormMode::Edit)['sections'];
+
+        expect(array_column($sections, 'title'))->toBe(['Section a', 'Section b', 'Section d', 'Section e']);
+    }
 });

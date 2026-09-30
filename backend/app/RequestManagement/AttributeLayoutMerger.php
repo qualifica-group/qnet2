@@ -37,7 +37,11 @@ use Illuminate\Support\Str;
  *  3. concatenate sections in category order, dropping any item whose code
  *     was already placed by an EARLIER category (first-wins) or that fell
  *     outside the merged applicable set — pruning empty rows/sections along
- *     the way;
+ *     the way — then, ONLY if every contributing layout is flagged
+ *     `canonical_order` (set by the import, spec 0183 F-10: one numbering
+ *     scheme across categories), order them by their ORIGINAL `sort_order`
+ *     (stable: a tie keeps category order, then the category's own section
+ *     order); any hand-authored layout keeps the plain concatenation;
  *  4. any applicable code no category ever placed lands in a synthetic
  *     trailing "Altre informazioni" section (one item per row, `full` width
  *     — the same flat shape used when there is no layout at all).
@@ -74,6 +78,7 @@ final class AttributeLayoutMerger
         $placedCodes = [];
         $sections = [];
         $anyLayoutConfigured = false;
+        $allCanonical = true;
 
         // Step 2: concatenate each contributing category's own layout, in
         // order, deduping first-wins as we go.
@@ -84,7 +89,13 @@ final class AttributeLayoutMerger
                 $anyLayoutConfigured = true;
             }
 
-            foreach ($this->placeableSections($layout, $applicableCodes, $placedCodes) as $section) {
+            $placeable = $this->placeableSections($layout, $applicableCodes, $placedCodes);
+
+            if ($placeable !== []) {
+                $allCanonical = $allCanonical && ($layout[AttributeLayoutService::CANONICAL_ORDER_KEY] ?? false) === true;
+            }
+
+            foreach ($placeable as $section) {
                 $sections[] = $section;
             }
         }
@@ -95,7 +106,18 @@ final class AttributeLayoutMerger
             return null;
         }
 
-        // Step 3: leftover applicable codes, in the merged set's own order —
+        // Step 3: when EVERY contributing layout is canonical, order by the
+        // sections' own sort_order (stable), before the synthetic trailing
+        // section is appended so it always stays last. Hand-authored layouts
+        // number their sections per category, so they stay concatenated.
+        if ($allCanonical) {
+            usort(
+                $sections,
+                static fn (array $a, array $b): int => ($a['sort_order'] ?? 0) <=> ($b['sort_order'] ?? 0),
+            );
+        }
+
+        // Step 4: leftover applicable codes, in the merged set's own order —
         // never lost, always surfaced.
         $leftover = array_values(array_diff($applicableCodes, array_keys($placedCodes)));
 
@@ -205,11 +227,8 @@ final class AttributeLayoutMerger
     }
 
     /**
-     * Final `sort_order` reassigned to the sections' own array position —
-     * each contributing category's own numbering is meaningless once
-     * concatenated across categories (they were never comparable to begin
-     * with), so the merged order (category order, then each category's own
-     * section order) becomes the new canonical sort_order.
+     * Final `sort_order` reassigned to the sections' own array position, so
+     * the merged order becomes the new canonical sort_order.
      *
      * @param  array<int, array<string, mixed>>  $sections
      * @return array<int, array<string, mixed>>

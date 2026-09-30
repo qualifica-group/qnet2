@@ -335,6 +335,10 @@ const guide: HelpGuide = {
           type: 'tip',
           text: 'Un campo non posizionato non si perde: compare in fondo, nella sezione Altre informazioni.',
         },
+        {
+          type: 'note',
+          text: 'Se un\'offerta o una commessa contiene prodotti di più categorie, le sezioni vengono unite e ordinate per posizione: ad esempio, con righe ISO 9001 e 50001 i gruppi delle due norme compaiono prima di Tipologia di consulenza.',
+        },
       ],
     },
     {

@@ -153,7 +153,11 @@ class ProductCategoriesSource extends AbstractMigrationSource
             return $this->adopt($adopted, $externalId, $record);
         }
 
-        $parentId = $this->resolveParent($record['parent_id'] ?? null, $warnings);
+        $parentId = $this->resolveParent($record['parent_id'] ?? null, $warnings, $this->isSelfParented($record));
+
+        if ($this->isSelfParented($record)) {
+            $warnings[] = 'parent_id equals the category own id (spec 0183 F-9); imported as a root.';
+        }
 
         $inherits = $this->inheritanceFlags($record) ?? [
             'product' => true,
@@ -219,8 +223,27 @@ class ProductCategoriesSource extends AbstractMigrationSource
         $category->fill($this->adoptableAttributes($record));
         $this->businessFunctions->fillFreeSlot($category, $record['business_function_id'] ?? null, $warnings);
         $category->save();
+        $this->cutManualChildrenFromLegacyFields($category);
 
         return MigrationRowOutcome::created($warnings, $category);
+    }
+
+    /**
+     * Spec 0183 F-6: the adopted category now receives the legacy Offerta /
+     * Commessa fields, which its manual (no `old_id`) children would inherit
+     * on top of the fields they already had. Closing their quote and
+     * work_order barriers keeps exactly the pre-import set. The DIRECT children
+     * are enough: CategoryHierarchy::inheritedAncestors() stops climbing at the
+     * first opted-out ancestor, so a deeper manual descendant already reaches
+     * nothing above its own opted-out parent. The Product barrier is left as
+     * is. Idempotent: it rewrites the same two flags to the same value.
+     */
+    private function cutManualChildrenFromLegacyFields(ProductCategory $adopted): void
+    {
+        ProductCategory::query()
+            ->where('parent_id', $adopted->id)
+            ->whereNull('old_id')
+            ->update(['inherits_quote_attributes' => false, 'inherits_work_order_attributes' => false]);
     }
 
     /**
@@ -354,7 +377,20 @@ class ProductCategoriesSource extends AbstractMigrationSource
     {
         $externalParent = $record['parent_id'] ?? null;
 
-        return $externalParent !== null && $externalParent !== '';
+        return $externalParent !== null && $externalParent !== '' && ! $this->isSelfParented($record);
+    }
+
+    /**
+     * A legacy row whose `parent_id` is its own id (spec 0183 F-9) is a root:
+     * treating it as a parent reference would leave it detached forever.
+     *
+     * @param  array<string, mixed>  $record
+     */
+    private function isSelfParented(array $record): bool
+    {
+        $externalParent = $record['parent_id'] ?? null;
+
+        return $externalParent !== null && $externalParent !== '' && (string) $externalParent === (string) ($record['id'] ?? '');
     }
 
     /**
@@ -366,9 +402,9 @@ class ProductCategoriesSource extends AbstractMigrationSource
      *
      * @param  array<int, string>  $warnings
      */
-    private function resolveParent(mixed $externalRef, array &$warnings): ?int
+    private function resolveParent(mixed $externalRef, array &$warnings, bool $selfParented = false): ?int
     {
-        if ($externalRef === null || $externalRef === '') {
+        if ($externalRef === null || $externalRef === '' || $selfParented) {
             return null;
         }
 

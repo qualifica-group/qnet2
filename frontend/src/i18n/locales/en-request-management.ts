@@ -11,6 +11,10 @@ export const requestManagement = {
   forbidden: "You don't have permission to view Request Management.",
   categoryTabs: {
     all: 'All',
+    more: 'More ({{count}})',
+    pickerLabel: 'Product categories',
+    searchPlaceholder: 'Search category…',
+    noMatch: 'No category found.',
   },
   columns: {
     source: 'Source',
