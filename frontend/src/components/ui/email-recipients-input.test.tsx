@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { EmailRecipientsInput, type EmailRecipientSuggestion } from '@/components/ui/email-recipients-input'
 
 const suggestions: EmailRecipientSuggestion[] = [
@@ -96,6 +96,25 @@ describe('EmailRecipientsInput', () => {
 
     expect(onChange).toHaveBeenCalledWith(['anna@example.com'])
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('does not dismiss the suggestion list on focus/pointer interactions with the field itself', async () => {
+    renderInput({ suggestions })
+    const input = screen.getByRole('combobox')
+
+    fireEvent.focus(input)
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+
+    // In a real browser the very `focusin` that opens the list reaches Radix's
+    // document-level dismiss listener right after it is attached; the field is
+    // the popover's anchor, so that interaction must not count as "outside".
+    // Radix attaches its pointerdown listener on the next tick.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    fireEvent.focusIn(input)
+    fireEvent.pointerDown(input)
+
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    expect(input).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('selecting a suggestion by click does not blur-commit the leftover input text', () => {

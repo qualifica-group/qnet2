@@ -63,6 +63,7 @@ export function EmailRecipientsInput({
   const [internalInvalid, setInternalInvalid] = useState(false)
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const anchorRef = useRef<HTMLDivElement | null>(null)
   const listboxId = useId()
 
   const pool = useMemo(() => availableSuggestions(suggestions, value), [suggestions, value])
@@ -88,6 +89,7 @@ export function EmailRecipientsInput({
   // as SearchableSelect/AsyncPaginatedMultiSelect): wheel/touch scroll must
   // stay inside the modal's own allowed scroll tree.
   const setContainer = useCallback((node: HTMLDivElement | null) => {
+    anchorRef.current = node
     if (!node) {
       setPortalContainer(null)
       return
@@ -132,6 +134,15 @@ export function EmailRecipientsInput({
     },
     [value, maxItems, onChange, onInvalidInput],
   )
+
+  // The field is the popover's Anchor, not a Trigger, so Radix treats any focus
+  // or pointerdown on it as "outside" -- including the very focusin that opens
+  // the list, which would dismiss it immediately.
+  const keepOpenOnFieldInteraction = (event: Event) => {
+    if (event.target instanceof Node && anchorRef.current?.contains(event.target)) {
+      event.preventDefault()
+    }
+  }
 
   const remove = (email: string) => {
     onChange(value.filter((current) => current !== email))
@@ -273,6 +284,7 @@ export function EmailRecipientsInput({
           align="start"
           sideOffset={4}
           onOpenAutoFocus={(event) => event.preventDefault()}
+          onInteractOutside={keepOpenOnFieldInteraction}
           className="z-50 w-(--radix-popover-trigger-width) rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none"
         >
           <div id={listboxId} role="listbox" className="max-h-48 overflow-y-auto">

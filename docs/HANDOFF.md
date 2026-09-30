@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX EMAIL COMMESSE: SUGGERIMENTI A/CC/CCN — VERDE, NON COMMITTATO (2026-09-30)
+
+- `components/ui/email-recipients-input.tsx`: la lista suggerimenti si richiudeva ~10 ms dopo il clic. Il campo e'
+  l'Anchor (non il Trigger) del Popover Radix: il `focusin` che apre la lista arriva al `document` dopo che il
+  `DismissableLayer` ha appena agganciato il suo listener -> "focus outside" -> dismiss. Fix: `onInteractOutside`
+  ignora focus/pointerdown dentro l'anchor (`anchorRef`). Test di regressione in `email-recipients-input.test.tsx`;
+  verificato anche in Chrome headless su `/work-orders/104`. Manuale: nessun impatto.
+- Invio email in locale: `backend/.env` ha ora `OUTBOUND_EMAIL_MAILER=smtp` (Mailpit :1025/:8025). Senza la variabile
+  il default e' `microsoft-graph` e senza `MAIL_MSGRAPH_*` fallisce ("Configurazione Microsoft Graph non valida").
+  I commenti in `config/outbound_emails.php`/`.env.example` dicono "log in dev" ma il fallback reale e' Graph.
+
 ## SPEC 0178 CONTEGGIO UNICO + CACHE AGGREGATI (100 UTENTI, 1M RECORD, NO REDIS) — NON COMMITTATO (2026-09-29)
 
 - Decisioni utente: niente Redis, store `database`; ritardo ammesso sui numeri aggregati (fresco 10 s, max
