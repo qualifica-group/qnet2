@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { FileText, FolderOpen, Loader2 } from 'lucide-react'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatBytes } from '@/features/attachments/format-bytes'
+import { WorkOrderEmailDialogFooter, WorkOrderEmailDialogHeader } from '@/features/work-order-emails/work-order-email-dialog-chrome'
 import type { ComposeContextDocument, ComposeContextDocumentSource } from '@/features/work-order-emails/types'
 
 /** Group order: the commessa's own documents lead, the anagrafica's follow (D-7b). */
@@ -67,25 +69,30 @@ export function WorkOrderEmailDocumentsPickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent size="md">
-        <DialogHeader>
-          <DialogTitle>{t('workOrderEmails.composer.attachments.documentsDialogTitle')}</DialogTitle>
-        </DialogHeader>
+      <DialogContent size="md" className="grid-cols-1 gap-0 p-0">
+        <WorkOrderEmailDialogHeader
+          icon={FolderOpen}
+          title={t('workOrderEmails.composer.attachments.documentsDialogTitle')}
+          description={t('workOrderEmails.composer.attachments.documentsDialogSubtitle')}
+        />
 
         {documents.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('workOrderEmails.composer.attachments.documentsEmpty')}</p>
+          <p className="px-4 py-6 text-center text-sm text-muted-foreground sm:px-5">
+            {t('workOrderEmails.composer.attachments.documentsEmpty')}
+          </p>
         ) : (
-          <div className="flex max-h-[50vh] flex-col gap-4 overflow-y-auto">
+          <div className="flex max-h-[50vh] flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-5">
             {groups.map((group) => (
               <div key={group.source} className="flex flex-col gap-1.5">
-                <p className="text-xs font-semibold text-muted-foreground">
+                <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                   {t(`workOrderEmails.composer.attachments.documentsGroup.${group.source}`)}
                 </p>
-                <ul className="flex flex-col gap-1">
+                <ul className="divide-y divide-border overflow-hidden rounded-lg border bg-card">
                   {group.items.map((doc) => (
                     <li key={doc.id}>
-                      <label className="flex cursor-pointer items-center gap-2 rounded-md p-1.5 text-sm hover:bg-accent/40">
+                      <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-sm transition-colors hover:bg-muted/40 has-[[data-state=checked]]:bg-primary/5">
                         <Checkbox checked={selected.includes(doc.id)} onCheckedChange={() => toggle(doc.id)} />
+                        <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                         <span className="min-w-0 flex-1 truncate">{doc.original_name}</span>
                         <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(doc.size)}</span>
                       </label>
@@ -97,14 +104,18 @@ export function WorkOrderEmailDocumentsPickerDialog({
           </div>
         )}
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+        <WorkOrderEmailDialogFooter>
+          <Button type="button" variant="outline" size="sm" onClick={() => handleOpenChange(false)}>
             {t('workOrderEmails.composer.cancel')}
           </Button>
-          <Button type="button" onClick={() => void handleConfirm()} disabled={selected.length === 0 || isImporting}>
+          <Button type="button" size="sm" onClick={() => void handleConfirm()} disabled={selected.length === 0 || isImporting}>
+            {isImporting ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
             {t('workOrderEmails.composer.attachments.importConfirm')}
+            {selected.length > 0 ? (
+              <span aria-hidden="true" className="rounded-sm bg-primary-foreground/20 px-1 text-[11px] tabular-nums">{selected.length}</span>
+            ) : null}
           </Button>
-        </DialogFooter>
+        </WorkOrderEmailDialogFooter>
       </DialogContent>
     </Dialog>
   )

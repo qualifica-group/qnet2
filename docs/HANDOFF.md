@@ -3,6 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## REDESIGN POPUP EMAIL COMMESSE (stile CRM) — VERDE, NON COMMITTATO (2026-09-30)
+
+- Solo FE, `features/work-order-emails/`. Nuovi: `work-order-email-dialog-chrome.tsx` (`WorkOrderEmailDialogHeader`
+  icona+titolo+sottotitolo+slot badge / `WorkOrderEmailDialogFooter`, bande `bg-surface`), `work-order-email-attachment-tile.tsx`
+  (tile file con icona per MIME, estensione, peso; usata da composer e dettaglio).
+- Composer: header/footer fissi, scroll solo sul body interno (`max-h-[70vh]`, `DialogContent` NON clippa: popup
+  AsyncPaginatedSelect portalato li'); campi a "busta" (Mittente con avatar, A, Oggetto) con CC/CCN nascosti dietro
+  due pulsanti finche' vuoti (sempre visibili se hanno indirizzi); corpo senza label visibile (sr-only); allegati su
+  `bg-surface` con barra `Progress` di utilizzo, sorgenti con icone, tile in griglia. Dettaglio: pannello di lettura
+  (oggetto, card mittente+data, destinatari a chip, corpo in card, allegati a tile), footer "Chiudi" (`common.close`).
+  Picker documenti: stesse bande, righe in card. Badge stato con icona per stato, "Inviata" in tono `success`.
+- Dialog: `grid-cols-1` obbligatorio su `DialogContent` con `p-0` (la colonna implicita `auto` sbordava a 375px).
+- i18n nuove (IT+EN): `composer.subtitle|addCc|addBcc|subjectPlaceholder`, `detail.noSubject`,
+  `composer.attachments.documentsDialogSubtitle`.
+- Verifica: Vitest work-order-emails+recipients+help 143 verdi, ESLint e `tsc -b --force` puliti, screenshot
+  Playwright headless su `/work-orders/104` (light, dark, 375px). Manuale: guida in-app e manuale Claude Docs non
+  descrivono la tab Email (lacuna preesistente, nessuna sezione da aggiornare).
+- Noti, fuori scope: `formatBytes(0)` mostra "1 KB" (utilizzo allegati a vuoto); in dark `text-destructive`
+  (L 30.6%) ha contrasto basso ("Elimina bozza", asterisco obbligatorio).
+
 ## FIX EMAIL COMMESSE: SUGGERIMENTI A/CC/CCN — VERDE, NON COMMITTATO (2026-09-30)
 
 - `components/ui/email-recipients-input.tsx`: la lista suggerimenti si richiudeva ~10 ms dopo il clic. Il campo e'

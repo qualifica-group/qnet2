@@ -1,10 +1,13 @@
 import { useTranslation } from 'react-i18next'
-import { Loader2 } from 'lucide-react'
+import { AlertCircle, Loader2, MailPlus, PenLine, Save, Send, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useWorkOrderEmailComposer } from '@/features/work-order-emails/use-work-order-email-composer'
 import { WorkOrderEmailComposerForm } from '@/features/work-order-emails/work-order-email-composer-form'
 import { WorkOrderEmailAttachmentsSection } from '@/features/work-order-emails/work-order-email-attachments-section'
+import { WorkOrderEmailDialogFooter, WorkOrderEmailDialogHeader } from '@/features/work-order-emails/work-order-email-dialog-chrome'
+import { WorkOrderEmailStatusBadge } from '@/features/work-order-emails/work-order-email-status-badge'
 
 export interface WorkOrderEmailComposerDialogProps {
   workOrderId: number
@@ -19,7 +22,10 @@ export interface WorkOrderEmailComposerDialogProps {
  * Composer dialog shell (AC-020/AC-021): a large, responsive Dialog (the
  * existing `size="lg"` rung already collapses to `w-[calc(100%-2rem)]` at
  * 375px, ui-design.md §3) that owns only layout — every behaviour lives in
- * `useWorkOrderEmailComposer`.
+ * `useWorkOrderEmailComposer`. Header and footer are fixed bands and only the
+ * body scrolls, so the send actions never leave the viewport; the scroll sits
+ * on an inner wrapper because `DialogContent` must never clip (the template
+ * picker's popup is portaled into it).
  */
 export function WorkOrderEmailComposerDialog({
   workOrderId,
@@ -48,73 +54,98 @@ export function WorkOrderEmailComposerDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => void handleOpenChange(next)}>
-      <DialogContent size="lg" className="max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {justCreated ? t('workOrderEmails.composer.title') : t('workOrderEmails.composer.editTitle')}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent size="lg" className="grid-cols-1 gap-0 p-0">
+        <WorkOrderEmailDialogHeader
+          icon={justCreated ? MailPlus : PenLine}
+          title={justCreated ? t('workOrderEmails.composer.title') : t('workOrderEmails.composer.editTitle')}
+          description={t('workOrderEmails.composer.subtitle')}
+          trailing={email ? <WorkOrderEmailStatusBadge status={email.status} /> : null}
+        />
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-10">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
-          </div>
-        ) : isError || !email ? (
-          <p role="alert" className="text-sm text-destructive">
-            {t('workOrderEmails.detail.loadError')}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-4">
-            <WorkOrderEmailComposerForm
-              workOrderId={workOrderId}
-              form={form}
-              composeContext={composeContext}
-              disabled={isBusy}
-            />
-            <WorkOrderEmailAttachmentsSection
-              workOrderId={workOrderId}
-              emailId={emailId}
-              email={email}
-              composeContext={composeContext}
-              disabled={isBusy}
-            />
-          </div>
-        )}
+        <div className="max-h-[70vh] overflow-y-auto px-4 py-4 sm:px-5">
+          {isLoading ? (
+            <ComposerSkeleton />
+          ) : isError || !email ? (
+            <p role="alert" className="flex items-center gap-1.5 text-sm text-destructive">
+              <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+              {t('workOrderEmails.detail.loadError')}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <WorkOrderEmailComposerForm
+                workOrderId={workOrderId}
+                form={form}
+                composeContext={composeContext}
+                disabled={isBusy}
+              />
+              <WorkOrderEmailAttachmentsSection
+                workOrderId={workOrderId}
+                emailId={emailId}
+                email={email}
+                composeContext={composeContext}
+                disabled={isBusy}
+              />
+            </div>
+          )}
+        </div>
 
-        <DialogFooter className="sm:justify-between">
+        <WorkOrderEmailDialogFooter className="justify-between">
           <div>
             {email?.can.delete ? (
               <Button
                 type="button"
                 variant="ghost"
-                className="text-destructive hover:text-destructive"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => void handleDeleteDraft()}
                 disabled={isDeleting || isBusy}
               >
+                <Trash2 className="size-3.5" aria-hidden="true" />
                 {t('workOrderEmails.composer.deleteDraft')}
               </Button>
             ) : null}
           </div>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => void handleOpenChange(false)}>
+          <div className="ml-auto flex flex-wrap justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => void handleOpenChange(false)}>
               {t('workOrderEmails.composer.cancel')}
             </Button>
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
+              size="sm"
               onClick={() => void handleSaveDraft()}
               disabled={isBusy || !email?.can.update}
             >
-              {isSaving ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
+              {isSaving ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Save className="size-3.5" aria-hidden="true" />
+              )}
               {isSaving ? t('workOrderEmails.composer.saving') : t('workOrderEmails.composer.saveDraft')}
             </Button>
-            <Button type="button" onClick={() => void handleSend()} disabled={isBusy || !email?.can.send}>
-              {isSending ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
+            <Button type="button" size="sm" onClick={() => void handleSend()} disabled={isBusy || !email?.can.send}>
+              {isSending ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Send className="size-3.5" aria-hidden="true" />
+              )}
               {isSending ? t('workOrderEmails.composer.sending') : t('workOrderEmails.composer.send')}
             </Button>
           </div>
-        </DialogFooter>
+        </WorkOrderEmailDialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** Placeholder shaped like the real composer (envelope, editor, attachments), not a spinner on blank. */
+function ComposerSkeleton() {
+  return (
+    <div className="flex flex-col gap-4" aria-hidden="true">
+      <Skeleton className="h-9 w-full sm:w-72" />
+      <Skeleton className="h-36 w-full" />
+      <Skeleton className="h-52 w-full" />
+      <Skeleton className="h-24 w-full" />
+    </div>
   )
 }

@@ -1,16 +1,29 @@
 import { useTranslation } from 'react-i18next'
+import { CircleAlert, CircleCheck, Clock, PenLine, type LucideIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import type { OutboundEmailStatus } from '@/features/work-order-emails/types'
 
-/** Colour is never the only signal (ui-design.md §4): the badge text always carries the status too. */
-const STATUS_VARIANT: Record<OutboundEmailStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  draft: 'outline',
-  queued: 'secondary',
-  sent: 'default',
-  failed: 'destructive',
+interface StatusAppearance {
+  variant: 'default' | 'secondary' | 'destructive' | 'outline'
+  icon: LucideIcon
+  className?: string
+}
+
+/** Colour is never the only signal (ui-design.md §4): every status carries its own icon and label. */
+const STATUS_APPEARANCE: Record<OutboundEmailStatus, StatusAppearance> = {
+  draft: { variant: 'outline', icon: PenLine },
+  queued: { variant: 'secondary', icon: Clock },
+  sent: { variant: 'default', icon: CircleCheck, className: 'bg-success/15 text-success' },
+  failed: { variant: 'destructive', icon: CircleAlert },
 }
 
 export function WorkOrderEmailStatusBadge({ status }: { status: OutboundEmailStatus }) {
   const { t } = useTranslation()
-  return <Badge variant={STATUS_VARIANT[status]}>{t(`workOrderEmails.status.${status}`)}</Badge>
+  const { variant, icon: Icon, className } = STATUS_APPEARANCE[status]
+  return (
+    <Badge variant={variant} className={className}>
+      <Icon aria-hidden="true" />
+      {t(`workOrderEmails.status.${status}`)}
+    </Badge>
+  )
 }

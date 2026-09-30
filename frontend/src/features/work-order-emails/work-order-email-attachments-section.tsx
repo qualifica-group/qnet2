@@ -1,12 +1,15 @@
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useId, useRef, useState, type ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { FileText, Loader2, Trash2, Upload } from 'lucide-react'
+import { FileText, FolderOpen, Loader2, Paperclip, Trash2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { formatBytes } from '@/features/attachments/format-bytes'
 import { useWorkOrderEmailAttachments } from '@/features/work-order-emails/use-work-order-email-attachments'
+import { WorkOrderEmailAttachmentTile } from '@/features/work-order-emails/work-order-email-attachment-tile'
 import { WorkOrderEmailDocumentsPickerDialog } from '@/features/work-order-emails/work-order-email-documents-picker-dialog'
 import type { ComposeContext, OutboundEmail } from '@/features/work-order-emails/types'
 
@@ -37,11 +40,17 @@ export function WorkOrderEmailAttachmentsSection({
   const { t } = useTranslation()
   const { upload, importAttachments, remove } = useWorkOrderEmailAttachments(workOrderId, emailId)
   const [documentsDialogOpen, setDocumentsDialogOpen] = useState(false)
+  const titleId = useId()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isBusy = upload.isPending || importAttachments.isPending || remove.isPending || disabled
 
   const maxTotalBytes = (composeContext?.max_total_attachments_kb ?? 0) * BYTES_PER_KB
   const overLimit = maxTotalBytes > 0 && email.attachments_total_size > maxTotalBytes
+  const usagePercent = maxTotalBytes > 0 ? Math.min(100, (email.attachments_total_size / maxTotalBytes) * 100) : 0
+  const usageLabel = t('workOrderEmails.composer.attachments.totalSize', {
+    used: formatBytes(email.attachments_total_size),
+    limit: formatBytes(maxTotalBytes),
+  })
 
   const handleFiles = async (fileList: FileList | null) => {
     const files = Array.from(fileList ?? [])
@@ -95,16 +104,33 @@ export function WorkOrderEmailAttachmentsSection({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-foreground">{t('workOrderEmails.composer.attachments.title')}</p>
+    <section
+      aria-labelledby={titleId}
+      className="flex flex-col gap-3 rounded-lg border bg-surface p-3"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <h3 id={titleId} className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+          <Paperclip className="size-3.5 text-muted-foreground" aria-hidden="true" />
+          {t('workOrderEmails.composer.attachments.title')}
+          {email.attachments.length > 0 ? (
+            <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
+              {email.attachments.length}
+            </Badge>
+          ) : null}
+        </h3>
         {composeContext ? (
-          <span className={cn('text-[11px]', overLimit ? 'font-medium text-destructive' : 'text-muted-foreground')}>
-            {t('workOrderEmails.composer.attachments.totalSize', {
-              used: formatBytes(email.attachments_total_size),
-              limit: formatBytes(maxTotalBytes),
-            })}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={cn('text-[11px] tabular-nums', overLimit ? 'font-medium text-destructive' : 'text-muted-foreground')}>
+              {usageLabel}
+            </span>
+            <Progress
+              value={usagePercent}
+              size="xs"
+              aria-label={usageLabel}
+              className="w-20"
+              indicatorClassName={overLimit ? 'bg-destructive' : undefined}
+            />
+          </div>
         ) : null}
       </div>
 
@@ -129,10 +155,11 @@ export function WorkOrderEmailAttachmentsSection({
           onClick={() => setDocumentsDialogOpen(true)}
           disabled={isBusy || !composeContext || composeContext.documents.length === 0}
         >
+          <FolderOpen className="size-3.5" aria-hidden="true" />
           {t('workOrderEmails.composer.attachments.fromDocuments')}
         </Button>
 
-        <div className="w-48">
+        <div className="w-full sm:w-52">
           <AsyncPaginatedSelect
             resource="document-bundles"
             value={null}
@@ -168,27 +195,30 @@ export function WorkOrderEmailAttachmentsSection({
       </div>
 
       {email.attachments.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{t('workOrderEmails.composer.attachments.empty')}</p>
+        <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-muted-foreground/30 px-3 py-4 text-xs text-muted-foreground">
+          <Paperclip className="size-3.5" aria-hidden="true" />
+          {t('workOrderEmails.composer.attachments.empty')}
+        </div>
       ) : (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {email.attachments.map((attachment) => (
-            <li
+            <WorkOrderEmailAttachmentTile
               key={attachment.id}
-              className="flex items-center justify-between gap-2 rounded-md border bg-card px-2.5 py-1.5 text-xs"
-            >
-              <span className="min-w-0 flex-1 truncate">{attachment.original_name}</span>
-              <span className="shrink-0 text-muted-foreground">{formatBytes(attachment.size)}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                aria-label={t('workOrderEmails.composer.attachments.remove')}
-                onClick={() => void handleRemove(attachment.id)}
-                disabled={isBusy}
-              >
-                <Trash2 aria-hidden="true" />
-              </Button>
-            </li>
+              attachment={attachment}
+              action={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  aria-label={t('workOrderEmails.composer.attachments.remove')}
+                  onClick={() => void handleRemove(attachment.id)}
+                  disabled={isBusy}
+                >
+                  <Trash2 aria-hidden="true" />
+                </Button>
+              }
+            />
           ))}
         </ul>
       )}
@@ -200,6 +230,6 @@ export function WorkOrderEmailAttachmentsSection({
         onImport={handleImportDocuments}
         isImporting={importAttachments.isPending}
       />
-    </div>
+    </section>
   )
 }
