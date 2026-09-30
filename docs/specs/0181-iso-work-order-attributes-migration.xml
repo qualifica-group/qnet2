@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0181-iso-work-order-attributes-migration" status="approved" owner="utente" date="2026-09-30">
+
+  <goal>
+    Dopo l'import dal legacy (pagina /migrations e production seeder), le categorie prodotto ISO in contesto Commessa
+    hanno ESATTAMENTE i campi flessibili che la pagina legacy `manageorder` mostra per una commessa ISO (card
+    `spec_service = 2`, es. commessa 19771), con le stesse etichette/opzioni e disposti nelle stesse sezioni.
+  </goal>
+
+  <context>
+    - Legacy (`/Users/Repository/qnet`, http://qnet.test): commessa 19771 = servizio 1373 `code=ISO`, `spec_service=2`,
+      categoria 70 "Ente_Iso" (padre 69 "ENTE DI CERTIFICAZIONE - SOA"). Pagina `livewire/orders/manageorder.blade.php`
+      (componente `App\Livewire\Orders\Manageorder`), modal `dati-iso.*`.
+    - Export legacy verso qnet-2: `App\Http\Controllers\Api\V2\AttributeMigrationController` (`GET /api/v2/migration/attributes`,
+      dizionario deduplicato per `code`, id posizionali), `ProductCategoryMigrationController` (`GET .../product-categories`,
+      `attributes[]` per categoria da `App\Support\Migration\MigrationAttributeCards::linksForCards`:
+      `workOrderCommonAttributes()` + `workOrderAttributes()[card]`). Nessun endpoint layout. La mappatura attuale e' stata
+      ricavata da `info-order.blade.php` (non da manageorder): etichette/opzioni divergenti, ~20 campi ISO non mostrati,
+      mancano le due tabelle, `data_urgenza_emissione`, `comunicazione_email`.
+    - qnet-2: `App\Migrations\Sources\AttributesSource` (salta per old_id, NON adotta per `code` -> riga fallita se il
+      code esiste; `config` non validato per `table`; relation `entity_type` legacy con underscore rifiutato),
+      `ProductCategoriesSource`, `ProductCategoryAttributesSource` (pivot `attribute_category` solo additivo).
+      Fasi in `App\Migrations\MigrationOrder::PHASES`, registry `config/migrations.php` `definitions`, import completo in
+      `Database\Seeders\QualificaLegacyImportSeeder::SOURCES` (lanciato da `QualificaProductionDataSeeder`).
+      Layout: tabella `attribute_layouts` (categoria, context, form_mode, layout JSON), validato da
+      `App\Services\ProductCategories\AttributeLayoutValidator`, scritto da `AttributeLayoutService::upsert`, ereditato
+      dagli antenati; nessuna sorgente di migrazione lo importa. Tipo campo `table` (spec 0180) disponibile.
+      Etichette sorgenti FE: `frontend/src/i18n/locales/{it,en}-migrations.ts`.
+    - Decisioni utente (2026-09-30): D-1 i campi ISO non mostrati dalla pagina vengono TOLTI dalla Commessa ISO
+      (restano nel catalogo attributi); D-2 "Stato lavorazione" e "Standard ISO" diventano campi di scelta con le
+      opzioni prese dal legacy (Standard ISO a scelta multipla); D-3 solo definizioni, assegnazioni e sezioni: i VALORI
+      delle commesse restano per una spec successiva; D-4 in caso di divergenza vincono etichette e opzioni della pagina.
+    - Decisioni approvate dall utente (2026-09-30): D-5 `stato_consulenza` prende le opzioni da `progress`
+      della radice 69 (ISO/SOA), esclusa la voce segnaposto id 1000 "***", e passa dai campi comuni alla sola card ISO
+      (con opzioni di una radice non ha senso sulle altre card; oggi fallisce comunque all'import);
+      D-6 `comunicazione_email` (CC/CCN) si aggiunge ai campi comuni della Commessa (la pagina la mostra per ogni
+      commessa); D-7 le tabelle usano codici e chiavi colonna legacy (`orderiso_verificas`, `orderiso_details`,
+      `data_verifica`, `sup_vi`, ...) per facilitare la futura migrazione dei valori; D-8 la sorgente layout NON
+      sovrascrive un layout gia' presente (configurato a mano o importato prima).
+      D-9 (lead, 2026-09-30, trovato in verifica): nel contesto work_order una categoria riceve link e layout solo dalle
+      card dei PROPRI prodotti; una categoria senza prodotti propri (es. 69, padre di Ente_Iso ed Ente_Soa) non ne riceve,
+      altrimenti in qnet-2 i figli erediterebbero i campi delle card sorelle (ISO riceveva i 15 `soa_*`). Contesto quote invariato.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy `AttributeMigrationController`: etichette/opzioni della pagina; `stato_consulenza` enum (select) da `progress` radice 69; `standard` enum multiselect da `isos`; `scopo_confermato` 1=Confermato/2=Modificato; nuovi `data_urgenza_emissione` (data), `comunicazione_email` (enum 1=CC, 2=CCN), `orderiso_verificas` (table), `orderiso_details` (table).</item>
+      <item>Legacy `MigrationAttributeCards`: card 2 (ISO) contesto work_order = esattamente i campi della pagina; comuni = stato_pagamento, accordo_pagamento, insoluti, comunicazione_email.</item>
+      <item>Legacy: nuovo endpoint `GET /api/v2/migration/attribute-layouts` (controller dedicato) con il layout a 5 sezioni per ogni categoria la cui card include 2, contesto work_order.</item>
+      <item>qnet-2: nuova sorgente `AttributeLayoutsSource` (key `attribute-layouts`) registrata in config, fase 6 di `MigrationOrder::PHASES` e in `QualificaLegacyImportSeeder::SOURCES`; etichette IT/EN nella pagina /migrations.</item>
+      <item>qnet-2 `AttributesSource`: adozione per `code` di un attributo gia' esistente senza old_id (imposta old_id, non sovrascrive); validazione del `config` table con `TableFieldConfigValidator`; normalizzazione `entity_type` underscore→trattino.</item>
+      <item>Test (Pest qnet-2) + verifica end-to-end dell'import reale contro qnet.test su un database temporaneo.</item>
+      <item>Guida/manuale: sezione Migrazioni (nuova sorgente) se elenca le sorgenti.</item>
+    </in>
+    <out>
+      <item>Valori delle commesse (`orderisos`, `orderiso_verificas`, `orderiso_details` -> `work_orders.attribute_values`) (D-3).</item>
+      <item>Le altre card (SOA, Sicurezza, GDPR, R&amp;S, PAL, Gare, Istruzione, Formazione): nessuna modifica oltre ai campi comuni (D-6) e allo spostamento di `stato_consulenza` (D-5).</item>
+      <item>Pulizia dei collegamenti gia' importati su un DB esistente: `product-category-attributes` resta additivo; il risultato "esatto" e' garantito su DB nuovo (production seeder / reset). Su DB gia' importato i collegamenti extra vanno tolti a mano.</item>
+      <item>Visibilita' condizionata di "Quotazione" per ruolo, campi nativi della commessa (Tipo commessa, Data richiamo, Descrizione), promemoria email delle verifiche.</item>
+      <item>Relazioni legacy senza destinazione in qnet-2 (`provinces`): restano fallite come oggi.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Legacy -> qnet-2: attributi (endpoint esistente, record modificati/aggiunti) -->
+    <endpoint method="GET" path="http://qnet.test/api/v2/migration/attributes">
+      <response status="200">
+        Envelope invariato ({items, pagination}). Record (id posizionale, code, name, type, config?, options?):
+        - stato_consulenza: name "Stato Lavorazione", type enum, config {display:select}, options = progress (service_id=69, escluso id 1000) value=id stringa, label=description, ordine per id.
+        - standard: name "Standard ISO", type enum, config {display:multiselect, multiple:true}, options = isos (value=id stringa, label=name).
+        - stato_certificato: name "Annualità del certificato" (opzioni 1..7 invariate).
+        - data_inizio_lavorazione: name "Data di assegnazione"; scopo: "Scopo proposto"; ore_lavorazione "Ore di lavorazione"; data_fine_lavorazione "Data fine lavorazione"; ente_riferimento "Ente di riferimento"; note_consulente "Note consulente".
+        - scopo_confermato: enum radio, options 1=Confermato, 2=Modificato.
+        - NUOVO data_urgenza_emissione: "Data Urgenza Emissione", date.
+        - NUOVO comunicazione_email: "Comunicazioni Email Commerciale", enum radio, options 1=CC, 2=CCN.
+        - NUOVO orderiso_verificas: "Verifiche Ispettive", type table, config = {
+            columns:[ {key:data_verifica,label:"Data Verifica I.",type:date,required:true},
+                      {key:ispettore_verifica,label:"Ispettore",type:text,required:true},
+                      {key:sup_vi,label:"Sup. Verifica",type:enum,options:[{value:"1",label:"On Site"},{value:"2",label:"Off Site"}]},
+                      {key:fase_vi,label:"Fase Verifica",type:enum,options:[{value:"1",label:"Stage 1"},{value:"2",label:"Stage 2"}]},
+                      {key:invio_alert,label:"Avviso",type:boolean} ],
+            selectable:{key:attivo,label:"Attivo"}, summary:{column:data_verifica,strategy:selected} }.
+        - NUOVO orderiso_details: "Standard e certificati", type table, config = {
+            columns:[ {key:standard,label:"Standard",type:text,required:true},
+                      {key:data_emissione_certificato,label:"Data Emissione Certificato",type:date},
+                      {key:data_scadenza_certificato,label:"Data Scadenza Certificato",type:date} ],
+            summary:{column:data_scadenza_certificato,strategy:max} }.
+        Gli altri record invariati (restano nel catalogo, D-1).
+      </response>
+    </endpoint>
+
+    <!-- Legacy -> qnet-2: collegamenti (endpoint esistente, attributes[] per categoria) -->
+    <endpoint method="GET" path="http://qnet.test/api/v2/migration/product-categories">
+      <response status="200">
+        Per una categoria con card 2, `attributes[]` in contesto work_order = in quest'ordine:
+        comuni: stato_pagamento, accordo_pagamento, insoluti, comunicazione_email;
+        ISO: standard, orderiso_details, data_ultimo_audit, stato_certificato, urgenza_emissione, data_urgenza_emissione,
+        intervista_in_sede, supporto_in_sede_op, ore_lavorazione, data_inizio_lavorazione, data_fine_lavorazione,
+        ente_riferimento, ore_intervista, ore_supporto_verifica, quotazione, orderiso_verificas,
+        stato_consulenza, scopo, scopo_confermato, scopo_annuale, note_consulente, data_verifica_ufficiale.
+        Shape del link invariata: {attribute_id, attribute_code, context:'work_order', is_required:false, sort_order}.
+        Contesto quote invariato. `stato_consulenza` non e' piu' tra i comuni (D-5).
+      </response>
+    </endpoint>
+
+    <!-- Legacy -> qnet-2: NUOVO layout -->
+    <endpoint method="GET" path="http://qnet.test/api/v2/migration/attribute-layouts">
+      <request>offset, limit (come gli altri endpoint migration).</request>
+      <response status="200">
+        { items: [ { id: string ("<category_id>-work_order-all"), category_id: int (legacy service_categories.id),
+                     context: 'work_order', form_mode: 'all',
+                     layout: { sections: [ {id, title, description:null, variant:'default', collapsible:false,
+                               default_collapsed:false, columns:2, sort_order, rows:[ {id, items:[{attribute_code, width}]} ]} ] } } ],
+          pagination: {total, offset, limit, total_pages} }
+        Una voce per ogni categoria la cui card include 2. Sezioni, nell'ordine (titoli come in pagina):
+        1 "Dettagli Lavorazioni": standard (full), orderiso_details (full), data_ultimo_audit | stato_certificato,
+          urgenza_emissione | data_urgenza_emissione.
+        2 "Focus Lavorazione Iso": intervista_in_sede | supporto_in_sede_op, ore_lavorazione | data_inizio_lavorazione,
+          data_fine_lavorazione | ente_riferimento, ore_intervista | ore_supporto_verifica, quotazione (half).
+        3 "Verifiche Ispettive": orderiso_verificas (full).
+        4 "Dettagli Lavorazioni Iso": stato_consulenza (half), scopo (full), scopo_confermato (half), scopo_annuale (full),
+          note_consulente (full), data_verifica_ufficiale (half).
+        5 "Dati contrattuali": stato_pagamento | accordo_pagamento, insoluti | comunicazione_email.
+        "a | b" = una riga con due item `half`; textarea e tabelle `full`.
+      </response>
+    </endpoint>
+
+    <!-- qnet-2: sorgente -->
+    <shape name="AttributeLayoutsSource">
+      key `attribute-layouts`, endpoint `attribute-layouts`, fase 6 (dopo `product-category-attributes`).
+      Per ogni item: categoria risolta per old_id (assente -> riga saltata con warning); layout gia' presente per
+      (categoria, context, form_mode) -> saltato (D-8, idempotente); altrimenti `AttributeLayoutService::upsert`
+      (validazione `AttributeLayoutValidator`: codici effettivi della categoria per il contesto; errore -> riga fallita
+      con messaggio). Nessun endpoint qnet-2 nuovo: la sorgente compare in /migrations come le altre (preview, import,
+      mass run), autorizzazione super-admin invariata.
+    </shape>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Legacy (verifica via HTTP su qnet.test) -->
+    <criterion id="AC-001">Dato il legacy locale, quando si chiama GET /api/v2/migration/attributes, allora i record `stato_consulenza`, `standard`, `stato_certificato`, `data_inizio_lavorazione`, `scopo_confermato`, `data_urgenza_emissione`, `comunicazione_email`, `orderiso_verificas`, `orderiso_details` hanno nome/tipo/config/opzioni esattamente come nel contratto; nessun `code` duplicato. (verifica HTTP/tinker, evidenza JSON)</criterion>
+    <criterion id="AC-002">Dato il legacy locale, quando si chiama GET /api/v2/migration/product-categories, allora la categoria 70 ha in contesto work_order esattamente la lista del contratto (stesso ordine), la 69 (senza prodotti propri, D-9) non ha link work_order, la 71 ha solo i propri campi SOA + comuni; il contesto quote e' invariato. (verifica HTTP, diff con la lista)</criterion>
+    <criterion id="AC-003">Dato il legacy locale, quando si chiama GET /api/v2/migration/attribute-layouts, allora ci sono voci per le categorie con prodotti propri di card 2 (inclusa 70, esclusa 69 per D-9) con le 5 sezioni del contratto, e ogni `attribute_code` del layout appartiene ai collegamenti work_order della stessa categoria. (verifica HTTP)</criterion>
+
+    <!-- qnet-2 -->
+    <criterion id="AC-004">Dato un fake HTTP con un attributo `table` e config valido, quando si importa `attributes`, allora l'attributo e' creato con quel config; con un config table invalido la riga fallisce con messaggio e nessun attributo creato. (Pest)</criterion>
+    <criterion id="AC-005">Dato un attributo esistente con `code` X e senza old_id, quando si importa un record legacy con code X, allora l'attributo viene adottato (old_id impostato, nome/opzioni invariati), la riga non fallisce e i link per attribute_id legacy si risolvono. (Pest)</criterion>
+    <criterion id="AC-006">Dato un record relation con `entity_type` `operational_sites`, quando si importa, allora viene normalizzato a `operational-sites` e accettato. (Pest)</criterion>
+    <criterion id="AC-007">Dato un fake HTTP con un item layout per una categoria importata (old_id) i cui codici sono collegati in work_order, quando si importa `attribute-layouts`, allora `attribute_layouts` ha una riga (categoria, work_order, all) con le sezioni ricevute; rieseguendo l'import nessuna modifica; con un layout gia' presente la riga e' saltata; con categoria sconosciuta riga saltata con warning; con un codice non collegato la riga fallisce e nessun layout scritto. (Pest)</criterion>
+    <criterion id="AC-008">Dato il registry, allora `attribute-layouts` e' in `config/migrations.php`, in `MigrationOrder::PHASES` fase 6 e in `QualificaLegacyImportSeeder::SOURCES` dopo `product-category-attributes`; `MigrationRegistryTest`/`QualificaLegacyImportSeederTest` coprono la nuova sorgente e l'idempotenza. (Pest)</criterion>
+    <criterion id="AC-009">Dato la pagina /migrations, quando si apre l'elenco sorgenti, allora `attribute-layouts` ha etichetta IT/EN tradotta. (Vitest sul file locale o test esistente della pagina)</criterion>
+
+    <!-- End-to-end -->
+    <criterion id="AC-010">Dato un database qnet-2 temporaneo (SQLite file nella scratchpad, mai il DB di sviluppo) e il legacy qnet.test, quando si eseguono in ordine le sorgenti necessarie (attributes, product-categories, product-category-attributes, attribute-layouts), allora la categoria importata "Ente_Iso" risolve per il contesto Commessa esattamente i campi del contratto nelle 5 sezioni (via `WorkOrderAttributeResolver`/API layout categoria), le due tabelle hanno il config del contratto, e nessun campo ISO extra e' collegato. (evidenza comando + output)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Legacy: modifiche solo nei controller/supporti `Api/V2` di migrazione + route in `routes/apiV2.php`; nessuna migrazione DB legacy, nessuna scrittura sul DB legacy.
+    - qnet-2: layering invariato (source -> service esistenti), idempotenza per old_id, nessun endpoint nuovo, authz super-admin invariata.
+    - Verifica e2e SOLO su DB temporaneo; mai scrivere nel DB di sviluppo qnet-2 ne' nel DB legacy.
+    - Identificatori nuovi in inglese (classi, metodi); codici attributo e chiavi colonna riusano i nomi legacy esistenti (D-7, engineering.md §1.2 eccezione nomi esistenti).
+    - File entro 300/500 righe (il controller legacy e' gia' grande: il layout va in un controller/supporto dedicato).
+  </constraints>
+
+</spec>

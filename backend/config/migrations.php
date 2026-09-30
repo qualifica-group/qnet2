@@ -1,5 +1,6 @@
 <?php
 
+use App\Migrations\Sources\AttributeLayoutsSource;
 use App\Migrations\Sources\AttributesSource;
 use App\Migrations\Sources\BusinessFunctionMembersSource;
 use App\Migrations\Sources\BusinessFunctionsSource;
@@ -86,6 +87,7 @@ return [
         'attributes' => AttributesSource::class,
         'product-categories' => ProductCategoriesSource::class,
         'product-category-attributes' => ProductCategoryAttributesSource::class,
+        'attribute-layouts' => AttributeLayoutsSource::class,
         'products' => ProductsSource::class,
         'cost-products' => CostProductsSource::class,
         // spec 0175: "Modelli email" / "Modelli documenti", independent

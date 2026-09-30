@@ -67,6 +67,11 @@ final class MigrationOrder
         // vat-rates and provisions its own "Costi" branch, so it sits beside
         // `products`.
         ['product-category-attributes', 'products', 'cost-products'],
+
+        // Phase 6 — category form layouts (spec 0181): AttributeLayoutValidator
+        // only accepts codes the category has ALREADY linked for the context,
+        // so this needs the phase 5 `product-category-attributes` pivot.
+        ['attribute-layouts'],
     ];
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Migrations\Sources;
 
 use App\CustomFields\CustomFieldEntityRegistry;
+use App\CustomFields\Table\TableFieldConfigValidator;
 use App\DataObjects\Attributes\CreateAttributeData;
 use App\Migrations\AbstractMigrationSource;
 use App\Migrations\MigrationImportContext;
@@ -27,7 +28,11 @@ use RuntimeException;
  * entity_type, one|many cardinality, non-empty for_select_resource). The
  * category/attribute pivot (attribute_category) is NOT carried here (mirrors
  * TagsSource: the import creates only the entity itself). Re-import is
- * idempotent (skip by old_id); `code` is unique.
+ * idempotent (skip by old_id); `code` is unique, so an attribute qnet already
+ * holds under that code without an old_id is ADOPTED (old_id set, nothing else
+ * touched — spec 0181) rather than failing the row. A `table` attribute's
+ * config is checked with TableFieldConfigValidator, and a legacy relation
+ * `entity_type` written with underscores is normalized to qnet's hyphens.
  */
 class AttributesSource extends AbstractMigrationSource
 {
@@ -37,6 +42,7 @@ class AttributesSource extends AbstractMigrationSource
         ExternalApiClient $client,
         private readonly AttributeService $service,
         private readonly CustomFieldEntityRegistry $entityRegistry,
+        private readonly TableFieldConfigValidator $tableConfigValidator,
     ) {
         parent::__construct($client);
     }
@@ -189,6 +195,18 @@ class AttributesSource extends AbstractMigrationSource
             throw new RuntimeException('type is required.');
         }
 
+        $adopted = Attribute::query()->where('code', $code)->whereNull('old_id')->first();
+
+        if ($adopted !== null) {
+            $adopted->old_id = $externalId;
+            $adopted->save();
+
+            return MigrationRowOutcome::created(
+                ["Existing attribute \"{$code}\" adopted instead of duplicated."],
+                $adopted,
+            );
+        }
+
         $attribute = $this->service->create(new CreateAttributeData(
             code: $code,
             name: $name,
@@ -286,9 +304,25 @@ class AttributesSource extends AbstractMigrationSource
             return null;
         }
 
+        if ($type === 'table') {
+            $this->assertValidTableConfig($raw);
+        }
+
         return $type === 'enum' && ($raw['multiple'] ?? false) === true
             ? [...$raw, 'display' => 'multiselect']
             : $raw;
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    private function assertValidTableConfig(array $config): void
+    {
+        $errors = $this->tableConfigValidator->validate($config);
+
+        if ($errors !== []) {
+            throw new RuntimeException('Invalid table config: '.implode(' ', $errors));
+        }
     }
 
     /**
@@ -314,7 +348,8 @@ class AttributesSource extends AbstractMigrationSource
             return null;
         }
 
-        $entityType = trim((string) ($raw['entity_type'] ?? ''));
+        // The legacy writes entity types with underscores; qnet's registry uses hyphens.
+        $entityType = str_replace('_', '-', trim((string) ($raw['entity_type'] ?? '')));
         $cardinality = trim((string) ($raw['cardinality'] ?? ''));
         $forSelectResource = trim((string) ($raw['for_select_resource'] ?? ''));
 

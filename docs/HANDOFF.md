@@ -3,6 +3,33 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0181 CAMPI FLESSIBILI COMMESSA ISO DAL LEGACY (+ LAYOUT A SEZIONI) — VERDE, NON COMMITTATO (2026-09-30)
+
+- Spec `docs/specs/0181-iso-work-order-attributes-migration.xml` (D-1 solo i campi della pagina `manageorder`;
+  D-2 stato_consulenza/standard enum con opzioni legacy; D-3 valori commesse fuori scope; D-4 etichette della pagina;
+  D-5 stato_consulenza solo card ISO; D-6 comunicazione_email comune; D-7 codici/chiavi legacy per le tabelle;
+  D-8 layout esistente non sovrascritto; D-9 in work_order solo le card dei PROPRI prodotti: la categoria contenitore
+  69 non porta piu' ISO+SOA ai figli).
+- LEGACY `/Users/Repository/qnet` (non committato, autorizzato dall'utente): `Api/V2/AttributeMigrationController`
+  (234 attributi, nuovi in coda id 231-234: data_urgenza_emissione, comunicazione_email, orderiso_verificas table,
+  orderiso_details table; nessun id esistente spostato), `Support/Migration/MigrationAttributeCards`
+  (`linksForCards(quoteCards, workOrderCards)`), `Api/V2/ProductCategoryMigrationController` (passa le card proprie),
+  NUOVI `Api/V2/AttributeLayoutMigrationController` + `Support/Migration/MigrationAttributeLayouts`, route
+  `GET /api/v2/migration/attribute-layouts` (gruppo auth:api + v2.access). `AppServiceProvider.php` e
+  `config/database.php` legacy erano gia' modificati e NON fanno parte di questa feature.
+- qnet-2: NUOVA `Migrations\Sources\AttributeLayoutsSource` (key `attribute-layouts`, fase 6, in
+  `QualificaLegacyImportSeeder::SOURCES` dopo `product-category-attributes`); `AttributesSource`: adozione per `code`,
+  validazione config `table` (`TableFieldConfigValidator`), `entity_type` `_`->`-`. Etichette `/migrations` IT/EN,
+  guida in-app `migrations`, manuale Claude Docs (sorgente Layout attributi).
+- `EXTERNAL_MIGRATION_TOKEN` in `backend/.env` sostituito con il nuovo token fornito dall'utente (il vecchio dava 401).
+- Verifica: import reale via HTTP da qnet.test su SQLite temporaneo (2 passate, idempotente): Ente_Iso = 26 campi del
+  contratto in 5 sezioni senza "Altre informazioni"; 56 layout; unico fallimento atteso `province_id` (provinces senza
+  destinazione). Pest completo 9043 pass / 0 fail / 1 skip; Pint, `tsc -b --force`, Vitest migrations/i18n/help 305.
+  `QualificaWorkflowSeederTest` e' fallito una volta in un giro completo precedente (flaky, fuori scope).
+- Aperti: valori commesse (orderisos, verifiche, standard -> `work_orders.attribute_values`) in spec successiva;
+  `product-category-attributes` resta additivo (su DB gia' importato i vecchi link ISO extra vanno tolti a mano o reset);
+  il contesto quote usa ancora le card dei discendenti (possibile stessa contaminazione, non toccato).
+
 ## SEED PRODUZIONE: STATO "AUTOFINANZIATO" TOLTO DALLE LISTE GOL — VERDE, NON COMMITTATO (2026-09-30)
 
 - `WorkflowStatusCatalogue`: rimosso `'Autofinanziato'` dalle colonne `GOL - <Regione>` (Lombardia, Campania,

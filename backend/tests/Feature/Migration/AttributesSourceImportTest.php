@@ -324,3 +324,77 @@ it('isolates a failed attribute row (unregistered type) without blocking the val
     expect($fresh->created_rows)->toBe(1)
         ->and($fresh->failed_rows)->toBe(1);
 });
+
+// ---------------------------------------------------------------------------
+// Spec 0181 — table config validation, adoption by code, entity_type normalization
+// ---------------------------------------------------------------------------
+
+it('AC-004: imports a table attribute with its config and rejects an invalid one', function () {
+    seedMigrationsConfig();
+    $config = [
+        'columns' => [
+            ['key' => 'data_verifica', 'label' => 'Data Verifica I.', 'type' => 'date', 'required' => true],
+            ['key' => 'invio_alert', 'label' => 'Avviso', 'type' => 'boolean'],
+        ],
+        'selectable' => ['key' => 'attivo', 'label' => 'Attivo'],
+        'summary' => ['column' => 'data_verifica', 'strategy' => 'selected'],
+    ];
+    Http::fake([
+        fakeMigrationsBaseUrl().'/attributes*' => Http::response([
+            'items' => [
+                ['id' => 30, 'code' => 'orderiso_verificas', 'name' => 'Verifiche Ispettive', 'type' => 'table', 'config' => $config],
+                ['id' => 31, 'code' => 'bad_table', 'name' => 'Bad table', 'type' => 'table', 'config' => ['columns' => []]],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'attributes']);
+    runMigrationJobFor($run);
+
+    expect(Attribute::query()->where('old_id', 30)->first()->config)->toBe($config)
+        ->and(Attribute::query()->where('code', 'bad_table')->exists())->toBeFalse()
+        ->and($run->fresh()->created_rows)->toBe(1)
+        ->and($run->fresh()->failed_rows)->toBe(1)
+        ->and(json_encode($run->fresh()->report))->toContain('Invalid table config');
+});
+
+it('AC-005: adopts an existing attribute by code without touching its name or options', function () {
+    seedMigrationsConfig();
+    $existing = Attribute::factory()->create(['old_id' => null, 'code' => 'stato_pagamento', 'name' => 'Nome locale', 'type' => 'text']);
+    Http::fake([
+        fakeMigrationsBaseUrl().'/attributes*' => Http::response([
+            'items' => [['id' => 40, 'code' => 'stato_pagamento', 'name' => 'Nome legacy', 'type' => 'text']],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'attributes']);
+    runMigrationJobFor($run);
+
+    $existing->refresh();
+    expect($existing->old_id)->toEqual(40)
+        ->and($existing->name)->toBe('Nome locale')
+        ->and(Attribute::query()->where('code', 'stato_pagamento')->count())->toBe(1)
+        ->and($run->fresh()->failed_rows)->toBe(0)
+        ->and($run->fresh()->created_rows)->toBe(1);
+});
+
+it('AC-006: normalizes a legacy underscore relation entity_type to hyphens', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/attributes*' => Http::response([
+            'items' => [[
+                'id' => 50, 'code' => 'site', 'name' => 'Site', 'type' => 'relation',
+                'relation_target' => ['entity_type' => 'operational_sites', 'cardinality' => 'one', 'for_select_resource' => 'operational-sites'],
+            ]],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'attributes']);
+    runMigrationJobFor($run);
+
+    expect(Attribute::query()->where('old_id', 50)->first()->relation_target['entity_type'])->toBe('operational-sites')
+        ->and($run->fresh()->failed_rows)->toBe(0);
+});

@@ -28,6 +28,7 @@ export const migrations = {
     attributes: 'Attributes',
     'product-categories': 'Product categories',
     'product-category-attributes': 'Product categories — link attributes',
+    'attribute-layouts': 'Attribute layouts',
     products: 'Products',
   },
   page: {

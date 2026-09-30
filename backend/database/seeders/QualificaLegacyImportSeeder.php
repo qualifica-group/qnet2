@@ -80,6 +80,8 @@ class QualificaLegacyImportSeeder extends Seeder
         // Phase 5 — the association pass that back-fills that pivot, once both
         // anchors have their `old_id`.
         'product-category-attributes',
+        // Phase 6 — the category form layouts, valid only once the links above exist.
+        'attribute-layouts',
         // The sellable catalogue: remaps its category through the phase-4
         // `product-categories` and its VAT through the phase-1 `vat-rates`.
         'products',

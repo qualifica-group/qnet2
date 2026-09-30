@@ -3,6 +3,7 @@
 use App\Enums\MigrationStatus;
 use App\Enums\ProductUsage;
 use App\Models\Attribute;
+use App\Models\AttributeLayout;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\MassMigrationRun;
@@ -97,10 +98,22 @@ function fakeLegacyCatalogues(): void
             'items' => [
                 ['id' => 51, 'name' => 'Bandi', 'parent_id' => null, 'attributes' => [
                     ['attribute_id' => 91, 'context' => 'product'],
+                    ['attribute_id' => 91, 'context' => 'work_order'],
                 ]],
                 ['id' => 52, 'name' => 'Bandi Regionali', 'parent_id' => 51],
             ],
             'pagination' => ['total' => 2],
+        ]),
+        fakeMigrationsBaseUrl().'/attribute-layouts*' => Http::response([
+            'items' => [[
+                'id' => '51-work_order-all', 'category_id' => 51, 'context' => 'work_order', 'form_mode' => 'all',
+                'layout' => ['sections' => [[
+                    'id' => 'main', 'title' => 'Main', 'description' => null, 'variant' => 'default',
+                    'collapsible' => false, 'default_collapsed' => false, 'columns' => 2, 'sort_order' => 0,
+                    'rows' => [['id' => 'row-1', 'items' => [['attribute_code' => 'durata', 'width' => 'full']]]],
+                ]]],
+            ]],
+            'pagination' => ['total' => 1],
         ]),
         fakeMigrationsBaseUrl().'/products*' => Http::response([
             'items' => [[
@@ -183,9 +196,13 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
     $attributeLinks = DB::table('attribute_category')->where('category_id', $importedCategory->id)->get();
 
     expect($importedAttribute->code)->toBe('durata')
-        ->and($attributeLinks)->toHaveCount(1)
+        ->and($attributeLinks)->toHaveCount(2)
         ->and($attributeLinks[0]->attribute_id)->toBe($importedAttribute->id)
-        ->and($attributeLinks[0]->context)->toBe('product');
+        ->and($attributeLinks->pluck('context')->sort()->values()->all())->toBe(['product', 'work_order']);
+
+    // Spec 0181: the layout lands after the links it references, once.
+    expect(QualificaLegacyImportSeeder::SOURCES)->toContain('attribute-layouts')
+        ->and(AttributeLayout::query()->where('product_category_id', $importedCategory->id)->sole()->layout['sections'][0]['title'])->toBe('Main');
 
     seedCatalogThenLegacy(); // re-run: skipped by old_id, never duplicated — shared by every block below.
 
@@ -254,7 +271,8 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         // Scoped to the imported category: the catalogue itself now owns an
         // unrelated pivot row (the "Ore complessive" attribute on Formazione),
         // so a global count no longer isolates the legacy import.
-        ->and(DB::table('attribute_category')->where('category_id', ProductCategory::query()->where('old_id', 51)->value('id'))->count())->toBe(1)
+        ->and(DB::table('attribute_category')->where('category_id', ProductCategory::query()->where('old_id', 51)->value('id'))->count())->toBe(2)
+        ->and(AttributeLayout::query()->where('product_category_id', ProductCategory::query()->where('old_id', 51)->value('id'))->count())->toBe(1)
         ->and(MassMigrationRun::query()->count())->toBe(2)
         ->and(MassMigrationRun::query()->latest('id')->first()->status)->toBe(MigrationStatus::Completed);
 });
