@@ -93,6 +93,18 @@
       numero vecchio, per questo la regola e' per metodo HTTP e non per model event (le righe prodotto
       si scrivono anche con delete/insert di massa che non emettono eventi).
     </decision>
+    <decision id="D-3b">
+      Revisione 2026-09-30 (fonte: stress test 100 utenti 2026-09-29, sez. 3.4, soluzione S5). Sotto carico
+      l'attesa del lock (5 s) scadeva e la richiesta ricalcolava comunque, e il lock (30 s) scadeva prima della
+      fine di calcoli da 40+ s: 3 calcoli identici da 47 s in parallelo. Ora: (1) `lock_seconds` default 120;
+      (2) la voce resta nello store per `retain_seconds` (default 3600) oltre `stale`, l'eta' si legge sempre
+      da `computed_at` quindi fresh/stale sono invariati e una voce oltre stale ma entro retain viene
+      ricalcolata in linea (sotto lock) se il lock e' libero; (3) scaduta l'attesa del lock la richiesta
+      SERVE L'ULTIMO VALORE se esiste e calcola da sola solo se non ce n'e' nessuno; (4) D-4 resta valida:
+      un attore che ha scritto dopo `computed_at` ottiene un ricalcolo esatto anche a lock scaduto, mai il
+      valore vecchio (la chiave `actor-wrote` vive `retain_seconds`). Il refresh in background resta a
+      singolo processo; gli errori dello store restano assorbiti (calcolo diretto).
+    </decision>
     <decision id="D-5">
       Chiavi per AMBITO DI VISIBILITA', mai piu' larghe dei dati che l'attore puo' vedere:
       - Gestione Richieste/Iscritti (tab, dashboard, filtri report): impronta da
@@ -197,7 +209,7 @@
     </endpoint>
     <config file="config/aggregate-cache.php">
       `fresh_seconds` (env AGGREGATE_CACHE_FRESH_SECONDS, default 10), `stale_seconds` (default 300),
-      `lock_seconds` (durata massima del lock, default 30), `lock_wait_seconds` (attesa massima, default 5), `prune_chunk` (righe per blocco di pulizia, default 1000).
+      `retain_seconds` (env AGGREGATE_CACHE_RETAIN_SECONDS, permanenza dell'ultimo valore nello store, default 3600), `lock_seconds` (durata massima del lock, default 120), `lock_wait_seconds` (attesa massima, default 5), `prune_chunk` (righe per blocco di pulizia, default 1000).
     </config>
   </data_contract>
 
@@ -216,7 +228,7 @@
     <criterion id="AC-011">Eta' tra fresh e stale: la lettura restituisce il valore VECCHIO; dopo l'esecuzione dei callback differiti il valore salvato e' quello nuovo e il calcolo e' avvenuto una sola volta.</criterion>
     <criterion id="AC-012">Eta' oltre stale_seconds: la lettura ricalcola in modo sincrono e restituisce il valore nuovo.</criterion>
     <criterion id="AC-013">Chiave assente con lock gia' posseduto da un altro processo che nel frattempo salva il valore: la lettura restituisce quel valore senza richiamare il proprio calcolo.</criterion>
-    <criterion id="AC-014">Lock non ottenuto entro lock_wait_seconds: la lettura calcola comunque e restituisce il valore (nessuna eccezione).</criterion>
+    <criterion id="AC-014">Lock non ottenuto entro lock_wait_seconds: se esiste un valore precedente (anche oltre stale, entro retain_seconds) la lettura lo restituisce senza calcolare; se non esiste, o se l'attore ha scritto dopo computed_at (D-4), calcola e restituisce il valore (nessuna eccezione).</criterion>
     <criterion id="AC-029">Se lo store di cache lancia un'eccezione in lettura, scrittura o lock, la lettura restituisce il valore calcolato direttamente e l'endpoint risponde 200 con lo stesso payload.</criterion>
     <criterion id="AC-015">Un valore di tipo oggetto (es. Model o Collection) passato ad AggregateCache e' rifiutato con eccezione in fase di sviluppo/test; i valori delle tab letti dallo store `database` tornano array identici a quelli calcolati (regressione CustomFieldProvider).</criterion>
     <!-- (B) esattezza per chi scrive -->

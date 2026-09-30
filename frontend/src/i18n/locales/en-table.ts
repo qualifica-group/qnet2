@@ -15,6 +15,7 @@ export const table = {
   moreActions: 'More actions',
   search: 'Search…',
   searchPlaceholder: 'Search {{columns}}…',
+  searchMinLength: '(min. {{count}} characters)',
   rowCount_one: '{{count}} row',
   rowCount_other: '{{count}} rows',
   options: 'Table options',

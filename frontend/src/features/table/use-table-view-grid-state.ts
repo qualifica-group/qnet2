@@ -159,6 +159,7 @@ export function useTableViewGridState(
     gridApi,
     searchEnabled,
     initialSearch: localFilters.initial.search,
+    searchMinLength: config?.searchMinLength,
   })
 
   // Feeds the toolbar's own "N rows" counter AND, additively, the caller's

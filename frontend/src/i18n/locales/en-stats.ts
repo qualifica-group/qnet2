@@ -123,7 +123,7 @@ export const moduleStats = {
     estimatedValue: 'Total estimated value',
     averageProbability: 'Average probability',
     fromLead: 'From a lead',
-    byRegistry: 'By registry',
+    byOperationalSite: 'By operational site',
     trend: 'New opportunities per month',
   },
   tasks: {

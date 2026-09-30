@@ -28,6 +28,7 @@ beforeEach(function () {
     config([
         'aggregate-cache.fresh_seconds' => 10,
         'aggregate-cache.stale_seconds' => 300,
+        'aggregate-cache.retain_seconds' => 3600,
         'aggregate-cache.lock_wait_seconds' => 0,
     ]);
     Cache::flush();
@@ -110,12 +111,44 @@ it('AC-013 returns the value stored by the lock holder without running its own c
         ->and($calls)->toBe([]);
 });
 
-it('AC-014 computes anyway when the lock is not obtained within the wait', function () {
+it('AC-014 computes anyway when the lock is not obtained within the wait and no value exists', function () {
     Cache::lock('aggregates:lock:aggregates:k', 30)->get();
     $calls = [];
 
     expect($this->cache->remember('k', counting($calls, 'mine')))->toBe('mine')
         ->and($calls)->toBe(['mine']);
+});
+
+it('AC-014 serves the retained value, without computing, when the lock wait times out', function () {
+    $calls = [];
+    $this->cache->remember('k', counting($calls, 'old'));
+    $this->travel(400)->seconds();
+    Cache::lock('aggregates:lock:aggregates:k', 30)->get();
+
+    expect($this->cache->remember('k', counting($calls, 'mine')))->toBe('old')
+        ->and($calls)->toBe(['old']);
+});
+
+it('AC-014 computes on lock timeout for an actor who wrote after the stored value', function () {
+    $actor = User::factory()->create();
+    $calls = [];
+    $this->cache->remember('k', counting($calls, 'old'));
+    $this->travel(2)->seconds();
+    $this->cache->recordWrite($actor);
+    Cache::lock('aggregates:lock:aggregates:k', 30)->get();
+
+    expect($this->cache->remember('k', counting($calls, 'exact'), $actor))->toBe('exact')
+        ->and($calls)->toBe(['old', 'exact']);
+});
+
+it('AC-012 recomputes inline an entry older than stale but still retained, when the lock is free', function () {
+    $calls = [];
+    $this->cache->remember('k', counting($calls, 'old'));
+    $this->travel(1000)->seconds();
+
+    expect(Cache::get('aggregates:k'))->not->toBeNull()
+        ->and($this->cache->remember('k', counting($calls, 'new')))->toBe('new')
+        ->and($calls)->toBe(['old', 'new']);
 });
 
 it('AC-015 rejects objects, also nested, and does not swallow the error', function (mixed $value) {

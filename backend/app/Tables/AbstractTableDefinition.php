@@ -369,6 +369,11 @@ abstract class AbstractTableDefinition implements TableDefinition
         return false;
     }
 
+    public function applyGroupedSearch(Builder $query, array $columnIds, string $term): array
+    {
+        return [];
+    }
+
     /**
      * Default: a plain delete, identical to calling the model directly.
      * Concrete definitions override when the domain's single-delete endpoint

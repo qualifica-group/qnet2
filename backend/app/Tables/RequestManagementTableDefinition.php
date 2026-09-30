@@ -16,6 +16,7 @@ use App\Tables\RequestManagement\RequestActionCatalog;
 use App\Tables\RequestManagement\RequestAdvancedFilterCatalog;
 use App\Tables\RequestManagement\RequestAssignmentScope;
 use App\Tables\RequestManagement\RequestClientColumns;
+use App\Tables\RequestManagement\RequestClientSearch;
 use App\Tables\RequestManagement\RequestColumnCatalog;
 use App\Tables\RequestManagement\RequestRelationColumns;
 use App\Tables\RequestManagement\RequestRowMapper;
@@ -94,6 +95,7 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
         private readonly RequestRowMapper $rowMapper,
         private readonly RequestManagementService $service,
         private readonly RequestClientColumns $clientColumns,
+        private readonly RequestClientSearch $clientSearch,
         private readonly OperationalSiteColumn $operationalSiteColumn,
         private readonly RequestRelationColumns $relationColumns,
         private readonly RequestAssignmentScope $assignmentScope,
@@ -101,15 +103,28 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
 
     /**
      * Global quick-search (spec 0009) over the client's anagraphic columns:
-     * all DERIVED (no real `quotes` column), hence delegated to
-     * RequestClientColumns. Any other searchable column would fall through to
-     * the generic engine (none today).
+     * all DERIVED (no real `quotes` column), covered together by one two-pass
+     * FULLTEXT branch (spec 0179). A searchable custom field keeps the
+     * per-column path.
      *
      * @param  Builder<Quote>  $query
+     * @param  array<int, string>  $columnIds
+     * @return array<int, string>
      */
-    public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool
+    public function applyGroupedSearch(Builder $query, array $columnIds, string $term): array
     {
-        return $this->clientColumns->applySearch($query, $columnId, $pattern);
+        return $this->clientSearch->apply($query, $columnIds, $term);
+    }
+
+    /**
+     * Spec 0179, D-5: the word-prefix search ignores words shorter than this,
+     * so the toolbar does not send them.
+     *
+     * @return array<string, mixed>
+     */
+    public function resolveConfig(User $actor): array
+    {
+        return [...parent::resolveConfig($actor), 'searchMinLength' => RequestClientSearch::MIN_WORD_LENGTH];
     }
 
     /**

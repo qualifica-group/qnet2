@@ -190,9 +190,11 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // then `2026_09_29_120000_prune_receive_transfer_notifications_permissions`
     // (117th), the removal of the dedicated transfer-notification grant, then
     // `2026_09_29_130000_add_created_at_index_to_opportunities_and_registries`
-    // (118th), the stress-test sort index.
+    // (118th), the stress-test sort index, then spec 0179's
+    // `2026_09_30_100000_add_fulltext_search_indexes_to_personal_data_and_contacts`
+    // (119th), the quick-search FULLTEXT indexes (a no-op on SQLite).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 118]);
+    Artisan::call('migrate:rollback', ['--step' => 119]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

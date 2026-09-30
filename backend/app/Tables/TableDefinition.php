@@ -220,6 +220,21 @@ interface TableDefinition
     public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool;
 
     /**
+     * Hook run BEFORE the per-column quick-search (spec 0179): the definition
+     * may cover several searchable columns with ONE branch of the same OR
+     * group (e.g. a two-pass FULLTEXT lookup) and returns the ids it covered;
+     * the engine then runs `applyDerivedSearch()`/the generic LIKE only for the
+     * others. `$term` is the trimmed raw input, never interpolated.
+     *
+     * Default (AbstractTableDefinition): covers nothing.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<int, string>  $columnIds
+     * @return array<int, string>
+     */
+    public function applyGroupedSearch(Builder $query, array $columnIds, string $term): array;
+
+    /**
      * Advanced-filter catalogue (raw declarative descriptors, spec 0032): the
      * second-level, backend-driven filter panel above the grid. Each entry
      * additionally carries the INTERNAL `target` (real DB column, or relation

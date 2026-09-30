@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0179-request-quick-search-fulltext" status="implemented" owner="utente" date="2026-09-30">
+
+  <goal>
+    La ricerca rapida di Gestione Richieste e Gestione Iscritti risponde in meno di mezzo secondo su ~1M
+    richieste anche con 100 utenti contemporanei, invece di 30-120 s che bloccavano l'intero server.
+  </goal>
+
+  <context>
+    Stress test 100 utenti 2026-09-29 (sez. 3.1, soluzione S1): mediana 71 s, p95 123 s, 8 ricerche su 40
+    interrotte. Causa: `RequestClientColumns::applySearch` (via `TableQueryBuilder::applySearch` ->
+    `applyDerivedSearch` per colonna) costruiva per ognuna delle 6 colonne cliente (nome, cognome, codice
+    fiscale, partita IVA, telefono, email) un `orWhereHas` su `opportunity -> registry -> personalData
+    (-> contacts)` con `LIKE '%termine%'`, non indicizzabile, eseguito due volte (conteggio + righe). Il FE
+    partiva dal primo carattere digitato.
+
+    Decisione utente 2026-09-30: accettata la semantica "parola che inizia con" (indice FULLTEXT) al posto di
+    "contiene". Misure del report sulla copia 1M: passo anagrafiche 3 s -> 0,05-0,17 s; ricerca completa
+    > 30 s -> &lt; 0,5 s.
+
+    Codice reale: `personal_data` (morph `personable`, tipo `registry`), `contacts` (morph `contactable`,
+    tipo `personal_data`, colonne `type`, `value`, `is_primary`), `opportunities.registry_id` indicizzato,
+    `quotes.opportunity_id` indicizzato. I test girano su SQLite (nessun FULLTEXT).
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione: FULLTEXT(first_name, last_name, tax_code, vat_number) su `personal_data`, FULLTEXT(value) su `contacts`; no-op su SQLite.</item>
+      <item>Nuovo hook generico del motore tabellare `TableDefinition::applyGroupedSearch()`: il dominio copre piu' colonne ricercabili con un solo ramo dell'OR; le colonne restanti (es. campi personalizzati) seguono il percorso per colonna di sempre.</item>
+      <item>`App\Tables\RequestManagement\RequestClientSearch`: ricerca in due passi sulle 6 colonne cliente (vale anche per Gestione Iscritti, stessa definizione).</item>
+      <item>Contratto GET columns: campo opzionale `searchMinLength` (3 per i due domini); FE non invia la ricerca sotto la soglia e la indica nel placeholder.</item>
+      <item>Guide in-app IT/EN di Gestione Richieste e Gestione Iscritti.</item>
+    </in>
+    <out>
+      <item>Configurazione del server DB (`innodb_ft_min_token_size`, stopword, buffer pool): a cura del committente.</item>
+      <item>Ricerca rapida degli altri moduli: invariata ("contiene", nessuna soglia).</item>
+      <item>Filtri di colonna e valori distinti delle colonne cliente: invariati.</item>
+      <item>Normalizzazione dei numeri di telefono nella ricerca (es. cifre senza spazi contro un valore salvato con spazi): comportamento invariato rispetto a oggi.</item>
+    </out>
+  </scope>
+
+  <decisions>
+    <decision id="D-1">
+      Semantica: il termine si divide in parole (sequenze di lettere/cifre; spazi, punteggiatura, @ e apostrofi
+      separano). Una richiesta corrisponde se TUTTE le parole iniziano una parola della scheda anagrafica del
+      cliente (nome, cognome, codice fiscale, partita IVA insieme) OPPURE tutte iniziano una parola dello
+      stesso contatto principale telefono/email. Es. "ros" trova Rossi, "ssi" no; "mario rossi" trova Mario
+      Rossi (oggi non lo trovava: cercava la frase intera in un solo campo).
+    </decision>
+    <decision id="D-2">
+      Parole ignorate: piu' corte di 3 caratteri (`innodb_ft_min_token_size` di default) e le stopword InnoDB
+      di default da 3+ caratteri (es. "com", "the", "www"): con l'operatore `+` una stopword azzera il
+      risultato. Se non resta nessuna parola la ricerca non trova nulla. Soglia e lista sono costanti di
+      `RequestClientSearch`: se il committente cambia la configurazione del server vanno riallineate.
+    </decision>
+    <decision id="D-3">
+      Due passi. (1) Una query per la scheda e una per i contatti restituiscono gli id delle anagrafiche
+      (`MATCH ... AGAINST ('+parola1* +parola2*' IN BOOLEAN MODE)`, parametro legato; le parole contengono
+      solo lettere e cifre, nessun operatore dell'utente arriva al motore). (2) Il ramo dell'OR e'
+      `quotes.opportunity_id IN (SELECT id FROM opportunities WHERE registry_id IN (&lt;id&gt;))`.
+      Una sottoquery unica (senza passo 1 materializzato) e' stata misurata: oltre 2 minuti, scartata.
+      Tetto configurabile (`config/table-search.php`, `request_client_match_cap`, default 5000) di anagrafiche
+      per passo: termini molto generici mostrano al massimo le richieste di quelle anagrafiche (limite noto).
+    </decision>
+    <decision id="D-4">
+      SQLite (test e sviluppo senza MySQL): stessa divisione in parole, corrispondenza "inizio parola"
+      emulata con LIKE (inizio campo o dopo spazio, punto, @, trattino, apostrofo), stesso passo 2.
+    </decision>
+    <decision id="D-5">
+      Soglia di 3 caratteri: il server la dichiara in `searchMinLength`, il FE sotto soglia applica il termine
+      vuoto (nessun `search` inviato) e aggiunge "(min. 3 caratteri)" al placeholder. Il server non si fida del
+      client: le parole corte vengono comunque scartate (D-2).
+    </decision>
+  </decisions>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/tables/{domain}/columns">
+      <response status="200">
+        Campo aggiuntivo opzionale `searchMinLength: number` (presente solo per `request-management` e
+        `enrollee-management`, valore 3). Assente = nessuna soglia (comportamento attuale).
+      </response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/{domain}/rows">
+      <request>Invariato: `search` stringa opzionale.</request>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un cliente Rossi, quando cerco "ros" allora la sua richiesta compare; quando cerco "ssi" no.</criterion>
+    <criterion id="AC-002">Quando cerco "mario rossi" compare la richiesta del cliente Mario Rossi e non quella di Mario Bianchi.</criterion>
+    <criterion id="AC-003">La ricerca trova per inizio parola il telefono e l'email PRINCIPALI; un contatto non principale non viene trovato.</criterion>
+    <criterion id="AC-004">Un termine di sole parole corte o stopword (es. "de la") non restituisce righe; "gmail.com" trova le email @gmail.com.</criterion>
+    <criterion id="AC-005">La ricerca resta in AND con i filtri di colonna, la tab categoria e la visibilita' per ruolo/sede.</criterion>
+    <criterion id="AC-006">GET columns di request-management ed enrollee-management espone `searchMinLength` = 3; gli altri domini no.</criterion>
+    <criterion id="AC-007">FE: con soglia 3, digitando 2 caratteri la griglia non ricarica con un termine; al terzo carattere si'; cancellando sotto soglia torna senza ricerca.</criterion>
+    <criterion id="AC-008">Sul DB MariaDB da 1M righe, conteggio + pagina 1 di una ricerca su un cognome restano sotto 0,5 s a cache calda (misura manuale, riportata in HANDOFF).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Nessun whereRaw/orderByRaw con input: `whereFullText` di Laravel e LIKE con
+    escape. Autorizzazione e visibilita' invariate (la ricerca aggiunge solo una condizione AND).
+  </constraints>
+
+</spec>

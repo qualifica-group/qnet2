@@ -167,7 +167,9 @@ it('matches the primary email in the global search and the text filter', functio
     $match = defaultColumnsRequest('mario@example.test');
     defaultColumnsRequest('giulia@example.test');
 
-    expect(defaultColumnsRowIds(['search' => 'mario@']))->toBe([$match->id])
+    // Spec 0179: punctuation separates words, so both words must match —
+    // "mario" alone is also both cards' first name.
+    expect(defaultColumnsRowIds(['search' => 'mario@example']))->toBe([$match->id])
         ->and(defaultColumnsRowIds([
             'filterModel' => ['email' => ['filterType' => 'text', 'type' => 'contains', 'filter' => 'mario@']],
         ]))->toBe([$match->id]);

@@ -376,8 +376,10 @@
     <endpoint method="GET" path="/api/stats/opportunities">
       <request>Nessuno.</request>
       <response status="200">{ widgets }: totale opportunita', somma estimated_value,
-        probabilita' media, distribuzione per anagrafica (top), trend mensile creazioni
-        (helper AbstractStatsDefinition esistenti).</response>
+        probabilita' media, distribuzione per sede operativa (top, `by_operational_site`;
+        sostituisce la distribuzione per anagrafica - decisione cliente 2026-09-30, stress-test S6:
+        ~1 opportunita' per anagrafica, nessuna informazione a fronte di un GROUP BY su 1M righe),
+        trend mensile creazioni (helper AbstractStatsDefinition esistenti).</response>
       <errors>403 senza `opportunities.viewAny`.</errors>
     </endpoint>
     <endpoint method="GET" path="/api/activity-log/opportunities/{id}">

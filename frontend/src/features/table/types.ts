@@ -295,6 +295,11 @@ export interface TableConfig {
    */
   searchable?: string[]
   /**
+   * Spec 0179: shortest term the quick-search sends (the word-prefix search
+   * ignores shorter words). Absent ⇒ any non-empty term is sent.
+   */
+  searchMinLength?: number
+  /**
    * Advanced filter catalog for this domain (spec 0032), ordered by `order`.
    * Empty (or absent) ⇒ the domain has no advanced filters, so the toolbar
    * hides the toggle affordance entirely.

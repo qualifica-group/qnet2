@@ -23,6 +23,10 @@ const guide: HelpGuide = {
           text: 'I numeri sulle schede si aggiornano entro pochi secondi dalle modifiche fatte dagli altri utenti; le tue modifiche le vedi subito, appena torni alla tabella.',
         },
         {
+          type: 'paragraph',
+          text: "Il campo **Cerca** trova le richieste per nome, cognome, codice fiscale, partita IVA, telefono o email principali del cliente. Parte dal terzo carattere e cerca le parole che **iniziano** con quanto scrivi: \"ros\" trova Rossi, \"ssi\" no. Con più parole (per esempio \"mario rossi\") devono esserci tutte. Le parole di una o due lettere vengono ignorate. Con termini molto generici l'elenco può non essere completo: aggiungi una parola per restringere.",
+        },
+        {
           type: 'table',
           headers: ['Colonna', 'Significato'],
           rows: [

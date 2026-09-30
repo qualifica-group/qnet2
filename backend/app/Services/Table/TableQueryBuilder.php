@@ -121,6 +121,8 @@ class TableQueryBuilder
      * `operational-sites` — spec 0011) is delegated FIRST to the definition's
      * `applyDerivedSearch()` hook; only when it returns false does the generic
      * plain `orWhere($column, 'like', $pattern)` run against the real column.
+     * Before both, `applyGroupedSearch()` (spec 0179) may cover several
+     * columns with a single branch of the same OR group.
      *
      * @param  Builder<Model>  $query
      */
@@ -140,8 +142,12 @@ class TableQueryBuilder
 
         $pattern = '%'.$this->filterApplier->escapeLike($term).'%';
 
-        $query->where(function (Builder $group) use ($definition, $columns, $pattern): void {
-            foreach ($columns as $column) {
+        $query->where(function (Builder $group) use ($definition, $columns, $pattern, $term): void {
+            // Spec 0179: columns the definition covers with one grouped branch
+            // are skipped below, the rest keep the per-column path.
+            $grouped = $definition->applyGroupedSearch($group, $columns, $term);
+
+            foreach (array_diff($columns, $grouped) as $column) {
                 if ($definition->applyDerivedSearch($group, $column, $pattern)) {
                     continue;
                 }

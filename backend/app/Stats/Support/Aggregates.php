@@ -61,13 +61,7 @@ final class Aggregates
         // Rank on the bare foreign key first (an index-only GROUP BY), then
         // label just the top N: joining the related table BEFORE grouping made
         // the database group 1M rows by a varchar label (10s on 1M opportunities).
-        $top = $query
-            ->selectRaw($query->getGrammar()->wrap($foreignKey).' as '.self::RELATED_ID_ALIAS)
-            ->selectRaw('COUNT(*) as '.self::COUNT_ALIAS)
-            ->whereNotNull($foreignKey)
-            ->groupBy($foreignKey)
-            ->orderByDesc(self::COUNT_ALIAS)
-            ->limit($limit);
+        $top = self::rankByForeignKey($query, $foreignKey, $limit);
 
         $rows = $query->newQuery()
             ->fromSub($top, self::TOP_ALIAS)
@@ -83,6 +77,36 @@ final class Aggregates
                 value: (int) $row->{self::COUNT_ALIAS},
                 color: $colorColumn === null ? null : self::nullableString($row->{$colorColumn}),
             ))
+            ->all();
+    }
+
+    /**
+     * Same top-N breakdown as topRelated(), for a relation whose label is NOT
+     * a single SQL column (e.g. an operational site, identified by its
+     * address): `$labels` receives only the ranked top-N ids and returns
+     * `[id => label]`. An id it cannot label is dropped, mirroring the inner
+     * join of topRelated().
+     *
+     * @param  Closure(array<int, int>): array<int, string>  $labels
+     * @return array<int, DistributionItem>
+     */
+    public static function topRelatedLabelledBy(
+        Builder $query,
+        string|Expression $foreignKey,
+        int $limit,
+        Closure $labels,
+    ): array {
+        $rows = self::rankByForeignKey($query, $foreignKey, $limit)->get();
+        $labelled = $labels($rows->map(static fn (object $row): int => (int) $row->{self::RELATED_ID_ALIAS})->all());
+
+        return $rows
+            ->filter(static fn (object $row): bool => isset($labelled[(int) $row->{self::RELATED_ID_ALIAS}]))
+            ->map(static fn (object $row): DistributionItem => new DistributionItem(
+                key: (string) $row->{self::RELATED_ID_ALIAS},
+                label: $labelled[(int) $row->{self::RELATED_ID_ALIAS}],
+                value: (int) $row->{self::COUNT_ALIAS},
+            ))
+            ->values()
             ->all();
     }
 
@@ -198,6 +222,21 @@ final class Aggregates
         }
 
         return $points;
+    }
+
+    /**
+     * The top `$limit` non-null values of `$foreignKey` by row count, as
+     * `related_id` + `aggregate` (descending).
+     */
+    private static function rankByForeignKey(Builder $query, string|Expression $foreignKey, int $limit): Builder
+    {
+        return $query
+            ->selectRaw($query->getGrammar()->wrap($foreignKey).' as '.self::RELATED_ID_ALIAS)
+            ->selectRaw('COUNT(*) as '.self::COUNT_ALIAS)
+            ->whereNotNull($foreignKey)
+            ->groupBy($foreignKey)
+            ->orderByDesc(self::COUNT_ALIAS)
+            ->limit($limit);
     }
 
     /**

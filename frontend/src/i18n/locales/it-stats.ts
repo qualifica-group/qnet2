@@ -120,7 +120,7 @@ export const moduleStats = {
     estimatedValue: 'Valore stimato totale',
     averageProbability: 'Probabilità media',
     fromLead: 'Da lead',
-    byRegistry: 'Per anagrafica',
+    byOperationalSite: 'Per sede operativa',
     trend: 'Nuove opportunità per mese',
   },
   tasks: {

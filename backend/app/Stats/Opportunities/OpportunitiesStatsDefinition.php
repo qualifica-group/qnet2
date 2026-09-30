@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Stats\Opportunities;
 
+use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
@@ -11,15 +12,18 @@ use App\Stats\Widgets\DistributionChart;
 use App\Stats\Widgets\StatFormat;
 use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\Widget;
+use App\Support\OperationalSiteLabel;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Statistics panel of the `opportunities` module (spec 0040): volume, the
  * invested estimated value, the average success probability, how many were
- * generated from a Lead (BR-1), the breakdown by anagrafica (registry) and
- * the monthly creation trend. Exactly 4 leading stat widgets, icons from the
- * frontend's allow-list — the same structural invariant every other module
- * in this registry follows (see StatsEndpointTest).
+ * generated from a Lead (BR-1), the breakdown by sede operativa (operational
+ * site — it replaced the per-registry one, which averaged ~1 opportunity per
+ * registry and cost a 1M-row GROUP BY) and the monthly creation trend.
+ * Exactly 4 leading stat widgets, icons from the frontend's allow-list — the
+ * same structural invariant every other module in this registry follows (see
+ * StatsEndpointTest).
  */
 class OpportunitiesStatsDefinition extends AbstractStatsDefinition
 {
@@ -62,13 +66,12 @@ class OpportunitiesStatsDefinition extends AbstractStatsDefinition
                 icon: 'check-circle',
             ),
             $this->distribution(
-                key: 'by_registry',
-                items: Aggregates::topRelated(
+                key: 'by_operational_site',
+                items: Aggregates::topRelatedLabelledBy(
                     query: DB::table(self::TABLE),
-                    foreignKey: self::TABLE.'.registry_id',
-                    relatedTable: 'registries',
-                    labelColumn: 'name',
+                    foreignKey: self::TABLE.'.operational_site_id',
                     limit: self::TOP_LIMIT,
+                    labels: $this->operationalSiteLabels(...),
                 ),
                 total: $total,
                 chart: DistributionChart::Bars,
@@ -81,6 +84,27 @@ class OpportunitiesStatsDefinition extends AbstractStatsDefinition
                 tone: 1,
             ),
         ];
+    }
+
+    /**
+     * Display labels of the ranked top-N sites only (never the whole table):
+     * a site has no own name column, so the label is the one composed by
+     * OperationalSiteLabel from its primary address + city, exactly as the
+     * opportunity grid/detail show it (spec 0056).
+     *
+     * @param  array<int, int>  $ids
+     * @return array<int, string>
+     */
+    private function operationalSiteLabels(array $ids): array
+    {
+        return OperationalSite::query()
+            ->with('addresses.city')
+            ->whereKey($ids)
+            ->get()
+            ->mapWithKeys(static fn (OperationalSite $site): array => [
+                $site->id => OperationalSiteLabel::compose($site->primaryAddress),
+            ])
+            ->all();
     }
 
     /**

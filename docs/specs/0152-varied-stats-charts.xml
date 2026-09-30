@@ -36,7 +36,7 @@
     D-5 Assegnazione (una volta, nelle definizioni):
         tasks: by_status donut, by_priority stacked, trend columns tone 2
         quotes: by_status donut, trend line tone 4
-        opportunities: by_registry bars, trend area tone 1
+        opportunities: by_operational_site bars (ex by_registry, sostituito 2026-09-30 stress-test S6), trend area tone 1
         leads: by_source columns, by_operator bars, trend columns tone 3
         registries: by_agreement_status donut, by_size_class columns, trend line tone 2
         users: by_role donut, by_business_function bars, trend area tone 5

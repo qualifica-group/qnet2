@@ -14,6 +14,7 @@ use App\Tables\RequestManagement\Concerns\WritesAttributeCells;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 
 /**
@@ -81,6 +82,8 @@ class RequestManagementScopedTableDefinition implements TableDefinition
         WritesAttributeCells::updateCell insteadof DelegatesUnaugmentedTableMethods;
     }
 
+    private const string PRODUCT_LINES_TABLE = 'opportunity_product_lines';
+
     private ?int $categoryScope = null;
 
     private bool $allowListUnion = false;
@@ -136,13 +139,20 @@ class RequestManagementScopedTableDefinition implements TableDefinition
 
         $categoryScope = $this->categoryScope;
 
-        // D-2: EXISTS on the offer's opportunity's OWN product lines (spec
-        // 0086: `quotes` carries no product lines of its own) — a request
-        // with lines on several categories is meant to appear in every
-        // matching tab, never deduped here.
-        $query->whereHas('opportunity.productLines', static function (Builder $relatedQuery) use ($categoryScope): void {
-            $relatedQuery->where('product_category_id', $categoryScope);
-        });
+        // D-2: the offer's opportunity's OWN product lines (spec 0086: `quotes`
+        // carries no product lines of its own) — a request with lines on
+        // several categories is meant to appear in every matching tab, never
+        // deduped here. An IN-subquery rather than `whereHas`: the nested
+        // EXISTS made MariaDB walk the whole `quotes` index for the count
+        // (2.7 s on 1M rows), the IN starts from the category's own index
+        // (0.17 s) — stress test 2026-09-29, S4.
+        $query->whereIn(
+            $query->qualifyColumn('opportunity_id'),
+            static fn (QueryBuilder $lines) => $lines
+                ->select('opportunity_id')
+                ->from(self::PRODUCT_LINES_TABLE)
+                ->where('product_category_id', $categoryScope),
+        );
 
         return $query;
     }

@@ -18,15 +18,16 @@ use Illuminate\Support\Facades\DB;
 /**
  * The CLIENT anagraphic columns of the `request-management` domain — Nome,
  * Cognome, Codice fiscale, Partita IVA, Telefono, Email — as a single column
- * contract: quick-search (spec 0009), column filter, sort and Excel-like
- * distinct values (spec 0004/0005).
+ * contract: column filter, sort and Excel-like distinct values (spec
+ * 0004/0005). The quick-search over them is RequestClientSearch's (spec 0179),
+ * which reads the two column maps below.
  *
  * None of them is a real `quotes` column: RequestRowMapper reads them from
  * the client Registry's PersonalData card, reached THROUGH the row's
  * opportunity (spec 0086: `quotes` carries no `registry_id` of its own —
  * `phone`/`email` = its primary phone/email contact). Each hook
- * translates into the relation the mapper reads — `whereHas` for
- * search/filter, a correlated subquery joined through `opportunities` for the
+ * translates into the relation the mapper reads — `whereHas` for the
+ * filter, a correlated subquery joined through `opportunities` for the
  * sort, a scoped `SELECT DISTINCT` for the value list.
  *
  * The per-type filter SHAPES (text conditions, set, `multi`/combined
@@ -50,7 +51,7 @@ final class RequestClientColumns
      *
      * @var array<string, string>
      */
-    private const array CARD_COLUMNS = [
+    public const array CARD_COLUMNS = [
         'first_name' => 'first_name',
         'last_name' => 'last_name',
         'tax_code' => 'tax_code',
@@ -63,7 +64,7 @@ final class RequestClientColumns
      *
      * @var array<string, array<int, string>>
      */
-    private const array CONTACT_COLUMNS = [
+    public const array CONTACT_COLUMNS = [
         'phone' => [ContactTypeEnum::Phone->value],
         'email' => [ContactTypeEnum::Email->value],
     ];
@@ -84,39 +85,6 @@ final class RequestClientColumns
     private const string OPPORTUNITY_REGISTRY_FK = 'registry_id';
 
     public function __construct(private readonly FilterApplier $filterApplier) {}
-
-    /**
-     * Add the OR-branch for one searchable client column to the engine's
-     * search group. Returns false for any column this collaborator does not
-     * own, so the generic engine handles it.
-     *
-     * @param  Builder<Quote>  $query
-     */
-    public function applySearch(Builder $query, string $columnId, string $pattern): bool
-    {
-        if (isset(self::CARD_COLUMNS[$columnId])) {
-            $column = self::CARD_COLUMNS[$columnId];
-            $query->orWhereHas(
-                self::CARD_RELATION,
-                static fn (Builder $cardQuery) => $cardQuery->where($column, 'like', $pattern),
-            );
-
-            return true;
-        }
-
-        if (isset(self::CONTACT_COLUMNS[$columnId])) {
-            $types = self::CONTACT_COLUMNS[$columnId];
-            $query->orWhereHas(
-                self::CONTACTS_RELATION,
-                static fn (Builder $contactQuery) => self::scopeToPrimaryContact($contactQuery, $types)
-                    ->where('value', 'like', $pattern),
-            );
-
-            return true;
-        }
-
-        return false;
-    }
 
     /**
      * Column filter: the whole payload is handed to the generic FilterApplier

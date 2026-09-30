@@ -177,6 +177,18 @@ describe('TableView — filters kept across a reload', () => {
     expect(await firstRowsRequest()).not.toHaveProperty('search')
   })
 
+  it('does not send a restored term shorter than the domain minimum (spec 0179)', async () => {
+    fetchTableConfigMock.mockResolvedValue({ ...CONFIG, searchMinLength: 3 })
+    window.localStorage.setItem(KEY, JSON.stringify({ search: 'ro', customFilter: null }))
+    renderTableView()
+
+    expect(await firstRowsRequest()).not.toHaveProperty('search')
+    expect(screen.getByRole('searchbox')).toHaveAttribute(
+      'placeholder',
+      expect.stringContaining('(min. 3 characters)'),
+    )
+  })
+
   it('stores the typed search and removes the entry once it is cleared', async () => {
     renderTableView()
     const box = await screen.findByRole('searchbox')

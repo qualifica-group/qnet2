@@ -21,8 +21,9 @@ use function Illuminate\Support\defer;
  *
  * Only arrays and scalars are cacheable: a serialized Eloquent Collection
  * comes back as __PHP_Incomplete_Class from the `database`/`file` stores.
- * A store failure never fails the request: it is logged and the value is
- * computed directly.
+ * The last value is retained beyond `stale` so a request that times out on the
+ * recompute lock can serve it. A store failure never fails the request: it is
+ * logged and the value is computed directly.
  */
 final class AggregateCache
 {
@@ -71,15 +72,19 @@ final class AggregateCache
         $this->guard(fn () => Cache::put(
             self::ACTOR_WRITE_PREFIX.$actor->getKey(),
             $this->nowMs(),
-            $this->stale(),
+            $this->retain(),
         ));
     }
 
     private function recomputeUnderLock(string $storeKey, Closure $compute, ?User $actor): mixed
     {
         $lock = $this->guard(fn () => Cache::lock(self::LOCK_PREFIX.$storeKey, $this->lockSeconds()), null);
-        if ($lock === null || ! $this->acquire($lock)) {
+        if ($lock === null) {
             return $this->computeAndStore($storeKey, $compute);
+        }
+
+        if (! $this->acquire($lock)) {
+            return $this->serveLastValueOrCompute($storeKey, $compute, $actor);
         }
 
         try {
@@ -93,6 +98,21 @@ final class AggregateCache
         } finally {
             $this->guard(fn () => $lock->release());
         }
+    }
+
+    /**
+     * Lock wait timed out: another process is still computing. Piling up a duplicate
+     * computation only worsens the load, so serve the last retained value; compute
+     * only when there is none, or when the actor wrote after it (D-4 exactness).
+     */
+    private function serveLastValueOrCompute(string $storeKey, Closure $compute, ?User $actor): mixed
+    {
+        $entry = $this->guard(fn () => $this->readEntry($storeKey));
+        if ($entry !== null && ! $this->actorWroteAfter($actor, $entry)) {
+            return $entry['value'];
+        }
+
+        return $this->computeAndStore($storeKey, $compute);
     }
 
     private function refreshInBackground(string $storeKey, Closure $compute): void
@@ -113,7 +133,7 @@ final class AggregateCache
         }
     }
 
-    /** True when the lock is ours; false on timeout or store failure (caller computes anyway). */
+    /** True when the lock is ours; false on timeout or store failure (caller falls back to the last value or computes). */
     private function acquire(Lock $lock): bool
     {
         try {
@@ -135,7 +155,7 @@ final class AggregateCache
         $this->guard(fn () => Cache::put(
             $storeKey,
             ['value' => $value, 'computed_at' => $this->nowMs()],
-            $this->stale(),
+            $this->retain(),
         ));
 
         return $value;
@@ -211,6 +231,11 @@ final class AggregateCache
     private function stale(): int
     {
         return (int) config('aggregate-cache.stale_seconds');
+    }
+
+    private function retain(): int
+    {
+        return (int) config('aggregate-cache.retain_seconds');
     }
 
     private function lockSeconds(): int

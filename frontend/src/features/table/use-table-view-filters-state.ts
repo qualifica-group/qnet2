@@ -167,7 +167,11 @@ export function useTableViewFiltersState(
       .map((id) => config.columns.find((column) => column.id === id))
       .filter((column): column is NonNullable<typeof column> => Boolean(column))
       .map((column) => t(column.label))
-    return t('table.searchPlaceholder', { columns: labels.join('/') })
+    const placeholder = t('table.searchPlaceholder', { columns: labels.join('/') })
+    // Spec 0179: tell the user why one or two letters do not search yet.
+    return config.searchMinLength && config.searchMinLength > 1
+      ? `${placeholder} ${t('table.searchMinLength', { count: config.searchMinLength })}`
+      : placeholder
   }, [config, searchable, t])
 
   const renderRowActions = useMemo(() => {

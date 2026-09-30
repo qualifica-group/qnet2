@@ -3,6 +3,44 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## STRESS TEST 100 UTENTI: INTERVENTI S1/S2/S4/S5/S6 — COMMITTATO (2026-09-30)
+
+- Fonte: report "QNet stress test 100 utenti" del 2026-09-29. S3 (buffer pool, FPM, OPcache, `php artisan
+  optimize`) resta a cura dell'utente (server/produzione).
+- S1, spec 0179 (decisione utente: semantica "parola che inizia con"): migrazione
+  `2026_09_30_100000_add_fulltext_search_indexes_to_personal_data_and_contacts` (FULLTEXT, no-op su SQLite;
+  gia' applicata al DB locale qnet2, ~29 s). Nuovo hook generico `TableDefinition::applyGroupedSearch($query,
+  $columnIds, $term): array` (default `[]`, delegato da `DelegatesUnaugmentedTableMethods`; il motore salta le
+  colonne restituite). `App\Tables\RequestManagement\RequestClientSearch`: parole >= 3 caratteri senza
+  stopword InnoDB, passo 1 id anagrafiche (scheda + contatti principali, tetto `config/table-search.php`
+  `request_client_match_cap` = 5000), passo 2 `quotes.opportunity_id IN (opportunities where registry_id IN
+  ...)`. Rimossi `RequestClientColumns::applySearch` e `RequestManagementTableDefinition::applyDerivedSearch`;
+  le costanti `CARD_COLUMNS`/`CONTACT_COLUMNS` ora pubbliche. GET columns espone `searchMinLength` = 3 (solo
+  request-management/enrollee-management); FE `appliedSearchTerm()` in `use-table-toolbar-state.ts` + suffisso
+  placeholder `table.searchMinLength`. Misura 1M a cache calda (richiesta HTTP completa): "rossi" 121 ms,
+  "mario" 201 ms, "mar" 447 ms (prima 30-120 s). Una sottoquery unica senza passo 1 e' stata misurata: > 2 min.
+- S2: `App\Http\Middleware\LimitStatementDuration` (gruppo api) + `App\Support\Database\StatementTimeout`
+  (MariaDB `max_statement_time`, MySQL `max_execution_time`), `DB_STATEMENT_TIMEOUT_SECONDS` default 25 (sotto
+  il `request_terminate_timeout` FPM), percorsi esclusi in `config/database.php` `statement_timeout.excluded_paths`
+  (import, export, migrazioni, report CSV, download). Errore 1969/3024 -> 503 `{success:false, message}`.
+- S4: tab categoria `RequestManagementScopedTableDefinition::baseQuery` = `whereIn(opportunity_id, select
+  opportunity_id from opportunity_product_lines where product_category_id)`. Conteggio 2,7 s -> 0,17 s; pagina
+  righe ordinata per data 0,07 -> ~0,5 s (compromesso accettato dal report: il motore non distingue conteggio e
+  righe). Non toccato: filtro colonna `product_categories` (whereHas) e report, da verificare con EXPLAIN.
+- S5: `AggregateCache` lock 120 s, voce trattenuta `retain_seconds` 3600, a timeout del lock serve l'ultimo
+  valore (D-4 invariata). Spec 0178 D-3b.
+- S6 (decisione utente: "per sede"): widget statistiche opportunita' `by_operational_site` via
+  `Aggregates::topRelatedLabelledBy()` + `OperationalSiteLabel::compose`; tolto `by_registry`. Spec 0040/0152.
+- Test cambiati per requisito: `QuoteWorkflowMigrationTest` rollback 119; `RequestManagementDefaultColumnsTest`
+  ricerca "mario@example" (la punteggiatura separa le parole); `AggregateCacheTest` (AC-014); test stats
+  opportunita'.
+- Manuale: guide in-app IT/EN request-management + enrollee-management aggiornate; Claude Docs aggiornato
+  (Gestione Richieste: paragrafo ricerca; Gestione Iscritti: "ricerca" tra le funzioni uguali).
+- Nota server per l'utente: con `innodb_ft_enable_stopword=OFF` o `innodb_ft_min_token_size` diversi da 3
+  riallineare le costanti di `RequestClientSearch`.
+- Prossimi passi: rilanciare lo stress test con gli stessi script; valutare split di
+  `RequestManagementTableDefinition.php` (499 righe, al limite dei 500).
+
 ## FIX AZIONI DI RIGA TASK (icone + label) — VERDE, NON COMMITTATO (2026-09-30)
 
 - Causa: `TaskColumnCatalog::actions()` puntava a `tasks.actions.<x>` (oggetti nei locale FE, non stringhe) e a

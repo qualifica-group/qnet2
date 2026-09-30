@@ -4,6 +4,12 @@ import type { GridApi } from 'ag-grid-community'
 /** Debounce window for firing a server-side reload after the user stops typing. */
 const SEARCH_DEBOUNCE_MS = 350
 
+/** The term the grid actually sends: trimmed, and empty below the domain's minimum (spec 0179). */
+export function appliedSearchTerm(input: string, minLength: number): string {
+  const term = input.trim()
+  return term.length >= minLength ? term : ''
+}
+
 /** Platform-aware label for the search focus shortcut (⌘K on mac, Ctrl K else). */
 function searchShortcutLabel(): string {
   const platform =
@@ -18,6 +24,8 @@ interface UseTableToolbarStateArgs {
   searchEnabled: boolean
   /** The search text restored from a previous visit, applied to the very first SSRM request. */
   initialSearch?: string
+  /** Shortest term sent to the server (config `searchMinLength`, spec 0179). */
+  searchMinLength?: number
 }
 
 export interface TableToolbarState {
@@ -56,6 +64,7 @@ export function useTableToolbarState({
   gridApi,
   searchEnabled,
   initialSearch = '',
+  searchMinLength = 1,
 }: UseTableToolbarStateArgs): TableToolbarState {
   const [fullscreen, setFullscreen] = useState(false)
   const [rowCount, setRowCount] = useState<number | null>(null)
@@ -63,6 +72,12 @@ export function useTableToolbarState({
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false)
 
   const searchTermRef = useRef(initialSearch.trim())
+  // Read by getSearchTerm at request time: the config (and so the minimum)
+  // may arrive after a restored term was put in searchTermRef.
+  const searchMinLengthRef = useRef(searchMinLength)
+  useEffect(() => {
+    searchMinLengthRef.current = searchMinLength
+  }, [searchMinLength])
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const searchShortcut = useMemo(() => searchShortcutLabel(), [])
@@ -72,8 +87,8 @@ export function useTableToolbarState({
   // mount does not trigger a redundant reload.
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    const next = searchInput.trim()
-    if (next === searchTermRef.current) {
+    const next = appliedSearchTerm(searchInput, searchMinLength)
+    if (next === appliedSearchTerm(searchTermRef.current, searchMinLength)) {
       return
     }
     if (searchDebounceRef.current) {
@@ -88,7 +103,7 @@ export function useTableToolbarState({
         clearTimeout(searchDebounceRef.current)
       }
     }
-  }, [searchInput, gridApi])
+  }, [searchInput, gridApi, searchMinLength])
 
   // ⌘K / Ctrl+K focuses the search field (only when the domain has a search).
   useEffect(() => {
@@ -125,7 +140,10 @@ export function useTableToolbarState({
   }, [fullscreen])
 
   const toggleFullscreen = useCallback(() => setFullscreen((value) => !value), [])
-  const getSearchTerm = useCallback(() => searchTermRef.current, [])
+  const getSearchTerm = useCallback(
+    () => appliedSearchTerm(searchTermRef.current, searchMinLengthRef.current),
+    [],
+  )
   const toggleAdvancedFilters = useCallback(
     () => setAdvancedFiltersOpen((value) => !value),
     [],

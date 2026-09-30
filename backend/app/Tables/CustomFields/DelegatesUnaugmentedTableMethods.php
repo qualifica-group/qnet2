@@ -143,6 +143,20 @@ trait DelegatesUnaugmentedTableMethods
     }
 
     /**
+     * Grouped quick-search (spec 0179) is a `$inner` domain concern: a
+     * searchable `custom.*` column is never covered here, so it stays on the
+     * per-column `applyDerivedSearch()` path.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<int, string>  $columnIds
+     * @return array<int, string>
+     */
+    public function applyGroupedSearch(Builder $query, array $columnIds, string $term): array
+    {
+        return $this->inner->applyGroupedSearch($query, $columnIds, $term);
+    }
+
+    /**
      * Tree support (spec 0157, D-1) is a `$inner` domain concern, not a
      * custom-field one, so this is pure passthrough.
      */

@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It lives in **Opportunities and Work Orders › Enrollee Management**. It is the same work bench as **Request Management**: same columns, filters, row actions, panel and statistics.',
+          text: 'It lives in **Opportunities and Work Orders › Enrollee Management**. It is the same work bench as **Request Management**: same columns, filters, search (from the third character, by words that begin with what you type), row actions, panel and statistics.',
         },
         {
           type: 'table',

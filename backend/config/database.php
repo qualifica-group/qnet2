@@ -127,6 +127,26 @@ return [
     |
     */
 
+    /*
+    | Per-request statement time limit (seconds) applied to web/API requests by
+    | App\Http\Middleware\LimitStatementDuration. 0 disables it. Keep it below
+    | the PHP-FPM request_terminate_timeout: FPM killing the request does not
+    | stop a query already running on the server. Requests matching an
+    | `excluded_paths` pattern (import/export/report, long by nature) are exempt.
+    */
+    'statement_timeout' => [
+        'seconds' => (int) env('DB_STATEMENT_TIMEOUT_SECONDS', 25),
+        'excluded_paths' => [
+            'api/imports/*',
+            'api/exports/*',
+            'api/migrations/*',
+            'api/time-entries/exports/*',
+            'api/*/report',
+            'api/*/report/*/download',
+            'api/work-orders/*/emails/*/attachments/import',
+        ],
+    ],
+
     'migrations' => [
         'table' => 'migrations',
         'update_date_on_publish' => true,

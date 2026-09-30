@@ -2,9 +2,12 @@
 
 use App\Http\Middleware\CaptureCustomFields;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\LimitStatementDuration;
 use App\Http\Middleware\RecordActorWrite;
 use App\Http\Middleware\SetLocale;
+use App\Support\Database\StatementTimeout;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -51,6 +54,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // payload throws from the route middleware stack, before any
         // controller runs.
         $middleware->api(prepend: [SetLocale::class]);
+
+        // Per-session DB statement time limit for web/API requests only.
+        $middleware->api(append: [LimitStatementDuration::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -79,5 +85,20 @@ return Application::configure(basePath: dirname(__DIR__))
                 'success' => false,
                 'message' => __('Resource not found.'),
             ], Response::HTTP_NOT_FOUND);
+        });
+
+        // A query killed by the per-session statement limit (MariaDB 1969 /
+        // MySQL 3024). 503 is not special-cased by the frontend axios client
+        // (only 401 is) and, unlike 504, is not read by the migrations UI as
+        // "external service unavailable". No SQL or class name in the body.
+        $exceptions->render(function (QueryException $exception, Request $request): ?JsonResponse {
+            if (! $request->is('api/*') || ! StatementTimeout::isTimeout($exception)) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => __('The operation took too long: narrow your search or filters and try again.'),
+            ], Response::HTTP_SERVICE_UNAVAILABLE);
         });
     })->create();

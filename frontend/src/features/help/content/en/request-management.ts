@@ -23,6 +23,10 @@ const guide: HelpGuide = {
           text: 'The numbers on the tabs update within a few seconds of changes made by other users; your own changes show up right away when you return to the table.',
         },
         {
+          type: 'paragraph',
+          text: "The **Search** box finds requests by the client's first name, last name, tax code, VAT number, or primary phone or email. It starts from the third character and matches words that **begin** with what you type: \"ros\" finds Rossi, \"ssi\" does not. With several words (for example \"mario rossi\") all of them must match. One- and two-letter words are ignored. With very generic terms the list may be incomplete: add a word to narrow it down.",
+        },
+        {
           type: 'table',
           headers: ['Column', 'Meaning'],
           rows: [

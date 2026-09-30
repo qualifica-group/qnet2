@@ -63,7 +63,7 @@ it('emits exactly the i18n label keys the frontend translates (AC-001)', functio
     ['business-functions', ['total', 'businessUnits', 'businessServices', 'withManager', 'byUsers']],
     ['users', ['total', 'active', 'inactive', 'managers', 'byRole', 'byBusinessFunction', 'trend']],
     ['import-runs', ['total', 'completed', 'failed', 'rowsImported', 'byStatus', 'trend']],
-    ['opportunities', ['total', 'estimatedValue', 'averageProbability', 'fromLead', 'byRegistry', 'trend']],
+    ['opportunities', ['total', 'estimatedValue', 'averageProbability', 'fromLead', 'byOperationalSite', 'trend']],
     ['tasks', ['overdue', 'dueToday', 'estimatedMinutes', 'actualMinutes', 'byStatus', 'byPriority', 'trend']],
     ['quotes', ['total', 'revenueNet', 'marginNet', 'won', 'byStatus', 'trend']],
 ]);
@@ -212,7 +212,7 @@ it('matches the exact D-5 chart/tone assignment per domain (spec 0152 AC-001)', 
 })->with([
     'tasks' => ['tasks', ['by_status' => 'donut', 'by_priority' => 'stacked'], ['chart' => 'columns', 'tone' => 2]],
     'quotes' => ['quotes', ['by_status' => 'donut'], ['chart' => 'line', 'tone' => 4]],
-    'opportunities' => ['opportunities', ['by_registry' => 'bars'], ['chart' => 'area', 'tone' => 1]],
+    'opportunities' => ['opportunities', ['by_operational_site' => 'bars'], ['chart' => 'area', 'tone' => 1]],
     'leads' => ['leads', ['by_source' => 'columns', 'by_operator' => 'bars'], ['chart' => 'columns', 'tone' => 3]],
     'registries' => ['registries', ['by_agreement_status' => 'donut', 'by_size_class' => 'columns'], ['chart' => 'line', 'tone' => 2]],
     'users' => ['users', ['by_role' => 'donut', 'by_business_function' => 'bars'], ['chart' => 'area', 'tone' => 5]],
