@@ -377,7 +377,7 @@ final class TaskColumnCatalog
             ],
             [
                 'key' => 'complete',
-                'label' => 'tasks.actions.complete',
+                'label' => 'tasks.actions.complete.label',
                 'icon' => 'check',
                 'type' => 'action',
                 'confirm' => false,
@@ -385,7 +385,7 @@ final class TaskColumnCatalog
             ],
             [
                 'key' => 'uncomplete',
-                'label' => 'tasks.actions.uncomplete',
+                'label' => 'tasks.actions.uncomplete.label',
                 'icon' => 'rotate-ccw',
                 'type' => 'action',
                 'confirm' => false,
@@ -393,7 +393,7 @@ final class TaskColumnCatalog
             ],
             [
                 'key' => 'approve',
-                'label' => 'tasks.actions.approve',
+                'label' => 'tasks.actions.approve.label',
                 'icon' => 'badge-check',
                 'type' => 'action',
                 'confirm' => false,
@@ -401,7 +401,7 @@ final class TaskColumnCatalog
             ],
             [
                 'key' => 'reject',
-                'label' => 'tasks.actions.reject',
+                'label' => 'tasks.actions.reject.label',
                 'icon' => 'badge-x',
                 'type' => 'action',
                 'confirm' => false,
@@ -409,7 +409,7 @@ final class TaskColumnCatalog
             ],
             [
                 'key' => 'block',
-                'label' => 'tasks.actions.block',
+                'label' => 'tasks.actions.block.label',
                 'icon' => 'lock',
                 'type' => 'action',
                 'confirm' => false,
@@ -417,7 +417,7 @@ final class TaskColumnCatalog
             ],
             [
                 'key' => 'unblock',
-                'label' => 'tasks.actions.unblock',
+                'label' => 'tasks.actions.unblock.label',
                 'icon' => 'lock-open',
                 'type' => 'action',
                 'confirm' => false,
@@ -425,7 +425,7 @@ final class TaskColumnCatalog
             ],
             [
                 'key' => 'request_update',
-                'label' => 'tasks.actions.request_update',
+                'label' => 'tasks.actions.requestUpdate.label',
                 'icon' => 'message-circle-question',
                 'type' => 'action',
                 'confirm' => false,

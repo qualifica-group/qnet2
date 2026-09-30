@@ -1,6 +1,16 @@
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus } from 'lucide-react'
+import {
+  BadgeCheck,
+  BellRing,
+  CheckCircle2,
+  Lock,
+  MessagesSquare,
+  Plus,
+  RotateCcw,
+  Unlock,
+  XOctagon,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -24,8 +34,26 @@ import { useTaskListUrlFilters } from '@/features/tasks/use-task-list-url-filter
 import { useTaskListViewMode } from '@/features/tasks/use-task-list-view-mode'
 import { useTaskRowActions } from '@/features/tasks/use-task-row-actions'
 import { useTaskStatusCellIntercept } from '@/features/tasks/use-task-status-cell-intercept'
+import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableRowsAggregates } from '@/features/table/types'
+
+/**
+ * The icon names `TaskColumnCatalog::actions()` advertises that the shared
+ * `defaultActionIconMap` does not know: without them every domain action fell
+ * back to the neutral three-dots glyph. Same glyphs as the detail's
+ * `TaskActionsBar`, so an action looks the same in the row and in the detail.
+ */
+const TASK_ACTION_ICONS: ActionIconMap = {
+  check: CheckCircle2,
+  'rotate-ccw': RotateCcw,
+  'badge-check': BadgeCheck,
+  'badge-x': XOctagon,
+  lock: Lock,
+  'lock-open': Unlock,
+  'message-circle-question': BellRing,
+  'messages-square': MessagesSquare,
+}
 
 /**
  * Thin `tasks` adapter over the generic table (AC-070, extended by spec
@@ -143,6 +171,7 @@ export function TasksTable() {
           ref={tableRef}
           domain={TASKS_DOMAIN}
           renderers={taskColumnRenderers}
+          iconMap={TASK_ACTION_ICONS}
           onAction={handleAction}
           isBusy={isBusy}
           advancedFiltersOverride={urlFilters.override}

@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX AZIONI DI RIGA TASK (icone + label) — VERDE, NON COMMITTATO (2026-09-30)
+
+- Causa: `TaskColumnCatalog::actions()` puntava a `tasks.actions.<x>` (oggetti nei locale FE, non stringhe) e a
+  `tasks.actions.request_update` (inesistente: il FE usa `requestUpdate`); `TasksTable` non passava `iconMap`,
+  quindi ogni azione di dominio ricadeva sull'icona neutra "...".
+- Fix: label backend -> `tasks.actions.<x>.label` / `tasks.actions.requestUpdate.label`; `TASK_ACTION_ICONS` in
+  `task-table.tsx` (stessi glifi di `TaskActionsBar`: check->CheckCircle2, badge-x->XOctagon,
+  message-circle-question->BellRing, ecc.). Nomi icona backend invariati.
+- Verifica: Pest `tests/Feature/Tasks` 626 verdi (nuovo test sulle label in `TaskTableTest`), Vitest tasks+table
+  753 verdi, ESLint/Pint/`tsc -b --force` puliti, Playwright su `/tasks`: icona Completa visibile, menu tradotto.
+  Manuale: nessun impatto.
+
 ## REDESIGN POPUP EMAIL COMMESSE (stile CRM) — VERDE, NON COMMITTATO (2026-09-30)
 
 - Solo FE, `features/work-order-emails/`. Nuovi: `work-order-email-dialog-chrome.tsx` (`WorkOrderEmailDialogHeader`

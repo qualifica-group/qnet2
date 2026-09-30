@@ -97,6 +97,26 @@ it('AC-070: the column config exposes the frozen filter catalogue', function () 
     ]);
 });
 
+it('advertises the domain row actions with the i18n leaf keys the frontend translates', function () {
+    Sanctum::actingAs(taskActorWith(['viewAny', 'complete', 'validate', 'block', 'requestUpdate']));
+
+    $labels = collect($this->getJson('/api/tables/tasks/columns')->assertOk()->json('data.actions'))
+        ->pluck('label', 'key');
+
+    // `tasks.actions.<action>` is an object in the FE locales (label, success,
+    // confirm…): pointing at it rendered the raw key instead of the label.
+    expect($labels->only(['complete', 'uncomplete', 'approve', 'reject', 'block', 'unblock', 'request_update'])->all())
+        ->toBe([
+            'complete' => 'tasks.actions.complete.label',
+            'uncomplete' => 'tasks.actions.uncomplete.label',
+            'approve' => 'tasks.actions.approve.label',
+            'reject' => 'tasks.actions.reject.label',
+            'block' => 'tasks.actions.block.label',
+            'unblock' => 'tasks.actions.unblock.label',
+            'request_update' => 'tasks.actions.requestUpdate.label',
+        ]);
+});
+
 it('AC-070: the actor can save, read back and reset a column preference on the tasks domain', function () {
     $actor = taskActorWith(['viewAny']);
     Sanctum::actingAs($actor);
