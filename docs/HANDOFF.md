@@ -17,7 +17,8 @@
   in `category-tab-fit.ts`, menu con stella per riga + switch (`request-management-category-picker.tsx`; gruppi
   fotografati all'apertura, la riga non salta sotto il mouse), pulsante menu sempre visibile (stella compatta senza
   overflow, `MEASURE_MANAGE`). Misura larghezze su tutte le categorie (stabile), fit sullo strip ordinato: evita il
-  loop di render che si avrebbe dipendendo da un array derivato. `request-management-table.tsx` a 496 righe (vicino
+  loop di render che si avrebbe dipendendo da un array derivato. Stella piena gialla: token `--favorite` (riempimento) e
+  `--favorite-border` (contorno, 3.3:1 sulla card) in `index.css` light/dark, classi `fill-favorite text-favorite-border`. `request-management-table.tsx` a 496 righe (vicino
   al limite 500: prossima modifica lì va preceduta da uno split).
 - Verifica: Pest RequestManagement 816 + nuovi 16 + route test 26 verdi; Vitest request-management+help 588 verdi;
   eslint/pint puliti; `tsc -b --force` EXIT 0; controllo visivo Playwright su harness temporaneo (rimosso).
