@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEED PRODUZIONE: STATO "AUTOFINANZIATO" TOLTO DALLE LISTE GOL — VERDE, NON COMMITTATO (2026-09-30)
+
+- `WorkflowStatusCatalogue`: rimosso `'Autofinanziato'` dalle colonne `GOL - <Regione>` (Lombardia, Campania,
+  Lazio, Sicilia, Umbria e `GOL_BASE_STATUSES` di Molise/Puglia/Calabria/Basilicata/Abruzzo). Resta definito nella
+  sezione GOL perche' `DIL` (che la prende in prestito) e `APL` lo tengono. Conseguenza: il `closed_lost` fissato
+  di GOL - Lombardia (e delle regioni base/Lazio/Sicilia/Umbria) diventa "Associato NO _ Altro Ente".
+- `QualificaWorkflowSeeder` salta i workflow gia' esistenti: su un DB gia' seminato lo stato NON sparisce da solo
+  (va tolto dal configuratore, o serve una migrazione dati se richiesto).
+- Test: `QualificaWorkflowSeederTest` aggiornato (pinned closed_lost Lombardia) + nuovo caso di trascrizione.
+  Seeding+Products 299, catalog/report/migration 289 passati; Pint ok. Manuale: nessun impatto (guide e Claude Docs
+  citano "Autofinanziato" solo come categoria).
+
 ## IMPORT LEAD: FONTE SEMPRE OBBLIGATORIA + AUTO-MAPPING "NOME"/"INDIRIZZO E-MAIL" — VERDE, NON COMMITTATO (2026-09-30)
 
 - Delta spec 0176 (D-7/D-8, AC-010/011). `LeadImportFieldCatalog`: `source_id` `required => true` (anche con

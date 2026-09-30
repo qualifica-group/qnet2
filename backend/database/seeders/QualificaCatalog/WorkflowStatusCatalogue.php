@@ -75,6 +75,11 @@ use InvalidArgumentException;
  *     still being worked, not a lost one. It sits right before "Irreperibile"
  *     everywhere, as in those two blocks. Being open, it no longer takes the
  *     pinned closed_lost row of AUTOFINANZIATO: "Irreperibile" does.
+ *   - "Autofinanziato" is on the sheet in every GOL column; the client struck
+ *     it from the GOL regions off-sheet (user directive 2026-09-30). The GOL
+ *     section still defines it because "DIL", which borrows that section,
+ *     keeps it. With it gone, "Associato NO _ Altro Ente" becomes the first
+ *     loss of the GOL columns, so it takes their pinned closed_lost row.
  */
 final class WorkflowStatusCatalogue
 {
@@ -276,7 +281,7 @@ final class WorkflowStatusCatalogue
      */
     private const array GOL_BASE_STATUSES = [
         'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'OK App. Fissato CPI', 'Associato SI _ NOI',
-        'Percorso 101', 'Autofinanziato', 'Associato NO _ Altro Ente', 'Frequenta già corso GOL',
+        'Percorso 101', 'Associato NO _ Altro Ente', 'Frequenta già corso GOL',
         'NO _ Non ha Requisiti', 'Non interessato/a', 'Stato Rinunciatario', 'Non risponde', 'Irreperibile',
         'Trasferito altra Sede QG', 'Non pertinente - Altra regione', 'Numero Inesistente/Errato', 'Doppione',
         'Doppione già associato', 'In Standby',
@@ -298,35 +303,35 @@ final class WorkflowStatusCatalogue
         'GOL - Lombardia' => ['section' => self::GOL, 'statuses' => [
             'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa Attivazione DOTE', 'Attesa DOC APL', 'Inviata MAIL APL',
             'OK App. Fissato APL', 'Attesa _ App. CPI', 'OK App. Fissato CPI', 'Attesa Iscrizione SIUF',
-            'In attesa aggancio BES', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
+            'In attesa aggancio BES', 'Associato SI _ NOI', 'Percorso 101',
             'Associato NO _ Altro Ente', 'NO _ Non ha Requisiti', 'Non interessato/a', 'Stato Rinunciatario',
             'Non risponde', 'Irreperibile', 'Non pertinente - Altra regione', 'Frequenta già corso GOL', 'Trasferito altra Sede QG',
             'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Campania' => ['section' => self::GOL, 'statuses' => [
             'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'OK App. Fissato CPI', 'APL-Orientamento',
-            'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato', 'Associato NO _ Altro Ente',
+            'Associato SI _ NOI', 'Percorso 101', 'Associato NO _ Altro Ente',
             'NO _ Non ha Requisiti', 'Frequenta già corso GOL', 'Non interessato/a', 'Stato Rinunciatario',
             'Non risponde', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione', 'Numero Inesistente/Errato',
             'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Lazio' => ['section' => self::GOL, 'statuses' => [
             'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL', 'OK App. Fissato CPI',
-            'OK App. Fissato APL', 'Orientamento', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
+            'OK App. Fissato APL', 'Orientamento', 'Associato SI _ NOI', 'Percorso 101',
             'Associato NO _ Altro Ente', 'Frequenta già corso GOL', 'NO _ Non ha Requisiti', 'Non interessato/a',
             'Stato Rinunciatario', 'Non risponde', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
             'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Sicilia' => ['section' => self::GOL, 'statuses' => [
             'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'Attesa _ App. APL', 'OK App. Fissato CPI',
-            'OK App. Fissato APL', 'Orientamento', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
+            'OK App. Fissato APL', 'Orientamento', 'Associato SI _ NOI', 'Percorso 101',
             'Associato NO _ Altro Ente', 'Frequenta già corso GOL', 'NO _ Non ha Requisiti', 'Non interessato/a',
             'Stato Rinunciatario', 'Non risponde', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
             'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato', 'In Standby',
         ]],
         'GOL - Umbria' => ['section' => self::GOL, 'statuses' => [
             'Nuovo Contatto', 'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa ok Assegno GOL', 'Attesa _ App. CPI',
-            'OK App. Fissato CPI', 'Associato SI _ NOI', 'Percorso 101', 'Autofinanziato',
+            'OK App. Fissato CPI', 'Associato SI _ NOI', 'Percorso 101',
             'Associato NO _ Altro Ente', 'Frequenta già corso GOL', 'NO _ Non ha Requisiti', 'Non interessato/a',
             'Stato Rinunciatario', 'Non risponde', 'Irreperibile', 'Trasferito altra Sede QG', 'Non pertinente - Altra regione',
             'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato', 'In Standby',

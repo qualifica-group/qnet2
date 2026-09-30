@@ -77,8 +77,9 @@ it('seeds catalogue workflows, statuses and criteria per category, and converges
     // the next verde chiaro state.
     expect($pinnedRowsOf('GOL - Lombardia'))->toBe([
         // "Percorso 101" is unfilled in the 2026-09-08 sheet, i.e. OPEN: the
-        // first loss of the column is the one below it.
-        'closed_lost' => 'Autofinanziato',
+        // first loss of the column is the one below it ("Autofinanziato" left
+        // the GOL columns, user directive 2026-09-30).
+        'closed_lost' => 'Associato NO _ Altro Ente',
         'closed_won' => 'Associato SI _ NOI',
         'open' => 'Nuovo Contatto',
     ]);
@@ -448,5 +449,26 @@ it('offers "Non risponde" as an open state in every catalogue list (user directi
         expect($noAnswer)->not->toBeNull($categoryName)
             ->and($noAnswer['group'])->toBe(WorkflowStatusGroup::Open->value, $categoryName)
             ->and($noAnswer['color'])->toBe('slate', $categoryName);
+    }
+});
+
+it('leaves "Autofinanziato" out of every GOL region list (user directive 2026-09-30)', function (): void {
+    // Pure transcription check: struck from the GOL columns only, "DIL" and
+    // "APL" keep it.
+    $golCategories = array_filter(
+        array_keys(WorkflowStatusCatalogue::WORKFLOWS),
+        static fn (string $categoryName): bool => str_starts_with($categoryName, 'GOL - '),
+    );
+
+    expect($golCategories)->not->toBeEmpty();
+
+    foreach ($golCategories as $categoryName) {
+        expect(in_array('Autofinanziato', array_column(WorkflowStatusCatalogue::statusesFor($categoryName), 'name'), true))
+            ->toBeFalse($categoryName);
+    }
+
+    foreach (['DIL', 'APL'] as $categoryName) {
+        expect(in_array('Autofinanziato', array_column(WorkflowStatusCatalogue::statusesFor($categoryName), 'name'), true))
+            ->toBeTrue($categoryName);
     }
 });
