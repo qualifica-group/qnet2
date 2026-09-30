@@ -398,3 +398,69 @@ it('AC-006: normalizes a legacy underscore relation entity_type to hyphens', fun
     expect(Attribute::query()->where('old_id', 50)->first()->relation_target['entity_type'])->toBe('operational-sites')
         ->and($run->fresh()->failed_rows)->toBe(0);
 });
+
+it('spec 0182 AC-004: imports registries/users relations, scalar types, 0/1 enums and PAL-like tables', function () {
+    seedMigrationsConfig();
+    $palConfig = [
+        'columns' => [
+            ['key' => 'cognome', 'label' => 'Cognome', 'type' => 'text', 'required' => true],
+            ['key' => 'data_avv_procedure', 'label' => 'Data Avv. Procedure', 'type' => 'date'],
+            ['key' => 'orientamento', 'label' => 'Orientamento', 'type' => 'boolean'],
+            ['key' => 'numero_ore', 'label' => 'N. Ore', 'type' => 'integer'],
+            ['key' => 'stato_lavorazione', 'label' => 'Stato', 'type' => 'enum', 'options' => [
+                ['value' => 'In avvio', 'label' => 'In avvio'],
+                ['value' => 'Terminata', 'label' => 'Terminata'],
+            ]],
+            ['key' => 'note', 'label' => 'Note', 'type' => 'textarea'],
+        ],
+    ];
+    $yesNo = [['value' => '1', 'label' => 'Si'], ['value' => '0', 'label' => 'No']];
+    Http::fake([
+        fakeMigrationsBaseUrl().'/attributes*' => Http::response([
+            'items' => [
+                ['id' => 100, 'code' => 'avv_company_id', 'name' => 'Azienda', 'type' => 'relation',
+                    'relation_target' => ['entity_type' => 'registries', 'cardinality' => 'one', 'for_select_resource' => 'registries']],
+                ['id' => 101, 'code' => 'avv_commerciale', 'name' => 'Commerciale', 'type' => 'relation',
+                    'relation_target' => ['entity_type' => 'users', 'cardinality' => 'one', 'for_select_resource' => 'users']],
+                ['id' => 102, 'code' => 'avv_ora_scadenza', 'name' => 'Ora Scadenza', 'type' => 'time'],
+                ['id' => 103, 'code' => 'avv_importo_gara', 'name' => 'Gara', 'type' => 'decimal'],
+                ['id' => 104, 'code' => 'gdpr_accessi_onsite', 'name' => 'Accessi', 'type' => 'integer'],
+                ['id' => 105, 'code' => 'soa_invio_contratto', 'name' => 'Invio', 'type' => 'boolean'],
+                ['id' => 106, 'code' => 'soa_appartenenza_consorzio', 'name' => 'Consorzio', 'type' => 'enum',
+                    'config' => ['display' => 'radio'], 'options' => $yesNo],
+                ['id' => 107, 'code' => 'orderiso_pals', 'name' => 'Info Lavorazione', 'type' => 'table', 'config' => $palConfig],
+            ],
+            'pagination' => ['total' => 8],
+        ]),
+    ]);
+
+    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'attributes']);
+    runMigrationJobFor($run);
+
+    expect($run->fresh()->failed_rows)->toBe(0)
+        ->and($run->fresh()->created_rows)->toBe(8)
+        ->and(Attribute::query()->where('old_id', 100)->first()->relation_target['entity_type'])->toBe('registries')
+        ->and(Attribute::query()->where('old_id', 101)->first()->relation_target['for_select_resource'])->toBe('users')
+        ->and(Attribute::query()->where('old_id', 106)->first()->options->pluck('value')->all())->toBe(['1', '0']);
+});
+
+it('spec 0182 AC-004: imports an enum with 79 options and duplicated labels', function () {
+    seedMigrationsConfig();
+    $options = [];
+    foreach (range(1, 79) as $id) {
+        $options[] = ['value' => (string) $id, 'label' => in_array($id, [10, 11], true) ? 'Stessa descrizione' : "Stato {$id}", 'sort_order' => $id];
+    }
+    Http::fake([
+        fakeMigrationsBaseUrl().'/attributes*' => Http::response([
+            'items' => [['id' => 110, 'code' => 'stato_consulenza_68', 'name' => 'Stato Lavorazione', 'type' => 'enum',
+                'config' => ['display' => 'select'], 'options' => $options]],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'attributes']);
+    runMigrationJobFor($run);
+
+    expect($run->fresh()->failed_rows)->toBe(0)
+        ->and(Attribute::query()->where('old_id', 110)->first()->options)->toHaveCount(79);
+});

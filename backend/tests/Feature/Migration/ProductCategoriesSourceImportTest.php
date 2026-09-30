@@ -471,3 +471,53 @@ it('leaves an adopted category on the "Formazione" function itself', function ()
     expect($adopted->fresh()->business_function_id)->toBe($imported->id)
         ->and(BusinessFunction::query()->where('name', 'FORMAZIONE OLD')->exists())->toBeFalse();
 });
+
+it('spec 0182 E-10: uses the quote/work-order flags when carried, the single flag otherwise', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [
+                ['id' => 60, 'name' => 'PAL', 'parent_id' => null, 'inherits_attributes' => true,
+                    'inherits_quote_attributes' => false, 'inherits_work_order_attributes' => false],
+                ['id' => 61, 'name' => 'Legacy flag only', 'parent_id' => null, 'inherits_attributes' => false],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'product-categories']);
+    runMigrationJobFor($run);
+
+    $pal = ProductCategory::query()->where('old_id', 60)->first();
+    $single = ProductCategory::query()->where('old_id', 61)->first();
+
+    expect($pal->inherits_product_attributes)->toBeTrue()
+        ->and($pal->inherits_quote_attributes)->toBeFalse()
+        ->and($pal->inherits_work_order_attributes)->toBeFalse()
+        ->and($single->inherits_product_attributes)->toBeFalse()
+        ->and($single->inherits_quote_attributes)->toBeFalse()
+        ->and($single->inherits_work_order_attributes)->toBeFalse();
+});
+
+it('spec 0182 E-10: an adopted category takes the quote/work-order flags too', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [
+                ['id' => 62, 'name' => 'PAL', 'parent_id' => null, 'inherits_attributes' => true,
+                    'inherits_quote_attributes' => false, 'inherits_work_order_attributes' => false],
+            ],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+    $seeded = ProductCategory::factory()->create(['name' => 'PAL', 'parent_id' => null]);
+
+    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'product-categories']);
+    runMigrationJobFor($run);
+
+    $adopted = $seeded->fresh();
+    expect($adopted->old_id)->toEqual(62)
+        ->and($adopted->inherits_product_attributes)->toBeTrue()
+        ->and($adopted->inherits_quote_attributes)->toBeFalse()
+        ->and($adopted->inherits_work_order_attributes)->toBeFalse();
+});

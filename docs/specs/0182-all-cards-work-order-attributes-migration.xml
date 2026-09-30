@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0182-all-cards-work-order-attributes-migration" status="approved" owner="utente" date="2026-09-30">
+
+  <goal>
+    Estendere la spec 0181 (ISO) a TUTTE le card legacy: dopo l'import dal legacy, ogni categoria prodotto ha in
+    contesto Commessa esattamente i campi flessibili che la pagina `manageorder` mostra per le card dei suoi prodotti,
+    con etichette/opzioni della pagina e disposti nelle stesse sezioni; "Stato Lavorazione" ha gli stati della radice
+    della categoria; il contesto Offerta non eredita piu' i campi di card sorelle.
+  </goal>
+
+  <context>
+    - Base: spec 0181 (approvata, verde). Legacy `/Users/Repository/qnet`: `Api/V2/AttributeMigrationController`,
+      `Support/Migration/MigrationAttributeCards` (`linksForCards(quoteCards, workOrderCards)`),
+      `Api/V2/ProductCategoryMigrationController`, `Api/V2/AttributeLayoutMigrationController` +
+      `Support/Migration/MigrationAttributeLayouts`. qnet-2: sorgenti `attributes`, `product-categories`,
+      `product-category-attributes`, `attribute-layouts` (invariate salvo quanto sotto).
+    - Ricognizione legacy (pagina `manageorder.blade.php`, componente `Livewire/Orders/Manageorder.php` e modal
+      `dati-*`) per card `services.spec_service`: 3 SOA, 4 Sicurezza, 5 Avvalimenti (`orderiso_avvalimentis`),
+      6 GDPR, 7 R&amp;S, 8 PAL (`orderiso_pals`), 9 4.0, 10 Finanza Agevolata, 11 Fondi, 12 Gare (`orderiso_gares`),
+      13 Partnership Sedi, 14 Progetti, 15 Istruzione, 16 Formazione GOL (`orderformaziones` + `classi`),
+      17-19 senza blocchi. "Stato Lavorazione" = `progress` della radice della categoria (`parent_id`, o la categoria
+      se radice). Radici con stati: 1 (29), 69 (37), 50 (10), 5 (7), 62 (7), 9 (32), 68 (79), 67 (8), 61 (7),
+      72 (29), 75 (29), 141 (31); le altre (74, 6, 10, 48, 65, 60, 103, 112, 164, 188, 7, 8) non hanno stati.
+      La 0181 usava per ISO solo la radice 69, ma 482 prodotti ISO su 724 sono sotto la radice 1.
+    - Decisioni utente (2026-09-30): E-1 un campo "Stato Lavorazione" per radice con i suoi stati, collegato a ogni
+      categoria secondo la propria radice (anche ISO); nessun campo per radici senza stati. E-2 Gare/Avvalimenti:
+      Azienda = relazione alle Anagrafiche (`registries`), Commerciale e Segnalatore = relazione agli Utenti (`users`).
+      E-3 PAL "Misura somministrata" = due colonne Si'/No nella tabella. E-4 la regola D-9 (solo card dei propri
+      prodotti) vale anche per il contesto Offerta. Restano valide D-1..D-9 della 0181 (in particolare D-3: i VALORI
+      delle commesse sono fuori scope; D-4: vincono le etichette della pagina).
+    - Decisioni del lead approvate dall utente (2026-09-30): E-5 i refusi evidenti delle etichette legacy vengono
+      corretti ("Visura Camerale", "Stato Avanzamento Lavorazioni", "Oggetto Avviso", "Partecipazione", "Certificazione");
+      E-6 codici: per le card con tabella propria (Avvalimenti, Gare, Formazione GOL) prefisso `avv_`, `gare_`, `gol_`
+      + nome colonna legacy (evita collisioni con codici esistenti); per le colonne di `orderisos` il nome colonna
+      legacy (anche `gdp_ore_lavorazione`); stato per radice = `stato_consulenza` (radice 69, gia' importato) e
+      `stato_consulenza_&lt;id radice&gt;` per le altre; E-7 fuori scope: allegati Istruzione (file), campi Formazione
+      GOL letti da classe/edizione del corso (Nome Corso/Ed. + 10 campi in sola lettura), le 4 intestazioni vuote della
+      card Sicurezza; E-8 una categoria con prodotti di piu' card riceve le sezioni di tutte le sue card (in ordine di
+      card) e una sola sezione "Dati contrattuali" finale;
+      E-10 (lead, trovato in verifica): una categoria con card nei propri prodotti NON eredita dal padre i campi di Offerta
+      e Commessa (nel legacy una commessa PAL figlia di APL mostra solo i blocchi PAL). Il legacy esporta per ogni
+      categoria `inherits_quote_attributes` e `inherits_work_order_attributes` (false se ha card proprie, altrimenti il
+      valore legacy di `inherits_attributes`); `ProductCategoriesSource` li usa se presenti (altrimenti il flag unico come
+      oggi); la barriera del contesto Prodotto resta `inherits_attributes`. E-9 il ramo "Formazione" di qnet-2 (layout scritto a mano,
+      categorie senza old_id) resta intatto: i layout legacy vanno sulle categorie legacy importate (FOR_*).
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy `attributes`: stato per radice (E-1), campi delle card 3, 4, 5, 6, 7, 8, 10 (solo stato), 12, 13, 15, 16 con etichette/opzioni/tipi della pagina; tabella PAL `orderiso_pals`; relazioni E-2. Il dizionario per card va in classi di supporto dedicate (il controller e' gia' grande).</item>
+      <item>Legacy `product-categories`: link work_order per card dei PROPRI prodotti (comuni + stato della radice + campi card); contesto quote con la stessa regola dei propri prodotti (E-4).</item>
+      <item>Legacy `attribute-layouts`: una voce per ogni categoria con prodotti propri di almeno una card con campi o con stato; sezioni per card come da contratto + "Dati contrattuali" finale (E-8). ISO rivista: lo stato usa il codice della radice della categoria.</item>
+      <item>qnet-2: nessuna sorgente nuova; verifica che `attributes` accetti relation `registries`/`users` (con `for_select_resource` esistente) e i nuovi config; eventuali fix minimi. Guida in-app `migrations` e manuale aggiornati.</item>
+      <item>E2E: import reale via HTTP da qnet.test su DB temporaneo, controllo per una categoria rappresentativa di ogni card.</item>
+    </in>
+    <out>
+      <item>Valori delle commesse (D-3), inclusi `orderiso_avvalimentis`, `orderiso_gares`, `orderiso_pals`, `orderformaziones`.</item>
+      <item>E-7 (allegati Istruzione, campi classe/edizione Formazione GOL, intestazioni vuote Sicurezza).</item>
+      <item>Pulizia link gia' importati su DB esistente (import additivo, come 0181).</item>
+      <item>Ramo "Formazione" qnet-2 scritto a mano (E-9); relazione `provinces` (senza destinazione).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <shape name="Stato per radice (E-1, E-6)">
+      Per ogni radice R con stati: attributo `stato_consulenza_R` (R=69 resta `stato_consulenza`), name "Stato Lavorazione",
+      enum {display:select}, options = progress.service_id=R (escluso id 1000) value=id stringa, label=description, per id.
+      Link work_order di una categoria: il codice della SUA radice (se ha stati), prima dei campi card.
+    </shape>
+
+    <shape name="Campi per card (etichette della pagina, E-5 per i refusi)">
+      Tipi: date | text | textarea | integer | decimal | boolean | enum(select/radio, opzioni esatte) | relation | table.
+      - 3 SOA (colonne `orderisos`): note_consulente "Note" textarea; soa_ultima_chiamata "Ultima Chiamata" date;
+        soa_inizio_lavorazione "Data Fine Lavorazione Presunta" date; soa_fine_lavorazione "Data Chiusura Lavorazione" date;
+        soa_invio_contratto "Invio Contratto" boolean; soa_aggiorna_settimanale "Aggiornamento Settimanale" boolean;
+        soa_data_firma "Data Firma Contratto" date; soa_emissioni "Emissioni" date; soa_verifica_triennale "Verifica Triennale" date;
+        soa_scadenza "Scadenza" date; soa_appartenenza_consorzio "Appartenenza Consorzio" enum radio 1=Si,0=No;
+        soa_nome_consorzio "Nome del Consorzio" text; soa_attestante "Soa Attestante" text;
+        soa_ente_certificazione_nome "Nome dell'Ente di Certificazione 9001" text;
+        soa_ente_certificazione_scadenza "Scadenza Ente di Certificazione 9001" date. (soa_richiamo NON collegato)
+      - 4 Sicurezza: sic_data_consegna_pratica "Data Consegna Pratica" date; sic_data_rinnovo_attestati "Data Rinnovo Attestati" date.
+      - 5 Avvalimenti (`orderiso_avvalimentis`, prefisso avv_): avv_protocollo "Protocollo" text; avv_data_inserimento
+        "Data Inserimento" date; avv_data_inizio_lavoro "Data Inizio Lavorazione" date; avv_oggetto_gara "Oggetto" textarea;
+        avv_importo_gara "€ Gara" decimal; avv_doppio_cig "Doppio CIG" text; avv_cig "CIG" text; avv_data_scadenza "Data Scadenza"
+        date; avv_ora_scadenza "Ora Scadenza" time; avv_cat_classe_servizi "Categoria e Classe Servizi" text; avv_ente_appaltante
+        "Ente Appaltante" text; avv_company_id "Azienda" relation registries one; avv_imponibile "Imponibile" decimal;
+        avv_offerta_ribasso_percentuale "Offerta al Ribasso %" decimal; avv_offerta_ribasso_importo "Offerta al Ribasso" decimal;
+        avv_offerta "Offerta" decimal; avv_ausiliaria "Ausiliaria" text; avv_ausiliaria_importo "Ausiliaria Importo" decimal;
+        avv_commerciale "Commerciale" relation users one; avv_commerciale_importo "Commerciale €" decimal; avv_segnalatore
+        "Segnalatore" relation users one; avv_segnalatore_importo "Segnalatore €" decimal; avv_esito "Esito" enum select
+        (esito_gares 1..14, label esatte); avv_aggiudicataria "Aggiudicataria" text; avv_aggiudicataria_ribasso
+        "Aggiudicataria Ribasso" decimal; avv_aggiudicataria_ribasso_percentuale "Aggiudicataria Ribasso %" decimal;
+        avv_aggiudicataria_punti_ric_pt "Aggiudicataria Punti Ric. P.T." decimal; avv_royalty_aggiudicazione
+        "Royalty Aggiudicazione €" decimal; avv_royalty_qualifica "Royalty Qualifica €" decimal; avv_note_esito "Note Esito" textarea.
+        (Data Fine Lavorazione: nessuna colonna legacy, NON creato.)
+      - 6 GDPR: gdpr_accessi_onsite "Numero Accessi On Site" integer; gdpr_accessi_offsite "Numero Accessi Off Site" integer;
+        gdpr_intervista "Intervista" enum radio 1=On Site,0=Off Site; gdpr_formazione "Formazione" idem; gdp_ore_lavorazione
+        "Numero Ore di Lavoro" integer; gdpr_inizio_lavorazione "Data Inizio Lavorazione" date; gdpr_fine_lavorazione
+        "Data Fine Lavorazione" date; note_consulente "Note"; gdpr_ultima_chiamata "Data Ultima Chiamata" date;
+        gdpr_richiamo "Data Richiamo" date; gdpr_prossima_consulenza "Prossima Consulenza" date.
+      - 7 R&amp;S: res_inizio_lavorazione "Data Inizio Lavorazione" date; res_fine_lavorazione "Data Fine Lavorazione" date;
+        res_numero_risorse "Numero Risorse" integer; res_profilo_risorse "Profilo Risorse" textarea; res_requisiti_profilo
+        "Requisiti Profilo" textarea; note_consulente "Note"; res_ultima_chiamata "Data Ultima Chiamata" date; res_richiamo
+        "Data Richiamo" date; res_variazione_ricerca "Variazione Ricerca" textarea; res_candidati_selezionati "Candidati Selezionati" textarea.
+      - 8 PAL: orderiso_pals "Info Lavorazione" table {columns: cognome "Cognome" text required, nome "Nome" text required,
+        codice_fiscale "Codice Fiscale" text, data_avv_procedure "Data Avv. Procedure" date, data_incontro_utente
+        "Data Incontro Utente" date, data_avv_misura "Data Avv. Misure" date, orientamento "Orientamento" boolean,
+        numero_ore "N. Ore" integer, stato_lavorazione "Stato" enum (In avvio, Terminata, Rendicontata, Annullata; value=label),
+        accompagnamento_lavoro "Accompagnamento al Lavoro" boolean, tirocinio_gol "Tirocinio GOL" boolean, note "Note" textarea}
+        (E-3; nessuna selezione riga, nessun riepilogo); pal_euro_orientamento "UCS Orientamento €" decimal; pal_euro_misura_corso
+        "UCS Misura Attiva €" decimal; pal_stato_rendicontazione "Stato della Rendicontazione" textarea; boolean: pal_visura_camerale
+        "Visura Camerale", pal_vincolo_parentela "Vincolo parentela", pal_did "DID", pal_c2 "C2", pal_patto_gol "Patto GOL",
+        pal_doc_ric "Documento di Riconoscimento", pal_cv "CV", pal_accompagnamento_lavoro "Accompagnamento Lavoro",
+        pal_modulo_orientamento "Modulo Orientamento/Skill Gap Analysis", pal_contratto "Contratto di Lavoro", pal_tirocinio
+        "Tirocinio", pal_convenzione "Convenzione", pal_pfi "PFI", pal_registro_presenze "Registro Presenze",
+        pal_relazione_fine_tirocinio "Registro Fine Tirocinio". (pal_dru, pal_unilav, pal_note NON collegati)
+      - 12 Gare (`orderiso_gares`, prefisso gare_): come Avvalimenti per gli stessi campi (gare_protocollo ... gare_note_esito,
+        gare_company_id registries, gare_commerciale/gare_segnalatore users, gare_esito esito_gares) SENZA doppio_cig e CON
+        gare_partecipazione "Partecipazione" decimal.
+      - 13 Partnership Sedi: ps_data_prevista_fine "Data Prevista Fine" date; ps_stato_avanzamento_lavorazione
+        "Stato Avanzamento Lavorazioni" enum select (status_partnerships, opzioni esistenti); ps_sede_operativa "Sede Operativa"
+        text; ps_societa_da_accreditare "Società da Accreditare" text; ps_numero_di_sede "Numero di Sede" text.
+      - 15 Istruzione: ist_tipo_finanziamento "Tipo di Finanziamento" text; ist_avviso "Avviso n." text; ist_candidatura
+        "Candidatura n." text; ist_oggetto_avviso "Oggetto Avviso" textarea; ist_euro_iva_esclusa "Imponibile" decimal;
+        ist_iva "Iva" decimal; ist_totale "Totale" decimal; ist_data "Data" date; ist_inizio_presunto "Inizio Presunto" date;
+        ist_inizio_effettivo "Inizio Effettivo" date; ist_fine_presunta "Fine Presunta" date; ist_fine_effettiva "Fine Effettiva" date.
+      - 16 Formazione GOL (`orderformaziones`, prefisso gol_): gol_euro_ora_docenti "€/ora docenti" decimal;
+        gol_anticipo_data_richiesta "Anticipo Data Richiesta" date; gol_anticipo_id_richiesta "Anticipo Id. Richiesta" text;
+        gol_anticipo_euro_da_decreto "Anticipo € da Decreto" decimal; gol_saldo_data_richiesta "Saldo Data Richiesta" date;
+        gol_saldo_id_richiesta "Saldo Id Richiesta" text; gol_saldo_euro_da_decreto "Saldo € da Decreto" decimal;
+        gol_euro_residuo_effettivo "Euro Residuo Effettivo" decimal; gol_importo_anticipo "€ Anticipo Incassato" decimal;
+        gol_importo_saldo "€ Saldo Incassato" decimal; gol_totale_ricevuto_regione "€ Totale Ricevuto Regione" decimal;
+        gol_num_discenti "N° discenti" integer.
+      - 9, 11, 14, 17, 18, 19: nessun campo proprio (solo lo stato della radice se ha stati, e i comuni).
+      Etichette di attributi condivisi (note_consulente "Note") valgono per tutte le card; ISO "Note consulente" diventa "Note".
+    </shape>
+
+    <shape name="Layout per card (GET /api/v2/migration/attribute-layouts, shape invariata dalla 0181)">
+      Sezioni per card (titoli pagina; "a | b" = riga due half; textarea/tabelle full), in ordine card, poi "Dati contrattuali":
+      - 2 ISO: come 0181, con lo stato della radice della categoria nella sezione "Dettagli Lavorazioni Iso".
+      - 3 SOA: "Info Lavorazione SOA": stato | soa_data_firma; soa_ultima_chiamata | soa_inizio_lavorazione; soa_fine_lavorazione | soa_invio_contratto; soa_aggiorna_settimanale; note_consulente(full).
+        "Pianificazione (da commesse precedenti)": soa_emissioni | soa_verifica_triennale; soa_scadenza | soa_appartenenza_consorzio; soa_nome_consorzio | soa_attestante; soa_ente_certificazione_nome | soa_ente_certificazione_scadenza.
+      - 4 Sicurezza: "Dettaglio Lavorazioni Sicurezza": stato | sic_data_consegna_pratica; sic_data_rinnovo_attestati.
+      - 5 Avvalimenti: "Avvalimenti Info Lavorazione": stato | avv_protocollo; avv_data_inserimento | avv_data_inizio_lavoro.
+        "Gara": avv_oggetto_gara(full); avv_importo_gara | avv_doppio_cig; avv_cig | avv_cat_classe_servizi; avv_data_scadenza | avv_ora_scadenza; avv_ente_appaltante | avv_company_id.
+        "Offerta": avv_imponibile | avv_offerta_ribasso_percentuale; avv_offerta_ribasso_importo | avv_offerta; avv_ausiliaria | avv_ausiliaria_importo; avv_commerciale | avv_commerciale_importo; avv_segnalatore | avv_segnalatore_importo.
+        "Esito": avv_esito | avv_aggiudicataria; avv_aggiudicataria_ribasso | avv_aggiudicataria_ribasso_percentuale; avv_aggiudicataria_punti_ric_pt; avv_royalty_aggiudicazione | avv_royalty_qualifica; avv_note_esito(full).
+      - 6 GDPR: "1.b. - Contratto - Date": gdpr_accessi_onsite | gdpr_accessi_offsite. "1.c. - Contratto - Pianificazione Annuale": gdpr_intervista | gdpr_formazione; gdp_ore_lavorazione; gdpr_inizio_lavorazione | gdpr_fine_lavorazione.
+        "3. Lavorazione Annuale": stato; gdpr_ultima_chiamata | gdpr_richiamo; note_consulente(full). "2. Pianificazione (da commesse precedenti)": gdpr_prossima_consulenza.
+      - 7 R&amp;S: "Contratto - Date": res_inizio_lavorazione | res_fine_lavorazione; res_numero_risorse; res_profilo_risorse(full); res_requisiti_profilo(full).
+        "Lavorazione Annuale": stato; res_ultima_chiamata | res_richiamo; note_consulente(full); res_variazione_ricerca(full); res_candidati_selezionati(full).
+      - 8 PAL: "Stato Lavorazione": stato. "Info Lavorazione": orderiso_pals(full). "Info Contabili": pal_euro_orientamento | pal_euro_misura_corso.
+        "Info Rendicontazione": pal_stato_rendicontazione(full); pal_visura_camerale | pal_vincolo_parentela; pal_did | pal_c2; pal_patto_gol | pal_doc_ric; pal_cv | pal_accompagnamento_lavoro; pal_modulo_orientamento | pal_contratto; pal_tirocinio | pal_convenzione; pal_pfi | pal_registro_presenze; pal_relazione_fine_tirocinio.
+      - 10 / 9 / 11 / 14 / 17-19: "Lavorazione": stato (solo se la radice ha stati; altrimenti nessuna sezione card).
+      - 12 Gare: "Lavorazione": stato | gare_protocollo; gare_data_inserimento | gare_data_inizio_lavoro. "Gara": gare_oggetto_gara(full); gare_importo_gara | gare_cig; gare_data_scadenza | gare_ora_scadenza; gare_cat_classe_servizi | gare_ente_appaltante; gare_company_id.
+        "Offerta": gare_imponibile | gare_offerta_ribasso_percentuale; gare_offerta_ribasso_importo | gare_offerta; gare_partecipazione; gare_ausiliaria | gare_ausiliaria_importo.
+        "Provvigioni e royalty": gare_commerciale | gare_commerciale_importo; gare_segnalatore | gare_segnalatore_importo; gare_royalty_aggiudicazione | gare_royalty_qualifica.
+        "Esito": gare_esito | gare_aggiudicataria; gare_aggiudicataria_ribasso | gare_aggiudicataria_ribasso_percentuale; gare_aggiudicataria_punti_ric_pt; gare_note_esito(full).
+      - 13 Partnership Sedi: "Gestione Sedi": stato | ps_stato_avanzamento_lavorazione; ps_data_prevista_fine | ps_sede_operativa; ps_societa_da_accreditare | ps_numero_di_sede.
+      - 15 Istruzione: "Dati Lavorazione Istruzione": stato; ist_tipo_finanziamento(full); ist_avviso | ist_candidatura; ist_oggetto_avviso(full); ist_euro_iva_esclusa | ist_iva; ist_totale | ist_data; ist_inizio_presunto | ist_inizio_effettivo; ist_fine_presunta | ist_fine_effettiva.
+      - 16 Formazione GOL: "Dettagli Lavorazione": stato; gol_euro_ora_docenti | gol_num_discenti. "Anticipo": gol_anticipo_data_richiesta | gol_anticipo_id_richiesta; gol_anticipo_euro_da_decreto | gol_importo_anticipo.
+        "Saldo": gol_saldo_data_richiesta | gol_saldo_id_richiesta; gol_saldo_euro_da_decreto | gol_importo_saldo. "Riepilogo Regione": gol_totale_ricevuto_regione | gol_euro_residuo_effettivo.
+      - Finale: "Dati contrattuali": stato_pagamento | accordo_pagamento; insoluti | comunicazione_email.
+      "stato" = il codice stato della radice della categoria; se la radice non ha stati la riga/voce e' omessa (una riga vuota non esiste).
+      Un codice compare una sola volta per layout (note_consulente in categorie multi-card: solo nella prima sezione che lo usa).
+    </shape>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Legacy `attributes` via HTTP: esiste un `stato_consulenza_R` per ogni radice con stati (e `stato_consulenza` per 69) con il numero di opzioni della radice; tutti i codici del contratto con nome/tipo/opzioni/config esatti; nessun code duplicato; nessun id esistente spostato (nuovi in coda). (verifica HTTP + diff con l'output della 0181)</criterion>
+    <criterion id="AC-002">Legacy `product-categories` via HTTP: per una categoria rappresentativa di ogni card con campi (es. 71 SOA, 76 Sicurezza, 157 Avvalimenti, 79 GDPR, 54 R&amp;S, una PAL, 57 Finanza, una Gare sotto 61, 72 Partnership, 118 Istruzione, 142 Formazione GOL, una ISO sotto radice 1 e la 70) i link work_order sono esattamente comuni + stato della radice + campi delle card dei propri prodotti; le categorie contenitore senza prodotti propri non hanno link work_order ne' quote; il contesto quote di una categoria con prodotti propri contiene solo i campi delle proprie card. (verifica HTTP)</criterion>
+    <criterion id="AC-003">Legacy `attribute-layouts` via HTTP: una voce per ogni categoria con prodotti propri e almeno un campo card o stato; sezioni come da contratto per le categorie di AC-002 (multi-card: sezioni di tutte le card + un solo "Dati contrattuali"); ogni codice e' nei link work_order della categoria e compare una sola volta. (verifica HTTP)</criterion>
+    <criterion id="AC-004">qnet-2: l'import di `attributes` accetta le relation `registries`/`users` e le tabelle nuove senza errori (unico fallimento ammesso: `provinces`). (Pest se serve un fix; altrimenti evidenza e2e)</criterion>
+    <criterion id="AC-005">E2E via HTTP reale su DB SQLite temporaneo (mai il DB di sviluppo), 2 passate: per ogni categoria di AC-002 il set effettivo work_order (AttributeSetResolver) e il layout risolto coincidono col contratto, nessuna sezione "Altre informazioni"; reimport idempotente. (evidenza script)</criterion>
+    <criterion id="AC-006">Suite Pest completa verde; Vitest help/migrations/i18n verde; guida in-app `migrations` e manuale aggiornati (stato per radice, tutte le card).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Autorizzazione utente a modificare le API legacy (solo controller/supporti `Api/V2` di migrazione e route); nessuna migrazione o scrittura sul DB legacy; nessuna nuova dipendenza.
+    - File entro 300/500 righe: il dizionario per card va in classi di supporto (es. una per gruppo di card).
+    - Verifica e2e solo su DB temporaneo; token di migrazione da `backend/.env` mai stampato.
+  </constraints>
+
+</spec>

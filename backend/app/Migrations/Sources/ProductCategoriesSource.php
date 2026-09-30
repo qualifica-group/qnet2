@@ -15,8 +15,8 @@ use RuntimeException;
 
 /**
  * `product-categories` migration source (spec 0013 / 0017): a SELF-referential
- * tree (id, name, parent_id, inherits_attributes, requires_quote,
- * is_selectable, description, business_function_id) created through
+ * tree (id, name, parent_id, inherits_attributes, inherits_quote_attributes,
+ * inherits_work_order_attributes, requires_quote, is_selectable, description, business_function_id) created through
  * ProductCategoryService. `business_function_id` is an EXTERNAL business
  * function id remapped via `old_id` (CategoryBusinessFunctionLinker), which
  * also redirects the functions a created category may not be filed on
@@ -84,6 +84,8 @@ class ProductCategoriesSource extends AbstractMigrationSource
             ['id' => 'name', 'label' => 'Name', 'type' => 'string'],
             ['id' => 'parent_id', 'label' => 'Parent (external id)', 'type' => 'number'],
             ['id' => 'inherits_attributes', 'label' => 'Inherits attributes', 'type' => 'boolean'],
+            ['id' => 'inherits_quote_attributes', 'label' => 'Inherits quote attributes (optional)', 'type' => 'boolean'],
+            ['id' => 'inherits_work_order_attributes', 'label' => 'Inherits work order attributes (optional)', 'type' => 'boolean'],
             ['id' => 'requires_quote', 'label' => 'Requires quote (root only)', 'type' => 'boolean'],
             ['id' => 'is_selectable', 'label' => 'Selectable', 'type' => 'boolean'],
             ['id' => 'description', 'label' => 'Description', 'type' => 'string'],
@@ -112,6 +114,8 @@ class ProductCategoriesSource extends AbstractMigrationSource
             'name' => $record['name'] ?? null,
             'parent_id' => $record['parent_id'] ?? null,
             'inherits_attributes' => $record['inherits_attributes'] ?? null,
+            'inherits_quote_attributes' => $record['inherits_quote_attributes'] ?? null,
+            'inherits_work_order_attributes' => $record['inherits_work_order_attributes'] ?? null,
             'requires_quote' => $record['requires_quote'] ?? null,
             'is_selectable' => $record['is_selectable'] ?? null,
             'description' => $record['description'] ?? null,
@@ -151,21 +155,18 @@ class ProductCategoriesSource extends AbstractMigrationSource
 
         $parentId = $this->resolveParent($record['parent_id'] ?? null, $warnings);
 
-        // The external system carries a SINGLE inheritance flag; qnet splits it
-        // per usage context (Product / Quote / Commessa, spec 0084 + 0098), so
-        // the imported value seeds ALL THREE barriers identically and is
-        // decoupled from qnet on afterwards. Leaving `work_order` out would
-        // silently keep it inheriting on a category that opted out externally.
-        $inheritsAttributes = array_key_exists('inherits_attributes', $record)
-            ? (bool) $record['inherits_attributes']
-            : true;
+        $inherits = $this->inheritanceFlags($record) ?? [
+            'product' => true,
+            'quote' => true,
+            'work_order' => true,
+        ];
 
         $category = $this->service->create(new CreateProductCategoryData(
             name: $name,
             parentId: $parentId,
-            inheritsProductAttributes: $inheritsAttributes,
-            inheritsQuoteAttributes: $inheritsAttributes,
-            inheritsWorkOrderAttributes: $inheritsAttributes,
+            inheritsProductAttributes: $inherits['product'],
+            inheritsQuoteAttributes: $inherits['quote'],
+            inheritsWorkOrderAttributes: $inherits['work_order'],
             description: $this->mapDescription($record['description'] ?? null),
             businessFunctionId: $this->businessFunctions->ownFunctionFor($record['business_function_id'] ?? null, $parentId, $warnings),
             requiresQuote: $this->mapRequiresQuote($record, $parentId),
@@ -223,6 +224,36 @@ class ProductCategoriesSource extends AbstractMigrationSource
     }
 
     /**
+     * The three inheritance barriers (Product / Quote / Commessa, spec 0084 +
+     * 0098) from the external record. The external system carries
+     * `inherits_attributes` (the Product barrier and the fallback for the other
+     * two) and, since spec 0182 E-10, optional `inherits_quote_attributes` /
+     * `inherits_work_order_attributes` (false for a category with cards of its
+     * own). Null when the record carries none of the three (nothing to say).
+     *
+     * @param  array<string, mixed>  $record
+     * @return array{product: bool, quote: bool, work_order: bool}|null
+     */
+    private function inheritanceFlags(array $record): ?array
+    {
+        $carried = array_intersect_key($record, array_flip([
+            'inherits_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes',
+        ]));
+
+        if ($carried === []) {
+            return null;
+        }
+
+        $single = array_key_exists('inherits_attributes', $record) ? (bool) $record['inherits_attributes'] : true;
+
+        return [
+            'product' => $single,
+            'quote' => array_key_exists('inherits_quote_attributes', $record) ? (bool) $record['inherits_quote_attributes'] : $single,
+            'work_order' => array_key_exists('inherits_work_order_attributes', $record) ? (bool) $record['inherits_work_order_attributes'] : $single,
+        ];
+    }
+
+    /**
      * The fields an adoption refreshes, each only when the external record
      * carries it — an absent key means "the external system says nothing",
      * which must not blank the value qnet holds.
@@ -238,14 +269,12 @@ class ProductCategoriesSource extends AbstractMigrationSource
             $attributes['description'] = $this->mapDescription($record['description']);
         }
 
-        // One external flag, three qnet barriers — same split processRow()
-        // makes on creation.
-        if (array_key_exists('inherits_attributes', $record)) {
-            $inherits = (bool) $record['inherits_attributes'];
+        $inherits = $this->inheritanceFlags($record);
 
-            $attributes['inherits_product_attributes'] = $inherits;
-            $attributes['inherits_quote_attributes'] = $inherits;
-            $attributes['inherits_work_order_attributes'] = $inherits;
+        if ($inherits !== null) {
+            $attributes['inherits_product_attributes'] = $inherits['product'];
+            $attributes['inherits_quote_attributes'] = $inherits['quote'];
+            $attributes['inherits_work_order_attributes'] = $inherits['work_order'];
         }
 
         return $attributes;

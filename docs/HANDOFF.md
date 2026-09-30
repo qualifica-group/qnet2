@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0182 CAMPI FLESSIBILI COMMESSA DI TUTTE LE CARD DAL LEGACY — VERDE, NON COMMITTATO (2026-09-30)
+
+- Spec `docs/specs/0182-all-cards-work-order-attributes-migration.xml` (estende 0181; E-1 stato per radice
+  `stato_consulenza_<R>` (69 resta `stato_consulenza`), anche ISO radice 1; E-2 Azienda->registries, Commerciale/
+  Segnalatore->users; E-3 PAL misura = due boolean; E-4 quote solo card proprie; E-5 refusi corretti; E-6 prefissi
+  `avv_`/`gare_`/`gol_`; E-7 fuori scope allegati Istruzione, campi classe/edizione GOL; E-8 multi-card = sezioni di tutte
+  + un solo "Dati contrattuali"; E-9 ramo Formazione qnet-2 intatto; E-10 categorie con card proprie hanno barriere
+  quote/work_order false).
+- LEGACY (non committato): nuovi `Support/Migration/Attributes/{AttributeBuilder,AttributeDictionary,CardAttributes,
+  TenderAttributes,WorkflowStates}.php`, `Support/Migration/{MigrationCategoryContext,MigrationLayoutSections}.php`;
+  modificati `AttributeMigrationController` (1196->1173 righe), `ProductCategoryMigrationController` (card proprie,
+  flag `inherits_quote_attributes`/`inherits_work_order_attributes`, `disableCache()`), `AttributeLayoutMigrationController`,
+  `MigrationAttributeCards`, `MigrationAttributeLayouts`, `CompanySite`/`OperationalSiteMigrationController`
+  (`disableCache()`: il trait Cachable faceva esportare 179 categorie su 183). 338 attributi (nuovi id 235-338 in coda).
+- qnet-2: `ProductCategoriesSource` usa i flag per contesto se presenti (`inheritanceFlags()`); test regressione
+  `AttributesSourceImportTest` (relation registries/users, tabelle, enum 79 opzioni) e `ProductCategoriesSourceImportTest`.
+  Guida `migrations` IT/EN e manuale Claude Docs aggiornati.
+- Verifica: import reale HTTP su SQLite temporaneo, 2 passate idempotenti (337 attributi, 183 categorie, 109 layout,
+  unico fallimento `provinces`); 17 categorie rappresentative = contratto, 0 "Altre informazioni", 0 categorie con piu'
+  stati. Pest completo 9047 pass / 0 fail; Vitest help/migrations/i18n 305; `tsc -b --force` e `php -l` puliti.
+- Aperti: valori commesse; radici senza stati (4.0, Fondi, Progetti, Software, HR, ALTRO) = solo campi comuni e nessun layout.
+
 ## SPEC 0181 CAMPI FLESSIBILI COMMESSA ISO DAL LEGACY (+ LAYOUT A SEZIONI) — VERDE, NON COMMITTATO (2026-09-30)
 
 - Spec `docs/specs/0181-iso-work-order-attributes-migration.xml` (D-1 solo i campi della pagina `manageorder`;
