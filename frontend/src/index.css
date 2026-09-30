@@ -80,6 +80,11 @@
      `--destructive` e `--success`. Usata come riempimento di barra e colore di
      cifra sulla card: a 38 tiene 4.6:1 sul bianco. */
   --warning: hsl(32 95% 38%);
+  /* Stella dei preferiti (spec 0184): giallo oro di riempimento, con un
+     contorno piu' scuro (`--favorite-border`) che tiene 3.3:1 sulla card
+     bianca, cosi' la stella resta leggibile come icona (WCAG 3:1). */
+  --favorite: hsl(45 93% 50%);
+  --favorite-border: hsl(38 92% 40%);
   /* Rung 4: darker than card (100), surface (90), body (81) and the muted tint
      (79) alike, so a card edge is visible against the page (1.25:1) and a panel
      edge against the surface. One line colour for card edges and grid
@@ -153,6 +158,9 @@
   --success: hsl(142 55% 48%);
   /* Chiara come `--success` dark: sulla card a 23 un'ambra scura sparirebbe. */
   --warning: hsl(38 92% 55%);
+  /* Sulla card a 23 il giallo regge da solo: contorno e riempimento coincidono. */
+  --favorite: hsl(45 93% 55%);
+  --favorite-border: hsl(45 93% 55%);
   /* Rung 4: lighter than body (4), surface (16), card (23) and tint (31) alike. */
   --border: hsl(223 18% 38%);
   --input: hsl(223 18% 38%);
@@ -200,6 +208,8 @@
   --color-destructive: var(--destructive);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-favorite: var(--favorite);
+  --color-favorite-border: var(--favorite-border);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-field: var(--field);

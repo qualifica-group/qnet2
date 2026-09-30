@@ -2,9 +2,14 @@ import { useLayoutEffect, useState, type RefObject } from 'react'
 import { fitCategoryTabs } from '@/features/request-management/category-tab-fit'
 import type { RequestManagementProductCategory } from '@/features/request-management/types'
 
-/** `data-tab-measure` value of the "Tutte" tab and of the "Altre" button in the measuring layer. */
+/**
+ * `data-tab-measure` values in the measuring layer: the "Tutte" tab, the menu
+ * button labelled "Altre (N)", and the same button in its compact form (star
+ * only), which stays on the strip even when every tab fits (spec 0184 AC-011).
+ */
 export const MEASURE_ALL = 'all'
 export const MEASURE_MORE = 'more'
+export const MEASURE_MANAGE = 'manage'
 
 interface StripMeasurement {
   availableWidth: number
@@ -15,18 +20,21 @@ interface StripMeasurement {
 
 /**
  * Lays the category strip out against the width it really has (priority+):
- * reads each tab's natural width off the hidden measuring layer, the room in
- * the visible trough, and returns which categories stay inline — the rest go
- * to the "Altre" menu. Only the measurement lives in state; the fit itself is
- * recomputed on every render, so picking a category never waits on a resize.
+ * reads the natural width of every category's tab off the hidden measuring
+ * layer and the room in the visible trough, then returns which of `stripIds`
+ * (the strip's candidates, in order) stay inline — the rest go to the "Altre"
+ * menu. Only the measurement lives in state, keyed on the stable query data;
+ * the fit is recomputed on every render, so picking a category or a favourite
+ * never waits on a resize nor triggers a new measurement.
  *
- * Until the first measurement every category is returned: the trough clips,
- * so that frame can never widen the page.
+ * Until the first measurement every candidate is returned: the strip's
+ * wrapper clips, so that frame can never widen the page.
  */
 export function useCategoryTabFit(
   troughRef: RefObject<HTMLElement | null>,
   measureRef: RefObject<HTMLElement | null>,
   categories: RequestManagementProductCategory[],
+  stripIds: number[],
   selectedCategoryId: number | null,
 ): number[] {
   const [measurement, setMeasurement] = useState<StripMeasurement | null>(null)
@@ -51,14 +59,13 @@ export function useCategoryTabFit(
     }
   }, [troughRef, measureRef, categories])
 
-  const categoryIds = categories.map((category) => category.id)
   if (measurement === null) {
-    return categoryIds
+    return stripIds
   }
 
   return fitCategoryTabs({
-    categoryIds,
-    tabWidths: categoryIds.map((id) => measurement.tabWidths.get(id) ?? 0),
+    categoryIds: stripIds,
+    tabWidths: stripIds.map((id) => measurement.tabWidths.get(id) ?? 0),
     availableWidth: measurement.availableWidth,
     moreWidth: measurement.moreWidth,
     gap: measurement.gap,
@@ -83,10 +90,15 @@ function measureStrip(
   const viewportWidth = document.documentElement.clientWidth || window.innerWidth
   const troughWidth = Math.min(trough.clientWidth, viewportWidth - trough.getBoundingClientRect().left)
 
+  const gap = parseFloat(style.columnGap) || 0
+  const manageWidth = widthOf(layer, MEASURE_MANAGE)
+
+  // The compact menu button is always there, so its room is taken up front;
+  // folding tabs only costs the extra width of its "Altre (N)" label.
   return {
-    availableWidth: troughWidth - paddingX - widthOf(layer, MEASURE_ALL),
-    moreWidth: widthOf(layer, MEASURE_MORE),
-    gap: parseFloat(style.columnGap) || 0,
+    availableWidth: troughWidth - paddingX - widthOf(layer, MEASURE_ALL) - gap - manageWidth,
+    moreWidth: Math.max(0, widthOf(layer, MEASURE_MORE) - manageWidth),
+    gap,
     tabWidths: new Map(categories.map((category) => [category.id, widthOf(layer, String(category.id))])),
   }
 }

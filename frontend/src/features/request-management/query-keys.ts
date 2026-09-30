@@ -18,6 +18,8 @@ export const requestManagementKeys = {
   panel: (moduleKey: RequestModuleKey, id: number | null) => [moduleKey, 'panel', id] as const,
   /** Query key of the Product Category tab strip (spec 0064). */
   categories: (moduleKey: RequestModuleKey) => [moduleKey, 'categories'] as const,
+  /** Query key of the actor's favourite strip categories (spec 0184). */
+  categoryTabPreferences: (moduleKey: RequestModuleKey) => [moduleKey, 'category-tab-preferences'] as const,
   /**
    * Query key of the create form's "Informazioni aggiuntive" resolution (user
    * directive 2026-08-07): the criteria themselves, so switching category and

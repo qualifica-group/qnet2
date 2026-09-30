@@ -13,6 +13,7 @@ import type {
   UpdateRequestWorkPayload,
 } from '@/features/request-management/request-write-types'
 import type {
+  CategoryTabPreferences,
   ManagerLabels,
   RequestFormContext,
   RequestManagementProductCategory,
@@ -163,6 +164,26 @@ export async function fetchRequestManagementCategories(
     `${basePath}/product-categories`,
   )
   return data.data.categories
+}
+
+/** GET {basePath}/category-tab-preferences (spec 0184): the actor's favourite strip categories. */
+export async function fetchCategoryTabPreferences(basePath: string): Promise<CategoryTabPreferences> {
+  const { data } = await apiClient.get<ApiResponse<{ preferences: CategoryTabPreferences }>>(
+    `${basePath}/category-tab-preferences`,
+  )
+  return data.data.preferences
+}
+
+/** PUT {basePath}/category-tab-preferences (spec 0184): replaces the whole preference. */
+export async function saveCategoryTabPreferences(
+  basePath: string,
+  preferences: CategoryTabPreferences,
+): Promise<CategoryTabPreferences> {
+  const { data } = await apiClient.put<ApiResponse<{ preferences: CategoryTabPreferences }>>(
+    `${basePath}/category-tab-preferences`,
+    preferences,
+  )
+  return data.data.preferences
 }
 
 /**

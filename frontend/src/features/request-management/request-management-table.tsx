@@ -34,6 +34,7 @@ import { RequestManagementCategoryTabs } from '@/features/request-management/req
 import { useInvalidateRequestDashboard } from '@/features/request-management/use-request-dashboard'
 import { useInvalidateRequestManagementCategories } from '@/features/request-management/use-request-management-categories'
 import { useRequestManagementCategoryTab } from '@/features/request-management/use-request-management-category-tab'
+import { useCategoryTabPreferences } from '@/features/request-management/use-category-tab-preferences'
 import { useQuoteAssignmentScope } from '@/features/request-management/use-quote-assignment-scope'
 import { useRequestManagerGa1Assignment } from '@/features/request-management/use-request-manager-ga1-assignment'
 import { useRequestTransferSelection } from '@/features/request-management/use-request-transfer-selection'
@@ -119,6 +120,7 @@ export function RequestManagementTable() {
   const module = useRequestModule()
 
   const { categories, selectedCategoryId, setCategoryId } = useRequestManagementCategoryTab()
+  const categoryTabPreferences = useCategoryTabPreferences()
   const dashboard = useStatsPanel(module.key)
   // The stored open state is per browser, not per user: an impersonated actor
   // without `.report` would inherit the impersonator's open panel (stuck on a
@@ -401,6 +403,10 @@ export function RequestManagementTable() {
         categories={categories}
         selectedCategoryId={selectedCategoryId}
         onSelect={setCategoryId}
+        favoriteCategoryIds={categoryTabPreferences.preferences.favorite_category_ids}
+        showOnlyFavorites={categoryTabPreferences.preferences.show_only_favorites}
+        onToggleFavorite={categoryTabPreferences.toggleFavorite}
+        onShowOnlyFavoritesChange={categoryTabPreferences.setShowOnlyFavorites}
       />
 
       {/* User directive 2026-09-07: the "Linee di prodotto" cell is inline

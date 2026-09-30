@@ -8,7 +8,13 @@ import {
   CategoryMoreButton,
   RequestManagementCategoryPicker,
 } from '@/features/request-management/request-management-category-picker'
-import { MEASURE_ALL, MEASURE_MORE, useCategoryTabFit } from '@/features/request-management/use-category-tab-fit'
+import { arrangeCategoryTabs } from '@/features/request-management/category-tab-fit'
+import {
+  MEASURE_ALL,
+  MEASURE_MANAGE,
+  MEASURE_MORE,
+  useCategoryTabFit,
+} from '@/features/request-management/use-category-tab-fit'
 import type { RequestManagementProductCategory } from '@/features/request-management/types'
 
 /** The "Tutte" tab's Radix value; every category tab's value is its numeric id, stringified. */
@@ -26,6 +32,11 @@ interface RequestManagementCategoryTabsProps {
   /** `null` selects "Tutte". */
   selectedCategoryId: number | null
   onSelect: (categoryId: number | null) => void
+  /** The actor's favourites (spec 0184): shown first, or alone with `showOnlyFavorites`. */
+  favoriteCategoryIds: number[]
+  showOnlyFavorites: boolean
+  onToggleFavorite: (categoryId: number) => void
+  onShowOnlyFavoritesChange: (showOnlyFavorites: boolean) => void
 }
 
 /**
@@ -38,17 +49,35 @@ interface RequestManagementCategoryTabsProps {
  *
  * Priority+ layout: the tabs that fit stay inline, the rest fold into an
  * "Altre (N)" menu with search, and the selected category always stays inline.
+ * The actor's favourites come first, or alone when "only favourites" is on
+ * (spec 0184); the menu, which also manages them, is always reachable.
  * Compact per ui-design.md §2 (`text-xs`, `px-2.5 py-1`, `size-3.5` icons).
  */
 export function RequestManagementCategoryTabs({
   categories,
   selectedCategoryId,
   onSelect,
+  favoriteCategoryIds,
+  showOnlyFavorites,
+  onToggleFavorite,
+  onShowOnlyFavoritesChange,
 }: RequestManagementCategoryTabsProps) {
   const { t } = useTranslation()
   const troughRef = useRef<HTMLDivElement>(null)
   const measureRef = useRef<HTMLDivElement>(null)
-  const inlineIds = useCategoryTabFit(troughRef, measureRef, categories, selectedCategoryId)
+  const strip = arrangeCategoryTabs({
+    categories,
+    favoriteCategoryIds,
+    showOnlyFavorites,
+    selectedCategoryId,
+  })
+  const inlineIds = useCategoryTabFit(
+    troughRef,
+    measureRef,
+    categories,
+    strip.map((category) => category.id),
+    selectedCategoryId,
+  )
 
   const value = selectedCategoryId === null ? ALL_TAB_VALUE : String(selectedCategoryId)
   const selectValue = (next: string) => onSelect(next === ALL_TAB_VALUE ? null : Number(next))
@@ -72,14 +101,16 @@ export function RequestManagementCategoryTabs({
               <CategoryTab key={id} category={byId.get(id)!} />
             ))}
           </TabsList>
-          {hiddenCount > 0 ? (
-            <RequestManagementCategoryPicker
-              categories={categories}
-              hiddenCount={hiddenCount}
-              selectedCategoryId={selectedCategoryId}
-              onSelect={onSelect}
-            />
-          ) : null}
+          <RequestManagementCategoryPicker
+            categories={categories}
+            favoriteCategoryIds={favoriteCategoryIds}
+            showOnlyFavorites={showOnlyFavorites}
+            hiddenCount={hiddenCount}
+            selectedCategoryId={selectedCategoryId}
+            onSelect={onSelect}
+            onToggleFavorite={onToggleFavorite}
+            onShowOnlyFavoritesChange={onShowOnlyFavoritesChange}
+          />
         </div>
       </Tabs>
 
@@ -102,6 +133,7 @@ export function RequestManagementCategoryTabs({
           </TabsList>
         </Tabs>
         <CategoryMoreButton hiddenCount={categories.length} tabIndex={-1} data-tab-measure={MEASURE_MORE} />
+        <CategoryMoreButton hiddenCount={0} tabIndex={-1} data-tab-measure={MEASURE_MANAGE} />
       </div>
     </div>
   )

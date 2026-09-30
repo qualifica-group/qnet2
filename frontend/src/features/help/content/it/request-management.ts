@@ -20,6 +20,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: 'Per avere sempre a portata le categorie che usi, segnale come preferite: nel menu (**Altre (N)**, oppure la stella a destra delle schede quando entrano tutte) tocca la stella accanto alla categoria. Le preferite compaiono per prime tra le schede e in cima al menu. Attiva **Mostra solo preferite** per vedere tra le schede solo quelle (più la categoria che stai guardando); le altre restano nel menu. Le preferite sono salvate sul tuo utente, anche cambiando computer, e sono separate per Gestione Richieste e Gestione Iscritti.',
+        },
+        {
+          type: 'paragraph',
           text: 'I numeri sulle schede si aggiornano entro pochi secondi dalle modifiche fatte dagli altri utenti; le tue modifiche le vedi subito, appena torni alla tabella.',
         },
         {

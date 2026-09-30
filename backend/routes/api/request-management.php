@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\RequestManagement\CategoryTabPreferencesController;
 use App\Http\Controllers\RequestManagement\ProductCategoryTabsController;
 use App\Http\Controllers\RequestManagement\RequestManagementController;
 use App\Http\Controllers\RequestManagement\RequestManagementDashboardController;
@@ -57,6 +58,12 @@ foreach (RequestModule::cases() as $module) {
     // otherwise "product-categories" is swallowed by the wildcard's route
     // model binding.
     Route::get("{$module->value}/product-categories", ProductCategoryTabsController::class)
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    // Spec 0184: the actor's favourite categories on that strip. Same
+    // "declared before the wildcard" rule.
+    Route::get("{$module->value}/category-tab-preferences", [CategoryTabPreferencesController::class, 'show'])
+        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    Route::put("{$module->value}/category-tab-preferences", [CategoryTabPreferencesController::class, 'update'])
         ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
 
     // Spec 0130, D-8: no creation surface at all for a module that does not

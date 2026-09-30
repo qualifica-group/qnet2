@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterCategoriesByName, fitCategoryTabs } from '@/features/request-management/category-tab-fit'
+import { arrangeCategoryTabs, filterCategoriesByName, fitCategoryTabs } from '@/features/request-management/category-tab-fit'
 
 const IDS = [1, 2, 3, 4, 5]
 const WIDTHS = [100, 100, 100, 100, 100]
@@ -16,20 +16,20 @@ function fit(availableWidth: number, selectedCategoryId: number | null = null) {
 }
 
 describe('fitCategoryTabs', () => {
-  it('keeps every tab inline, with no room reserved for the menu, when they all fit', () => {
+  it('keeps every tab inline, with no extra room for "More (N)", when they all fit', () => {
     // 5 tabs x (4 gap + 100) = 520
     expect(fit(520)).toEqual(IDS)
   })
 
   it('keeps the leading tabs that fit next to the "More" button and folds the rest', () => {
-    // budget 519 - 4 - 80 = 435 → 4 tabs (416) fit, a 5th (520) does not
+    // budget 519 - 80 = 439 → 4 tabs (416) fit, a 5th (520) does not
     expect(fit(519)).toEqual([1, 2, 3, 4])
-    // budget 300 - 84 = 216 → 2 tabs (208)
+    // budget 300 - 80 = 220 → 2 tabs (208)
     expect(fit(300)).toEqual([1, 2])
   })
 
   it('pulls a folded selected category inline in place of the trailing tabs', () => {
-    // budget 216: [1, 2] fit, selected 5 needs 104 more → only [1] stays
+    // budget 220: [1, 2] fit, selected 5 needs 104 more → only [1] stays
     expect(fit(300, 5)).toEqual([1, 5])
   })
 
@@ -40,6 +40,27 @@ describe('fitCategoryTabs', () => {
   it('still shows the selected category alone when not even one tab fits', () => {
     expect(fit(50, 4)).toEqual([4])
     expect(fit(50)).toEqual([])
+  })
+})
+
+describe('arrangeCategoryTabs (spec 0184)', () => {
+  const categories = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]
+  const arrange = (favoriteCategoryIds: number[], showOnlyFavorites: boolean, selectedCategoryId: number | null) =>
+    arrangeCategoryTabs({ categories, favoriteCategoryIds, showOnlyFavorites, selectedCategoryId }).map(
+      (category) => category.id,
+    )
+
+  it('puts the favourites first, each group keeping the server order (AC-008)', () => {
+    expect(arrange([4, 2], false, null)).toEqual([2, 4, 1, 3])
+  })
+
+  it('narrows the strip to the favourites plus the selected category (AC-009)', () => {
+    expect(arrange([4, 2], true, 3)).toEqual([2, 4, 3])
+    expect(arrange([4, 2], true, 4)).toEqual([2, 4])
+  })
+
+  it('ignores the switch while no favourite is among the categories', () => {
+    expect(arrange([99], true, null)).toEqual([1, 2, 3, 4])
   })
 })
 

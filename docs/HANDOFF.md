@@ -3,6 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0184 CATEGORIE PREFERITE NELLO STRIP (GESTIONE RICHIESTE/ISCRITTI) — VERDE, NON COMMITTATO (2026-09-30)
+
+- Spec `docs/specs/0184-request-category-tab-favorites.xml` (D-1 salvataggio sull'account; D-2 preferite in cima +
+  interruttore "Mostra solo preferite"). Contratto: GET/PUT `/api/{module}/category-tab-preferences` →
+  `data.preferences = { favorite_category_ids: int[], show_only_favorites: bool }`; PUT = sostituzione completa.
+- BACKEND: migrazione `2026_09_30_120000_create_user_category_tab_preferences_table` (unique user_id+module, FK cascade;
+  **da eseguire `php artisan migrate` sul DB locale**), model `UserCategoryTabPreference` (no activitylog/Policy come
+  ADR-0004), `UpdateCategoryTabPreferencesRequest` (max 200, distinct, exists), `CategoryTabPreferencesResource`,
+  `CategoryTabPreferencesController` (authz `{module}.viewAny`, preferite di categorie eliminate scartate in lettura),
+  rotte nel loop di `routes/api/request-management.php`. Test `CategoryTabPreferencesTest` (AC-001..007).
+- FRONTEND: `use-category-tab-preferences.ts` (query + mutation ottimistica, rollback + toast), `arrangeCategoryTabs`
+  in `category-tab-fit.ts`, menu con stella per riga + switch (`request-management-category-picker.tsx`; gruppi
+  fotografati all'apertura, la riga non salta sotto il mouse), pulsante menu sempre visibile (stella compatta senza
+  overflow, `MEASURE_MANAGE`). Misura larghezze su tutte le categorie (stabile), fit sullo strip ordinato: evita il
+  loop di render che si avrebbe dipendendo da un array derivato. `request-management-table.tsx` a 496 righe (vicino
+  al limite 500: prossima modifica lì va preceduta da uno split).
+- Verifica: Pest RequestManagement 816 + nuovi 16 + route test 26 verdi; Vitest request-management+help 588 verdi;
+  eslint/pint puliti; `tsc -b --force` EXIT 0; controllo visivo Playwright su harness temporaneo (rimosso).
+  Guida `request-management` IT/EN e manuale Claude Docs aggiornati.
+
 ## GESTIONE RICHIESTE — SCHEDE CATEGORIA PRIORITY+ "ALTRE (N)" — VERDE, NON COMMITTATO (2026-09-30)
 
 - Richiesta utente: con tante categorie lo strip ripiegava su una `Select` inutilizzabile. Ora layout priority+ (stile

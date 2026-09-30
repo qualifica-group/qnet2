@@ -320,3 +320,9 @@ export interface RequestManagementProductCategory {
   name: string
   requests_count: number
 }
+
+/** The actor's favourite categories on the module's tab strip (spec 0184), saved on the account. */
+export interface CategoryTabPreferences {
+  favorite_category_ids: number[]
+  show_only_favorites: boolean
+}

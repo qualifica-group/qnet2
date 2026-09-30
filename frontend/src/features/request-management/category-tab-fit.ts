@@ -4,9 +4,9 @@ export interface CategoryTabFitInput {
   categoryIds: number[]
   /** Natural width of each category tab, parallel to `categoryIds`. */
   tabWidths: number[]
-  /** Room left for the category tabs once the strip's padding and the "Tutte" tab are taken. */
+  /** Room left for the category tabs once the strip's padding, "Tutte" and the compact menu button are taken. */
   availableWidth: number
-  /** Width of the "Altre" button, reserved only when some tab has to move into it. */
+  /** Extra width the menu button takes as "Altre (N)", reserved only when some tab has to move into it. */
   moreWidth: number
   /** Flex gap between two adjacent items of the strip. */
   gap: number
@@ -37,8 +37,8 @@ export function fitCategoryTabs({
     return categoryIds
   }
 
-  // Step 2: leading tabs that fit next to the "Altre" button
-  const budget = availableWidth - gap - moreWidth
+  // Step 2: leading tabs that fit next to the "Altre (N)" button
+  const budget = availableWidth - moreWidth
   let fitting = 0
   while (fitting < categoryIds.length && widthOf(fitting + 1) <= budget) {
     fitting += 1
@@ -56,6 +56,38 @@ export function fitCategoryTabs({
   }
 
   return [...categoryIds.slice(0, kept), categoryIds[selectedIndex]]
+}
+
+interface CategoryArrangementInput<T extends { id: number }> {
+  /** Categories in the server's order (by name). */
+  categories: T[]
+  favoriteCategoryIds: number[]
+  showOnlyFavorites: boolean
+  selectedCategoryId: number | null
+}
+
+/**
+ * Applies the actor's favourites to the strip (spec 0184): the candidates for
+ * the inline slots, favourites first with each group keeping the server's
+ * order — or, with "only favourites" on, just the favourites plus the selected
+ * category, so the active scope never disappears. With no favourite among the
+ * categories the switch has nothing to narrow to and every category competes.
+ */
+export function arrangeCategoryTabs<T extends { id: number }>({
+  categories,
+  favoriteCategoryIds,
+  showOnlyFavorites,
+  selectedCategoryId,
+}: CategoryArrangementInput<T>): T[] {
+  const favoriteIds = new Set(favoriteCategoryIds)
+  const favorites = categories.filter((category) => favoriteIds.has(category.id))
+
+  if (!showOnlyFavorites || favorites.length === 0) {
+    return [...favorites, ...categories.filter((category) => !favoriteIds.has(category.id))]
+  }
+  const selected = categories.find((category) => category.id === selectedCategoryId)
+
+  return selected && !favoriteIds.has(selected.id) ? [...favorites, selected] : favorites
 }
 
 /** Case- and accent-insensitive form of a name, so "citta" finds "Città". */

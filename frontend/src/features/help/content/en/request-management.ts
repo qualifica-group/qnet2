@@ -20,6 +20,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: 'To keep the categories you use at hand, mark them as favorites: in the menu (**More (N)**, or the star to the right of the tabs when they all fit) tap the star next to the category. Favorites come first among the tabs and at the top of the menu. Turn on **Show favorites only** to keep only them among the tabs (plus the category you are viewing); the others stay in the menu. Favorites are saved on your user, even on another computer, and are separate for Request Management and Enrollee Management.',
+        },
+        {
+          type: 'paragraph',
           text: 'The numbers on the tabs update within a few seconds of changes made by other users; your own changes show up right away when you return to the table.',
         },
         {

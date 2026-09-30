@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0184-request-category-tab-favorites" status="approved" owner="utente" date="2026-09-30">
+
+  <goal>
+    Ogni operatore sceglie le proprie categorie preferite nello strip delle schede di Gestione Richieste e
+    Gestione Iscritti: le preferite compaiono per prime e un interruttore "Mostra solo preferite" nasconde
+    dallo strip le altre, che restano raggiungibili dal menu "Altre" con la ricerca.
+  </goal>
+
+  <context>
+    - Strip priority+ gia' in essere (HANDOFF 2026-09-30): `RequestManagementCategoryTabs`,
+      `RequestManagementCategoryPicker`, `fitCategoryTabs`, `useCategoryTabFit`.
+    - Categorie dello strip: GET /api/{module}/product-categories (spec 0064/0130), ordinate per nome, solo con
+      richieste nello scope dell'attore. Il modulo si risolve dalla rotta (`RequestModule::fromRequest`).
+    - Precedente per preferenze UI per-utente: `user_table_preferences` (ADR-0004): self-scoped su auth()->id(),
+      nessuna Policy dedicata, nessun activity log (stato UI ad alto churn senza valore di audit).
+    - D-1 (utente 2026-09-30): salvataggio sull'account, non nel browser.
+    - D-2 (utente 2026-09-30): preferite sempre in cima + interruttore "Mostra solo preferite".
+  </context>
+
+  <scope>
+    <in>
+      <item>Tabella `user_category_tab_preferences` (una riga per utente e modulo) + model.</item>
+      <item>GET/PUT /api/{module}/category-tab-preferences per entrambi i moduli.</item>
+      <item>Stella per categoria nel menu "Altre"; interruttore "Mostra solo preferite" nel menu.</item>
+      <item>Ordinamento dello strip: preferite (per nome) prima, poi le altre (per nome).</item>
+      <item>Guida in-app IT/EN e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Ordinamento manuale (drag and drop) delle preferite.</item>
+      <item>Preferite condivise tra utenti o impostate da un amministratore.</item>
+      <item>Preferite nel report/dashboard di Gestione Richieste.</item>
+      <item>Modifiche a GET /api/{module}/product-categories.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/{module}/category-tab-preferences">
+      <request>module in {request-management, enrollee-management} (segmento letterale).</request>
+      <response status="200">
+        { success: true, message, data: { preferences: { favorite_category_ids: int[], show_only_favorites: bool } } }
+        Nessuna riga salvata: favorite_category_ids = [], show_only_favorites = false.
+        favorite_category_ids contiene solo id di categorie ancora esistenti, in ordine crescente.
+      </response>
+      <errors>401 non autenticato; 403 senza {module}.viewAny.</errors>
+    </endpoint>
+    <endpoint method="PUT" path="/api/{module}/category-tab-preferences">
+      <request>
+        { favorite_category_ids: int[] (required, present anche vuoto, max 200, distinct, exists product_categories.id),
+          show_only_favorites: bool (required) } — sostituzione completa.
+      </request>
+      <response status="200">Stessa shape del GET, dopo il salvataggio.</response>
+      <errors>401; 403 senza {module}.viewAny; 422 validazione.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con viewAny senza preferenze, GET restituisce [] e false.</criterion>
+    <criterion id="AC-002">PUT salva e GET restituisce gli stessi valori; un secondo PUT sostituisce (upsert, una riga).</criterion>
+    <criterion id="AC-003">Le preferenze sono per modulo: salvarle in request-management non tocca enrollee-management.</criterion>
+    <criterion id="AC-004">Le preferenze sono per utente: un altro utente non le vede.</criterion>
+    <criterion id="AC-005">Senza {module}.viewAny, GET e PUT rispondono 403.</criterion>
+    <criterion id="AC-006">PUT con id inesistente, id duplicati, o campi mancanti risponde 422.</criterion>
+    <criterion id="AC-007">Una categoria preferita eliminata non compare piu' nel GET.</criterion>
+    <criterion id="AC-008">Nello strip le preferite compaiono prima delle altre, ciascun gruppo per nome.</criterion>
+    <criterion id="AC-009">Con "Mostra solo preferite" attivo e almeno una preferita, lo strip mostra "Tutte", le preferite
+      e la categoria selezionata anche se non preferita; il menu elenca comunque tutte le categorie.</criterion>
+    <criterion id="AC-010">La stella nel menu aggiunge/toglie la preferita senza selezionare la categoria; la modifica
+      si vede subito (ottimistica) e torna indietro con un avviso se il salvataggio fallisce.</criterion>
+    <criterion id="AC-011">Il pulsante del menu e' sempre visibile (anche senza overflow), per gestire le preferite.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Self-scoped: user_id mai dal client. Modulo solo dalla rotta.
+    - FormRequest per il PUT; authz server-side su {module}.viewAny; risposta via Resource, envelope di progetto.
+    - Niente throttle (backend.md §2). Migrazione reversibile, FK cascade, unique(user_id, module).
+  </constraints>
+
+</spec>
