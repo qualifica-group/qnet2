@@ -3,21 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## NOTIFICHE ASSEGNAZIONE OPPORTUNITA' vs OFFERTA — VERDE, NON COMMITTATO (2026-10-01)
+## NOTIFICHE ASSEGNAZIONE OPPORTUNITA' vs OFFERTA + LINK TRASFERIMENTO — VERDE, COMMITTATO (2026-10-01)
 
+- Due commit: `39893f32` (separazione delle notifiche) e il successivo (ereditati + link del trasferimento).
 - Decisione utente 2026-10-01 (rev. spec 0081 + spec 0186 D-7): chi e' nell'Opportunita' ma in nessuna sua
   Offerta riceve la notifica dell'Opportunita'; chi viene inserito nell'Offerta riceve SOLO quella dell'Offerta.
-- Link: `RecordLinkResolver::pathFor()` Opportunity = `/opportunities/{id}` con `opportunities.view`, altrimenti
-  null (niente piu' ricaduta su `/request-management/{id opportunita'}`, che apriva l'Offerta sbagliata dopo la
-  spec 0086). Offerta invariata (`quotePath`: quotes -> request-management -> null). Il trasferimento usa il nuovo
-  `RecordLinkResolver::transferPath()`, con comportamento identico a prima.
-- `AssignmentNotifier`: per target Opportunity esclude, al commit, i GA di ogni Offerta dell'Opportunita'
-  (`offerManagerIds`, join `quote_user`). `LeadConversionOfferCreator` passa all'Offerta collegata i GA
-  dell'Opportunita' come `managerSlots` espliciti (notificano). `OpportunityService::propagateManagersToQuote()`
-  (categoria sincronizzata) notifica l'Offerta con gli attached.
-- Invariato: Offerta creata a mano senza `manager_slots` (D-4: ereditati non notificati).
-- Test: nuovo `tests/Feature/Notifications/OpportunityOfferAssignmentNotificationTest.php`; AC-014 di
-  `RecordAssignmentLinkTest` riscritto (requisito cambiato). Guide `opportunities` IT/EN: paragrafo notifiche.
+- `RecordLinkResolver::pathFor(User, AssignmentTargetEnum, int, RequestModule = Requests)`: Opportunity =
+  `/opportunities/{id}` o null (mai piu' `/request-management`); Quote = `/quotes/{id}` -> `/{modulo}/{id}` -> null.
+  Il trasferimento usa il ramo Quote col modulo dell'attore: eliminati `transferPath()` e `opportunityId`
+  (RequestTransferNotice, RequestTransferService, RequestTransferredNotification).
+- `AssignmentNotifier`: per target Opportunity esclude, al commit, i GA di ogni Offerta (`offerManagerIds`).
+  `QuoteService::create()` notifica anche i GA ereditati (D-4 annullata): copre creazione a mano, conversione
+  lead e Gestione Richieste. `OpportunityService::propagateManagersToQuote()` notifica l'Offerta.
+- Test: `OpportunityOfferAssignmentNotificationTest` (nuovo), AC-014 di `RecordAssignmentLinkTest` e AC-006 di
+  `QuoteAssignmentNotificationTest` riscritti (requisito cambiato), 2 test nuovi sul link del trasferimento.
+- Manuale: guide `opportunities`, `quotes`, `request-management` IT/EN + Manuale Claude Docs; PDF da rigenerare.
 
 ## SPEC 0187 STATO DEL SISTEMA + UTENTI ONLINE — VERDE, COMMITTATO (2026-10-01)
 

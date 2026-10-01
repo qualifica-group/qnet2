@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\DataObjects\Notifications\NotificationData;
+use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Enums\TransferRecipientRoleEnum;
 use App\Models\User;
@@ -35,9 +36,8 @@ use Illuminate\Support\Carbon;
  * Notification stays a thin presentation of already-known facts, never a
  * second place that queries the database. The ONE exception is the link,
  * which depends on the RECIPIENT's own permissions and so is resolved per
- * notifiable (spec 0081): a transfer notifies people who reach the record
- * from the opportunities module and people who only reach it from request
- * management.
+ * notifiable (spec 0081): the transferred Offerta opens from the Offerte
+ * module or, failing that, from the request module (rev. 2026-10-01).
  */
 class RequestTransferredNotification extends Notification implements ShouldQueue
 {
@@ -45,20 +45,12 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
 
     /**
      * @param  int  $requestId  the transferred Offerta's own id (spec 0086,
-     *                          D-2) — a grid row IS the Quote, feeds the
-     *                          `/request-management/:id` branch of the link
-     * @param  ?int  $opportunityId  spec 0086, MT-04b: the Offerta's own
-     *                               Opportunity id, feeds the
-     *                               `/opportunities/:id` branch — DISTINCT
-     *                               from $requestId since the two records
-     *                               diverged. Null keeps the pre-0086
-     *                               behaviour of reusing $requestId for both
-     *                               branches (the `?? $requestId` in
-     *                               pathFor() below).
+     *                          D-2) — a grid row IS the Quote, the record
+     *                          the link opens
      * @param  RequestModule  $module  spec 0130: the module this transfer
      *                                 happened under — governs the fallback
      *                                 branch's permission/path
-     *                                 (RecordLinkResolver::transferPath()).
+     *                                 (RecordLinkResolver::pathFor()).
      *                                 Defaults to `Requests`, at parity for
      *                                 every pre-0130 caller.
      */
@@ -72,7 +64,6 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
         private readonly string $actorName,
         private readonly Carbon $transferredAt,
         private readonly TransferRecipientRoleEnum $recipientRole,
-        private readonly ?int $opportunityId = null,
         private readonly RequestModule $module = RequestModule::Requests,
     ) {}
 
@@ -123,20 +114,13 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
 
     /**
      * A path only (never an absolute URL, contract-frozen), and which path
-     * depends on what THIS recipient may open (spec 0081). Spec 0086,
-     * MT-04b: `$requestId` (the Offerta) and `$opportunityId` now name TWO
-     * different records — passed through as the resolver's two distinct ids
-     * rather than one, see RecordLinkResolver::transferPath().
+     * depends on what THIS recipient may open (spec 0081): the Offerta's own
+     * ladder, its fallback under the module this transfer happened in.
      */
     private function pathFor(object $notifiable): ?string
     {
         /** @var User $notifiable */
-        return RecordLinkResolver::transferPath(
-            $notifiable,
-            $this->opportunityId ?? $this->requestId,
-            $this->requestId,
-            $this->module,
-        );
+        return RecordLinkResolver::pathFor($notifiable, AssignmentTargetEnum::Quote, $this->requestId, $this->module);
     }
 
     private function title(): string

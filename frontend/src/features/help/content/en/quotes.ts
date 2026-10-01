@@ -38,7 +38,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Whoever you add as an **Account manager** receives the **You were assigned as Account Manager** notification (bell and email) with the quote's title and details. The link opens the quote, or the request in **Request management** when they cannot access Quotes. It is not sent to managers only moved to another position, to whoever saves, nor to the managers inherited from the opportunity when you create the quote without setting them.",
+          text: "Whoever you add as an **Account manager** receives the **You were assigned as Account Manager** notification (bell and email) with the quote's title and details. The link opens the quote, or the request in **Request management** when they cannot access Quotes. The managers the quote inherits from the opportunity when you create it without setting them receive it too; whoever receives it does not receive the opportunity notification. It is not sent to managers only moved to another position, nor to whoever saves.",
         },
         {
           type: 'tip',

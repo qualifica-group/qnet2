@@ -177,9 +177,10 @@ class QuoteService
 
             // Step 3b (spec 0087, D-4/D-5): the Offerta's own Gestori
             // Account — a submitted set wins outright, otherwise PREFILL
-            // from the Opportunity's own GA at the same positions. Only a
-            // submitted set notifies (spec 0186, D-4): inherited managers
-            // already hold the Opportunity and would get a duplicate.
+            // from the Opportunity's own GA at the same positions. Inherited
+            // managers notify too (spec 0186 D-7, rev. 2026-10-01): an
+            // Offerta is its own assignment, and AssignmentNotifier spares
+            // its managers the Opportunity's notification.
             $attachedManagers = $this->managerWriter->sync(
                 $quote,
                 $data->hasManagerSlots() ? $data->managerSlots : $this->managerInheritance->fromOpportunity($opportunity),
@@ -243,7 +244,7 @@ class QuoteService
             $this->contractLifecycleManager->syncOnStatusChange($quote, previousStatusId: null);
 
             // Step 8 (spec 0186, D-5): last, once title and status are final.
-            $this->assignmentNotifier->notify($quote, $actor, null, $data->hasManagerSlots() ? $attachedManagers : []);
+            $this->assignmentNotifier->notify($quote, $actor, null, $attachedManagers);
 
             return $quote;
         });

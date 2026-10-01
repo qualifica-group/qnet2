@@ -39,10 +39,11 @@
          lato Opportunita').
     D-7  REVISIONE 2026-10-01 (utente), sostituisce in parte D-4 e D-6: chi viene inserito nell'Offerta riceve la
          notifica dell'Offerta e MAI quella dell'Opportunita'; chi e' nell'Opportunita' ma in nessuna sua Offerta
-         riceve quella dell'Opportunita'. Quindi: la conversione lead passa all'Offerta i GA dell'Opportunita' come
-         `managerSlots` espliciti (notificano); la propagazione Opportunita' -> Offerta nelle categorie sincronizzate
-         notifica l'Offerta; AssignmentNotifier esclude dalla notifica dell'Opportunita' i GA delle sue Offerte
-         (letti al commit). Resta valido D-4 per l'Offerta creata a mano senza `manager_slots`.
+         riceve quella dell'Opportunita'. Quindi: D-4 e' ANNULLATA, anche i GA ereditati dall'Opportunita' notificano
+         l'Offerta (creazione a mano, conversione lead, Gestione Richieste); la propagazione Opportunita' -> Offerta
+         nelle categorie sincronizzate notifica l'Offerta; AssignmentNotifier esclude dalla notifica dell'Opportunita'
+         i GA delle sue Offerte (letti al commit). La notifica di trasferimento segue il link dell'Offerta
+         (Offerte -> modulo richieste dell'attore -> null), mai piu' /opportunities.
   </decisions>
 
   <contract>

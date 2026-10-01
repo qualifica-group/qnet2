@@ -166,7 +166,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Other users receive nothing, even if they work on the same site. Whoever performs the transfer never receives their own notification, and nobody receives it twice.',
+          text: 'Other users receive nothing, even if they work on the same site. Whoever performs the transfer never receives their own notification, and nobody receives it twice. The link opens the quote, or the request here when they cannot access Quotes; with neither access the notification arrives without a link.',
         },
       ],
     },

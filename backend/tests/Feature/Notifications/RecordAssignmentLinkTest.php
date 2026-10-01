@@ -10,6 +10,7 @@ use App\Models\Registry;
 use App\Models\User;
 use App\Notifications\RecordAssignmentNotification;
 use App\Notifications\RequestTransferredNotification;
+use App\RequestManagement\RequestModule;
 use App\Services\Notifications\AssignmentNotifier;
 use App\Support\Notifications\RecordLinkResolver;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -163,6 +164,42 @@ it('gives the same treatment to the transfer notification (AC-015)', function ()
 
     expect($notification->toArray($recipient)['action_url'])->toBeNull()
         ->and($notification->toMail($recipient)->actionUrl)->toBeNull();
+});
+
+// Rev. 2026-10-01 (decisione utente): a transfer moves an Offerta, so its link
+// follows the Offerta's own ladder — Offerte, then the request module, then none.
+if (! function_exists('transferNotificationFor')) {
+    function transferNotificationFor(RequestModule $module = RequestModule::Requests): RequestTransferredNotification
+    {
+        return new RequestTransferredNotification(
+            requestId: 7,
+            contactLabel: 'Acme deal',
+            originSiteLabel: null,
+            destinationSiteLabel: 'Sede - Napoli',
+            previousOperatorName: null,
+            newOperatorName: 'New Operator',
+            actorName: 'Actor',
+            transferredAt: now(),
+            recipientRole: TransferRecipientRoleEnum::NewOperator,
+            module: $module,
+        );
+    }
+}
+
+it('points a transfer at the Offerte module for a recipient who may see it', function () {
+    $recipient = linkUserWith(['quotes.view', 'opportunities.view', 'request-management.view']);
+
+    expect(transferNotificationFor()->toArray($recipient)['action_url'])->toBe('/quotes/7');
+});
+
+it('points a transfer at the actor module, never at the Opportunity, without Offerte access', function () {
+    $requests = linkUserWith(['opportunities.view', 'request-management.view']);
+    $enrollees = linkUserWith(['opportunities.view', 'enrollee-management.view']);
+    $opportunitiesOnly = linkUserWith(['opportunities.view']);
+
+    expect(transferNotificationFor()->toArray($requests)['action_url'])->toBe('/request-management/7')
+        ->and(transferNotificationFor(RequestModule::Enrollees)->toArray($enrollees)['action_url'])->toBe('/enrollee-management/7')
+        ->and(transferNotificationFor()->toArray($opportunitiesOnly)['action_url'])->toBeNull();
 });
 
 // ---------------------------------------------------------------------------

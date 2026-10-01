@@ -28,10 +28,11 @@
     - La notifica di assegnazione dell'Opportunita' ha SOLO il proprio link: /opportunities/{id}
       con `opportunities.view`, altrimenti nessun link. Niente piu' ricaduta su
       /request-management (quel modulo apre Offerte, che notificano da sole, spec 0186).
-      La notifica di trasferimento NON cambia: `RecordLinkResolver::transferPath()`.
+      La notifica di trasferimento segue il link dell'Offerta trasferita: /quotes/{id} con
+      `quotes.view`, altrimenti /{modulo}/{id} con `{modulo}.view`, altrimenti nessun link.
     - Chi e' Gestore Account di un'Offerta dell'Opportunita' (letto al commit) non riceve la
-      notifica dell'Opportunita': riceve solo quella dell'Offerta. Per questo la conversione da
-      lead passa all'Offerta collegata i GA dell'Opportunita' come slot espliciti, e la
+      notifica dell'Opportunita': riceve solo quella dell'Offerta. Per questo
+      un'Offerta notifica anche i GA ereditati dall'Opportunita' (spec 0186 D-7), e la
       propagazione nelle categorie sincronizzate notifica l'Offerta.
 -->
 <spec id="0081-assignment-and-transfer-notifications" status="draft" owner="nicola" date="2026-08-04">

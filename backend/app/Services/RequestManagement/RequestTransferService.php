@@ -204,9 +204,6 @@ final class RequestTransferService
             originSiteLabel: $originSiteId === null ? null : ($originLabels[$originSiteId] ?? null),
             previousOperatorName: $previousOperator?->name,
             previousOperatorId: $previousOperator?->id,
-            // Spec 0086, MT-04b: the deep link's `/opportunities/:id` branch
-            // needs this DISTINCT id — `requestId` now names the Quote.
-            opportunityId: $quote->opportunity_id,
         );
     }
 
@@ -240,9 +237,6 @@ final class RequestTransferService
                 actorName: $actor->name,
                 transferredAt: $transferredAt,
                 recipientRole: $role,
-                // Spec 0086, MT-04b: the deep link's `/opportunities/:id`
-                // branch needs this DISTINCT id — `requestId` names the Quote.
-                opportunityId: $notice->opportunityId,
                 module: $module,
             );
 

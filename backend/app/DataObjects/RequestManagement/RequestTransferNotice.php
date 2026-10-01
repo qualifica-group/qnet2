@@ -27,11 +27,5 @@ final readonly class RequestTransferNotice
          * operator at all.
          */
         public ?int $previousOperatorId = null,
-        /**
-         * The Offerta's own Opportunity id (spec 0086, MT-04b): the deep
-         * link's `/opportunities/:id` branch needs this DISTINCT id — never
-         * $requestId, which now names the Quote.
-         */
-        public ?int $opportunityId = null,
     ) {}
 }

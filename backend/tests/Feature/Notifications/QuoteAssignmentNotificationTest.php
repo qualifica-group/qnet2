@@ -188,22 +188,26 @@ it('notifies the managers submitted when the Offerta is created (AC-006)', funct
     });
 });
 
-it('does not notify the managers an Offerta inherits from its Opportunity (AC-006)', function () {
+// Rev. 2026-10-01 (decisione utente, spec 0186 D-7): an Offerta created
+// later notifies the managers it inherits from its Opportunity too.
+it('notifies the managers an Offerta inherits from its Opportunity (AC-006)', function () {
     Notification::fake();
 
     $actor = quoteNotificationUserWith(['quotes.view', 'quotes.create']);
-    $manager = User::factory()->create();
+    $manager = quoteNotificationUserWith(['quotes.view']);
     $opportunity = Opportunity::factory()->create();
     $opportunity->managers()->sync([$manager->id => ['position' => 1]]);
     Sanctum::actingAs($actor);
 
-    $this->postJson('/api/quotes', [
+    $quoteId = $this->postJson('/api/quotes', [
         'title' => 'Offerta',
         'opportunity_id' => $opportunity->id,
         'offer_lines' => quoteNotificationOfferLines(),
-    ])->assertCreated();
+    ])->assertCreated()->json('data.id');
 
-    Notification::assertNothingSent();
+    Notification::assertSentTo($manager, function (RecordAssignmentNotification $notification) use ($manager, $quoteId): bool {
+        return $notification->toArray($manager)['action_url'] === "/quotes/{$quoteId}";
+    });
 });
 
 // ---------------------------------------------------------------------------

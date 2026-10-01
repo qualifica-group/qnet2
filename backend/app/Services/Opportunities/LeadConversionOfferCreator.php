@@ -9,7 +9,6 @@ use App\Enums\CategoryManagementMode;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\Quotes\ProductOfferLineResolver;
-use App\Services\Quotes\QuoteManagerInheritance;
 use App\Services\QuoteService;
 use Illuminate\Validation\ValidationException;
 
@@ -31,7 +30,6 @@ final class LeadConversionOfferCreator
         private readonly OpportunityProductLineCoverage $coverage,
         private readonly QuoteService $quoteService,
         private readonly ProductOfferLineResolver $offerLineResolver,
-        private readonly QuoteManagerInheritance $managerInheritance,
     ) {}
 
     /**
@@ -67,10 +65,6 @@ final class LeadConversionOfferCreator
             supervisorIdSubmitted: false,
             internalNotes: null,
             offerLines: $this->offerLineResolver->resolve($productIds),
-            // Rev. 2026-10-01 (decisione utente): the Opportunity's GA, SUBMITTED
-            // rather than inherited, so they are told by the Offerta's own
-            // notification — AssignmentNotifier then spares them the Opportunity's.
-            managerSlots: $this->managerInheritance->fromOpportunity($opportunity),
         ), $actor);
     }
 

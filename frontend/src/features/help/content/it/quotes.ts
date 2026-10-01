@@ -38,7 +38,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Chi inserisci tra i **Gestori account** riceve la notifica **Sei stato inserito come Gestore Account** (campanella ed email) con il titolo e i dati dell'offerta. Il link apre l'offerta, oppure la richiesta in **Gestione Richieste** se non ha accesso alle Offerte. Non la ricevono chi viene solo spostato di posizione, chi esegue il salvataggio, né i gestori ereditati dall'opportunità quando crei l'offerta senza indicarli.",
+          text: "Chi inserisci tra i **Gestori account** riceve la notifica **Sei stato inserito come Gestore Account** (campanella ed email) con il titolo e i dati dell'offerta. Il link apre l'offerta, oppure la richiesta in **Gestione Richieste** se non ha accesso alle Offerte. La ricevono anche i gestori che l'offerta eredita dall'opportunità quando la crei senza indicarli; chi la riceve non riceve la notifica dell'opportunità. Non la ricevono chi viene solo spostato di posizione e chi esegue il salvataggio.",
         },
         {
           type: 'tip',

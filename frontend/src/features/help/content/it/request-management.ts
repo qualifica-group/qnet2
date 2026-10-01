@@ -166,7 +166,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Gli altri utenti non ricevono nulla, anche se lavorano sulla stessa sede. Chi esegue il trasferimento non riceve mai la propria notifica, e nessuno la riceve due volte.',
+          text: 'Gli altri utenti non ricevono nulla, anche se lavorano sulla stessa sede. Chi esegue il trasferimento non riceve mai la propria notifica, e nessuno la riceve due volte. Il link apre l\'offerta, oppure la richiesta qui se non ha accesso alle Offerte; senza nessuno dei due accessi la notifica arriva senza link.',
         },
       ],
     },
