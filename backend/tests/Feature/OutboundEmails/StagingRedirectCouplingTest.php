@@ -68,7 +68,7 @@ it('redirects an OutboundEmail send when outbound_emails.mailer matches mail.def
         ->toBe(['staging-inbox@example.com']);
 });
 
-it('also redirects an OutboundEmail send when outbound_emails.mailer diverges from mail.default', function () {
+it('also redirects an OutboundEmail send, sender mailbox included, when outbound_emails.mailer diverges from mail.default', function () {
     config([
         'mail.default' => 'array',
         'mail.always_to' => 'staging-inbox@example.com',
@@ -84,8 +84,8 @@ it('also redirects an OutboundEmail send when outbound_emails.mailer diverges fr
 
     Http::fake([
         'https://login.test.example/*' => Http::response(['access_token' => 'tok-1', 'expires_in' => 3600]),
-        'https://graph.test.example/v1.0/users/mario@example.com/messages' => Http::response(['id' => 'draft-1'], 201),
-        'https://graph.test.example/v1.0/users/mario@example.com/messages/draft-1/send' => Http::response([], 202),
+        'https://graph.test.example/v1.0/users/staging-inbox@example.com/messages' => Http::response(['id' => 'draft-1'], 201),
+        'https://graph.test.example/v1.0/users/staging-inbox@example.com/messages/draft-1/send' => Http::response([], 202),
     ]);
 
     $email = stagingOutboundEmail('mario@example.com');
@@ -93,7 +93,7 @@ it('also redirects an OutboundEmail send when outbound_emails.mailer diverges fr
     Mail::mailer(config('outbound_emails.mailer'))->send(new OutboundEmailMessage($email));
 
     Http::assertSent(function (Request $request) {
-        if ($request->url() !== 'https://graph.test.example/v1.0/users/mario@example.com/messages') {
+        if ($request->url() !== 'https://graph.test.example/v1.0/users/staging-inbox@example.com/messages') {
             return false;
         }
 
@@ -102,8 +102,7 @@ it('also redirects an OutboundEmail send when outbound_emails.mailer diverges fr
         return count($to) === 1 && $to[0]['emailAddress']['address'] === 'staging-inbox@example.com';
     });
 
-    Http::assertNotSent(fn (Request $request) => $request->url() === 'https://graph.test.example/v1.0/users/mario@example.com/messages'
-        && collect($request->data()['toRecipients'])->contains(fn (array $recipient) => $recipient['emailAddress']['address'] === 'real-recipient@example.com'));
+    Http::assertNotSent(fn (Request $request) => str_contains($request->url(), '/users/mario@example.com/'));
 });
 
 it('leaves an unknown outbound_emails.mailer name from breaking the default redirect', function () {

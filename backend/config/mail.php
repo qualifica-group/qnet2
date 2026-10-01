@@ -139,7 +139,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | When set, EVERY outgoing email is funnelled to this single mailbox and
-    | its original to/cc/bcc are dropped, so a staging deployment running on a
+    | its original to/cc/bcc are dropped (the sender becomes that mailbox too,
+    | display name kept), so a staging deployment running on a
     | copy of production data can never reach real contacts. Ignored in
     | production. Required when APP_ENV=staging: left empty there, every email
     | is blocked. Elsewhere empty = deliver normally. See StagingMailRedirector.

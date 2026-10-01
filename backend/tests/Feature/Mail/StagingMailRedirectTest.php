@@ -57,6 +57,20 @@ it('funnels a message to the configured mailbox and drops the real recipients', 
         ->and($email->getBcc())->toBeEmpty();
 });
 
+it('sends from the redirect mailbox, keeping the original sender name', function () {
+    applyStagingRedirect('staging-inbox@example.com');
+
+    Mail::raw('body', fn ($message) => $message->from('real-sender@example.com', 'Mario Rossi')
+        ->to('real@example.com')
+        ->subject('probe'));
+
+    /** @var Email $email */
+    $email = Mail::getSymfonyTransport()->messages()->last()->getOriginalMessage();
+
+    expect(array_map(fn (Address $a) => [$a->getAddress(), $a->getName()], $email->getFrom()))
+        ->toBe([['staging-inbox@example.com', 'Mario Rossi']]);
+});
+
 it('redirects mail sent through the notification channel', function () {
     applyStagingRedirect('staging-inbox@example.com');
 

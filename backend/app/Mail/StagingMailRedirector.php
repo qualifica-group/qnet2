@@ -7,6 +7,7 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Mail\MailManager;
+use Symfony\Component\Mime\Address;
 
 /**
  * Funnels every outgoing email to the single mailbox in config('mail.always_to'),
@@ -26,6 +27,11 @@ use Illuminate\Mail\MailManager;
  * Hard-guarded against production even when the variable is set: the redirect is
  * a staging aid, and an operator who copies a staging .env onto the production
  * host must not silently divert real customer mail into a QA mailbox.
+ *
+ * The sender is rewritten to the same mailbox too, keeping the original display
+ * name: Microsoft Graph sends AS the `from` mailbox, so a staging copy of
+ * production users would otherwise write into real (or non-existent, e.g.
+ * seeded) mailboxes (user decision 2026-10-01).
  *
  * Fails closed in staging: APP_ENV=staging without MAIL_ALWAYS_TO blocks every
  * send instead of delivering to the real contacts (user decision 2026-10-01).
@@ -55,6 +61,8 @@ final class StagingMailRedirector
                 $this->redirectMailer($name, $recipient);
             }
 
+            $this->rewriteSender($recipient);
+
             return;
         }
 
@@ -69,6 +77,20 @@ final class StagingMailRedirector
         $recipient = config('mail.always_to');
 
         return is_string($recipient) && trim($recipient) !== '' ? trim($recipient) : null;
+    }
+
+    /**
+     * `Mailer::alwaysFrom()` is only a default that a message's own `from`
+     * overrides (OutboundEmailMessage always sets one), so the sender is
+     * forced on MessageSending instead, after the message is fully built.
+     */
+    private function rewriteSender(string $sender): void
+    {
+        $this->events->listen(MessageSending::class, static function (MessageSending $event) use ($sender): void {
+            $name = ($event->message->getFrom()[0] ?? null)?->getName() ?? '';
+
+            $event->message->from(new Address($sender, $name));
+        });
     }
 
     /**

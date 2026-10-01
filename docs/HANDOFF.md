@@ -13,8 +13,19 @@
   listener `MessageSending` che lancia `App\Exceptions\Mail\MailBlockedInStagingException` (copre ogni
   mailer, anche quelli nominati). Effetti: job notifiche mail falliscono (failed_jobs), `SendOutboundEmailJob`
   marca l'email `failed` (messaggio generico), mai `sent`. Lo staging e' riconosciuto SOLO da `APP_ENV=staging`.
-- Test: `tests/Feature/Mail/StagingMailRedirectTest.php` (+2), `tests/Feature/OutboundEmails/StagingRedirectCouplingTest.php` (+1).
-- Verificato: `composer test` 9117 passed / 1 skipped; Pint pulito. Manuale: nessun impatto (config di deploy).
+- Rev. mittente (decisione utente 2026-10-01): con il redirect attivo anche il MITTENTE diventa `MAIL_ALWAYS_TO`
+  (nome visualizzato originale mantenuto), via listener `MessageSending` (`alwaysFrom()` non basta: il `from` del
+  messaggio lo sovrascrive). Motivo: Graph invia DALLA casella `from`; in staging gli utenti copiati/seed
+  (es. `demo@app.com`) non sono caselle M365 -> `ErrorInvalidUser`. Il record OutboundEmail conserva il
+  `from_address` reale. Test cambiato per requisito cambiato: `StagingRedirectCouplingTest` (Graph ora chiamato
+  su `/users/staging-inbox@.../messages`).
+- Test: `tests/Feature/Mail/StagingMailRedirectTest.php` (+3), `tests/Feature/OutboundEmails/StagingRedirectCouplingTest.php` (+1, 1 aggiornato).
+- Verificato: `composer test` 9118 passed / 1 skipped; Pint pulito. Manuale: nessun impatto (config di deploy).
+- Staging, prerequisiti Azure: app Graph con permessi Application `Mail.ReadWrite` + `Mail.Send` + admin consent
+  (il flusso bozza->send richiede ReadWrite, a differenza di classroom-rental che usa `/sendMail`); dopo il
+  consenso `php artisan cache:clear` (token in cache). `test-it@qualificagroup.it` deve essere casella M365.
+- Aperto (decisione utente): in PRODUZIONE un utente con email non M365 non puo' inviare dalle commesse
+  (mittente = `users.email`, D-6 spec 0175).
 - Deploy staging: verificare che il `.env` abbia `APP_ENV=staging` e `MAIL_ALWAYS_TO` valorizzata.
 
 ## E-CAMPUS: CAMPI OFFERTA, LAYOUT E STATI DI LAVORAZIONE — VERDE, COMMITTATO (2026-10-01)
