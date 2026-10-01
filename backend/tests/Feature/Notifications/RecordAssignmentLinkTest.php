@@ -95,11 +95,31 @@ it('points a recipient who may see opportunities at the opportunities module (AC
         ->toBe('/opportunities/7');
 });
 
-it('falls back to request management for a recipient who may only see that module (AC-014)', function () {
-    $recipient = linkUserWith(['request-management.view']);
+// Rev. 2026-10-01 (decisione utente): the Opportunity has its own link only;
+// request management opens Offerte, which notify on their own (spec 0186).
+it('gives an opportunity notification no link to a recipient who may only see request management (AC-014)', function () {
+    $recipient = linkUserWith(['request-management.view', 'quotes.view']);
 
-    expect(RecordLinkResolver::pathFor($recipient, AssignmentTargetEnum::Opportunity, 7))
-        ->toBe('/request-management/7');
+    expect(RecordLinkResolver::pathFor($recipient, AssignmentTargetEnum::Opportunity, 7))->toBeNull();
+});
+
+it('an opportunity assignment never points a request-management-only recipient to request management (AC-014)', function () {
+    Notification::fake();
+
+    $actor = linkUserWith(['opportunities.update']);
+    $recipient = linkUserWith(['request-management.view']);
+    $opportunity = Opportunity::factory()->create();
+    Quote::factory()->for($opportunity)->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/opportunities/{$opportunity->id}", ['manager_slots' => [$recipient->id]])->assertOk();
+
+    Notification::assertSentTo($recipient, function (RecordAssignmentNotification $notification) use ($recipient): bool {
+        expect($notification->toArray($recipient)['action_url'])->toBeNull()
+            ->and($notification->toMail($recipient)->actionUrl)->toBeNull();
+
+        return true;
+    });
 });
 
 it('points an anagrafica notification at the registries module, or nowhere (AC-016)', function () {

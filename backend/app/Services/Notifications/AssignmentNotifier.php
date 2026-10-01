@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Notifications;
 
 use App\Enums\AssignmentRoleEnum;
+use App\Enums\AssignmentTargetEnum;
+use App\Models\Quote;
 use App\Models\User;
 use App\Notifications\RecordAssignmentNotification;
 use App\Support\Notifications\RecordDetails;
@@ -67,6 +69,20 @@ final class AssignmentNotifier
         // sent from inside a transaction that later rolls back would be
         // irrecoverable (same rule as NoteService::syncMentionsAndNotify()).
         DB::afterCommit(function () use ($target, $recordId, $recordLabel, $details, $actorName, $supervisorId, $managerPositions): void {
+            // Step 4 (rev. 2026-10-01, decisione utente): whoever sits on one
+            // of the Opportunity's Offerte is told by the Offerta's own
+            // notification, never by this one. Read at commit time, so an
+            // Offerta written later in the same transaction counts too.
+            if ($target === AssignmentTargetEnum::Opportunity) {
+                $offerManagerIds = $this->offerManagerIds($recordId);
+                $supervisorId = in_array($supervisorId, $offerManagerIds, true) ? null : $supervisorId;
+                $managerPositions = array_diff_key($managerPositions, array_flip($offerManagerIds));
+
+                if ($supervisorId === null && $managerPositions === []) {
+                    return;
+                }
+            }
+
             $recipients = $this->recipients($supervisorId, $managerPositions);
 
             if ($supervisorId !== null) {
@@ -93,6 +109,19 @@ final class AssignmentNotifier
                 ));
             }
         });
+    }
+
+    /**
+     * @return array<int, int> the Gestori Account of every Offerta of the Opportunity
+     */
+    private function offerManagerIds(int $opportunityId): array
+    {
+        return Quote::query()
+            ->where('opportunity_id', $opportunityId)
+            ->join('quote_user', 'quote_user.quote_id', '=', 'quotes.id')
+            ->pluck('quote_user.user_id')
+            ->map(static fn (mixed $userId): int => (int) $userId)
+            ->all();
     }
 
     /**

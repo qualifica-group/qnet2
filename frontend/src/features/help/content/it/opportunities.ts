@@ -44,6 +44,10 @@ const guide: HelpGuide = {
           type: 'tip',
           text: "Scegliendo l'**Anagrafica**, **Commerciale**, **Segnalatore**, **Supervisore** e **Gestori account** vengono compilati con quelli dell'anagrafica. Se li hai già inseriti tu e sono diversi, QNet chiede se **Sostituire** i tuoi valori o **Mantenere i tuoi**: nulla di ciò che hai scelto viene cancellato senza conferma.",
         },
+        {
+          type: 'paragraph',
+          text: "Chi inserisci come **Supervisore** o tra i **Gestori account** riceve la notifica **Sei stato inserito come Supervisore** o **Sei stato inserito come Gestore Account** (campanella ed email). Il link apre l'opportunità; chi non ha accesso alle Opportunità riceve la notifica senza link. Chi è anche Gestore account di un'offerta dell'opportunità, per esempio perché viene copiato nell'offerta collegata di un lead convertito o di una categoria con gestori sincronizzati, riceve solo la notifica dell'offerta.",
+        },
       ],
     },
     {

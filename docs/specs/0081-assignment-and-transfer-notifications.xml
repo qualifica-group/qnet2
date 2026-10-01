@@ -23,6 +23,16 @@
   "proprie richieste" ereditavano l'intero modulo, quindi ogni operatore riceveva ogni
   trasferimento. Precedente e nuovo operatore restano invariati. AC-020/AC-021 sono
   riformulati sotto con il prefisso (rev. 2026-09-29).
+
+  REVISIONE 2026-10-01 (decisione utente):
+    - La notifica di assegnazione dell'Opportunita' ha SOLO il proprio link: /opportunities/{id}
+      con `opportunities.view`, altrimenti nessun link. Niente piu' ricaduta su
+      /request-management (quel modulo apre Offerte, che notificano da sole, spec 0186).
+      La notifica di trasferimento NON cambia: `RecordLinkResolver::transferPath()`.
+    - Chi e' Gestore Account di un'Offerta dell'Opportunita' (letto al commit) non riceve la
+      notifica dell'Opportunita': riceve solo quella dell'Offerta. Per questo la conversione da
+      lead passa all'Offerta collegata i GA dell'Opportunita' come slot espliciti, e la
+      propagazione nelle categorie sincronizzate notifica l'Offerta.
 -->
 <spec id="0081-assignment-and-transfer-notifications" status="draft" owner="nicola" date="2026-08-04">
 
@@ -199,8 +209,7 @@
             2. altrimenti -> null
         - target Opportunity:
             1. `$notifiable->can('opportunities.view')` -> "/opportunities/{id}"
-            2. `$notifiable->can('request-management.view')` -> "/request-management/{id}"
-            3. altrimenti -> null
+            2. altrimenti -> null (rev. 2026-10-01: niente ricaduta su request-management)
 
       Quando ritorna null: `action_url` e' null nel payload database (il FE rende la riga non
       cliccabile, gia' supportato) e il `MailMessage` NON espone alcun bottone `->action()`;
@@ -340,7 +349,7 @@
     <criterion id="AC-011">Riassegnando l'Operatore allo STESSO utente gia' presente, nessuna notifica parte (`RequestOperatorWriter::apply()` non riporta transizione).</criterion>
     <criterion id="AC-012">Se la transazione fallisce e fa rollback, nessuna notifica viene spedita (dispatch in `DB::afterCommit`).</criterion>
     <criterion id="AC-013">Destinatario con `opportunities.view`: `action_url` = "/opportunities/{id}" e l'email espone il bottone.</criterion>
-    <criterion id="AC-014">Destinatario SENZA `opportunities.view` ma con `request-management.view`: `action_url` = "/request-management/{id}".</criterion>
+    <criterion id="AC-014">(rev. 2026-10-01) Destinatario SENZA `opportunities.view`, anche con `request-management.view`: la notifica di assegnazione dell'Opportunita' ha `action_url` null e nessun bottone nella mail.</criterion>
     <criterion id="AC-015">Destinatario senza nessuno dei due permessi: `action_url` e' null, l'email NON contiene alcun bottone, e il messaggio (in-app e email) contiene la frase di richiesta abilitazione.</criterion>
     <criterion id="AC-016">Destinatario di una notifica su anagrafica con `registries.view`: `action_url` = "/registries/{id}"; senza il permesso: null + frase di richiesta abilitazione.</criterion>
     <criterion id="AC-017">`action_url` e' SEMPRE un path interno; nessuna notifica introdotta persiste un URL assoluto nel payload `database`.</criterion>

@@ -11,10 +11,9 @@ use App\RequestManagement\RequestModule;
 /**
  * Resolves the SPA path a notification should point THIS recipient to
  * (spec 0081, decisione utente 2026-08-04). Per-recipient rather than
- * per-record because an Opportunity is reachable through two different
- * modules gated by two different permission sets (spec 0049, D-1): the same
- * transfer notifies people who may open it from `/opportunities` and people
- * who may only open it from `/request-management`.
+ * per-record because the same notification reaches people with different
+ * permission sets: an Offerta opens from `/quotes` or `/request-management`
+ * (spec 0186), a transfer from `/opportunities` or the request module.
  *
  * Returns a PATH or null, never an absolute URL — the contract every
  * notification of this repo already honours (see
@@ -35,41 +34,43 @@ use App\RequestManagement\RequestModule;
 final class RecordLinkResolver
 {
     /**
+     * The link of an ASSIGNMENT notification: each record type points to its
+     * own module only (rev. 2026-10-01, decisione utente). An Opportunity no
+     * longer falls back to request management: that module opens Offerte,
+     * which send their own assignment notification (spec 0186).
+     *
      * @param  int  $recordId  the Registry, Opportunity or Quote id
-     * @param  ?int  $requestManagementRecordId  spec 0086, MT-04b: the
-     *                                           request-management fallback
-     *                                           now opens a Quote (a grid row
-     *                                           IS an Offerta, not the
-     *                                           Opportunity any more), so its
-     *                                           id can DIVERGE from
-     *                                           $recordId. Null (every caller
-     *                                           predating spec 0086) falls
-     *                                           back to $recordId — the two
-     *                                           ids were the same record
-     *                                           before this spec, so nothing
-     *                                           changes for them.
-     * @param  RequestModule  $module  spec 0130: which module's own
-     *                                 permission/path govern the fallback
-     *                                 branch — `Requests` (default) keeps
-     *                                 every existing caller unchanged
-     *                                 (`request-management.view`,
-     *                                 `/request-management/:id`).
-     *                                 RequestTransferredNotification is the
-     *                                 ONE caller that passes the actor
-     *                                 module; RecordAssignmentNotification
-     *                                 never does (spec 0130, scope §out: its
-     *                                 deep link stays fixed to
-     *                                 `/request-management/:id`).
      */
-    public static function pathFor(User $notifiable, AssignmentTargetEnum $target, int $recordId, ?int $requestManagementRecordId = null, RequestModule $module = RequestModule::Requests): ?string
+    public static function pathFor(User $notifiable, AssignmentTargetEnum $target, int $recordId): ?string
     {
         return match ($target) {
             AssignmentTargetEnum::Registry => $notifiable->can('registries.view')
                 ? "/registries/{$recordId}"
                 : null,
-            AssignmentTargetEnum::Opportunity => self::opportunityPath($notifiable, $recordId, $requestManagementRecordId ?? $recordId, $module),
+            AssignmentTargetEnum::Opportunity => $notifiable->can('opportunities.view')
+                ? "/opportunities/{$recordId}"
+                : null,
             AssignmentTargetEnum::Quote => self::quotePath($notifiable, $recordId),
         };
+    }
+
+    /**
+     * The link of a TRANSFER notification (spec 0081, 0086 MT-04b, 0130):
+     * the opportunities module wins when the recipient may see it, the
+     * actor's request module is the fallback, opened on the Offerta — whose
+     * id DIVERGES from the Opportunity's since spec 0086.
+     */
+    public static function transferPath(User $notifiable, int $opportunityId, int $quoteId, RequestModule $module): ?string
+    {
+        if ($notifiable->can('opportunities.view')) {
+            return "/opportunities/{$opportunityId}";
+        }
+
+        if ($notifiable->can($module->permission('view'))) {
+            return "{$module->recordPath()}/{$quoteId}";
+        }
+
+        return null;
     }
 
     /**
@@ -87,26 +88,6 @@ final class RecordLinkResolver
 
         if ($notifiable->can($requests->permission('view'))) {
             return "{$requests->recordPath()}/{$quoteId}";
-        }
-
-        return null;
-    }
-
-    /**
-     * The opportunities module wins when the recipient may see it, the
-     * request-management/enrollee-management module is the fallback
-     * (decisione utente): both routes exist in the SPA —
-     * `/opportunities/:id` is generated by `buildModuleRoutes()` from the
-     * module registry, `$module->recordPath()` is declared by hand.
-     */
-    private static function opportunityPath(User $notifiable, int $recordId, int $requestManagementRecordId, RequestModule $module): ?string
-    {
-        if ($notifiable->can('opportunities.view')) {
-            return "/opportunities/{$recordId}";
-        }
-
-        if ($notifiable->can($module->permission('view'))) {
-            return "{$module->recordPath()}/{$requestManagementRecordId}";
         }
 
         return null;

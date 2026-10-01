@@ -328,7 +328,7 @@ class OpportunityService
             if ($data->hasManagerSlots()) {
                 $syncMap = ManagerPositions::syncMap($data->managerSlots);
                 $attachedManagers = ManagerPositions::attachedPositions($syncMap, PositionalPivotSync::sync($opportunity->managers(), $syncMap));
-                $this->propagateManagersToQuote($opportunity, $syncMap);
+                $this->propagateManagersToQuote($opportunity, $syncMap, $actor);
             }
 
             if ($data->hasProductLines()) {
@@ -436,9 +436,13 @@ class OpportunityService
      * place allowed to touch that column (INV-2 still holds: both writers
      * derive it from the very map they just synced, never independently).
      *
+     * Whoever this copy newly inserts on the Quote is told by the Quote's
+     * own notification (rev. 2026-10-01, decisione utente), which in turn
+     * keeps them out of the Opportunity's (AssignmentNotifier).
+     *
      * @param  array<int, array{position: int}>  $syncMap
      */
-    private function propagateManagersToQuote(Opportunity $opportunity, array $syncMap): void
+    private function propagateManagersToQuote(Opportunity $opportunity, array $syncMap, ?User $actor): void
     {
         if (! $this->syncMode->isSynchronized($opportunity)) {
             return;
@@ -450,7 +454,7 @@ class OpportunityService
             return;
         }
 
-        PositionalPivotSync::sync($quote->managers(), $syncMap);
+        $attached = ManagerPositions::attachedPositions($syncMap, PositionalPivotSync::sync($quote->managers(), $syncMap));
         $quote->unsetRelation('managers');
 
         $operatorId = null;
@@ -464,5 +468,7 @@ class OpportunityService
         }
 
         $quote->forceFill(['operator_id' => $operatorId])->save();
+
+        $this->assignmentNotifier->notify($quote, $actor, null, $attached);
     }
 }

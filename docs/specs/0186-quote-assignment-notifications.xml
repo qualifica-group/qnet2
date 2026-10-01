@@ -37,6 +37,12 @@
     D-6  Fuori scope: notifica di trasferimento (resta com'e', spec 0130), Supervisore dell'Offerta (non notifica,
          spec 0097 AC-014), propagazione Opportunita' -> Offerta nelle categorie sincronizzate (notifica solo
          lato Opportunita').
+    D-7  REVISIONE 2026-10-01 (utente), sostituisce in parte D-4 e D-6: chi viene inserito nell'Offerta riceve la
+         notifica dell'Offerta e MAI quella dell'Opportunita'; chi e' nell'Opportunita' ma in nessuna sua Offerta
+         riceve quella dell'Opportunita'. Quindi: la conversione lead passa all'Offerta i GA dell'Opportunita' come
+         `managerSlots` espliciti (notificano); la propagazione Opportunita' -> Offerta nelle categorie sincronizzate
+         notifica l'Offerta; AssignmentNotifier esclude dalla notifica dell'Opportunita' i GA delle sue Offerte
+         (letti al commit). Resta valido D-4 per l'Offerta creata a mano senza `manager_slots`.
   </decisions>
 
   <contract>

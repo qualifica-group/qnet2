@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\DataObjects\Notifications\NotificationData;
-use App\Enums\AssignmentTargetEnum;
 use App\Enums\NotificationLevelEnum;
 use App\Enums\TransferRecipientRoleEnum;
 use App\Models\User;
@@ -54,12 +53,12 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
      *                               from $requestId since the two records
      *                               diverged. Null keeps the pre-0086
      *                               behaviour of reusing $requestId for both
-     *                               branches (RecordLinkResolver's own
-     *                               default).
+     *                               branches (the `?? $requestId` in
+     *                               pathFor() below).
      * @param  RequestModule  $module  spec 0130: the module this transfer
      *                                 happened under — governs the fallback
      *                                 branch's permission/path
-     *                                 (RecordLinkResolver::pathFor()).
+     *                                 (RecordLinkResolver::transferPath()).
      *                                 Defaults to `Requests`, at parity for
      *                                 every pre-0130 caller.
      */
@@ -127,14 +126,13 @@ class RequestTransferredNotification extends Notification implements ShouldQueue
      * depends on what THIS recipient may open (spec 0081). Spec 0086,
      * MT-04b: `$requestId` (the Offerta) and `$opportunityId` now name TWO
      * different records — passed through as the resolver's two distinct ids
-     * rather than one, see RecordLinkResolver::pathFor()'s own docblock.
+     * rather than one, see RecordLinkResolver::transferPath().
      */
     private function pathFor(object $notifiable): ?string
     {
         /** @var User $notifiable */
-        return RecordLinkResolver::pathFor(
+        return RecordLinkResolver::transferPath(
             $notifiable,
-            AssignmentTargetEnum::Opportunity,
             $this->opportunityId ?? $this->requestId,
             $this->requestId,
             $this->module,

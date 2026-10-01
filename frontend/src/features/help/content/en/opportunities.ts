@@ -44,6 +44,10 @@ const guide: HelpGuide = {
           type: 'tip',
           text: 'When you pick the **Registry**, **Sales rep**, **Reporter**, **Supervisor** and **Account managers** are filled with the registry\'s own. If you already entered different ones, QNet asks whether to **Replace** your values or **Keep mine**: nothing you chose is cleared without confirmation.',
         },
+        {
+          type: 'paragraph',
+          text: "Whoever you add as **Supervisor** or among the **Account managers** receives the **You were assigned as Supervisor** or **You were assigned as Account Manager** notification (bell and email). The link opens the opportunity; whoever cannot access Opportunities receives it without a link. Whoever is also an Account manager of one of the opportunity's quotes, for example because they are copied onto the linked quote of a converted lead or of a category with synchronized managers, receives the quote notification only.",
+        },
       ],
     },
     {
