@@ -14,6 +14,7 @@ use Database\Seeders\QualificaCatalog\CategoryInheritanceRules;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\ECampusCategoryTree;
 use Database\Seeders\QualificaCatalog\ReportColumnsCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Illuminate\Database\Seeder;
@@ -51,7 +52,8 @@ use Illuminate\Database\Seeder;
  *     courses under their own region, the self-funded ones under their own
  *     "Autofinanziato - <Regione>" with their price and VAT rate, and the one
  *     product each single-offer category sells ("Autoimpiego", "Yisu" and
- *     "Orientamento Specialistico"). No other product is seeded;
+ *     "Orientamento Specialistico"), plus the e-Campus degree fees on the
+ *     "Corsi E-Campus" branch (ECampusCategoryTree). No other product is seeded;
  *   - the ROOT-OWNED rules of the two roots that declare them (how many
  *     product lines a card carries, how many offers an opportunity may hold),
  *     delegated to QualificaCatalog\CatalogRootRules once the whole tree
@@ -368,6 +370,9 @@ class QualificaCatalogSeeder extends Seeder
                 $this->seedCatalogChildren($subcategory, $childNames);
             }
         }
+
+        // The e-Campus branch, keyed on (name, parent): its area names repeat.
+        app(ECampusCategoryTree::class)->seed();
 
         // Spec 0141 D-6/D-8 (AC-008): the report column selection, only where
         // still unset — independent of the attributes/root-owned steps below.

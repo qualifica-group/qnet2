@@ -17,6 +17,7 @@ use App\Services\UserService;
 use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\DilCourseCatalogue;
+use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,9 +30,10 @@ uses(RefreshDatabase::class);
 
 /**
  * Every product the catalogue seeds: the GOL and DIL courses, the self-funded
- * ones and one per CatalogProducts::SINGLE_OFFER_CATEGORIES.
+ * ones, one per CatalogProducts::SINGLE_OFFER_CATEGORIES and, since the user
+ * directive 2026-10-01, the 140 e-Campus degree fees.
  */
-const TOTAL_SEEDED_PRODUCTS = 303;
+const TOTAL_SEEDED_PRODUCTS = 443;
 
 /**
  * One scenario instead of one test per property: the catalogue seeder costs
@@ -59,12 +61,19 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         'Autofinanziato - Lombardia', 'Autofinanziato - Sicilia',
         'Autoimpiego',
         'DIL - Lombardia',
+        // The e-Campus subject areas, suffixed with their degree level (user
+        // directive 2026-10-01).
+        'Economia - Corsi di Laurea Magistrali', 'Economia - Corsi di Laurea Triennali',
         'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',
+        'Giurisprudenza - Corsi di Laurea Triennali',
+        'Ingegneria - Corsi di Laurea Magistrali', 'Ingegneria - Corsi di Laurea Triennali',
+        'Letteratura - Corsi di Laurea Magistrali', 'Letteratura - Corsi di Laurea Triennali',
         'Orientamento Specialistico',
         // The Consulenza leaf (user directive 2026-09-28).
         'Presa Appuntamenti',
+        'Psicologia - Corsi di Laurea Magistrali', 'Psicologia - Corsi di Laurea Triennali',
         'Yisu',
     ]);
 
@@ -288,12 +297,19 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         expect(Product::query()->where('category_id', $category->id)->count())->toBe($count, $categoryName);
     }
 
-    // Outside the GOL regions: the DIL courses, the self-funded ones, plus the
-    // one product of each single-offer category.
+    // Outside the GOL regions: the DIL courses, the self-funded ones, the
+    // one product of each single-offer category, plus one product per fee of
+    // each e-Campus course (user directive 2026-10-01).
+    $eCampusProducts = array_sum(array_map(
+        static fn (array $degree): int => count($degree['fees']) * array_sum(array_map(count(...), $degree['areas'])),
+        ECampusCourseCatalogue::DEGREES,
+    ));
+
     expect(Product::query()->count())
         ->toBe(array_sum($expectedPerRegion) + count(DilCourseCatalogue::COURSES['DIL - Lombardia'])
             + array_sum(array_map(count(...), SelfFundedCourseCatalogue::COURSES))
-            + count(CatalogProducts::SINGLE_OFFER_CATEGORIES));
+            + count(CatalogProducts::SINGLE_OFFER_CATEGORIES)
+            + $eCampusProducts);
 });
 
 it('promotes "APL" out of "Consulenza" on an installation seeded while it hung there', function (): void {

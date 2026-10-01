@@ -16,7 +16,7 @@ use App\Services\ProductService;
  * the two are meaningless apart. The category tree they file onto is still the
  * seeder's, and must exist before seed() runs.
  *
- * Three sources, one shape (a SERVICE product on a catalogue node):
+ * Four sources, one shape (a SERVICE product on a catalogue node):
  *   - the funded courses — GOL (TrainingCourseCatalogue) and DIL
  *     (DilCourseCatalogue): one per row, in its own `<Misura> - <Regione>`
  *     category, priced 0 — a funded course is not sold to the learner;
@@ -24,7 +24,9 @@ use App\Services\ProductService;
  *     own `Autofinanziato - <Regione>` category, with its list price and, when
  *     quoted "+ iva", the 22% VAT rate;
  *   - the single-offer categories (SINGLE_OFFER_CATEGORIES): one product
- *     named after the category itself, filed directly on it.
+ *     named after the category itself, filed directly on it;
+ *   - the e-Campus degrees (ECampusCourseCatalogue): one product per fee of
+ *     the degree level, "<course> <fee>", on its subject area, at the fee.
  *
  * NO ATTRIBUTE VALUE IS WRITTEN (user directive 2026-09-08). The duration and
  * the delivery mode used to be seeded here, onto the product; they moved to
@@ -65,7 +67,10 @@ final class CatalogProducts
         'Orientamento Specialistico',
     ];
 
-    public function __construct(private readonly ProductService $products) {}
+    public function __construct(
+        private readonly ProductService $products,
+        private readonly ECampusCategoryTree $eCampusTree,
+    ) {}
 
     public function seed(): void
     {
@@ -75,6 +80,23 @@ final class CatalogProducts
         $this->seedSelfFundedCourses();
         // Step 3: the categories selling a single offer of their own.
         $this->seedSingleOfferProducts();
+        // Step 4: the e-Campus degrees, one product per fee of their level.
+        $this->seedECampusCourses();
+    }
+
+    private function seedECampusCourses(): void
+    {
+        foreach (ECampusCourseCatalogue::DEGREES as $degreeName => $degree) {
+            foreach ($degree['areas'] as $areaName => $courses) {
+                $category = $this->eCampusTree->area($degreeName, $areaName);
+
+                foreach ($courses as $course) {
+                    foreach ($degree['fees'] as $fee => $price) {
+                        $this->seedProduct($category, sprintf('%s %s', $course, $fee), $price);
+                    }
+                }
+            }
+        }
     }
 
     private function seedTrainingCourses(): void

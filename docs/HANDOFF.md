@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CATALOGO CORSI E-CAMPUS NEL SEED DI PRODUZIONE — VERDE, COMMITTATO (2026-10-01)
+
+- Fonte: PDF "CORSI E-CAMPUS" dell'utente. Albero `Formazione > Corsi E-Campus > {Corsi di Laurea Triennali,
+  Corsi di Laurea Magistrali} > {Ingegneria, Letteratura, Psicologia, Economia, Giurisprudenza (solo triennali)}`:
+  i primi due livelli nuovi sono contenitori, le aree sono selezionabili.
+- Le aree si chiamano `"<area> - <livello>"` (es. `Ingegneria - Corsi di Laurea Triennali`, decisione utente
+  2026-10-01) per distinguerle nei select; chiave comunque (name, parent_id). Il ramo non sta in
+  `QualificaCatalogSeeder::CATALOG` ma in `QualificaCatalog/ECampusCategoryTree` (create-only, chiamato in
+  `seedCatalog()` prima di `CatalogRootRules::apply()`); dati in `QualificaCatalog/ECampusCourseCatalogue`.
+- Prodotti (`CatalogProducts` step 4): uno per quota del livello, nome `"<corso> <quota>"` (es. `Ingegneria Civile e
+  Ambientale [L-7] PROGETTO FORM`, nome fermato prima dei ":"), prezzo = quota, SERVICE, nessuna IVA. Triennali
+  6 quote (1500/500/2856x3/300), magistrali 5 (1500/500/3056x2/300): 15x6 + 10x5 = 140 prodotti (totale 443).
+- Escluso: "Magistrali a ciclo unico" (Giurisprudenza [LMG/01]), il PDF non riporta le quote.
+- Test: `QualificaECampusCatalogueTest` (nuovo); totali/lista selezionabili aggiornati in `QualificaCatalogSeederTest`
+  e `QualificaProductionDataSeederTest` (requisito cambiato). Manuale: nessun impatto (dati di seed).
+
 ## NOTIFICHE ASSEGNAZIONE OPPORTUNITA' vs OFFERTA + LINK TRASFERIMENTO — VERDE, COMMITTATO (2026-10-01)
 
 - Due commit: `39893f32` (separazione delle notifiche) e il successivo (ereditati + link del trasferimento).
