@@ -60,6 +60,7 @@ const TimeEntryNewPage = lazyRoute(() => import('@/pages/time-entry-new-page'))
 const TimeEntryEditPage = lazyRoute(() => import('@/pages/time-entry-edit-page'))
 const CommissionConfigurationsPage = lazyRoute(() => import('@/pages/commission-configurations-page'))
 const RequestManagementPage = lazyRoute(() => import('@/pages/request-management-page'))
+const RequestStatisticsPage = lazyRoute(() => import('@/pages/request-statistics-page'))
 const EnrolleeManagementPage = lazyRoute(() => import('@/pages/enrollee-management-page'))
 const EnrolleeManagementDetailPage = lazyRoute(() => import('@/pages/enrollee-management-detail-page'))
 const RewardTypesPage = lazyRoute(() => import('@/pages/reward-types-page'))
@@ -367,6 +368,11 @@ export const router = createBrowserRouter([
           {
             path: 'request-management',
             element: <RequestManagementPage />,
+          },
+          // Statistics left the request tables for their own module (spec 0185).
+          {
+            path: 'request-statistics',
+            element: <RequestStatisticsPage />,
           },
           // `request-management` no longer sets `generateRoutes: false` (spec
           // 0057 D-6: the module now has a real `/new` create form), so

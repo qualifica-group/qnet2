@@ -394,10 +394,11 @@ export const requestManagement = {
       jobFailed: 'Report generation failed. Please try again.',
     },
   },
-  // Charts dashboard (spec 0107): opened by the existing StatsToggleButton;
+  // Charts dashboard (spec 0107): shown by the Request Management Statistics page (spec 0185);
   // category/operator names stay domain values, never i18n keys.
   dashboard: {
     regionLabel: 'Request Management dashboard',
+    pageForbidden: "You don't have permission to view Request Management Statistics.",
     editFilters: 'Filters',
     expandAll: 'Expand all',
     collapseAll: 'Collapse all',

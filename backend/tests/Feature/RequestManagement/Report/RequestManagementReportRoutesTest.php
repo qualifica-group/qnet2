@@ -2,6 +2,7 @@
 
 use App\Models\ProductCategory;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Sanctum;
@@ -65,9 +66,9 @@ it('GET report/categories actually resolves to the categories list, never to sho
     ProductCategory::factory()->create(['name' => 'Consulenza']);
     ProductCategory::factory()->create(['name' => 'APL']);
 
-    Permission::findOrCreate('request-management.report');
+    Permission::findOrCreate(RequestModule::STATISTICS_PERMISSION);
     $actor = User::factory()->create();
-    $actor->givePermissionTo('request-management.report');
+    $actor->givePermissionTo(RequestModule::STATISTICS_PERMISSION);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson('/api/request-management/report/categories')->assertOk();

@@ -12,9 +12,8 @@ import { useRequestModule } from '@/features/request-management/request-module'
  * no polling — unlike the CSV report's `ExportRun` cycle. `enabled` mirrors
  * the filter form's own validity (e.g. every branch deselected fails the
  * shared Zod schema, AC-044): an invalid form never issues a request. The
- * "closed panel costs nothing" half of D-5 comes from `RequestDashboardPanel`
- * only ever mounting this hook while open, the same convention
- * `useModuleStats`/`ModuleStatsPanelBody` already use.
+ * dashboard lives on its own page since spec 0185, so nothing fetches until
+ * that page mounts `RequestDashboard`.
  *
  * `query` doubles as the query key (`requestManagementKeys.dashboard`), so a
  * changed filter is a DIFFERENT cache entry — a late response for a filter

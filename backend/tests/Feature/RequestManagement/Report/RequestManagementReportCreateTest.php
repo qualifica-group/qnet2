@@ -23,14 +23,14 @@ if (! function_exists('reportActorWith')) {
      */
     function reportActorWith(array $abilities): User
     {
-        foreach (['report', 'viewAny', 'viewAll'] as $ability) {
-            Permission::findOrCreate("request-management.{$ability}");
+        foreach (['statistics', 'viewAny', 'viewAll'] as $ability) {
+            Permission::findOrCreate(requestReportPermission($ability));
         }
 
         $user = User::factory()->create();
 
         foreach ($abilities as $ability) {
-            $user->givePermissionTo("request-management.{$ability}");
+            $user->givePermissionTo(requestReportPermission($ability));
         }
 
         return $user;
@@ -80,7 +80,7 @@ if (! function_exists('reportPayload')) {
 
 it('201s with a processing run whose state freezes the dates, category_keys, row_mode and the actor locale (AC-001)', function () {
     $categories = reportCreateCategoryTree();
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
     Queue::fake();
 
@@ -112,7 +112,7 @@ it('201s with a processing run whose state freezes the dates, category_keys, row
 // AC-002
 // ---------------------------------------------------------------------------
 
-it('403s on create without request-management.report (AC-002)', function () {
+it('403s on create without request-statistics.view (AC-002)', function () {
     reportCreateCategoryTree();
     $actor = reportActorWith([]);
     Sanctum::actingAs($actor);
@@ -140,7 +140,7 @@ it('never leaks an internal class/model name in the 403 envelope (AC-002)', func
 // the run freezes the open side as null and the file name drops it.
 it('accepts an open date bound and names the file after the bounds it has', function (array $dates, ?string $from, ?string $to, string $fileName) {
     reportCreateCategoryTree();
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
     Queue::fake();
 
@@ -167,7 +167,7 @@ it('accepts an open date bound and names the file after the bounds it has', func
 ]);
 
 it('422s on a malformed date format (AC-003)', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/report', reportPayload(['date_from' => '01/09/2026']))
@@ -175,7 +175,7 @@ it('422s on a malformed date format (AC-003)', function () {
 });
 
 it('422s when date_to is before date_from (AC-003)', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/report', reportPayload(['date_from' => '2026-09-30', 'date_to' => '2026-09-01']))
@@ -187,7 +187,7 @@ it('422s when date_to is before date_from (AC-003)', function () {
 // ---------------------------------------------------------------------------
 
 it('422s when category_keys is missing (AC-030)', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $payload = reportPayload();
@@ -199,7 +199,7 @@ it('422s when category_keys is missing (AC-030)', function () {
 });
 
 it('422s when category_keys is empty (AC-030)', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/report', reportPayload(['category_keys' => []]))
@@ -208,7 +208,7 @@ it('422s when category_keys is empty (AC-030)', function () {
 });
 
 it('422s when category_keys contains a key not in config, and never queries with it (AC-030)', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/report', reportPayload(['category_keys' => ['gol', 'not-a-real-branch']]))
@@ -223,7 +223,7 @@ it('422s when category_keys contains a key not in config, and never queries with
 // ---------------------------------------------------------------------------
 
 it('422s when row_mode is missing (AC-031)', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $payload = reportPayload();
@@ -235,7 +235,7 @@ it('422s when row_mode is missing (AC-031)', function () {
 });
 
 it('422s when row_mode is not one of total_only|operators_only|all (AC-031)', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/report', reportPayload(['row_mode' => 'bogus']))
@@ -249,7 +249,7 @@ it('422s when row_mode is not one of total_only|operators_only|all (AC-031)', fu
 
 it('never throttles the create endpoint across many rapid requests (AC-025)', function () {
     reportCreateCategoryTree();
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
     Queue::fake();
 
@@ -264,7 +264,7 @@ it('never throttles the create endpoint across many rapid requests (AC-025)', fu
 
 it('stores the requested xlsx format on the run, extension included', function () {
     reportCreateCategoryTree();
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
     Queue::fake();
 
@@ -279,7 +279,7 @@ it('stores the requested xlsx format on the run, extension included', function (
 
 it('stores the requested csv format on the run, extension included', function () {
     reportCreateCategoryTree();
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
     Queue::fake();
 
@@ -293,7 +293,7 @@ it('stores the requested csv format on the run, extension included', function ()
 });
 
 it('422s when format is missing', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $payload = reportPayload();
@@ -305,7 +305,7 @@ it('422s when format is missing', function () {
 });
 
 it('422s when format is outside config(exports.formats)', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management/report', reportPayload(['format' => 'pdf']))

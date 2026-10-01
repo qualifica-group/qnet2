@@ -6,6 +6,7 @@ use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
 use App\Models\Source;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use Spatie\Permission\Models\Permission;
 
 if (! function_exists('requestManagementUserWith')) {
@@ -74,5 +75,17 @@ if (! function_exists('oneProductLine')) {
         $category = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
 
         return [['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id]];
+    }
+}
+
+if (! function_exists('requestReportPermission')) {
+    /**
+     * The permission a report/dashboard test actor is given for `$ability`:
+     * `statistics` is the "Statistiche Gestione Richieste" module's own
+     * permission (spec 0185), anything else a `request-management.*` ability.
+     */
+    function requestReportPermission(string $ability): string
+    {
+        return $ability === 'statistics' ? RequestModule::STATISTICS_PERMISSION : "request-management.{$ability}";
     }
 }

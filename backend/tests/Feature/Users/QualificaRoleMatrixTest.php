@@ -97,7 +97,10 @@ it('checks the role matrix permissions and visible routes for every mansione', f
         ->and($supervisorFull->can('enrollee-management.view'))->toBeTrue()
         ->and($supervisorFull->can('enrollee-management.update'))->toBeTrue();
 
-    foreach (['viewAll', 'report', 'assignOperator', 'updateSource', 'delete'] as $ability) {
+    // Spec 0185 D-3: the statistics are a module of their own.
+    expect($supervisorFull->can('request-statistics.view'))->toBeTrue();
+
+    foreach (['viewAll', 'assignOperator', 'updateSource', 'delete'] as $ability) {
         expect($supervisorFull->can("request-management.{$ability}"))->toBeTrue($ability)
             ->and($supervisorFull->can("enrollee-management.{$ability}"))->toBeTrue("enrollee-management.{$ability}");
     }
@@ -128,8 +131,8 @@ it('checks the role matrix permissions and visible routes for every mansione', f
         // 2026-08-03): without it the create form's Operatore control is not
         // rendered and both write endpoints refuse it.
         ->and($commercial->can('request-management.assignOperator'))->toBeFalse()
-        // "no report" (Mansionario 2026-09-15).
-        ->and($commercial->can('request-management.report'))->toBeFalse()
+        // "no report" (Mansionario 2026-09-15): no statistics module (spec 0185).
+        ->and($commercial->can('request-statistics.view'))->toBeFalse()
         // The module's own permission set only — never opportunities.*.
         ->and($commercial->can('opportunities.viewAny'))->toBeFalse()
         ->and($commercial->can('opportunities.view'))->toBeFalse();

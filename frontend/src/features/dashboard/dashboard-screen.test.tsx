@@ -110,7 +110,6 @@ describe('DashboardScreen (AC-011)', () => {
       'quotes.viewAny',
       'leads.viewAny',
       'registries.viewAny',
-      'request-management.report',
     ]
     renderScreen()
 

@@ -13,6 +13,7 @@ use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Registry;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -27,12 +28,12 @@ uses(RefreshDatabase::class);
 
 function transitionsEndToEndActor(): User
 {
-    foreach (['viewAny', 'view', 'update', 'viewAll', 'report'] as $ability) {
-        Permission::findOrCreate("request-management.{$ability}");
+    foreach (['viewAny', 'view', 'update', 'viewAll', 'statistics'] as $ability) {
+        Permission::findOrCreate(requestReportPermission($ability));
     }
 
     $actor = User::factory()->create();
-    $actor->givePermissionTo(['request-management.view', 'request-management.update', 'request-management.viewAll', 'request-management.report']);
+    $actor->givePermissionTo(['request-management.view', 'request-management.update', 'request-management.viewAll', RequestModule::STATISTICS_PERMISSION]);
 
     return $actor;
 }

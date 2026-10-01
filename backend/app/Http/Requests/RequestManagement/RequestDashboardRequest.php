@@ -21,7 +21,7 @@ use Illuminate\Validation\Rule;
  * before it can ever reach a query (backend.md §8).
  *
  * Authorization is intentionally NOT handled here (stays in the controller:
- * `{module}.report`, reused verbatim per spec 0107 D-6), same convention as
+ * `RequestModule::STATISTICS_PERMISSION`, spec 0185), same convention as
  * RequestReportRequest.
  *
  * Spec 0130: the operator/site allow-lists are resolved for the route's OWN
@@ -34,7 +34,7 @@ class RequestDashboardRequest extends FormRequest
 
     public function authorize(): bool
     {
-        // Authorization handled in the controller (request-management.report).
+        // Authorization handled in the controller (request-statistics.view).
         return true;
     }
 

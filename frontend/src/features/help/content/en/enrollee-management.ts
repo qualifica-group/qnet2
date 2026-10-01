@@ -4,7 +4,7 @@ const guide: HelpGuide = {
   key: 'enrollee-management',
   title: 'Enrollee Management',
   summary:
-    'Enrollee Management works like Request Management, with the same columns, filters, actions, panel and statistics: it shows only the requests that reached a Validated or Closed (positive outcome) status.',
+    'Enrollee Management works like Request Management, with the same columns, filters and actions: it shows only the requests that reached a Validated or Closed (positive outcome) status.',
   sections: [
     {
       id: 'overview',
@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It lives in **Opportunities and Work Orders › Enrollee Management**. It is the same work bench as **Request Management**: same columns, filters, search (from the third character, by words that begin with what you type), row actions, panel and statistics.',
+          text: 'It lives in **Opportunities and Work Orders › Enrollee Management**. It is the same work bench as **Request Management**: same columns, filters, search (from the third character, by words that begin with what you type), row actions.',
         },
         {
           type: 'table',
@@ -45,22 +45,11 @@ const guide: HelpGuide = {
     },
     {
       id: 'statistics-differences',
-      title: 'Statistics in Enrollee Management',
+      title: "Statistics are gone",
       blocks: [
         {
           type: 'paragraph',
-          text: 'The statistics panel is the same as in Request Management, with the same filters and columns (see the Request Management guide for details). The differences:',
-        },
-        {
-          type: 'list',
-          items: [
-            'It only counts requests that are currently in a status from the **Validated** or **Closed (positive outcome)** group.',
-            'It has its own **Generate report** permission and separately stored filters.',
-            'The generated file is named enrollee-management-report-FROM_TO (or -from-FROM / -to-TO with a single bound, no date when the period is empty).',
-            'The numbers on the tabs and in the statistics update within a few seconds of changes made by other users; your own changes show up right away when you return to the table. The CSV file is always calculated at the moment you generate it.',
-            '**Unhandled New Contacts** (with or without the period) is always 0: no request here is in the Open status.',
-            '**Unhandled Callbacks** (with or without the period) only counts the requests in Validated; **Potential Leads** without the period counts the requests currently in Validated.',
-          ],
+          text: "Statistics are no longer available in Enrollee Management: the table has no panel or statistics button. Statistics on requests have their own page, **Request Management Statistics** (see its guide).",
         },
       ],
     },

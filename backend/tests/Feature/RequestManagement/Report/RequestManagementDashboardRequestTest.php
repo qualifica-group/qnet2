@@ -19,14 +19,14 @@ if (! function_exists('dashboardActorWith')) {
      */
     function dashboardActorWith(array $abilities): User
     {
-        foreach (['report', 'viewAll'] as $ability) {
-            Permission::findOrCreate("request-management.{$ability}");
+        foreach (['statistics', 'viewAll'] as $ability) {
+            Permission::findOrCreate(requestReportPermission($ability));
         }
 
         $user = User::factory()->create();
 
         foreach ($abilities as $ability) {
-            $user->givePermissionTo("request-management.{$ability}");
+            $user->givePermissionTo(requestReportPermission($ability));
         }
 
         return $user;
@@ -74,7 +74,7 @@ if (! function_exists('dashboardQuery')) {
 
 it('200s with applied/summary/categories for an authorized actor (AC-001)', function () {
     dashboardCategoryTree();
-    $actor = dashboardActorWith(['report', 'viewAll']);
+    $actor = dashboardActorWith(['statistics', 'viewAll']);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson('/api/request-management/report/dashboard?'.http_build_query(dashboardQuery()))
@@ -90,7 +90,7 @@ it('200s with applied/summary/categories for an authorized actor (AC-001)', func
         ]);
 });
 
-it('403s without request-management.report (AC-001)', function () {
+it('403s without request-statistics.view (AC-001)', function () {
     dashboardCategoryTree();
     $actor = dashboardActorWith([]);
     Sanctum::actingAs($actor);
@@ -106,7 +106,7 @@ it('403s without request-management.report (AC-001)', function () {
 // Spec 0169 D-2: an open bound is accepted and echoed back as null.
 it('accepts an open date bound and echoes it as null', function (array $drop, ?string $from, ?string $to) {
     dashboardCategoryTree();
-    $actor = dashboardActorWith(['report']);
+    $actor = dashboardActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $query = array_diff_key(dashboardQuery(), array_flip($drop));
@@ -123,7 +123,7 @@ it('accepts an open date bound and echoes it as null', function (array $drop, ?s
 
 it('422s when date_to is before date_from (AC-002)', function () {
     dashboardCategoryTree();
-    $actor = dashboardActorWith(['report']);
+    $actor = dashboardActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $query = dashboardQuery(['date_from' => '2026-09-30', 'date_to' => '2026-09-01']);
@@ -135,7 +135,7 @@ it('422s when date_to is before date_from (AC-002)', function () {
 
 it('422s when category_keys is empty (AC-002)', function () {
     dashboardCategoryTree();
-    $actor = dashboardActorWith(['report']);
+    $actor = dashboardActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $query = dashboardQuery(['category_keys' => []]);
@@ -147,7 +147,7 @@ it('422s when category_keys is empty (AC-002)', function () {
 
 it('422s when category_keys has an unknown key, never reaching a query (AC-002)', function () {
     $categories = dashboardCategoryTree();
-    $actor = dashboardActorWith(['report']);
+    $actor = dashboardActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $query = dashboardQuery(['category_keys' => [(string) $categories['gol']->id, 'not-a-real-branch']]);
@@ -159,7 +159,7 @@ it('422s when category_keys has an unknown key, never reaching a query (AC-002)'
 
 it('422s when row_mode is not one of the three values (AC-002)', function () {
     dashboardCategoryTree();
-    $actor = dashboardActorWith(['report']);
+    $actor = dashboardActorWith(['statistics']);
     Sanctum::actingAs($actor);
 
     $query = dashboardQuery(['row_mode' => 'bogus']);
@@ -175,7 +175,7 @@ it('422s when row_mode is not one of the three values (AC-002)', function () {
 
 it('applied reflects exactly the filters received (AC-003)', function () {
     $categories = dashboardCategoryTree();
-    $actor = dashboardActorWith(['report', 'viewAll']);
+    $actor = dashboardActorWith(['statistics', 'viewAll']);
     Sanctum::actingAs($actor);
 
     $selectedKeys = [(string) $categories['gol']->id, (string) $categories['consulenza']->id];
@@ -217,7 +217,7 @@ it('resolves to its own controller, declared before report/{exportRun} (AC-013)'
 
 it('a real HTTP round-trip actually resolves the dashboard, never show(exportRun="dashboard") (AC-013)', function () {
     dashboardCategoryTree();
-    $actor = dashboardActorWith(['report', 'viewAll']);
+    $actor = dashboardActorWith(['statistics', 'viewAll']);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson('/api/request-management/report/dashboard?'.http_build_query(dashboardQuery()))

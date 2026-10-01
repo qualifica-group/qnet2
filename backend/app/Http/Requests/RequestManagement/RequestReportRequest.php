@@ -31,8 +31,9 @@ use Illuminate\Validation\Rule;
  * validated keys to resolved branches, the raw string never touches SQL.
  *
  * Authorization is intentionally NOT handled here (stays in the controller:
- * the `{module}.report` gate), same convention as every other FormRequest of
- * this module (AssignRequestManagerGa1Request et al.).
+ * the `RequestModule::STATISTICS_PERMISSION` gate, spec 0185), same
+ * convention as every other FormRequest of this module
+ * (AssignRequestManagerGa1Request et al.).
  *
  * Spec 0130: the operator/site allow-lists are resolved for the route's OWN
  * RequestModule (RequestModule::fromRequest($this)), so an Iscritti actor
@@ -45,7 +46,7 @@ class RequestReportRequest extends FormRequest
 
     public function authorize(): bool
     {
-        // Authorization handled in the controller (request-management.report).
+        // Authorization handled in the controller (request-statistics.view).
         return true;
     }
 

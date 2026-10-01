@@ -64,6 +64,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'commission-configurations': 'navigation.commissionConfigurations',
   'request-management': 'navigation.requestManagement',
   'enrollee-management': 'navigation.enrolleeManagement',
+  'request-statistics': 'navigation.requestStatistics',
   'reward-types': 'navigation.rewardTypes',
   'reward-statuses': 'navigation.rewardStatuses',
   'rewarded-referents': 'navigation.rewardedReferents',

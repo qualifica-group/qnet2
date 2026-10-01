@@ -6,6 +6,7 @@ use App\Models\OpportunityProductLine;
 use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -68,14 +69,14 @@ if (! function_exists('reportActorWith')) {
      */
     function reportActorWith(array $abilities): User
     {
-        foreach (['report', 'viewAny', 'viewAll'] as $ability) {
-            Permission::findOrCreate("request-management.{$ability}");
+        foreach (['statistics', 'viewAny', 'viewAll'] as $ability) {
+            Permission::findOrCreate(requestReportPermission($ability));
         }
 
         $user = User::factory()->create();
 
         foreach ($abilities as $ability) {
-            $user->givePermissionTo("request-management.{$ability}");
+            $user->givePermissionTo(requestReportPermission($ability));
         }
 
         return $user;
@@ -93,7 +94,7 @@ it('returns only the branches with at least one request in scope, key+label+dept
     reportQuote($categories['gol']);
     // 'autoimpiego', 'yisu', 'autofinanziato' stay empty.
 
-    $actor = reportActorWith(['report', 'viewAll']);
+    $actor = reportActorWith(['statistics', 'viewAll']);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson('/api/request-management/report/categories')->assertOk();
@@ -108,7 +109,7 @@ it('returns only the branches with at least one request in scope, key+label+dept
     ]);
 });
 
-it('403s without request-management.report (AC-026)', function () {
+it('403s without request-statistics.view (AC-026)', function () {
     $actor = reportActorWith([]);
     Sanctum::actingAs($actor);
 
@@ -126,10 +127,10 @@ it('respects the actor scope: an operator of only a Consulenza request sees only
     reportQuote($categories['gol'], User::factory()->create()->id); // someone else's
 
     $actor = User::factory()->create();
-    Permission::findOrCreate('request-management.report');
-    $actor->givePermissionTo('request-management.report');
+    Permission::findOrCreate(RequestModule::STATISTICS_PERMISSION);
+    $actor->givePermissionTo(RequestModule::STATISTICS_PERMISSION);
     // Reuse the SAME account as the operator so the request is in scope.
-    Sanctum::actingAs($operator->givePermissionTo('request-management.report'));
+    Sanctum::actingAs($operator->givePermissionTo(RequestModule::STATISTICS_PERMISSION));
 
     $response = $this->getJson('/api/request-management/report/categories')->assertOk();
 
@@ -138,7 +139,7 @@ it('respects the actor scope: an operator of only a Consulenza request sees only
 
 it('returns an empty list when the actor visibility reaches nothing (AC-027)', function () {
     reportCategoryTree();
-    $actor = reportActorWith(['report']); // no viewAll, no requests of their own
+    $actor = reportActorWith(['statistics']); // no viewAll, no requests of their own
     Sanctum::actingAs($actor);
 
     $response = $this->getJson('/api/request-management/report/categories')->assertOk();
@@ -155,7 +156,7 @@ it('lists a branch whose only request falls outside any future range, all-time (
     $quote = reportQuote($categories['yisu']);
     $quote->opportunity->forceFill(['created_at' => now()->subYears(3)])->save();
 
-    $actor = reportActorWith(['report', 'viewAll']);
+    $actor = reportActorWith(['statistics', 'viewAll']);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson('/api/request-management/report/categories')->assertOk();
@@ -172,7 +173,7 @@ it('lists GOL and, under it, the descendant category the only request is classif
     $child = ProductCategory::factory()->childOf($categories['gol'])->create(['name' => 'GOL - Lombardia']);
     reportQuote($child);
 
-    $actor = reportActorWith(['report', 'viewAll']);
+    $actor = reportActorWith(['statistics', 'viewAll']);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson('/api/request-management/report/categories')->assertOk();

@@ -10,6 +10,7 @@ use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
+use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\Report\ReportBranch;
 use App\Services\RequestManagement\Report\ReportBranchResolver;
 use App\Services\RequestManagement\Report\RequestManagementReportGenerator;
@@ -30,12 +31,12 @@ uses(RefreshDatabase::class);
 if (! function_exists('dynamicReportActor')) {
     function dynamicReportActor(): User
     {
-        foreach (['report', 'viewAll'] as $ability) {
-            Permission::findOrCreate("request-management.{$ability}");
+        foreach (['statistics', 'viewAll'] as $ability) {
+            Permission::findOrCreate(requestReportPermission($ability));
         }
 
         $actor = User::factory()->create();
-        $actor->givePermissionTo(['request-management.report', 'request-management.viewAll']);
+        $actor->givePermissionTo([RequestModule::STATISTICS_PERMISSION, 'request-management.viewAll']);
 
         return $actor;
     }

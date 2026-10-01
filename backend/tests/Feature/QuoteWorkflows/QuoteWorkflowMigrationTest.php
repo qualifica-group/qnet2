@@ -192,9 +192,13 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_09_29_130000_add_created_at_index_to_opportunities_and_registries`
     // (118th), the stress-test sort index, then spec 0179's
     // `2026_09_30_100000_add_fulltext_search_indexes_to_personal_data_and_contacts`
-    // (119th), the quick-search FULLTEXT indexes (a no-op on SQLite).
+    // (119th), the quick-search FULLTEXT indexes (a no-op on SQLite), spec
+    // 0184's `2026_09_30_120000_create_user_category_tab_preferences_table`
+    // (120th), and spec 0185's
+    // `2026_10_01_100000_move_request_report_permissions_to_request_statistics`
+    // (121st), the statistics grant moved onto its own module.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 119]);
+    Artisan::call('migrate:rollback', ['--step' => 121]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

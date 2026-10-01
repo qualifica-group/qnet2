@@ -49,6 +49,7 @@ export const navigation = {
   commissionConfigurations: 'Commission Configurator',
   requestManagement: 'Request Management',
   enrolleeManagement: 'Enrollee Management',
+  requestStatistics: 'Request Management Statistics',
   fieldChangeRequests: 'Change Requests',
   rewards: 'Rewards & Incentives',
   rewardTypes: 'Vouchers, Rewards and Incentives',

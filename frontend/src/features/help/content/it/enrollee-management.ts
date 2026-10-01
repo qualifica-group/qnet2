@@ -4,7 +4,7 @@ const guide: HelpGuide = {
   key: 'enrollee-management',
   title: 'Gestione Iscritti',
   summary:
-    'Gestione Iscritti funziona come Gestione Richieste, con le stesse colonne, filtri, azioni, pannello e statistiche: mostra solo le richieste arrivate a uno stato Validato o Chiuso con esito positivo.',
+    'Gestione Iscritti funziona come Gestione Richieste, con le stesse colonne, filtri e azioni: mostra solo le richieste arrivate a uno stato Validato o Chiuso con esito positivo.',
   sections: [
     {
       id: 'overview',
@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si trova in **Opportunità e Commesse › Gestione Iscritti**. È lo stesso banco di lavoro di **Gestione Richieste**: stesse colonne, filtri, ricerca (dal terzo carattere, per parole che iniziano con quanto scrivi), azioni sulle righe, pannello e statistiche.',
+          text: 'Si trova in **Opportunità e Commesse › Gestione Iscritti**. È lo stesso banco di lavoro di **Gestione Richieste**: stesse colonne, filtri, ricerca (dal terzo carattere, per parole che iniziano con quanto scrivi), azioni sulle righe.',
         },
         {
           type: 'table',
@@ -45,22 +45,11 @@ const guide: HelpGuide = {
     },
     {
       id: 'statistics-differences',
-      title: 'Le statistiche in Gestione Iscritti',
+      title: "Le statistiche non ci sono più",
       blocks: [
         {
           type: 'paragraph',
-          text: 'Il pannello statistiche è lo stesso di Gestione Richieste, con gli stessi filtri e le stesse colonne (vedi la guida di Gestione Richieste per i dettagli). Le differenze:',
-        },
-        {
-          type: 'list',
-          items: [
-            'Conta solo le richieste che oggi sono in uno stato del gruppo **Validato** o **Chiuso con esito positivo**.',
-            'Ha un proprio permesso **Genera report** e filtri memorizzati separati.',
-            'Il file generato si chiama enrollee-management-report-DAL_AL (o -from-DAL / -to-AL con un solo estremo, nessuna data se il periodo è vuoto).',
-            'I numeri delle schede e delle statistiche si aggiornano entro pochi secondi dalle modifiche degli altri utenti; le tue modifiche le vedi subito tornando alla tabella. Il file CSV è sempre calcolato al momento in cui lo generi.',
-            '**N. Nuovi contatti non gestiti** (con o senza periodo) vale sempre 0: nessuna richiesta qui è in stato Aperto.',
-            '**N. Richiami non gestiti** (con o senza periodo) conta solo le richieste in Validato; **N. Potenziali associati** senza periodo conta le richieste che oggi sono in Validato.',
-          ],
+          text: "Le statistiche non sono più disponibili in Gestione Iscritti: tabella senza pannello né pulsante statistiche. Le statistiche sulle richieste hanno una pagina propria, **Statistiche Gestione Richieste** (vedi la relativa guida).",
         },
       ],
     },

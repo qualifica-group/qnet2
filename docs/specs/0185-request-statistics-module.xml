@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0185-request-statistics-module" status="approved" owner="utente" date="2026-10-01">
+
+  <goal>
+    Le statistiche di Gestione Richieste (dashboard spec 0107 con filtri, riquadri, grafici ed esportazione CSV/
+    Excel spec 0106/0108/0112) diventano un modulo separato del menu, "Statistiche Gestione Richieste", con un
+    permesso dedicato. Il pannello statistiche esce dalla tabella di Gestione Richieste e da quella di Gestione
+    Iscritti. I numeri non cambiano: ognuno vede le statistiche del proprio perimetro di visibilita' su Gestione
+    Richieste (tutte, le proprie Sedi, o le proprie richieste).
+  </goal>
+
+  <context>
+    - Oggi: pannello comprimibile `RequestDashboardPanel` sopra la tabella, aperto da `RequestDashboardToggle`,
+      gate `{module}.report` (request-management e enrollee-management, spec 0130).
+    - Endpoint: GET /api/{module}/report/{dashboard,categories,operators,sites}, POST /api/{module}/report,
+      GET /api/{module}/report/{exportRun}[/download]. Aggregati nello scope `RequestManagementScope` dell'attore.
+    - Seeder di produzione: `.report` arriva a Supervisore e Coordinatore commerciale (blocchi ALL_REQUESTS /
+      ALL_ENROLLEES) e al ruolo `admin` (intero catalogo).
+    - D-1 (utente 2026-10-01): un solo modulo, per Gestione Richieste; le statistiche di Gestione Iscritti si
+      eliminano.
+    - D-2 (utente 2026-10-01): il pannello esce dalla tabella Gestione Richieste (spostato, non duplicato).
+    - D-3 (utente 2026-10-01): nuovo permesso dedicato `request-statistics.view`; nel seeder di produzione
+      sostituisce `.report` (chi aveva `.report` ha il nuovo permesso, `.report` non esiste piu').
+  </context>
+
+  <scope>
+    <in>
+      <item>Voce di menu `request-statistics` nel gruppo "Opportunita' e Commesse", subito dopo Gestione Iscritti,
+        rotta `/request-statistics`, permesso `request-statistics.view`, assegnabile dal form Ruoli
+        (`RequestStatisticsAuthorization` senza campi).</item>
+      <item>Tutti gli endpoint report/dashboard autorizzati con `request-statistics.view`; registrati SOLO per
+        `request-management` (le rotte `enrollee-management/report/*` non esistono piu').</item>
+      <item>Abilita' `report` rimossa da RequestManagementPolicy (e quindi da Gestione Iscritti).</item>
+      <item>Migrazione dati: chi (ruolo o utente) aveva `request-management.report` o
+        `enrollee-management.report` riceve `request-statistics.view`; i due permessi vecchi sono eliminati.</item>
+      <item>Seeder di produzione: blocco `REQUEST_STATISTICS` a Supervisore e Coordinatore commerciale; `admin`
+        lo riceve con l'intero catalogo.</item>
+      <item>Frontend: pagina `/request-statistics` con la dashboard sempre visibile (nessun toggle); toggle e
+        pannello rimossi dalla tabella (entrambi i moduli).</item>
+      <item>Guida in-app nuova `request-statistics` IT/EN; guide `request-management`/`enrollee-management`
+        aggiornate; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Qualsiasi cambiamento a numeri, filtri, colonne, formato file o cache della dashboard.</item>
+      <item>Cambio dei path API (restano `/api/request-management/report/*`).</item>
+      <item>Statistiche di Gestione Iscritti in qualunque forma.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <permission name="request-statistics.view">Apre voce di menu, pagina e tutti gli endpoint sotto
+      /api/request-management/report/*. Senza: 403 sugli endpoint, voce di menu assente.</permission>
+    <endpoints>Invariati nella forma (request/response) per `request-management`. `enrollee-management/report/*`:
+      404 (rotta non registrata).</endpoints>
+    <visibility>Invariata: aggregati nello scope `RequestManagementScope` dell'attore su `request-management`
+      (viewAll > viewSite > richieste proprie).</visibility>
+  </data_contract>
+
+  <acceptance>
+    <ac id="AC-001">Utente con `request-statistics.view` e senza `request-management.report`: GET dashboard 200.</ac>
+    <ac id="AC-002">Utente senza `request-statistics.view`: dashboard/categories/operators/sites/report 403.</ac>
+    <ac id="AC-003">GET /api/enrollee-management/report/dashboard: 404.</ac>
+    <ac id="AC-004">`permissions:sync` non crea piu' `*.report`; crea `request-statistics.view`.</ac>
+    <ac id="AC-005">Migrazione: ruolo con `request-management.report` ha `request-statistics.view` dopo up().</ac>
+    <ac id="AC-006">Seeder produzione: Supervisore e Coordinatore hanno `request-statistics.view`; Commerciale,
+      Supervisore didattica, Marketing, Operatore base no.</ac>
+    <ac id="AC-007">Utente con viewSite vede negli aggregati solo le richieste delle proprie Sedi (invariato).</ac>
+    <ac id="AC-008">Il form Ruoli mostra il modulo "Statistiche Gestione Richieste" col permesso `view`.</ac>
+    <ac id="AC-009">Frontend: la tabella Gestione Richieste/Iscritti non mostra piu' il pulsante statistiche;
+      `/request-statistics` mostra la dashboard (filtri, riquadri, export) a chi ha il permesso, altrimenti un
+      messaggio di accesso negato.</ac>
+  </acceptance>
+</spec>

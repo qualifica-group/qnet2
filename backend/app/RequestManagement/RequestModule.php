@@ -39,6 +39,14 @@ enum RequestModule: string
     public const string PRIMARY_SITE_ABILITY = 'viewPrimarySite';
 
     /**
+     * Spec 0185 D-3: the dashboard and its report are the "Statistiche
+     * Gestione Richieste" module, gated by a permission of its OWN rather than
+     * a `{module}.report` ability — the navigation entry declares it, so
+     * `permissions:sync` mints it.
+     */
+    public const string STATISTICS_PERMISSION = 'request-statistics.view';
+
+    /**
      * "{value}.{ability}" — the same concatenation BasePolicy::permission()
      * performs, exposed here so every scope/authorization caller reads the
      * SAME prefix instead of hardcoding `request-management.`/
@@ -80,6 +88,15 @@ enum RequestModule: string
     }
 
     public function allowsCreate(): bool
+    {
+        return $this === self::Requests;
+    }
+
+    /**
+     * Spec 0185 D-1: only Gestione Richieste has statistics; Gestione
+     * Iscritti registers no report/dashboard route at all.
+     */
+    public function hasStatistics(): bool
     {
         return $this === self::Requests;
     }

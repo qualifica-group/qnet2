@@ -28,6 +28,7 @@ use App\Authorization\ReferentsAuthorization;
 use App\Authorization\ReferentTypesAuthorization;
 use App\Authorization\RegistriesAuthorization;
 use App\Authorization\RequestManagementAuthorization;
+use App\Authorization\RequestStatisticsAuthorization;
 use App\Authorization\RewardedReferentsAuthorization;
 use App\Authorization\RewardStatusesAuthorization;
 use App\Authorization\RewardTypesAuthorization;
@@ -107,6 +108,8 @@ return [
         // Spec 0130: "Gestione Iscritti" — same field/action catalogue as
         // request-management, own resource() (see the class docblock).
         'enrollee-management' => EnrolleeManagementAuthorization::class,
+        // Spec 0185: "Statistiche Gestione Richieste" — a view-only module.
+        'request-statistics' => RequestStatisticsAuthorization::class,
         'reward-types' => RewardTypesAuthorization::class,
         'reward-statuses' => RewardStatusesAuthorization::class,
         'rewarded-referents' => RewardedReferentsAuthorization::class,

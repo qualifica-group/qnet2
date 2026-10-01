@@ -132,24 +132,10 @@ class RequestManagementPolicy extends BasePolicy
     }
 
     /**
-     * Resource-level gate for generating/downloading the CSV report (spec
-     * 0106): a standalone capability, independent of `viewAll`/`viewSite`
-     * (which widen ROW visibility) — the report aggregates over the actor's
-     * OWN visibility scope (RequestManagementScope), it grants no wider read
-     * than the grid already does. NOT implied by, nor implying,
-     * `request-management.export` (grid row export): two distinct
-     * capabilities (data_contract, permission.semantics).
-     */
-    public function report(User $user): bool
-    {
-        return $user->can($this->permission('report'));
-    }
-
-    /**
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewDocuments', 'assignOperator', 'assignManagerGa1', 'transferContact', 'appendTeamMember', 'report'];
+        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewDocuments', 'assignOperator', 'assignManagerGa1', 'transferContact', 'appendTeamMember'];
     }
 }

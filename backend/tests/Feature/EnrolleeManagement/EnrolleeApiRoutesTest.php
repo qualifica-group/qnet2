@@ -87,14 +87,20 @@ it('every non-creation enrollee-management route is registered at the router lev
         ->and(routesRegistered('GET', '/api/enrollee-management/product-categories'))->toBeTrue()
         ->and(routesRegistered('POST', '/api/enrollee-management/assign-operators'))->toBeTrue()
         ->and(routesRegistered('POST', '/api/enrollee-management/assign-manager-ga1'))->toBeTrue()
-        ->and(routesRegistered('POST', '/api/enrollee-management/transfer'))->toBeTrue()
-        ->and(routesRegistered('POST', '/api/enrollee-management/report'))->toBeTrue()
-        ->and(routesRegistered('GET', '/api/enrollee-management/report/categories'))->toBeTrue()
-        ->and(routesRegistered('GET', '/api/enrollee-management/report/dashboard'))->toBeTrue()
-        ->and(routesRegistered('GET', '/api/enrollee-management/report/operators'))->toBeTrue()
-        ->and(routesRegistered('GET', '/api/enrollee-management/report/sites'))->toBeTrue()
-        ->and(routesRegistered('GET', '/api/enrollee-management/report/1'))->toBeTrue()
-        ->and(routesRegistered('GET', '/api/enrollee-management/report/1/download'))->toBeTrue();
+        ->and(routesRegistered('POST', '/api/enrollee-management/transfer'))->toBeTrue();
+});
+
+// Spec 0185 D-1 (requirement change of the block above): Gestione Iscritti has
+// no statistics, so none of the report routes is registered for it.
+it('no report route is registered for enrollee-management', function () {
+    expect(routesRegistered('POST', '/api/enrollee-management/report'))->toBeFalse()
+        ->and(routesRegistered('GET', '/api/enrollee-management/report/categories'))->toBeFalse()
+        ->and(routesRegistered('GET', '/api/enrollee-management/report/dashboard'))->toBeFalse()
+        ->and(routesRegistered('GET', '/api/enrollee-management/report/operators'))->toBeFalse()
+        ->and(routesRegistered('GET', '/api/enrollee-management/report/sites'))->toBeFalse()
+        ->and(routesRegistered('GET', '/api/enrollee-management/report/1'))->toBeFalse()
+        ->and(routesRegistered('GET', '/api/enrollee-management/report/1/download'))->toBeFalse()
+        ->and(routesRegistered('GET', '/api/request-management/report/dashboard'))->toBeTrue();
 });
 
 it('DELETE /api/enrollee-management/{quote} actually reaches the controller (super-admin bypass, end-to-end)', function () {

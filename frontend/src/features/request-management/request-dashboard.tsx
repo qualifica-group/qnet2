@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { RequestDashboardData } from '@/features/request-management/dashboard-api'
 import type {
@@ -21,7 +20,6 @@ import {
   isRequestReportQueryReady,
   toRequestReportFilterPayload,
 } from '@/features/request-management/request-report-schema'
-import { useRequestModule } from '@/features/request-management/request-module'
 import { useRequestDashboard } from '@/features/request-management/use-request-dashboard'
 import {
   dashboardCollapseTargets,
@@ -37,12 +35,7 @@ import {
   reconcileSiteKeys,
   useRequestReportFilters,
 } from '@/features/request-management/use-request-report-filters'
-import { statsPanelId } from '@/features/stats/use-stats-panel'
 import type { UseQueryResult } from '@tanstack/react-query'
-
-/** Mirrors `module-stats-panel.tsx`'s own Collapsible height animation. */
-const COLLAPSIBLE_CONTENT_CLASS =
-  'overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up motion-reduce:animate-none'
 
 const SKELETON_GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6'
 const SKELETON_TILE_COUNT = 4
@@ -127,14 +120,14 @@ interface DashboardResultsProps {
 }
 
 /**
- * The three states an open panel can be in (spec 0107 AC-048): loading
+ * The three states the dashboard can be in (spec 0107 AC-048): loading
  * skeleton, a retryable error, and the results — the overall tiles over the
  * union of the selected categories (D-8), then one section per category
  * (rev-3 D-10). Since rev-3 nothing is dropped for being 0, so a section is
  * always rendered for every selected category: an empty week is an answer.
  *
  * Every section, and the two blocks inside it, fold independently; the state
- * is owned by the panel body (one hook for the whole panel) rather than per
+ * is owned by the dashboard (one hook for the whole page) rather than per
  * section, so it survives a section unmounting on a refetch and is persisted
  * in a single storage entry (user directive 2026-09-08).
  */
@@ -162,10 +155,10 @@ function DashboardResults({ query, collapse }: DashboardResultsProps) {
 }
 
 /**
- * The data-fetching body (spec 0107 D-5). Mounted by `<CollapsibleContent>`
- * only while the panel is open, mirroring `ModuleStatsPanelBody`: a
- * closed-at-load panel never mounts this, so nothing here ever runs and no
- * request is issued (AC-042).
+ * Gestione Richieste's statistics dashboard (spec 0107 D-1, moved to its own
+ * page by spec 0185): deliberately NOT `ModuleStatsPanel`/`GET /stats/{domain}`
+ * (spec 0026), which this module never calls. Always rendered; the page that
+ * mounts it is gated by `REQUEST_STATISTICS_PERMISSION`.
  *
  * Owns the APPLIED filters (user directive 2026-09-08), restored from the
  * operator's last session by `useRequestReportFilters`. They are plain state,
@@ -175,9 +168,8 @@ function DashboardResults({ query, collapse }: DashboardResultsProps) {
  * unvalidated input. `RequestDashboardFilterBar` generates the CSV from the
  * same state, which is why nothing else may hold a copy of it.
  */
-function RequestDashboardPanelBody() {
+export function RequestDashboard() {
   const { t } = useTranslation()
-  const module = useRequestModule()
   const { filters, setFilters } = useRequestReportFilters()
   const [filtersOpen, setFiltersOpen] = useState(false)
 
@@ -246,9 +238,8 @@ function RequestDashboardPanelBody() {
   const allExpanded = collapse.areAllOpen(collapseTargets)
 
   return (
-    <div className="flex flex-col gap-4">
+    <section aria-label={t('requestManagement.dashboard.regionLabel')} className="flex flex-col gap-4">
       <RequestDashboardFilterBar
-        reportPermission={module.permission('report')}
         filters={filters}
         payload={payload}
         categories={categories ?? EMPTY_CATEGORIES}
@@ -279,36 +270,6 @@ function RequestDashboardPanelBody() {
         value={filters}
         onApply={setFilters}
       />
-    </div>
-  )
-}
-
-export interface RequestDashboardPanelProps {
-  isOpen: boolean
-}
-
-/**
- * Gestione Richieste' own dashboard panel (spec 0107 D-1): deliberately NOT
- * `ModuleStatsPanel`/`GET /stats/{domain}` (spec 0026), which this module
- * never calls. Opened by the SAME `StatsToggleButton`/`useStatsPanel` every
- * other module uses (`statsPanelId(REQUEST_MANAGEMENT_DOMAIN)` keeps
- * `aria-controls`/`id` in lockstep), wrapped in the same `Collapsible` for a
- * smooth height animation.
- */
-export function RequestDashboardPanel({ isOpen }: RequestDashboardPanelProps) {
-  const { t } = useTranslation()
-  const module = useRequestModule()
-
-  return (
-    <Collapsible open={isOpen} onOpenChange={() => {}}>
-      <CollapsibleContent
-        id={statsPanelId(module.key)}
-        role="region"
-        aria-label={t('requestManagement.dashboard.regionLabel')}
-        className={COLLAPSIBLE_CONTENT_CLASS}
-      >
-        <RequestDashboardPanelBody />
-      </CollapsibleContent>
-    </Collapsible>
+    </section>
   )
 }

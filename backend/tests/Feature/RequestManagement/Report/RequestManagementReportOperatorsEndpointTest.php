@@ -57,14 +57,14 @@ if (! function_exists('operatorsEndpointActor')) {
      */
     function operatorsEndpointActor(array $abilities): User
     {
-        foreach (['report', 'viewAll'] as $ability) {
-            Permission::findOrCreate("request-management.{$ability}");
+        foreach (['statistics', 'viewAll'] as $ability) {
+            Permission::findOrCreate(requestReportPermission($ability));
         }
 
         $user = User::factory()->create();
 
         foreach ($abilities as $ability) {
-            $user->givePermissionTo("request-management.{$ability}");
+            $user->givePermissionTo(requestReportPermission($ability));
         }
 
         return $user;
@@ -138,7 +138,7 @@ it('lists the in-scope GA2 sorted by name, for an authorized actor (AC-010)', fu
     operatorsEndpointQuote($tree['gol'], $zoe->id);
     operatorsEndpointQuote($tree['consulenza'], $ada->id);
 
-    Sanctum::actingAs(operatorsEndpointActor(['report', 'viewAll']));
+    Sanctum::actingAs(operatorsEndpointActor(['statistics', 'viewAll']));
 
     $response = $this->getJson('/api/request-management/report/operators')->assertOk();
 
@@ -148,7 +148,7 @@ it('lists the in-scope GA2 sorted by name, for an authorized actor (AC-010)', fu
     ]);
 });
 
-it('403s without request-management.report (AC-010)', function () {
+it('403s without request-statistics.view (AC-010)', function () {
     operatorsEndpointTree();
     Sanctum::actingAs(operatorsEndpointActor([]));
 
@@ -160,7 +160,7 @@ it('appends "Non assegnato" last, and only when such a request exists (AC-012)',
     $ada = User::factory()->create(['name' => 'Ada Rossi']);
     operatorsEndpointQuote($tree['gol'], $ada->id);
 
-    Sanctum::actingAs(operatorsEndpointActor(['report', 'viewAll']));
+    Sanctum::actingAs(operatorsEndpointActor(['statistics', 'viewAll']));
 
     // Accept-Language drives the locale (SetLocale middleware), so this also
     // proves the label comes from the report's OWN it/ catalogue — the same
@@ -191,7 +191,7 @@ it('is neither date- nor category-filtered (AC-011)', function () {
     operatorsEndpointQuote($tree['gol'], $old->id, '2019-01-01 09:00:00');
     operatorsEndpointQuote($tree['apl'], $apl->id);
 
-    Sanctum::actingAs(operatorsEndpointActor(['report', 'viewAll']));
+    Sanctum::actingAs(operatorsEndpointActor(['statistics', 'viewAll']));
 
     expect(array_column($this->getJson('/api/request-management/report/operators')->json('data.operators'), 'key'))
         ->toBe([(string) $old->id, (string) $apl->id]);
@@ -200,7 +200,7 @@ it('is neither date- nor category-filtered (AC-011)', function () {
 it('never lists an operator outside the actor own perimeter (AC-011)', function () {
     $tree = operatorsEndpointTree();
     $stranger = User::factory()->create(['name' => 'Zzz Estranea']);
-    $actor = operatorsEndpointActor(['report']); // no viewAll: scoped to their own requests
+    $actor = operatorsEndpointActor(['statistics']); // no viewAll: scoped to their own requests
 
     operatorsEndpointQuote($tree['gol'], $stranger->id);
     operatorsEndpointQuote($tree['gol'], $actor->id);
@@ -220,7 +220,7 @@ it('422s on an unknown operator key, on both endpoints (AC-007)', function () {
     $ada = User::factory()->create(['name' => 'Ada Rossi']);
     operatorsEndpointQuote($tree['gol'], $ada->id);
 
-    Sanctum::actingAs(operatorsEndpointActor(['report', 'viewAll']));
+    Sanctum::actingAs(operatorsEndpointActor(['statistics', 'viewAll']));
 
     $keys = [(string) $ada->id, 'not-an-operator'];
 
@@ -237,7 +237,7 @@ it('422s on an unknown operator key, on both endpoints (AC-007)', function () {
 
 it('422s on an empty operator_keys array (AC-007)', function () {
     operatorsEndpointTree();
-    Sanctum::actingAs(operatorsEndpointActor(['report', 'viewAll']));
+    Sanctum::actingAs(operatorsEndpointActor(['statistics', 'viewAll']));
 
     // JSON body only: an empty array CANNOT be expressed in a query string
     // (`http_build_query` drops the key entirely), so on the dashboard's GET
@@ -252,7 +252,7 @@ it('422s on an empty operator_keys array (AC-007)', function () {
 it('422s when a scoped actor names an operator outside their perimeter (AC-008)', function () {
     $tree = operatorsEndpointTree();
     $stranger = User::factory()->create(['name' => 'Zzz Estranea']);
-    $actor = operatorsEndpointActor(['report']); // no viewAll
+    $actor = operatorsEndpointActor(['statistics']); // no viewAll
 
     operatorsEndpointQuote($tree['gol'], $stranger->id);
     operatorsEndpointQuote($tree['gol'], $actor->id);
@@ -273,7 +273,7 @@ it('echoes operator_keys as sent, and null when it was not sent (AC-009)', funct
     $ada = User::factory()->create(['name' => 'Ada Rossi']);
     operatorsEndpointQuote($tree['gol'], $ada->id);
 
-    Sanctum::actingAs(operatorsEndpointActor(['report', 'viewAll']));
+    Sanctum::actingAs(operatorsEndpointActor(['statistics', 'viewAll']));
 
     $selected = [(string) $ada->id, ReportOperatorFilter::UNASSIGNED_KEY];
     operatorsEndpointQuote($tree['gol'], null); // makes "unassigned" a legal key
@@ -292,7 +292,7 @@ it('freezes operator_keys in the run state only when sent (AC-015)', function ()
     $ada = User::factory()->create(['name' => 'Ada Rossi']);
     operatorsEndpointQuote($tree['gol'], $ada->id);
 
-    Sanctum::actingAs(operatorsEndpointActor(['report', 'viewAll']));
+    Sanctum::actingAs(operatorsEndpointActor(['statistics', 'viewAll']));
 
     $this->postJson('/api/request-management/report', operatorsReportPayload(['operator_keys' => [(string) $ada->id]]))
         ->assertCreated();
@@ -312,7 +312,7 @@ it('resolves report/operators to its own action, not to show(exportRun) (AC-013)
     $tree = operatorsEndpointTree();
     operatorsEndpointQuote($tree['gol'], User::factory()->create()->id);
 
-    Sanctum::actingAs(operatorsEndpointActor(['report', 'viewAll']));
+    Sanctum::actingAs(operatorsEndpointActor(['statistics', 'viewAll']));
 
     // A real round-trip: swallowed by the wildcard it would 404 (no such run).
     $this->getJson('/api/request-management/report/operators')

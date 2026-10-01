@@ -82,38 +82,44 @@ foreach (RequestModule::cases() as $module) {
             ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
     }
 
-    // Spec 0106: the CSV report's own create/poll/download endpoints. Same
-    // "declared before the wildcard" rule as every literal segment above.
-    Route::post("{$module->value}/report", [RequestManagementReportController::class, 'store'])
-        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
-    // Spec 0106 rev-2 (D-14): the branch picker's data source. Declared
-    // BEFORE report/{exportRun} below — otherwise this literal segment is
-    // swallowed by that route's own wildcard, resolving to show() with
-    // exportRun="categories".
-    Route::get("{$module->value}/report/categories", [RequestManagementReportController::class, 'categories'])
-        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
-    // Spec 0107 (D-1/D-5): the dashboard's own synchronous endpoint — same
-    // "declared before report/{exportRun}" rule as report/categories above.
-    Route::get("{$module->value}/report/dashboard", RequestManagementDashboardController::class)
-        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    // Spec 0185 D-1: the statistics (dashboard + report) belong to Gestione
+    // Richieste only — Gestione Iscritti registers none of these routes, so
+    // they 404 there instead of answering an unused surface.
+    if ($module->hasStatistics()) {
+        // Spec 0106: the CSV report's own create/poll/download endpoints. Same
+        // "declared before the wildcard" rule as every literal segment above.
+        Route::post("{$module->value}/report", [RequestManagementReportController::class, 'store'])
+            ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+        // Spec 0106 rev-2 (D-14): the branch picker's data source. Declared
+        // BEFORE report/{exportRun} below — otherwise this literal segment is
+        // swallowed by that route's own wildcard, resolving to show() with
+        // exportRun="categories".
+        Route::get("{$module->value}/report/categories", [RequestManagementReportController::class, 'categories'])
+            ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+        // Spec 0107 (D-1/D-5): the dashboard's own synchronous endpoint — same
+        // "declared before report/{exportRun}" rule as report/categories above.
+        Route::get("{$module->value}/report/dashboard", RequestManagementDashboardController::class)
+            ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
 
-    // Spec 0108: the GA2 Operatore the report may be filtered by. Same
-    // "declared before report/{exportRun}" rule as the two literal segments above.
-    Route::get("{$module->value}/report/operators", [RequestManagementReportController::class, 'operators'])
-        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
-    // Spec 0112: the Sede operativa the report may be filtered by. Same
-    // "declared before report/{exportRun}" rule as the three literal segments above.
-    Route::get("{$module->value}/report/sites", [RequestManagementReportController::class, 'sites'])
-        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
-    // ->whereNumber() on top of the declaration order (rev-2 routing_trap):
-    // the order alone works until the file gets reorganised, the constraint
-    // does not.
-    Route::get("{$module->value}/report/{exportRun}", [RequestManagementReportController::class, 'show'])
-        ->whereNumber('exportRun')
-        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
-    Route::get("{$module->value}/report/{exportRun}/download", [RequestManagementReportController::class, 'download'])
-        ->whereNumber('exportRun')
-        ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+        // Spec 0108: the GA2 Operatore the report may be filtered by. Same
+        // "declared before report/{exportRun}" rule as the two literal segments above.
+        Route::get("{$module->value}/report/operators", [RequestManagementReportController::class, 'operators'])
+            ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+        // Spec 0112: the Sede operativa the report may be filtered by. Same
+        // "declared before report/{exportRun}" rule as the three literal segments above.
+        Route::get("{$module->value}/report/sites", [RequestManagementReportController::class, 'sites'])
+            ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+        // ->whereNumber() on top of the declaration order (rev-2 routing_trap):
+        // the order alone works until the file gets reorganised, the constraint
+        // does not.
+        Route::get("{$module->value}/report/{exportRun}", [RequestManagementReportController::class, 'show'])
+            ->whereNumber('exportRun')
+            ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+        Route::get("{$module->value}/report/{exportRun}/download", [RequestManagementReportController::class, 'download'])
+            ->whereNumber('exportRun')
+            ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
+    }
+
     Route::get("{$module->value}/{quote}", [RequestManagementController::class, 'show'])
         ->defaults(RequestModule::ROUTE_DEFAULT, $module->value);
     Route::delete("{$module->value}/{quote}", [RequestManagementController::class, 'destroy'])

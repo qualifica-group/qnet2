@@ -110,8 +110,6 @@ const CATALOGUE_ABILITIES = [
   // the squadra's append-only state in the work panel).
   'appendTeamMember',
   'impersonate',
-  // Spec 0106: `request-management.report` (generate/download the CSV report).
-  'report',
   // Spec 0116: `tasks.manageAll`/`tasks.complete`/`tasks.block` (the record-role
   // matrix's four new abilities; `validate` is already listed above).
   'manageAll',

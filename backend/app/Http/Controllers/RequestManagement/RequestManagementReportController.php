@@ -38,14 +38,14 @@ use Throwable;
  *
  * Spec 0130: every route below carries its own RequestModule
  * (routes/api/request-management.php's own loop), resolved here via
- * RequestModule::fromRequest() — never from client input. The gate is
- * `$module->permission('report')` and the run's own `resource` is
- * `"{$module->value}-report"`: for RequestModule::Requests that is the
- * SAME `'request-management-report'` literal every existing test asserts
- * (parity), and for Enrollees it is `'enrollee-management-report'` — an
- * ExportRun created by one module's `report` route can never be read back
- * through the other (assertOwnedRun below), which is what keeps AC-009's
- * "an exportRun created by a module is not readable by the other" true.
+ * RequestModule::fromRequest() — never from client input. The run's own
+ * `resource` is `"{$module->value}-report"`, the
+ * `'request-management-report'` literal every test asserts.
+ *
+ * Spec 0185: the routes exist only for a module with statistics
+ * (`RequestModule::hasStatistics()`, Gestione Richieste alone), and the gate
+ * is the "Statistiche Gestione Richieste" module's own
+ * `RequestModule::STATISTICS_PERMISSION`.
  */
 class RequestManagementReportController extends BaseApiController
 {
@@ -68,7 +68,7 @@ class RequestManagementReportController extends BaseApiController
             $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can($module->permission('report')), 403);
+            abort_unless($actor->can(RequestModule::STATISTICS_PERMISSION), 403);
 
             return $this->ok(['categories' => $this->cache->remember(
                 $this->availabilityKey('categories', $actor, $module),
@@ -91,7 +91,7 @@ class RequestManagementReportController extends BaseApiController
             $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can($module->permission('report')), 403);
+            abort_unless($actor->can(RequestModule::STATISTICS_PERMISSION), 403);
 
             return $this->ok(['operators' => $this->cache->remember(
                 $this->availabilityKey('operators', $actor, $module),
@@ -115,7 +115,7 @@ class RequestManagementReportController extends BaseApiController
             $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can($module->permission('report')), 403);
+            abort_unless($actor->can(RequestModule::STATISTICS_PERMISSION), 403);
 
             return $this->ok(['sites' => $this->cache->remember(
                 $this->availabilityKey('sites', $actor, $module),
@@ -137,7 +137,7 @@ class RequestManagementReportController extends BaseApiController
             $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can($module->permission('report')), 403);
+            abort_unless($actor->can(RequestModule::STATISTICS_PERMISSION), 403);
 
             $dateFrom = $request->dateFrom();
             $dateTo = $request->dateTo();
@@ -167,12 +167,6 @@ class RequestManagementReportController extends BaseApiController
                     // Same shape, same reason, for the Sede selection (spec
                     // 0112 D-4/AC-014).
                     ...($siteKeys === null ? [] : ['site_keys' => $siteKeys]),
-                    // Spec 0130: written ONLY for a non-default module — a run
-                    // frozen before this spec, or created under
-                    // request-management, has no such key, and the job reads
-                    // its absence as RequestModule::Requests (same optional-key
-                    // convention as operator_keys/site_keys above).
-                    ...($module === RequestModule::Requests ? [] : ['module' => $module->value]),
                 ],
             ]);
 
@@ -192,7 +186,7 @@ class RequestManagementReportController extends BaseApiController
     {
         try {
             $module = RequestModule::fromRequest($request);
-            abort_unless($request->user()->can($module->permission('report')), 403);
+            abort_unless($request->user()->can(RequestModule::STATISTICS_PERMISSION), 403);
             $this->assertOwnedRun($exportRun, $request->user(), $module);
 
             return $this->ok(['export_run' => new RequestManagementReportRunResource($exportRun)]);
@@ -209,7 +203,7 @@ class RequestManagementReportController extends BaseApiController
     {
         try {
             $module = RequestModule::fromRequest($request);
-            abort_unless($request->user()->can($module->permission('report')), 403);
+            abort_unless($request->user()->can(RequestModule::STATISTICS_PERMISSION), 403);
             $this->assertOwnedRun($exportRun, $request->user(), $module);
             $this->assertHasFile($exportRun);
 

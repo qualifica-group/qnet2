@@ -72,12 +72,12 @@ it('seeds every roster account, its role and its anagrafica, and converges on a 
             expect($user->can("enrollee-management.{$ability}"))->toBeTrue("{$user->email}: {$ability}");
         }
 
-        foreach (['update', 'viewAll', 'export', 'report'] as $ability) {
+        foreach (['update', 'viewAll', 'export'] as $ability) {
             expect($user->can("enrollee-management.{$ability}"))->toBeFalse("{$user->email}: {$ability}");
         }
 
         expect($user->can('request-management.viewSite'))->toBeFalse()
-            ->and($user->can('request-management.report'))->toBeFalse()
+            ->and($user->can('request-statistics.view'))->toBeFalse()
             ->and($user->can('enrollee-management.viewSite'))->toBeFalse("{$user->email}: viewSite")
             ->and($user->can('enrollee-management.viewPrimarySite'))->toBeTrue("{$user->email}: viewPrimarySite");
     }
@@ -87,13 +87,14 @@ it('seeds every roster account, its role and its anagrafica, and converges on a 
     expect($teaching->employment->productLines)->toBeEmpty()
         ->and($teaching->can('request-management.viewSite'))->toBeTrue()
         ->and($teaching->can('request-management.viewAll'))->toBeFalse()
+        ->and($teaching->can('request-statistics.view'))->toBeFalse()
         ->and($teaching->can('enrollee-management.viewSite'))->toBeTrue();
 
     // was: 'gives the coordinator unrestricted requests without the field-change-requests page'
     $coordinator = User::query()->where('email', 'michela.fabozzi@qualificagroup.com')->firstOrFail();
 
     expect($coordinator->can('request-management.viewAll'))->toBeTrue()
-        ->and($coordinator->can('request-management.report'))->toBeTrue()
+        ->and($coordinator->can('request-statistics.view'))->toBeTrue()
         ->and($coordinator->can('leads.viewAny'))->toBeTrue()
         ->and($coordinator->can('field-change-requests.view'))->toBeFalse()
         ->and($coordinator->can('field-change-requests.manage'))->toBeFalse();

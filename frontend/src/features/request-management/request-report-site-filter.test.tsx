@@ -3,7 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { RequestDashboardPanel } from '@/features/request-management/request-dashboard-panel'
+import { RequestDashboard } from '@/features/request-management/request-dashboard'
 import type { RequestReportCategory, RequestReportSite } from '@/features/request-management/report-api'
 import type { RequestDashboardData } from '@/features/request-management/dashboard-api'
 
@@ -90,7 +90,7 @@ function wrapper() {
 
 /** Mounts the open panel and opens the filter sheet. */
 function renderPanel() {
-  render(<RequestDashboardPanel isOpen />, { wrapper: wrapper() })
+  render(<RequestDashboard />, { wrapper: wrapper() })
 }
 
 async function openFilters() {

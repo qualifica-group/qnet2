@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import i18n from '@/i18n'
-import { RequestDashboardPanel } from '@/features/request-management/request-dashboard-panel'
+import { RequestDashboard } from '@/features/request-management/request-dashboard'
 import type { RequestReportCategory } from '@/features/request-management/report-api'
 import type { RequestDashboardData } from '@/features/request-management/dashboard-api'
 import { ENROLLEE_MODULE, RequestModuleProvider } from '@/features/request-management/request-module'
@@ -130,8 +130,8 @@ function wrapper() {
   )
 }
 
-function renderPanel(isOpen: boolean) {
-  return render(<RequestDashboardPanel isOpen={isOpen} />, { wrapper: wrapper() })
+function renderDashboard() {
+  return render(<RequestDashboard />, { wrapper: wrapper() })
 }
 
 /** Opens the shared filter sheet, then its branch picker, and waits for the branch checkboxes. */
@@ -146,16 +146,16 @@ function appliedChips() {
   return within(screen.getByRole('list', { name: 'Applied filters' }))
 }
 
-describe('RequestDashboardPanel', () => {
-  it('issues no request while the panel is closed (AC-042)', () => {
-    renderPanel(false)
+describe('RequestDashboard', () => {
+  it('renders an always-visible labelled region and fetches right away (spec 0185)', async () => {
+    renderDashboard()
 
-    expect(fetchRequestManagementReportCategoriesMock).not.toHaveBeenCalled()
-    expect(fetchRequestManagementDashboardMock).not.toHaveBeenCalled()
+    expect(screen.getByRole('region', { name: 'Request Management dashboard' })).toBeInTheDocument()
+    await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalled())
   })
 
   it('shows the applied filters as a summary instead of the controls (user directive 2026-09-08)', async () => {
-    renderPanel(true)
+    renderDashboard()
 
     await waitFor(() => expect(appliedChips().getByText('All categories')).toBeInTheDocument())
     expect(appliedChips().getByText('Everything')).toBeInTheDocument()
@@ -176,7 +176,7 @@ describe('RequestDashboardPanel', () => {
       }),
     )
 
-    renderPanel(true)
+    renderDashboard()
 
     await waitFor(() =>
       expect(fetchRequestManagementDashboardMock).toHaveBeenCalledWith('/request-management', {
@@ -191,7 +191,7 @@ describe('RequestDashboardPanel', () => {
   })
 
   it('prefills the same defaults as the CSV modal once opened (AC-043)', async () => {
-    renderPanel(true)
+    renderDashboard()
 
     const gol = await openFilters()
     expect(gol).toBeChecked()
@@ -206,7 +206,7 @@ describe('RequestDashboardPanel', () => {
   })
 
   it('fetches the dashboard on the seeded filters, and refetches on an applied change (AC-044)', async () => {
-    renderPanel(true)
+    renderDashboard()
 
     await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(1))
     const initialQuery = fetchRequestManagementDashboardMock.mock.calls[0][1]
@@ -229,7 +229,7 @@ describe('RequestDashboardPanel', () => {
   })
 
   it('blocks the fetch and shows the validation error when every branch is deselected (AC-044)', async () => {
-    renderPanel(true)
+    renderDashboard()
     const gol = await openFilters()
     await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(1))
 
@@ -251,7 +251,7 @@ describe('RequestDashboardPanel', () => {
       }),
     )
 
-    const { container } = renderPanel(true)
+    const { container } = renderDashboard()
 
     await waitFor(() => expect(container.querySelector('[data-slot="skeleton"]')).toBeInTheDocument())
 
@@ -267,7 +267,7 @@ describe('RequestDashboardPanel', () => {
   it('shows a retryable error when the dashboard fetch fails (AC-048)', async () => {
     fetchRequestManagementDashboardMock.mockRejectedValueOnce(new Error('network')).mockResolvedValue(dashboardData())
 
-    renderPanel(true)
+    renderDashboard()
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('Unable to load the dashboard because of a server error.')
@@ -288,7 +288,7 @@ describe('RequestDashboardPanel', () => {
       new AxiosError('failed', undefined, undefined, undefined, response as never),
     )
 
-    renderPanel(true)
+    renderDashboard()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(message)
   })
@@ -302,7 +302,7 @@ describe('RequestDashboardPanel', () => {
     )
     fetchRequestManagementReportCategoriesMock.mockResolvedValue([])
 
-    renderPanel(true)
+    renderDashboard()
 
     expect(await screen.findByRole('status')).toHaveTextContent('there are no requests in the categories')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -315,7 +315,7 @@ describe('RequestDashboardPanel', () => {
       JSON.stringify({ date_from: '2026-03-02', date_to: '2026-03-06', category_keys: ['retired'], row_mode: 'all' }),
     )
 
-    renderPanel(true)
+    renderDashboard()
 
     await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalled())
     for (const [, query] of fetchRequestManagementDashboardMock.mock.calls) {
@@ -326,7 +326,7 @@ describe('RequestDashboardPanel', () => {
   it('shows a retryable error when the category list fails to load', async () => {
     fetchRequestManagementReportCategoriesMock.mockRejectedValueOnce(new Error('network'))
 
-    renderPanel(true)
+    renderDashboard()
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load categories.')
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
@@ -341,7 +341,7 @@ describe('RequestDashboardPanel', () => {
       }),
     )
 
-    renderPanel(true)
+    renderDashboard()
 
     // Spec 0141: a reportable category with no column configured has neither
     // tiles nor charts — both blocks fold to their own compact empty notice.
@@ -350,7 +350,7 @@ describe('RequestDashboardPanel', () => {
   })
 
   it('renders a section per category, with only the columns THAT category configures, zeros included (spec 0141 D-3/D-5)', async () => {
-    renderPanel(true)
+    renderDashboard()
 
     // Overall tiles first, then one section per selected category.
     const headings = await screen.findAllByRole('heading', { level: 2 })
@@ -374,7 +374,7 @@ describe('RequestDashboardPanel', () => {
   })
 
   it('opens on the tiles and keeps the charts folded away (user directive 2026-09-08)', async () => {
-    renderPanel(true)
+    renderDashboard()
 
     const gol = await screen.findByRole('region', { name: 'GOL' })
 
@@ -385,7 +385,7 @@ describe('RequestDashboardPanel', () => {
   })
 
   it('persists every collapse toggle and restores it on the next mount (user directive 2026-09-08)', async () => {
-    const { unmount } = renderPanel(true)
+    const { unmount } = renderDashboard()
 
     const gol = await screen.findByRole('region', { name: 'GOL' })
     fireEvent.click(within(gol).getByRole('button', { name: 'Summary' })) // fold the tiles
@@ -396,7 +396,7 @@ describe('RequestDashboardPanel', () => {
     )
     unmount()
 
-    renderPanel(true)
+    renderDashboard()
 
     const restored = await screen.findByRole('region', { name: 'GOL' })
     expect(within(restored).getByRole('button', { name: 'GOL' })).toHaveAttribute('aria-expanded', 'false')
@@ -410,7 +410,7 @@ describe('RequestDashboardPanel', () => {
   })
 
   it('expands every section and block at once, charts included, and persists it', async () => {
-    const { unmount } = renderPanel(true)
+    const { unmount } = renderDashboard()
 
     const gol = await screen.findByRole('region', { name: 'GOL' })
     fireEvent.click(within(gol).getByRole('button', { name: 'GOL' })) // fold one section by hand
@@ -426,7 +426,7 @@ describe('RequestDashboardPanel', () => {
     expect(screen.getByRole('button', { name: 'Collapse all' })).toBeInTheDocument()
     unmount()
 
-    renderPanel(true)
+    renderDashboard()
 
     const restored = await screen.findByRole('region', { name: 'GOL' })
     expect(within(restored).getByRole('button', { name: 'Charts (1)' })).toHaveAttribute('aria-expanded', 'true')
@@ -436,7 +436,7 @@ describe('RequestDashboardPanel', () => {
   it('offers the same expand-all in Gestione Iscritti, remembered apart from Gestione Richieste', async () => {
     render(
       <RequestModuleProvider module={ENROLLEE_MODULE}>
-        <RequestDashboardPanel isOpen />
+        <RequestDashboard />
       </RequestModuleProvider>,
       { wrapper: wrapper() },
     )
@@ -450,7 +450,7 @@ describe('RequestDashboardPanel', () => {
   })
 
   it('collapses every section once everything is open, and reopening one shows its content', async () => {
-    renderPanel(true)
+    renderDashboard()
 
     await screen.findByRole('region', { name: 'GOL' })
     fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))

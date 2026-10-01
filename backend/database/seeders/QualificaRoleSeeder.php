@@ -117,6 +117,7 @@ class QualificaRoleSeeder extends Seeder
             Catalogue::USERS_AND_ROLES => in_array($resource, Catalogue::USERS_AND_ROLES_MODULES, true)
                 && ! in_array($ability, Catalogue::USERS_AND_ROLES_DENIED_ABILITIES, true),
             Catalogue::SITE_REQUESTS => $permission === Catalogue::REQUEST_MODULE.'.viewSite',
+            Catalogue::REQUEST_STATISTICS => $permission === RequestModule::STATISTICS_PERMISSION,
             Catalogue::FIELD_CHANGE_REVIEW => $resource === Catalogue::FIELD_CHANGE_MODULE,
             Catalogue::ALL_ENROLLEES => $resource === Catalogue::ENROLLEE_MODULE,
             Catalogue::ENROLLEES_READ => $resource === Catalogue::ENROLLEE_MODULE

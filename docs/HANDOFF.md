@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0185 MODULO "STATISTICHE GESTIONE RICHIESTE" — VERDE, NON COMMITTATO (2026-10-01)
+
+- Spec `docs/specs/0185-request-statistics-module.xml` (D-1 un solo modulo, statistiche di Gestione Iscritti
+  eliminate; D-2 pannello tolto dalla tabella; D-3 permesso dedicato `request-statistics.view` che SOSTITUISCE
+  `{module}.report`). Numeri, filtri, cache e path API invariati (`/api/request-management/report/*`).
+- BACKEND: voce menu `request-statistics` (gruppo opportunities, dopo Iscritti, icona `chart-column`, rotta
+  `/request-statistics`); `RequestStatisticsAuthorization` (nessun campo) registrata in `config/authorization.php`
+  per renderla assegnabile dal form Ruoli; `RequestModule::STATISTICS_PERMISSION` + `hasStatistics()` (solo Requests):
+  le rotte report sono registrate solo per `request-management` (Iscritti 404/405); controller dashboard/report
+  autorizzano con la costante; ability `report` rimossa da `RequestManagementPolicy` (e quindi Iscritti).
+  Migrazione `2026_10_01_100000_move_request_report_permissions_to_request_statistics` (ruoli/utenti con
+  `request-management.report` o `enrollee-management.report` ricevono il nuovo permesso, i vecchi sono eliminati;
+  **da eseguire `php artisan migrate`**). Seeder produzione: blocco `REQUEST_STATISTICS` a Supervisore e Coordinatore
+  commerciale (`admin` lo ha con l'intero catalogo). `OperatorRoleCatalogue.php` a 494 righe (vicino al limite 500).
+- FRONTEND: pagina `pages/request-statistics-page.tsx` (`REQUEST_STATISTICS_PERMISSION` in `request-management/types.ts`);
+  `request-dashboard-panel.tsx` -> `request-dashboard.tsx` (`RequestDashboard`, sempre visibile); toggle e pannello
+  tolti da `RequestManagementTable` (Richieste e Iscritti); `reportPermission` tolto dalla filter bar; label permesso
+  `report` rimossa da `*-permissions.ts`. Guida in-app nuova `request-statistics` IT/EN; `request-management` ->
+  sezione puntatore `statistics-moved`; `enrollee-management` -> `statistics-differences` dice che non ci sono piu'.
+  Manuale Claude Docs aggiornato (sezione "Statistiche Gestione Richieste", tolta "Statistiche in Gestione Iscritti").
+- Test con requisito cambiato (dichiarati): helper report -> pseudo-ability `statistics` (`requestReportPermission()` in
+  `tests/Helpers/RequestManagementHelpers.php`); `EnrolleeReportTest` riscritto (rotte assenti); conteggi abilita'
+  Iscritti 16->15; `QuoteWorkflowMigrationTest` step 119->121 (mancava anche la migrazione della 0184).
+  Nuovo `RequestStatisticsModuleTest` (AC-001..008). Toggle/permission test FE cancellati; nuovo test pagina.
+- Verifica: Pest completo 9074 pass (1 flaky `DemoOpportunitySeederTest`, verde 3/3 da solo); Pint pulito; Vitest
+  completo 863 file/6603 test verdi; ESLint pulito; `tsc -b --force` EXIT 0. Non verificato a schermo nel browser.
+- Nota: le cancellazioni dei 3 file FE del toggle sono gia' nell'indice git (`git rm` del teammate), nessun commit.
+  HANDOFF e' ~340 KB, ben oltre il limite di 50 KB: va archiviato in `docs/handoff-archive/`.
+
 ## SPEC 0184 CATEGORIE PREFERITE NELLO STRIP (GESTIONE RICHIESTE/ISCRITTI) — VERDE, NON COMMITTATO (2026-09-30)
 
 - Spec `docs/specs/0184-request-category-tab-favorites.xml` (D-1 salvataggio sull'account; D-2 preferite in cima +

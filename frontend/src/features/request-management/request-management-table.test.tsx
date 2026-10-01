@@ -221,6 +221,14 @@ describe('RequestManagementTable (spec 0049 AC-060)', () => {
     expect(capturedOnAction).not.toBeNull()
   })
 
+  it('no longer renders the statistics toggle or panel, even with the statistics permission (spec 0185)', () => {
+    canMock.mockReturnValue(true)
+    renderTable()
+
+    expect(screen.queryByRole('button', { name: 'Show statistics' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Request Management dashboard' })).not.toBeInTheDocument()
+  })
+
   it('navigates to the deep-link page on the view action in page mode', async () => {
     requestManagementOpenMode = 'page'
     renderTable()

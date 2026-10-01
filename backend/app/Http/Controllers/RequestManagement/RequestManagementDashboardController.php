@@ -24,8 +24,9 @@ use Throwable;
  * polling), deliberately not an extension of the generic stats framework
  * (spec 0026, D-1 — `StatsDefinition::widgets()` takes no parameters and
  * would need every one of its 14 domains touched for a need only this
- * module has). Reuses the `{module}.report` permission verbatim (D-6) —
- * same aggregates as the CSV, no separate grant.
+ * module has). Same gate as the CSV (D-6) — same aggregates, no separate
+ * grant — which spec 0185 made the "Statistiche Gestione Richieste" module's
+ * own `RequestModule::STATISTICS_PERMISSION`.
  *
  * Spec 0130: the route carries its own RequestModule
  * (routes/api/request-management.php's own loop), resolved here via
@@ -43,7 +44,7 @@ class RequestManagementDashboardController extends BaseApiController
             $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can($module->permission('report')), 403);
+            abort_unless($actor->can(RequestModule::STATISTICS_PERMISSION), 403);
 
             $dateFrom = $request->dateFrom();
             $dateTo = $request->dateTo();

@@ -25,6 +25,7 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'contract-statuses',
   'contracts',
   'request-management',
+  'request-statistics',
   'field-change-requests',
   'enrollee-management',
   'tasks',

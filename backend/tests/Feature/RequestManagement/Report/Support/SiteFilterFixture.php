@@ -150,16 +150,16 @@ final class SiteFilterFixture
     /**
      * @param  array<int, string>  $abilities
      */
-    public static function actor(array $abilities = ['report', 'viewAll'], string $name = 'Attore Report'): User
+    public static function actor(array $abilities = ['statistics', 'viewAll'], string $name = 'Attore Report'): User
     {
-        foreach (['report', 'viewAll', 'viewSite'] as $ability) {
-            Permission::findOrCreate("request-management.{$ability}");
+        foreach (['statistics', 'viewAll', 'viewSite'] as $ability) {
+            Permission::findOrCreate(requestReportPermission($ability));
         }
 
         $actor = User::factory()->create(['name' => $name]);
 
         foreach ($abilities as $ability) {
-            $actor->givePermissionTo("request-management.{$ability}");
+            $actor->givePermissionTo(requestReportPermission($ability));
         }
 
         return $actor;

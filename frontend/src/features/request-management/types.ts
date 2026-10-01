@@ -21,6 +21,9 @@ import type { RewardAssignmentRef } from '@/features/rewards/types'
 /** Table/stats domain key of this module, shared by the table adapter. */
 export const REQUEST_MANAGEMENT_DOMAIN = 'request-management'
 
+/** Permission gating the statistics page and every `/request-management/report/*` endpoint (spec 0185). */
+export const REQUEST_STATISTICS_PERMISSION = 'request-statistics.view'
+
 /** Position-keyed G.A. label overrides (spec 0080), string keys "1".."4" — the wire shape of `manager_labels`. */
 export type ManagerLabels = Record<string, string>
 

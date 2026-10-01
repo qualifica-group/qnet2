@@ -40,6 +40,7 @@ import {
   LayoutTemplate,
   Mail,
   FolderArchive,
+  ChartColumn,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -96,6 +97,7 @@ const iconMap: Record<string, LucideIcon> = {
   // Spec 0175: "Modelli email" / "Modelli documenti" under Configurazione.
   mail: Mail,
   'folder-archive': FolderArchive,
+  'chart-column': ChartColumn,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

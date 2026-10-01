@@ -80,7 +80,7 @@ it('offers no Sede to an actor who sees no request (AC-009)', function () {
 
     // Scoped actor (no viewAll, no viewSite): the only request belongs to
     // someone else, so the Sede behind it is not theirs to filter by.
-    Sanctum::actingAs(Fixture::actor(abilities: ['report'], name: 'Attore Ristretto'));
+    Sanctum::actingAs(Fixture::actor(abilities: ['statistics'], name: 'Attore Ristretto'));
 
     expect($this->getJson('/api/request-management/report/sites')->assertOk()->json('data.sites'))->toBe([]);
 });
@@ -115,7 +115,7 @@ it('tags every GA2 option with the keys of its Sedi, physical and remote alike',
 // AC-010 — authorization and the routing trap
 // ---------------------------------------------------------------------------
 
-it('403s without request-management.report (AC-010)', function () {
+it('403s without request-statistics.view (AC-010)', function () {
     Fixture::categories();
     Sanctum::actingAs(Fixture::actor(abilities: []));
 

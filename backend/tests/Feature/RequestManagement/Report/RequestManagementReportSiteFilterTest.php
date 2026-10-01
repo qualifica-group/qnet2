@@ -98,7 +98,7 @@ it('counts a request once whichever of its GA2 two Sedi is selected (AC-004)', f
 
     foreach (['a' => [$siteA], 'b' => [$siteB], 'both' => [$siteA, $siteB]] as $case => $sites) {
         $rows = Fixture::csv(
-            Fixture::actor(abilities: ['report', 'viewAll'], name: "Attore {$case}"),
+            Fixture::actor(abilities: ['statistics', 'viewAll'], name: "Attore {$case}"),
             RequestManagementReportRowMode::All,
             ReportSiteFilter::fromKeys(array_map(static fn (OperationalSite $site): string => (string) $site->id, $sites)),
             file: "duo-{$case}.csv",
@@ -184,7 +184,7 @@ it('never reveals a request the actor cannot see, even in a Sede they belong to 
     $categories = Fixture::categories();
     $siteA = Fixture::site('Via Alfa 1', 'Frattamaggiore');
 
-    $actor = Fixture::actor(abilities: ['report']); // no viewAll, no viewSite: only their own
+    $actor = Fixture::actor(abilities: ['statistics']); // no viewAll, no viewSite: only their own
     Fixture::employ($actor, $siteA);
 
     $stranger = Fixture::operator('Zzz Estranea', $siteA);

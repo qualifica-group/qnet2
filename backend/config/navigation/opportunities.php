@@ -131,5 +131,18 @@ return [
             'route' => '/enrollee-management',
             'permission' => 'enrollee-management.view',
         ],
+        [
+            // Statistiche Gestione Richieste (spec 0185): the request
+            // dashboard and its CSV/Excel report, moved out of the work panel
+            // into a module of its own. Gated by its OWN permission (D-3),
+            // never `request-management.*`: a direct child of the group so the
+            // Role form lists it as a module (PermissionCatalogueBuilder only
+            // reads a group's direct children).
+            'key' => 'request-statistics',
+            'label' => 'navigation.requestStatistics',
+            'icon' => 'chart-column',
+            'route' => '/request-statistics',
+            'permission' => 'request-statistics.view',
+        ],
     ],
 ];

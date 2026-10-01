@@ -60,14 +60,20 @@ final class OperatorRoleCatalogue
     /** Lead -> Opportunita' conversion, without the Opportunita' module itself. */
     public const string LEAD_CONVERSION = 'lead-conversion';
 
-    /** "Gestione Richieste" unrestricted: every request, report included. */
+    /** "Gestione Richieste" unrestricted: every request (the statistics are REQUEST_STATISTICS). */
     public const string ALL_REQUESTS = 'all-requests';
 
-    /** "Gestione Richieste: accesso ai soli contatti che gestiscono", no report. */
+    /** "Gestione Richieste: accesso ai soli contatti che gestiscono", no statistics. */
     public const string OWN_REQUESTS = 'own-requests';
 
     /** Tier-3 visibility (spec 0105): the requests of the user's own Sedi. */
     public const string SITE_REQUESTS = 'site-requests';
+
+    /**
+     * "Statistiche Gestione Richieste" (spec 0185 D-3): the dashboard and its
+     * report, held by exactly the roles that held the former `.report`.
+     */
+    public const string REQUEST_STATISTICS = 'request-statistics';
 
     /** "prodotti + categorie prodotti + anagrafiche + referenti", viewed and edited. */
     public const string CATALOG_AND_REGISTRIES = 'catalog-and-registries';
@@ -149,9 +155,9 @@ final class OperatorRoleCatalogue
         self::SUPERVISOR_ROLE => [
             'description' => 'Supervisore commerciale',
             'blocks' => [
-                self::MARKETING, self::LEAD_CONVERSION, self::ALL_REQUESTS, self::FIELD_CHANGE_REVIEW,
-                self::CATALOG_AND_REGISTRIES, self::STATUS_CONFIGURATOR, self::REWARDS, self::ALL_ENROLLEES,
-                self::USERS_AND_ROLES,
+                self::MARKETING, self::LEAD_CONVERSION, self::ALL_REQUESTS, self::REQUEST_STATISTICS,
+                self::FIELD_CHANGE_REVIEW, self::CATALOG_AND_REGISTRIES, self::STATUS_CONFIGURATOR, self::REWARDS,
+                self::ALL_ENROLLEES, self::USERS_AND_ROLES,
             ],
         ],
         // The CSV's "( no richieste modifica )", and no status configurator nor
@@ -159,7 +165,10 @@ final class OperatorRoleCatalogue
         // have nothing to propose.
         self::COORDINATOR_ROLE => [
             'description' => 'Coordinatore commerciale',
-            'blocks' => [self::MARKETING, self::LEAD_CONVERSION, self::ALL_REQUESTS, self::CATALOG_AND_REGISTRIES, self::ALL_ENROLLEES],
+            'blocks' => [
+                self::MARKETING, self::LEAD_CONVERSION, self::ALL_REQUESTS, self::REQUEST_STATISTICS,
+                self::CATALOG_AND_REGISTRIES, self::ALL_ENROLLEES,
+            ],
         ],
         self::MARKETING_ROLE => [
             'description' => 'Marketing',
@@ -430,8 +439,11 @@ final class OperatorRoleCatalogue
      *    either grant widens the D-3 scoping (RequestManagementScope);
      *  - `updateSource` (spec 0078, D-1): they propose the Fonte instead;
      *  - `assignOperator` (user directive 2026-08-03): the create form's
-     *    Operatore and the bulk assign endpoint;
-     *  - `report` (Mansionario 2026-09-15, "no report").
+     *    Operatore and the bulk assign endpoint.
+     *
+     * The statistics ("no report", Mansionario 2026-09-15) are a module of
+     * their own since spec 0185: these roles simply do not hold
+     * REQUEST_STATISTICS.
      *
      * `appendTeamMember` stays granted (user directive 2026-09-08), paired with
      * the read-only `manager_slots` below.
@@ -444,7 +456,6 @@ final class OperatorRoleCatalogue
         'viewSite',
         'updateSource',
         'assignOperator',
-        'report',
     ];
 
     /**

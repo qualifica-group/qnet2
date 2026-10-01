@@ -20,14 +20,14 @@ if (! function_exists('reportActorWith')) {
      */
     function reportActorWith(array $abilities): User
     {
-        foreach (['report', 'viewAny', 'viewAll'] as $ability) {
-            Permission::findOrCreate("request-management.{$ability}");
+        foreach (['statistics', 'viewAny', 'viewAll'] as $ability) {
+            Permission::findOrCreate(requestReportPermission($ability));
         }
 
         $user = User::factory()->create();
 
         foreach ($abilities as $ability) {
-            $user->givePermissionTo("request-management.{$ability}");
+            $user->givePermissionTo(requestReportPermission($ability));
         }
 
         return $user;
@@ -39,7 +39,7 @@ if (! function_exists('reportActorWith')) {
 // ---------------------------------------------------------------------------
 
 it('200s with the current status while processing', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     $run = ExportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'request-management-report']);
     Sanctum::actingAs($actor);
 
@@ -50,7 +50,7 @@ it('200s with the current status while processing', function () {
         ->assertJsonMissingPath('data.export_run.file_path');
 });
 
-it('403s without request-management.report', function () {
+it('403s without request-statistics.view', function () {
     $actor = reportActorWith([]);
     $run = ExportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'request-management-report']);
     Sanctum::actingAs($actor);
@@ -59,7 +59,7 @@ it('403s without request-management.report', function () {
 });
 
 it('404s (never 403) for a run belonging to another user', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     $otherUser = User::factory()->create();
     $run = ExportRun::factory()->create(['user_id' => $otherUser->id, 'resource' => 'request-management-report']);
     Sanctum::actingAs($actor);
@@ -68,7 +68,7 @@ it('404s (never 403) for a run belonging to another user', function () {
 });
 
 it('404s for a run whose resource is not request-management-report', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     $run = ExportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'some-other-domain']);
     Sanctum::actingAs($actor);
 
@@ -76,7 +76,7 @@ it('404s for a run whose resource is not request-management-report', function ()
 });
 
 it('reports a failed run without leaving it stuck in processing', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     $run = ExportRun::factory()->create([
         'user_id' => $actor->id,
         'resource' => 'request-management-report',
@@ -94,7 +94,7 @@ it('reports a failed run without leaving it stuck in processing', function () {
 // ---------------------------------------------------------------------------
 
 it('streams the CSV with the right Content-Type and attachment filename when completed (AC-003-bis)', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Storage::fake('local');
     Storage::disk('local')->put('exports/run.csv', "\xEF\xBB\xBFCategoria,GA2\n");
 
@@ -118,7 +118,7 @@ it('streams the CSV with the right Content-Type and attachment filename when com
 });
 
 it('404s when the run has not completed yet', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     $run = ExportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'request-management-report']);
     Sanctum::actingAs($actor);
 
@@ -126,7 +126,7 @@ it('404s when the run has not completed yet', function () {
 });
 
 it('404s when the completed run has no file on disk', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     Storage::fake('local');
 
     $run = ExportRun::factory()->create([
@@ -141,7 +141,7 @@ it('404s when the completed run has no file on disk', function () {
 });
 
 it('404s (never 403) downloading a run belonging to another user', function () {
-    $actor = reportActorWith(['report']);
+    $actor = reportActorWith(['statistics']);
     $otherUser = User::factory()->create();
     $run = ExportRun::factory()->create([
         'user_id' => $otherUser->id,
@@ -154,7 +154,7 @@ it('404s (never 403) downloading a run belonging to another user', function () {
     $this->get("/api/request-management/report/{$run->id}/download")->assertNotFound();
 });
 
-it('403s downloading without request-management.report', function () {
+it('403s downloading without request-statistics.view', function () {
     $actor = reportActorWith([]);
     $run = ExportRun::factory()->create(['user_id' => $actor->id, 'resource' => 'request-management-report']);
     Sanctum::actingAs($actor);

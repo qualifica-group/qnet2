@@ -34,13 +34,17 @@ const AGG_TABS_URL = '/api/request-management/product-categories';
 
 function aggActor(array $abilities, string $module = 'request-management'): User
 {
-    foreach (['viewAny', 'view', 'viewAll', 'viewSite', 'update', 'report'] as $ability) {
-        Permission::findOrCreate("{$module}.{$ability}");
+    $permission = fn (string $ability): string => $ability === 'statistics'
+        ? RequestModule::STATISTICS_PERMISSION
+        : "{$module}.{$ability}";
+
+    foreach (['viewAny', 'view', 'viewAll', 'viewSite', 'update', 'statistics'] as $ability) {
+        Permission::findOrCreate($permission($ability));
     }
 
     $user = User::factory()->create();
     foreach ($abilities as $ability) {
-        $user->givePermissionTo("{$module}.{$ability}");
+        $user->givePermissionTo($permission($ability));
     }
 
     return $user;
@@ -229,7 +233,7 @@ it('AC-029 tabs answer 200 with the same payload when the cache store throws', f
 });
 
 it('AC-029 dashboard and report pickers answer 200 with the same payload when the cache store throws', function (string $path) {
-    $actor = aggActor(['report', 'viewAll']);
+    $actor = aggActor(['statistics', 'viewAll']);
     aggAdvancedQuote(aggCategory('GOL'));
     Sanctum::actingAs($actor);
     $url = $path === 'dashboard' ? aggDashboardUrl() : "/api/request-management/report/{$path}";
@@ -268,7 +272,7 @@ it('AC-020 dashboard: same parameters compute once, different ones use another k
     $gol = aggCategory('GOL');
     aggAdvancedQuote($gol);
     aggAdvancedQuote(aggCategory('Consulenza'));
-    Sanctum::actingAs(aggActor(['report', 'viewAll']));
+    Sanctum::actingAs(aggActor(['statistics', 'viewAll']));
     $keys = app(ReportBranchResolver::class)->keys();
 
     $first = $this->getJson(aggDashboardUrl())->assertOk()->json();
@@ -289,7 +293,7 @@ it('AC-020 dashboard: same parameters compute once, different ones use another k
 
 it('AC-020 the CSV is generated live while the dashboard is served from cache', function () {
     Storage::fake('local');
-    $actor = aggActor(['report', 'viewAll']);
+    $actor = aggActor(['statistics', 'viewAll']);
     aggAdvancedQuote(aggCategory('GOL'));
     Sanctum::actingAs($actor);
     $keys = app(ReportBranchResolver::class)->keys();
@@ -310,7 +314,7 @@ it('AC-020 the CSV is generated live while the dashboard is served from cache', 
 
 it('AC-021 an actor without the report permission gets 403 even when the key is already cached', function () {
     aggAdvancedQuote(aggCategory('GOL'));
-    $allowed = aggActor(['report', 'viewAll']);
+    $allowed = aggActor(['statistics', 'viewAll']);
     $denied = aggActor(['viewAny', 'viewAll']);
 
     Sanctum::actingAs($allowed);
@@ -327,7 +331,7 @@ it('AC-021 an actor without the report permission gets 403 even when the key is 
 
 it('AC-020 report pickers are cached per scope and served from cache on the second read', function () {
     aggAdvancedQuote(aggCategory('GOL'));
-    Sanctum::actingAs(aggActor(['report', 'viewAll']));
+    Sanctum::actingAs(aggActor(['statistics', 'viewAll']));
 
     $first = $this->getJson('/api/request-management/report/categories')->assertOk()->json();
     $queries = aggCountQueries(fn () => $this->getJson('/api/request-management/report/categories')->assertOk()->assertExactJson($first));

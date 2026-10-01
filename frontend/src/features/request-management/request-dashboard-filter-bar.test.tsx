@@ -20,9 +20,10 @@ import type {
  * Spec 0106 AC-040/AC-041, AC-045..AC-046: the report action, which the user
  * directive of 2026-09-08 moved out of the table's options menu and next to
  * the dashboard's "Filters" button. It runs on the APPLIED filters — no form
- * of its own — through the frozen `/request-management/report` contract, and
- * stays gated by `request-management.report`. The format (csv or xlsx) is
- * picked from the action's own menu, like the table export offers. The API
+ * of its own — through the frozen `/request-management/report` contract; the
+ * page hosting it is gated by `request-statistics.view` (spec 0185). The
+ * format (csv or xlsx) is picked from the action's own menu, like the table
+ * export offers. The API
  * module is mocked; every assertion queries by accessible role/label, never
  * `data-testid`.
  */
@@ -36,14 +37,6 @@ vi.mock('@/features/request-management/report-api', () => ({
   getRequestManagementReport: (...args: unknown[]) => getRequestManagementReportMock(...args),
   downloadRequestManagementReport: (...args: unknown[]) => downloadRequestManagementReportMock(...args),
   fetchRequestManagementReportCategories: vi.fn(),
-}))
-
-const canMock = vi.fn<(permission: string) => boolean>()
-vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({
-    can: (permission: string) => canMock(permission),
-    isLoading: false,
-  }),
 }))
 
 const CATEGORIES: RequestReportCategory[] = [
@@ -79,7 +72,6 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-  canMock.mockReset().mockReturnValue(true)
   createRequestManagementReportMock.mockReset()
   getRequestManagementReportMock.mockReset()
   downloadRequestManagementReportMock.mockReset().mockResolvedValue(undefined)
@@ -120,7 +112,6 @@ function renderBar(filtersReady = true, filters = APPLIED_FILTERS, allExpanded =
   const onToggleExpanded = vi.fn()
   render(
     <RequestDashboardFilterBar
-      reportPermission="request-management.report"
       filters={filters}
       payload={APPLIED_PAYLOAD}
       categories={CATEGORIES}
@@ -203,14 +194,6 @@ describe('RequestDashboardFilterBar', () => {
     const list = within(screen.getByRole('list', { name: 'Applied filters' }))
     expect(list.queryByText('Sites')).not.toBeInTheDocument()
     expect(list.queryByText('Operators')).not.toBeInTheDocument()
-  })
-
-  it('is absent without request-management.report, while the filters stay reachable (AC-040)', () => {
-    canMock.mockReturnValue(false)
-    renderBar()
-
-    expect(screen.queryByRole('button', { name: /Generate report/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument()
   })
 
   it('runs the full create -> poll -> download cycle on the applied filters (AC-045/AC-045-ter)', async () => {

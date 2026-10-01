@@ -399,10 +399,11 @@ export const requestManagement = {
       jobFailed: 'La generazione del report non è riuscita. Riprova.',
     },
   },
-  // Dashboard grafici (spec 0107): pannello aperto dallo StatsToggleButton
-  // esistente, i nomi di categoria/operatore restano valori di dominio.
+  // Dashboard grafici (spec 0107): mostrato dalla pagina Statistiche Gestione Richieste
+  // (spec 0185), i nomi di categoria/operatore restano valori di dominio.
   dashboard: {
     regionLabel: 'Dashboard di Gestione Richieste',
+    pageForbidden: 'Non hai il permesso di visualizzare le Statistiche Gestione Richieste.',
     editFilters: 'Filtri',
     expandAll: 'Espandi tutto',
     collapseAll: 'Comprimi tutto',

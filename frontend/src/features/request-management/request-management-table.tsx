@@ -28,8 +28,6 @@ import { assignRequestOperators, deleteRequest } from '@/features/request-manage
 import { AssignManagerGa1Dialog } from '@/features/request-management/assign-manager-ga1-dialog'
 import { requestManagementColumnRenderers } from '@/features/request-management/column-renderers'
 import { OfferLinesDialogProvider } from '@/features/request-management/offer-lines-dialog'
-import { RequestDashboardPanel } from '@/features/request-management/request-dashboard-panel'
-import { RequestDashboardToggle } from '@/features/request-management/request-dashboard-toggle'
 import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
 import { useInvalidateRequestDashboard } from '@/features/request-management/use-request-dashboard'
 import { useInvalidateRequestManagementCategories } from '@/features/request-management/use-request-management-categories'
@@ -40,7 +38,6 @@ import { useRequestManagerGa1Assignment } from '@/features/request-management/us
 import { useRequestTransferSelection } from '@/features/request-management/use-request-transfer-selection'
 import { useRequestModule } from '@/features/request-management/request-module'
 import type { AssignRequestOperatorsPayload } from '@/features/request-management/request-write-types'
-import { useStatsPanel } from '@/features/stats/use-stats-panel'
 
 /**
  * Domain icon overrides for the `documents`/`notes`/`transfer-contact` row
@@ -121,12 +118,7 @@ export function RequestManagementTable() {
 
   const { categories, selectedCategoryId, setCategoryId } = useRequestManagementCategoryTab()
   const categoryTabPreferences = useCategoryTabPreferences()
-  const dashboard = useStatsPanel(module.key)
-  // The stored open state is per browser, not per user: an impersonated actor
-  // without `.report` would inherit the impersonator's open panel (stuck on a
-  // 403, its toggle hidden). Derived on render, never written back, so the
-  // preference survives for whoever holds the permission.
-  const isDashboardOpen = dashboard.isOpen && can(module.permission('report'))
+  // Writes mark the shared dashboard cache stale; the statistics page reads it (spec 0185).
   const invalidateDashboard = useInvalidateRequestDashboard()
 
   const invalidateCategories = useInvalidateRequestManagementCategories()
@@ -376,12 +368,6 @@ export function RequestManagementTable() {
       <PageHeader
         actions={
           <>
-            <RequestDashboardToggle
-              domain={module.key}
-              permission={module.permission('report')}
-              isOpen={dashboard.isOpen}
-              onToggle={dashboard.toggle}
-            />
             {/* D-8: Gestione Iscritti has no creation surface — an explicit
                 config flag, never derived from `can()` (AC-016). */}
             {module.allowsCreate && (
@@ -395,9 +381,6 @@ export function RequestManagementTable() {
           </>
         }
       />
-
-      {/* User directive 2026-09-08: statistics above, category strip below it. */}
-      <RequestDashboardPanel isOpen={isDashboardOpen} />
 
       <RequestManagementCategoryTabs
         categories={categories}

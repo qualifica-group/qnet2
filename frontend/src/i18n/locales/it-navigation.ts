@@ -50,6 +50,7 @@ export const navigation = {
   commissionConfigurations: 'Configuratore Commissioni',
   requestManagement: 'Gestione Richieste',
   enrolleeManagement: 'Gestione Iscritti',
+  requestStatistics: 'Statistiche Gestione Richieste',
   fieldChangeRequests: 'Richieste di modifica',
   rewards: 'Premi e Incentivi',
   rewardTypes: 'Buoni, Premi e Incentivi',

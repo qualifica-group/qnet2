@@ -19,7 +19,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Can } from '@/features/auth/can'
 import type { ExportFormat } from '@/features/exports/types'
 import type {
   RequestReportCategory,
@@ -74,8 +73,6 @@ function ReportStatusNote({ tone, children }: { tone: ReportStatusTone; children
 }
 
 export interface RequestDashboardFilterBarProps {
-  /** The caller's `module.permission('report')` (spec 0130), same gate `RequestDashboardToggle` renders on. */
-  reportPermission: string
   /** Filters currently applied to the charts, shown as chips. */
   filters: RequestReportFormValues
   /**
@@ -110,7 +107,6 @@ export interface RequestDashboardFilterBarProps {
  * not stored with the filters: it changes the file, never the charts.
  */
 export function RequestDashboardFilterBar({
-  reportPermission,
   filters,
   payload,
   categories,
@@ -141,33 +137,29 @@ export function RequestDashboardFilterBar({
         />
 
         <div className="flex shrink-0 items-center gap-2">
-          {/* The permission ships unassigned by default, and the backend
-              re-authorizes the three report routes regardless (spec 0106). */}
-          <Can permission={reportPermission}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" size="sm" variant="outline" disabled={isBusy}>
-                  <FileDown aria-hidden="true" className="size-3.5" />
-                  {report.isCreating || report.isProcessing
-                    ? t('requestManagement.report.buttons.processing')
-                    : t('requestManagement.report.action')}
-                  <ChevronDown aria-hidden="true" className="size-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {REPORT_FORMATS.map((format) => {
-                  const Icon = FORMAT_ICON[format]
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" size="sm" variant="outline" disabled={isBusy}>
+                <FileDown aria-hidden="true" className="size-3.5" />
+                {report.isCreating || report.isProcessing
+                  ? t('requestManagement.report.buttons.processing')
+                  : t('requestManagement.report.action')}
+                <ChevronDown aria-hidden="true" className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {REPORT_FORMATS.map((format) => {
+                const Icon = FORMAT_ICON[format]
 
-                  return (
-                    <DropdownMenuItem key={format} onSelect={() => report.create({ ...payload, format })}>
-                      <Icon aria-hidden="true" />
-                      {t(`exports.formats.${format}`)}
-                    </DropdownMenuItem>
-                  )
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </Can>
+                return (
+                  <DropdownMenuItem key={format} onSelect={() => report.create({ ...payload, format })}>
+                    <Icon aria-hidden="true" />
+                    {t(`exports.formats.${format}`)}
+                  </DropdownMenuItem>
+                )
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Icon-only like Filters: the label names the action it will perform next. */}
           <Button

@@ -44,7 +44,7 @@ export interface RequestReportFiltersDialogProps {
  * values. Editing filters and running the report are therefore two separate
  * affordances over one state, not two forms.
  *
- * Controlled: the applied filters live in `RequestDashboardPanel` (which
+ * Controlled: the applied filters live in `RequestDashboard` (which
  * seeds them from the branch list and drives the aggregates query off them),
  * never here — a second copy of that state would let the charts and the sheet
  * disagree about what is selected.
