@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMMESSE: "ANAGRAFICA CLIENTE" NEL DETTAGLIO — VERDE, COMMITTATO (2026-10-01)
+
+- Dettaglio commessa, sezione "Contratto e righe prodotto": nuovo primo campo "Anagrafica cliente" /
+  "Client registry" (`workOrders.detail.registry`), valore = `RecordLink domain="registries"` su
+  `workOrder.registry` (gia' esposto da `WorkOrderResource::summarizeRegistry()`, catena
+  `quote.opportunity.registry`, spec 0173), `DetailEmpty` se null. Solo frontend, nessun cambio di contratto.
+- Test: 2 casi in `work-order-detail.test.tsx` (link `/registries/7`, placeholder senza registry).
+- Manuale: guida in-app Commesse ancora "in fase di sviluppo" -> nessun impatto.
+
 ## FIX ACTIVITY LOG CONTRATTI / STATI CONTRATTO (404) — VERDE, NON COMMITTATO (2026-10-01)
 
 - Bug: `GET /api/activity-log/contracts/{id}` (e `contract-statuses/{id}`) -> 404 "Risorsa non trovata": le due

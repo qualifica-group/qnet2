@@ -33,6 +33,7 @@ export const workOrders = {
     supervisors: 'Responsabili',
     participants: 'Partecipanti',
     contractNumber: 'Contratto n.',
+    registry: 'Anagrafica cliente',
     contract: 'Contratto',
     forceCloseReason: 'Motivo chiusura',
     description: 'Descrizione',

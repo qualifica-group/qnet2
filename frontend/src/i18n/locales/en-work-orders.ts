@@ -33,6 +33,7 @@ export const workOrders = {
     supervisors: 'Supervisors',
     participants: 'Participants',
     contractNumber: 'Contract no.',
+    registry: 'Client registry',
     contract: 'Contract',
     forceCloseReason: 'Force close reason',
     description: 'Description',

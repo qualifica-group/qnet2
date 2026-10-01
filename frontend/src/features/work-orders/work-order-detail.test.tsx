@@ -261,6 +261,20 @@ describe('WorkOrderDetailView — related records', () => {
     expect(hrefOf('Consulenza')).toBe('/products/1')
     expect(hrefOf('Installazione')).toBe('/products/2')
   })
+
+  it("links the client registry reached through the commessa's offer", () => {
+    render(<WorkOrderDetailView workOrder={workOrder({ registry: { id: 7, name: 'Acme S.p.A.' } })} />)
+
+    expect(screen.getByText('Client registry')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Acme S.p.A.' })).toHaveAttribute('href', '/registries/7')
+  })
+
+  it('shows the empty placeholder when the commessa has no client registry', () => {
+    render(<WorkOrderDetailView workOrder={workOrder({ registry: null })} />)
+
+    expect(screen.getByText('Client registry')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Acme S.p.A.' })).not.toBeInTheDocument()
+  })
 })
 
 /**

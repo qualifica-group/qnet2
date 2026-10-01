@@ -98,6 +98,15 @@ export function WorkOrderDetailSections({ workOrder }: { workOrder: WorkOrderDet
 
       <RecordSection title={t('workOrders.detail.sections.contract')} icon={<FileSignature />}>
         <RecordFieldList>
+          <RecordField label={t('workOrders.detail.registry')}>
+            {workOrder.registry ? (
+              <RecordLink domain="registries" id={workOrder.registry.id} className="font-medium text-primary">
+                {workOrder.registry.name}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
+          </RecordField>
           <RecordField label={t('workOrders.detail.contract')}>
             {workOrder.contract ? (
               <RecordLink domain="contracts" id={workOrder.contract.id} className="font-medium text-primary">
