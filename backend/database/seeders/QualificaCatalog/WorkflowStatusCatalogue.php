@@ -31,6 +31,8 @@ use InvalidArgumentException;
  *                        outcome, but it is transcribed in full rather than
  *                        borrowed, so the two can diverge without either
  *                        dragging the other.
+ *   6. E-CAMPUS        — one list, bound to the "Corsi E-Campus" branch: see
+ *                        ECampusWorkflowStatusCatalogue (user directive 2026-10-01).
  *
  * TRANSCRIPTION NOTES (the sheet is a spreadsheet, not a database):
  *   - The same state is spelled differently across columns. Folded to ONE
@@ -136,15 +138,15 @@ final class WorkflowStatusCatalogue
         self::NEGATIVE => ['group' => WorkflowStatusGroup::ClosedLost->value, 'color' => 'red'],
     ];
 
-    private const string OPEN = 'open';
+    public const string OPEN = 'open';
 
-    private const string PENDING = 'pending';
+    public const string PENDING = 'pending';
 
-    private const string VALIDATED = 'validated';
+    public const string VALIDATED = 'validated';
 
-    private const string POSITIVE = 'positive';
+    public const string POSITIVE = 'positive';
 
-    private const string NEGATIVE = 'negative';
+    public const string NEGATIVE = 'negative';
 
     private const string GOL = 'gol';
 
@@ -268,6 +270,7 @@ final class WorkflowStatusCatalogue
             'Doppione già associato' => ['legend' => self::NEGATIVE, 'description' => 'Record duplicato già collegato a un\'associazione esistente.'],
             'In Standby' => ['legend' => self::OPEN, 'description' => 'Pratica temporaneamente sospesa in attesa di ulteriori sviluppi.'],
         ],
+        ECampusWorkflowStatusCatalogue::SECTION => ECampusWorkflowStatusCatalogue::STATUSES,
     ];
 
     /**
@@ -367,6 +370,8 @@ final class WorkflowStatusCatalogue
         // only the branch criterion reaches it, same shape as "Consulenza"
         // above. The two never compete — APL is a branch of its own.
         'APL' => ['section' => self::APL, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
+        // A container too: its courses sit on the subject areas two levels down.
+        ECampusCourseCatalogue::CATEGORY => ['section' => ECampusWorkflowStatusCatalogue::SECTION, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
     ];
 
     /**

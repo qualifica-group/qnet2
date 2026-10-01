@@ -1,9 +1,19 @@
 <?php
 
+use App\Enums\AttributeContext;
+use App\Enums\FormMode;
+use App\Enums\LayoutFormScope;
 use App\Enums\ProductType;
+use App\Models\Attribute;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\QuoteWorkflow;
+use App\Models\QuoteWorkflowStatus;
+use App\Services\ProductCategories\AttributeLayoutService;
+use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\QualificaCatalog\ECampusAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
+use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -11,6 +21,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 // "Corsi E-Campus" branch under Formazione, its two degree levels, their
 // subject areas and one product per fee of each course.
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    // Keeps the catalogue step from offering the q-crm import.
+    config(['migrations.base_url' => null]);
+});
 
 function eCampusChild(string $name, ?int $parentId): ProductCategory
 {
@@ -88,4 +103,55 @@ it('seeds the e-Campus branch, its degree fees and its products correctly and id
         ->and($products->every(fn (Product $product): bool => $product->product_type === ProductType::Service
             && (float) $product->cost === 0.0
             && $product->vat_rate_id === null))->toBeTrue();
+});
+
+it('gives the e-Campus branch its own offer form, layout and working states', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $branch = ProductCategory::query()->where('name', ECampusCourseCatalogue::CATEGORY)->sole();
+    $area = ProductCategory::query()->where('name', 'Ingegneria - Corsi di Laurea Triennali')->sole();
+    $hierarchy = app(CategoryHierarchy::class);
+    $ownCodes = array_column(ECampusAttributeCatalogue::ATTRIBUTES, 'code');
+
+    // Behind a barrier: the area resolves the e-Campus fields and nothing of
+    // the Formazione set ("Ore complessive", CPI, "Dati Aula").
+    expect($branch->inherits_quote_attributes)->toBeFalse()
+        ->and($hierarchy->effectiveAttributes($area, AttributeContext::Quote)->pluck('code')->sort()->values()->all())
+        ->toBe(collect($ownCodes)->sort()->values()->all());
+
+    $faculty = Attribute::query()->where('code', 'faculty')->sole();
+    expect($faculty->type)->toBe('enum')
+        ->and($faculty->options()->orderBy('sort_order')->pluck('label')->all())
+        ->toBe(['Psicologia', 'Economia', 'Giurisprudenza', 'Ingegneria', 'Lettere']);
+
+    // The styled form sits on the branch; the areas render it by inheritance.
+    $layouts = app(AttributeLayoutService::class);
+    $sections = $layouts->resolveWithFallback($area, AttributeContext::Quote, FormMode::Create)['sections'];
+
+    expect($layouts->resolveExact($area, AttributeContext::Quote, LayoutFormScope::All))->toBeNull()
+        ->and($layouts->resolveExact($branch, AttributeContext::Quote, LayoutFormScope::All))->not->toBeNull()
+        ->and(array_column($sections, 'title'))->toBe(['Corso di Laurea', 'Documenti di iscrizione', 'Pagamento'])
+        ->and(array_column($sections, 'variant'))->toBe(['highlighted', 'default', 'default'])
+        ->and(array_column($sections, 'columns'))->toBe([2, 2, 3])
+        // Every field fills its row: the course alone spans it whole.
+        ->and(array_column($sections[0]['rows'][1]['items'], 'width'))->toBe(['full'])
+        ->and(array_column($sections[2]['rows'][0]['items'], 'width'))->toBe(['third', 'third', 'third']);
+
+    // One working-state set on the whole branch, the sheet's states between
+    // the pinned system rows.
+    $workflow = QuoteWorkflow::query()->where('name', ECampusCourseCatalogue::CATEGORY)->with('criteria')->sole();
+    $statuses = QuoteWorkflowStatus::query()->where('quote_workflow_id', $workflow->id)->orderBy('sort_order')->get();
+
+    expect($workflow->criteria)->toHaveCount(1)
+        ->and($workflow->criteria->first()->field)->toBe(WorkflowStatusCatalogue::BRANCH_CRITERION_FIELD)
+        ->and($workflow->criteria->first()->value_id)->toBe($branch->id)
+        ->and($statuses)->toHaveCount(14)
+        ->and($statuses->first()->only(['name', 'system_key']))->toBe(['name' => 'Nuovo Contatto', 'system_key' => 'open'])
+        ->and($statuses->slice(-2)->map->only(['name', 'system_key'])->values()->all())->toBe([
+            ['name' => 'ISCRITTO', 'system_key' => 'closed_won'],
+            ['name' => 'Non attinente', 'system_key' => 'closed_lost'],
+        ])
+        ->and($statuses->firstWhere('name', 'Attesa Prevalutazione')->group->value)->toBe('pending')
+        ->and($statuses->firstWhere('name', 'Non risponde')->group->value)->toBe('open')
+        ->and($statuses->pluck('name')->all())->not->toContain('NR');
 });

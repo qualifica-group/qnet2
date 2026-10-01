@@ -162,10 +162,11 @@ it('assigns, scopes and lays out the contact-processing set across Formazione, D
     $service = app(AttributeLayoutService::class);
 
     // Spec 0115: a row only where the composition DIFFERS from the ancestor's
-    // — the eight Formazione categories that add a field of their own, or sit
-    // behind a barrier. The Consulenza leaf carries no attribute at all
-    // since the 2026-09-10 directive, so they compose to nothing.
-    expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(8);
+    // — the nine Formazione categories that add a field of their own, or sit
+    // behind a barrier ("Corsi E-Campus" since the 2026-10-01 directive). The
+    // Consulenza leaf carries no attribute at all since the 2026-09-10
+    // directive, so they compose to nothing.
+    expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(9);
 
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
     $moliseQuoteLayout = $service->resolveWithFallback($molise, AttributeContext::Quote, FormMode::Create);

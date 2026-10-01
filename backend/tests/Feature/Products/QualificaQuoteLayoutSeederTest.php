@@ -35,6 +35,8 @@ uses(RefreshDatabase::class);
 const QUOTE_LAYOUT_OWN_CATEGORIES = [
     'Formazione', 'GOL', 'Autoimpiego', 'Autofinanziato', 'DIL',
     'GOL - Lombardia', 'GOL - Lazio', 'GOL - Sicilia',
+    // Behind its own barrier, with the e-Campus form (user directive 2026-10-01).
+    'Corsi E-Campus',
 ];
 
 /**

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\AttributeContext;
 use App\Enums\LayoutFormScope;
+use App\Enums\LayoutSectionVariant;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
@@ -11,6 +12,7 @@ use Database\Seeders\Concerns\SeedsAttributeLayouts;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\ECampusAttributeCatalogue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Seeder;
 
@@ -57,12 +59,15 @@ class QualificaQuoteLayoutSeeder extends Seeder
      * 2026-09-10): what the operator records while working the contact, then
      * what is being sold, then the classroom edition delivering it.
      *
-     * @var list<array{0: string, 1: string, 2: list<list<string>>}>
+     * @var list<array{0: string, 1: string, 2: list<list<string>>, 3?: array{variant: LayoutSectionVariant, columns: int, description: string}}>
      */
     private const array SECTIONS = [
         ['contact-processing', ContactProcessingAttributeCatalogue::SECTION_TITLE, ContactProcessingAttributeCatalogue::ROWS],
         ['course-data', CourseDataAttributeCatalogue::SECTION_TITLE, CourseDataAttributeCatalogue::ROWS],
         ['classroom-data', ClassroomAttributeCatalogue::SECTION_TITLE, ClassroomAttributeCatalogue::ROWS],
+        // The e-Campus form, styled (user directive 2026-10-01): it resolves
+        // on the "Corsi E-Campus" branch alone, cut off the three sets above.
+        ...ECampusAttributeCatalogue::SECTIONS,
     ];
 
     /**
@@ -219,7 +224,7 @@ class QualificaQuoteLayoutSeeder extends Seeder
     }
 
     /**
-     * @param  list<array{0: string, 1: string, 2: list<list<string>>}>  $definitions
+     * @param  list<array{0: string, 1: string, 2: list<list<string>>, 3?: array{variant: LayoutSectionVariant, columns: int, description: string}}>  $definitions
      * @param  list<string>  $effective
      * @return list<array<string, mixed>>
      */
@@ -227,14 +232,15 @@ class QualificaQuoteLayoutSeeder extends Seeder
     {
         $sections = [];
 
-        foreach ($definitions as [$id, $title, $rows]) {
+        foreach ($definitions as $definition) {
+            [$id, $title, $rows] = $definition;
             $kept = $this->keepAllowedCodes($rows, $effective);
 
             if ($kept === []) {
                 continue;
             }
 
-            $sections[] = $this->layoutSection($id, $title, $kept, count($sections));
+            $sections[] = $this->layoutSection($id, $title, $kept, count($sections), $definition[3] ?? null);
         }
 
         return $sections;

@@ -32,6 +32,10 @@ final class CategoryInheritanceRules
      * down from the root. It stays a child of "Formazione": the barrier
      * changes what it resolves, never where it hangs.
      *
+     * "Corsi E-Campus" likewise (user directive 2026-10-01): an online degree
+     * has its own form (ECampusAttributeCatalogue), none of the GOL/DOTE
+     * paperwork nor of the classroom edition Formazione describes.
+     *
      * Only the OFFERTA is cut. `inherits_work_order_attributes` is left alone
      * on purpose — the directive is about the offer form, and the two contexts
      * are independent columns.
@@ -40,6 +44,7 @@ final class CategoryInheritanceRules
      */
     private const array BARRIERS = [
         'DIL' => ['inherits_quote_attributes' => false],
+        ECampusCourseCatalogue::CATEGORY => ['inherits_quote_attributes' => false],
     ];
 
     public function apply(): void

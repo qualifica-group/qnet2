@@ -33,19 +33,38 @@ trait SeedsAttributeLayouts
     protected const int LAYOUT_SECTION_COLUMNS = 2;
 
     /**
+     * The width that lets N items fill their row exactly, by item count.
+     *
+     * @var array<int, LayoutItemWidth>
+     */
+    private const array ROW_FILLING_WIDTHS = [
+        1 => LayoutItemWidth::Full,
+        2 => LayoutItemWidth::Half,
+        3 => LayoutItemWidth::Third,
+        4 => LayoutItemWidth::Quarter,
+    ];
+
+    /**
+     * Without $style: the plain section every catalogue had so far — default
+     * variant, two columns, every item half wide. With it: the section's own
+     * variant, columns and description, and items widened to FILL their row
+     * (a field alone on its row spans it whole). Opt-in, so the blobs already
+     * seeded compose exactly as before.
+     *
      * @param  list<list<string>>  $rows  attribute codes, one inner list per rendered row
+     * @param  array{variant: LayoutSectionVariant, columns: int, description: string}|null  $style
      * @return array<string, mixed>
      */
-    protected function layoutSection(string $id, string $title, array $rows, int $sortOrder): array
+    protected function layoutSection(string $id, string $title, array $rows, int $sortOrder, ?array $style = null): array
     {
         return [
             'id' => $id,
             'title' => $title,
-            'description' => null,
-            'variant' => LayoutSectionVariant::Default->value,
+            'description' => $style['description'] ?? null,
+            'variant' => ($style['variant'] ?? LayoutSectionVariant::Default)->value,
             'collapsible' => false,
             'default_collapsed' => false,
-            'columns' => self::LAYOUT_SECTION_COLUMNS,
+            'columns' => $style['columns'] ?? self::LAYOUT_SECTION_COLUMNS,
             'sort_order' => $sortOrder,
             'rows' => array_map(
                 static fn (array $codes, int $index): array => [
@@ -55,7 +74,7 @@ trait SeedsAttributeLayouts
                     'items' => array_map(
                         static fn (string $code): array => [
                             'attribute_code' => $code,
-                            'width' => LayoutItemWidth::Half->value,
+                            'width' => ($style === null ? LayoutItemWidth::Half : self::ROW_FILLING_WIDTHS[count($codes)])->value,
                         ],
                         $codes,
                     ),

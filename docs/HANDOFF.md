@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## E-CAMPUS: CAMPI OFFERTA, LAYOUT E STATI DI LAVORAZIONE — VERDE, COMMITTATO (2026-10-01)
+
+- Fonte: PDF "BOZZA gestionale_Progetto Università" (colonne FACOLTA' -> Finanziamento + colonna STATO).
+- Campi Offerta (`QualificaCatalog/ECampusAttributeCatalogue::ATTRIBUTES`) assegnati su "Corsi E-Campus":
+  `faculty` (enum), `degree_course` (text), `degree_level` (enum bachelor/master), 7 boolean (`identification_documents`,
+  `enrollment_form`, `diploma_or_self_certification`, `annex_a`, `fee_regulation`, `bank_transfer`, `financing`).
+- Barriera `inherits_quote_attributes = false` su "Corsi E-Campus" (`CategoryInheritanceRules`, come DIL): niente
+  campi GOL/CPI/Dati Aula di Formazione. "Form" e i prezzi annuali del PDF NON sono campi (fuori dall'elenco utente).
+- Layout: `ECampusAttributeCatalogue::SECTIONS` (Corso di Laurea highlighted / Documenti di iscrizione / Pagamento a
+  3 colonne) aggiunte a `QualificaQuoteLayoutSeeder::SECTIONS`. `SeedsAttributeLayouts::layoutSection()` ha un
+  `$style` opzionale (variant, columns, description, larghezze che riempiono la riga): senza style blob invariato.
+  Il layout sta solo sul nodo "Corsi E-Campus", le aree lo ereditano (spec 0115).
+- Stati: `QualificaCatalog/ECampusWorkflowStatusCatalogue` (sezione `e_campus` di `WorkflowStatusCatalogue`, file
+  separato perche' quello e' a 495 righe), workflow "Corsi E-Campus" con criterio di ramo. Pinned: Nuovo Contatto
+  (open, aggiunto come in tutte le liste Formazione), ISCRITTO (closed_won), Non attinente (closed_lost). "NR"
+  foldato in "Non risponde" (open). Legende OPEN/PENDING/... di `WorkflowStatusCatalogue` ora pubbliche.
+- Test: `QualificaECampusCatalogueTest` (2 scenari); conteggi layout +1 in `QualificaQuoteLayoutSeederTest` e
+  `QualificaContactProcessingSeederTest` (requisito cambiato). Seed applicato al DB locale `qnet2`.
+
 ## CATALOGO CORSI E-CAMPUS NEL SEED DI PRODUZIONE — VERDE, COMMITTATO (2026-10-01)
 
 - Fonte: PDF "CORSI E-CAMPUS" dell'utente. Albero `Formazione > Corsi E-Campus > {Corsi di Laurea Triennali,
