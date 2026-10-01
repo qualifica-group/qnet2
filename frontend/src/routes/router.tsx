@@ -74,6 +74,7 @@ const LeadImportPage = lazyRoute(() => import('@/pages/lead-import-page'))
 const LeadImportHistoryPage = lazyRoute(() => import('@/pages/lead-import-history-page'))
 const LeadImportDetailPage = lazyRoute(() => import('@/pages/lead-import-detail-page'))
 const MigrationsPage = lazyRoute(() => import('@/features/migrations/migrations-page'))
+const SystemHealthPage = lazyRoute(() => import('@/features/system-health/system-health-page'))
 const SettingsPage = lazyRoute(() => import('@/pages/settings-page'))
 const FieldChangeRequestsPage = lazyRoute(() => import('@/pages/field-change-requests-page'))
 const NotFoundPage = lazyRoute(() => import('@/pages/not-found-page'))
@@ -435,11 +436,20 @@ export const router = createBrowserRouter([
             element: <LeadImportDetailPage />,
           },
           {
+            // Breadcrumb target of `/admin/system-health`: `/admin` has no page of its own.
+            path: 'admin',
+            element: <Navigate to="/dashboard" replace />,
+          },
+          {
             element: <MigrationRouteGuard />,
             children: [
               {
                 path: 'migrations',
                 element: <MigrationsPage />,
+              },
+              {
+                path: 'admin/system-health',
+                element: <SystemHealthPage />,
               },
             ],
           },

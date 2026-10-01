@@ -30,6 +30,8 @@ use App\Http\Controllers\ReferentTypes\ReferentTypeForSelectController;
 use App\Http\Controllers\Roles\RoleController;
 use App\Http\Controllers\Roles\RoleForSelectController;
 use App\Http\Controllers\Stats\StatsController;
+use App\Http\Controllers\System\PresenceHeartbeatController;
+use App\Http\Controllers\System\SystemHealthController;
 use App\Http\Controllers\Table\TableController;
 use App\Http\Controllers\Users\UserController;
 use App\Http\Controllers\Users\UserForSelectController;
@@ -158,6 +160,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('exports/{domain}/{exportRun}/download', [ExportController::class, 'download'])->scopeBindings();
 
     Route::post('exports/{domain}', [ExportController::class, 'store']);
+
+    // System health (spec 0187): super-admin only; heartbeat open to any
+    // authenticated user (the guard refreshes last_used_at, nothing else).
+    Route::post('presence/heartbeat', PresenceHeartbeatController::class);
+    Route::get('system-health', SystemHealthController::class)->middleware('super-admin');
 
     // Generic, registry-driven external-data migration engine (spec 0013),
     // mirroring tables/{domain} / imports/{domain}: one controller serves

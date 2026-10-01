@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0187 — Stato del sistema (System Health) + utenti online.
+  Contract-first. Porting di classroom-rental spec 0038 (stessa architettura:
+  HealthCheck per sottosistema + SystemHealthService + HealthStatusEnum), adattato a qnet-2
+  (niente Stripe; aggiunti Code e Presenza/utenti online via heartbeat).
+-->
+<spec id="0187-system-health" status="approved" owner="tu" date="2026-10-01">
+
+  <goal>
+    Pagina "Stato del sistema" riservata al ruolo super-admin che mostra lo stato live dei
+    sottosistemi critici (Database, Email MS Graph, Code, Sicurezza) con esito OK / degradato / KO,
+    un esito complessivo e il numero (con elenco) delle persone online in quel momento.
+  </goal>
+
+  <context>
+    Fatti reali verificati nel repo:
+    - Auth: token Bearer Sanctum (`AuthService::login` -> `createToken`). La Guard Sanctum aggiorna
+      `personal_access_tokens.last_used_at` a OGNI richiesta autenticata
+      (`vendor/laravel/sanctum/src/Guard.php:162`). Nessuna tabella sessioni usata per l'auth API.
+    - Impersonificazione: token `name = 'impersonation'` emesso sul TARGET con colonna
+      `impersonated_by` = attore (`ImpersonationService:46-47`, migrazione personal_access_tokens:27).
+      La persona reale online e' quindi `COALESCE(impersonated_by, tokenable_id)`.
+    - Il frontend NON ha alcun polling globale (solo refetchInterval locali a import/export/migrazioni):
+      senza heartbeat chi tiene l'app aperta ma inattiva risulterebbe offline.
+    - Gate super-admin: middleware alias `super-admin` = `EnsureSuperAdmin` (`bootstrap/app.php:28`,
+      401 anonimo / 403 senza ruolo), gia' usato dal gruppo Migrazioni (`routes/api.php:170`);
+      ruolo `UserService::PRIVILEGED_ROLE`.
+    - Navigazione backend-driven: `config/navigation/administration.php`, voce con `'role' => 'super-admin'`
+      (pattern di `migrations`). Guard FE di ruolo: `features/migrations/migration-route-guard.tsx`.
+    - Mailer: `config/mail.php` mailer `microsoft-graph` (transport registrato in
+      `AppServiceProvider` via `Mail::extend`). Coda: `config/queue.php` default `database`,
+      tabelle `jobs` e `failed_jobs` (migrazione 0001_01_01_000002).
+    - Envelope: `BaseApiController::ok()/noContent()/handleControllerException()`.
+    - Manuale (§4-bis): nuova voce di menu -> nuova guida `features/help/content/{it,en}/system-health.ts`
+      + chiave in `HELP_GUIDE_KEYS`; aggiornare il manuale Claude Docs.
+    - Decisioni utente (2026-10-01): accesso solo super-admin con voce menu in Amministrazione;
+      online = heartbeat dal frontend; mostrare numero + elenco; check Database, Email, Code, Sicurezza.
+  </context>
+
+  <scope>
+    <in>
+      <item>`POST /api/presence/heartbeat` (qualsiasi utente autenticato): no-op che fa aggiornare
+        `last_used_at` dalla Guard Sanctum; risponde 204.</item>
+      <item>Heartbeat FE montato in `AppLayout`: un ping ogni 60 s finche' l'app e' aperta (anche in
+        scheda in background, cadenza limitata dal browser), nessun impatto sul rendering.</item>
+      <item>`GET /api/system-health` sotto middleware `super-admin`: checks + blocco `online`.</item>
+      <item>Enum `HealthStatusEnum` (ok | degraded | down), interfaccia `HealthCheck` + `AbstractHealthCheck`,
+        checker `DatabaseHealthCheck`, `EmailHealthCheck`, `QueueHealthCheck`, `SecurityHealthCheck`,
+        `OnlineUsersService` (lettura presenza), `SystemHealthService` (aggregazione).</item>
+      <item>Config `config/system-health.php`: finestra online (default 2 minuti), soglie code.</item>
+      <item>Migrazione: indice su `personal_access_tokens.last_used_at`.</item>
+      <item>Voce menu "Stato del sistema" in Amministrazione (solo super-admin), route FE
+        `/admin/system-health` protetta da guard di ruolo.</item>
+      <item>Pagina FE: banner esito complessivo, card "Utenti online" (contatore + elenco),
+        4 card check con dettagli; auto-refresh 30 s + bottone "Ricontrolla".</item>
+      <item>i18n it/en; guida in-app it/en; test Pest + Vitest 1:1 sugli AC.</item>
+    </in>
+    <out>
+      <item>Nessuna tabella nuova di presenza/sessioni (si riusa `personal_access_tokens`).</item>
+      <item>Nessuno storico degli esiti, nessun alert/notifica automatica su degrado.</item>
+      <item>Nessun invio reale di email di test (il check verifica la configurabilita' del transport).</item>
+      <item>Nessuna metrica infrastrutturale (CPU/RAM/disco), nessun check Stripe (non presente in qnet-2).</item>
+      <item>Nessun nuovo permesso RBAC (accesso per ruolo super-admin).</item>
+      <item>Nessuna azione sugli utenti online (disconnessione forzata, ecc.).</item>
+      <item>Nessuna nuova dipendenza composer/npm. Nessun websocket.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- HealthStatus = "ok" | "degraded" | "down". -->
+    <endpoint method="POST" path="/api/presence/heartbeat">
+      <request><!-- Nessun body. Auth: Bearer Sanctum. --></request>
+      <response status="204"><!-- Nessun corpo. --></response>
+      <errors><!-- 401 non autenticato. --></errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/system-health">
+      <request><!-- Nessun parametro. Auth: Bearer Sanctum. Ruolo: super-admin. --></request>
+      <response status="200">
+        <!--
+        {
+          "success": true,
+          "message": "string",
+          "data": {
+            "overall": "ok|degraded|down",
+            "checked_at": "ISO-8601",
+            "online": {
+              "count": number,                 // persone distinte online
+              "window_minutes": number,        // finestra usata (config)
+              "users": [
+                {
+                  "id": number,
+                  "name": "string",
+                  "email": "string",
+                  "last_seen_at": "ISO-8601",
+                  "impersonating": { "id": number, "name": "string" } | null
+                }
+              ]                                // ordinati per last_seen_at desc
+            },
+            "checks": [
+              {
+                "key": "database|email|queue|security",
+                "status": "ok|degraded|down",
+                "latency_ms": number | null,
+                "message": "string | null",
+                "details": [
+                  { "key": "string", "status": "ok|degraded|down", "value": "string | null", "message": "string | null" }
+                ]
+              }
+            ]
+          }
+        }
+
+        Details per check (key stabili):
+          database: connection, name
+          email:    mailer, transport, credentials
+          queue:    connection, pending, failed
+          security: app_debug, app_env, https, sanctum_expiration, cors, app_key, mail_secrets, activitylog
+        Regole:
+          - online: persona = COALESCE(impersonated_by, tokenable_id) dei token User con
+            last_used_at >= now - window; utenti is_active = false esclusi; count = len(users).
+          - queue: pending = righe in `jobs`, failed = righe in `failed_jobs`;
+            failed > 0 -> degraded; pending oltre soglia config -> degraded; connessione `sync` -> degraded.
+          - check.status = peggiore tra i propri details (+ eventuale errore live).
+          - overall = peggiore tra i 4 check (gli utenti online non influiscono sull'esito).
+        -->
+      </response>
+      <errors>
+        <!-- 401 non autenticato; 403 autenticato senza ruolo super-admin (render standard di AuthorizationException, come Migrazioni).
+             Il fallimento di un singolo check NON produce 5xx: il check diventa "down". -->
+      </errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- BACKEND (Pest) -->
+    <criterion id="AC-001">Dato un super-admin, quando GET /api/system-health, allora 200 {success:true} e data.checks ha esattamente le key database, email, queue, security.</criterion>
+    <criterion id="AC-002">Dato un utente autenticato senza ruolo super-admin (anche con tutti i permessi), quando GET /api/system-health, allora 403 (risposta standard di EnsureSuperAdmin, identica alle rotte Migrazioni: nessun envelope {success:false}, rev. 2026-10-01); non autenticato -> 401.</criterion>
+    <criterion id="AC-003">Ogni check e ogni detail ha status in {ok,degraded,down} e la struttura del contratto; il check database con DB raggiungibile e' "ok" con latency_ms >= 0.</criterion>
+    <criterion id="AC-004">HealthStatusEnum::worst: [ok,degraded,ok] -> degraded; con almeno un down -> down; tutti ok o lista vuota -> ok.</criterion>
+    <criterion id="AC-005">Con APP_KEY e secret MS Graph configurati, il corpo risposta non contiene i loro valori ne' nomi di classi/eccezioni interne.</criterion>
+    <criterion id="AC-006">Dato 1 job in failed_jobs, il check queue ha detail failed "degraded" con value "1"; senza job falliti e pending sotto soglia -> "ok".</criterion>
+    <criterion id="AC-007">Dati 2 utenti con token usato 30 s fa e 1 utente con token usato oltre la finestra, online.count = 2 e users contiene solo i 2 (ordinati per last_seen_at desc); un utente con 2 token attivi conta 1.</criterion>
+    <criterion id="AC-008">Dato un token di impersonificazione attivo (attore A sul target B), la persona online e' A con impersonating = {id,name} di B, e B non e' conteggiato per quel token.</criterion>
+    <criterion id="AC-009">Un utente is_active = false con token recente non compare tra gli online.</criterion>
+    <criterion id="AC-010">Dato un utente autenticato, quando POST /api/presence/heartbeat, allora 204 e last_used_at del suo token e' aggiornato; non autenticato -> 401.</criterion>
+    <criterion id="AC-011">La voce di navigazione system-health e' presente per il super-admin e assente per un utente senza il ruolo.</criterion>
+    <!-- FRONTEND (Vitest) -->
+    <criterion id="AC-012">Dato un payload mockato, la pagina mostra il banner complessivo, la card online con il contatore e l'elenco, e 4 card check con l'indicatore di stato corretto.</criterion>
+    <criterion id="AC-013">Senza ruolo super-admin la route reindirizza alla dashboard; con il ruolo la pagina e' mostrata.</criterion>
+    <criterion id="AC-014">Il bottone "Ricontrolla" invoca il refetch; la query ha refetchInterval = 30000.</criterion>
+    <criterion id="AC-015">L'hook heartbeat invia POST /presence/heartbeat al mount e poi ogni 60000 ms; si ferma all'unmount.</criterion>
+    <criterion id="AC-016">help-content-parity resta verde con la nuova guida system-health it/en.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Authz server-side via middleware `super-admin`; il guard FE e' solo UX.</item>
+    <item>Check live con try/catch: un sottosistema giu' degrada il check a "down", mai 5xx.</item>
+    <item>Nessun segreto nella risposta ne' nei log (solo presenza). L'elenco online espone solo nome/email
+      di colleghi al super-admin, che li vede gia' in Utenti.</item>
+    <item>Heartbeat: endpoint senza query applicative (solo l'UPDATE di last_used_at fatto dalla Guard);
+      non deve mostrare errori a schermo se fallisce. Il dato server resta in TanStack Query.</item>
+    <item>Controller thin su BaseApiController; checker separati; file entro 300/500 righe.</item>
+    <item>Test eseguiti (Pest parallel mirato + Vitest), Pint + ESLint + `tsc -b --force` puliti.</item>
+  </constraints>
+
+</spec>

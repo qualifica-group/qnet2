@@ -63,6 +63,7 @@ export const navigation = {
   management: 'Management',
   configuration: 'Configuration',
   administration: 'Administration',
+  systemHealth: 'System health',
   settings: 'Settings',
   toggleSidebar: 'Toggle sidebar',
 }

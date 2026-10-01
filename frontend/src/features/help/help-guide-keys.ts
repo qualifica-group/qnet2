@@ -62,4 +62,5 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'roles',
   'custom-fields',
   'migrations',
+  'system-health',
 ]

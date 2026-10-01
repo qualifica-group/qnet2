@@ -196,9 +196,11 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // 0184's `2026_09_30_120000_create_user_category_tab_preferences_table`
     // (120th), and spec 0185's
     // `2026_10_01_100000_move_request_report_permissions_to_request_statistics`
-    // (121st), the statistics grant moved onto its own module.
+    // (121st), the statistics grant moved onto its own module, and spec
+    // 0187's `2026_10_01_000000_add_last_used_at_index_to_personal_access_tokens`
+    // (122nd), the online-users read index.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 121]);
+    Artisan::call('migrate:rollback', ['--step' => 122]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

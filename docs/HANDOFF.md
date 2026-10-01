@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0187 STATO DEL SISTEMA + UTENTI ONLINE — VERDE, COMMITTATO (2026-10-01)
+
+- Spec `docs/specs/0187-system-health.xml` (porting di classroom-rental spec 0038, senza Stripe, + Code + presenza).
+- BE: `GET /api/system-health` (middleware `super-admin`, 403 standard come Migrazioni, niente envelope) e
+  `POST /api/presence/heartbeat` (204 no-op: la Guard Sanctum aggiorna `personal_access_tokens.last_used_at`).
+  `App\Services\System\{SystemHealthService, OnlineUsersService, Checks/*}`, `HealthStatusEnum::worst()`,
+  config `config/system-health.php` (`online_window_minutes`=2, `queue_pending_threshold`=100), indice su
+  `last_used_at` (migrazione 2026_10_01_000000 -> `QuoteWorkflowMigrationTest` rollback step 121 -> 122).
+  Online = persona `COALESCE(impersonated_by, tokenable_id)`, is_active esclusi, una volta per persona.
+  Detail keys: database(connection,name) email(mailer,transport,credentials) queue(connection,pending,failed)
+  security(app_debug,app_env,https,sanctum_expiration,cors,app_key,mail_secrets,activitylog).
+- FE: `features/system-health/` (pagina `/admin/system-health` dietro `MigrationRouteGuard`, refetch 30 s,
+  `usePresenceHeartbeat` montato in `AppLayout`, ping 60 s), namespace i18n `systemHealth`, icona `activity`,
+  nav `navigation.systemHealth`, guida help `system-health` it/en (HELP_GUIDE_KEYS 55).
+- Manuale Claude Docs: aggiunta sezione "Stato del sistema" in Parte 1 dopo Migrazioni + voce nell'intro.
+- Da sapere: `sanctum.expiration` e' null -> il check Sicurezza risulta "degradato" in ogni ambiente finche'
+  non si imposta una scadenza token (decisione aperta, non toccata).
+- Verifiche: Pest suite completa 9106 passati / 1 skipped (System 14/14), Pint ok; Vitest mirati 334/334, ESLint ok, `tsc -b --force` ok.
+
 ## COMMESSE: "ANAGRAFICA CLIENTE" NEL DETTAGLIO — VERDE, COMMITTATO (2026-10-01)
 
 - Dettaglio commessa, sezione "Contratto e righe prodotto": nuovo primo campo "Anagrafica cliente" /

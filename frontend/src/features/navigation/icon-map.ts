@@ -1,4 +1,5 @@
 import {
+  Activity,
   Award,
   BookUser,
   Briefcase,
@@ -98,6 +99,8 @@ const iconMap: Record<string, LucideIcon> = {
   mail: Mail,
   'folder-archive': FolderArchive,
   'chart-column': ChartColumn,
+  // Spec 0187: "Stato del sistema" under Amministrazione.
+  activity: Activity,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

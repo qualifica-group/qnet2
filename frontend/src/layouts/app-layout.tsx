@@ -7,6 +7,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { NotificationBell } from '@/features/notifications/notification-bell'
 import { useNotificationTitle } from '@/features/notifications/use-notification-title'
 import { HelpButton } from '@/features/help/components/help-button'
+import { usePresenceHeartbeat } from '@/features/system-health/use-presence-heartbeat'
 import { useAuth } from '@/features/auth/use-auth'
 import { ImpersonationBanner } from '@/features/auth/impersonation-banner'
 import { FirstAccessDialog } from '@/features/auth/first-access-dialog'
@@ -28,6 +29,9 @@ export function AppLayout() {
   // Unread notifications take over the browser tab title while the user is
   // signed in; the hook restores the app name once everything is read.
   useNotificationTitle()
+
+  // Presence ping (spec 0187): keeps the user counted as online while the app is open.
+  usePresenceHeartbeat()
 
   return (
     <BreadcrumbTitleProvider>

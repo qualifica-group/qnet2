@@ -78,6 +78,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   // i18next namespace instead of merging into `en.ts`/`it.ts` (see
   // `features/migrations/i18n.ts`).
   migrations: 'migrations:nav.label',
+  admin: 'navigation.administration',
+  'system-health': 'navigation.systemHealth',
   settings: 'navigation.settings',
   login: 'auth.signInTitle',
   'forgot-password': 'auth.forgotPasswordTitle',

@@ -4,6 +4,8 @@ import { en } from '@/i18n/locales/en'
 import { it } from '@/i18n/locales/it'
 import { migrations as migrationsEn } from '@/i18n/locales/en-migrations'
 import { migrations as migrationsIt } from '@/i18n/locales/it-migrations'
+import { systemHealth as systemHealthEn } from '@/i18n/locales/en-system-health'
+import { systemHealth as systemHealthIt } from '@/i18n/locales/it-system-health'
 
 export const defaultLocale = 'it'
 export const fallbackLocale = 'en'
@@ -31,8 +33,9 @@ void i18n.use(initReactI18next).init({
     // default `translation` bundle) so the backend-driven nav label and the
     // breadcrumb can resolve `migrations:nav.label` app-wide — before the lazy
     // migrations feature module is ever loaded. See features/migrations/i18n.ts.
-    en: { translation: en, migrations: migrationsEn },
-    it: { translation: it, migrations: migrationsIt },
+    // `systemHealth` is a separate namespace for the same reason (en.ts/it.ts at the size limit).
+    en: { translation: en, migrations: migrationsEn, systemHealth: systemHealthEn },
+    it: { translation: it, migrations: migrationsIt, systemHealth: systemHealthIt },
   },
   lng: defaultLocale,
   fallbackLng: fallbackLocale,

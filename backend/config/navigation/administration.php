@@ -47,5 +47,14 @@ return [
             'permission' => null,
             'role' => 'super-admin',
         ],
+        [
+            // System health (spec 0187): live subsystem status + online users.
+            'key' => 'system-health',
+            'label' => 'navigation.systemHealth',
+            'icon' => 'activity',
+            'route' => '/admin/system-health',
+            'permission' => null,
+            'role' => 'super-admin',
+        ],
     ],
 ];

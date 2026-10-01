@@ -64,6 +64,7 @@ export const navigation = {
   management: 'Gestione',
   configuration: 'Configurazione',
   administration: 'Amministrazione',
+  systemHealth: 'Stato del sistema',
   settings: 'Impostazioni',
   toggleSidebar: 'Apri/chiudi sidebar',
 }
