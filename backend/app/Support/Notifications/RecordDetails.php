@@ -52,32 +52,43 @@ final class RecordDetails
     ];
 
     /**
-     * @param  ?Quote  $requestManagementQuote  spec 0087, D-10: when $record
-     *                                          is an Opportunity notified
-     *                                          about on behalf of one of its
-     *                                          Offerte (a request-management
-     *                                          write), the "operator" field
-     *                                          reads THIS Offerta's own GA2
-     *                                          Operatore instead of the
-     *                                          Opportunity's — the two can
-     *                                          diverge (D-1). Ignored for
-     *                                          Registry records.
+     * @var array<int, string>
+     */
+    private const array QUOTE_RELATIONS = [
+        'opportunity.registry', 'opportunity.source',
+        'quoteWorkflowStatus', 'supervisor', 'operator',
+        'operationalSite.addresses.city',
+    ];
+
+    /**
      * @return array<string, string>
      */
-    public static function for(Model $record, ?Quote $requestManagementQuote = null): array
+    public static function for(Model $record): array
     {
         return match (true) {
             $record instanceof Registry => self::forRegistry($record),
-            $record instanceof Opportunity => self::forOpportunity($record, $requestManagementQuote),
+            $record instanceof Opportunity => self::forOpportunity($record),
+            $record instanceof Quote => self::forQuote($record),
             default => [],
         };
     }
 
     public static function targetFor(Model $record): AssignmentTargetEnum
     {
-        return $record instanceof Registry
-            ? AssignmentTargetEnum::Registry
-            : AssignmentTargetEnum::Opportunity;
+        return match (true) {
+            $record instanceof Registry => AssignmentTargetEnum::Registry,
+            $record instanceof Quote => AssignmentTargetEnum::Quote,
+            default => AssignmentTargetEnum::Opportunity,
+        };
+    }
+
+    /**
+     * The record's name as the notification sentence quotes it: an Offerta
+     * is known by its title (spec 0186), every other record by its name.
+     */
+    public static function labelFor(Model $record): string
+    {
+        return (string) $record->getAttribute($record instanceof Quote ? 'title' : 'name');
     }
 
     /**
@@ -99,10 +110,9 @@ final class RecordDetails
     }
 
     /**
-     * @param  ?Quote  $requestManagementQuote  see for()'s own docblock.
      * @return array<string, string>
      */
-    private static function forOpportunity(Opportunity $opportunity, ?Quote $requestManagementQuote): array
+    private static function forOpportunity(Opportunity $opportunity): array
     {
         $opportunity->loadMissing(self::OPPORTUNITY_RELATIONS);
 
@@ -115,24 +125,33 @@ final class RecordDetails
             'notifications.fields.status' => self::statusLabel($opportunity),
             'notifications.fields.source' => $opportunity->source?->name,
             'notifications.fields.supervisor' => $opportunity->supervisor?->name,
-            'notifications.fields.operator' => self::operatorName($opportunity, $requestManagementQuote),
+            'notifications.fields.operator' => $opportunity->operatorManager()?->name,
         ]);
     }
 
     /**
-     * The "operator" field's holder (spec 0087, D-10): the OFFERTA's own GA2
-     * Operatore when this notification is a request-management one, else the
-     * Opportunity's own GA2 pivot slot — unchanged for every OTHER caller of
-     * this class (OpportunitiesTableDefinition's own notes/notifications
-     * stay out of this spec's scope).
+     * Spec 0186: the Offerta's OWN facts — its title, Sede, working status,
+     * Supervisore and GA2 Operatore (spec 0087, D-10: they can diverge from
+     * the parent Opportunity's) — plus the client and source, which only the
+     * Opportunity carries.
+     *
+     * @return array<string, string>
      */
-    private static function operatorName(Opportunity $opportunity, ?Quote $requestManagementQuote): ?string
+    private static function forQuote(Quote $quote): array
     {
-        if ($requestManagementQuote !== null) {
-            return $requestManagementQuote->operator?->name;
-        }
+        $quote->loadMissing(self::QUOTE_RELATIONS);
 
-        return $opportunity->operatorManager()?->name;
+        $site = $quote->operationalSite;
+
+        return self::compact([
+            'notifications.fields.title' => $quote->title,
+            'notifications.fields.client' => $quote->opportunity?->registry?->name,
+            'notifications.fields.operational_site' => $site === null ? null : OperationalSiteLabel::compose($site->primaryAddress),
+            'notifications.fields.status' => $quote->quoteWorkflowStatus?->name,
+            'notifications.fields.source' => $quote->opportunity?->source?->name,
+            'notifications.fields.supervisor' => $quote->supervisor?->name,
+            'notifications.fields.operator' => $quote->operator?->name,
+        ]);
     }
 
     /**

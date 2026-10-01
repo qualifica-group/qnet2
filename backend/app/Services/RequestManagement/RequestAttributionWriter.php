@@ -234,8 +234,8 @@ final class RequestAttributionWriter
      * spec 0081: only a GENUINE transition is an assignment — the writer
      * leaves `operator_id` unset in $changed when the slot already held this
      * user, which is exactly the "renamed nothing" case that must notify
-     * nobody. Notified against the Opportunity: the notification detail card
-     * only understands Registry/Opportunity records (D-2).
+     * nobody. Notified against the Offerta itself (spec 0186, D-2): its
+     * title, its card, its link.
      *
      * @param  array<string, mixed>  $changed
      */
@@ -248,17 +248,10 @@ final class RequestAttributionWriter
         }
 
         $this->assignmentNotifier->notify(
-            $quote->opportunity,
+            $quote,
             $actor,
             null,
             [$newOperatorId => ManagerPositions::OPERATOR],
-            // Spec 0086, MT-04b: the deep link's request-management branch
-            // must open THIS Offerta, not the Opportunity — the two ids
-            // diverged since the grid row migrated onto the Quote.
-            requestManagementRecordId: $quote->id,
-            // Spec 0087, D-10: the detail card's "operator" field reads THIS
-            // Offerta's own GA2, not the parent Opportunity's.
-            requestManagementQuote: $quote,
         );
     }
 

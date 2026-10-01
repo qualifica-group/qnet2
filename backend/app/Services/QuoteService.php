@@ -15,6 +15,7 @@ use App\Models\WorkOrder;
 use App\Services\Commissions\QuoteLineCommissionWriter;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Contracts\ContractLifecycleManager;
+use App\Services\Notifications\AssignmentNotifier;
 use App\Services\Opportunities\OpportunityNameWriter;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\Quotes\QuoteAttributeValueWriter;
@@ -125,6 +126,7 @@ class QuoteService
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
         private readonly QuoteManagerWriter $managerWriter,
         private readonly QuoteManagerInheritance $managerInheritance,
+        private readonly AssignmentNotifier $assignmentNotifier,
     ) {}
 
     public function loadDetail(Quote $quote): Quote
@@ -175,8 +177,10 @@ class QuoteService
 
             // Step 3b (spec 0087, D-4/D-5): the Offerta's own Gestori
             // Account — a submitted set wins outright, otherwise PREFILL
-            // from the Opportunity's own GA at the same positions.
-            $this->managerWriter->sync(
+            // from the Opportunity's own GA at the same positions. Only a
+            // submitted set notifies (spec 0186, D-4): inherited managers
+            // already hold the Opportunity and would get a duplicate.
+            $attachedManagers = $this->managerWriter->sync(
                 $quote,
                 $data->hasManagerSlots() ? $data->managerSlots : $this->managerInheritance->fromOpportunity($opportunity),
                 $data->promoteManagersToOpportunity,
@@ -238,6 +242,9 @@ class QuoteService
             // fresh quote never had a prior status group.
             $this->contractLifecycleManager->syncOnStatusChange($quote, previousStatusId: null);
 
+            // Step 8 (spec 0186, D-5): last, once title and status are final.
+            $this->assignmentNotifier->notify($quote, $actor, null, $data->hasManagerSlots() ? $attachedManagers : []);
+
             return $quote;
         });
 
@@ -277,9 +284,9 @@ class QuoteService
             // Spec 0087, AC-003/D-6: omitted leaves the Offerta's GA
             // untouched; a submitted array (even []) is an authoritative
             // full-replace via the sole writer.
-            if ($data->hasManagerSlots()) {
-                $this->managerWriter->sync($quote, $data->managerSlots, $data->promoteManagersToOpportunity);
-            }
+            $attachedManagers = $data->hasManagerSlots()
+                ? $this->managerWriter->sync($quote, $data->managerSlots, $data->promoteManagersToOpportunity)
+                : [];
 
             $this->lineCoverageWriter->writeSubmitted(
                 $quote,
@@ -338,6 +345,9 @@ class QuoteService
 
             // Contract lifecycle automation (spec 0072, BR-1).
             $this->contractLifecycleManager->syncOnStatusChange($quote, $previousStatusId);
+
+            // Spec 0186, D-3/D-5: last, once title and status are final.
+            $this->assignmentNotifier->notify($quote, $actor, null, $attachedManagers);
         });
 
         return $this->loadDetail($quote);

@@ -37,10 +37,13 @@ final class QuoteManagerWriter
 
     /**
      * @param  array<int, int|null>  $slots
+     * @return array<int, int> the genuinely ATTACHED managers, `userId =>
+     *                         position` (ManagerPositions::attachedPositions):
+     *                         what the caller notifies (spec 0186, D-3)
      *
      * @throws ValidationException a mapped user is not a Gestore Account of the Offerta's Opportunita' and $promoteToOpportunity is false (D-6)
      */
-    public function sync(Quote $quote, array $slots, bool $promoteToOpportunity): void
+    public function sync(Quote $quote, array $slots, bool $promoteToOpportunity): array
     {
         $opportunity = $this->resolveOpportunity($quote);
         $syncMap = ManagerPositions::syncMap($slots);
@@ -57,7 +60,7 @@ final class QuoteManagerWriter
         }
 
         // Step 2: full-replace sync of the Offerta's own pivot.
-        PositionalPivotSync::sync($quote->managers(), $syncMap);
+        $attached = ManagerPositions::attachedPositions($syncMap, PositionalPivotSync::sync($quote->managers(), $syncMap));
         $quote->unsetRelation('managers');
 
         // Step 3: `quotes.operator_id` always mirrors the OPERATOR slot,
@@ -72,6 +75,8 @@ final class QuoteManagerWriter
             PositionalPivotSync::sync($opportunity->managers(), $syncMap);
             $opportunity->unsetRelation('managers');
         }
+
+        return $attached;
     }
 
     /**

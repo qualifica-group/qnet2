@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0186 NOTIFICA "GESTORE ACCOUNT" DI OFFERTA — VERDE, NON COMMITTATO (2026-10-01)
+
+- Spec `docs/specs/0186-quote-assignment-notifications.xml`. Nuovo `AssignmentTargetEnum::Quote`; link per
+  destinatario in `RecordLinkResolver::quotePath()` = stesso ordine di `resolveViewableDomain('quotes')`:
+  `/quotes/{id}` (quotes.view) -> `/request-management/{id}` (request-management.view) -> null.
+- `RecordDetails::for/targetFor/labelFor` gestiscono Quote (scheda: titolo, cliente, sede, stato, fonte,
+  supervisore, operatore dell'Offerta). Rimossi `requestManagementRecordId`/`requestManagementQuote` da
+  AssignmentNotifier/RecordAssignmentNotification/RecordDetails (restano solo nel transfer, `pathFor` Opportunity).
+- Gestione Richieste (RequestAttributionWriter, RequestAssignmentService) notifica ora sul `$quote` (solo GA2,
+  regola 0097 D-6 invariata). `QuoteManagerWriter::sync()` restituisce gli attached; `QuoteService::create/update`
+  notifica ogni nuovo gestore a fine transazione; in create solo se `manager_slots` inviato (ereditati = no).
+- Test `tests/Feature/Notifications/QuoteAssignmentNotificationTest.php` (AC-001..007); suite completa verde
+  (9085 passed). Guide in-app quotes/request-management IT+EN + manuale Claude Docs aggiornati.
+
 ## SPEC 0185 MODULO "STATISTICHE GESTIONE RICHIESTE" — VERDE, NON COMMITTATO (2026-10-01)
 
 - Spec `docs/specs/0185-request-statistics-module.xml` (D-1 un solo modulo, statistiche di Gestione Iscritti

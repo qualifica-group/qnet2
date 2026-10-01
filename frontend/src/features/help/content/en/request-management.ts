@@ -138,6 +138,10 @@ const guide: HelpGuide = {
           type: 'tip',
           text: 'If no operator is enabled on every selected request, **Assign to operator** is unavailable: use **Balanced split**.',
         },
+        {
+          type: 'note',
+          text: "Each request's new **Operator** receives the **You were assigned as Account Manager** notification with the quote's title and details; the link opens the quote, or the request here when they cannot access Quotes. The other Account Managers receive no notification.",
+        },
       ],
     },
     {

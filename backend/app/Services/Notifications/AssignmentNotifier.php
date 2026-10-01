@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Notifications;
 
 use App\Enums\AssignmentRoleEnum;
-use App\Models\Quote;
 use App\Models\User;
 use App\Notifications\RecordAssignmentNotification;
 use App\Support\Notifications\RecordDetails;
@@ -27,8 +26,9 @@ use Illuminate\Support\Facades\DB;
 final class AssignmentNotifier
 {
     /**
-     * @param  Model  $record  the Registry or Opportunity just written; its
-     *                         label and detail card are derived here
+     * @param  Model  $record  the Registry, Opportunity or Quote just
+     *                         written; its label and detail card are
+     *                         derived here
      * @param  ?User  $actor  who performed the write; excluded from the
      *                        recipients, since nobody needs to be told what
      *                        they just did. Null for system-initiated writes
@@ -38,41 +38,12 @@ final class AssignmentNotifier
      *                              null when this write did not change it
      * @param  array<int, int>  $managerPositions  userId => 1-based "G.A. n"
      *                                             slot, for NEW attachments only
-     * @param  ?int  $requestManagementRecordId  spec 0086, MT-04b: when
-     *                                           $record is an Opportunity
-     *                                           whose "Gestione Richieste"
-     *                                           row is really one of its
-     *                                           Offerte (a grid row IS a
-     *                                           Quote, not the Opportunity,
-     *                                           since spec 0086), the id that
-     *                                           deep-link must open — never
-     *                                           $record's own id. Null (every
-     *                                           caller outside
-     *                                           request-management) falls
-     *                                           back to $record's id, the
-     *                                           pre-0086 behaviour.
-     * @param  ?Quote  $requestManagementQuote  spec 0087, D-10: when this
-     *                                          write is a request-management
-     *                                          one, the SAME Offerta
-     *                                          $requestManagementRecordId
-     *                                          names — the detail card's
-     *                                          "operator" field must read
-     *                                          THIS Offerta's own GA2
-     *                                          Operatore, not the parent
-     *                                          Opportunity's (the two can
-     *                                          diverge, D-1). Null (every
-     *                                          caller outside
-     *                                          request-management) falls
-     *                                          back to $record's own GA2, the
-     *                                          pre-0087 behaviour.
      */
     public function notify(
         Model $record,
         ?User $actor,
         ?int $supervisorId,
         array $managerPositions,
-        ?int $requestManagementRecordId = null,
-        ?Quote $requestManagementQuote = null,
     ): void {
         // Step 1: drop the actor from both roles.
         if ($actor !== null) {
@@ -88,14 +59,14 @@ final class AssignmentNotifier
         // known facts and never queries, and the detail card needs relations.
         $target = RecordDetails::targetFor($record);
         $recordId = (int) $record->getKey();
-        $recordLabel = (string) $record->getAttribute('name');
-        $details = RecordDetails::for($record, $requestManagementQuote);
+        $recordLabel = RecordDetails::labelFor($record);
+        $details = RecordDetails::for($record);
         $actorName = $actor?->name ?? __('The system');
 
         // Step 3: dispatch only once the write is durable — a notification
         // sent from inside a transaction that later rolls back would be
         // irrecoverable (same rule as NoteService::syncMentionsAndNotify()).
-        DB::afterCommit(function () use ($target, $recordId, $recordLabel, $details, $actorName, $supervisorId, $managerPositions, $requestManagementRecordId): void {
+        DB::afterCommit(function () use ($target, $recordId, $recordLabel, $details, $actorName, $supervisorId, $managerPositions): void {
             $recipients = $this->recipients($supervisorId, $managerPositions);
 
             if ($supervisorId !== null) {
@@ -107,7 +78,6 @@ final class AssignmentNotifier
                     position: null,
                     actorName: $actorName,
                     details: $details,
-                    requestManagementRecordId: $requestManagementRecordId,
                 ));
             }
 
@@ -120,7 +90,6 @@ final class AssignmentNotifier
                     position: $position,
                     actorName: $actorName,
                     details: $details,
-                    requestManagementRecordId: $requestManagementRecordId,
                 ));
             }
         });

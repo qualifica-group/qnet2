@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0186-quote-assignment-notifications" status="approved" owner="utente" date="2026-10-01">
+
+  <goal>
+    La notifica "Sei stato inserito come Gestore Account" su un'Offerta diventa una notifica DI OFFERTA (titolo,
+    scheda dettagli e link dell'Offerta, non dell'Opportunita'), e parte anche quando i gestori si scrivono dalla
+    scheda Offerta o alla creazione dell'Offerta.
+  </goal>
+
+  <context>
+    Nomi verificati il 2026-10-01.
+    - `AssignmentNotifier::notify()` (spec 0081) e `RecordAssignmentNotification`; target `AssignmentTargetEnum`
+      (Registry, Opportunity); link per destinatario in `RecordLinkResolver::pathFor()`; scheda in `RecordDetails`.
+    - Gestione Richieste (`RequestAttributionWriter::notifyOperatorAssignment`, `RequestAssignmentService::assignOne`)
+      notifica oggi il nuovo GA2 come notifica di OPPORTUNITA': link `/opportunities/{id}` per chi vede le
+      Opportunita', fallback `/request-management/{quote}` (spec 0086 MT-04b), titolo = nome dell'Opportunita'.
+    - Scheda Offerta (`QuoteService::create/update` -> `QuoteManagerWriter::sync`) non notifica nessuno; la
+      creazione da Gestione Richieste (`RequestCreationService`) passa da `QuoteService::create`.
+    - Link dell'Offerta nel frontend: `resolveViewableDomain('quotes')` = `quotes` se `quotes.view`, altrimenti
+      `request-management` se `request-management.view`, altrimenti nessun link.
+  </context>
+
+  <decisions>
+    D-1  (utente) Nuovo target `AssignmentTargetEnum::Quote`. Link per destinatario con lo STESSO ordine dei link
+         dell'Offerta (`useViewableDomain`): `/quotes/{id}` con `quotes.view`, altrimenti `/request-management/{id}`
+         con `request-management.view`, altrimenti nessun link (frase "chiedi l'accesso").
+    D-2  Le notifiche di assegnazione di Gestione Richieste (GA2, pannello e assegnazione massiva) usano il target
+         Quote: etichetta = titolo dell'Offerta, scheda = dati dell'Offerta. Regola invariata: solo il nuovo
+         Operatore GA2 (spec 0097 D-6). Spariscono i parametri `requestManagementRecordId`/`requestManagementQuote`
+         di AssignmentNotifier/RecordAssignmentNotification/RecordDetails (nessun altro chiamante).
+    D-3  (utente) Scheda Offerta, create e update con `manager_slots` inviato: notifica OGNI gestore appena inserito
+         (attached, qualsiasi slot), come Opportunita'/Anagrafica. Spostamento di slot e rimozione non notificano;
+         l'attore e' escluso. `QuoteManagerWriter::sync()` restituisce le posizioni attached.
+    D-4  In creazione i gestori EREDITATI dall'Opportunita' (nessun `manager_slots` inviato, es. conversione lead
+         spec 0140) non notificano: sono gia' gestori dell'Opportunita' e riceverebbero un doppione.
+    D-5  La notifica parte a fine transazione (dopo titolo e stato definitivi), via `DB::afterCommit` come oggi.
+    D-6  Fuori scope: notifica di trasferimento (resta com'e', spec 0130), Supervisore dell'Offerta (non notifica,
+         spec 0097 AC-014), propagazione Opportunita' -> Offerta nelle categorie sincronizzate (notifica solo
+         lato Opportunita').
+  </decisions>
+
+  <contract>
+    Nessuna API cambia. Payload notifica invariato `{title, message, level, action_url}`; `action_url` resta un
+    PATH interno. Scheda dettagli Offerta: title, client, operational_site, status, source, supervisor, operator.
+  </contract>
+
+  <acceptance>
+    AC-001  Destinatario con `quotes.view` (anche con `opportunities.view`): `action_url` = `/quotes/{id}`.
+    AC-002  Destinatario con solo `request-management.view`: `action_url` = `/request-management/{id}`.
+    AC-003  Destinatario senza nessuno dei due: `action_url` null, frase di richiesta accesso, nessun pulsante mail.
+    AC-004  GA2 assegnato da Gestione Richieste (pannello e massivo): notifica con titolo Offerta e link Offerta.
+    AC-005  PATCH /api/quotes/{id} con `manager_slots`: notifica ogni nuovo gestore con il suo slot; uno
+            spostamento di slot non notifica; l'attore non e' notificato.
+    AC-006  POST /api/quotes con `manager_slots`: notifica i gestori inseriti; senza `manager_slots` (eredita'
+            dall'Opportunita') nessuna notifica.
+    AC-007  Scheda dettagli della mail = campi dell'Offerta (titolo, cliente, sede, stato, operatore).
+  </acceptance>
+
+</spec>

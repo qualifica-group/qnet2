@@ -37,6 +37,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'note',
+          text: "Whoever you add as an **Account manager** receives the **You were assigned as Account Manager** notification (bell and email) with the quote's title and details. The link opens the quote, or the request in **Request management** when they cannot access Quotes. It is not sent to managers only moved to another position, to whoever saves, nor to the managers inherited from the opportunity when you create the quote without setting them.",
+        },
+        {
           type: 'tip',
           text: "The **Title** is optional: left blank, QNet uses the quote code followed by the products on its revenue lines (for example QUO-0042 - ISO 9001 + SOA) and updates it when the lines change. A title you type stays yours; clear the field to go back to the automatic title.",
         },

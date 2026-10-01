@@ -37,6 +37,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'note',
+          text: "Chi inserisci tra i **Gestori account** riceve la notifica **Sei stato inserito come Gestore Account** (campanella ed email) con il titolo e i dati dell'offerta. Il link apre l'offerta, oppure la richiesta in **Gestione Richieste** se non ha accesso alle Offerte. Non la ricevono chi viene solo spostato di posizione, chi esegue il salvataggio, né i gestori ereditati dall'opportunità quando crei l'offerta senza indicarli.",
+        },
+        {
           type: 'tip',
           text: "Il **Titolo** è facoltativo: se lo lasci vuoto QNet usa il codice dell'offerta seguito dai prodotti delle sue righe di ricavo (per esempio QUO-0042 - ISO 9001 + SOA) e lo aggiorna quando cambi le righe. Se scrivi un titolo tuo resta quello; svuota il campo per tornare al titolo automatico.",
         },

@@ -35,7 +35,7 @@ use App\RequestManagement\RequestModule;
 final class RecordLinkResolver
 {
     /**
-     * @param  int  $recordId  the Opportunity id, for `/opportunities/:id`
+     * @param  int  $recordId  the Registry, Opportunity or Quote id
      * @param  ?int  $requestManagementRecordId  spec 0086, MT-04b: the
      *                                           request-management fallback
      *                                           now opens a Quote (a grid row
@@ -68,7 +68,28 @@ final class RecordLinkResolver
                 ? "/registries/{$recordId}"
                 : null,
             AssignmentTargetEnum::Opportunity => self::opportunityPath($notifiable, $recordId, $requestManagementRecordId ?? $recordId, $module),
+            AssignmentTargetEnum::Quote => self::quotePath($notifiable, $recordId),
         };
+    }
+
+    /**
+     * Spec 0186, D-1: the SAME order the SPA's own Offerta links follow
+     * (`resolveViewableDomain('quotes')`): the Offerte module first, then
+     * Gestione Richieste, whose rows are Offerte under the same id.
+     */
+    private static function quotePath(User $notifiable, int $quoteId): ?string
+    {
+        if ($notifiable->can('quotes.view')) {
+            return "/quotes/{$quoteId}";
+        }
+
+        $requests = RequestModule::Requests;
+
+        if ($notifiable->can($requests->permission('view'))) {
+            return "{$requests->recordPath()}/{$quoteId}";
+        }
+
+        return null;
     }
 
     /**

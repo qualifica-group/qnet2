@@ -245,20 +245,14 @@ final class RequestAssignmentService
 
         // spec 0081: one assignment notification per offer, exactly as the
         // per-record work panel emits — a batch of N produces N. Notified
-        // against the Opportunity: the notification detail card only
-        // understands Registry/Opportunity records (D-2).
+        // against the Offerta itself (spec 0186, D-2): its title, its card,
+        // its link.
         if (($changed['operator_id'] ?? null) !== null) {
             $this->assignmentNotifier->notify(
-                $quote->opportunity,
+                $quote,
                 $actor,
                 null,
                 [$changed['operator_id'] => ManagerPositions::OPERATOR],
-                // Spec 0086, MT-04b: the deep link's request-management
-                // branch must open THIS Offerta, not the Opportunity.
-                requestManagementRecordId: $quote->id,
-                // Spec 0087, D-10: the detail card's "operator" field reads
-                // THIS Offerta's own GA2, not the parent Opportunity's.
-                requestManagementQuote: $quote,
             );
         }
 

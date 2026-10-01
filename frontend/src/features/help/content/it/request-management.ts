@@ -138,6 +138,10 @@ const guide: HelpGuide = {
           type: 'tip',
           text: 'Se nessun operatore è abilitato su tutte le richieste scelte, **Assegna a operatore** non è disponibile: usa **Smistamento equo**.',
         },
+        {
+          type: 'note',
+          text: "Il nuovo **Operatore** di ogni richiesta riceve la notifica **Sei stato inserito come Gestore Account** con il titolo e i dati dell'offerta; il link apre l'offerta, oppure la richiesta qui se non ha accesso alle Offerte. Gli altri Gestori Account non ricevono notifiche.",
+        },
       ],
     },
     {

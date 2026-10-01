@@ -18,10 +18,10 @@ use Illuminate\Notifications\Notification;
 
 /**
  * Sent to a user who was just put in charge of a record (spec 0081): as
- * Supervisore or as "Gestore Account" of an anagrafica or of an
- * opportunita'/richiesta. ONE class for the four combinations rather than
- * four near-identical ones: target and role are data, not structure — they
- * only pick a sentence.
+ * Supervisore or as "Gestore Account" of an anagrafica, of an opportunita'
+ * or of an Offerta (spec 0186 — the Gestione Richieste rows included). ONE
+ * class for every combination rather than near-identical ones: target and
+ * role are data, not structure — they only pick a sentence and a link.
  *
  * Modelled on RequestTransferredNotification: `via(): ['database', 'mail']`,
  * `ShouldQueue`, payload through NotificationData (title/message/level/
@@ -41,16 +41,6 @@ class RecordAssignmentNotification extends Notification implements ShouldQueue
      * @param  array<string, string>  $details  the record's detail card,
      *                                          english label => value, built
      *                                          by RecordDetails before dispatch
-     * @param  ?int  $requestManagementRecordId  spec 0086, MT-04b: overrides
-     *                                           $recordId for the
-     *                                           request-management branch of
-     *                                           the deep link only (a grid
-     *                                           row is a Quote, not an
-     *                                           Opportunity, since spec
-     *                                           0086) — null keeps the
-     *                                           pre-0086 behaviour of
-     *                                           reusing $recordId for both
-     *                                           branches.
      */
     public function __construct(
         private readonly AssignmentTargetEnum $target,
@@ -60,7 +50,6 @@ class RecordAssignmentNotification extends Notification implements ShouldQueue
         private readonly ?int $position,
         private readonly string $actorName,
         private readonly array $details = [],
-        private readonly ?int $requestManagementRecordId = null,
     ) {}
 
     /**
@@ -115,7 +104,7 @@ class RecordAssignmentNotification extends Notification implements ShouldQueue
     private function pathFor(object $notifiable): ?string
     {
         /** @var User $notifiable */
-        return RecordLinkResolver::pathFor($notifiable, $this->target, $this->recordId, $this->requestManagementRecordId);
+        return RecordLinkResolver::pathFor($notifiable, $this->target, $this->recordId);
     }
 
     private function title(): string

@@ -14,10 +14,16 @@ namespace App\Enums;
  * with two permission sets (spec 0049, D-1), which is exactly why the deep
  * link for this case is resolved per recipient (RecordLinkResolver) instead
  * of being fixed here.
+ *
+ * `Quote` (spec 0186) is an Offerta: assigned from its own form or from
+ * Gestione Richieste, whose rows ARE Offerte (spec 0086). Its link follows
+ * the Offerta's own module fallback, never the parent Opportunity's.
  */
 enum AssignmentTargetEnum: string
 {
     case Registry = 'REGISTRY';
 
     case Opportunity = 'OPPORTUNITY';
+
+    case Quote = 'QUOTE';
 }
