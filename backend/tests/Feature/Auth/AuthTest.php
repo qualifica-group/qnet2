@@ -149,3 +149,23 @@ it('refreshes the token by rotating it', function () {
     expect($response->json('data.token'))->not->toBe($token);
     expect($user->fresh()->tokens()->count())->toBe(1);
 });
+
+it('configures API tokens to expire after one month', function () {
+    expect(config('sanctum.expiration'))->toBe(60 * 24 * 30);
+});
+
+it('accepts a token just before the one-month expiration', function () {
+    $token = User::factory()->create()->createToken('api')->plainTextToken;
+
+    $this->travel(30 * 24 * 60 - 1)->minutes();
+
+    $this->withToken($token)->getJson('/api/auth/me')->assertOk();
+});
+
+it('rejects a token older than one month', function () {
+    $token = User::factory()->create()->createToken('api')->plainTextToken;
+
+    $this->travel(30 * 24 * 60 + 1)->minutes();
+
+    $this->withToken($token)->getJson('/api/auth/me')->assertUnauthorized();
+});

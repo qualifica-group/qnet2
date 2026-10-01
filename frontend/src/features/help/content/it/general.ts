@@ -13,6 +13,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'Apri l’indirizzo di QNet nel browser, inserisci le credenziali e premi **Accedi**: si apre la **Dashboard**.' },
         { type: 'steps', items: ['Apri l’indirizzo di QNet nel browser.', 'Inserisci **Email** e **Password**.', 'Premi **Accedi**. Si apre la **Dashboard**.'] },
         { type: 'paragraph', text: 'Se i dati non sono corretti compare "Email o password non validi." L’icona a forma di occhio nel campo password mostra o nasconde quello che hai scritto.' },
+        { type: 'note', text: 'L’accesso resta valido per 30 giorni. Trascorso questo periodo QNet ti riporta alla pagina di accesso: inserisci di nuovo le credenziali per continuare.' },
         { type: 'paragraph', text: 'Se hai dimenticato la password, dalla pagina di accesso:' },
         { type: 'steps', items: ['Premi **Password dimenticata?**.', 'Inserisci la tua email e premi **Invia link di reset**.', 'Apri l’email ricevuta e segui il link.', 'Scrivi la **Nuova password** e ripetila in **Ripeti la password** (almeno 8 caratteri).', 'Premi **Reimposta password**, poi accedi con la nuova password.'] },
         { type: 'warning', text: 'Se compare "Questo link di reset non è valido o è scaduto", richiedine uno nuovo.' },

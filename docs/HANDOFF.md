@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SCADENZA TOKEN API 30 GIORNI — VERDE, NON COMMITTATO (2026-10-01)
+
+- Decisione utente 2026-10-01: i token Sanctum scadono dopo un mese. `config/sanctum.php`:
+  `'expiration' => (int) env('SANCTUM_EXPIRATION', 60 * 24 * 30)` (minuti); `.env.example` documenta `SANCTUM_EXPIRATION=43200`.
+  Effetto: check Health "Scadenza token" (`SecurityHealthCheck::sanctumExpirationDetail`) passa da Degradato a OK.
+- Scadenza FISSA dal login: il frontend non chiama mai `/api/auth/refresh`. Al 401 l'interceptor di `api/client.ts`
+  pulisce il token e l'AuthProvider riporta al login. Vale anche per i token di impersonation.
+- CORS lasciato invariato per decisione utente (resta Degradato: nessun `config/cors.php`, default framework `*`).
+- Test: `tests/Feature/Auth/AuthTest.php` (+3: valore config, token valido a 30gg-1min, 401 a 30gg+1min). Suite completa verde (9121 passed, 1 skipped).
+- Manuale: guida in-app `general` sezione `sign-in-and-password` +nota 30 giorni (IT+EN); manuale Claude Docs
+  aggiornato (stessa nota sotto "Accesso"). PDF derivato NON rigenerato.
+
 ## STAGING: EMAIL BLOCCATE SENZA MAIL_ALWAYS_TO — VERDE, NON COMMITTATO (2026-10-01)
 
 - Requisito utente: in staging tutte le email vanno a `MAIL_ALWAYS_TO`. Il redirect esisteva gia'

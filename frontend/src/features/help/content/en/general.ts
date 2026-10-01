@@ -13,6 +13,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: "Open qnet's address in your browser, enter your credentials and press **Sign in**: the **Dashboard** opens." },
         { type: 'steps', items: ["Open qnet's address in your browser.", 'Enter **Email** and **Password**.', 'Press **Sign in**. The **Dashboard** opens.'] },
         { type: 'paragraph', text: 'If the details are wrong, "Invalid email or password." appears. The eye icon in the password field shows or hides what you typed.' },
+        { type: 'note', text: 'Your sign-in stays valid for 30 days. After that QNet takes you back to the sign-in page: enter your credentials again to continue.' },
         { type: 'paragraph', text: 'If you forgot your password, from the sign-in page:' },
         { type: 'steps', items: ['Press **Forgot your password?**.', 'Enter your email and press **Send reset link**.', 'Open the email you received and follow the link.', 'Type the **New password** and repeat it in **Repeat password** (at least 8 characters).', 'Press **Reset password**, then sign in with the new password.'] },
         { type: 'warning', text: 'If "This reset link is invalid or has expired." appears, request a new one.' },
