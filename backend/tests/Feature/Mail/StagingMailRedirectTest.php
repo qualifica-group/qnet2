@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\Mail\MailBlockedInStagingException;
 use App\Mail\StagingMailRedirector;
 use App\Models\User;
 use App\Notifications\ResetPasswordNotification;
@@ -93,4 +94,25 @@ it('never redirects in production even when the address is set', function () {
 
     expect(array_map(fn (Address $a) => $a->getAddress(), deliveredTo()))
         ->toBe(['real@example.com']);
+});
+
+it('blocks every email in staging when no redirect address is configured', function () {
+    app()->detectEnvironment(fn () => 'staging');
+
+    applyStagingRedirect(null);
+
+    expect(fn () => Mail::raw('body', fn ($message) => $message->to('real@example.com')->subject('probe')))
+        ->toThrow(MailBlockedInStagingException::class)
+        ->and(Mail::getSymfonyTransport()->messages())->toHaveCount(0);
+});
+
+it('still redirects in staging when the address is configured', function () {
+    app()->detectEnvironment(fn () => 'staging');
+
+    applyStagingRedirect('staging-inbox@example.com');
+
+    Mail::raw('body', fn ($message) => $message->to('real@example.com')->subject('probe'));
+
+    expect(array_map(fn (Address $a) => $a->getAddress(), deliveredTo()))
+        ->toBe(['staging-inbox@example.com']);
 });

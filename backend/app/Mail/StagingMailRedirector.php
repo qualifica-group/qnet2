@@ -2,7 +2,10 @@
 
 namespace App\Mail;
 
+use App\Exceptions\Mail\MailBlockedInStagingException;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Mail\MailManager;
 
 /**
@@ -23,31 +26,63 @@ use Illuminate\Mail\MailManager;
  * Hard-guarded against production even when the variable is set: the redirect is
  * a staging aid, and an operator who copies a staging .env onto the production
  * host must not silently divert real customer mail into a QA mailbox.
+ *
+ * Fails closed in staging: APP_ENV=staging without MAIL_ALWAYS_TO blocks every
+ * send instead of delivering to the real contacts (user decision 2026-10-01).
  */
 final class StagingMailRedirector
 {
+    private const string STAGING_ENVIRONMENT = 'staging';
+
     public function __construct(
         private readonly Application $app,
         private readonly MailManager $mail,
+        private readonly Dispatcher $events,
     ) {}
 
     public function handle(): void
     {
-        $recipient = config('mail.always_to');
-
-        if (! is_string($recipient) || trim($recipient) === '') {
-            return;
-        }
-
+        // Step 1: production always delivers normally.
         if ($this->app->isProduction()) {
             return;
         }
 
-        $recipient = trim($recipient);
+        // Step 2: with a redirect mailbox, funnel every mailer to it.
+        $recipient = $this->recipient();
 
-        foreach ($this->mailerNames() as $name) {
-            $this->redirectMailer($name, $recipient);
+        if ($recipient !== null) {
+            foreach ($this->mailerNames() as $name) {
+                $this->redirectMailer($name, $recipient);
+            }
+
+            return;
         }
+
+        // Step 3: staging without a redirect mailbox sends nothing at all.
+        if ($this->app->environment(self::STAGING_ENVIRONMENT)) {
+            $this->blockAllMail();
+        }
+    }
+
+    private function recipient(): ?string
+    {
+        $recipient = config('mail.always_to');
+
+        return is_string($recipient) && trim($recipient) !== '' ? trim($recipient) : null;
+    }
+
+    /**
+     * MessageSending is dispatched by every Mailer instance before its
+     * transport runs, so this covers named mailers too. Throwing (rather than
+     * returning false to cancel silently) surfaces the block: queued mail
+     * jobs fail and SendOutboundEmailJob records the email as failed, not
+     * sent.
+     */
+    private function blockAllMail(): void
+    {
+        $this->events->listen(MessageSending::class, static function (): never {
+            throw new MailBlockedInStagingException;
+        });
     }
 
     /**

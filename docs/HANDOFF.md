@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## STAGING: EMAIL BLOCCATE SENZA MAIL_ALWAYS_TO — VERDE, NON COMMITTATO (2026-10-01)
+
+- Requisito utente: in staging tutte le email vanno a `MAIL_ALWAYS_TO`. Il redirect esisteva gia'
+  (`App\Mail\StagingMailRedirector`, `alwaysTo()` su mailer di default + `outbound_emails.mailer`), ma con
+  `APP_ENV=staging` e variabile vuota le email partivano ai destinatari reali (fail-open).
+- Decisione utente 2026-10-01: fail-closed. `StagingMailRedirector::handle()` ora: production -> nulla;
+  indirizzo valorizzato -> redirect (invariato, anche in local); `APP_ENV=staging` senza indirizzo ->
+  listener `MessageSending` che lancia `App\Exceptions\Mail\MailBlockedInStagingException` (copre ogni
+  mailer, anche quelli nominati). Effetti: job notifiche mail falliscono (failed_jobs), `SendOutboundEmailJob`
+  marca l'email `failed` (messaggio generico), mai `sent`. Lo staging e' riconosciuto SOLO da `APP_ENV=staging`.
+- Test: `tests/Feature/Mail/StagingMailRedirectTest.php` (+2), `tests/Feature/OutboundEmails/StagingRedirectCouplingTest.php` (+1).
+- Verificato: `composer test` 9117 passed / 1 skipped; Pint pulito. Manuale: nessun impatto (config di deploy).
+- Deploy staging: verificare che il `.env` abbia `APP_ENV=staging` e `MAIL_ALWAYS_TO` valorizzata.
+
 ## E-CAMPUS: CAMPI OFFERTA, LAYOUT E STATI DI LAVORAZIONE — VERDE, COMMITTATO (2026-10-01)
 
 - Fonte: PDF "BOZZA gestionale_Progetto Università" (colonne FACOLTA' -> Finanziamento + colonna STATO).

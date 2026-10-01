@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\OutboundEmailStatus;
+use App\Jobs\SendOutboundEmailJob;
 use App\Mail\OutboundEmailMessage;
 use App\Mail\StagingMailRedirector;
 use App\Models\OutboundEmail;
@@ -120,4 +122,23 @@ it('leaves an unknown outbound_emails.mailer name from breaking the default redi
 
     expect(array_map(fn (Address $a) => $a->getAddress(), $sent->getTo()))
         ->toBe(['staging-inbox@example.com']);
+});
+
+it('marks an OutboundEmail failed instead of sending it in staging without a redirect address', function () {
+    app()->detectEnvironment(fn () => 'staging');
+
+    config([
+        'mail.default' => 'array',
+        'mail.always_to' => null,
+        'outbound_emails.mailer' => 'array',
+    ]);
+
+    app(StagingMailRedirector::class)->handle();
+
+    $email = stagingOutboundEmail('mario@example.com');
+
+    (new SendOutboundEmailJob($email))->handle();
+
+    expect($email->fresh()->status)->toBe(OutboundEmailStatus::Failed)
+        ->and(Mail::getSymfonyTransport()->messages())->toHaveCount(0);
 });
