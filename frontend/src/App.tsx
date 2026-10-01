@@ -33,7 +33,7 @@ function App() {
                       </Suspense>
                     </FieldChangeRequestDialogProvider>
                   </ConfirmDialogProvider>
-                  <Toaster />
+                  <Toaster position="top-center" />
                 </TooltipProvider>
               </ColorPresetProvider>
             </UiScaleProvider>

@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TOAST IN ALTO AL CENTRO — VERDE, COMMITTATO (2026-10-01)
+
+- Decisione utente 2026-10-01: gli alert (sonner) e l'avviso "Nuova versione disponibile" compaiono in alto al centro,
+  non piu' in basso a destra. Unica modifica: `App.tsx` `<Toaster position="top-center" />` (un solo Toaster globale;
+  `VersionUpdateBanner` usa lo stesso `toast()`). Nessun toast forza una posizione propria: non aggiungerne.
+- Verifica: `tsc -b --force` pulito, ESLint pulito, `version-update-banner.test.tsx` 5/5. Manuale: nessun impatto
+  (ne' guide in-app ne' Claude Docs citano la posizione degli avvisi).
+
 ## SCADENZA TOKEN API 30 GIORNI — VERDE, NON COMMITTATO (2026-10-01)
 
 - Decisione utente 2026-10-01: i token Sanctum scadono dopo un mese. `config/sanctum.php`:
