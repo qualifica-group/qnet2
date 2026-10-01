@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX ACTIVITY LOG CONTRATTI / STATI CONTRATTO (404) — VERDE, NON COMMITTATO (2026-10-01)
+
+- Bug: `GET /api/activity-log/contracts/{id}` (e `contract-statuses/{id}`) -> 404 "Risorsa non trovata": le due
+  risorse non erano registrate in `backend/config/activity-log.php`, quindi `ActivityLogRegistry` lanciava
+  `ModelNotFoundException`. Il frontend (`contract-detail`, `contracts-table`, `contract-status-detail`,
+  `contract-statuses-table`) le chiamava gia'. Fix: registrate `contracts` (Contract) e `contract-statuses`
+  (ContractStatus), gate di default `PolicyActivityLogAuthorizer`, nessuna relazione aggregata.
+- Test: dataset di `tests/Feature/ActivityLog/ActivityLogModulesTest.php` esteso con le due risorse (AC-001/002/003).
+- Audit: tutte le altre risorse usate dal frontend sono registrate; le Policy con `viewActivity` non registrate
+  restanti (addresses, attachments, contacts, personal_data, rewarded-referents) non hanno una tab Attivita'.
+- In produzione serve `php artisan config:cache` dopo il deploy se la config e' cachata.
+
 ## SPEC 0186 NOTIFICA "GESTORE ACCOUNT" DI OFFERTA — VERDE, NON COMMITTATO (2026-10-01)
 
 - Spec `docs/specs/0186-quote-assignment-notifications.xml`. Nuovo `AssignmentTargetEnum::Quote`; link per

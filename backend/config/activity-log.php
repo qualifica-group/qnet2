@@ -6,6 +6,8 @@ use App\Models\Campaign;
 use App\Models\CommissionConfiguration;
 use App\Models\Company;
 use App\Models\CompanySite;
+use App\Models\Contract;
+use App\Models\ContractStatus;
 use App\Models\CustomFieldDefinition;
 use App\Models\DocumentBundle;
 use App\Models\DocumentLayout;
@@ -107,6 +109,12 @@ return [
         'company-sites' => [
             'model' => CompanySite::class,
             'relations' => ['personalData', 'personalData.contacts', 'personalData.addresses'],
+        ],
+        'contracts' => [
+            'model' => Contract::class,
+        ],
+        'contract-statuses' => [
+            'model' => ContractStatus::class,
         ],
         'custom-fields' => [
             'model' => CustomFieldDefinition::class,

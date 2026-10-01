@@ -5,6 +5,8 @@ use App\Models\BusinessFunction;
 use App\Models\Campaign;
 use App\Models\Company;
 use App\Models\CompanySite;
+use App\Models\Contract;
+use App\Models\ContractStatus;
 use App\Models\CustomFieldDefinition;
 use App\Models\Lead;
 use App\Models\OperationalSite;
@@ -47,6 +49,8 @@ if (! function_exists('activityLogModuleFixtures')) {
             'campaigns' => Campaign::class,
             'companies' => Company::class,
             'company-sites' => CompanySite::class,
+            'contract-statuses' => ContractStatus::class,
+            'contracts' => Contract::class,
             'custom-fields' => CustomFieldDefinition::class,
             'leads' => Lead::class,
             'operational-sites' => OperationalSite::class,
