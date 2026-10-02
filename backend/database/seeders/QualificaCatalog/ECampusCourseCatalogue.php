@@ -5,14 +5,12 @@ namespace Database\Seeders\QualificaCatalog;
 /**
  * The client's e-Campus degree catalogue, transcribed from the "CORSI
  * E-CAMPUS" sheet (user directive 2026-10-01). Pure data, like
- * SelfFundedCourseCatalogue — ECampusCategoryTree builds the nodes, and
- * CatalogProducts files the products on them.
+ * SelfFundedCourseCatalogue — CatalogProducts files the products on the node.
  *
- * The tree hangs under the "Formazione" root: "Corsi E-Campus" (container) >
- * one container per degree level > one selectable leaf per subject area,
- * named "<area> - <degree level>" (ECampusCategoryTree): the areas repeat
- * across the two levels ("Ingegneria" is both a bachelor's and a master's
- * area), and the suffix tells them apart.
+ * Every product sits directly on "Corsi E-Campus", a selectable subcategory
+ * of the "Formazione" root (user directive 2026-10-02). The degree-level and
+ * subject-area nodes it used to split into are gone — ECampusTreeFlattening
+ * folds them on an installation that still has them.
  *
  * A course is sold as one SERVICE product per fee of its degree level, named
  * "<course> <fee>" and priced at the fee: the sheet lists each course as
@@ -26,19 +24,12 @@ namespace Database\Seeders\QualificaCatalog;
  */
 final class ECampusCourseCatalogue
 {
-    /**
-     * The root the branch hangs under — a node of
-     * QualificaCatalogSeeder::CATALOG, bound by identity.
-     */
-    public const string PARENT = 'Formazione';
-
     public const string CATEGORY = 'Corsi E-Campus';
 
     /**
-     * Degree level => its fees (product suffix => price) and its subject
-     * areas (area => course names).
+     * Degree level => its fees (product suffix => price) and its course names.
      *
-     * @var array<string, array{fees: array<string, float>, areas: array<string, list<string>>}>
+     * @var array<string, array{fees: array<string, float>, courses: list<string>}>
      */
     public const array DEGREES = [
         'Corsi di Laurea Triennali' => [
@@ -50,32 +41,22 @@ final class ECampusCourseCatalogue
                 '3°ANNO' => 2856.0,
                 'TESI' => 300.0,
             ],
-            'areas' => [
-                'Ingegneria' => [
-                    'Ingegneria Civile e Ambientale [L-7]',
-                    'Ingegneria Informatica e dell\'Automazione [L-8]',
-                    'Ingegneria Industriale [L-9]',
-                ],
-                'Letteratura' => [
-                    'Letteratura, Arte, Musica e Spettacolo [L-10]',
-                    'Lingue e Culture Europee e del Resto del Mondo [L-11]',
-                    'Design e Discipline della Moda [L-3]',
-                ],
-                'Psicologia' => [
-                    'Scienze Biologiche [L-13]',
-                    'Scienze dell\'Educazione e della Formazione [L-19]',
-                    'Scienze delle Attività Motorie e Sportive [L-22]',
-                    'Scienze e Tecniche Psicologiche [L-24]',
-                ],
-                'Economia' => [
-                    'Scienze del Turismo per il Management e i Beni Culturali [L-15]',
-                    'Economia [L-33]',
-                ],
-                'Giurisprudenza' => [
-                    'Servizi Giuridici [L-14]',
-                    'Scienze della Comunicazione [L-20]',
-                    'Scienze Politiche e Sociali [L-36]',
-                ],
+            'courses' => [
+                'Ingegneria Civile e Ambientale [L-7]',
+                'Ingegneria Informatica e dell\'Automazione [L-8]',
+                'Ingegneria Industriale [L-9]',
+                'Letteratura, Arte, Musica e Spettacolo [L-10]',
+                'Lingue e Culture Europee e del Resto del Mondo [L-11]',
+                'Design e Discipline della Moda [L-3]',
+                'Scienze Biologiche [L-13]',
+                'Scienze dell\'Educazione e della Formazione [L-19]',
+                'Scienze delle Attività Motorie e Sportive [L-22]',
+                'Scienze e Tecniche Psicologiche [L-24]',
+                'Scienze del Turismo per il Management e i Beni Culturali [L-15]',
+                'Economia [L-33]',
+                'Servizi Giuridici [L-14]',
+                'Scienze della Comunicazione [L-20]',
+                'Scienze Politiche e Sociali [L-36]',
             ],
         ],
         'Corsi di Laurea Magistrali' => [
@@ -86,25 +67,17 @@ final class ECampusCourseCatalogue
                 '2°ANNO' => 3056.0,
                 'TESI' => 300.0,
             ],
-            'areas' => [
-                'Letteratura' => [
-                    'Letteratura, Lingua e Cultura Italiana [LM-14]',
-                    'Lingue e Letterature Moderne e Traduzione Interculturale [LM-37]',
-                ],
-                'Ingegneria' => [
-                    'Ingegneria Civile [LM-23]',
-                    'Ingegneria Informatica e dell\'Automazione [LM-32]',
-                    'Ingegneria Industriale [LM-33]',
-                ],
-                'Psicologia' => [
-                    'Psicologia [LM-51]',
-                    'Scienze dell\'Esercizio Fisico per il Benessere e la Salute [LM-67]',
-                    'Scienze Pedagogiche [LM-85]',
-                    'Scienze della Nutrizione Umana [LM-61]',
-                ],
-                'Economia' => [
-                    'Scienze dell\'Economia [LM-56]',
-                ],
+            'courses' => [
+                'Letteratura, Lingua e Cultura Italiana [LM-14]',
+                'Lingue e Letterature Moderne e Traduzione Interculturale [LM-37]',
+                'Ingegneria Civile [LM-23]',
+                'Ingegneria Informatica e dell\'Automazione [LM-32]',
+                'Ingegneria Industriale [LM-33]',
+                'Psicologia [LM-51]',
+                'Scienze dell\'Esercizio Fisico per il Benessere e la Salute [LM-67]',
+                'Scienze Pedagogiche [LM-85]',
+                'Scienze della Nutrizione Umana [LM-61]',
+                'Scienze dell\'Economia [LM-56]',
             ],
         ],
     ];

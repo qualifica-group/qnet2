@@ -8,6 +8,7 @@ use App\Enums\LayoutSectionVariant;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\Concerns\RetiresAttributes;
 use Database\Seeders\Concerns\SeedsAttributeLayouts;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
@@ -48,6 +49,7 @@ use Illuminate\Database\Seeder;
  */
 class QualificaQuoteLayoutSeeder extends Seeder
 {
+    use RetiresAttributes;
     use SeedsAttributeLayouts;
 
     /**
@@ -211,7 +213,25 @@ class QualificaQuoteLayoutSeeder extends Seeder
             }
         }
 
-        return false;
+        return $this->isRetiredECampusComposition($blob);
+    }
+
+    /**
+     * Whether $blob is the e-Campus form of the 2026-10-01 revision, stripped
+     * of its retired fields (ContactProcessingAttributeCatalogue::RETIRED_ATTRIBUTES).
+     * The strip keeps every surviving item's width, sized for the row it used
+     * to share, so the blob composes as no current code set: it is matched
+     * against the old form put through the same strip instead.
+     *
+     * @param  array<string, mixed>  $blob
+     */
+    private function isRetiredECampusComposition(array $blob): bool
+    {
+        $definitions = ECampusAttributeCatalogue::PREVIOUS_SECTIONS;
+        $codes = array_merge(...array_merge(...array_column($definitions, 2)));
+        $stripped = $this->withoutCodes($this->compose($definitions, $codes), ContactProcessingAttributeCatalogue::RETIRED_ATTRIBUTES);
+
+        return $this->composesAs($blob, $stripped);
     }
 
     /**

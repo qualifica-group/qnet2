@@ -17,7 +17,10 @@ use App\Enums\LayoutSectionVariant;
  * paperwork and classroom editions an online degree has none of.
  *
  * The sheet's option lists become `enum` options; its "flag" columns become
- * `boolean` fields; the course column, which lists no option, is free text.
+ * `boolean` fields. Its course column is not a field (user directive
+ * 2026-10-02): the course is the offer's product, filed on "Corsi E-Campus".
+ * The same directive adds three document flags and replaces the payment
+ * flags with the "Tipo di pagamento" select, "Finanziamento" among its options.
  * `code` is the English identifier; `name` and the option labels are the
  * user-facing values, kept in their original language.
  */
@@ -34,7 +37,6 @@ final class ECampusAttributeCatalogue
             ['value' => 'engineering', 'label' => 'Ingegneria'],
             ['value' => 'humanities', 'label' => 'Lettere'],
         ]],
-        ['code' => 'degree_course', 'name' => 'Corso di Laurea (CdS)', 'type' => 'text'],
         ['code' => 'degree_level', 'name' => 'Triennale/Magistrale', 'type' => 'enum', 'options' => [
             ['value' => 'bachelor', 'label' => 'Triennale'],
             ['value' => 'master', 'label' => 'Magistrale'],
@@ -43,9 +45,15 @@ final class ECampusAttributeCatalogue
         ['code' => 'enrollment_form', 'name' => 'Modulo di iscrizione', 'type' => 'boolean'],
         ['code' => 'diploma_or_self_certification', 'name' => 'Diploma / autocertificazione', 'type' => 'boolean'],
         ['code' => 'annex_a', 'name' => 'Allegato A', 'type' => 'boolean'],
-        ['code' => 'fee_regulation', 'name' => 'Regolamento Economico', 'type' => 'boolean'],
-        ['code' => 'bank_transfer', 'name' => 'Bonifico', 'type' => 'boolean'],
-        ['code' => 'financing', 'name' => 'Finanziamento', 'type' => 'boolean'],
+        ['code' => 'ecampus_receipt', 'name' => 'Contabile e-Campus', 'type' => 'boolean'],
+        ['code' => 'qualifica_receipt', 'name' => 'Contabile Qualifica', 'type' => 'boolean'],
+        ['code' => 'data_collection_form', 'name' => 'Modulo raccolta dati', 'type' => 'boolean'],
+        ['code' => 'payment_type', 'name' => 'Tipo di pagamento', 'type' => 'enum', 'options' => [
+            ['value' => 'single_payment', 'label' => 'Unica soluzione'],
+            ['value' => 'two_installments', 'label' => '2 rate'],
+            ['value' => 'three_installments', 'label' => '3 rate'],
+            ['value' => 'financing', 'label' => 'Finanziamento'],
+        ]],
     ];
 
     /**
@@ -53,11 +61,33 @@ final class ECampusAttributeCatalogue
      * QualificaQuoteLayoutSeeder::SECTIONS plus each section's style (user
      * directive 2026-10-01: a tidy form): what the candidate enrols in,
      * highlighted on top; the documents received, two per row; the payment
-     * side, the three checks on one row. Every field fills its row.
+     * type alone. Every field fills its row.
      *
      * @var list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>
      */
     public const array SECTIONS = [
+        ['ecampus-course', 'Corso di Laurea', [
+            ['faculty', 'degree_level'],
+        ], ['variant' => LayoutSectionVariant::Highlighted, 'columns' => 2, 'description' => 'Facoltà, livello e corso di laurea scelti dal candidato.']],
+        ['ecampus-documents', 'Documenti di iscrizione', [
+            ['identification_documents', 'enrollment_form'],
+            ['diploma_or_self_certification', 'annex_a'],
+            ['ecampus_receipt', 'qualifica_receipt'],
+            ['data_collection_form'],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Spunta i documenti ricevuti dal candidato.']],
+        ['ecampus-payment', 'Pagamento', [
+            ['payment_type'],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 1, 'description' => 'Modalità di pagamento scelta dal candidato.']],
+    ];
+
+    /**
+     * The form the 2026-10-01 revision wrote, kept so QualificaQuoteLayoutSeeder
+     * recognises it — as the retirement of its course and payment fields left
+     * it — and recomposes it instead of freezing it as user data.
+     *
+     * @var list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>
+     */
+    public const array PREVIOUS_SECTIONS = [
         ['ecampus-course', 'Corso di Laurea', [
             ['faculty', 'degree_level'],
             ['degree_course'],

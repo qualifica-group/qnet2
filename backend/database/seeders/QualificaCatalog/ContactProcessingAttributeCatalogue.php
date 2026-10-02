@@ -93,6 +93,11 @@ final class ContactProcessingAttributeCatalogue
      * "Autofinanziato") was folded into "Titolo di Studio" as one of its
      * options (user directive 2026-09-24).
      *
+     * `degree_course` ("Corso di Laurea (CdS)", on "Corsi E-Campus"): the
+     * course is the offer's product (user directive 2026-10-02). The payment
+     * flags of the same node, `financing`, `fee_regulation` and
+     * `bank_transfer`, gave way to the "Tipo di pagamento" select.
+     *
      * @var list<string>
      */
     public const array RETIRED_ATTRIBUTES = [
@@ -102,6 +107,7 @@ final class ContactProcessingAttributeCatalogue
         'appointment_date', 'acceptance_date', 'company_name',
         'site_address', 'city', 'requested_service', 'company_referent',
         'professional_qualification',
+        'degree_course', 'financing', 'fee_regulation', 'bank_transfer',
     ];
 
     /**

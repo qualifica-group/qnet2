@@ -3,6 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CORSI E-CAMPUS: ALBERO APPIATTITO + CAMPI OFFERTA RIVISTI — VERDE, COMMITTATO (2026-10-02)
+
+- Decisione utente 2026-10-02: niente piu' livelli/aree. "Corsi E-Campus" e' una sottocategoria SELEZIONABILE di
+  Formazione (`QualificaCatalogSeeder::CATALOG` + `SELECTABLE_SUBCATEGORIES`), i 140 prodotti stanno direttamente
+  su di essa. Sostituisce l'albero a tre livelli del 2026-10-01 (sezione "CATALOGO CORSI E-CAMPUS" sotto).
+- `ECampusCourseCatalogue::DEGREES` = livello => `fees` + `courses` (lista piatta); `PARENT` rimosso.
+  `ECampusCategoryTree` CANCELLATO, sostituito da `QualificaCatalog/ECampusTreeFlattening::apply()` (in
+  `seedCatalog()`, prima dei prodotti): sui DB che hanno ancora i vecchi nodi sposta prodotti, righe
+  opportunita'/progetto/campagna/competenza e commission_configurations sul ramo, poi cancella aree e livelli.
+  In transazione; se due righe dello stesso owner+funzione collasserebbero sul ramo lancia `RuntimeException`
+  (da unire a mano). No-op su installazione nuova.
+- Stati e-Campus invariati (ora risolti sul nodo stesso). Fold verificato sul DB locale `qnet2` (140 prodotti e 18
+  righe offerta accorpati); poi l'utente ha fatto `migrate:fresh --seed` e il catalogo e' stato riseedato.
+- Test: `QualificaECampusCatalogueTest` riscritto (5 scenari: seed piatto, fold, fold rifiutato, form/stati,
+  ricomposizione del form 2026-10-01);
+  lista selezionabili e conteggio in `QualificaCatalogSeederTest` (requisito cambiato). Suite completa verde.
+- `QualificaCatalogSeeder.php` e' a ridosso delle 500 righe (hard limit; 500 con le modifiche APL): la prossima
+  aggiunta richiede uno split.
+- Campi offerta e-Campus (stessa data, decisione utente): RITIRATI `degree_course` ("Corso di Laurea (CdS)", il
+  corso e' il prodotto) e i flag di pagamento `financing`, `fee_regulation`, `bank_transfer` -> in
+  `ContactProcessingAttributeCatalogue::RETIRED_ATTRIBUTES`. NUOVI: `ecampus_receipt` "Contabile e-Campus",
+  `qualifica_receipt` "Contabile Qualifica", `data_collection_form` "Modulo raccolta dati" (boolean, sezione
+  Documenti) e `payment_type` "Tipo di pagamento" (enum `single_payment`/`two_installments`/`three_installments`/
+  `financing`), UNICO campo della sezione Pagamento (1 colonna). Manuale: nessun impatto (non cita e-Campus).
+  Valori gia' salvati nei campi ritirati restano sulle offerte, non letti (nessuna conversione a `payment_type`).
+- Layout: `ECampusAttributeCatalogue::PREVIOUS_SECTIONS` = form del 2026-10-01;
+  `QualificaQuoteLayoutSeeder::isRetiredECampusComposition()` lo riconosce dopo lo strip dei codici ritirati (le
+  larghezze sopravvivono allo strip, quindi il match byte-per-byte normale non basta) e lo ricompone. Un form
+  modificato a mano resta intatto.
+
 ## TOAST IN ALTO AL CENTRO — VERDE, COMMITTATO (2026-10-01)
 
 - Decisione utente 2026-10-01: gli alert (sonner) e l'avviso "Nuova versione disponibile" compaiono in alto al centro,

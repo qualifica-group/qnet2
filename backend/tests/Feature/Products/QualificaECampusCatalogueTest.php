@@ -5,21 +5,24 @@ use App\Enums\FormMode;
 use App\Enums\LayoutFormScope;
 use App\Enums\ProductType;
 use App\Models\Attribute;
+use App\Models\AttributeLayout;
+use App\Models\OpportunityProductLine;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\Concerns\SeedsAttributeLayouts;
 use Database\Seeders\QualificaCatalog\ECampusAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
-// The e-Campus degree catalogue (user directive 2026-10-01): the
-// "Corsi E-Campus" branch under Formazione, its two degree levels, their
-// subject areas and one product per fee of each course.
+// The e-Campus degree catalogue: "Corsi E-Campus" under Formazione, every
+// product of each course filed on it directly (user directive 2026-10-02),
+// and the fold of the three-level tree an earlier revision seeded.
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
@@ -27,96 +30,132 @@ beforeEach(function (): void {
     config(['migrations.base_url' => null]);
 });
 
-function eCampusChild(string $name, ?int $parentId): ProductCategory
-{
-    return ProductCategory::query()->where('name', $name)->where('parent_id', $parentId)->sole();
-}
-
 /** @return array<string, float> product name => price */
-function eCampusProductsOf(ProductCategory $area): array
+function eCampusProductsOf(ProductCategory $category): array
 {
     return Product::query()
-        ->where('category_id', $area->id)
+        ->where('category_id', $category->id)
         ->orderBy('id')
         ->get()
         ->mapWithKeys(fn (Product $product): array => [$product->name => (float) $product->price])
         ->all();
 }
 
-it('seeds the e-Campus branch, its degree fees and its products correctly and idempotently', function (): void {
+/**
+ * @param  list<array<string, mixed>>  $sections
+ * @return list<list<string>> every row's codes, in reading order
+ */
+function eCampusLayoutCodes(array $sections): array
+{
+    return array_merge(...array_map(
+        fn (array $section): array => array_map(fn (array $row): array => array_column($row['items'], 'attribute_code'), $section['rows']),
+        $sections,
+    ));
+}
+
+/**
+ * The tree the 2026-10-01 revision seeded: Formazione > Corsi E-Campus >
+ * degree level > "<area> - <degree level>".
+ *
+ * @param  list<string>  $areaNames
+ * @return array{branch: ProductCategory, degree: ProductCategory, areas: list<ProductCategory>}
+ */
+function retiredECampusTree(array $areaNames): array
+{
+    $formazione = ProductCategory::factory()->create(['name' => 'Formazione', 'parent_id' => null, 'is_selectable' => false]);
+    $branch = ProductCategory::factory()->create(['name' => ECampusCourseCatalogue::CATEGORY, 'parent_id' => $formazione->id, 'is_selectable' => false]);
+    $degree = ProductCategory::factory()->create(['name' => 'Corsi di Laurea Triennali', 'parent_id' => $branch->id, 'is_selectable' => false]);
+    $areas = array_map(
+        fn (string $name): ProductCategory => ProductCategory::factory()->create(['name' => $name, 'parent_id' => $degree->id, 'is_selectable' => true]),
+        $areaNames,
+    );
+
+    return ['branch' => $branch, 'degree' => $degree, 'areas' => $areas];
+}
+
+it('seeds every e-Campus degree fee directly on "Corsi E-Campus", idempotently', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
-    test()->seed(QualificaCatalogSeeder::class); // re-run: (name, parent) keys, no duplicates.
+    test()->seed(QualificaCatalogSeeder::class); // re-run: (name, category) keys, no duplicates.
 
-    $formazione = eCampusChild('Formazione', null);
-    $branch = eCampusChild(ECampusCourseCatalogue::CATEGORY, $formazione->id);
-    $bachelor = eCampusChild('Corsi di Laurea Triennali', $branch->id);
-    $master = eCampusChild('Corsi di Laurea Magistrali', $branch->id);
+    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->sole();
+    $branch = ProductCategory::query()->where('name', ECampusCourseCatalogue::CATEGORY)->sole();
+    $products = Product::query()->where('category_id', $branch->id)->get();
 
-    // Containers down to the degree level, areas selectable (spec 0074) and
-    // suffixed with their degree level, so the two "Ingegneria" read apart.
-    expect($branch->is_selectable)->toBeFalse()
-        ->and($bachelor->is_selectable)->toBeFalse()
-        ->and($master->is_selectable)->toBeFalse()
-        ->and(ProductCategory::query()->where('parent_id', $branch->id)->count())->toBe(2)
-        ->and(ProductCategory::query()->where('parent_id', $bachelor->id)->orderBy('name')->pluck('name')->all())
-        ->toBe([
-            'Economia - Corsi di Laurea Triennali', 'Giurisprudenza - Corsi di Laurea Triennali',
-            'Ingegneria - Corsi di Laurea Triennali', 'Letteratura - Corsi di Laurea Triennali',
-            'Psicologia - Corsi di Laurea Triennali',
-        ])
-        ->and(ProductCategory::query()->where('parent_id', $master->id)->orderBy('name')->pluck('name')->all())
-        ->toBe([
-            'Economia - Corsi di Laurea Magistrali', 'Ingegneria - Corsi di Laurea Magistrali',
-            'Letteratura - Corsi di Laurea Magistrali', 'Psicologia - Corsi di Laurea Magistrali',
-        ])
-        ->and(ProductCategory::query()->whereIn('parent_id', [$bachelor->id, $master->id])->where('is_selectable', false)->exists())
-        ->toBeFalse();
+    // A selectable leaf of Formazione: no degree level, no subject area.
+    expect($branch->parent_id)->toBe($formazione->id)
+        ->and($branch->is_selectable)->toBeTrue()
+        ->and(ProductCategory::query()->where('parent_id', $branch->id)->exists())->toBeFalse();
 
-    // One product per fee, named before the sheet's colon, priced at the fee.
-    expect(eCampusProductsOf(eCampusChild('Economia - Corsi di Laurea Triennali', $bachelor->id)))->toBe([
-        'Scienze del Turismo per il Management e i Beni Culturali [L-15] PROGETTO FORM' => 1500.0,
-        'Scienze del Turismo per il Management e i Beni Culturali [L-15] ASSISTENZA E TUTORAGGIO' => 500.0,
-        'Scienze del Turismo per il Management e i Beni Culturali [L-15] 1°ANNO' => 2856.0,
-        'Scienze del Turismo per il Management e i Beni Culturali [L-15] 2°ANNO' => 2856.0,
-        'Scienze del Turismo per il Management e i Beni Culturali [L-15] 3°ANNO' => 2856.0,
-        'Scienze del Turismo per il Management e i Beni Culturali [L-15] TESI' => 300.0,
-        'Economia [L-33] PROGETTO FORM' => 1500.0,
-        'Economia [L-33] ASSISTENZA E TUTORAGGIO' => 500.0,
-        'Economia [L-33] 1°ANNO' => 2856.0,
-        'Economia [L-33] 2°ANNO' => 2856.0,
-        'Economia [L-33] 3°ANNO' => 2856.0,
-        'Economia [L-33] TESI' => 300.0,
-    ])->and(eCampusProductsOf(eCampusChild('Economia - Corsi di Laurea Magistrali', $master->id)))->toBe([
-        'Scienze dell\'Economia [LM-56] PROGETTO FORM' => 1500.0,
-        'Scienze dell\'Economia [LM-56] ASSISTENZA E TUTORAGGIO' => 500.0,
-        'Scienze dell\'Economia [LM-56] 1°ANNO' => 3056.0,
-        'Scienze dell\'Economia [LM-56] 2°ANNO' => 3056.0,
-        'Scienze dell\'Economia [LM-56] TESI' => 300.0,
-    ]);
-
-    // 15 bachelor courses x 6 fees + 10 master courses x 5 fees.
-    $products = Product::query()
-        ->whereIn('category_id', ProductCategory::query()->whereIn('parent_id', [$bachelor->id, $master->id])->select('id'))
-        ->get();
-
+    // 15 bachelor courses x 6 fees + 10 master courses x 5 fees, each named
+    // before the sheet's colon and priced at its fee.
     expect($products)->toHaveCount(140)
         ->and($products->every(fn (Product $product): bool => $product->product_type === ProductType::Service
             && (float) $product->cost === 0.0
-            && $product->vat_rate_id === null))->toBeTrue();
+            && $product->vat_rate_id === null))->toBeTrue()
+        ->and(array_slice(eCampusProductsOf($branch), 0, 6))->toBe([
+            'Ingegneria Civile e Ambientale [L-7] PROGETTO FORM' => 1500.0,
+            'Ingegneria Civile e Ambientale [L-7] ASSISTENZA E TUTORAGGIO' => 500.0,
+            'Ingegneria Civile e Ambientale [L-7] 1°ANNO' => 2856.0,
+            'Ingegneria Civile e Ambientale [L-7] 2°ANNO' => 2856.0,
+            'Ingegneria Civile e Ambientale [L-7] 3°ANNO' => 2856.0,
+            'Ingegneria Civile e Ambientale [L-7] TESI' => 300.0,
+        ])
+        ->and(array_slice(eCampusProductsOf($branch), -5))->toBe([
+            'Scienze dell\'Economia [LM-56] PROGETTO FORM' => 1500.0,
+            'Scienze dell\'Economia [LM-56] ASSISTENZA E TUTORAGGIO' => 500.0,
+            'Scienze dell\'Economia [LM-56] 1°ANNO' => 3056.0,
+            'Scienze dell\'Economia [LM-56] 2°ANNO' => 3056.0,
+            'Scienze dell\'Economia [LM-56] TESI' => 300.0,
+        ]);
+});
+
+it('folds the retired degree and area nodes onto "Corsi E-Campus" with their products and lines', function (): void {
+    ['branch' => $branch, 'degree' => $degree, 'areas' => [$area]] = retiredECampusTree(['Ingegneria - Corsi di Laurea Triennali']);
+    $product = Product::factory()->create(['name' => 'Ingegneria Civile e Ambientale [L-7] PROGETTO FORM', 'category_id' => $area->id]);
+    $line = OpportunityProductLine::factory()->create(['product_category_id' => $area->id]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    // The old nodes are gone, what they held now sits on the branch: the
+    // product is moved, never duplicated, and the offer line follows it.
+    expect(ProductCategory::query()->whereKey([$degree->id, $area->id])->exists())->toBeFalse()
+        ->and($branch->fresh()->is_selectable)->toBeTrue()
+        ->and($product->fresh()->category_id)->toBe($branch->id)
+        ->and(Product::query()->where('name', $product->name)->count())->toBe(1)
+        ->and($line->fresh()->product_category_id)->toBe($branch->id)
+        ->and(Product::query()->where('category_id', $branch->id)->count())->toBe(140);
+});
+
+it('refuses a fold that would merge two lines of one opportunity, leaving the old tree whole', function (): void {
+    ['areas' => [$engineering, $economics]] = retiredECampusTree([
+        'Ingegneria - Corsi di Laurea Triennali',
+        'Economia - Corsi di Laurea Triennali',
+    ]);
+    $line = OpportunityProductLine::factory()->create(['product_category_id' => $engineering->id]);
+    OpportunityProductLine::factory()->create([
+        'opportunity_id' => $line->opportunity_id,
+        'business_function_id' => $line->business_function_id,
+        'product_category_id' => $economics->id,
+    ]);
+
+    expect(fn () => test()->seed(QualificaCatalogSeeder::class))
+        ->toThrow(RuntimeException::class, 'opportunity_product_lines');
+
+    expect(ProductCategory::query()->whereKey([$engineering->id, $economics->id])->count())->toBe(2)
+        ->and($line->fresh()->product_category_id)->toBe($engineering->id);
 });
 
 it('gives the e-Campus branch its own offer form, layout and working states', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
     $branch = ProductCategory::query()->where('name', ECampusCourseCatalogue::CATEGORY)->sole();
-    $area = ProductCategory::query()->where('name', 'Ingegneria - Corsi di Laurea Triennali')->sole();
     $hierarchy = app(CategoryHierarchy::class);
     $ownCodes = array_column(ECampusAttributeCatalogue::ATTRIBUTES, 'code');
 
-    // Behind a barrier: the area resolves the e-Campus fields and nothing of
-    // the Formazione set ("Ore complessive", CPI, "Dati Aula").
+    // Behind a barrier: the branch resolves the e-Campus fields and nothing
+    // of the Formazione set ("Ore complessive", CPI, "Dati Aula").
     expect($branch->inherits_quote_attributes)->toBeFalse()
-        ->and($hierarchy->effectiveAttributes($area, AttributeContext::Quote)->pluck('code')->sort()->values()->all())
+        ->and($hierarchy->effectiveAttributes($branch, AttributeContext::Quote)->pluck('code')->sort()->values()->all())
         ->toBe(collect($ownCodes)->sort()->values()->all());
 
     $faculty = Attribute::query()->where('code', 'faculty')->sole();
@@ -124,18 +163,33 @@ it('gives the e-Campus branch its own offer form, layout and working states', fu
         ->and($faculty->options()->orderBy('sort_order')->pluck('label')->all())
         ->toBe(['Psicologia', 'Economia', 'Giurisprudenza', 'Ingegneria', 'Lettere']);
 
-    // The styled form sits on the branch; the areas render it by inheritance.
+    // The styled form sits on the branch the offers are classified on.
     $layouts = app(AttributeLayoutService::class);
-    $sections = $layouts->resolveWithFallback($area, AttributeContext::Quote, FormMode::Create)['sections'];
+    $sections = $layouts->resolveWithFallback($branch, AttributeContext::Quote, FormMode::Create)['sections'];
 
-    expect($layouts->resolveExact($area, AttributeContext::Quote, LayoutFormScope::All))->toBeNull()
-        ->and($layouts->resolveExact($branch, AttributeContext::Quote, LayoutFormScope::All))->not->toBeNull()
+    expect($layouts->resolveExact($branch, AttributeContext::Quote, LayoutFormScope::All))->not->toBeNull()
         ->and(array_column($sections, 'title'))->toBe(['Corso di Laurea', 'Documenti di iscrizione', 'Pagamento'])
         ->and(array_column($sections, 'variant'))->toBe(['highlighted', 'default', 'default'])
-        ->and(array_column($sections, 'columns'))->toBe([2, 2, 3])
-        // Every field fills its row: the course alone spans it whole.
-        ->and(array_column($sections[0]['rows'][1]['items'], 'width'))->toBe(['full'])
-        ->and(array_column($sections[2]['rows'][0]['items'], 'width'))->toBe(['third', 'third', 'third']);
+        ->and(array_column($sections, 'columns'))->toBe([2, 2, 1])
+        // No course field (user directive 2026-10-02): the course is the
+        // product. Every field fills its row.
+        ->and($sections[0]['rows'])->toHaveCount(1)
+        ->and(array_column($sections[0]['rows'][0]['items'], 'width'))->toBe(['half', 'half'])
+        ->and(eCampusLayoutCodes($sections))->toBe([
+            ['faculty', 'degree_level'],
+            ['identification_documents', 'enrollment_form'],
+            ['diploma_or_self_certification', 'annex_a'],
+            ['ecampus_receipt', 'qualifica_receipt'],
+            ['data_collection_form'],
+            ['payment_type'],
+        ])
+        ->and(array_column($sections[2]['rows'][0]['items'], 'width'))->toBe(['full']);
+
+    // The payment flags gave way to the select, "Finanziamento" among its options.
+    $paymentType = Attribute::query()->where('code', 'payment_type')->sole();
+    expect($paymentType->type)->toBe('enum')
+        ->and($paymentType->options()->orderBy('sort_order')->pluck('label')->all())
+        ->toBe(['Unica soluzione', '2 rate', '3 rate', 'Finanziamento']);
 
     // One working-state set on the whole branch, the sheet's states between
     // the pinned system rows.
@@ -154,4 +208,38 @@ it('gives the e-Campus branch its own offer form, layout and working states', fu
         ->and($statuses->firstWhere('name', 'Attesa Prevalutazione')->group->value)->toBe('pending')
         ->and($statuses->firstWhere('name', 'Non risponde')->group->value)->toBe('open')
         ->and($statuses->pluck('name')->all())->not->toContain('NR');
+});
+
+it('recomposes the e-Campus form an installation got from the 2026-10-01 revision', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    // That revision's state: its retired fields assigned on the branch and
+    // its form, composed exactly as the seeder wrote it.
+    $branch = ProductCategory::query()->where('name', ECampusCourseCatalogue::CATEGORY)->sole();
+    $retired = ['degree_course' => 'text', 'fee_regulation' => 'boolean', 'bank_transfer' => 'boolean', 'financing' => 'boolean'];
+    foreach ($retired as $code => $type) {
+        Attribute::factory()->create(['code' => $code, 'type' => $type])
+            ->categories()->attach($branch->id, ['context' => AttributeContext::Quote->value, 'is_required' => false, 'sort_order' => 0]);
+    }
+    $composer = new class
+    {
+        use SeedsAttributeLayouts;
+
+        /** @return list<array<string, mixed>> */
+        public function sections(array $definitions): array
+        {
+            return array_map(fn (array $definition, int $order): array => $this->layoutSection(...[...array_slice($definition, 0, 3), $order, $definition[3]]), $definitions, array_keys($definitions));
+        }
+    };
+    AttributeLayout::query()->where('product_category_id', $branch->id)->where('context', AttributeContext::Quote->value)->sole()
+        ->update(['layout' => ['sections' => $composer->sections(ECampusAttributeCatalogue::PREVIOUS_SECTIONS)]]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $effective = app(CategoryHierarchy::class)->effectiveAttributes($branch, AttributeContext::Quote)->pluck('code');
+    $sections = app(AttributeLayoutService::class)->resolveWithFallback($branch, AttributeContext::Quote, FormMode::Create)['sections'];
+
+    expect($effective->intersect(array_keys($retired)))->toBeEmpty()
+        ->and(eCampusLayoutCodes($sections))->toBe(array_merge(...array_column(ECampusAttributeCatalogue::SECTIONS, 2)))
+        ->and(array_column($sections[2]['rows'][0]['items'], 'width'))->toBe(['full']);
 });

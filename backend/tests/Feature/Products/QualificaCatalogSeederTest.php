@@ -60,20 +60,15 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         'Autofinanziato - Campania', 'Autofinanziato - Lazio',
         'Autofinanziato - Lombardia', 'Autofinanziato - Sicilia',
         'Autoimpiego',
+        // The e-Campus leaf, every degree fee on it (user directive 2026-10-02).
+        'Corsi E-Campus',
         'DIL - Lombardia',
-        // The e-Campus subject areas, suffixed with their degree level (user
-        // directive 2026-10-01).
-        'Economia - Corsi di Laurea Magistrali', 'Economia - Corsi di Laurea Triennali',
         'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',
-        'Giurisprudenza - Corsi di Laurea Triennali',
-        'Ingegneria - Corsi di Laurea Magistrali', 'Ingegneria - Corsi di Laurea Triennali',
-        'Letteratura - Corsi di Laurea Magistrali', 'Letteratura - Corsi di Laurea Triennali',
         'Orientamento Specialistico',
         // The Consulenza leaf (user directive 2026-09-28).
         'Presa Appuntamenti',
-        'Psicologia - Corsi di Laurea Magistrali', 'Psicologia - Corsi di Laurea Triennali',
         'Yisu',
     ]);
 
@@ -301,7 +296,7 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
     // one product of each single-offer category, plus one product per fee of
     // each e-Campus course (user directive 2026-10-01).
     $eCampusProducts = array_sum(array_map(
-        static fn (array $degree): int => count($degree['fees']) * array_sum(array_map(count(...), $degree['areas'])),
+        static fn (array $degree): int => count($degree['fees']) * count($degree['courses']),
         ECampusCourseCatalogue::DEGREES,
     ));
 

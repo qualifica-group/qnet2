@@ -26,7 +26,7 @@ use App\Services\ProductService;
  *   - the single-offer categories (SINGLE_OFFER_CATEGORIES): one product
  *     named after the category itself, filed directly on it;
  *   - the e-Campus degrees (ECampusCourseCatalogue): one product per fee of
- *     the degree level, "<course> <fee>", on its subject area, at the fee.
+ *     the degree level, "<course> <fee>", on "Corsi E-Campus", at the fee.
  *
  * NO ATTRIBUTE VALUE IS WRITTEN (user directive 2026-09-08). The duration and
  * the delivery mode used to be seeded here, onto the product; they moved to
@@ -67,10 +67,7 @@ final class CatalogProducts
         'Orientamento Specialistico',
     ];
 
-    public function __construct(
-        private readonly ProductService $products,
-        private readonly ECampusCategoryTree $eCampusTree,
-    ) {}
+    public function __construct(private readonly ProductService $products) {}
 
     public function seed(): void
     {
@@ -86,14 +83,12 @@ final class CatalogProducts
 
     private function seedECampusCourses(): void
     {
-        foreach (ECampusCourseCatalogue::DEGREES as $degreeName => $degree) {
-            foreach ($degree['areas'] as $areaName => $courses) {
-                $category = $this->eCampusTree->area($degreeName, $areaName);
+        $category = $this->category(ECampusCourseCatalogue::CATEGORY);
 
-                foreach ($courses as $course) {
-                    foreach ($degree['fees'] as $fee => $price) {
-                        $this->seedProduct($category, sprintf('%s %s', $course, $fee), $price);
-                    }
+        foreach (ECampusCourseCatalogue::DEGREES as $degree) {
+            foreach ($degree['courses'] as $course) {
+                foreach ($degree['fees'] as $fee => $price) {
+                    $this->seedProduct($category, sprintf('%s %s', $course, $fee), $price);
                 }
             }
         }

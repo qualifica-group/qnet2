@@ -15,8 +15,8 @@ use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusAttributeCatalogue;
-use Database\Seeders\QualificaCatalog\ECampusCategoryTree;
 use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
+use Database\Seeders\QualificaCatalog\ECampusTreeFlattening;
 use Database\Seeders\QualificaCatalog\ReportColumnsCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Illuminate\Database\Seeder;
@@ -37,8 +37,8 @@ use Illuminate\Database\Seeder;
  *     rules are classified on the third level, today the `GOL - <Regione>`
  *     rows, the `Autofinanziato - <Regione>` rows and "DIL - Lombardia" —
  *     plus the subcategories that host their offer directly, "Autoimpiego",
- *     "Yisu" and "Orientamento Specialistico", and the Consulenza leaf
- *     "Presa Appuntamenti" (see SELECTABLE_SUBCATEGORIES).
+ *     "Yisu", "Orientamento Specialistico", "Corsi E-Campus" and the Consulenza
+ *     leaf "Presa Appuntamenti" (see SELECTABLE_SUBCATEGORIES).
  *     The "Formazione" branch also carries its OFFERTA-context attributes (spec 0061/0084) — the
  *     "Dati corso" pair of QualificaCatalog\CourseDataAttributeCatalogue and
  *     the "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue,
@@ -55,7 +55,7 @@ use Illuminate\Database\Seeder;
  *     "Autofinanziato - <Regione>" with their price and VAT rate, and the one
  *     product each single-offer category sells ("Autoimpiego", "Yisu" and
  *     "Orientamento Specialistico"), plus the e-Campus degree fees on the
- *     "Corsi E-Campus" branch (ECampusCategoryTree). No other product is seeded;
+ *     "Corsi E-Campus" leaf (ECampusCourseCatalogue). No other product is seeded;
  *   - the ROOT-OWNED rules of the two roots that declare them (how many
  *     product lines a card carries, how many offers an opportunity may hold),
  *     delegated to QualificaCatalog\CatalogRootRules once the whole tree
@@ -172,6 +172,7 @@ class QualificaCatalogSeeder extends Seeder
             'DIL' => [
                 'DIL - Lombardia',
             ],
+            ECampusCourseCatalogue::CATEGORY => [], // its products on it (2026-10-02)
         ],
         // "Trattative in Corso" is no longer a category (user directive
         // 2026-09-28): "Presa Appuntamenti" is the branch's only leaf.
@@ -212,12 +213,14 @@ class QualificaCatalogSeeder extends Seeder
      * The Consulenza leaf is a target too (user directive 2026-09-28): it has
      * no children to group, so the opportunities are classified on it
      * directly. No product is seeded there, unlike the single-offer ones.
+     * So is "Corsi E-Campus", which hosts the degree fees (user directive 2026-10-02).
      *
      * @var list<string>
      */
     private const array SELECTABLE_SUBCATEGORIES = [
         ...CatalogProducts::SINGLE_OFFER_CATEGORIES,
         ...ContactProcessingAttributeCatalogue::CONSULTING_CATEGORIES,
+        ECampusCourseCatalogue::CATEGORY,
     ];
 
     /**
@@ -375,8 +378,8 @@ class QualificaCatalogSeeder extends Seeder
             }
         }
 
-        // The e-Campus branch, keyed on (name, parent): its area names repeat.
-        app(ECampusCategoryTree::class)->seed();
+        // The retired e-Campus levels fold onto the leaf, before the products.
+        app(ECampusTreeFlattening::class)->apply();
 
         // Spec 0141 D-6/D-8 (AC-008): the report column selection, only where
         // still unset — independent of the attributes/root-owned steps below.
