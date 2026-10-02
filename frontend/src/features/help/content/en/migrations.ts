@@ -43,7 +43,7 @@ const guide: HelpGuide = {
           '**Quotes**: the quotes of the imported opportunities, with code **QUO-** followed by the legacy id, the revenue lines, VAT and the commissions that have a percentage or an amount. The status follows the legacy one: presented stays open, declined becomes closed lost, accepted or contracted becomes closed won and creates the contract with the legacy status and dates.',
           '**Work orders**: imported with code **COM-** followed by the legacy id, the linked quote lines, supervisors and participants. Work orders closed, cancelled or terminated in the legacy arrive force-closed with the reason.',
         ] },
-        { type: 'note', text: 'No notifications or emails are sent and no activity log entries are written during this import. Notes, documents, flexible field values, work order stages and tasks are not imported. A quote line without an imported product (for example a discount) is skipped with a warning; a line already linked to another work order stays on the first one.' },
+        { type: 'note', text: 'No notifications or emails are sent and no activity log entries are written during this import. Notes, documents, flexible field values, work order stages and tasks are not imported. A quote line without an imported product (for example a discount) is skipped with a warning; a line already linked to another work order stays on the first one, and each later work order gets a copy of the line, with its commissions, added to the quote: the quote total grows accordingly.' },
       ],
     },
     {

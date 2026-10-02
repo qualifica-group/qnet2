@@ -10,6 +10,7 @@ use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
 use App\Migrations\Sources\Concerns\MapsLegacyWorkOrderFields;
 use App\Migrations\Support\ExternalApiClient;
+use App\Migrations\Support\QuoteLineDuplicator;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\User;
@@ -27,8 +28,9 @@ use RuntimeException;
  * No task template (G-2): no stage, task or email is generated, and the
  * service notifies nobody on create. Lines (G-10) are the offer's REVENUE
  * lines matched on `quote_lines.old_id`; a line already programmed into
- * another commessa stays with it and is dropped here with a warning, never
- * reaching WorkOrderLineWriter's 422. Closed legacy statuses become a forced
+ * another commessa stays with it and this one gets a copy of the line on the
+ * offer (QuoteLineDuplicator, user decision 2026-10-02), never reaching
+ * WorkOrderLineWriter's 422. Closed legacy statuses become a forced
  * close with a legacy reason. The whole row runs without activity log (G-3).
  */
 class WorkOrdersSource extends AbstractMigrationSource
@@ -41,6 +43,7 @@ class WorkOrdersSource extends AbstractMigrationSource
     public function __construct(
         ExternalApiClient $client,
         private readonly WorkOrderService $service,
+        private readonly QuoteLineDuplicator $lineDuplicator,
     ) {
         parent::__construct($client);
     }
@@ -187,7 +190,8 @@ class WorkOrdersSource extends AbstractMigrationSource
     /**
      * The offer's REVENUE lines matching the legacy line ids (G-10). A line
      * already programmed into another commessa stays there ("una riga, una
-     * sola Commessa"): dropped here with a warning.
+     * sola Commessa"): this commessa gets a copy of it on the offer instead,
+     * with a warning (the offer total grows by the copy).
      *
      * @param  array<int, string>  $warnings
      * @return array<int, int>
@@ -216,12 +220,20 @@ class WorkOrdersSource extends AbstractMigrationSource
             ->map(intval(...))
             ->all();
 
+        $lineIds = [];
+
         foreach ($lineIdsByOldId as $oldId => $lineId) {
-            if (in_array($lineId, $programmed, true)) {
-                $warnings[] = "Quote line (legacy id {$oldId}) already belongs to another work order; not linked.";
+            if (! in_array($lineId, $programmed, true)) {
+                $lineIds[] = $lineId;
+
+                continue;
             }
+
+            $copy = $this->lineDuplicator->duplicate(QuoteLine::query()->with('commissions', 'quote')->findOrFail($lineId));
+            $lineIds[] = $copy->id;
+            $warnings[] = "Quote line (legacy id {$oldId}) already belongs to another work order; duplicated on the offer (+{$copy->net_amount} net).";
         }
 
-        return array_values(array_diff($lineIdsByOldId->values()->all(), $programmed));
+        return $lineIds;
     }
 }

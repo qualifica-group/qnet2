@@ -61,3 +61,6 @@ require __DIR__.'/work-order-task-board.php';
 // Commessa emails (spec 0175): same file-size-split reasoning as
 // work-order-task-board.php above.
 require __DIR__.'/work-order-emails.php';
+
+// Commessa costs (spec 0190): same file-size-split reasoning as above.
+require __DIR__.'/work-order-costs.php';

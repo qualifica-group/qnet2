@@ -14,6 +14,7 @@ use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\QuoteService;
 use App\Services\RoleAssignmentGuard;
 use Database\Seeders\Concerns\PicksDemoOffers;
+use Database\Seeders\Support\DemoAttributeValueFaker;
 use Faker\Factory as FakerFactory;
 use Faker\Generator;
 use Illuminate\Database\Seeder;
@@ -82,6 +83,7 @@ class DemoQuoteSeeder extends Seeder
     public function __construct(
         private readonly QuoteService $quotes,
         private readonly CategoryHierarchy $hierarchy,
+        private readonly DemoAttributeValueFaker $attributeFaker,
     ) {}
 
     public function run(): void
@@ -220,26 +222,10 @@ class DemoQuoteSeeder extends Seeder
         $values = [];
 
         foreach ($this->hierarchy->effectiveAttributes($category, AttributeContext::Quote) as $attribute) {
-            $values[$attribute['code']] = $this->fakeAttributeValue($faker, $attribute);
+            $values[$attribute['code']] = $this->attributeFaker->fake($faker, $attribute);
         }
 
         return $values;
-    }
-
-    /**
-     * @param  array<string, mixed>  $attribute  a CategoryHierarchy::effectiveAttributes() row
-     */
-    private function fakeAttributeValue(Generator $faker, array $attribute): mixed
-    {
-        return match ($attribute['type']) {
-            'integer' => $faker->numberBetween(1, 100),
-            'decimal' => $faker->randomFloat(2, 1, 1000),
-            'boolean' => $faker->boolean(),
-            'date' => $faker->date('Y-m-d'),
-            'datetime' => $faker->date('Y-m-d\TH:i'),
-            'enum' => $attribute['options'][0]['value'] ?? null,
-            default => $faker->sentence(6),
-        };
     }
 
     /**

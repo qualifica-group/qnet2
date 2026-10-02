@@ -1,10 +1,12 @@
 <?php
 
+use App\Enums\CommissionType;
 use App\Enums\MigrationStatus;
 use App\Enums\WorkOrderType;
 use App\Models\MigrationRun;
 use App\Models\Quote;
 use App\Models\QuoteLine;
+use App\Models\QuoteLineCommission;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -147,20 +149,34 @@ it('force-closes the closed legacy statuses with their legacy reason', function 
     'terminated' => [5, 'Disdetta (legacy)'],
 ]);
 
-it('keeps a line already programmed into another work order there, with a warning', function () {
-    $taken = QuoteLine::factory()->create(['quote_id' => $this->quote->id, 'old_id' => 900, 'sort_order' => 0]);
+it('links a copy of a line already programmed into another work order, with its commissions and the offer totals', function () {
+    $taken = QuoteLine::factory()->create([
+        'quote_id' => $this->quote->id, 'old_id' => 900, 'sort_order' => 0,
+        'quantity' => 1, 'unit_price' => 900, 'net_amount' => 900, 'vat_amount' => 198, 'total_amount' => 1098,
+    ]);
+    QuoteLineCommission::factory()->create([
+        'quote_line_id' => $taken->id, 'commission_type' => CommissionType::Percentage, 'value' => '10',
+    ]);
     $free = QuoteLine::factory()->create(['quote_id' => $this->quote->id, 'old_id' => 901, 'sort_order' => 1]);
     $other = WorkOrder::factory()->create(['quote_id' => $this->quote->id]);
     $other->quoteLines()->attach($taken->id);
+    $revenueBefore = (float) QuoteLine::query()->where('quote_id', $this->quote->id)->sum('net_amount');
 
     $run = runLegacyWorkOrdersImport([legacyWorkOrderRecord(['quote_line_ids' => [900, 901]])]);
 
     $workOrder = WorkOrder::query()->where('old_id', 17)->sole();
+    $copy = QuoteLine::query()->where('quote_id', $this->quote->id)->whereNotIn('id', [$taken->id, $free->id])->sole();
 
     expect($run->created_rows)->toBe(1)
-        ->and($workOrder->quoteLines()->pluck('quote_lines.id')->all())->toBe([$free->id])
+        ->and($copy->old_id)->toBeNull()
+        ->and($copy->product_id)->toBe($taken->product_id)
+        ->and((float) $copy->net_amount)->toBe(900.0)
+        ->and($copy->sort_order)->toBe(2)
+        ->and($copy->commissions()->count())->toBe(1)
+        ->and($workOrder->quoteLines()->pluck('quote_lines.id')->sort()->values()->all())->toBe(collect([$free->id, $copy->id])->sort()->values()->all())
         ->and($other->quoteLines()->pluck('quote_lines.id')->all())->toBe([$taken->id])
-        ->and(legacyWorkOrderWarnings($run))->toContain('Quote line (legacy id 900) already belongs to another work order; not linked.');
+        ->and((float) $this->quote->fresh()->revenue_net)->toBe(round($revenueBefore + 900.0, 2))
+        ->and(legacyWorkOrderWarnings($run))->toContain('Quote line (legacy id 900) already belongs to another work order; duplicated on the offer (+900.00 net).');
 });
 
 it('replaces a missing or implausible start date with the legacy creation date', function (?string $startDate) {

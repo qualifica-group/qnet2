@@ -5,7 +5,10 @@
  * `WorkOrder`/`work-orders` (spec §context).
  */
 
+import { workOrderCosts } from './it-work-order-costs'
+
 export const workOrders = {
+  costs: workOrderCosts,
   title: 'Commesse',
   subtitle: 'Sfoglia, filtra e gestisci le commesse collegate alle offerte.',
   forbidden: 'Non hai i permessi per visualizzare le commesse.',

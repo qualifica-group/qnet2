@@ -11,6 +11,7 @@ use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\TaskType;
 use App\Models\User;
+use App\Models\WorkOrder;
 use Database\Seeders\DemoTaskNoteSeeder;
 use Database\Seeders\DemoTaskSeeder;
 use Database\Seeders\QualificaTaskTaxonomySeeder;
@@ -164,4 +165,17 @@ it('seeds the demo tasks and their note threads, staying idempotent on a reseed'
         ->and(DB::table('task_watcher')->count())->toBeGreaterThan(0);
 
     expect(Note::withTrashed()->where('notable_type', (new Task)->getMorphClass())->count())->toBe(0);
+});
+
+it('spec 0154 D-11: with commesse and opportunita\' seeded, no demo task links both', function (): void {
+    seedTaskDependencies();
+    WorkOrder::factory()->count(5)->create();
+
+    test()->seed(DemoTaskSeeder::class);
+
+    $tasks = Task::query()->get();
+
+    expect($tasks->contains(fn (Task $task): bool => $task->work_order_id !== null && $task->opportunity_id !== null))->toBeFalse()
+        ->and($tasks->whereNotNull('work_order_id'))->not->toBeEmpty()
+        ->and($tasks->whereNotNull('opportunity_id'))->not->toBeEmpty();
 });

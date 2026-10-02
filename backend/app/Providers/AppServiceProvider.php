@@ -71,6 +71,7 @@ use App\Models\User;
 use App\Models\UserTablePreference;
 use App\Models\VatRate;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderCost;
 use App\Models\WorkOrderStage;
 use App\Services\Graph\GraphMailClient;
 use App\Services\Opportunities\OpportunityDefaultStatusResolver;
@@ -264,6 +265,8 @@ class AppServiceProvider extends ServiceProvider
             // above.
             'task_template_stage' => TaskTemplateStage::class,
             'work_order_stage' => WorkOrderStage::class,
+            // Spec 0190: WorkOrderCost uses LogsModelActivity, same reasoning.
+            'work_order_cost' => WorkOrderCost::class,
             // Spec 0175 (work-order emails module): EmailTemplate/DocumentBundle
             // both use LogsModelActivity, same reasoning as document_layout
             // above. DocumentBundle and OutboundEmail are also HasAttachments

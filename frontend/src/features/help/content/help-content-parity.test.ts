@@ -6,8 +6,8 @@ import type { HelpGuide } from '@/features/help/types'
  * Spec 0143, AC-007/AC-009: every one of the 50 keys needs an authored
  * `content/it/<key>.ts` and `content/en/<key>.ts`, both exporting a
  * `HelpGuide` whose `key` matches the filename and whose section ids form
- * the SAME sequence in both locales. `work-orders` is additionally
- * constrained to a single "modulo in fase di sviluppo" note (D-2 of the
+ * the SAME sequence in both locales. `work-orders` additionally keeps its
+ * "modulo in fase di sviluppo" section as a single note (D-2 of the
  * spec's context).
  *
  * Content authoring is owned by other teammates writing directly into
@@ -54,7 +54,7 @@ describe('help content parity (spec 0143 AC-007)', () => {
     }
   })
 
-  it('work-orders (AC-009) is a single "note" block in both locales', () => {
+  it('work-orders (AC-009) keeps its "in-development" section as a single "note" block in both locales', () => {
     const itGuide = guideFor(itModules, 'it', 'work-orders')
     const enGuide = guideFor(enModules, 'en', 'work-orders')
 
@@ -64,10 +64,11 @@ describe('help content parity (spec 0143 AC-007)', () => {
       return
     }
 
+    // Spec 0190 added the "costs" section next to the placeholder: the module is still in development.
     for (const guide of [itGuide, enGuide]) {
-      expect(guide.sections).toHaveLength(1)
-      expect(guide.sections[0]?.blocks).toHaveLength(1)
-      expect(guide.sections[0]?.blocks[0]?.type).toBe('note')
+      const placeholder = guide.sections.find((section) => section.id === 'in-development')
+      expect(placeholder?.blocks).toHaveLength(1)
+      expect(placeholder?.blocks[0]?.type).toBe('note')
     }
   })
 })

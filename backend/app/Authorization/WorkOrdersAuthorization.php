@@ -67,7 +67,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'view_costs', 'manage_costs'];
     }
 
     /**
@@ -124,6 +124,9 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // WorkOrderPolicy::view, which applies the same isInScope rule).
             'view_emails' => $model !== null && $actor->can('work-orders.viewEmails'),
             'send_email' => $model !== null && $actor->can('work-orders.sendEmail'),
+            // Spec 0190, D-4: gate the "Costi" section and its editor.
+            'view_costs' => $model !== null && $actor->can('work-orders.viewCosts'),
+            'manage_costs' => $model !== null && $actor->can('work-orders.manageCosts'),
         ];
     }
 }

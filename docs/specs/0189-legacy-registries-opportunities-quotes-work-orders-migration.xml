@@ -44,7 +44,10 @@
       supplier (anagrafica). Origin ManualOverride.
       G-10 commessa: righe collegate da `orderservices.quotation_service` (fallback: riga dell'offerta con lo
       stesso service_id); una riga gia' collegata a un'altra commessa resta alla prima (id minore) + warning
-      (qnet-2 vieta riga su due commesse). Stato legacy 1,2 -> aperta; 3 Chiusa, 4 Annullata, 5 Disdetta ->
+      (qnet-2 vieta riga su due commesse). Decisione utente 2026-10-02 (opzione C): nel legacy una riga
+      puo' stare su piu' commesse (rinnovi/cicli, pianificazione per quantita', doppioni); per ogni commessa successiva
+      la riga viene DUPLICATA sull'offerta (stesso prodotto, importi e provvigioni, senza old_id) e la copia collegata
+      alla commessa; totali e margine dell'offerta ricalcolati (crescono della copia). Il vincolo resta. Stato legacy 1,2 -> aperta; 3 Chiusa, 4 Annullata, 5 Disdetta ->
       `is_force_closed` con motivo "Chiusa (legacy)" / "Annullata (legacy)" / "Disdetta (legacy)".
       G-11 anagrafica: `is_private=1` -> scheda persona fisica (nome/cognome separati dal legacy con la sua stessa
       regola `separaNomeCognome`), altrimenti azienda; P.IVA segnaposto (`0`,`1`,`.`, solo zeri) scartata, prefisso

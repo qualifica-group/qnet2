@@ -257,12 +257,19 @@ class DemoTaskSeeder extends Seeder
 
     private function buildRootData(TaskStatus $status, int $creatorId): CreateTaskData
     {
-        $opportunityId = $this->pickOptional(array_keys($this->registryByOpportunity), 0.3);
-        // An opportunity already names its anagrafica: reuse it rather than
-        // pairing the Task with an unrelated one.
-        $registryId = $opportunityId !== null
-            ? $this->registryByOpportunity[$opportunityId]
-            : $this->pickOptional(array_keys($this->registryNames), 0.7);
+        // Spec 0154 D-11: a commessa and an opportunita' are mutually exclusive,
+        // and a commessa imposes its own client (filled server-side from its
+        // chain), so it leaves the anagrafica empty. An opportunity already
+        // names its anagrafica: reuse it rather than pairing an unrelated one.
+        $workOrderId = $this->pickOptional($this->workOrderIds, 0.2);
+        $opportunityId = $workOrderId === null
+            ? $this->pickOptional(array_keys($this->registryByOpportunity), 0.3)
+            : null;
+        $registryId = match (true) {
+            $workOrderId !== null => null,
+            $opportunityId !== null => $this->registryByOpportunity[$opportunityId],
+            default => $this->pickOptional(array_keys($this->registryNames), 0.7),
+        };
 
         $subject = $registryId !== null ? $this->registryNames[$registryId] : $this->faker->company();
 
@@ -271,7 +278,7 @@ class DemoTaskSeeder extends Seeder
             registryId: $registryId,
             referentId: $this->pickReferent($registryId),
             opportunityId: $opportunityId,
-            workOrderId: $this->pickOptional($this->workOrderIds, 0.2),
+            workOrderId: $workOrderId,
             parentTaskId: null,
             status: $status,
             creatorId: $creatorId,

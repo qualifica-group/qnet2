@@ -59,6 +59,10 @@ vi.mock('@/features/work-orders/task-board/work-order-task-board', () => ({
   WorkOrderTaskBoard: () => <div>task-board</div>,
 }))
 
+vi.mock('@/features/work-order-costs/work-order-costs-section', () => ({
+  WorkOrderCostsSection: ({ canManage }: { canManage: boolean }) => <div>costs-section manage:{String(canManage)}</div>,
+}))
+
 function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): WorkOrderDetailWithPermissions {
   return {
     id: 4,
@@ -349,5 +353,31 @@ describe('WorkOrderDetailView — collaboration', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
     expect(screen.getByText('task-board')).toBeInTheDocument()
+  })
+})
+
+/** Spec 0190 AC-011: the Costi section follows `permissions.actions.view_costs` alone. */
+describe('WorkOrderDetailView — Costi section (spec 0190)', () => {
+  function withActions(actions: Record<string, boolean>) {
+    const base = workOrder()
+    return workOrder({ permissions: { ...base.permissions, actions } })
+  }
+
+  it('is not rendered without view_costs', () => {
+    render(<WorkOrderDetailView workOrder={withActions({ manage_costs: true })} />)
+
+    expect(screen.queryByText(/costs-section/)).not.toBeInTheDocument()
+  })
+
+  it('is rendered read-only with view_costs alone', () => {
+    render(<WorkOrderDetailView workOrder={withActions({ view_costs: true })} />)
+
+    expect(screen.getByText('costs-section manage:false')).toBeInTheDocument()
+  })
+
+  it('is editable with view_costs and manage_costs', () => {
+    render(<WorkOrderDetailView workOrder={withActions({ view_costs: true, manage_costs: true })} />)
+
+    expect(screen.getByText('costs-section manage:true')).toBeInTheDocument()
   })
 })

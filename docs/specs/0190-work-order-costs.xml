@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0190-work-order-costs" status="draft" owner="nicola" date="2026-10-02">
+<spec id="0190-work-order-costs" status="approved" owner="nicola" date="2026-10-02">
 
   <goal>
     Dare alla commessa una sezione "Costi" (icona Euro) che confronta i costi PREVENTIVATI

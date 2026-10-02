@@ -43,7 +43,7 @@ const guide: HelpGuide = {
           '**Offerte**: arrivano le offerte delle opportunità importate, con codice **QUO-** seguito dall’id legacy, le righe di ricavo, l’IVA e le provvigioni con percentuale o importo. Lo stato segue quello legacy: presentata resta aperta, rifiutata diventa chiusa negativa, accettata o contrattualizzata diventa chiusa positiva e crea il contratto con lo stato e le date del legacy.',
           '**Commesse**: arrivano con codice **COM-** seguito dall’id legacy, le righe dell’offerta collegate, supervisori e partecipanti. Le commesse chiuse, annullate o disdette nel legacy arrivano chiuse forzatamente con il motivo.',
         ] },
-        { type: 'note', text: 'Durante questo import non partono notifiche né email e non vengono scritte voci nel registro attività. Note, documenti, valori dei campi flessibili, fasi e task delle commesse non vengono importati. Una riga d’offerta senza prodotto importato (ad esempio uno sconto) viene saltata con un avviso; una riga già collegata a un’altra commessa resta sulla prima.' },
+        { type: 'note', text: 'Durante questo import non partono notifiche né email e non vengono scritte voci nel registro attività. Note, documenti, valori dei campi flessibili, fasi e task delle commesse non vengono importati. Una riga d’offerta senza prodotto importato (ad esempio uno sconto) viene saltata con un avviso; una riga già collegata a un’altra commessa resta sulla prima e per ogni commessa successiva viene aggiunta all’offerta una copia della riga, con le sue provvigioni: il totale dell’offerta cresce di conseguenza.' },
       ],
     },
     {

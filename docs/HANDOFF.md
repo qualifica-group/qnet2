@@ -3,6 +3,42 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX DEMO SEED: OFFERTE/COMMESSE/TASK VUOTI — VERDE, NON COMMITTATO (2026-10-02)
+
+- `DemoDataSeeder` si interrompeva in `DemoQuoteSeeder` (422 su attributi offerta `relation`/enum multiselect/`table`,
+  arrivati col catalogo e-Campus): niente offerte, commesse, contratti, task, timesheet, allegati, notifiche.
+  Fix: `database/seeders/Support/DemoAttributeValueFaker.php` (relation = primo id reale del target via
+  `CustomFieldEntityRegistry`, `many`/multiselect = array, table = [], time/email/url/color validi), usato da
+  `DemoQuoteSeeder` al posto del vecchio `fakeAttributeValue`.
+- Secondo blocco emerso subito dopo: `DemoTaskSeeder::buildRootData` collegava commessa E opportunita' insieme (422
+  spec 0154 D-11). Ora sono esclusivi e con commessa l'anagrafica resta vuota (la riempie il server dalla catena).
+- Test: `tests/Feature/Seeding/DemoAttributeValueFakerTest.php` (3), `DemoTaskSeederTest` (+1). DB dev riseminato:
+  20 offerte, 10 commesse, 2 contratti, 60 task, 114 time entries.
+
+## SPEC 0190 COSTI COMMESSA (PREVENTIVATO VS EFFETTIVO) — VERDE, NON COMMITTATO (2026-10-02)
+
+- Spec `docs/specs/0190-work-order-costs.xml` (approved; D-1..D-4 utente, D-5..D-9 approvate col piano). Il legacy
+  (`manageorder/{id}` tab amministrazione, `AnalisiPreventiva`) modificava in place i costi dell'offerta: qui i costi
+  reali sono un'entita' della commessa e `quote_lines` resta in sola lettura.
+- Dati: tabella `work_order_costs` (migrazione `2026_10_02_130000`), model `WorkOrderCost` (`LogsModelActivity`, morph
+  `work_order_cost` in `AppServiceProvider`), `WorkOrder::costs()`. FK: `quote_line_id` = riga ricavo della commessa
+  (riferimento), `supplier_id` = registry `is_supplier`, `incurred_on` obbligatoria.
+- API: `GET|PUT /api/work-orders/{workOrder}/costs` (`routes/api/work-order-costs.php`, `WorkOrderCostController`,
+  `SyncWorkOrderCostsRequest` con authz in `authorize()` = 403 prima della 422, `WorkOrderCostWriter` set completo,
+  `WorkOrderCostOverviewBuilder` confronto in centesimi). Preventivato = COST con `offer_line_id` tra le righe della
+  commessa; COST generiche = `unallocated_lines` fuori dai totali; effettivo include i non attribuiti.
+- Permessi: `work-orders.viewCosts` / `manageCosts` (policy + visibilita'), flag `permissions.actions.view_costs` /
+  `manage_costs`. Applicati sul DB dev (`migrate` + `permissions:sync`).
+- Frontend: `features/work-order-costs/` (sezione `WorkOrderCostsSection` in `work-order-detail.tsx`, tab Confronto e
+  Costi effettivi; riga propria che compone `QuoteProductSelect`/`computeLineAmounts`, `QuoteLineRow` invariato).
+  i18n sotto `workOrders.costs.*` (`{it,en}-work-order-costs.ts`, `en.ts` a 499 righe). Guida in-app `work-orders`
+  IT/EN con sezione `costs`; parity test adeguato (la nota `in-development` resta singola).
+- Test: `WorkOrderCostsTest` (AC-001..010), `work-order-costs-*.test.*` + `work-order-detail.test.tsx` (AC-011..014).
+  `QuoteWorkflowMigrationTest` rollback step 124 -> 125. `WorkOrderSecurityTest` conteggio permessi 12 -> 14.
+  `lines.*.id` e' `distinct` (id duplicato nel PUT = 422). Prefill da `products.cost`: `cost-row-product.test.ts`.
+- Da fare: manuale Claude Docs (doc non condiviso con la sessione) — sezione Commesse > Costi. Fuori scope: provvigioni
+  nel margine, ODA/fatture passive, costi orari personale, migrazione costi legacy.
+
 ## SPEC 0189 IMPORT LEGACY ANAGRAFICHE / OPPORTUNITA' / OFFERTE / COMMESSE — VERDE, NON COMMITTATO (2026-10-02)
 
 - Spec `docs/specs/0189-legacy-registries-opportunities-quotes-work-orders-migration.xml` (decisioni G-1..G-11 del lead,
@@ -24,8 +60,11 @@
   E2E reale su DB temporaneo `qnet2_e2e` (copia di qnet2 + users/referents): registries 20696/0 falliti (286 s),
   opportunities 19561/0 (217 s), quotes 17281/0 (608 s; 39837 righe, 11107 contratti), work-orders 16024/0 (176 s);
   0 notifiche, 0 task, 0 activity_log.
-- Aperti: decisione utente sulle 892 righe offerta legacy collegate a piu' commesse (oggi restano sulla prima, le altre
-  commesse arrivano senza quella riga: 2702 avvisi); 1341 righe offerta senza prodotto (sconti/detrazioni non migrati o
+- Decisione utente 2026-10-02 (opzione C, sostituisce la A data poco prima): una riga offerta legacy gia' collegata a
+  un'altra commessa viene DUPLICATA sull'offerta per ogni commessa successiva (`Migrations\Support\QuoteLineDuplicator`:
+  stesso prodotto/importi/provvigioni, senza old_id, totali e margine ricalcolati) e la copia collegata alla commessa.
+  Il vincolo una-riga-una-commessa resta. Test `WorkOrdersSourceImportTest` aggiornato (requisito cambiato).
+- Aperti: 1341 righe offerta senza prodotto (sconti/detrazioni non migrati o
   servizio vuoto); fuori scope: note, documenti, valori campi flessibili, fasi/task commesse, tag/ATECO anagrafiche,
   richieste GOL senza cliente. `OpportunityService.php` a 498 righe: va splittato. Manuale Claude Docs NON aggiornato
   (documento non accessibile da questa sessione): aggiungere la sezione import operativo in "Migrazioni".
