@@ -73,7 +73,7 @@ class ProductService
      *
      * @var array<int, string>
      */
-    private const array FOR_SELECT_COLUMNS = ['id', 'code', 'name', 'category_id', 'price', 'cost', 'vat_rate_id', 'unit_of_measure_id', 'product_typology_id'];
+    private const array FOR_SELECT_COLUMNS = ['id', 'code', 'name', 'description', 'category_id', 'price', 'cost', 'vat_rate_id', 'unit_of_measure_id', 'product_typology_id'];
 
     public function __construct(
         private readonly CategoryHierarchy $hierarchy,
@@ -295,8 +295,11 @@ class ProductService
     {
         $base = Product::query()->select(self::FOR_SELECT_COLUMNS);
 
+        // The description is searchable too: the pickers show it beside the
+        // category (user directive 2026-10-02).
         if ($query->hasSearch()) {
-            $base->where('name', 'like', '%'.$query->search.'%');
+            $term = '%'.$query->search.'%';
+            $base->where(fn ($search) => $search->where('name', 'like', $term)->orWhere('description', 'like', $term));
         }
 
         if ($query->hasCategoryIds()) {

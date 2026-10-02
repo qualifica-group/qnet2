@@ -135,6 +135,28 @@ it('folds the retired degree and area nodes onto "Corsi E-Campus" with their pro
         ->and(Product::query()->where('category_id', $branch->id)->count())->toBe(115);
 });
 
+it('describes every e-Campus product with its subject area, filling only an empty description', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $branch = ProductCategory::query()->where('name', ECampusCourseCatalogue::CATEGORY)->sole();
+    $descriptions = Product::query()->where('category_id', $branch->id)->pluck('description', 'name');
+
+    // The sheet's grouping, e.g. a communication course filed under law.
+    expect($descriptions->unique()->sort()->values()->all())
+        ->toBe(['Economia', 'Giurisprudenza', 'Ingegneria', 'Letteratura', 'Psicologia'])
+        ->and($descriptions['Scienze della Comunicazione [L-20] TESI'])->toBe('Giurisprudenza')
+        ->and($descriptions['Scienze dell\'Economia [LM-56] 1°ANNO'])->toBe('Economia');
+
+    // An earlier revision seeded no description; an operator wrote one.
+    Product::query()->where('name', 'Economia [L-33] TESI')->update(['description' => null]);
+    Product::query()->where('name', 'Psicologia [LM-51] TESI')->update(['description' => 'Testo manuale']);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect(Product::query()->where('name', 'Economia [L-33] TESI')->value('description'))->toBe('Economia')
+        ->and(Product::query()->where('name', 'Psicologia [LM-51] TESI')->value('description'))->toBe('Testo manuale');
+});
+
 it('withdraws the retired "PROGETTO FORM" products, keeping the one already referenced', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 

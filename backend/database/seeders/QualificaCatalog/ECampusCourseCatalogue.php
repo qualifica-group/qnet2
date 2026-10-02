@@ -39,9 +39,12 @@ final class ECampusCourseCatalogue
     public const array RETIRED_FEES = ['PROGETTO FORM'];
 
     /**
-     * Degree level => its fees (product suffix => price) and its course names.
+     * Degree level => its fees (product suffix => price) and its courses
+     * (course name => subject area). The area, as the "CORSI E-CAMPUS" sheet
+     * groups the courses, is every product's description (user directive
+     * 2026-10-02): the pickers show and search it beside the category.
      *
-     * @var array<string, array{fees: array<string, float>, courses: list<string>}>
+     * @var array<string, array{fees: array<string, float>, courses: array<string, string>}>
      */
     public const array DEGREES = [
         'Corsi di Laurea Triennali' => [
@@ -53,21 +56,21 @@ final class ECampusCourseCatalogue
                 'TESI' => 300.0,
             ],
             'courses' => [
-                'Ingegneria Civile e Ambientale [L-7]',
-                'Ingegneria Informatica e dell\'Automazione [L-8]',
-                'Ingegneria Industriale [L-9]',
-                'Letteratura, Arte, Musica e Spettacolo [L-10]',
-                'Lingue e Culture Europee e del Resto del Mondo [L-11]',
-                'Design e Discipline della Moda [L-3]',
-                'Scienze Biologiche [L-13]',
-                'Scienze dell\'Educazione e della Formazione [L-19]',
-                'Scienze delle Attività Motorie e Sportive [L-22]',
-                'Scienze e Tecniche Psicologiche [L-24]',
-                'Scienze del Turismo per il Management e i Beni Culturali [L-15]',
-                'Economia [L-33]',
-                'Servizi Giuridici [L-14]',
-                'Scienze della Comunicazione [L-20]',
-                'Scienze Politiche e Sociali [L-36]',
+                'Ingegneria Civile e Ambientale [L-7]' => 'Ingegneria',
+                'Ingegneria Informatica e dell\'Automazione [L-8]' => 'Ingegneria',
+                'Ingegneria Industriale [L-9]' => 'Ingegneria',
+                'Letteratura, Arte, Musica e Spettacolo [L-10]' => 'Letteratura',
+                'Lingue e Culture Europee e del Resto del Mondo [L-11]' => 'Letteratura',
+                'Design e Discipline della Moda [L-3]' => 'Letteratura',
+                'Scienze Biologiche [L-13]' => 'Psicologia',
+                'Scienze dell\'Educazione e della Formazione [L-19]' => 'Psicologia',
+                'Scienze delle Attività Motorie e Sportive [L-22]' => 'Psicologia',
+                'Scienze e Tecniche Psicologiche [L-24]' => 'Psicologia',
+                'Scienze del Turismo per il Management e i Beni Culturali [L-15]' => 'Economia',
+                'Economia [L-33]' => 'Economia',
+                'Servizi Giuridici [L-14]' => 'Giurisprudenza',
+                'Scienze della Comunicazione [L-20]' => 'Giurisprudenza',
+                'Scienze Politiche e Sociali [L-36]' => 'Giurisprudenza',
             ],
         ],
         'Corsi di Laurea Magistrali' => [
@@ -78,16 +81,16 @@ final class ECampusCourseCatalogue
                 'TESI' => 300.0,
             ],
             'courses' => [
-                'Letteratura, Lingua e Cultura Italiana [LM-14]',
-                'Lingue e Letterature Moderne e Traduzione Interculturale [LM-37]',
-                'Ingegneria Civile [LM-23]',
-                'Ingegneria Informatica e dell\'Automazione [LM-32]',
-                'Ingegneria Industriale [LM-33]',
-                'Psicologia [LM-51]',
-                'Scienze dell\'Esercizio Fisico per il Benessere e la Salute [LM-67]',
-                'Scienze Pedagogiche [LM-85]',
-                'Scienze della Nutrizione Umana [LM-61]',
-                'Scienze dell\'Economia [LM-56]',
+                'Letteratura, Lingua e Cultura Italiana [LM-14]' => 'Letteratura',
+                'Lingue e Letterature Moderne e Traduzione Interculturale [LM-37]' => 'Letteratura',
+                'Ingegneria Civile [LM-23]' => 'Ingegneria',
+                'Ingegneria Informatica e dell\'Automazione [LM-32]' => 'Ingegneria',
+                'Ingegneria Industriale [LM-33]' => 'Ingegneria',
+                'Psicologia [LM-51]' => 'Psicologia',
+                'Scienze dell\'Esercizio Fisico per il Benessere e la Salute [LM-67]' => 'Psicologia',
+                'Scienze Pedagogiche [LM-85]' => 'Psicologia',
+                'Scienze della Nutrizione Umana [LM-61]' => 'Psicologia',
+                'Scienze dell\'Economia [LM-56]' => 'Economia',
             ],
         ],
     ];

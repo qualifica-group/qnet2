@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## PRODOTTI: DESCRIZIONE NEI SELECT + AREA E-CAMPUS — VERDE, NON COMMITTATO (2026-10-02)
+
+- Decisione utente 2026-10-02: ogni prodotto e-Campus ha in descrizione la sua area (fonte: PDF "Schema Corsi
+  E-Campus" = raggruppamento del foglio CORSI E-CAMPUS). `ECampusCourseCatalogue::DEGREES[*]['courses']` ora e'
+  `corso => area`. `CatalogProducts::seedProduct(..., description:)` la scrive alla creazione e riempie SOLO una
+  descrizione vuota su un prodotto gia' esistente (una descrizione manuale resta).
+- `GET /api/products/for-select`: `subtitle` = "Categoria · Descrizione" (descrizione `Str::squish`, omessa se vuota;
+  `ProductForSelectResource::SUBTITLE_SEPARATOR`); `search` cerca su `name` OR `description`
+  (`ProductService::forSelect`, `FOR_SELECT_COLUMNS` + `description`). Nessun cambio frontend: tutti i picker
+  prodotto (Gestione Richieste, Offerte, prodotti di interesse, provvigioni, import) rendono gia' il subtitle.
+- Test: `ProductForSelectTest` (+2; fixture con `description => null` dove si asserisce il subtitle, la factory la
+  genera a caso), `QualificaECampusCatalogueTest` (+1). Guide in-app `products.ts` IT/EN e manuale Claude Docs
+  (riga Descrizione) aggiornati. Seed applicato al DB locale.
+
 ## SPEC 0188 OVERRIDE "SEMPLIFICAZIONE RIGA OFFERTA" PER NODO — VERDE, NON COMMITTATO (2026-10-02)
 
 - Decisione utente 2026-10-02: "Corsi E-Campus" NON semplificata (imponibile modificabile in Gestione Richieste),

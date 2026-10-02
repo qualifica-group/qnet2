@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductTypology;
 use App\Models\UnitOfMeasure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * For-select projection of a Product (GET /api/products/for-select).
@@ -14,7 +15,9 @@ use Illuminate\Http\Request;
  * Minimal by design (ADR 0011): label = name, `subtitle` = the product's own
  * category (eager-loaded by ProductService::forSelect, never a query per
  * row) — the "prodotti di interesse" picker shows it so a cross-category
- * pick is recognizable BEFORE it adds a product line to the opportunity.
+ * pick is recognizable BEFORE it adds a product line to the opportunity —
+ * followed by the product's description when it has one (user directive
+ * 2026-10-02: an e-Campus course reads "Corsi E-Campus · Economia").
  *
  * `meta` (spec 0065, AC-009) is ADDITIVE: `code`/`price`/`cost`/
  * `vat_rate_id`/`vat_rate_name`/`vat_rate`/`unit_of_measure` let the Quote
@@ -25,6 +28,8 @@ use Illuminate\Http\Request;
  */
 class ProductForSelectResource extends ForSelectResource
 {
+    private const string SUBTITLE_SEPARATOR = ' · ';
+
     /**
      * @return array<string, mixed>
      */
@@ -33,7 +38,7 @@ class ProductForSelectResource extends ForSelectResource
         return [
             'id' => $this->id,
             'label' => $this->name,
-            'subtitle' => $this->category?->name,
+            'subtitle' => $this->subtitle(),
             'meta' => [
                 // Spec 0075, D-5: the picker's own consumers need the category
                 // as an ID, not only as the human `subtitle` — the
@@ -58,6 +63,16 @@ class ProductForSelectResource extends ForSelectResource
                 'product_typology' => $this->productTypologySummary($this->productTypology),
             ],
         ];
+    }
+
+    private function subtitle(): ?string
+    {
+        $parts = array_filter(
+            [$this->category?->name, Str::squish((string) $this->description)],
+            static fn (?string $part): bool => filled($part),
+        );
+
+        return $parts === [] ? null : implode(self::SUBTITLE_SEPARATOR, $parts);
     }
 
     /**

@@ -59,7 +59,7 @@ const guide: HelpGuide = {
           rows: [
             ['Code', 'QNet proposes the next code in the numbering, but you can change it. Required, at most 32 characters.'],
             ['Name', "The product's name. Required."],
-            ['Description', 'Free text.'],
+            ['Description', 'Free text. In the product pickers it shows next to the category and is searchable.'],
           ],
         },
         {

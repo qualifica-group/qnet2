@@ -59,7 +59,7 @@ const guide: HelpGuide = {
           rows: [
             ['Codice', 'QNet propone il codice successivo della numerazione, ma puoi cambiarlo. Obbligatorio, al massimo 32 caratteri.'],
             ['Nome', 'Il nome del prodotto. Obbligatorio.'],
-            ['Descrizione', 'Una descrizione libera.'],
+            ['Descrizione', 'Una descrizione libera. Nei menu di scelta del prodotto compare accanto alla categoria e si può cercare.'],
           ],
         },
         {

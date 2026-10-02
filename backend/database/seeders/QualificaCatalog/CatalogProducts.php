@@ -28,7 +28,8 @@ use Illuminate\Support\Facades\Log;
  *   - the single-offer categories (SINGLE_OFFER_CATEGORIES): one product
  *     named after the category itself, filed directly on it;
  *   - the e-Campus degrees (ECampusCourseCatalogue): one product per fee of
- *     the degree level, "<course> <fee>", on "Corsi E-Campus", at the fee.
+ *     the degree level, "<course> <fee>", on "Corsi E-Campus", at the fee,
+ *     described by the course's subject area.
  *
  * NO ATTRIBUTE VALUE IS WRITTEN (user directive 2026-09-08). The duration and
  * the delivery mode used to be seeded here, onto the product; they moved to
@@ -111,7 +112,7 @@ final class CatalogProducts
         $names = [];
 
         foreach (ECampusCourseCatalogue::DEGREES as $degree) {
-            foreach ($degree['courses'] as $course) {
+            foreach (array_keys($degree['courses']) as $course) {
                 foreach (ECampusCourseCatalogue::RETIRED_FEES as $fee) {
                     $names[] = sprintf('%s %s', $course, $fee);
                 }
@@ -144,9 +145,9 @@ final class CatalogProducts
         $category = $this->category(ECampusCourseCatalogue::CATEGORY);
 
         foreach (ECampusCourseCatalogue::DEGREES as $degree) {
-            foreach ($degree['courses'] as $course) {
+            foreach ($degree['courses'] as $course => $area) {
                 foreach ($degree['fees'] as $fee => $price) {
-                    $this->seedProduct($category, sprintf('%s %s', $course, $fee), $price);
+                    $this->seedProduct($category, sprintf('%s %s', $course, $fee), $price, description: $area);
                 }
             }
         }
@@ -254,23 +255,34 @@ final class CatalogProducts
         );
     }
 
-    private function seedProduct(ProductCategory $category, string $name, float $price, ?int $vatRateId = null): void
-    {
+    private function seedProduct(
+        ProductCategory $category,
+        string $name,
+        float $price,
+        ?int $vatRateId = null,
+        ?string $description = null,
+    ): void {
         // Natural key (name, category) — scoped to the category because the
         // SAME course runs in several regions. An already-seeded product is
-        // left untouched, so a manual edit survives the re-run.
-        $exists = Product::query()
+        // left untouched, so a manual edit survives the re-run — save an
+        // EMPTY description, which takes the catalogue's (an earlier revision
+        // seeded none).
+        $existing = Product::query()
             ->where('name', $name)
             ->where('category_id', $category->id)
-            ->exists();
+            ->first();
 
-        if ($exists) {
+        if ($existing !== null) {
+            if ($description !== null && blank($existing->description)) {
+                $existing->update(['description' => $description]);
+            }
+
             return;
         }
 
         $this->products->create(new CreateProductData(
             name: $name,
-            description: null,
+            description: $description,
             // Cost is filled in later through the CRUD modules.
             cost: 0.0,
             price: $price,

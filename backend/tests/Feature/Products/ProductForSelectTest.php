@@ -35,7 +35,7 @@ if (! function_exists('productForSelectActor')) {
 it('returns id/label/subtitle (its category) for every product', function () {
     $actor = productForSelectActor();
     $category = ProductCategory::factory()->create(['name' => 'Fibra']);
-    $product = Product::factory()->create(['name' => 'Fibra 1Gb', 'category_id' => $category->id]);
+    $product = Product::factory()->create(['name' => 'Fibra 1Gb', 'category_id' => $category->id, 'description' => null]);
     Sanctum::actingAs($actor);
 
     $this->getJson('/api/products/for-select')
@@ -79,14 +79,38 @@ it('ids[] hydration bypasses the category scope so a selected product keeps its 
 
 it('search filters by name', function () {
     $actor = productForSelectActor();
-    Product::factory()->create(['name' => 'Fibra 1Gb']);
-    Product::factory()->create(['name' => 'Mobile 100Gb']);
+    Product::factory()->create(['name' => 'Fibra 1Gb', 'description' => null]);
+    Product::factory()->create(['name' => 'Mobile 100Gb', 'description' => null]);
     Sanctum::actingAs($actor);
 
     $this->getJson('/api/products/for-select?search=Fibra')
         ->assertOk()
         ->assertJsonCount(1, 'items')
         ->assertJsonPath('items.0.label', 'Fibra 1Gb');
+});
+
+// The description beside the category (user directive 2026-10-02).
+it('appends the description to the category in the subtitle, on one line', function () {
+    $actor = productForSelectActor();
+    $category = ProductCategory::factory()->create(['name' => 'Corsi E-Campus']);
+    Product::factory()->create(['name' => 'Economia [L-33] TESI', 'category_id' => $category->id, 'description' => "Economia\n"]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson('/api/products/for-select')
+        ->assertOk()
+        ->assertJsonPath('items.0.subtitle', 'Corsi E-Campus · Economia');
+});
+
+it('search matches the description too', function () {
+    $actor = productForSelectActor();
+    $match = Product::factory()->create(['name' => 'Servizi Giuridici [L-14] TESI', 'description' => 'Giurisprudenza']);
+    Product::factory()->create(['name' => 'Economia [L-33] TESI', 'description' => 'Economia']);
+    Sanctum::actingAs($actor);
+
+    $this->getJson('/api/products/for-select?search=giurisprud')
+        ->assertOk()
+        ->assertJsonCount(1, 'items')
+        ->assertJsonPath('items.0.id', $match->id);
 });
 
 it('an unknown category_id -> 422', function () {
@@ -113,7 +137,7 @@ it('every item exposes meta.code/price/cost/vat_rate_* without changing id/label
     $vatRate = VatRate::factory()->create(['name' => 'IVA 22%', 'rate' => 22]);
     $product = Product::factory()->create([
         'name' => 'Fibra 1Gb', 'category_id' => $category->id, 'code' => 'PRD-0042',
-        'price' => 99.90, 'cost' => 40, 'vat_rate_id' => $vatRate->id,
+        'price' => 99.90, 'cost' => 40, 'vat_rate_id' => $vatRate->id, 'description' => null,
     ]);
     Sanctum::actingAs($actor);
 
