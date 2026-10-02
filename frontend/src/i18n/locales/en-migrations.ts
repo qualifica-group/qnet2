@@ -30,6 +30,10 @@ export const migrations = {
     'product-category-attributes': 'Product categories — link attributes',
     'attribute-layouts': 'Attribute layouts',
     products: 'Products',
+    registries: 'Registries',
+    opportunities: 'Opportunities',
+    quotes: 'Quotes',
+    'work-orders': 'Work orders',
   },
   page: {
     sourceLabel: 'Source',

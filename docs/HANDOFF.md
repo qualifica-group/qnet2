@@ -3,6 +3,34 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0189 IMPORT LEGACY ANAGRAFICHE / OPPORTUNITA' / OFFERTE / COMMESSE — VERDE, NON COMMITTATO (2026-10-02)
+
+- Spec `docs/specs/0189-legacy-registries-opportunities-quotes-work-orders-migration.xml` (decisioni G-1..G-11 del lead,
+  da confermare dall'utente; contratto delle 4 API congelato li').
+- LEGACY `/Users/Repository/qnet` (non committato): NUOVI `Api/V2/{Registry,Opportunity,Quote,WorkOrder}MigrationController`,
+  `Support/Migration/{MigrationFieldFormatter,LegacyReferenceLookup}`; route `GET /api/v2/migration/{registries,
+  opportunities,quotes,work-orders}`. Esportano solo record importabili (G-1: opportunita' con cliente, offerte di
+  opportunita' esportate, commesse di offerte esportate). `AppServiceProvider.php`/`config/database.php` legacy erano
+  gia' modificati e NON fanno parte di questa feature.
+- qnet-2: migrazione `2026_10_02_120000_add_old_id_to_operational_records_tables` (old_id su registries, opportunities,
+  quotes, quote_lines, work_orders; applicata al DB locale; `QuoteWorkflowMigrationTest` step 123 -> 124). Sorgenti
+  `RegistriesSource`, `OpportunitiesSource`, `QuotesSource`, `WorkOrdersSource` (+ concern `MapsLegacy*`, support
+  `LegacyQuoteStatusApplier`, `PersonNameSplitter` = nome/cognome privati ricostruiti dal codice fiscale), registrate in
+  `config/migrations.php` e `MigrationOrder` fasi 7-10. `OpportunityService::import()` (niente guard "una opportunita'
+  aperta", niente notifiche/lead). `AbstractMigrationSource`: report bufferizzato (flush ogni 200 voci + a fine run).
+  Nessuna notifica (manager/supervisori scritti dopo la create), activity log disattivato (`withoutLogs`), commesse
+  senza task template.
+- Verifica: Pest completo 9216 pass / 0 fail / 1 skip; Pint, `tsc -b --force`, Vitest help/migrations 128 verdi.
+  E2E reale su DB temporaneo `qnet2_e2e` (copia di qnet2 + users/referents): registries 20696/0 falliti (286 s),
+  opportunities 19561/0 (217 s), quotes 17281/0 (608 s; 39837 righe, 11107 contratti), work-orders 16024/0 (176 s);
+  0 notifiche, 0 task, 0 activity_log.
+- Aperti: decisione utente sulle 892 righe offerta legacy collegate a piu' commesse (oggi restano sulla prima, le altre
+  commesse arrivano senza quella riga: 2702 avvisi); 1341 righe offerta senza prodotto (sconti/detrazioni non migrati o
+  servizio vuoto); fuori scope: note, documenti, valori campi flessibili, fasi/task commesse, tag/ATECO anagrafiche,
+  richieste GOL senza cliente. `OpportunityService.php` a 498 righe: va splittato. Manuale Claude Docs NON aggiornato
+  (documento non accessibile da questa sessione): aggiungere la sezione import operativo in "Migrazioni".
+  `docs/HANDOFF.md` supera di molto i 50 KB: va archiviato.
+
 ## PRODOTTI: DESCRIZIONE NEI SELECT + AREA E-CAMPUS — VERDE, NON COMMITTATO (2026-10-02)
 
 - Decisione utente 2026-10-02: ogni prodotto e-Campus ha in descrizione la sua area (fonte: PDF "Schema Corsi

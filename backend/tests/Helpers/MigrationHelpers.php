@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Jobs\RunMigrationJob;
+use App\Models\MigrationRun;
+use App\Models\Role;
+use App\Models\User;
+use App\Services\MigrationService;
+
 if (! function_exists('seedMigrationsConfig')) {
     /**
      * The `migrations.*` config every source-import Feature test relies on:
@@ -35,5 +41,29 @@ if (! function_exists('fakeMigrationsBaseUrl')) {
     function fakeMigrationsBaseUrl(): string
     {
         return 'https://external-crm.test';
+    }
+}
+
+if (! function_exists('migrationsSuperAdminActor')) {
+    /**
+     * The super-admin a migration run is launched by. Canonical copy for the
+     * spec 0189 sources; the older Migration test files still carry their own
+     * guarded copy, skipped because this file is loaded first (tests/Pest.php).
+     */
+    function migrationsSuperAdminActor(): User
+    {
+        Role::query()->firstOrCreate(['name' => 'super-admin']);
+
+        $actor = User::factory()->create();
+        $actor->assignRole('super-admin');
+
+        return $actor;
+    }
+}
+
+if (! function_exists('runMigrationJobFor')) {
+    function runMigrationJobFor(MigrationRun $run): void
+    {
+        (new RunMigrationJob($run->id))->handle(app(MigrationService::class));
     }
 }

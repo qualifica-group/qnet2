@@ -7,6 +7,7 @@ use App\DataObjects\PersonalData\CreateContact;
 use App\DataObjects\Users\AddressInput;
 use App\DataObjects\Users\ContactInput;
 use App\Enums\ContactTypeEnum;
+use App\Enums\SiteTypeEnum;
 use App\Migrations\AbstractMigrationSource;
 use App\Migrations\Support\MigrationGeoResolver;
 use Illuminate\Support\Facades\Validator;
@@ -34,12 +35,13 @@ trait MapsExternalProfileRecord
      * approach as CompaniesSource/OperationalSitesSource), only when at least a
      * street or a city was supplied; a street-less city falls back to being the
      * address line itself. An unresolved geo level is a non-fatal warning — the
-     * address is still created with whatever resolved.
+     * address is still created with whatever resolved. RegistriesSource also
+     * builds its secondary addresses here (non-primary, own site type).
      *
      * @param  array<string, mixed>  $record
      * @return array{0: ?AddressInput, 1: array<int, string>}
      */
-    private function buildAddress(array $record): array
+    private function buildAddress(array $record, bool $isPrimary = true, ?SiteTypeEnum $siteType = null): array
     {
         $line1 = trim((string) ($record['street'] ?? ''));
         $city = trim((string) ($record['city'] ?? ''));
@@ -64,7 +66,8 @@ trait MapsExternalProfileRecord
                 provinceId: $geo->provinceId,
                 stateId: $geo->stateId,
                 countryId: $geo->countryId,
-                isPrimary: true,
+                isPrimary: $isPrimary,
+                siteType: $siteType,
             ),
         );
 
@@ -73,17 +76,17 @@ trait MapsExternalProfileRecord
 
     /**
      * Build the record's contact channels from a declared candidate list, each
-     * entry `{field, type, label}`: the external field is read, and a
+     * entry `{field, type, label, primary?}`: the external field is read, and a
      * present-but-invalid value (fails the type's own `valueRules()`) is skipped
      * with a non-fatal warning rather than failing the whole row.
      *
-     * Every migrated contact is flagged primary: the "at most one primary per
-     * owner + type" invariant (ContactService) then keeps the last of each type,
-     * so distinct-type channels all stay primary while same-type duplicates are
-     * reconciled to one.
+     * Every migrated contact is flagged primary unless its candidate says
+     * `primary: false`: the "at most one primary per owner + type" invariant
+     * (ContactService) then keeps the last of each type, so distinct-type
+     * channels all stay primary while same-type duplicates are reconciled to one.
      *
      * @param  array<string, mixed>  $record
-     * @param  array<int, array{field: string, type: ContactTypeEnum, label: ?string}>  $candidates
+     * @param  array<int, array{field: string, type: ContactTypeEnum, label: ?string, primary?: bool}>  $candidates
      * @return array{0: array<int, ContactInput>, 1: array<int, string>}
      */
     private function buildContactInputs(array $record, array $candidates): array
@@ -108,7 +111,7 @@ trait MapsExternalProfileRecord
                 type: $candidate['type'],
                 value: $value,
                 label: $candidate['label'],
-                isPrimary: true,
+                isPrimary: $candidate['primary'] ?? true,
             ));
         }
 

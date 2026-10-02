@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0190-work-order-costs" status="draft" owner="nicola" date="2026-10-02">
+
+  <goal>
+    Dare alla commessa una sezione "Costi" (icona Euro) che confronta i costi PREVENTIVATI
+    (righe di costo dell'offerta) con i costi REALI della commessa, e permette di inserire
+    i costi reali con un editor a griglia molto simile al tab "Costi" dell'offerta.
+  </goal>
+
+  <context>
+    Riferimento legacy (`/Users/Repository/qnet`, `manageorder/{id}`, tab "amministrazione"
+    → "Scheda Economica Effettiva" = `App\Livewire\Orders\AnalisiPreventiva`): nonostante il
+    nome, il legacy legge e MODIFICA in place le righe di costo dell'offerta
+    (`quotationproducts|employees|expensereports|equipments|evehicles`), non ha costi reali
+    propri della commessa. Qui i costi reali diventano un'entita' della commessa e l'offerta
+    resta in sola lettura.
+
+    Decisioni utente 2026-10-02, vincolanti:
+    D-1 — Preventivato = righe COST dell'offerta (`quote_lines.line_type = COST`) il cui
+          `offer_line_id` punta a una riga di ricavo assegnata a questa commessa
+          (`WorkOrder::quoteLines()`). Le righe COST generiche dell'offerta
+          (`offer_line_id` null) si mostrano in un blocco separato "non allocati", solo
+          informativo: NON entrano nei totali del confronto.
+    D-2 — Riga costo reale = campi della riga costo offerta (prodotto con uso COST, q.ta',
+          unita' di misura congelata, prezzo unitario, aliquota IVA, imponibile/IVA/totale
+          calcolati server-side, descrizione aggiuntiva) + data del costo, fornitore
+          (anagrafica con `is_supplier`), riferimento documento (testo), riga offerta di
+          riferimento (una riga di ricavo della commessa).
+    D-3 — Inserimento a griglia come Offerta > Costi: righe modificabili in linea,
+          "Aggiungi riga", un unico Salva che sostituisce l'intero insieme.
+    D-4 — Permessi dedicati: `work-orders.viewCosts` (vedere sezione e confronto) e
+          `work-orders.manageCosts` (inserire/modificare/eliminare costi reali).
+
+    Decisioni proposte in fase di piano, da validare con l'approvazione:
+    D-5 — Il confronto e' sull'IMPONIBILE (net). Scostamento = effettivo − preventivato
+          (positivo = sforamento). Margine = ricavo netto delle righe commessa − costi
+          (provvigioni escluse, vedi out).
+    D-6 — `incurred_on` (data del costo) obbligatoria; la griglia precompila "oggi" su
+          riga nuova.
+    D-7 — I costi reali si possono inserire anche su commessa completata o chiusa
+          forzatamente: i costi arrivano spesso dopo la chiusura.
+    D-8 — Il prezzo unitario si precompila da `products.cost` alla scelta del prodotto
+          (stesso comportamento della riga COST offerta); il fornitore NON si precompila.
+    D-9 — Posizione UI: `RecordCard` a tutta larghezza nel dettaglio commessa, tra il
+          `RecordCard` principale e la `WorkOrderTaskBoard`, con due tab interni:
+          "Confronto" e "Costi effettivi". Nascosta senza `view_costs`.
+
+    Fatti verificati nel repo (grounding 2026-10-02):
+    - `App\Models\WorkOrder` (`quote()`, `quoteLines()` BelongsToMany via
+      `quote_line_work_order`, UNIQUE su `quote_line_id`; solo righe REVENUE).
+    - `App\Models\QuoteLine` (`offerLine()`, `allocatedCostLines()`); `Quote::costLines()`.
+    - `App\Http\Resources\QuoteLineResource` (shape di product/vat_rate/unit_of_measure).
+    - `App\Services\Quotes\QuoteLineWriter` (calcolo importi via
+      `QuoteTotalsCalculator::lineAmounts`, congelamento unita' di misura,
+      `assertProductsUsable`), `App\Quotes\QuoteLineRules::fieldRules()`.
+    - `App\Policies\WorkOrderPolicy` (resource `work-orders`, `WorkOrderVisibilityScope`),
+      `App\Authorization\WorkOrdersAuthorization` (`actions()`, `actionPermissions()`),
+      `permissions:sync`.
+    - Rotte annidate di riferimento: `routes/api/work-order-task-board.php`.
+    - `GET /api/registries/for-select?is_supplier=1` (gia' usato da
+      `product-pricing-section.tsx`).
+    - Frontend: `features/work-orders/work-order-detail.tsx`, `features/quotes/`
+      (`QuoteProductSelect`, `computeLineAmounts`, `formatQuoteAmount`, `quote-line-grid.ts`,
+      `QuoteLineAdditionalDescription`), `components/ui` (`AsyncPaginatedSelect`,
+      `SearchableSelect`, `Tabs`, `Input`, `Button`).
+  </context>
+
+  <scope>
+    <in>
+      <item>Tabella `work_order_costs`, model `WorkOrderCost` (audit `LogsModelActivity`), factory.</item>
+      <item>Abilita' policy `viewCosts` / `manageCosts` + flag frontend `view_costs` / `manage_costs` in `WorkOrdersAuthorization`.</item>
+      <item>`GET` e `PUT /api/work-orders/{workOrder}/costs` (contratto sotto).</item>
+      <item>Sezione "Costi" nel dettaglio commessa: tab "Confronto" (totali + per riga + non attribuiti + preventivo non allocato) e tab "Costi effettivi" (editor a griglia).</item>
+      <item>i18n IT/EN, guida in-app `work-orders` IT/EN, manuale Claude Docs.</item>
+      <item>Test Pest (endpoint, authz, validazione, calcolo confronto) e Vitest (sezione, editor, schema).</item>
+    </in>
+    <out>
+      <item>Nessuna modifica alle righe di costo dell'offerta dalla commessa (il legacy lo faceva: qui no).</item>
+      <item>Provvigioni nel confronto/margine.</item>
+      <item>Generazione ODA / fatture passive / proforma e movimenti di prima nota del legacy.</item>
+      <item>Migrazione dei dati legacy nei costi reali.</item>
+      <item>Costi orari del personale (ore × livello) e avanzamento commessa.</item>
+      <item>Colonna/tabella SSRM dei costi nella griglia commesse ed export.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <table name="work_order_costs">
+      id; work_order_id FK work_orders cascadeOnDelete (index); product_id FK products
+      restrictOnDelete; quote_line_id nullable FK quote_lines nullOnDelete (index);
+      quantity decimal(15,2); unit_of_measure_id nullable FK nullOnDelete (congelata come in
+      quote_lines); unit_price decimal(15,2); vat_rate_id nullable FK nullOnDelete;
+      net_amount, vat_amount, total_amount decimal(15,2); incurred_on date;
+      supplier_id nullable FK registries nullOnDelete (index); document_reference
+      string(100) nullable; additional_description text nullable; sort_order unsigned int;
+      timestamps.
+    </table>
+
+    <shape name="WorkOrderCostLine">
+      { id: int, product_id: int, product: {id, code, name, category}  (stessa shape di
+        QuoteLineResource.product), quantity: "decimal string", unit_of_measure:
+        {id, symbol, name} | null, unit_price: "decimal string", vat_rate_id: int | null,
+        vat_rate: {id, name, rate} | null (stessa shape di QuoteLineResource.vat_rate),
+        net_amount, vat_amount, total_amount: "decimal string", quote_line_id: int | null,
+        incurred_on: "YYYY-MM-DD", supplier_id: int | null, supplier: {id, name} | null,
+        document_reference: string | null, additional_description: string | null,
+        sort_order: int }
+    </shape>
+
+    <shape name="WorkOrderCostOverview">
+      { lines: WorkOrderCostLine[],
+        budget: {
+          allocated_lines: QuoteLineResource[]     (COST con offer_line_id in righe commessa),
+          unallocated_lines: QuoteLineResource[]   (COST con offer_line_id null, informativo)
+        },
+        comparison: {
+          rows: [{ quote_line_id: int, product: {id, code, name}, revenue_net,
+                   budget_cost_net, actual_cost_net, delta_net }]   (una per riga ricavo
+                   della commessa, ordinate come WorkOrder::quoteLines),
+          unattributed_actual_cost_net,             (costi reali con quote_line_id null)
+          totals: { revenue_net, budget_cost_net, actual_cost_net, delta_net,
+                    budget_margin_net, actual_margin_net }
+        } }
+      Tutti gli importi del confronto: "decimal string" a 2 decimali.
+      totals.actual_cost_net include unattributed_actual_cost_net; totals.budget_cost_net
+      esclude unallocated_lines (D-1). delta = actual − budget; margin = revenue − cost.
+    </shape>
+
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/costs">
+      <request>nessun parametro</request>
+      <response status="200">{ success: true, data: WorkOrderCostOverview }</response>
+      <errors>403 senza `work-orders.viewCosts` o commessa non visibile (WorkOrderVisibilityScope); 404 commessa inesistente.</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/work-orders/{workOrder}/costs">
+      <request>
+        { lines: [{ id?: int, product_id: int, quantity: number, unit_price: number,
+          vat_rate_id: int | null, quote_line_id: int | null, incurred_on: "YYYY-MM-DD",
+          supplier_id: int | null, document_reference: string | null,
+          additional_description: string | null }] }
+        Insieme completo (max 200): riga con `id` = update, senza = create, id esistente
+        assente = delete. L'ordine dell'array e' il `sort_order`. Regole q.ta'/prezzo/IVA
+        identiche a `QuoteLineRules::fieldRules()`; importi e unit_of_measure_id proibiti
+        (calcolati server-side).
+      </request>
+      <response status="200">{ success: true, message, data: WorkOrderCostOverview }</response>
+      <errors>
+        403 senza `work-orders.manageCosts` o commessa non visibile; 422 se: prodotto non
+        utilizzabile come COST; `quote_line_id` non tra le righe ricavo della commessa;
+        `id` di un costo di un'altra commessa; `supplier_id` non fornitore
+        (`is_supplier = false`); `incurred_on` mancante/non valida; `document_reference`
+        oltre 100 caratteri; `additional_description` oltre 5000.
+      </errors>
+    </endpoint>
+
+    <permissions>
+      Backend: `work-orders.viewCosts`, `work-orders.manageCosts` (sync via permissions:sync,
+      assegnati a super-admin come le altre abilita'). Frontend: `WorkOrderResource.permissions
+      .actions.view_costs` / `.manage_costs`.
+    </permissions>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con viewCosts che vede la commessa, GET costs restituisce 200 con la shape WorkOrderCostOverview.</criterion>
+    <criterion id="AC-002">Dato un utente senza viewCosts (o che non vede la commessa), GET costs restituisce 403.</criterion>
+    <criterion id="AC-003">budget.allocated_lines contiene solo le righe COST dell'offerta allocate alle righe ricavo della commessa; le COST allocate a righe di un'altra commessa della stessa offerta sono escluse.</criterion>
+    <criterion id="AC-004">budget.unallocated_lines contiene le righe COST con offer_line_id null e non entrano in totals.budget_cost_net.</criterion>
+    <criterion id="AC-005">PUT con righe nuove le crea con net/vat/total calcolati server-side e unit_of_measure congelata dal prodotto; gli importi inviati dal client sono rifiutati (422).</criterion>
+    <criterion id="AC-006">PUT con insieme ridotto elimina i costi assenti, aggiorna quelli con id e rispetta l'ordine come sort_order.</criterion>
+    <criterion id="AC-007">PUT senza manageCosts restituisce 403 e non modifica nulla.</criterion>
+    <criterion id="AC-008">PUT con quote_line_id non della commessa, id di costo di altra commessa, prodotto non COST o fornitore non is_supplier restituisce 422.</criterion>
+    <criterion id="AC-009">comparison.rows riporta per ogni riga ricavo della commessa revenue_net, budget_cost_net, actual_cost_net, delta_net corretti; unattributed_actual_cost_net somma i costi senza quote_line_id; totals coerenti (margini compresi).</criterion>
+    <criterion id="AC-010">WorkOrderResource espone permissions.actions.view_costs / manage_costs coerenti con i permessi dell'utente.</criterion>
+    <criterion id="AC-011">Frontend: la sezione Costi non e' renderizzata senza view_costs; con view_costs mostra il tab Confronto con totali, righe, non attribuiti e preventivo non allocato.</criterion>
+    <criterion id="AC-012">Frontend: senza manage_costs l'editor e' in sola lettura (niente Aggiungi riga/Salva); con manage_costs si aggiunge una riga (data precompilata a oggi), si sceglie un prodotto COST (prezzo da products.cost), fornitore, riferimento documento e riga offerta, e Salva invia il PUT con il payload del contratto e aggiorna il confronto.</criterion>
+    <criterion id="AC-013">Frontend: gli errori 422 per riga sono mostrati sul campo con la triade accessibile (aria-invalid, aria-describedby, role=alert).</criterion>
+    <criterion id="AC-014">Guida in-app work-orders IT/EN aggiornata con la sezione Costi; help-content-parity.test.ts verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Envelope `{ success, message, data }`. Authz server-side su ogni endpoint (Policy + visibilita').</item>
+    <item>Calcolo importi riga riusando `QuoteTotalsCalculator::lineAmounts` e regole da `QuoteLineRules` (niente duplicazione).</item>
+    <item>Nessuna scrittura su `quote_lines` da questi endpoint.</item>
+    <item>Frontend: server state solo via TanStack Query; form RHF + Zod; nessun file oltre 300 righe senza split; riuso di `QuoteProductSelect`, `computeLineAmounts`, `formatQuoteAmount`, componenti `components/ui`. `QuoteLineRow`/`QuoteLinesField` NON vengono modificati: la riga costo reale e' un componente proprio che ne compone i pezzi.</item>
+    <item>UI compatta (ui-design.md §2), responsive a 375/768/1024, superfici da token (§1-bis).</item>
+  </constraints>
+
+</spec>

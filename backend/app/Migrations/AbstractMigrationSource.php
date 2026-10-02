@@ -27,6 +27,11 @@ abstract class AbstractMigrationSource implements MigrationSource
 {
     use HasMigrationCustomFields;
 
+    private const int REPORT_FLUSH_SIZE = 200;
+
+    /** @var list<array{old_id: int|string|null, level: string, message: string}> */
+    private array $pendingReport = [];
+
     public function __construct(protected readonly ExternalApiClient $client) {}
 
     /**
@@ -118,12 +123,18 @@ abstract class AbstractMigrationSource implements MigrationSource
 
     public function import(MigrationImportContext $context): void
     {
-        // Step 1: create/skip every row in its own per-row transaction.
-        $this->eachRecord(fn (array $record): mixed => $this->importRow($context, $record));
+        try {
+            // Step 1: create/skip every row in its own per-row transaction.
+            $this->eachRecord(fn (array $record): mixed => $this->importRow($context, $record));
 
-        // Step 2: second pass to relink forward references that only became
-        // resolvable once every row of this source exists (default: no-op).
-        $this->afterImport($context);
+            // Step 2: second pass to relink forward references that only became
+            // resolvable once every row of this source exists (default: no-op).
+            $this->afterImport($context);
+        } finally {
+            // Step 3: persist the report entries still buffered, even when the
+            // run aborts, so the history shows what happened up to the failure.
+            $this->flushReport($context->run);
+        }
     }
 
     /**
@@ -344,10 +355,28 @@ abstract class AbstractMigrationSource implements MigrationSource
         $run->increment('total_rows');
     }
 
+    /**
+     * Buffer one report entry; the buffer is written in batches of
+     * REPORT_FLUSH_SIZE (and once more at the end of import()). Rewriting the
+     * whole JSON column on every entry is quadratic, and a source of tens of
+     * thousands of rows (spec 0189) produces thousands of warnings.
+     */
     protected function appendReport(MigrationRun $run, int|string|null $externalId, string $level, string $message): void
     {
-        $report = $run->report ?? [];
-        $report[] = ['old_id' => $externalId, 'level' => $level, 'message' => $message];
-        $run->update(['report' => $report]);
+        $this->pendingReport[] = ['old_id' => $externalId, 'level' => $level, 'message' => $message];
+
+        if (count($this->pendingReport) >= self::REPORT_FLUSH_SIZE) {
+            $this->flushReport($run);
+        }
+    }
+
+    private function flushReport(MigrationRun $run): void
+    {
+        if ($this->pendingReport === []) {
+            return;
+        }
+
+        $run->update(['report' => [...($run->report ?? []), ...$this->pendingReport]]);
+        $this->pendingReport = [];
     }
 }
