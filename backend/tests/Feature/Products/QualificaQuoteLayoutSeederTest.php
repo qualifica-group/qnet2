@@ -37,6 +37,8 @@ const QUOTE_LAYOUT_OWN_CATEGORIES = [
     'GOL - Lombardia', 'GOL - Lazio', 'GOL - Sicilia',
     // Behind its own barrier, with the e-Campus form (user directive 2026-10-01).
     'Corsi E-Campus',
+    // Behind its own barrier, with the APL internships form (user directive 2026-10-02).
+    'Tirocini extracurriculari privati',
 ];
 
 /**

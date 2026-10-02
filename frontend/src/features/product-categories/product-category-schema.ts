@@ -86,6 +86,8 @@ function baseFields(t: TFunction) {
     single_quote_per_opportunity: z.boolean(),
     generates_contract: z.boolean(),
     simplified_offer_line: z.boolean(),
+    // null = inherit the nearest declaring ancestor's value (spec 0188); roots never use it.
+    simplified_offer_line_override: z.boolean().nullable(),
     attributes: z.array(
       z.object({
         attribute_id: z.number(),

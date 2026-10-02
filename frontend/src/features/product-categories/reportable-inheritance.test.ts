@@ -22,6 +22,7 @@ function node(overrides: Partial<ProductCategoryTreeNode>): ProductCategoryTreeN
     single_quote_per_opportunity: false,
     generates_contract: true,
     simplified_offer_line: false,
+    simplified_offer_line_override: null,
     ...overrides,
   }
 }

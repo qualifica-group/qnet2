@@ -66,6 +66,7 @@ const TREE: ProductCategoryTreeNode[] = [
     single_quote_per_opportunity: false,
     generates_contract: true,
     simplified_offer_line: false,
+    simplified_offer_line_override: null,
     children: [
       {
         id: 2,
@@ -81,6 +82,7 @@ const TREE: ProductCategoryTreeNode[] = [
         single_quote_per_opportunity: false,
         generates_contract: true,
         simplified_offer_line: false,
+        simplified_offer_line_override: null,
         children: [
           {
             id: 3,
@@ -96,6 +98,7 @@ const TREE: ProductCategoryTreeNode[] = [
             single_quote_per_opportunity: false,
             generates_contract: true,
             simplified_offer_line: false,
+            simplified_offer_line_override: null,
             children: [],
           },
         ],
@@ -116,6 +119,7 @@ const TREE: ProductCategoryTreeNode[] = [
     single_quote_per_opportunity: false,
     generates_contract: true,
     simplified_offer_line: false,
+    simplified_offer_line_override: null,
     children: [],
   },
 ]

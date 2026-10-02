@@ -178,6 +178,7 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
         single_quote_per_opportunity: false,
         generates_contract: true,
         simplified_offer_line: true,
+        simplified_offer_line_override: null,
       },
     ])
 
@@ -210,6 +211,7 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
         single_quote_per_opportunity: false,
         generates_contract: true,
         simplified_offer_line: false,
+        simplified_offer_line_override: null,
       },
     ])
 
@@ -217,5 +219,49 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
 
     expect(await screen.findByLabelText('Quantità riga 1')).toBeInTheDocument()
     expect(screen.getByLabelText('Prezzo unitario riga 1')).toBeInTheDocument()
+  })
+
+  // Spec 0188 AC-015: the classified node overrides a simplified root to false;
+  // the denormalized effective flag is all the panel reads, no tree walk.
+  it('a node overriding a simplified root to false shows quantity, unit price and VAT controls', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel())
+    const baseNode = {
+      attributes_count: 0,
+      products_count: 0,
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: true,
+      is_reportable: false,
+      management_mode: 'multiple' as const,
+      single_quote_per_opportunity: false,
+      generates_contract: true,
+    }
+    categoryTreeMock.mockReturnValue([
+      {
+        ...baseNode,
+        id: 400,
+        name: 'Formazione',
+        parent_id: null,
+        simplified_offer_line: true,
+        simplified_offer_line_override: null,
+        children: [
+          {
+            ...baseNode,
+            id: 500,
+            name: 'Corsi E-Campus',
+            parent_id: 400,
+            simplified_offer_line: false,
+            simplified_offer_line_override: false,
+            children: [],
+          },
+        ],
+      },
+    ])
+
+    renderPanel()
+
+    expect(await screen.findByLabelText('Quantità riga 1')).toBeInTheDocument()
+    expect(screen.getByLabelText('Prezzo unitario riga 1')).toBeInTheDocument()
+    expect(screen.getByLabelText('Aliquota IVA riga 1')).toBeInTheDocument()
   })
 })

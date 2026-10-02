@@ -25,6 +25,7 @@ describe('buildCreatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: false,
+      simplified_offer_line_override: null,
       report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
@@ -42,6 +43,7 @@ describe('buildCreatePayload', () => {
       business_function_id: null,
       is_selectable: true,
       is_reportable: false,
+      simplified_offer_line_override: null,
       report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
@@ -65,6 +67,7 @@ describe('buildCreatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: false,
+      simplified_offer_line_override: null,
       report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
@@ -92,6 +95,7 @@ describe('buildCreatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: false,
+      simplified_offer_line_override: null,
       report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
@@ -119,6 +123,7 @@ describe('buildCreatePayload', () => {
       single_quote_per_opportunity: true,
       generates_contract: true,
       simplified_offer_line: false,
+      simplified_offer_line_override: null,
       report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
@@ -133,7 +138,8 @@ describe('buildCreatePayload', () => {
     })
   })
 
-  it('omits simplified_offer_line under a parent (inherited) and sends it at the root (owned)', () => {
+  // Spec 0188: a child declares through its override, a root through the value itself.
+  it('sends the override (not the value) under a parent and the value (not the override) at the root', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
@@ -150,14 +156,19 @@ describe('buildCreatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      simplified_offer_line_override: null,
       report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
     }
 
-    expect(buildCreatePayload(values)).not.toHaveProperty('simplified_offer_line')
-    expect(buildCreatePayload({ ...values, parent_id: null })).toMatchObject({ simplified_offer_line: true })
+    const childPayload = buildCreatePayload({ ...values, simplified_offer_line_override: false })
+    expect(childPayload).not.toHaveProperty('simplified_offer_line')
+    expect(childPayload).toMatchObject({ simplified_offer_line_override: false })
+    const rootPayload = buildCreatePayload({ ...values, parent_id: null, simplified_offer_line_override: false })
+    expect(rootPayload).toMatchObject({ simplified_offer_line: true })
+    expect(rootPayload).not.toHaveProperty('simplified_offer_line_override')
   })
 
   // Spec 0141: per-node like `is_reportable`, always sent (null included).
@@ -178,6 +189,7 @@ describe('buildCreatePayload', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: false,
+      simplified_offer_line_override: null,
       report_columns: ['richiami', 'telefonate'],
       manager_labels: {},
       inherits_manager_labels: true,

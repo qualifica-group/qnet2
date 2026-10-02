@@ -4,6 +4,7 @@ use App\Enums\WorkflowStatusGroup;
 use App\Models\ProductCategory;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
+use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -185,12 +186,13 @@ it('seeds catalogue workflows, statuses and criteria per category, and converges
 
     // "APL" is a ROOT that groups its offers: the product sits on its
     // "Orientamento Specialistico" child, so an exact-category criterion would
-    // never match a single offer — only the branch one reaches it.
+    // never match a single offer — only the branch one reaches it. The APL
+    // internships joined it as a sibling (user directive 2026-10-02).
     expect($aplWorkflow->criteria)->toHaveCount(1)
         ->and($aplWorkflow->criteria->first()->field)->toBe('product_category_branch_id')
         ->and($aplWorkflow->criteria->first()->value_id)->toBe($aplCategory->id)
         ->and($aplCategory->parent_id)->toBeNull()
-        ->and($aplCategory->children()->pluck('name')->all())->toBe(['Orientamento Specialistico']);
+        ->and($aplCategory->children()->orderBy('name')->pluck('name')->all())->toBe(['Orientamento Specialistico', 'Tirocini extracurriculari privati']);
 
     $aplStatuses = QuoteWorkflowStatus::query()
         ->where('quote_workflow_id', $aplWorkflow->id)
@@ -439,8 +441,12 @@ it('transcribes the DIL column of the sheet, its duplicated row folded', functio
 
 it('offers "Non risponde" as an open state in every catalogue list (user directive 2026-09-28)', function (): void {
     // Pure transcription check: every workflow carries it, classified as
-    // open, never promoted onto a pinned row — asserted above.
-    foreach (array_keys(WorkflowStatusCatalogue::WORKFLOWS) as $categoryName) {
+    // open, never promoted onto a pinned row — asserted above. Except the APL
+    // internships: the user kept the sheet's practice states (user directive
+    // 2026-10-02).
+    $categoryNames = array_diff(array_keys(WorkflowStatusCatalogue::WORKFLOWS), [AplInternshipAttributeCatalogue::CATEGORY]);
+
+    foreach ($categoryNames as $categoryName) {
         $noAnswer = array_find(
             WorkflowStatusCatalogue::statusesFor($categoryName),
             static fn (array $status): bool => $status['name'] === 'Non risponde',

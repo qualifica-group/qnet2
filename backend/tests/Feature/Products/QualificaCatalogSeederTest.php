@@ -31,9 +31,10 @@ uses(RefreshDatabase::class);
 /**
  * Every product the catalogue seeds: the GOL and DIL courses, the self-funded
  * ones, one per CatalogProducts::SINGLE_OFFER_CATEGORIES and, since the user
- * directive 2026-10-01, the 140 e-Campus degree fees.
+ * directive 2026-10-01, the 115 e-Campus degree fees ("PROGETTO FORM" no
+ * longer a product since 2026-10-02).
  */
-const TOTAL_SEEDED_PRODUCTS = 443;
+const TOTAL_SEEDED_PRODUCTS = 418;
 
 /**
  * One scenario instead of one test per property: the catalogue seeder costs
@@ -69,6 +70,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         'Orientamento Specialistico',
         // The Consulenza leaf (user directive 2026-09-28).
         'Presa Appuntamenti',
+        // The APL internships (user directive 2026-10-01).
+        'Tirocini extracurriculari privati',
         'Yisu',
     ]);
 

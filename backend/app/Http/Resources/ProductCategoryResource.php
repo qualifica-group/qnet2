@@ -83,6 +83,8 @@ class ProductCategoryResource extends JsonResource
             // needed here either. `simplified_offer_line_source_category` is
             // attached by the controller alongside the other four.
             'simplified_offer_line' => (bool) $this->simplified_offer_line,
+            // Spec 0188: the node's OWN declaration (null = inherits).
+            'simplified_offer_line_override' => $this->simplified_offer_line_override,
             'business_function_id' => $this->business_function_id,
             'business_function' => $this->businessFunction !== null
                 ? ['id' => $this->businessFunction->id, 'name' => $this->businessFunction->name]

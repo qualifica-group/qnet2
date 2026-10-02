@@ -43,6 +43,7 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     single_quote_per_opportunity: false,
     generates_contract: true,
     simplified_offer_line: true,
+    simplified_offer_line_override: null,
     management_mode_source_category: null,
     single_quote_per_opportunity_source_category: null,
     generates_contract_source_category: null,
@@ -73,6 +74,7 @@ describe('buildUpdatePayload — root-only rules', () => {
       single_quote_per_opportunity: true,
       generates_contract: true,
       simplified_offer_line: true,
+      simplified_offer_line_override: null,
       report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
@@ -106,6 +108,7 @@ describe('buildUpdatePayload — root-only rules', () => {
       single_quote_per_opportunity: false,
       generates_contract: false,
       simplified_offer_line: true,
+      simplified_offer_line_override: null,
       report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
@@ -119,7 +122,8 @@ describe('buildUpdatePayload — root-only rules', () => {
   })
 
   // Spec 0114: identical root-only diffing for the simplified-offer-line rule.
-  it('never sends simplified_offer_line under a parent, sends it when a root changes it', () => {
+  // Spec 0114 + 0188: a root diffs the value itself, a child only its override.
+  it('sends the override under a parent and the value at a root, never the other one', () => {
     const values: ProductCategoryFormValues = {
       name: 'Laptops',
       parent_id: 1,
@@ -136,16 +140,23 @@ describe('buildUpdatePayload — root-only rules', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: false,
+      simplified_offer_line_override: null,
       report_columns: null,
       manager_labels: {},
       inherits_manager_labels: true,
       custom_fields: {},
     }
 
-    // Under a parent the flag is read-only: the root owns it, so a diff there
-    // would be an override attempt the server refuses.
+    // Under a parent, an unchanged override sends nothing (the effective value alone is not a child's to send).
     expect(buildUpdatePayload(values, original())).toEqual({})
-    // Already a root: only the flag changed.
+    // Forcing it off, then handing it back to the inherited value.
+    expect(buildUpdatePayload({ ...values, simplified_offer_line_override: false }, original())).toEqual({
+      simplified_offer_line_override: false,
+    })
+    expect(
+      buildUpdatePayload(values, original({ simplified_offer_line_override: false, simplified_offer_line: false })),
+    ).toEqual({ simplified_offer_line_override: null })
+    // Already a root: only the value is sent, never the override.
     expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
       simplified_offer_line: false,
     })
@@ -170,6 +181,7 @@ describe('buildUpdatePayload — report_columns (spec 0141)', () => {
       single_quote_per_opportunity: false,
       generates_contract: true,
       simplified_offer_line: true,
+      simplified_offer_line_override: null,
       report_columns: ['richiami', 'telefonate'],
       manager_labels: {},
       inherits_manager_labels: true,

@@ -8,6 +8,7 @@ use App\Models\RewardType;
 use App\Models\Source;
 use Database\Seeders\Concerns\RetiresAttributes;
 use Database\Seeders\Concerns\SeedsCategoryAttributes;
+use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\CatalogRootRules;
 use Database\Seeders\QualificaCatalog\CategoryInheritanceRules;
@@ -37,8 +38,8 @@ use Illuminate\Database\Seeder;
  *     rules are classified on the third level, today the `GOL - <Regione>`
  *     rows, the `Autofinanziato - <Regione>` rows and "DIL - Lombardia" —
  *     plus the subcategories that host their offer directly, "Autoimpiego",
- *     "Yisu", "Orientamento Specialistico", "Corsi E-Campus" and the Consulenza
- *     leaf "Presa Appuntamenti" (see SELECTABLE_SUBCATEGORIES).
+ *     "Yisu", "Orientamento Specialistico", "Corsi E-Campus", the APL "Tirocini
+ *     extracurriculari privati" and "Presa Appuntamenti" (see SELECTABLE_SUBCATEGORIES).
  *     The "Formazione" branch also carries its OFFERTA-context attributes (spec 0061/0084) — the
  *     "Dati corso" pair of QualificaCatalog\CourseDataAttributeCatalogue and
  *     the "Dati Aula" set of QualificaCatalog\ClassroomAttributeCatalogue,
@@ -62,10 +63,7 @@ use Illuminate\Database\Seeder;
  *     exists — it re-syncs each branch; the "APL" root declares none and keeps
  *     the column defaults;
  *   - the per-node inheritance barriers, delegated to
- *     QualificaCatalog\CategoryInheritanceRules right after them: today the
- *     one "DIL" declares, which keeps that subcategory on its own offer
- *     fields instead of the whole "Formazione" set (user directive
- *     2026-09-10);
+ *     QualificaCatalog\CategoryInheritanceRules right after them;
  *   - the "stati di lavorazione" (spec 0047), delegated to
  *     QualificaWorkflowSeeder as the last step: one QuoteWorkflow per
  *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
@@ -184,6 +182,7 @@ class QualificaCatalogSeeder extends Seeder
         // the column defaults — the very values it used to inherit there.
         'APL' => [
             'Orientamento Specialistico' => [],
+            AplInternshipAttributeCatalogue::CATEGORY => [],
         ],
     ];
 
@@ -210,16 +209,16 @@ class QualificaCatalogSeeder extends Seeder
      * catalogue that files the products, so a rename breaks loudly instead of
      * silently demoting a node.
      *
-     * The Consulenza leaf is a target too (user directive 2026-09-28): it has
-     * no children to group, so the opportunities are classified on it
-     * directly. No product is seeded there, unlike the single-offer ones.
-     * So is "Corsi E-Campus", which hosts the degree fees (user directive 2026-10-02).
+     * The Consulenza leaf and the APL internships are targets too (user
+     * directives 2026-09-28, 2026-10-02), with no product seeded there; so is
+     * "Corsi E-Campus", which hosts the degree fees (user directive 2026-10-02).
      *
      * @var list<string>
      */
     private const array SELECTABLE_SUBCATEGORIES = [
         ...CatalogProducts::SINGLE_OFFER_CATEGORIES,
         ...ContactProcessingAttributeCatalogue::CONSULTING_CATEGORIES,
+        AplInternshipAttributeCatalogue::CATEGORY,
         ECampusCourseCatalogue::CATEGORY,
     ];
 
@@ -265,6 +264,8 @@ class QualificaCatalogSeeder extends Seeder
         ClassroomAttributeCatalogue::SELF_EMPLOYMENT_CATEGORY => ClassroomAttributeCatalogue::SELF_EMPLOYMENT_ATTRIBUTES,
         // The e-Campus form: the branch's only offer fields (CategoryInheritanceRules).
         ECampusCourseCatalogue::CATEGORY => ECampusAttributeCatalogue::ATTRIBUTES,
+        // The APL internships' form (user directive 2026-10-02), behind a barrier.
+        AplInternshipAttributeCatalogue::CATEGORY => AplInternshipAttributeCatalogue::ATTRIBUTES,
     ];
 
     /**

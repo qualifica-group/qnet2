@@ -198,9 +198,11 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_10_01_100000_move_request_report_permissions_to_request_statistics`
     // (121st), the statistics grant moved onto its own module, and spec
     // 0187's `2026_10_01_000000_add_last_used_at_index_to_personal_access_tokens`
-    // (122nd), the online-users read index.
+    // (122nd), the online-users read index, and spec 0188's
+    // `2026_10_02_100000_add_simplified_offer_line_override_to_product_categories_table`
+    // (123rd), the per-node simplified offer-line override.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 122]);
+    Artisan::call('migrate:rollback', ['--step' => 123]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

@@ -36,6 +36,10 @@ final class CategoryInheritanceRules
      * has its own form (ECampusAttributeCatalogue), none of the GOL/DOTE
      * paperwork nor of the classroom edition Formazione describes.
      *
+     * The APL internships likewise (user directive 2026-10-02): their own
+     * form (AplInternshipAttributeCatalogue), none of the Ricerca & Selezione
+     * fields the imported "APL" root carries.
+     *
      * Only the OFFERTA is cut. `inherits_work_order_attributes` is left alone
      * on purpose — the directive is about the offer form, and the two contexts
      * are independent columns.
@@ -45,6 +49,7 @@ final class CategoryInheritanceRules
     private const array BARRIERS = [
         'DIL' => ['inherits_quote_attributes' => false],
         ECampusCourseCatalogue::CATEGORY => ['inherits_quote_attributes' => false],
+        AplInternshipAttributeCatalogue::CATEGORY => ['inherits_quote_attributes' => false],
     ];
 
     public function apply(): void

@@ -105,6 +105,7 @@ function category(
     single_quote_per_opportunity_source_category: null,
     generates_contract_source_category: null,
     simplified_offer_line: false,
+    simplified_offer_line_override: null,
     simplified_offer_line_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
@@ -356,6 +357,7 @@ function reportableTreeNode(overrides: Partial<ProductCategoryTreeNode>): Produc
     single_quote_per_opportunity: false,
     generates_contract: true,
     simplified_offer_line: false,
+    simplified_offer_line_override: null,
     ...overrides,
   }
 }

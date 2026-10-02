@@ -79,7 +79,10 @@ export function buildCreatePayload(
     // And once more for the contract rule (spec 0091): root-owned, inherited.
     ...(values.parent_id === null ? { generates_contract: values.generates_contract } : {}),
     // And once more for the simplified-offer-line rule (spec 0114): root-owned, inherited.
-    ...(values.parent_id === null ? { simplified_offer_line: values.simplified_offer_line } : {}),
+    // A child sends its override instead (spec 0188), a root its own value.
+    ...(values.parent_id === null
+      ? { simplified_offer_line: values.simplified_offer_line }
+      : { simplified_offer_line_override: values.simplified_offer_line_override }),
     manager_labels: buildManagerLabelsValue(values.manager_labels),
     inherits_manager_labels: values.inherits_manager_labels,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
@@ -168,12 +171,14 @@ export function buildUpdatePayload(
     payload.generates_contract = values.generates_contract
   }
 
-  // Same root-only guard for the simplified-offer-line rule (spec 0114).
-  if (
-    values.parent_id === null &&
-    values.simplified_offer_line !== original.simplified_offer_line
-  ) {
-    payload.simplified_offer_line = values.simplified_offer_line
+  // Simplified-offer-line (spec 0114, 0188): a ROOT declares the value itself,
+  // a child only its override; the other field is never sent for that shape.
+  if (values.parent_id === null) {
+    if (values.simplified_offer_line !== original.simplified_offer_line) {
+      payload.simplified_offer_line = values.simplified_offer_line
+    }
+  } else if (values.simplified_offer_line_override !== original.simplified_offer_line_override) {
+    payload.simplified_offer_line_override = values.simplified_offer_line_override
   }
 
   const originalAssignments: AttributeAssignmentInput[] = original.attributes.map((a) => ({

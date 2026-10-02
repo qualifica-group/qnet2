@@ -77,6 +77,7 @@ function category(
     single_quote_per_opportunity_source_category: null,
     generates_contract_source_category: null,
     simplified_offer_line: false,
+    simplified_offer_line_override: null,
     simplified_offer_line_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
@@ -268,6 +269,7 @@ describe('ProductCategoryDetailView — management rules', () => {
       <ProductCategoryDetailView
         category={category({
           simplified_offer_line: true,
+          simplified_offer_line_override: null,
           simplified_offer_line_source_category: { id: 1, name: 'Electronics' },
         })}
       />,
@@ -276,6 +278,39 @@ describe('ProductCategoryDetailView — management rules', () => {
     const field = ruleValue('Simplified offer line')
     expect(within(field).getByText('Yes')).toBeInTheDocument()
     expect(within(field).getByText('Inherited from Electronics')).toBeInTheDocument()
+  })
+
+  // Spec 0188 AC-014.
+  it('shows the effective value of a forced simplified-offer-line with no source badge', () => {
+    render(
+      <ProductCategoryDetailView
+        category={category({
+          simplified_offer_line: false,
+          simplified_offer_line_override: false,
+          simplified_offer_line_source_category: null,
+        })}
+      />,
+    )
+
+    const field = ruleValue('Simplified offer line')
+    expect(within(field).getByText('No')).toBeInTheDocument()
+    expect(within(field).queryByText(/Inherited from/)).not.toBeInTheDocument()
+  })
+
+  it('names the nearest overriding ancestor as source of an inherited simplified-offer-line', () => {
+    render(
+      <ProductCategoryDetailView
+        category={category({
+          simplified_offer_line: false,
+          simplified_offer_line_override: null,
+          simplified_offer_line_source_category: { id: 7, name: 'E-Campus' },
+        })}
+      />,
+    )
+
+    const field = ruleValue('Simplified offer line')
+    expect(within(field).getByText('No')).toBeInTheDocument()
+    expect(within(field).getByText('Inherited from E-Campus')).toBeInTheDocument()
   })
 
   // Spec 0141 AC-003/AC-006.

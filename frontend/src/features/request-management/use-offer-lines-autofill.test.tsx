@@ -69,6 +69,7 @@ function treeNode(overrides: Partial<ProductCategoryTreeNode> & { id: number; na
     single_quote_per_opportunity: false,
     generates_contract: true,
     simplified_offer_line: false,
+    simplified_offer_line_override: null,
     ...overrides,
   }
 }
@@ -212,6 +213,7 @@ describe('offer-line autofill — single-managed AND simplified category (spec 0
         name: 'Training',
         management_mode: 'single',
         simplified_offer_line: true,
+        simplified_offer_line_override: null,
       }),
     ])
 

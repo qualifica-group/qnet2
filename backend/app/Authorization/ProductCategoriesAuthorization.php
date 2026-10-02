@@ -61,6 +61,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('single_quote_per_opportunity', 'boolean'),
             new FieldDefinition('generates_contract', 'boolean'),
             new FieldDefinition('simplified_offer_line', 'boolean'),
+            new FieldDefinition('simplified_offer_line_override', 'boolean'),
             new FieldDefinition('attributes', 'custom'),
             // Spec 0080: covers the WHOLE "Gestori Account" section — both
             // `manager_labels` and `inherits_manager_labels` — a single field
@@ -100,6 +101,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             'single_quote_per_opportunity' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'generates_contract' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'simplified_offer_line' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'simplified_offer_line_override' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'attributes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'manager_labels' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];

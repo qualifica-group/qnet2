@@ -44,6 +44,7 @@ const SERVER_ERROR_FIELDS = [
   'single_quote_per_opportunity',
   'generates_contract',
   'simplified_offer_line',
+  'simplified_offer_line_override',
   'manager_labels',
   'inherits_manager_labels',
 ] as const
@@ -98,6 +99,7 @@ function mapCategoryToFormValues(
     single_quote_per_opportunity: category.single_quote_per_opportunity,
     generates_contract: category.generates_contract,
     simplified_offer_line: category.simplified_offer_line,
+    simplified_offer_line_override: category.simplified_offer_line_override,
     manager_labels: toManagerLabelsFormValue(category.manager_labels),
     inherits_manager_labels: category.inherits_manager_labels,
     custom_fields: customFieldsDefaultValues,
@@ -187,6 +189,8 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       // Spec 0114: a new root opens with the manual row editor — the
       // behaviour every existing category had before the rule existed.
       simplified_offer_line: false,
+      // A new child inherits its ancestry's value until the operator forces it (spec 0188).
+      simplified_offer_line_override: null,
       manager_labels: EMPTY_MANAGER_LABELS_FORM,
       inherits_manager_labels: true,
       custom_fields: customFields.defaultValues,

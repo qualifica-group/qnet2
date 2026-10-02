@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0188-simplified-offer-line-override" status="approved" owner="nicola" date="2026-10-02">
+
+  <goal>
+    Permettere a una sottocategoria prodotto di dichiarare un proprio valore di
+    "Semplificazione riga offerta" (`simplified_offer_line`, spec 0114), ereditato dai suoi
+    discendenti, invece di subire sempre quello della radice. Primo uso: "Corsi E-Campus"
+    (figlia di "Formazione", che resta semplificata) NON semplificata, cosi' in Gestione
+    Richieste l'operatore puo' cambiare l'imponibile della riga (quantita', prezzo, IVA).
+  </goal>
+
+  <context>
+    Rivede spec 0114 D-1 ("colonna root-owned") per il solo `simplified_offer_line`.
+
+    Decisioni utente 2026-10-02, vincolanti:
+    D-1 — override per categoria con semantica nearest-ancestor: il valore effettivo di un
+          nodo e' quello del primo nodo, risalendo da se stesso verso la radice, che lo
+          dichiara. La radice lo dichiara sempre. "Corsi E-Campus" resta sotto
+          "Formazione" (non diventa radice).
+    D-2 — il seed di produzione dichiara l'override `false` su "Corsi E-Campus".
+
+    Decisioni proposte in fase di piano, da validare con l'approvazione:
+    D-3 — `simplified_offer_line` resta la colonna DENORMALIZZATA del valore EFFETTIVO su
+          ogni riga: i lettori esistenti (SimplifiedOfferLineNormalizer::isSimplified,
+          CategoryTreeBuilder, ProductCategoriesTableDefinition, filtri, export, frontend
+          `resolveSimplifiedOfferLine`) non cambiano. La dichiarazione propria di un nodo
+          non radice vive in una colonna NUOVA nullable `simplified_offer_line_override`
+          (null = eredita), sullo stesso schema di `is_reportable` (decisione 2026-09-18).
+    D-4 — su una radice `simplified_offer_line_override` e' sempre null: la radice dichiara
+          con `simplified_offer_line` come oggi.
+    D-5 — reparent: un nodo che resta figlio conserva il proprio override (e' una sua
+          dichiarazione) e il suo effettivo si ricalcola sotto il nuovo genitore; un nodo
+          che diventa radice trasforma l'effettivo che aveva nel proprio
+          `simplified_offer_line` e azzera l'override; una radice che diventa figlia parte
+          con override null (eredita), salvo override inviato nella stessa richiesta.
+    D-6 — nessuna bonifica retroattiva delle righe offerta: vale 0114 D-6 (le righe
+          esistenti restano come sono, il congelamento agisce solo su riga nuova o
+          prodotto cambiato).
+    D-7 — solo `simplified_offer_line` diventa sovrascrivibile; gli altri quattro setting
+          root-owned restano come sono.
+
+    Fatti verificati nel repo (grounding 2026-10-02):
+    - `App\Services\ProductCategories\SimplifiedOfferLineInheritance` estende
+      `RootOwnedCategorySetting` (walk alla radice, `syncSubtree()` che scrive il valore
+      della radice su tutto il sottoalbero, `sourceCategoryFor()` = la radice).
+    - `RootOwnedSettingsWriter` orchestra i cinque setting: guardia 422
+      (`assertNotOverridden`), risoluzione al create (`resolvedColumnsFor`), resync dopo
+      update/reparent (`syncSubtrees`), `sourceCategories()` per gli hint
+      `{setting}_source_category`. `ProductCategoryService` lo chiama in create/update.
+    - Precedente nearest-ancestor: `is_reportable` nullable + `ReportableInheritance`
+      (backend) e `reportable-inheritance.ts` / `ReportableRule` in
+      `product-category-rules-section.tsx` (frontend: lo switch mostra l'effettivo,
+      riportarlo al valore ereditato salva null).
+    - Frontend: il tile attuale e' `ProductCategorySimplifiedOfferLineField`
+      (`product-category-root-flag-field.tsx`, read-only su un figlio);
+      `simplified-offer-line-inheritance.ts` risale alla radice; il payload invia
+      `simplified_offer_line` solo per una radice (`product-category-form-payload.ts`).
+    - Seed: "Corsi E-Campus" eredita `simplified_offer_line = true` da "Formazione"
+      (`CatalogRootRules`); le dichiarazioni per-nodo stanno in `CategoryInheritanceRules`
+      (barriere), applicato dopo `CatalogRootRules`.
+    - Guide in-app: `frontend/src/features/help/content/{it,en}/product-categories.ts`
+      descrive "Semplificazione riga offerta" tra le regole decise solo dalla radice.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione: colonna `product_categories.simplified_offer_line_override` boolean nullable, default null, dopo `simplified_offer_line`. Reversibile.</item>
+      <item>Model `ProductCategory`: fillable + cast boolean; activity log come le altre colonne.</item>
+      <item>Backend: `SimplifiedOfferLineInheritance` con semantica nearest-ancestor (valore ereditato, sorgente, resync del sottoalbero che si ferma ai nodi con override), integrata in `RootOwnedSettingsWriter` e `ProductCategoryService` (create, update, reparent, bulk move).</item>
+      <item>API categorie: campo `simplified_offer_line_override` in request/response, guardie 422, permesso di campo, nodo dell'albero.</item>
+      <item>Seed: override `false` su "Corsi E-Campus", idempotente, con resync del suo sottoalbero.</item>
+      <item>Frontend categorie: tile "Semplificazione riga offerta" modificabile anche su un figlio (switch sull'effettivo, override null quando coincide con l'ereditato), badge "Ereditata da X" / "Forzata", dettaglio.</item>
+      <item>Guide in-app IT/EN della categoria prodotto aggiornate; parity test verde.</item>
+    </in>
+    <out>
+      <item>Override degli altri quattro setting root-owned (`requires_quote`, `management_mode`, `single_quote_per_opportunity`, `generates_contract`).</item>
+      <item>Qualsiasi modifica al comportamento della semplificazione stessa (0114 D-2..D-6) e al modulo Offerte.</item>
+      <item>Bonifica delle righe offerta gia' salvate.</item>
+      <item>Nuova colonna nella griglia categorie o nuovi filtri: la griglia continua a mostrare l'effettivo.</item>
+      <item>Uno "sblocco" del solo prezzo: una riga non semplificata e' la riga manuale completa di oggi (quantita', prezzo unitario, IVA).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/product-categories">
+      <request>
+        Campi esistenti invariati, piu':
+        simplified_offer_line_override: boolean | null (opzionale). Ammesso solo con
+        `parent_id` non null. null o assente = eredita.
+        `simplified_offer_line` su un figlio: ammesso solo se uguale all'effettivo che il
+        nodo avrebbe (override ?? valore del genitore); altrimenti 422.
+      </request>
+      <response status="201">
+        envelope { success, message, data }: `data` = ProductCategoryResource con in piu'
+        `simplified_offer_line_override: boolean | null`.
+      </response>
+      <errors>
+        403 senza permesso di scrittura categorie (invariato).
+        422 `simplified_offer_line_override` non null su una categoria radice:
+            "A root category sets the simplified offer-line rule directly."
+        422 `simplified_offer_line` su un figlio diverso dal suo effettivo:
+            "This category inherits the simplified offer-line rule; set its override instead."
+      </errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/product-categories/{category}">
+      <request>
+        Come sopra, `sometimes`. Valutato rispetto al genitore DOPO l'eventuale reparent
+        della stessa richiesta (D-5).
+      </request>
+      <response status="200">
+        ProductCategoryResource come sopra. Dopo la scrittura `simplified_offer_line` del
+        nodo e di tutto il suo sottoalbero e' riallineato sull'effettivo; i discendenti
+        con override proprio, e i loro sottoalberi, tengono il proprio.
+      </response>
+      <errors>Come POST; 404 categoria inesistente.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/product-categories/{category}">
+      <response status="200">
+        In piu' `simplified_offer_line_override: boolean | null`.
+        `simplified_offer_line_source_category: {id, name} | null` cambia significato: il
+        nodo antenato PIU' VICINO che dichiara il valore (un override o la radice); null
+        quando la categoria lo dichiara lei stessa (radice o override non null).
+        `meta.fields.simplified_offer_line_override` con lo stesso permesso di
+        `simplified_offer_line`.
+      </response>
+    </endpoint>
+    <endpoint method="GET" path="/api/product-categories/tree">
+      <response status="200">
+        Ogni nodo aggiunge `simplified_offer_line_override: boolean | null`;
+        `simplified_offer_line` resta l'effettivo.
+      </response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un catalogo esistente, quando gira la migrazione, allora ogni riga ha `simplified_offer_line_override` null e `simplified_offer_line` invariato; il rollback rimuove la colonna.</criterion>
+    <criterion id="AC-002">Dato "Formazione" (radice, true) con figlio F e nipote N senza override, quando PATCH F con `simplified_offer_line_override: false`, allora F e N hanno `simplified_offer_line` false, i fratelli di F restano true, la risposta ha override false e `simplified_offer_line_source_category` null.</criterion>
+    <criterion id="AC-003">Dato F con override false, quando PATCH F con `simplified_offer_line_override: null`, allora F e N tornano a true e `simplified_offer_line_source_category` di F e' "Formazione".</criterion>
+    <criterion id="AC-004">Dato F con override false, quando la radice passa a false e poi a true, allora i figli senza override seguono la radice, F e il suo sottoalbero restano false.</criterion>
+    <criterion id="AC-005">Dato F con override false, quando GET del nipote N, allora `simplified_offer_line` e' false e `simplified_offer_line_source_category` e' F.</criterion>
+    <criterion id="AC-006">Quando POST/PATCH una radice con `simplified_offer_line_override` non null, oppure un figlio con `simplified_offer_line` diverso dal suo effettivo, allora 422 con i messaggi del contratto e nessuna riga modificata.</criterion>
+    <criterion id="AC-007">Dato F con override false, quando F viene spostata sotto un'altra radice (PATCH parent_id e bulk move), allora conserva override false ed effettivo false; quando F diventa radice, allora il suo `simplified_offer_line` e' false e l'override e' null; quando una radice R (false) diventa figlia di una radice true senza override inviato, allora R eredita true.</criterion>
+    <criterion id="AC-008">Dato un utente senza permesso di scrittura categorie, quando PATCH con `simplified_offer_line_override`, allora 403 e nessuna modifica; il GET espone `meta.fields.simplified_offer_line_override` readonly per lui.</criterion>
+    <criterion id="AC-009">Dato un'opportunita' classificata SOLO su una categoria con override false sotto una radice semplificata, quando Gestione Richieste crea o aggiorna una riga offerta con quantita' 3 e prezzo 100, allora la riga persiste quantita' 3 e prezzo 100 (nessun congelamento).</criterion>
+    <criterion id="AC-010">Quando GET /api/product-categories/tree, allora ogni nodo porta `simplified_offer_line_override` e `simplified_offer_line` effettivo.</criterion>
+    <criterion id="AC-011">Dato il seed di produzione eseguito due volte, allora "Corsi E-Campus" ha override false ed effettivo false, "Formazione" e gli altri suoi figli restano true, nessun'altra categoria ha override.</criterion>
+    <criterion id="AC-012">Frontend, form modifica di un figlio: il tile "Semplificazione riga offerta" e' modificabile, mostra l'effettivo; spegnendolo sotto una radice true il payload contiene `simplified_offer_line_override: false`; riaccendendolo contiene null; badge "Ereditata da X" quando eredita, "Forzata" quando diverge.</criterion>
+    <criterion id="AC-013">Frontend, form di una radice: il tile resta quello di oggi e il payload invia `simplified_offer_line`, mai l'override.</criterion>
+    <criterion id="AC-014">Frontend, dettaglio categoria: mostra l'effettivo e, se ereditato, la categoria sorgente.</criterion>
+    <criterion id="AC-015">Frontend, Gestione Richieste: con una classificazione su un nodo dell'albero con `simplified_offer_line` false la riga offerta mostra quantita', prezzo unitario e IVA modificabili.</criterion>
+    <criterion id="AC-016">Guide in-app IT ed EN di "Categorie prodotto" spiegano l'override della semplificazione con gli stessi id di sezione; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Authz server-side invariata (policy categorie) piu' il permesso di campo.</item>
+    <item>`simplified_offer_line` resta l'unica colonna letta da chi applica la semplificazione: nessun walk dell'albero in lettura su Gestione Richieste.</item>
+    <item>Resync idempotente: righe gia' allineate non vengono riscritte (nessun rumore nell'activity log).</item>
+    <item>File entro 300/500 righe: `RootOwnedSettingsWriter` e `product-category-rules-section.tsx` vanno controllati prima di aggiungere codice.</item>
+    <item>Test: Pest per backend e seed, Vitest per frontend, `tsc -b --force`, Pint, ESLint.</item>
+    <item>Manuale Claude Docs "Manuale Utente QNet": aggiornare la parte sulle regole delle categorie se il connettore e' disponibile, altrimenti segnalarlo.</item>
+  </constraints>
+
+</spec>

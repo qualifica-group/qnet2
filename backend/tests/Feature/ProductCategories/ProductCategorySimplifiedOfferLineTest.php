@@ -62,7 +62,7 @@ it('AC-002: a child with a divergent value is rejected with a 422 and nothing is
 
     $this->patchJson("/api/product-categories/{$child->id}", ['simplified_offer_line' => true])
         ->assertStatus(422)
-        ->assertJsonPath('message', 'This category inherits the simplified offer-line rule from its root category and cannot define its own.');
+        ->assertJsonPath('message', 'This category inherits the simplified offer-line rule; set its override instead.');
 
     expect($child->fresh()->simplified_offer_line)->toBeFalse();
 });

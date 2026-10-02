@@ -77,6 +77,9 @@ class UpdateProductCategoryRequest extends FormRequest
             // Spec 0114: same root-only semantics — a reparent or an edit of
             // the flag itself triggers ProductCategoryService's subtree resync.
             'simplified_offer_line' => ['sometimes', 'boolean'],
+            // Spec 0188: a child's own declaration (null = inherit); a root
+            // sets the rule through `simplified_offer_line` (422 otherwise).
+            'simplified_offer_line_override' => ['sometimes', 'nullable', 'boolean'],
             'attributes' => ['sometimes', 'array'],
             'attributes.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
             'attributes.*.context' => ['required', Rule::enum(AttributeContext::class)],

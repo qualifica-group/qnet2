@@ -37,8 +37,10 @@ export interface ProductCategoryTreeNode {
   single_quote_per_opportunity: boolean
   /** The EFFECTIVE contract rule: authored by the branch root, mirrored on every descendant server-side (spec 0091). */
   generates_contract: boolean
-  /** The EFFECTIVE simplified-offer-line rule: authored by the branch root, mirrored on every descendant server-side (spec 0114). */
+  /** The EFFECTIVE simplified-offer-line rule: the nearest declaring ancestor's value, denormalized on every node (spec 0114, 0188). */
   simplified_offer_line: boolean
+  /** The node's OWN simplified-offer-line override (spec 0188): null inherits; always null on a root. */
+  simplified_offer_line_override: boolean | null
 }
 
 /**
@@ -174,9 +176,11 @@ export interface ProductCategoryDetail {
   generates_contract: boolean
   /** The root `generates_contract` is inherited from; null when this category IS the root and owns the flag. */
   generates_contract_source_category: { id: number; name: string } | null
-  /** Whether Gestione Richieste compiles this branch's offer rows automatically (spec 0114) — authored by the branch ROOT, mirrored here on every descendant. */
+  /** The EFFECTIVE simplified-offer-line rule (spec 0114): the root's own value, or the nearest override (spec 0188). */
   simplified_offer_line: boolean
-  /** The root `simplified_offer_line` is inherited from; null when this category IS the root and owns the flag. */
+  /** The category's OWN override (spec 0188): null inherits; always null on a root. */
+  simplified_offer_line_override: boolean | null
+  /** The nearest ancestor declaring the value (an override or the root); null when this category declares it itself. */
   simplified_offer_line_source_category: { id: number; name: string } | null
   /** This category's OWN manager-label overrides (spec 0080) — never the inherited ones. */
   manager_labels: ManagerLabels
@@ -283,8 +287,10 @@ export interface CreateProductCategoryPayload {
   single_quote_per_opportunity?: boolean
   /** Same root-only rule again for the contract rule (spec 0091). */
   generates_contract?: boolean
-  /** Same root-only rule again for the simplified-offer-line rule (spec 0114). */
+  /** Same root-only rule again for the simplified-offer-line rule (spec 0114): a child sends the override instead. */
   simplified_offer_line?: boolean
+  /** Child-only (spec 0188): true/false forces the rule, null inherits. Never sent for a root. */
+  simplified_offer_line_override?: boolean | null
   /** Own manager-label overrides, only valorized positions (spec 0080). */
   manager_labels?: ManagerLabels
   inherits_manager_labels?: boolean

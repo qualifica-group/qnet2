@@ -19,8 +19,10 @@ use App\Enums\LayoutSectionVariant;
  * The sheet's option lists become `enum` options; its "flag" columns become
  * `boolean` fields. Its course column is not a field (user directive
  * 2026-10-02): the course is the offer's product, filed on "Corsi E-Campus".
- * The same directive adds three document flags and replaces the payment
- * flags with the "Tipo di pagamento" select, "Finanziamento" among its options.
+ * The same directive adds three document flags, replaces the payment flags
+ * with the "Tipo di pagamento" select ("Finanziamento" among its options) and
+ * turns the "PROGETTO FORM" fee, no longer a product, into the "Corso Form"
+ * flag.
  * `code` is the English identifier; `name` and the option labels are the
  * user-facing values, kept in their original language.
  */
@@ -41,6 +43,7 @@ final class ECampusAttributeCatalogue
             ['value' => 'bachelor', 'label' => 'Triennale'],
             ['value' => 'master', 'label' => 'Magistrale'],
         ]],
+        ['code' => 'form_course', 'name' => 'Corso Form', 'type' => 'boolean'],
         ['code' => 'identification_documents', 'name' => 'Documenti di riconoscimento', 'type' => 'boolean'],
         ['code' => 'enrollment_form', 'name' => 'Modulo di iscrizione', 'type' => 'boolean'],
         ['code' => 'diploma_or_self_certification', 'name' => 'Diploma / autocertificazione', 'type' => 'boolean'],
@@ -59,16 +62,18 @@ final class ECampusAttributeCatalogue
     /**
      * The offer form, in reading order, shaped like
      * QualificaQuoteLayoutSeeder::SECTIONS plus each section's style (user
-     * directive 2026-10-01: a tidy form): what the candidate enrols in,
-     * highlighted on top; the documents received, two per row; the payment
-     * type alone. Every field fills its row.
+     * directive 2026-10-01: a tidy form): what the candidate enrols in, on
+     * top; the documents received, two per row; the payment type alone. Every
+     * section is plain, none highlighted (user directive 2026-10-02). Every
+     * field fills its row.
      *
      * @var list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>
      */
     public const array SECTIONS = [
         ['ecampus-course', 'Corso di Laurea', [
             ['faculty', 'degree_level'],
-        ], ['variant' => LayoutSectionVariant::Highlighted, 'columns' => 2, 'description' => 'Facoltà, livello e corso di laurea scelti dal candidato.']],
+            ['form_course'],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Facoltà, livello e corso di laurea scelti dal candidato.']],
         ['ecampus-documents', 'Documenti di iscrizione', [
             ['identification_documents', 'enrollment_form'],
             ['diploma_or_self_certification', 'annex_a'],

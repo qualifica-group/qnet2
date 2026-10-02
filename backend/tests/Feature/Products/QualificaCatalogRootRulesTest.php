@@ -4,6 +4,7 @@ use App\Enums\CategoryManagementMode;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\ProductCategories\CategoryManagerLabelResolver;
+use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -64,10 +65,11 @@ it('applies every root rule to Formazione and Consulenza, cascades it to their d
         ->and(ProductCategory::query()->whereIn('id', $consulenzaDescendantIds)->where('generates_contract', false)->count())
         ->toBe(0);
 
-    // simplified_offer_line cascade (AC-007, was: 'AC-007: cascades the simplified offer line...', 'AC-007: leaves "Consulenza" and its descendants without the simplified offer line')
+    // simplified_offer_line cascade (AC-007, was: 'AC-007: cascades the simplified offer line...', 'AC-007: leaves "Consulenza" and its descendants without the simplified offer line').
+    // "Corsi E-Campus" is the one node of the branch overriding it (spec 0188).
     expect($formazioneDescendantIds)->not->toBeEmpty()
-        ->and(ProductCategory::query()->whereIn('id', $formazioneDescendantIds)->where('simplified_offer_line', false)->count())
-        ->toBe(0)
+        ->and(ProductCategory::query()->whereIn('id', $formazioneDescendantIds)->where('simplified_offer_line', false)->pluck('name')->all())
+        ->toBe([ECampusCourseCatalogue::CATEGORY])
         ->and($consulenzaDescendantIds)->not->toBeEmpty()
         ->and(ProductCategory::query()->whereIn('id', $consulenzaDescendantIds)->where('simplified_offer_line', true)->count())
         ->toBe(0);

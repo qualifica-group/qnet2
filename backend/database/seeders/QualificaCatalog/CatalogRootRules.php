@@ -44,6 +44,10 @@ use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
  * gives the whole branch its G.A. names. Only "Formazione" declares them
  * (user directive 2026-08-31); "Consulenza" omits the key entirely rather
  * than realigning to null, which would wipe labels configured from the UI.
+ *
+ * NODE_OVERRIDES then lets one node of a branch declare its own
+ * `simplified_offer_line` (spec 0188), handed down to its subtree: applied
+ * after the root re-sync, which leaves an override and its subtree alone.
  */
 final class CatalogRootRules
 {
@@ -77,6 +81,18 @@ final class CatalogRootRules
         ],
     ];
 
+    /**
+     * Category name => the override it declares (spec 0188). "Corsi E-Campus"
+     * keeps the full offer line under the simplified "Formazione", so the
+     * operator can change the line's taxable amount (user directive
+     * 2026-10-02).
+     *
+     * @var array<string, array{simplified_offer_line_override: bool}>
+     */
+    private const array NODE_OVERRIDES = [
+        ECampusCourseCatalogue::CATEGORY => ['simplified_offer_line_override' => false],
+    ];
+
     public function __construct(
         private readonly CategoryManagementModeInheritance $managementMode,
         private readonly SingleQuotePerOpportunityInheritance $singleQuote,
@@ -98,6 +114,14 @@ final class CatalogRootRules
             $this->singleQuote->syncSubtree($root);
             $this->contractGeneration->syncSubtree($root);
             $this->simplifiedOfferLine->syncSubtree($root);
+        }
+
+        foreach (self::NODE_OVERRIDES as $categoryName => $override) {
+            /** @var ProductCategory $category */
+            $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
+
+            $category->fill($override)->save();
+            $this->simplifiedOfferLine->syncSubtree($category);
         }
     }
 }

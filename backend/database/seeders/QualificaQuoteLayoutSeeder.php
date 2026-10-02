@@ -10,6 +10,7 @@ use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Database\Seeders\Concerns\RetiresAttributes;
 use Database\Seeders\Concerns\SeedsAttributeLayouts;
+use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
@@ -70,6 +71,9 @@ class QualificaQuoteLayoutSeeder extends Seeder
         // The e-Campus form, styled (user directive 2026-10-01): it resolves
         // on the "Corsi E-Campus" branch alone, cut off the three sets above.
         ...ECampusAttributeCatalogue::SECTIONS,
+        // The APL internships' form (user directive 2026-10-02), on their
+        // category alone, cut off the APL root.
+        ...AplInternshipAttributeCatalogue::SECTIONS,
     ];
 
     /**
@@ -128,7 +132,8 @@ class QualificaQuoteLayoutSeeder extends Seeder
 
     /**
      * Every category an offer can be filed under for these sets: the whole
-     * Formazione branch, the training fields reaching it all by inheritance.
+     * Formazione branch, the training fields reaching it all by inheritance,
+     * plus the APL internships.
      *
      * @return Collection<int, ProductCategory>
      */
@@ -141,10 +146,12 @@ class QualificaQuoteLayoutSeeder extends Seeder
 
         $branchIds = [$root->id, ...$this->hierarchy->descendantIds($root->id)];
 
-        // The Formazione branch alone: the Consulenza leaf carries no
-        // attribute since the 2026-09-10 directive, so composing a layout for
-        // it would prune to nothing anyway.
-        $categories = ProductCategory::query()->whereIn('id', $branchIds)->get();
+        // Not the Consulenza leaf: it carries no attribute since the
+        // 2026-09-10 directive, so its layout would prune to nothing anyway.
+        $categories = ProductCategory::query()
+            ->whereIn('id', $branchIds)
+            ->orWhere('name', AplInternshipAttributeCatalogue::CATEGORY)
+            ->get();
 
         // Root-first: seedLayout() asks what each category INHERITS, which is
         // only settled once every level above it has been visited.

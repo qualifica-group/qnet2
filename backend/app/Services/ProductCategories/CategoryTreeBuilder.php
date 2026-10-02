@@ -80,6 +80,8 @@ final class CategoryTreeBuilder
                 'single_quote_per_opportunity' => (bool) $category->single_quote_per_opportunity,
                 'generates_contract' => (bool) $category->generates_contract,
                 'simplified_offer_line' => (bool) $category->simplified_offer_line,
+                // Spec 0188: the node's OWN declaration (null = inherits).
+                'simplified_offer_line_override' => $category->simplified_offer_line_override,
             ];
         }
 

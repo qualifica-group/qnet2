@@ -6,6 +6,7 @@ use App\Enums\LayoutFormScope;
 use App\Enums\ProductType;
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
+use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -86,22 +87,30 @@ it('seeds every e-Campus degree fee directly on "Corsi E-Campus", idempotently',
         ->and($branch->is_selectable)->toBeTrue()
         ->and(ProductCategory::query()->where('parent_id', $branch->id)->exists())->toBeFalse();
 
-    // 15 bachelor courses x 6 fees + 10 master courses x 5 fees, each named
-    // before the sheet's colon and priced at its fee.
-    expect($products)->toHaveCount(140)
+    // The full offer line under the simplified Formazione (spec 0188): the
+    // branch declares its own override, the only node of the catalogue that does.
+    expect($formazione->simplified_offer_line)->toBeTrue()
+        ->and($branch->simplified_offer_line_override)->toBeFalse()
+        ->and($branch->simplified_offer_line)->toBeFalse()
+        ->and(ProductCategory::query()->where('name', 'GOL')->value('simplified_offer_line'))->toBeTruthy()
+        ->and(ProductCategory::query()->whereNotNull('simplified_offer_line_override')->pluck('name')->all())
+        ->toBe([ECampusCourseCatalogue::CATEGORY]);
+
+    // 15 bachelor courses x 5 fees + 10 master courses x 4 fees, each named
+    // before the sheet's colon and priced at its fee; "PROGETTO FORM" is the
+    // offer's "Corso Form" flag, not a product (user directive 2026-10-02).
+    expect($products)->toHaveCount(115)
         ->and($products->every(fn (Product $product): bool => $product->product_type === ProductType::Service
             && (float) $product->cost === 0.0
             && $product->vat_rate_id === null))->toBeTrue()
-        ->and(array_slice(eCampusProductsOf($branch), 0, 6))->toBe([
-            'Ingegneria Civile e Ambientale [L-7] PROGETTO FORM' => 1500.0,
+        ->and(array_slice(eCampusProductsOf($branch), 0, 5))->toBe([
             'Ingegneria Civile e Ambientale [L-7] ASSISTENZA E TUTORAGGIO' => 500.0,
             'Ingegneria Civile e Ambientale [L-7] 1°ANNO' => 2856.0,
             'Ingegneria Civile e Ambientale [L-7] 2°ANNO' => 2856.0,
             'Ingegneria Civile e Ambientale [L-7] 3°ANNO' => 2856.0,
             'Ingegneria Civile e Ambientale [L-7] TESI' => 300.0,
         ])
-        ->and(array_slice(eCampusProductsOf($branch), -5))->toBe([
-            'Scienze dell\'Economia [LM-56] PROGETTO FORM' => 1500.0,
+        ->and(array_slice(eCampusProductsOf($branch), -4))->toBe([
             'Scienze dell\'Economia [LM-56] ASSISTENZA E TUTORAGGIO' => 500.0,
             'Scienze dell\'Economia [LM-56] 1°ANNO' => 3056.0,
             'Scienze dell\'Economia [LM-56] 2°ANNO' => 3056.0,
@@ -111,7 +120,7 @@ it('seeds every e-Campus degree fee directly on "Corsi E-Campus", idempotently',
 
 it('folds the retired degree and area nodes onto "Corsi E-Campus" with their products and lines', function (): void {
     ['branch' => $branch, 'degree' => $degree, 'areas' => [$area]] = retiredECampusTree(['Ingegneria - Corsi di Laurea Triennali']);
-    $product = Product::factory()->create(['name' => 'Ingegneria Civile e Ambientale [L-7] PROGETTO FORM', 'category_id' => $area->id]);
+    $product = Product::factory()->create(['name' => 'Ingegneria Civile e Ambientale [L-7] TESI', 'category_id' => $area->id]);
     $line = OpportunityProductLine::factory()->create(['product_category_id' => $area->id]);
 
     test()->seed(QualificaCatalogSeeder::class);
@@ -123,7 +132,23 @@ it('folds the retired degree and area nodes onto "Corsi E-Campus" with their pro
         ->and($product->fresh()->category_id)->toBe($branch->id)
         ->and(Product::query()->where('name', $product->name)->count())->toBe(1)
         ->and($line->fresh()->product_category_id)->toBe($branch->id)
-        ->and(Product::query()->where('category_id', $branch->id)->count())->toBe(140);
+        ->and(Product::query()->where('category_id', $branch->id)->count())->toBe(115);
+});
+
+it('withdraws the retired "PROGETTO FORM" products, keeping the one already referenced', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    // An earlier revision's products, one already picked on an opportunity.
+    $branch = ProductCategory::query()->where('name', ECampusCourseCatalogue::CATEGORY)->sole();
+    $unused = Product::factory()->create(['name' => 'Economia [L-33] PROGETTO FORM', 'category_id' => $branch->id]);
+    $picked = Product::factory()->create(['name' => 'Psicologia [LM-51] PROGETTO FORM', 'category_id' => $branch->id]);
+    Opportunity::factory()->create()->productsOfInterest()->attach($picked->id);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect(Product::query()->whereKey($unused->id)->exists())->toBeFalse()
+        ->and(Product::query()->whereKey($picked->id)->exists())->toBeTrue()
+        ->and(Attribute::query()->where('code', 'form_course')->value('type'))->toBe('boolean');
 });
 
 it('refuses a fold that would merge two lines of one opportunity, leaving the old tree whole', function (): void {
@@ -169,14 +194,15 @@ it('gives the e-Campus branch its own offer form, layout and working states', fu
 
     expect($layouts->resolveExact($branch, AttributeContext::Quote, LayoutFormScope::All))->not->toBeNull()
         ->and(array_column($sections, 'title'))->toBe(['Corso di Laurea', 'Documenti di iscrizione', 'Pagamento'])
-        ->and(array_column($sections, 'variant'))->toBe(['highlighted', 'default', 'default'])
+        ->and(array_column($sections, 'variant'))->toBe(['default', 'default', 'default'])
         ->and(array_column($sections, 'columns'))->toBe([2, 2, 1])
         // No course field (user directive 2026-10-02): the course is the
         // product. Every field fills its row.
-        ->and($sections[0]['rows'])->toHaveCount(1)
+        ->and($sections[0]['rows'])->toHaveCount(2)
         ->and(array_column($sections[0]['rows'][0]['items'], 'width'))->toBe(['half', 'half'])
         ->and(eCampusLayoutCodes($sections))->toBe([
             ['faculty', 'degree_level'],
+            ['form_course'],
             ['identification_documents', 'enrollment_form'],
             ['diploma_or_self_certification', 'annex_a'],
             ['ecampus_receipt', 'qualifica_receipt'],

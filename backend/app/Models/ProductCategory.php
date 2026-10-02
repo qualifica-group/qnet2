@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_reportable', 'report_columns', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'simplified_offer_line', 'manager_labels', 'inherits_manager_labels'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_reportable', 'report_columns', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'simplified_offer_line', 'simplified_offer_line_override', 'manager_labels', 'inherits_manager_labels'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -99,6 +99,10 @@ class ProductCategory extends BaseModel
             // freezes those values from the picked product. Defaults to
             // false, the pre-existing fully-manual offer line.
             'simplified_offer_line' => 'boolean',
+            // Spec 0188 — a child's OWN declaration of the rule (null =
+            // inherit the parent's effective value, always null on a root);
+            // `simplified_offer_line` above holds the resulting effective value.
+            'simplified_offer_line_override' => 'boolean',
             // Spec 0080 — sparse position("1".."4")->label map, own
             // assignments only; null/[] = no own labels. Read-side resolution
             // (own UNION inherited) lives in CategoryManagerLabelResolver,

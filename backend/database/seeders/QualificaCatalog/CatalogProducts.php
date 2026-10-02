@@ -8,6 +8,8 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\VatRate;
 use App\Services\ProductService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Every product the Qualifica catalogue seeds. Split out of
@@ -40,7 +42,9 @@ use App\Services\ProductService;
  * already-seeded product is left untouched so a manual edit survives a re-run.
  * The one exception is a self-funded course an earlier revision filed on the
  * "Autofinanziato" node itself, before the per-region split: it is MOVED onto
- * its region, never duplicated there — see moveOffContainer().
+ * its region, never duplicated there — see moveOffContainer(). The other is
+ * an e-Campus fee the catalogue no longer sells: its products are DELETED,
+ * unless something already points at them — see retireECampusFees().
  */
 final class CatalogProducts
 {
@@ -67,6 +71,19 @@ final class CatalogProducts
         'Orientamento Specialistico',
     ];
 
+    /**
+     * Every column holding a product reference that restricts its delete:
+     * table => column.
+     *
+     * @var array<string, string>
+     */
+    private const array PRODUCT_REFERENCES = [
+        'quote_lines' => 'product_id',
+        'opportunity_product' => 'product_id',
+        'lead_product' => 'product_id',
+        'commission_configurations' => 'product_id',
+    ];
+
     public function __construct(private readonly ProductService $products) {}
 
     public function seed(): void
@@ -79,6 +96,47 @@ final class CatalogProducts
         $this->seedSingleOfferProducts();
         // Step 4: the e-Campus degrees, one product per fee of their level.
         $this->seedECampusCourses();
+        // Step 5: the e-Campus fees no longer sold as a product.
+        $this->retireECampusFees();
+    }
+
+    /**
+     * Deletes the product of every retired fee of every e-Campus course. A
+     * product already referenced — an offer line, a product of interest, a
+     * commission rule — stays: deleting it would break that record, so it is
+     * logged for an operator to handle instead.
+     */
+    private function retireECampusFees(): void
+    {
+        $names = [];
+
+        foreach (ECampusCourseCatalogue::DEGREES as $degree) {
+            foreach ($degree['courses'] as $course) {
+                foreach (ECampusCourseCatalogue::RETIRED_FEES as $fee) {
+                    $names[] = sprintf('%s %s', $course, $fee);
+                }
+            }
+        }
+
+        Product::query()
+            ->where('category_id', $this->category(ECampusCourseCatalogue::CATEGORY)->id)
+            ->whereIn('name', $names)
+            ->each(function (Product $product): void {
+                $this->isReferenced($product)
+                    ? Log::warning('Retired e-Campus product kept: it is still referenced.', ['product_id' => $product->id, 'name' => $product->name])
+                    : $this->products->delete($product);
+            });
+    }
+
+    private function isReferenced(Product $product): bool
+    {
+        foreach (self::PRODUCT_REFERENCES as $table => $column) {
+            if (DB::table($table)->where($column, $product->id)->exists()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function seedECampusCourses(): void

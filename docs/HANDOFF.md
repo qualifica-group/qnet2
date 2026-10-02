@@ -3,6 +3,29 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0188 OVERRIDE "SEMPLIFICAZIONE RIGA OFFERTA" PER NODO — VERDE, NON COMMITTATO (2026-10-02)
+
+- Decisione utente 2026-10-02: "Corsi E-Campus" NON semplificata (imponibile modificabile in Gestione Richieste),
+  "Formazione" resta semplificata. Rivede spec 0114 D-1 solo per `simplified_offer_line`.
+- Contratto (spec 0188): colonna nullable `product_categories.simplified_offer_line_override` (null = eredita,
+  sempre null su una radice; migrazione `2026_10_02_100000_*`). `simplified_offer_line` resta l'EFFETTIVO
+  denormalizzato: i lettori non cambiano. `simplified_offer_line_source_category` = antenato dichiarante piu' vicino.
+  Campo in Resource, nodo tree, permessi di campo; 422 "A root category sets the simplified offer-line rule
+  directly." / "This category inherits the simplified offer-line rule; set its override instead."
+- Backend: `SimplifiedOfferLineInheritance` non estende piu' `RootOwnedCategorySetting` (nearest-ancestor, resync
+  idempotente che rispetta gli override); `RootOwnedSettingsWriter` guardie/create/reparent (D-5). Test:
+  `ProductCategories/SimplifiedOfferLineOverrideTest` (17), `RequestManagement/SimplifiedOfferLineOverrideFreezeTest`.
+  `QuoteWorkflowMigrationTest` rollback 122 -> 123 step (nuova migrazione).
+- Seed: `CatalogRootRules::NODE_OVERRIDES` (NON `CategoryInheritanceRules`, che ha modifiche APL non committate e
+  gestisce barriere non ereditate) -> override false su "Corsi E-Campus". `QualificaCatalogRootRulesTest` aggiornato.
+- Frontend: tile semplificazione modificabile anche sul figlio (modello `ReportableRule`), hook
+  `use-simplified-offer-line-inheritance.ts`, `simplified-offer-line-inheritance.ts` nearest-ancestor, i18n
+  `simplifiedOfferLineForced*`; fixture tree aggiornate con `simplified_offer_line_override: null`.
+- Manuale: guide in-app IT/EN `product-categories.ts` aggiornate (righe sostituite, file a 485/500); manuale Claude Docs
+  aggiornato (tabelle regole + elenco "Imposta cio' che vale solo qui" + descrizione).
+- Verifier: VERDE, AC-001..016 PASS; Pest 9146 passed/1 skipped, Vitest 6622/6622, tsc -b e ESLint puliti.
+  Migrazione e seed applicati al DB locale `qnet2`.
+
 ## CORSI E-CAMPUS: ALBERO APPIATTITO + CAMPI OFFERTA RIVISTI — VERDE, COMMITTATO (2026-10-02)
 
 - Decisione utente 2026-10-02: niente piu' livelli/aree. "Corsi E-Campus" e' una sottocategoria SELEZIONABILE di
@@ -32,6 +55,39 @@
   `QualificaQuoteLayoutSeeder::isRetiredECampusComposition()` lo riconosce dopo lo strip dei codici ritirati (le
   larghezze sopravvivono allo strip, quindi il match byte-per-byte normale non basta) e lo ricompone. Un form
   modificato a mano resta intatto.
+- Dopo il commit `42e78925` (NON COMMITTATO, suite verde 9128): sezione "Corso di Laurea" da `Highlighted` a
+  `Default` (bianca). Quota "PROGETTO FORM" non e' piu' un prodotto (`ECampusCourseCatalogue::RETIRED_FEES`):
+  115 prodotti e-Campus, totale catalogo 418; `CatalogProducts::retireECampusFees()` (step 5) cancella i vecchi
+  prodotti non referenziati (quote_lines, opportunity_product, lead_product, commission_configurations), quelli
+  referenziati restano con `Log::warning`. Nuovo campo `form_course` "Corso Form" (boolean) nella sezione Corso di
+  Laurea. Il form di `42e78925` non e' fra le revisioni riconosciute (mai pushato): sul DB locale la riga layout
+  va cancellata e riseedata.
+
+## TIROCINI APL: CAMPI OFFERTA, LAYOUT, STATI — VERDE, NON COMMITTATO (2026-10-02)
+
+- Fonte: PDF "Campi Misure APL (1).pdf" (scheda Tirocini). Decisione utente 2026-10-02: SOSTITUISCE la scheda
+  Orientamento/SFL GOL del 2026-10-01, non si aggiunge. "Orientamento Specialistico" torna com'era prima del
+  2026-10-01: nessun campo proprio, nessuna barriera, nessun layout, stati del ramo APL. I cataloghi
+  `AplMeasure*` non esistono piu' (mai committati): sostituiti da `AplInternship*`.
+- Categoria `Tirocini extracurriculari privati` sotto APL (seed `QualificaCatalogSeeder::CATALOG`, selezionabile;
+  sul DB importato l'import legacy la ADOTTA per nome). Barriera `inherits_quote_attributes=false`.
+- Campi (`QualificaCatalog/AplInternshipAttributeCatalogue`): `practice_start_date`, `practice_end_date`,
+  `registers_status` (Inserito/Non inserito), `decree_status` (Persa/Inviata/Accolta/Pagata), `practice_number`,
+  `reporting_id`, `decree_id`. Layout: Stato pratica (highlighted: registri, decreto, date) / Dati pratica.
+- NON campi: Utente = anagrafica; Commerciale/Segnalatore = campi dell'offerta; Stato pratica = workflow.
+  Esclusi per decisione utente: Tutor, Note, tutto il soggetto ospitante (anche il menu in testata), tutor aziendale,
+  destinatario, automazione registri mensili.
+- Stati (`QualificaCatalog/AplInternshipWorkflowStatusCatalogue`, sezione `apl_internships`), criterio categoria
+  ESATTA (vince sul ramo APL). Decisione 2026-10-02: Produzione documentale (open) / Vacancy, Candidatura, Assenso,
+  Attivazione politica attiva, Attivo, Prorogato, Concluso (pending) / Attestazione finale (won) / Interrotto (lost,
+  riga fissa perche' primo negativo) e Perso (lost, custom). Nessun "Non risponde" (scelta utente, test escluso).
+- Test: `QualificaAplInternshipCatalogueTest` (3, incluso "Orientamento senza campi propri"); aggiornati per requisito
+  cambiato `QualificaCatalogSeederTest`, `QualificaContactProcessingSeederTest` (layout 9->10),
+  `QualificaQuoteLayoutSeederTest`, `QualificaWorkflowSeederTest`. Suite completa verde (9124 passed, 1 skipped), Pint pulito.
+- Manuale: nessun impatto (dati di seed; guide in-app e Manuale QNet non elencano campi/stati per categoria).
+- Da fare: rieseguire `QualificaProductionDataSeeder`/`QualificaCatalogSeeder` su staging/prod. Un DB locale gia'
+  seedato con la versione del 2026-10-01 conserva i campi/stati di Orientamento (seed additivi, workflow esistente
+  saltato per nome): va resettato. Follow-up possibili: anagrafica soggetti ospitanti, registri mensili.
 
 ## TOAST IN ALTO AL CENTRO — VERDE, COMMITTATO (2026-10-01)
 

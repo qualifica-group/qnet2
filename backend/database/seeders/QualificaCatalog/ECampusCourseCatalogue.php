@@ -20,11 +20,23 @@ namespace Database\Seeders\QualificaCatalog;
  * The sheet's "Corsi di laurea Magistrali a ciclo unico" (Giurisprudenza
  * [LMG/01]) quotes no fee, so it is deliberately not transcribed.
  *
+ * The sheet's "PROGETTO FORM" fee is not a product either (user directive
+ * 2026-10-02): the offer's "Corso Form" flag records it
+ * (ECampusAttributeCatalogue).
+ *
  * Names are user-facing domain values, kept as the sheet spells them.
  */
 final class ECampusCourseCatalogue
 {
     public const string CATEGORY = 'Corsi E-Campus';
+
+    /**
+     * Fees an earlier revision sold as a product of every course: their
+     * products are withdrawn on re-seed (CatalogProducts).
+     *
+     * @var list<string>
+     */
+    public const array RETIRED_FEES = ['PROGETTO FORM'];
 
     /**
      * Degree level => its fees (product suffix => price) and its course names.
@@ -34,7 +46,6 @@ final class ECampusCourseCatalogue
     public const array DEGREES = [
         'Corsi di Laurea Triennali' => [
             'fees' => [
-                'PROGETTO FORM' => 1500.0,
                 'ASSISTENZA E TUTORAGGIO' => 500.0,
                 '1°ANNO' => 2856.0,
                 '2°ANNO' => 2856.0,
@@ -61,7 +72,6 @@ final class ECampusCourseCatalogue
         ],
         'Corsi di Laurea Magistrali' => [
             'fees' => [
-                'PROGETTO FORM' => 1500.0,
                 'ASSISTENZA E TUTORAGGIO' => 500.0,
                 '1°ANNO' => 3056.0,
                 '2°ANNO' => 3056.0,

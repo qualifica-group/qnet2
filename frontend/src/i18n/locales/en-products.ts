@@ -209,10 +209,10 @@ export const productCategories = {
     managementModeSingleShort: 'Single',
     managementModeMultipleShort: 'Multiple',
     requiresQuoteInfo:
-      'Governs whether the opportunities of this branch go through an offer at all. When on, the Offers module is part of the flow for every product of this category and of its subcategories; when off, the branch is worked without one. The rule belongs to the ROOT category and the whole subtree follows it.',
+      'Governs whether the opportunities of this branch go through an offer at all. When on, the Offers module is part of the flow for every product of this category and of its subcategories; when off, the branch is worked without one. The ROOT category sets the rule and the whole subtree follows it, unless a subcategory forces its own value (that choice then applies to its own subtree).',
     requiresQuoteInfoLabel: 'More info about Quoted',
     managementModeInfo:
-      'Bounds how many Category Product lines one card may carry. "Single" locks the card on ONE product category — its offer then carries a single product row too, and a product from another category is refused instead of silently widening the coverage. "Multiple" is the unconstrained behaviour. The rule belongs to the ROOT category and the whole subtree follows it.',
+      'Bounds how many Category Product lines one card may carry. "Single" locks the card on ONE product category — its offer then carries a single product row too, and a product from another category is refused instead of silently widening the coverage. "Multiple" is the unconstrained behaviour. The ROOT category sets the rule and the whole subtree follows it, unless a subcategory forces its own value (that choice then applies to its own subtree).',
     managementModeInfoLabel: 'More info about Management mode',
     singleQuotePerOpportunity: 'One offer per opportunity',
     singleQuotePerOpportunityHint:
@@ -220,7 +220,7 @@ export const productCategories = {
     singleQuotePerOpportunityInheritedHint:
       'The one-offer rule is inherited from the root category "{{category}}". To change it, edit that category instead.',
     singleQuotePerOpportunityInfo:
-      'Bounds how many OFFER DOCUMENTS an opportunity may hold, which is a different rule from the management mode (that one bounds the product lines of a card). When on, creating a second offer on an opportunity of this branch is refused. Opportunities that already carry several offers keep them and stay editable. The rule belongs to the ROOT category and the whole subtree follows it.',
+      'Bounds how many OFFER DOCUMENTS an opportunity may hold, which is a different rule from the management mode (that one bounds the product lines of a card). When on, creating a second offer on an opportunity of this branch is refused. Opportunities that already carry several offers keep them and stay editable. The ROOT category sets the rule and the whole subtree follows it, unless a subcategory forces its own value (that choice then applies to its own subtree).',
     singleQuotePerOpportunityInfoLabel: 'More info about One offer per opportunity',
     generatesContract: 'Includes a contract',
     generatesContractHint:
@@ -228,15 +228,18 @@ export const productCategories = {
     generatesContractInheritedHint:
       'The contract rule is inherited from the root category "{{category}}". To change it, edit that category instead.',
     generatesContractInfo:
-      'Decides whether the branch is sold under a contract. When off, an offer reaching a positively closed working status opens NO contract and the deal never appears in the Contratti module; closing positively stays possible all the same. Contracts already opened before it was turned off stay where they are and go on living normally. When a card covers several categories, a single one without the rule is enough to withhold the contract. The rule belongs to the ROOT category and the whole subtree follows it.',
+      'Decides whether the branch is sold under a contract. When off, an offer reaching a positively closed working status opens NO contract and the deal never appears in the Contratti module; closing positively stays possible all the same. Contracts already opened before it was turned off stay where they are and go on living normally. When a card covers several categories, a single one without the rule is enough to withhold the contract. The ROOT category sets the rule and the whole subtree follows it, unless a subcategory forces its own value (that choice then applies to its own subtree).',
     generatesContractInfoLabel: 'More info about Includes a contract',
     simplifiedOfferLine: 'Simplified offer line',
     simplifiedOfferLineHint:
       'When on, in Gestione Richieste the operator picks only the product: quantity, unit price and VAT rate of the row are filled in automatically by the system.',
     simplifiedOfferLineInheritedHint:
-      'The simplified offer-line rule is inherited from the root category "{{category}}". To change it, edit that category instead.',
+      'Inherited from "{{category}}". Change it to force the rule only on this category and its subcategories.',
+    simplifiedOfferLineForcedHint:
+      'Forced on this category: it no longer follows "{{category}}". Set it back to the inherited value to inherit it again.',
+    simplifiedOfferLineForcedBadge: 'Forced',
     simplifiedOfferLineInfo:
-      "Removes the manual compilation of the offer row in Gestione Richieste: on requests of this branch the operator picks ONLY the product and the system fills in quantity (always 1), unit price and VAT rate from the product. The Offerte module is untouched: whoever works the commercial offer keeps governing quantity and prices even on a simplified category. The rule belongs to the ROOT category and the whole subtree follows it.",
+      "Removes the manual compilation of the offer row in Gestione Richieste: on requests of this branch the operator picks ONLY the product and the system fills in quantity (always 1), unit price and VAT rate from the product. The Offerte module is untouched: whoever works the commercial offer keeps governing quantity and prices even on a simplified category. The ROOT category sets the rule and the whole subtree follows it, unless a subcategory forces its own value (that choice then applies to its own subtree).",
     simplifiedOfferLineInfoLabel: 'More info about Simplified offer line',
     isSelectableInfo:
       'Turns the category into a pure container. It stays a parent for its subcategories and keeps every association already made, but it no longer appears in the pickers. Unlike the other rules, this one belongs to THIS category alone: it is never inherited, so an unselectable parent can still have selectable children.',

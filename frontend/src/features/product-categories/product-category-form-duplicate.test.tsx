@@ -82,6 +82,7 @@ const SOURCE: ProductCategoryDetailWithPermissions = {
   single_quote_per_opportunity_source_category: null,
   generates_contract_source_category: null,
   simplified_offer_line: false,
+  simplified_offer_line_override: null,
   simplified_offer_line_source_category: null,
   manager_labels: { '1': 'Area manager' },
   inherits_manager_labels: true,

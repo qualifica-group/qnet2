@@ -59,6 +59,9 @@ final readonly class UpdateProductCategoryData
         public bool $generatesContractSubmitted = false,
         public ?bool $simplifiedOfferLine = null,
         public bool $simplifiedOfferLineSubmitted = false,
+        /** Spec 0188: a child's OWN declaration of the rule; submitted null = back to inherit. */
+        public ?bool $simplifiedOfferLineOverride = null,
+        public bool $simplifiedOfferLineOverrideSubmitted = false,
         /** Spec 0080: raw sparse position->label map — normalized (trim, empty removed) by ProductCategoryService, never here. */
         public ?array $managerLabels = null,
         public bool $managerLabelsSubmitted = false,
@@ -104,6 +107,8 @@ final readonly class UpdateProductCategoryData
             generatesContractSubmitted: array_key_exists('generates_contract', $data),
             simplifiedOfferLine: array_key_exists('simplified_offer_line', $data) ? (bool) $data['simplified_offer_line'] : null,
             simplifiedOfferLineSubmitted: array_key_exists('simplified_offer_line', $data),
+            simplifiedOfferLineOverride: isset($data['simplified_offer_line_override']) ? (bool) $data['simplified_offer_line_override'] : null,
+            simplifiedOfferLineOverrideSubmitted: array_key_exists('simplified_offer_line_override', $data),
             managerLabels: array_key_exists('manager_labels', $data) ? (array) $data['manager_labels'] : null,
             managerLabelsSubmitted: array_key_exists('manager_labels', $data),
             inheritsManagerLabels: array_key_exists('inherits_manager_labels', $data) ? (bool) $data['inherits_manager_labels'] : null,
@@ -210,11 +215,20 @@ final readonly class UpdateProductCategoryData
             $attributes['generates_contract'] = $this->generatesContract;
         }
 
-        // Spec 0114: identical root-only handling — on a child the value
-        // written here is immediately re-aligned on the root's by
-        // SimplifiedOfferLineInheritance::syncSubtree.
+        // Spec 0114: on a root this is the declared value; on a child it must
+        // equal the effective one (guarded) and SimplifiedOfferLineInheritance::
+        // syncSubtree realigns the subtree.
         if ($this->simplifiedOfferLineSubmitted) {
             $attributes['simplified_offer_line'] = $this->simplifiedOfferLine;
+        }
+
+        // Spec 0188: a node becoming a root drops its override (the effective
+        // value it had stays in `simplified_offer_line`, D-5); otherwise the
+        // submitted override is written verbatim and the subtree resynced.
+        if ($this->parentIdSubmitted && $this->parentId === null) {
+            $attributes['simplified_offer_line_override'] = null;
+        } elseif ($this->simplifiedOfferLineOverrideSubmitted) {
+            $attributes['simplified_offer_line_override'] = $this->simplifiedOfferLineOverride;
         }
 
         // Spec 0080: mirrors inherits_product_attributes/

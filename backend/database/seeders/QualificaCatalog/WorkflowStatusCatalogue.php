@@ -33,6 +33,8 @@ use InvalidArgumentException;
  *                        dragging the other.
  *   6. E-CAMPUS        — one list, bound to the "Corsi E-Campus" branch: see
  *                        ECampusWorkflowStatusCatalogue (user directive 2026-10-01).
+ *   7. TIROCINI APL    — one list, bound to the APL internships: see
+ *                        AplInternshipWorkflowStatusCatalogue (user directive 2026-10-02).
  *
  * TRANSCRIPTION NOTES (the sheet is a spreadsheet, not a database):
  *   - The same state is spelled differently across columns. Folded to ONE
@@ -271,6 +273,7 @@ final class WorkflowStatusCatalogue
             'In Standby' => ['legend' => self::OPEN, 'description' => 'Pratica temporaneamente sospesa in attesa di ulteriori sviluppi.'],
         ],
         ECampusWorkflowStatusCatalogue::SECTION => ECampusWorkflowStatusCatalogue::STATUSES,
+        AplInternshipWorkflowStatusCatalogue::SECTION => AplInternshipWorkflowStatusCatalogue::STATUSES,
     ];
 
     /**
@@ -372,6 +375,7 @@ final class WorkflowStatusCatalogue
         'APL' => ['section' => self::APL, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
         // A container too: its courses sit on the subject areas two levels down.
         ECampusCourseCatalogue::CATEGORY => ['section' => ECampusWorkflowStatusCatalogue::SECTION, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
+        AplInternshipAttributeCatalogue::CATEGORY => ['section' => AplInternshipWorkflowStatusCatalogue::SECTION],
     ];
 
     /**
