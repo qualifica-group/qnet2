@@ -18,7 +18,14 @@
   `product-lines-wiring-parity.test.tsx` aggiornato (QueryClient + `offer_lines: []`), asserzioni invariate.
 - Guida in-app `request-management` IT/EN aggiornata (voce "Linee di prodotto"). Manuale Claude Docs NON aggiornato
   (doc non condiviso con la sessione): sezione "Lavorare una richiesta" / "Creare una nuova richiesta".
-- Fuori scope, da valutare: l'editor in-griglia della categoria (`product-lines-cell-editor.tsx`) non svuota le righe offerta.
+- Tabella (decisione utente 2026-10-05, "cancella le righe"): `RequestManagementService::updateWork`, se la classificazione
+  cambia SENZA `offer_lines` nel payload (cella "Categoria prodotto"), chiama `RequestOfferLineWriter::dropUncovered`:
+  riscrive via `apply()` solo le righe REVENUE ancora coperte (ids invariati -> provvigioni/descrizione aggiuntiva
+  conservate), le altre vengono eliminate. Le righe COSTO non sono toccate. `OfferLinesColumn::project` ora espone anche
+  `category_id`; `product-lines-cell-editor.tsx` mostra l'avviso `table.productLinesEditor.droppedOfferLines` prima del
+  commit. Test: `RequestManagementProductLinesOfferPruneTest.php`. Iscritti usa lo stesso pannello/tabella: coperto.
+- Nota: vale anche per il pannello se arriva `product_lines` senza `offer_lines` (es. attore senza scrittura sulle righe
+  offerta): le righe scoperte vengono eliminate lo stesso, come effetto della classificazione.
 
 ## APL MANUALE + "APL OLD" DALLA MIGRAZIONE — VERDE, COMMITTATO (2026-10-05)
 

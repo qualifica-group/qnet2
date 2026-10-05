@@ -216,8 +216,12 @@ final class RequestManagementService
             // rows are covered against) and BEFORE the two steps that depend
             // on them: the applicable attribute set unions their categories
             // (D-1) and the workflow set resolves on them (spec 0083).
+            // A classification replaced WITHOUT the rows (the grid's category
+            // cell) drops the rows it no longer covers instead (bug 2026-10-05).
             if (array_key_exists('offer_lines', $data)) {
                 $this->offerLineWriter->apply($quote, $actor, (array) $data['offer_lines'], $changed, $old);
+            } elseif ($classificationChanged) {
+                $this->offerLineWriter->dropUncovered($quote, $opportunity, $actor, $changed, $old);
             }
 
             // Step 1-quater (user directive 2026-09-08): for an offer with no

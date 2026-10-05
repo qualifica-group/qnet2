@@ -190,6 +190,22 @@ describe('ProductLinesCellEditor (spec 0132 AC-020)', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('warns which offer rows a classification change would delete (bug 2026-10-05)', () => {
+    const row = {
+      id: 1,
+      offer_lines: [
+        { id: 4, name: 'Fibra 1000', category_id: 7 },
+        { id: 5, name: 'Corso Excel', category_id: 99 },
+      ],
+    } as unknown as TableRow
+
+    renderEditor([PAIR], vi.fn(), row)
+
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent('Corso Excel')
+    expect(alert).not.toHaveTextContent('Fibra 1000')
+  })
+
   it('INV-3 / spec 0077 AC-046: on a single-mode card a new pick replaces the current pair instead of adding one', async () => {
     const onValueChange = vi.fn()
     renderEditor(

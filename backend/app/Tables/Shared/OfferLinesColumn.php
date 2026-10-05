@@ -154,10 +154,12 @@ final class OfferLinesColumn
 
     /**
      * The row projection: the distinct products of the Quote's own REVENUE
-     * lines as `{id, name}` refs — read from the eager-loaded `offerLines.product`
-     * relation, never queried here. Deduplicated by product id: several lines
-     * of the same product (different quantities) project one chip, not one
-     * per line.
+     * lines as `{id, name, category_id}` refs — read from the eager-loaded
+     * `offerLines.product` relation, never queried here. `category_id` lets the
+     * grid's category cell warn which rows a classification change would
+     * delete (bug 2026-10-05), before it commits. Deduplicated by product
+     * id: several lines of the same product (different quantities) project
+     * one chip, not one per line.
      *
      * @return array<string, mixed>
      */
@@ -168,7 +170,11 @@ final class OfferLinesColumn
                 ->pluck('product')
                 ->filter()
                 ->unique(static fn (Product $product): int => $product->id)
-                ->map(static fn (Product $product): array => ['id' => $product->id, 'name' => $product->name])
+                ->map(static fn (Product $product): array => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'category_id' => $product->category_id,
+                ])
                 ->values()
                 ->all(),
         ];

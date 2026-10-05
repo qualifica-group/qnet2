@@ -126,6 +126,8 @@ export const table = {
     retry: 'Retry',
     uncoveredProducts:
       'These products of interest would no longer be covered by any product category: {{names}}. The save will be refused.',
+    droppedOfferLines:
+      'The offer rows with these products will be deleted, their product category will no longer be on the request: {{names}}.',
   },
   selectEditor: {
     list: 'Pick a value',
