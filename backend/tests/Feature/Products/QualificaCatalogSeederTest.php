@@ -64,6 +64,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         // The e-Campus leaf, every degree fee on it (user directive 2026-10-02).
         'Corsi E-Campus',
         'DIL - Lombardia',
+        // The APL apprenticeships (user directive 2026-10-05).
+        'Formazione Apprendistato',
         'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',

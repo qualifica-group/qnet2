@@ -37,6 +37,26 @@ final class AplInternshipAttributeCatalogue
     public const string CATEGORY = 'Tirocini extracurriculari privati';
 
     /**
+     * The decree and reporting references, shared with the apprenticeship
+     * practices (ApprenticeshipAttributeCatalogue): one attribute per concept
+     * across the APL branch, so the values filter and report together.
+     *
+     * @var array{code: string, name: string, type: string, options: list<array{value: string, label: string}>}
+     */
+    public const array DECREE_STATUS = ['code' => 'decree_status', 'name' => 'Decreto', 'type' => 'enum', 'options' => [
+        ['value' => 'lost', 'label' => 'Persa'],
+        ['value' => 'sent', 'label' => 'Inviata'],
+        ['value' => 'accepted', 'label' => 'Accolta'],
+        ['value' => 'paid', 'label' => 'Pagata'],
+    ]];
+
+    /** @var array{code: string, name: string, type: string} */
+    public const array DECREE_ID = ['code' => 'decree_id', 'name' => 'ID decreto', 'type' => 'text'];
+
+    /** @var array{code: string, name: string, type: string} */
+    public const array REPORTING_ID = ['code' => 'reporting_id', 'name' => 'ID rendicontazione', 'type' => 'text'];
+
+    /**
      * @var list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>}>
      */
     public const array ATTRIBUTES = [
@@ -46,15 +66,10 @@ final class AplInternshipAttributeCatalogue
             ['value' => 'entered', 'label' => 'Inserito'],
             ['value' => 'not_entered', 'label' => 'Non inserito'],
         ]],
-        ['code' => 'decree_status', 'name' => 'Decreto', 'type' => 'enum', 'options' => [
-            ['value' => 'lost', 'label' => 'Persa'],
-            ['value' => 'sent', 'label' => 'Inviata'],
-            ['value' => 'accepted', 'label' => 'Accolta'],
-            ['value' => 'paid', 'label' => 'Pagata'],
-        ]],
+        self::DECREE_STATUS,
         ['code' => 'practice_number', 'name' => 'Numero pratica', 'type' => 'text'],
-        ['code' => 'reporting_id', 'name' => 'ID rendicontazione', 'type' => 'text'],
-        ['code' => 'decree_id', 'name' => 'ID decreto', 'type' => 'text'],
+        self::REPORTING_ID,
+        self::DECREE_ID,
     ];
 
     /**

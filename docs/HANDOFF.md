@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CATALOGO: "FORMAZIONE APPRENDISTATO" (CAMPI OFFERTA + STATI PRATICA) — VERDE, COMMITTATO (2026-10-05)
+
+- Foglio "Apprendistato - Campi Operatore", sezioni DATI PRATICA, FORMAZIONE, FORMAZIONE - UNITA' FORMATIVE. Stesso
+  schema dei Tirocini APL: `QualificaCatalog/ApprenticeshipAttributeCatalogue.php` (CATEGORY "Formazione Apprendistato",
+  sotto "APL", selezionabile, barriera `inherits_quote_attributes=false`) + `ApprenticeshipWorkflowStatusCatalogue.php`.
+- Campi: `decree_status`/`decree_id`/`reporting_id` RIUSATI dai Tirocini (ora costanti `AplInternshipAttributeCatalogue::
+  DECREE_STATUS|DECREE_ID|REPORTING_ID`), `teaching_tutor` (relation users), `hiring_date`, `contract_duration_months`,
+  `contract_end_date`, `company_training_capacity` (enum 3); per ognuna delle 11 UF `apprenticeship_<yN_ufN|yN_stage>_
+  {done_by_us (boolean), reason (enum 3 suggerimenti), sessions (table: day date + hours decimal)}`. Ore previste = descrizione sezione.
+- NON campi: Operatore = `operator_id`, Commerciale/Segnalatore = `commercial_id`/`reporter_id` dell'offerta, Percorso =
+  storico stati, annualita' = prodotto (1°/2°/3° Anno). Allegati per UF: nessun tipo file. Somma ore vs previste: non automatica.
+- Stati (prima classificazione, da affinare): "Attesa Abilitazione CPI" open (pinned), 4 pending, "Pratica conclusa"
+  closed_won (pinned); closed_lost resta "Chiusa negativa" (il foglio non ha perdite). No "Non risponde".
+- `QualificaQuoteLayoutSeeder`: nuovo `OWN_FORMS` (categoria => sezioni proprie) per Tirocini e Apprendistato, perche'
+  condividono codici e da una lista comune filtrata ognuna avrebbe reso le sezioni dell'altra.
+- ATTENZIONE limiti: `QualificaCatalogSeeder.php` e `WorkflowStatusCatalogue.php` a 499 righe: la prossima aggiunta richiede uno split.
+- DB dev importato: la categoria (old_id 115) ha gia' 20 campi offerta legacy Ricerca & Selezione e un layout legacy;
+  il seeder non li tocca (layout = dato utente) -> i nuovi campi finirebbero in "altre informazioni". Da decidere con l'utente.
+- Test: `tests/Feature/Products/QualificaApprenticeshipCatalogueTest.php` (3); aggiornati elenchi categorie in
+  QualificaCatalogSeederTest, QualificaQuoteLayoutSeederTest, QualificaContactProcessingSeederTest, QualificaWorkflowSeederTest.
+- Manuale: guide in-app nessun impatto (non descrivono form per categoria); manuale Claude Docs non accessibile dalla sessione.
+
 ## FIX TABELLE RIGHE CHE SFORANO SU MOBILE — VERDE, NON COMMITTATO (2026-10-05)
 
 - Bug: su schermo stretto le righe offerta (Gestione Richieste, Offerte tab offerta/costi) uscivano dalla card. Causa:

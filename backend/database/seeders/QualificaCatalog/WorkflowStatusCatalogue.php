@@ -31,10 +31,8 @@ use InvalidArgumentException;
  *                        outcome, but it is transcribed in full rather than
  *                        borrowed, so the two can diverge without either
  *                        dragging the other.
- *   6. E-CAMPUS        — one list, bound to the "Corsi E-Campus" branch: see
- *                        ECampusWorkflowStatusCatalogue (user directive 2026-10-01).
- *   7. TIROCINI APL    — one list, bound to the APL internships: see
- *                        AplInternshipWorkflowStatusCatalogue (user directive 2026-10-02).
+ *   6-8. E-CAMPUS, TIROCINI APL, APPRENDISTATO (user directives 2026-10-01/02/05) — one list each, see
+ *        ECampusWorkflowStatusCatalogue, AplInternshipWorkflowStatusCatalogue, ApprenticeshipWorkflowStatusCatalogue.
  *
  * TRANSCRIPTION NOTES (the sheet is a spreadsheet, not a database):
  *   - The same state is spelled differently across columns. Folded to ONE
@@ -274,6 +272,7 @@ final class WorkflowStatusCatalogue
         ],
         ECampusWorkflowStatusCatalogue::SECTION => ECampusWorkflowStatusCatalogue::STATUSES,
         AplInternshipWorkflowStatusCatalogue::SECTION => AplInternshipWorkflowStatusCatalogue::STATUSES,
+        ApprenticeshipWorkflowStatusCatalogue::SECTION => ApprenticeshipWorkflowStatusCatalogue::STATUSES,
     ];
 
     /**
@@ -376,6 +375,7 @@ final class WorkflowStatusCatalogue
         // A container too: its courses sit on the subject areas two levels down.
         ECampusCourseCatalogue::CATEGORY => ['section' => ECampusWorkflowStatusCatalogue::SECTION, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
         AplInternshipAttributeCatalogue::CATEGORY => ['section' => AplInternshipWorkflowStatusCatalogue::SECTION],
+        ApprenticeshipAttributeCatalogue::CATEGORY => ['section' => ApprenticeshipWorkflowStatusCatalogue::SECTION],
     ];
 
     /**

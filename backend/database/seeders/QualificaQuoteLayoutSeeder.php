@@ -11,6 +11,7 @@ use App\Services\ProductCategories\CategoryHierarchy;
 use Database\Seeders\Concerns\RetiresAttributes;
 use Database\Seeders\Concerns\SeedsAttributeLayouts;
 use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\ApprenticeshipAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
@@ -71,9 +72,20 @@ class QualificaQuoteLayoutSeeder extends Seeder
         // The e-Campus form, styled (user directive 2026-10-01): it resolves
         // on the "Corsi E-Campus" branch alone, cut off the three sets above.
         ...ECampusAttributeCatalogue::SECTIONS,
-        // The APL internships' form (user directive 2026-10-02), on their
-        // category alone, cut off the APL root.
-        ...AplInternshipAttributeCatalogue::SECTIONS,
+    ];
+
+    /**
+     * Category name => the form composed for it INSTEAD of SECTIONS: the APL
+     * practices (user directives 2026-10-02, 2026-10-05), each cut off the
+     * APL root. Kept apart because they share attributes ("Decreto", "ID
+     * decreto", "ID rendicontazione"): filtered out of one common list, each
+     * category would also render the other's sections.
+     *
+     * @var array<string, list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>>
+     */
+    private const array OWN_FORMS = [
+        AplInternshipAttributeCatalogue::CATEGORY => AplInternshipAttributeCatalogue::SECTIONS,
+        ApprenticeshipAttributeCatalogue::CATEGORY => ApprenticeshipAttributeCatalogue::SECTIONS,
     ];
 
     /**
@@ -133,7 +145,7 @@ class QualificaQuoteLayoutSeeder extends Seeder
     /**
      * Every category an offer can be filed under for these sets: the whole
      * Formazione branch, the training fields reaching it all by inheritance,
-     * plus the APL internships.
+     * plus the categories with a form of their own (OWN_FORMS).
      *
      * @return Collection<int, ProductCategory>
      */
@@ -150,7 +162,7 @@ class QualificaQuoteLayoutSeeder extends Seeder
         // 2026-09-10 directive, so its layout would prune to nothing anyway.
         $categories = ProductCategory::query()
             ->whereIn('id', $branchIds)
-            ->orWhere('name', AplInternshipAttributeCatalogue::CATEGORY)
+            ->orWhereIn('name', array_keys(self::OWN_FORMS))
             ->get();
 
         // Root-first: seedLayout() asks what each category INHERITS, which is
@@ -173,7 +185,7 @@ class QualificaQuoteLayoutSeeder extends Seeder
             return;
         }
 
-        $sections = $this->sections($effective);
+        $sections = $this->sections($category, $effective);
 
         // Spec 0115: a row saying exactly what the ancestor's already says is
         // 15 copies of one form to maintain. Write nothing — and drop the copy
@@ -245,9 +257,9 @@ class QualificaQuoteLayoutSeeder extends Seeder
      * @param  list<string>  $effective
      * @return list<array<string, mixed>>
      */
-    private function sections(array $effective): array
+    private function sections(ProductCategory $category, array $effective): array
     {
-        return $this->compose(self::SECTIONS, $effective);
+        return $this->compose(self::OWN_FORMS[$category->name] ?? self::SECTIONS, $effective);
     }
 
     /**

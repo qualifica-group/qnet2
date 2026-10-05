@@ -39,6 +39,8 @@ const QUOTE_LAYOUT_OWN_CATEGORIES = [
     'Corsi E-Campus',
     // Behind its own barrier, with the APL internships form (user directive 2026-10-02).
     'Tirocini extracurriculari privati',
+    // Behind its own barrier, with the apprenticeship form (user directive 2026-10-05).
+    'Formazione Apprendistato',
 ];
 
 /**
