@@ -59,7 +59,7 @@ it('seeds every roster account, its role and its anagrafica, and converges on a 
 
     // was: 'never seeds the accounts highlighted as non-existent'
     expect(User::query()->whereIn('name', ['Miriam Del Giudice', 'Maddalena Vitale', 'Elisa Finizio', 'Imma Pascale'])->exists())->toBeFalse()
-        ->and(User::query()->count())->toBe(67);
+        ->and(User::query()->count())->toBe(72);
 
     // was: 'grants every commercial their own and physical-Sede enrollees, and the teaching supervisor both modules by Sede'
     $commercial = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
@@ -152,6 +152,39 @@ it('leaves a "no operatore" profile unassignable: physical Sede only, no compete
         ->and($employment->remoteOperationalSiteIds)->toBeEmpty()
         ->and($employment->covers_all_product_categories)->toBeFalse()
         ->and($employment->productLines)->toBeEmpty();
+});
+
+// User directive 2026-10-05: four supervisors mirror Rosa Falzarano but are
+// competent for the whole APL branch; Martina Mosca mirrors Michela Fabozzi.
+it('seeds the APL supervisors like Rosa Falzarano, competent for APL, and Martina Mosca like Michela Fabozzi', function (): void {
+    $sites = standInSites(['FRATTAMAGGIORE 1 (HQ)', 'Frattamaggiore 2']);
+    $function = BusinessFunction::factory()->create(['name' => 'APL']);
+    $apl = ProductCategory::factory()->create(['name' => 'APL', 'business_function_id' => $function->id]);
+
+    test()->seed(QualificaOperatorSeeder::class);
+
+    $reference = seededOperator('rosa.falzarano@qualificagroup.com');
+
+    foreach (['giovanna.gervasio', 'raffaele.distico', 'gessica.crispo', 'emanuele.ascione'] as $name) {
+        $supervisor = seededOperator("{$name}@qualificagroup.com");
+        $employment = $supervisor->employment;
+
+        expect($supervisor->getRoleNames()->all())->toBe($reference->getRoleNames()->all())
+            ->and($employment->job_description)->toBe($reference->employment->job_description)
+            ->and($employment->primaryOperationalSiteId)->toBe($sites['FRATTAMAGGIORE 1 (HQ)'])
+            ->and($employment->remoteOperationalSiteIds)->toBeEmpty()
+            ->and($employment->productLines->map(fn ($line): array => [$line->business_function_id, $line->product_category_id])->all())
+            ->toBe([[$function->id, $apl->id]]);
+    }
+
+    $coordinator = seededOperator('michela.fabozzi@qualificagroup.com');
+    $mosca = seededOperator('martina.mosca@qualificagroup.com');
+
+    expect($mosca->getRoleNames()->all())->toBe($coordinator->getRoleNames()->all())
+        ->and($mosca->employment->job_description)->toBe($coordinator->employment->job_description)
+        ->and($mosca->employment->primaryOperationalSiteId)->toBe($sites['FRATTAMAGGIORE 1 (HQ)'])
+        ->and($mosca->employment->remoteOperationalSiteIds)->toBeEmpty()
+        ->and($mosca->employment->productLines)->toBeEmpty();
 });
 
 it('pairs every roster category with its effective business function, Consulenza never', function (): void {

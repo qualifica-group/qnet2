@@ -30,7 +30,12 @@ final class ReportsToRoster
      */
     public const array MANAGERS = [
         self::COORDINATOR => [],
+        'martina.mosca@qualificagroup.com' => [],
         'rosa.falzarano@qualificagroup.com' => [self::COORDINATOR],
+        'giovanna.gervasio@qualificagroup.com' => [self::COORDINATOR],
+        'raffaele.distico@qualificagroup.com' => [self::COORDINATOR],
+        'gessica.crispo@qualificagroup.com' => [self::COORDINATOR],
+        'emanuele.ascione@qualificagroup.com' => [self::COORDINATOR],
         'fabrizio.aliberti@qualificagroup.com' => [self::COORDINATOR],
         self::MARKETING_MANAGER => [self::COORDINATOR],
         'simona.chiacchio@qualificagroup.com' => [...self::COMMERCIAL_SUPERVISORS, self::MARKETING_MANAGER],

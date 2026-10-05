@@ -8,7 +8,7 @@ namespace Database\Seeders\QualificaCatalog;
  * QualificaStaffSeeder, which creates each account with the base role
  * (Task and Segnatempo only).
  *
- * The CSV lists the WHOLE staff: the 71 accounts it shares with
+ * The CSV lists the WHOLE staff: the 76 accounts it shares with
  * OperatorRoster and TestUsersSeeder are left out here, so this list never
  * competes with the mansionario over a role. Names and accents as in the
  * CSV (re-encoded from ISO-8859-1), emails lowercased.
@@ -26,7 +26,6 @@ final class StaffRoster
         ['Silvia', 'Amoruso', 'silvia.amoruso@qualificagroup.com'],
         ['Roberta', 'Apperti', 'roberta.apperti@qualificagroup.com'],
         ['Andrea', 'Arena', 'andrea.arena@qualificagroup.com'],
-        ['Emanuele', 'Ascione', 'emanuele.ascione@qualificagroup.com'],
         ['Mariarita', 'Balzamo', 'mariarita.balzamo@qualificagroup.com'],
         ['Maria', 'Bellini', 'maria.bellini@qualificagroup.com'],
         ['Gerardo', 'Bullaro', 'gerardo.bullaro@qualificagroup.com'],
@@ -47,7 +46,6 @@ final class StaffRoster
         ['Fabrizio', 'Colletti', 'fabrizio.colletti@qualificagroup.com'],
         ['Consiglia', 'Cosentino', 'consiglia.cosentino@qualificagroup.com'],
         ['Emilianna', 'Credentino', 'emilianna.credentino@qualificagroup.com'],
-        ['Gessica', 'Crispo', 'gessica.crispo@qualificagroup.com'],
         ['Romilda', 'Critelli', 'romilda.critelli@qualificagroup.com'],
         ['Dario', "D'Aleo", 'dario.daleo@qualificagroup.com'],
         ['Elio', "D'Ambra", 'elio.dambra@qualificagroup.it'],
@@ -65,7 +63,6 @@ final class StaffRoster
         ['Anna', 'Di Maio', 'anna.dimaio@qualificagroup.com'],
         ['Francesco', 'Di Maio', 'francesco.dimaio@qualificagroup.com'],
         ['Claudia', 'Di Natale', 'claudia.dinatale@qualificagroup.com'],
-        ['Raffaele', 'Distico', 'raffaele.distico@qualificagroup.com'],
         ['Giuliana', 'Ercolini', 'giuliana.ercolini@qualificagroup.com'],
         ['Marco', 'Esposito', 'marco.esposito@qualificagroup.com'],
         ['Nicoletta', 'Esposito', 'nicoletta.esposito@qualificagroup.com'],
@@ -77,7 +74,6 @@ final class StaffRoster
         ['Ferdinando', 'Flagiello', 'ferdinando.flagiello@qualificagroup.com'],
         ['Antonio', 'Foglia', 'antonio.foglia@qualificagroup.com'],
         ['Giuseppe', 'Gallo', 'giuseppe.gallo@qualificagroup.com'],
-        ['Giovanna', 'Gervasio', 'giovanna.gervasio@qualificagroup.com'],
         ['Giuseppe', 'Giagnorio', 'giuseppe.giagnorio@qualificagroup.com'],
         ['Annalisa', 'Giordano', 'annalisa.giordano@qualificagroup.com'],
         ['Alessandra', 'Grande', 'alessandra.grande@qualificagroup.com'],
@@ -101,7 +97,6 @@ final class StaffRoster
         ['Silvia', 'Meccariello', 'silvia.meccariello@qualificagroup.com'],
         ['Ilaria', 'Miccichè', 'ilaria.micciche@qualificagroup.com'],
         ['Roberta', 'Mineo', 'roberta.mineo@qualificagroup.com'],
-        ['Martina', 'Mosca', 'martina.mosca@qualificagroup.com'],
         ['Antonio', 'Nave', 'antonio.nave@qualificagroup.com'],
         ['Noemi', 'Nigliato', 'noemi.nigliato@qualificagroup.it'],
         ['Annalisa', 'Nocella', 'annalisa.nocella@qualificagroup.com'],

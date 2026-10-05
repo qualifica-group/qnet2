@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEED OPERATORI: 4 SUPERVISOR APL + MARTINA MOSCA — VERDE, COMMITTATO (2026-10-05)
+
+- `OperatorRoster`: Giovanna Gervasio, Raffaele Distico, Gessica Crispo, Emanuele Ascione = riga di Rosa Falzarano
+  (`Supervisor Commerciale`, `SUPERVISOR_ROLE`, sede fisica Frattamaggiore, nessuna sede remota) ma con competenza
+  `['APL']` (copre tutto il ramo, INV-2). Martina Mosca = riga di Michela Fabozzi (`COORDINATOR_ROLE`, nessuna competenza).
+- Rimossi da `StaffRoster` (i due roster restano disgiunti, conteggio condiviso 71 -> 76). Gli account gia' esistenti in
+  prod con ruolo base convergono al prossimo `QualificaOperatorSeeder` (ruolo/sedi/competenza; password intatta).
+- `ReportsToRoster`: i 4 -> Fabozzi; Mosca -> nessuno. NON aggiunti a `COMMERCIAL_SUPERVISORS` (non sono "Risponde a"
+  dei commerciali): da confermare con l'utente.
+- Test: `QualificaOperatorSeederTest` conteggio 67 -> 72 (requisito cambiato) + test dedicato; asserzioni in
+  `QualificaReportsToSeederTest`.
+
 ## CATALOGO: "FORMAZIONE APPRENDISTATO" (CAMPI OFFERTA + STATI PRATICA) — VERDE, COMMITTATO (2026-10-05)
 
 - Foglio "Apprendistato - Campi Operatore", sezioni DATI PRATICA, FORMAZIONE, FORMAZIONE - UNITA' FORMATIVE. Stesso
