@@ -4,6 +4,7 @@ namespace App\Services\Assignment;
 
 use App\Models\EmploymentProfile;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * The ONE reading of "may this user receive this record?" (spec 0110),
@@ -130,8 +131,9 @@ class OperatorCompetence
     }
 
     /**
-     * user id => profile, for the users carrying the wildcard flag (spec 0129
-     * D-1) or at least one competence row (spec 0111). Everyone else is
+     * user id => profile, for the ASSIGNABLE users (spec 0194) carrying the
+     * wildcard flag (spec 0129 D-1) or at least one competence row (spec
+     * 0111). A switched-off user's competence is kept but never read. Everyone else is
      * deliberately absent, and since rev.2 absence means NOT A CANDIDATE
      * (D-9), no longer "competent for everything": the whole population of
      * competent users lives in here.
@@ -146,8 +148,10 @@ class OperatorCompetence
 
         $profiles = EmploymentProfile::query()
             ->select(['id', 'user_id', 'covers_all_product_categories'])
-            ->where('covers_all_product_categories', true)
-            ->orWhereHas('productLines')
+            ->where('is_assignable', true)
+            ->where(static fn (Builder $query): Builder => $query
+                ->where('covers_all_product_categories', true)
+                ->orWhereHas('productLines'))
             ->with('productLines:id,employment_profile_id,business_function_id,product_category_id')
             ->get();
 

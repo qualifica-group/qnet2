@@ -26,7 +26,8 @@ use Spatie\Permission\PermissionRegistrar;
  * sites). Self-sufficient: it re-runs `permissions:sync` and
  * `roles:create-super-admin` first, and seeds the application roles
  * (QualificaRoleSeeder) the `admin` accounts point at. Idempotent: upserted by email, with the
- * first and last name written onto the account's anagrafica too.
+ * first and last name written onto the account's anagrafica too, and the
+ * "Assegnabile" switch off (spec 0194): no record is ever assigned to them.
  */
 class TestUsersSeeder extends Seeder
 {
@@ -94,5 +95,8 @@ class TestUsersSeeder extends Seeder
         $user->save();
         $user->syncRoles([$role]);
         $this->syncPersonName($user, $firstName, $lastName);
+
+        // Spec 0194 D-5: never assignable; the profile is created if missing.
+        $user->employment()->updateOrCreate([], ['is_assignable' => false]);
     }
 }

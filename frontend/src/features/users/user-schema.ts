@@ -38,6 +38,8 @@ function buildEmploymentSchema(t: TFunction) {
       // more remote sites — both operative to the same effect (D-1).
       primary_operational_site_id: z.number().nullable(),
       remote_operational_site_ids: z.array(z.number()),
+      // Spec 0194: explicit "Assegnabile" flag, independent from Sede/competence.
+      is_assignable: z.boolean(),
       // Spec 0129 D-1: the jolly flag — competent for every category when true.
       covers_all_product_categories: z.boolean(),
       // Assignment competence (spec 0111): business-function -> product-category

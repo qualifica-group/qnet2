@@ -59,6 +59,8 @@ it('200: returns the field catalogue and the full permissions block (create-cont
         'employment.is_manager',
         // spec 0129 D-1 — the profile-wide wildcard flag.
         'employment.covers_all_product_categories',
+        // spec 0194 — the "Assegnabile" switch.
+        'employment.is_assignable',
         'employment.job_description', 'employment.reports_to_ids',
         // spec 0111 — the assignment competence as {function, category} rows.
         'employment.product_lines',

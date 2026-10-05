@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0194-user-assignable-flag" status="approved" owner="utente" date="2026-10-05">
+
+  <goal>
+    Un'impostazione sull'utente, "Assegnabile", che quando e' spenta esclude la persona da ogni assegnazione di
+    record (Lead, Gestione Richieste/Iscritti, import), anche se ha Sede e competenza. Il seed di produzione la
+    imposta per gli operatori reali secondo le regole dell'utente.
+  </goal>
+
+  <context>
+    - Oggi "assegnabile" e' derivato: Sede (pivot `employment_profile_operational_site`) INTERSECATA con la
+      competenza (`employment_product_lines` + jolly `covers_all_product_categories`), composta da
+      `AssignmentCandidates` (pool Sede = `LeadOperatorDistributor::operatorIdsBySite`, competenza =
+      `OperatorCompetence`). Il frontend la proietta in `summarizeAssignment` (callout "Assegnabile/Non assegnabile").
+    - Il flag e' una TERZA condizione bloccante, esplicita, sul profilo di impiego, sul modello del flag spec 0129.
+    - D-1 (utente 2026-10-05): ambito = assegnazione operatori. Il flag spento esclude dai pool di assegnazione
+      (automatica, bilanciata, import, selettori operatore filtrati per Sede/competenza, controllo server
+      sull'attribuzione delle offerte). NON tocca i selettori assegnatario di Task/Commesse/team, ne' le
+      assegnazioni gia' fatte.
+    - D-2: colonna `employment_profiles.is_assignable` boolean NOT NULL default TRUE (nessun cambio di
+      comportamento per i profili esistenti e per i nuovi utenti). Senza profilo di impiego l'utente resta come oggi
+      (nessuna Sede, quindi in nessun pool).
+    - D-3: sul filo `employment.is_assignable` (boolean). In scrittura e' tri-state per chiave: assente = colonna
+      invariata (default true alla creazione del profilo), presente = scritta. Campo permesso proprio
+      `employment.is_assignable` (chiavi `employment.*` da 14 a 15), gruppo `employment`.
+    - D-4 (utente 2026-10-05), seed di produzione `QualificaOperatorSeeder` (convergente, a ogni run):
+      Giovanna Gervasio, Raffaele Distico, Gessica Crispo, Emanuele Ascione = flag acceso + UNA riga di competenza
+      funzione aziendale "APL", tutte le categorie (categoria null). Righe del mansionario con categorie = flag
+      acceso, competenza invariata. Righe senza categorie (oggi non assegnabili: Fabozzi, Mosca, Falzarano,
+      Aliberti, Santamaria, Chiacchio, Figurelli, Baldi, Fusco, Annunziata, Popa, Jaruga) = flag spento + UNA riga
+      funzione aziendale "Formazione", tutte le categorie.
+    - D-5 (utente 2026-10-05): `TestUsersSeeder` (Ciro Cacciapuoti, Nicola Eliseo, Mario Esposito, Enrico
+      Ferrante) = solo flag spento, nessuna competenza (profilo creato se manca). `QualificaStaffSeeder` = solo
+      flag spento: profilo creato non assegnabile alla creazione dell'account, e per un account gia' esistente
+      SOLO se non ha ancora un profilo (resta create-only: un profilo esistente non viene mai toccato).
+    - Funzione aziendale risolta per nome (`name` non unico: vince l'id piu' basso, come
+      `QualificaBusinessFunctionLinkSeeder`); funzione assente = warning, mai fatale.
+  </context>
+
+  <contract>
+    <response>`EmploymentResource` emette `is_assignable: boolean` sempre (scalare, come `is_manager`).</response>
+    <request>POST/PUT /api/users: `employment.is_assignable` opzionale `sometimes|boolean`.</request>
+    <frontend>`EmploymentDetail.is_assignable: boolean`; `EmploymentPayload.is_assignable: boolean` (sempre
+      inviato dal form); form default true; `AssignmentBlocker` aggiunge `'disabled'`; il callout con flag spento
+      mostra "Non assegnabile" col motivo dedicato; `AssignmentFieldsVisibility.isAssignable`.</frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Migrazione: `is_assignable` default true; tutti i profili esistenti risultano true.</ac>
+    <ac id="AC-002">Un operatore con Sede e competenza ma flag spento non compare in `operatorIdsBySite`, quindi in
+      nessun pool di `AssignmentCandidates` (Lead, Richieste, import, distribuzione bilanciata).</ac>
+    <ac id="AC-003">`OperatorCompetence::competentUserIds` non restituisce mai un utente con flag spento.</ac>
+    <ac id="AC-004">GET /api/users/for-select con `operational_site_id` o `competence_category_ids` esclude gli
+      utenti con flag spento; senza quei filtri (task, team) li elenca come oggi.</ac>
+    <ac id="AC-005">Attribuzione di un'offerta a un operatore con flag spento: 422 su `operator_id`, anche quando
+      la richiesta non ha Sede.</ac>
+    <ac id="AC-006">PUT utente con `employment.is_assignable=false` lo persiste; un PUT che omette la chiave lo
+      lascia invariato; il campo e' governato dal proprio field permission.</ac>
+    <ac id="AC-007">Seed: D-4 e D-5 rispettati; rieseguire il seeder converge senza duplicare righe.</ac>
+    <ac id="AC-008">Form utente: interruttore "Assegnabile" nella sezione Assegnazione; con flag spento il callout,
+      il riepilogo e la scheda dicono "Non assegnabile" col motivo.</ac>
+  </acceptance>
+
+  <scope>
+    <in>
+      <item>Migrazione, model, DTO, FormRequest, writer, resource, field permission.</item>
+      <item>Filtro nei tre punti: `operatorIdsBySite`, `OperatorCompetence::configuredProfiles`,
+        `UserService::forSelect` (ramo Sede), piu' il ramo senza Sede di `RequestAttributionWriter`.</item>
+      <item>Seeder: `OperatorRoster`, `QualificaOperatorSeeder`, `TestUsersSeeder`, `QualificaStaffSeeder`.</item>
+      <item>Frontend form/scheda utente, i18n IT/EN, guida in-app `users` IT/EN.</item>
+    </in>
+    <out>
+      <item>Colonna/filtro "Assegnabile" nella tabella Utenti.</item>
+      <item>Riassegnazione o rilascio dei record gia' assegnati a chi viene reso non assegnabile.</item>
+      <item>Selettori assegnatario di Task/Commesse/team.</item>
+    </out>
+  </scope>
+</spec>

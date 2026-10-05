@@ -84,6 +84,11 @@ export interface EmploymentDetail {
   /** The user's remote sites (spec 0103 D-1): operative exactly like the physical one. */
   remote_operational_site_ids: number[]
   /**
+   * Spec 0194: explicit "Assegnabile" flag. False excludes the person from every
+   * record assignment pool even with Sede and competence. Scalar, like `is_manager`.
+   */
+  is_assignable: boolean
+  /**
    * Spec 0129 D-1: jolly flag — competent for ANY category, regardless of
    * business function, when true. Scalar, same semantics as `is_manager`.
    */
@@ -168,6 +173,8 @@ export interface EmploymentPayload {
   primary_operational_site_id: number | null
   /** Zero or more remote sites (spec 0103 D-1). */
   remote_operational_site_ids: number[]
+  /** Spec 0194: always sent by the form; the server leaves the column untouched only when the key is absent. */
+  is_assignable: boolean
   /** Spec 0129 D-1/D-10: scalar jolly flag, same semantics as `is_manager` (absent = false). */
   covers_all_product_categories: boolean
   /**

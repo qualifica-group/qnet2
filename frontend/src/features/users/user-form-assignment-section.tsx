@@ -69,6 +69,21 @@ export function UserAssignmentSection({
 
       <MetaField
         control={control}
+        name="employment.is_assignable"
+        metaKey="employment.is_assignable"
+        layout="inline"
+        label={t('users.form.employment.isAssignable')}
+        description={<FormDescription>{t('users.form.employment.isAssignableDescription')}</FormDescription>}
+      >
+        {({ field, disabled }) => (
+          <FormControl>
+            <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
+          </FormControl>
+        )}
+      </MetaField>
+
+      <MetaField
+        control={control}
         name="employment.covers_all_product_categories"
         metaKey="employment.covers_all_product_categories"
         layout="inline"

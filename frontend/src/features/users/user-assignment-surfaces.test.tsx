@@ -170,6 +170,7 @@ const UNCONFIGURED_EMPLOYMENT: EmploymentDetail = {
   company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: [],
+  is_assignable: true,
   covers_all_product_categories: false,
   product_lines: [],
   reports_to: [],
@@ -212,7 +213,7 @@ function user(employment: EmploymentDetail): UserDetailWithPermissions {
   }
 }
 
-/** A role that sees none of the four assignment fields (spec 0129 added the all-categories flag). */
+/** A role that sees none of the five assignment fields (spec 0129 added the all-categories flag, spec 0194 the Assignable flag). */
 function permissionsWithAssignmentHidden(): ResourcePermissions {
   const hidden = {
     visible: false,
@@ -226,6 +227,7 @@ function permissionsWithAssignmentHidden(): ResourcePermissions {
     ...FULL_ACCESS_PERMISSIONS,
     fields: {
       'employment.product_lines': hidden,
+      'employment.is_assignable': hidden,
       'employment.covers_all_product_categories': hidden,
       'employment.primary_operational_site_id': hidden,
       'employment.remote_operational_site_ids': hidden,
@@ -368,6 +370,15 @@ describe('UserDetailView — the assignment configuration on the scheda', () => 
     expect(screen.getByText('Matching').parentElement?.parentElement).toHaveTextContent('Assignable')
     expect(screen.getByText('1 physical · 2 remote')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('spec 0194 AC-008 — says "Not assignable" with the dedicated reason when the flag is off', async () => {
+    renderDetail({ ...CONFIGURED_EMPLOYMENT, is_assignable: false })
+
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+    expect(detailVerdictBand()).toHaveTextContent('Not assignable')
+    expect(detailVerdictBand()).toHaveTextContent(/Assignment turned off by the Assignable setting/)
+    expect(detailVerdictBand()).not.toHaveTextContent(/No competence configured/)
   })
 
   it('raises the band, and names the reason, for a person no record can reach', async () => {

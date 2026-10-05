@@ -103,6 +103,7 @@ function assignmentInput(employment: EmploymentDetail | null | undefined) {
         product_category_id: line.product_category?.id ?? null,
         all_categories: line.product_category === null,
       })) ?? EMPTY_COMPETENCE_ROWS,
+    isAssignable: employment?.is_assignable ?? true,
     coversAllProductCategories: employment?.covers_all_product_categories ?? false,
     primarySiteId: employment?.primary_operational_site_id ?? null,
     remoteSiteIds: employment?.remote_operational_site_ids ?? EMPTY_REMOTE_SITE_IDS,

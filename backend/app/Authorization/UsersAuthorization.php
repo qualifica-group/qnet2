@@ -35,10 +35,11 @@ class UsersAuthorization extends AbstractResourceAuthorization
      * `contacts`/`addresses` sections as a SINGLE key each (D1 — no
      * per-column granularity for their child rows).
      *
-     * The 14 `employment.*` keys (spec 0015, plus the competence of spec
+     * The 15 `employment.*` keys (spec 0015, plus the competence of spec
      * 0111 — one `product_lines` collection replacing the former
-     * `business_function_id`/`product_category_ids` pair — and spec 0129's
-     * `covers_all_product_categories` wildcard flag) mirror the nested
+     * `business_function_id`/`product_category_ids` pair — spec 0129's
+     * `covers_all_product_categories` wildcard flag and spec 0194's
+     * `is_assignable` switch) mirror the nested
      * employment object's own dot-path shape, the same way: no dedicated
      * resource permission, governed entirely by this field-permission matrix
      * (like personal_data).
@@ -68,6 +69,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('personal_data.addresses', 'collection', 'personal_data'),
             new FieldDefinition('employment.is_manager', 'boolean', 'employment'),
             new FieldDefinition('employment.covers_all_product_categories', 'boolean', 'employment'),
+            new FieldDefinition('employment.is_assignable', 'boolean', 'employment'),
             new FieldDefinition('employment.job_description', 'text', 'employment'),
             // Spec 0166 (D-8): a user may report to several managers now,
             // replacing the single `employment.reports_to_id` (select).
@@ -146,7 +148,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
     }
 
     /**
-     * Ceiling for the 14 `employment.*` keys: editable whenever the actor may
+     * Ceiling for the 15 `employment.*` keys: editable whenever the actor may
      * write the user at all, else readonly — same write/read boundary as the
      * personal_data section (no employment.* resource permission, spec 0015).
      *
@@ -159,6 +161,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
         return [
             'employment.is_manager' => $permission,
             'employment.covers_all_product_categories' => $permission,
+            'employment.is_assignable' => $permission,
             'employment.job_description' => $permission,
             'employment.reports_to_ids' => $permission,
             'employment.product_lines' => $permission,

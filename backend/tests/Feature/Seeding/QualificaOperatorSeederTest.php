@@ -155,11 +155,11 @@ it('leaves a "no operatore" profile unassignable: physical Sede only, no compete
 });
 
 // User directive 2026-10-05: four supervisors mirror Rosa Falzarano but are
-// competent for the whole APL branch; Martina Mosca mirrors Michela Fabozzi.
+// competent for every category of the APL function (spec 0194 D-4, requirement
+// changed from the APL category row); Martina Mosca mirrors Michela Fabozzi.
 it('seeds the APL supervisors like Rosa Falzarano, competent for APL, and Martina Mosca like Michela Fabozzi', function (): void {
     $sites = standInSites(['FRATTAMAGGIORE 1 (HQ)', 'Frattamaggiore 2']);
     $function = BusinessFunction::factory()->create(['name' => 'APL']);
-    $apl = ProductCategory::factory()->create(['name' => 'APL', 'business_function_id' => $function->id]);
 
     test()->seed(QualificaOperatorSeeder::class);
 
@@ -174,7 +174,8 @@ it('seeds the APL supervisors like Rosa Falzarano, competent for APL, and Martin
             ->and($employment->primaryOperationalSiteId)->toBe($sites['FRATTAMAGGIORE 1 (HQ)'])
             ->and($employment->remoteOperationalSiteIds)->toBeEmpty()
             ->and($employment->productLines->map(fn ($line): array => [$line->business_function_id, $line->product_category_id])->all())
-            ->toBe([[$function->id, $apl->id]]);
+            ->toBe([[$function->id, null]])
+            ->and($employment->is_assignable)->toBeTrue();
     }
 
     $coordinator = seededOperator('michela.fabozzi@qualificagroup.com');
@@ -210,8 +211,14 @@ it('pairs every roster category with its effective business function, Consulenza
         [$apl->id, $aplRoot->id],
     ]);
 
-    // A Consulenza-only commercial is left with no competence row at all.
-    expect(seededOperator('marco.baldi@qualificagroup.com')->employment->productLines)->toBeEmpty();
+    // A Consulenza-only commercial has no roster category: since spec 0194
+    // (D-4, requirement changed) they are switched off with every FORMAZIONE
+    // category instead of no competence row at all.
+    $baldi = seededOperator('marco.baldi@qualificagroup.com')->employment;
+
+    expect($baldi->is_assignable)->toBeFalse()
+        ->and($baldi->productLines->map(fn ($line): array => [$line->business_function_id, $line->product_category_id])->all())
+        ->toBe([[$formazione->id, null]]);
 });
 
 it('converges on a re-run: no duplicated memberships nor competence rows', function (): void {

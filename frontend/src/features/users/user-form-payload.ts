@@ -29,6 +29,7 @@ function buildEmploymentPayload(values: EmploymentFormValues): EmploymentPayload
     company_id: values.company_id,
     primary_operational_site_id: values.primary_operational_site_id,
     remote_operational_site_ids: values.remote_operational_site_ids,
+    is_assignable: values.is_assignable,
     covers_all_product_categories: values.covers_all_product_categories,
     // Spec 0129 D-2: the flag and the rows are ONE state — defense in depth
     // behind the UI already hiding/clearing the editor while it is on, so a

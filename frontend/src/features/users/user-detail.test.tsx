@@ -67,6 +67,7 @@ function employment(
     company_id: null,
     primary_operational_site_id: null,
     remote_operational_site_ids: [],
+    is_assignable: true,
     covers_all_product_categories: coversAllProductCategories,
     product_lines: productLines,
     reports_to: [],

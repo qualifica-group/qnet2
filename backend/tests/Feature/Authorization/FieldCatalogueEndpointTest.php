@@ -174,6 +174,8 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         'employment.is_manager',
         // spec 0129 D-1 — the profile-wide wildcard flag.
         'employment.covers_all_product_categories',
+        // spec 0194 — the "Assegnabile" switch.
+        'employment.is_assignable',
         'employment.job_description', 'employment.reports_to_ids',
         // spec 0111 — the assignment competence as {function, category} rows,
         // replacing the former business_function_id/product_category_ids pair.
@@ -184,11 +186,12 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
     ]);
 
-    // Spec 0129: exactly 14 employment.* keys (13 + the wildcard flag), and
+    // Spec 0129/0194: exactly 15 employment.* keys (13 + the wildcard flag +
+    // the "Assegnabile" switch), and
     // neither of the two keys product_lines replaced survives anywhere in the
     // catalogue.
     $employmentKeys = $byKey->keys()->filter(static fn (string $key): bool => str_starts_with($key, 'employment.'));
-    expect($employmentKeys)->toHaveCount(14)
+    expect($employmentKeys)->toHaveCount(15)
         ->and($byKey)->not->toHaveKey('employment.business_function_id')
         ->and($byKey)->not->toHaveKey('employment.product_category_ids')
         ->and($byKey->get('employment.product_lines'))->toMatchArray(['type' => 'collection', 'group' => 'employment']);

@@ -204,9 +204,11 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_10_02_120000_add_old_id_to_operational_records_tables` (124th),
     // the legacy anchors of registries/opportunities/quotes/work orders, and
     // spec 0190's `2026_10_02_130000_create_work_order_costs_table` (125th),
-    // the work order's actual costs.
+    // the work order's actual costs, and spec 0194's
+    // `2026_10_05_100000_add_is_assignable_to_employment_profiles_table`
+    // (126th), the "Assegnabile" switch.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 125]);
+    Artisan::call('migrate:rollback', ['--step' => 126]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

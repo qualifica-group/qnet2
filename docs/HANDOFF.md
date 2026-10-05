@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## UTENTE "ASSEGNABILE" (spec 0194) — VERDE, COMMITTATO (2026-10-05)
+
+- Colonna `employment_profiles.is_assignable` (default true, migrazione `2026_10_05_100000_...`; rollback
+  `QuoteWorkflowMigrationTest` ora `--step 126`). API `employment.is_assignable`, field permission propria (chiavi
+  `employment.*` da 14 a 15). Scrittura tri-state: chiave assente = invariata (`EmploymentData::$isAssignable` ?bool,
+  NON come `is_manager`).
+- Enforcement (D-1, solo assegnazione operatori): `LeadOperatorDistributor::operatorIdsBySite` (pool Sede di
+  `AssignmentCandidates`), `OperatorCompetence::configuredProfiles` (solo assegnabili), `UserService::forSelect` ramo
+  `operational_site_id`, `RequestAttributionWriter::isSwitchedOff` (offerta senza Sede). Task/commesse/team invariati.
+- Seed (D-4/D-5): `OperatorRoster::FUNCTION_WIDE_COMPETENCE` (Gervasio, Distico, Crispo, Ascione -> funzione APL,
+  categoria null, assegnabili); righe con categorie -> assegnabili; righe senza -> spente + riga `UNASSIGNABLE_FUNCTION`
+  "Formazione" (match case-insensitive: in DB e' "FORMAZIONE") categoria null. `TestUsersSeeder`: profilo spento.
+  `QualificaStaffSeeder`: profilo spento creato solo se manca (resta create-only sui profili esistenti).
+- FE: switch in `user-form-assignment-section.tsx`, blocker `'disabled'` in `summarizeAssignment`, i18n IT/EN, guida
+  `users` IT/EN. Factory `EmploymentProfileFactory::notAssignable()`.
+- Verifica: `composer test` 9276 pass/1 skip; vitest completo 6719 pass (fe teammate) + users/help 222 rieseguiti;
+  `tsc -b --force` 0; pint/eslint puliti. Test cambiati per requisito: chiavi employment 14->15 (FieldCatalogue,
+  Meta, UserCompetenceScope), step migrazione, seeder APL/Baldi, ReportsTo (profilo gia' creato), fixture FE.
+- Da fare: in ambiente eseguire `php artisan migrate` e `db:seed --class=QualificaOperatorSeeder`,
+  `TestUsersSeeder`, `QualificaStaffSeeder`. Manuale Claude Docs non condiviso con la sessione: aggiornare Utenti >
+  Configurazione assegnazione (nuova impostazione Assegnabile, tre condizioni).
+
 ## SCHEDE CATEGORIA: DEFAULT DALLA COMPETENZA (spec 0193) — VERDE, NON COMMITTATO (2026-10-05)
 
 - Gestione Richieste + Gestione Iscritti: senza riga in `user_category_tab_preferences`, la GET

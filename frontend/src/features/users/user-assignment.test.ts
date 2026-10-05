@@ -16,6 +16,7 @@ describe('summarizeAssignment', () => {
   it('counts a complete configuration and calls it assignable', () => {
     const summary = summarizeAssignment({
       competenceRows: [COMPLETE_ROW, { business_function_id: 5, product_category_id: 22 }],
+      isAssignable: true,
       coversAllProductCategories: false,
       primarySiteId: 8,
       remoteSiteIds: [9, 10],
@@ -32,6 +33,7 @@ describe('summarizeAssignment', () => {
   it('does not count a half-filled competence row: it covers nothing', () => {
     const summary = summarizeAssignment({
       competenceRows: [COMPLETE_ROW, { business_function_id: 5, product_category_id: null }],
+      isAssignable: true,
       coversAllProductCategories: false,
       primarySiteId: 8,
       remoteSiteIds: [],
@@ -44,6 +46,7 @@ describe('summarizeAssignment', () => {
   it('blocks on competence when every row is incomplete', () => {
     const summary = summarizeAssignment({
       competenceRows: [{ business_function_id: null, product_category_id: null }],
+      isAssignable: true,
       coversAllProductCategories: false,
       primarySiteId: 8,
       remoteSiteIds: [],
@@ -57,6 +60,7 @@ describe('summarizeAssignment', () => {
   it('treats a remote site as a full Sede membership, like the server does', () => {
     const summary = summarizeAssignment({
       competenceRows: [COMPLETE_ROW],
+      isAssignable: true,
       coversAllProductCategories: false,
       primarySiteId: null,
       remoteSiteIds: [9],
@@ -70,6 +74,7 @@ describe('summarizeAssignment', () => {
   it('blocks on the Sede when there is neither a physical nor a remote one', () => {
     const summary = summarizeAssignment({
       competenceRows: [COMPLETE_ROW],
+      isAssignable: true,
       coversAllProductCategories: false,
       primarySiteId: null,
       remoteSiteIds: [],
@@ -82,6 +87,7 @@ describe('summarizeAssignment', () => {
   it('reports BOTH blockers for an unconfigured person, competence first', () => {
     const summary = summarizeAssignment({
       competenceRows: [],
+      isAssignable: true,
       coversAllProductCategories: false,
       primarySiteId: null,
       remoteSiteIds: [],
@@ -91,10 +97,39 @@ describe('summarizeAssignment', () => {
     expect(summary.assignable).toBe(false)
   })
 
+  describe('spec 0194 — isAssignable', () => {
+    it('AC-008 — a switched-off flag is the first blocker even with Sede and competence', () => {
+      const summary = summarizeAssignment({
+        competenceRows: [COMPLETE_ROW],
+        isAssignable: false,
+        coversAllProductCategories: false,
+        primarySiteId: 8,
+        remoteSiteIds: [],
+      })
+
+      expect(summary.isAssignable).toBe(false)
+      expect(summary.blockers).toEqual(['disabled'])
+      expect(summary.assignable).toBe(false)
+    })
+
+    it('puts "disabled" before the other blockers', () => {
+      const summary = summarizeAssignment({
+        competenceRows: [],
+        isAssignable: false,
+        coversAllProductCategories: false,
+        primarySiteId: null,
+        remoteSiteIds: [],
+      })
+
+      expect(summary.blockers).toEqual(['disabled', 'competence', 'site'])
+    })
+  })
+
   describe('spec 0129 D-1/AC-024 — covers_all_product_categories', () => {
     it('AC-024 — no competence blocker with the flag active and zero rows', () => {
       const summary = summarizeAssignment({
         competenceRows: [],
+        isAssignable: true,
         coversAllProductCategories: true,
         primarySiteId: 8,
         remoteSiteIds: [],
@@ -109,6 +144,7 @@ describe('summarizeAssignment', () => {
     it('AC-024 — a row with all_categories checked counts as competence', () => {
       const summary = summarizeAssignment({
         competenceRows: [{ business_function_id: 4, product_category_id: null, all_categories: true }],
+        isAssignable: true,
         coversAllProductCategories: false,
         primarySiteId: 8,
         remoteSiteIds: [],
@@ -122,6 +158,7 @@ describe('summarizeAssignment', () => {
     it('still blocks on the Sede while the flag is active but no site is configured', () => {
       const summary = summarizeAssignment({
         competenceRows: [],
+        isAssignable: true,
         coversAllProductCategories: true,
         primarySiteId: null,
         remoteSiteIds: [],

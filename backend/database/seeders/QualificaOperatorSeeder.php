@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\LocaleEnum;
+use App\Models\BusinessFunction;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
 use App\Models\ProductCategory;
@@ -20,7 +21,9 @@ use Illuminate\Support\Str;
  * one account per roster row, with its anagrafica's first and last name, its
  * mansione's role, its Sedi (spec 0103:
  * the physical one plus every remote one) and its product-category
- * competence (spec 0111 / 0129).
+ * competence (spec 0111 / 0129), and its "Assegnabile" switch (spec 0194):
+ * on for a row with categories or a function-wide competence, off for the
+ * others, which get every category of OperatorRoster::UNASSIGNABLE_FUNCTION.
  *
  * Runs AFTER QualificaLegacyImportSeeder and QualificaBusinessFunctionLinkSeeder:
  * the operational sites and the business functions are imported from the
@@ -28,13 +31,14 @@ use Illuminate\Support\Str;
  * function. It seeds the roles itself (QualificaRoleSeeder) so it stays
  * runnable on its own.
  *
- * Idempotent and CONVERGENT: role, Sedi and competence are re-synced from the
+ * Idempotent and CONVERGENT: role, Sedi, competence and switch are re-synced from the
  * roster on every run — the roster is the mansionario. The password is the one
  * exception: set only when the account is created (user decision 2026-09-15),
  * so a password changed by the operator survives a re-seed.
  *
- * NEVER fatal: a city with no imported site, or a category with no effective
- * business function, is skipped with a warning and the account still lands.
+ * NEVER fatal: a city with no imported site, a category with no effective
+ * business function, or a missing business function, is skipped with a
+ * warning and the account still lands.
  */
 class QualificaOperatorSeeder extends Seeder
 {
@@ -46,6 +50,9 @@ class QualificaOperatorSeeder extends Seeder
     /** @var array<string, array{product_category_id: int, business_function_id: int}> */
     private array $competenceByCategoryName = [];
 
+    /** @var array<string, int> */
+    private array $functionIdByName = [];
+
     public function run(): void
     {
         // Step 1: the roles the roster points at.
@@ -54,20 +61,30 @@ class QualificaOperatorSeeder extends Seeder
         // Step 2: the lookups every row resolves against, read once.
         $this->sites = OperationalSite::query()->whereNotNull('alias')->orderBy('alias')->orderBy('id')->get();
         $this->competenceByCategoryName = $this->resolveCompetencePairs();
+        $this->functionIdByName = $this->resolveFunctionIds();
 
         // Step 3: one account per row, with its employment profile.
         foreach (OperatorRoster::OPERATORS as [$firstName, $lastName, $email, $job, $role, $physicalCity, $cities, $categories]) {
             $user = $this->seedAccount("{$firstName} {$lastName}", $email, $role);
             $this->syncPersonName($user, $firstName, $lastName);
 
+            $wholeFunction = OperatorRoster::FUNCTION_WIDE_COMPETENCE[$email] ?? null;
+            $isAssignable = $wholeFunction !== null || $categories !== [];
+
             // Never the wildcard: a profile seeded as "Tutte" before converges.
             $employment = $user->employment()->updateOrCreate([], [
                 'job_description' => $job,
                 'covers_all_product_categories' => false,
+                'is_assignable' => $isAssignable,
             ]);
 
             $this->syncSites($employment, $email, $physicalCity, $cities);
-            $this->syncCompetence($employment, $email, $categories);
+            $this->syncCompetence(
+                $employment,
+                $email,
+                $categories,
+                $isAssignable ? $wholeFunction : OperatorRoster::UNASSIGNABLE_FUNCTION,
+            );
         }
 
         $this->command?->info(sprintf('%d operators seeded.', count(OperatorRoster::OPERATORS)));
@@ -138,13 +155,21 @@ class QualificaOperatorSeeder extends Seeder
     }
 
     /**
-     * Delete-and-recreate from the roster.
+     * Delete-and-recreate from the roster: one "every category" row on
+     * $wholeFunctionName when given (spec 0129 D-3), the roster's categories
+     * otherwise.
      *
      * @param  array<int, string>  $categories
      */
-    private function syncCompetence(EmploymentProfile $employment, string $email, array $categories): void
+    private function syncCompetence(EmploymentProfile $employment, string $email, array $categories, ?string $wholeFunctionName): void
     {
         $employment->productLines()->delete();
+
+        if ($wholeFunctionName !== null) {
+            $this->createFunctionWideLine($employment, $email, $wholeFunctionName);
+
+            return;
+        }
 
         foreach ($categories as $categoryName) {
             $pair = $this->competenceByCategoryName[$categoryName] ?? null;
@@ -157,6 +182,45 @@ class QualificaOperatorSeeder extends Seeder
 
             $employment->productLines()->create($pair);
         }
+    }
+
+    private function createFunctionWideLine(EmploymentProfile $employment, string $email, string $functionName): void
+    {
+        $functionId = $this->functionIdByName[Str::lower($functionName)] ?? null;
+
+        if ($functionId === null) {
+            $this->command?->warn(sprintf('%s: business function "%s" not found, no competence row.', $email, $functionName));
+
+            return;
+        }
+
+        $employment->productLines()->create([
+            'business_function_id' => $functionId,
+            'product_category_id' => null,
+        ]);
+    }
+
+    /**
+     * lowercased business function name => id, for the functions the roster
+     * names as a whole. Case-insensitive: the imported functions are upper
+     * case ("FORMAZIONE"). `name` is not unique: the lowest id wins, as in
+     * QualificaBusinessFunctionLinkSeeder.
+     *
+     * @return array<string, int>
+     */
+    private function resolveFunctionIds(): array
+    {
+        $wanted = array_map(
+            Str::lower(...),
+            [...array_values(OperatorRoster::FUNCTION_WIDE_COMPETENCE), OperatorRoster::UNASSIGNABLE_FUNCTION],
+        );
+
+        return BusinessFunction::query()
+            ->orderByDesc('id')
+            ->get(['id', 'name'])
+            ->filter(static fn (BusinessFunction $function): bool => in_array(Str::lower($function->name), $wanted, true))
+            ->mapWithKeys(static fn (BusinessFunction $function): array => [Str::lower($function->name) => (int) $function->id])
+            ->all();
     }
 
     /**

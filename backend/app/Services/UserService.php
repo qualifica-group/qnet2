@@ -266,8 +266,14 @@ class UserService
 
         if ($query->operationalSiteId !== null) {
             $siteId = $query->operationalSiteId;
-            $base->whereHas('employment.operationalSites', function (Builder $sitesQuery) use ($siteId): void {
-                $sitesQuery->where('operational_sites.id', $siteId);
+            // Spec 0194: the Sede filter picks an operator to assign, so only
+            // assignable members are offered (the competence filter below
+            // already excludes the others through OperatorCompetence).
+            $base->whereHas('employment', function (Builder $employmentQuery) use ($siteId): void {
+                $employmentQuery->where('is_assignable', true)
+                    ->whereHas('operationalSites', function (Builder $sitesQuery) use ($siteId): void {
+                        $sitesQuery->where('operational_sites.id', $siteId);
+                    });
             });
         }
 

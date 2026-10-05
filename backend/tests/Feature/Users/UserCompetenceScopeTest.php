@@ -332,7 +332,7 @@ it('0129 AC-016: a NEUTRAL mother (no own function, one child at F) admits F but
 // AC-017 — the field catalogue's new key.
 // ---------------------------------------------------------------------------
 
-it('0129 AC-017: the field catalogue exposes employment.covers_all_product_categories (boolean, employment) and 14 employment.* keys', function () {
+it('0129 AC-017: the field catalogue exposes employment.covers_all_product_categories (boolean, employment) and 15 employment.* keys (spec 0194 adds is_assignable)', function () {
     // GET /api/authorization/fields is gated on roles.create/roles.update
     // (you manage roles), not on the users.* abilities the rest of this file
     // exercises (FieldCatalogueController::authorizeManagesRoles()).
@@ -348,7 +348,7 @@ it('0129 AC-017: the field catalogue exposes employment.covers_all_product_categ
     expect($byKey->get('employment.covers_all_product_categories'))
         ->toMatchArray(['type' => 'boolean', 'group' => 'employment']);
     expect($byKey->keys()->filter(fn (string $key): bool => str_starts_with($key, 'employment.')))
-        ->toHaveCount(14);
+        ->toHaveCount(15);
 });
 
 it('0129 AC-017: a readonly employment.covers_all_product_categories resubmitting the identical value is a no-op (200)', function () {

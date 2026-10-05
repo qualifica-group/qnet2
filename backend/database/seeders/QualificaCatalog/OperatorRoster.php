@@ -28,21 +28,44 @@ use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Roles;
  *
  * The CSV's "no operatore" profiles carry NO enabled city and NO category
  * (user decision 2026-09-15): they must never be assignable, so they keep
- * their physical Sede only and no competence row — spec 0111 rev.2 D-9 reads
- * that as competent for nothing. Their unrestricted role already sees every
- * record without a remote membership.
+ * their physical Sede only and are switched off (see below). Their
+ * unrestricted role already sees every record without a remote membership.
  *
  * Added after the sheet (user directive 2026-10-05): Martina Mosca mirrors
  * Michela Fabozzi; Giovanna Gervasio, Raffaele Distico, Gessica Crispo and
- * Emanuele Ascione mirror Rosa Falzarano, except they are competent for the
- * whole APL branch.
+ * Emanuele Ascione mirror Rosa Falzarano, except they are assignable and
+ * competent for every category of the APL business function
+ * (FUNCTION_WIDE_COMPETENCE).
  *
- * The teaching supervisor (Marlena Jaruga) is likewise competent for nothing
- * (user decision 2026-09-16), but keeps her enabled cities: her role sees the
+ * The "Assegnabile" switch (spec 0194, user directive 2026-10-05) is derived,
+ * not transcribed: a row with categories, or in FUNCTION_WIDE_COMPETENCE, is
+ * assignable; a row with neither is switched off and carries one competence
+ * row, every category of UNASSIGNABLE_FUNCTION, ready for the day the switch
+ * is turned on.
+ *
+ * The teaching supervisor (Marlena Jaruga) is likewise not assignable (user
+ * decision 2026-09-16), but keeps her enabled cities: her role sees the
  * requests by Sede (`viewSite`), so the memberships are her whole reach.
  */
 final class OperatorRoster
 {
+    /**
+     * email => business function name: one competence row on that function
+     * with a null category ("every category", spec 0129 D-3) instead of the
+     * row's categories, and the account stays assignable.
+     *
+     * @var array<string, string>
+     */
+    public const array FUNCTION_WIDE_COMPETENCE = [
+        'giovanna.gervasio@qualificagroup.com' => 'APL',
+        'raffaele.distico@qualificagroup.com' => 'APL',
+        'gessica.crispo@qualificagroup.com' => 'APL',
+        'emanuele.ascione@qualificagroup.com' => 'APL',
+    ];
+
+    /** The function a switched-off operator is made competent for, every category of it. */
+    public const string UNASSIGNABLE_FUNCTION = 'Formazione';
+
     private const array FRATTAMAGGIORE_HUB = ['Cassino', 'Roma', 'Milano', 'Frattamaggiore'];
 
     private const array SICILY_HUB = ['Mazzarino', 'Riesi', 'Gela', 'Catania'];
@@ -73,10 +96,10 @@ final class OperatorRoster
         ['Michela', 'Fabozzi', 'michela.fabozzi@qualificagroup.com', 'Coordinatore Commerciale', Roles::COORDINATOR_ROLE, 'Frattamaggiore', [], []],
         ['Martina', 'Mosca', 'martina.mosca@qualificagroup.com', 'Coordinatore Commerciale', Roles::COORDINATOR_ROLE, 'Frattamaggiore', [], []],
         ['Rosa', 'Falzarano', 'rosa.falzarano@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], []],
-        ['Giovanna', 'Gervasio', 'giovanna.gervasio@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], ['APL']],
-        ['Raffaele', 'Distico', 'raffaele.distico@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], ['APL']],
-        ['Gessica', 'Crispo', 'gessica.crispo@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], ['APL']],
-        ['Emanuele', 'Ascione', 'emanuele.ascione@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], ['APL']],
+        ['Giovanna', 'Gervasio', 'giovanna.gervasio@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], []],
+        ['Raffaele', 'Distico', 'raffaele.distico@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], []],
+        ['Gessica', 'Crispo', 'gessica.crispo@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], []],
+        ['Emanuele', 'Ascione', 'emanuele.ascione@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], []],
         ['Fabrizio', 'Aliberti', 'fabrizio.aliberti@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], []],
         ['Umberto', 'Santamaria', 'umberto.santamaria@qualificagroup.com', 'Responsabile Marketing', Roles::COORDINATOR_ROLE, 'Frattamaggiore', [], []],
         ['Simona', 'Chiacchio', 'simona.chiacchio@qualificagroup.com', 'Commerciale - Supporto Marketing', Roles::COORDINATOR_ROLE, 'Frattamaggiore', [], []],

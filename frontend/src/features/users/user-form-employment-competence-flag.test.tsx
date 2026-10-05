@@ -212,6 +212,7 @@ const BASE_EMPLOYMENT: EmploymentDetail = {
   company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: [],
+  is_assignable: true,
   covers_all_product_categories: false,
   product_lines: [
     {
@@ -303,6 +304,25 @@ async function submittedEmployment() {
 }
 
 const COVERS_ALL_SWITCH_NAME = 'Competent for all categories'
+
+describe('UserForm — is_assignable switch (spec 0194)', () => {
+  it('AC-008 — defaults on; switching it off submits false and keeps competence rows and Sedi', async () => {
+    personalDataData.mockReturnValue(validCard)
+    renderEditForm()
+
+    const assignable = screen.getByRole('switch', { name: 'Assignable' })
+    expect(assignable).toBeChecked()
+    fireEvent.click(assignable)
+    expect(assignable).not.toBeChecked()
+    expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
+
+    save()
+
+    const employment = await submittedEmployment()
+    expect(employment.is_assignable).toBe(false)
+    expect(employment.covers_all_product_categories).toBe(false)
+  })
+})
 
 describe('UserForm — covers_all_product_categories & "all categories" rows (spec 0129)', () => {
   it('AC-020 — activating the switch hides the row editor and submits the flag with empty rows', async () => {

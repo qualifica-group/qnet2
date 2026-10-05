@@ -51,6 +51,11 @@ use App\Enums\RelationshipTypeEnum;
  * — absent on write reads as false). EmploymentWriter enforces D-2 (true =>
  * the rows are cleared) rather than trusting the request to have emptied
  * `productLines` itself.
+ *
+ * `isAssignable` (spec 0194 D-3) is the opposite of `isManager` on purpose:
+ * null = the key was absent, the column is left untouched (the DB default
+ * true applies on a new row). Absent must never read as false, or any client
+ * omitting the key would silently take the user out of every assignment pool.
  */
 final readonly class EmploymentData
 {
@@ -63,6 +68,7 @@ final readonly class EmploymentData
         public bool $delete = false,
         public bool $isManager = false,
         public bool $coversAllProductCategories = false,
+        public ?bool $isAssignable = null,
         public ?string $jobDescription = null,
         public bool $reportsToIdsProvided = false,
         public array $reportsToIds = [],
@@ -101,7 +107,7 @@ final readonly class EmploymentData
      */
     public function attributes(): array
     {
-        return [
+        $attributes = [
             'is_manager' => $this->isManager,
             'covers_all_product_categories' => $this->coversAllProductCategories,
             'job_description' => $this->jobDescription,
@@ -113,5 +119,11 @@ final readonly class EmploymentData
             'standard_daily_minutes' => $this->standardDailyMinutes,
             'break_daily_minutes' => $this->breakDailyMinutes,
         ];
+
+        if ($this->isAssignable !== null) {
+            $attributes['is_assignable'] = $this->isAssignable;
+        }
+
+        return $attributes;
     }
 }
