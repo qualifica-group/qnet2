@@ -11,6 +11,7 @@ import type { QuoteCommissionContext, QuoteLine, QuoteLineProductRef, QuoteLineV
 import { fetchQuoteCommissionDefaults, fetchQuoteCommissionRecipients } from '@/features/quotes/api'
 import { useOptionalConfirm } from '@/components/confirm-dialog-context'
 import { quoteLineGridClass, quoteLineMinWidthClass } from './quote-line-grid'
+import { LINE_TABLE_SCROLL_CLASS } from '@/components/record-form/layout'
 
 /** Dedupe by id: several persisted rows may point at the same product. */
 export function knownProductsFrom(lines: QuoteLine[]): QuoteLineProductRef[] {
@@ -246,7 +247,7 @@ export function QuoteLinesField({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="overflow-x-auto rounded-lg border bg-surface">
+      <div className={LINE_TABLE_SCROLL_CLASS}>
         <div className={quoteLineMinWidthClass(variant, withCommissions, simplified)}>
           <div className={`${quoteLineGridClass(variant, withCommissions, simplified)} border-b bg-muted/40 px-2 py-1.5 text-[11px] font-medium text-muted-foreground`}>
             <span>{t('quotes.form.lineProductHeader')}</span>

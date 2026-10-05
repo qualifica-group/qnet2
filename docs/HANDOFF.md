@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX TABELLE RIGHE CHE SFORANO SU MOBILE — VERDE, NON COMMITTATO (2026-10-05)
+
+- Bug: su schermo stretto le righe offerta (Gestione Richieste, Offerte tab offerta/costi) uscivano dalla card. Causa:
+  `FormItem` e' `grid gap-2`, la sua colonna `auto` prendeva il min-content della tabella (`min-w-[994px]`), quindi
+  la cella si allargava e l'`overflow-x-auto` interno non scorreva mai.
+- Fix: costante `LINE_TABLE_SCROLL_CLASS` in `components/record-form/layout.ts` (`... contain-inline-size`, stesso
+  rimedio di `table-field-desktop-view.tsx`), usata da `QuoteLinesField`, `QuoteLinesReadOnlyList`,
+  `WorkOrderCostsLinesField`, `ContractProgramLinesTable`. Nuove tabelle larghe a righe: usare questa costante.
+- Test: `quotes/quote-lines-field-layout.test.tsx` (2), `quote-lines-read-only.test.tsx` (+1). Manuale: nessun impatto.
+
 ## FIX DEMO SEED: OFFERTE/COMMESSE/TASK VUOTI — VERDE, NON COMMITTATO (2026-10-02)
 
 - `DemoDataSeeder` si interrompeva in `DemoQuoteSeeder` (422 su attributi offerta `relation`/enum multiselect/`table`,

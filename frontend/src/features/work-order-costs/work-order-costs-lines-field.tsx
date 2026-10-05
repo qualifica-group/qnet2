@@ -10,6 +10,7 @@ import {
 } from '@/features/work-order-costs/work-order-cost-row'
 import type { WorkOrderCostRowValues } from '@/features/work-order-costs/work-order-costs-schema'
 import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
+import { LINE_TABLE_SCROLL_CLASS } from '@/components/record-form/layout'
 
 interface WorkOrderCostsLinesFieldProps {
   /** Stable RHF ids, one per row: they key the rows so typing never remounts them. */
@@ -40,7 +41,7 @@ export function WorkOrderCostsLinesField({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="overflow-x-auto rounded-lg border bg-surface">
+      <div className={LINE_TABLE_SCROLL_CLASS}>
         <div className={COST_ROW_MIN_WIDTH_CLASS}>
           <div
             className={`${COST_ROW_GRID_CLASS} border-b bg-muted/40 px-2 py-1.5 text-[11px] font-medium text-muted-foreground`}

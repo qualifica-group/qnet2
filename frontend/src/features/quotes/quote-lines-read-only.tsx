@@ -6,6 +6,7 @@ import { DetailEmpty } from '@/components/detail/detail-panel'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import { QuoteCommissionsDialog } from './quote-commissions-dialog'
 import type { QuoteLine } from '@/features/quotes/types'
+import { LINE_TABLE_SCROLL_CLASS } from '@/components/record-form/layout'
 
 /**
  * Spec 0144 AC-016: the Cost variant adds the "Associated product" column
@@ -89,7 +90,7 @@ export function QuoteLinesReadOnlyList({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border bg-surface">
+    <div className={LINE_TABLE_SCROLL_CLASS}>
       <div className={`${linesMinWidthClass(variant)} text-xs`}>
         <div className={`${linesGridClass(variant)} border-b bg-muted/40 px-2 py-1.5 font-medium text-muted-foreground`}>
           <span>{t('quotes.form.lineProductHeader')}</span>
