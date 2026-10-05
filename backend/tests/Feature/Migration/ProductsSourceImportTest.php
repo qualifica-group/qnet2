@@ -277,8 +277,9 @@ it('files a product of the legacy "APL old" branch on the manual category replac
     $targets = collect(['Apprendistato', 'Tirocinio', 'Orientamento specialistico'])
         ->mapWithKeys(fn (string $name) => [$name => ProductCategory::factory()->create(['name' => $name, 'parent_id' => $manualRoot->id])->id]);
 
-    // The legacy branch as ProductCategoriesSource imports it.
-    $legacyRoot = ProductCategory::factory()->create(['old_id' => 10, 'name' => 'APL old', 'parent_id' => null]);
+    // The legacy branch as the import leaves it: under "Consulenza".
+    $consulenza = ProductCategory::factory()->create(['name' => 'Consulenza', 'parent_id' => null]);
+    $legacyRoot = ProductCategory::factory()->create(['old_id' => 10, 'name' => 'APL old', 'parent_id' => $consulenza->id]);
     foreach ([11 => 'Formazione Apprendistato', 12 => 'Tirocini extracurriculari privati', 13 => 'Orientamento Specialistico old', 14 => 'Ricerca e Selezione'] as $oldId => $name) {
         ProductCategory::factory()->create(['old_id' => $oldId, 'name' => $name, 'parent_id' => $legacyRoot->id]);
     }

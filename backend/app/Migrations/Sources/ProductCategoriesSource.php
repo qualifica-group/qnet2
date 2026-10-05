@@ -21,7 +21,8 @@ use RuntimeException;
  * ProductCategoryService. `business_function_id` is an EXTERNAL business
  * function id remapped via `old_id` (CategoryBusinessFunctionLinker), which
  * also redirects the functions a created category may not be filed on
- * ("Formazione" to "FORMAZIONE OLD", user directive 2026-09-16).
+ * ("Formazione" to "FORMAZIONE OLD", user directive 2026-09-16) and imports
+ * the categories filed there as not selectable (user directive 2026-10-05).
  * `is_selectable` (spec 0074) is a plain per-node flag; `requires_quote` is
  * owned by the branch root and only authored on a rootless row (see
  * mapRequiresQuote()). `parent_id` is an EXTERNAL id remapped to the qnet
@@ -61,7 +62,7 @@ class ProductCategoriesSource extends AbstractMigrationSource
 
     /**
      * The qnet ids THIS run created. afterImport() closes the ones that end up
-     * in the "APL old" branch; a node an earlier run created is left alone, so
+     * in the "APL old" branch or on an "OLD" business function; a node an earlier run created is left alone, so
      * a selectability set by hand survives a re-import.
      *
      * @var list<int>
@@ -169,15 +170,13 @@ class ProductCategoriesSource extends AbstractMigrationSource
         }
 
         // The legacy twin of a manual APL node is imported beside it, under a
-        // name of its own; the twin of the root stays a root (LegacyAplBranch).
-        $asRoot = $manualTwin !== null && $manualTwin->parent_id === null;
-
+        // name of its own, wherever its legacy parent puts it (LegacyAplBranch).
         if ($manualTwin !== null) {
             $name = $this->aplBranch->legacyName($name);
             $warnings[] = sprintf('Legacy twin of the catalogue category "%s" imported as "%s" instead of adopted.', $manualTwin->name, $name);
         }
 
-        $parentId = $asRoot ? null : $this->resolveParent($record['parent_id'] ?? null, $warnings, $this->isSelfParented($record));
+        $parentId = $this->resolveParent($record['parent_id'] ?? null, $warnings, $this->isSelfParented($record));
 
         if ($this->isSelfParented($record)) {
             $warnings[] = 'parent_id equals the category own id (spec 0183 F-9); imported as a root.';
@@ -209,7 +208,7 @@ class ProductCategoriesSource extends AbstractMigrationSource
 
         // Created without the parent its external record names: afterImport()
         // retries it once every node of this run exists.
-        if ($parentId === null && ! $asRoot && $this->namesAParent($record)) {
+        if ($parentId === null && $this->namesAParent($record)) {
             $this->detachedIds[] = $category->id;
         }
 
@@ -336,9 +335,11 @@ class ProductCategoriesSource extends AbstractMigrationSource
         // Step 1: the forward references, so each node sits in its branch.
         $this->relinkDetached();
 
-        // Step 2: the legacy APL tree is never a classification target (user
-        // directive 2026-10-05) — after step 1, which places its late children.
+        // Step 2: the legacy APL tree and every category filed on an "OLD"
+        // function are never a classification target (user directive
+        // 2026-10-05) — after step 1, which places the late children.
         $this->aplBranch->closeLegacyBranch($this->createdIds);
+        $this->businessFunctions->closeRedirected($this->createdIds);
     }
 
     /**

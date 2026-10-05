@@ -13,9 +13,11 @@ use App\Services\ProductCategories\CategoryHierarchy;
  * The legacy APL tree is no longer ADOPTED into the manual one: a legacy
  * record named like a node of the manual branch is imported beside it, under
  * that name plus LEGACY_SUFFIX, so the two never share a name in a select. The
- * twin of the manual ROOT stays a root of its own ("APL old"), never under
- * "Consulenza", and nothing in that branch is selectable. The products the legacy files on that tree land on the manual
- * categories replacing the legacy ones (productCategoryFor).
+ * twin of the manual ROOT ("APL old") hangs where every other legacy node
+ * does, under "Consulenza" like the FORMAZIONE OLD ones (user directive
+ * 2026-10-05), and nothing in its branch is selectable. The products the
+ * legacy files on that branch land on the manual categories replacing the
+ * legacy ones (productCategoryFor).
  */
 final class LegacyAplBranch
 {
@@ -24,8 +26,8 @@ final class LegacyAplBranch
 
     private const string LEGACY_SUFFIX = ' old';
 
-    /** The legacy twin of MANUAL_ROOT, imported as a root of its own. */
-    public const string LEGACY_ROOT = self::MANUAL_ROOT.self::LEGACY_SUFFIX;
+    /** The legacy twin of MANUAL_ROOT: the top of the legacy APL branch. */
+    public const string LEGACY_BRANCH = self::MANUAL_ROOT.self::LEGACY_SUFFIX;
 
     /**
      * Legacy category name => the manual category its products are filed on.
@@ -77,17 +79,13 @@ final class LegacyAplBranch
      */
     public function closeLegacyBranch(array $createdIds): void
     {
-        $root = ProductCategory::query()
-            ->where('name', self::LEGACY_ROOT)
-            ->whereNull('parent_id')
-            ->whereNotNull('old_id')
-            ->first();
+        $top = $this->legacyBranchTop();
 
-        if ($root === null || $createdIds === []) {
+        if ($top === null || $createdIds === []) {
             return;
         }
 
-        $branchIds = [$root->id, ...$this->hierarchy->descendantIds($root->id)];
+        $branchIds = [$top->id, ...$this->hierarchy->descendantIds($top->id)];
 
         ProductCategory::query()
             ->whereIntegerInRaw('id', array_intersect($branchIds, $createdIds))
@@ -115,9 +113,9 @@ final class LegacyAplBranch
     public function productCategoryFor(int $categoryId, array &$warnings): int
     {
         $category = ProductCategory::query()->findOrFail($categoryId);
-        $root = $this->rootOf($category);
+        $top = $this->legacyBranchTop();
 
-        if ($root->old_id === null || strcasecmp($root->name, self::LEGACY_ROOT) !== 0) {
+        if ($top === null || ! $this->isWithin($category, $top)) {
             return $categoryId;
         }
 
@@ -151,8 +149,16 @@ final class LegacyAplBranch
         return null;
     }
 
-    private function rootOf(ProductCategory $category): ProductCategory
+    /**
+     * The imported "APL old" node, wherever the import nested it.
+     */
+    private function legacyBranchTop(): ?ProductCategory
     {
-        return $this->hierarchy->ancestors($category)->first() ?? $category;
+        return ProductCategory::query()->where('name', self::LEGACY_BRANCH)->whereNotNull('old_id')->first();
+    }
+
+    private function isWithin(ProductCategory $category, ProductCategory $top): bool
+    {
+        return $category->is($top) || $this->hierarchy->isAncestorOf($category, $top->id);
     }
 }

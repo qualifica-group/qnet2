@@ -48,10 +48,26 @@
 - Nota: vale anche per il pannello se arriva `product_lines` senza `offer_lines` (es. attore senza scrittura sulle righe
   offerta): le righe scoperte vengono eliminate lo stesso, come effetto della classificazione.
 
-## APL MANUALE + "APL OLD" DALLA MIGRAZIONE — VERDE, COMMITTATO (2026-10-05)
+## APL MANUALE + "APL OLD" DALLA MIGRAZIONE — VERDE, COMMITTATO e5236a2c + FIX NON COMMITTATO (2026-10-05)
+
+- FIX (non committato, richiesta utente: "APL old" compariva in "Categoria padre" di /request-management/new, che per
+  spec 0132 D-1 elenca TUTTE le radici): "APL old" NON e' piu' radice, sta sotto Consulenza come le categorie di
+  FORMAZIONE OLD (scelta utente fra "sotto Consulenza" e "radice nascosta nel select"; D-1 resta valida, nessun cambio
+  FE). `ProductCategoriesSource`: tolta la forzatura a radice, il gemello va sotto il suo padre legacy;
+  `QualificaLegacyImportSeeder`: tolta l'esclusione dal nesting. `LegacyAplBranch::LEGACY_ROOT` -> `LEGACY_BRANCH`,
+  il nodo e' trovato per nome + old_id in qualunque posizione (`legacyBranchTop()`, `isWithin()`).
+- FORMAZIONE OLD non selezionabile (decisione utente 2026-10-05): `CategoryBusinessFunctionLinker::closeRedirected(
+  $createdIds)` (Step 2 di `afterImport`, accanto a `closeLegacyBranch`) -> ogni categoria CREATA nella run la cui
+  funzione EFFETTIVA e' una sostitutiva di `REDIRECTED_FUNCTIONS` (FORMAZIONE OLD, APL OLD) nasce `is_selectable=false`;
+  adottate e altre funzioni invariate. Prodotti senza sostituto sotto "APL old": restano li' (decisione utente).
+  Test: `ProductCategoriesSourceImportTest` FORMAZIONE OLD (+3 asserzioni, nuova riga "Bandi" su altra funzione) e
+  adozione. Suite completa 9266 passed / 1 skipped. Sul DB locale le categorie gia' importate (es. "ALFA FORMAZIONE")
+  NON cambiano: vale dal prossimo import pulito.
+- DB locale `qnet2`: "APL old" (id 77) e' ancora RADICE dall'import di prima; il re-seed non lo sposta (lo snapshot
+  `$staticRootIds` lo tratta come radice gia' esistente) -> serve un update una tantum di `parent_id` su Consulenza.
 
 - Decisioni utente (AskUserQuestion 2026-10-05): il ramo APL legacy NON e' piu' adottato da quello manuale; diventa
-  la categoria radice "APL old" + funzione aziendale "APL OLD" (come FORMAZIONE OLD); APL manuale = regole IDENTICHE
+  la categoria "APL old" + funzione aziendale "APL OLD" (come FORMAZIONE OLD); APL manuale = regole IDENTICHE
   a Formazione (contratti compresi); TUTTI i prodotti del ramo legacy sulle nuove categorie; nessuna conversione
   dei DB gia' importati ("come fa con Formazione": vale a ogni import).
 - Nuovo `app/Migrations/Support/LegacyAplBranch.php`: `manualNodeNamed()` (nodo del ramo manuale "APL" con quel nome,
@@ -60,22 +76,20 @@
   privati -> Tirocinio, Orientamento Specialistico -> Orientamento specialistico), `productCategoryFor()`.
 - `ProductCategoriesSource::processRow`: un record legacy con nome di un nodo del ramo APL manuale non viene adottato,
   viene creato come "<nome> old" (solo se collide: "APL old", "Orientamento Specialistico old"; gli altri tengono il
-  nome); il gemello della radice nasce radice (no parent, no relink). Warning "Legacy twin ..." nel report.
+  nome). Warning "Legacy twin ..." nel report.
 - `ProductsSource`: categoria risolta -> `LegacyAplBranch::productCategoryFor` (nodo del ramo "APL old" -> categoria
-  manuale; senza sostituto resta sul nodo legacy con warning "no manual replacement"). DA CHIEDERE all'utente: i figli
-  legacy di APL oltre ai tre noti (l'albero legacy non e' leggibile: qnet.test risponde "authentication required").
+  manuale; senza sostituto resta sul nodo legacy con warning "no manual replacement", deciso cosi' dall'utente).
 - "APL old" NON selezionabile (richiesta utente successiva, stesso giorno): `ProductCategoriesSource::afterImport`
   = Step 1 `relinkDetached()` + Step 2 `LegacyAplBranch::closeLegacyBranch($createdIds)` -> radice e TUTTO il ramo
   `is_selectable=false`, solo sui nodi creati in QUELLA run (una riapertura a mano sopravvive al re-import).
   Nota: per FORMAZIONE OLD il codice non forza nulla, `is_selectable` arriva dal legacy.
-- `CategoryBusinessFunctionLinker::REDIRECTED_FUNCTIONS` + `'APL' => 'APL OLD'`. `QualificaLegacyImportSeeder::
-  nestImportedCategories` esclude "APL old" (resta radice, non va sotto Consulenza).
+- `CategoryBusinessFunctionLinker::REDIRECTED_FUNCTIONS` + `'APL' => 'APL OLD'`.
 - Seed: categorie rinominate `Apprendistato` / `Tirocinio` / `Orientamento specialistico` (costanti CATEGORY dei tre
   cataloghi APL, `CATALOG`, `REPORTABLE_CATEGORIES`, `SINGLE_OFFER_CATEGORIES` -> anche il prodotto seedato si chiama
   "Orientamento specialistico"). `CatalogRootRules::TRAINING_RULES` condivise da Formazione e APL (single, una offerta,
   `generates_contract=false`, riga semplificata, etichette G.A. Tutor/Operatore/Partner commerciale/Segnalatore).
 - Test: nuovo `Migration/LegacyAplBranchImportTest.php` (3), `ProductsSourceImportTest` (+1), `QualificaLegacyImportSeederTest`
-  end-to-end riscritto (Formazione adottata, APL old radice su APL OLD, prodotti sulle nuove categorie, mappa legata al
+  end-to-end riscritto (Formazione adottata, APL old sotto Consulenza su APL OLD, prodotti sulle nuove categorie, mappa legata al
   catalogo reale), `QualificaCatalogRootRulesTest` (+1 APL = Formazione). Requisito cambiato: i test generici di adozione
   usavano "APL" come esempio -> ora "Consulenza"/"Presa Appuntamenti"; liste nomi aggiornate in 6 test seed.
   Suite completa 9254 passed / 1 skipped, Pint pulito.

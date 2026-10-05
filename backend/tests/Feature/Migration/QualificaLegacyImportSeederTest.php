@@ -278,7 +278,7 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         ->and(MassMigrationRun::query()->latest('id')->first()->status)->toBe(MigrationStatus::Completed);
 });
 
-it('adopts the static "Formazione" root, and imports the legacy APL tree beside the manual one as "APL old"', function () {
+it('adopts the static "Formazione" root, and nests the legacy APL tree under "Consulenza" as "APL old"', function () {
     seedMigrationsConfig();
     migrationsSuperAdminActor();
 
@@ -292,8 +292,7 @@ it('adopts the static "Formazione" root, and imports the legacy APL tree beside 
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
                 ['id' => 55, 'name' => 'Formazione', 'parent_id' => null],
-                ['id' => 54, 'name' => 'Servizi', 'parent_id' => null],
-                ['id' => 56, 'name' => 'APL', 'parent_id' => 54, 'business_function_id' => 9],
+                ['id' => 56, 'name' => 'APL', 'parent_id' => null, 'business_function_id' => 9],
                 ['id' => 57, 'name' => 'Orientamento Specialistico', 'parent_id' => 56, 'business_function_id' => 9],
                 ['id' => 58, 'name' => 'Tirocini extracurriculari privati', 'parent_id' => 56, 'business_function_id' => 9],
                 ['id' => 59, 'name' => 'Formazione Apprendistato', 'parent_id' => 56, 'business_function_id' => 9],
@@ -314,7 +313,7 @@ it('adopts the static "Formazione" root, and imports the legacy APL tree beside 
 
     $formazione = ProductCategory::query()->where('name', 'Formazione')->sole();
     $manualApl = ProductCategory::query()->where('name', 'APL')->sole();
-    $legacyApl = ProductCategory::query()->where('name', LegacyAplBranch::LEGACY_ROOT)->sole();
+    $legacyApl = ProductCategory::query()->where('name', LegacyAplBranch::LEGACY_BRANCH)->sole();
     $categoryOf = fn (int $oldId) => Product::query()->where('old_id', $oldId)->first()->category->name;
 
     // "Formazione" adopted, not duplicated, and never moved: dragging it
@@ -326,17 +325,16 @@ it('adopts the static "Formazione" root, and imports the legacy APL tree beside 
         ->and($manualApl->old_id)->toBeNull()
         ->and($manualApl->parent_id)->toBeNull()
         ->and(ProductCategory::query()->where('parent_id', $manualApl->id)->whereNotNull('old_id')->exists())->toBeFalse()
-        // ...its legacy twin is a root of its own, never under "Consulenza",
-        // on a function of its own...
+        // ...its legacy twin is nested under "Consulenza" like every legacy
+        // root (as the FORMAZIONE OLD categories are), on a function of its own...
         ->and($legacyApl->old_id)->toEqual(56)
-        ->and($legacyApl->parent_id)->toBeNull()
+        ->and($legacyApl->parent->name)->toBe('Consulenza')
         ->and($legacyApl->businessFunction->name)->toBe('APL OLD')
         // ...and is never a classification target, unlike the manual one.
         ->and(ProductCategory::query()->whereKey([$legacyApl->id, ...$legacyApl->children()->pluck('id')])->where('is_selectable', true)->exists())->toBeFalse()
         ->and(ProductCategory::query()->where('parent_id', $manualApl->id)->where('is_selectable', false)->exists())->toBeFalse()
         ->and(ProductCategory::query()->where('parent_id', $legacyApl->id)->orderBy('name')->pluck('name')->all())
         ->toBe(['Formazione Apprendistato', 'Orientamento Specialistico old', 'Ricerca e Selezione', 'Tirocini extracurriculari privati'])
-        ->and(ProductCategory::query()->where('name', 'Servizi')->first()->parent->name)->toBe('Consulenza')
         // ...and its products land on the manual categories replacing the
         // legacy ones (LegacyAplBranch::PRODUCT_CATEGORIES, bound here to the
         // real catalogue), save the one with no replacement.
