@@ -1,0 +1,136 @@
+<?php
+
+use App\Enums\AttributeContext;
+use App\Enums\FormMode;
+use App\Enums\LayoutFormScope;
+use App\Models\Attribute;
+use App\Models\Opportunity;
+use App\Models\Product;
+use App\Models\ProductCategory;
+use App\Models\Quote;
+use App\Models\QuoteLine;
+use App\Models\QuoteWorkflow;
+use App\Models\QuoteWorkflowStatus;
+use App\Services\ProductCategories\AttributeLayoutService;
+use App\Services\ProductCategories\CategoryHierarchy;
+use App\Services\Quotes\QuoteWorkflowResolver;
+use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\AplOrientationAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
+use Database\Seeders\QualificaCatalogSeeder;
+use Database\Seeders\QualificaQuoteLayoutSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+// The APL orientation practices (user directive 2026-10-05, "Campi Misure
+// APL" sheet, Orientamento/SFL GOL): "Orientamento Specialistico" gets its own
+// offer fields, form and working states, sharing the decree, reporting and
+// end-date fields with the other APL practices. Every seeded section is white.
+uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    // Keeps the catalogue step from offering the q-crm import.
+    config(['migrations.base_url' => null]);
+});
+
+it('gives the orientation practices their own offer fields, cut off the APL root', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+    test()->seed(QualificaCatalogSeeder::class); // re-run: no duplicates.
+
+    $apl = ProductCategory::query()->where('name', 'APL')->whereNull('parent_id')->sole();
+    $category = ProductCategory::query()->where('name', AplOrientationAttributeCatalogue::CATEGORY)->sole();
+    $ownCodes = array_column(AplOrientationAttributeCatalogue::ATTRIBUTES, 'code');
+
+    expect($category->parent_id)->toBe($apl->id)
+        ->and($category->is_selectable)->toBeTrue()
+        ->and($category->inherits_quote_attributes)->toBeFalse()
+        ->and(app(CategoryHierarchy::class)->effectiveAttributes($category, AttributeContext::Quote)->pluck('code')->sort()->values()->all())
+        ->toBe(collect($ownCodes)->sort()->values()->all())
+        ->and($ownCodes)->toHaveCount(15);
+
+    // One "Data fine" attribute shared with the internships, not a copy.
+    expect(Attribute::query()->where('code', 'practice_end_date')->sole()->categories()->pluck('name')->sort()->values()->all())
+        ->toBe(collect([AplInternshipAttributeCatalogue::CATEGORY, AplOrientationAttributeCatalogue::CATEGORY])->sort()->values()->all());
+
+    expect(Attribute::query()->where('code', 'sfl_renewal_status')->sole()->options()->orderBy('sort_order')->pluck('label')->all())
+        ->toBe(['Da rinnovare', 'Rinnovato'])
+        ->and(Attribute::query()->where('code', 'orientation_measure')->sole()->options()->orderBy('sort_order')->pluck('label')->all())
+        ->toBe(['Presa in carico', 'Orientamento', 'Accompagnamento'])
+        ->and(Attribute::query()->where('code', 'deliverable_policies')->sole()->config)->toBe(['min' => 1, 'max' => 4])
+        ->and(Attribute::query()->where('code', 'sfl_months_received')->sole()->config)->toBe(['min' => 0, 'max' => 12]);
+});
+
+it('lays the orientation offer form out in the sheet order, every section white', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $category = ProductCategory::query()->where('name', AplOrientationAttributeCatalogue::CATEGORY)->sole();
+    $sections = app(AttributeLayoutService::class)->resolveWithFallback($category, AttributeContext::Quote, FormMode::Create)['sections'];
+    $codesBySection = array_map(
+        static fn (array $section): array => array_merge(...array_map(
+            static fn (array $row): array => array_column($row['items'], 'attribute_code'),
+            $section['rows'],
+        )),
+        $sections,
+    );
+
+    expect(array_column($sections, 'title'))->toBe(['Testata', 'Dati pratica', 'Percorso'])
+        ->and(array_column($sections, 'variant'))->toBe(['default', 'default', 'default'])
+        ->and($codesBySection)->toBe([
+            ['sfl_renewal_status', 'decree_status', 'deliverable_policies', 'last_active_policy_date'],
+            ['orientation_measure', 'sfl_months_received', 'practice_end_date', 'reporting_id', 'decree_id'],
+            [
+                'orientation_convocation_date', 'orientation_intake_date', 'orientation_session_date',
+                'orientation_job_support_1_date', 'orientation_job_support_2_date', 'orientation_job_support_3_date',
+            ],
+        ]);
+});
+
+it('gives the orientation practices their own working states, winning over the APL branch set', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $category = ProductCategory::query()->where('name', AplOrientationAttributeCatalogue::CATEGORY)->sole();
+    $workflow = QuoteWorkflow::query()->where('name', AplOrientationAttributeCatalogue::CATEGORY)->with('criteria')->sole();
+    $statuses = QuoteWorkflowStatus::query()->where('quote_workflow_id', $workflow->id)->orderBy('sort_order')->get();
+
+    expect($workflow->criteria)->toHaveCount(1)
+        ->and($workflow->criteria->first()->field)->toBe(WorkflowStatusCatalogue::DEFAULT_CRITERION_FIELD)
+        ->and($workflow->criteria->first()->value_id)->toBe($category->id)
+        ->and($statuses->pluck('name')->all())->toBe([
+            'Da convocare', 'Convocato', 'Presa in carico', 'Monitoraggio SFL', 'Fine pratica', 'Perso',
+        ])
+        ->and($statuses->map(fn (QuoteWorkflowStatus $status): ?string => $status->system_key)->all())
+        ->toBe(['open', null, null, null, 'closed_won', 'closed_lost']);
+
+    // An offer on the category resolves its own set, not the "APL" branch one.
+    $product = Product::factory()->create(['category_id' => $category->id]);
+    $quote = Quote::factory()->create(['opportunity_id' => Opportunity::factory()->create()->id]);
+    QuoteLine::factory()->create(['quote_id' => $quote->id, 'product_id' => $product->id]);
+
+    expect(app(QuoteWorkflowResolver::class)->resolve($quote->fresh())?->is($workflow))->toBeTrue();
+});
+
+it('turns a section an earlier revision seeded grey white, never one edited by hand', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $layouts = app(AttributeLayoutService::class);
+    $internship = ProductCategory::query()->where('name', AplInternshipAttributeCatalogue::CATEGORY)->sole();
+    $seeded = $layouts->resolveExact($internship, AttributeContext::Quote, LayoutFormScope::All);
+
+    // The blob the previous revision wrote: today's, its header highlighted.
+    $grey = $seeded;
+    $grey['sections'][0]['variant'] = 'highlighted';
+    $layouts->upsert($internship, AttributeContext::Quote, LayoutFormScope::All, $grey);
+
+    test()->seed(QualificaQuoteLayoutSeeder::class);
+
+    expect($layouts->resolveExact($internship, AttributeContext::Quote, LayoutFormScope::All))->toBe($seeded);
+
+    // Grey AND renamed: a human's work, left exactly as it is.
+    $handEdited = $grey;
+    $handEdited['sections'][0]['title'] = 'Rinominata a mano';
+    $layouts->upsert($internship, AttributeContext::Quote, LayoutFormScope::All, $handEdited);
+
+    test()->seed(QualificaQuoteLayoutSeeder::class);
+
+    expect($layouts->resolveExact($internship, AttributeContext::Quote, LayoutFormScope::All)['sections'][0])
+        ->toMatchArray(['title' => 'Rinominata a mano', 'variant' => 'highlighted']);
+});

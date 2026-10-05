@@ -4,8 +4,7 @@ use App\Enums\WorkflowStatusGroup;
 use App\Models\ProductCategory;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
-use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
-use Database\Seeders\QualificaCatalog\ApprenticeshipAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\AplPracticeCatalogue;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -185,11 +184,10 @@ it('seeds catalogue workflows, statuses and criteria per category, and converges
     $aplWorkflow = QuoteWorkflow::query()->where('name', 'APL')->with('criteria')->firstOrFail();
     $aplCategory = ProductCategory::query()->where('name', 'APL')->firstOrFail();
 
-    // "APL" is a ROOT that groups its offers: the product sits on its
-    // "Orientamento Specialistico" child, so an exact-category criterion would
-    // never match a single offer — only the branch one reaches it. The APL
-    // internships and apprenticeships joined it as siblings (user directives
-    // 2026-10-02, 2026-10-05).
+    // "APL" is a ROOT that groups its offers: they sit on its children, so an
+    // exact-category criterion would never match a single offer — only the
+    // branch one reaches them. Its seeded practices win over it with their own
+    // lists (user directives 2026-10-02, 2026-10-05).
     expect($aplWorkflow->criteria)->toHaveCount(1)
         ->and($aplWorkflow->criteria->first()->field)->toBe('product_category_branch_id')
         ->and($aplWorkflow->criteria->first()->value_id)->toBe($aplCategory->id)
@@ -444,12 +442,9 @@ it('transcribes the DIL column of the sheet, its duplicated row folded', functio
 it('offers "Non risponde" as an open state in every catalogue list (user directive 2026-09-28)', function (): void {
     // Pure transcription check: every workflow carries it, classified as
     // open, never promoted onto a pinned row — asserted above. Except the APL
-    // internships and apprenticeships: the user kept the sheets' practice
-    // states (user directives 2026-10-02, 2026-10-05).
-    $categoryNames = array_diff(array_keys(WorkflowStatusCatalogue::WORKFLOWS), [
-        AplInternshipAttributeCatalogue::CATEGORY,
-        ApprenticeshipAttributeCatalogue::CATEGORY,
-    ]);
+    // practices: the user kept the sheets' practice states (user directives
+    // 2026-10-02, 2026-10-05).
+    $categoryNames = array_diff(array_keys(WorkflowStatusCatalogue::WORKFLOWS), array_keys(AplPracticeCatalogue::WORKFLOWS));
 
     foreach ($categoryNames as $categoryName) {
         $noAnswer = array_find(

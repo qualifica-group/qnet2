@@ -37,9 +37,10 @@ final class AplInternshipAttributeCatalogue
     public const string CATEGORY = 'Tirocini extracurriculari privati';
 
     /**
-     * The decree and reporting references, shared with the apprenticeship
-     * practices (ApprenticeshipAttributeCatalogue): one attribute per concept
-     * across the APL branch, so the values filter and report together.
+     * The decree and reporting references, shared with the apprenticeship and
+     * orientation practices (ApprenticeshipAttributeCatalogue,
+     * AplOrientationAttributeCatalogue): one attribute per concept across the
+     * APL branch, so the values filter and report together.
      *
      * @var array{code: string, name: string, type: string, options: list<array{value: string, label: string}>}
      */
@@ -56,12 +57,15 @@ final class AplInternshipAttributeCatalogue
     /** @var array{code: string, name: string, type: string} */
     public const array REPORTING_ID = ['code' => 'reporting_id', 'name' => 'ID rendicontazione', 'type' => 'text'];
 
+    /** @var array{code: string, name: string, type: string} */
+    public const array PRACTICE_END_DATE = ['code' => 'practice_end_date', 'name' => 'Data fine', 'type' => 'date'];
+
     /**
      * @var list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>}>
      */
     public const array ATTRIBUTES = [
         ['code' => 'practice_start_date', 'name' => 'Data inizio', 'type' => 'date'],
-        ['code' => 'practice_end_date', 'name' => 'Data fine', 'type' => 'date'],
+        self::PRACTICE_END_DATE,
         ['code' => 'registers_status', 'name' => 'Registri', 'type' => 'enum', 'options' => [
             ['value' => 'entered', 'label' => 'Inserito'],
             ['value' => 'not_entered', 'label' => 'Non inserito'],
@@ -74,8 +78,8 @@ final class AplInternshipAttributeCatalogue
 
     /**
      * The offer form in the sheet's reading order: the header the operator
-     * checks first (registers, decree and the internship's dates),
-     * highlighted; then the practice references.
+     * checks first (registers, decree and the internship's dates), then the
+     * practice references. Every section white (user directive 2026-10-05).
      *
      * @var list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>
      */
@@ -83,7 +87,7 @@ final class AplInternshipAttributeCatalogue
         ['apl-internship-status', 'Stato pratica', [
             ['registers_status', 'decree_status'],
             ['practice_start_date', 'practice_end_date'],
-        ], ['variant' => LayoutSectionVariant::Highlighted, 'columns' => 2, 'description' => 'Registri, decreto e periodo del tirocinio.']],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Registri, decreto e periodo del tirocinio.']],
         ['apl-internship-data', 'Dati pratica', [
             ['practice_number'],
             ['reporting_id', 'decree_id'],

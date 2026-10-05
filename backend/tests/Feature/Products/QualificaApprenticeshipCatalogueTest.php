@@ -15,6 +15,7 @@ use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\AplOrientationAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ApprenticeshipAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
@@ -61,9 +62,9 @@ it('gives the apprenticeships their own offer fields, cut off the APL root', fun
         // 8 practice/training fields + 11 UF x (done by us, reason, days).
         ->and($ownCodes)->toHaveCount(8 + 11 * 3);
 
-    // One "Decreto" attribute for both APL practices, not a copy per category.
+    // One "Decreto" attribute for every APL practice, not a copy per category.
     expect(Attribute::query()->where('code', 'decree_status')->sole()->categories()->pluck('name')->sort()->values()->all())
-        ->toBe(collect([AplInternshipAttributeCatalogue::CATEGORY, ApprenticeshipAttributeCatalogue::CATEGORY])->sort()->values()->all());
+        ->toBe(collect([AplInternshipAttributeCatalogue::CATEGORY, ApprenticeshipAttributeCatalogue::CATEGORY, AplOrientationAttributeCatalogue::CATEGORY])->sort()->values()->all());
 
     expect(Attribute::query()->where('code', 'company_training_capacity')->sole()->options()->count())->toBe(3)
         ->and(Attribute::query()->where('code', 'apprenticeship_y2_stage_reason')->sole()->options()->orderBy('sort_order')->pluck('label')->all())
@@ -89,7 +90,7 @@ it('lays the apprenticeship offer form out per UF, leaving the internship form a
         ...array_column(array_slice(ApprenticeshipAttributeCatalogue::SECTIONS, 2), 1),
     ])
         ->and(count($sections))->toBe(13)
-        ->and($sections[0]['variant'])->toBe('highlighted')
+        ->and(array_unique(array_column($sections, 'variant')))->toBe(['default'])
         ->and(apprenticeshipSectionCodes($sections)[0])->toBe([
             'decree_status', 'decree_id', 'teaching_tutor', 'hiring_date', 'contract_duration_months', 'contract_end_date', 'reporting_id',
         ])

@@ -116,9 +116,9 @@ final class ApprenticeshipAttributeCatalogue
     ];
 
     /**
-     * The offer form in the sheet's reading order: the practice data,
-     * highlighted, then the company's training capacity, then one section per
-     * UF grouped by annualità.
+     * The offer form in the sheet's reading order: the practice data, then
+     * the company's training capacity, then one section per UF grouped by
+     * annualità. Every section white (user directive 2026-10-05).
      *
      * @var list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>
      */
@@ -128,7 +128,7 @@ final class ApprenticeshipAttributeCatalogue
             ['teaching_tutor'],
             ['hiring_date', 'contract_duration_months'],
             ['contract_end_date', 'reporting_id'],
-        ], ['variant' => LayoutSectionVariant::Highlighted, 'columns' => 2, 'description' => 'Decreto, tutor didattico e date del contratto di apprendistato.']],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Decreto, tutor didattico e date del contratto di apprendistato.']],
         ['apprenticeship-training', 'Formazione', [
             ['company_training_capacity'],
         ], ['variant' => LayoutSectionVariant::Default, 'columns' => 1, 'description' => 'Per ogni unità formativa: se non è fatta da noi indica il motivo, altrimenti registra i giorni e le ore svolte.']],

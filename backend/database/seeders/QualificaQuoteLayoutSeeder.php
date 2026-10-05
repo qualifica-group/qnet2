@@ -10,8 +10,7 @@ use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Database\Seeders\Concerns\RetiresAttributes;
 use Database\Seeders\Concerns\SeedsAttributeLayouts;
-use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
-use Database\Seeders\QualificaCatalog\ApprenticeshipAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\AplPracticeCatalogue;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
@@ -76,17 +75,12 @@ class QualificaQuoteLayoutSeeder extends Seeder
 
     /**
      * Category name => the form composed for it INSTEAD of SECTIONS: the APL
-     * practices (user directives 2026-10-02, 2026-10-05), each cut off the
-     * APL root. Kept apart because they share attributes ("Decreto", "ID
-     * decreto", "ID rendicontazione"): filtered out of one common list, each
-     * category would also render the other's sections.
+     * practices, each cut off the APL root (AplPracticeCatalogue::FORMS says
+     * why each keeps a form of its own).
      *
      * @var array<string, list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>>
      */
-    private const array OWN_FORMS = [
-        AplInternshipAttributeCatalogue::CATEGORY => AplInternshipAttributeCatalogue::SECTIONS,
-        ApprenticeshipAttributeCatalogue::CATEGORY => ApprenticeshipAttributeCatalogue::SECTIONS,
-    ];
+    private const array OWN_FORMS = AplPracticeCatalogue::FORMS;
 
     /**
      * The compositions PREVIOUS revisions of this seeder wrote, recognised
@@ -129,6 +123,16 @@ class QualificaQuoteLayoutSeeder extends Seeder
             ['classroom-data', ClassroomAttributeCatalogue::SECTION_TITLE, ClassroomAttributeCatalogue::ROWS],
         ],
     ];
+
+    /**
+     * The sections the revisions before 2026-10-05 seeded HIGHLIGHTED (grey).
+     * The user directive of that day wants every seeded section white: a blob
+     * that is today's form but for those sections' variant is recognised and
+     * recomposed. One edited by hand in any other way stays untouched.
+     *
+     * @var list<string>
+     */
+    private const array PREVIOUSLY_HIGHLIGHTED = ['apl-internship-status', 'apprenticeship-data'];
 
     public function __construct(
         private readonly AttributeLayoutService $layouts,
@@ -232,7 +236,26 @@ class QualificaQuoteLayoutSeeder extends Seeder
             }
         }
 
-        return $this->isRetiredECampusComposition($blob);
+        return $this->isRetiredECampusComposition($blob)
+            || $this->composesAs($blob, $this->highlightedAsBefore($this->sections($category, $effective)));
+    }
+
+    /**
+     * $sections with the PREVIOUSLY_HIGHLIGHTED ones grey again, as written
+     * before every seeded section turned white.
+     *
+     * @param  list<array<string, mixed>>  $sections
+     * @return list<array<string, mixed>>
+     */
+    private function highlightedAsBefore(array $sections): array
+    {
+        return array_map(static function (array $section): array {
+            if (in_array($section['id'], self::PREVIOUSLY_HIGHLIGHTED, true)) {
+                $section['variant'] = LayoutSectionVariant::Highlighted->value;
+            }
+
+            return $section;
+        }, $sections);
     }
 
     /**

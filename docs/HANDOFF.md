@@ -42,6 +42,41 @@
 - Verificato a schermo (Playwright, 1440 chiaro/scuro e 375): nessuno scroll orizzontale di pagina.
 - Guida in-app `request-statistics` IT/EN aggiornata. Da fare: manuale Claude Docs (doc non condiviso con la sessione).
 
+## CATALOGO: "ORIENTAMENTO SPECIALISTICO" (CAMPI OFFERTA + STATI PRATICA) + SEZIONI SEED BIANCHE — VERDE, COMMITTATO (2026-10-05)
+
+- Fonte: PDF "Campi Misure APL" (scheda Orientamento/SFL GOL). Decisione utente 2026-10-05: torna la scheda del
+  2026-10-01 (mai committata, era stata sostituita dai Tirocini), ACCANTO a Tirocini e Apprendistato. Stati: "se tra le
+  sottocategorie APL sono gli stessi unisci, altrimenti ognuno il proprio" -> liste diverse, quindi ognuna la sua.
+- Registro unico `QualificaCatalog/AplPracticeCatalogue` (QUOTE_ATTRIBUTES, FORMS, STATUS_SECTIONS, WORKFLOWS) per le 3
+  pratiche APL: lo leggono `QualificaCatalogSeeder`, `QualificaQuoteLayoutSeeder::OWN_FORMS`, `WorkflowStatusCatalogue`.
+  Nuova pratica APL = una riga per mappa qui + barriera in `CategoryInheritanceRules` + nodo in `CATALOG`. Ha liberato
+  righe: `WorkflowStatusCatalogue` 497, `QualificaCatalogSeeder` 499 (ancora al limite: prossima aggiunta -> split).
+- Campi (`AplOrientationAttributeCatalogue`, categoria esistente "Orientamento Specialistico", barriera
+  `inherits_quote_attributes=false`): `sfl_renewal_status` (Da rinnovare/Rinnovato), `decree_status`, `deliverable_policies`
+  (integer 1-4), `last_active_policy_date`, `orientation_measure` (Presa in carico/Orientamento/Accompagnamento),
+  `sfl_months_received` (integer 0-12), `practice_end_date` (ora costante condivisa
+  `AplInternshipAttributeCatalogue::PRACTICE_END_DATE`), `reporting_id`, `decree_id`, `orientation_convocation_date`,
+  `orientation_intake_date`, `orientation_session_date`, `orientation_job_support_{1,2,3}_date`. Sezioni Testata / Dati
+  pratica / Percorso.
+- NON campi: Utente = anagrafica; Operatore/Commerciale/Segnalatore = campi offerta; SGA/Commessa/Valore = commessa.
+  "Ultima politica" (testata) e "Ultima politica attiva" = un solo campo data. Automazioni del PDF (data fine calcolata,
+  rinnovo SFL mensile) NON implementate: valori manuali. Da proporre come follow-up.
+- Stati (`AplOrientationWorkflowStatusCatalogue`, sezione `apl_orientation`, categoria esatta, vince sul ramo APL): Da
+  convocare (open) / Convocato, Presa in carico, Monitoraggio SFL (pending) / Fine pratica (won) / Perso (lost). Nessun
+  "Non risponde". IMPATTO: la lista ramo "APL" (Nuovo Contatto ... Assegnato) non si applica piu' a nessuna categoria
+  seedata; per l'orientamento le colonne report APL (nuovi contatti, invio presa in carico) restano senza dati.
+- Sezioni seed tutte BIANCHE (decisione utente 2026-10-05): Tirocini "Stato pratica" e Apprendistato "Dati pratica" da
+  `Highlighted` a `Default`. `QualificaQuoteLayoutSeeder::PREVIOUSLY_HIGHLIGHTED` riconosce il blob odierno con quelle
+  sezioni grigie e lo ricompone; un layout modificato a mano in altro modo resta intatto. `ECampusAttributeCatalogue::
+  PREVIOUS_SECTIONS` resta Highlighted (storico, serve al riconoscimento).
+- Test: nuovo `Products/QualificaAplOrientationCatalogueTest` (4, incluso grigio->bianco e layout a mano preservato);
+  requisito cambiato: rimosso "Orientamento senza campi propri" (InternshipTest), varianti `default`, layout quote 11->12,
+  `QUOTE_LAYOUT_OWN_CATEGORIES` +Orientamento, "Non risponde" esclude `AplPracticeCatalogue::WORKFLOWS`. Suite completa
+  verde (9249 passed, 1 skipped), Pint pulito. Seed applicato al DB locale `qnet2` (verificato).
+- Da fare: rieseguire `QualificaProductionDataSeeder` su staging/prod. Su DB importato "Orientamento Specialistico" puo'
+  avere un layout legacy: il seeder non lo tocca (dato utente) -> i nuovi campi finirebbero in "altre informazioni".
+- Manuale: nessun impatto (dati di seed; guide in-app e Manuale QNet non elencano campi/stati per categoria).
+
 ## SPEC 0191 PREZZO/COSTO PRODOTTO PER UTILIZZO — VERDE, NON COMMITTATO (2026-10-05)
 
 - Spec `docs/specs/0191-product-pricing-by-usage.xml` (approved, D-1..D-9 utente). Prezzo obbligatorio/visibile sse

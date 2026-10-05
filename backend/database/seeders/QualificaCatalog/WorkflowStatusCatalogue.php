@@ -31,8 +31,8 @@ use InvalidArgumentException;
  *                        outcome, but it is transcribed in full rather than
  *                        borrowed, so the two can diverge without either
  *                        dragging the other.
- *   6-8. E-CAMPUS, TIROCINI APL, APPRENDISTATO (user directives 2026-10-01/02/05) — one list each, see
- *        ECampusWorkflowStatusCatalogue, AplInternshipWorkflowStatusCatalogue, ApprenticeshipWorkflowStatusCatalogue.
+ *   6. E-CAMPUS (user directive 2026-10-01) — one list, see ECampusWorkflowStatusCatalogue.
+ *   7. APL PRACTICES (user directives 2026-10-02/05) — one list per practice, see AplPracticeCatalogue.
  *
  * TRANSCRIPTION NOTES (the sheet is a spreadsheet, not a database):
  *   - The same state is spelled differently across columns. Folded to ONE
@@ -97,7 +97,7 @@ final class WorkflowStatusCatalogue
      * it. Used by a workflow bound to a CONTAINER rather than to a leaf
      * products actually sit on — "Consulenza" is exactly that (its products
      * live two levels down, under `ISO` and its siblings) and so is the "APL"
-     * root (its offer sits on the "Orientamento Specialistico" child), so an
+     * root (its offers sit on its children), so an
      * exact-category criterion would never match a single offer. "DIL" too,
      * since its courses moved onto "DIL - Lombardia" (user directive
      * 2026-09-17), and "Autofinanziato" since its courses moved onto the
@@ -271,8 +271,7 @@ final class WorkflowStatusCatalogue
             'In Standby' => ['legend' => self::OPEN, 'description' => 'Pratica temporaneamente sospesa in attesa di ulteriori sviluppi.'],
         ],
         ECampusWorkflowStatusCatalogue::SECTION => ECampusWorkflowStatusCatalogue::STATUSES,
-        AplInternshipWorkflowStatusCatalogue::SECTION => AplInternshipWorkflowStatusCatalogue::STATUSES,
-        ApprenticeshipWorkflowStatusCatalogue::SECTION => ApprenticeshipWorkflowStatusCatalogue::STATUSES,
+        ...AplPracticeCatalogue::STATUS_SECTIONS,
     ];
 
     /**
@@ -367,15 +366,14 @@ final class WorkflowStatusCatalogue
         // Bound to the "Consulenza" ROOT, whose products sit two levels below
         // it: only the branch criterion reaches them (spec 0092).
         'Consulenza' => ['section' => self::CONSULTING, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
-        // Bound to the "APL" ROOT, whose offer sits on the "Orientamento
-        // Specialistico" subcategory below it (user directive 2026-09-07):
-        // only the branch criterion reaches it, same shape as "Consulenza"
-        // above. The two never compete — APL is a branch of its own.
+        // Bound to the "APL" ROOT (user directive 2026-09-07): only the branch
+        // criterion reaches its children, same shape as "Consulenza" above. The
+        // seeded practices win over it with their own exact-category lists
+        // (AplPracticeCatalogue); it still serves any other APL child.
         'APL' => ['section' => self::APL, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
         // A container too: its courses sit on the subject areas two levels down.
         ECampusCourseCatalogue::CATEGORY => ['section' => ECampusWorkflowStatusCatalogue::SECTION, 'criterion_field' => self::BRANCH_CRITERION_FIELD],
-        AplInternshipAttributeCatalogue::CATEGORY => ['section' => AplInternshipWorkflowStatusCatalogue::SECTION],
-        ApprenticeshipAttributeCatalogue::CATEGORY => ['section' => ApprenticeshipWorkflowStatusCatalogue::SECTION],
+        ...AplPracticeCatalogue::WORKFLOWS,
     ];
 
     /**

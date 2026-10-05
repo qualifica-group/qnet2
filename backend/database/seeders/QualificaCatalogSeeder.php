@@ -9,6 +9,7 @@ use App\Models\Source;
 use Database\Seeders\Concerns\RetiresAttributes;
 use Database\Seeders\Concerns\SeedsCategoryAttributes;
 use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\AplPracticeCatalogue;
 use Database\Seeders\QualificaCatalog\ApprenticeshipAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\CatalogRootRules;
@@ -263,11 +264,10 @@ class QualificaCatalogSeeder extends Seeder
         ],
         SelfFundedCourseCatalogue::CATEGORY => CourseDataAttributeCatalogue::SELF_FUNDED_ATTRIBUTES,
         ClassroomAttributeCatalogue::SELF_EMPLOYMENT_CATEGORY => ClassroomAttributeCatalogue::SELF_EMPLOYMENT_ATTRIBUTES,
-        // The e-Campus, APL internship and apprenticeship forms: each its node's
-        // only offer fields, behind a barrier (CategoryInheritanceRules).
+        // The e-Campus form and the APL practices': each its node's only offer
+        // fields, behind a barrier (CategoryInheritanceRules).
         ECampusCourseCatalogue::CATEGORY => ECampusAttributeCatalogue::ATTRIBUTES,
-        AplInternshipAttributeCatalogue::CATEGORY => AplInternshipAttributeCatalogue::ATTRIBUTES,
-        ApprenticeshipAttributeCatalogue::CATEGORY => ApprenticeshipAttributeCatalogue::ATTRIBUTES,
+        ...AplPracticeCatalogue::QUOTE_ATTRIBUTES,
     ];
 
     /**
