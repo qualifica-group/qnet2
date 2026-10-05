@@ -8,9 +8,9 @@ import type { ProductDetailWithPermissions } from '@/features/products/types'
 import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
 
 /**
- * Spec 0142 AC-008: the product form's two independent usage checkboxes
- * (Sellable / Usable as cost) — Sellable only by default on create, at least
- * one required, and a changed set sent on edit.
+ * Spec 0191 AC-009/AC-010/AC-012: Cost and Price follow the usages — each
+ * field (and the margin) appears only when pertinent, a hidden value survives
+ * the toggle, and a hidden field is neither required nor sent in a PATCH.
  */
 
 const createProductMock = vi.fn()
@@ -149,9 +149,8 @@ beforeEach(() => {
   })
 })
 
-function completeRequiredCreateFields() {
+function fillNameAndCategory() {
   fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'ThinkPad X1' } })
-  fireEvent.change(screen.getByLabelText('Price'), { target: { value: '1200' } })
   fireEvent.click(screen.getByTestId('category-select'))
 }
 
@@ -159,51 +158,87 @@ function save() {
   fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
 }
 
-describe('ProductForm — offer usages (spec 0142)', () => {
-  it('starts a new product as Sellable only and sends that set on create', async () => {
+describe('ProductForm — cost/price by usage (spec 0191)', () => {
+  it('AC-009: shows only the price by default, adds the cost with the cost usage, drops the price without Sellable', async () => {
+    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await screen.findByRole('checkbox', { name: 'Sellable' })
+    expect(screen.getByLabelText('Price')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Cost')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Usable as cost' }))
+    expect(screen.getByLabelText('Cost')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Sellable' }))
+    expect(screen.queryByLabelText('Price')).not.toBeInTheDocument()
+  })
+
+  it('AC-009: a cost-only product saves without a price, sending it as null', async () => {
     createProductMock.mockResolvedValue(product())
     render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
 
-    expect(await screen.findByRole('checkbox', { name: 'Sellable' })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: 'Usable as cost' })).not.toBeChecked()
-
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Usable as cost' }))
-    completeRequiredCreateFields()
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Usable as cost' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Sellable' }))
+    fillNameAndCategory()
     fireEvent.change(screen.getByLabelText('Cost'), { target: { value: '800' } })
     save()
 
     await waitFor(() => expect(createProductMock).toHaveBeenCalledTimes(1))
-    expect((createProductMock.mock.calls[0][0] as Record<string, unknown>).usages).toEqual(['SALE', 'COST'])
+    expect(createProductMock.mock.calls[0][0]).toMatchObject({ usages: ['COST'], cost: 800, price: null })
   })
 
-  it('blocks the submit when no usage is selected', async () => {
+  it('AC-010: a typed price is still there after Sellable is unticked and ticked again', async () => {
     render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
 
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'Sellable' }))
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'ThinkPad X1' } })
-    fireEvent.click(screen.getByTestId('category-select'))
-    save()
+    await screen.findByRole('checkbox', { name: 'Sellable' })
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '1200' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Usable as cost' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Sellable' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Sellable' }))
 
-    expect(await screen.findByText('Select at least one usage.')).toBeInTheDocument()
-    expect(createProductMock).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Price')).toHaveValue(1200)
   })
 
-  it('seeds the edit form from the product and sends only the changed set', async () => {
+  it('AC-010: dropping a usage in edit does not put cost/price in the PATCH', async () => {
     updateProductMock.mockResolvedValue(product({ usages: ['COST'] }))
     render(
-      <ProductForm mode={{ type: 'edit', product: product() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <ProductForm
+        mode={{ type: 'edit', product: product({ usages: ['SALE', 'COST'] }) }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
       { wrapper: wrapper() },
     )
 
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'Usable as cost' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Sellable' }))
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Sellable' }))
     save()
 
     await waitFor(() => expect(updateProductMock).toHaveBeenCalledTimes(1))
     expect(updateProductMock.mock.calls[0]).toContainEqual({ usages: ['COST'] })
+  })
+
+  it('AC-012: the margin readout and the summary rows follow the usages', async () => {
+    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await screen.findByRole('checkbox', { name: 'Sellable' })
+    expect(screen.queryByText('Margin')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Price').length).toBeGreaterThan(1)
+    expect(screen.queryAllByText('Cost')).toHaveLength(0)
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Usable as cost' }))
+    expect(screen.getAllByText('Margin').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Cost').length).toBeGreaterThan(1)
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Sellable' }))
+    expect(screen.queryByText('Margin')).not.toBeInTheDocument()
+    expect(screen.queryAllByText('Price')).toHaveLength(0)
   })
 })

@@ -139,15 +139,15 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Field', 'What to enter'],
           rows: [
-            ['Cost', 'How much the product costs you. Required, zero or positive.'],
-            ['Price', 'The selling price. Required, zero or positive.'],
+            ['Cost', 'How much the product costs you. Required if the product is Usable as cost, zero or positive; it only appears in that case.'],
+            ['Price', 'The selling price. Required if the product is Sellable, zero or positive; it only appears in that case.'],
             ['VAT', 'The VAT rate, from the VAT list.'],
             ['Supplier', 'Who supplies the product.'],
           ],
         },
         {
           type: 'paragraph',
-          text: 'Below cost and price the Margin (price minus cost) appears with its percentage of the price. It updates as you type.',
+          text: 'If the product is both Sellable and Usable as cost, the Margin (price minus cost) appears below cost and price with its percentage of the price. It updates as you type. If you remove a usage, the field disappears but the value already typed is kept: it comes back if you tick it again.',
         },
         {
           type: 'warning',
@@ -184,7 +184,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "From the Actions menu choose View to open the read-only card. You find the code and name, the Margin in evidence, the Identity, Classification and Pricing and supply sections, the attribute values, the change history (if you have permission) and the Created at date.",
+          text: "From the Actions menu choose View to open the read-only card. You find the code and name, Price, Cost and Margin in evidence (each only when relevant: the Margin appears only with both usages), the Identity, Classification and Pricing and supply sections, the attribute values, the change history (if you have permission) and the Created at date.",
         },
         {
           type: 'paragraph',
@@ -203,7 +203,7 @@ const guide: HelpGuide = {
             'Keep the proposed Code and write the Name, for example "Train trip".',
             'Choose the right Category.',
             'In Offer usage remove Sellable and tick Usable as cost.',
-            'Enter Cost and Price, then choose the VAT.',
+            'Enter the Cost, then choose the VAT.',
             'Fill in the required attributes and press Save.',
           ],
         },

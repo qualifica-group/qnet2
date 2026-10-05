@@ -58,10 +58,10 @@ export function buildCreatePayload(
     ...(code ? { code } : {}),
     name: values.name,
     description: values.description,
-    // cost/price/category_id are validated non-null by the schema's
-    // required-value superRefine before submit.
-    cost: values.cost as number,
-    price: values.price as number,
+    // Sent as typed, null included: the schema requires a value only for an
+    // active usage and the server mirrors that (spec 0191).
+    cost: values.cost,
+    price: values.price,
     category_id: values.category_id as number,
     product_type: values.product_type,
     usages: values.usages,
@@ -94,12 +94,10 @@ export function buildUpdatePayload(
     payload.description = values.description
   }
   if (values.cost !== normalizeDecimal(original.cost)) {
-    // See buildCreatePayload: validated non-null by the schema's
-    // required-value superRefine before submit.
-    payload.cost = values.cost as number
+    payload.cost = values.cost
   }
   if (values.price !== normalizeDecimal(original.price)) {
-    payload.price = values.price as number
+    payload.price = values.price
   }
   if (values.category_id !== original.category_id) {
     payload.category_id = values.category_id as number

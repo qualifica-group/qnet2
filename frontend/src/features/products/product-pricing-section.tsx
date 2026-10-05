@@ -14,6 +14,7 @@ import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select
 import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
 import { formatDecimal } from '@/features/products/column-renderers'
 import { computeProductMargin } from '@/features/products/product-margin'
+import { productPricingVisibility } from '@/features/products/product-pricing-visibility'
 import type { ProductSelectedRelations } from '@/features/products/product-form-summary'
 import type { ProductFormValues } from '@/features/products/use-product-form'
 
@@ -71,6 +72,11 @@ function ProductMarginReadout({ control }: { control: Control<ProductFormValues>
 export function ProductPricingSection({ control, selected }: ProductPricingSectionProps) {
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
+  // Spec 0191: the usages decide which amount applies. A hidden field stays
+  // registered with its value (no `shouldUnregister`), so re-ticking the usage
+  // brings the typed number back (D-2).
+  const usages = useWatch({ control, name: 'usages' })
+  const pricing = productPricingVisibility(usages)
 
   const amountsVisible = fieldPermission('cost').visible && fieldPermission('price').visible
   const visible =
@@ -90,47 +96,51 @@ export function ProductPricingSection({ control, selected }: ProductPricingSecti
       description={t('products.form.sections.pricing.description')}
     >
       <div className={FIELD_GRID_CLASS}>
-        <MetaField control={control} name="cost" metaKey="cost" label={t('products.form.cost')}>
-          {({ field, disabled, readOnly }) => (
-            <FormControl>
-              <Input
-                type="number"
-                step="0.01"
-                inputMode="decimal"
-                disabled={disabled}
-                readOnly={readOnly}
-                value={numberInputValue(field.value)}
-                onChange={(event) =>
-                  field.onChange(event.target.value === '' ? null : Number(event.target.value))
-                }
-                onBlur={field.onBlur}
-                name={field.name}
-                ref={field.ref}
-              />
-            </FormControl>
-          )}
-        </MetaField>
+        {pricing.cost ? (
+          <MetaField control={control} name="cost" metaKey="cost" label={t('products.form.cost')}>
+            {({ field, disabled, readOnly }) => (
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.01"
+                  inputMode="decimal"
+                  disabled={disabled}
+                  readOnly={readOnly}
+                  value={numberInputValue(field.value)}
+                  onChange={(event) =>
+                    field.onChange(event.target.value === '' ? null : Number(event.target.value))
+                  }
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
+                />
+              </FormControl>
+            )}
+          </MetaField>
+        ) : null}
 
-        <MetaField control={control} name="price" metaKey="price" label={t('products.form.price')}>
-          {({ field, disabled, readOnly }) => (
-            <FormControl>
-              <Input
-                type="number"
-                step="0.01"
-                inputMode="decimal"
-                disabled={disabled}
-                readOnly={readOnly}
-                value={numberInputValue(field.value)}
-                onChange={(event) =>
-                  field.onChange(event.target.value === '' ? null : Number(event.target.value))
-                }
-                onBlur={field.onBlur}
-                name={field.name}
-                ref={field.ref}
-              />
-            </FormControl>
-          )}
-        </MetaField>
+        {pricing.price ? (
+          <MetaField control={control} name="price" metaKey="price" label={t('products.form.price')}>
+            {({ field, disabled, readOnly }) => (
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.01"
+                  inputMode="decimal"
+                  disabled={disabled}
+                  readOnly={readOnly}
+                  value={numberInputValue(field.value)}
+                  onChange={(event) =>
+                    field.onChange(event.target.value === '' ? null : Number(event.target.value))
+                  }
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
+                />
+              </FormControl>
+            )}
+          </MetaField>
+        ) : null}
 
         <RelationSelectField
           control={control}
@@ -164,9 +174,9 @@ export function ProductPricingSection({ control, selected }: ProductPricingSecti
         />
       </div>
 
-      {/* Only where both amounts are readable: a margin computed from one
-          visible field and one withheld one would be a leak, not a hint. */}
-      {amountsVisible ? <ProductMarginReadout control={control} /> : null}
+      {/* Only with both usages and where both amounts are readable: a margin
+          computed from one visible field and one withheld one would be a leak, not a hint. */}
+      {amountsVisible && pricing.margin ? <ProductMarginReadout control={control} /> : null}
     </FormSection>
   )
 }

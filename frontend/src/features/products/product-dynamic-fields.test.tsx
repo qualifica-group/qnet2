@@ -183,7 +183,6 @@ describe('ProductForm — dynamic attribute fields (spec 0061)', () => {
 
     fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'ThinkPad X1' } })
     fireEvent.click(screen.getByText('select-category-3'))
-    fireEvent.change(screen.getByLabelText(/^Cost/), { target: { value: '800' } })
     fireEvent.change(screen.getByLabelText(/^Price/), { target: { value: '1200' } })
 
     const ramField = await screen.findByRole('spinbutton', { name: 'RAM (GB)' })
@@ -288,7 +287,6 @@ describe('ProductForm — configured attribute layout (spec 0062 AC-014)', () =>
 
     fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'ThinkPad X1' } })
     fireEvent.click(screen.getByText('select-category-3'))
-    fireEvent.change(screen.getByLabelText(/^Cost/), { target: { value: '800' } })
     fireEvent.change(screen.getByLabelText(/^Price/), { target: { value: '1200' } })
 
     const ramField = await screen.findByRole('spinbutton', { name: 'RAM (GB)' })

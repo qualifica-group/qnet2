@@ -96,3 +96,26 @@ describe('buildCreateProductSchema — multiselect enum attribute', () => {
     expect(schema.safeParse({ ...baseValues(), attribute_values: { degree: ['phd'] } }).success).toBe(false)
   })
 })
+
+describe('buildCreateProductSchema — cost/price required by usage (spec 0191 AC-011)', () => {
+  const schema = buildCreateProductSchema(i18n.t, EMPTY_CUSTOM_FIELDS_SCHEMA, [])
+
+  function errorPaths(overrides: Record<string, unknown>): string[] {
+    const result = schema.safeParse({ ...baseValues(), ...overrides })
+    return result.success ? [] : result.error.issues.map((issue) => issue.path.join('.'))
+  }
+
+  it('accepts a null price and requires the cost for a cost-only product', () => {
+    expect(errorPaths({ usages: ['COST'], price: null, cost: 10 })).toEqual([])
+    expect(errorPaths({ usages: ['COST'], price: null, cost: null })).toEqual(['cost'])
+  })
+
+  it('accepts a null cost and requires the price for a Sellable-only product', () => {
+    expect(errorPaths({ usages: ['SALE'], cost: null, price: 10 })).toEqual([])
+    expect(errorPaths({ usages: ['SALE'], cost: null, price: null })).toEqual(['price'])
+  })
+
+  it('requires both when both usages are on', () => {
+    expect(errorPaths({ usages: ['SALE', 'COST'], cost: null, price: null }).sort()).toEqual(['cost', 'price'])
+  })
+})

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0191-product-pricing-by-usage" status="approved" owner="utente" date="2026-10-05">
+
+  <goal>
+    Il Prezzo e il Costo di un prodotto seguono i suoi utilizzi in offerta (spec 0142): un prodotto
+    solo Vendibile mostra e richiede solo il Prezzo, uno solo Utilizzabile come costo solo il Costo,
+    uno con entrambi gli utilizzi entrambi i valori e il margine. Niente piu' valori inventati per
+    campi che nessuna offerta legge.
+  </goal>
+
+  <context>
+    - `products.cost` e `products.price` sono `decimal(15,2)->nullable()` (migrazione
+      `2026_07_08_100400_create_products_table`): nessuna migrazione.
+    - `products.usages` = set di `App\Enums\ProductUsage` { Sale = 'SALE', Cost = 'COST' }, cast
+      `AsEnumCollection`, default del model `["SALE"]`, almeno un valore (spec 0142 D-2/D-3).
+    - Oggi entrambi obbligatori sempre: `StoreProductRequest` (`'cost'/'price' => required|numeric`),
+      `UpdateProductRequest` (`sometimes|required|numeric`), FE `product-schema.ts`
+      `withRequiredValueRules` (superRefine `costRequired`/`priceRequired`).
+    - DTO: `CreateProductData` ha `float $cost`/`float $price` non nullable; `UpdateProductData` ha gia'
+      `?float` + `costSubmitted`/`priceSubmitted`. Chiamanti diretti del DTO di create:
+      `Migrations/Sources/ProductsSource` e `CostProductsSource` (passano sempre un float).
+    - Uso dei valori nelle offerte: il picker riga precompila `unit_price` con `meta.price` sul tab
+      Prodotti e `meta.cost` sul tab Costi (`use-quote-lines-field.ts::lineValuesFromProduct`), e il
+      picker filtra per `usage` (spec 0142 D-4): un valore non pertinente non viene mai letto.
+    - FE: campi in `product-pricing-section.tsx` (`MetaField` cost/price + `ProductMarginReadout`,
+      gia' condizionato a `amountsVisible` = entrambi i permessi di campo visibili),
+      riepilogo `product-form-summary.tsx` (righe Costo/Prezzo/Margine), dettaglio
+      `product-detail.tsx` (Prezzo, Costo, KPI Margine), margine `product-margin.ts::computeProductMargin`.
+      Checkbox utilizzi: `product-usage-field.tsx` (campo form `usages`).
+    - Griglia prodotti (`ProductsTableDefinition`): nessuna colonna editabile inline; non esiste un
+      import prodotti. `CellValueValidator` e import NON sono toccati.
+    - Guida in-app `features/help/content/{it,en}/products.ts`: sezioni `pricing-and-supply-section`
+      ("Obbligatorio" su entrambi, testo Margine) e `cost-item-flow` ("Inserisci Costo e Prezzo").
+  </context>
+
+  <decisions>
+    D-1  (utente) Obbligatorieta' per utilizzo, FE e BE: Prezzo obbligatorio sse `SALE` tra gli
+         utilizzi; Costo obbligatorio sse `COST`. Il valore non pertinente e' facoltativo
+         (`nullable|numeric`).
+    D-2  (utente) Togliere un utilizzo NON cancella il valore: il campo viene nascosto e non validato,
+         il valore resta nel form (riattivando l'utilizzo ricompare) e nel DB. Il FE non invia mai un
+         null "di pulizia".
+    D-3  Regola server sui valori EFFETTIVI: utilizzi effettivi = `usages` inviati, altrimenti quelli
+         salvati (create: default `["SALE"]`); valore effettivo = valore inviato se la chiave e'
+         presente, altrimenti quello salvato (create: null). Se un utilizzo e' attivo e il suo valore
+         effettivo e' null -> 422 sul campo (`price` per SALE, `cost` per COST). Copre il PATCH
+         parziale che aggiunge un utilizzo a un prodotto col valore vuoto.
+         Implementazione unica condivisa da Store e Update (stesso controllo nel `withValidator`).
+    D-4  (utente) Margine (readout del form, riga del riepilogo, KPI del dettaglio) solo con
+         entrambi gli utilizzi; resta in AND con la condizione permessi gia' esistente.
+    D-5  (utente) Dettaglio prodotto: Prezzo solo se SALE, Costo solo se COST.
+    D-6  (utente) Visibilita' campo = utilizzo AND permesso di campo; i permessi restano invariati.
+    D-7  (utente) Griglia prodotti invariata: colonne Costo e Prezzo mostrano il valore salvato anche
+         se non pertinente (filtri/ordinamento coerenti con cio' che si vede).
+    D-8  (utente) Nessuna bonifica dei prodotti esistenti.
+    D-9  Una sola funzione pura FE decide la visibilita' (`price`, `cost`, `margin`) dagli utilizzi,
+         usata da form, riepilogo, schema e dettaglio: nessuna seconda copia della regola.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>BE: regole `cost`/`price` per utilizzo in `StoreProductRequest` e `UpdateProductRequest` (D-1, D-3).</item>
+      <item>BE: `CreateProductData` con `?float $cost`/`?float $price`; `ProductService::create` scrive null.</item>
+      <item>FE: schema Zod con obbligatorieta' per utilizzo; sezione Prezzi e riepilogo che mostrano solo i campi pertinenti e il margine solo con entrambi.</item>
+      <item>FE: payload create/update con `cost`/`price` `number | null` (create invia il valore com'e' nel form, update resta a diff).</item>
+      <item>FE: dettaglio prodotto coerente (D-5, D-4).</item>
+      <item>Manuale: guida in-app products IT+EN; sezione Prodotti del manuale Claude Docs (o segnalazione se il doc non e' accessibile).</item>
+    </in>
+    <out>
+      <item>Griglia prodotti, filtri e ordinamento di Costo/Prezzo (D-7).</item>
+      <item>Bonifica o migrazione dei dati esistenti; migrazioni DB.</item>
+      <item>Sorgenti di migrazione legacy `ProductsSource`/`CostProductsSource` (continuano a passare entrambi i valori).</item>
+      <item>Righe offerta, `for-select`, precompilazione `unit_price`, `SimplifiedOfferLineNormalizer`.</item>
+      <item>Semantica dei permessi di campo e la regola `nonnegative` (oggi solo FE): invariate.</item>
+      <item>Valori di default degli utilizzi (resta `["SALE"]`).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/products">
+      <request>
+        usages?: ("SALE"|"COST")[]   (invariato; assente = ["SALE"])
+        price:  number | null        obbligatorio non-null sse SALE in usages effettivi
+        cost:   number | null        obbligatorio non-null sse COST in usages effettivi
+        (chiave assente = null)
+      </request>
+      <response status="201">Invariata: data.cost / data.price stringa decimale o null.</response>
+      <errors>422 `errors.price` / `errors.cost` (messaggio `validation.required`) se l'utilizzo e' attivo e il valore effettivo e' null. 403 invariato.</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/products/{product}">
+      <request>
+        usages?, price?, cost? come sopra; tutti `sometimes`. Regola sui valori effettivi (D-3):
+        usages inviati ?? salvati; price/cost inviati (anche null) ?? salvati.
+      </request>
+      <response status="200">Invariata. Un campo non inviato non cambia (D-2).</response>
+      <errors>422 `errors.price` / `errors.cost` come sopra. 403 invariato.</errors>
+    </endpoint>
+    <frontend>
+      `CreateProductPayload.cost` / `.price`: `number | null` (types.ts). Nessuna nuova chiave i18n
+      di errore: si riusano `products.form.costRequired` / `priceRequired`.
+    </frontend>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato POST con usages ["SALE"], senza cost: 201 e `cost` null; senza price: 422 su `price`.</criterion>
+    <criterion id="AC-002">Dato POST con usages ["COST"], senza price: 201 e `price` null; senza cost: 422 su `cost`.</criterion>
+    <criterion id="AC-003">Dato POST con usages ["SALE","COST"], manca uno dei due: 422 su quel campo. POST senza usages: price obbligatorio, cost facoltativo.</criterion>
+    <criterion id="AC-004">Dato un prodotto SALE+COST con price 100, PATCH usages ["COST"] senza price: 200 e price resta 100 nel DB (D-2).</criterion>
+    <criterion id="AC-005">Dato un prodotto solo SALE con cost null, PATCH usages ["SALE","COST"] senza cost: 422 su `cost`; con cost 60: 200.</criterion>
+    <criterion id="AC-006">PATCH price null su prodotto con SALE: 422 su `price`; su prodotto solo COST: 200 e price null.</criterion>
+    <criterion id="AC-007">Requisito cambiato (dichiarato): `ProductCrudTest` POST vuoto ora riporta errori su name, category_id, price, product_type e NON su cost. Test permessi/sicurezza prodotti esistenti verdi senza modifiche.</criterion>
+    <criterion id="AC-008">Griglia invariata: `ProductTableTest` verde; un prodotto solo COST con price salvato espone il price nella riga.</criterion>
+    <criterion id="AC-009">Form create: di default (Vendibile) si vede solo Prezzo; spuntando Utilizzabile come costo compare Costo; togliendo Vendibile sparisce Prezzo. Il campo nascosto non genera errore di obbligatorieta' al salvataggio.</criterion>
+    <criterion id="AC-010">Form: scritto un prezzo, tolto e rimesso Vendibile, il prezzo e' ancora quello scritto (D-2). In modifica, togliere un utilizzo non mette cost/price nel payload PATCH.</criterion>
+    <criterion id="AC-011">Schema (unit): con usages ["COST"] price null e' valido e cost null da' `costRequired`; con ["SALE"] l'inverso; con entrambi entrambi gli errori.</criterion>
+    <criterion id="AC-012">Margine nel form (readout) e riga Margine del riepilogo visibili solo con entrambi gli utilizzi (e permessi visibili); righe Costo/Prezzo del riepilogo solo se pertinenti.</criterion>
+    <criterion id="AC-013">Dettaglio: prodotto solo SALE mostra Prezzo, non Costo ne' Margine; solo COST mostra Costo, non Prezzo ne' Margine; entrambi mostra i tre.</criterion>
+    <criterion id="AC-014">Guida in-app products IT ed EN aggiornata (stessi id di sezione); `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza; nessuna migrazione.
+    - Authz invariata (Policy nel controller + `EnforcesFieldPermissions`).
+    - La regola D-3 vive in un solo punto BE condiviso da Store e Update; la visibilita' FE in una
+      sola funzione pura (D-9).
+    - File entro 300 righe (soft) / 500 (hard); typecheck `npx tsc -b --force`, Pint, ESLint puliti.
+    - Test mirati: `XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/Products`, Vitest su
+      `features/products` e `features/help`.
+  </constraints>
+
+</spec>

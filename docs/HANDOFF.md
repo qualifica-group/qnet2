@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0191 PREZZO/COSTO PRODOTTO PER UTILIZZO — VERDE, NON COMMITTATO (2026-10-05)
+
+- Spec `docs/specs/0191-product-pricing-by-usage.xml` (approved, D-1..D-9 utente). Prezzo obbligatorio/visibile sse
+  `SALE`, Costo sse `COST`, margine sse entrambi. Togliere un utilizzo NON cancella il valore (nascosto, non validato).
+- BE: regola unica nel trait `Http/Requests/Concerns/RequiresPricingForUsages` (Store+Update, `withValidator`), sui
+  valori EFFETTIVI (usages inviati ?? salvati ?? `[SALE]`; valore inviato ?? salvato) -> 422 `price`/`cost`. Regole base
+  `nullable|numeric`. `CreateProductData` `?float cost/price`. Sorgenti migrazione legacy invariate.
+- FE: unica regola in `features/products/product-pricing-visibility.ts::productPricingVisibility` (schema, sezione
+  prezzi, riepilogo, dettaglio). `CreateProductPayload.cost/price: number | null`; update a diff. Griglia invariata
+  (mostra il valore salvato anche se non pertinente, D-7). Nessuna bonifica dati, nessuna migrazione.
+- Test: `ProductPricingByUsageTest` (AC-001..006, 008), `ProductCrudTest` POST vuoto senza errore `cost` (requisito
+  cambiato); FE `product-form-pricing.test.tsx`, `product-pricing-visibility.test.ts`, schema/payload/detail aggiornati;
+  test form che compilavano il Costo su prodotto solo Vendibile adeguati (D-1). Suite completa BE/FE verde, tsc pulito.
+- Guida in-app products IT/EN aggiornata. Da fare: manuale Claude Docs (doc non condiviso con la sessione) — sezione
+  Prodotti > Prezzi e fornitura, Dettaglio, flusso "voce di costo".
+
 ## SEED OPERATORI: 4 SUPERVISOR APL + MARTINA MOSCA — VERDE, COMMITTATO (2026-10-05)
 
 - `OperatorRoster`: Giovanna Gervasio, Raffaele Distico, Gessica Crispo, Emanuele Ascione = riga di Rosa Falzarano

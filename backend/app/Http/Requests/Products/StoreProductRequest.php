@@ -6,6 +6,7 @@ use App\DataObjects\Products\CreateProductData;
 use App\Enums\ProductType;
 use App\Enums\ProductUsage;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\RequiresPricingForUsages;
 use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -34,6 +35,7 @@ use Illuminate\Validation\Rule;
 class StoreProductRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
+    use RequiresPricingForUsages;
 
     public function authorize(): bool
     {
@@ -50,8 +52,8 @@ class StoreProductRequest extends FormRequest
             'code' => ['nullable', 'string', 'max:32', Rule::unique('products', 'code')],
             'name' => ['required', 'string', 'max:191'],
             'description' => ['nullable', 'string'],
-            'cost' => ['required', 'numeric'],
-            'price' => ['required', 'numeric'],
+            'cost' => ['nullable', 'numeric'],
+            'price' => ['nullable', 'numeric'],
             'category_id' => ['required', 'integer', new SelectableProductCategory],
             'product_type' => ['required', Rule::enum(ProductType::class)],
             // Spec 0142, D-2: the independent Sellable / Usable-as-cost set,
@@ -74,6 +76,7 @@ class StoreProductRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
+            $this->enforcePricingForUsages($validator);
         });
     }
 
