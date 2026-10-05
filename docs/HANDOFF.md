@@ -26,8 +26,8 @@
   `['APL']` (copre tutto il ramo, INV-2). Martina Mosca = riga di Michela Fabozzi (`COORDINATOR_ROLE`, nessuna competenza).
 - Rimossi da `StaffRoster` (i due roster restano disgiunti, conteggio condiviso 71 -> 76). Gli account gia' esistenti in
   prod con ruolo base convergono al prossimo `QualificaOperatorSeeder` (ruolo/sedi/competenza; password intatta).
-- `ReportsToRoster`: i 4 -> Fabozzi; Mosca -> nessuno. NON aggiunti a `COMMERCIAL_SUPERVISORS` (non sono "Risponde a"
-  dei commerciali): da confermare con l'utente.
+- `ReportsToRoster` (decisione utente 2026-10-05): i 4 non rispondono a nessuno; Mosca risponde a Fabozzi. I 4 NON sono
+  in `COMMERCIAL_SUPERVISORS` (non sono "Risponde a" dei commerciali).
 - Test: `QualificaOperatorSeederTest` conteggio 67 -> 72 (requisito cambiato) + test dedicato; asserzioni in
   `QualificaReportsToSeederTest`.
 
