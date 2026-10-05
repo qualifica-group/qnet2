@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ALLEGATI .ZIP AMMESSI — VERDE, COMMITTATO (2026-10-05)
+
+- `config/attachments.php` `allowed_mime_types` + `application/zip`. Unica allow-list condivisa: vale per
+  `POST /api/attachments` (tutte le sezioni Documenti), allegati email Commessa (`StoreWorkOrderEmailAttachmentRequest`)
+  e import `DocumentBundlesSource`. La regola `mimetypes:` valida il MIME rilevato dal CONTENUTO (finfo), quindi un
+  .zip vero passa e un file rinominato no; il `mime_type` salvato resta quello del client (`getClientMimeType()`, invariato).
+- Test: `AttachmentCrudTest` "201 for a real .zip archive" (zip reale via `ZipArchive`). FE invariato: `attachment-tile.tsx`
+  ha gia' l'icona archivio per `application/zip`.
+- Manuale: guide in-app nessun impatto (non elencano i formati allegati); manuale Claude Docs non accessibile dalla
+  sessione — verificare se elenca i formati ammessi.
+
 ## SPEC 0192 REDESIGN STATISTICHE GESTIONE RICHIESTE — VERDE, NON COMMITTATO (2026-10-05)
 
 - Spec `docs/specs/0192-request-statistics-redesign.xml` (D-1..D-9 utente). Solo FE, endpoint/numeri/export invariati.

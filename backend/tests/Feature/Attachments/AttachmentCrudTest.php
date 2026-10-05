@@ -89,6 +89,23 @@ it('upload: 422 when MIME type is not allowed', function () {
         ->assertJsonValidationErrors('file');
 });
 
+it('upload: 201 for a real .zip archive (MIME detected from content)', function () {
+    $actor = userWithAttachmentAbilities(['create']);
+    Sanctum::actingAs($actor);
+
+    $path = tempnam(sys_get_temp_dir(), 'zip');
+    $zip = new ZipArchive;
+    $zip->open($path, ZipArchive::OVERWRITE);
+    $zip->addFromString('readme.txt', 'archive content');
+    $zip->close();
+
+    $file = new UploadedFile($path, 'bundle.zip', 'application/zip', null, true);
+
+    $this->postJson('/api/attachments', ['file' => $file])
+        ->assertCreated()
+        ->assertJsonPath('data.mime_type', 'application/zip');
+});
+
 it('upload: links to an allowed polymorphic owner', function () {
     $actor = userWithAttachmentAbilities(['create']);
     Sanctum::actingAs($actor);
