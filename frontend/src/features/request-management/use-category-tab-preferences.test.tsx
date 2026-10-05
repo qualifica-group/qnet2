@@ -38,12 +38,16 @@ describe('useCategoryTabPreferences (spec 0184)', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
     const { result } = renderHook(() => useCategoryTabPreferences(), { wrapper: wrapper() })
 
-    expect(result.current.preferences).toEqual({ favorite_category_ids: [], show_only_favorites: false })
+    expect(result.current.preferences).toEqual({
+      favorite_category_ids: [],
+      show_only_favorites: false,
+      is_default: true,
+    })
   })
 
   it('adds and removes a favorite optimistically, sending the whole preference (AC-010)', async () => {
-    fetchMock.mockResolvedValue({ favorite_category_ids: [3], show_only_favorites: true })
-    saveMock.mockImplementation(async (_basePath, next) => next)
+    fetchMock.mockResolvedValue({ favorite_category_ids: [3], show_only_favorites: true, is_default: false })
+    saveMock.mockImplementation(async (_basePath, next) => ({ ...next, is_default: false }))
     const { result } = renderHook(() => useCategoryTabPreferences(), { wrapper: wrapper() })
     await waitFor(() => expect(result.current.preferences.favorite_category_ids).toEqual([3]))
 
@@ -59,7 +63,7 @@ describe('useCategoryTabPreferences (spec 0184)', () => {
   })
 
   it('restores the previous state and warns when the save fails (AC-010)', async () => {
-    fetchMock.mockResolvedValue({ favorite_category_ids: [3], show_only_favorites: false })
+    fetchMock.mockResolvedValue({ favorite_category_ids: [3], show_only_favorites: false, is_default: false })
     saveMock.mockRejectedValue(new Error('network'))
     const { result } = renderHook(() => useCategoryTabPreferences(), { wrapper: wrapper() })
     await waitFor(() => expect(result.current.preferences.favorite_category_ids).toEqual([3]))
@@ -67,6 +71,22 @@ describe('useCategoryTabPreferences (spec 0184)', () => {
     act(() => result.current.setShowOnlyFavorites(true))
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Could not save your favorite categories.'))
-    expect(result.current.preferences).toEqual({ favorite_category_ids: [3], show_only_favorites: false })
+    expect(result.current.preferences).toEqual({ favorite_category_ids: [3], show_only_favorites: false, is_default: false })
+  })
+
+  it('toggling a star on competence defaults sends only the two saved fields and clears is_default (spec 0193 AC-008)', async () => {
+    fetchMock.mockResolvedValue({ favorite_category_ids: [3, 5], show_only_favorites: true, is_default: true })
+    saveMock.mockImplementation(async (_basePath, next) => ({ ...next, is_default: false }))
+    const { result } = renderHook(() => useCategoryTabPreferences(), { wrapper: wrapper() })
+    await waitFor(() => expect(result.current.preferences.is_default).toBe(true))
+
+    act(() => result.current.toggleFavorite(5))
+
+    await waitFor(() => expect(result.current.preferences.is_default).toBe(false))
+    expect(saveMock).toHaveBeenCalledWith('/request-management', {
+      favorite_category_ids: [3],
+      show_only_favorites: true,
+    })
+    expect(result.current.preferences.favorite_category_ids).toEqual([3])
   })
 })

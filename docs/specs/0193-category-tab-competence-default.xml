@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0193-category-tab-competence-default" status="approved" owner="utente" date="2026-10-05">
+
+  <goal>
+    In Gestione Richieste e Gestione Iscritti, un operatore che non ha mai personalizzato le schede categoria
+    vede di default tra le schede solo le categorie per cui e' abilitato (la sua competenza); le altre restano
+    raggiungibili dal menu "Altre" e puo' aggiungerle con la stella.
+  </goal>
+
+  <context>
+    - Estende la spec 0184 (preferite dello strip). Tabella `user_category_tab_preferences` (una riga per
+      utente e modulo), model `UserCategoryTabPreference`, `CategoryTabPreferencesController` (show/update),
+      `UpdateCategoryTabPreferencesRequest` (max 200 id), `CategoryTabPreferencesResource`. Rotte
+      GET/PUT /api/{module}/category-tab-preferences in `routes/api/request-management.php`.
+    - Categorie dello strip: `RequestCategoryTabsResolver::resolve(User, RequestModule)` (solo categorie con
+      richieste nello scope dell'attore, ordinate per nome, gia' in AggregateCache).
+    - "Abilitata" = competenza (spec 0110/0111/0129): righe `employment_product_lines` (funzione aziendale +
+      categoria, chiusura sui discendenti; categoria null = tutte le categorie di quella funzione) lette da
+      `OperatorCompetence` e proiettate in `CompetenceProfile::covers()`; flag profilo
+      `employment_profiles.covers_all_product_categories` = jolly.
+    - Frontend: `useCategoryTabPreferences` (optimistic, PUT dell'intero oggetto), `arrangeCategoryTabs`
+      (preferite prima; con show_only_favorites e almeno una preferita: "Tutte" + preferite + selezionata),
+      `RequestManagementCategoryPicker` (stelle, interruttore, `favoritesHint`). Type `CategoryTabPreferences`.
+    - D-1 (utente 2026-10-05): la competenza e' solo il DEFAULT. Appena l'utente salva (stella o
+      interruttore) esiste la riga e vale solo la sua scelta; un cambio successivo di competenza non la tocca.
+    - D-2 (utente 2026-10-05): utente jolly (covers_all_product_categories) o senza competenza -> comportamento
+      attuale (nessuna preferita, interruttore spento).
+    - D-3 (proposta): la scheda selezionata di default resta "Tutte" (la selezione e' gia' persistita a parte,
+      `use-request-management-category-preference`); questa spec cambia solo quali schede compaiono.
+    - Rivede 0184 AC-001: "senza preferenze -> [] e false" resta vero solo per jolly/senza competenza.
+  </context>
+
+  <scope>
+    <in>
+      <item>GET category-tab-preferences senza riga salvata: preferite = categorie dello strip coperte dalla
+        competenza, show_only_favorites = true se ne esiste almeno una; campo `is_default`.</item>
+      <item>Metodo pubblico per-utente su `OperatorCompetence` che risponde quali id di una lista sono coperti
+        dalla competenza di UN utente (stessa regola di covers(), nessuna logica duplicata).</item>
+      <item>Frontend: type + payload del PUT con i soli due campi; nel menu un avviso quando le preferite sono
+        quelle proposte dalla competenza.</item>
+      <item>Entrambi i moduli (request-management, enrollee-management).</item>
+      <item>Guide in-app IT/EN (request-management, enrollee-management) e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Statistiche richieste (/request-statistics, strip per ramo reportable): secondo passo, spec separata.</item>
+      <item>Riscrittura o migrazione delle righe gia' salvate (chi ha gia' preferite le tiene invariate).</item>
+      <item>Default dinamico (ricalcolo della competenza dopo il primo salvataggio).</item>
+      <item>Pulsante "ripristina default dalla competenza".</item>
+      <item>Modifiche a GET /api/{module}/product-categories, al PUT o alla tabella (nessuna migrazione).</item>
+      <item>Cambio della scheda selezionata di default.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/{module}/category-tab-preferences">
+      <request>module in {request-management, enrollee-management} (segmento letterale, invariato).</request>
+      <response status="200">
+        { success: true, message, data: { preferences: {
+            favorite_category_ids: int[],   // crescente, solo categorie esistenti (invariato)
+            show_only_favorites: bool,
+            is_default: bool                // NUOVO: true = nessuna riga salvata, valori calcolati
+        } } }
+        Riga salvata: valori salvati, is_default = false (invariato rispetto a 0184).
+        Nessuna riga + competenza che copre >= 1 categoria dello strip: favorite_category_ids = quelle categorie,
+          show_only_favorites = true, is_default = true.
+        Nessuna riga + jolly, senza competenza, o competenza che non copre nessuna categoria dello strip:
+          favorite_category_ids = [], show_only_favorites = false, is_default = true.
+        La GET non scrive mai una riga.
+      </response>
+      <errors>401; 403 senza {module}.viewAny (invariati).</errors>
+    </endpoint>
+    <endpoint method="PUT" path="/api/{module}/category-tab-preferences">
+      <request>Invariata: { favorite_category_ids: int[], show_only_favorites: bool }.</request>
+      <response status="200">Shape del GET, con is_default = false.</response>
+      <errors>Invariati (401, 403, 422).</errors>
+    </endpoint>
+    <frontend_type>
+      CategoryTabPreferences = { favorite_category_ids: number[]; show_only_favorites: boolean; is_default: boolean }
+      Il PUT invia solo { favorite_category_ids, show_only_favorites }.
+    </frontend_type>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente senza riga salvata con una competenza (funzione F, categoria K) e
+      richieste visibili in K e in una categoria L non coperta, quando chiama GET, allora riceve
+      favorite_category_ids = [K], show_only_favorites = true, is_default = true; L non c'e'.</criterion>
+    <criterion id="AC-002">La competenza su una categoria padre copre le sottocategorie presenti nello strip;
+      una riga con categoria null copre le categorie dello strip con funzione effettiva F.</criterion>
+    <criterion id="AC-003">Una categoria coperta dalla competenza ma senza richieste nello scope dell'attore
+      non compare in favorite_category_ids.</criterion>
+    <criterion id="AC-004">Utente jolly (covers_all_product_categories), utente senza competenza e utente la cui
+      competenza non copre nessuna categoria dello strip: GET restituisce [], false, is_default = true.</criterion>
+    <criterion id="AC-005">Dato un utente con riga salvata (anche con favorite_category_ids = []), GET
+      restituisce i valori salvati con is_default = false, a prescindere dalla competenza.</criterion>
+    <criterion id="AC-006">La GET non crea righe in user_category_tab_preferences; il PUT risponde is_default = false.</criterion>
+    <criterion id="AC-007">Il default e' per modulo: in enrollee-management usa le categorie del suo strip.</criterion>
+    <criterion id="AC-008">Frontend: con preferenze di default (is_default = true, almeno una preferita) lo strip
+      mostra "Tutte" + le categorie di competenza e il menu mostra l'avviso di default; togliere/aggiungere una
+      stella invia un PUT con le preferite di default modificate e solo i due campi del contratto.</criterion>
+    <criterion id="AC-009">I test 0184 esistenti (CategoryTabPreferencesTest, test del picker e dello strip)
+      restano verdi senza modifiche, salvo l'aggiunta di is_default dove si verifica la shape completa.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza, nessuna migrazione.
+    - La regola di copertura resta una sola: il metodo per-utente riusa CompetenceProfile::covers() e la
+      chiusura/funzione effettiva gia' in OperatorCompetence; carica il profilo del solo utente (no full scan).
+    - Self-scoped: user_id sempre da auth, modulo dalla rotta. Authz invariata ({module}.viewAny).
+    - Il calcolo del default sta in una Action dedicata (handle + Step N), non nel controller.
+    - Guide in-app IT ed EN con gli stessi id di sezione; parity test verde.
+  </constraints>
+
+</spec>

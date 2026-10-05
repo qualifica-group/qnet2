@@ -11,6 +11,7 @@ use App\Models\ProductCategory;
 use App\Models\User;
 use App\Models\UserCategoryTabPreference;
 use App\RequestManagement\RequestModule;
+use App\RequestManagement\ResolveDefaultCategoryTabPreference;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -22,6 +23,8 @@ use Throwable;
  */
 class CategoryTabPreferencesController extends BaseApiController
 {
+    public function __construct(private readonly ResolveDefaultCategoryTabPreference $defaults) {}
+
     public function show(Request $request): JsonResponse
     {
         try {
@@ -57,10 +60,21 @@ class CategoryTabPreferencesController extends BaseApiController
         return $module;
     }
 
-    /** The stored row, or an unsaved one carrying the defaults (no favourites). */
+    /**
+     * The stored row, or an UNSAVED one carrying the competence default
+     * (spec 0193): the GET never writes, the row appears on the first PUT.
+     */
     private function preferenceOf(User $user, RequestModule $module): UserCategoryTabPreference
     {
-        return UserCategoryTabPreference::query()->firstOrNew(['user_id' => $user->id, 'module' => $module->value]);
+        $preference = UserCategoryTabPreference::query()->firstOrNew(['user_id' => $user->id, 'module' => $module->value]);
+
+        if (! $preference->exists) {
+            $favorites = $this->defaults->handle($user, $module);
+            $preference->favorite_category_ids = $favorites;
+            $preference->show_only_favorites = $favorites !== [];
+        }
+
+        return $preference;
     }
 
     /** A favourite whose category was deleted since is dropped from the answer (AC-007). */

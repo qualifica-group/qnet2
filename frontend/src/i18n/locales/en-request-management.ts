@@ -22,6 +22,8 @@ export const requestManagement = {
     removeFavorite: 'Remove {{name}} from favorites',
     showOnlyFavorites: 'Show favorites only',
     favoritesHint: 'Tap the star next to a category to add it to your favorites.',
+    favoritesDefaultHint:
+      'Favorites are suggested from the categories you are enabled for. Use the star to change them.',
     favoritesError: 'Could not save your favorite categories.',
   },
   columns: {

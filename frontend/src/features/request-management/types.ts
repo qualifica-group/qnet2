@@ -328,4 +328,9 @@ export interface RequestManagementProductCategory {
 export interface CategoryTabPreferences {
   favorite_category_ids: number[]
   show_only_favorites: boolean
+  /** True while nothing was saved: the values are the ones proposed from the actor's competence (spec 0193). */
+  is_default: boolean
 }
+
+/** What the PUT sends: the two saved fields, never `is_default` (spec 0193). */
+export type CategoryTabPreferencesPayload = Omit<CategoryTabPreferences, 'is_default'>

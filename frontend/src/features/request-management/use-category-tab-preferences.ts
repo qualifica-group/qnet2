@@ -4,10 +4,14 @@ import { toast } from 'sonner'
 import { fetchCategoryTabPreferences, saveCategoryTabPreferences } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
 import { useRequestModule } from '@/features/request-management/request-module'
-import type { CategoryTabPreferences } from '@/features/request-management/types'
+import type { CategoryTabPreferences, CategoryTabPreferencesPayload } from '@/features/request-management/types'
 
 /** What the strip shows until the preferences load, or when none were ever saved. */
-const NO_PREFERENCES: CategoryTabPreferences = { favorite_category_ids: [], show_only_favorites: false }
+const NO_PREFERENCES: CategoryTabPreferences = {
+  favorite_category_ids: [],
+  show_only_favorites: false,
+  is_default: true,
+}
 
 /**
  * The actor's favourite strip categories, saved on the account (spec 0184).
@@ -29,11 +33,12 @@ export function useCategoryTabPreferences() {
 
   const mutation = useMutation({
     mutationKey: queryKey,
-    mutationFn: (next: CategoryTabPreferences) => saveCategoryTabPreferences(module.apiBasePath, next),
+    mutationFn: (next: CategoryTabPreferencesPayload) => saveCategoryTabPreferences(module.apiBasePath, next),
     onMutate: async (next) => {
       await queryClient.cancelQueries({ queryKey })
       const previous = queryClient.getQueryData<CategoryTabPreferences>(queryKey)
-      queryClient.setQueryData(queryKey, next)
+      // Saving makes the choice the actor's own, so the competence default no longer applies.
+      queryClient.setQueryData<CategoryTabPreferences>(queryKey, { ...next, is_default: false })
       return { previous }
     },
     onError: (_error, _next, context) => {
@@ -59,7 +64,7 @@ export function useCategoryTabPreferences() {
   }
 
   const setShowOnlyFavorites = (showOnlyFavorites: boolean) => {
-    mutation.mutate({ ...current(), show_only_favorites: showOnlyFavorites })
+    mutation.mutate({ favorite_category_ids: current().favorite_category_ids, show_only_favorites: showOnlyFavorites })
   }
 
   return {

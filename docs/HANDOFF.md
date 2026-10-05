@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SCHEDE CATEGORIA: DEFAULT DALLA COMPETENZA (spec 0193) — VERDE, NON COMMITTATO (2026-10-05)
+
+- Gestione Richieste + Gestione Iscritti: senza riga in `user_category_tab_preferences`, la GET
+  `/api/{module}/category-tab-preferences` propone come preferite le categorie dello strip coperte dalla competenza
+  dell'utente, con `show_only_favorites=true`; nuovo campo `is_default` (true = nessuna riga salvata). La GET non
+  scrive mai; il primo PUT crea la riga e da li' vale solo la scelta dell'utente (D-1, default non dinamico).
+  Jolly (`covers_all_product_categories`), senza competenza o competenza fuori strip: `[]`, false (D-2).
+- Backend: `OperatorCompetence::coveredCategoryIdsFor(int $userId, array $categoryIds): array` (solo il profilo
+  dell'utente, riusa `CompetenceProfile::covers()`; `profileOf()` condiviso con `configuredProfiles()`; [] per
+  jolly/senza profilo); Action `App\RequestManagement\ResolveDefaultCategoryTabPreference::handle(User, RequestModule)`
+  (strip da `RequestCategoryTabsResolver` ∩ competenza, crescente); `CategoryTabPreferencesController::preferenceOf`
+  la usa solo se `! exists`; `CategoryTabPreferencesResource` espone `is_default = ! exists`.
+- Frontend: `CategoryTabPreferences.is_default` + `CategoryTabPreferencesPayload` (il PUT invia solo i due campi);
+  `useCategoryTabPreferences` (ottimistico con `is_default:false`); prop `favoritesAreDefault` table → tabs → picker;
+  avviso i18n `requestManagement.categoryTabs.favoritesDefaultHint` (IT/EN). Guide in-app `request-management` IT/EN
+  aggiornate; `enrollee-management` non documenta lo strip (non toccata).
+- Verifica (verifier): `composer test` 9266 pass/1 skip; vitest 6714 pass; `tsc -b --force` 0; pint/eslint puliti.
+- DA FARE: manuale Claude Docs (accesso negato a questa sessione: aggiornarlo a mano, sezione schede/preferite di
+  Gestione Richieste e Iscritti). Secondo passo: stesso default per Statistiche richieste (/request-statistics,
+  strip per ramo reportable, chiavi stringa) — spec separata.
+
 ## FIX RIGHE OFFERTA AL CAMBIO LINEA DI PRODOTTO (Gestione Richieste) — VERDE, NON COMMITTATO (2026-10-05)
 
 - Bug: in creazione (`/request-management/new`) e in lavorazione, sostituendo la linea di prodotto la riga d'offerta

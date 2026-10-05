@@ -57,6 +57,8 @@ interface RequestManagementCategoryPickerProps {
   categories: RequestManagementProductCategory[]
   favoriteCategoryIds: number[]
   showOnlyFavorites: boolean
+  /** The favourites are the competence default, not saved yet (spec 0193): the menu says so. */
+  favoritesAreDefault: boolean
   /** How many categories the strip does not show inline. */
   hiddenCount: number
   selectedCategoryId: number | null
@@ -79,6 +81,7 @@ export function RequestManagementCategoryPicker({
   categories,
   favoriteCategoryIds,
   showOnlyFavorites,
+  favoritesAreDefault,
   hiddenCount,
   selectedCategoryId,
   onSelect,
@@ -197,9 +200,13 @@ export function RequestManagementCategoryPicker({
             onCheckedChange={onShowOnlyFavoritesChange}
           />
         </div>
-        {hasFavorites ? null : (
+        {hasFavorites && !favoritesAreDefault ? null : (
           <p className="px-2 pb-2 text-[0.65rem] text-muted-foreground">
-            {t('requestManagement.categoryTabs.favoritesHint')}
+            {t(
+              hasFavorites
+                ? 'requestManagement.categoryTabs.favoritesDefaultHint'
+                : 'requestManagement.categoryTabs.favoritesHint',
+            )}
           </p>
         )}
       </PopoverContent>
