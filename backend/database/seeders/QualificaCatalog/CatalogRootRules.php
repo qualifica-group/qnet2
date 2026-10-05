@@ -10,8 +10,7 @@ use App\Services\ProductCategories\SimplifiedOfferLineInheritance;
 use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
 
 /**
- * The ROOT-OWNED rules the Qualifica catalogue declares for two of its three
- * roots.
+ * The ROOT-OWNED rules the Qualifica catalogue declares for its three roots.
  * Split out of QualificaCatalogSeeder (which stayed at its size limit,
  * engineering.md §6) — it holds the map AND the write, since the two are
  * meaningless apart.
@@ -32,17 +31,16 @@ use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
  * explicitly rather than left to the column defaults so a re-run realigns it
  * too.
  *
- * The third root, "APL", is DELIBERATELY absent (user directive 2026-09-07):
- * it keeps the column defaults, which are the very values it used to inherit
- * while it hung under "Consulenza" — so promoting it to a root of its own
- * changed its position, not its behaviour. Listing it here is what it would
- * take to give it rules of its own.
+ * "APL" is worked exactly like "Formazione" (user directive 2026-10-05, "stessi
+ * setting di formazione"): the same four rules and the same G.A. labels, so an
+ * APL deal closing positively no longer surfaces in the Contratti module. It
+ * kept the column defaults (Consulenza's values) from 2026-09-07 until then.
  *
  * `manager_labels` (spec 0080) rides along on the same root write but is NOT
  * mirrored on the subtree: descendants resolve it by climbing the tree
  * (CategoryManagerLabelResolver), so authoring it on the root alone is what
- * gives the whole branch its G.A. names. Only "Formazione" declares them
- * (user directive 2026-08-31); "Consulenza" omits the key entirely rather
+ * gives the whole branch its G.A. names. "Formazione" declares them (user
+ * directive 2026-08-31), and "APL" with it; "Consulenza" omits the key entirely rather
  * than realigning to null, which would wipe labels configured from the UI.
  *
  * NODE_OVERRIDES then lets one node of a branch declare its own
@@ -52,27 +50,35 @@ use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
 final class CatalogRootRules
 {
     /**
+     * The rules of a training deal, shared by "Formazione" and "APL".
+     *
+     * @var array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool, generates_contract: bool, simplified_offer_line: bool, manager_labels: array<string, string>}
+     */
+    private const array TRAINING_RULES = [
+        'management_mode' => CategoryManagementMode::Single,
+        'single_quote_per_opportunity' => true,
+        'generates_contract' => false,
+        'simplified_offer_line' => true,
+        // The four G.A. levels of a training deal (user directive
+        // 2026-08-31). Position 2 stays "Operatore": it is the level
+        // Gestione Richieste has hard-coded semantics for
+        // (Opportunity::OPERATOR_MANAGER_POSITION).
+        'manager_labels' => [
+            '1' => 'Tutor',
+            '2' => 'Operatore',
+            '3' => 'Partner commerciale',
+            '4' => 'Segnalatore',
+        ],
+    ];
+
+    /**
      * Root name => the rules it owns, as `product_categories` columns.
      *
      * @var array<string, array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool, generates_contract: bool, simplified_offer_line?: bool, manager_labels?: array<string, string>}>
      */
     private const array RULES = [
-        'Formazione' => [
-            'management_mode' => CategoryManagementMode::Single,
-            'single_quote_per_opportunity' => true,
-            'generates_contract' => false,
-            'simplified_offer_line' => true,
-            // The four G.A. levels of a training deal (user directive
-            // 2026-08-31). Position 2 stays "Operatore": it is the level
-            // Gestione Richieste has hard-coded semantics for
-            // (Opportunity::OPERATOR_MANAGER_POSITION).
-            'manager_labels' => [
-                '1' => 'Tutor',
-                '2' => 'Operatore',
-                '3' => 'Partner commerciale',
-                '4' => 'Segnalatore',
-            ],
-        ],
+        'Formazione' => self::TRAINING_RULES,
+        'APL' => self::TRAINING_RULES,
         'Consulenza' => [
             'management_mode' => CategoryManagementMode::Multiple,
             'single_quote_per_opportunity' => false,

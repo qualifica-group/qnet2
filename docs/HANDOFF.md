@@ -20,6 +20,42 @@
   (doc non condiviso con la sessione): sezione "Lavorare una richiesta" / "Creare una nuova richiesta".
 - Fuori scope, da valutare: l'editor in-griglia della categoria (`product-lines-cell-editor.tsx`) non svuota le righe offerta.
 
+## APL MANUALE + "APL OLD" DALLA MIGRAZIONE — VERDE, COMMITTATO (2026-10-05)
+
+- Decisioni utente (AskUserQuestion 2026-10-05): il ramo APL legacy NON e' piu' adottato da quello manuale; diventa
+  la categoria radice "APL old" + funzione aziendale "APL OLD" (come FORMAZIONE OLD); APL manuale = regole IDENTICHE
+  a Formazione (contratti compresi); TUTTI i prodotti del ramo legacy sulle nuove categorie; nessuna conversione
+  dei DB gia' importati ("come fa con Formazione": vale a ogni import).
+- Nuovo `app/Migrations/Support/LegacyAplBranch.php`: `manualNodeNamed()` (nodo del ramo manuale "APL" con quel nome,
+  confronto case-insensitive in PHP — SQLite e MySQL si comportano uguale), `legacyName()` (suffisso " old"),
+  `LEGACY_ROOT` = "APL old", `PRODUCT_CATEGORIES` (Formazione Apprendistato -> Apprendistato, Tirocini extracurriculari
+  privati -> Tirocinio, Orientamento Specialistico -> Orientamento specialistico), `productCategoryFor()`.
+- `ProductCategoriesSource::processRow`: un record legacy con nome di un nodo del ramo APL manuale non viene adottato,
+  viene creato come "<nome> old" (solo se collide: "APL old", "Orientamento Specialistico old"; gli altri tengono il
+  nome); il gemello della radice nasce radice (no parent, no relink). Warning "Legacy twin ..." nel report.
+- `ProductsSource`: categoria risolta -> `LegacyAplBranch::productCategoryFor` (nodo del ramo "APL old" -> categoria
+  manuale; senza sostituto resta sul nodo legacy con warning "no manual replacement"). DA CHIEDERE all'utente: i figli
+  legacy di APL oltre ai tre noti (l'albero legacy non e' leggibile: qnet.test risponde "authentication required").
+- "APL old" NON selezionabile (richiesta utente successiva, stesso giorno): `ProductCategoriesSource::afterImport`
+  = Step 1 `relinkDetached()` + Step 2 `LegacyAplBranch::closeLegacyBranch($createdIds)` -> radice e TUTTO il ramo
+  `is_selectable=false`, solo sui nodi creati in QUELLA run (una riapertura a mano sopravvive al re-import).
+  Nota: per FORMAZIONE OLD il codice non forza nulla, `is_selectable` arriva dal legacy.
+- `CategoryBusinessFunctionLinker::REDIRECTED_FUNCTIONS` + `'APL' => 'APL OLD'`. `QualificaLegacyImportSeeder::
+  nestImportedCategories` esclude "APL old" (resta radice, non va sotto Consulenza).
+- Seed: categorie rinominate `Apprendistato` / `Tirocinio` / `Orientamento specialistico` (costanti CATEGORY dei tre
+  cataloghi APL, `CATALOG`, `REPORTABLE_CATEGORIES`, `SINGLE_OFFER_CATEGORIES` -> anche il prodotto seedato si chiama
+  "Orientamento specialistico"). `CatalogRootRules::TRAINING_RULES` condivise da Formazione e APL (single, una offerta,
+  `generates_contract=false`, riga semplificata, etichette G.A. Tutor/Operatore/Partner commerciale/Segnalatore).
+- Test: nuovo `Migration/LegacyAplBranchImportTest.php` (3), `ProductsSourceImportTest` (+1), `QualificaLegacyImportSeederTest`
+  end-to-end riscritto (Formazione adottata, APL old radice su APL OLD, prodotti sulle nuove categorie, mappa legata al
+  catalogo reale), `QualificaCatalogRootRulesTest` (+1 APL = Formazione). Requisito cambiato: i test generici di adozione
+  usavano "APL" come esempio -> ora "Consulenza"/"Presa Appuntamenti"; liste nomi aggiornate in 6 test seed.
+  Suite completa 9254 passed / 1 skipped, Pint pulito.
+- Attenzione: un DB gia' importato con l'adozione vecchia NON viene convertito; un re-seed li' crea "Apprendistato" e
+  "Tirocinio" accanto ai nodi vecchi. Strada pulita: migrate:fresh + QualificaProductionDataSeeder.
+- Manuale: guide in-app nessun impatto (non citano APL); manuale Claude Docs non condiviso con la sessione — verificare
+  se cita i nomi delle categorie APL o che APL genera contratti.
+
 ## ALLEGATI .ZIP AMMESSI — VERDE, COMMITTATO (2026-10-05)
 
 - `config/attachments.php` `allowed_mime_types` + `application/zip`. Unica allow-list condivisa: vale per

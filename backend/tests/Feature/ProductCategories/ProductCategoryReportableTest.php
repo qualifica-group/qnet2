@@ -129,7 +129,7 @@ it('seeds the production report categories and lets their subcategories inherit 
 
     $forced = ProductCategory::query()->where('is_reportable', true)->pluck('name')->sort()->values()->all();
 
-    expect($forced)->toBe(['Autofinanziato', 'Autoimpiego', 'DIL', 'GOL', 'Orientamento Specialistico', 'Yisu'])
+    expect($forced)->toBe(['Autofinanziato', 'Autoimpiego', 'DIL', 'GOL', 'Orientamento specialistico', 'Yisu'])
         ->and(ProductCategory::query()->where('is_reportable', false)->exists())->toBeFalse();
 
     $effective = app(ReportableInheritance::class)->effectiveMapForAll();

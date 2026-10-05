@@ -13,14 +13,13 @@ use App\Enums\LayoutSectionVariant;
  * the SECTIONS below.
  *
  * They are the category's WHOLE offer form: it is cut off the "APL" root
- * (CategoryInheritanceRules), which on an imported database carries the
- * Ricerca & Selezione job-description fields.
+ * (CategoryInheritanceRules), so a field assigned on the root never reaches it.
  *
  * NOT FIELDS, by design, as for the internships: "Operatore" is the offer's
  * `operator_id`, "Commerciale" and "Segnalatore" its `commercial_id` and
  * `reporter_id`; "Stato pratica" is the working state and "Percorso" its
  * history (ApprenticeshipWorkflowStatusCatalogue). The annualità is the
- * product ("Formazione Apprendistato 1°/2°/3° Anno"). Out of scope (user
+ * product (the legacy "Formazione Apprendistato 1°/2°/3° Anno"). Out of scope (user
  * directive 2026-10-05): DATI AZIENDA, DATI APPRENDISTA, DOCUMENTAZIONE.
  *
  * Every training unit (UF) is the sheet's "Casella + motivo + giorni" triple:
@@ -34,10 +33,11 @@ use App\Enums\LayoutSectionVariant;
 final class ApprenticeshipAttributeCatalogue
 {
     /**
-     * Seeded under "APL" so it exists on a clean database too; on an imported
-     * one ProductCategoriesSource adopts it by this exact name.
+     * Seeded under "APL"; it replaces the legacy "Formazione Apprendistato",
+     * which the import files under "APL old" and whose products it moves here
+     * (LegacyAplBranch, user directive 2026-10-05).
      */
-    public const string CATEGORY = 'Formazione Apprendistato';
+    public const string CATEGORY = 'Apprendistato';
 
     /**
      * The sheet's suggestions for a UF not delivered by Qualifica.

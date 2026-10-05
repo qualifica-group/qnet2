@@ -13,8 +13,7 @@ use App\Enums\LayoutSectionVariant;
  * QualificaQuoteLayoutSeeder lays them out in the SECTIONS below.
  *
  * They are the category's WHOLE offer form: it is cut off the "APL" root
- * (CategoryInheritanceRules), which on an imported database carries the
- * Ricerca & Selezione job-description fields.
+ * (CategoryInheritanceRules), so a field assigned on the root never reaches it.
  *
  * NOT FIELDS, by design, as for the other APL practices: "Utente" is the
  * opportunity's registry; "Operatore", "Commerciale" and "Segnalatore" are
@@ -34,9 +33,11 @@ final class AplOrientationAttributeCatalogue
 {
     /**
      * The APL root's single-offer category (CatalogProducts), already seeded
-     * and selectable: this catalogue only gives it a form of its own.
+     * and selectable: this catalogue only gives it a form of its own. It
+     * replaces the legacy "Orientamento Specialistico", imported under "APL
+     * old" (LegacyAplBranch, user directive 2026-10-05).
      */
-    public const string CATEGORY = 'Orientamento Specialistico';
+    public const string CATEGORY = 'Orientamento specialistico';
 
     /**
      * @var list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>, config?: array<string, mixed>}>

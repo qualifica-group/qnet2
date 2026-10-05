@@ -14,8 +14,7 @@ use App\Enums\LayoutSectionVariant;
  * below.
  *
  * They are the category's WHOLE offer form: it is cut off the "APL" root
- * (CategoryInheritanceRules), which on an imported database carries the
- * Ricerca & Selezione job-description fields.
+ * (CategoryInheritanceRules), so a field assigned on the root never reaches it.
  *
  * NOT FIELDS, by design: the sheet's "Utente" is the opportunity's registry;
  * "Commerciale" and "Segnalatore" are the offer's own `commercial_id` and
@@ -31,10 +30,11 @@ use App\Enums\LayoutSectionVariant;
 final class AplInternshipAttributeCatalogue
 {
     /**
-     * Seeded under "APL" so it exists on a clean database too; on an imported
-     * one ProductCategoriesSource adopts it by this exact name.
+     * Seeded under "APL"; it replaces the legacy "Tirocini extracurriculari
+     * privati", which the import files under "APL old" and whose products it
+     * moves here (LegacyAplBranch, user directive 2026-10-05).
      */
-    public const string CATEGORY = 'Tirocini extracurriculari privati';
+    public const string CATEGORY = 'Tirocinio';
 
     /**
      * The decree and reporting references, shared with the apprenticeship and

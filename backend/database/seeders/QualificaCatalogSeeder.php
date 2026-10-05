@@ -55,13 +55,13 @@ use Illuminate\Database\Seeder;
  *     courses under their own region, the self-funded ones under their own
  *     "Autofinanziato - <Regione>" with their price and VAT rate, and the one
  *     product each single-offer category sells ("Autoimpiego", "Yisu" and
- *     "Orientamento Specialistico"), plus the e-Campus degree fees on the
+ *     "Orientamento specialistico"), plus the e-Campus degree fees on the
  *     "Corsi E-Campus" leaf (ECampusCourseCatalogue). No other product is seeded;
- *   - the ROOT-OWNED rules of the two roots that declare them (how many
+ *   - the ROOT-OWNED rules of the three roots (how many
  *     product lines a card carries, how many offers an opportunity may hold),
  *     delegated to QualificaCatalog\CatalogRootRules once the whole tree
- *     exists — it re-syncs each branch; the "APL" root declares none and keeps
- *     the column defaults;
+ *     exists — it re-syncs each branch; "APL" declares the very rules of
+ *     "Formazione" (user directive 2026-10-05);
  *   - the per-node inheritance barriers, delegated to
  *     QualificaCatalog\CategoryInheritanceRules right after them;
  *   - the "stati di lavorazione" (spec 0047), delegated to
@@ -181,7 +181,7 @@ class QualificaCatalogSeeder extends Seeder
         // 2026-09-07): it declares no rule in CatalogRootRules, so it keeps
         // the column defaults — the very values it used to inherit there.
         'APL' => [
-            'Orientamento Specialistico' => [],
+            'Orientamento specialistico' => [],
             AplInternshipAttributeCatalogue::CATEGORY => [],
             ApprenticeshipAttributeCatalogue::CATEGORY => [],
         ],
@@ -190,14 +190,14 @@ class QualificaCatalogSeeder extends Seeder
     /**
      * The categories seeded as report rows (spec 0131, `is_reportable`), user
      * directive 2026-09-18: GOL, Autoimpiego, Yisu, Autofinanziato, DIL and
-     * APL's "Orientamento Specialistico". Their subcategories are seeded with
+     * APL's "Orientamento specialistico". Their subcategories are seeded with
      * a null override, so they inherit the flag and show up in the report too.
      * Written on creation only, never realigned — which categories the
      * report shows is an operator setting from then on.
      *
      * @var list<string>
      */
-    private const array REPORTABLE_CATEGORIES = ['GOL', 'Autoimpiego', 'Yisu', 'Autofinanziato', 'DIL', 'Orientamento Specialistico'];
+    private const array REPORTABLE_CATEGORIES = ['GOL', 'Autoimpiego', 'Yisu', 'Autofinanziato', 'DIL', 'Orientamento specialistico'];
 
     /**
      * The second-level nodes that ARE classification targets, by exception to

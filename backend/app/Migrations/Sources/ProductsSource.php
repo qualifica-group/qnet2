@@ -9,6 +9,7 @@ use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsExternalProductRecord;
 use App\Migrations\Support\ExternalApiClient;
+use App\Migrations\Support\LegacyAplBranch;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTypology;
@@ -21,7 +22,9 @@ use RuntimeException;
  * is an EXTERNAL id remapped to the qnet category via `old_id` (product-categories
  * must be migrated first) — it is a REQUIRED FK, so a row whose category is not
  * migrated fails per-row (never created detached, unlike the self-referential
- * ProductCategoriesSource). `product_type` maps to the ProductType enum, falling
+ * ProductCategoriesSource). A category of the legacy "APL old" branch is swapped
+ * for the manual one replacing it (LegacyAplBranch, user directive 2026-10-05).
+ * `product_type` maps to the ProductType enum, falling
  * back to the default case on an absent/unknown value with a non-fatal warning.
  *
  * `vat_rate_id` IS remapped via `old_id` (vat-rates must be migrated first),
@@ -59,6 +62,7 @@ class ProductsSource extends AbstractMigrationSource
     public function __construct(
         ExternalApiClient $client,
         private readonly ProductService $service,
+        private readonly LegacyAplBranch $aplBranch,
     ) {
         parent::__construct($client);
     }
@@ -149,7 +153,7 @@ class ProductsSource extends AbstractMigrationSource
             description: $this->trimmedText($record['description'] ?? null),
             cost: (float) ($record['cost'] ?? 0),
             price: (float) ($record['price'] ?? 0),
-            categoryId: $this->resolveCategory($record['category_id'] ?? null),
+            categoryId: $this->aplBranch->productCategoryFor($this->resolveCategory($record['category_id'] ?? null), $warnings),
             productType: $this->mapProductType($record['product_type'] ?? null, $warnings),
             vatRateId: $this->resolveVatRate($record['vat_rate_id'] ?? null, $warnings),
             supplierId: $this->unresolvableReference('supplier_id', $record['supplier_id'] ?? null, $warnings),

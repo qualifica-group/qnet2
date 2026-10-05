@@ -192,7 +192,7 @@ it('seeds catalogue workflows, statuses and criteria per category, and converges
         ->and($aplWorkflow->criteria->first()->field)->toBe('product_category_branch_id')
         ->and($aplWorkflow->criteria->first()->value_id)->toBe($aplCategory->id)
         ->and($aplCategory->parent_id)->toBeNull()
-        ->and($aplCategory->children()->orderBy('name')->pluck('name')->all())->toBe(['Formazione Apprendistato', 'Orientamento Specialistico', 'Tirocini extracurriculari privati']);
+        ->and($aplCategory->children()->orderBy('name')->pluck('name')->all())->toBe(['Apprendistato', 'Orientamento specialistico', 'Tirocinio']);
 
     $aplStatuses = QuoteWorkflowStatus::query()
         ->where('quote_workflow_id', $aplWorkflow->id)

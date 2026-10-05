@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\MigrationStatus;
+use App\Migrations\Support\LegacyAplBranch;
 use App\Models\MassMigrationRun;
 use App\Models\ProductCategory;
 use App\Models\User;
@@ -146,7 +147,8 @@ class QualificaLegacyImportSeeder extends Seeder
      * Move every migrated product category still sitting at top level under
      * LEGACY_CATEGORY_ROOT: a legacy root, or one ProductCategoriesSource left
      * detached because its own parent never migrated (the run report carries
-     * that warning) — neither belongs beside the catalogue's own roots.
+     * that warning) — neither belongs beside the catalogue's own roots, save
+     * the legacy APL tree's "APL old" (LegacyAplBranch).
      * Categories without an `old_id` are the static catalogue's tree and are
      * never touched, so re-running moves nothing a second time.
      *
@@ -182,6 +184,8 @@ class QualificaLegacyImportSeeder extends Seeder
             ->whereNull('parent_id')
             ->whereKeyNot($root->getKey())
             ->whereIntegerNotInRaw('id', $staticRootIds)
+            // A root of its own by user directive 2026-10-05, beside "APL".
+            ->whereNot('name', LegacyAplBranch::LEGACY_ROOT)
             ->get();
 
         // Per-model update (not a mass query update) so the activity log

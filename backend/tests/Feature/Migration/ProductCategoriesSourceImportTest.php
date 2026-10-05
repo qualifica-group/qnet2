@@ -171,17 +171,17 @@ it('adopts a category qnet already holds under that name instead of duplicating 
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
-                ['id' => 20, 'name' => 'APL', 'parent_id' => 99, 'description' => 'Agenzia per il lavoro', 'inherits_attributes' => false, 'is_selectable' => false],
+                ['id' => 20, 'name' => 'Presa Appuntamenti', 'parent_id' => 99, 'description' => 'Fissaggio appuntamenti', 'inherits_attributes' => false, 'is_selectable' => false],
             ],
             'pagination' => ['total' => 1],
         ]),
     ]);
 
-    // The state the static catalogue leaves: "APL" is a selectable subcategory
-    // of "Consulenza", with no `old_id`.
+    // The state the static catalogue leaves: "Presa Appuntamenti" is a
+    // selectable subcategory of "Consulenza", with no `old_id`.
     $consulenza = ProductCategory::factory()->create(['name' => 'Consulenza', 'parent_id' => null]);
     $seeded = ProductCategory::factory()->create([
-        'name' => 'APL',
+        'name' => 'Presa Appuntamenti',
         'parent_id' => $consulenza->id,
         'is_selectable' => true,
         'description' => null,
@@ -194,10 +194,10 @@ it('adopts a category qnet already holds under that name instead of duplicating 
 
     $adopted = $seeded->fresh();
 
-    expect(ProductCategory::query()->where('name', 'APL')->count())->toBe(1)
+    expect(ProductCategory::query()->where('name', 'Presa Appuntamenti')->count())->toBe(1)
         ->and($adopted->old_id)->toEqual(20)
         // Refreshed from the external record.
-        ->and($adopted->description)->toBe('Agenzia per il lavoro')
+        ->and($adopted->description)->toBe('Fissaggio appuntamenti')
         ->and($adopted->inherits_product_attributes)->toBeFalse()
         ->and($adopted->inherits_quote_attributes)->toBeFalse()
         ->and($adopted->inherits_work_order_attributes)->toBeFalse()
@@ -216,14 +216,14 @@ it('adopts each name once: a second external id finds the slot taken and creates
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
-                ['id' => 30, 'name' => 'APL', 'parent_id' => null],
-                ['id' => 31, 'name' => 'APL', 'parent_id' => null],
+                ['id' => 30, 'name' => 'Consulenza', 'parent_id' => null],
+                ['id' => 31, 'name' => 'Consulenza', 'parent_id' => null],
             ],
             'pagination' => ['total' => 2],
         ]),
     ]);
 
-    $seeded = ProductCategory::factory()->create(['name' => 'APL', 'parent_id' => null]);
+    $seeded = ProductCategory::factory()->create(['name' => 'Consulenza', 'parent_id' => null]);
 
     $actor = migrationsSuperAdminActor();
     runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
@@ -232,25 +232,25 @@ it('adopts each name once: a second external id finds the slot taken and creates
     // genuinely distinct legacy category and gets its own node.
     expect($seeded->fresh()->old_id)->toEqual(30)
         ->and(ProductCategory::query()->where('old_id', 31)->exists())->toBeTrue()
-        ->and(ProductCategory::query()->where('name', 'APL')->count())->toBe(2);
+        ->and(ProductCategory::query()->where('name', 'Consulenza')->count())->toBe(2);
 });
 
 it('never adopts on a partial name match: adoption keys on the exact name', function () {
     seedMigrationsConfig();
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
-            'items' => [['id' => 40, 'name' => 'APL Servizi', 'parent_id' => null]],
+            'items' => [['id' => 40, 'name' => 'Consulenza Servizi', 'parent_id' => null]],
             'pagination' => ['total' => 1],
         ]),
     ]);
 
-    $seeded = ProductCategory::factory()->create(['name' => 'APL', 'parent_id' => null]);
+    $seeded = ProductCategory::factory()->create(['name' => 'Consulenza', 'parent_id' => null]);
 
     $actor = migrationsSuperAdminActor();
     runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
 
     expect($seeded->fresh()->old_id)->toBeNull()
-        ->and(ProductCategory::query()->where('old_id', 40)->value('name'))->toBe('APL Servizi');
+        ->and(ProductCategory::query()->where('old_id', 40)->value('name'))->toBe('Consulenza Servizi');
 });
 
 it('never relinks an ADOPTED root into the legacy tree, however many times the import runs', function () {
@@ -260,14 +260,14 @@ it('never relinks an ADOPTED root into the legacy tree, however many times the i
             'items' => [
                 ['id' => 60, 'name' => 'Servizi', 'parent_id' => null],
                 // The legacy twin of a qnet ROOT, filed under a legacy parent.
-                ['id' => 61, 'name' => 'APL', 'parent_id' => 60],
+                ['id' => 61, 'name' => 'Consulenza', 'parent_id' => 60],
             ],
             'pagination' => ['total' => 2],
         ]),
     ]);
 
-    // The state the static catalogue leaves: "APL" is a root of its own.
-    $seeded = ProductCategory::factory()->create(['name' => 'APL', 'parent_id' => null]);
+    // The state the static catalogue leaves: "Consulenza" is a root of its own.
+    $seeded = ProductCategory::factory()->create(['name' => 'Consulenza', 'parent_id' => null]);
 
     $actor = migrationsSuperAdminActor();
 
@@ -397,14 +397,14 @@ it('fills the function of an adopted category only when its slot is free', funct
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
-                ['id' => 20, 'name' => 'APL', 'parent_id' => null, 'business_function_id' => 8],
+                ['id' => 20, 'name' => 'Consulenza', 'parent_id' => null, 'business_function_id' => 8],
                 ['id' => 21, 'name' => 'Formazione', 'parent_id' => null, 'business_function_id' => 8],
             ],
             'pagination' => ['total' => 2],
         ]),
     ]);
 
-    $free = ProductCategory::factory()->create(['name' => 'APL', 'parent_id' => null, 'business_function_id' => null]);
+    $free = ProductCategory::factory()->create(['name' => 'Consulenza', 'parent_id' => null, 'business_function_id' => null]);
     $occupied = ProductCategory::factory()->create(['name' => 'Formazione', 'parent_id' => null, 'business_function_id' => $manualFunction->id]);
 
     $actor = migrationsSuperAdminActor();
@@ -527,15 +527,15 @@ it('spec 0183 F-6: adopting a category closes the quote/work-order barriers of i
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
-                ['id' => 70, 'name' => 'APL', 'parent_id' => null, 'inherits_attributes' => true],
+                ['id' => 70, 'name' => 'Consulenza', 'parent_id' => null, 'inherits_attributes' => true],
                 ['id' => 71, 'name' => 'Legacy child', 'parent_id' => 70, 'inherits_attributes' => true],
             ],
             'pagination' => ['total' => 2],
         ]),
     ]);
-    $apl = ProductCategory::factory()->create(['name' => 'APL', 'parent_id' => null]);
+    $consulenza = ProductCategory::factory()->create(['name' => 'Consulenza', 'parent_id' => null]);
     $manual = ProductCategory::factory()->create([
-        'name' => 'Orientamento Specialistico', 'parent_id' => $apl->id,
+        'name' => 'Presa Appuntamenti', 'parent_id' => $consulenza->id,
         'inherits_product_attributes' => true, 'inherits_quote_attributes' => true, 'inherits_work_order_attributes' => true,
     ]);
 
@@ -550,7 +550,7 @@ it('spec 0183 F-6: adopting a category closes the quote/work-order barriers of i
     }
 
     $legacyChild = ProductCategory::query()->where('old_id', 71)->first();
-    expect($legacyChild->parent_id)->toBe($apl->id)
+    expect($legacyChild->parent_id)->toBe($consulenza->id)
         ->and($legacyChild->inherits_quote_attributes)->toBeTrue()
         ->and($legacyChild->inherits_work_order_attributes)->toBeTrue();
 });
