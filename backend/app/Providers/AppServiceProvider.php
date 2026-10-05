@@ -29,6 +29,7 @@ use App\Models\DocumentLayout;
 use App\Models\EmailTemplate;
 use App\Models\EmploymentProfile;
 use App\Models\FieldChangeRequest;
+use App\Models\FinancialAccount;
 use App\Models\Lead;
 use App\Models\Note;
 use App\Models\OperationalSite;
@@ -190,6 +191,7 @@ class AppServiceProvider extends ServiceProvider
             'product_category' => ProductCategory::class,
             'product' => Product::class,
             'unit_of_measure' => UnitOfMeasure::class,
+            'financial_account' => FinancialAccount::class,
             'product_typology' => ProductTypology::class,
             'source' => Source::class,
             'sector' => Sector::class,

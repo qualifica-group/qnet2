@@ -52,6 +52,7 @@ return [
         require __DIR__.'/navigation/products.php',
         require __DIR__.'/navigation/rewards.php',
         require __DIR__.'/navigation/configuration.php',
+        require __DIR__.'/navigation/accounting.php',
         require __DIR__.'/navigation/administration.php',
     ],
 

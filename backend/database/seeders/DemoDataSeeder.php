@@ -62,6 +62,9 @@ class DemoDataSeeder extends Seeder
         $this->call(DemoOperationalSiteSeeder::class);
         $this->call(DemoCompanySeeder::class);
         $this->call(DemoCompanySiteSeeder::class);
+        // Bank accounts/cards/cash (spec 0189): optionally tied to a company,
+        // so it runs after DemoCompanySeeder.
+        $this->call(DemoFinancialAccountSeeder::class);
         $this->call(DemoBusinessFunctionSeeder::class);
         // The demo category tree with its attributes (both contexts) and form
         // sections: depends on DemoBusinessFunctionSeeder for the branch

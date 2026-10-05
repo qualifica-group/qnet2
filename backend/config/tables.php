@@ -14,6 +14,7 @@ use App\Tables\DocumentLayoutsTableDefinition;
 use App\Tables\EmailTemplatesTableDefinition;
 use App\Tables\EnrolleeManagementTableDefinition;
 use App\Tables\FieldChangeRequestsTableDefinition;
+use App\Tables\FinancialAccountsTableDefinition;
 use App\Tables\LeadImportsTableDefinition;
 use App\Tables\LeadsTableDefinition;
 use App\Tables\NotificationsTableDefinition;
@@ -117,6 +118,7 @@ return [
         'rewarded-referents' => RewardedReferentsTableDefinition::class,
         'vat-rates' => VatRatesTableDefinition::class,
         'units-of-measure' => UnitsOfMeasureTableDefinition::class,
+        'financial-accounts' => FinancialAccountsTableDefinition::class,
         'product-typologies' => ProductTypologiesTableDefinition::class,
         // spec 0101: il modulo Task e i suoi cinque configuratori.
         'tasks' => TasksTableDefinition::class,

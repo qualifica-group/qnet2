@@ -67,6 +67,7 @@ export const permissions = {
     // oltre al CRUD di BasePolicy (`work-orders.viewEmails`/`sendEmail`).
     viewEmails: 'Vedere le email',
     sendEmail: 'Inviare email',
+    revealCardNumber: 'Rivelare numero carta',
   },
   resources: {
     users: 'Utenti',
@@ -116,6 +117,7 @@ export const permissions = {
     sources: 'Fonti',
     tags: 'Tag',
     'units-of-measure': 'Unita di Misura',
+    'financial-accounts': 'Gestione Conti',
     'product-typologies': 'Tipologie Prodotto',
     // Modulo Task e i suoi cinque configuratori (spec 0101).
     tasks: 'Task',

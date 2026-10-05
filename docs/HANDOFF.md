@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0189 GESTIONE CONTI (financial-accounts) — VERDE, COMMITTATO, BRANCH feature/amministrazione (2026-10-05)
+
+- Spec `docs/specs/0189-financial-accounts.xml` (approvata). Tabella unica `financial_accounts` con `type`
+  bank_account|card|cash (immutabile dopo create); `name` = "Banca" (conto/carta) o "Nome" (cassa); `company_id` ->
+  `companies` (societa' madre, NON company_sites); geo piatte + `address_line`/`postal_code`; carta: `card_type`
+  credit|prepaid, `card_circuit` visa|mastercard|amex, `linked_account_id` (obbligatorio solo credit, solo verso
+  bank_account, restrictOnDelete), `card_holder`, `card_number` (cast `encrypted` + hidden), `card_last_four`, `card_expiry` MM/YYYY.
+- Decisioni utente: CVV e password/PIN carta MAI salvati (PCI DSS; chiavi cvv/card_ccv/card_password -> 422);
+  numero in chiaro solo via `GET /api/financial-accounts/{id}/card-number` con permesso `financial-accounts.revealCardNumber`
+  (scrive activity log `card_number_revealed`); IBAN con controllo mod-97, normalizzato, unico; nessuna migrazione dei
+  conti legacy (reinserimento manuale); nuova sezione menu `accounting` "Contabilita'" (config/navigation/accounting.php) prima di administration.
+- Delete di un conto con carte collegate -> 409 'This account has linked cards and cannot be deleted.'.
+- Permessi `financial-accounts.*` senza `import`. Morph map: `financial_account` in AppServiceProvider (senza -> 500 dal log).
+- Test toccati per requisito cambiato: FieldCatalogueEndpointTest (+ financial-accounts), QuoteWorkflowMigrationTest
+  (rollback step 123 -> 124), frontend help-guide-keys.test.ts (55 -> 56). routes/api.php era a 501 righe: commento Referents accorciato.
+- Verifier: Pest parallelo 9226/9230 (3 fail = `soffice` LibreOffice assente in QuoteDocumentPdfTest, ambiente), Vitest
+  6663/6665 (2 flaky sotto carico, verdi da soli), tsc -b, ESLint, Pint puliti. AC-001..025 PASS.
+- Ambiente locale: il php.ini di Laragon non ha pdo_sqlite/sqlite3/zip e il runner parallelo vuole memory_limit ~2G.
+- Aperto: manuale Claude Docs (sezione Contabilita' > Gestione Conti) NON aggiornato: il connettore non ha accesso al documento.
+  Guide in-app IT/EN `financial-accounts` fatte. Nell'elenco la modifica passa dal dettaglio (azioni riga: view/delete/activity), come UoM.
+
 ## PRODOTTI: DESCRIZIONE NEI SELECT + AREA E-CAMPUS — VERDE, NON COMMITTATO (2026-10-02)
 
 - Decisione utente 2026-10-02: ogni prodotto e-Campus ha in descrizione la sua area (fonte: PDF "Schema Corsi

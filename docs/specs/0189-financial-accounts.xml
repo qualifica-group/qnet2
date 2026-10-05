@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0189-financial-accounts" status="approved" owner="utente" date="2026-10-05">
+
+  <goal>
+    Modulo "Gestione Conti" (sezione di menu nuova "Contabilita'"): anagrafica unica dei conti
+    aziendali di tre tipi - Conto Corrente, Carta, Cassa - con elenco AG Grid SSRM (filtri,
+    ordinamento, export backend-driven), visualizzazione, creazione/modifica in una modale i cui
+    campi dipendono dal tipo, eliminazione, permessi e audit come ogni altro modulo del CRM.
+  </goal>
+
+  <context>
+    Brief utente: prompt_temp.md (tabella legacy QNet `amministrazione_contis`, usata solo come
+    riferimento di dominio). Branch: feature/amministrazione.
+
+    Decisioni utente 2026-10-05 (D-*):
+    - D-1 Dati carta: il CVV e la password/PIN della carta NON si salvano (PCI DSS). Il numero carta
+      e' salvato cifrato (cast `encrypted`) e mostrato sempre mascherato (`**** 1234`); in chiaro solo
+      tramite endpoint dedicato con permesso `financial-accounts.revealCardNumber`.
+    - D-2 "Associa al conto": obbligatorio per carte di credito, facoltativo per prepagate. Il conto
+      collegato deve essere di tipo Conto Corrente.
+    - D-3 Menu: nuova sezione "Contabilita'" (key `accounting`), prima di "Amministrazione".
+    - D-4 Dati legacy: nessuna migrazione/seed dei record reali; reinserimento manuale.
+    - D-5 IBAN: controllo formale (struttura ISO 13616 + checksum mod-97, qualsiasi paese),
+      normalizzato maiuscolo senza spazi, univoco tra i conti.
+    - D-6 Campo "Societa'": collegamento facoltativo alla societa' madre esistente
+      (`companies`, model Company; picker GET /api/companies/for-select) su tutti e tre i tipi.
+      NON alle sedi (`company_sites`). Nell'elenco: colonna "Societa'" nascosta per default,
+      filtrabile (decisione utente 2026-10-05).
+
+    Decisioni tecniche proposte (D-7..D-11, da validare con la spec):
+    - D-7 Una sola tabella `financial_accounts` con discriminatore `type` (STI) e colonne nullable
+      per tipo: tre tipi con form diversi ma stesso elenco, stessa policy, stesso export. Il tipo
+      e' immutabile dopo la creazione (cambiarlo lascerebbe campi incoerenti).
+    - D-8 "Banca" (Conto Corrente, Carta) e "Nome" (Cassa) sono la stessa colonna `name`: e' la
+      colonna "Nome" dell'elenco. Cambia solo l'etichetta nella modale.
+    - D-9 Indirizzo come FK geo piatte sull'entita' (stesso schema di `projects`: country_id,
+      state_id, province_id, city_id) + `address_line` + `postal_code` (la tabella `cities` non ha
+      CAP). Picker frontend: `GeoSelect` (features/geo/geo-select.tsx), come operational-sites.
+    - D-10 Eliminazione: un Conto Corrente con carte collegate non si elimina (409); FK
+      `linked_account_id` restrictOnDelete. Eliminazione fisica (nessun soft delete), come UoM.
+    - D-11 Scadenza carta come stringa `MM/YYYY`; `card_last_four` salvato in chiaro, derivato
+      server-side dal numero, per mostrare il mascherato senza decifrare.
+
+    Template di riferimento (verificati): modulo Unita' di misura (spec 0088) -
+    UnitOfMeasure / UnitOfMeasurePolicy (BasePolicy) / UnitsOfMeasureAuthorization
+    (AbstractResourceAuthorization, config/authorization.php) / Store|Update*Request + ForSelectRequest /
+    CreateUnitOfMeasureData|UpdateUnitOfMeasureData / UnitOfMeasureService / UnitOfMeasureResource +
+    ForSelectResource / UnitOfMeasureController (okWithPermissions, handleControllerException,
+    noContent) + ForSelectController / UnitsOfMeasureTableDefinition + UnitOfMeasureColumnCatalog
+    (config/tables.php) / config/activity-log.php. Frontend features/units-of-measure/* (api, types,
+    schema, form, form-body, form-payload, use-*-form, use-*-form-meta, detail, screens, table,
+    column-renderers), pages/units-of-measure-page.tsx, routes/router.tsx, routes/breadcrumbs.tsx.
+    Permessi: generati da `permissions:sync` (Policy + navigation), nessun seed manuale; abilita'
+    extra via override di `abilities()` (precedente ContractPolicy). Menu backend-driven:
+    config/navigation.php + config/navigation/*.php. Set filter con options: ContractStatusColumnCatalog.
+    Nessun model usa oggi il cast `encrypted`: questo e' il primo.
+    Nessuna tabella/classe esistente collide con `financial_accounts` / FinancialAccount.
+    L'unico concetto bancario esistente e' `company_site_banks` (banche della sede, spec 0020): resta
+    invariato e separato.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione `financial_accounts` (reversibile), model FinancialAccount, enum FinancialAccountType / FinancialCardType / FinancialCardCircuit, factory con stati per tipo.</item>
+      <item>Regola di validazione IBAN (app/Rules/ValidIban) riusabile.</item>
+      <item>Policy FinancialAccountPolicy (resource `financial-accounts`, abilita' standard + `revealCardNumber`), FinancialAccountsAuthorization, voce in config/authorization.php.</item>
+      <item>FormRequest store/update/for-select con regole per tipo; DTO create/update; FinancialAccountService (create/update/delete + guard D-10 + reveal).</item>
+      <item>Resource (mai il numero carta in chiaro), ForSelectResource, controller CRUD + for-select + reveal, rotte in un file nuovo routes/api/financial-accounts.php richiesto da routes/api.php.</item>
+      <item>TableDefinition `financial-accounts` (colonne ID, Nome, IBAN, Tipo, Note; filtri, ordinamento, quick-search, export generico) + ColumnCatalog; registrazione in config/tables.php.</item>
+      <item>Audit: LogsModelActivity sul model, card_number escluso dal log; evento di activity log alla rivelazione del numero carta; voce in config/activity-log.php.</item>
+      <item>Navigazione: config/navigation/accounting.php (sezione `accounting`) richiesto in config/navigation.php prima di administration.</item>
+      <item>DemoFinancialAccountSeeder (dati fake, IBAN generati validi) aggiunto a DemoDataSeeder.</item>
+      <item>Frontend features/financial-accounts/* : elenco AG Grid, dettaglio, modale create/edit con scelta tipo e campi per tipo (schema Zod discriminato su `type`), eliminazione, rivelazione numero carta; pagina, rotta, breadcrumb, i18n IT/EN, etichette menu e permessi, icona.</item>
+      <item>Guida in-app IT/EN `financial-accounts` + chiave in HELP_GUIDE_KEYS; manuale Claude Docs (nuova sezione Contabilita' > Gestione Conti).</item>
+      <item>Test Pest (CRUD, validazione per tipo, sicurezza/authz, tabella, for-select, reveal, schema) e Vitest (schema, payload, form, tabella, parity i18n/help).</item>
+    </in>
+    <out>
+      <item>Salvataggio di CVV e password/PIN carta (D-1): nessuna colonna, nessun campo.</item>
+      <item>Migrazione o seed dei conti reali del vecchio QNet (D-4); nessuna MigrationSource.</item>
+      <item>Movimenti, saldi, riconciliazione bancaria, prima nota, collegamento a pagamenti/fatture/provvigioni.</item>
+      <item>Modifiche a `company_site_banks` / BankService / form banche delle sedi.</item>
+      <item>Tipi di conto configurabili da interfaccia (i tre tipi sono un enum di codice).</item>
+      <item>Import da file (nessuna azione import nella griglia).</item>
+      <item>Validazione del CAP contro i comuni; controllo che la carta non sia scaduta.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Schema DB -->
+    <table name="financial_accounts">
+      id bigIncrements;
+      type string(20) NOT NULL, index — bank_account|card|cash;
+      name string(255) NOT NULL — Banca (bank_account, card) / Nome (cash);
+      company_id FK companies nullable, nullOnDelete, index;
+      iban string(34) nullable, UNIQUE — solo bank_account, normalizzato (maiuscolo, senza spazi);
+      account_number string(50) nullable — solo bank_account ("Conto Corrente");
+      address_line string(255) nullable; postal_code string(10) nullable;
+      country_id / state_id / province_id / city_id FK nullable, nullOnDelete — bank_account, cash;
+      card_type string(20) nullable — credit|prepaid, solo card;
+      card_circuit string(20) nullable — visa|mastercard|amex, solo card;
+      linked_account_id FK financial_accounts nullable, restrictOnDelete, index — solo card;
+      card_holder string(255) nullable — solo card;
+      card_number text nullable, cast `encrypted`, $hidden — solo card;
+      card_last_four char(4) nullable — derivato server-side;
+      card_expiry string(7) nullable — `MM/YYYY`, solo card;
+      notes text nullable;
+      timestamps.
+    </table>
+
+    <!-- Payload di scrittura (store e update condividono la shape; update parziale ammesso) -->
+    <payload type="bank_account">
+      { type: "bank_account", name: string (req, max 255), iban: string (req, IBAN valido, unico),
+        account_number: string (req, max 50), company_id: int|null,
+        address_line: string|null, postal_code: string|null (max 10),
+        country_id|state_id|province_id|city_id: int|null (exists), notes: string|null }
+      Campi carta presenti => 422 (prohibited).
+    </payload>
+    <payload type="card">
+      { type: "card", card_type: "credit"|"prepaid" (req), name: string (req, Banca),
+        card_circuit: "visa"|"mastercard"|"amex" (req),
+        linked_account_id: int (required se card_type=credit, nullable se prepaid; deve esistere ed essere type=bank_account),
+        card_holder: string (req, max 255),
+        card_number: string (req in create; in update facoltativo: assente = invariato; 12-19 cifre dopo rimozione spazi, Luhn valido),
+        card_expiry: string (req, regex ^(0[1-9]|1[0-2])/\d{4}$), company_id: int|null, notes: string|null }
+      Campi iban/account_number/indirizzo presenti => 422 (prohibited). Nessun campo cvv/password accettato.
+    </payload>
+    <payload type="cash">
+      { type: "cash", name: string (req, max 255), company_id: int|null,
+        address_line, postal_code, country_id, state_id, province_id, city_id (come bank_account), notes }
+      Campi bank/carta presenti => 422 (prohibited).
+    </payload>
+
+    <!-- Shape della Resource (show/store/update) -->
+    <resource name="FinancialAccountResource">
+      { id, type, name, company: {id, name}|null, iban, account_number,
+        address_line, postal_code, country: {id,name}|null, state: {id,name}|null,
+        province: {id,name}|null, city: {id,name}|null,
+        card_type, card_circuit, linked_account: {id, name, iban}|null, card_holder,
+        card_number_masked: "**** 1234"|null, card_expiry, notes, created_at, updated_at }
+      Mai `card_number` in chiaro. I campi non pertinenti al tipo valgono null.
+    </resource>
+
+    <endpoint method="GET" path="/api/tables/financial-accounts (endpoint SSRM generico esistente)">
+      <response status="200">shape SSRM invariata; righe { id, name, iban, type, notes, company (hidden, filtrabile) }</response>
+      <errors>403 senza financial-accounts.viewAny (TableDefinition::viewAny)</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/financial-accounts/for-select">
+      <request>search?: string; type?: bank_account|card|cash; page/per_page come for-select standard</request>
+      <response status="200">{ items: [{id, label: name, subtitle: iban|null, meta: {type}}], export_link, pagination }</response>
+      <errors>401 senza auth; nessun gate di permesso (ADR 0011)</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/financial-accounts/{financialAccount}">
+      <response status="200">{ success, message, data: FinancialAccountResource, permissions }</response>
+      <errors>403 senza financial-accounts.view; 404 inesistente</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/financial-accounts">
+      <request>payload per tipo (sopra)</request>
+      <response status="201">{ success, message: 'Created', data: FinancialAccountResource, permissions }</response>
+      <errors>403 senza financial-accounts.create; 422 validazione (campi per tipo, IBAN non valido/duplicato, numero carta non valido, conto collegato non di tipo bank_account)</errors>
+    </endpoint>
+    <endpoint method="PUT|PATCH" path="/api/financial-accounts/{financialAccount}">
+      <request>payload per tipo; `type` assente o uguale all'attuale</request>
+      <response status="200">{ success, message: 'OK', data: FinancialAccountResource, permissions }</response>
+      <errors>403 senza financial-accounts.update; 422 se `type` diverso dall'attuale o validazione</errors>
+    </endpoint>
+    <endpoint method="DELETE" path="/api/financial-accounts/{financialAccount}">
+      <response status="204">nessun body</response>
+      <errors>403 senza financial-accounts.delete; 409 { success:false, message:'This account has linked cards and cannot be deleted.' }</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/financial-accounts/{financialAccount}/card-number">
+      <response status="200">{ success, message, data: { card_number: string } }</response>
+      <errors>403 senza financial-accounts.revealCardNumber; 404 se il conto non e' di tipo card o non ha numero</errors>
+    </endpoint>
+
+    <permissions>
+      financial-accounts.viewAny|view|create|update|delete|export|viewActivity|revealCardNumber
+      (import escluso: override di abilities()). Azioni Authorization: delete, export,
+      view_activity, reveal_card_number.
+    </permissions>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con financial-accounts.create, quando invia POST un bank_account valido, allora riceve 201 con la Resource e il record esiste con iban normalizzato (maiuscolo, senza spazi).</criterion>
+    <criterion id="AC-002">Dato un bank_account con IBAN di checksum errato (es. 'xyz' o un IBAN con una cifra alterata), quando lo invia, allora riceve 422 su `iban` e nessun record viene creato.</criterion>
+    <criterion id="AC-003">Dato un IBAN gia' usato da un altro conto (anche scritto con spazi/minuscole), quando si crea o aggiorna un conto con quell'IBAN, allora 422 su `iban`.</criterion>
+    <criterion id="AC-004">Dato un payload card credit senza linked_account_id, allora 422 su `linked_account_id`; lo stesso payload con card_type=prepaid e' accettato (201).</criterion>
+    <criterion id="AC-005">Dato un linked_account_id che punta a un conto di tipo card o cash, quando si crea una carta, allora 422 su `linked_account_id`.</criterion>
+    <criterion id="AC-006">Dato un numero carta non Luhn-valido o fuori 12-19 cifre, o una scadenza non MM/YYYY, allora 422 sul campo relativo.</criterion>
+    <criterion id="AC-007">Data una carta creata con numero '4111 1111 1111 1111', allora nel DB la colonna card_number non contiene il numero in chiaro, card_last_four='1111', e show/store/update/SSRM/export non restituiscono mai il numero completo (solo card_number_masked '**** 1111').</criterion>
+    <criterion id="AC-008">Un payload contenente cvv, card_ccv o card_password non viene mai persistito: la tabella non ha colonne per questi dati e il campo e' ignorato o rifiutato (422).</criterion>
+    <criterion id="AC-009">Dato un payload di un tipo che contiene campi di un altro tipo (es. cash con iban, bank_account con card_number), allora 422 sui campi non pertinenti.</criterion>
+    <criterion id="AC-010">Dato un conto esistente, quando si invia update con un `type` diverso, allora 422 e il record resta invariato.</criterion>
+    <criterion id="AC-011">Data una carta esistente, quando si invia update senza card_number, allora il numero salvato resta invariato; con un nuovo numero valido, card_last_four si aggiorna.</criterion>
+    <criterion id="AC-012">Dato un bank_account con almeno una carta collegata, quando si invia DELETE, allora 409 con il messaggio del contratto e il record esiste ancora; senza carte collegate, 204 e il record non esiste piu'.</criterion>
+    <criterion id="AC-013">Dato un utente senza il permesso corrispondente, quando chiama show/store/update/delete/reveal o la tabella SSRM, allora riceve 403; senza autenticazione 401.</criterion>
+    <criterion id="AC-014">Dato un utente con financial-accounts.revealCardNumber, quando chiama GET /card-number su una carta, allora riceve il numero completo e viene scritta una voce di activity log di rivelazione con l'utente; su un conto non card, 404.</criterion>
+    <criterion id="AC-015">L'activity log di create/update di una carta non contiene card_number (ne' in chiaro ne' cifrato).</criterion>
+    <criterion id="AC-016">La tabella SSRM `financial-accounts` espone le colonne id, name, iban, type, notes; type ha filtro set con valori bank_account|card|cash; name e iban sono ordinabili e cercabili in quick-search; un sort su colonna non dichiarata viene ignorato/rifiutato (allow-list).</criterion>
+    <criterion id="AC-017">L'export della tabella (permesso financial-accounts.export) produce le colonne visibili della griglia e non contiene numeri carta.</criterion>
+    <criterion id="AC-018">GET /for-select?type=bank_account restituisce solo conti di tipo bank_account, con subtitle = iban, filtrabili per `search` sul nome.</criterion>
+    <criterion id="AC-019">Il permesso financial-accounts.* (inclusa revealCardNumber, esclusa import) compare dopo `permissions:sync`; la sezione di menu `accounting` con la voce Gestione Conti e' visibile solo a chi ha financial-accounts.view.</criterion>
+    <criterion id="AC-020">La migrazione `financial_accounts` e' reversibile (migrate + rollback senza errori) e crea gli indici/vincoli del contratto (iban unique, FK).</criterion>
+    <criterion id="AC-021">(FE) Lo schema Zod discriminato su `type` accetta i payload validi dei tre tipi e rifiuta: IBAN non valido, carta credit senza conto, numero carta non Luhn, scadenza non MM/YYYY; il payload inviato contiene solo i campi del tipo scelto.</criterion>
+    <criterion id="AC-022">(FE) Nella modale "Nuovo conto", la scelta del tipo mostra solo i campi del tipo (Conto Corrente: Banca, IBAN, Conto Corrente, Societa', indirizzo, Note; Carta: Tipo carta, Banca, Circuito, Associa al conto, Intestatario, Numero carta, Scadenza, Societa', Note; Cassa: Nome, Societa', indirizzo, Note); "Associa al conto" elenca solo Conti Correnti e diventa obbligatorio solo con Tipo carta = Credito. Nessun campo CVV.</criterion>
+    <criterion id="AC-023">(FE) In modifica il tipo non e' modificabile; il numero carta e' mostrato mascherato e si sostituisce solo digitandone uno nuovo; il pulsante "Mostra numero" compare solo con reveal_card_number e mostra il numero restituito dall'endpoint.</criterion>
+    <criterion id="AC-024">(FE) L'elenco mostra ID, Nome, IBAN, Tipo (etichetta tradotta), Note; le azioni modifica/elimina compaiono secondo i permessi; un 409 in eliminazione mostra il messaggio all'utente.</criterion>
+    <criterion id="AC-025">(FE) Parity i18n IT/EN del modulo, dei permessi e della guida in-app `financial-accounts` verdi; HELP_GUIDE_KEYS contiene la nuova chiave.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (Composer/npm). Validazione IBAN e Luhn scritte in casa (backend Rule + util frontend), con test.</item>
+    <item>Authz server-side su ogni endpoint (Policy) e in TableDefinition::viewAny. L'UI nasconde, il backend autorizza.</item>
+    <item>Numero carta: cast `encrypted`, $hidden, escluso da Resource, SSRM, export, activity log e log applicativi. CVV/password mai persistiti.</item>
+    <item>Ordinamento/filtri solo da allow-list di colonne del ColumnCatalog; nessun orderByRaw/whereRaw da input.</item>
+    <item>`$request->safe()` + DTO per la scrittura; `$fillable` esplicito sul model.</item>
+    <item>Identificatori in inglese; etichette italiane solo in i18n. File &lt; 300 righe (500 hard).</item>
+    <item>Nessun throttle sugli endpoint del modulo (decisione 2026-07-15).</item>
+    <item>UI compatta (ui-design.md), superfici da token, responsive 375/768/1024, errori di campo con triade ARIA.</item>
+    <item>Suite Pest in parallelo: helper condivisi in tests/Helpers/FinancialAccountHelpers.php.</item>
+    <item>Typecheck `cd frontend &amp;&amp; npx tsc -b --force`, Pint, ESLint puliti.</item>
+  </constraints>
+
+</spec>

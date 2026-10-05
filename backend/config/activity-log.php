@@ -13,6 +13,7 @@ use App\Models\DocumentBundle;
 use App\Models\DocumentLayout;
 use App\Models\EmailTemplate;
 use App\Models\FieldChangeRequest;
+use App\Models\FinancialAccount;
 use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
@@ -249,6 +250,10 @@ return [
         ],
         'vat-rates' => [
             'model' => VatRate::class,
+        ],
+        // spec 0189: card_number e' nascosto sul model, quindi mai nel log.
+        'financial-accounts' => [
+            'model' => FinancialAccount::class,
         ],
         'units-of-measure' => [
             'model' => UnitOfMeasure::class,

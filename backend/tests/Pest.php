@@ -48,6 +48,7 @@ require_once __DIR__.'/Helpers/StatsHelpers.php';
 require_once __DIR__.'/Helpers/EmailTemplateHelpers.php';
 require_once __DIR__.'/Helpers/DocumentBundleHelpers.php';
 require_once __DIR__.'/Helpers/TableFieldHelpers.php';
+require_once __DIR__.'/Helpers/FinancialAccountHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

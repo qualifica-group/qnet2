@@ -336,12 +336,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // auth:sanctum group so every route there inherits the same context.
     require __DIR__.'/api/lookups.php';
 
-    // Referents CRUD (spec 0016) + rewards lazy detail (spec 0059):
-    // extracted into routes/api/referents.php (file-size split,
-    // engineering.md §6) so this file stays within the 500-line hard limit.
-    // Required INSIDE this auth:sanctum group so every route there inherits
-    // the same context.
+    // Referents CRUD (spec 0016) + rewards lazy detail (spec 0059), extracted
+    // (file-size split, engineering.md §6) and required INSIDE this auth group.
     require __DIR__.'/api/referents.php';
+    require __DIR__.'/api/financial-accounts.php'; // Financial accounts (spec 0189)
 
     require __DIR__.'/api/rewards.php'; // Reward inline status edit (spec 0060 §4, file-size split engineering.md §6)
 

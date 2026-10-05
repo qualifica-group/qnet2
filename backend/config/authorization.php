@@ -13,6 +13,7 @@ use App\Authorization\DocumentBundlesAuthorization;
 use App\Authorization\DocumentLayoutsAuthorization;
 use App\Authorization\EmailTemplatesAuthorization;
 use App\Authorization\EnrolleeManagementAuthorization;
+use App\Authorization\FinancialAccountsAuthorization;
 use App\Authorization\LeadsAuthorization;
 use App\Authorization\OperationalSitesAuthorization;
 use App\Authorization\OpportunitiesAuthorization;
@@ -115,6 +116,8 @@ return [
         'rewarded-referents' => RewardedReferentsAuthorization::class,
         'vat-rates' => VatRatesAuthorization::class,
         'units-of-measure' => UnitsOfMeasureAuthorization::class,
+        // spec 0189: conti finanziari (conto corrente, carta, cassa).
+        'financial-accounts' => FinancialAccountsAuthorization::class,
         'product-typologies' => ProductTypologiesAuthorization::class,
         // spec 0101: il modulo Task e i suoi cinque configuratori.
         'tasks' => TasksAuthorization::class,

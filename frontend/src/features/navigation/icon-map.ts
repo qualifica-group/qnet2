@@ -42,6 +42,7 @@ import {
   Mail,
   FolderArchive,
   ChartColumn,
+  Landmark,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -101,6 +102,8 @@ const iconMap: Record<string, LucideIcon> = {
   'chart-column': ChartColumn,
   // Spec 0187: "Stato del sistema" under Amministrazione.
   activity: Activity,
+  // Spec 0189: "Gestione Conti" under Contabilita'.
+  landmark: Landmark,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {
