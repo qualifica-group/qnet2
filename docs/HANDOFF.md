@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX RIGHE OFFERTA AL CAMBIO LINEA DI PRODOTTO (Gestione Richieste) — VERDE, NON COMMITTATO (2026-10-05)
+
+- Bug: in creazione (`/request-management/new`) e in lavorazione, sostituendo la linea di prodotto la riga d'offerta
+  restava sul prodotto della categoria tolta (il picker offriva gia' solo i prodotti della nuova); al salvataggio
+  `OpportunityProductLineCoverage` rimetteva la vecchia categoria.
+- Nuovo `frontend/src/features/request-management/use-offer-lines-coherence.ts`: `resetUncoveredOfferRows` (pura) +
+  `useOfferLinesCoherence(control)`; stesso schema di `useProductsOfInterestCoherence` (funzione chiamata
+  nell'`onChange` del `ProductLinesField`, non un effect). Categoria del prodotto da `meta.category_id` della query
+  for-select by-ids; riga scoperta -> `createEmptyLineRow()` in place (l'autofill mono-prodotto la riempie se la nuova
+  categoria ha un solo prodotto); prodotto non ancora risolto = tenuto; `offer_lines` non scrivibile = nessuna azione.
+  Toast `requestManagement.offerLines.prunedNotice` (IT/EN).
+- Cablato in `request-product-lines-section.tsx` (lavorazione) e `request-create-form.tsx` (creazione). Harness di
+  `product-lines-wiring-parity.test.tsx` aggiornato (QueryClient + `offer_lines: []`), asserzioni invariate.
+- Guida in-app `request-management` IT/EN aggiornata (voce "Linee di prodotto"). Manuale Claude Docs NON aggiornato
+  (doc non condiviso con la sessione): sezione "Lavorare una richiesta" / "Creare una nuova richiesta".
+- Fuori scope, da valutare: l'editor in-griglia della categoria (`product-lines-cell-editor.tsx`) non svuota le righe offerta.
+
 ## ALLEGATI .ZIP AMMESSI — VERDE, COMMITTATO (2026-10-05)
 
 - `config/attachments.php` `allowed_mime_types` + `application/zip`. Unica allow-list condivisa: vale per

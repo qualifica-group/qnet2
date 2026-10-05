@@ -89,7 +89,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Linee di prodotto**: decidono i prodotti selezionabili e i campi specifici.',
+            "**Linee di prodotto**: decidono i prodotti selezionabili e i campi specifici. Se cambi o togli una linea, le righe offerta con un prodotto di una categoria non più scelta si svuotano: scegli di nuovo il prodotto.",
             '**Righe offerta**: prodotti, quantità, prezzi e IVA.',
             '**Stato**: alcuni stati richiedono una **Nota**.',
             '**Anagrafica**, **Attribuzione** e **Team** (**Supervisore** e **Gestori account**).',

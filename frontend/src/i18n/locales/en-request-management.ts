@@ -206,6 +206,7 @@ export const requestManagement = {
     dialogTitle: 'Offer rows',
     dialogDescription: 'Edit product, quantity, unit price and VAT of this offer\'s rows.',
     validationSummary: 'Check the highlighted rows before saving.',
+    prunedNotice: 'Removed from the offer rows, their product category is no longer selected: {{names}}.',
   },
   workPanel: {
     loadError: 'Could not load the record.',

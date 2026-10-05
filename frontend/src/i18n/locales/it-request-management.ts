@@ -206,6 +206,8 @@ export const requestManagement = {
     dialogTitle: 'Linee dell\'offerta',
     dialogDescription: 'Modifica prodotto, quantità, prezzo unitario e IVA delle righe di questa offerta.',
     validationSummary: 'Controlla le righe evidenziate prima di salvare.',
+    prunedNotice:
+      'Rimossi dalle righe dell\'offerta, la loro categoria prodotto non è più selezionata: {{names}}.',
   },
   workPanel: {
     loadError: 'Impossibile caricare il record.',

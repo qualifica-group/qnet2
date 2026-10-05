@@ -89,7 +89,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Product lines**: they decide the selectable products and the request-specific fields.',
+            '**Product lines**: they decide the selectable products and the request-specific fields. Changing or removing a line empties the offer rows whose product belongs to a category no longer picked: pick the product again.',
             '**Offer rows**: products, quantities, prices and VAT.',
             '**Status**: some statuses require a **Note**.',
             '**Client details**, **Attribution** and **Team** (**Supervisor** and **Account managers**).',
