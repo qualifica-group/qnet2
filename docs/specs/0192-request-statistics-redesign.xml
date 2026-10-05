@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPEC 0192 — REDESIGN PAGINA STATISTICHE GESTIONE RICHIESTE
+  Richiesta utente 2026-10-05: "voglio rifattorizzare questa pagina, le funzioni sempre le stesse ma
+  rifatta come i CRM migliori del settore, molto piu' wow e usabile al massimo".
+-->
+<spec id="0192-request-statistics-redesign" status="implemented" owner="utente" date="2026-10-05">
+
+  <goal>
+    `/request-statistics` (spec 0185) viene ridisegnata come una dashboard analitica da CRM moderno:
+    filtri rapidi del periodo in toolbar, navigazione a tab (Panoramica + una per categoria), KPI ricchi
+    con confronto sul periodo precedente e ripartizione per categoria, heatmap categorie x indicatori,
+    classifica operatori in tabella. Stesse funzioni, stessi numeri, stessi endpoint, nessuna modifica backend.
+  </goal>
+
+  <context>
+    <item>Oggi: `RequestDashboard` = `RequestDashboardFilterBar` (chip filtri applicati, export CSV/XLSX,
+      espandi/comprimi tutto, apri pannello filtri) + `RequestReportFiltersDialog` (periodo, categorie,
+      Sedi, operatori, modalita' righe) + sezioni comprimibili `request-dashboard-section.tsx`
+      (Complessivo + una per categoria: riquadri `StatCard` + `ReportBarChart`), stato apertura in
+      `use-request-dashboard-collapse.ts` (localStorage).</item>
+    <item>Contratto `GET /api/request-management/report/dashboard` (spec 0107/0141): `summary[]` (union,
+      NON somma delle categorie, D-8), `categories[]` con `summary[]` e `charts[]` (`indicator` = un punto
+      per indicatore configurato; `operator` = un grafico per indicatore, un punto per GA2 incluso
+      "Non assegnato", label = nome operatore). `row_mode` decide quali grafici arrivano.</item>
+    <item>recharts gia' presente; tabs Radix in `components/ui/tabs.tsx`; token `--warning`, `--success`,
+      `--chart-1..5`. Nessuna nuova dipendenza.</item>
+  </context>
+
+  <decisions>
+    D-1 (utente) Navigazione a tab: "Panoramica" + un tab per categoria restituita dal dashboard. Il tab
+        attivo e' ricordato (localStorage per modulo); se la categoria non c'e' piu' -> Panoramica.
+        Le sezioni comprimibili e il pulsante espandi/comprimi tutto spariscono (non servono piu'):
+        `request-dashboard-section.tsx` e `use-request-dashboard-collapse.ts` eliminati.
+    D-2 (utente) Toolbar: preset periodo con un clic — Oggi, Ieri, Ultimi 7 giorni (oggi incluso),
+        Questo mese (dal 1 a oggi), Mese scorso, Tutto (entrambe le date vuote) — piu' "Personalizzato"
+        che apre il pannello filtri. Il preset attivo e' DERIVATO dalle date applicate (nessuno stato
+        separato). Categorie, Sedi, operatori e modalita' righe restano nel pannello ("Altri filtri").
+        I chip dei filtri applicati restano. Il payload all'API e' quello di sempre
+        (`toRequestReportFilterPayload`), quindi export e grafici restano allineati (spec 0109 D-9).
+    D-3 (utente) Classifica operatori: nel tab categoria, i grafici `operator` sono ricomposti in UNA
+        tabella operatori x indicatori (pivot per label), ordinabile per colonna (default: primo
+        indicatore desc, poi nome asc), barre inline proporzionali al massimo della colonna, podio
+        visivo per i primi 3, "Non assegnato" mai sul podio e sempre in fondo. Assente con
+        `row_mode = total_only` (nessun grafico operator), come oggi.
+    D-4 (utente) Confronto periodo precedente: solo con periodo chiuso (entrambe le date). Periodo
+        precedente = stessa durata in giorni, immediatamente prima di `date_from`. Seconda chiamata allo
+        STESSO endpoint con lo stesso payload e le sole date cambiate. Delta % per KPI (Panoramica e
+        categoria), match per `key`; precedente 0 e attuale > 0 -> "nuovo"; entrambi 0 -> nessun delta.
+        Errore/caricamento della seconda chiamata non blocca mai la pagina: i KPI restano senza delta.
+        Colore del delta: verde = aumento, rosso = calo, invertito per gli indicatori "non gestiti"
+        (`unhandled_*`), dove aumentare e' negativo. Mai solo colore: freccia + segno + testo sr.
+    D-5 (utente) Heatmap nella Panoramica: righe = categorie, colonne = union delle chiavi indicatore in
+        ordine di prima comparsa; intensita' normalizzata PER COLONNA (scale diverse per indicatore);
+        cella non configurata = "—". Cella/riga cliccabile -> apre il tab della categoria.
+    D-6 (utente) Ripartizione nei KPI della Panoramica: mini barra impilata col contributo di ciascuna
+        categoria che configura quell'indicatore, percentuali sulla SOMMA delle categorie (il totale del
+        KPI e' l'union D-8 e puo' differire dalla somma: la barra mostra la ripartizione, non il totale).
+        Tooltip/legenda testuale con nome, valore e %.
+    D-7 (utente) Contatori animati all'aggiornamento (~600 ms, easing), disattivati con
+        `prefers-reduced-motion` o senza `matchMedia`; il testo accessibile e' sempre il valore finale.
+        Icona per indicatore noto (fallback generico per chiavi non mappate), accento ambra
+        (`--warning`) sugli indicatori `unhandled_*`.
+    D-8 Tab categoria: KPI della categoria (con delta), grafico "Profilo indicatori" (il grafico
+        `indicator`, presente se `row_mode != operators_only`) affiancato alla classifica operatori.
+        Categoria senza colonne/grafici: stessi messaggi vuoti di oggi.
+    D-9 Stati: skeleton coerente col nuovo layout, errore con riprova (messaggi `dashboardErrorKey`
+        invariati), "nessuna categoria" invariato, accesso negato invariato.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Solo frontend: `features/request-management/request-dashboard*.tsx` e nuovi file
+        `request-dashboard-*`/`dashboard-*` nella stessa feature; i18n IT/EN; guida in-app
+        `request-statistics` IT/EN; manuale Claude Docs (sezione Statistiche Gestione Richieste).</item>
+    </in>
+    <out>
+      <item>Backend, endpoint, numeri, cache, formato file export, permessi.</item>
+      <item>Logica del pannello filtri (`RequestReportFiltersDialog`, schema, riconciliazione chiavi).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    Invariato. Nuova sola chiamata aggiuntiva (D-4): stesso `GET .../report/dashboard`, `date_from`/`date_to`
+    del periodo precedente, resto del payload identico; cache key distinta via `requestManagementKeys.dashboard`.
+  </data_contract>
+
+  <acceptance>
+    <ac id="AC-001">Clic su un preset applica le date corrispondenti e la dashboard rifetcha; il preset
+      risulta selezionato (aria-pressed); date non corrispondenti a nessun preset -> "Personalizzato" attivo.</ac>
+    <ac id="AC-002">Tab: Panoramica + uno per categoria; clic su un tab mostra KPI della categoria; il tab
+      attivo sopravvive al remount; categoria sparita -> Panoramica.</ac>
+    <ac id="AC-003">Con periodo chiuso i KPI mostrano il delta % vs periodo precedente calcolato da una
+      seconda chiamata con le date spostate; con un estremo aperto nessuna seconda chiamata e nessun delta.</ac>
+    <ac id="AC-004">Delta su `unhandled_*`: aumento mostrato come negativo (tono destructive).</ac>
+    <ac id="AC-005">Heatmap: una riga per categoria, "—" per indicatore non configurato; clic -> tab categoria.</ac>
+    <ac id="AC-006">Classifica: pivot corretto dei grafici operator, ordinamento per colonna cliccando
+      l'intestazione (aria-sort), "Non assegnato" in fondo; assente con row_mode total_only.</ac>
+    <ac id="AC-007">Export CSV/XLSX, pannello filtri, chip filtri applicati, messaggi errore/vuoto: comportamento
+      invariato (test esistenti verdi o adeguati solo dove cambia la struttura, dichiarato).</ac>
+    <ac id="AC-008">Responsive 375/768/1024: tab scorrevoli orizzontalmente, heatmap e classifica con
+      scroll interno, nessuno scroll orizzontale di pagina.</ac>
+  </acceptance>
+</spec>

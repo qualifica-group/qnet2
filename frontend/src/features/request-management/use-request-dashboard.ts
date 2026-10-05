@@ -1,9 +1,10 @@
 import { useCallback } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   fetchRequestManagementDashboard,
   type RequestDashboardQuery,
 } from '@/features/request-management/dashboard-api'
+import { previousPeriod } from '@/features/request-management/dashboard-period-presets'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
 import { useRequestModule } from '@/features/request-management/request-module'
 
@@ -29,7 +30,34 @@ export function useRequestDashboard(query: RequestDashboardQuery, enabled: boole
     queryKey: requestManagementKeys.dashboard(module.key, query),
     queryFn: () => fetchRequestManagementDashboard(module.apiBasePath, query),
     enabled,
+    // A new filter combination keeps the last numbers on screen (flagged
+    // `isPlaceholderData`) instead of flashing back to the skeleton (spec 0192).
+    placeholderData: keepPreviousData,
   })
+}
+
+/**
+ * The SAME dashboard on the period of equal length right before the applied
+ * one (spec 0192 D-4): only the two dates change, so the comparison covers
+ * exactly the same categories, Sedi and operators. Undefined — never the
+ * current period's data, which shares the query key when disabled — with an
+ * open bound, until it loads, or when it fails: the tiles then simply show
+ * no change, the page never waits on this second call.
+ */
+export function useRequestDashboardPrevious(query: RequestDashboardQuery, enabled: boolean) {
+  const module = useRequestModule()
+  const previous = previousPeriod({ date_from: query.date_from ?? '', date_to: query.date_to ?? '' })
+  const previousQuery = previous ? { ...query, ...previous } : query
+
+  // No placeholder here, unlike the main query: a change computed against
+  // another selection's previous period would be a wrong number, not a stale one.
+  const { data } = useQuery({
+    queryKey: requestManagementKeys.dashboard(module.key, previousQuery),
+    queryFn: () => fetchRequestManagementDashboard(module.apiBasePath, previousQuery),
+    enabled: enabled && previous !== null,
+  })
+
+  return previous ? data : undefined
 }
 
 /**

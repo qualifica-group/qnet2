@@ -3,8 +3,6 @@ import { useTranslation } from 'react-i18next'
 import {
   CheckCircle2,
   ChevronDown,
-  ChevronsDownUp,
-  ChevronsUpDown,
   CircleAlert,
   FileDown,
   FileSpreadsheet,
@@ -20,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { ExportFormat } from '@/features/exports/types'
+import type { DashboardDateRange } from '@/features/request-management/dashboard-period-presets'
 import type {
   RequestReportCategory,
   RequestReportFilterPayload,
@@ -27,13 +26,14 @@ import type {
   RequestReportSite,
 } from '@/features/request-management/report-api'
 import { RequestDashboardAppliedFilters } from '@/features/request-management/request-dashboard-applied-filters'
+import { DashboardPeriodPresets } from '@/features/request-management/request-dashboard-period-presets'
 import type { RequestReportFormValues } from '@/features/request-management/request-report-schema'
 import { useRequestReport } from '@/features/request-management/use-request-report'
 import { cn } from '@/lib/utils'
 
 /** Rung 2 under the page body, so the rung-3 (`bg-card`) buttons read as raised on it. */
 const BAR_CLASS = 'flex flex-col gap-2 rounded-xl border bg-surface px-3 py-2'
-const BAR_ROW_CLASS = 'flex flex-wrap items-start justify-between gap-2'
+const BAR_ROW_CLASS = 'flex flex-wrap items-center justify-between gap-2'
 
 /** The formats the backend enables (`config('exports.formats')`) — the same two the table export offers. */
 const REPORT_FORMATS: readonly ExportFormat[] = ['csv', 'xlsx']
@@ -88,18 +88,15 @@ export interface RequestDashboardFilterBarProps {
   /** False while the applied filters cannot drive a request (branch list not seeded yet). */
   filtersReady: boolean
   onEdit: () => void
-  /** Every collapsible block of the loaded dashboard is expanded: the button then collapses. */
-  allExpanded: boolean
-  /** False while no section is rendered (loading, error, empty): there is nothing to fold. */
-  canToggleExpanded: boolean
-  onToggleExpanded: () => void
+  /** Applies a one-click period (spec 0192 D-2) to the applied filters, dates only. */
+  onApplyPeriod: (range: DashboardDateRange) => void
 }
 
 /**
- * Replaces the filter controls the dashboard used to render inline (user
- * directive 2026-09-08): the applied-filter chips of what the charts below show,
- * the report action, and the button that opens the sheet where the filters
- * are edited. The report runs on the APPLIED filters — the same values the charts
+ * The statistics toolbar (spec 0192 D-2): the one-click periods, the button
+ * that opens the sheet where every other filter is edited (user directive
+ * 2026-09-08), the report action, then the applied-filter chips of what the
+ * page below shows. The report runs on the APPLIED filters — the same values the charts
  * were built from, so the file and the screen can never disagree — through
  * the create -> poll -> download cycle of `useRequestReport`; the file lands
  * automatically once the run completes, there is no separate download step.
@@ -114,26 +111,20 @@ export function RequestDashboardFilterBar({
   operators,
   filtersReady,
   onEdit,
-  allExpanded,
-  canToggleExpanded,
-  onToggleExpanded,
+  onApplyPeriod,
 }: RequestDashboardFilterBarProps) {
   const { t } = useTranslation()
   const report = useRequestReport()
   const isBusy = !filtersReady || report.isCreating || report.isProcessing
-  const expandLabel = allExpanded
-    ? t('requestManagement.dashboard.collapseAll')
-    : t('requestManagement.dashboard.expandAll')
-  const ExpandIcon = allExpanded ? ChevronsDownUp : ChevronsUpDown
 
   return (
     <div className={BAR_CLASS}>
       <div className={BAR_ROW_CLASS}>
-        <RequestDashboardAppliedFilters
-          filters={filters}
-          categories={categories}
-          sites={sites}
-          operators={operators}
+        <DashboardPeriodPresets
+          range={{ date_from: filters.date_from, date_to: filters.date_to }}
+          onApply={onApplyPeriod}
+          onCustom={onEdit}
+          disabled={!filtersReady}
         />
 
         <div className="flex shrink-0 items-center gap-2">
@@ -161,19 +152,6 @@ export function RequestDashboardFilterBar({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Icon-only like Filters: the label names the action it will perform next. */}
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="outline"
-            onClick={onToggleExpanded}
-            disabled={!canToggleExpanded}
-            aria-label={expandLabel}
-            title={expandLabel}
-          >
-            <ExpandIcon aria-hidden="true" className="size-3.5" />
-          </Button>
-
           {/* Icon-only (user directive 2026-09-22): the label stays as the accessible name and hover hint. */}
           <Button
             type="button"
@@ -187,6 +165,8 @@ export function RequestDashboardFilterBar({
           </Button>
         </div>
       </div>
+
+      <RequestDashboardAppliedFilters filters={filters} categories={categories} sites={sites} operators={operators} />
 
       {report.isProcessing ? (
         <ReportStatusNote tone="progress">{t('requestManagement.report.status.processing')}</ReportStatusNote>

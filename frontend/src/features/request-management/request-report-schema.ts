@@ -104,7 +104,7 @@ function pad2(value: number): string {
  * the calendar day backward (23:30 local can read as the next UTC day, and
  * just after local midnight can read as the PREVIOUS UTC day).
  */
-function toLocalIsoDate(date: Date): string {
+export function toLocalIsoDate(date: Date): string {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
 }
 

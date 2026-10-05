@@ -3,6 +3,34 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0192 REDESIGN STATISTICHE GESTIONE RICHIESTE — VERDE, NON COMMITTATO (2026-10-05)
+
+- Spec `docs/specs/0192-request-statistics-redesign.xml` (D-1..D-9 utente). Solo FE, endpoint/numeri/export invariati.
+- `/request-statistics`: toolbar con preset periodo (`dashboard-period-presets.ts`, preset DERIVATO dalle date, "Personalizzato"
+  apre il pannello filtri), tab Panoramica + una per categoria (`use-request-dashboard-tab.ts`, localStorage
+  `{module}.dashboard-tab`, `OVERVIEW_TAB`), KPI con contatore animato (`hooks/use-count-up.ts`, off senza matchMedia o
+  con reduced-motion) e delta vs periodo precedente (`useRequestDashboardPrevious`: seconda chiamata allo STESSO endpoint,
+  solo con periodo chiuso, niente placeholder; `dashboard-comparison.ts`, `unhandled_*` invertiti), ripartizione per
+  categoria per RANGO (top 4 colori + "Altre", `dashboard-overview.ts::categoryShares`), heatmap normalizzata per colonna,
+  classifica operatori = pivot dei grafici `operator` (`dashboard-leaderboard.ts`; "Non assegnato" riconosciuto dalla
+  label dell'operatore `UNASSIGNED_OPERATOR_KEY`, sempre ultimo, mai sul podio). Query principale `keepPreviousData`.
+- Eliminati `request-dashboard-section.tsx` e `use-request-dashboard-collapse.ts` (espandi/comprimi non esiste piu').
+  Chiavi i18n rimosse: `expandAll`, `collapseAll`, `tilesTitle`, `chartsTitle`.
+- Scroller orizzontali con `w-0 min-w-full` (tab, heatmap, classifica): senza, 19 categorie allargavano la pagina.
+- Richieste utente successive (stesso giorno): (1) hover classifica uniforme — la cella sticky "Operatore" ha fondo
+  opaco, su hover prende `color-mix(in oklab, --muted 40%, --card)` (oklab: in oklch la card acromatica dava una
+  tinta rosa); (2) valori colorati per indicatore: `INDICATOR_COLORS`/`indicatorTint` in `dashboard-indicator-meta.ts`
+  (pastiglia tinta 18% + testo foreground, mai testo nel colore serie; zeri grigi; barre piene); (3) tab "come in
+  Gestione Richieste": `request-dashboard-category-strip.tsx` riusa `useCategoryTabFit` (tipo allargato a `{ id:
+  number }`, id = POSIZIONE della categoria) e `CategoryMoreButton` — "Altre (N)" con ricerca, categoria aperta sempre
+  in riga. Niente preferiti: l'endpoint `category-tab-preferences` richiede `request-management.viewAny`.
+- Test: `dashboard-*.test.ts` (logica), `request-dashboard-tabs.test.tsx` (redesign), `request-dashboard.test.tsx` e
+  `-filter-bar.test.tsx` adeguati (requisito cambiato: niente collapse; il periodo chiuso fa 2 chiamate), fixture in
+  `request-dashboard-fixtures.ts`. Suite FE completa 6702 verde, tsc pulito, ESLint pulito sui file toccati (2 errori
+  preesistenti altrove: `quotes/column-renderers.tsx`, `registries/registry-form-metadata.test.tsx`).
+- Verificato a schermo (Playwright, 1440 chiaro/scuro e 375): nessuno scroll orizzontale di pagina.
+- Guida in-app `request-statistics` IT/EN aggiornata. Da fare: manuale Claude Docs (doc non condiviso con la sessione).
+
 ## SPEC 0191 PREZZO/COSTO PRODOTTO PER UTILIZZO — VERDE, NON COMMITTATO (2026-10-05)
 
 - Spec `docs/specs/0191-product-pricing-by-usage.xml` (approved, D-1..D-9 utente). Prezzo obbligatorio/visibile sse

@@ -1,6 +1,8 @@
 import { useLayoutEffect, useState, type RefObject } from 'react'
 import { fitCategoryTabs } from '@/features/request-management/category-tab-fit'
-import type { RequestManagementProductCategory } from '@/features/request-management/types'
+
+/** Only the id is measured: any strip of numerically keyed tabs can use the fit (the statistics tabs too, spec 0192). */
+type MeasuredCategory = { id: number }
 
 /**
  * `data-tab-measure` values in the measuring layer: the "Tutte" tab, the menu
@@ -33,7 +35,7 @@ interface StripMeasurement {
 export function useCategoryTabFit(
   troughRef: RefObject<HTMLElement | null>,
   measureRef: RefObject<HTMLElement | null>,
-  categories: RequestManagementProductCategory[],
+  categories: MeasuredCategory[],
   stripIds: number[],
   selectedCategoryId: number | null,
 ): number[] {
@@ -80,7 +82,7 @@ function widthOf(layer: HTMLElement, key: string): number {
 function measureStrip(
   trough: HTMLElement,
   layer: HTMLElement,
-  categories: RequestManagementProductCategory[],
+  categories: MeasuredCategory[],
 ): StripMeasurement {
   const style = getComputedStyle(trough)
   const paddingX = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0)
