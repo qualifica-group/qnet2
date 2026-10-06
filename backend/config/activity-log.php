@@ -22,6 +22,7 @@ use App\Models\PipelineStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTypology;
+use App\Models\ProformaRequest;
 use App\Models\Project;
 use App\Models\Quote;
 use App\Models\QuoteWorkflow;
@@ -254,6 +255,10 @@ return [
         // spec 0189: card_number e' nascosto sul model, quindi mai nel log.
         'financial-accounts' => [
             'model' => FinancialAccount::class,
+        ],
+        // spec 0193: richieste proforma.
+        'proforma-requests' => [
+            'model' => ProformaRequest::class,
         ],
         'units-of-measure' => [
             'model' => UnitOfMeasure::class,

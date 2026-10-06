@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
+use App\Enums\ProformaRequestStatus;
 use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
 use App\Models\User;
@@ -42,6 +43,11 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
     /** Computed from the root tasks (spec 0149), sorted by WorkOrderStatusResolver. */
     private const string COMPLETION_PERCENTAGE_COLUMN = 'completion_percentage';
 
+    /** Spec 0193: the proforma request state, gated by its create permission. */
+    private const string PROFORMA_STATUS_COLUMN = 'proforma_status';
+
+    private const string PROFORMA_CREATE_PERMISSION = 'proforma-requests.create';
+
     public function __construct(
         private readonly WorkOrderService $service,
         private readonly WorkOrderStatusResolver $statusResolver,
@@ -79,10 +85,35 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // directive 2026-09-02).
         // The root-task aggregates feed `status`/`completion_percentage`
         // (spec 0149, D-8) without one query per row.
-        return WorkOrderVisibilityScope::scopeToActor(
-            $this->statusResolver->withProgress(WorkOrder::query()->with(['quote', 'supervisors.avatar', 'participants'])),
-            Auth::user(),
-        );
+        $query = $this->statusResolver->withProgress(WorkOrder::query()->with(['quote', 'supervisors.avatar', 'participants']));
+
+        // Spec 0193, D-11: the proforma state is two EXISTS subqueries, never
+        // a query per row, and only computed for actors who may raise requests.
+        if ($this->mayRequestProforma(Auth::user())) {
+            $query->withExists([
+                'proformaRequests as has_proforma_request',
+                'proformaRequests as has_pending_proforma_request' => fn (Builder $requests) => $requests->where('status', ProformaRequestStatus::Pending),
+            ]);
+        }
+
+        return WorkOrderVisibilityScope::scopeToActor($query, Auth::user());
+    }
+
+    private function mayRequestProforma(?User $actor): bool
+    {
+        return $actor?->can(self::PROFORMA_CREATE_PERMISSION) === true;
+    }
+
+    /**
+     * none | pending (at least one pending) | issued (requests exist, none pending).
+     */
+    private function proformaStatus(WorkOrder $row): string
+    {
+        return match (true) {
+            (bool) $row->has_pending_proforma_request => ProformaRequestStatus::Pending->value,
+            (bool) $row->has_proforma_request => ProformaRequestStatus::Issued->value,
+            default => 'none',
+        };
     }
 
     /**
@@ -170,7 +201,10 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         /** @var WorkOrder $row */
         $progress = $this->statusResolver->progress($row);
 
+        $proforma = $this->mayRequestProforma($actor) ? [self::PROFORMA_STATUS_COLUMN => $this->proformaStatus($row)] : [];
+
         return [
+            ...$proforma,
             'id' => $row->id,
             'code' => $row->code,
             'title' => $row->title,
@@ -214,8 +248,16 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         /** @var WorkOrder $row */
         $allowed = [];
 
-        if (Gate::forUser($actor)->allows('view', $row)) {
+        $visible = Gate::forUser($actor)->allows('view', $row);
+
+        if ($visible) {
             $allowed[] = 'view';
+        }
+
+        // Spec 0193: offered even once issued, so the row shows the yellow,
+        // non-clickable state; `proforma_status` drives that on the client.
+        if ($visible && $this->mayRequestProforma($actor)) {
+            $allowed[] = 'proforma';
         }
 
         if (Gate::forUser($actor)->allows('delete', $row)) {

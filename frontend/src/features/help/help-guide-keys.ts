@@ -48,6 +48,7 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'vat-rates',
   'units-of-measure',
   'financial-accounts',
+  'proforma-requests',
   'product-typologies',
   'rewarded-referents',
   'reward-types',

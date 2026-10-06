@@ -26,6 +26,8 @@ export const navigation = {
   vatRates: 'IVA',
   unitsOfMeasure: 'Unita di Misura',
   financialAccounts: 'Gestione Conti',
+  accountingReceivable: 'Attiva',
+  proformaRequests: 'Richieste Proforma',
   productTypologies: 'Tipologie Prodotto',
   paymentMethods: 'Modalità di Pagamento',
   tags: 'Tag',

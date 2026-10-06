@@ -22,6 +22,7 @@ use App\Authorization\PipelineStatusesAuthorization;
 use App\Authorization\ProductCategoriesAuthorization;
 use App\Authorization\ProductsAuthorization;
 use App\Authorization\ProductTypologiesAuthorization;
+use App\Authorization\ProformaRequestsAuthorization;
 use App\Authorization\ProjectsAuthorization;
 use App\Authorization\QuotesAuthorization;
 use App\Authorization\QuoteWorkflowsAuthorization;
@@ -118,6 +119,8 @@ return [
         'units-of-measure' => UnitsOfMeasureAuthorization::class,
         // spec 0189: conti finanziari (conto corrente, carta, cassa).
         'financial-accounts' => FinancialAccountsAuthorization::class,
+        // spec 0193: richieste proforma alla Contabilita'.
+        'proforma-requests' => ProformaRequestsAuthorization::class,
         'product-typologies' => ProductTypologiesAuthorization::class,
         // spec 0101: il modulo Task e i suoi cinque configuratori.
         'tasks' => TasksAuthorization::class,

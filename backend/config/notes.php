@@ -2,6 +2,7 @@
 
 use App\RequestManagement\EnrolleeManagementNotable;
 use App\RequestManagement\RequestManagementNotable;
+use App\Services\ProformaRequests\ProformaRequestNotable;
 use App\Services\Tasks\TaskNotable;
 use App\Services\WorkOrders\WorkOrderNotable;
 
@@ -43,6 +44,8 @@ return [
         // Spec 0134: same pattern as 'tasks' -- plural module key as slug,
         // 'work_order' morph alias in notable_type.
         'work-orders' => WorkOrderNotable::class,
+        // Spec 0193: the Accounting list's "Genera nota" (D-6).
+        'proforma-requests' => ProformaRequestNotable::class,
     ],
 
 ];

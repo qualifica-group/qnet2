@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0193-proforma-requests" status="approved" owner="utente" date="2026-10-06">
+
+  <goal>
+    Dall'elenco Commesse l'utente richiede alla Contabilita' l'emissione di una proforma con un
+    pulsante "€" che apre una modale; il sistema genera le richieste analizzando le righe della
+    commessa (una per le Consulenze, una per ciascun fornitore degli Enti). In Contabilita' › Attiva
+    un elenco AG Grid mostra le richieste (di default le non evase, a richiesta anche le evase) con
+    visualizzazione, modifica della nota, note CRM ed eliminazione. E' la base per la futura
+    emissione/rigenerazione delle fatture attive.
+  </goal>
+
+  <context>
+    Brief utente: prompt_temp.md (tabella legacy QNet `orderrequestproformas`, Livewire
+    Commesse\RichiestaProForma: folder 1 = consulenze (una richiesta), folder 2 = enti (una per
+    supplier_id distinto)). Branch: feature/amministrazione.
+
+    Nomi qnet2 verificati 2026-10-06:
+    - Commessa: model WorkOrder (`work_orders`: code "numero commessa", quote_id, title),
+      relazione quoteLines() BelongsToMany QuoteLine via `quote_line_work_order` (le righe RICAVO che
+      la commessa copre). Visibilita' per riga: WorkOrderVisibilityScope + WorkOrderPolicy 'view'.
+      Elenco: WorkOrdersTableDefinition + app/Tables/WorkOrders/WorkOrderColumnCatalog.php;
+      FE features/work-orders/work-orders-table.tsx, column-renderers.tsx, use-work-order-row-actions.ts.
+    - Offerta: Quote::paymentMethod() BelongsTo PaymentMethod (`payment_method_id`; PaymentMethod.name).
+    - Riga: QuoteLine::product() -> Product (supplier_id -> Registry via supplier(),
+      product_typology_id -> ProductTypology). Tipologie seminate con code IMMUTABILE:
+      `consultancy` (Consulenza), `institution` (Ente) - ProductTypologySeeder.
+    - Note CRM: config/notes.php `notable_types` (es. 'work-orders' => WorkOrderNotable), FE features/notes.
+    - Menu: config/navigation/accounting.php (sezione `accounting`); un figlio con `children` e
+      route null viene reso come gruppo richiudibile da nav-main.tsx (NavSection -> NavNode).
+    - Modulo di riferimento per la pipeline completa: FinancialAccounts (spec 0189).
+
+    Decisioni utente 2026-10-06 (D-1..D-7):
+    - D-1 Righe considerate: quelle della commessa (WorkOrder::quoteLines). Prodotto tipologia
+      `consultancy` -> UNA richiesta kind=consultancy per commessa; tipologia `institution` -> una
+      richiesta kind=institution per ciascun supplier_id distinto (piu' righe/servizi dello stesso
+      fornitore = una sola richiesta).
+    - D-2 Enti senza fornitore -> un'unica richiesta kind=institution con supplier_id NULL; righe con
+      prodotto senza tipologia (o tipologia diversa) ignorate. Nessuna riga utile -> 422.
+    - D-3 assigned_to e assigned_by = utente che invia la richiesta.
+    - D-4 Niente duplicati: se la commessa ha gia' almeno una richiesta non evasa, un nuovo invio -> 409;
+      la modale mostra la data dell'ultima richiesta e non permette l'invio.
+    - D-5 Simbolo € per commessa: grigio = nessuna richiesta (cliccabile); blu = almeno una richiesta
+      non evasa (cliccabile, modale informativa); giallo = richieste tutte evase (NON cliccabile).
+    - D-6 "Genera nota" nella tabella Attiva = note CRM esistenti sulla richiesta (nuovo notable).
+    - D-7 Nessuna azione manuale di evasione: lo stato `issued` lo impostera' la fatturazione
+      (prossima spec). Oggi le richieste nascono `pending`.
+
+    Decisioni tecniche proposte (D-8..D-12, da validare con la spec):
+    - D-8 Tabella `proforma_requests` (nomi inglesi, FK vere), stato come stringa enum
+      pending|issued (non smallint 0/1), `issued_at` per la futura evasione/rigenerazione.
+    - D-9 La modalita' di pagamento dell'offerta viene mostrata in modale E salvata come snapshot
+      `payment_method_id` sulla richiesta (se l'offerta cambia dopo, la richiesta resta coerente).
+    - D-10 Modale: titolo "Richiesta emissione Proforma: Commessa #{code}", riga "Modalita' di
+      pagamento: {nome}|non indicata", textarea "Note per la Contabilita'" obbligatoria (max 5000),
+      precompilata con il titolo. Una sola transazione per tutte le richieste generate.
+    - D-11 (rev. utente 2026-10-06: nella colonna Azioni, non in una colonna a parte) Pulsante € =
+      azione di riga `proforma` (icona `euro`, permesso proforma-requests.create, seconda azione cosi'
+      resta inline) nell'elenco Commesse e nel tab Commesse del contratto. Colore/etichetta/disabilitato
+      per riga dal campo `proforma_status` (none|pending|issued) della riga, calcolato in baseQuery con
+      withExists (nessuna query per riga) ed esposto solo con il permesso; click attivo solo con
+      status != issued. FE: opzione generica `resolveActionState` delle azioni di riga.
+    - D-12 Elenco Attiva: dominio SSRM `proforma-requests`, filtro iniziale lato client
+      status = pending (rimovibile per vedere anche le evase). Eliminazione fisica; nessun create
+      dalla griglia (si crea solo dalla commessa).
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione `proforma_requests`, model ProformaRequest (LogsModelActivity), enum ProformaRequestStatus e ProformaRequestKind, factory.</item>
+      <item>Policy ProformaRequestPolicy (resource `proforma-requests`), ProformaRequestsAuthorization + config/authorization.php, permessi.</item>
+      <item>ProformaRequestService::createForWorkOrder (D-1..D-4, D-9) + update nota + delete; FormRequest; Resource; controller; rotte routes/api/proforma-requests.php.</item>
+      <item>Endpoint di riepilogo per la modale (stato, ultima richiesta, modalita' di pagamento).</item>
+      <item>Azione di riga `proforma` (€) e campo riga `proforma_status` nell'elenco Commesse (WorkOrderColumnCatalog/WorkOrdersTableDefinition).</item>
+      <item>TableDefinition `proforma-requests` + ColumnCatalog, config/tables.php, export generico.</item>
+      <item>Notable `proforma-requests` in config/notes.php; activity log; morph map.</item>
+      <item>Menu: gruppo "Attiva" (route null) in config/navigation/accounting.php con voce "Richieste Proforma".</item>
+      <item>FE: cella € + modale in features/work-orders; modulo features/proforma-requests (elenco, dettaglio con note, modifica nota, elimina); pagina, rotta, breadcrumb, i18n IT/EN, menu, permessi, icona; guide in-app IT/EN (`proforma-requests` + sezione nella guida work-orders).</item>
+      <item>Test ESSENZIALI (richiesta utente): vedi acceptance_criteria.</item>
+    </in>
+    <out>
+      <item>Emissione/rigenerazione fattura e passaggio a `issued` (prossima spec).</item>
+      <item>Azione manuale "segna evasa / riapri" (D-7).</item>
+      <item>Responsabile contabile da profilo aziendale (legacy CompanyProfile.accounting_manager): sostituito da D-3.</item>
+      <item>Import dei record legacy `orderrequestproformas`.</item>
+      <item>Creazione richieste dalla griglia Attiva o da altre schermate (offerte, contratti).</item>
+      <item>Notifiche/email alla Contabilita'.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <table name="proforma_requests">
+      id bigIncrements;
+      work_order_id FK work_orders, cascadeOnDelete, index;
+      kind string(20) NOT NULL — consultancy | institution;
+      supplier_id FK registries nullable, nullOnDelete — solo institution;
+      payment_method_id FK payment_methods nullable, nullOnDelete — snapshot dall'offerta;
+      status string(20) NOT NULL default 'pending', index — pending | issued;
+      issued_at timestamp nullable;
+      note text NOT NULL;
+      assigned_to FK users, restrictOnDelete; assigned_by FK users, restrictOnDelete;
+      timestamps. Indici: (work_order_id, status), created_at.
+    </table>
+
+    <resource name="ProformaRequestResource">
+      { id, kind, status, issued_at, note,
+        work_order: { id, code, title }, company: { id, name }|null (dall'offerta della commessa),
+        supplier: { id, name }|null, payment_method: { id, name }|null,
+        assigned_to: { id, name }, assigned_by: { id, name }, created_at, updated_at }
+    </resource>
+
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/proforma-requests/summary">
+      <response status="200">{ success, message, data: { status: "none"|"pending"|"issued", last_requested_at: ISO8601|null, payment_method: {id, name}|null, work_order: {id, code} } }</response>
+      <errors>403 senza proforma-requests.create o commessa non visibile (WorkOrderPolicy view); 404</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/proforma-requests">
+      <request>{ note: string (required, max 5000) }</request>
+      <response status="201">{ success, message: 'Created', data: ProformaRequestResource[] }</response>
+      <errors>403 come sopra; 409 { success:false, message:'This work order already has a pending proforma request.' }; 422 su note; 422 { success:false, message:'No billable lines on this work order.' } se D-2 non lascia righe</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/proforma-requests/{proformaRequest}">
+      <response status="200">{ success, message, data: ProformaRequestResource, permissions }</response>
+      <errors>403 senza proforma-requests.view; 404</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/proforma-requests/{proformaRequest}">
+      <request>{ note: string (required, max 5000) } — nessun altro campo modificabile</request>
+      <response status="200">{ success, message: 'OK', data: ProformaRequestResource, permissions }</response>
+      <errors>403 senza proforma-requests.update; 422</errors>
+    </endpoint>
+    <endpoint method="DELETE" path="/api/proforma-requests/{proformaRequest}">
+      <response status="204">nessun body</response>
+      <errors>403 senza proforma-requests.delete</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/proforma-requests/rows (SSRM generico)">
+      <response status="200">righe { id, work_order_code, work_order_title, company, kind, supplier, payment_method, status, note, assigned_to, assigned_by, created_at, actions: [view|update|delete|notes|activity] }; set filter su status/kind; sort su created_at/work_order_code/status; default sort created_at desc</response>
+      <errors>403 senza proforma-requests.viewAny</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/work-orders/rows (esistente)">
+      <response status="200">ogni riga aggiunge proforma_status: "none"|"pending"|"issued" (pending se esiste almeno una pending; issued se esistono richieste e nessuna pending)</response>
+    </endpoint>
+
+    <permissions>
+      proforma-requests.viewAny|view|create|update|delete|export|viewActivity (import escluso).
+    </permissions>
+    <navigation>
+      accounting › { key: 'accounting-receivable', label: 'navigation.accountingReceivable' ("Attiva"),
+      route: null, children: [{ key: 'proforma-requests', label: 'navigation.proformaRequests'
+      ("Richieste Proforma"), icon: 'receipt-euro', route: '/proforma-requests',
+      permission: 'proforma-requests.view' }] }
+    </navigation>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Commessa con 2 righe Consulenza e 3 righe Ente (fornitori A, A, B): POST crea 3 richieste (1 consultancy, institution A, institution B), tutte pending, assigned_to = assigned_by = utente, payment_method_id = quello dell'offerta, note uguale.</criterion>
+    <criterion id="AC-002">Riga Ente senza fornitore -> una richiesta institution con supplier_id NULL; righe senza tipologia ignorate; commessa senza righe utili -> 422 e nessun record.</criterion>
+    <criterion id="AC-003">Commessa con una richiesta pending -> nuovo POST 409 e nessun record creato; note mancante -> 422.</criterion>
+    <criterion id="AC-004">Senza proforma-requests.create o su commessa non visibile POST/summary -> 403; show/update/delete/tabella senza il permesso relativo -> 403.</criterion>
+    <criterion id="AC-005">SSRM work-orders: proforma_status none senza richieste, pending con almeno una pending, issued con sole issued; azione `proforma` nel catalogo e nelle righe solo con proforma-requests.create.</criterion>
+    <criterion id="AC-006">SSRM proforma-requests restituisce le colonne del contratto e filtra per status=pending; PATCH modifica solo la nota; DELETE 204.</criterion>
+    <criterion id="AC-007">(FE) Cella €: grigia/blu cliccabile apre la modale; gialla non cliccabile; la modale mostra "Commessa #code" e la modalita' di pagamento; con richiesta pending mostra la data e disabilita l'invio; invio OK aggiorna la griglia.</criterion>
+    <criterion id="AC-008">(FE) Elenco Attiva: filtro iniziale non evase rimovibile; azioni note/elimina secondo permessi. Parity i18n e guide IT/EN verdi; typecheck/ESLint puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Test essenziali (richiesta utente): un file Pest per service/endpoint (AC-001..AC-004), uno per le tabelle (AC-005..AC-006), un test FE per cella+modale (AC-007), parity i18n/help. Nessuna suite estesa.</item>
+    <item>Nessuna nuova dipendenza. Authz server-side su ogni endpoint (Policy) + TableDefinition::viewAny.</item>
+    <item>Tipologie risolte per `product_typologies.code` (consultancy/institution), mai per nome.</item>
+    <item>proforma_status calcolato via withExists nella baseQuery: nessun N+1.</item>
+    <item>`$request->safe()`; $fillable esplicito; nessun orderByRaw/whereRaw da input; nessun throttle.</item>
+    <item>Identificatori inglesi, etichette italiane in i18n; file &lt; 300 righe (500 hard); UI compatta e responsive.</item>
+    <item>Test esistenti da aggiornare per requisito cambiato: QuoteWorkflowMigrationTest (step rollback +1), FieldCatalogueEndpointTest (+ proforma-requests), help-guide-keys.test.ts (+1 chiave).</item>
+  </constraints>
+
+</spec>

@@ -43,6 +43,33 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'proforma-request',
+      title: 'Proforma request (the € button)',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'If you can create proforma requests, the **Actions** column of the Work orders list (also in the Work orders tab of a contract) shows the **€** button. Its color is the state: **grey** no request yet, **blue** request sent and not yet fulfilled, **yellow** proforma issued.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Press the grey **€** button: the **Proforma issue request: Work order #number** window opens.',
+            'Check the **Payment method** taken from the quote (**Not specified** appears when it is missing).',
+            'Write the **Notes for Accounting** (required, up to 5000 characters): the text is prefilled with the window title.',
+            'Press **Send request**. The system creates one request for the Consultancy lines and one for each supplier of the Institution lines.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'With the blue **€** button the window shows **Last request on** and the date: until the request is fulfilled another one cannot be sent and **Send request** stays disabled. The yellow button opens nothing.',
+        },
+        {
+          type: 'tip',
+          text: 'Sent requests are listed in **Accounting › Receivables › Proforma requests**.',
+        },
+      ],
+    },
+    {
       id: 'in-development',
       title: 'Module in development',
       blocks: [

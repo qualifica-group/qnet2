@@ -25,6 +25,8 @@ export interface UseTableViewGridStateArgs {
   productCategoryId?: number
   opportunityId?: number
   quoteId?: number
+  /** Applied when the saved filter model is empty (see `TableViewProps.defaultFilterModel`). */
+  defaultFilterModel?: Record<string, unknown>
   onRowCountChanged?: (count: number | null) => void
   getBulkActions?: (selection: TableSelection) => BulkAction[]
   disableBuiltinDelete?: boolean
@@ -77,6 +79,7 @@ export function useTableViewGridState(
     productCategoryId,
     opportunityId,
     quoteId,
+    defaultFilterModel,
     onRowCountChanged,
     getBulkActions,
     disableBuiltinDelete,
@@ -97,10 +100,10 @@ export function useTableViewGridState(
 
   // The saved filterModel replayed into the grid on mount. Stable identity per
   // config load so it can seed the persisted-baseline ref below.
-  const initialFilterModel = useMemo(
-    () => config?.filterState ?? EMPTY_FILTER_MODEL,
-    [config?.filterState],
-  )
+  const initialFilterModel = useMemo(() => {
+    const saved = config?.filterState ?? EMPTY_FILTER_MODEL
+    return Object.keys(saved).length === 0 && defaultFilterModel ? defaultFilterModel : saved
+  }, [config?.filterState, defaultFilterModel])
 
   // SSRM rows are not cached by TanStack Query, so they cannot be invalidated
   // through the queryClient. We hold the grid API and purge its server-side

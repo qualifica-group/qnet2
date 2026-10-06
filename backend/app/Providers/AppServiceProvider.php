@@ -41,6 +41,7 @@ use App\Models\PipelineStatus;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTypology;
+use App\Models\ProformaRequest;
 use App\Models\Project;
 use App\Models\Quote;
 use App\Models\QuoteLineCommission;
@@ -193,6 +194,7 @@ class AppServiceProvider extends ServiceProvider
             'product' => Product::class,
             'unit_of_measure' => UnitOfMeasure::class,
             'financial_account' => FinancialAccount::class,
+            'proforma_request' => ProformaRequest::class,
             'product_typology' => ProductTypology::class,
             'source' => Source::class,
             'sector' => Sector::class,

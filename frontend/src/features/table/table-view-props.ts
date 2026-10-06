@@ -42,6 +42,14 @@ export interface TableViewProps extends RowActionsOptions {
    * does not replace it.
    */
   onRowCountChanged?: (count: number | null) => void
+  /**
+   * Filter model applied on first load when the user has no saved filters for
+   * this table (spec 0193: Proforma requests open on "pending only"). A saved
+   * filter model, even an emptied one persisted later, never gets this default
+   * forced over it while it is non-empty; the user removes it like any filter.
+   * Must be a module-level constant: it feeds a memo keyed on identity.
+   */
+  defaultFilterModel?: Record<string, unknown>
   /** Per-domain custom cell renderers, keyed by column id. Optional. */
   renderers?: TableRendererMap
   /**

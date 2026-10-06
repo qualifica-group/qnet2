@@ -26,6 +26,7 @@ import { sources } from './en-sources'
 import { vatRates } from './en-vat-rates'
 import { unitsOfMeasure } from './en-units-of-measure'
 import { financialAccounts } from './en-financial-accounts'
+import { proformaRequests } from './en-proforma-requests'
 import { productTypologies } from './en-product-typologies'
 import { paymentMethods } from './en-payment-methods'
 import { tags } from './en-tags'
@@ -446,6 +447,7 @@ export const en = {
   vatRates,
   unitsOfMeasure,
   financialAccounts,
+  proformaRequests,
   productTypologies,
   paymentMethods,
   tags,

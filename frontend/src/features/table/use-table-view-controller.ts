@@ -24,6 +24,7 @@ export interface TableViewControllerArgs extends RowActionsOptions {
   productCategoryId?: number
   opportunityId?: number
   quoteId?: number
+  defaultFilterModel?: Record<string, unknown>
   onRowCountChanged?: (count: number | null) => void
   onAction: RowActionHandler
   getBulkActions?: (selection: TableSelection) => BulkAction[]
@@ -91,12 +92,14 @@ export function useTableViewController(
     productCategoryId,
     opportunityId,
     quoteId,
+    defaultFilterModel,
     onRowCountChanged,
     onAction,
     isBusy,
     decorateRow,
     iconMap,
     labeledActions,
+    resolveActionState,
     getBulkActions,
     disableBuiltinDelete,
     advancedFiltersOverride,
@@ -114,6 +117,7 @@ export function useTableViewController(
       productCategoryId,
       opportunityId,
       quoteId,
+      defaultFilterModel,
       onRowCountChanged,
       getBulkActions,
       disableBuiltinDelete,
@@ -146,6 +150,7 @@ export function useTableViewController(
     decorateRow,
     iconMap,
     labeledActions,
+    resolveActionState,
     t,
   })
 

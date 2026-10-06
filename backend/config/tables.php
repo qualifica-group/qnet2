@@ -25,6 +25,7 @@ use App\Tables\PipelineStatusesTableDefinition;
 use App\Tables\ProductCategoriesTableDefinition;
 use App\Tables\ProductsTableDefinition;
 use App\Tables\ProductTypologiesTableDefinition;
+use App\Tables\ProformaRequestsTableDefinition;
 use App\Tables\ProjectsTableDefinition;
 use App\Tables\QuotesTableDefinition;
 use App\Tables\QuoteWorkflowsTableDefinition;
@@ -119,6 +120,7 @@ return [
         'vat-rates' => VatRatesTableDefinition::class,
         'units-of-measure' => UnitsOfMeasureTableDefinition::class,
         'financial-accounts' => FinancialAccountsTableDefinition::class,
+        'proforma-requests' => ProformaRequestsTableDefinition::class,
         'product-typologies' => ProductTypologiesTableDefinition::class,
         // spec 0101: il modulo Task e i suoi cinque configuratori.
         'tasks' => TasksTableDefinition::class,

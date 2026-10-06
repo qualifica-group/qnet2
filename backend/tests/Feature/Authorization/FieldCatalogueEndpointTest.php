@@ -72,6 +72,8 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         'enrollee-management',
         // spec 0189 `financial-accounts` (FinancialAccountsAuthorization, registered in the generic registry).
         'financial-accounts',
+        // spec 0193 `proforma-requests` (ProformaRequestsAuthorization: the note is its only field).
+        'proforma-requests',
         // spec 0185 `request-statistics` (RequestStatisticsAuthorization: a view-only module, no
         // field — registered only so its permission is assignable from the Role form).
         'request-statistics',

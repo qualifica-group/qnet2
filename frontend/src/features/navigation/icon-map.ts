@@ -43,6 +43,7 @@ import {
   FolderArchive,
   ChartColumn,
   Landmark,
+  ReceiptEuro,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -104,6 +105,7 @@ const iconMap: Record<string, LucideIcon> = {
   activity: Activity,
   // Spec 0189: "Gestione Conti" under Contabilita'.
   landmark: Landmark,
+  'receipt-euro': ReceiptEuro,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

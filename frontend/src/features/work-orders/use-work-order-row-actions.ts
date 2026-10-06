@@ -5,8 +5,15 @@ import { toast } from 'sonner'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import type { OpenMode } from '@/features/modules/types'
 import { deleteWorkOrder, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
-import type { RowActionHandler } from '@/features/table/row-actions'
+import type { ActionIconMap } from '@/features/table/action-icon-map'
+import type { RowActionHandler, RowActionState } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
+import {
+  PROFORMA_ACTION_KEY,
+  WORK_ORDER_ACTION_ICONS,
+  proformaStatusOf,
+  useProformaActionState,
+} from '@/features/work-orders/proforma-row-action'
 
 export interface UseWorkOrderRowActionsOptions {
   /** Called after anything that changes the displayed rows: a delete. */
@@ -25,6 +32,12 @@ export interface UseWorkOrderRowActionsResult {
   isBusy: (row: TableRow) => boolean
   activityRow: TableRow | null
   closeActivity: (open: boolean) => void
+  /** The row whose "€" proforma request modal is open (spec 0193), or null. */
+  proformaRow: TableRow | null
+  closeProforma: () => void
+  /** Tint/label/disabled of the "€" action per row, for `<TableView resolveActionState>`. */
+  resolveActionState: (action: TableActionDefinition, row: TableRow) => RowActionState | undefined
+  iconMap: ActionIconMap
   sheet: ReactNode
 }
 
@@ -45,6 +58,8 @@ export function useWorkOrderRowActions({
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
+  const [proformaRow, setProformaRow] = useState<TableRow | null>(null)
+  const resolveActionState = useProformaActionState()
 
   const { openView, sheet } = useModuleOpener(WORK_ORDERS_DOMAIN, {
     onSaved: onMutated,
@@ -86,6 +101,13 @@ export function useWorkOrderRowActions({
         case 'activity':
           setActivityRow(row)
           break
+        case PROFORMA_ACTION_KEY:
+          // Issued requests are inert (the button is disabled too): a guard
+          // against a stale row firing the action anyway.
+          if (proformaStatusOf(row) !== 'issued') {
+            setProformaRow(row)
+          }
+          break
         default:
           break
       }
@@ -101,5 +123,17 @@ export function useWorkOrderRowActions({
     }
   }, [])
 
-  return { handleAction, isBusy, activityRow, closeActivity, sheet }
+  const closeProforma = useCallback(() => setProformaRow(null), [])
+
+  return {
+    handleAction,
+    isBusy,
+    activityRow,
+    closeActivity,
+    proformaRow,
+    closeProforma,
+    resolveActionState,
+    iconMap: WORK_ORDER_ACTION_ICONS,
+    sheet,
+  }
 }

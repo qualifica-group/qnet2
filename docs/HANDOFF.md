@@ -3,6 +3,33 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0193 RICHIESTE PROFORMA (proforma-requests) — VERDE, COMMITTATO, BRANCH feature/amministrazione (2026-10-06)
+
+- Spec `docs/specs/0193-proforma-requests.xml` (approvata). Tabella `proforma_requests` (work_order_id cascade, kind
+  consultancy|institution, supplier_id -> registries, payment_method_id snapshot dall'offerta, status pending|issued,
+  issued_at, note, assigned_to/assigned_by = utente che invia). Tipologie risolte per `product_typologies.code`.
+- Regole (decisioni utente): una richiesta per le Consulenze + una per fornitore distinto degli Enti (Ente senza
+  fornitore = richiesta con supplier NULL; righe senza tipologia ignorate; nessuna riga utile -> 422 'No billable
+  lines on this work order.'); con una pending -> 409 'This work order already has a pending proforma request.'.
+  Nessuna azione manuale di evasione: `issued` lo impostera' la fatturazione (prossimo prompt; rigenerazione fattura).
+- Endpoint: GET/POST /api/work-orders/{wo}/proforma-requests[/summary]; GET/PATCH(note)/DELETE
+  /api/proforma-requests/{id}; SSRM `proforma-requests`. Pulsante € = azione di riga `proforma` nella colonna Azioni
+  (Commesse e tab Commesse del contratto), colore/disabilitato dal campo riga `proforma_status` none|pending|issued
+  (withExists, solo con proforma-requests.create) via la nuova opzione generica FE `resolveActionState`
+  (features/table/row-actions.tsx). Con 4 azioni la 4a (Attivita') finisce nel menu "...".
+  Dopo il deploy: `php artisan permissions:sync` (in locale i permessi proforma-requests.* mancavano). Notable `proforma-requests`. Menu Contabilita' > Attiva
+  (`accounting-receivable`) > Richieste Proforma.
+- Fuori scope toccati: `PermissionCatalogueBuilder` (figli di un sottogruppo senza permesso ora entrano nel form
+  Ruoli); FE `features/table/*` prop additiva `defaultFilterModel` (filtro iniziale status=pending; un filtro svuotato
+  e salvato torna al default). `QuoteWorkflowMigrationTest` riallineato (rollback step 125 + 2; era rosso dopo la merge).
+- Verifier: Pest parallelo 9342/9346 (3 = soffice assente, 1 skipped), Vitest 6757 (3 flaky sotto carico, verdi da
+  soli), tsc -b, ESLint, Pint puliti. AC-001..008 PASS.
+- Ambiente: per la suite parallela serve PHPRC con memory_limit=2G e pdo_sqlite/sqlite3/zip abilitati
+  (php-8.4.19 li ha commentati); `-d memory_limit` non arriva ai worker paratest.
+- Aperto: `frontend/src/i18n/locales/en.ts` a 503 righe (501 gia' a HEAD dopo la merge): va diviso. Manuale Claude
+  Docs non aggiornato (connettore: access denied) -> sezioni Commesse (pulsante €) e Contabilita' > Attiva >
+  Richieste Proforma. Guide in-app IT/EN fatte.
+
 ## SPEC 0189 GESTIONE CONTI (financial-accounts) — VERDE, COMMITTATO, BRANCH feature/amministrazione (2026-10-05)
 
 - Spec `docs/specs/0189-financial-accounts.xml` (approvata). Tabella unica `financial_accounts` con `type`

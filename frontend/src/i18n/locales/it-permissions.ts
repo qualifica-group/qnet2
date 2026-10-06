@@ -118,6 +118,7 @@ export const permissions = {
     tags: 'Tag',
     'units-of-measure': 'Unita di Misura',
     'financial-accounts': 'Gestione Conti',
+    'proforma-requests': 'Richieste Proforma',
     'product-typologies': 'Tipologie Prodotto',
     // Modulo Task e i suoi cinque configuratori (spec 0101).
     tasks: 'Task',

@@ -43,6 +43,33 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'proforma-request',
+      title: 'Richiesta di proforma (pulsante €)',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Se hai il permesso di creare richieste proforma, nella colonna **Azioni** dell\'elenco Commesse (anche nel tab Commesse del contratto) trovi il pulsante **€**. Il colore indica lo stato: **grigio** nessuna richiesta, **blu** richiesta inviata e non ancora evasa, **giallo** proforma emessa.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Premi il pulsante **€** grigio: si apre la finestra **Richiesta emissione Proforma: Commessa #numero**.',
+            'Controlla la **Modalità di pagamento** presa dall\'offerta (se manca compare **Non indicata**).',
+            'Scrivi le **Note per la Contabilità** (obbligatorie, massimo 5000 caratteri): il testo è precompilato con il titolo della finestra.',
+            'Premi **Invia richiesta**. Il sistema crea una richiesta per le righe di tipo Consulenza e una per ciascun fornitore delle righe di tipo Ente.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Con il pulsante **€** blu la finestra mostra **Ultima richiesta del** e la data: finché la richiesta non è evasa non se ne può inviare un\'altra e **Invia richiesta** resta disattivato. Con il pulsante giallo non si apre nulla.',
+        },
+        {
+          type: 'tip',
+          text: 'Le richieste inviate si consultano in **Contabilità › Attiva › Richieste Proforma**.',
+        },
+      ],
+    },
+    {
       id: 'in-development',
       title: 'Modulo in sviluppo',
       blocks: [

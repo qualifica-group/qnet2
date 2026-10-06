@@ -116,6 +116,14 @@ final class PermissionCatalogueBuilder
         foreach ($items as $child) {
             $permission = $child['permission'] ?? null;
 
+            if ((! is_string($permission) || $permission === '') && ! empty($child['children'])) {
+                // A permissionless sub-group (e.g. accounting > Attiva, spec
+                // 0193) is not a module: its children are, one level up.
+                array_push($resources, ...$this->resourcesFromItems($child['children'], $permissionsByResource));
+
+                continue;
+            }
+
             if (! is_string($permission) || $permission === '') {
                 // No permission gate (e.g. `migrations`, role-gated only): not
                 // a permission-catalogue module.

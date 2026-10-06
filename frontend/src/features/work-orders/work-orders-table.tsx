@@ -5,6 +5,7 @@ import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { workOrderColumnRenderers } from '@/features/work-orders/column-renderers'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
+import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
 
 /**
  * Thin work-orders adapter over the generic table. It mounts `<TableView>`
@@ -18,9 +19,17 @@ export function WorkOrdersTable() {
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
 
-  const { handleAction, isBusy, activityRow, closeActivity, sheet } = useWorkOrderRowActions({
-    onMutated: refreshGrid,
-  })
+  const {
+    handleAction,
+    isBusy,
+    activityRow,
+    closeActivity,
+    proformaRow,
+    closeProforma,
+    resolveActionState,
+    iconMap,
+    sheet,
+  } = useWorkOrderRowActions({ onMutated: refreshGrid })
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -37,9 +46,13 @@ export function WorkOrdersTable() {
         renderers={workOrderColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}
+        resolveActionState={resolveActionState}
+        iconMap={iconMap}
       />
 
       {sheet}
+
+      <WorkOrderProformaDialog row={proformaRow} onClose={closeProforma} onSent={refreshGrid} />
 
       <ResourceActivityDialog
         resource={WORK_ORDERS_DOMAIN}

@@ -25,6 +25,8 @@ export const navigation = {
   vatRates: 'VAT',
   unitsOfMeasure: 'Units of Measure',
   financialAccounts: 'Financial accounts',
+  accountingReceivable: 'Receivables',
+  proformaRequests: 'Proforma requests',
   productTypologies: 'Product Typologies',
   paymentMethods: 'Payment Methods',
   tags: 'Tags',

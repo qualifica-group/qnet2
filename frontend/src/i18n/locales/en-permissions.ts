@@ -115,6 +115,7 @@ export const permissions = {
     tags: 'Tags',
     'units-of-measure': 'Units of Measure',
     'financial-accounts': 'Financial accounts',
+    'proforma-requests': 'Proforma requests',
     'product-typologies': 'Product Typologies',
     // Task module and its five configurators (spec 0101).
     tasks: 'Tasks',

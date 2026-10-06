@@ -9,6 +9,7 @@ import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { workOrderColumnRenderers } from '@/features/work-orders/column-renderers'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
+import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
 
 export interface ContractWorkOrdersSectionHandle {
   /** Purges and reloads the tab's grid (AC-062: called after "Programma" generates a new Commessa). */
@@ -61,10 +62,17 @@ const ContractWorkOrdersPanel = forwardRef<ContractWorkOrdersSectionHandle, Cont
     const [rowCount, setRowCount] = useState<number | null>(null)
     const handleRowCountChanged = useCallback((next: number | null) => setRowCount(next), [])
 
-    const { handleAction, isBusy, activityRow, closeActivity, sheet } = useWorkOrderRowActions({
-      onMutated: refreshGrid,
-      forceMode: OPEN_MODE_MODAL,
-    })
+    const {
+      handleAction,
+      isBusy,
+      activityRow,
+      closeActivity,
+      proformaRow,
+      closeProforma,
+      resolveActionState,
+      iconMap,
+      sheet,
+    } = useWorkOrderRowActions({ onMutated: refreshGrid, forceMode: OPEN_MODE_MODAL })
 
     const count = rowCount ?? 0
 
@@ -89,11 +97,15 @@ const ContractWorkOrdersPanel = forwardRef<ContractWorkOrdersSectionHandle, Cont
             renderers={workOrderColumnRenderers}
             onAction={handleAction}
             isBusy={isBusy}
+            resolveActionState={resolveActionState}
+            iconMap={iconMap}
             onRowCountChanged={handleRowCountChanged}
           />
         </div>
 
         {sheet}
+
+        <WorkOrderProformaDialog row={proformaRow} onClose={closeProforma} onSent={refreshGrid} />
 
         <ResourceActivityDialog resource={WORK_ORDERS_DOMAIN} row={activityRow} onOpenChange={closeActivity} />
       </RecordCard>

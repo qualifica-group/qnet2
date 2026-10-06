@@ -119,6 +119,16 @@ class WorkOrder extends BaseModel
     }
 
     /**
+     * The proforma requests raised for this commessa (spec 0193).
+     *
+     * @return HasMany<ProformaRequest, $this>
+     */
+    public function proformaRequests(): HasMany
+    {
+        return $this->hasMany(ProformaRequest::class);
+    }
+
+    /**
      * The offer REVENUE lines this commessa covers (D-6/D-7): a dedicated
      * pivot with its own `id` (quote_line_work_order), never a bare default
      * pivot — the extension point for a future per-row column.

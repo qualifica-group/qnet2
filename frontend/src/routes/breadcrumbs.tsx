@@ -41,6 +41,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'vat-rates': 'navigation.vatRates',
   'units-of-measure': 'navigation.unitsOfMeasure',
   'financial-accounts': 'navigation.financialAccounts',
+  'proforma-requests': 'navigation.proformaRequests',
   'product-typologies': 'navigation.productTypologies',
   'payment-methods': 'navigation.paymentMethods',
   sources: 'navigation.sources',

@@ -200,6 +200,17 @@ final class WorkOrderColumnCatalog
                 'permission' => 'work-orders.view',
             ],
             [
+                // Spec 0193 (D-11, rev. 2026-10-06): the "€" proforma request,
+                // second so it stays inline; its colour and the disabled
+                // "issued" state come from the row's `proforma_status`.
+                'key' => 'proforma',
+                'label' => 'proformaRequests.cell.none',
+                'icon' => 'euro',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'proforma-requests.create',
+            ],
+            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',

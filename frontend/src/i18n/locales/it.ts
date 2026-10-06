@@ -21,6 +21,7 @@ import { sources } from './it-sources'
 import { vatRates } from './it-vat-rates'
 import { unitsOfMeasure } from './it-units-of-measure'
 import { financialAccounts } from './it-financial-accounts'
+import { proformaRequests } from './it-proforma-requests'
 import { productTypologies } from './it-product-typologies'
 import { paymentMethods } from './it-payment-methods'
 import { tags } from './it-tags'
@@ -432,6 +433,7 @@ export const it: TranslationResources = {
   vatRates,
   unitsOfMeasure,
   financialAccounts,
+  proformaRequests,
   productTypologies,
   paymentMethods,
   tags,

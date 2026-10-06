@@ -42,8 +42,21 @@ export type RowActionHandler = (
   row: TableRow,
 ) => void
 
+/**
+ * Per-row presentation of one action, decided by the owning domain: a tint, a
+ * disabled state and a label override (e.g. the work orders "€" action is
+ * grey/blue/yellow by request state and inert once issued). Undefined = default.
+ */
+export interface RowActionState {
+  className?: string
+  disabled?: boolean
+  label?: string
+}
+
 /** Optional behaviors injected by the domain that owns the actions column. */
 export interface RowActionsOptions {
+  /** Per-row tint/disabled/label of an action; omitted = every action renders as catalogued. */
+  resolveActionState?: (action: TableActionDefinition, row: TableRow) => RowActionState | undefined
   /** Returns true while a mutation (e.g. delete) is running for the row. */
   isBusy?: (row: TableRow) => boolean
   /** Adjusts the row before computing actions (e.g. drop self-delete). */
@@ -117,6 +130,7 @@ function RowActions({
   decorateRow,
   iconMap,
   labeledActions,
+  resolveActionState,
 }: RowActionsProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
@@ -167,6 +181,9 @@ function RowActions({
     <div className={cn('flex h-full items-center gap-0.5', labeledActions ? 'justify-start' : 'justify-end')}>
       <TooltipProvider>
         {visible.map((action) => {
+          const state = resolveActionState?.(action, effectiveRow)
+          const label = state?.label ?? t(action.label)
+          const disabled = busy || state?.disabled === true
           if (labeledActions) {
             const Icon = resolveActionIcon(action.icon, iconMap)
             return (
@@ -174,16 +191,16 @@ function RowActions({
                 key={action.key}
                 variant="outline"
                 size="xs"
-                disabled={busy}
+                disabled={disabled}
                 onClick={() => handleSelect(action)}
+                className={state?.className}
               >
                 <Icon aria-hidden="true" />
-                {t(action.label)}
+                {label}
               </Button>
             )
           }
           const Icon = resolveActionIcon(action.icon, iconMap)
-          const label = t(action.label)
           const count = resolveActionCount(action, effectiveRow)
           return (
             <Tooltip key={action.key}>
@@ -192,9 +209,9 @@ function RowActions({
                   variant="ghost"
                   size="icon-xs"
                   aria-label={count !== null ? `${label} (${count})` : label}
-                  disabled={busy}
+                  disabled={disabled}
                   onClick={() => handleSelect(action)}
-                  className={cn('relative', ACTION_ICON_CLASS[action.type])}
+                  className={cn('relative', ACTION_ICON_CLASS[action.type], state?.className)}
                 >
                   <Icon aria-hidden="true" />
                   {count !== null && <ActionCountBadge count={count} />}
@@ -222,14 +239,16 @@ function RowActions({
             {overflow.map((action) => {
               const Icon = resolveActionIcon(action.icon, iconMap)
               const count = resolveActionCount(action, effectiveRow)
+              const state = resolveActionState?.(action, effectiveRow)
               return (
                 <DropdownMenuItem
                   key={action.key}
                   variant={actionMenuVariant(action.type)}
+                  disabled={state?.disabled === true}
                   onSelect={() => handleSelect(action)}
                 >
-                  <Icon aria-hidden="true" />
-                  {t(action.label)}
+                  <Icon aria-hidden="true" className={state?.className} />
+                  {state?.label ?? t(action.label)}
                   {count !== null && (
                     <span className="text-muted-foreground">({count})</span>
                   )}
@@ -266,6 +285,7 @@ export function createRowActionsRenderer(
         decorateRow={options.decorateRow}
         iconMap={options.iconMap}
         labeledActions={options.labeledActions}
+        resolveActionState={options.resolveActionState}
       />
     )
   }
