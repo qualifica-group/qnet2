@@ -328,11 +328,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Nel dettaglio la sezione **Ricorrenza** riassume la regola in un riquadro: frequenza, frase descrittiva, giorni della settimana scelti, fine e "Solo giorni lavorativi". Premi il riquadro (o la matita) per modificarla. Con **Ricorrenza attiva** QNet crea da solo le occorrenze future. Scegli la frequenza — Giornaliera, Settimanale, Mensile, Annuale o Personalizzata (ogni N giorni) — l\'intervallo in **Ripeti ogni** e la fine: A una data, Dopo un numero di occorrenze o Mai. "Dopo un numero di occorrenze" conta le occorrenze effettivamente create, non i candidati calcolati.',
+          text: 'Nel dettaglio la sezione **Ricorrenza** riassume la regola in un riquadro: frequenza, frase descrittiva, giorni della settimana scelti, fine e "Solo giorni lavorativi". Premi il riquadro (o la matita) per modificarla. Con **Ricorrenza attiva** QNet crea da solo le occorrenze future. Scegli la frequenza — Giornaliera, Settimanale, Mensile, Annuale o Personalizzata (ogni N giorni) — e in **Ripeti ogni** quanti giorni, settimane, mesi o anni passano fra un\'occorrenza e l\'altra; per la Settimanale premi i cerchi dei giorni (L M M G V S D) per sceglierli. In **Fine** scegli Mai, A una data o Dopo N volte: "Dopo N volte" conta le occorrenze effettivamente create, non i candidati calcolati. In fondo, l\'**Anteprima della regola** mostra la frase che otterrai mentre la compili. Passa sull\'icona (i) accanto a un campo per la spiegazione completa.',
         },
         {
           type: 'paragraph',
-          text: 'Per una ricorrenza Mensile o Annuale scegli se il giorno è **fisso** (es. il 31 del mese) oppure **ordinale** (es. il 2° martedì): per l\'Annuale scegli anche il mese. Con **Solo giorni lavorativi** attivo, un\'occorrenza che cadrebbe di sabato, domenica, in una festività nazionale, a Pasqua o a Pasquetta non viene saltata: si sposta al primo giorno lavorativo successivo. Se lo spostamento la fa coincidere con un\'occorrenza già generata, ne resta una sola.',
+          text: 'Per una ricorrenza Mensile o Annuale scegli fra **Data fissa** (es. il 31 del mese) e **Giorno della settimana** (es. il 2° martedì): per l\'Annuale scegli anche il mese. Con **Solo giorni lavorativi** attivo, un\'occorrenza che cadrebbe di sabato, domenica, in una festività nazionale, a Pasqua o a Pasquetta non viene saltata: si sposta al primo giorno lavorativo successivo. Se lo spostamento la fa coincidere con un\'occorrenza già generata, ne resta una sola.',
         },
         {
           type: 'note',

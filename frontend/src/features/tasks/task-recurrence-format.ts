@@ -3,6 +3,9 @@ import { formatDate } from '@/lib/formatting/date-display'
 import { WEEKDAY_KEYS, WEEKDAY_ORDER } from '@/features/tasks/task-recurrence-weekdays'
 import type { TaskRecurrenceDetail } from '@/features/tasks/types'
 
+/** The rule alone, without the persisted series' `id`: what a sentence needs, so a draft rule can be phrased too. */
+export type TaskRecurrenceRule = Omit<TaskRecurrenceDetail, 'id'>
+
 /** The picked weekdays' own sentence phrase ("il lunedì"/"Monday"), ISO-ascending. */
 function weekdayPhrases(weekdays: number[], t: TFunction): string[] {
   return WEEKDAY_ORDER.filter((day) => weekdays.includes(day)).map((day) =>
@@ -74,7 +77,7 @@ function joinWeekdays(phrases: string[], language: string): string {
  * so passing our value under that name would silently break the `_one`/
  * `_other` (cardinal) pluralization these keys actually use.
  */
-function monthlyPhrase(rule: TaskRecurrenceDetail, t: TFunction, language: string): string {
+function monthlyPhrase(rule: TaskRecurrenceRule, t: TFunction, language: string): string {
   if (rule.month_mode === 'ordinal' && rule.ordinal !== null && rule.ordinal_weekday !== null) {
     return t('tasks.detail.recurrence.monthlyOrdinal', {
       count: rule.interval,
@@ -86,7 +89,7 @@ function monthlyPhrase(rule: TaskRecurrenceDetail, t: TFunction, language: strin
 }
 
 /** Spec 0155 D-1: a yearly rule's own phrase, e.g. "Ogni anno il 2° martedì di marzo". */
-function yearlyPhrase(rule: TaskRecurrenceDetail, t: TFunction, language: string): string {
+function yearlyPhrase(rule: TaskRecurrenceRule, t: TFunction, language: string): string {
   const month = rule.year_month !== null ? monthName(rule.year_month, language) : ''
   if (rule.month_mode === 'ordinal' && rule.ordinal !== null && rule.ordinal_weekday !== null) {
     return t('tasks.detail.recurrence.yearlyOrdinal', {
@@ -99,7 +102,7 @@ function yearlyPhrase(rule: TaskRecurrenceDetail, t: TFunction, language: string
   return t('tasks.detail.recurrence.yearlyFixed', { count: rule.interval, day: rule.month_day, month })
 }
 
-function frequencyPhrase(rule: TaskRecurrenceDetail, t: TFunction, language: string): string {
+function frequencyPhrase(rule: TaskRecurrenceRule, t: TFunction, language: string): string {
   // Spec 0155 D-1: `custom` is q-net's "every N days" — the exact same
   // effect and phrase as `daily` with its own interval.
   if (rule.frequency === 'daily' || rule.frequency === 'custom') {
@@ -115,7 +118,7 @@ function frequencyPhrase(rule: TaskRecurrenceDetail, t: TFunction, language: str
   return yearlyPhrase(rule, t, language)
 }
 
-function endsPhrase(rule: TaskRecurrenceDetail, t: TFunction): string {
+function endsPhrase(rule: TaskRecurrenceRule, t: TFunction): string {
   if (rule.ends === 'on_date') {
     return t('tasks.detail.recurrence.endsOnDate', { date: formatDate(rule.ends_on) })
   }
@@ -126,13 +129,13 @@ function endsPhrase(rule: TaskRecurrenceDetail, t: TFunction): string {
 }
 
 /**
- * Renders a `TaskRecurrenceDetail` as one human-readable sentence for the
+ * Renders a recurrence rule as one human-readable sentence for the
  * detail badge (spec 0120 AC-035, spec 0155 D-1), e.g. "Ogni 2 settimane il
  * lunedì e il mercoledì, fino al 31/03/2027" or "Ogni anno il 2° martedì di
  * marzo". Pure: only `t`/`formatDate`/`Intl`, no React.
  */
 export function formatTaskRecurrenceRule(
-  rule: TaskRecurrenceDetail,
+  rule: TaskRecurrenceRule,
   t: TFunction,
   language: string,
 ): string {

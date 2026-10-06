@@ -1,79 +1,80 @@
 import { useTranslation } from 'react-i18next'
 import { useFormContext, useWatch, type Control } from 'react-hook-form'
-import { FIELD_GRID_CLASS } from '@/components/record-form/layout'
+import { Repeat } from 'lucide-react'
 import { FormControl } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
-import { ordinalLabel, monthName } from '@/features/tasks/task-recurrence-format'
+import { TaskRecurrenceDayFields } from '@/features/tasks/task-recurrence-day-fields'
+import { TaskRecurrenceEndFields } from '@/features/tasks/task-recurrence-end-fields'
+import {
+  intervalUnitKey,
+  numberInputProps,
+  RECURRENCE_META_KEY,
+  RECURRENCE_RESET_OPTIONS,
+} from '@/features/tasks/task-recurrence-field-props'
+import { formatTaskRecurrenceRule } from '@/features/tasks/task-recurrence-format'
+import { recurrencePreviewRule } from '@/features/tasks/task-recurrence-preview'
 import { TaskRecurrenceWeekdaysField } from '@/features/tasks/task-recurrence-weekdays-field'
-import { WEEKDAY_KEYS, WEEKDAY_ORDER } from '@/features/tasks/task-recurrence-weekdays'
-import { TASK_RECURRENCE_END_MODES, TASK_RECURRENCE_FREQUENCIES } from '@/features/tasks/types'
+import { TASK_RECURRENCE_FREQUENCIES } from '@/features/tasks/types'
 import type { TaskFormValues } from '@/features/tasks/task-schema'
-import type {
-  TaskRecurrenceEndMode,
-  TaskRecurrenceFrequency,
-  TaskRecurrenceMonthMode,
-} from '@/features/tasks/types'
-
-/** The one protected field (spec 0120 D-12) every control below shares. */
-const RECURRENCE_META_KEY = 'recurrence'
-
-/** Spec 0155 D-1: the ordinal picker's own 1..5 range ("2nd Tuesday", ordinal 5 skips a month without one). */
-const ORDINAL_CHOICES = [1, 2, 3, 4, 5] as const
-/** Spec 0155 D-1: the yearly picker's own calendar months, 1 (January) through 12 (December). */
-const YEAR_MONTH_CHOICES = Array.from({ length: 12 }, (_value, index) => index + 1)
+import type { TaskRecurrenceFrequency } from '@/features/tasks/types'
 
 interface TaskRecurrenceSectionProps {
   control: Control<TaskFormValues>
 }
 
-/** Bare `<Input type="number">`, min-1, tolerating a blank box while typing (mirrors `TaskPlanningSection`). */
-function numberInputProps(value: number | null, onChange: (next: number | null) => void) {
-  return {
-    value: value ?? '',
-    onChange: (event: React.ChangeEvent<HTMLInputElement>) =>
-      onChange(event.target.value === '' ? null : Number(event.target.value)),
-  }
-}
-
-/** First letter capitalized, for a picker's option label — `monthName` itself stays lowercase for the sentence form. */
-function capitalize(value: string): string {
-  return value.length === 0 ? value : value[0].toUpperCase() + value.slice(1)
-}
-
-/*
- * "Ricorrenza" (spec 0120 D-1/D-12, spec 0155 D-1): every control below reads
- * the SAME `metaKey`, so an actor without the mandate sees the whole section
- * locked at once (AC-034) through the ordinary `MetaField` mechanism — no
- * bespoke read-only rendering.
- *
- * AC-032: the master switch alone turns the section on; the fields that
- * follow track the picked frequency/month_mode/ends, and switching any of
- * them clears — right in the `onValueChange` handler, never in an effect —
- * whatever no longer applies, so a stale value can never reach the payload
- * builder.
- *
- * Spec 0155 D-1 adds `yearly`/`custom` frequencies, the monthly/yearly
- * fixed/ordinal day-of-month split, the yearly calendar month and a general
- * "solo giorni lavorativi" switch. `month_mode` defaults to `fixed` the
- * instant monthly/yearly is picked (mirrors the master switch's own D-1
- * seeding), so the plain day-of-month input is the one an operator sees
- * first — the ordinal picker is the deliberate extra step.
+/**
+ * The rule as one sentence while it is being drafted — the same phrase the
+ * read tile and the header badge show — or a prompt while a field is
+ * missing. Polite live region: it follows every control above it.
  */
-
-/** The section's controls without its card, so the task detail edits the rule in place (spec 0195 D-3). */
-export function TaskRecurrenceFields({ control }: TaskRecurrenceSectionProps) {
+function RecurrencePreview({ control }: TaskRecurrenceSectionProps) {
   const { t, i18n } = useTranslation()
+  const recurrence = useWatch({ control, name: 'recurrence' })
+  const rule = recurrencePreviewRule(recurrence)
+
+  return (
+    <div className="flex items-start gap-2.5 rounded-b-lg border-t border-primary/20 bg-primary/5 px-3 py-2.5" aria-live="polite">
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+        <Repeat className="size-3.5" aria-hidden="true" />
+      </span>
+      <div className="flex min-w-0 flex-col">
+        <span className="text-xs font-semibold text-primary">{t('tasks.form.recurrence.preview')}</span>
+        {rule ? (
+          <p className="text-sm font-medium text-foreground">{formatTaskRecurrenceRule(rule, t, i18n.language)}</p>
+        ) : (
+          <p className="text-xs text-muted-foreground">{t('tasks.form.recurrence.previewIncomplete')}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * "Ricorrenza" (spec 0120 D-1/D-12, spec 0155 D-1): every control reads the
+ * SAME `metaKey`, so an actor without the mandate sees the whole editor
+ * locked at once (AC-034) through the ordinary `MetaField` mechanism.
+ *
+ * AC-032: the master switch alone turns the rule on; the fields that follow
+ * track the picked frequency/month_mode/ends, and switching any of them
+ * clears — right in the handler, never in an effect — whatever no longer
+ * applies, so a stale value never reaches the payload builder.
+ *
+ * Layout: the switch, then one raised panel split in bands — how often
+ * (frequency, "every N <unit>", the frequency's own day pickers), when it
+ * ends, the workday shift — closed by the live sentence preview. The long
+ * explanations live in info tooltips, not under the controls.
+ */
+export function TaskRecurrenceFields({ control }: TaskRecurrenceSectionProps) {
+  const { t } = useTranslation()
   const { setValue } = useFormContext<TaskFormValues>()
   const { field: fieldPermission } = useResourcePermissions()
 
   const permission = fieldPermission(RECURRENCE_META_KEY)
   const frequency = useWatch({ control, name: 'recurrence.frequency' })
-  const monthMode = useWatch({ control, name: 'recurrence.month_mode' })
-  const ends = useWatch({ control, name: 'recurrence.ends' })
   const enabled = useWatch({ control, name: 'recurrence.enabled' })
 
   if (!permission.visible) {
@@ -84,33 +85,23 @@ export function TaskRecurrenceFields({ control }: TaskRecurrenceSectionProps) {
 
   /** Spec 0155 D-1: every frequency-specific field resets on a frequency change — only the newly-picked one survives. */
   function resetFrequencyFields(next: TaskRecurrenceFrequency) {
-    setValue('recurrence.weekdays', [], { shouldDirty: true })
+    setValue('recurrence.weekdays', [], RECURRENCE_RESET_OPTIONS)
     const nextIsMonthlyOrYearly = next === 'monthly' || next === 'yearly'
-    setValue('recurrence.month_mode', nextIsMonthlyOrYearly ? 'fixed' : null, { shouldDirty: true })
-    setValue('recurrence.month_day', null, { shouldDirty: true })
-    setValue('recurrence.ordinal', null, { shouldDirty: true })
-    setValue('recurrence.ordinal_weekday', null, { shouldDirty: true })
-    setValue('recurrence.year_month', null, { shouldDirty: true })
-  }
-
-  /** Spec 0155 D-1: switching fixed<->ordinal clears the other branch's own fields. */
-  function resetMonthModeFields(next: TaskRecurrenceMonthMode) {
-    if (next === 'fixed') {
-      setValue('recurrence.ordinal', null, { shouldDirty: true })
-      setValue('recurrence.ordinal_weekday', null, { shouldDirty: true })
-    } else {
-      setValue('recurrence.month_day', null, { shouldDirty: true })
-    }
+    setValue('recurrence.month_mode', nextIsMonthlyOrYearly ? 'fixed' : null, RECURRENCE_RESET_OPTIONS)
+    setValue('recurrence.month_day', null, RECURRENCE_RESET_OPTIONS)
+    setValue('recurrence.ordinal', null, RECURRENCE_RESET_OPTIONS)
+    setValue('recurrence.ordinal_weekday', null, RECURRENCE_RESET_OPTIONS)
+    setValue('recurrence.year_month', null, RECURRENCE_RESET_OPTIONS)
   }
 
   return (
-    <>
+    <div className="flex flex-col gap-3">
       <MetaField
         control={control}
         name="recurrence.enabled"
         metaKey={RECURRENCE_META_KEY}
         label={t('tasks.form.recurrence.enable')}
-        description={t('tasks.form.recurrence.enableHint')}
+        hint={t('tasks.form.recurrence.enableHint')}
         layout="inline"
       >
         {({ field, disabled }) => (
@@ -123,8 +114,8 @@ export function TaskRecurrenceFields({ control }: TaskRecurrenceSectionProps) {
                 // First activation: seed the minimum D-1 needs for a valid
                 // rule instead of leaving every picker below unset.
                 if (next && frequency === null) {
-                  setValue('recurrence.frequency', 'daily', { shouldDirty: true })
-                  setValue('recurrence.ends', 'never', { shouldDirty: true })
+                  setValue('recurrence.frequency', 'daily', RECURRENCE_RESET_OPTIONS)
+                  setValue('recurrence.ends', 'never', RECURRENCE_RESET_OPTIONS)
                 }
               }}
             />
@@ -133,314 +124,102 @@ export function TaskRecurrenceFields({ control }: TaskRecurrenceSectionProps) {
       </MetaField>
 
       {enabled ? (
-        <div className={FIELD_GRID_CLASS}>
-          <MetaField
-            control={control}
-            name="recurrence.frequency"
-            metaKey={RECURRENCE_META_KEY}
-            label={t('tasks.form.recurrence.frequency')}
-          >
-            {({ field, disabled }) => (
-              <Select
-                value={field.value ?? undefined}
-                disabled={disabled}
-                onValueChange={(next) => {
-                  field.onChange(next as TaskRecurrenceFrequency)
-                  resetFrequencyFields(next as TaskRecurrenceFrequency)
-                }}
+        <div className="flex min-w-0 flex-col rounded-lg border bg-card shadow-xs">
+          <div className="flex flex-col gap-3 p-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+              <MetaField
+                control={control}
+                name="recurrence.frequency"
+                metaKey={RECURRENCE_META_KEY}
+                label={t('tasks.form.recurrence.frequency')}
               >
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {TASK_RECURRENCE_FREQUENCIES.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {t(`tasks.form.recurrence.frequencyOption.${option}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </MetaField>
-
-          <MetaField
-            control={control}
-            name="recurrence.interval"
-            metaKey={RECURRENCE_META_KEY}
-            label={t('tasks.form.recurrence.interval')}
-            description={t('tasks.form.recurrence.intervalHint')}
-          >
-            {({ field, disabled }) => (
-              <FormControl>
-                <Input
-                  type="number"
-                  min={1}
-                  step={1}
-                  inputMode="numeric"
-                  disabled={disabled}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  ref={field.ref}
-                  {...numberInputProps(field.value, field.onChange)}
-                />
-              </FormControl>
-            )}
-          </MetaField>
-
-          {frequency === 'weekly' ? (
-            <TaskRecurrenceWeekdaysField
-              control={control}
-              metaKey={RECURRENCE_META_KEY}
-              className="@2xl:col-span-2"
-            />
-          ) : null}
-
-          {isMonthlyOrYearly ? (
-            <MetaField
-              control={control}
-              name="recurrence.month_mode"
-              metaKey={RECURRENCE_META_KEY}
-              label={t('tasks.form.recurrence.monthMode')}
-            >
-              {({ field, disabled }) => (
-                <Select
-                  value={field.value ?? 'fixed'}
-                  disabled={disabled}
-                  onValueChange={(next) => {
-                    field.onChange(next as TaskRecurrenceMonthMode)
-                    resetMonthModeFields(next as TaskRecurrenceMonthMode)
-                  }}
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="fixed">{t('tasks.form.recurrence.monthModeOption.fixed')}</SelectItem>
-                    <SelectItem value="ordinal">{t('tasks.form.recurrence.monthModeOption.ordinal')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            </MetaField>
-          ) : null}
-
-          {isMonthlyOrYearly && monthMode !== 'ordinal' ? (
-            <MetaField
-              control={control}
-              name="recurrence.month_day"
-              metaKey={RECURRENCE_META_KEY}
-              label={t('tasks.form.recurrence.monthDay')}
-            >
-              {({ field, disabled }) => (
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={31}
-                    step={1}
-                    inputMode="numeric"
+                {({ field, disabled }) => (
+                  <Select
+                    value={field.value ?? undefined}
                     disabled={disabled}
-                    onBlur={field.onBlur}
-                    name={field.name}
-                    ref={field.ref}
-                    {...numberInputProps(field.value, field.onChange)}
-                  />
-                </FormControl>
-              )}
-            </MetaField>
-          ) : null}
+                    onValueChange={(next) => {
+                      field.onChange(next as TaskRecurrenceFrequency)
+                      resetFrequencyFields(next as TaskRecurrenceFrequency)
+                    }}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {TASK_RECURRENCE_FREQUENCIES.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {t(`tasks.form.recurrence.frequencyOption.${option}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </MetaField>
 
-          {isMonthlyOrYearly && monthMode === 'ordinal' ? (
-            <MetaField
-              control={control}
-              name="recurrence.ordinal"
-              metaKey={RECURRENCE_META_KEY}
-              label={t('tasks.form.recurrence.ordinal')}
-            >
-              {({ field, disabled }) => (
-                <Select
-                  value={field.value !== null ? String(field.value) : undefined}
-                  disabled={disabled}
-                  onValueChange={(next) => field.onChange(Number(next))}
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {ORDINAL_CHOICES.map((choice) => (
-                      <SelectItem key={choice} value={String(choice)}>
-                        {ordinalLabel(choice, i18n.language)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </MetaField>
-          ) : null}
-
-          {isMonthlyOrYearly && monthMode === 'ordinal' ? (
-            <MetaField
-              control={control}
-              name="recurrence.ordinal_weekday"
-              metaKey={RECURRENCE_META_KEY}
-              label={t('tasks.form.recurrence.ordinalWeekday')}
-            >
-              {({ field, disabled }) => (
-                <Select
-                  value={field.value !== null ? String(field.value) : undefined}
-                  disabled={disabled}
-                  onValueChange={(next) => field.onChange(Number(next))}
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {WEEKDAY_ORDER.map((day, index) => (
-                      <SelectItem key={day} value={String(day)}>
-                        {t(`tasks.form.recurrence.weekday.${WEEKDAY_KEYS[index]}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </MetaField>
-          ) : null}
-
-          {frequency === 'yearly' ? (
-            <MetaField
-              control={control}
-              name="recurrence.year_month"
-              metaKey={RECURRENCE_META_KEY}
-              label={t('tasks.form.recurrence.yearMonth')}
-            >
-              {({ field, disabled }) => (
-                <Select
-                  value={field.value !== null ? String(field.value) : undefined}
-                  disabled={disabled}
-                  onValueChange={(next) => field.onChange(Number(next))}
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {YEAR_MONTH_CHOICES.map((choice) => (
-                      <SelectItem key={choice} value={String(choice)}>
-                        {capitalize(monthName(choice, i18n.language))}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </MetaField>
-          ) : null}
-
-          <MetaField
-            control={control}
-            name="recurrence.workdays_only"
-            metaKey={RECURRENCE_META_KEY}
-            label={t('tasks.form.recurrence.workdaysOnly')}
-            description={t('tasks.form.recurrence.workdaysOnlyHint')}
-            layout="inline"
-            className="@2xl:col-span-2"
-          >
-            {({ field, disabled }) => (
-              <FormControl>
-                <Switch checked={field.value} disabled={disabled} onCheckedChange={field.onChange} />
-              </FormControl>
-            )}
-          </MetaField>
-
-          <MetaField
-            control={control}
-            name="recurrence.ends"
-            metaKey={RECURRENCE_META_KEY}
-            label={t('tasks.form.recurrence.ends')}
-          >
-            {({ field, disabled }) => (
-              <Select
-                value={field.value ?? undefined}
-                disabled={disabled}
-                onValueChange={(next) => {
-                  field.onChange(next as TaskRecurrenceEndMode)
-                  // AC-032: only the newly-picked end mode's own field survives.
-                  setValue('recurrence.ends_on', null, { shouldDirty: true })
-                  setValue('recurrence.occurrence_count', null, { shouldDirty: true })
-                }}
+              <MetaField
+                control={control}
+                name="recurrence.interval"
+                metaKey={RECURRENCE_META_KEY}
+                label={t('tasks.form.recurrence.interval')}
+                hint={t('tasks.form.recurrence.intervalHint')}
               >
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {TASK_RECURRENCE_END_MODES.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {t(`tasks.form.recurrence.endsOption.${option}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </MetaField>
+                {({ field, disabled }) => (
+                  <div className="flex items-center gap-2">
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={1}
+                        step={1}
+                        inputMode="numeric"
+                        className="w-16"
+                        disabled={disabled}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        {...numberInputProps(field.value, field.onChange)}
+                      />
+                    </FormControl>
+                    <span className="text-sm text-muted-foreground">
+                      {t(intervalUnitKey(frequency), { count: field.value ?? 0 })}
+                    </span>
+                  </div>
+                )}
+              </MetaField>
+            </div>
 
-          {ends === 'on_date' ? (
+            {frequency === 'weekly' ? (
+              <TaskRecurrenceWeekdaysField control={control} metaKey={RECURRENCE_META_KEY} />
+            ) : null}
+
+            {isMonthlyOrYearly ? <TaskRecurrenceDayFields control={control} yearly={frequency === 'yearly'} /> : null}
+          </div>
+
+          <div className="border-t p-3">
+            <TaskRecurrenceEndFields control={control} />
+          </div>
+
+          <div className="border-t p-3">
             <MetaField
               control={control}
-              name="recurrence.ends_on"
+              name="recurrence.workdays_only"
               metaKey={RECURRENCE_META_KEY}
-              label={t('tasks.form.recurrence.endsOn')}
+              label={t('tasks.form.recurrence.workdaysOnly')}
+              hint={t('tasks.form.recurrence.workdaysOnlyHint')}
+              layout="inline"
             >
               {({ field, disabled }) => (
                 <FormControl>
-                  <Input
-                    type="date"
-                    disabled={disabled}
-                    value={field.value ?? ''}
-                    onChange={(event) => field.onChange(event.target.value || null)}
-                    onBlur={field.onBlur}
-                    name={field.name}
-                    ref={field.ref}
-                  />
+                  <Switch checked={field.value} disabled={disabled} onCheckedChange={field.onChange} />
                 </FormControl>
               )}
             </MetaField>
-          ) : null}
+          </div>
 
-          {ends === 'after_count' ? (
-            <MetaField
-              control={control}
-              name="recurrence.occurrence_count"
-              metaKey={RECURRENCE_META_KEY}
-              label={t('tasks.form.recurrence.occurrenceCount')}
-            >
-              {({ field, disabled }) => (
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={1}
-                    step={1}
-                    inputMode="numeric"
-                    disabled={disabled}
-                    onBlur={field.onBlur}
-                    name={field.name}
-                    ref={field.ref}
-                    {...numberInputProps(field.value, field.onChange)}
-                  />
-                </FormControl>
-              )}
-            </MetaField>
-          ) : null}
+          <RecurrencePreview control={control} />
         </div>
       ) : null}
-    </>
+    </div>
   )
 }

@@ -19,6 +19,28 @@
 - Verifica: Vitest 113 file / 868 verdi (tasks, ui, custom-fields, help); tsc -b 0; ESLint/Pint puliti; screenshot
   light/dark/375px. Manuale Claude Docs: stesso paragrafo del pannello Sotto-task da aggiornare (accesso negato).
 
+## TASK: EDITOR RICORRENZA RIFATTO (RESTYLE, SOLO FE) — VERDE, NON COMMITTATO (2026-10-06)
+
+- Richiesta utente: l'editor aperto della Ricorrenza (dettaglio task, `TaskRecurrenceFields`) era "bruttissimo":
+  descrizioni lunghe in corpo grande, griglia 2 colonne disallineata, checkbox giorni disordinate.
+- Nuovo layout: switch "Ricorrenza attiva" (hint in tooltip `MetaField hint`), poi pannello `bg-card` a bande:
+  Frequenza (Select, invariata) + "Ripeti ogni [n] <unita'>" (`tasks.form.recurrence.intervalUnit.*`, `custom` = giorni);
+  giorni settimanali = cerchi `role="checkbox"` con iniziale (`weekdayInitial`) e aria-label giorno intero;
+  mensile/annuale in `task-recurrence-day-fields.tsx` (Tipo di giorno = segmentato Data fissa / Giorno della settimana);
+  Fine in `task-recurrence-end-fields.tsx` (segmentato Mai / A una data / Dopo N volte, ordine `END_MODE_ORDER`);
+  "Solo giorni lavorativi" compatto; in fondo `RecurrencePreview` (aria-live) = `formatTaskRecurrenceRule` sulla bozza.
+- `recurrencePreviewRule` (`task-recurrence-preview.ts`): null finche' manca un campo. `formatTaskRecurrenceRule` ora
+  accetta `TaskRecurrenceRule = Omit<TaskRecurrenceDetail, 'id'>` (compatibile con i chiamanti esistenti).
+- Nuovo `components/ui/segmented-control.tsx` (radiogroup, roving tabindex, frecce): estratto da
+  `task-board-segmented-field.tsx`, che ora lo riusa (stesso aspetto).
+- Costanti/utility condivise in `task-recurrence-field-props.ts` (`RECURRENCE_META_KEY`, `numberInputProps`, `intervalUnitKey`).
+- i18n IT/EN: nuove `intervalUnit.*`, `occurrenceUnit_*`, `preview`, `previewIncomplete`; accorciate
+  `monthModeOption.*`, `endsOption.after_count`, `ordinalWeekday`. Guida in-app `tasks` IT/EN aggiornata.
+- REQUIREMENT CHANGED (redesign richiesto): `task-form-recurrence-section.test.tsx` usa `radio` per Fine e Tipo di giorno
+  (prima `combobox`); aggiunto test anteprima. Nuovi test: `task-recurrence-preview.test.ts`, `segmented-control.test.tsx`.
+- Verifica: `tsc -b --force` pulito, ESLint pulito, Vitest tasks/help/i18n/work-orders/components-ui 146 file / 1192 test verdi.
+  Manuale Claude Docs: da aggiornare la sezione Task > Ricorrenza (etichette Fine/Tipo di giorno, anteprima).
+
 ## TASK: SOTTO-TASK E RICORRENZA NEL DETTAGLIO (RESTYLE) + SOTTO-TASK IN MODALE — VERDE, COMMITTATO (2026-10-06)
 
 - Ricorrenza: `TaskRecurrenceSummary` (nuovo, `task-recurrence-summary.tsx`) = valore letto della riga in place.

@@ -325,11 +325,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'In the detail, the **Recurrence** section sums the rule up in a tile: frequency, the descriptive sentence, the picked weekdays, the end and "Workdays only". Press the tile (or the pencil) to edit it. With **Recurring** on, QNet creates the future occurrences by itself. Pick the frequency — Daily, Weekly, Monthly, Yearly or Custom (every N days) — the interval in **Repeat every** and the end: On a date, After a number of occurrences or Never. "After a number of occurrences" counts the occurrences actually created, not the calculated candidates.',
+          text: 'In the detail, the **Recurrence** section sums the rule up in a tile: frequency, the descriptive sentence, the picked weekdays, the end and "Workdays only". Press the tile (or the pencil) to edit it. With **Recurring** on, QNet creates the future occurrences by itself. Pick the frequency — Daily, Weekly, Monthly, Yearly or Custom (every N days) — and in **Repeat every** how many days, weeks, months or years pass between one occurrence and the next; for Weekly, press the day circles to pick them. Under **Ends** choose Never, On a date or After N times: "After N times" counts the occurrences actually created, not the calculated candidates. At the bottom, the **Rule preview** shows the resulting sentence as you fill it in. Hover the (i) icon next to a field for the full explanation.',
         },
         {
           type: 'paragraph',
-          text: "For a Monthly or Yearly recurrence, choose whether the day is **fixed** (e.g. the 31st of the month) or **ordinal** (e.g. the 2nd Tuesday) — Yearly also asks for the month. With **Workdays only** on, an occurrence that would fall on a Saturday, Sunday, a national holiday, Easter or Easter Monday is never skipped: it shifts to the first working day after it. When the shift makes it coincide with an occurrence already generated, only one remains.",
+          text: "For a Monthly or Yearly recurrence, choose between **Fixed date** (e.g. the 31st of the month) and **Day of the week** (e.g. the 2nd Tuesday) — Yearly also asks for the month. With **Workdays only** on, an occurrence that would fall on a Saturday, Sunday, a national holiday, Easter or Easter Monday is never skipped: it shifts to the first working day after it. When the shift makes it coincide with an occurrence already generated, only one remains.",
         },
         {
           type: 'note',

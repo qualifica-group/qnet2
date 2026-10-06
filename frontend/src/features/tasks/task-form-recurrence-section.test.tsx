@@ -89,7 +89,8 @@ beforeEach(() => {
 describe('TaskFormBody — recurrence section (AC-032/AC-034)', () => {
   const enableSwitch = () => screen.getByRole('switch', { name: label('tasks.form.recurrence.enable') })
   const frequencyPicker = () => screen.getByRole('combobox', { name: label('tasks.form.recurrence.frequency') })
-  const endsPicker = () => screen.getByRole('combobox', { name: label('tasks.form.recurrence.ends') })
+  const endsOption = (mode: string) =>
+    screen.getByRole('radio', { name: label(`tasks.form.recurrence.endsOption.${mode}`) })
 
   it('hides every field below the switch while disabled', () => {
     renderForm({ type: 'create' })
@@ -106,7 +107,7 @@ describe('TaskFormBody — recurrence section (AC-032/AC-034)', () => {
     fireEvent.click(enableSwitch())
 
     expect(frequencyPicker()).toHaveTextContent(label('tasks.form.recurrence.frequencyOption.daily'))
-    expect(endsPicker()).toHaveTextContent(label('tasks.form.recurrence.endsOption.never'))
+    expect(endsOption('never')).toBeChecked()
     expect(
       screen.queryByRole('checkbox', { name: label('tasks.form.recurrence.weekday.mon') }),
     ).not.toBeInTheDocument()
@@ -145,12 +146,10 @@ describe('TaskFormBody — recurrence section (AC-032/AC-034)', () => {
     openInlineEditor(label('tasks.detail.recurrenceRule'))
     fireEvent.click(enableSwitch())
 
-    fireEvent.click(endsPicker())
-    fireEvent.click(screen.getByRole('option', { name: label('tasks.form.recurrence.endsOption.on_date') }))
+    fireEvent.click(endsOption('on_date'))
     expect(screen.getByLabelText(label('tasks.form.recurrence.endsOn'))).toBeInTheDocument()
 
-    fireEvent.click(endsPicker())
-    fireEvent.click(screen.getByRole('option', { name: label('tasks.form.recurrence.endsOption.after_count') }))
+    fireEvent.click(endsOption('after_count'))
     expect(screen.queryByLabelText(label('tasks.form.recurrence.endsOn'))).not.toBeInTheDocument()
     expect(
       screen.getByRole('spinbutton', { name: label('tasks.form.recurrence.occurrenceCount') }),
@@ -172,13 +171,29 @@ describe('TaskFormBody — recurrence section (AC-032/AC-034)', () => {
       screen.queryByRole('combobox', { name: label('tasks.form.recurrence.ordinal') }),
     ).not.toBeInTheDocument()
 
-    const monthModePicker = screen.getByRole('combobox', { name: label('tasks.form.recurrence.monthMode') })
-    fireEvent.click(monthModePicker)
-    fireEvent.click(screen.getByRole('option', { name: label('tasks.form.recurrence.monthModeOption.ordinal') }))
+    expect(screen.getByRole('radio', { name: label('tasks.form.recurrence.monthModeOption.fixed') })).toBeChecked()
+    fireEvent.click(screen.getByRole('radio', { name: label('tasks.form.recurrence.monthModeOption.ordinal') }))
 
     expect(screen.queryByRole('spinbutton', { name: label('tasks.form.recurrence.monthDay') })).not.toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: label('tasks.form.recurrence.ordinal') })).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: label('tasks.form.recurrence.ordinalWeekday') })).toBeInTheDocument()
+  })
+
+  it('previews the drafted rule as a sentence, and prompts while a field is missing', () => {
+    renderForm({ type: 'create' })
+    openInlineEditor(label('tasks.detail.recurrenceRule'))
+    fireEvent.click(enableSwitch())
+
+    expect(screen.getByText(i18n.t('tasks.detail.recurrence.daily', { count: 1 }))).toBeInTheDocument()
+
+    fireEvent.click(frequencyPicker())
+    fireEvent.click(screen.getByRole('option', { name: label('tasks.form.recurrence.frequencyOption.weekly') }))
+    expect(screen.getByText(label('tasks.form.recurrence.previewIncomplete'))).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: label('tasks.form.recurrence.weekday.mon') }))
+    expect(
+      screen.getByText(i18n.t('tasks.detail.recurrence.weekly', { count: 1, weekdays: i18n.t('tasks.detail.recurrence.weekday.mon') })),
+    ).toBeInTheDocument()
   })
 
   it('shows the workdays-only switch once recurrence is enabled', () => {
