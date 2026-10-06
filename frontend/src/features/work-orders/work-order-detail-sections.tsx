@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ClipboardList, FileSignature, Lock } from 'lucide-react'
+import { Building2, ClipboardList, FileSignature, Lock } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import {
@@ -48,10 +48,54 @@ function WorkOrderLinesList({ lines }: { lines: WorkOrderQuoteLine[] }) {
   )
 }
 
+type LinkedRecord = { id: number; name: string } | null | undefined
+
+/** A linked-record row that falls back to the kit's empty placeholder. */
+function LinkedField({ label, domain, record }: { label: string; domain: string; record: LinkedRecord }) {
+  return (
+    <RecordField label={label}>
+      {record ? (
+        <RecordLink domain={domain} id={record.id}>
+          {record.name}
+        </RecordLink>
+      ) : (
+        <DetailEmpty />
+      )}
+    </RecordField>
+  )
+}
+
+/**
+ * Societa' e sedi of the linked offer: the same three relations, labels and
+ * links the Contract detail shows, projected live through `quote`.
+ */
+function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
+  const { t } = useTranslation()
+  const operationalSite = workOrder.operational_site
+
+  return (
+    <RecordSection title={t('workOrders.detail.sections.company')} icon={<Building2 />}>
+      <RecordFieldList>
+        <LinkedField label={t('workOrders.detail.company')} domain="companies" record={workOrder.company} />
+        <LinkedField
+          label={t('workOrders.detail.companySite')}
+          domain="company-sites"
+          record={workOrder.company_site}
+        />
+        <LinkedField
+          label={t('workOrders.detail.operationalSite')}
+          domain="operational-sites"
+          record={operationalSite ? { id: operationalSite.id, name: operationalSite.label } : null}
+        />
+      </RecordFieldList>
+    </RecordSection>
+  )
+}
+
 /**
  * The work order record's `RecordSectionsGrid` body, mirroring
  * `OpportunityDetailSections`/`QuoteDetailSections`: the internal notes
- * callout first, then details, team, contract and the collected Attribute
+ * callout first, then details, team, contract, company and sites and the collected Attribute
  * values. Status, type and dates are not repeated here: they are the header
  * pills and the KPI strip.
  */
@@ -121,6 +165,8 @@ export function WorkOrderDetailSections({ workOrder }: { workOrder: WorkOrderDet
           </RecordField>
         </RecordFieldList>
       </RecordSection>
+
+      <WorkOrderCompanySection workOrder={workOrder} />
 
       <WorkOrderDetailAttributesSection
         attributes={workOrder.applicable_attributes}

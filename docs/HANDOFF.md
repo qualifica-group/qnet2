@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMMESSE: "SOCIETA' E SEDI" NEL DETTAGLIO — VERDE, COMMITTATO (2026-10-06)
+
+- Dettaglio commessa: nuova sezione "Societa' e sedi" / "Company and sites" (dopo "Contratto e righe prodotto"),
+  stessi tre campi e link del dettaglio Contratto: Societa' (`/companies/{id}`), Sede (`/company-sites/{id}`),
+  Sede operativa (`/operational-sites/{id}`, label = indirizzo). `DetailEmpty` se null.
+- Contratto API (additivo): `WorkOrderResource` espone `company {id,name=denomination}`, `company_site {id,name}`,
+  `operational_site {id,label}` (`OperationalSiteLabel::summarize`), proiettati LIVE da `quote` come fa
+  `ContractResource` (il contratto non ha colonne proprie). `WorkOrderService::DETAIL_RELATIONS` + `quote.company`,
+  `quote.companySite`, `quote.operationalSite.addresses.city`. FE: campi opzionali in `WorkOrderDetail` (come `registry`),
+  chiavi i18n `workOrders.detail.{company,companySite,operationalSite}` + `sections.company`.
+- Test: 2 casi in `WorkOrderContractSummaryTest`, 2 in `work-order-detail.test.tsx`.
+- Dato reale commessa 95: contratto 100, offerta senza Societa'/Sede (vuote), Sede operativa id 25.
+- Manuale: guida in-app Commesse ancora "in fase di sviluppo" -> nessun impatto.
+- Verifiche: Pest WorkOrders+Contracts 321/321, Pint ok; Vitest work-orders 225/225, ESLint ok, `tsc -b --force` ok.
+
 ## TASK — PERMESSI CAMPO DEL DETTAGLIO IN PLACE (spec 0195 D-6a/b/c) — VERDE, NON COMMITTATO (2026-10-06)
 
 - Audit (sonda Pest, poi rimossa): la matrice per ruolo arrivava gia' al dettaglio, ma (1) l'osservatore con

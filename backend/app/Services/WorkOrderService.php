@@ -71,6 +71,11 @@ class WorkOrderService
         // Spec 0173: the `registry` summary WorkOrderResource exposes, whose
         // documents the detail mounts read-only.
         'quote.opportunity.registry',
+        // The Societa' e sedi block WorkOrderResource projects off the quote,
+        // the same tree ContractService loads for the Contract detail.
+        'quote.company',
+        'quote.companySite',
+        'quote.operationalSite.addresses.city',
     ];
 
     public function __construct(

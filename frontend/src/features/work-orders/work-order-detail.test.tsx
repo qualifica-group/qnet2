@@ -279,6 +279,33 @@ describe('WorkOrderDetailView — related records', () => {
     expect(screen.getByText('Client registry')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Acme S.p.A.' })).not.toBeInTheDocument()
   })
+
+  it("links the company and both sites of the commessa's offer, as the Contract detail does", () => {
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({
+          company: { id: 4, name: 'Qualifica Group S.r.l.' },
+          company_site: { id: 5, name: 'Sede Napoli' },
+          operational_site: { id: 6, label: 'Via Roma 1 - Napoli' },
+        })}
+      />,
+    )
+
+    expect(screen.getByText('Company and sites')).toBeInTheDocument()
+    const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
+    expect(hrefOf('Qualifica Group S.r.l.')).toBe('/companies/4')
+    expect(hrefOf('Sede Napoli')).toBe('/company-sites/5')
+    expect(hrefOf('Via Roma 1 - Napoli')).toBe('/operational-sites/6')
+  })
+
+  it('shows the company and sites rows with the empty placeholder when the offer has none', () => {
+    render(<WorkOrderDetailView workOrder={workOrder({ company: null, company_site: null, operational_site: null })} />)
+
+    expect(screen.getByText('Company')).toBeInTheDocument()
+    expect(screen.getByText('Site')).toBeInTheDocument()
+    expect(screen.getByText('Operational site')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Sede|Via Roma/ })).not.toBeInTheDocument()
+  })
 })
 
 /**

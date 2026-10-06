@@ -38,6 +38,9 @@ export const workOrders = {
     contractNumber: 'Contratto n.',
     registry: 'Anagrafica cliente',
     contract: 'Contratto',
+    company: 'Società',
+    companySite: 'Sede',
+    operationalSite: 'Sede operativa',
     forceCloseReason: 'Motivo chiusura',
     description: 'Descrizione',
     internalNotes: 'Note commessa',
@@ -50,6 +53,7 @@ export const workOrders = {
       identity: 'Dettagli',
       contract: 'Contratto e righe prodotto',
       team: 'Responsabili e partecipanti',
+      company: 'Società e sedi',
     },
     tasks: {
       title: 'Task',
