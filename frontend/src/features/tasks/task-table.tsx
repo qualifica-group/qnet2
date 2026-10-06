@@ -29,6 +29,7 @@ import { TaskQuickCreateRow } from '@/features/tasks/task-quick-create-row'
 import { TaskViewModeSelector } from '@/features/tasks/task-view-mode-selector'
 import { useTaskBulkActionsSlot } from '@/features/tasks/use-task-bulk-actions-slot'
 import { useTaskDomainRowActions } from '@/features/tasks/use-task-domain-row-actions'
+import { TaskCompleteRowContext } from '@/features/tasks/task-complete-row-context'
 import { useTaskKanbanMode } from '@/features/tasks/use-task-kanban-mode'
 import { useTaskListUrlFilters } from '@/features/tasks/use-task-list-url-filters'
 import { useTaskListViewMode } from '@/features/tasks/use-task-list-view-mode'
@@ -94,7 +95,11 @@ export function TasksTable() {
   const { viewMode, setViewMode } = useTaskListViewMode()
   const { kanbanMode, setKanbanMode } = useTaskKanbanMode()
 
-  const { handleAction: handleDomainAction, dialogSlot: domainDialogSlot } = useTaskDomainRowActions({
+  const {
+    handleAction: handleDomainAction,
+    completeRow,
+    dialogSlot: domainDialogSlot,
+  } = useTaskDomainRowActions({
     onMutated: handleMutated,
   })
 
@@ -166,23 +171,25 @@ export function TasksTable() {
         // shape (spec 0157 D-1) is a different SSRM request altogether, so it
         // starts its own fresh grid/selection/toolbar state rather than
         // reinterpreting Analitica's.
-        <TableView
-          key={viewMode}
-          ref={tableRef}
-          domain={TASKS_DOMAIN}
-          renderers={taskColumnRenderers}
-          iconMap={TASK_ACTION_ICONS}
-          onAction={handleAction}
-          isBusy={isBusy}
-          advancedFiltersOverride={urlFilters.override}
-          onAdvancedFiltersOverrideCleared={urlFilters.clear}
-          getBulkActions={getBulkActions}
-          disableBuiltinDelete
-          renderFooter={renderFooter}
-          pinnedRowSlot={<TaskQuickCreateRow onCreated={handleMutated} />}
-          interceptCellCommit={interceptCommit}
-          treeData={viewMode === 'synthetic'}
-        />
+        <TaskCompleteRowContext.Provider value={completeRow}>
+          <TableView
+            key={viewMode}
+            ref={tableRef}
+            domain={TASKS_DOMAIN}
+            renderers={taskColumnRenderers}
+            iconMap={TASK_ACTION_ICONS}
+            onAction={handleAction}
+            isBusy={isBusy}
+            advancedFiltersOverride={urlFilters.override}
+            onAdvancedFiltersOverrideCleared={urlFilters.clear}
+            getBulkActions={getBulkActions}
+            disableBuiltinDelete
+            renderFooter={renderFooter}
+            pinnedRowSlot={<TaskQuickCreateRow onCreated={handleMutated} />}
+            interceptCellCommit={interceptCommit}
+            treeData={viewMode === 'synthetic'}
+          />
+        </TaskCompleteRowContext.Provider>
       )}
 
       {sheet}

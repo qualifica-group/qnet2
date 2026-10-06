@@ -5,6 +5,8 @@ import { UserCell, UserStackCell } from '@/features/table/user-cell'
 import i18n from '@/i18n'
 import { CompletionCell } from '@/features/table/completion-cell'
 import { ActualMinutesCell } from '@/features/tasks/task-actual-minutes-cell'
+import { TaskEndDateCell } from '@/features/tasks/task-end-date'
+import { TaskTitleCell } from '@/features/tasks/task-title-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
 /**
@@ -24,8 +26,7 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
  * it is a column of its OWN, next to but distinct from the status.
  *
  * `completion_percentage` is the derived column (D-6/AC-022), on the shared
- * `CompletionCell`. `title` and
- * `estimated_minutes` stay on the AG Grid default cell.
+ * `CompletionCell`. `estimated_minutes` stays on the AG Grid default cell.
  *
  * The last four entries cover columns `TaskColumnCatalog` declares
  * `visible: false`: they exist so their FILTERS do (in this engine a filter
@@ -39,6 +40,8 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
  * grid does not). `updated_at` DOES have a grid column since spec 0156 D-2.
  */
 export const taskColumnRenderers: TableRendererMap = {
+  // The complete toggle before the title (user directive 2026-10-06).
+  title: (params) => <TaskTitleCell {...params} />,
   task_status: (params) => <StatusBadgeCell {...params} />,
   task_type: (params) => <StatusBadgeCell {...params} />,
   task_priority: (params) => <StatusBadgeCell {...params} />,
@@ -49,7 +52,8 @@ export const taskColumnRenderers: TableRendererMap = {
   ),
   is_blocked: (params) => <BooleanBadgeCell {...params} />,
   start_date: (params) => <DateCell {...params} />,
-  end_date: (params) => <DateCell {...params} />,
+  // Red with the alert triangle once passed on an open task, as the commessa board.
+  end_date: (params) => <TaskEndDateCell {...params} />,
   registry: (params) => <RelationCell {...params} icon={Contact} />,
   opportunity: (params) => <RelationCell {...params} icon={Handshake} />,
   work_order: (params) => <RelationCell {...params} icon={Hammer} />,

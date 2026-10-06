@@ -366,6 +366,14 @@ const guide: HelpGuide = {
           text: 'Selecting one or more rows shows the **Actions** bar: Assign (replaces the assignees), Complete, Reopen, Block, Unblock, Priority, Start date, End date, Delete.',
         },
         {
+          type: 'paragraph',
+          text: 'Before the **Title** sits the completion icon: when you can complete the task it turns green on hover and, clicked, opens the **Complete** dialog (the same as the action); on a completed task it is solid green. As in work orders, the **End date** of an open task turns red with the warning triangle once it has passed, and is highlighted when it is due today — in the task detail too.',
+        },
+        {
+          type: 'note',
+          text: 'Editing **Assignees** or **Watchers** in the list opens the list of every user with their picture, as in the detail; Watchers leave out the task\'s creator, requester and assignees.',
+        },
+        {
           type: 'warning',
           text: 'A bulk action is **all or nothing**: if even one selected task is not eligible (e.g. blocked, or Complete requires validation), the action stops with a message listing which tasks and why, and none of the selected tasks is changed.',
         },

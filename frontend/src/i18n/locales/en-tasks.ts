@@ -384,7 +384,7 @@ export const tasks = {
    * sbagliata") split every action re-asserts server-side.
    */
   actions: {
-    complete: { label: 'Complete' },
+    complete: { label: 'Complete', done: 'Completed' },
     uncomplete: {
       label: 'Reopen',
       confirmDescription: 'The task moves back to "In progress".',

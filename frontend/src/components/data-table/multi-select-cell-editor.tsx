@@ -4,6 +4,8 @@
  * a search box + a checkable `/for-select` list, and the SAME scope management
  * the form offers ("prodotti di interesse": only the options of the row's own
  * scope by default, the whole catalogue behind an explicit confirmation).
+ * A column without a declared `scope` (a Task's assignees/watchers) is the
+ * plain catalogue: no lock, no scope footer.
  *
  * Two constraints shape the markup, both learned by `RelationCellEditor`:
  *  - the list is rendered INSIDE the popup, never as a nested Radix Popover: a
@@ -26,7 +28,8 @@ import { Input } from '@/components/ui/input'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useForSelect } from '@/features/for-select/use-for-select'
 import type { ForSelectItem } from '@/features/for-select/types'
-import { resolveMultiScopeParams } from '@/components/data-table/multi-select-scope'
+import { resolveExcludedIds, resolveMultiScopeParams } from '@/components/data-table/multi-select-scope'
+import { UserAvatar } from '@/components/user-avatar'
 import type { TableRow } from '@/features/table/types'
 import { cn } from '@/lib/utils'
 
@@ -55,6 +58,10 @@ export interface MultiSelectCellEditorParams {
    * form picker's exactly.
    */
   scope?: Record<string, string>
+  /** Row column ids whose ids the list does not offer (`relation.exclude`), unless already picked. */
+  exclude?: string[]
+  /** Prefix each option with its `UserAvatar`, as the form's people picker does. */
+  showAvatar?: boolean
 }
 
 /** Debounce before a typed term reaches the server, matching every other picker. */
@@ -64,7 +71,7 @@ export function MultiSelectCellEditor(
   props: CustomCellEditorProps<TableRow, MultiSelectCellValue[] | null> & MultiSelectCellEditorParams,
 ) {
   const { t } = useTranslation()
-  const { value, onValueChange, resource, scope, lockScope = false, data } = props
+  const { value, onValueChange, resource, scope, lockScope = false, exclude, showAvatar = false, data } = props
   const [search, setSearch] = useState('')
   const [unlocked, setUnlocked] = useState(false)
   const [confirmingUnlock, setConfirmingUnlock] = useState(false)
@@ -80,11 +87,17 @@ export function MultiSelectCellEditor(
   const selected = useMemo(() => value ?? [], [value])
   const selectedIds = useMemo(() => selected.map((item) => item.id), [selected])
   const scopeParams = useMemo(() => resolveMultiScopeParams(scope, data), [scope, data])
+  const excludedIds = useMemo(() => resolveExcludedIds(exclude, data), [exclude, data])
+
+  // Only a column that DECLARES a scope has one to lock to or lift (e.g. the
+  // products of interest); an unscoped one (a Task's assignees/watchers) is
+  // the plain catalogue, like the form's picker.
+  const isScoped = scope !== undefined
 
   // Locked with nothing to scope to would silently show the WHOLE catalogue —
   // the opposite of what the lock promises, so the list stays closed until the
   // operator unlocks it explicitly (mirrors the form picker).
-  const lockedWithoutScope = !unlocked && scopeParams === undefined
+  const lockedWithoutScope = isScoped && !unlocked && scopeParams === undefined
 
   const {
     data: pages,
@@ -102,7 +115,10 @@ export function MultiSelectCellEditor(
     enabled: !lockedWithoutScope,
   })
 
-  const options = pages?.pages.flatMap((page) => page.items) ?? []
+  // An excluded id that is already picked stays listed, so it can be removed.
+  const options = (pages?.pages.flatMap((page) => page.items) ?? []).filter(
+    (item) => !excludedIds.has(item.id) || selectedIds.includes(item.id),
+  )
 
   const toggle = (item: ForSelectItem) => {
     const next = selectedIds.includes(item.id)
@@ -150,7 +166,7 @@ export function MultiSelectCellEditor(
               {t('table.multiSelectEditor.retry')}
             </button>
           </div>
-        ) : options.length === 0 ? (
+        ) : options.length === 0 && !hasNextPage ? (
           <p className="px-2 py-6 text-center text-xs text-muted-foreground">{t('table.multiSelectEditor.empty')}</p>
         ) : (
           <>
@@ -173,6 +189,9 @@ export function MultiSelectCellEditor(
                     className={cn('size-3.5 shrink-0', isSelected ? 'opacity-100' : 'opacity-0')}
                     aria-hidden="true"
                   />
+                  {showAvatar ? (
+                    <UserAvatar name={item.label} src={item.avatar_url} size="sm" className="shrink-0" />
+                  ) : null}
                   <span className="truncate">{item.label}</span>
                 </button>
               )
@@ -195,7 +214,7 @@ export function MultiSelectCellEditor(
         )}
       </div>
 
-      {lockScope ? (
+      {!isScoped ? null : lockScope ? (
         <p className="truncate border-t border-border p-1.5 text-xs text-muted-foreground">
           {t('table.multiSelectEditor.hintLocked')}
         </p>

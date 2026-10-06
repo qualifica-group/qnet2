@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { CustomCellEditorProps } from 'ag-grid-react'
 import i18n from '@/i18n'
 import { MultiSelectCellEditor, type MultiSelectCellValue } from '@/components/data-table/multi-select-cell-editor'
-import { resolveMultiScopeParams } from '@/components/data-table/multi-select-scope'
+import { resolveExcludedIds, resolveMultiScopeParams } from '@/components/data-table/multi-select-scope'
 import { fetchForSelect } from '@/features/for-select/api'
 import type { PaginatedResponse, ForSelectItem } from '@/features/for-select/types'
 import type { TableRow } from '@/features/table/types'
@@ -83,6 +83,21 @@ describe('resolveMultiScopeParams', () => {
   it('sends no param at all when the row carries no value for the scope column', () => {
     expect(resolveMultiScopeParams({ category_ids: 'missing' }, ROW)).toBeUndefined()
     expect(resolveMultiScopeParams(undefined, ROW)).toBeUndefined()
+  })
+})
+
+describe('resolveExcludedIds', () => {
+  it('collects the ids of every excluded column, single projections and lists alike', () => {
+    const row = {
+      id: 1,
+      actions: [],
+      creator: { id: 1, name: 'A' },
+      requester: { id: 2, name: 'B' },
+      assignees: [{ id: 3, name: 'C' }, { id: 4, name: 'D' }],
+    } as TableRow
+
+    expect(resolveExcludedIds(['creator', 'requester', 'assignees'], row)).toEqual(new Set([1, 2, 3, 4]))
+    expect(resolveExcludedIds(undefined, row).size).toBe(0)
   })
 })
 
@@ -184,5 +199,61 @@ describe('MultiSelectCellEditor with lockScope (spec 0075, AC-016)', () => {
 
     expect(screen.queryByRole('button', { name: i18n.t('table.multiSelectEditor.unlock') })).not.toBeInTheDocument()
     expect(screen.getByText(i18n.t('table.multiSelectEditor.hintLocked'))).toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// User directive 2026-10-06 — an UNSCOPED column (a Task's assignees/watchers)
+// ---------------------------------------------------------------------------
+
+describe('MultiSelectCellEditor without a declared scope', () => {
+  const TASK_ROW = {
+    id: 9,
+    actions: [],
+    creator: { id: 1, name: 'Creator' },
+    requester: { id: 2, name: 'Requester' },
+    assignees: [{ id: 3, name: 'Assignee' }],
+    watchers: [{ id: 2, name: 'Requester' }],
+  } as TableRow
+
+  it('lists the whole catalogue with no scope message and no unlock footer', async () => {
+    fetchForSelectMock.mockResolvedValue(page([{ id: 5, label: 'Mario Rossi' }]))
+    renderEditor({ data: TASK_ROW, resource: 'users', scope: undefined } as never)
+
+    expect(await screen.findByRole('option', { name: 'Mario Rossi' })).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('table.multiSelectEditor.noScope'))).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: i18n.t('table.multiSelectEditor.unlock') })).not.toBeInTheDocument()
+    expect(fetchForSelectMock).toHaveBeenCalledWith('users', expect.objectContaining({ params: undefined }))
+  })
+
+  it("leaves out the row's excluded people, except one already picked", async () => {
+    fetchForSelectMock.mockResolvedValue(
+      page([
+        { id: 1, label: 'Creator' },
+        { id: 2, label: 'Requester' },
+        { id: 3, label: 'Assignee' },
+        { id: 5, label: 'Mario Rossi' },
+      ]),
+    )
+    renderEditor({
+      data: TASK_ROW,
+      value: [{ id: 2, name: 'Requester' }],
+      resource: 'users',
+      scope: undefined,
+      exclude: ['creator', 'requester', 'assignees'],
+    } as never)
+
+    expect(await screen.findByRole('option', { name: 'Mario Rossi' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Requester' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Creator' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Assignee' })).not.toBeInTheDocument()
+  })
+
+  it('prefixes each option with the person avatar when asked to', async () => {
+    fetchForSelectMock.mockResolvedValue(page([{ id: 5, label: 'Mario Rossi' }]))
+    renderEditor({ data: TASK_ROW, resource: 'users', scope: undefined, showAvatar: true } as never)
+
+    const option = await screen.findByRole('option', { name: /Mario Rossi/ })
+    expect(option.querySelector('[data-slot="avatar"]')).not.toBeNull()
   })
 })

@@ -439,7 +439,7 @@ export function DataTable({
         ? (params: ICellRendererParams<TableRow>) => detailCellRenderer(params)
         : undefined,
       detailRowAutoHeight,
-      ...buildTreeDataGridOptions(treeData, treeGroupColumnId, columns, t),
+      ...buildTreeDataGridOptions(treeData, treeGroupColumnId, columns, t, cellRenderers),
     }),
     [
       datasource,
@@ -454,6 +454,7 @@ export function DataTable({
       treeGroupColumnId,
       columns,
       t,
+      cellRenderers,
     ],
   )
 

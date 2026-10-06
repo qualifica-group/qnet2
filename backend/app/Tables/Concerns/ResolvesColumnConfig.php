@@ -192,6 +192,14 @@ trait ResolvesColumnConfig
             if (($column['relation']['lockScope'] ?? false) === true) {
                 $resolved['relation']['lockScope'] = true;
             }
+
+            // Row columns whose ids the picker does NOT offer (e.g. a Task's
+            // watchers exclude its creator/requester/assignees, spec 0118
+            // AC-035) — a UI narrowing like `scope`; the write path still
+            // refuses the overlap on its own. Emitted only when declared.
+            if (isset($column['relation']['exclude'])) {
+                $resolved['relation']['exclude'] = $column['relation']['exclude'];
+            }
         }
 
         return $resolved;

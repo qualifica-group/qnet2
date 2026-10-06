@@ -16,6 +16,7 @@ import { TaskCompleteDialog } from '@/features/tasks/task-complete-dialog'
 import { TaskRequestUpdateDialog } from '@/features/tasks/task-request-update-dialog'
 import { TaskValidationDialog } from '@/features/tasks/task-validation-dialog'
 import type { RowActionHandler } from '@/features/table/row-actions'
+import type { TableRow } from '@/features/table/types'
 import type { TaskDetailWithPermissions } from '@/features/tasks/types'
 
 type FetchedDialogKind = 'complete' | 'approve' | 'reject' | 'request_update'
@@ -32,6 +33,8 @@ export interface UseTaskDomainRowActionsOptions {
 
 export interface UseTaskDomainRowActionsResult {
   handleAction: RowActionHandler
+  /** Opens the SAME complete dialog as the `complete` row action (the title cell's toggle). */
+  completeRow: (row: TableRow) => void
   dialogSlot: ReactNode
 }
 
@@ -118,6 +121,8 @@ export function useTaskDomainRowActions({
     [openFetchedDialog, runUncomplete, runBlock, runUnblock],
   )
 
+  const completeRow = useCallback((row: TableRow) => openFetchedDialog('complete', Number(row.id)), [openFetchedDialog])
+
   // Every fetched dialog's own success path already calls `onOpenChange(false)`
   // internally (mirrors `TaskActionsBar`): closing IS the signal to refresh —
   // a plain cancel refreshes too, a harmless no-op extra fetch, not a bug.
@@ -137,5 +142,5 @@ export function useTaskDomainRowActions({
       <TaskRequestUpdateDialog open onOpenChange={handleDialogOpenChange} task={dialog.task} />
     ) : null
 
-  return { handleAction, dialogSlot }
+  return { handleAction, completeRow, dialogSlot }
 }

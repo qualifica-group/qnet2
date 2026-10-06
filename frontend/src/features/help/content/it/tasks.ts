@@ -369,6 +369,14 @@ const guide: HelpGuide = {
           text: 'Selezionando una o più righe compare la barra **Azioni**: Assegna (sostituisce gli assegnatari), Completa, Riapri, Blocca, Sblocca, Priorità, Data inizio, Data fine, Elimina.',
         },
         {
+          type: 'paragraph',
+          text: 'Prima del **Titolo** c\'è l\'icona di completamento: se puoi completare il task diventa verde passandoci sopra e, cliccandola, apre la finestra **Completa** (la stessa dell\'azione); su un task completato è verde piena. Come nelle commesse, la **Data fine** di un task aperto diventa rossa con il triangolo di avviso quando è passata, ed evidenziata quando scade oggi — anche nel dettaglio del task.',
+        },
+        {
+          type: 'note',
+          text: 'Modificando nell\'elenco **Assegnatari** o **Osservatori** si apre l\'elenco di tutti gli utenti con la loro foto, come nel dettaglio; negli Osservatori non compaiono creatore, richiedente e assegnatari del task.',
+        },
+        {
           type: 'warning',
           text: 'Un\'azione massiva è **tutto o niente**: se anche un solo task selezionato non è ammesso (es. bloccato, o richiede validazione per Completa), l\'azione si ferma con un messaggio che elenca quali task e perché, e nessuno dei task selezionati viene modificato.',
         },

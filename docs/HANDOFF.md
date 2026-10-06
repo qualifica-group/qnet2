@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TASK: SOTTO-TASK E RICORRENZA NEL DETTAGLIO (RESTYLE) + SOTTO-TASK IN MODALE — VERDE, NON COMMITTATO (2026-10-06)
+
+- Ricorrenza: `TaskRecurrenceSummary` (nuovo, `task-recurrence-summary.tsx`) = valore letto della riga in place.
+  Spento: riquadro tratteggiato + hint. Acceso: velo `bg-primary/5`, eyebrow frequenza, frase
+  `formatTaskRecurrenceRule` (invariata, la stessa del badge header), striscia giorni per `weekly`
+  (`weekdayInitial` nuovo in `task-recurrence-format.ts`, Intl narrow), chip fine + "Solo giorni lavorativi".
+- `TaskInlineField` ha `layout?: 'row' | 'block'` (default `row`): `block` = valore a tutta larghezza, label sr-only;
+  usato solo dalla ricorrenza (niente piu' `RecordFieldList` in quella sezione). Label/pencil "Regola" invariati.
+- Sotto-task: riga estratta in `task-subtask-row.tsx` (cerchio iniziale = Completa / spunta verde = Riapri, stessi
+  aria-label; titolo barrato a 100%; assegnatari via `UserAvatarStack`; cestino visibile su hover/focus/touch).
+  `task-subtask-progress.ts` (`isSubtaskDone`, `subtaskProgress`) alimenta la banda "N di M completati" + barra
+  `overallProgress` (media arrotondata). Empty state tratteggiato con `subtaskPanel.emptyHint`.
+- REQUIREMENT CHANGED (utente 2026-10-06): dal dettaglio task un sotto-task si apre SEMPRE in modale sopra il padre
+  (`TaskDetailScreen` usa l'opener `forceMode: OPEN_MODE_MODAL` anche per `openView`; rimosso l'opener a
+  preferenza). AC-085 della spec 0101 aggiornato; test `task-screens.test.tsx` aggiornato e dichiarato.
+- i18n nuove: `tasks.detail.recurrenceCard.*`, `tasks.detail.subtaskPanel.{doneOf_*,overallProgress,emptyHint}`.
+  Guida in-app IT/EN `tasks` (sezione `subtasks-and-recurrence`) aggiornata.
+- Verifica: Vitest tasks/help/modules/i18n 107 file / 832 test verdi; `tsc -b --force` 0; ESLint 0. Screenshot
+  Playwright light/dark/375px e clic reale sul sotto-task (Sheet aperta, URL del padre invariato).
+- Da fare: manuale Claude Docs non accessibile in sessione (accesso negato) -> aggiornare a mano la sezione
+  "Sotto-task, ricorrenza e modelli". Fuori scope segnalato: in dark il % rosso di `CompletionBar` ha contrasto basso.
+
 ## COMMESSE: "SOCIETA' E SEDI" NEL DETTAGLIO — VERDE, COMMITTATO (2026-10-06)
 
 - Dettaglio commessa: nuova sezione "Societa' e sedi" / "Company and sites" (dopo "Contratto e righe prodotto"),
@@ -115,6 +137,30 @@
 
 - Colonna `employment_profiles.is_assignable` (default true, migrazione `2026_10_05_100000_...`; rollback
   `QuoteWorkflowMigrationTest` ora `--step 126`). API `employment.is_assignable`, field permission propria (chiavi
+- FIX editor griglia Assegnatari/Osservatori (NON COMMITTATO): `MultiSelectCellEditor` mostrava "Questa riga non ha
+  ancora un ambito" su ogni colonna SENZA `relation.scope` (bloccava come "scope vuoto"). Ora il blocco/sblocco
+  d'ambito vale solo se la colonna dichiara `scope`; altrimenti catalogo completo, nessun footer. Vale anche per gli
+  attributi multi-relazione di request-management. + avatar per `users` (`showAvatar` dal registry) + nuovo contratto
+  `relation.exclude` (id colonne riga da non offrire; emesso da `ResolvesColumnConfig` solo se dichiarato):
+  watchers dei Task = `['creator','requester','assignees']` (come il picker del dettaglio, opzione gia' scelta resta
+  visibile). Helper `resolveExcludedIds` in `multi-select-scope.ts`. Test: `TaskTableTest` + editor/registry.
+- Data fine "come in commesse" (NON COMMITTATO): `components/due-date-chip.tsx` (`DueDateChip`, chip rosso + triangolo
+  scaduto / tinta + calendario oggi, con proprio `TooltipProvider`) estratto dalle due copie (board commessa,
+  `TaskKanbanDueChip`). Regola `taskEndDateState` (`task-due-state.ts`): non chiuso && end_date < oggi = scaduto,
+  == oggi = oggi; `TaskEndDate`/`TaskEndDateCell` (`task-end-date.tsx`) in griglia (`end_date`), riga Pianificazione e
+  riquadro "Data fine" del dettaglio (`TaskStatsStrip.statusGroup` opzionale; la creazione non lo passa).
+- Toggle Completa nella cella Titolo (NON COMMITTATO): `TaskTitleCell` = icona `CheckCircle2` prima del titolo:
+  completato (`group closed_positive`) = verde piena (`fill-success text-card`); riga con azione `complete` = bottone
+  (cursor-pointer, hover verde + fill tenue + scale, active press, motion-safe) che apre il dialogo Completa via
+  `TaskCompleteRowContext` (provider in `TasksTable`, valore `completeRow` di `useTaskDomainRowActions`); altrimenti
+  icona sbiadita. Listener NATIVI (click/dblclick/Enter-Spazio con stopPropagation): con `singleClickEdit` AG Grid
+  aprirebbe l'editor del titolo prima del onClick React. Vista Sintetica: `buildTreeDataGridOptions` ora usa il
+  renderer della colonna sostituita come `innerRenderer` della colonna di gruppo.
+- Verifica: vitest completo 6767/6768 (l'unico rosso, `task-screens.test.tsx` subtask modal, passa isolato: flaky
+  sotto carico); tasks+work-orders+components 1208 verdi; Pest Tasks 633, Table 289, RequestManagement 838, Leads 156;
+  tsc -b 0; eslint/pint puliti. Verificato in browser (Playwright headless): editor Assegnatari con 27 utenti+avatar,
+  chip rossi, clic icona -> dialogo Completa senza editor, icona piena sui completati. Guida in-app IT/EN aggiornata
+  (`list-editing-and-bulk`). Manuale Claude Docs: da aggiornare stessa sezione.
   `employment.*` da 14 a 15). Scrittura tri-state: chiave assente = invariata (`EmploymentData::$isAssignable` ?bool,
   NON come `is_manager`).
 - Enforcement (D-1, solo assegnazione operatori): `LeadOperatorDistributor::operatorIdsBySite` (pool Sede di

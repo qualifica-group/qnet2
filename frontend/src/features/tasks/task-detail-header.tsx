@@ -3,11 +3,13 @@ import { ListChecks, Repeat, ShieldAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CompletionBar } from '@/components/completion-bar'
 import { cn } from '@/lib/utils'
+import type { TaskStatusGroupValue } from '@/features/status-reorder/types'
 import { formatDate } from '@/lib/formatting/date-display'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
+import { TaskEndDate } from '@/features/tasks/task-end-date'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { formatTaskRecurrenceRule } from '@/features/tasks/task-recurrence-format'
 import { formatMinutesLabel } from '@/features/time-entries/time-entry-format'
@@ -86,6 +88,7 @@ export function TaskDetailStats({ task }: TaskDetailStatsProps) {
       completionPercentage={task.completion_percentage}
       startDate={task.start_date}
       endDate={task.end_date}
+      statusGroup={task.task_status.group}
       estimatedMinutes={task.estimated_minutes}
     />
   )
@@ -96,15 +99,22 @@ interface TaskStatsStripProps {
   completionPercentage: number | null
   startDate: string | null
   endDate: string | null
+  /** The persisted status phase (detail): a closed task's end date is never late. */
+  statusGroup?: TaskStatusGroupValue | null
   estimatedMinutes: number | null
 }
 
 /** The strip itself, fed by the persisted task (detail) or the live form values (create, spec 0195 D-8). */
-export function TaskStatsStrip({ completionPercentage, startDate, endDate, estimatedMinutes }: TaskStatsStripProps) {
+export function TaskStatsStrip({
+  completionPercentage,
+  startDate,
+  endDate,
+  statusGroup = null,
+  estimatedMinutes,
+}: TaskStatsStripProps) {
   const { t } = useTranslation()
   const { field } = useResourcePermissions()
   const formattedStart = formatDate(startDate)
-  const formattedEnd = formatDate(endDate)
 
   return (
     <RecordStatStrip className="border-t-0 bg-transparent">
@@ -122,7 +132,7 @@ export function TaskStatsStrip({ completionPercentage, startDate, endDate, estim
         <RecordStat label={t('tasks.detail.startDate')} value={formattedStart || <DetailEmpty />} />
       ) : null}
       {field('end_date').visible ? (
-        <RecordStat label={t('tasks.detail.endDate')} value={formattedEnd || <DetailEmpty />} />
+        <RecordStat label={t('tasks.detail.endDate')} value={<TaskEndDate endDate={endDate} statusGroup={statusGroup} />} />
       ) : null}
       {field('estimated_minutes').visible ? (
         <RecordStat

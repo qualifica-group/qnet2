@@ -15,6 +15,7 @@ import {
 } from '@/features/tasks/task-classification-section'
 import { TaskDescriptionField, TaskParentField, TaskTitleField } from '@/features/tasks/task-identity-section'
 import { useTaskCascadeEditable } from '@/features/tasks/task-inline-cascade'
+import { TaskEndDate } from '@/features/tasks/task-end-date'
 import { TaskInlineField } from '@/features/tasks/task-inline-field'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { TaskPeopleList, TaskPerson } from '@/features/tasks/task-people-list'
@@ -241,7 +242,7 @@ export function TaskDetailPlanningSection({ task, editor }: TaskDetailSectionPro
           inline={inline}
           editor={<TaskDateField control={form.control} name="end_date" />}
         >
-          {formatDate(task.end_date) || <DetailEmpty />}
+          <TaskEndDate endDate={task.end_date} statusGroup={task.task_status.group} />
         </TaskInlineField>
         <TaskInlineField
           field="end_time"

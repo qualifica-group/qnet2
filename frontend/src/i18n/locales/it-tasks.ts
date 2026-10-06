@@ -391,7 +391,7 @@ export const tasks = {
    * sbagliata") che ogni azione ri-asserisce lato server.
    */
   actions: {
-    complete: { label: 'Completa' },
+    complete: { label: 'Completa', done: 'Completato' },
     uncomplete: {
       label: 'Riapri',
       confirmDescription: 'Il task torna in stato "In corso".',

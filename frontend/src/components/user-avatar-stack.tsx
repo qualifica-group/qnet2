@@ -10,6 +10,15 @@ import {
 /** How many avatars are shown inline before collapsing into a "+N" chip. */
 const MAX_VISIBLE_AVATARS = 5
 
+/**
+ * The cut-out that keeps overlapping avatars apart. `AvatarGroup` rings only
+ * its DIRECT avatar children, but here every avatar sits inside its hover-card
+ * trigger, so the ring goes on the trigger — positioned like the avatar
+ * itself, or every avatar would paint over the previous trigger's ring.
+ * Card-colored: both hosts (grid cells, record detail) sit on `--card`.
+ */
+const STACK_SEPARATOR_CLASS = 'relative rounded-full ring-2 ring-card'
+
 interface UserAvatarStackProps {
   users: UserProfileSummary[]
 }
@@ -28,7 +37,7 @@ export function UserAvatarStack({ users }: UserAvatarStackProps) {
   return (
     <AvatarGroup>
       {visible.map((user) => (
-        <UserProfileHoverCard key={user.id} user={user} triggerClassName="rounded-full">
+        <UserProfileHoverCard key={user.id} user={user} triggerClassName={STACK_SEPARATOR_CLASS}>
           <UserAvatar name={user.name} src={user.avatar_url ?? null} size="sm" />
         </UserProfileHoverCard>
       ))}
@@ -37,7 +46,7 @@ export function UserAvatarStack({ users }: UserAvatarStackProps) {
           <HoverCardTrigger asChild>
             <AvatarGroupCount
               tabIndex={0}
-              className="cursor-default outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="cursor-default ring-card outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={overflow.map((user) => user.name).join(', ')}
             >
               +{overflow.length}
