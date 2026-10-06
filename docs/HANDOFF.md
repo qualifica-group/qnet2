@@ -37,6 +37,22 @@
   Chiavi i18n orfane preesistenti `form.sections.workflowStatus`, `form.workflowStatus*`, `form.operationalSite*`.
   Non verificato nel browser reale.
 
+## ORIENTAMENTO SPECIALISTICO — CAMPO "ANAGRAFICA UTENTE" (seed produzione) — VERDE, COMMITTATO (2026-10-06)
+
+- Richiesta utente: "per productionSeeder, per Orientamento inserire un campo flessibile in offerta Anagrafica Utente
+  che e' un collegamento ad anagrafica".
+- `AplOrientationAttributeCatalogue::ATTRIBUTES`: nuovo `user_registry` ("Anagrafica Utente"), `relation` →
+  `{entity_type: registries, cardinality: one, for_select_resource: registries}` (stesso schema di `teaching_tutor`).
+  Prima riga della sezione "Testata" (da sola), descrizione sezione aggiornata. Il docblock non dice piu' che "Utente"
+  e' l'anagrafica dell'opportunita'.
+- Installazioni gia' seedate: `PREVIOUS_SECTIONS` (form del 2026-10-05) + `AplPracticeCatalogue::PREVIOUS_FORMS` +
+  `QualificaQuoteLayoutSeeder::isPreviousOwnForm()` riconoscono il blob vecchio byte per byte e lo ricompongono; un
+  layout ritoccato a mano resta intatto. `DATA_SECTION`/`PATH_SECTION` private condivise tra form attuale e precedente.
+- Test: `QualificaAplOrientationCatalogueTest` (16 campi, relation_target, layout, ricomposizione). Verdi: Products
+  198, Seeding 139. Pint pulito. Nessun impatto FE (relation generico su `/registries/for-select`).
+- Manuale: guide in-app nessun impatto (non descrivono i campi Orientamento); manuale Claude Docs non accessibile
+  dalla sessione → verificare se descrive i campi offerta dell'Orientamento specialistico.
+
 ## OFFERTE — DETTAGLIO EDITABILE IN PLACE + CREAZIONE COME IL DETTAGLIO (spec 0197) — VERDE, COMMITTATO (2026-10-06)
 
 - Richiesta utente: "prendi offerte e fai le stesse modifiche di commesse ... soprattutto per i campi flessibili.

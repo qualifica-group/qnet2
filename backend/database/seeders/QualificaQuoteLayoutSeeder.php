@@ -237,7 +237,24 @@ class QualificaQuoteLayoutSeeder extends Seeder
         }
 
         return $this->isRetiredECampusComposition($blob)
+            || $this->isPreviousOwnForm($category, $blob, $effective)
             || $this->composesAs($blob, $this->highlightedAsBefore($this->sections($category, $effective)));
+    }
+
+    /**
+     * Whether $blob is the form a previous revision seeded for a category
+     * with a form of its own (AplPracticeCatalogue::PREVIOUS_FORMS). Composed
+     * from today's codes: a field added since is simply absent from the old
+     * rows, so the filter leaves exactly what was written.
+     *
+     * @param  array<string, mixed>  $blob
+     * @param  list<string>  $effective
+     */
+    private function isPreviousOwnForm(ProductCategory $category, array $blob, array $effective): bool
+    {
+        $previous = AplPracticeCatalogue::PREVIOUS_FORMS[$category->name] ?? null;
+
+        return $previous !== null && $this->composesAs($blob, $this->compose($previous, $effective));
     }
 
     /**

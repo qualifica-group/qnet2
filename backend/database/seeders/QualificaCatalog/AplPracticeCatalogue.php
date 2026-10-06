@@ -43,6 +43,17 @@ final class AplPracticeCatalogue
     ];
 
     /**
+     * Category name => the form a previous revision seeded for it, recognised
+     * and recomposed by QualificaQuoteLayoutSeeder (see each catalogue's
+     * PREVIOUS_SECTIONS).
+     *
+     * @var array<string, list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>>
+     */
+    public const array PREVIOUS_FORMS = [
+        AplOrientationAttributeCatalogue::CATEGORY => AplOrientationAttributeCatalogue::PREVIOUS_SECTIONS,
+    ];
+
+    /**
      * Section key => its working states, for WorkflowStatusCatalogue::SECTIONS.
      *
      * @var array<string, array<string, array{legend: string, description: string}>>
