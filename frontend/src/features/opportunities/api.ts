@@ -49,16 +49,20 @@ export async function createOpportunity(
   return data.data
 }
 
-/** Partially updates an opportunity (PATCH). Returns the updated resource. */
+/**
+ * Partially updates an opportunity (PATCH). The response carries the
+ * re-evaluated `permissions` too: the in-place detail (spec 0198) writes it
+ * straight into the detail cache, which the detail reads its gates from.
+ */
 export async function updateOpportunity(
   id: number,
   payload: UpdateOpportunityPayload,
-): Promise<OpportunityDetail> {
-  const { data } = await apiClient.patch<ApiResponse<OpportunityDetail>>(
+): Promise<OpportunityDetailWithPermissions> {
+  const { data } = await apiClient.patch<ApiResponseWithPermissions<OpportunityDetail, ResourcePermissions>>(
     `/opportunities/${id}`,
     payload,
   )
-  return data.data
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes an opportunity. Backend responds 204 with no body. */

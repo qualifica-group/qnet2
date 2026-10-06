@@ -212,8 +212,8 @@ export interface OpportunityDetail {
 
 /**
  * An `OpportunityDetail` carrying the actor's authorization metadata for this
- * instance (spec 0004), as returned by `GET /opportunities/{id}`. Used to seed
- * the edit form's `ResourcePermissionsProvider` without a second request.
+ * instance (spec 0004), as returned by `GET /opportunities/{id}` and by the
+ * PATCH. Seeds the in-place detail's `ResourcePermissionsProvider`.
  */
 export interface OpportunityDetailWithPermissions extends OpportunityDetail {
   permissions: ResourcePermissions
@@ -363,11 +363,12 @@ export interface OpportunityFromLeadContext {
   productLines: OpportunityProductLine[]
   /** Directive 2026-07-22: `[]` or `[null, operatorId]` — an empty G.A. 1 plus the lead's Operator as G.A. 2, editable/removable, never locked. */
   managerSlots: (number | null)[]
-  /** {id,name} summaries of the filled slots, for the slot's trigger-label hydration. */
-  managerRefs: OpportunityRelationRef[]
 }
 
-/** Discriminated form mode shared by the form hook/meta-resolver and `OpportunityForm`. */
+/** The create form's own mode (spec 0198): a persisted opportunity is edited in place on its detail. */
+export type OpportunityCreateFormMode = { type: 'create'; fromLead?: OpportunityFromLeadContext }
+
+/** Discriminated form mode of `useOpportunityForm`: create, or `edit` driven by the in-place detail. */
 export type OpportunityFormMode =
-  | { type: 'create'; fromLead?: OpportunityFromLeadContext }
+  | OpportunityCreateFormMode
   | { type: 'edit'; opportunity: OpportunityDetailWithPermissions }

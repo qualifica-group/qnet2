@@ -1,5 +1,5 @@
 import { useOpportunityDefaults } from '@/features/opportunities/use-opportunity-defaults'
-import type { OpportunityFormMode } from '@/features/opportunities/types'
+import type { OpportunityCreateFormMode } from '@/features/opportunities/types'
 
 /**
  * Resolves what `/opportunities/new` (optionally `?lead_id=N`) should render
@@ -12,7 +12,7 @@ export type OpportunityCreateModeState =
   | { status: 'loading' }
   | { status: 'error'; retry: () => void }
   | { status: 'existing'; existingOpportunityId: number }
-  | { status: 'ready'; mode: OpportunityFormMode }
+  | { status: 'ready'; mode: OpportunityCreateFormMode }
 
 export function useOpportunityCreateMode(leadId: number | null): OpportunityCreateModeState {
   const defaultsQuery = useOpportunityDefaults(leadId)
@@ -43,7 +43,6 @@ export function useOpportunityCreateMode(leadId: number | null): OpportunityCrea
         lockedFields: defaults.locked_fields,
         productLines: defaults.product_lines,
         managerSlots: defaults.manager_slots,
-        managerRefs: defaults.manager_refs,
       },
     },
   }

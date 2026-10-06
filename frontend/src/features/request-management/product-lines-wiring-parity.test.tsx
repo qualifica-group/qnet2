@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { Form } from '@/components/ui/form'
-import { OpportunityProductLinesSection } from '@/features/opportunities/opportunity-product-lines-section'
+import { OpportunityProductLinesFormField } from '@/features/opportunities/opportunity-relation-fields'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
 import { RequestProductLinesSection } from '@/features/request-management/request-product-lines-section'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
@@ -61,7 +61,7 @@ function OpportunityHarness() {
   })
   return (
     <Form {...form}>
-      <OpportunityProductLinesSection control={form.control} knownProductsOfInterest={[]} />
+      <OpportunityProductLinesFormField control={form.control} />
     </Form>
   )
 }

@@ -3,14 +3,15 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import {
   fetchOpportunity,
   opportunityDetailQueryKey,
 } from '@/features/opportunities/api'
-import { OpportunityForm, OpportunityFormSkeleton } from '@/features/opportunities/opportunity-form'
+import { OpportunityForm } from '@/features/opportunities/opportunity-form'
 import { OpportunityDetailView } from '@/features/opportunities/opportunity-detail'
 import { useOpportunityCreateMode } from '@/features/opportunities/use-opportunity-create-mode'
 import { parseEntityId } from '@/routes/entity-id'
@@ -20,16 +21,19 @@ import type {
   ModuleFormScreenProps,
   ModuleRegistryEntry,
 } from '@/features/modules/types'
-import type { OpportunityDetail } from '@/features/opportunities/types'
+import type { OpportunityCreateFormMode, OpportunityDetail } from '@/features/opportunities/types'
 
 /**
  * Content-only `opportunities` screens for the module registry (spec 0042):
  * fetch + the existing presentational view/form, no page chrome. Reused
  * as-is by the modal Sheet (`useModuleOpener`) and by the generic dedicated
- * pages (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from
- * `OpportunitiesTable`'s inline loaders, which the rewire removed.
+ * pages (`ModuleDetailPage`/`ModuleFormPage`).
+ *
+ * Spec 0198: the detail edits its fields in place, so `onEdit` is never
+ * used; each save reports through `onChanged` (the modal host refreshes its
+ * grid and keeps the record open).
  */
-export function OpportunityDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function OpportunityDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: opportunity,
@@ -52,34 +56,32 @@ export function OpportunityDetailScreen({ id, onEdit }: ModuleDetailScreenProps)
     return <DetailLoading />
   }
 
-  return <OpportunityDetailView opportunity={opportunity} onEdit={onEdit} />
+  return <OpportunityDetailView opportunity={opportunity} onChanged={onChanged} />
 }
 
 /**
- * Create branch reads `lead_id` from `mode.params` (spec 0045), the single
- * channel a `FormScreen` gets its create-time context through regardless of
- * where it is mounted: the modal Sheet hands the params straight through,
- * while `ModuleFormPage` converts the deep-link's `?lead_id=N` query string
- * into the same `params` shape before mounting this screen. `lead_id` can
- * therefore arrive as either a `number` (modal caller) or a `string` (parsed
- * query string) — normalize to string before `parseEntityId`.
+ * Create only (spec 0198): the registry generates no `:id/edit` route. Reads
+ * `lead_id` from `mode.params` (spec 0045), the single channel a `FormScreen`
+ * gets its create-time context through regardless of where it is mounted:
+ * the modal Sheet hands the params straight through, while `ModuleFormPage`
+ * converts the deep-link's `?lead_id=N` query string into the same `params`
+ * shape before mounting this screen. `lead_id` can therefore arrive as either
+ * a `number` (modal caller) or a `string` (parsed query string) — normalize
+ * to string before `parseEntityId`.
  */
 export function OpportunityFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const queryClient = useQueryClient()
+
+  if (mode.type !== 'create') {
+    return null
+  }
 
   const handleSuccess = (saved: OpportunityDetail) => {
     queryClient.invalidateQueries({ queryKey: opportunityDetailQueryKey(saved.id) })
     onSuccess(saved.id)
   }
 
-  if (mode.type === 'edit') {
-    return (
-      <OpportunityEditScreen opportunityId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-    )
-  }
-
-  const leadId =
-    mode.type === 'create' ? parseEntityId(String(mode.params?.lead_id ?? '')) : null
+  const leadId = parseEntityId(String(mode.params?.lead_id ?? ''))
   return <OpportunityCreateScreen leadId={leadId} onSuccess={handleSuccess} onCancel={onCancel} />
 }
 
@@ -95,7 +97,7 @@ function OpportunityCreateScreen({ leadId, onSuccess, onCancel }: OpportunityCre
   const createMode = useOpportunityCreateMode(leadId)
 
   if (createMode.status === 'loading') {
-    return <OpportunityFormSkeleton />
+    return <RecordFormSkeleton />
   }
 
   if (createMode.status === 'error') {
@@ -104,7 +106,7 @@ function OpportunityCreateScreen({ leadId, onSuccess, onCancel }: OpportunityCre
         <p className="text-sm text-destructive" role="alert">
           {t('opportunities.form.defaultsLoadError')}
         </p>
-        <Button variant="outline" size="sm" onClick={createMode.retry}>
+        <Button variant="outline" size="sm" className="bg-card" onClick={createMode.retry}>
           {t('common.retry')}
         </Button>
       </div>
@@ -127,52 +129,47 @@ function OpportunityCreateScreen({ leadId, onSuccess, onCancel }: OpportunityCre
     )
   }
 
-  return <OpportunityForm mode={createMode.mode} onSuccess={onSuccess} onCancel={onCancel} />
+  return <GuardedOpportunityForm mode={createMode.mode} onSuccess={onSuccess} onCancel={onCancel} />
 }
 
-interface OpportunityEditScreenProps {
-  opportunityId: number
+interface GuardedOpportunityFormProps {
+  mode: OpportunityCreateFormMode
   onSuccess: (opportunity: OpportunityDetail) => void
   onCancel: () => void
 }
 
 /**
- * Fetches the fresh, re-authorized opportunity detail before mounting the
- * edit form, so the partial PATCH starts from authoritative values rather
- * than a stale snapshot.
+ * The create form behind its leave guard: Cancel, the Sheet's X/overlay/Esc,
+ * a link, a reload — leaving always asks first (spec 0195 D-9 applied to
+ * Opportunita'). Mounted only once there is a form to lose.
  */
-function OpportunityEditScreen({ opportunityId, onSuccess, onCancel }: OpportunityEditScreenProps) {
+function GuardedOpportunityForm({ mode, onSuccess, onCancel }: GuardedOpportunityFormProps) {
   const { t } = useTranslation()
-  const {
-    data: opportunity,
-    isLoading,
-    isError,
-    refetch,
-  } = useEntityDetail(opportunityDetailQueryKey(opportunityId), () => fetchOpportunity(opportunityId))
+  const leaveGuard = useFormLeaveGuard({
+    title: t('opportunities.form.leaveConfirm.title'),
+    description: t('opportunities.form.leaveConfirm.description'),
+    confirmLabel: t('opportunities.form.leaveConfirm.confirm'),
+    cancelLabel: t('opportunities.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
-  if (isError) {
-    return (
-      <div className="flex flex-col items-start gap-3 p-4">
-        <p className="text-sm text-destructive">{t('opportunities.detail.loadError')}</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          {t('common.retry')}
-        </Button>
-      </div>
-    )
+  const handleSuccess = (saved: OpportunityDetail) => {
+    // Saved: the navigation to the new opportunity's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(saved)
   }
 
-  if (isLoading || !opportunity) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+  const handleCancel = async () => {
+    if (await leaveGuard.confirmLeave()) {
+      onCancel()
+    }
   }
 
   return (
-    <OpportunityForm mode={{ type: 'edit', opportunity }} onSuccess={onSuccess} onCancel={onCancel} />
+    <>
+      {leaveGuard.navigationGuard}
+      <OpportunityForm mode={mode} onSuccess={handleSuccess} onCancel={() => void handleCancel()} />
+    </>
   )
 }
 
@@ -184,9 +181,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.opportunities',
   DetailScreen: OpportunityDetailScreen,
   FormScreen: OpportunityFormScreen,
+  // The detail IS the edit form (spec 0198): no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
-  // The form renders its own identity bar (title/subtitle + actions on one
-  // row, user directive 2026-08-05), so the hosts must not stack a second
-  // heading above it — same registration Gestione Richieste carries.
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
   formOwnsHeader: true,
 }

@@ -3,6 +3,40 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## OPPORTUNITA' — DETTAGLIO EDITABILE IN PLACE + CREAZIONE COME IL DETTAGLIO (spec 0198) — VERDE, COMMITTATO (2026-10-06)
+
+- Richiesta utente: stesse modifiche delle Commesse (spec 0196) sulle Opportunita', creazione come nei Task. Solo
+  frontend: la PATCH `/opportunities/{id}` gia' restituiva `permissions` (ora `updateOpportunity` li espone).
+  L'Opportunita' NON ha campi flessibili (Attributi passati all'Offerta con la spec 0084).
+- Dettaglio (`OpportunityDetailView`: niente `onEdit`, nuovo `onChanged`): `useOpportunityInlineEdit` su
+  `useOpportunityForm` edit (`values` + `keepDirtyValues`, reset dopo PATCH, `clearSubmitErrors`). Sezioni condivise
+  dettaglio/creazione: `opportunity-record-details.tsx` (Note generali callout, Dettagli: titolo + pianificazione),
+  `-record-client.tsx` (Anagrafica con cascata e avviso "opportunita' aperta" nell'editor, Referente solo con
+  anagrafica, Commerciale, Segnalatore con i buoni, Lead in sola lettura), `-record-classification.tsx` (Fonte, Righe,
+  Prodotti di interesse; Team: Supervisore + G.A. in una riga). Tipi/hook in `opportunity-record.ts`
+  (`useCascadeEditable`: editor non apribile se la cascata scrive un campo non editabile). Campi in
+  `opportunity-fields.tsx`, `-relation-fields.tsx`, `-registry-field.tsx` (senza `forceDisabled`), `-reporter-field.tsx`.
+  BR-2: `registry_id`/`source_id` in `locked_fields` = nessuna matita. Premi: `RewardChipsSection` resta sola lettura.
+- Creazione: `opportunity-form-body.tsx` + `-form-header.tsx` (KPI condivisi `OpportunityStatsStrip`) +
+  `-create-sections.tsx` (Lead di origine sempre aperto in testa) + `use-opportunity-draft-values.ts` (etichette via
+  `useForSelectLabels`/albero categorie). `GuardedOpportunityForm` in `opportunity-screens.tsx` (`useFormLeaveGuard`);
+  registry `generateEditRoute: false`. Default in `opportunity-form-defaults.ts`.
+- Condiviso: `useOutsidePointerDismiss` ignora i pointerdown dentro `[role="alertdialog"]` (conferma "Sostituire i
+  ruoli?" dell'anagrafica). `useRegistryRoleInheritance`: memoria dei ruoli ereditati in `WeakMap` per form (il picker
+  vive solo a riga aperta). Riusa `components/record-form/first-error-message.ts` (spec 0197 Offerte).
+- Rimossi: `opportunity-{attribution,client,team,general-notes,title,planning,product-lines,lead}-section`,
+  `-form-summary`, `use-opportunity-selected-items`, `use-opportunity-form-meta`, `OpportunityFormSkeleton`; stato lead
+  senza `operationalSite`/`managers`; `OpportunityFromLeadContext.managerRefs`. i18n orfane rimosse
+  (`form.header/summary/editTitle/editSubtitle`, `sections.attribution/planning`, `sections.*.description`); nuove
+  `detail.sections.details`, `form.leaveConfirm.*`.
+- REQUIREMENT CHANGED dichiarati nei test (righe chiuse, matita invece di disabilitato, niente modo edit). Nuovi:
+  `opportunity-detail-inline-edit` (7), `-create-rows` (6), `-screens-leave-guard` (2), `-fields` (5),
+  `-relation-fields` (4). Verifica: Vitest completo 900 file / 6817 verdi; `tsc -b --force` 0; ESLint 0 errori.
+- Guida in-app IT/EN `opportunities`: nuova `editing-an-opportunity`, `create-an-opportunity` riscritta.
+- Da fare / fuori scope: manuale Claude Docs (sezione Opportunita': modifica in place, creazione a righe chiuse).
+  Chiavi i18n orfane preesistenti `form.sections.workflowStatus`, `form.workflowStatus*`, `form.operationalSite*`.
+  Non verificato nel browser reale.
+
 ## OFFERTE — DETTAGLIO EDITABILE IN PLACE + CREAZIONE COME IL DETTAGLIO (spec 0197) — VERDE, COMMITTATO (2026-10-06)
 
 - Richiesta utente: "prendi offerte e fai le stesse modifiche di commesse ... soprattutto per i campi flessibili.

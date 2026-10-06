@@ -18,27 +18,25 @@ const guide: HelpGuide = {
           items: [
             'Apri **Opportunità e Commesse › Opportunità**.',
             'Clicca **Nuova opportunità**.',
-            'Compila le sezioni (vedi tabella).',
-            'Clicca **Salva**.',
+            'Compila le sezioni (vedi tabella): il modulo ha lo stesso aspetto del dettaglio, con le righe **chiuse**. Apri una riga con la matita, compila il campo e premi **Fatto** per tenerlo (o **Ripristina** per riportarlo com\'era).',
+            'Clicca **Salva** (in alto o in fondo): controlla tutti i campi e crea l\'opportunità; gli errori compaiono sotto le righe da correggere. Uscendo senza salvare ti viene chiesta conferma.',
           ],
         },
         {
           type: 'table',
           headers: ['Sezione', 'Campi'],
           rows: [
-            ['Titolo', '**Titolo** (facoltativo)'],
-            ['Anagrafica e contatti', '**Anagrafica** (obbligatoria), **Referente**, **Commerciale**'],
-            ['Classificazione', '**Fonte**, **Sede operativa**'],
-            ['Attribuzione', '**Segnalatore**, **Buoni assegnati**'],
-            ['Funzioni aziendali e categorie prodotto', '**Righe di classificazione**'],
-            ['Team', '**Supervisore**, **Gestori account**'],
-            ['Pianificazione', '**Data inizio**, **Data chiusura prevista**, **Valore stimato**, **Probabilità di successo (%)**'],
+            ['Lead di origine', '**Lead** (facoltativo, precompila e blocca i campi derivati)'],
             ['Note generali', 'Testo libero'],
+            ['Dettagli', '**Titolo** (facoltativo), **Data inizio**, **Data chiusura prevista**, **Valore stimato**, **Probabilità di successo (%)**'],
+            ['Anagrafica e contatti', '**Anagrafica** (obbligatoria), **Referente**, **Commerciale**, **Segnalatore** con i **Buoni assegnati**'],
+            ['Classificazione', '**Fonte**, **Funzioni aziendali e categorie prodotto** (almeno una riga), **Prodotti di interesse**'],
+            ['Team', '**Supervisore**, **Gestori account**'],
           ],
         },
         {
           type: 'tip',
-          text: "Il **Titolo** è proposto in automatico: il codice dell'opportunità seguito dai prodotti delle righe di ricavo delle offerte, non dai prodotti di interesse (per esempio OPP_12 - ISO 9001 + SOA); finché non ci sono prodotti vale solo il codice. In modifica il campo è precompilato: se scrivi un titolo tuo resta quello, anche quando cambiano le offerte; svuota il campo per tornare al titolo automatico.",
+          text: "Il **Titolo** è proposto in automatico: il codice dell'opportunità seguito dai prodotti delle righe di ricavo delle offerte, non dai prodotti di interesse (per esempio OPP_12 - ISO 9001 + SOA); finché non ci sono prodotti vale solo il codice. Nel dettaglio il campo mostra il titolo attuale: se scrivi un titolo tuo resta quello, anche quando cambiano le offerte; svuota il campo per tornare al titolo automatico.",
         },
         {
           type: 'tip',
@@ -47,6 +45,33 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "Chi inserisci come **Supervisore** o tra i **Gestori account** riceve la notifica **Sei stato inserito come Supervisore** o **Sei stato inserito come Gestore Account** (campanella ed email). Il link apre l'opportunità; chi non ha accesso alle Opportunità riceve la notifica senza link. Chi è anche Gestore account di un'offerta dell'opportunità, per esempio perché viene copiato nell'offerta collegata di un lead convertito o di una categoria con gestori sincronizzati, riceve solo la notifica dell'offerta.",
+        },
+      ],
+    },
+    {
+      id: 'editing-an-opportunity',
+      title: "Modificare un'opportunità",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Non esiste una pagina di modifica separata: l'opportunità si modifica **direttamente dal suo dettaglio**, un campo alla volta.",
+        },
+        {
+          type: 'steps',
+          items: [
+            "Apri l'opportunità dall'elenco.",
+            'Passa col mouse sul campo da cambiare e premi la **matita** (o fai clic sul valore).',
+            'Modifica il valore nel controllo che compare.',
+            "Premi **Salva** (o Invio nei campi di testo e data) per salvare solo quel campo; **Annulla** (o Esc, o un clic fuori dal campo aperto) per chiuderlo lasciandolo com'era, senza salvare.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "Alcuni campi si portano dietro altri valori nello stesso salvataggio: cambiando l'**Anagrafica** il Referente si svuota e Commerciale, Segnalatore, Supervisore e Gestori account vengono proposti da quelli dell'anagrafica (con conferma se sono diversi); cambiando le **Righe di classificazione** i Prodotti di interesse non più coperti vengono tolti; i **Buoni assegnati** si modificano dal campo **Segnalatore**, di cui sono il premio.",
+        },
+        {
+          type: 'note',
+          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure è ereditato e bloccato dal lead di origine (Anagrafica, Fonte), oppure cambiarlo modificherebbe un campo che non puoi toccare. Il **Lead di origine** non si cambia; lo **Stato** è calcolato dalle offerte.",
         },
       ],
     },

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { UseFormGetValues, UseFormSetValue } from 'react-hook-form'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
-import { toRelationFieldRef } from '@/components/form/relation-field-ref'
 import { fetchOpportunityDefaultsOnce } from '@/features/opportunities/opportunity-defaults-api'
 import type { OpportunityProductLine } from '@/features/opportunities/types'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
@@ -23,22 +22,8 @@ export interface OpportunityLeadSelectionState {
   lockedFields: string[]
   /** D-2: the lead is already linked to another opportunity — the form must block the submit, never write derived values. */
   existingOpportunityId: number | null
-  /** The lead's anagrafica (its identity, spec 0041 D-3): the single source for both the Lead select's own trigger label and the registry picker's. */
+  /** The lead's anagrafica (its identity, spec 0041 D-3): the single source for both the Lead select's own trigger label and the registry row's. */
   registry: RelationFieldRef | null
-  /**
-   * Directive 2026-07-23: the Sede operativa inherited from the lead, set on
-   * a successful selection so the site picker's trigger shows its label the
-   * same way `registry` does — `setValue` alone writes the id, not the label.
-   */
-  operationalSite: RelationFieldRef | null
-  /**
-   * Directive 2026-07-21: the lead's Operator, set ONLY when this selection
-   * just appended it as a new "Gestore Account" slot — `null` otherwise (the
-   * Operator was already among the slots, or the lead has none). Feeds the
-   * slot's trigger-label hydration the same way `registry` feeds the registry
-   * picker's, since `setValue` alone writes the id but not the display name.
-   */
-  managers: RelationFieldRef[] | null
   /** True while the one-shot defaults fetch triggered by a fresh selection is in flight. */
   isApplying: boolean
   /** The defaults fetch failed; the selection was rolled back to "none". */
@@ -50,8 +35,6 @@ const EMPTY_STATE: OpportunityLeadSelectionState = {
   lockedFields: [],
   existingOpportunityId: null,
   registry: null,
-  operationalSite: null,
-  managers: null,
   isApplying: false,
   isError: false,
 }
@@ -188,11 +171,9 @@ export function useOpportunityLeadSelection(
       // Account" slots, but only when it isn't already among them — never
       // overwrites an existing selection; a lead with no Operator (empty
       // `manager_slots`) is a no-op.
-      let managers: RelationFieldRef[] | null = null
       const operatorId = defaults.manager_slots.find((id) => id !== null) ?? null
       if (operatorId !== null && !getValues('manager_slots').includes(operatorId)) {
         setValue('manager_slots', withOperatorSlot(getValues('manager_slots'), operatorId), { shouldDirty: true })
-        managers = defaults.manager_refs
       }
 
       setState({
@@ -200,8 +181,6 @@ export function useOpportunityLeadSelection(
         lockedFields: defaults.locked_fields,
         existingOpportunityId: null,
         registry: defaults.references.registry,
-        operationalSite: toRelationFieldRef(defaults.references.operational_site),
-        managers,
         isApplying: false,
         isError: false,
       })

@@ -121,7 +121,7 @@ interface HarnessProps {
   defaultValue?: ProductLineRow[]
 }
 
-/** Mirrors the real wiring (`opportunity-product-lines-section.tsx`'s `MetaField`): rows flow through RHF like any other field. */
+/** Mirrors the real wiring (`OpportunityProductLinesFormField`'s `MetaField`): rows flow through RHF like any other field. */
 function Harness({ defaultValue = [] }: HarnessProps) {
   const form = useForm<{ product_lines: ProductLineRow[] }>({ defaultValues: { product_lines: defaultValue } })
   const productLines = useWatch({ control: form.control, name: 'product_lines' })

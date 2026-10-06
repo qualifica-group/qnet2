@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0198-opportunity-inline-editable-detail" status="approved" owner="utente" date="2026-10-06">
+
+  <goal>
+    L'Opportunita' riceve le stesse modifiche della Commessa (spec 0196) e del Task (spec 0195): niente pagina di
+    modifica, il dettaglio (`/opportunities/:id` e lo stesso schermo nel pannello modale) si edita in place campo per
+    campo; la creazione e' una replica del dettaglio a righe chiuse.
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-06, "stesse modifiche di commesse ... soprattutto per i campi flessibili ... anche per
+      creazione stessa cosa come fatto in task"): regole 0195 D-2/D-2a/D-3/D-4/D-6/D-7/D-8/D-9 applicate alle
+      Opportunita', con `RecordInlineField`, `useDraftInlineEdit`, `useFormLeaveGuard` condivisi.
+      L'Opportunita' NON ha campi flessibili: gli Attributi ("Informazioni aggiuntive") sono passati all'Offerta con
+      la spec 0084, quindi su questo record non c'e' nulla da rendere a riga.
+    - D-2: sezioni del dettaglio (stesso ordine in creazione): Note generali (callout a tutta larghezza), Dettagli
+      (Titolo, Data inizio, Data chiusura prevista, Valore stimato, Probabilita'), Anagrafica e contatti
+      (Anagrafica, Referente, Commerciale, Segnalatore, Lead di origine in sola lettura), Classificazione (Fonte,
+      Righe di classificazione, Prodotti di interesse), Team (Supervisore, Gestori account: una riga per tutti gli
+      slot, come i Partecipanti della Commessa), Premi (sola lettura, componente condiviso con l'Offerta). La Sede
+      operativa resta nascosta (direttiva 2026-08-05), il suo valore sopravvive ai salvataggi.
+    - D-3 (cascate, editor = stessi controlli della creazione): l'Anagrafica azzera il Referente e passa
+      Commerciale/Segnalatore/Supervisore/Gestori account dell'anagrafica (conferma se diversi da quelli presenti),
+      tutto nello stesso PATCH; le Righe di classificazione potano i Prodotti di interesse non piu' coperti; il
+      Segnalatore porta con se' i Buoni assegnati (stesso blocco della creazione). Un editor la cui cascata
+      scriverebbe un campo non editabile non si apre (anagrafica: referente, commerciale, segnalatore, supervisore,
+      gestori; righe: prodotti di interesse). Referente solo con anagrafica.
+    - D-4: BR-2 invariata: `registry_id`/`source_id` in `locked_fields` (opportunita' da lead) non hanno matita.
+      Il rifiuto "anagrafica con un'altra opportunita' aperta" compare dentro l'editor dell'Anagrafica, col link.
+    - D-5: creazione = replica del dettaglio (card con monogramma e titolo live, striscia KPI live, stesse sezioni a
+      righe chiuse, Fatto/Ripristina, Salva valida tutto). Il "Lead di origine" e' la prima sezione, sempre aperta:
+      non e' un campo del form e la sua scelta precompila e blocca i campi derivati. Sparisce il Riepilogo laterale.
+      Uscire senza salvare chiede conferma.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica: PATCH /api/opportunities/{id} parziale esistente (gia' restituisce `permissions`).</backend>
+    <frontend>
+      Registry `opportunities`: `generateEditRoute: false`. `OpportunityDetailView` perde `onEdit`, guadagna
+      `onChanged`. `OpportunityForm`/`OpportunityFormBody` solo creazione (`OpportunityCreateFormMode`).
+      `updateOpportunity` restituisce `OpportunityDetailWithPermissions`. `useOpportunityForm` in edit = `values` +
+      `keepDirtyValues`, reset dopo PATCH. Nuovo `useOpportunityInlineEdit`.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/opportunities/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su un campo editabile: Salva invia il solo campo cambiato (piu' le cascate); Annulla/Esc/clic
+      fuori non chiamano.</ac>
+    <ac id="AC-003">Senza `update` (o campo bloccato da lead / cascata non editabile) nessuna matita.</ac>
+    <ac id="AC-004">Creazione: righe chiuse, Fatto/Ripristina, Salva valida tutto (nessun POST se invalido), uscita con
+      conferma; da lead i campi derivati restano bloccati.</ac>
+    <ac id="AC-005">Guida in-app IT/EN `opportunities` aggiornata (modifica dal dettaglio, creazione).</ac>
+  </acceptance>
+</spec>

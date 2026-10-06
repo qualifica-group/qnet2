@@ -1,12 +1,17 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { OpportunityForm } from '@/features/opportunities/opportunity-form'
 import type { ResourceMeta } from '@/features/authorization/types'
+import {
+  FULL_PERMISSIONS,
+  ROW,
+  SELECT_IDS,
+  applyRow,
+  formTestWrapper,
+  openRow,
+  resolveForSelectLabels,
+} from '@/features/opportunities/opportunity-form-test-helpers'
 
 /**
  * Split out of `opportunity-lead-selection.test.tsx` for file size
@@ -15,33 +20,30 @@ import type { ResourceMeta } from '@/features/authorization/types'
  * Account" slot (user directive 2026-07-21) — is a distinct enough concern
  * to stand on its own. Every other in-form Lead select behavior (BR-1
  * values/locks, the origin banner, submit) lives in the sibling file.
+ *
+ * Spec 0198: the G.A. slots are ONE closed row of the create form ("Account
+ * managers"): it shows the filled slots with their "G.A. n" denomination, and
+ * its pencil opens the slot editor.
  */
 
-/**
- * The row's category picker reads the category TREE (user directive
- * 2026-08-03) and mounts its own quick-create affordance; this suite is about
- * the surrounding form, so it stands in for the picker with the shared double.
- */
 vi.mock('@/features/product-lines/product-category-tree-select', async () =>
   await import('@/features/product-lines/product-category-tree-select-stub'))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+// Closed rows link their related records (`RecordLink`): the open-mode
+// preference and the abilities are stubbed rather than dragging an AuthProvider
+// in; every ability is granted, so the links render.
+vi.mock('@/features/modules/use-module-open-mode', () => ({
+  useModuleOpenMode: () => 'modal',
+}))
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+}))
 
-const FULL_PERMISSIONS = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
-}
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
-}))
-
-/** Spec 0043 D-3: the create form preselects this resolved "Nuova" status id. */
-const fetchSystemStatusIdMock = vi.fn<() => Promise<number | null>>()
-vi.mock('@/features/status-reorder/api', () => ({
-  fetchSystemStatusId: () => fetchSystemStatusIdMock(),
 }))
 
 const TEST_REGISTRY_ID = 10
@@ -53,56 +55,20 @@ const TEST_OPERATOR_ID = 300
 /** Directive 2026-07-23: the Sede operativa inherited from `TEST_LEAD_ID` on conversion. */
 const TEST_OPERATIONAL_SITE_ID = 400
 
-/** Fixed selection ids exposed per field (by accessible trigger label), mirrors `opportunity-form-body.test.tsx`. */
-const SELECT_IDS: Record<string, number[]> = {
-  Lead: [TEST_LEAD_ID, TEST_LEAD_NO_OPERATOR_ID],
-}
-
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({
-    value,
-    onChange,
-    disabled,
-    selectedItem,
-    labels,
-  }: {
-    value: number | null
-    onChange: (value: number | null) => void
-    disabled?: boolean
-    selectedItem?: { id: number; label: string } | null
-    labels: { triggerLabel: string }
-  }) => (
-    <div data-testid={`select-${labels.triggerLabel}`}>
-      <span data-testid={`value-${labels.triggerLabel}`}>{value ?? ''}</span>
-      <span data-testid={`disabled-${labels.triggerLabel}`}>{String(Boolean(disabled))}</span>
-      <span data-testid={`label-${labels.triggerLabel}`}>{selectedItem?.label ?? ''}</span>
-      {(SELECT_IDS[labels.triggerLabel] ?? [1]).map((id) => (
-        <button key={id} type="button" onClick={() => onChange(id)}>
-          {`select ${labels.triggerLabel} ${id}`}
-        </button>
-      ))}
-      <button type="button" onClick={() => onChange(null)}>{`clear ${labels.triggerLabel}`}</button>
-    </div>
-  ),
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/opportunities/opportunity-form-test-helpers'))
+    .AsyncPaginatedSelectDouble,
 }))
 
-vi.mock('@/components/ui/async-paginated-multi-select', () => ({
-  AsyncPaginatedMultiSelect: ({ value, labels }: { value: number[]; labels: { triggerLabel: string } }) => (
-    <div data-testid={`multi-${labels.triggerLabel}`}>
-      <span data-testid={`value-multi-${labels.triggerLabel}`}>{value.join(',')}</span>
-    </div>
-  ),
+vi.mock('@/components/ui/async-paginated-multi-select', async () => ({
+  AsyncPaginatedMultiSelect: (await import('@/features/opportunities/opportunity-form-test-helpers'))
+    .AsyncPaginatedMultiSelectDouble,
 }))
 
 const fetchForSelectMock = vi.fn()
 vi.mock('@/features/for-select/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
-    '@/features/for-select/api',
-  )
-  return {
-    ...actual,
-    fetchForSelect: (...args: unknown[]) => fetchForSelectMock(...args),
-  }
+  const actual = await vi.importActual<typeof import('@/features/for-select/api')>('@/features/for-select/api')
+  return { ...actual, fetchForSelect: (...args: unknown[]) => fetchForSelectMock(...args) }
 })
 
 /**
@@ -121,32 +87,22 @@ vi.mock('@/features/opportunities/opportunity-defaults-api', async () => {
   }
 })
 
-const EMPTY_PAGE = { items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }
-
-/** The products-of-interest picker opens the shared confirm dialog, so its provider is required. */
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>
-        <MemoryRouter>{children}</MemoryRouter>
-      </ConfirmDialogProvider>
-    </QueryClientProvider>
-  )
-}
-
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
 beforeEach(() => {
+  for (const key of Object.keys(SELECT_IDS)) {
+    delete SELECT_IDS[key]
+  }
+  SELECT_IDS.Lead = [TEST_LEAD_ID, TEST_LEAD_NO_OPERATOR_ID]
   fetchResourceMetaMock.mockReset()
   fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_PERMISSIONS })
 
-  fetchSystemStatusIdMock.mockReset()
-
   fetchForSelectMock.mockReset()
-  fetchForSelectMock.mockResolvedValue(EMPTY_PAGE)
+  fetchForSelectMock.mockImplementation(async (resource: string, params: { ids?: number[] }) =>
+    resolveForSelectLabels(resource, params),
+  )
 
   fetchOpportunityDefaultsOnceMock.mockReset()
   fetchOpportunityDefaultsOnceMock.mockImplementation(async (_client: unknown, leadId: number) => ({
@@ -180,63 +136,70 @@ beforeEach(() => {
   }))
 })
 
+async function renderCreateForm() {
+  render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+    wrapper: formTestWrapper(),
+  })
+  await waitFor(() => expect(screen.getByTestId('select-Lead')).toBeInTheDocument())
+}
+
 describe('OpportunityFormBody — in-form Lead select, Gestori Account (directive 2026-07-21/22)', () => {
   it('appends the lead Operator as the second Gestore Account slot on selection, G.A. 1 left empty, still editable, Supervisor left empty', async () => {
-    render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Lead')).toBeInTheDocument())
+    await renderCreateForm()
     // User directive 2026-07-29: the four G.A. slots render from the start,
     // all empty (they used to be materialized only by "Add").
+    openRow(ROW.managers)
     expect(screen.getByTestId('value-Account manager 1')).toHaveTextContent('')
     expect(screen.getByTestId('value-Account manager 4')).toHaveTextContent('')
+    applyRow()
 
-    screen.getByRole('button', { name: `select Lead ${TEST_LEAD_ID}` }).click()
+    fireEvent.click(screen.getByRole('button', { name: `select Lead ${TEST_LEAD_ID}` }))
 
-    await waitFor(() =>
-      expect(screen.getByTestId('value-Account manager 2')).toHaveTextContent(String(TEST_OPERATOR_ID)),
-    )
+    // The closed row names the Operator, under his "G.A. 2" denomination.
+    expect(await screen.findByText('Giulia Bianchi')).toBeInTheDocument()
+    openRow(ROW.managers)
+    expect(screen.getByTestId('value-Account manager 2')).toHaveTextContent(String(TEST_OPERATOR_ID))
     // G.A. 1 is materialized but empty.
     expect(screen.getByTestId('value-Account manager 1')).toHaveTextContent('')
-    // Precompiled, never locked: the user can still change it (unlike Registry/Source above).
+    // Precompiled, never locked: the user can still change it (unlike Registry/Source).
     expect(screen.getByTestId('disabled-Account manager 2')).toHaveTextContent('false')
     // The trigger label is hydrated too — `setValue` alone writes the id, not the name.
     expect(screen.getByTestId('label-Account manager 2')).toHaveTextContent('Giulia Bianchi')
+    applyRow()
     // The Supervisor is no longer prefilled from the lead.
+    openRow(ROW.supervisor)
     expect(screen.getByTestId('value-Supervisor')).toHaveTextContent('')
   })
 
   it('leaves the Gestori account empty when the picked lead has no Operator', async () => {
-    render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    await renderCreateForm()
+    fireEvent.click(screen.getByRole('button', { name: `select Lead ${TEST_LEAD_NO_OPERATOR_ID}` }))
 
-    await waitFor(() => expect(screen.getByTestId('select-Lead')).toBeInTheDocument())
-    screen.getByRole('button', { name: `select Lead ${TEST_LEAD_NO_OPERATOR_ID}` }).click()
-
-    await waitFor(() => expect(screen.getByTestId('value-Registry')).toHaveTextContent(String(TEST_REGISTRY_ID)))
+    // The anagrafica the lead hands down is named on its closed row once applied.
+    expect(await screen.findByRole('link', { name: /Acme S\.p\.A\./ })).toBeInTheDocument()
     // No Operator -> the default slots stay empty, Supervisor too.
+    openRow(ROW.managers)
     expect(screen.getByTestId('value-Account manager 1')).toHaveTextContent('')
     expect(screen.getByTestId('value-Account manager 2')).toHaveTextContent('')
+    applyRow()
+    openRow(ROW.supervisor)
     expect(screen.getByTestId('value-Supervisor')).toHaveTextContent('')
   })
 
   it('appends the Operator alongside a manager the user already picked, never overwriting it', async () => {
-    render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Lead')).toBeInTheDocument())
+    await renderCreateForm()
     // Manually add a first G.A. slot and pick a user (mock id 1) into it.
+    openRow(ROW.managers)
     fireEvent.click(screen.getByRole('button', { name: 'Add account manager' }))
     fireEvent.click(screen.getByRole('button', { name: 'select Account manager 1 1' }))
     expect(screen.getByTestId('value-Account manager 1')).toHaveTextContent('1')
+    applyRow()
 
-    screen.getByRole('button', { name: `select Lead ${TEST_LEAD_ID}` }).click()
+    fireEvent.click(screen.getByRole('button', { name: `select Lead ${TEST_LEAD_ID}` }))
 
-    await waitFor(() => expect(screen.getByTestId('value-Registry')).toHaveTextContent(String(TEST_REGISTRY_ID)))
+    expect(await screen.findByRole('link', { name: /Acme S\.p\.A\./ })).toBeInTheDocument()
     // The user's own manager is kept in slot 1; the Operator is appended as slot 2.
+    openRow(ROW.managers)
     expect(screen.getByTestId('value-Account manager 1')).toHaveTextContent('1')
     expect(screen.getByTestId('value-Account manager 2')).toHaveTextContent(String(TEST_OPERATOR_ID))
   })

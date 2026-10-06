@@ -48,6 +48,19 @@ describe('useOutsidePointerDismiss', () => {
     expect(onDismiss).not.toHaveBeenCalled()
   })
 
+  it('keeps the row while a confirmation it asked for is answered', () => {
+    const { onDismiss } = renderRow(true)
+    render(
+      <div role="alertdialog">
+        <button type="button">replace</button>
+      </div>,
+    )
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'replace' }))
+
+    expect(onDismiss).not.toHaveBeenCalled()
+  })
+
   it('does nothing while inactive', () => {
     const { onDismiss } = renderRow(false)
 

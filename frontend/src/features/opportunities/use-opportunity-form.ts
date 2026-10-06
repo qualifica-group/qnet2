@@ -19,22 +19,15 @@ import {
 import {
   buildCreatePayload,
   buildUpdatePayload,
-  normalizeDecimal,
   type CreatePayloadFromLead,
 } from '@/features/opportunities/opportunity-form-payload'
 import {
   buildCreateOpportunitySchema,
   buildUpdateOpportunitySchema,
-  DEFAULT_MANAGER_SLOTS,
   type CreateOpportunityFormValues,
 } from '@/features/opportunities/opportunity-schema'
-import { emptyProductLineRow, type ProductLineRow } from '@/features/product-lines/types'
-import type {
-  OpportunityDetail,
-  OpportunityFormMode,
-  OpportunityProductLine,
-} from '@/features/opportunities/types'
-import { managerSlotsFromRefs, padManagerSlots } from '@/lib/utils'
+import type { OpportunityDetail, OpportunityFormMode } from '@/features/opportunities/types'
+import { createDefaults, editDefaults } from '@/features/opportunities/opportunity-form-defaults'
 
 /** Server-side field names mapped onto the form for 422 handling. `lead_id` is never an RHF field (spec 0040 MT-6 handles it separately). */
 const SERVER_ERROR_FIELDS = [
@@ -88,32 +81,6 @@ function readBlockingOpportunity(error: unknown, productIds: number[]): Blocking
 
 export type OpportunityFormValues = CreateOpportunityFormValues
 
-/**
- * The create form's G.A. slots: one empty card per assignable position, G.A. 1
- * through G.A. DEFAULT_MANAGER_SLOTS (user directive 2026-07-29) — a UX
- * default, independent of the actual ceiling (spec 0080 A1's `MAX_MANAGERS`,
- * now 12): "Add slot" (`ManagerSlotsField`) reaches the rest. Empty slots are
- * gap-aware and submit as nothing, so this changes what the user SEES, not
- * what is sent.
- */
-function defaultManagerSlots(): (number | null)[] {
-  return Array.from({ length: DEFAULT_MANAGER_SLOTS }, () => null)
-}
-
-
-/**
- * Maps the hydrated `OpportunityProductLine[]` onto the form's own row shape
- * (spec 0132): `root_category_id` starts `null` — the shared `ProductLinesField`
- * (`useProductLinesField`'s `rootCategoryFor`) resolves it at render time by
- * walking the cached category tree up from `product_category_id`, so there is
- * nothing to precompute here (AC-017).
- */
-function toProductLineRows(lines: OpportunityProductLine[]): ProductLineRow[] {
-  return lines.map((line) => ({
-    root_category_id: null,
-    product_category_id: line.product_category.id,
-  }))
-}
 
 /**
  * The in-form "Lead" select's CURRENT contribution to the submit (spec 0040
@@ -135,18 +102,25 @@ export interface LeadSubmissionState {
 /** Never blocked, no active lead — the default `LeadSubmissionState` (edit mode, or before any lead is picked in create). */
 export const NO_LEAD_SUBMISSION: LeadSubmissionState = { blocked: false, fromLead: null }
 
+
 interface UseOpportunityFormArgs {
   mode: OpportunityFormMode
 }
 
 /**
- * Owns the RHF/Zod wiring of `OpportunityForm`: schema selection and default
- * values (edit hydrates from the loaded instance; create seeds BR-1's
- * derived fields from `mode.fromLead`, if arriving via the `?lead_id=N`
- * deep-link). Submission lives in the sibling `useOpportunityFormSubmit`,
- * split out so the in-form Lead select (`useOpportunityLeadSelection`, which
- * needs `form.setValue`) can be wired in between the two without a circular
+ * Owns the RHF/Zod wiring of the opportunity create form and of the in-place
+ * detail (`useOpportunityInlineEdit`, edit mode): schema selection and default
+ * values (edit hydrates from the loaded instance; create seeds BR-1's derived
+ * fields from `mode.fromLead`, if arriving via the `?lead_id=N` deep-link).
+ * Submission lives in the sibling `useOpportunityFormSubmit`, split out so the
+ * in-form Lead select (`useOpportunityLeadSelection`, which needs
+ * `form.setValue`) can be wired in between the two without a circular
  * dependency.
+ *
+ * Edit mode IS the opportunity detail (spec 0198): the persisted record can
+ * change under the form, so `values` re-syncs it while `keepDirtyValues`
+ * preserves the row still being edited. Every explicit `reset` that means to
+ * DROP an edit passes `keepDirtyValues: false`.
  */
 export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
   const { t } = useTranslation()
@@ -157,83 +131,16 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
     [mode, t],
   )
 
-  const defaultValues = useMemo<OpportunityFormValues>(() => {
-    if (mode.type === 'edit') {
-      const { opportunity } = mode
-      return {
-        name: opportunity.name,
-        registry_id: opportunity.registry_id,
-        referent_id: opportunity.referent_id,
-        commercial_id: opportunity.commercial_id,
-        reporter_id: opportunity.reporter_id,
-        supervisor_id: opportunity.supervisor_id,
-        source_id: opportunity.source_id,
-        operational_site_id: opportunity.operational_site_id ?? null,
-        product_lines: toProductLineRows(opportunity.product_lines),
-        products_of_interest: (opportunity.products_of_interest ?? []).map((product) => product.id),
-        rewards: (opportunity.rewards ?? []).map((reward) => ({ reward_type_id: reward.reward_type.id })),
-        manager_slots: managerSlotsFromRefs(opportunity.managers),
-        start_date: opportunity.start_date,
-        expected_close_date: opportunity.expected_close_date,
-        estimated_value: normalizeDecimal(opportunity.estimated_value),
-        // A-6: the slider always holds a value; a null stored probability
-        // hydrates as 0 ("0%" ≡ "not set").
-        success_probability: opportunity.success_probability ?? 0,
-        general_notes: opportunity.general_notes ?? null,
-      }
-    }
-    const empty: OpportunityFormValues = {
-      // Spec 0171, D-5: no quote exists yet, so there is no automatic title to
-      // prefill — blank lets the server derive it.
-      name: '',
-      registry_id: null,
-      referent_id: null,
-      commercial_id: null,
-      reporter_id: null,
-      supervisor_id: null,
-      source_id: null,
-      operational_site_id: null,
-      // User directive 2026-07-29: the create form opens on ONE empty
-      // product-line row (at least one is mandatory anyway) and on the four
-      // G.A. slots, so the ranking is visible without pressing "Add" first.
-      product_lines: [emptyProductLineRow()],
-      products_of_interest: [],
-      rewards: [],
-      manager_slots: defaultManagerSlots(),
-      start_date: null,
-      expected_close_date: null,
-      estimated_value: null,
-      success_probability: 0,
-      general_notes: null,
-    }
-    if (!mode.fromLead) {
-      return empty
-    }
-    // Spec 0040 MT-6: BR-1's derived fields (whichever aren't null) seed the
-    // create form, whether locked (BR-2) or left free by a null derivation.
-    // Amendment rev.3 (AC-102/103): the lead's 0/1 product line seeds
-    // `product_lines` instead of a locked business_function_id/
-    // product_category_id pair — editable/removable like any other row.
-    return {
-      ...empty,
-      ...mode.fromLead.values,
-      // Directive 2026-07-22: the lead's Operator seeds the SECOND "Gestore
-      // Account" slot, G.A. 1 coming in empty (editable/removable both), and
-      // the Supervisor stays empty. Padded to the four default slots
-      // (directive 2026-07-29) without ever dropping a derived one.
-      manager_slots: padManagerSlots(mode.fromLead.managerSlots, DEFAULT_MANAGER_SLOTS),
-      // A lead with no product line still opens on one empty row, like the
-      // standalone create form.
-      product_lines:
-        mode.fromLead.productLines.length > 0
-          ? toProductLineRows(mode.fromLead.productLines)
-          : [emptyProductLineRow()],
-    }
-  }, [mode])
+  const defaultValues = useMemo<OpportunityFormValues>(
+    () => (mode.type === 'edit' ? editDefaults(mode.opportunity) : createDefaults(mode.fromLead)),
+    [mode],
+  )
 
   const form = useForm<OpportunityFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: isEdit ? { keepDirtyValues: true } : undefined,
   })
 
   return { form, isEdit }
@@ -278,8 +185,11 @@ export function useOpportunityFormSubmit({
     const errorFields: Path<OpportunityFormValues>[] = [...SERVER_ERROR_FIELDS]
     try {
       if (mode.type === 'edit') {
+        // Step 1 (edit): PATCH what changed and refresh the cached detail.
         const saved = await updateOpportunity(mode.opportunity.id, buildUpdatePayload(values, mode.opportunity))
         queryClient.setQueryData(opportunityDetailQueryKey(mode.opportunity.id), saved)
+        // Step 2 (edit): the detail stays mounted on the saved record, clean.
+        form.reset(editDefaults(saved), { keepDirtyValues: false })
         toast.success(t('opportunities.form.updated'))
         invalidateStats()
         resetOpportunityForSelect()
@@ -314,5 +224,11 @@ export function useOpportunityFormSubmit({
     }
   }
 
-  return { serverError, blockingOpportunity, onSubmit }
+  // Opening or closing an in-place editor starts from a clean slate.
+  const clearSubmitErrors = () => {
+    setServerError(null)
+    setBlockingOpportunity(null)
+  }
+
+  return { serverError, blockingOpportunity, onSubmit, clearSubmitErrors }
 }

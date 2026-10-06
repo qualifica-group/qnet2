@@ -5,12 +5,16 @@ import { useForm } from 'react-hook-form'
 import type { ReactNode } from 'react'
 import i18n from '@/i18n'
 import { Form } from '@/components/ui/form'
-import { OpportunityProductLinesSection } from '@/features/opportunities/opportunity-product-lines-section'
+import {
+  OpportunityProductLinesFormField,
+  OpportunityProductsOfInterestFormField,
+} from '@/features/opportunities/opportunity-relation-fields'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
 import type { ProductLineRow } from '@/features/product-lines/types'
 
 /**
- * User directive 2026-08-05: the opportunity form applies the Gestione
+ * User directive 2026-08-05 (spec 0198: the two row editors of the create form and
+ * the detail, mounted directly): the opportunity form applies the Gestione
  * Richieste rule on the two classification controls — the products picker
  * never leaves the categories of the rows above it (no whole-catalogue
  * escape), and re-pointing a row drops the products that classification no
@@ -67,7 +71,9 @@ function Harness({ onValues }: { onValues: (values: OpportunityFormValues) => vo
 
   return (
     <Form {...form}>
-      <OpportunityProductLinesSection control={form.control} knownProductsOfInterest={[]} />
+      {/* The two classification rows' editors, as the create form and the detail mount them (spec 0198). */}
+      <OpportunityProductLinesFormField control={form.control} />
+      <OpportunityProductsOfInterestFormField control={form.control} selected={[]} />
     </Form>
   )
 }
