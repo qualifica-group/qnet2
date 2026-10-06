@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Building2, ClipboardList, FileSignature, Lock } from 'lucide-react'
+import { Building2, FileSignature } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import {
@@ -8,9 +8,16 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import { GeneralNotesCallout } from '@/components/record-form/general-notes-callout'
-import { WorkOrderDetailAttributesSection } from '@/features/work-orders/work-order-detail-attributes'
-import { WorkOrderDetailTeam } from '@/features/work-orders/work-order-detail-team'
+import { RecordInlineField } from '@/components/record-form/record-inline-field'
+import { quoteLineToForSelectItem } from '@/features/work-orders/quote-line-label'
+import {
+  WorkOrderAttributesSection,
+  WorkOrderNewAttributesFields,
+} from '@/features/work-orders/work-order-attributes-section'
+import { WorkOrderIdentitySection, WorkOrderInternalNotesRow } from '@/features/work-orders/work-order-record-identity'
+import { WorkOrderTeamSection } from '@/features/work-orders/work-order-record-team'
+import { WorkOrderQuoteLinesFormField } from '@/features/work-orders/work-order-relation-fields'
+import type { WorkOrderDetailEditor } from '@/features/work-orders/use-work-order-inline-edit'
 import type { WorkOrderDetailWithPermissions, WorkOrderQuoteLine } from '@/features/work-orders/types'
 
 /** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
@@ -65,6 +72,68 @@ function LinkedField({ label, domain, record }: { label: string; domain: string;
   )
 }
 
+interface DetailSectionProps {
+  workOrder: WorkOrderDetailWithPermissions
+  editor: WorkOrderDetailEditor
+}
+
+/**
+ * Contratto: the client and the contract are reached through the offer
+ * (read-only, server-derived); the offer's lines edit in place, together with
+ * the Attributes a new line brings in.
+ */
+function WorkOrderContractSection({ workOrder, editor }: DetailSectionProps) {
+  const { t } = useTranslation()
+  const { form, inline, attributeContext } = editor
+  const persistedCodes = new Set(workOrder.applicable_attributes.map((attribute) => attribute.code))
+
+  return (
+    <RecordSection title={t('workOrders.detail.sections.contract')} icon={<FileSignature />}>
+      <RecordFieldList>
+        <RecordField label={t('workOrders.detail.registry')}>
+          {workOrder.registry ? (
+            <RecordLink domain="registries" id={workOrder.registry.id} className="font-medium text-primary">
+              {workOrder.registry.name}
+            </RecordLink>
+          ) : (
+            <DetailEmpty />
+          )}
+        </RecordField>
+        <RecordField label={t('workOrders.detail.contract')}>
+          {workOrder.contract ? (
+            <RecordLink domain="contracts" id={workOrder.contract.id} className="font-medium text-primary">
+              {workOrder.contract.title}
+            </RecordLink>
+          ) : (
+            <DetailEmpty />
+          )}
+        </RecordField>
+        <RecordInlineField
+          field="quote_line_ids"
+          label={t('workOrders.detail.lines')}
+          inline={inline}
+          editor={
+            <>
+              <WorkOrderQuoteLinesFormField
+                control={form.control}
+                exceptWorkOrderId={workOrder.id}
+                selectedItems={workOrder.quote_lines.map(quoteLineToForSelectItem)}
+              />
+              <WorkOrderNewAttributesFields
+                attributes={attributeContext.applicable_attributes}
+                persistedCodes={persistedCodes}
+                control={form.control}
+              />
+            </>
+          }
+        >
+          <WorkOrderLinesList lines={workOrder.quote_lines} />
+        </RecordInlineField>
+      </RecordFieldList>
+    </RecordSection>
+  )
+}
+
 /**
  * Societa' e sedi of the linked offer: the same three relations, labels and
  * links the Contract detail shows, projected live through `quote`.
@@ -93,85 +162,59 @@ function WorkOrderCompanySection({ workOrder }: { workOrder: WorkOrderDetailWith
 }
 
 /**
- * The work order record's `RecordSectionsGrid` body, mirroring
- * `OpportunityDetailSections`/`QuoteDetailSections`: the internal notes
- * callout first, then details, team, contract, company and sites and the collected Attribute
- * values. Status, type and dates are not repeated here: they are the header
- * pills and the KPI strip.
+ * The work order record's `RecordSectionsGrid` body, every user-written field
+ * editable in place (spec 0195 applied to Commesse, user directive
+ * 2026-10-06): the internal notes callout first, then details, team,
+ * contract, company and sites and the collected Attribute values, each
+ * Attribute a row of its own. Status and completion are computed (spec
+ * 0149): they stay the header pill and the KPI strip. The forced closure is
+ * an action of the header (user directive 2026-10-06), its reason a read-only
+ * row of the details.
  */
-export function WorkOrderDetailSections({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
-  const { t } = useTranslation()
+export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProps) {
+  const { inline } = editor
 
   return (
     <RecordSectionsGrid>
-      <GeneralNotesCallout
-        title={t('workOrders.detail.internalNotes')}
+      <WorkOrderInternalNotesRow
         notes={workOrder.internal_notes}
+        form={editor}
+        inline={inline}
         className={FULL_WIDTH_SECTION_CLASS}
       />
 
-      <RecordSection title={t('workOrders.detail.sections.identity')} icon={<ClipboardList />}>
-        <RecordFieldList>
-          <RecordField label={t('workOrders.detail.description')}>
-            {workOrder.description ? (
-              // Capped and scrollable, same as the Offerta's inherited notes:
-              // a long description must not push the rest of the section away.
-              <p className="max-h-40 overflow-y-auto break-words whitespace-pre-wrap">{workOrder.description}</p>
-            ) : (
-              <DetailEmpty />
-            )}
-          </RecordField>
-          <RecordField label={t('workOrders.detail.taskTemplate')}>
-            {workOrder.task_template ? (
-              <RecordLink domain="task-templates" id={workOrder.task_template.id}>
-                {workOrder.task_template.name}
-              </RecordLink>
-            ) : (
-              <DetailEmpty />
-            )}
-          </RecordField>
-          {workOrder.is_force_closed ? (
-            <RecordField label={t('workOrders.detail.forceCloseReason')} icon={<Lock />}>
-              <span className="whitespace-pre-wrap">{workOrder.force_close_reason}</span>
-            </RecordField>
-          ) : null}
-        </RecordFieldList>
-      </RecordSection>
+      <WorkOrderIdentitySection
+        values={{
+          title: workOrder.title,
+          code: workOrder.code,
+          type: workOrder.type,
+          start_date: workOrder.start_date,
+          callback_date: workOrder.callback_date,
+          description: workOrder.description,
+          task_template: workOrder.task_template,
+          force_close_reason: workOrder.is_force_closed ? workOrder.force_close_reason : null,
+        }}
+        form={editor}
+        inline={inline}
+      />
 
-      <WorkOrderDetailTeam supervisors={workOrder.supervisors} participants={workOrder.participants} />
+      <WorkOrderTeamSection
+        supervisors={workOrder.supervisors}
+        participants={workOrder.participants}
+        form={editor}
+        inline={inline}
+      />
 
-      <RecordSection title={t('workOrders.detail.sections.contract')} icon={<FileSignature />}>
-        <RecordFieldList>
-          <RecordField label={t('workOrders.detail.registry')}>
-            {workOrder.registry ? (
-              <RecordLink domain="registries" id={workOrder.registry.id} className="font-medium text-primary">
-                {workOrder.registry.name}
-              </RecordLink>
-            ) : (
-              <DetailEmpty />
-            )}
-          </RecordField>
-          <RecordField label={t('workOrders.detail.contract')}>
-            {workOrder.contract ? (
-              <RecordLink domain="contracts" id={workOrder.contract.id} className="font-medium text-primary">
-                {workOrder.contract.title}
-              </RecordLink>
-            ) : (
-              <DetailEmpty />
-            )}
-          </RecordField>
-          <RecordField label={t('workOrders.detail.lines')}>
-            <WorkOrderLinesList lines={workOrder.quote_lines} />
-          </RecordField>
-        </RecordFieldList>
-      </RecordSection>
+      <WorkOrderContractSection workOrder={workOrder} editor={editor} />
 
       <WorkOrderCompanySection workOrder={workOrder} />
 
-      <WorkOrderDetailAttributesSection
+      <WorkOrderAttributesSection
         attributes={workOrder.applicable_attributes}
-        values={workOrder.attribute_values}
         layout={workOrder.attribute_layout}
+        values={workOrder.attribute_values}
+        inline={inline}
+        control={editor.form.control}
         className={FULL_WIDTH_SECTION_CLASS}
       />
     </RecordSectionsGrid>

@@ -1,23 +1,22 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Path, UseFormReturn } from 'react-hook-form'
-import type { TaskFormValues } from '@/features/tasks/task-schema'
-import type { TaskInlineEdit } from '@/features/tasks/use-task-inline-edit'
+import type { FieldValues, Path, UseFormReturn } from 'react-hook-form'
+import type { InlineEdit } from '@/components/record-form/record-inline-field'
 
 /**
- * The create form's take on the detail's in-place rows (spec 0195 D-8, user
+ * A create form's take on the detail's in-place rows (spec 0195 D-8, user
  * directive 2026-10-06): the rows start closed, exactly like the detail, and
  * open one at a time — but nothing is saved per field. "Fatto" keeps the value
  * in the draft (and validates that field, so a mistake shows on its closed
  * row), "Ripristina" puts the draft back as it was when the row opened, cascades
  * included. The header's Salva validates and creates everything at once.
  */
-export function useTaskDraftEdit(form: UseFormReturn<TaskFormValues>): TaskInlineEdit {
+export function useDraftInlineEdit<TFieldValues extends FieldValues>(form: UseFormReturn<TFieldValues>): InlineEdit {
   const { t } = useTranslation()
   const [editingField, setEditingField] = useState<string | null>(null)
-  // The whole draft as the row found it: a cancelled anagrafica pick must
-  // bring back the referent it cleared, not only itself.
-  const snapshotRef = useRef<TaskFormValues | null>(null)
+  // The whole draft as the row found it: a cancelled pick must bring back
+  // whatever its cascade cleared, not only itself.
+  const snapshotRef = useRef<TFieldValues | null>(null)
 
   const start = (field: string) => {
     snapshotRef.current = structuredClone(form.getValues())
@@ -33,7 +32,7 @@ export function useTaskDraftEdit(form: UseFormReturn<TaskFormValues>): TaskInlin
 
   const save = () => {
     if (editingField !== null) {
-      void form.trigger(editingField as Path<TaskFormValues>)
+      void form.trigger(editingField as Path<TFieldValues>)
     }
     setEditingField(null)
   }
@@ -47,7 +46,7 @@ export function useTaskDraftEdit(form: UseFormReturn<TaskFormValues>): TaskInlin
     dismiss: save,
     isSaving: false,
     error: null,
-    confirmLabel: t('tasks.detail.inlineEdit.apply'),
-    cancelLabel: t('tasks.detail.inlineEdit.revert'),
+    confirmLabel: t('common.inlineEdit.apply'),
+    cancelLabel: t('common.inlineEdit.revert'),
   }
 }

@@ -5,11 +5,12 @@ import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { workOrderColumnRenderers } from '@/features/work-orders/column-renderers'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
+import { WORK_ORDER_ACTION_ICONS } from '@/features/work-orders/use-work-order-closure'
 
 /**
  * Thin work-orders adapter over the generic table. It mounts `<TableView>`
  * with the `work-orders` domain and its custom cell renderers, delegating
- * every row action (view/edit/delete/activity) to `useWorkOrderRowActions`
+ * every row action (view/delete/activity/force close/reopen) to `useWorkOrderRowActions`
  * (spec 0095 D-9) — the same behavior the Contract detail's Commesse tab
  * uses, so the two can never drift. Permission gating is an affordance only;
  * the backend re-authorizes each call.
@@ -18,7 +19,7 @@ export function WorkOrdersTable() {
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
 
-  const { handleAction, isBusy, activityRow, closeActivity, sheet } = useWorkOrderRowActions({
+  const { handleAction, isBusy, activityRow, closeActivity, sheet, forceCloseDialog } = useWorkOrderRowActions({
     onMutated: refreshGrid,
   })
 
@@ -37,9 +38,11 @@ export function WorkOrdersTable() {
         renderers={workOrderColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}
+        iconMap={WORK_ORDER_ACTION_ICONS}
       />
 
       {sheet}
+      {forceCloseDialog}
 
       <ResourceActivityDialog
         resource={WORK_ORDERS_DOMAIN}

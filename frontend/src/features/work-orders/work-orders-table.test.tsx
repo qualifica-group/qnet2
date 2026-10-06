@@ -42,6 +42,9 @@ vi.mock('@/features/work-orders/api', () => ({
   WORK_ORDERS_DOMAIN: 'work-orders',
   deleteWorkOrder: (...args: unknown[]) => deleteWorkOrderMock(...args),
   fetchWorkOrder: vi.fn(),
+  // The force-close row action's dialog (user directive 2026-10-06) reads and writes the record.
+  workOrderDetailQueryKey: (id: number) => ['work-orders', 'detail', id],
+  updateWorkOrder: vi.fn(),
 }))
 
 const toastSuccessMock = vi.fn()

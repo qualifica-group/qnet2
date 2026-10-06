@@ -226,6 +226,11 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             $allowed[] = 'activity';
         }
 
+        // Exactly one of the two, by the row's own closure state.
+        if (Gate::forUser($actor)->allows('update', $row)) {
+            $allowed[] = $row->is_force_closed ? 'reopen' : 'force_close';
+        }
+
         return $allowed;
     }
 

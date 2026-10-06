@@ -31,7 +31,7 @@ export function renderTaskDetail(task: TaskDetailWithPermissions, onChanged = vi
 
 /** The pencil of the row labelled `fieldLabel`, or `null` when the row offers no edit. */
 export function queryInlineEditButton(fieldLabel: string): HTMLElement | null {
-  return screen.queryByRole('button', { name: i18n.t('tasks.detail.inlineEdit.edit', { field: fieldLabel }) })
+  return screen.queryByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: fieldLabel }) })
 }
 
 /** Opens the editor of the row labelled `fieldLabel` (fails loudly when the row offers no edit). */

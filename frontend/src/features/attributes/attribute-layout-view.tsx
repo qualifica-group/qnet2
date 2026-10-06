@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Rows3 } from 'lucide-react'
 import { RecordField, RecordFieldList } from '@/components/detail/record-panel'
@@ -11,12 +12,32 @@ import type {
 } from '@/features/attributes/attribute-layout-types'
 import { AttributeValueDisplay, type DisplayableAttribute } from '@/features/attributes/attribute-value-display'
 
+/**
+ * Renders one attribute's row from its formatted value: a host that edits in
+ * place (the Commessa detail) wraps the value in its own editable row. It must
+ * forward `className` to the row's outer box (the full-width span of a wide
+ * section).
+ */
+export type AttributeFieldRenderer = (
+  attribute: DisplayableAttribute,
+  value: ReactNode,
+  className: string | undefined,
+) => ReactNode
+
 interface AttributeLayoutViewProps {
   /** The record's resolved layout (spec 0062); `null`/empty -> one flat field list. */
   layout: LayoutBlob | null
   attributes: DisplayableAttribute[]
   values: Record<string, unknown>
+  /** Defaults to the read-only label/value row. */
+  renderField?: AttributeFieldRenderer
 }
+
+const renderReadOnlyField: AttributeFieldRenderer = (attribute, value, className) => (
+  <RecordField label={attribute.name} className={className}>
+    {value}
+  </RecordField>
+)
 
 interface PlacedAttribute {
   attribute: DisplayableAttribute
@@ -58,6 +79,7 @@ interface LayoutViewSectionProps {
   section: LayoutSection
   items: PlacedAttribute[]
   values: Record<string, unknown>
+  renderField: AttributeFieldRenderer
 }
 
 /**
@@ -65,7 +87,7 @@ interface LayoutViewSectionProps {
  * look): a tinted heading band with icon, title and description, then the
  * same label/value rows as the record sections above it.
  */
-function LayoutViewSection({ section, items, values }: LayoutViewSectionProps) {
+function LayoutViewSection({ section, items, values, renderField }: LayoutViewSectionProps) {
   const wide = section.columns >= 2
 
   return (
@@ -79,13 +101,13 @@ function LayoutViewSection({ section, items, values }: LayoutViewSectionProps) {
       </div>
       <RecordFieldList className={cn('px-1', wide && WIDE_FIELD_LIST_CLASS)}>
         {items.map(({ attribute, width }) => (
-          <RecordField
-            key={attribute.code}
-            label={attribute.name}
-            className={cn(wide && width === 'full' && WIDE_FULL_FIELD_CLASS)}
-          >
-            <AttributeValueDisplay attribute={attribute} value={values[attribute.code]} />
-          </RecordField>
+          <Fragment key={attribute.code}>
+            {renderField(
+              attribute,
+              <AttributeValueDisplay attribute={attribute} value={values[attribute.code]} />,
+              cn(wide && width === 'full' && WIDE_FULL_FIELD_CLASS) || undefined,
+            )}
+          </Fragment>
         ))}
       </RecordFieldList>
     </section>
@@ -100,7 +122,12 @@ function LayoutViewSection({ section, items, values }: LayoutViewSectionProps) {
  * side on a wide record. Without a layout, the flat field list. A section
  * none of whose attributes was handed in is dropped.
  */
-export function AttributeLayoutView({ layout, attributes, values }: AttributeLayoutViewProps) {
+export function AttributeLayoutView({
+  layout,
+  attributes,
+  values,
+  renderField = renderReadOnlyField,
+}: AttributeLayoutViewProps) {
   const { t } = useTranslation()
 
   // Step 1: no configured layout -> flat field list, in `sort_order`
@@ -110,9 +137,13 @@ export function AttributeLayoutView({ layout, attributes, values }: AttributeLay
         {[...attributes]
           .sort((a, b) => a.sort_order - b.sort_order)
           .map((attribute) => (
-            <RecordField key={attribute.code} label={attribute.name}>
-              <AttributeValueDisplay attribute={attribute} value={values[attribute.code]} />
-            </RecordField>
+            <Fragment key={attribute.code}>
+              {renderField(
+                attribute,
+                <AttributeValueDisplay attribute={attribute} value={values[attribute.code]} />,
+                undefined,
+              )}
+            </Fragment>
           ))}
       </RecordFieldList>
     )
@@ -128,7 +159,13 @@ export function AttributeLayoutView({ layout, attributes, values }: AttributeLay
   return (
     <div className="grid grid-cols-1 items-start gap-x-6 gap-y-4 @2xl:grid-cols-2">
       {sections.map(({ section, items }) => (
-        <LayoutViewSection key={section.id} section={section} items={items} values={values} />
+        <LayoutViewSection
+          key={section.id}
+          section={section}
+          items={items}
+          values={values}
+          renderField={renderField}
+        />
       ))}
     </div>
   )

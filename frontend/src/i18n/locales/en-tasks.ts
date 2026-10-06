@@ -163,13 +163,6 @@ export const tasks = {
       endsAfter_one: '{{count}} occurrence',
       endsAfter_other: '{{count}} occurrences',
     },
-    inlineEdit: {
-      edit: 'Edit {{field}}',
-      save: 'Save',
-      apply: 'Done',
-      revert: 'Revert',
-      cancel: 'Cancel',
-    },
     sections: {
       identity: 'Details',
       people: 'People',

@@ -7,8 +7,25 @@ import { RecordField } from '@/components/detail/record-panel'
 import { MetaFieldRowContext } from '@/features/authorization/meta-field-row-context'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { cn } from '@/lib/utils'
-import { useOutsidePointerDismiss } from '@/features/tasks/use-outside-pointer-dismiss'
-import type { TaskInlineEdit } from '@/features/tasks/use-task-inline-edit'
+import { useOutsidePointerDismiss } from '@/hooks/use-outside-pointer-dismiss'
+
+/** The single-open-editor state and actions every inline row of a record (detail or create draft) shares. */
+export interface InlineEdit {
+  /** The form field whose editor is open, `null` when the record only displays. */
+  editingField: string | null
+  start: (field: string) => void
+  cancel: () => void
+  save: () => void
+  /** A press outside the open row: Cancel on a detail (nothing saved), "Fatto" on a create draft (nothing lost). */
+  dismiss: () => void
+  isSaving: boolean
+  /** A refused save the open editor's own field message cannot carry (generic server error). */
+  error: string | null
+  /** The open editor's confirm button: "Salva" on a detail, "Fatto" on a create draft. */
+  confirmLabel: string
+  /** Its cancel button: "Annulla" on a detail, "Ripristina" on a create draft (whose own Annulla leaves the form). */
+  cancelLabel: string
+}
 
 /** What the editor focuses on open: a text-like input, the rich-text surface or a picker trigger. */
 const FOCUSABLE_EDITOR_SELECTOR = 'input:not([type="hidden"]), [contenteditable="true"], [role="combobox"]'
@@ -32,26 +49,27 @@ const EDITING_ROW_CLASS =
  * names itself (e.g. the recurrence tile) across the section's full width,
  * its label kept for assistive tech only.
  */
-type TaskInlineFieldLayout = 'row' | 'block'
+type RecordInlineFieldLayout = 'row' | 'block'
 
 interface FieldFrameProps {
-  layout: TaskInlineFieldLayout
+  layout: RecordInlineFieldLayout
   label: string
   icon?: ReactNode
+  className?: string
   children: ReactNode
 }
 
-function FieldFrame({ layout, label, icon, children }: FieldFrameProps) {
+function FieldFrame({ layout, label, icon, className, children }: FieldFrameProps) {
   if (layout === 'block') {
     return (
-      <div className="flex min-w-0 flex-col py-1">
+      <div className={cn('flex min-w-0 flex-col py-1', className)}>
         <span className="sr-only">{label}</span>
         {children}
       </div>
     )
   }
   return (
-    <RecordField label={label} icon={icon}>
+    <RecordField label={label} icon={icon} className={className}>
       {children}
     </RecordField>
   )
@@ -75,24 +93,28 @@ function EditorRow({ field, children, ...frame }: EditorRowProps) {
   )
 }
 
-interface TaskInlineFieldProps {
-  /** The form field (and its `metaKey`) this row edits: gates the row and keys the single open editor. */
+interface RecordInlineFieldProps {
+  /** The form field this row edits: keys the single open editor and its error slot. */
   field: string
+  /** The field permission gating the row, when it is not `field` itself (an Attribute row: `attribute_values`). */
+  metaKey?: string
   label: string
   icon?: ReactNode
-  inline: TaskInlineEdit
+  inline: InlineEdit
   /** The control shown while editing: the SAME field component the create form uses (spec 0195 D-3). */
   editor: ReactNode
   /** Extra condition on top of the field permission (e.g. the referent needs an anagrafica). */
   canEdit?: boolean
-  /** Defaults to `row`; see `TaskInlineFieldLayout`. */
-  layout?: TaskInlineFieldLayout
+  /** Defaults to `row`; see `RecordInlineFieldLayout`. */
+  layout?: RecordInlineFieldLayout
+  /** On the row's outer box, open or closed (e.g. a column span inside a grid). */
+  className?: string
   /** The persisted value, as the read-only detail always rendered it. */
   children: ReactNode
 }
 
 /**
- * One row of the task detail that edits in place (spec 0195 D-2): the
+ * One row of a record detail that edits in place (spec 0195 D-2): the
  * persisted value as before, a pencil (on hover with a mouse, always on
  * touch) — or a click on the value itself — opens the field's own control
  * with Confirm/Cancel. Confirm PATCHes that field alone; Cancel or Esc
@@ -100,21 +122,23 @@ interface TaskInlineFieldProps {
  * Hidden fields render nothing, non-editable ones no affordance (D-6),
  * exactly as `MetaField` would decide.
  */
-export function TaskInlineField({
+export function RecordInlineField({
   field,
+  metaKey = field,
   label,
   icon,
   inline,
   editor,
   canEdit = true,
   layout = 'row',
+  className,
   children,
-}: TaskInlineFieldProps) {
+}: RecordInlineFieldProps) {
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
   const { getFieldState, formState } = useFormContext()
   const editorRef = useRef<HTMLDivElement>(null)
-  const permission = fieldPermission(field)
+  const permission = fieldPermission(metaKey)
   // A refused create (or a "Fatto" that failed validation) leaves the row
   // closed: its message has to show there, not only inside the editor.
   const closedError = firstMessage(getFieldState(field, formState).error)
@@ -158,7 +182,7 @@ export function TaskInlineField({
     return (
       <div
         ref={editorRef}
-        className={EDITING_ROW_CLASS}
+        className={cn(EDITING_ROW_CLASS, className)}
         onKeyDown={handleKeyDown}
         onPointerDownCapture={outsidePointer.onPointerDownCapture}
       >
@@ -199,7 +223,7 @@ export function TaskInlineField({
   }
 
   return (
-    <FieldFrame layout={layout} label={label} icon={icon}>
+    <FieldFrame layout={layout} label={label} icon={icon} className={className}>
       {editable ? (
         <div className="group flex min-w-0 items-start gap-1.5">
           {/* Mouse shortcut only: the pencil is the keyboard/screen-reader path. */}
@@ -214,7 +238,7 @@ export function TaskInlineField({
               'size-6 shrink-0 text-muted-foreground',
               'pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-visible:opacity-100',
             )}
-            aria-label={t('tasks.detail.inlineEdit.edit', { field: label })}
+            aria-label={t('common.inlineEdit.edit', { field: label })}
             onClick={() => inline.start(field)}
           >
             <Pencil className="size-3.5" aria-hidden="true" />

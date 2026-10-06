@@ -220,7 +220,7 @@ describe('TaskFormBody — watchers picker excludes overlapping people (spec 011
     fireEvent.click(await screen.findByRole('option', { name: /Carol/ }))
     // Close this popover, then move to the watchers row (the draft keeps Carol).
     fireEvent.click(assigneesTrigger)
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.detail.inlineEdit.apply') }))
+    fireEvent.click(screen.getByRole('button', { name: label('common.inlineEdit.apply') }))
     openInlineEditor(label('tasks.detail.watchers'))
 
     fireEvent.click(screen.getByRole('button', { name: label('tasks.form.watchers') }))

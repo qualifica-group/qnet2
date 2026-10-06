@@ -1,10 +1,9 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { fetchWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { WorkOrderForm } from '@/features/work-orders/work-order-form'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
@@ -21,8 +20,12 @@ import type { WorkOrderDetail } from '@/features/work-orders/types'
  * fetch + the existing presentational view/form, no page chrome. Reused as-is
  * by the generic dedicated pages (`ModuleDetailPage`/`ModuleFormPage`) and by
  * the modal Sheet (`useModuleOpener`), whichever the user's preference picks.
+ *
+ * Spec 0195 applied to Commesse (user directive 2026-10-06): the detail edits
+ * its fields in place, so `onEdit` is never used; each save reports through
+ * `onChanged` (the modal host refreshes its grid and keeps the record open).
  */
-export function WorkOrderDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function WorkOrderDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: workOrder,
@@ -45,66 +48,47 @@ export function WorkOrderDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <WorkOrderDetailView workOrder={workOrder} onEdit={onEdit} />
+  return <WorkOrderDetailView workOrder={workOrder} onChanged={onChanged} />
 }
 
 export function WorkOrderFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
+  // Leaving a work order being created — Cancel, the Sheet's X/overlay/Esc,
+  // a link, a reload — always asks first (spec 0195 D-9 applied to Commesse).
+  const leaveGuard = useFormLeaveGuard({
+    title: t('workOrders.form.leaveConfirm.title'),
+    description: t('workOrders.form.leaveConfirm.description'),
+    confirmLabel: t('workOrders.form.leaveConfirm.confirm'),
+    cancelLabel: t('workOrders.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
   const handleSuccess = (saved: WorkOrderDetail) => {
     queryClient.invalidateQueries({ queryKey: workOrderDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new work order's detail is no "leaving".
+    leaveGuard.allowLeave()
     onSuccess(saved.id)
   }
 
-  if (mode.type === 'create') {
-    return <WorkOrderForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
+  const handleCancel = async () => {
+    if (await leaveGuard.confirmLeave()) {
+      onCancel()
+    }
   }
 
-  return <WorkOrderEditScreen workOrderId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-}
-
-interface WorkOrderEditScreenProps {
-  workOrderId: number
-  onSuccess: (workOrder: WorkOrderDetail) => void
-  onCancel: () => void
-}
-
-/**
- * Fetches the fresh, re-authorized work order detail before mounting the
- * edit form, so the partial PATCH starts from authoritative values rather
- * than a stale snapshot.
- */
-function WorkOrderEditScreen({ workOrderId, onSuccess, onCancel }: WorkOrderEditScreenProps) {
-  const { t } = useTranslation()
-  const {
-    data: workOrder,
-    isLoading,
-    isError,
-    refetch,
-  } = useEntityDetail(workOrderDetailQueryKey(workOrderId), () => fetchWorkOrder(workOrderId))
-
-  if (isError) {
-    return (
-      <div className="flex flex-col items-start gap-3 p-4">
-        <p className="text-sm text-destructive">{t('workOrders.detail.loadError')}</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          {t('common.retry')}
-        </Button>
-      </div>
-    )
+  // No edit form: the detail edits in place, and the registry generates no
+  // `:id/edit` route (`generateEditRoute: false`).
+  if (mode.type !== 'create') {
+    return null
   }
 
-  if (isLoading || !workOrder) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
-  }
-
-  return <WorkOrderForm mode={{ type: 'edit', workOrder }} onSuccess={onSuccess} onCancel={onCancel} />
+  return (
+    <>
+      {leaveGuard.navigationGuard}
+      <WorkOrderForm onSuccess={handleSuccess} onCancel={() => void handleCancel()} />
+    </>
+  )
 }
 
 /** Auto-registered in the module registry (spec 0042). */
@@ -115,7 +99,7 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.workOrders',
   DetailScreen: WorkOrderDetailScreen,
   FormScreen: WorkOrderFormScreen,
-  // The record card renders its own "Modifica" button (same as Opportunita'),
-  // so the page header must not add a second one.
+  // The detail IS the edit form: no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
 }

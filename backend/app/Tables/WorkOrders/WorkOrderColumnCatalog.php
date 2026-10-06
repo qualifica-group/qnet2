@@ -215,6 +215,26 @@ final class WorkOrderColumnCatalog
                 'confirm' => false,
                 'permission' => 'work-orders.viewActivity',
             ],
+            // "Chiusura forzata" as an action, not a field (user directive
+            // 2026-10-06): the client opens a reason dialog and PATCHes
+            // is_force_closed/force_close_reason. `reopen` is its inverse.
+            // Offered per row by WorkOrdersTableDefinition::actionsFor().
+            [
+                'key' => 'force_close',
+                'label' => 'actions.forceClose',
+                'icon' => 'lock',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'work-orders.update',
+            ],
+            [
+                'key' => 'reopen',
+                'label' => 'actions.reopen',
+                'icon' => 'lock-open',
+                'type' => 'action',
+                'confirm' => true,
+                'permission' => 'work-orders.update',
+            ],
         ];
     }
 }

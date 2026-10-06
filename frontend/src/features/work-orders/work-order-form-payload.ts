@@ -11,9 +11,9 @@ import type { WorkOrderFormValues } from '@/features/work-orders/use-work-order-
 /**
  * Builds the create payload. `code` is included only when set (trimmed,
  * non-empty) — an empty value falls back to server-side sequential
- * generation (D-1, mirrors `quotes`' `buildCreatePayload`). `force_close_reason`
- * is only ever sent when `is_force_closed` is true, mirroring the backend's
- * own D-4 "azzerato a NULL quando torna false" rule.
+ * generation (D-1, mirrors `quotes`' `buildCreatePayload`). The forced
+ * closure is never part of the form: it is the detail's action
+ * (`useWorkOrderClosure`, user directive 2026-10-06).
  */
 export function buildCreatePayload(values: WorkOrderFormValues): CreateWorkOrderPayload {
   const code = values.code.trim()
@@ -28,8 +28,6 @@ export function buildCreatePayload(values: WorkOrderFormValues): CreateWorkOrder
     callback_date: values.callback_date,
     description: values.description,
     internal_notes: values.internal_notes,
-    is_force_closed: values.is_force_closed,
-    force_close_reason: values.is_force_closed ? values.force_close_reason : null,
     quote_line_ids: values.quote_line_ids,
     // Spec 0098: la mappa viaggia sempre alla create — non c'e' nulla di
     // persistito da conservare, quindi il merge sparso lato server non serve
@@ -85,15 +83,6 @@ export function buildUpdatePayload(
   if (values.internal_notes !== original.internal_notes) {
     payload.internal_notes = values.internal_notes
   }
-  if (values.is_force_closed !== original.is_force_closed) {
-    payload.is_force_closed = values.is_force_closed
-  }
-
-  const forceCloseReason = values.is_force_closed ? values.force_close_reason : null
-  if (forceCloseReason !== original.force_close_reason) {
-    payload.force_close_reason = forceCloseReason
-  }
-
   const originalLineIds = original.quote_lines.map((line) => line.id)
   if (!sameIdSet(values.quote_line_ids, originalLineIds)) {
     payload.quote_line_ids = values.quote_line_ids

@@ -7,7 +7,7 @@ import { useResourcePermissions } from '@/features/authorization/permissions'
 import { TaskClosureFlagField } from '@/features/tasks/task-closure-section'
 import { leadRefOf, workOrderRefOf, workOrderStageOf } from '@/features/tasks/task-form-hydration'
 import { useTaskCascadeEditable } from '@/features/tasks/task-inline-cascade'
-import { TaskInlineField } from '@/features/tasks/task-inline-field'
+import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import {
   TaskLeadField,
   TaskOpportunityField,
@@ -21,7 +21,7 @@ import type { TaskDetailSectionProps } from '@/features/tasks/task-detail-sectio
 
 /**
  * The editable sections of the task detail (spec 0195), part two: linked
- * records, closure flags and the recurrence rule. Same `TaskInlineField`
+ * records, closure flags and the recurrence rule. Same `RecordInlineField`
  * pattern as `task-detail-sections.tsx`.
  *
  * The anagrafica/commessa/opportunita' editors keep the form's cascade
@@ -47,7 +47,7 @@ export function TaskDetailLinksSection({ task, editor }: TaskDetailSectionProps)
   return (
     <RecordSection title={t('tasks.detail.sections.links')} icon={<Link2 />}>
       <RecordFieldList>
-        <TaskInlineField
+        <RecordInlineField
           field="registry_id"
           label={t('tasks.detail.registry')}
           icon={<Contact />}
@@ -64,8 +64,8 @@ export function TaskDetailLinksSection({ task, editor }: TaskDetailSectionProps)
           ) : (
             <DetailEmpty />
           )}
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="referent_id"
           label={t('tasks.detail.referent')}
           inline={inline}
@@ -80,8 +80,8 @@ export function TaskDetailLinksSection({ task, editor }: TaskDetailSectionProps)
           ) : (
             <DetailEmpty />
           )}
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="opportunity_id"
           label={t('tasks.detail.opportunity')}
           canEdit={cascadeEditable('opportunity_id')}
@@ -101,8 +101,8 @@ export function TaskDetailLinksSection({ task, editor }: TaskDetailSectionProps)
           ) : (
             <DetailEmpty />
           )}
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="work_order_id"
           label={t('tasks.detail.workOrder')}
           canEdit={cascadeEditable('work_order_id')}
@@ -127,18 +127,18 @@ export function TaskDetailLinksSection({ task, editor }: TaskDetailSectionProps)
           ) : (
             <DetailEmpty />
           )}
-        </TaskInlineField>
+        </RecordInlineField>
         {showStage ? (
-          <TaskInlineField
+          <RecordInlineField
             field="work_order_stage_id"
             label={t('tasks.form.workOrderStage')}
             inline={inline}
             editor={<TaskWorkOrderStageField control={form.control} workOrderStage={workOrderStageOf(task)} />}
           >
             {task.work_order_stage?.name ?? <DetailEmpty />}
-          </TaskInlineField>
+          </RecordInlineField>
         ) : null}
-        <TaskInlineField
+        <RecordInlineField
           field="lead_id"
           label={t('tasks.form.lead')}
           inline={inline}
@@ -151,7 +151,7 @@ export function TaskDetailLinksSection({ task, editor }: TaskDetailSectionProps)
           ) : (
             <DetailEmpty />
           )}
-        </TaskInlineField>
+        </RecordInlineField>
       </RecordFieldList>
     </RecordSection>
   )
@@ -165,22 +165,22 @@ export function TaskDetailClosureSection({ task, editor }: TaskDetailSectionProp
   return (
     <RecordSection title={t('tasks.detail.sections.closure')} icon={<MessageSquareWarning />}>
       <RecordFieldList>
-        <TaskInlineField
+        <RecordInlineField
           field="requires_closure_feedback"
           label={t('tasks.detail.requiresClosureFeedback')}
           inline={inline}
           editor={<TaskClosureFlagField control={form.control} name="requires_closure_feedback" />}
         >
           {t(task.requires_closure_feedback ? 'common.yes' : 'common.no')}
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="requires_validation"
           label={t('tasks.detail.requiresValidation')}
           inline={inline}
           editor={<TaskClosureFlagField control={form.control} name="requires_validation" />}
         >
           {t(task.requires_validation ? 'common.yes' : 'common.no')}
-        </TaskInlineField>
+        </RecordInlineField>
         {/* Written only from the completion pop-up (spec 0121 D-7). */}
         {field('closure_feedback').visible ? (
           <RecordField label={t('tasks.detail.closureFeedback')}>
@@ -202,7 +202,7 @@ export function TaskDetailRecurrenceSection({ task, editor }: TaskDetailSectionP
 
   return (
     <RecordSection title={t('tasks.form.sections.recurrence.title')} icon={<Repeat />}>
-      <TaskInlineField
+      <RecordInlineField
         field="recurrence"
         label={t('tasks.detail.recurrenceRule')}
         inline={inline}
@@ -210,7 +210,7 @@ export function TaskDetailRecurrenceSection({ task, editor }: TaskDetailSectionP
         editor={<TaskRecurrenceFields control={form.control} />}
       >
         <TaskRecurrenceSummary rule={task.recurrence} />
-      </TaskInlineField>
+      </RecordInlineField>
     </RecordSection>
   )
 }

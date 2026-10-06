@@ -3,26 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { FieldErrors } from 'react-hook-form'
 import { useTaskForm } from '@/features/tasks/use-task-form'
+import type { InlineEdit } from '@/components/record-form/record-inline-field'
 import type { TaskFormValues } from '@/features/tasks/task-schema'
 import type { TaskDetailWithPermissions, TaskFormMode } from '@/features/tasks/types'
-
-/** The single-open-editor state and actions every inline row of the task detail shares. */
-export interface TaskInlineEdit {
-  /** The form field whose editor is open, `null` when the detail only displays. */
-  editingField: string | null
-  start: (field: string) => void
-  cancel: () => void
-  save: () => void
-  /** A press outside the open row: Cancel on the detail (nothing saved), "Fatto" on a create draft (nothing lost). */
-  dismiss: () => void
-  isSaving: boolean
-  /** A refused save the open editor's own field message cannot carry (generic server error). */
-  error: string | null
-  /** The open editor's confirm button: "Salva" on the detail, "Fatto" on a create draft. */
-  confirmLabel: string
-  /** Its cancel button: "Annulla" on the detail, "Ripristina" on a create draft (whose own Annulla leaves the form). */
-  cancelLabel: string
-}
 
 /** The first client-side message among `errors`, or `null` — for a field whose editor is not the open one. */
 function firstErrorMessage(errors: FieldErrors<TaskFormValues>): string | null {
@@ -87,7 +70,7 @@ export function useTaskInlineEdit(task: TaskDetailWithPermissions, onChanged?: (
     void form.handleSubmit(onSubmit, handleInvalid)()
   }
 
-  const inline: TaskInlineEdit = {
+  const inline: InlineEdit = {
     editingField,
     start,
     cancel,
@@ -95,8 +78,8 @@ export function useTaskInlineEdit(task: TaskDetailWithPermissions, onChanged?: (
     dismiss: cancel,
     isSaving: form.formState.isSubmitting,
     error: serverError,
-    confirmLabel: t('tasks.detail.inlineEdit.save'),
-    cancelLabel: t('tasks.detail.inlineEdit.cancel'),
+    confirmLabel: t('common.inlineEdit.save'),
+    cancelLabel: t('common.inlineEdit.cancel'),
   }
 
   return { ...taskForm, inline }

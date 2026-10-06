@@ -6,6 +6,69 @@ const guide: HelpGuide = {
   summary: 'Il lavoro da svolgere su un contratto vinto.',
   sections: [
     {
+      id: 'editing-a-work-order',
+      title: 'Modificare una commessa',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Non esiste una pagina di modifica separata: la commessa si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga).',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Apri la commessa dall\'elenco.',
+            'Passa col mouse sul campo da cambiare e premi la **matita** (o fai clic sul valore).',
+            'Modifica il valore nel controllo che compare.',
+            'Premi **Salva** (o Invio nei campi di testo e data) per salvare solo quel campo; **Annulla** (o Esc, o un clic fuori dal campo aperto) per chiuderlo lasciandolo com\'era, senza salvare.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Anagrafica cliente, Contratto, Società e sedi derivano dall\'offerta; Stato e Completamento sono calcolati dai task.',
+        },
+        {
+          type: 'note',
+          text: 'Cambiando le **Righe prodotto**, sotto il campo compaiono le Informazioni aggiuntive che le nuove righe portano con sé: compilale nello stesso salvataggio (quelle obbligatorie servono per salvare).',
+        },
+      ],
+    },
+    {
+      id: 'force-close',
+      title: 'Chiusura forzata e riapertura',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'La chiusura forzata è un\'**azione**, non un campo: la trovi in alto nel dettaglio della commessa e tra le azioni di riga della tabella Commesse (anche nella scheda Commesse del Contratto). Compare solo se puoi modificare la commessa.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Premi **Chiusura forzata**.',
+            'Scrivi il **motivo** (obbligatorio). Se la commessa ha task ancora aperti, il dialog ti avvisa quanti verranno chiusi con esito negativo.',
+            'Premi **Chiudi commessa**: lo stato diventa Chiusa e il motivo compare tra i dati della commessa.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Su una commessa chiusa forzatamente l\'azione diventa **Riapri**: dopo la conferma la chiusura viene annullata e il motivo cancellato. I task chiusi dalla chiusura forzata restano chiusi.',
+        },
+      ],
+    },
+    {
+      id: 'creating-a-work-order',
+      title: 'Creare una commessa',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Il modulo di creazione ha lo stesso aspetto del dettaglio: le stesse sezioni e righe, **chiuse**. Apri una riga con la matita, compila il campo e premi **Fatto** per tenerlo (o **Ripristina** per riportarlo com\'era). Il campo **Commessa n.** è già proposto.',
+        },
+        {
+          type: 'note',
+          text: 'Nella sezione **Offerta e righe prodotto** scegli prima l\'offerta, poi le sue righe: le Informazioni aggiuntive compaiono in fondo appena le righe le prevedono. **Salva** in alto (o in fondo) controlla tutti i campi e crea la commessa; gli errori compaiono sotto le righe da correggere. Uscendo senza salvare ti viene chiesta conferma.',
+        },
+      ],
+    },
+    {
       id: 'costs',
       title: 'Costi',
       blocks: [

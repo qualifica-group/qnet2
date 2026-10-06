@@ -3,6 +3,48 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMMESSE — DETTAGLIO EDITABILE IN PLACE + CREAZIONE COME IL DETTAGLIO + CHIUSURA FORZATA COME AZIONE (spec 0196) — VERDE, COMMITTATO (2026-10-06)
+
+- Richiesta utente: stesse modifiche dei Task (spec 0195) sulle Commesse, "soprattutto per i campi flessibili";
+  poi "chiusura forzata la voglio come un action, non come un campo, stessa action sulla tabella commesse".
+- Condiviso (estratto dai Task, nessun cambio di comportamento): `components/record-form/record-inline-field.tsx`
+  (`RecordInlineField` + tipo `InlineEdit`, prop nuove `metaKey`/`className`), `components/record-form/
+  use-draft-inline-edit.ts` (`useDraftInlineEdit<T>`), `hooks/use-outside-pointer-dismiss.ts`; i18n
+  `common.inlineEdit.*` (rimosso `tasks.detail.inlineEdit.*`). Blocco `common` spostato in `{it,en}-common.ts`
+  (en.ts era a 499 righe). `AttributeLayoutView.renderField` (opzionale, default riga read-only) e
+  `AttributeLayoutField.hideLabel`.
+- Commesse FE: `useWorkOrderForm` edit = `values` + `keepDirtyValues`, `editDefaults` seminati, reset dopo PATCH,
+  `clearServerError`; `useWorkOrderFormContext(ids, persisted)` non chiama form-context finche' le righe sono quelle
+  salvate. `useWorkOrderInlineEdit` (toast se l'errore non e' nell'editor aperto; le righe portano con se'
+  `attribute_values`). Dettaglio: `work-order-record-identity.tsx` (Note interne come callout, Dati), `-record-team.tsx`,
+  `work-order-detail-sections.tsx` (Contratto con Righe in place + `WorkOrderNewAttributesFields`, Societa'),
+  `work-order-attributes-section.tsx` (un Attributo = una riga). Campi in `work-order-identity-fields.tsx` e
+  `-relation-fields.tsx`. Creazione: `work-order-form-body.tsx` + `-form-header.tsx` + `-create-sections.tsx`
+  (etichette via `useForSelectLabels`), `useFormLeaveGuard`; registry `generateEditRoute: false`.
+  `updateWorkOrder` ora restituisce i `permissions`. Rimossi: `work-order-{team,closure,notes,dynamic-fields}-section`,
+  `work-order-detail-{team,attributes}` e i loro test; chiavi i18n orfane `form.editTitle/editSubtitle`,
+  `form.sections.*` (resta `offer.title`), `form.hints.*Locked`, `form.description/internalNotes`.
+- Chiusura forzata = azione: BE `WorkOrderColumnCatalog` (`force_close` lock / `reopen` lock-open confirm,
+  `work-orders.update`), `actionsFor` (una sola delle due, Gate update + stato), `WorkOrdersAuthorization`
+  `permissions.actions.force_close/reopen`. FE `use-work-order-closure.ts` (PATCH esistente, invalida board + task),
+  `work-order-force-close-dialog.tsx` (motivo obbligatorio, avviso task aperti letto dal record se dalla griglia),
+  `work-order-closure-actions.tsx` (header, `destructive`/`outline bg-card`), `use-work-order-row-actions.tsx`
+  (rinominato da .ts, espone `forceCloseDialog`, montato da `WorkOrdersTable` e `ContractWorkOrdersSection`, con
+  `iconMap`). Form/schema/payload senza `is_force_closed`/`force_close_reason`.
+- REQUIREMENT CHANGED dichiarati: `WorkOrderQuoteScopeTest` AC-052 (`['view','force_close']`), `work-order-detail.test`
+  (nessun Edit), `work-order-form-body.test` (riscritto: creazione a righe chiuse), payload/schema/hook test (niente
+  chiusura nel form). Nuovi: `WorkOrderForceCloseActionTest` (5), `api.test.ts`, `work-order-detail-inline-edit.test`
+  (12), `work-order-attributes-section.test` (6), `use-work-order-row-actions.test` (2), casi edit in
+  `use-work-order-form.test`.
+- Verifica: Pest completo 9293 verdi (1 skipped); Pint ok; Vitest completo 898 file / 6808 verdi; `tsc -b --force` 0;
+  ESLint pulito sui file toccati. Browser reale (Playwright, `/work-orders/95`, `/work-orders/new`, `/work-orders`):
+  desktop light/dark e 375px senza scroll orizzontale, nessun errore runtime. NB: dopo il rename `.ts`->`.tsx` il
+  dev server Vite serviva un 404 finche' non sono stati toccati gli importatori (non serve riavviare).
+- Guida in-app IT/EN `work-orders`: sezioni `editing-a-work-order`, `force-close`, `creating-a-work-order`.
+- Da fare / fuori scope: manuale Claude Docs (sezione Commesse: modifica in place, campi flessibili, chiusura forzata
+  come azione + Riapri, creazione). Chiavi orfane preesistenti `workOrders.detail.tasks.*`. Il titolo della pagina
+  di creazione ripete "Crea commessa" come nei Task.
+
 ## COMMESSA: TASK E COSTI IN UNA CARD A TAB (TASK DI DEFAULT) — VERDE, NON COMMITTATO (2026-10-06)
 
 - Richiesta utente: nel dettaglio commessa Costi e Task stanno nello stesso punto, come tab da alternare, con icona

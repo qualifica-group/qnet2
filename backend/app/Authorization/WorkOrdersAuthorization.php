@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Authorization;
 
 use App\Models\User;
+use App\Models\WorkOrder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -67,7 +68,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'view_costs', 'manage_costs'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'view_costs', 'manage_costs', 'force_close', 'reopen'];
     }
 
     /**
@@ -127,6 +128,19 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // Spec 0190, D-4: gate the "Costi" section and its editor.
             'view_costs' => $model !== null && $actor->can('work-orders.viewCosts'),
             'manage_costs' => $model !== null && $actor->can('work-orders.manageCosts'),
+            // "Chiusura forzata"/"Riapri" are detail actions, not fields (user
+            // directive 2026-10-06): the same record-level update rule as the
+            // PATCH they send, exactly one of the two by the closure state.
+            'force_close' => $this->mayToggleForceClose($actor, $model, false),
+            'reopen' => $this->mayToggleForceClose($actor, $model, true),
         ];
+    }
+
+    /** Whether $actor may update $model while its `is_force_closed` equals $whenForceClosed. */
+    private function mayToggleForceClose(User $actor, ?Model $model, bool $whenForceClosed): bool
+    {
+        return $model instanceof WorkOrder
+            && (bool) $model->is_force_closed === $whenForceClosed
+            && $actor->can('update', $model);
     }
 }

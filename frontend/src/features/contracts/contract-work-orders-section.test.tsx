@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createRef, forwardRef, useImperativeHandle } from 'react'
-import { render, screen } from '@testing-library/react'
+import { createRef, forwardRef, useImperativeHandle, type ReactElement } from 'react'
+import { render as rtlRender, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   ContractWorkOrdersSection,
   type ContractWorkOrdersSectionHandle,
@@ -40,7 +41,17 @@ const deleteWorkOrderMock = vi.fn()
 vi.mock('@/features/work-orders/api', () => ({
   WORK_ORDERS_DOMAIN: 'work-orders',
   deleteWorkOrder: (...args: unknown[]) => deleteWorkOrderMock(...args),
+  // The row actions' force-close dialog (user directive 2026-10-06) reads and writes the record.
+  workOrderDetailQueryKey: (id: number) => ['work-orders', 'detail', id],
+  fetchWorkOrder: vi.fn(),
+  updateWorkOrder: vi.fn(),
 }))
+
+/** The row actions own a mutation (force close / reopen): every render needs a query client. */
+function render(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return rtlRender(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
 
 const ROW: TableRow = { id: 9, actions: ['view', 'delete', 'activity'], title: 'Installazione impianto', code: 'COM-0009' }
 

@@ -15,7 +15,7 @@ import {
   YesNoDisplay,
 } from '@/features/tasks/task-create-displays'
 import { leadRefOf, workOrderRefOf, workOrderStageOf } from '@/features/tasks/task-form-hydration'
-import { TaskInlineField } from '@/features/tasks/task-inline-field'
+import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import {
   TaskLeadField,
   TaskOpportunityField,
@@ -26,11 +26,11 @@ import { TaskRecurrenceFields } from '@/features/tasks/task-recurrence-section'
 import { TaskReferentField, TaskRegistryField } from '@/features/tasks/task-registry-section'
 import type { TaskDetail } from '@/features/tasks/types'
 import type { TaskFormState } from '@/features/tasks/use-task-form'
-import type { TaskInlineEdit } from '@/features/tasks/use-task-inline-edit'
+import type { InlineEdit } from '@/components/record-form/record-inline-field'
 
 interface TaskCreateLinkSectionsProps {
   taskForm: TaskFormState
-  draft: TaskInlineEdit
+  draft: InlineEdit
   source: TaskDetail | null
 }
 
@@ -66,7 +66,7 @@ export function TaskCreateLinkSections({ taskForm, draft, source }: TaskCreateLi
     <>
       <RecordSection title={t('tasks.detail.sections.links')} icon={<Link2 />}>
         <RecordFieldList>
-          <TaskInlineField
+          <RecordInlineField
             field="registry_id"
             label={t('tasks.detail.registry')}
             icon={<Contact />}
@@ -74,8 +74,8 @@ export function TaskCreateLinkSections({ taskForm, draft, source }: TaskCreateLi
             editor={<TaskRegistryField control={control} registry={registry} onRegistryChange={handleRegistryChange} />}
           >
             <ForSelectLabelDisplay resource={REGISTRIES_FOR_SELECT_RESOURCE} id={values.registry_id ?? null} known={registry} />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="referent_id"
             label={t('tasks.detail.referent')}
             inline={draft}
@@ -84,8 +84,8 @@ export function TaskCreateLinkSections({ taskForm, draft, source }: TaskCreateLi
             editor={<TaskReferentField control={control} referent={referent} />}
           >
             <ForSelectLabelDisplay resource={REFERENTS_FOR_SELECT_RESOURCE} id={values.referent_id ?? null} known={referent} />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="opportunity_id"
             label={t('tasks.detail.opportunity')}
             inline={draft}
@@ -98,8 +98,8 @@ export function TaskCreateLinkSections({ taskForm, draft, source }: TaskCreateLi
               id={values.opportunity_id ?? null}
               known={opportunity}
             />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="work_order_id"
             label={t('tasks.detail.workOrder')}
             inline={draft}
@@ -117,57 +117,57 @@ export function TaskCreateLinkSections({ taskForm, draft, source }: TaskCreateLi
             }
           >
             <ForSelectLabelDisplay resource={WORK_ORDERS_FOR_SELECT_RESOURCE} id={workOrderId} known={workOrder} />
-          </TaskInlineField>
+          </RecordInlineField>
           {showStage ? (
-            <TaskInlineField
+            <RecordInlineField
               field="work_order_stage_id"
               label={t('tasks.form.workOrderStage')}
               inline={draft}
               editor={<TaskWorkOrderStageField control={control} workOrderStage={workOrderStageOf(source)} />}
             >
               <WorkOrderStageDisplay workOrderId={workOrderId} stageId={values.work_order_stage_id ?? null} />
-            </TaskInlineField>
+            </RecordInlineField>
           ) : null}
-          <TaskInlineField field="lead_id" label={t('tasks.form.lead')} inline={draft} editor={<TaskLeadField control={control} lead={leadRefOf(source)} />}>
+          <RecordInlineField field="lead_id" label={t('tasks.form.lead')} inline={draft} editor={<TaskLeadField control={control} lead={leadRefOf(source)} />}>
             <ForSelectLabelDisplay resource={LEADS_FOR_SELECT_RESOURCE} id={values.lead_id ?? null} known={leadRefOf(source)} />
-          </TaskInlineField>
+          </RecordInlineField>
         </RecordFieldList>
       </RecordSection>
 
       <RecordSection title={t('tasks.detail.sections.closure')} icon={<MessageSquareWarning />}>
         <RecordFieldList>
-          <TaskInlineField
+          <RecordInlineField
             field="requires_closure_feedback"
             label={t('tasks.detail.requiresClosureFeedback')}
             inline={draft}
             editor={<TaskClosureFlagField control={control} name="requires_closure_feedback" />}
           >
             <YesNoDisplay value={values.requires_closure_feedback ?? false} />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="requires_validation"
             label={t('tasks.detail.requiresValidation')}
             inline={draft}
             editor={<TaskClosureFlagField control={control} name="requires_validation" />}
           >
             <YesNoDisplay value={values.requires_validation ?? false} />
-          </TaskInlineField>
-          <TaskInlineField field="is_completed" label={t('tasks.form.isCompleted')} inline={draft} editor={<TaskIsCompletedField control={control} />}>
+          </RecordInlineField>
+          <RecordInlineField field="is_completed" label={t('tasks.form.isCompleted')} inline={draft} editor={<TaskIsCompletedField control={control} />}>
             <YesNoDisplay value={values.is_completed ?? false} />
-          </TaskInlineField>
+          </RecordInlineField>
         </RecordFieldList>
       </RecordSection>
 
       <RecordSection title={t('tasks.form.sections.recurrence.title')} icon={<Repeat />}>
         <RecordFieldList>
-          <TaskInlineField
+          <RecordInlineField
             field="recurrence"
             label={t('tasks.detail.recurrenceRule')}
             inline={draft}
             editor={<TaskRecurrenceFields control={control} />}
           >
             <RecurrenceDisplay recurrence={form.getValues('recurrence')} />
-          </TaskInlineField>
+          </RecordInlineField>
         </RecordFieldList>
       </RecordSection>
     </>

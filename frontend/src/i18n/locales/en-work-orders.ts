@@ -47,6 +47,8 @@ export const workOrders = {
     taskTemplate: 'Task template',
     lines: 'Product lines',
     additionalInformation: 'Additional information',
+    /** Under the product lines' editor: the Attributes the newly picked lines bring in. */
+    newAttributes: 'Additional information of the new lines',
     created_at: 'Created at',
     updated_at: 'Updated at',
     sections: {
@@ -54,10 +56,26 @@ export const workOrders = {
       contract: 'Contract and product lines',
       team: 'Supervisors and participants',
       company: 'Company and sites',
+      closure: 'Closure',
     },
     tasks: {
       title: 'Tasks',
       countLabel: '{{count}} tasks',
+    },
+  },
+  /** "Chiusura forzata" as an action of the detail and the grid (user directive 2026-10-06), and its inverse. */
+  actions: {
+    forceClose: {
+      title: 'Force close the work order',
+      description: 'The work order is closed, stating the reason. You can reopen it later.',
+      submit: 'Close work order',
+      success: 'Work order closed.',
+    },
+    reopen: {
+      title: 'Reopen the work order?',
+      description: 'The forced closure is undone and its reason cleared. Tasks the forced closure closed stay closed.',
+      confirm: 'Reopen',
+      success: 'Work order reopened.',
     },
   },
   /**
@@ -234,8 +252,6 @@ export const workOrders = {
   form: {
     createTitle: 'Create work order',
     createSubtitle: 'Add a new work order.',
-    editTitle: 'Edit work order',
-    editSubtitle: 'Update the selected work order.',
     code: 'Work order no.',
     codePlaceholder: 'Auto-generated when left empty',
     title: 'Title',
@@ -269,11 +285,16 @@ export const workOrders = {
     taskTemplateClear: 'Clear selected task template',
     isForceClosed: 'Force closed',
     forceCloseReason: 'Force close reason',
-    description: 'Description',
-    internalNotes: 'Work order notes',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
+    /** Spec 0195 D-9 applied to Commesse: leaving a work order being created always asks first. */
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The work order has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     created: 'Work order created successfully.',
     updated: 'Work order updated successfully.',
     deleted: 'Work order deleted successfully.',
@@ -295,35 +316,11 @@ export const workOrders = {
     deleteForbidden: 'You cannot delete this work order.',
     deleteConflict: 'Cannot delete: the work order is used elsewhere.',
     sections: {
-      identity: {
-        title: 'Details',
-        description: 'Number, title, type and callback date.',
-      },
       offer: {
         title: 'Offer and product lines',
-        description: 'The linked offer and its product lines assigned to this work order.',
-      },
-      team: {
-        title: 'Supervisors and participants',
-        description: 'Start date, the users accountable for this work order and its team.',
-      },
-      closure: {
-        title: 'Force closure',
-        description: 'Force the work order closed, stating the reason.',
-      },
-      notes: {
-        title: 'Description and notes',
-        description: 'Free-form description and internal notes for the work order.',
-      },
-      dynamicFields: {
-        title: 'Additional information',
-        empty: 'No additional fields for the selected product lines.',
       },
     },
     hints: {
-      codeLocked: 'Work order number cannot be changed after creation.',
-      quoteLocked: 'Linked offer cannot be changed after creation.',
-      taskTemplateLocked: 'Task template cannot be changed after creation.',
       taskTemplateHelp: 'Tasks from the template will be created and assigned to the supervisors.',
     },
     quoteLines: {

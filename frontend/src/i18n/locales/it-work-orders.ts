@@ -47,6 +47,8 @@ export const workOrders = {
     taskTemplate: 'Modello di Task',
     lines: 'Righe prodotto',
     additionalInformation: 'Informazioni aggiuntive',
+    /** Under the product lines' editor: the Attributes the newly picked lines bring in. */
+    newAttributes: 'Informazioni aggiuntive delle nuove righe',
     created_at: 'Creata il',
     updated_at: 'Aggiornata il',
     sections: {
@@ -54,10 +56,26 @@ export const workOrders = {
       contract: 'Contratto e righe prodotto',
       team: 'Responsabili e partecipanti',
       company: 'Società e sedi',
+      closure: 'Chiusura',
     },
     tasks: {
       title: 'Task',
       countLabel: '{{count}} task',
+    },
+  },
+  /** "Chiusura forzata" as an action of the detail and the grid (user directive 2026-10-06), and its inverse. */
+  actions: {
+    forceClose: {
+      title: 'Chiusura forzata della commessa',
+      description: 'La commessa viene chiusa indicandone il motivo. Potrai riaprirla in seguito.',
+      submit: 'Chiudi commessa',
+      success: 'Commessa chiusa.',
+    },
+    reopen: {
+      title: 'Riaprire la commessa?',
+      description: 'La chiusura forzata viene annullata e il motivo cancellato. I task chiusi dalla chiusura forzata restano chiusi.',
+      confirm: 'Riapri',
+      success: 'Commessa riaperta.',
     },
   },
   /**
@@ -234,8 +252,6 @@ export const workOrders = {
   form: {
     createTitle: 'Crea commessa',
     createSubtitle: 'Aggiungi una nuova commessa.',
-    editTitle: 'Modifica commessa',
-    editSubtitle: 'Aggiorna la commessa selezionata.',
     code: 'Commessa n.',
     codePlaceholder: 'Generato automaticamente se lasciato vuoto',
     title: 'Titolo',
@@ -269,11 +285,16 @@ export const workOrders = {
     taskTemplateClear: 'Rimuovi modello di task selezionato',
     isForceClosed: 'Chiusura forzata',
     forceCloseReason: 'Motivo chiusura',
-    description: 'Descrizione',
-    internalNotes: 'Note commessa',
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',
+    /** Spec 0195 D-9 applied to Commesse: leaving a work order being created always asks first. */
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'La commessa non è ancora stata creata: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     created: 'Commessa creata con successo.',
     updated: 'Commessa aggiornata con successo.',
     deleted: 'Commessa eliminata con successo.',
@@ -295,35 +316,11 @@ export const workOrders = {
     deleteForbidden: 'Non puoi eliminare questa commessa.',
     deleteConflict: 'Impossibile eliminare: la commessa è utilizzata altrove.',
     sections: {
-      identity: {
-        title: 'Dettagli',
-        description: 'Numero, titolo, tipo e data di richiamo.',
-      },
       offer: {
         title: 'Offerta e righe prodotto',
-        description: "L'offerta collegata e le sue righe prodotto assegnate a questa commessa.",
-      },
-      team: {
-        title: 'Responsabili e partecipanti',
-        description: 'Data di inizio, utenti responsabili della commessa e squadra di lavoro.',
-      },
-      closure: {
-        title: 'Chiusura forzata',
-        description: 'Forza la chiusura della commessa indicandone il motivo.',
-      },
-      notes: {
-        title: 'Descrizione e note',
-        description: 'Descrizione libera e note interne della commessa.',
-      },
-      dynamicFields: {
-        title: 'Informazioni aggiuntive',
-        empty: 'Nessun campo aggiuntivo per le righe prodotto selezionate.',
       },
     },
     hints: {
-      codeLocked: 'Il numero commessa non può essere modificato dopo la creazione.',
-      quoteLocked: "L'offerta collegata non può essere modificata dopo la creazione.",
-      taskTemplateLocked: 'Il modello di task non può essere modificato dopo la creazione.',
       taskTemplateHelp: 'I task del modello verranno creati e assegnati ai responsabili.',
     },
     quoteLines: {

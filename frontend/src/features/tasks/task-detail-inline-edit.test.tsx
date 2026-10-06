@@ -70,11 +70,11 @@ describe('TaskDetailView — in-place editing (spec 0195)', () => {
     fireEvent.change(screen.getByRole('textbox', { name: label('tasks.form.title') }), {
       target: { value: 'Nuovo titolo' },
     })
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.detail.inlineEdit.save') }))
+    fireEvent.click(screen.getByRole('button', { name: label('common.inlineEdit.save') }))
 
     await waitFor(() => expect(updateTask).toHaveBeenCalledWith(task.id, { title: 'Nuovo titolo' }))
     await waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
-    expect(screen.queryByRole('button', { name: label('tasks.detail.inlineEdit.save') })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: label('common.inlineEdit.save') })).not.toBeInTheDocument()
   })
 
   it('restores the persisted value on cancel, without any request (AC-003)', () => {
@@ -85,7 +85,7 @@ describe('TaskDetailView — in-place editing (spec 0195)', () => {
     fireEvent.change(screen.getByRole('textbox', { name: label('tasks.form.title') }), {
       target: { value: 'Da scartare' },
     })
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.detail.inlineEdit.cancel') }))
+    fireEvent.click(screen.getByRole('button', { name: label('common.inlineEdit.cancel') }))
 
     expect(updateTask).not.toHaveBeenCalled()
     expect(screen.queryByRole('textbox', { name: label('tasks.form.title') })).not.toBeInTheDocument()
@@ -101,11 +101,11 @@ describe('TaskDetailView — in-place editing (spec 0195)', () => {
     fireEvent.change(screen.getByRole('textbox', { name: label('tasks.form.title') }), {
       target: { value: 'Da scartare' },
     })
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.detail.inlineEdit.cancel') }))
+    fireEvent.click(screen.getByRole('button', { name: label('common.inlineEdit.cancel') }))
 
     fireEvent.click(queryInlineEditButton(label('tasks.detail.startTime'))!)
     fireEvent.change(screen.getByLabelText(label('tasks.form.startTime')), { target: { value: '09:30' } })
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.detail.inlineEdit.save') }))
+    fireEvent.click(screen.getByRole('button', { name: label('common.inlineEdit.save') }))
 
     await waitFor(() => expect(updateTask).toHaveBeenCalledWith(task.id, { start_time: '09:30' }))
   })

@@ -1,302 +1,76 @@
-import { Boxes, ClipboardList } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useWatch } from 'react-hook-form'
-import { FormSection } from '@/components/form-section'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Form, FormControl } from '@/components/ui/form'
-import { RelationSelectField } from '@/components/form/relation-select-field'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
-import { TASK_TEMPLATES_FOR_SELECT_RESOURCE } from '@/features/task-templates/for-select-api'
+import { Form } from '@/components/ui/form'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
+import { RecordFormActions } from '@/components/record-form/record-form-actions'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
 import { useWorkOrderForm } from '@/features/work-orders/use-work-order-form'
-import { quoteLineToForSelectItem } from '@/features/work-orders/quote-line-label'
-import { WorkOrderClosureSection } from '@/features/work-orders/work-order-closure-section'
-import { WorkOrderDynamicFieldsSection } from '@/features/work-orders/work-order-dynamic-fields-section'
-import { WorkOrderNotesSection } from '@/features/work-orders/work-order-notes-section'
-import { WorkOrderQuoteLinesField } from '@/features/work-orders/work-order-quote-lines-field'
-import { WorkOrderTeamSection } from '@/features/work-orders/work-order-team-section'
-import type { WorkOrderDetail, WorkOrderFormMode, WorkOrderType } from '@/features/work-orders/types'
-import type { RelationFieldRef } from '@/components/form/relation-select-field'
-import type { ForSelectItem } from '@/features/for-select/types'
+import { WorkOrderCreateSections } from '@/features/work-orders/work-order-create-sections'
+import { WorkOrderFormHeader } from '@/features/work-orders/work-order-form-header'
+import type { WorkOrderDetail, WorkOrderFormMode } from '@/features/work-orders/types'
 
-/** Resource segment of the offers for-select endpoint (`GET /api/quotes/for-select`). */
-const QUOTES_FOR_SELECT_RESOURCE = 'quotes'
-/** Separator between an offer's code and title, matching the backend's composed for-select label. */
-const QUOTE_LABEL_SEPARATOR = ' — '
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const WORK_ORDER_FORM_ID = 'work-order-form'
 
-const WORK_ORDER_TYPES: WorkOrderType[] = ['processing', 'project']
-
-/** Stable module-level references: a fresh `[]` per render would break memo/dep stability. */
-const EMPTY_SUPERVISORS: RelationFieldRef[] = []
-const EMPTY_PARTICIPANTS: ForSelectItem[] = []
+/** Hoisted: the form hook memoizes its defaults on the mode's identity. */
+const CREATE_MODE: WorkOrderFormMode = { type: 'create' }
 
 interface WorkOrderFormBodyProps {
-  mode: WorkOrderFormMode
   onSuccess: (workOrder: WorkOrderDetail) => void
   onCancel: () => void
-  /** Create-only: sequential code suggestion prefilled into the `code` default (D-1). */
+  /** Sequential code suggestion prefilled into the `code` default (D-1). */
   initialCode?: string
 }
 
 /**
- * The work order create/edit form UI. Every field is wrapped in `MetaField`
- * (spec 0004): hidden means absent, non-editable means disabled, `required`
- * comes from the resolved `ResourcePermissions`. `code`/`quote_id`'s
- * immutability after create (D-1/D-5) is NOT a frontend decision: the
- * backend's field-permission ceiling reports both `editable: true` only when
- * there is no model context (create) — the same mechanism every other field
- * uses. "Chiusura forzata" and "Descrizione e note" live in their own
- * sections (`WorkOrderClosureSection`/`WorkOrderNotesSection`) to keep this
- * file within the engineering size limits. All non-render logic lives in
+ * The work order create form UI, a replica of the work order detail (spec
+ * 0195 D-8 applied to Commesse, user directive 2026-10-06): the same
+ * `RecordCanvas`, the record card with its identity band, KPI strip and
+ * sections, every row closed until clicked (`WorkOrderCreateSections`). There
+ * is no edit form: the detail edits a persisted work order in place.
+ *
+ * Every field sits in `MetaField` (spec 0004): hidden means absent,
+ * non-editable means disabled, `required` comes from the resolved
+ * `ResourcePermissions`. Pure composition: every non-render concern lives in
  * `useWorkOrderForm`.
  */
-export function WorkOrderFormBody({ mode, onSuccess, onCancel, initialCode }: WorkOrderFormBodyProps) {
+export function WorkOrderFormBody({ onSuccess, onCancel, initialCode }: WorkOrderFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const {
-    form,
-    serverError,
-    onSubmit,
-    handleQuoteChange,
-    handleForceClosedChange,
-    attributeContext,
-    attributesLoading,
-    hasPickedLines,
-  } = useWorkOrderForm({
-    mode,
-    onSuccess,
-    initialCode,
-  })
-
-  const quoteId = useWatch({ control: form.control, name: 'quote_id' })
-
-  const selectedQuote =
-    mode.type === 'edit' && mode.workOrder.quote
-      ? {
-          id: mode.workOrder.quote.id,
-          name: `${mode.workOrder.quote.code}${QUOTE_LABEL_SEPARATOR}${mode.workOrder.quote.title}`,
-        }
-      : null
-
-  const selectedQuoteLines =
-    mode.type === 'edit' ? mode.workOrder.quote_lines.map(quoteLineToForSelectItem) : undefined
-
-  const selectedTaskTemplate = mode.type === 'edit' ? mode.workOrder.task_template : null
-
-  const selectedSupervisors = mode.type === 'edit' ? mode.workOrder.supervisors : EMPTY_SUPERVISORS
-  const selectedParticipants =
-    mode.type === 'edit'
-      ? mode.workOrder.participants.map((participant) => ({
-          id: participant.id,
-          label: participant.name,
-        }))
-      : EMPTY_PARTICIPANTS
-
-  const identityVisible =
-    fieldPermission('code').visible ||
-    fieldPermission('title').visible ||
-    fieldPermission('type').visible ||
-    fieldPermission('callback_date').visible ||
-    fieldPermission('task_template_id').visible
-  const offerVisible = fieldPermission('quote_id').visible || fieldPermission('quote_line_ids').visible
+  const workOrderForm = useWorkOrderForm({ mode: CREATE_MODE, onSuccess, initialCode })
+  const { form, serverError, onSubmit } = workOrderForm
+  const draft = useDraftInlineEdit(form)
+  const { isSubmitting } = form.formState
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4 p-4"
-          noValidate
-        >
-          {identityVisible && (
-            <FormSection
-              icon={ClipboardList}
-              title={t('workOrders.form.sections.identity.title')}
-              description={t('workOrders.form.sections.identity.description')}
-            >
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <MetaField
-                  control={form.control}
-                  name="code"
-                  metaKey="code"
-                  label={t('workOrders.form.code')}
-                  hint={mode.type === 'edit' ? t('workOrders.form.hints.codeLocked') : undefined}
-                >
-                  {({ field, disabled, readOnly }) => (
-                    <FormControl>
-                      <Input
-                        autoComplete="off"
-                        disabled={disabled}
-                        readOnly={readOnly}
-                        placeholder={t('workOrders.form.codePlaceholder')}
-                        {...field}
-                      />
-                    </FormControl>
-                  )}
-                </MetaField>
-
-                <MetaField control={form.control} name="title" metaKey="title" label={t('workOrders.form.title')}>
-                  {({ field, disabled, readOnly }) => (
-                    <FormControl>
-                      <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                    </FormControl>
-                  )}
-                </MetaField>
-
-                <MetaField control={form.control} name="type" metaKey="type" label={t('workOrders.form.type')}>
-                  {({ field, disabled }) => (
-                    <Select value={field.value} onValueChange={field.onChange} disabled={disabled}>
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {WORK_ORDER_TYPES.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {t(`workOrders.options.type.${type}`)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </MetaField>
-
-                <MetaField
-                  control={form.control}
-                  name="callback_date"
-                  metaKey="callback_date"
-                  label={t('workOrders.form.callbackDate')}
-                >
-                  {({ field, disabled, readOnly }) => (
-                    <FormControl>
-                      <Input
-                        type="date"
-                        disabled={disabled}
-                        readOnly={readOnly}
-                        value={field.value ?? ''}
-                        onChange={(event) => field.onChange(event.target.value || null)}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                        ref={field.ref}
-                      />
-                    </FormControl>
-                  )}
-                </MetaField>
-
-                <RelationSelectField
-                  control={form.control}
-                  name="task_template_id"
-                  metaKey="task_template_id"
-                  label={t('workOrders.form.taskTemplateId')}
-                  hint={
-                    mode.type === 'edit'
-                      ? t('workOrders.form.hints.taskTemplateLocked')
-                      : t('workOrders.form.hints.taskTemplateHelp')
-                  }
-                  resource={TASK_TEMPLATES_FOR_SELECT_RESOURCE}
-                  searchPlaceholder={t('workOrders.form.taskTemplateSearchPlaceholder')}
-                  selected={selectedTaskTemplate}
-                  placeholder={t('workOrders.form.taskTemplatePlaceholder')}
-                  emptyLabel={t('workOrders.form.taskTemplateEmpty')}
-                  errorLabel={t('workOrders.form.taskTemplateError')}
-                  clearLabel={t('workOrders.form.taskTemplateClear')}
-                  retryLabel={t('common.retry')}
-                />
-              </div>
-            </FormSection>
-          )}
-
-          {offerVisible && (
-            <FormSection
-              icon={Boxes}
-              title={t('workOrders.form.sections.offer.title')}
-              description={t('workOrders.form.sections.offer.description')}
-            >
-              <RelationSelectField
+    <Form {...form}>
+      {/* `display: contents`: this native `<form>` only scopes the HTML submit
+          boundary, it must not become an extra box around the canvas. */}
+      <form id={WORK_ORDER_FORM_ID} onSubmit={form.handleSubmit(onSubmit)} className="contents" noValidate>
+        <RecordCanvas>
+          <RecordBody side={null}>
+            <RecordCard>
+              <WorkOrderFormHeader
                 control={form.control}
-                name="quote_id"
-                metaKey="quote_id"
-                label={t('workOrders.form.quoteId')}
-                hint={mode.type === 'edit' ? t('workOrders.form.hints.quoteLocked') : undefined}
-                resource={QUOTES_FOR_SELECT_RESOURCE}
-                searchPlaceholder={t('workOrders.form.quoteSearchPlaceholder')}
-                selected={selectedQuote}
-                onValueChange={handleQuoteChange}
-                placeholder={t('workOrders.form.quotePlaceholder')}
-                emptyLabel={t('workOrders.form.quoteEmpty')}
-                errorLabel={t('workOrders.form.quoteError')}
-                clearLabel={t('workOrders.form.quoteClear')}
-                retryLabel={t('common.retry')}
+                formId={WORK_ORDER_FORM_ID}
+                isSubmitting={isSubmitting}
+                submitError={serverError}
+                onCancel={onCancel}
               />
+              <WorkOrderCreateSections workOrderForm={workOrderForm} draft={draft} />
+            </RecordCard>
 
-              <MetaField
-                control={form.control}
-                name="quote_line_ids"
-                metaKey="quote_line_ids"
-                label={t('workOrders.form.quoteLineIds')}
-              >
-                {({ field, disabled }) => (
-                  <WorkOrderQuoteLinesField
-                    value={field.value}
-                    onChange={field.onChange}
-                    quoteId={quoteId}
-                    exceptWorkOrderId={mode.type === 'edit' ? mode.workOrder.id : undefined}
-                    selectedItems={selectedQuoteLines}
-                    disabled={disabled}
-                  />
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          {hasPickedLines ? (
-            <WorkOrderDynamicFieldsSection
-              control={form.control}
-              attributes={attributeContext.applicable_attributes}
-              layout={attributeContext.attribute_layout}
-              isLoading={attributesLoading}
+            {/* The same actions the identity band carries, repeated where the
+                form ends: the operator finishes typing far from the top. */}
+            <RecordFormActions
+              formId={WORK_ORDER_FORM_ID}
+              isSubmitting={isSubmitting}
+              submitLabel={t('workOrders.form.save')}
+              submittingLabel={t('workOrders.form.saving')}
+              cancel={{ label: t('workOrders.form.cancel'), onCancel }}
             />
-          ) : null}
-
-          <WorkOrderTeamSection
-            control={form.control}
-            supervisors={selectedSupervisors}
-            participants={selectedParticipants}
-          />
-
-          <WorkOrderClosureSection
-            control={form.control}
-            onForceClosedChange={handleForceClosedChange}
-            openTasksCount={mode.type === 'edit' ? mode.workOrder.open_tasks_count : 0}
-            wasAlreadyForceClosed={mode.type === 'edit' ? mode.workOrder.is_force_closed : false}
-          />
-
-          <WorkOrderNotesSection control={form.control} />
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('workOrders.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('workOrders.form.saving') : t('workOrders.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+          </RecordBody>
+        </RecordCanvas>
+      </form>
+    </Form>
   )
 }

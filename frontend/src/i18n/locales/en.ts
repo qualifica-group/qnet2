@@ -6,6 +6,7 @@
  * `en-*.ts` files to keep this file within the engineering size limits
  * (see `.claude/rules/engineering.md` §6); `en`'s public shape is unchanged.
  */
+import { common } from './en-common'
 import { personalData, personalDataFieldLabels } from './en-personal-data'
 import { enums } from './en-enums'
 import { companies } from './en-companies'
@@ -81,33 +82,7 @@ import {
 } from './en-users-employment'
 
 export const en = {
-  common: {
-    loading: 'Loading…',
-    retry: 'Retry',
-    search: 'Search',
-    notFound: 'Page not found',
-    backToDashboard: 'Back to dashboard',
-    comingSoon: 'This section is not available yet.',
-    clear: 'Clear',
-    confirm: 'Confirm',
-    cancel: 'Cancel',
-    confirmTitle: 'Are you sure?',
-    yes: 'Yes',
-    no: 'No',
-    back: 'Back',
-    edit: 'Edit',
-    new: 'New',
-    viewProfile: "View {{name}}'s profile",
-    /** Label of the select a tab strip collapses into when the tabs no longer fit. */
-    tabsSelectLabel: 'Section',
-    /** Appended to the name when duplicating a record (row action "duplicate"); leading space by design. */
-    /** Accessible name of the button that removes one chip from a multi-select. */
-    remove: 'Remove',
-    close: 'Close',
-    /** Sheet toolbar action that leaves the modal for the record's dedicated detail page. */
-    openDetailPage: 'Open detail page',
-    copySuffix: ' (copy)',
-  },
+  common,
   config: {
     error: {
       title: 'Unable to start the application',
@@ -141,6 +116,8 @@ export const en = {
     layout: 'Attribute layout',
     generatePdf: 'Download quote',
     transferContact: 'Transfer contact',
+    forceClose: 'Force close',
+    reopen: 'Reopen',
   },
   table,
   // Strings of the generic statistics panel (spec 0026). The per-module widget

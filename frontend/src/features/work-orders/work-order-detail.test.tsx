@@ -1,16 +1,33 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ConfirmContext } from '@/components/confirm-dialog-context'
 import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { formatDate } from '@/lib/formatting/date-display'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
-/** Every render goes through a Router: the card links related records with real `<Link>`s. */
+/**
+ * Every render goes through a Router (the card links related records with
+ * real `<Link>`s), a query client (the in-place editors share the edit
+ * form, spec 0195 applied to Commesse) and the confirm service (the header's
+ * "Riapri" action asks first).
+ */
 function render(ui: ReactElement) {
-  return rtlRender(ui, { wrapper: MemoryRouter })
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <ConfirmContext.Provider value={() => Promise.resolve(true)}>{children}</ConfirmContext.Provider>
+        </QueryClientProvider>
+      </MemoryRouter>
+    )
+  }
+  return rtlRender(ui, { wrapper: Wrapper })
 }
 
 // Related-record links open their target in a modal through `useModuleOpener`,
@@ -117,10 +134,11 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
     expect(screen.getByRole('heading', { name: 'Installazione impianto' })).toBeInTheDocument()
-    expect(screen.getByText('COM-0001')).toBeInTheDocument()
+    // Header subtitle/KPI and the in-place "Details" rows both show these.
+    expect(screen.getAllByText('COM-0001').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Processing').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Open').length).toBeGreaterThan(0)
-    expect(screen.getByText(formatDate('2026-09-30'))).toBeInTheDocument()
+    expect(screen.getAllByText(formatDate('2026-09-30')).length).toBeGreaterThan(0)
     expect(screen.getByText('QUO-0004')).toBeInTheDocument()
     expect(screen.getByText('Fornitura annuale')).toBeInTheDocument()
   })
@@ -276,25 +294,13 @@ describe('WorkOrderDetailView — additional information (spec 0098, AC-023)', (
   })
 })
 
-describe('WorkOrderDetailView — edit action on the card', () => {
-  it('renders Edit in the record card and calls onEdit when the actor may update', () => {
-    const onEdit = vi.fn()
-    render(<WorkOrderDetailView workOrder={workOrder()} onEdit={onEdit} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-
-    expect(onEdit).toHaveBeenCalledTimes(1)
-  })
-
-  it('omits Edit without update permission or without an edit surface', () => {
-    const readOnly = workOrder({
-      permissions: { ...workOrder().permissions, resource: { ...workOrder().permissions.resource, update: false } },
-    })
-    const { unmount } = render(<WorkOrderDetailView workOrder={readOnly} onEdit={vi.fn()} />)
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-    unmount()
-
+// REQUIREMENT CHANGED (user directive 2026-10-06, spec 0195 applied to
+// Commesse): the record has no "Edit" action any more — its fields edit in
+// place (`work-order-detail-inline-edit.test.tsx`).
+describe('WorkOrderDetailView — no edit action', () => {
+  it('renders no Edit button on the card', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
+
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
   })
 })

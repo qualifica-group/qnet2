@@ -69,14 +69,19 @@ export async function createWorkOrder(payload: CreateWorkOrderPayload): Promise<
 /**
  * Partially updates a work order (PATCH). `code`/`quote_id` are never keys of
  * `UpdateWorkOrderPayload` (D-1/D-5): the backend rejects their mere presence
- * with 422 regardless of role.
+ * with 422 regardless of role. The response carries the re-evaluated
+ * `permissions` too: the in-place detail writes it straight into the detail
+ * cache, which the detail reads its gates from.
  */
 export async function updateWorkOrder(
   id: number,
   payload: UpdateWorkOrderPayload,
-): Promise<WorkOrderDetail> {
-  const { data } = await apiClient.patch<ApiResponse<WorkOrderDetail>>(`/work-orders/${id}`, payload)
-  return data.data
+): Promise<WorkOrderDetailWithPermissions> {
+  const { data } = await apiClient.patch<ApiResponseWithPermissions<WorkOrderDetail, ResourcePermissions>>(
+    `/work-orders/${id}`,
+    payload,
+  )
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a work order. Backend responds 204 with no body; its pivot rows cascade (D-11). */

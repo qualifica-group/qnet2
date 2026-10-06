@@ -5,7 +5,7 @@ import { RecordBody } from '@/components/detail/record-body'
 import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
-import { useTaskDraftEdit } from '@/features/tasks/use-task-draft-edit'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
 import { useTaskForm } from '@/features/tasks/use-task-form'
 import { TaskAttachmentStaging } from '@/features/tasks/task-attachment-staging'
 import { TaskCreateSections } from '@/features/tasks/task-create-sections'
@@ -49,7 +49,7 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
     addStagedAttachments,
     removeStagedAttachment,
   } = taskForm
-  const draft = useTaskDraftEdit(form)
+  const draft = useDraftInlineEdit(form)
   // AC-085: opened as "crea sotto-task", the parent arrives prefilled and locked.
   const parentLocked = mode.type === 'create' && (mode.parentTaskId ?? null) !== null
   const { isSubmitting } = form.formState

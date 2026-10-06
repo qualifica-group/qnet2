@@ -164,13 +164,6 @@ export const tasks = {
       endsAfter_one: '{{count}} occorrenza',
       endsAfter_other: '{{count}} occorrenze',
     },
-    inlineEdit: {
-      edit: 'Modifica {{field}}',
-      save: 'Salva',
-      apply: 'Fatto',
-      revert: 'Ripristina',
-      cancel: 'Annulla',
-    },
     sections: {
       identity: 'Dati',
       people: 'Persone',

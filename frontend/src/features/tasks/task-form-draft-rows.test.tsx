@@ -79,7 +79,7 @@ describe('Task create draft — rows start closed (spec 0195 D-8)', () => {
     openInlineEditor(label('tasks.form.title'))
 
     fireEvent.change(titleInput() as HTMLElement, { target: { value: 'Preparare il report' } })
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.detail.inlineEdit.apply') }))
+    fireEvent.click(screen.getByRole('button', { name: label('common.inlineEdit.apply') }))
 
     expect(titleInput()).not.toBeInTheDocument()
     // The closed row and the identity band both read it.
@@ -102,7 +102,7 @@ describe('Task create draft — rows start closed (spec 0195 D-8)', () => {
     openInlineEditor(label('tasks.form.title'))
 
     fireEvent.change(titleInput() as HTMLElement, { target: { value: 'Da scartare' } })
-    fireEvent.click(screen.getByRole('button', { name: label('tasks.detail.inlineEdit.revert') }))
+    fireEvent.click(screen.getByRole('button', { name: label('common.inlineEdit.revert') }))
 
     await waitFor(() => expect(screen.queryByText('Da scartare')).not.toBeInTheDocument())
   })

@@ -16,7 +16,7 @@ import {
 import { TaskDescriptionField, TaskParentField, TaskTitleField } from '@/features/tasks/task-identity-section'
 import { useTaskCascadeEditable } from '@/features/tasks/task-inline-cascade'
 import { TaskEndDate } from '@/features/tasks/task-end-date'
-import { TaskInlineField } from '@/features/tasks/task-inline-field'
+import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { TaskPeopleList, TaskPerson } from '@/features/tasks/task-people-list'
 import {
@@ -34,7 +34,7 @@ import type { TaskDetailEditor } from '@/features/tasks/use-task-inline-edit'
 
 /**
  * The editable sections of the task detail (spec 0195), part one: the same
- * rows the read-only detail always showed, each one a `TaskInlineField` whose
+ * rows the read-only detail always showed, each one a `RecordInlineField` whose
  * editor is the create form's own field component. Part two (links, closure,
  * recurrence) lives in `task-detail-link-sections.tsx` for the size budget.
  */
@@ -56,23 +56,23 @@ export function TaskDetailIdentitySection({ task, editor }: TaskDetailSectionPro
   return (
     <RecordSection title={t('tasks.detail.sections.identity')} icon={<ClipboardList />}>
       <RecordFieldList>
-        <TaskInlineField
+        <RecordInlineField
           field="title"
           label={t('tasks.form.title')}
           inline={inline}
           editor={<TaskTitleField control={form.control} />}
         >
           {task.title}
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="description"
           label={t('tasks.detail.description')}
           inline={inline}
           editor={<TaskDescriptionField control={form.control} />}
         >
           {task.description ? <RichTextContent html={task.description} /> : <DetailEmpty />}
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="parent_task_id"
           label={t('tasks.form.parentTask')}
           inline={inline}
@@ -93,7 +93,7 @@ export function TaskDetailIdentitySection({ task, editor }: TaskDetailSectionPro
           ) : (
             <DetailEmpty />
           )}
-        </TaskInlineField>
+        </RecordInlineField>
         {/* Written only by the Blocca/Sblocca domain actions (AC-086). */}
         <RecordField label={t('tasks.detail.isBlocked')}>{t(task.is_blocked ? 'common.yes' : 'common.no')}</RecordField>
       </RecordFieldList>
@@ -109,7 +109,7 @@ export function TaskDetailClassificationSection({ task, editor }: TaskDetailSect
   return (
     <RecordSection title={t('tasks.form.sections.classification.title')} icon={<Tags />}>
       <RecordFieldList>
-        <TaskInlineField
+        <RecordInlineField
           field="task_status_id"
           label={t('tasks.form.status')}
           inline={inline}
@@ -118,39 +118,39 @@ export function TaskDetailClassificationSection({ task, editor }: TaskDetailSect
           editor={<TaskStatusField control={form.control} task={task} onStatusItemChange={handleStatusItemChange} />}
         >
           <TaskLookupBadge value={task.task_status} />
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="task_type_id"
           label={t('tasks.form.type')}
           inline={inline}
           editor={<TaskTypeField control={form.control} task={task} />}
         >
           {lookupDisplay(task.task_type)}
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="task_priority_id"
           label={t('tasks.form.priority')}
           inline={inline}
           editor={<TaskPriorityField control={form.control} task={task} />}
         >
           {lookupDisplay(task.task_priority)}
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="task_importance_id"
           label={t('tasks.form.importance')}
           inline={inline}
           editor={<TaskImportanceField control={form.control} task={task} />}
         >
           {lookupDisplay(task.task_importance)}
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="task_category_id"
           label={t('tasks.form.category')}
           inline={inline}
           editor={<TaskCategoryField control={form.control} task={task} />}
         >
           {lookupDisplay(task.task_category)}
-        </TaskInlineField>
+        </RecordInlineField>
       </RecordFieldList>
     </RecordSection>
   )
@@ -167,15 +167,15 @@ export function TaskDetailPeopleSection({ task, editor }: TaskDetailSectionProps
         <RecordField label={t('tasks.detail.creator')}>
           <TaskPerson person={task.creator} />
         </RecordField>
-        <TaskInlineField
+        <RecordInlineField
           field="requester_id"
           label={t('tasks.detail.requester')}
           inline={inline}
           editor={<TaskRequesterField control={form.control} requester={task.requester} />}
         >
           {task.requester ? <TaskPerson person={task.requester} /> : <DetailEmpty />}
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="assignee_ids"
           label={t('tasks.detail.assignees')}
           inline={inline}
@@ -188,8 +188,8 @@ export function TaskDetailPeopleSection({ task, editor }: TaskDetailSectionProps
           }
         >
           <TaskPeopleList people={task.assignees} />
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="watcher_ids"
           label={t('tasks.detail.watchers')}
           inline={inline}
@@ -198,15 +198,15 @@ export function TaskDetailPeopleSection({ task, editor }: TaskDetailSectionProps
           }
         >
           <TaskPeopleList people={task.watchers} />
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="is_private"
           label={t('tasks.form.isPrivate')}
           inline={inline}
           editor={<TaskIsPrivateField control={form.control} />}
         >
           {t(task.is_private ? 'common.yes' : 'common.no')}
-        </TaskInlineField>
+        </RecordInlineField>
       </RecordFieldList>
     </RecordSection>
   )
@@ -220,46 +220,46 @@ export function TaskDetailPlanningSection({ task, editor }: TaskDetailSectionPro
   return (
     <RecordSection title={t('tasks.detail.sections.planning')} icon={<CalendarClock />}>
       <RecordFieldList>
-        <TaskInlineField
+        <RecordInlineField
           field="start_date"
           label={t('tasks.detail.startDate')}
           inline={inline}
           editor={<TaskDateField control={form.control} name="start_date" />}
         >
           {formatDate(task.start_date) || <DetailEmpty />}
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="start_time"
           label={t('tasks.detail.startTime')}
           inline={inline}
           editor={<TaskTimeField control={form.control} name="start_time" />}
         >
           {task.start_time ?? <DetailEmpty />}
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="end_date"
           label={t('tasks.detail.endDate')}
           inline={inline}
           editor={<TaskDateField control={form.control} name="end_date" />}
         >
           <TaskEndDate endDate={task.end_date} statusGroup={task.task_status.group} />
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="end_time"
           label={t('tasks.detail.endTime')}
           inline={inline}
           editor={<TaskTimeField control={form.control} name="end_time" />}
         >
           {task.end_time ?? <DetailEmpty />}
-        </TaskInlineField>
-        <TaskInlineField
+        </RecordInlineField>
+        <RecordInlineField
           field="estimated_minutes"
           label={t('tasks.detail.estimatedMinutes')}
           inline={inline}
           editor={<TaskEstimatedMinutesField control={form.control} />}
         >
           {task.estimated_minutes !== null ? formatMinutesLabel(task.estimated_minutes) : <DetailEmpty />}
-        </TaskInlineField>
+        </RecordInlineField>
         {/* Set by the completion flow (Completa), never by a form (D-6). */}
         {field('completion_date').visible ? (
           <RecordField label={t('tasks.detail.completionDate')}>

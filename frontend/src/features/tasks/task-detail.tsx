@@ -39,7 +39,7 @@ interface TaskDetailViewProps {
  * actions, KPI strip, then the sections.
  *
  * Spec 0195 (user directive 2026-10-06): there is no edit page any more — the
- * sections' fields edit IN PLACE, one at a time (`TaskInlineField`, driven by
+ * sections' fields edit IN PLACE, one at a time (`RecordInlineField`, driven by
  * `useTaskInlineEdit`), each save a PATCH of that field alone.
  *
  * Spec 0117/0134 D-3: note, documenti, log attivita' e segnatempo vivono

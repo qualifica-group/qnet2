@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createPortal } from 'react-dom'
-import { useOutsidePointerDismiss } from '@/features/tasks/use-outside-pointer-dismiss'
+import { useOutsidePointerDismiss } from '@/hooks/use-outside-pointer-dismiss'
 
 interface RowProps {
   active: boolean

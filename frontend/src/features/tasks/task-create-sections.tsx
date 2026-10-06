@@ -32,7 +32,7 @@ import {
 import { peopleOf, requesterRefOf } from '@/features/tasks/task-form-hydration'
 import { TaskFormSubtasksSection } from '@/features/tasks/task-form-subtasks-section'
 import { TaskDescriptionField, TaskParentField, TaskTitleField } from '@/features/tasks/task-identity-section'
-import { TaskInlineField } from '@/features/tasks/task-inline-field'
+import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import { TaskPerson } from '@/features/tasks/task-people-list'
 import {
   TaskAssigneesField,
@@ -44,12 +44,12 @@ import {
 import { TaskDateField, TaskEstimatedMinutesField, TaskTimeField } from '@/features/tasks/task-planning-section'
 import type { TaskDetail } from '@/features/tasks/types'
 import type { TaskFormState } from '@/features/tasks/use-task-form'
-import type { TaskInlineEdit } from '@/features/tasks/use-task-inline-edit'
+import type { InlineEdit } from '@/components/record-form/record-inline-field'
 
 interface TaskCreateSectionsProps {
   taskForm: TaskFormState
-  /** The create draft's row state (`useTaskDraftEdit`): rows start closed, like the detail's. */
-  draft: TaskInlineEdit
+  /** The create draft's row state (`useDraftInlineEdit`): rows start closed, like the detail's. */
+  draft: InlineEdit
   /** The "clona" source (spec 0156 D-4), `null` on a bare create: feeds the pickers' label hydration only. */
   source: TaskDetail | null
   /** "Crea sotto-task": the parent arrives prefilled and must not be changed (AC-085). */
@@ -85,18 +85,18 @@ export function TaskCreateSections({ taskForm, draft, source, parentLocked }: Ta
     <RecordSectionsGrid>
       <RecordSection title={t('tasks.detail.sections.identity')} icon={<ClipboardList />}>
         <RecordFieldList>
-          <TaskInlineField field="title" label={t('tasks.form.title')} inline={draft} editor={<TaskTitleField control={control} />}>
+          <RecordInlineField field="title" label={t('tasks.form.title')} inline={draft} editor={<TaskTitleField control={control} />}>
             <TextDisplay value={values.title ?? null} />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="description"
             label={t('tasks.detail.description')}
             inline={draft}
             editor={<TaskDescriptionField control={control} />}
           >
             <RichTextDisplay html={values.description ?? null} />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="parent_task_id"
             label={t('tasks.form.parentTask')}
             inline={draft}
@@ -106,47 +106,47 @@ export function TaskCreateSections({ taskForm, draft, source, parentLocked }: Ta
             }
           >
             <ForSelectLabelDisplay resource={TASKS_FOR_SELECT_RESOURCE} id={values.parent_task_id ?? null} />
-          </TaskInlineField>
+          </RecordInlineField>
         </RecordFieldList>
       </RecordSection>
 
       <RecordSection title={t('tasks.form.sections.classification.title')} icon={<Tags />}>
         <RecordFieldList>
-          <TaskInlineField
+          <RecordInlineField
             field="task_status_id"
             label={t('tasks.form.status')}
             inline={draft}
             editor={<TaskStatusField control={control} task={null} onStatusItemChange={handleStatusItemChange} />}
           >
             <LookupBadgeDisplay resource={TASK_STATUSES_FOR_SELECT_RESOURCE} id={values.task_status_id ?? null} />
-          </TaskInlineField>
-          <TaskInlineField field="task_type_id" label={t('tasks.form.type')} inline={draft} editor={<TaskTypeField control={control} task={null} />}>
+          </RecordInlineField>
+          <RecordInlineField field="task_type_id" label={t('tasks.form.type')} inline={draft} editor={<TaskTypeField control={control} task={null} />}>
             <LookupBadgeDisplay resource={TASK_TYPES_FOR_SELECT_RESOURCE} id={values.task_type_id ?? null} />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="task_priority_id"
             label={t('tasks.form.priority')}
             inline={draft}
             editor={<TaskPriorityField control={control} task={null} />}
           >
             <LookupBadgeDisplay resource={TASK_PRIORITIES_FOR_SELECT_RESOURCE} id={values.task_priority_id ?? null} />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="task_importance_id"
             label={t('tasks.form.importance')}
             inline={draft}
             editor={<TaskImportanceField control={control} task={null} />}
           >
             <LookupBadgeDisplay resource={TASK_IMPORTANCES_FOR_SELECT_RESOURCE} id={values.task_importance_id ?? null} />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="task_category_id"
             label={t('tasks.form.category')}
             inline={draft}
             editor={<TaskCategoryField control={control} task={null} />}
           >
             <LookupBadgeDisplay resource={TASK_CATEGORIES_FOR_SELECT_RESOURCE} id={values.task_category_id ?? null} />
-          </TaskInlineField>
+          </RecordInlineField>
         </RecordFieldList>
       </RecordSection>
 
@@ -156,7 +156,7 @@ export function TaskCreateSections({ taskForm, draft, source, parentLocked }: Ta
           <RecordField label={t('tasks.detail.creator')}>
             {currentUserRef ? <TaskPerson person={currentUserRef} /> : <DetailEmpty />}
           </RecordField>
-          <TaskInlineField
+          <RecordInlineField
             field="requester_id"
             label={t('tasks.detail.requester')}
             inline={draft}
@@ -166,8 +166,8 @@ export function TaskCreateSections({ taskForm, draft, source, parentLocked }: Ta
               ids={values.requester_id != null ? [values.requester_id] : []}
               known={requester ? [requester] : undefined}
             />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="assignee_ids"
             label={t('tasks.detail.assignees')}
             inline={draft}
@@ -179,8 +179,8 @@ export function TaskCreateSections({ taskForm, draft, source, parentLocked }: Ta
             }
           >
             <PeopleDisplay ids={(values.assignee_ids ?? []).filter(isId)} known={peopleOf(source?.assignees)} />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="watcher_ids"
             label={t('tasks.detail.watchers')}
             inline={draft}
@@ -189,55 +189,55 @@ export function TaskCreateSections({ taskForm, draft, source, parentLocked }: Ta
             }
           >
             <PeopleDisplay ids={(values.watcher_ids ?? []).filter(isId)} known={peopleOf(source?.watchers)} />
-          </TaskInlineField>
-          <TaskInlineField field="is_private" label={t('tasks.form.isPrivate')} inline={draft} editor={<TaskIsPrivateField control={control} />}>
+          </RecordInlineField>
+          <RecordInlineField field="is_private" label={t('tasks.form.isPrivate')} inline={draft} editor={<TaskIsPrivateField control={control} />}>
             <YesNoDisplay value={values.is_private ?? false} />
-          </TaskInlineField>
+          </RecordInlineField>
         </RecordFieldList>
       </RecordSection>
 
       <RecordSection title={t('tasks.detail.sections.planning')} icon={<CalendarClock />}>
         <RecordFieldList>
-          <TaskInlineField
+          <RecordInlineField
             field="start_date"
             label={t('tasks.detail.startDate')}
             inline={draft}
             editor={<TaskDateField control={control} name="start_date" />}
           >
             <DateDisplay value={values.start_date ?? null} />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="start_time"
             label={t('tasks.detail.startTime')}
             inline={draft}
             editor={<TaskTimeField control={control} name="start_time" />}
           >
             <TextDisplay value={values.start_time ?? null} />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="end_date"
             label={t('tasks.detail.endDate')}
             inline={draft}
             editor={<TaskDateField control={control} name="end_date" />}
           >
             <DateDisplay value={values.end_date ?? null} />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="end_time"
             label={t('tasks.detail.endTime')}
             inline={draft}
             editor={<TaskTimeField control={control} name="end_time" />}
           >
             <TextDisplay value={values.end_time ?? null} />
-          </TaskInlineField>
-          <TaskInlineField
+          </RecordInlineField>
+          <RecordInlineField
             field="estimated_minutes"
             label={t('tasks.detail.estimatedMinutes')}
             inline={draft}
             editor={<TaskEstimatedMinutesField control={control} />}
           >
             <MinutesDisplay value={values.estimated_minutes ?? null} />
-          </TaskInlineField>
+          </RecordInlineField>
         </RecordFieldList>
       </RecordSection>
 
