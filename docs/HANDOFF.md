@@ -88,7 +88,10 @@
   ma `moduleScreen` di `quotes` non era `formOwnsHeader`, quindi `ModuleFormPage` (e lo Sheet modale) aggiungevano
   il proprio titolo/sottotitolo sopra. Fix: `formOwnsHeader: true` in `quote-screens.tsx` (+1 test in
   `quote-screens.test.tsx`). Vitest quotes+modules 414 pass, ESLint ok, `tsc -b --force` pulito. Manuale: nessun impatto.
-- Aperto: `work-orders` (spec 0196) ha lo stesso difetto su /work-orders/new (header proprio, flag mancante).
+- Stesso difetto chiuso su `work-orders` (spec 0196, /work-orders/new): `formOwnsHeader: true` in
+  `work-order-screens.tsx` + nuovo `work-order-screens.test.tsx`. Vitest work-orders+modules 288 pass, ESLint ok.
+  COMMITTATO. Al momento del fix `tsc -b --force` era rosso solo per lavori in corso altrui (`personal-data`,
+  `registries`), nessun errore in work-orders.
 
 ## ANAGRAFICHE: "TAG" COME CAMPO PERSONALIZZATO — VERDE, NON COMMITTATO (2026-10-06)
 
