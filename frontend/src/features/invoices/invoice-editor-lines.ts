@@ -68,6 +68,7 @@ const HEADER_FIELDS = [
   'customer_registry_id',
   'payment_method_id',
   'financial_account_id',
+  'layout_id',
   'notes',
   'internal_note',
   'tag',

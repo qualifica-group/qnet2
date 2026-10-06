@@ -40,6 +40,7 @@ class InvoiceService
         'lines.vatRate:id,name,rate',
         'installments',
         'createdBy:id,name',
+        'layout:id,name',
     ];
 
     /** Optional header keys: written only when the payload carries them. */
@@ -119,7 +120,7 @@ class InvoiceService
      */
     public function updateDetails(Invoice $invoice, array $data): Invoice
     {
-        $attributes = Arr::only($data, ['external_number', 'external_date', 'tag', 'deviation', 'internal_note']);
+        $attributes = Arr::only($data, ['external_number', 'external_date', 'tag', 'deviation', 'internal_note', 'layout_id']);
 
         if (array_key_exists('external_number', $attributes)) {
             $registered = filled($attributes['external_number']);
@@ -213,7 +214,7 @@ class InvoiceService
         );
 
         $header = Arr::only($data, ['document_date', 'company_id', 'customer_registry_id', 'payment_method_id', ...self::OPTIONAL_HEADER_KEYS])
-            + ['net_amount' => $computed['net'], 'vat_amount' => $computed['vat'], 'total_amount' => $computed['total']];
+            + ['layout_id' => $data['layout_id'] ?? null, 'net_amount' => $computed['net'], 'vat_amount' => $computed['vat'], 'total_amount' => $computed['total']];
 
         return ['header' => $header, 'lines' => $computed['lines'], 'installments' => $installments];
     }

@@ -114,6 +114,8 @@ export const invoices = {
     header: 'Header',
     notes: 'Notes',
     internalNote: 'Internal notes',
+    layout: 'Print layout',
+    layoutDefault: 'Default',
     externalReference: 'External invoice',
     createdBy: 'Issued by',
     linesColumns: {

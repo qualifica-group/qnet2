@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
+import { InvoiceLayoutField } from '@/features/invoices/invoice-layout-field'
 import { parseNumberInput } from '@/features/invoices/invoice-format'
 import { useInvoiceDetailsForm } from '@/features/invoices/use-invoice-details-form'
 import { useInvoice } from '@/features/invoices/use-invoice-queries'
@@ -101,6 +102,7 @@ function DetailsForm({ invoice, onClose }: { invoice: Invoice; onClose: () => vo
             )}
           />
         </div>
+        <InvoiceLayoutField control={form.control} selected={invoice.layout} />
         <FormField
           control={form.control}
           name="internal_note"

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0196-invoice-layout-selection" status="approved" owner="utente" date="2026-10-06">
+
+  <goal>
+    Ogni proforma/fattura puo' avere un proprio Layout Documento (modulo Fatture), scelto nella
+    modale di emissione/modifica e salvato sul documento. Il PDF scaricato e quello allegato alle
+    email/solleciti usano quel layout; senza scelta si usa il layout Fatture predefinito.
+  </goal>
+
+  <context>
+    Decisione utente 2026-10-06: opzione B (layout salvato sul documento), non la scelta al download.
+
+    Pattern esistente da ricalcare (offerte, spec 0070):
+    - `quotes.layout_id` (migrazione 2026_07_31_100000);
+    - QuoteDocumentLayoutResolver: il layout esplicito vince, anche se disattivato (D-3); altrimenti il default
+      attivo del modulo;
+    - ValidatesQuoteLayout (il layout deve essere del modulo giusto);
+    - DocumentLayoutService::assertNotInUse conta le offerte che usano il layout (422 'document_layouts.layout_in_use');
+    - FE features/quotes/quote-layout-section.tsx + features/document-layouts/for-select-api.ts (for-select per module).
+
+    Stato attuale fatture (spec 0194/0195):
+    - InvoicePdfRenderer::render(Invoice, User, ?DocumentLayout) usa il layout passato o il default;
+    - GET /api/invoices/{id}/pdf?layout_id= e l'import allegato `invoice_pdf` (+ layout_id) gia' accettano un layout
+      esplicito;
+    - modale FE `InvoiceEditorDialog` (testata: features/invoices/invoice-editor-header-section.tsx), dialog Dettagli
+      (PATCH /invoices/{id}/details, sempre consentita anche con incassi).
+
+    Decisioni tecniche proposte (D-1..D-5):
+    - D-1 `invoices.layout_id` FK document_layouts nullable, restrictOnDelete, index. NULL = usa il default al
+      momento della stampa (nessuno snapshot).
+    - D-2 Risoluzione (nuovo InvoiceDocumentLayoutResolver, stessa regola delle offerte):
+      1. invoices.layout_id se valorizzato, anche se il layout e' stato disattivato dopo;
+      2. altrimenti il default attivo del modulo invoices;
+      3. altrimenti 422 esistente.
+      Il `layout_id` passato esplicitamente a GET pdf / import resta un override puntuale e vince su tutto.
+    - D-3 Il layout si sceglie:
+      - nella modale (create/edit, campo "Layout di stampa" in Testata, opzionale; select dei soli layout attivi del
+        modulo Fatture; voce vuota = "Predefinito");
+      - nel dialog Dettagli, cosi' resta modificabile anche quando la modifica completa e' bloccata dagli incassi.
+      Validazione: esiste, module = invoices, is_active (solo in scrittura: un layout gia' salvato e poi disattivato
+      resta valido sul documento).
+    - D-4 Eliminazione layout: assertNotInUse conta anche le fatture; con un layout usato da fatture -> 422 con
+      messaggio dedicato ('document_layouts.layout_in_use_invoices', conteggio).
+    - D-5 InvoiceResource espone `layout: {id, name}|null`; la colonna SSRM non serve (fuori scope).
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione invoices.layout_id; Invoice::layout() + fillable.</item>
+      <item>InvoiceDocumentLayoutResolver usato da InvoicePdfRenderer (pdf e allegati email/sollecito).</item>
+      <item>Validazione layout_id in InvoiceWriteRequest (POST create / PUT update) e InvoiceDetailsRequest (PATCH details); InvoiceService persiste il campo.</item>
+      <item>InvoiceResource.layout; draft (invoice-draft) defaults.layout = null.</item>
+      <item>DocumentLayoutService::assertNotInUse esteso alle fatture.</item>
+      <item>FE: campo "Layout di stampa" nella modale (testata) e nel dialog Dettagli; dettaglio fattura mostra il layout; i18n IT/EN; guida in-app invoices aggiornata (IT/EN).</item>
+      <item>Test essenziali, vedi acceptance_criteria.</item>
+    </in>
+    <out>
+      <item>Scelta del layout al momento del download (opzione A).</item>
+      <item>Colonna layout nell'elenco Fatture e filtro relativo.</item>
+      <item>Layout predefinito per societa' emittente o per cliente.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <table name="invoices (alter)">layout_id foreignId nullable -> document_layouts, restrictOnDelete, index.</table>
+    <payload name="InvoiceWritePayload (POST /proforma-requests/{id}/invoice, PUT /invoices/{id})">
+      + layout_id: int|null (exists document_layouts, module = invoices, is_active) — opzionale; il payload PUT e'
+      completo, quindi chiave assente o null = "Predefinito".
+    </payload>
+    <endpoint method="PATCH" path="/api/invoices/{invoice}/details">
+      <request>+ layout_id: int|null (stesse regole; chiave assente = invariato)</request>
+      <response status="200">InvoiceResource con layout</response>
+    </endpoint>
+    <resource name="InvoiceResource">+ layout: { id, name } | null</resource>
+    <endpoint method="GET" path="/api/proforma-requests/{proformaRequest}/invoice-draft">
+      <response status="200">defaults + layout: null</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/invoices/{invoice}/pdf (esistente)">
+      <response status="200">layout = query layout_id ?? invoice.layout ?? default attivo; nessun layout -> 422 esistente</response>
+    </endpoint>
+    <endpoint method="DELETE" path="/api/document-layouts/{documentLayout} (esistente)">
+      <errors>422 { errors: { invoices: ['Il layout e' usato da N fatture...'] } } se referenziato da fatture</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">POST/PUT con layout_id di un layout Fatture attivo lo salva; layout_id di un layout Offerte o inattivo -> 422; PATCH details aggiorna layout_id anche con una rata incassata.</criterion>
+    <criterion id="AC-002">GET pdf: fattura con layout_id usa quel layout anche se poi disattivato e anche se un altro e' predefinito; fattura senza layout usa il predefinito; query layout_id vince sul layout salvato (verificato col converter double sul DOCX generato).</criterion>
+    <criterion id="AC-003">L'allegato invoice_pdf di email/sollecito usa il layout salvato sulla fattura.</criterion>
+    <criterion id="AC-004">DELETE di un layout usato da una fattura -> 422 e il layout resta.</criterion>
+    <criterion id="AC-005">(FE) La modale mostra "Layout di stampa" con i soli layout Fatture attivi e la voce Predefinito; il valore va nel payload; il dialog Dettagli permette di cambiarlo; parity i18n/help, tsc -b, ESLint, Pint puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Test essenziali: 1 file Pest (AC-001..004), aggiornamento minimo del test FE della modale per il nuovo campo (AC-005).</item>
+    <item>Riuso di QuoteDocumentLayoutResolver come pattern (non duplicare la query del default: estrarre/riusare il lookup del default per modulo se identico).</item>
+    <item>Nessuna nuova dipendenza; authz invariata (create/update/details esistenti); file &lt; 300 righe.</item>
+    <item>QuoteWorkflowMigrationTest: rollback step +1.</item>
+  </constraints>
+
+</spec>

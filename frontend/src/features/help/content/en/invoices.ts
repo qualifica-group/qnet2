@@ -85,6 +85,7 @@ const guide: HelpGuide = {
       title: 'Download the PDF',
       blocks: [
         { type: 'paragraph', text: 'With **Download PDF** on the row (or in the detail) QNet generates the document using the **active default Invoices layout** (see the Layouts guide).' },
+        { type: 'paragraph', text: 'The layout chosen in the document **Print layout** field (in **Header** or **Details**) is used for the PDF and for email and reminder attachments; if the field is empty (**Default**) the active default Invoices layout is used.' },
         { type: 'warning', text: 'If there is no active default layout of the **Invoices** module, an error is shown: create one in **Configuration › Layouts**.' },
       ],
     },

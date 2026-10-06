@@ -48,6 +48,7 @@ export function buildInvoiceWriteSchema(t: TFunction) {
     customer_registry_id: z.number(t('invoiceEditor.errors.customerRequired')).int(),
     payment_method_id: z.number(t('invoiceEditor.errors.paymentMethodRequired')).int(),
     financial_account_id: z.number().int().nullable(),
+    layout_id: z.number().int().nullable(),
     notes: z.string().max(NOTES_MAX, t('invoiceEditor.errors.notesMax')).nullable(),
     internal_note: z.string().max(NOTES_MAX, t('invoiceEditor.errors.notesMax')).nullable(),
     tag: tagSchema,
@@ -70,6 +71,7 @@ export function buildInvoiceDetailsSchema(t: TFunction) {
         .nullable(),
       external_date: z.string().nullable(),
       tag: tagSchema,
+      layout_id: z.number().int().nullable(),
       deviation: z.number(t('invoices.details.errors.deviationInvalid')).nullable(),
       internal_note: z.string().max(NOTES_MAX, t('invoices.details.errors.internalNoteMax')).nullable(),
     })

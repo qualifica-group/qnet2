@@ -75,6 +75,9 @@ function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermiss
               <RecordField label={t('invoices.columns.work_order_code')}>
                 {invoice.work_order?.code ?? <DetailEmpty />}
               </RecordField>
+              <RecordField label={t('invoices.detail.layout')}>
+                {invoice.layout?.name ?? t('invoices.detail.layoutDefault')}
+              </RecordField>
               <RecordField label={t('invoices.columns.quote_code')}>{invoice.quote?.code ?? <DetailEmpty />}</RecordField>
               <RecordField label={t('invoices.detail.createdBy')}>{invoice.created_by.name}</RecordField>
             </RecordFieldList>

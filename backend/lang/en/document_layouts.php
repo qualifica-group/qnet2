@@ -19,6 +19,7 @@ return [
     // as a 422 ValidationException when a layout is referenced by at least
     // one Quote, keyed on `quotes`.
     'layout_in_use' => 'This layout is used by :count quotes: you can only deactivate it.',
+    'layout_in_use_invoices' => 'This layout is used by :count invoices: you can only deactivate it.',
 
     'invoice_no_layout_available' => 'No document layout available for invoices.',
 

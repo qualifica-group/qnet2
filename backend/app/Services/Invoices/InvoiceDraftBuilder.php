@@ -57,6 +57,7 @@ final class InvoiceDraftBuilder
                 'payment_method' => $paymentMethod === null ? null : ['id' => $paymentMethod->id, 'name' => $paymentMethod->name],
                 'financial_account' => $companyBanks->count() === 1 ? $this->bank($companyBanks->first()) : null,
                 'notes' => null,
+                'layout' => null,
             ],
             'available_lines' => $this->availableLines($request)->map(fn (QuoteLine $line): array => $this->line($line))->values()->all(),
             'bank_accounts' => $banks->map(fn (FinancialAccount $bank): array => $this->bank($bank) + ['company_id' => $bank->company_id])->values()->all(),

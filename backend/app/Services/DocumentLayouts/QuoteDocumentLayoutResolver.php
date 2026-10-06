@@ -27,10 +27,6 @@ final class QuoteDocumentLayoutResolver
         }
 
         // Step 2: fall back to the quotes module's current active default.
-        return DocumentLayout::query()
-            ->where('module', DocumentLayoutModule::Quotes->value)
-            ->where('is_active', true)
-            ->where('is_default', true)
-            ->first();
+        return DocumentLayout::activeDefaultFor(DocumentLayoutModule::Quotes);
     }
 }

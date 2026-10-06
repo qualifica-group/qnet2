@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0196 LAYOUT DI STAMPA PER FATTURA — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-06)
+
+- Spec `docs/specs/0196-invoice-layout-selection.xml` (approvata, opzione B dell'utente). `invoices.layout_id`
+  (nullable, restrictOnDelete). `InvoiceDocumentLayoutResolver`: layout salvato (anche se disattivato) > default attivo;
+  query `layout_id` di GET pdf / import allegato resta override. `DocumentLayout::activeDefaultFor(module)` condiviso con
+  QuoteDocumentLayoutResolver. `InvoicePdfRenderer::render(Invoice, User, ?override)`.
+- Validazione layout_id (modulo invoices, attivo) in InvoiceWriteRequest e InvoiceDetailsRequest (PATCH: chiave assente =
+  invariato, null = predefinito). InvoiceResource.layout {id,name}|null; draft defaults.layout null. Eliminazione layout usato
+  da fatture -> 422 errors.invoices (document_layouts.layout_in_use_invoices).
+- FE: `InvoiceLayoutField` (for-select document-layouts module invoices, vuoto = "Predefinito") in Testata della modale e nel
+  dialog Dettagli; dettaglio mostra il layout. Guida invoices IT/EN aggiornata.
+- Test: InvoiceLayoutSelectionTest (AC-001..004), invoice-editor-dialog.test.tsx (+layout_id null, requisito cambiato),
+  QuoteWorkflowMigrationTest rollback 132. Verifica: Pest mirato 570/570, Vitest 452/452, tsc -b, ESLint, Pint puliti.
+- Aperto: manuale Claude Docs (campo "Layout di stampa" in Testata/Dettagli).
+
 ## SPEC 0195 PDF + EMAIL/SOLLECITO FATTURE — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-06)
 
 - Spec `docs/specs/0195-invoice-pdf-and-email.xml` (approvata; D-13 rev: rate scadute del sollecito come elenco `<ul>`,
