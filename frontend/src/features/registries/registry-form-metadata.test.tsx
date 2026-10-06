@@ -6,6 +6,7 @@ import type { ResourceMeta } from '@/features/authorization/types'
 import type { EnumOption } from '@/features/config/types'
 import {
   EDITABLE,
+  fillCardNames,
   pencilOf,
   permissionsFor,
   registryWrapper,
@@ -120,13 +121,30 @@ describe('RegistryForm — metadata-driven create rows (spec 0004, spec 0200)', 
     expect(screen.queryByText('G-1')).not.toBeInTheDocument()
   })
 
-  it('keeps the anagraphic card open: it names the anagrafica being created', async () => {
+  // REQUIREMENT CHANGED (user 2026-10-06, "allineato a come e' stato fatto l'edit"):
+  // the anagraphic card is a closed row like on the detail, no longer open.
+  it('opens the anagraphic card as a closed row that names the anagrafica on Done', async () => {
     renderCreate()
 
-    fireEvent.change(await screen.findByLabelText(/^First name/), { target: { value: 'Ada' } })
-    fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
+    await fillCardNames('Ada', 'Lovelace')
 
+    expect(screen.queryByLabelText(/^First name/)).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument()
+    const identity = screen.getAllByText('Personal details')[0].closest('section') as HTMLElement
+    expect(within(identity).getByText('Lovelace')).toBeInTheDocument()
+  })
+
+  it('keeps the card row open on Done while it is incomplete, and puts it back on Revert', async () => {
+    renderCreate()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Personal details' }))
+    fireEvent.change(await screen.findByLabelText(/^First name/), { target: { value: 'Ada' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(screen.getByLabelText(/^First name/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Revert' }))
+    expect(screen.queryByLabelText(/^First name/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Ada')).not.toBeInTheDocument()
   })
 
   it('reveals "Qualified supplier" only once the draft is a supplier', async () => {
@@ -142,13 +160,13 @@ describe('RegistryForm — metadata-driven create rows (spec 0004, spec 0200)', 
     expect(pencilOf('Qualified supplier')).toBeInTheDocument()
   })
 
-  it('refuses the save without a POST while the card is incomplete', async () => {
+  it('refuses the save without a POST while the card is incomplete, opening its row', async () => {
     renderCreate()
 
     await waitFor(() => expect(screen.getAllByRole('button', { name: 'Save' }).length).toBeGreaterThan(0))
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
-    expect((await screen.findAllByRole('alert')).length).toBeGreaterThan(0)
+    expect(await screen.findByLabelText(/^First name/)).toBeInTheDocument()
     expect(createRegistryMock).not.toHaveBeenCalled()
   })
 })

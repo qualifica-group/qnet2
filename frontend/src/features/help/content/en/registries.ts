@@ -48,7 +48,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "To create a card press **New registry**: the form looks like the detail, with the same sections. The **Personal details** are already open: first choose the Type, Individual or Company (fields change accordingly); the name appears at the top of the card as you type. The other fields are **closed rows**: click the row (or its pencil) to open it, then **Done** to keep the value or **Revert** to put it back as it was. Contacts and Addresses are in the right-hand column. **Save** checks everything and creates the registry; leaving without saving asks for confirmation.",
+          text: "To create a card press **New registry**: the form looks like the detail, with the same sections and **closed rows**. Click a row (or its pencil) to open it, then **Done** to keep the value or **Revert** to put it back as it was. In the **Personal details** first choose the Type, Individual or Company (fields change accordingly): on Done the name appears at the top of the card. Contacts and Addresses are in the right-hand column, with **Add contact** and **Add address**. **Save** checks everything and creates the registry; leaving without saving asks for confirmation.",
         },
         {
           type: 'table',
@@ -163,10 +163,10 @@ const guide: HelpGuide = {
           items: [
             'If the referents do not exist yet, create them from Registries › Referents with New referent.',
             'Open Registries › Registries and press New registry.',
-            'Choose the Type and fill in the personal details.',
+            'Open the Personal details, choose the Type, fill them in and press Done.',
             'If Possible duplicate appears, at the top of the right-hand column, check it before continuing.',
-            'Enter at least the phone number in Contacts, in the right-hand column.',
-            'In Addresses add an address for each site with the right Site type.',
+            'With Add contact enter at least one phone number in Contacts, in the right-hand column.',
+            'With Add address add an address for each site with the right Site type.',
             'Open the rows you need: in Relations, if needed, Commercial referent and Reporter; in Team Supervisor and Account managers; in Referents the contact people. Confirm each row with Done.',
             'Press Save.',
           ],

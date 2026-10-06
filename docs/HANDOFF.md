@@ -3,7 +3,29 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## ANAGRAFICA — DETTAGLIO EDITABILE IN PLACE (CAMPI FLESSIBILI COMPRESI) + CREAZIONE COME IL DETTAGLIO (spec 0200) — VERDE, NON COMMITTATO (2026-10-06)
+## ANAGRAFICA — DETTAGLIO EDITABILE IN PLACE (CAMPI FLESSIBILI COMPRESI) + CREAZIONE COME IL DETTAGLIO (spec 0200) — VERDE, COMMITTATO b9d9f79b + SEGUITO (2026-10-06)
+
+- SEGUITO (dopo b9d9f79b), richiesta utente "/registries/new allineato a come e' stato fatto l'edit":
+  - Creazione: Dati anagrafici come riga chiusa (`RegistryIdentityRecordSection` unica per dettaglio e creazione, prop
+    `identity` = card o bozza; `PersonalDataIdentityRows` accetta `PersonalDataIdentity`). Stato in
+    `use-registry-draft-inline-edit.ts` (snapshot della scheda per Ripristina, Fatto bloccato se scheda incompleta,
+    `cardSignal`); `useRegistryFormSubmit` ha `onRefused(section)` e il body riapre la riga della scheda.
+  - Contatti/Indirizzi: `PersonalDataChildCards` (presentazionale, buffer del chiamante, `persistence` opzionale) in
+    `personal-data-record-cards.tsx`; `PersonalDataRecordCards` ci si appoggia. In creazione niente piu' campi rapidi
+    (telefono obbligatorio solo al Salva). `registry-form-page.tsx`: pulsante Indietro come il dettaglio.
+  - Comuni: `CityPickerField.onChange(id, city)` + `PersonalDataIndividualFields.onCityPicked` + stato `cities` in
+    `PersonalDataCardForm`: la bozza porta `birth_city`/`residence_city` (etichetta) per le righe chiuse.
+  - BUG (utente: "da azienda a persona fisica mi ritorna errore"): toast "expected array, received null" = Tag
+    (`registries.tags`, relazione many) salvato `null` => OGNI salvataggio inline falliva. Fix generico in
+    `build-custom-fields-schema.ts`: relazione many e enum multiselect `.nullable()`. Test schema + regressione nel
+    dettaglio; backend `RegistryCardTypeSwitchTest` (PATCH azienda -> persona fisica ok, nome rinominato). Sul record
+    demo 171 il salvataggio si ferma ora solo per la Partita IVA demo non valida (messaggio nell'editor).
+  - REQUIREMENT CHANGED nei test: campo rapido Telefono rimosso (`registry-form-required-phone`), scheda chiusa
+    (`-metadata`, `-duplicate-warning`, `-custom-fields`); stub `ContactsManagerStub` + `fillCardNames` nelle fixture.
+  - Verifica: Vitest completo 905 file / 6862 verdi; `tsc -b --force` 0; ESLint pulito sui file toccati (1 warning
+    preesistente in `table-field-control.test.tsx`); Pest Registries 101 verdi, Pint ok. Browser: `/registries/new`
+    desktop e 375px senza scroll orizzontale, Milano visibile nella riga chiusa; `/registries/171` errore riprodotto e
+    sparito.
 
 - Richiesta utente: "prendi anagrafica e fai le stesse modifiche di commesse ... soprattutto per i campi flessibili.
   Anche per creazione ... come fatto in task". Solo frontend: la PATCH `/registries/{id}` gia' restituiva

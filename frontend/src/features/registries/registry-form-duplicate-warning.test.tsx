@@ -114,6 +114,7 @@ describe('RegistryForm — duplicate warning (user directive 2026-09-09)', () =>
       { wrapper: wrapper() },
     )
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Personal details' }))
     fireEvent.change(await screen.findByLabelText('Tax code'), {
       target: { value: 'LVLDAA80A01H501V' },
     })
@@ -144,6 +145,7 @@ describe('RegistryForm — duplicate warning (user directive 2026-09-09)', () =>
       { wrapper: wrapper() },
     )
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Personal details' }))
     fireEvent.change(await screen.findByLabelText('Tax code'), {
       target: { value: 'LVLDAA80A01H501V' },
     })

@@ -9,6 +9,7 @@ import type { RegistryDetailWithPermissions } from '@/features/registries/types'
 import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
 import type { CustomFieldDescriptor } from '@/features/custom-fields/types'
 import type { PersonalDataCard } from '@/features/personal-data/types'
+import { fillCardNames } from '@/features/registries/registry-test-fixtures'
 
 /**
  * Spec 0021: the generic custom-fields renderer wired into the Registries
@@ -22,6 +23,10 @@ const createRegistryMock = vi.fn()
 
 vi.mock('@/features/registries/api', () => ({
   createRegistry: (...args: unknown[]) => createRegistryMock(...args),
+}))
+
+vi.mock('@/features/personal-data/contacts-manager', async () => ({
+  ContactsManager: (await import('@/features/registries/registry-test-fixtures')).ContactsManagerStub,
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -179,10 +184,9 @@ describe('RegistryForm — custom fields (spec 0021)', () => {
       { wrapper: wrapper() },
     )
 
-    fireEvent.change(await screen.findByLabelText(/^First name/), { target: { value: 'Ada' } })
-    fireEvent.change(await screen.findByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
+    await fillCardNames()
     // Creating an anagrafica requires a phone number (user directive 2026-09-07).
-    fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
+    fireEvent.click(screen.getByRole('button', { name: 'add-phone' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Edit Priority level' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Priority level' }), {
       target: { value: 'High' },

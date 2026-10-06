@@ -1,18 +1,13 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Mail, MapPin } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Form } from '@/components/ui/form'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCanvas, RecordCard, RecordSection } from '@/components/detail/record-panel'
+import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
-import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
 import { IdentityDuplicateWarning } from '@/features/identity-duplicates/identity-duplicate-warning'
 import { useIdentityDuplicateCheck } from '@/features/identity-duplicates/use-identity-duplicate-check'
-import { AddressesManager } from '@/features/personal-data/addresses-manager'
-import { ContactsManager } from '@/features/personal-data/contacts-manager'
 import { emptyPersonalDataDraft } from '@/features/personal-data/drafts'
-import type { QuickContactType } from '@/features/personal-data/quick-contacts'
+import { PersonalDataChildCards } from '@/features/personal-data/personal-data-record-cards'
 import type { PersonalDataDraft } from '@/features/personal-data/types'
 import {
   anagraphicSectionProps,
@@ -20,17 +15,11 @@ import {
 } from '@/features/personal-data/use-reveal-blocked-section'
 import { RegistryCreateSections } from '@/features/registries/registry-create-sections'
 import { RegistryFormHeader } from '@/features/registries/registry-form-header'
+import { REGISTRY_CARD_FIELD } from '@/features/registries/registry-record'
+import { useRegistryDraftInlineEdit } from '@/features/registries/use-registry-draft-inline-edit'
 import { useRegistryForm } from '@/features/registries/use-registry-form'
 import { useRegistryFormSubmit } from '@/features/registries/use-registry-form-submit'
 import type { RegistryDetail } from '@/features/registries/types'
-
-/**
- * An anagrafica must be reachable by phone at creation (user directive
- * 2026-09-07, same rule the referenti carry): the quick field carries the
- * asterisk, `useRegistryFormSubmit` blocks the save, and StoreRegistryRequest
- * enforces it server-side.
- */
-const REQUIRED_CREATE_CONTACT_TYPES: QuickContactType[] = ['phone']
 
 /** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
 const REGISTRY_FORM_ID = 'registry-form'
@@ -44,15 +33,16 @@ interface RegistryFormBodyProps {
 }
 
 /**
- * The anagrafica create form UI, a replica of the anagrafica detail (spec
- * 0200, spec 0195 D-8 applied to Anagrafiche): the same `RecordCanvas`, the
- * record card with its identity band, KPI strip and sections, every row closed
- * until clicked (`RegistryCreateSections`), the card's contacts and addresses
- * in the side column — here with their quick fields, phone required. There is
+ * The anagrafica create form UI, aligned with the in-place detail (spec 0200,
+ * spec 0195 D-8 applied to Anagrafiche): the same `RecordCanvas`, the record
+ * card with its identity band, KPI strip and sections, every row closed until
+ * clicked — the anagraphic card too (`RegistryCreateSections`) — and the same
+ * Contatti/Indirizzi cards in the side column, here kept in the draft until
+ * Salva. A phone number is still required (`useRegistryFormSubmit`). There is
  * no edit form: the detail edits a persisted anagrafica in place.
  *
- * The duplicate warning heads the side column, read while the name that
- * triggers it is typed. It refuses nothing: the save goes through either way.
+ * The duplicate warning heads the side column. It refuses nothing: the save
+ * goes through either way.
  */
 export function RegistryFormBody({ onSuccess, onCancel }: RegistryFormBodyProps) {
   const { t } = useTranslation()
@@ -60,9 +50,21 @@ export function RegistryFormBody({ onSuccess, onCancel }: RegistryFormBodyProps)
   const containerRef = useRef<HTMLDivElement>(null)
   const [profileDraft, setProfileDraft] = useState<PersonalDataDraft>(emptyPersonalDataDraft)
   const { form, customFieldErrorPaths } = useRegistryForm({ mode: CREATE_MODE })
-  const submit = useRegistryFormSubmit({ form, mode: CREATE_MODE, profileDraft, customFieldErrorPaths, onSuccess })
-  const draft = useDraftInlineEdit(form)
-  const { personalDataFieldPermission: fieldPermission } = submit
+  const { inline, cardSignal } = useRegistryDraftInlineEdit(form, profileDraft, setProfileDraft)
+  const submit = useRegistryFormSubmit({
+    form,
+    mode: CREATE_MODE,
+    profileDraft,
+    customFieldErrorPaths,
+    onSuccess,
+    // An incomplete card refuses the save: open its row, where the card marks the fields.
+    onRefused: (section) => {
+      if (section === 'card') {
+        inline.start(REGISTRY_CARD_FIELD)
+      }
+    },
+  })
+  const fieldPermission = submit.personalDataFieldPermission
 
   useRevealBlockedSection(submit.revalidateSignal, submit.blockedSection, containerRef)
   const { matches: duplicateMatches } = useIdentityDuplicateCheck({ enabled: true, profileDraft })
@@ -71,46 +73,16 @@ export function RegistryFormBody({ onSuccess, onCancel }: RegistryFormBodyProps)
   const side = (
     <>
       <IdentityDuplicateWarning matches={duplicateMatches} />
-      {fieldPermission('personal_data.contacts').visible ? (
-        <div {...anagraphicSectionProps('contacts')}>
-          <RecordCard className="p-4">
-            <RecordSection
-              title={t('registries.form.sections.contacts.title')}
-              icon={<Mail />}
-              action={<Badge variant="secondary">{profileDraft.contacts.length}</Badge>}
-            >
-              <ContactsManager
-                value={profileDraft.contacts}
-                onChange={(contacts) => setProfileDraft({ ...profileDraft, contacts })}
-                fieldPermission={fieldPermission}
-                showHeader={false}
-                createMode
-                requiredCreateTypes={REQUIRED_CREATE_CONTACT_TYPES}
-              />
-            </RecordSection>
-          </RecordCard>
-        </div>
-      ) : null}
-      {fieldPermission('personal_data.addresses').visible ? (
-        <div {...anagraphicSectionProps('addresses')}>
-          <RecordCard className="p-4">
-            <RecordSection
-              title={t('registries.form.sections.addresses.title')}
-              icon={<MapPin />}
-              action={<Badge variant="secondary">{profileDraft.addresses.length}</Badge>}
-            >
-              <AddressesManager
-                value={profileDraft.addresses}
-                onChange={(addresses) => setProfileDraft({ ...profileDraft, addresses })}
-                fieldPermission={fieldPermission}
-                showHeader={false}
-                showSiteType
-                createMode
-              />
-            </RecordSection>
-          </RecordCard>
-        </div>
-      ) : null}
+      <PersonalDataChildCards
+        draft={profileDraft}
+        contactsTitle={t('registries.form.sections.contacts.title')}
+        addressesTitle={t('registries.form.sections.addresses.title')}
+        showSiteType
+        fieldPermission={fieldPermission}
+        onChange={(patch) => setProfileDraft({ ...profileDraft, ...patch })}
+        contactsBoxProps={anagraphicSectionProps('contacts')}
+        addressesBoxProps={anagraphicSectionProps('addresses')}
+      />
     </>
   )
 
@@ -133,11 +105,11 @@ export function RegistryFormBody({ onSuccess, onCancel }: RegistryFormBodyProps)
                 />
                 <RegistryCreateSections
                   form={form}
-                  draft={draft}
+                  draft={inline}
                   card={{
                     draft: profileDraft,
                     setDraft: setProfileDraft,
-                    revalidateSignal: submit.revalidateSignal,
+                    revalidateSignal: submit.revalidateSignal + cardSignal,
                     fieldPermission,
                   }}
                 />

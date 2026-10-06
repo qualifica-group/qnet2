@@ -54,6 +54,16 @@ const PRIORITY_FIELD: CustomFieldDescriptor = {
   source: 'custom',
 }
 
+const TAGS_FIELD: CustomFieldDescriptor = {
+  key: 'custom.tags',
+  type: 'relation',
+  label: 'Tag',
+  group: null,
+  mandatory: false,
+  source: 'custom',
+  relation: { for_select_resource: 'tags', cardinality: 'many' },
+}
+
 function renderDetail(registry: RegistryDetailWithPermissions) {
   const { client, wrapper } = registryWrapper()
   render(<RegistryDetailView registry={registry} />, { wrapper })
@@ -150,6 +160,23 @@ describe('RegistryDetailView — custom fields in place (spec 0200 D-3)', () => 
     await waitFor(() =>
       expect(updateRegistryMock).toHaveBeenCalledWith(7, { custom_fields: { priority_level: 'High' } }),
     )
+  })
+
+  // Bug 2026-10-06: a Tag never filled comes back as `null` and refused every save.
+  it('saves another field while a many-relation custom field is still null', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [TAGS_FIELD],
+      permissions: permissionsFor(),
+    })
+    updateRegistryMock.mockResolvedValue(registryFixture())
+    renderDetail(registryFixture({ custom_fields: { tags: null } }))
+
+    await screen.findByText('Tag')
+    fireEvent.click(pencilOf('Employee count'))
+    fireEvent.change(screen.getByLabelText(/^Employee count/), { target: { value: '5' } })
+    saveOpenRow()
+
+    await waitFor(() => expect(updateRegistryMock).toHaveBeenCalledWith(7, { employee_count: 5 }))
   })
 
   it('renders no custom field the role cannot see', async () => {

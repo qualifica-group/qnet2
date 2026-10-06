@@ -20,6 +20,7 @@ import { CityPickerField } from '@/features/personal-data/city-picker-field'
 import { resolveGate } from '@/features/personal-data/personal-data-field-gate'
 import type { PersonalDataFormValues } from '@/features/personal-data/personal-data-schema'
 import type {
+  GeoRef,
   PersonalDataDraft,
   PersonalDataFieldPermissionResolver,
 } from '@/features/personal-data/types'
@@ -29,6 +30,8 @@ interface PersonalDataIndividualFieldsProps {
   /** The parent buffer, read only for the hydrated comune labels. */
   value: PersonalDataDraft
   fieldPermission?: PersonalDataFieldPermissionResolver
+  /** A comune was picked: its label, for a draft read again after the picker is gone (a closed record row). */
+  onCityPicked?: (field: 'birth_city' | 'residence_city', city: GeoRef | null) => void
 }
 
 /**
@@ -42,6 +45,7 @@ export function PersonalDataIndividualFields({
   control,
   value,
   fieldPermission,
+  onCityPicked,
 }: PersonalDataIndividualFieldsProps) {
   const { t } = useTranslation()
   const genderOptions = useEnumOptions('gender')
@@ -127,7 +131,10 @@ export function PersonalDataIndividualFields({
                     <CityPickerField
                       value={field.value ?? null}
                       hydrated={value.birth_city}
-                      onChange={field.onChange}
+                      onChange={(cityId, city) => {
+                        field.onChange(cityId)
+                        onCityPicked?.('birth_city', city)
+                      }}
                       placeholder={t('personalData.form.birthCityPlaceholder')}
                       disabled={birthCityGate.disabled || birthCityGate.readOnly}
                     />
@@ -150,7 +157,10 @@ export function PersonalDataIndividualFields({
                     <CityPickerField
                       value={field.value ?? null}
                       hydrated={value.residence_city}
-                      onChange={field.onChange}
+                      onChange={(cityId, city) => {
+                        field.onChange(cityId)
+                        onCityPicked?.('residence_city', city)
+                      }}
                       placeholder={t('personalData.form.residenceCityPlaceholder')}
                       disabled={residenceCityGate.disabled || residenceCityGate.readOnly}
                     />

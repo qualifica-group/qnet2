@@ -12,7 +12,8 @@ interface CityPickerFieldProps {
    * control can label the current selection without searching for it first.
    */
   hydrated?: GeoRef | null
-  onChange: (cityId: number) => void
+  /** The picked comune's id, and its {id, name} so the owner can label it once the picker is gone. */
+  onChange: (cityId: number, city: GeoRef | null) => void
   /**
    * What to search for, in the caller's words (e.g. "Search the town of
    * birth"). Doubles as the empty state: nothing is listed until a term is
@@ -63,8 +64,9 @@ export function CityPickerField({
   }, [cities.data?.pages, current])
 
   const handleChange = (cityId: number) => {
-    setPicked(options.find((option) => option.id === cityId) ?? null)
-    onChange(cityId)
+    const city = options.find((option) => option.id === cityId) ?? null
+    setPicked(city)
+    onChange(cityId, city)
   }
 
   const searching = search.trim() !== ''

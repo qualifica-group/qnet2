@@ -30,7 +30,7 @@ export function RegistryDetailSections({ registry, editor }: RegistryDetailSecti
 
   return (
     <RecordSectionsGrid>
-      <RegistryIdentityRecordSection card={registry.personal_data} buffer={card} inline={inline} />
+      <RegistryIdentityRecordSection identity={registry.personal_data} buffer={card} inline={inline} />
       <RegistryRelationsRecordSection {...sectionProps} />
       <RegistryBusinessRecordSection {...sectionProps} />
       <RegistryTeamRecordSection {...sectionProps} />

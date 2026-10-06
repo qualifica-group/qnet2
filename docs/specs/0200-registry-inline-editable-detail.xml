@@ -26,11 +26,15 @@
       Matita governata da `personal_data.type`. Contatti e Indirizzi restano nella colonna laterale e diventano
       gestibili in place con i manager esistenti in persistenza immediata (stesso percorso del vecchio form di
       modifica), gated da `personal_data.contacts`/`personal_data.addresses`.
-    - D-5: creazione = replica del dettaglio (card con monogramma e nome live, striscia KPI live, stesse sezioni a righe
-      chiuse con Fatto/Ripristina, Salva valida tutto). I Dati anagrafici restano sempre aperti (danno il nome alla
-      scheda, come il Lead di origine dell'Opportunita'); Contatti (telefono obbligatorio) e Indirizzi nella colonna
-      laterale con i campi rapidi, sopra di loro l'avviso Possibile duplicato. Sparisce il Riepilogo laterale.
-      Uscire senza salvare chiede conferma.
+    - D-5 (rivista dall'utente 2026-10-06, "/registries/new allineato a come e' stato fatto l'edit"): creazione =
+      replica del dettaglio (card con monogramma e nome live, striscia KPI live, stesse sezioni a righe chiuse con
+      Fatto/Ripristina, Salva valida tutto, pulsante Indietro come il dettaglio). Anche i Dati anagrafici sono una riga
+      chiusa: "Fatto" non la chiude finche' la scheda e' incompleta, un Salva rifiutato per la scheda la riapre.
+      Contatti e Indirizzi sono le stesse card del dettaglio ("Aggiungi contatto/indirizzo"), tenute in bozza fino al
+      Salva (telefono sempre obbligatorio, senza campi rapidi); sopra, l'avviso Possibile duplicato. Sparisce il
+      Riepilogo laterale. Uscire senza salvare chiede conferma.
+    - D-6 (bug utente 2026-10-06): un campo personalizzato multiplo mai valorizzato arriva dal server come `null`;
+      lo schema lo accetta come "non impostato" (prima rifiutava ogni salvataggio del record).
   </context>
 
   <contract>

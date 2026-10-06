@@ -7,13 +7,16 @@ import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { RegistryForm } from '@/features/registries/registry-form'
 import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
 import type { EnumOption } from '@/features/config/types'
+import { fillCardNames } from '@/features/registries/registry-test-fixtures'
 
 /**
  * An anagrafica must be reachable by phone at creation (user directive
- * 2026-09-07), the rule the referenti already carried: the quick field is
- * marked required and the save is refused without a number. Client twin of
- * `StoreRegistryRequest` + `ValidatesRequiredPhoneContact`; the server side is
- * covered by `RegistryCrudTest`.
+ * 2026-09-07), the rule the referenti already carried: the save is refused
+ * without a number. Client twin of `StoreRegistryRequest` +
+ * `ValidatesRequiredPhoneContact`; the server side is covered by
+ * `RegistryCrudTest`. REQUIREMENT CHANGED (spec 0200, aligned with the
+ * detail): the contacts are the detail's card ("Add contact"), no quick
+ * fields, so no asterisk on a quick Phone field any more.
  */
 
 const createRegistryMock = vi.fn()
@@ -61,6 +64,10 @@ vi.mock('@/components/ui/async-paginated-multi-select', () => ({
   AsyncPaginatedMultiSelect: () => <div />,
 }))
 
+vi.mock('@/features/personal-data/contacts-manager', async () => ({
+  ContactsManager: (await import('@/features/registries/registry-test-fixtures')).ContactsManagerStub,
+}))
+
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
@@ -68,12 +75,6 @@ function wrapper() {
       <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
     </QueryClientProvider>
   )
-}
-
-/** Fills the card fields the save gate checks before it ever reaches the phone. */
-async function fillIdentity() {
-  fireEvent.change(await screen.findByLabelText(/^First name/), { target: { value: 'Ada' } })
-  fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
 }
 
 beforeAll(async () => {
@@ -87,24 +88,13 @@ beforeEach(() => {
 })
 
 describe('RegistryForm — phone required at creation (user directive 2026-09-07)', () => {
-  it('marks the phone quick field as required in create mode, and only that one', async () => {
-    render(
-      <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    expect(await screen.findByLabelText(/^Phone/)).toHaveAttribute('aria-required', 'true')
-    expect(screen.getByLabelText('Email')).toHaveAttribute('aria-required', 'false')
-    expect(screen.getByLabelText(/^Phone/).closest('div')?.textContent).toContain('*')
-  })
-
   it('refuses the save when no phone number was entered', async () => {
     render(
       <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    await fillIdentity()
+    await fillCardNames()
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() =>
@@ -121,8 +111,8 @@ describe('RegistryForm — phone required at creation (user directive 2026-09-07
       { wrapper: wrapper() },
     )
 
-    await fillIdentity()
-    fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
+    await fillCardNames()
+    fireEvent.click(screen.getByRole('button', { name: 'add-phone' }))
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(createRegistryMock).toHaveBeenCalledTimes(1))

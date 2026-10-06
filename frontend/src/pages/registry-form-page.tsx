@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
 import { registryDetailQueryKey } from '@/features/registries/api'
@@ -28,7 +30,17 @@ export default function RegistryFormPage() {
       fallback={<p className="text-sm text-muted-foreground">{t('registries.forbidden')}</p>}
     >
       <div className="flex flex-1 flex-col gap-4">
-        <PageHeader />
+        {/* The same chrome as the detail page: the leave guard intercepts the link. */}
+        <PageHeader
+          actions={
+            <Button variant="outline" asChild>
+              <Link to="/registries">
+                <ArrowLeft aria-hidden="true" />
+                {t('common.back')}
+              </Link>
+            </Button>
+          }
+        />
 
         {/* No `bg-card`: the record canvas paints its own `bg-surface` and the
             cards inside it are the `bg-card` rung (ui-design.md §1-bis). */}

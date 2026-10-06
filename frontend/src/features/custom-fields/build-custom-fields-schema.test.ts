@@ -62,6 +62,27 @@ const TIER_FIELD: CustomFieldDescriptor = {
   options: [{ value: 'gold', label: 'Gold' }, { value: 'silver', label: 'Silver' }],
 }
 
+const TAGS_FIELD: CustomFieldDescriptor = {
+  key: 'custom.tags',
+  type: 'relation',
+  label: 'Tags',
+  group: null,
+  mandatory: false,
+  source: 'custom',
+  relation: { for_select_resource: 'tags', cardinality: 'many' },
+}
+
+const COLORS_FIELD: CustomFieldDescriptor = {
+  key: 'custom.colors',
+  type: 'enum',
+  label: 'Colors',
+  group: null,
+  mandatory: false,
+  source: 'custom',
+  config: { display: 'multiselect' },
+  options: [{ value: 'red', label: 'Red' }],
+}
+
 describe('buildCustomFieldsSchema', () => {
   it('rejects a missing value for a field required via the role permission', () => {
     const schema = buildCustomFieldsSchema(
@@ -124,5 +145,23 @@ describe('buildCustomFieldsSchema', () => {
     const schema = buildCustomFieldsSchema([TIER_FIELD], permissionsFor({}), i18n.t)
     expect(schema.safeParse({ tier: 'platinum' }).success).toBe(false)
     expect(schema.safeParse({ tier: 'gold' }).success).toBe(true)
+  })
+
+  // A multi-valued field the server returns as `null` ("not set", e.g. the
+  // registry Tag on a record saved before the field existed) must not refuse
+  // every save of the record (bug reported 2026-10-06 on the registry detail).
+  it('accepts null as "not set" on a many relation and a multiselect enum', () => {
+    const schema = buildCustomFieldsSchema([TAGS_FIELD, COLORS_FIELD], permissionsFor({}), i18n.t)
+    expect(schema.safeParse({ tags: null, colors: null }).success).toBe(true)
+    expect(schema.safeParse({ tags: [1, 2], colors: ['red'] }).success).toBe(true)
+  })
+
+  it('still refuses a required many relation left null', () => {
+    const schema = buildCustomFieldsSchema(
+      [TAGS_FIELD],
+      permissionsFor({ 'custom.tags': permission({ required: true }) }),
+      i18n.t,
+    )
+    expect(schema.safeParse({ tags: null }).success).toBe(false)
   })
 })

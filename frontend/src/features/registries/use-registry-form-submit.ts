@@ -84,6 +84,8 @@ interface UseRegistryFormSubmitArgs {
   customFieldErrorPaths: string[]
   /** Called after a successful create/update. */
   onSuccess: (registry: RegistryDetail) => void
+  /** Called when a client-side gate refuses the save over a block of the card (create: reopen it). */
+  onRefused?: (section: BlockedSection) => void
 }
 
 /**
@@ -102,6 +104,7 @@ export function useRegistryFormSubmit({
   profileDraft,
   customFieldErrorPaths,
   onSuccess,
+  onRefused,
 }: UseRegistryFormSubmitArgs) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -121,6 +124,7 @@ export function useRegistryFormSubmit({
     setServerError(t(messageKey, { fields: fields.join(' · ') }))
     setBlockedSection(section)
     setRevalidateSignal((signal) => signal + 1)
+    onRefused?.(section)
   }
 
   /** The create-only gates on the buffered card; `false` when the save was refused. */
