@@ -41,6 +41,27 @@
 - Da fare: manuale Claude Docs non accessibile in sessione (accesso negato) -> aggiornare a mano la sezione
   "Sotto-task, ricorrenza e modelli". Fuori scope segnalato: in dark il % rosso di `CompletionBar` ha contrasto basso.
 
+## "INFORMAZIONI AGGIUNTIVE" COL LAYOUT NEI DETTAGLI (OFFERTA/COMMESSA/PRODOTTO) — VERDE, COMMITTATO (2026-10-06)
+
+- I dettagli Offerta, Commessa e Prodotto ora mostrano gli attributi divisi nelle sezioni del layout configurato
+  (spec 0062): nuovo `features/attributes/attribute-layout-view.tsx` (`AttributeLayoutView`). Stile = quello delle
+  sezioni record sopra (`RecordField` etichetta/valore, hairline), ogni sezione con banda di intestazione
+  (`bg-muted/50`, `highlighted` -> `bg-primary/10`, icona `Rows3`, titolo + descrizione), sezioni affiancate su 2
+  colonne a `@2xl`; sezione con `columns >= 2` = larghezza piena e campi su 2 colonne (`width: full` attraversa).
+  Niente collapse nel dettaglio (decisione utente: stile legacy QNet "info", sezioni sempre aperte).
+- Condivisi: `attribute-layout-sections.ts` (`resolveLayoutSections`: ordine + "Altre informazioni", usato anche da
+  `AttributeLayoutRenderer` del form), `attribute-value-display.tsx` (`AttributeValueDisplay`, formattazione per
+  tipo + tabella; sostituisce le copie in quote/work-order detail).
+- Contratto (additivo): `QuoteResource.attribute_view_layout` = `QuoteAttributeResolver::layout(View)` (fallback sul
+  layout `all`); `attribute_layout` resta Edit per il form. Commessa usa gia' View, Prodotto gia' View.
+  Prodotto: solo attributi valorizzati (regola AC-014 invariata), sezione unica "Attributi" a piena larghezza.
+- Test: `attribute-layout-view.test.tsx` (7), casi in `quote-detail.test.tsx`, `work-order-detail.test.tsx`,
+  `QuoteAttributeValuesTest` (+2). Guida in-app Prodotti IT/EN aggiornata (scheda: attributi per sezioni).
+- Manuale Claude Docs: NON accessibile dal connettore (access denied) -> da aggiornare a mano la voce scheda
+  Prodotto/Offerta ("valori degli attributi divisi nelle sezioni della categoria").
+- Verifiche: Pest Quotes+WorkOrders+Products 735/735, Pint ok; Vitest attributes/products/quotes/work-orders 745/745,
+  help 108/108, ESLint ok, `tsc -b --force` ok.
+
 ## COMMESSE: "SOCIETA' E SEDI" NEL DETTAGLIO — VERDE, COMMITTATO (2026-10-06)
 
 - Dettaglio commessa: nuova sezione "Societa' e sedi" / "Company and sites" (dopo "Contratto e righe prodotto"),

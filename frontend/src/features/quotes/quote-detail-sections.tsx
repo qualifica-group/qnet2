@@ -232,6 +232,7 @@ export function QuoteDetailSections({ quote }: QuoteDetailSectionsProps) {
       <QuoteDetailAttributesSection
         attributes={quote.applicable_attributes}
         values={quote.attribute_values}
+        layout={quote.attribute_view_layout ?? null}
         className={FULL_WIDTH_SECTION_CLASS}
       />
     </RecordSectionsGrid>

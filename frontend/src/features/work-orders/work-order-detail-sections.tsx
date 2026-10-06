@@ -171,6 +171,7 @@ export function WorkOrderDetailSections({ workOrder }: { workOrder: WorkOrderDet
       <WorkOrderDetailAttributesSection
         attributes={workOrder.applicable_attributes}
         values={workOrder.attribute_values}
+        layout={workOrder.attribute_layout}
         className={FULL_WIDTH_SECTION_CLASS}
       />
     </RecordSectionsGrid>

@@ -220,6 +220,11 @@ export interface QuoteDetail {
   applicable_attributes: ApplicableAttributeSummary[]
   /** Layout multi-categoria (spec 0062); `null` -> rendering flat. */
   attribute_layout: LayoutBlob | null
+  /**
+   * Lo stesso layout risolto per il DETTAGLIO (FormMode::View, fallback sul
+   * layout condiviso). Opzionale per le fixture esistenti; assente = flat.
+   */
+  attribute_view_layout?: LayoutBlob | null
   offer_lines: QuoteLine[]
   cost_lines: QuoteLine[]
   summary: QuoteSummary

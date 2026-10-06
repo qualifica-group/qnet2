@@ -33,6 +33,7 @@ describe('WorkOrderDetailAttributesSection table attribute (spec 0180, AC-023)',
   it('renders a filled table attribute as a read-only mini table', () => {
     render(
       <WorkOrderDetailAttributesSection
+        layout={null}
         attributes={[TABLE_ATTRIBUTE]}
         values={{ inspections: { rows: [{ id: 'a', outcome: 'ok', certified: true }], summary: null } }}
       />,
@@ -44,7 +45,7 @@ describe('WorkOrderDetailAttributesSection table attribute (spec 0180, AC-023)',
   })
 
   it('falls back to the empty placeholder when the value is unset', () => {
-    render(<WorkOrderDetailAttributesSection attributes={[TABLE_ATTRIBUTE]} values={{ inspections: null }} />)
+    render(<WorkOrderDetailAttributesSection layout={null} attributes={[TABLE_ATTRIBUTE]} values={{ inspections: null }} />)
 
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })

@@ -229,6 +229,51 @@ describe('WorkOrderDetailView — additional information (spec 0098, AC-023)', (
     expect(screen.getByText('Site access')).toBeInTheDocument()
     expect(screen.getByText('Gate 3')).toBeInTheDocument()
   })
+
+  it('lays the values out on the configured layout sections, as the form does', () => {
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({
+          applicable_attributes: [
+            {
+              id: 1,
+              code: 'site_access',
+              name: 'Site access',
+              type: 'text',
+              description: null,
+              help_text: null,
+              placeholder: null,
+              icon: null,
+              config: null,
+              relation_target: null,
+              is_required: false,
+              sort_order: 0,
+              options: [],
+            },
+          ],
+          attribute_values: { site_access: 'Gate 3' },
+          attribute_layout: {
+          sections: [
+            {
+              id: 's1',
+              title: 'Access',
+              description: null,
+              variant: 'default' as const,
+              collapsible: false,
+              default_collapsed: false,
+              columns: 2 as const,
+              sort_order: 0,
+              rows: [{ id: 'r1', items: [{ attribute_code: 'site_access', width: 'half' as const }] }],
+            },
+          ],
+        },
+        })}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Access' })).toBeInTheDocument()
+    expect(screen.getByText('Gate 3')).toBeInTheDocument()
+  })
 })
 
 describe('WorkOrderDetailView — edit action on the card', () => {

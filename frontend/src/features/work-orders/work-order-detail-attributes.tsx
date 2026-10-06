@@ -1,109 +1,23 @@
-import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList } from 'lucide-react'
-import { DetailEmpty } from '@/components/detail/detail-panel'
-import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
-import { ReadonlyTableValue } from '@/features/custom-fields/components/readonly-table-value'
-import { formatDateTime } from '@/features/table/cell-renderers'
-import type { TableFieldConfig, TableFieldValue } from '@/features/custom-fields/types'
+import { RecordSection } from '@/components/detail/record-panel'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
+import { AttributeLayoutView } from '@/features/attributes/attribute-layout-view'
 import type { ApplicableAttributeSummary } from '@/features/work-orders/types'
-
-/**
- * Formats one collected attribute value for read-only display, per the
- * Attribute's shared type vocabulary. Returns `null` for an unset value so the
- * caller can fall back to `DetailEmpty`. Byte-for-byte the same formatting
- * vocabulary `QuoteDetailAttributesSection` uses (spec 0098 twin).
- */
-function formatAttributeValue(
-  attribute: ApplicableAttributeSummary,
-  rawValue: unknown,
-  t: TFunction,
-): string | null {
-  if (rawValue === null || rawValue === undefined || rawValue === '') {
-    return null
-  }
-  if (Array.isArray(rawValue)) {
-    const items = rawValue
-      .map((item) => formatAttributeScalar(attribute, item, t))
-      .filter((item): item is string => item !== null)
-    return items.length > 0 ? items.join(', ') : null
-  }
-  return formatAttributeScalar(attribute, rawValue, t)
-}
-
-/** Formats a single (non-array) attribute value, dispatching on `type`. */
-function formatAttributeScalar(
-  attribute: ApplicableAttributeSummary,
-  rawValue: unknown,
-  t: TFunction,
-): string | null {
-  if (rawValue === null || rawValue === undefined || rawValue === '') {
-    return null
-  }
-  switch (attribute.type) {
-    case 'boolean':
-      return rawValue ? t('common.yes') : t('common.no')
-    case 'enum': {
-      const option = attribute.options.find((candidate) => candidate.value === String(rawValue))
-      return option?.label ?? String(rawValue)
-    }
-    case 'table':
-      return null
-    case 'datetime':
-      return formatDateTime(rawValue) || String(rawValue)
-    case 'relation': {
-      if (rawValue && typeof rawValue === 'object') {
-        const relation = rawValue as { label?: unknown; name?: unknown; id?: unknown }
-        if (typeof relation.label === 'string') return relation.label
-        if (typeof relation.name === 'string') return relation.name
-        if (relation.id !== undefined) return String(relation.id)
-      }
-      return String(rawValue)
-    }
-    default:
-      return String(rawValue)
-  }
-}
-
-/** A `table` attribute with a usable definition and value, else null (falls back to the generic formatter). */
-function readTableAttribute(
-  attribute: ApplicableAttributeSummary,
-  rawValue: unknown,
-): { config: TableFieldConfig; value: TableFieldValue } | null {
-  const config = attribute.config as Partial<TableFieldConfig> | null
-  if (attribute.type !== 'table' || !config || !Array.isArray(config.columns)) {
-    return null
-  }
-  const value = rawValue as Partial<TableFieldValue> | null
-  if (!value || typeof value !== 'object' || !Array.isArray(value.rows)) {
-    return null
-  }
-  return { config: config as TableFieldConfig, value: value as TableFieldValue }
-}
-
-function renderAttributeValue(
-  attribute: ApplicableAttributeSummary,
-  rawValue: unknown,
-  t: TFunction,
-): React.ReactNode {
-  const table = readTableAttribute(attribute, rawValue)
-  if (table) {
-    return <ReadonlyTableValue config={table.config} value={table.value} />
-  }
-  return formatAttributeValue(attribute, rawValue, t) ?? <DetailEmpty />
-}
 
 interface WorkOrderDetailAttributesSectionProps {
   attributes: ApplicableAttributeSummary[]
   values: Record<string, unknown>
+  /** `WorkOrderResource.attribute_layout` (FormMode::View); `null` -> flat list. */
+  layout: LayoutBlob | null
   className?: string
 }
 
 /**
  * Read-only "Informazioni aggiuntive" on the work order record (spec 0098,
- * AC-023): one `RecordSection` row per applicable Attribute, its value
- * formatted per `type` — the same denomination and formatting vocabulary the
- * form section uses, so what the operator typed reads back identically.
+ * AC-023), laid out like the form: the configured sections, columns and
+ * widths through `AttributeLayoutView`, every applicable Attribute shown (an
+ * unset one with the empty placeholder).
  *
  * Absent entirely when the work order's own quote lines resolve no
  * applicable Attribute (D-1: no line linked, or those categories configure
@@ -113,6 +27,7 @@ interface WorkOrderDetailAttributesSectionProps {
 export function WorkOrderDetailAttributesSection({
   attributes,
   values,
+  layout,
   className,
 }: WorkOrderDetailAttributesSectionProps) {
   const { t } = useTranslation()
@@ -122,18 +37,8 @@ export function WorkOrderDetailAttributesSection({
   }
 
   return (
-    <RecordSection
-      title={t('workOrders.detail.additionalInformation')}
-      icon={<ClipboardList />}
-      className={className}
-    >
-      <RecordFieldList>
-        {attributes.map((attribute) => (
-          <RecordField key={attribute.id} label={attribute.name}>
-            {renderAttributeValue(attribute, values[attribute.code], t)}
-          </RecordField>
-        ))}
-      </RecordFieldList>
+    <RecordSection title={t('workOrders.detail.additionalInformation')} icon={<ClipboardList />} className={className}>
+      <AttributeLayoutView layout={layout} attributes={attributes} values={values} />
     </RecordSection>
   )
 }

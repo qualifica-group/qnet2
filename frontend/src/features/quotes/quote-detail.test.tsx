@@ -180,6 +180,66 @@ describe('QuoteDetailView — Layout field (AC-314)', () => {
   })
 })
 
+describe('QuoteDetailView — additional information layout', () => {
+  it('lays the values out on the view-mode layout, not the edit-mode one the form hydrates from', () => {
+    const quote = quoteFixture({
+      applicable_attributes: [
+        {
+              id: 1,
+              code: 'site_access',
+              name: 'Site access',
+              type: 'text',
+              description: null,
+              help_text: null,
+              placeholder: null,
+              icon: null,
+              config: null,
+              relation_target: null,
+              is_required: false,
+              sort_order: 0,
+              options: [],
+            },
+      ],
+      attribute_values: { site_access: 'Gate 3' },
+      attribute_layout: {
+          sections: [
+            {
+              id: 's1',
+              title: 'Edit section',
+              description: null,
+              variant: 'default' as const,
+              collapsible: false,
+              default_collapsed: false,
+              columns: 2 as const,
+              sort_order: 0,
+              rows: [{ id: 'r1', items: [{ attribute_code: 'site_access', width: 'half' as const }] }],
+            },
+          ],
+        },
+      attribute_view_layout: {
+          sections: [
+            {
+              id: 's1',
+              title: 'Detail section',
+              description: null,
+              variant: 'default' as const,
+              collapsible: false,
+              default_collapsed: false,
+              columns: 2 as const,
+              sort_order: 0,
+              rows: [{ id: 'r1', items: [{ attribute_code: 'site_access', width: 'half' as const }] }],
+            },
+          ],
+        },
+    })
+    renderDetail(<QuoteDetailView quote={quote} />)
+
+    expect(screen.getByRole('heading', { name: 'Detail section' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Edit section' })).not.toBeInTheDocument()
+    expect(screen.getByText('Gate 3')).toBeInTheDocument()
+  })
+})
+
 /**
  * User directive 2026-08-31: the Offerta carries its own "Segnalatore diritto
  * al buono", so the read-only detail shows the assigned chips just as the
