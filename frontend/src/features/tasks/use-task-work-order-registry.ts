@@ -13,14 +13,12 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { fetchForSelect } from '@/features/for-select/api'
+import { WORK_ORDERS_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
 
 /** The `meta` bag the work-orders for-select endpoint now carries (spec 0154 contract). */
 interface WorkOrderForSelectMeta {
   registry_id: number | null
 }
-
-/** Resource segment of the work orders for-select endpoint (mirrors `task-links-section.tsx`). */
-const WORK_ORDERS_FOR_SELECT_RESOURCE = 'work-orders'
 
 async function fetchWorkOrderRegistryId(workOrderId: number): Promise<number | null> {
   const response = await fetchForSelect(WORK_ORDERS_FOR_SELECT_RESOURCE, {

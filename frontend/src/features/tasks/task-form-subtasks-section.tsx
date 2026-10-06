@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { ListTree, Plus, Trash2 } from 'lucide-react'
 import { useFieldArray, useWatch, type Control } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
-import { FormSection } from '@/components/form-section'
+import { RecordSection } from '@/components/detail/record-panel'
 import { FormControl } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { RelationMultiSelectField } from '@/components/form/relation-multi-select-field'
@@ -381,9 +381,8 @@ function TaskFormSubtaskChildRow({ control, index, onRemove, limitReached }: Tas
  * (ui-design.md §2): every other field of `CreateTaskSubtaskPayload` is left
  * to the server's own inheritance from the parent (D-3), not exposed here.
  * `limitReached` (D-1's 50-node cap, counted across the WHOLE tree) gates
- * every "add child" button, not just the root one. Create-only —
- * `TaskFormBody` mounts this section only when `mode.type === 'create'`,
- * mirroring `TaskAttachmentStaging`.
+ * every "add child" button, not just the root one. Create-only, laid out as
+ * the detail's own "Sotto-task" section (spec 0195 D-8).
  */
 export function TaskFormSubtasksSection({ control }: TaskFormSubtasksSectionProps) {
   const { t } = useTranslation()
@@ -392,10 +391,23 @@ export function TaskFormSubtasksSection({ control }: TaskFormSubtasksSectionProp
   const limitReached = countSubtaskTreeNodes(subtaskTree) >= MAX_TASK_FORM_SUBTASKS
 
   return (
-    <FormSection
-      icon={ListTree}
-      title={t('tasks.form.sections.subtasks.title')}
-      description={t('tasks.form.sections.subtasks.description')}
+    <RecordSection
+      title={t('tasks.detail.sections.subtasks')}
+      icon={<ListTree />}
+      full
+      action={
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="bg-card"
+          disabled={limitReached}
+          onClick={() => append(emptySubtaskRow())}
+        >
+          <Plus className="size-3.5" aria-hidden="true" />
+          {t('tasks.form.subtasks.add')}
+        </Button>
+      }
     >
       {fields.length > 0 ? (
         <div className="flex flex-col gap-3">
@@ -409,19 +421,9 @@ export function TaskFormSubtasksSection({ control }: TaskFormSubtasksSectionProp
             />
           ))}
         </div>
-      ) : null}
-
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="bg-card"
-        disabled={limitReached}
-        onClick={() => append(emptySubtaskRow())}
-      >
-        <Plus className="size-3.5" aria-hidden="true" />
-        {t('tasks.form.subtasks.add')}
-      </Button>
-    </FormSection>
+      ) : (
+        <p className="text-sm text-muted-foreground">{t('tasks.form.sections.subtasks.description')}</p>
+      )}
+    </RecordSection>
   )
 }

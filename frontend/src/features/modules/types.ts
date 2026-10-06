@@ -71,6 +71,12 @@ export interface ModuleDetailScreenProps {
    * to the list.
    */
   onSaved?: () => void
+  /**
+   * Called after the screen changed the record IN PLACE while staying open —
+   * the task detail's inline edits (spec 0195 D-7). The host refreshes
+   * whatever lists the record (grid, board) without leaving it.
+   */
+  onChanged?: () => void
 }
 
 export interface ModuleFormScreenProps {
@@ -109,6 +115,12 @@ export interface ModuleRegistryEntry {
    * `true` (generate the routes) when omitted.
    */
   generateRoutes?: boolean
+  /**
+   * When `false`, only the `:id/edit` route is left out (the others are still
+   * generated) and no host hands `onEdit` to the `DetailScreen`: the detail
+   * is its own edit surface (tasks, spec 0195). Defaults to `true`.
+   */
+  generateEditRoute?: boolean
   DetailScreen: ComponentType<ModuleDetailScreenProps>
   FormScreen: ComponentType<ModuleFormScreenProps>
   /**

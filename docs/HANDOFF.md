@@ -3,6 +3,52 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TASK — DETTAGLIO EDITABILE IN PLACE + CREAZIONE COL LAYOUT DEL DETTAGLIO (spec 0195) — VERDE, NON COMMITTATO (2026-10-06)
+
+- Niente piu' pagina edit: registry `generateEditRoute: false` (nuovo flag `ModuleRegistryEntry`, default true) =>
+  nessuna rotta `tasks/:id/edit`, `ModuleDetailPage`/`useModuleOpener` non passano `onEdit`. `TaskFormScreen` senza
+  ramo edit (ritorna null), `TaskEditScreen` rimosso, header del dettaglio senza "Modifica".
+- Dettaglio (`task-detail.tsx`, layout invariato) = righe `TaskInlineField` (matita / clic sul valore -> editor del
+  campo + Salva/Annulla, Esc annulla, Invio salva negli input). Un editor alla volta. Stato `useTaskInlineEdit`
+  (sopra `useTaskForm` edit): Salva = `handleSubmit` -> PATCH diff (`buildUpdatePayload`) col solo campo cambiato +
+  cascate (anagrafica -> referente/opportunita'/lead). Sezioni in `task-detail-sections.tsx` (Dati, Classificazione,
+  Persone, Pianificazione) e `task-detail-link-sections.tsx` (Record collegati, Chiusura, Ricorrenza). Sola lettura:
+  creatore, data completamento, feedback chiusura, bloccato. Stato editabile solo con `canAction('change_status')`,
+  referente solo con anagrafica.
+- `useTaskForm`: `values` + `resetOptions.keepDirtyValues` in edit (riallinea il form al task in cache dopo azioni di
+  dominio senza perdere il campo aperto), `form.reset(editDefaults(saved))` dopo il PATCH, `statusMeta` ri-inizializzato
+  quando cambia lo stato persistito, nuovo `clearServerError`, export `TaskFormState`.
+- Nuovo `ModuleDetailScreenProps.onChanged` (cablato da `useModuleOpener` sul suo `onSaved`): il pannello modale
+  aggiorna griglia/board a ogni salvataggio inline senza chiudersi.
+- Creazione/duplica (`TaskFormBody`, solo `TaskCreateFormMode`) = REPLICA del dettaglio: RecordCanvas, card con
+  `TaskFormHeader` (monogramma + titolo live + Annulla/Salva) e `TaskStatsStrip` live, righe CHIUSE di default
+  (`task-create-sections.tsx` + `task-create-link-sections.tsx`, display in `task-create-displays.tsx` via
+  `useForSelectLabels`, stessa cache dei picker) che si aprono col controllo del campo; stato `useTaskDraftEdit`
+  ("Fatto" = tiene + `trigger` del campo, "Ripristina" = reset allo snapshot dell'apertura). Salva valida tutto,
+  errori mostrati sotto le righe chiuse (`TaskInlineField` legge `getFieldState`). Card laterale con tab Allegati,
+  Sotto-task come `RecordSection`. Rimossi `task-form-summary.tsx` e i wrapper `Task*Section`.
+- Popup di uscita dalla creazione (sempre): `useFormLeaveGuard` (features/modules) = Annulla + `useSheetCloseGuard`
+  (X/overlay/Esc del pannello, `SheetCloseGuardContext` in `useModuleOpener`) + `NavigationLeaveBlocker`
+  (`useBlocker`, montato solo sotto data router: i test con MemoryRouter non lo hanno) + `beforeunload`;
+  `allowLeave()` prima di `onSuccess`. Cablato in `TaskFormScreen`.
+- ATTENZIONE RHF: `resetOptions` di `useForm` si fonde in OGNI `reset` -> in edit `keepDirtyValues: true` serve solo
+  al re-sync `values`; ogni reset che deve scartare passa `keepDirtyValues: false` (test di regressione in
+  `task-detail-inline-edit.test.tsx`: un annullo non finisce nel PATCH successivo).
+- i18n: + `tasks.detail.inlineEdit.{edit,save,cancel,apply,revert}`, `tasks.detail.recurrenceRule`,
+  `tasks.form.leaveConfirm.*`; rimosse le chiavi orfane (anche `form.header.*`, `form.sections.subtasks.title`)
+  (`form.summary.*` tranne `recurrenceOff`, `form.header.status`, `form.editTitle/editSubtitle`, titoli/descrizioni
+  delle sezioni del vecchio form). Guida in-app `tasks` IT/EN: nuova sezione `editing-a-task`, tabella creazione.
+- Test cambiati per requisito (dichiarati nei file): chiusura sempre visibile, regola ricorrenza x2, change_status =
+  nessuna matita, blocco ricorrenza verificato in creazione; casi edit migrati in `task-detail-editors.test.tsx`;
+  nuovi `task-detail-inline-edit.test.tsx`, helper `task-detail-test-helpers.tsx`, test rotte tasks in
+  `module-routes.test.tsx`.
+- Verifica: `tsc -b --force` 0; eslint pulito sui file toccati (2 errori preesistenti in `quotes/column-renderers.tsx`
+  e `registry-form-metadata.test.tsx`, non toccati); vitest completo 885 file / 6732 test verdi. NON verificato a
+  occhio nel browser.
+- Da fare: manuale Claude Docs (doc non accessibile da questa sessione) — sezioni Task: modifica dal dettaglio,
+  creazione. Chiavi i18n orfane preesistenti: `tasks.detail.status`, `detail.minutesValue`, `form.completionDate`,
+  `form.closureFeedback*`. HANDOFF ~400 KB: va archiviato.
+
 ## UTENTE "ASSEGNABILE" (spec 0194) — VERDE, COMMITTATO (2026-10-05)
 
 - Colonna `employment_profiles.is_assignable` (default true, migrazione `2026_10_05_100000_...`; rollback

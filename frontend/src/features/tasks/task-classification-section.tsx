@@ -1,7 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Tags } from 'lucide-react'
 import type { Control } from 'react-hook-form'
-import { FormSection } from '@/components/form-section'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { taskCategoryPathLabel, useTaskCategoryTree } from '@/features/task-categories/use-task-category-tree'
 import {
@@ -15,7 +13,6 @@ import {
   isTaskStatusOptionDisabled,
   isTaskStatusOptionDisabledOnCreate,
 } from '@/features/tasks/task-status-option-availability'
-import { TaskCompletionReadout } from '@/features/tasks/task-completion-readout'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { TaskLookupSelectField } from '@/features/tasks/task-lookup-select-field'
 import type { ReactNode } from 'react'
@@ -75,13 +72,10 @@ interface TaskClassificationSectionProps {
   completionPercentage: number | null
 }
 
-/** Lookup grid: one column on a narrow panel, two, then three as the main column widens. */
-const LOOKUP_GRID_CLASS = 'grid min-w-0 items-start gap-4 @xl:grid-cols-2 @3xl:grid-cols-3'
-
 /** Stable module-level default: a fresh `[]` per render would break the `renderCategoryOption` closure's identity. */
 const EMPTY_CATEGORY_NODES: TaskCategoryTreeNode[] = []
 
-/**
+/*
  * "Classificazione": Stato plus the four lookups (D-1/D-8: category, type,
  * priority and importance are now all four required, the latter three
  * precompiled from their catalog's default row by `useTaskForm`) and the
@@ -125,85 +119,100 @@ const EMPTY_CATEGORY_NODES: TaskCategoryTreeNode[] = []
  * permissions block yet, so `change_status` falls back to permissive (never
  * force-disabled).
  */
-export function TaskClassificationSection({
+
+type TaskLookupFieldProps = Pick<TaskClassificationSectionProps, 'control' | 'task'>
+
+export function TaskStatusField({
   control,
   task,
   onStatusItemChange,
-  completionPercentage,
-}: TaskClassificationSectionProps) {
+}: Pick<TaskClassificationSectionProps, 'control' | 'task' | 'onStatusItemChange'>) {
   const { t } = useTranslation()
   const { canAction } = useResourcePermissions()
   const closeViaStatus = canAction('close_via_status')
   const changeStatus = canAction('change_status')
   const isEdit = task !== null
+
+  return (
+    <TaskLookupSelectField
+      control={control}
+      name="task_status_id"
+      label={t('tasks.form.status')}
+      required={isEdit}
+      resource={TASK_STATUSES_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('tasks.form.statusSearch')}
+      selected={task?.task_status}
+      onItemChange={onStatusItemChange}
+      isItemDisabled={(item) =>
+        isEdit ? isTaskStatusOptionDisabled(item, closeViaStatus) : isTaskStatusOptionDisabledOnCreate(item)
+      }
+      forceDisabled={isEdit && !changeStatus}
+    />
+  )
+}
+
+export function TaskTypeField({ control, task }: TaskLookupFieldProps) {
+  const { t } = useTranslation()
+
+  return (
+    <TaskLookupSelectField
+      control={control}
+      name="task_type_id"
+      label={t('tasks.form.type')}
+      required
+      resource={TASK_TYPES_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('tasks.form.typeSearch')}
+      selected={task?.task_type}
+    />
+  )
+}
+
+export function TaskPriorityField({ control, task }: TaskLookupFieldProps) {
+  const { t } = useTranslation()
+
+  return (
+    <TaskLookupSelectField
+      control={control}
+      name="task_priority_id"
+      label={t('tasks.form.priority')}
+      required
+      resource={TASK_PRIORITIES_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('tasks.form.prioritySearch')}
+      selected={task?.task_priority}
+    />
+  )
+}
+
+export function TaskImportanceField({ control, task }: TaskLookupFieldProps) {
+  const { t } = useTranslation()
+
+  return (
+    <TaskLookupSelectField
+      control={control}
+      name="task_importance_id"
+      label={t('tasks.form.importance')}
+      required
+      resource={TASK_IMPORTANCES_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('tasks.form.importanceSearch')}
+      selected={task?.task_importance}
+    />
+  )
+}
+
+export function TaskCategoryField({ control, task }: TaskLookupFieldProps) {
+  const { t } = useTranslation()
   const categoryTree = useTaskCategoryTree()
   const categoryNodes = categoryTree.data ?? EMPTY_CATEGORY_NODES
 
   return (
-    <FormSection
-      icon={Tags}
-      title={t('tasks.form.sections.classification.title')}
-      description={t('tasks.form.sections.classification.description')}
-    >
-      <div className="grid min-w-0 items-start gap-4 rounded-lg border bg-muted/40 p-3 @xl:grid-cols-2">
-        <TaskLookupSelectField
-          control={control}
-          name="task_status_id"
-          label={t('tasks.form.status')}
-          required={isEdit}
-          resource={TASK_STATUSES_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('tasks.form.statusSearch')}
-          selected={task?.task_status}
-          onItemChange={onStatusItemChange}
-          isItemDisabled={(item) =>
-            isEdit ? isTaskStatusOptionDisabled(item, closeViaStatus) : isTaskStatusOptionDisabledOnCreate(item)
-          }
-          forceDisabled={isEdit && !changeStatus}
-        />
-        <TaskCompletionReadout percentage={completionPercentage} />
-      </div>
-
-      <div className={LOOKUP_GRID_CLASS}>
-        <TaskLookupSelectField
-          control={control}
-          name="task_type_id"
-          label={t('tasks.form.type')}
-          required
-          resource={TASK_TYPES_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('tasks.form.typeSearch')}
-          selected={task?.task_type}
-        />
-
-        <TaskLookupSelectField
-          control={control}
-          name="task_priority_id"
-          label={t('tasks.form.priority')}
-          required
-          resource={TASK_PRIORITIES_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('tasks.form.prioritySearch')}
-          selected={task?.task_priority}
-        />
-
-        <TaskLookupSelectField
-          control={control}
-          name="task_importance_id"
-          label={t('tasks.form.importance')}
-          required
-          resource={TASK_IMPORTANCES_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('tasks.form.importanceSearch')}
-          selected={task?.task_importance}
-        />
-
-        <TaskLookupSelectField
-          control={control}
-          name="task_category_id"
-          label={t('tasks.form.category')}
-          resource={TASK_CATEGORIES_FOR_SELECT_RESOURCE}
-          searchPlaceholder={t('tasks.form.categorySearch')}
-          selected={task?.task_category}
-          renderItem={renderCategoryOption(categoryNodes)}
-        />
-      </div>
-    </FormSection>
+    <TaskLookupSelectField
+      control={control}
+      name="task_category_id"
+      label={t('tasks.form.category')}
+      resource={TASK_CATEGORIES_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('tasks.form.categorySearch')}
+      selected={task?.task_category}
+      renderItem={renderCategoryOption(categoryNodes)}
+    />
   )
 }

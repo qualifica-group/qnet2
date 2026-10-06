@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/sheet'
 import { moduleI18nNamespace } from '@/features/modules/i18n-namespace'
 import { SheetDetailPageLink } from '@/features/modules/sheet-detail-page-link'
+import { SheetCloseGuardContext, type SheetCloseGuard } from '@/features/modules/sheet-close-guard'
 import { getModuleRegistryEntry } from '@/features/modules/module-registry'
 import { useModuleOpenMode } from '@/features/modules/use-module-open-mode'
 import { OPEN_MODE_MODAL, type ModuleCreateParams, type OpenMode } from '@/features/modules/types'
@@ -192,11 +193,34 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
     [closeSheet, navigate],
   )
 
+  // A screen in the Sheet may veto a close from the Sheet's own chrome (X,
+  // overlay, Esc) — the task create form confirms before dropping its draft
+  // (spec 0195). Its own Cancel/Save paths close through `closeSheet` directly.
+  const closeGuardRef = useRef<SheetCloseGuard | null>(null)
+  const closeGuardRegistry = useMemo(
+    () => ({
+      setCloseGuard: (guard: SheetCloseGuard | null) => {
+        closeGuardRef.current = guard
+      },
+    }),
+    [],
+  )
+
   const onSheetOpenChange = useCallback(
     (open: boolean) => {
-      if (!open) {
-        closeSheet()
+      if (open) {
+        return
       }
+      const guard = closeGuardRef.current
+      if (!guard) {
+        closeSheet()
+        return
+      }
+      void guard().then((confirmed) => {
+        if (confirmed) {
+          closeSheet()
+        }
+      })
     },
     [closeSheet],
   )
@@ -220,66 +244,74 @@ export function useModuleOpener(domain: string, options: UseModuleOpenerOptions 
     mode === OPEN_MODE_MODAL ? (
       <Sheet open={sheetState.kind !== 'none'} onOpenChange={onSheetOpenChange}>
         <SheetContent className="gap-0" showCloseButton={false} storageKey={`sheet-width:${domain}`}>
-          <SheetToolbar closeLabel={t('common.close')}>
-            {detailPageId !== null && (
-              <SheetDetailPageLink domain={domain} id={detailPageId} onOpen={openDetailPage} />
+          <SheetCloseGuardContext.Provider value={closeGuardRegistry}>
+            <SheetToolbar closeLabel={t('common.close')}>
+              {detailPageId !== null && (
+                <SheetDetailPageLink domain={domain} id={detailPageId} onOpen={openDetailPage} />
+              )}
+            </SheetToolbar>
+            {sheetState.kind === 'view' && (
+              <>
+                <SheetHeader className="sr-only">
+                  <SheetTitle>{t(`${ns}.detail.title`)}</SheetTitle>
+                  <SheetDescription>{t(`${ns}.detail.subtitle`)}</SheetDescription>
+                </SheetHeader>
+                <DetailScreen
+                  id={Number(sheetState.row.id)}
+                  onEdit={
+                    // A detail that edits in place (spec 0195) has no edit form to swap to.
+                    entry.generateEditRoute === false
+                      ? undefined
+                      : () => setSheetState({ kind: 'edit', row: sheetState.row })
+                  }
+                  onSaved={handleDetailSaved}
+                  onChanged={onSaved}
+                />
+              </>
             )}
-          </SheetToolbar>
-          {sheetState.kind === 'view' && (
-            <>
-              <SheetHeader className="sr-only">
-                <SheetTitle>{t(`${ns}.detail.title`)}</SheetTitle>
-                <SheetDescription>{t(`${ns}.detail.subtitle`)}</SheetDescription>
-              </SheetHeader>
-              <DetailScreen
-                id={Number(sheetState.row.id)}
-                onEdit={() => setSheetState({ kind: 'edit', row: sheetState.row })}
-                onSaved={handleDetailSaved}
-              />
-            </>
-          )}
 
-          {sheetState.kind === 'create' && (
-            <>
-              <SheetHeader className={formHeaderClass}>
-                <SheetTitle>{t(`${ns}.form.createTitle`)}</SheetTitle>
-                <SheetDescription>{t(`${ns}.form.createSubtitle`)}</SheetDescription>
-              </SheetHeader>
-              <FormScreen
-                mode={{ type: 'create', params: sheetState.params }}
-                onSuccess={handleSaved}
-                onCancel={closeSheet}
-              />
-            </>
-          )}
+            {sheetState.kind === 'create' && (
+              <>
+                <SheetHeader className={formHeaderClass}>
+                  <SheetTitle>{t(`${ns}.form.createTitle`)}</SheetTitle>
+                  <SheetDescription>{t(`${ns}.form.createSubtitle`)}</SheetDescription>
+                </SheetHeader>
+                <FormScreen
+                  mode={{ type: 'create', params: sheetState.params }}
+                  onSuccess={handleSaved}
+                  onCancel={closeSheet}
+                />
+              </>
+            )}
 
-          {sheetState.kind === 'edit' && (
-            <>
-              <SheetHeader className={formHeaderClass}>
-                <SheetTitle>{t(`${ns}.form.editTitle`)}</SheetTitle>
-                <SheetDescription>{t(`${ns}.form.editSubtitle`)}</SheetDescription>
-              </SheetHeader>
-              <FormScreen
-                mode={{ type: 'edit', id: Number(sheetState.row.id) }}
-                onSuccess={handleSaved}
-                onCancel={closeSheet}
-              />
-            </>
-          )}
+            {sheetState.kind === 'edit' && (
+              <>
+                <SheetHeader className={formHeaderClass}>
+                  <SheetTitle>{t(`${ns}.form.editTitle`)}</SheetTitle>
+                  <SheetDescription>{t(`${ns}.form.editSubtitle`)}</SheetDescription>
+                </SheetHeader>
+                <FormScreen
+                  mode={{ type: 'edit', id: Number(sheetState.row.id) }}
+                  onSuccess={handleSaved}
+                  onCancel={closeSheet}
+                />
+              </>
+            )}
 
-          {sheetState.kind === 'duplicate' && (
-            <>
-              <SheetHeader className={formHeaderClass}>
-                <SheetTitle>{t(`${ns}.form.createTitle`)}</SheetTitle>
-                <SheetDescription>{t(`${ns}.form.createSubtitle`)}</SheetDescription>
-              </SheetHeader>
-              <FormScreen
-                mode={{ type: 'duplicate', id: Number(sheetState.row.id) }}
-                onSuccess={handleSaved}
-                onCancel={closeSheet}
-              />
-            </>
-          )}
+            {sheetState.kind === 'duplicate' && (
+              <>
+                <SheetHeader className={formHeaderClass}>
+                  <SheetTitle>{t(`${ns}.form.createTitle`)}</SheetTitle>
+                  <SheetDescription>{t(`${ns}.form.createSubtitle`)}</SheetDescription>
+                </SheetHeader>
+                <FormScreen
+                  mode={{ type: 'duplicate', id: Number(sheetState.row.id) }}
+                  onSuccess={handleSaved}
+                  onCancel={closeSheet}
+                />
+              </>
+            )}
+          </SheetCloseGuardContext.Provider>
         </SheetContent>
       </Sheet>
     ) : null

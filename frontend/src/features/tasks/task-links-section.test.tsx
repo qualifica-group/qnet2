@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { TaskFormBody } from '@/features/tasks/task-form-body'
+import { openInlineEditor, queryInlineEditButton } from '@/features/tasks/task-detail-test-helpers'
 import { FULL_ACCESS_PERMISSIONS } from '@/features/tasks/task-fixtures'
 import { fetchWorkOrderStages } from '@/features/work-orders/task-board/api'
 import type { TaskFormMode } from '@/features/tasks/types'
@@ -71,6 +72,7 @@ function renderCreateForm(mode: Extract<TaskFormMode, { type: 'create' }> = { ty
 
 const label = (key: string) => i18n.t(key)
 const fasePicker = () => screen.queryByRole('combobox', { name: label('tasks.form.workOrderStage') })
+const faseRowEdit = () => queryInlineEditButton(label('tasks.form.workOrderStage'))
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -89,15 +91,18 @@ beforeEach(() => {
 })
 
 describe('TaskLinksSection — "Fase" visible only with a commessa and no parent (D-3/AC-030)', () => {
+  // Spec 0195 D-8: rows start closed, so "the field" is the Fase ROW and its editor.
   it('is absent without a commessa', () => {
     renderCreateForm()
 
-    expect(fasePicker()).not.toBeInTheDocument()
+    expect(faseRowEdit()).not.toBeInTheDocument()
   })
 
   it('appears once a commessa is prefilled', async () => {
     renderCreateForm({ type: 'create', workOrderId: 9 })
 
+    await waitFor(() => expect(faseRowEdit()).toBeInTheDocument())
+    openInlineEditor(label('tasks.form.workOrderStage'))
     await waitFor(() => expect(fasePicker()).toBeInTheDocument())
   })
 
@@ -105,13 +110,14 @@ describe('TaskLinksSection — "Fase" visible only with a commessa and no parent
     renderCreateForm({ type: 'create', parentTaskId: 90, workOrderId: 9 })
 
     await waitFor(() => expect(fetchWorkOrderStages).not.toHaveBeenCalled())
-    expect(fasePicker()).not.toBeInTheDocument()
+    expect(faseRowEdit()).not.toBeInTheDocument()
   })
 })
 
 describe('TaskLinksSection — options are the commessa\'s OPEN fasi only (AC-030)', () => {
   it('lists the open fase but not the closed one', async () => {
     renderCreateForm({ type: 'create', workOrderId: 9 })
+    openInlineEditor(label('tasks.form.workOrderStage'))
     await waitFor(() => expect(fasePicker()).not.toBeDisabled())
 
     fireEvent.click(fasePicker() as HTMLElement)
@@ -125,6 +131,8 @@ describe('TaskLinksSection — options are the commessa\'s OPEN fasi only (AC-03
 describe('TaskLinksSection — resets when the commessa changes (D-3, wiring only)', () => {
   it('hides the fase field once the commessa is cleared, wherever it was left (AC-030)', async () => {
     renderCreateForm({ type: 'create', workOrderId: 9 })
+    // The Commessa row's editor carries the Fase too (D-3: picked together).
+    openInlineEditor(label('tasks.detail.workOrder'))
     await waitFor(() => expect(fasePicker()).not.toBeDisabled())
 
     fireEvent.click(fasePicker() as HTMLElement)

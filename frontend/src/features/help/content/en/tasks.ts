@@ -126,21 +126,24 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Press **New task**.',
-            "Fill in the form's fields (see table).",
-            'If you want, add files in **Attachments**: they are uploaded once the task is saved.',
-            'Press **Save**.',
+            'Fill in the fields: the form is identical to the task detail (see table), with the fields closed, empty or prefilled. Press the **pencil** (or click the value) to open one, then **Done** to keep it or **Revert** to put it back as it was.',
+            'If you want, add files in the **Attachments** tab of the side card (where the detail keeps its Documents): they are uploaded once the task is saved.',
+            'Press **Save**: every field is checked at once and any error shows under its row.',
           ],
+        },
+        {
+          type: 'note',
+          text: 'Leaving the create form without saving (Cancel, closing the panel, another link or a page reload) asks for confirmation first: confirming drops what you entered.',
         },
         {
           type: 'table',
           headers: ['Section', 'Main fields'],
           rows: [
-            ['Task', 'Title (required), Description, Parent task.'],
+            ['Details', 'Title (required), Description, Parent task.'],
             [
               'Classification',
               "Status (optional on create: when left unpicked, it starts from the default one), Type, Priority and Importance (all three required, prefilled from the catalog's default row), Category (a tree, indented — you can also pick a parent category).",
             ],
-            ['Account and contact', "Account, Contact (among the account's own)."],
             [
               'People',
               'Requested by (required), Assignees (at least one), Watchers, Private task, Do not send the opening notification.',
@@ -148,7 +151,7 @@ const guide: HelpGuide = {
             ['Scheduling', "Start date, Due date (required, prefilled to today), times, Estimated time (minutes)."],
             [
               'Linked records',
-              'Opportunity, Work order or Lead (Opportunity and Work order exclude each other; picking a Work order sets the account); with a Work order, the Phase to place the task in (open phases only, not for subtasks).',
+              "Account, Contact (among the account's own), Opportunity, Work order or Lead (Opportunity and Work order exclude each other; picking a Work order sets the account); with a Work order, the Phase to place the task in (open phases only, not for subtasks).",
             ],
             ['Closure', 'Feedback required, Validation, Create already completed (create only).'],
             ['Recurrence', 'Frequency and end of the repetition.'],
@@ -172,11 +175,38 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'By default assignees and watchers get the assignment notification on create: turn on **Do not send the opening notification** to create it without alerting them. On edit the same idea is called **Do not notify the newly assigned** and only covers whoever you add with that save.',
+          text: 'By default assignees and watchers get the assignment notification on create: turn on **Do not send the opening notification** to create it without alerting them. In the detail, when editing the **Assignees**, the same idea is called **Do not notify the newly assigned** and only covers whoever you add with that save.',
         },
         {
           type: 'note',
           text: 'Changing the **Account** clears Contact, Opportunity and Lead, and keeps the Work order only when it belongs to the same account. Opportunity, Work order and Lead only list the records of the chosen account once you picked one.',
+        },
+      ],
+    },
+    {
+      id: 'editing-a-task',
+      title: 'Editing a task',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'There is no separate edit page: a task is edited **directly from its detail**, one field at a time.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Open the task from the list (or the Kanban).',
+            'Hover the field to change and press the **pencil** (or click the value).',
+            'Change the value in the control that appears.',
+            'Press **Save** (or Enter in text and date fields) to save that field alone; **Cancel** (or Esc) to leave it as it was.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'A field without a pencil cannot be edited by you right now (permissions, task in validation or closed, blocked task for the Status). Creator, Completion date, Closure feedback and Blocked stay read-only: they change only through the actions (Complete, Block, Unblock...).',
+        },
+        {
+          type: 'note',
+          text: 'The rules are the same as on create: changing the **Registry** clears Referent, Opportunity and Lead in the same save; picking a **Work order** removes the Opportunity and offers the Stage right away.',
         },
       ],
     },

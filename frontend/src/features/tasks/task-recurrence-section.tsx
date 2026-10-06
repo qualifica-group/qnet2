@@ -1,7 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Repeat } from 'lucide-react'
 import { useFormContext, useWatch, type Control } from 'react-hook-form'
-import { FormSection } from '@/components/form-section'
 import { FIELD_GRID_CLASS } from '@/components/record-form/layout'
 import { FormControl } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
@@ -46,7 +44,7 @@ function capitalize(value: string): string {
   return value.length === 0 ? value : value[0].toUpperCase() + value.slice(1)
 }
 
-/**
+/*
  * "Ricorrenza" (spec 0120 D-1/D-12, spec 0155 D-1): every control below reads
  * the SAME `metaKey`, so an actor without the mandate sees the whole section
  * locked at once (AC-034) through the ordinary `MetaField` mechanism — no
@@ -65,7 +63,9 @@ function capitalize(value: string): string {
  * seeding), so the plain day-of-month input is the one an operator sees
  * first — the ordinal picker is the deliberate extra step.
  */
-export function TaskRecurrenceSection({ control }: TaskRecurrenceSectionProps) {
+
+/** The section's controls without its card, so the task detail edits the rule in place (spec 0195 D-3). */
+export function TaskRecurrenceFields({ control }: TaskRecurrenceSectionProps) {
   const { t, i18n } = useTranslation()
   const { setValue } = useFormContext<TaskFormValues>()
   const { field: fieldPermission } = useResourcePermissions()
@@ -104,11 +104,7 @@ export function TaskRecurrenceSection({ control }: TaskRecurrenceSectionProps) {
   }
 
   return (
-    <FormSection
-      icon={Repeat}
-      title={t('tasks.form.sections.recurrence.title')}
-      description={t('tasks.form.sections.recurrence.description')}
-    >
+    <>
       <MetaField
         control={control}
         name="recurrence.enabled"
@@ -445,6 +441,6 @@ export function TaskRecurrenceSection({ control }: TaskRecurrenceSectionProps) {
           ) : null}
         </div>
       ) : null}
-    </FormSection>
+    </>
   )
 }

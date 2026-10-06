@@ -4,10 +4,10 @@ import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleto
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { TaskFormBody } from '@/features/tasks/task-form-body'
 import { useTaskFormMeta } from '@/features/tasks/use-task-form-meta'
-import type { TaskDetail, TaskFormMode } from '@/features/tasks/types'
+import type { TaskCreateFormMode, TaskDetail } from '@/features/tasks/types'
 
 interface TaskFormProps {
-  mode: TaskFormMode
+  mode: TaskCreateFormMode
   /** Called after a successful create/update so the caller can close + refresh. */
   onSuccess: (task: TaskDetail) => void
   /** Called when the user cancels the form. */
@@ -15,15 +15,15 @@ interface TaskFormProps {
 }
 
 /**
- * Reusable RHF + Zod form used for both creating and editing a task.
- * Metadata-driven (spec 0004): resolves the resource's `ResourcePermissions`
- * before rendering — edit mode from the loaded instance detail, create mode
- * from `GET /meta/tasks` — so every field's visibility/editability is decided
- * server-side, never here.
+ * RHF + Zod form used for creating (or duplicating) a task — editing happens
+ * in place on the detail (spec 0195). Metadata-driven (spec 0004): resolves
+ * the create-context `ResourcePermissions` (`GET /meta/tasks`) before
+ * rendering, so every field's visibility/editability is decided server-side,
+ * never here.
  */
 export function TaskForm({ mode, onSuccess, onCancel }: TaskFormProps) {
   const { t } = useTranslation()
-  const meta = useTaskFormMeta(mode)
+  const meta = useTaskFormMeta()
 
   if (meta.status === 'loading') {
     return <RecordFormSkeleton />

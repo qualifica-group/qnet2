@@ -77,3 +77,10 @@ export type TaskFormMode =
    * place enforcing exactly that list.
    */
   | { type: 'duplicate'; source: TaskDetailWithPermissions }
+
+/**
+ * The modes the task FORM screen mounts: create and duplicate. Edit has no
+ * form screen any more — the detail edits in place on top of `useTaskForm`
+ * (spec 0195), the only consumer of the `'edit'` branch.
+ */
+export type TaskCreateFormMode = Exclude<TaskFormMode, { type: 'edit' }>

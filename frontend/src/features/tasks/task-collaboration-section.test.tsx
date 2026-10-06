@@ -51,6 +51,12 @@ vi.mock('@/features/modules/use-module-open-mode', () => ({
   useModuleOpenMode: () => 'modal',
 }))
 
+// The detail mounts the edit form behind its inline editors (spec 0195),
+// which reads the connected actor.
+vi.mock('@/features/auth/use-auth', () => ({
+  useAuth: () => ({ user: { id: 99, name: 'Utente Corrente' } }),
+}))
+
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({
     can: (permission: string) => granted.includes(permission),

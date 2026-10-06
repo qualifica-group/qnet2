@@ -26,6 +26,12 @@ vi.mock('@/features/modules/use-module-open-mode', () => ({
   useModuleOpenMode: () => 'modal',
 }))
 
+// The detail mounts the edit form behind its inline editors (spec 0195),
+// which reads the connected actor.
+vi.mock('@/features/auth/use-auth', () => ({
+  useAuth: () => ({ user: { id: 99, name: 'Utente Corrente' } }),
+}))
+
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({
     can: (permission: string) => granted.includes(permission),
@@ -179,13 +185,15 @@ describe('TaskDetailView — recurring series badge (AC-035)', () => {
       }),
     )
 
-    expect(screen.getByText('Every 2 weeks on Monday and Wednesday, until 31/03/2027')).toBeInTheDocument()
+    // Spec 0195: the header badge AND the editable "Ricorrenza" row name the rule.
+    expect(screen.getAllByText('Every 2 weeks on Monday and Wednesday, until 31/03/2027')).toHaveLength(2)
   })
 
   it('omits the badge for a task with no recurrence', () => {
     renderDetail(taskDetailWithPermissions({ recurrence: null }))
 
     expect(screen.queryByText(/Every|Ogni/)).not.toBeInTheDocument()
+    expect(screen.getByText(label('tasks.form.summary.recurrenceOff'))).toBeInTheDocument()
   })
 })
 
@@ -263,9 +271,12 @@ describe('TaskDetailView — sub-tasks (AC-085)', () => {
 
 /** Spec 0121 D-7/AC-021: the section now gates on EITHER flag, not just the feedback one. */
 describe('TaskDetailView — closure section (AC-021)', () => {
-  it('omits the section when neither flag is active', () => {
+  // Requirement changed by spec 0195 D-2: the flags are edited in place, so the
+  // section stays visible (both "No") instead of disappearing.
+  it('keeps the section, with both flags readable, when neither flag is active', () => {
     renderDetail(taskDetailWithPermissions())
-    expect(screen.queryByText(label('tasks.detail.sections.closure'))).not.toBeInTheDocument()
+    expect(screen.getByText(label('tasks.detail.sections.closure'))).toBeInTheDocument()
+    expect(screen.getByText(label('tasks.detail.requiresValidation'))).toBeInTheDocument()
   })
 
   it('shows the section and the recorded feedback when the feedback flag alone is active', () => {

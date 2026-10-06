@@ -129,21 +129,24 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Premi **Nuovo task**.',
-            'Compila i campi delle sezioni del modulo (vedi tabella).',
-            'Se vuoi, aggiungi file in **Allegati**: vengono caricati appena il task è salvato.',
-            'Premi **Salva**.',
+            'Compila i campi: il modulo è identico al dettaglio del task (vedi tabella), con i campi chiusi, vuoti o già precompilati. Premi la **matita** (o fai clic sul valore) per aprirne uno, poi **Fatto** per tenerlo o **Ripristina** per riportarlo com\'era.',
+            'Se vuoi, aggiungi file nella scheda **Allegati** della card laterale (dove nel dettaglio trovi i Documenti): vengono caricati appena il task è salvato.',
+            'Premi **Salva**: vengono controllati tutti i campi insieme e gli errori compaiono sotto le righe interessate.',
           ],
+        },
+        {
+          type: 'note',
+          text: 'Se esci dalla creazione senza salvare (Annulla, chiusura del pannello, un altro link o il ricaricamento della pagina) ti viene chiesta conferma: confermando, i dati inseriti vanno persi.',
         },
         {
           type: 'table',
           headers: ['Sezione', 'Campi principali'],
           rows: [
-            ['Task', 'Titolo (obbligatorio), Descrizione, Task padre.'],
+            ['Dati', 'Titolo (obbligatorio), Descrizione, Task padre.'],
             [
               'Classificazione',
               'Stato (facoltativo in creazione: se non lo scegli, parte da quello predefinito), Tipologia, Priorità e Importanza (tutte e tre obbligatorie, precompilate con la voce predefinita del catalogo), Categoria (ad albero, indentata, puoi scegliere anche una categoria padre).',
             ],
-            ['Anagrafica e referente', 'Anagrafica, Referente (tra quelli dell\'anagrafica).'],
             [
               'Persone',
               'Richiedente (obbligatorio), Assegnatari (almeno uno), Osservatori, Task privato, Non inviare notifica di apertura.',
@@ -151,7 +154,7 @@ const guide: HelpGuide = {
             ['Pianificazione', 'Data inizio, Data fine (obbligatoria, precompilata a oggi), orari, Tempo stimato (minuti).'],
             [
               'Record collegati',
-              'Opportunità, Commessa o Lead (si escludono a vicenda tra Opportunità e Commessa; scegliere una Commessa imposta l\'anagrafica); con una Commessa, la Fase in cui mettere il task (solo fasi aperte, non per i sottotask).',
+              'Anagrafica, Referente (tra quelli dell\'anagrafica), Opportunità, Commessa o Lead (si escludono a vicenda tra Opportunità e Commessa; scegliere una Commessa imposta l\'anagrafica); con una Commessa, la Fase in cui mettere il task (solo fasi aperte, non per i sottotask).',
             ],
             ['Chiusura', 'Feedback obbligatorio, Validazione, Crea già completato (solo in creazione).'],
             ['Ricorrenza', 'Frequenza e fine della ripetizione.'],
@@ -175,11 +178,38 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'Per impostazione predefinita gli assegnatari e gli osservatori ricevono la notifica di assegnazione alla creazione: attiva **Non inviare notifica di apertura** per crearlo senza avvisarli. In modifica la stessa idea si chiama **Non notificare i nuovi assegnati** e riguarda solo chi aggiungi con quel salvataggio.',
+          text: 'Per impostazione predefinita gli assegnatari e gli osservatori ricevono la notifica di assegnazione alla creazione: attiva **Non inviare notifica di apertura** per crearlo senza avvisarli. Nel dettaglio, modificando gli **Assegnatari**, la stessa idea si chiama **Non notificare i nuovi assegnati** e riguarda solo chi aggiungi con quel salvataggio.',
         },
         {
           type: 'note',
           text: 'Cambiare l\'**Anagrafica** azzera Referente, Opportunità e Lead, e mantiene la Commessa solo se appartiene alla stessa anagrafica. Opportunità, Commessa e Lead mostrano solo i record dell\'anagrafica scelta, una volta che ne hai scelta una.',
+        },
+      ],
+    },
+    {
+      id: 'editing-a-task',
+      title: 'Modificare un task',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Non esiste una pagina di modifica separata: il task si modifica **direttamente dal suo dettaglio**, un campo alla volta.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Apri il task dall\'elenco (o dalla Kanban).',
+            'Passa col mouse sul campo da cambiare e premi la **matita** (o fai clic sul valore).',
+            'Modifica il valore nel controllo che compare.',
+            'Premi **Salva** (o Invio nei campi di testo e data) per salvare solo quel campo; **Annulla** (o Esc) per lasciarlo com\'era.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Un campo senza matita non è modificabile da te in quel momento (permessi, task in validazione o chiuso, task bloccato per lo Stato). Creatore, Data completamento, Feedback di chiusura e Bloccato restano in sola lettura: cambiano solo con le azioni (Completa, Blocca, Sblocca...).',
+        },
+        {
+          type: 'note',
+          text: 'Le regole sono quelle della creazione: cambiare l\'**Anagrafica** azzera Referente, Opportunità e Lead nello stesso salvataggio; scegliere una **Commessa** toglie l\'Opportunità e propone subito la Fase.',
         },
       ],
     },

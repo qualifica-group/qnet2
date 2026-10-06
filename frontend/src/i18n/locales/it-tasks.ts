@@ -156,6 +156,14 @@ export const tasks = {
     subtasksEmpty: 'Questo task non ha ancora sotto-task.',
     created_at: 'Creato il',
     updated_at: 'Aggiornato il',
+    recurrenceRule: 'Regola',
+    inlineEdit: {
+      edit: 'Modifica {{field}}',
+      save: 'Salva',
+      apply: 'Fatto',
+      revert: 'Ripristina',
+      cancel: 'Annulla',
+    },
     sections: {
       identity: 'Dati',
       people: 'Persone',
@@ -179,21 +187,11 @@ export const tasks = {
   form: {
     createTitle: 'Nuovo task',
     createSubtitle: 'Crea un nuovo task.',
-    editTitle: 'Modifica task',
-    editSubtitle: 'Aggiorna il task selezionato.',
     newTask: 'Nuovo task',
     title: 'Titolo',
     titlePlaceholder: 'Che cosa bisogna fare?',
     descriptionPlaceholder: 'Aggiungi dettagli, contesto o istruzioni…',
-    header: {
-      status: 'Stato',
-      endDate: 'Scadenza',
-    },
     summary: {
-      title: 'Riepilogo',
-      description: 'Anteprima di ciò che verrà salvato.',
-      assigneesCount_one: '{{count}} assegnatario',
-      assigneesCount_other: '{{count}} assegnatari',
       recurrenceOff: 'Non ricorrente',
     },
     titleRequired: 'Il titolo è obbligatorio.',
@@ -289,40 +287,13 @@ export const tasks = {
       parentLocked: 'Impostato dal task padre da cui stai creando questo sotto-task.',
     },
     sections: {
-      identity: {
-        title: 'Task',
-        description: 'Che cosa è il task e dove si colloca nella gerarchia.',
-      },
       classification: {
         title: 'Classificazione',
-        description: 'Stato, tipologia e gli attributi che governano il task.',
-      },
-      registry: {
-        title: 'Anagrafica e referente',
-        description: 'A chi si riferisce il task.',
-      },
-      people: {
-        title: 'Persone',
-        description: 'Chi lo ha richiesto, chi ci lavora e chi lo segue.',
-      },
-      planning: {
-        title: 'Pianificazione',
-        description: 'Date, orari e impegno stimato.',
-      },
-      links: {
-        title: 'Record collegati',
-        description: "L'opportunità o la commessa a cui appartiene il task.",
-      },
-      closure: {
-        title: 'Chiusura',
-        description: 'Se chiudere il task richiede un feedback scritto.',
       },
       recurrence: {
         title: 'Ricorrenza',
-        description: 'Se attiva, genera automaticamente le occorrenze future di questo task.',
       },
       subtasks: {
-        title: 'Sotto-task',
         description: 'Crea subito una o più attività figlie insieme a questo task (facoltativo).',
       },
     },
@@ -400,6 +371,12 @@ export const tasks = {
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il task non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     created: 'Task creato.',
     updated: 'Task aggiornato.',
     deleted: 'Task eliminato.',

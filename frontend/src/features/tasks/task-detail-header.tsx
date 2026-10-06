@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/formatting/date-display'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { formatTaskRecurrenceRule } from '@/features/tasks/task-recurrence-format'
@@ -21,20 +20,17 @@ import type { TaskDetailWithPermissions } from '@/features/tasks/types'
 
 interface TaskDetailHeaderProps {
   task: TaskDetailWithPermissions
-  /** Opens the module's existing edit surface; absent = no edit affordance. */
-  onEdit?: () => void
 }
 
 /**
- * Identity band: monogram, title, parent subtitle, the configured lookup
- * badges, and the "Modifica" action on the card itself (as on Opportunita').
+ * Identity band: monogram, title, parent subtitle and the configured lookup
+ * badges. No "Modifica" action: the fields below edit in place (spec 0195).
  *
  * AC-086: "Bloccato/contestato" is its OWN badge, visually and semantically
  * separate from the status pill — a flag, not a phase.
  */
-export function TaskDetailHeader({ task, onEdit }: TaskDetailHeaderProps) {
+export function TaskDetailHeader({ task }: TaskDetailHeaderProps) {
   const { t, i18n } = useTranslation()
-  const canEdit = task.permissions.resource.update
 
   return (
     <RecordCardHeader
@@ -64,7 +60,6 @@ export function TaskDetailHeader({ task, onEdit }: TaskDetailHeaderProps) {
           ) : null}
         </>
       }
-      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }
@@ -78,23 +73,47 @@ interface TaskDetailStatsProps {
  * computed server-side from the status, D-6), start and end dates, estimate.
  */
 export function TaskDetailStats({ task }: TaskDetailStatsProps) {
+  return (
+    <TaskStatsStrip
+      completionPercentage={task.completion_percentage}
+      startDate={task.start_date}
+      endDate={task.end_date}
+      estimatedMinutes={task.estimated_minutes}
+    />
+  )
+}
+
+interface TaskStatsStripProps {
+  /** `null` while no status is known (a create with no status picked yet). */
+  completionPercentage: number | null
+  startDate: string | null
+  endDate: string | null
+  estimatedMinutes: number | null
+}
+
+/** The strip itself, fed by the persisted task (detail) or the live form values (create, spec 0195 D-8). */
+export function TaskStatsStrip({ completionPercentage, startDate, endDate, estimatedMinutes }: TaskStatsStripProps) {
   const { t } = useTranslation()
-  const startDate = formatDate(task.start_date)
-  const endDate = formatDate(task.end_date)
+  const formattedStart = formatDate(startDate)
+  const formattedEnd = formatDate(endDate)
 
   return (
     <RecordStatStrip className="border-t-0 bg-transparent">
       <RecordStat
         label={t('tasks.detail.completionPercentage')}
         value={
-          <CompletionBar value={task.completion_percentage} label={t('tasks.detail.completionPercentage')} />
+          completionPercentage !== null ? (
+            <CompletionBar value={completionPercentage} label={t('tasks.detail.completionPercentage')} />
+          ) : (
+            <DetailEmpty />
+          )
         }
       />
-      <RecordStat label={t('tasks.detail.startDate')} value={startDate || <DetailEmpty />} />
-      <RecordStat label={t('tasks.detail.endDate')} value={endDate || <DetailEmpty />} />
+      <RecordStat label={t('tasks.detail.startDate')} value={formattedStart || <DetailEmpty />} />
+      <RecordStat label={t('tasks.detail.endDate')} value={formattedEnd || <DetailEmpty />} />
       <RecordStat
         label={t('tasks.detail.estimatedMinutes')}
-        value={task.estimated_minutes !== null ? formatMinutesLabel(task.estimated_minutes) : <DetailEmpty />}
+        value={estimatedMinutes !== null ? formatMinutesLabel(estimatedMinutes) : <DetailEmpty />}
       />
     </RecordStatStrip>
   )

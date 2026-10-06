@@ -155,6 +155,14 @@ export const tasks = {
     subtasksEmpty: 'This task has no sub-task yet.',
     created_at: 'Created at',
     updated_at: 'Updated at',
+    recurrenceRule: 'Rule',
+    inlineEdit: {
+      edit: 'Edit {{field}}',
+      save: 'Save',
+      apply: 'Done',
+      revert: 'Revert',
+      cancel: 'Cancel',
+    },
     sections: {
       identity: 'Details',
       people: 'People',
@@ -178,21 +186,11 @@ export const tasks = {
   form: {
     createTitle: 'Create task',
     createSubtitle: 'Add a new task.',
-    editTitle: 'Edit task',
-    editSubtitle: 'Update the selected task.',
     newTask: 'New task',
     title: 'Title',
     titlePlaceholder: 'What needs to be done?',
     descriptionPlaceholder: 'Add details, context or instructions…',
-    header: {
-      status: 'Status',
-      endDate: 'Due',
-    },
     summary: {
-      title: 'Summary',
-      description: 'A preview of what will be saved.',
-      assigneesCount_one: '{{count}} assignee',
-      assigneesCount_other: '{{count}} assignees',
       recurrenceOff: 'Not recurring',
     },
     titleRequired: 'The title is required.',
@@ -282,40 +280,13 @@ export const tasks = {
       parentLocked: 'Set from the parent task this sub-task is created under.',
     },
     sections: {
-      identity: {
-        title: 'Task',
-        description: 'What the task is and where it sits in the hierarchy.',
-      },
       classification: {
         title: 'Classification',
-        description: 'Status, type and the attributes governing the task.',
-      },
-      registry: {
-        title: 'Account and contact',
-        description: 'Who the task is about.',
-      },
-      people: {
-        title: 'People',
-        description: 'Who requested it, who works on it and who follows it.',
-      },
-      planning: {
-        title: 'Scheduling',
-        description: 'Dates, times and the estimated effort.',
-      },
-      links: {
-        title: 'Linked records',
-        description: 'The opportunity or work order this task belongs to.',
-      },
-      closure: {
-        title: 'Closure',
-        description: 'Whether closing the task requires a written feedback.',
       },
       recurrence: {
         title: 'Recurrence',
-        description: 'When on, automatically generates the future occurrences of this task.',
       },
       subtasks: {
-        title: 'Sub-tasks',
         description: 'Create one or more child tasks right along with this one (optional).',
       },
     },
@@ -393,6 +364,12 @@ export const tasks = {
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The task has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     created: 'Task created.',
     updated: 'Task updated.',
     deleted: 'Task deleted.',

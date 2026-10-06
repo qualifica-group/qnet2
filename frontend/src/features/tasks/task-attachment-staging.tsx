@@ -1,8 +1,7 @@
 import type { ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Paperclip, Upload, X } from 'lucide-react'
+import { Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { FormSection } from '@/components/form-section'
 import { formatBytes } from '@/features/attachments/format-bytes'
 
 export interface TaskAttachmentStagingProps {
@@ -17,8 +16,10 @@ export interface TaskAttachmentStagingProps {
  * D-7/D-8): the task does not exist yet, so there is nothing to upload
  * against — `useTaskForm` uploads these one by one only after the `POST
  * /api/tasks` that returns an id. Mounted exclusively by `TaskFormBody` on
- * create (AC-027): in edit mode the same job belongs to the Documenti tab of
- * the detail (`DocumentsSection`), and running both here would duplicate it.
+ * create (AC-027): on a persisted task the same job belongs to the Documenti
+ * tab of the detail (`DocumentsSection`). No card of its own: the create form
+ * shows it as the tab of its side card, where the detail keeps its documents
+ * (spec 0195 D-8).
  */
 export function TaskAttachmentStaging({ files, onAdd, onRemove }: TaskAttachmentStagingProps) {
   const { t } = useTranslation()
@@ -33,48 +34,43 @@ export function TaskAttachmentStaging({ files, onAdd, onRemove }: TaskAttachment
   }
 
   return (
-    <FormSection
-      icon={Paperclip}
-      title={t('tasks.form.attachments.title')}
-      description={t('tasks.form.attachments.description')}
-    >
-      <div className="flex flex-col gap-2">
-        <label className="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-dashed border-field-border bg-muted/40 px-3 py-4 text-center transition-colors hover:bg-muted focus-within:ring-[3px] focus-within:ring-ring/50">
-          <span className="flex size-8 items-center justify-center rounded-full bg-card text-primary shadow-xs">
-            <Upload className="size-4" aria-hidden="true" />
-          </span>
-          <span className="text-sm font-medium">{t('tasks.form.attachments.add')}</span>
-          <input type="file" multiple className="sr-only" onChange={handleChange} />
-        </label>
+    <div className="flex flex-col gap-2">
+      <p className="text-xs text-muted-foreground">{t('tasks.form.attachments.description')}</p>
+      <label className="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-dashed border-field-border bg-muted/40 px-3 py-4 text-center transition-colors hover:bg-muted focus-within:ring-[3px] focus-within:ring-ring/50">
+        <span className="flex size-8 items-center justify-center rounded-full bg-card text-primary shadow-xs">
+          <Upload className="size-4" aria-hidden="true" />
+        </span>
+        <span className="text-sm font-medium">{t('tasks.form.attachments.add')}</span>
+        <input type="file" multiple className="sr-only" onChange={handleChange} />
+      </label>
 
-        {files.length === 0 ? (
-          <p className="text-xs text-muted-foreground">{t('tasks.form.attachments.empty')}</p>
-        ) : (
-          <ul className="flex flex-col gap-1.5">
-            {files.map((file, index) => (
-              <li
-                key={`${file.name}-${index}`}
-                className="flex items-center gap-2 rounded-md border bg-card px-2.5 py-1.5 text-xs"
+      {files.length === 0 ? (
+        <p className="text-xs text-muted-foreground">{t('tasks.form.attachments.empty')}</p>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {files.map((file, index) => (
+            <li
+              key={`${file.name}-${index}`}
+              className="flex items-center gap-2 rounded-md border bg-card px-2.5 py-1.5 text-xs"
+            >
+              <span className="min-w-0 flex-1 truncate" title={file.name}>
+                {file.name}
+              </span>
+              <span className="shrink-0 text-muted-foreground">{formatBytes(file.size)}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                aria-label={t('tasks.form.attachments.remove')}
+                onClick={() => onRemove(index)}
               >
-                <span className="min-w-0 flex-1 truncate" title={file.name}>
-                  {file.name}
-                </span>
-                <span className="shrink-0 text-muted-foreground">{formatBytes(file.size)}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  aria-label={t('tasks.form.attachments.remove')}
-                  onClick={() => onRemove(index)}
-                >
-                  <X aria-hidden="true" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </FormSection>
+                <X aria-hidden="true" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }

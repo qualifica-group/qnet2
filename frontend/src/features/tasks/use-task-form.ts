@@ -254,6 +254,15 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
   const [statusMeta, setStatusMeta] = useState<TaskStatusForSelectMeta | null>(() =>
     persistedStatusMeta(mode),
   )
+  // Spec 0195: the task detail keeps this form mounted while a domain action
+  // (Completa, Riapri...) changes the persisted status — re-seed on that
+  // change, during render (React's "adjust state on prop change" pattern).
+  const persistedStatusId = mode.type === 'edit' ? mode.task.task_status_id : null
+  const [statusMetaSeedId, setStatusMetaSeedId] = useState(persistedStatusId)
+  if (statusMetaSeedId !== persistedStatusId) {
+    setStatusMetaSeedId(persistedStatusId)
+    setStatusMeta(persistedStatusMeta(mode))
+  }
 
   /**
    * Files chosen before the task exists (spec 0118 D-7): pure in-memory
@@ -274,9 +283,18 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
   // whose identity never changes but which always runs the latest schema.
   const resolverRef = useRef<Resolver<TaskFormValues>>(zodResolver(buildTaskSchema(t, !isEdit)))
 
+  // Edit mode IS the task detail (spec 0195 D-2): the persisted task can change
+  // under the form (a domain action, a subtask write), so `values` re-syncs it
+  // while `keepDirtyValues` preserves what the user is still editing. Without
+  // it the diff-based PATCH would send a stale untouched value back.
   const form = useForm<TaskFormValues>({
     resolver: (values, context, options) => resolverRef.current(values, context, options),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    // Scoped to that `values` re-sync: every explicit `reset` that means to
+    // DROP an edit passes `keepDirtyValues: false` (RHF merges these options
+    // into every reset, explicit ones winning).
+    resetOptions: isEdit ? { keepDirtyValues: true } : undefined,
   })
 
   // Spec 0123 D-10/D-7: the parent's link fields prefill the empty ones, and
@@ -386,6 +404,8 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
           buildUpdatePayload(values, mode.task, canEditRecurrence),
         )
         queryClient.setQueryData(taskDetailQueryKey(mode.task.id), saved)
+        // Step 2 (edit): the detail stays mounted on the saved task, clean.
+        form.reset(editDefaults(saved), { keepDirtyValues: false })
         toast.success(t('tasks.form.updated'))
         onSuccess(saved)
         return
@@ -451,6 +471,8 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     form,
     isEdit,
     serverError,
+    /** Drops a reported server error, for a caller that discards the edit it belonged to (spec 0195 inline edit). */
+    clearServerError: () => setServerError(null),
     onSubmit,
     handleRegistryChange,
     handleWorkOrderChange,
@@ -472,3 +494,6 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     workOrderPrefillRef,
   }
 }
+
+/** What `useTaskForm` hands its callers: the form, its cascade handlers and the create-time extras. */
+export type TaskFormState = ReturnType<typeof useTaskForm>

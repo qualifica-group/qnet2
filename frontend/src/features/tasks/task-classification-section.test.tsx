@@ -1,10 +1,11 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import i18n from '@/i18n'
-import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
-import { TaskFormBody } from '@/features/tasks/task-form-body'
+import {
+  openInlineEditor,
+  queryInlineEditButton,
+  renderTaskDetail,
+} from '@/features/tasks/task-detail-test-helpers'
 import { FULL_ACCESS_PERMISSIONS, taskDetailWithPermissions } from '@/features/tasks/task-fixtures'
 import type { ResourcePermissions } from '@/features/authorization/types'
 
@@ -33,6 +34,14 @@ vi.mock('@/features/auth/use-auth', () => ({
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+vi.mock('@/features/modules/use-module-open-mode', () => ({
+  useModuleOpenMode: () => 'modal',
+}))
+
+vi.mock('@/components/rich-text/rich-text-content', () => ({
+  RichTextContent: ({ html }: { html: string | null }) => (html ? <span>{html}</span> : null),
+}))
 
 const EMPTY_PAGE = { items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }
 
@@ -76,25 +85,18 @@ const STATUS_PAGE = {
   export_link: null,
 }
 
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
-}
-
 /** `actionPermissions` mirrors `task-detail.test.tsx`'s own helper: only the given flags set. */
 function actionPermissions(actions: ResourcePermissions['actions']): ResourcePermissions {
   return { ...FULL_ACCESS_PERMISSIONS, actions }
 }
 
+/**
+ * The Stato picker as the task detail edits it in place (spec 0195): the
+ * persisted task, its editor opened through the row's pencil.
+ */
 function renderEditForm(permissions: ResourcePermissions) {
-  return render(
-    <ResourcePermissionsProvider permissions={permissions}>
-      <TaskFormBody mode={{ type: 'edit', task: taskDetailWithPermissions() }} onSuccess={vi.fn()} onCancel={vi.fn()} />
-    </ResourcePermissionsProvider>,
-    { wrapper: wrapper() },
-  )
+  renderTaskDetail(taskDetailWithPermissions({ permissions }))
+  openInlineEditor(label('tasks.form.status'))
 }
 
 const label = (key: string) => i18n.t(key)
@@ -112,7 +114,7 @@ beforeEach(() => {
 })
 
 /**
- * Spec 0123 D-5/AC-015: the Stato select (edit only) shows every option but
+ * Spec 0123 D-5/AC-015: the Stato select (detail editor) shows every option but
  * disables the ones a PATCH could never reach.
  */
 describe('TaskClassificationSection — Stato options reserved to actions (AC-015)', () => {
@@ -165,10 +167,14 @@ describe('TaskClassificationSection — Stato options reserved to actions (AC-01
  * Stato select, on top of the per-option rule above.
  */
 describe('TaskClassificationSection — Stato select gated by change_status (AC-013)', () => {
-  it('disables the whole select when change_status is false', () => {
-    renderEditForm(actionPermissions({ change_status: false, close_via_status: true }))
+  // Requirement changed by spec 0195: the detail edits in place, so a status
+  // that may not change offers no editor at all instead of a disabled select.
+  it('offers no Stato editor when change_status is false', () => {
+    renderTaskDetail(
+      taskDetailWithPermissions({ permissions: actionPermissions({ change_status: false, close_via_status: true }) }),
+    )
 
-    expect(statusPicker()).toBeDisabled()
+    expect(queryInlineEditButton(label('tasks.form.status'))).not.toBeInTheDocument()
   })
 
   it('leaves the select enabled when change_status is true', () => {

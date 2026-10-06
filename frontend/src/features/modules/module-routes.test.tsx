@@ -66,3 +66,13 @@ describe('buildModuleRoutes — payment-methods deep-links (AC-113)', () => {
     expect(bogus).toHaveLength(0)
   })
 })
+
+describe('buildModuleRoutes — a detail that edits in place (spec 0195)', () => {
+  it('generates no :id/edit route for tasks, keeping the others', () => {
+    const taskPaths = buildModuleRoutes()
+      .map((route) => route.path)
+      .filter((path): path is string => typeof path === 'string' && path.startsWith('tasks/'))
+
+    expect(taskPaths.sort()).toEqual(['tasks/:id', 'tasks/:id/duplicate', 'tasks/new'])
+  })
+})

@@ -82,13 +82,15 @@ describe('TaskFormSubtasksSection — depth (spec 0161 D-1)', () => {
     expect(titleInputs()).toHaveLength(1)
     expect(addButtons()).toHaveLength(2)
 
-    // Level 2 (nipote): the figlio row's own add button, first in DOM order.
-    fireEvent.click(addButtons()[0])
+    // Level 2 (nipote): the figlio row's own add button. The section's own
+    // button sits in the section header since spec 0195 D-8, so it comes
+    // FIRST in DOM order and the rows' buttons follow it.
+    fireEvent.click(addButtons()[1])
     expect(titleInputs()).toHaveLength(2)
     expect(addButtons()).toHaveLength(3)
 
     // Level 3 (pronipote): the nipote row's own add button.
-    fireEvent.click(addButtons()[1])
+    fireEvent.click(addButtons()[2])
     expect(titleInputs()).toHaveLength(3)
     // No 4th level: the pronipote row contributes no add button of its own.
     expect(addButtons()).toHaveLength(3)
@@ -100,8 +102,8 @@ describe('TaskFormSubtasksSection — recursive removal (spec 0161 D-1)', () => 
   it('removing the level-1 row also removes its level-2/level-3 children', () => {
     renderSection()
     fireEvent.click(addButtons()[0])
-    fireEvent.click(addButtons()[0])
     fireEvent.click(addButtons()[1])
+    fireEvent.click(addButtons()[2])
     expect(titleInputs()).toHaveLength(3)
 
     fireEvent.click(removeButtons()[0])
@@ -112,8 +114,8 @@ describe('TaskFormSubtasksSection — recursive removal (spec 0161 D-1)', () => 
   it('removing a level-2 row removes only its own level-3 child, the level-1 row stays', () => {
     renderSection()
     fireEvent.click(addButtons()[0])
-    fireEvent.click(addButtons()[0])
     fireEvent.click(addButtons()[1])
+    fireEvent.click(addButtons()[2])
     expect(titleInputs()).toHaveLength(3)
 
     fireEvent.click(removeButtons()[1])
