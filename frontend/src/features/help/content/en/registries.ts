@@ -60,6 +60,7 @@ const guide: HelpGuide = {
             ['Business data', 'VAT group, Supplier, Qualified supplier, Agreement status (In negotiation, Rejected or Agreed) and Size class.'],
             ['Contacts', 'Email, Phone (required), PEC and Fax; with Add contact you enter more and set the Primary contact.'],
             ['Addresses', 'One or more addresses, each with a Site type: Registered office, Delivery, Billing or Operational site.'],
+            ['Other fields', 'The registry custom fields, including Tag: pick one or more tags from the list managed in the Tags module.'],
           ],
         },
         {

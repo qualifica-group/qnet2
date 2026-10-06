@@ -60,6 +60,7 @@ const guide: HelpGuide = {
             ['Dati commerciali', 'Gruppo IVA, Fornitore, Fornitore qualificato, Stato convenzione (In trattativa, Respinta o Concordata) e Classe dimensionale.'],
             ['Contatti', 'Email, Telefono (obbligatorio), PEC e Fax; con Aggiungi contatto ne inserisci altri e indichi il Contatto principale.'],
             ['Indirizzi', 'Uno o più indirizzi, ciascuno con un Tipo sede: Sede legale, Consegna, Fatturazione o Sede operativa.'],
+            ['Altri campi', "I campi personalizzati delle anagrafiche, tra cui Tag: scegli uno o più tag dall'elenco gestito nel modulo Tag."],
           ],
         },
         {

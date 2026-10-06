@@ -16,6 +16,7 @@ use Illuminate\Database\Seeder;
  *         client-specific ERP settings (responsible_*, proforma/invoice
  *         progressives, quotation_*), now dynamic fields;
  *       - products: the validity in months and the filing folder;
+ *       - registries: the tags, a multi-select over the `tags` lookup;
  *   - the document layout they print quotes on, delegated to
  *     QualificaDocumentLayoutSeeder (a `document_layouts` row plus its
  *     letterhead binary — see that class for why it is not inlined here).
@@ -44,6 +45,20 @@ class QualificaTemplateSeeder extends Seeder
         'entity_type' => 'users',
         'cardinality' => 'one',
         'for_select_resource' => 'users',
+    ];
+
+    /**
+     * The registry tags: a multi-select over the `tags` lookup, kept as a
+     * custom field (the native polymorphic tagging was retired with the
+     * `taggables` pivot). `tags` is a registered custom-fieldable entity with
+     * its own for-select endpoint.
+     *
+     * @var array<string, mixed>
+     */
+    private const array TAGS_RELATION_TARGET = [
+        'entity_type' => 'tags',
+        'cardinality' => 'many',
+        'for_select_resource' => 'tags',
     ];
 
     /**
@@ -104,6 +119,9 @@ class QualificaTemplateSeeder extends Seeder
                 ['value' => 'ente', 'label' => 'Ente'],
                 ['value' => 'consulenza', 'label' => 'Consulenza'],
             ]],
+        ],
+        'registries' => [
+            ['key' => 'tags', 'label' => 'Tag', 'type' => 'relation', 'relation_target' => self::TAGS_RELATION_TARGET],
         ],
     ];
 

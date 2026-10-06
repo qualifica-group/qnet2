@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ANAGRAFICHE: "TAG" COME CAMPO PERSONALIZZATO — VERDE, NON COMMITTATO (2026-10-06)
+
+- Richiesta utente: select con i tag in anagrafica, come campo personalizzato (non colonna nativa). Nessun codice
+  di prodotto nuovo: il tipo `relation` con `cardinality: many` verso `tags` (for-select `GET /tags/for-select`)
+  esisteva gia'; il form anagrafica lo rende in "Altri campi" con `AsyncPaginatedMultiSelect` (chip).
+- `QualificaTemplateSeeder`: nuova voce TEMPLATES `registries` -> `tags` / "Tag" / `relation`
+  (`TAGS_RELATION_TARGET` = `{entity_type: tags, cardinality: many, for_select_resource: tags}`). Valore salvato
+  in `custom_fields.tags` come array di id; id inesistente -> 422 `custom_fields.tags`.
+- Test: `QualificaTemplateSeederTest` (+1), nuovo `tests/Feature/Registries/RegistryTagsCustomFieldTest.php` (2).
+  Pest Registries + CustomFields + suite che usano i seeder Qualifica: 264 pass. Pint ok. Guida in-app
+  registries IT/EN (riga "Altri campi"): Vitest help 108 pass, ESLint ok, `tsc -b --force` pulito.
+- Da fare: eseguire `php artisan db:seed --class=QualificaTemplateSeeder` su locale/staging/prod per creare il campo.
+  Il dettaglio anagrafica (sola lettura) NON mostra i campi personalizzati: il Tag si vede nel form di modifica e
+  come colonna della griglia. Tag delle anagrafiche legacy non migrati (gia' fuori scope della migrazione).
+  Manuale Claude Docs non accessibile da questa sessione: aggiungere "Tag" tra i campi della scheda anagrafica.
+
 ## OPPORTUNITA' — DETTAGLIO EDITABILE IN PLACE + CREAZIONE COME IL DETTAGLIO (spec 0198) — VERDE, COMMITTATO (2026-10-06)
 
 - Richiesta utente: stesse modifiche delle Commesse (spec 0196) sulle Opportunita', creazione come nei Task. Solo
