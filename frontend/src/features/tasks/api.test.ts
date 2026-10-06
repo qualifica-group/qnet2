@@ -7,6 +7,7 @@ import {
   requestTaskUpdate,
   uncompleteTask,
   unblockTask,
+  updateTask,
 } from '@/features/tasks/api'
 import { apiClient } from '@/api/client'
 
@@ -78,6 +79,25 @@ describe('tasks api — the six domain actions return the refreshed permissions'
     for (const result of results) {
       expect(result.permissions).toEqual(PERMISSIONS)
     }
+  })
+})
+
+/**
+ * Spec 0195: the task detail edits in place and seeds the PATCH response
+ * straight into its own cache, so the update — like every other write — must
+ * hand back the `permissions` sibling (`okWithPermissions`). Dropping it left
+ * the detail with no `permissions` and crashed it on the next render.
+ */
+describe('tasks api — update returns the refreshed permissions', () => {
+  it('patches /tasks/{id} and echoes permissions', async () => {
+    const patchMock = vi.mocked(apiClient.patch)
+    patchMock.mockResolvedValueOnce(envelope())
+
+    const result = await updateTask(7, { title: 'Nuovo titolo' })
+
+    expect(patchMock).toHaveBeenCalledWith('/tasks/7', { title: 'Nuovo titolo' })
+    expect(result.permissions).toEqual(PERMISSIONS)
+    expect(result.id).toBe(7)
   })
 })
 

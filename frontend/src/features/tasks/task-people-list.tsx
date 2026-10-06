@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { UserAvatar } from '@/components/user-avatar'
+import { UserAvatarStack } from '@/components/user-avatar-stack'
 import { UserProfileHoverCard } from '@/components/user-profile-hover-card'
 import type { TaskNamedRef } from '@/features/tasks/types'
 
@@ -14,20 +15,30 @@ export function TaskPerson({ person }: { person: TaskNamedRef }) {
   )
 }
 
+/** Up to this many people read as a named list; more collapse into the avatar stack. */
+const NAMED_PEOPLE_MAX = 3
+
 interface TaskPeopleListProps {
   people: TaskNamedRef[]
 }
 
 /**
- * Comma-free vertical list of people (avatar + name with the user hover card), so long names never truncate into each
- * other. Keyed by id rather than name: assignees and watchers are two
- * independent sets (AC-083) and a homonym is a real possibility.
+ * A few people: a comma-free vertical list (avatar + name with the user hover
+ * card), so long names never truncate into each other. Many people (user
+ * directive 2026-10-06, "regola generale"): the app's shared avatar stack with
+ * its "+N" chip, every name one hover away. Keyed by id rather than name:
+ * assignees and watchers are two independent sets (AC-083) and a homonym is a
+ * real possibility.
  */
 export function TaskPeopleList({ people }: TaskPeopleListProps) {
   const { t } = useTranslation()
 
   if (people.length === 0) {
     return <DetailEmpty />
+  }
+
+  if (people.length > NAMED_PEOPLE_MAX) {
+    return <UserAvatarStack users={people} />
   }
 
   return (

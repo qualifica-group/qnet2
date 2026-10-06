@@ -36,6 +36,12 @@
   testo di scorciatoie (richiesta utente). `MetaFieldRowContext` (features/authorization): il `MetaField` del campo
   della riga nasconde la propria etichetta (sr-only) e mette l'hint accanto al controllo; i sotto-campi (ricorrenza,
   fase, notifiche) restano etichettati. Titolo con input di misura standard.
+- FIX (NON COMMITTATO): `updateTask` ora restituisce `TaskDetailWithPermissions` (`withPermissions`, il backend
+  risponde `okWithPermissions`): il salvataggio inline scriveva in cache un task senza `permissions` e il dettaglio
+  crashava ("Cannot read properties of undefined (reading 'actions')"). Test in `api.test.ts`.
+- Regola generale persone (NON COMMITTATO): `components/user-avatar-stack.tsx` (`UserAvatarStack`, max 5 avatar +
+  chip "+N" con hover card dei restanti) estratto da `UserStackCell` (griglia) e usato da `TaskPeopleList` oltre
+  3 persone (fino a 3 resta la lista con i nomi). Candidati da valutare: chip Responsabili nella scheda utente.
 - ATTENZIONE RHF: `resetOptions` di `useForm` si fonde in OGNI `reset` -> in edit `keepDirtyValues: true` serve solo
   al re-sync `values`; ogni reset che deve scartare passa `keepDirtyValues: false` (test di regressione in
   `task-detail-inline-edit.test.tsx`: un annullo non finisce nel PATCH successivo).
