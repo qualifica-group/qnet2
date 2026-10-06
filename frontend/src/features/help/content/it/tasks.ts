@@ -324,7 +324,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Il pannello **Sotto-task** del dettaglio mostra in alto quanti sotto-task sono completati e l\'avanzamento complessivo. Premi il titolo di un sotto-task per aprirlo in una finestra sopra il task padre, che resta aperto sotto: le modifiche fatte lì aggiornano subito l\'elenco. Trascini le righe (con l\'apposita maniglia) per riordinarle; il cerchio a inizio riga completa il sotto-task (la spunta verde lo riapre) e il cestino, che compare passando sulla riga, lo elimina, quando i tuoi permessi lo consentono.',
+          text: 'Il pannello **Sotto-task** del dettaglio mostra in alto quanti sotto-task sono completati e l\'avanzamento complessivo. Premi il titolo di un sotto-task per aprirlo in una finestra sopra il task padre, che resta aperto sotto: le modifiche fatte lì aggiornano subito l\'elenco. Ogni riga ha il colore e l\'icona del tipo del sotto-task. Trascini le righe (con l\'apposita maniglia) per riordinarle. L\'icona di spunta prima del titolo funziona come nell\'elenco: diventa verde passandoci sopra e, cliccandola, completa il sotto-task; quando è completato è piena e verde e, se puoi, cliccandola lo riapri. Il cestino, che compare passando sulla riga, lo elimina, quando i tuoi permessi lo consentono.',
         },
         {
           type: 'paragraph',

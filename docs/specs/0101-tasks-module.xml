@@ -427,7 +427,7 @@
             estimated_minutes, is_blocked,
             requires_closure_feedback, closure_feedback,
             completion_percentage: int,          derivato dallo stato (D-6)
-            subtasks: [{id, title, task_status:{id,name,color,icon}, completion_percentage, assignees:[{id,name}]}],
+            subtasks: [{id, title, task_status:{id,name,color,icon,system_key,group,completion_percentage}, task_type:{id,name,color,icon}|null, completion_percentage, assignees:[{id,name}]}],
             created_at, updated_at
           }, permissions }
       </response>

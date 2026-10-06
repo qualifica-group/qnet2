@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TASK: RIGHE SOTTO-TASK COLORATE PER TIPO (stile q-net) — VERDE, NON COMMITTATO (2026-10-06)
+
+- Contratto (spec 0101 data_contract + 0155): `subtasks[]` aggiunge `task_type` (badgeRef nullable) e `task_status`
+  diventa `statusRef()` (con `group`). Eager load `taskType` in `TaskService::subtaskEagerLoad` e
+  `TaskSubtaskReorderService`. Test Pest nuovo in `TaskSubtaskPermissionsTest`; Pest Tasks 634 verdi (anche N+1).
+- Frontend: `TaskSubtask.task_status: TaskStatusRef`, `task_type: TaskLookupRef | null`. Riga tinta per tipo via
+  `tintClassFor` (nuovo campo `tint` in `BADGE_COLOR_TOKENS`) passato a `SortableList.itemClassName` (nuova prop);
+  tile del tipo (`badgeColorClass` + `DynamicIcon`, role img = nome tipo).
+- Check di completamento = stesso disegno della cella Titolo: classi estratte in `task-complete-icon-styles.ts`
+  (usate da `TaskTitleCell` e `TaskSubtaskRow`). Completato = `group closed_positive` (REQUIREMENT CHANGED in
+  `task-subtask-progress.test.ts`: prima 100%), icona piena; se `uncomplete` e' permesso l'icona piena e' "Riapri".
+- Riferimento visivo: `/Users/Repository/q-net` (`task-type-meta.ts`, `getSoftPanelStyle`): non esiste una cartella
+  "qtask" in Repository, assunto q-net.
+- Verifica: Vitest 113 file / 868 verdi (tasks, ui, custom-fields, help); tsc -b 0; ESLint/Pint puliti; screenshot
+  light/dark/375px. Manuale Claude Docs: stesso paragrafo del pannello Sotto-task da aggiornare (accesso negato).
+
 ## TASK: SOTTO-TASK E RICORRENZA NEL DETTAGLIO (RESTYLE) + SOTTO-TASK IN MODALE — VERDE, COMMITTATO (2026-10-06)
 
 - Ricorrenza: `TaskRecurrenceSummary` (nuovo, `task-recurrence-summary.tsx`) = valore letto della riga in place.

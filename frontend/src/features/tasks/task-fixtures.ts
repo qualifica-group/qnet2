@@ -110,6 +110,7 @@ export function taskSubtask(overrides: Partial<TaskSubtask> = {}): TaskSubtask {
     id: 101,
     title: 'Preparare il preventivo',
     task_status: taskStatus({ id: 2, group: 'open' }),
+    task_type: null,
     completion_percentage: 0,
     assignees: [{ id: 31, name: 'Dario Dini' }],
     position: 0,

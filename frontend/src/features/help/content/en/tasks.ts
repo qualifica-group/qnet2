@@ -321,7 +321,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "The detail's **Sub-tasks** panel shows at the top how many sub-tasks are done and the overall progress. Press a sub-task's title to open it in a window above the parent task, which stays open underneath: changes made there refresh the list right away. Drag a row (by its handle) to reorder it; the circle at the start of the row completes the sub-task (the green check reopens it) and the bin, shown when you hover the row, deletes it, whenever your permissions allow it.",
+          text: "The detail's **Sub-tasks** panel shows at the top how many sub-tasks are done and the overall progress. Press a sub-task's title to open it in a window above the parent task, which stays open underneath: changes made there refresh the list right away. Each row takes the colour and icon of the sub-task's type. Drag a row (by its handle) to reorder it. The check icon before the title works as in the list: it turns green on hover and, clicked, completes the sub-task; once completed it is filled in green and, if you may, clicking it reopens it. The bin, shown when you hover the row, deletes it, whenever your permissions allow it.",
         },
         {
           type: 'paragraph',

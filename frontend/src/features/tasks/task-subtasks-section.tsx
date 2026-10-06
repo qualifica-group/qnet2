@@ -8,6 +8,7 @@ import { CompletionBar } from '@/components/completion-bar'
 import { RecordSection } from '@/components/detail/record-panel'
 import { SortableList, type SortableListItem } from '@/components/ui/sortable-list'
 import { useConfirm } from '@/components/confirm-dialog-context'
+import { tintClassFor } from '@/features/custom-fields/badge-color-tokens'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { deleteTask, fetchTask, taskDetailQueryKey, uncompleteTask } from '@/features/tasks/api'
 import { TaskCompleteDialog } from '@/features/tasks/task-complete-dialog'
@@ -197,6 +198,7 @@ export function TaskSubtasksSection({
             isPinned={() => !canReorder}
             dragHandleLabel={t('tasks.detail.subtaskPanel.reorderHandle')}
             pinnedRowClassName="bg-surface"
+            itemClassName={(item) => tintClassFor(item.subtask.task_type?.color)}
             renderItem={(item) => (
               <TaskSubtaskRow
                 subtask={item.subtask}

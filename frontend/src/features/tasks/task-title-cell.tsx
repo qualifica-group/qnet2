@@ -3,23 +3,15 @@ import { useTranslation } from 'react-i18next'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { CheckCircle2 } from 'lucide-react'
 import { TaskCompleteRowContext } from '@/features/tasks/task-complete-row-context'
+import {
+  COMPLETABLE_ICON_CLASS,
+  COMPLETED_ICON_CLASS,
+  COMPLETE_ICON_CLASS,
+  COMPLETE_TOGGLE_CLASS,
+  INERT_ICON_CLASS,
+} from '@/features/tasks/task-complete-icon-styles'
 import type { TableRow } from '@/features/table/types'
 import { cn } from '@/lib/utils'
-
-const ICON_CLASS = 'size-4 shrink-0'
-
-/** Filled green disc with the check cut out of it (the stroke takes the card color). */
-const COMPLETED_ICON_CLASS = 'fill-success text-card'
-
-/**
- * Reads as clickable: hand cursor, a tinted fill and a small pop on hover,
- * a press-in on click (motion only when the user has not asked to reduce it).
- */
-const TOGGLE_CLASS = cn(
-  'group/complete cursor-pointer rounded-full text-muted-foreground outline-none transition-[color,transform] duration-150',
-  'hover:text-success focus-visible:text-success focus-visible:ring-2 focus-visible:ring-ring',
-  'motion-safe:hover:scale-125 motion-safe:active:scale-95',
-)
 
 /** Keys that activate a focused button: kept from the grid, which would open the title editor on them. */
 const ACTIVATION_KEYS = new Set(['Enter', ' '])
@@ -79,7 +71,7 @@ export function TaskTitleCell({ value, data }: ICellRendererParams<TableRow>) {
         <CheckCircle2
           role="img"
           aria-label={t('tasks.actions.complete.done')}
-          className={cn(ICON_CLASS, COMPLETED_ICON_CLASS)}
+          className={cn(COMPLETE_ICON_CLASS, COMPLETED_ICON_CLASS)}
         />
       ) : canComplete && data ? (
         <button
@@ -87,12 +79,12 @@ export function TaskTitleCell({ value, data }: ICellRendererParams<TableRow>) {
           ref={(button) => bindCompleteToggle(button, () => completeRow(data))}
           aria-label={t('tasks.actions.complete.label')}
           title={t('tasks.actions.complete.label')}
-          className={TOGGLE_CLASS}
+          className={COMPLETE_TOGGLE_CLASS}
         >
-          <CheckCircle2 aria-hidden="true" className={cn(ICON_CLASS, 'fill-transparent transition-[fill] group-hover/complete:fill-success/15')} />
+          <CheckCircle2 aria-hidden="true" className={cn(COMPLETE_ICON_CLASS, COMPLETABLE_ICON_CLASS)} />
         </button>
       ) : (
-        <CheckCircle2 aria-hidden="true" className={cn(ICON_CLASS, 'text-muted-foreground/40')} />
+        <CheckCircle2 aria-hidden="true" className={cn(COMPLETE_ICON_CLASS, INERT_ICON_CLASS)} />
       )}
       <span className="truncate">{title}</span>
     </span>

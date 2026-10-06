@@ -22,6 +22,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * can drive its own reorder/delete/complete controls off the child's own
  * matrix row rather than the parent's.
  *
+ * `task_status` is the full `statusRef()` (its `group` tells the panel a
+ * child is done, as the grid's title cell reads it) and `task_type` the
+ * type badge the panel tints the row with (user directive 2026-10-06).
+ *
  * Reused verbatim by `TaskSubtaskReorderController` (spec 0155, contract:
  * `POST .../subtasks/reorder` -> `{ data: subtasks[] }`), so the two
  * endpoints can never drift on this shape.
@@ -43,7 +47,8 @@ class TaskSubtaskResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
-            'task_status' => $this->badgeRef($this->taskStatus),
+            'task_status' => $this->statusRef(),
+            'task_type' => $this->badgeRef($this->taskType),
             'completion_percentage' => app(TaskStatusResolver::class)->completionPercentage($this->resource),
             'assignees' => $this->summarizeUsers($this->assignees),
             'position' => $this->subtask_position,

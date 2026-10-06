@@ -6,7 +6,7 @@ import i18n from '@/i18n'
 import { ConfirmContext, type ConfirmFn } from '@/components/confirm-dialog-context'
 import { TaskSubtasksSection } from '@/features/tasks/task-subtasks-section'
 import { deleteTask, fetchTask, reorderTaskSubtasks, uncompleteTask } from '@/features/tasks/api'
-import { NO_TASK_ACTIONS, taskDetailWithPermissions, taskSubtask } from '@/features/tasks/task-fixtures'
+import { NO_TASK_ACTIONS, taskDetailWithPermissions, taskStatus, taskSubtask } from '@/features/tasks/task-fixtures'
 import type { TaskSubtask } from '@/features/tasks/types'
 
 /** Abilities granted to the actor under test; rewritten per test. */
@@ -165,6 +165,24 @@ describe('TaskSubtasksSection — listing (AC-085)', () => {
 
     expect(screen.queryByText('Dario Dini')).not.toBeInTheDocument()
     expect(screen.getByText('DD')).toBeInTheDocument()
+  })
+
+  it('shows the type as a tile in its colour and tints the row with it', () => {
+    renderSection([taskSubtask({ task_type: { id: 4, name: 'Telefonata', color: 'blue', icon: 'phone' } })])
+
+    expect(screen.getByRole('img', { name: 'Telefonata' })).toBeInTheDocument()
+    expect(screen.getByRole('listitem')).toHaveClass('bg-blue-500/5')
+  })
+
+  it('draws a done child with the filled check, as the grid does', () => {
+    renderSection([
+      taskSubtask({
+        task_status: taskStatus({ group: 'closed_positive' }),
+        permissions: { actions: { ...NO_TASK_ACTIONS, delete: false } },
+      }),
+    ])
+
+    expect(screen.getByRole('img', { name: label('tasks.actions.complete.done') })).toHaveClass('fill-success')
   })
 
   it('renders the child status badge and its own derived percentage', () => {

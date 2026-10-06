@@ -73,7 +73,7 @@
       assignee_ids?, watcher_ids?, task_type_id?, task_priority_id?, task_importance_id?, task_category_id? }] max 50.
     POST /api/tasks/{task}/subtasks/reorder { ids: int[] } (tutti e soli i figli diretti) -> 200 { data: subtasks[] };
       403 senza update sul padre; 422 ids non corrispondenti.
-    TaskResource.subtasks[] aggiunge position e permissions.actions.
+    TaskResource.subtasks[] aggiunge position e permissions.actions; dal 2026-10-06 anche task_type (badge, nullable) e task_status nella forma statusRef (con group), per tingere la riga col tipo e marcare il completato come la cella Titolo della griglia.
     POST /api/tasks/{task}/complete aggiunge for_all_assignees?: bool (default false).
     GET /api/tasks/{task} 403: { success:false, message, errors: { access_contacts: [{ id, name, email }] } }.
   </contract>

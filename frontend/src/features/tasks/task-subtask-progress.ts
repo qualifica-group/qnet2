@@ -1,10 +1,8 @@
 import type { TaskSubtask } from '@/features/tasks/types'
 
-/** A child counts as done once its own derived percentage reaches 100. */
-const DONE_PERCENTAGE = 100
-
+/** A child is done once its status phase is the positive closure, as the grid's title cell reads it. */
 export function isSubtaskDone(subtask: TaskSubtask): boolean {
-  return subtask.completion_percentage >= DONE_PERCENTAGE
+  return subtask.task_status.group === 'closed_positive'
 }
 
 export interface SubtaskProgress {
