@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { QuoteFormScreen } from '@/features/quotes/quote-screens'
+import { QuoteFormScreen, moduleScreen } from '@/features/quotes/quote-screens'
 import type { ModuleFormScreenMode } from '@/features/modules/types'
 import type { QuoteCreateFormMode } from '@/features/quotes/types'
 
@@ -70,5 +70,11 @@ describe('QuoteFormScreen create adapter (spec 0067)', () => {
     const { container } = renderScreen({ type: 'edit', id: 9 })
 
     expect(container).toBeEmptyDOMElement()
+  })
+
+  // The create form draws its own "Crea offerta" band: the page/Sheet host
+  // must not add a second heading above it.
+  it('owns its form header', () => {
+    expect(moduleScreen.formOwnsHeader).toBe(true)
   })
 })

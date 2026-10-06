@@ -39,6 +39,14 @@
 - Fuori scope segnalato: errore ESLint preesistente `registry-form-metadata.test.tsx:271` (`_omit`);
   HANDOFF.md ~430 KB, va archiviato in `docs/handoff-archive/`.
 
+## OFFERTE: DOPPIO "CREA OFFERTA" SU /quotes/new — VERDE, COMMITTATO (2026-10-06)
+
+- Causa: dalla spec 0197 il form offerta disegna la propria banda identita' (titolo "Crea offerta" + Annulla/Salva),
+  ma `moduleScreen` di `quotes` non era `formOwnsHeader`, quindi `ModuleFormPage` (e lo Sheet modale) aggiungevano
+  il proprio titolo/sottotitolo sopra. Fix: `formOwnsHeader: true` in `quote-screens.tsx` (+1 test in
+  `quote-screens.test.tsx`). Vitest quotes+modules 414 pass, ESLint ok, `tsc -b --force` pulito. Manuale: nessun impatto.
+- Aperto: `work-orders` (spec 0196) ha lo stesso difetto su /work-orders/new (header proprio, flag mancante).
+
 ## ANAGRAFICHE: "TAG" COME CAMPO PERSONALIZZATO — VERDE, NON COMMITTATO (2026-10-06)
 
 - Richiesta utente: select con i tag in anagrafica, come campo personalizzato (non colonna nativa). Nessun codice
