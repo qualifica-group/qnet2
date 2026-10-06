@@ -74,7 +74,7 @@ class DocxToPdfConverter
             // a shared profile, so two simultaneous conversions would make the
             // second exit 0 having written nothing, and under php-fpm the
             // default profile location ($HOME) is often not writable at all.
-            '-env:UserInstallation=file://'.$workspace.'/profile',
+            '-env:UserInstallation='.$this->fileUri($workspace.'/profile'),
             '--convert-to',
             'pdf:writer_pdf_Export',
             '--outdir',
@@ -97,9 +97,23 @@ class DocxToPdfConverter
             throw new DocumentConversionException(sprintf(
                 'LibreOffice exited with code %s: %s',
                 $process->getExitCode() ?? 'unknown',
-                trim($process->getErrorOutput().' '.$process->getOutput()),
+                // The shell answers in the OS code page (cp1252 on Windows):
+                // invalid UTF-8 here would break the JSON error response.
+                mb_scrub(trim($process->getErrorOutput().' '.$process->getOutput()), 'UTF-8'),
             ));
         }
+    }
+
+    /**
+     * `file://` URI LibreOffice accepts on every OS: a Windows path
+     * (`C:\Users\...`) needs forward slashes and a leading `/`
+     * (`file:///C:/Users/...`), otherwise soffice exits 1 silently.
+     */
+    private function fileUri(string $path): string
+    {
+        $normalized = str_replace('\\', '/', $path);
+
+        return 'file://'.(str_starts_with($normalized, '/') ? '' : '/').$normalized;
     }
 
     private function readOutput(string $workspace): string

@@ -5,28 +5,29 @@ declare(strict_types=1);
 namespace App\Services\OutboundEmails;
 
 use App\DataObjects\WorkOrderEmails\OutboundEmailDraftData;
+use App\Enums\OutboundEmailPurpose;
 use App\Enums\OutboundEmailStatus;
 use App\Jobs\SendOutboundEmailJob;
 use App\Models\OutboundEmail;
 use App\Models\User;
-use App\Models\WorkOrder;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The Commessa email history/composer's core write path (spec 0175, D-2/D-3/
- * D-5/D-6/D-12): list, draft CRUD, send. WorkOrder-level authorization
- * (`work-orders.viewEmails`/`sendEmail` + membership scope) is the
- * CONTROLLER's job (`$this->authorize(...)` against WorkOrderPolicy, already
- * built) — this class only ever resolves and mutates ONE already-scoped
+ * The email history/composer's core write path (spec 0175, D-2/D-3/D-5/D-6/
+ * D-12; generalized to any email owner by spec 0195, D-10): list, draft CRUD,
+ * send. Owner-level authorization (the owner's view/send ability, e.g.
+ * `work-orders.viewEmails`/`sendEmail` + membership scope) is the
+ * CONTROLLER's job (`$this->authorize(...)` against the owner's Policy) — this class only ever resolves and mutates ONE already-scoped
  * OutboundEmail.
  *
  * Draft VISIBILITY (D-3: a draft is visible only to its own author) is
  * enforced by `OutboundEmail::scopeVisibleTo()` on every lookup here, so a
  * hidden draft is simply never FOUND — resolveVisibleOrFail() throws the
- * same `ModelNotFoundException` a cross-commessa `{email}` would, both
+ * same `ModelNotFoundException` a cross-owner `{email}` would, both
  * mapped to a plain 404 by BaseApiController. This is a deliberate reading
  * of the frozen data_contract's literal "403 non autore" on GET/PATCH/DELETE:
  * given the visibility scope, that case is UNREACHABLE for a hidden draft —
@@ -48,9 +49,9 @@ final class OutboundEmailService
     /**
      * @return LengthAwarePaginator<int, OutboundEmail>
      */
-    public function listForWorkOrder(WorkOrder $workOrder, User $actor, int $page): LengthAwarePaginator
+    public function listForOwner(Model $owner, User $actor, int $page): LengthAwarePaginator
     {
-        return $this->baseQuery($workOrder, $actor)
+        return $this->baseQuery($owner, $actor)
             ->with('sender')
             ->withCount(['attachments as attachments_count' => fn ($query) => $query->where('collection', OutboundEmail::ATTACHMENT_COLLECTION)])
             ->orderByDesc('updated_at')
@@ -59,19 +60,20 @@ final class OutboundEmailService
 
     /**
      * Every nested `{email}` endpoint's single entry point for resolving the
-     * route's OutboundEmail: 404 for another commessa's email (emailable
+     * route's OutboundEmail: 404 for another owner's email (emailable
      * scoping) OR a draft hidden from $actor (visibleTo scope) alike — see
      * class docblock.
      */
-    public function resolveVisibleOrFail(WorkOrder $workOrder, int $emailId, User $actor): OutboundEmail
+    public function resolveVisibleOrFail(Model $owner, int $emailId, User $actor): OutboundEmail
     {
-        return $this->baseQuery($workOrder, $actor)->with($this->detailRelations())->findOrFail($emailId);
+        return $this->baseQuery($owner, $actor)->with($this->detailRelations())->findOrFail($emailId);
     }
 
-    public function createDraft(WorkOrder $workOrder, User $actor, OutboundEmailDraftData $data): OutboundEmail
+    public function createDraft(Model $owner, User $actor, OutboundEmailDraftData $data, ?OutboundEmailPurpose $purpose = null): OutboundEmail
     {
         $email = new OutboundEmail($this->sanitizedAttributes($data));
-        $email->emailable()->associate($workOrder);
+        $email->emailable()->associate($owner);
+        $email->purpose = $purpose;
         $email->sender_user_id = $actor->id;
         $email->status = OutboundEmailStatus::Draft;
         $email->save();
@@ -134,11 +136,11 @@ final class OutboundEmailService
     /**
      * @return Builder<OutboundEmail>
      */
-    private function baseQuery(WorkOrder $workOrder, User $actor): Builder
+    private function baseQuery(Model $owner, User $actor): Builder
     {
         return OutboundEmail::query()
-            ->where('emailable_type', $workOrder->getMorphClass())
-            ->where('emailable_id', $workOrder->id)
+            ->where('emailable_type', $owner->getMorphClass())
+            ->where('emailable_id', $owner->getKey())
             ->visibleTo($actor);
     }
 

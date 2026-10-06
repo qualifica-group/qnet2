@@ -24,6 +24,7 @@ export const emailTemplates = {
   },
   modules: {
     work_orders: 'Work orders',
+    invoices: 'Invoices',
   },
   detail: {
     title: 'Email template details',

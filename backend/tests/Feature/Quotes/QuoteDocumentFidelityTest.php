@@ -5,7 +5,8 @@ declare(strict_types=1);
 use App\Models\DocumentLayout;
 use App\Models\Quote;
 use App\Models\User;
-use App\Services\DocumentLayouts\Rendering\QuoteDocumentGenerator;
+use App\Services\DocumentLayouts\Rendering\DocumentGenerator;
+use App\Services\DocumentLayouts\Rendering\QuoteRenderSubject;
 use Database\Seeders\QualificaDocumentLayoutSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -55,7 +56,7 @@ function fidelityDocument(): string
     $quote = Quote::factory()->create(['layout_id' => $layout->id]);
     $actor = User::factory()->create();
 
-    return app(QuoteDocumentGenerator::class)->generate($quote->fresh(), $layout, $actor);
+    return app(DocumentGenerator::class)->generate(QuoteRenderSubject::for($quote->fresh()), $layout, $actor);
 }
 
 /**

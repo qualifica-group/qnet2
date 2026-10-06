@@ -29,9 +29,10 @@ return [
     'attachments_limit_exceeded' => 'Il totale degli allegati supera il limite di :max_kb KB.',
     'template_not_available' => 'Il modello selezionato non è disponibile per questo modulo.',
     'attachment_not_available' => 'Uno o più file selezionati non sono disponibili per questa commessa.',
+    'attachment_source_not_supported' => 'La sorgente allegati selezionata non è supportata.',
     'document_bundle_not_available' => 'Il modello documenti selezionato non è disponibile.',
 
-    // WorkOrderEmailComposeContextBuilder (D-5): suggerimento etichetta per
+    // WorkOrderEmailOwner (spec 0175 D-5): suggerimento etichetta per
     // i responsabili/partecipanti della commessa.
     'recipient_supervisor' => 'Responsabile',
     'recipient_participant' => 'Partecipante',

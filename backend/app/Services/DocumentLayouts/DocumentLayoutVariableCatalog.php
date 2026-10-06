@@ -62,6 +62,7 @@ final class DocumentLayoutVariableCatalog
     {
         return match ($module) {
             DocumentLayoutModule::Quotes => $this->quoteCategories($actor),
+            DocumentLayoutModule::Invoices => $this->invoiceCategories($actor),
         };
     }
 
@@ -78,6 +79,7 @@ final class DocumentLayoutVariableCatalog
     {
         return match ($module) {
             DocumentLayoutModule::Quotes => array_map(static fn (string $key): string => "{totals.{$key}}", self::TOTALS_KEYS),
+            DocumentLayoutModule::Invoices => array_map(static fn (string $key): string => "{totals.{$key}}", DocumentLayoutInvoiceVariableDefinitions::TOTALS_KEYS),
         };
     }
 
@@ -158,6 +160,30 @@ final class DocumentLayoutVariableCatalog
                 ['key' => 'generated_by', 'type' => self::TYPE_STRING, 'example' => 'Mario Rossi'],
             ]),
         ];
+    }
+
+    /**
+     * The `invoices` module's categories (spec 0195 D-7); `customer.*` PII is
+     * masked exactly like `client.*` (D-6, spec 0069).
+     *
+     * @return array<int, array{key: string, label: string, variables: array<int, array{variable: string, label: string, type: string, example: string}>}>
+     */
+    private function invoiceCategories(User $actor): array
+    {
+        $visible = $this->visiblePersonalDataFields($actor, 'registries', self::CLIENT_PERSONAL_DATA_KEYS);
+        $masked = array_diff(self::CLIENT_PERSONAL_DATA_KEYS, $visible);
+
+        $categories = [];
+
+        foreach (DocumentLayoutInvoiceVariableDefinitions::all() as $category => $definitions) {
+            if ($category === 'customer') {
+                $definitions = array_values(array_filter($definitions, static fn (array $definition): bool => ! in_array($definition['key'], $masked, true)));
+            }
+
+            $categories[] = $this->staticCategory($category, $definitions);
+        }
+
+        return $categories;
     }
 
     /**

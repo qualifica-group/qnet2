@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Invoices\InvoicePaymentStatusResolver;
 use App\Tables\Invoices\InvoiceColumnCatalog;
 use App\Tables\Invoices\InvoiceDerivedQuery;
+use App\Tables\Invoices\InvoiceReminderColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -57,6 +58,7 @@ class InvoicesTableDefinition extends AbstractTableDefinition
                 'quote:id,code',
             ])
             ->withSum('installments', 'collected_amount')
+            ->addSelect([InvoiceReminderColumn::ID => InvoiceReminderColumn::subquery()])
             ->addSelect([self::FIRST_UNPAID_DUE_DATE => InvoiceInstallment::query()
                 ->select('due_date')
                 ->whereColumn('invoice_installments.invoice_id', 'invoices.id')
@@ -118,6 +120,7 @@ class InvoicesTableDefinition extends AbstractTableDefinition
         /** @var Invoice $row */
         $collected = (float) ($row->getAttribute(self::COLLECTED_SUM) ?? 0);
         $dueDate = $row->getAttribute(self::FIRST_UNPAID_DUE_DATE);
+        $lastReminder = $row->getAttribute(InvoiceReminderColumn::ID);
 
         return [
             'id' => $row->id,
@@ -140,6 +143,7 @@ class InvoicesTableDefinition extends AbstractTableDefinition
             'payment_status' => (is_string($dueDate)
                 ? app(InvoicePaymentStatusResolver::class)->forDueDate(Carbon::parse($dueDate), Carbon::today())
                 : InvoicePaymentStatus::Paid)->value,
+            InvoiceReminderColumn::ID => is_string($lastReminder) ? Carbon::parse($lastReminder)->toDateString() : null,
             'tag' => $row->tag?->value,
             'deviation' => $row->deviation,
         ];
@@ -155,7 +159,7 @@ class InvoicesTableDefinition extends AbstractTableDefinition
         $allowed = [];
 
         // Action key => policy ability; "details" is the PATCH, gated like update.
-        $abilities = ['view' => 'view', 'update' => 'update', 'details' => 'update', 'delete' => 'delete', 'activity' => 'viewActivity'];
+        $abilities = ['view' => 'view', 'update' => 'update', 'details' => 'update', 'delete' => 'delete', 'activity' => 'viewActivity', 'pdf' => 'view', 'email' => 'sendEmail', 'remind' => 'sendEmail'];
 
         foreach ($abilities as $key => $ability) {
             if ($gate->allows($ability, $row)) {
@@ -196,7 +200,8 @@ class InvoicesTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
-        return InvoiceDerivedQuery::applyFilter($query, $columnId, $filter);
+        return InvoiceDerivedQuery::applyFilter($query, $columnId, $filter)
+            || InvoiceReminderColumn::applyFilter($query, $columnId, $filter);
     }
 
     /**
@@ -204,7 +209,8 @@ class InvoicesTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
-        return InvoiceDerivedQuery::applySort($query, $columnId, $direction);
+        return InvoiceDerivedQuery::applySort($query, $columnId, $direction)
+            || InvoiceReminderColumn::applySort($query, $columnId, $direction);
     }
 
     /**

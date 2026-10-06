@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\DocumentLayouts\Rendering\Blocks;
 
-use App\Models\QuoteLine;
 use App\Services\DocumentLayouts\Rendering\RenderContext;
-use App\Services\DocumentLayouts\Rendering\VariableResolver;
-use Illuminate\Support\Collection;
 use PhpOffice\PhpWord\Element\AbstractContainer;
 use PhpOffice\PhpWord\Element\Cell as CellElement;
 use PhpOffice\PhpWord\Element\Table as TableElement;
@@ -17,11 +14,11 @@ use PhpOffice\PhpWord\Style\Table as TableStyle;
 /**
  * Renders a `products_table` block (spec 0069 config_schema #4 / spec 0070
  * rendering_contract, the "cuore della feature"):
- *  1. `source` selects `offerLines`/`costLines` (already sort_order-ordered
- *     relations on Quote — never re-queried/re-sorted here);
+ *  1. `source` selects the subject's rows (DocumentRenderSubject::productRows(),
+ *     already ordered and formatted per column key — never re-sorted here);
  *  2. `show_header` -> one row per column with its `label`, `header_background`
  *     shading, marked `tblHeader` so it repeats on every page (AC-246);
- *  3. one row per QuoteLine; each cell holds one PARAGRAPH per `lines[]`
+ *  3. one row per subject row; each cell holds one PARAGRAPH per `lines[]`
  *     entry, its `keys` concatenated by `separator` (0069 D-11, AC-242);
  *     an entry resolving to empty text is skipped unless the whole cell is;
  *  4. no lines at all -> a single row, `empty_text` spanning every column
@@ -32,19 +29,12 @@ use PhpOffice\PhpWord\Style\Table as TableStyle;
  */
 final class ProductsTableRenderer
 {
-    private const string SOURCE_COST_LINES = 'cost_lines';
-
-    public function __construct(
-        private readonly ProductLineColumnResolver $columnResolver,
-        private readonly VariableResolver $variableResolver,
-    ) {}
-
     /**
      * @param  array<string, mixed>  $block
      */
     public function render(AbstractContainer $container, array $block, RenderContext $context): void
     {
-        $lines = $this->sourceLines($block, $context);
+        $rows = $context->subject->productRows((string) $block['source']);
         $columns = $block['columns'];
         $columnWidthsTwips = array_map(
             static fn (array $column): int => $context->percentToTwips((int) $column['width_pct']),
@@ -58,11 +48,11 @@ final class ProductsTableRenderer
             $this->renderHeaderRow($table, $columns, $columnWidthsTwips, (string) ($block['header_background'] ?? ''));
         }
 
-        if ($lines->isEmpty()) {
+        if ($rows === []) {
             $this->renderEmptyRow($table, $tableWidthTwips, count($columns), (string) $block['empty_text']);
         } else {
-            foreach ($lines as $line) {
-                $this->renderLineRow($table, $columns, $columnWidthsTwips, $line);
+            foreach ($rows as $productRow) {
+                $this->renderProductRow($table, $columns, $columnWidthsTwips, $productRow);
             }
         }
 
@@ -71,17 +61,6 @@ final class ProductsTableRenderer
                 $this->renderTotalsRow($table, $columnWidthsTwips, $totalsRow, $context);
             }
         }
-    }
-
-    /**
-     * @param  array<string, mixed>  $block
-     * @return Collection<int, QuoteLine>
-     */
-    private function sourceLines(array $block, RenderContext $context): Collection
-    {
-        return $block['source'] === self::SOURCE_COST_LINES
-            ? $context->quote->costLines
-            : $context->quote->offerLines;
     }
 
     /**
@@ -108,26 +87,28 @@ final class ProductsTableRenderer
     /**
      * @param  array<int, array<string, mixed>>  $columns
      * @param  array<int, int>  $columnWidthsTwips
+     * @param  array<string, string>  $productRow
      */
-    private function renderLineRow(TableElement $table, array $columns, array $columnWidthsTwips, QuoteLine $line): void
+    private function renderProductRow(TableElement $table, array $columns, array $columnWidthsTwips, array $productRow): void
     {
         $row = $table->addRow();
 
         foreach ($columns as $index => $column) {
             $cell = $row->addCell($columnWidthsTwips[$index], ['valign' => 'center']);
-            $this->renderColumnLines($cell, $column, $line);
+            $this->renderColumnLines($cell, $column, $productRow);
         }
     }
 
     /**
      * @param  array<string, mixed>  $column
+     * @param  array<string, string>  $productRow
      */
-    private function renderColumnLines(CellElement $cell, array $column, QuoteLine $line): void
+    private function renderColumnLines(CellElement $cell, array $column, array $productRow): void
     {
         $texts = array_map(
             fn (array $columnLine): string => implode(
                 (string) ($columnLine['separator'] ?? ''),
-                array_map(fn (string $key): string => $this->columnResolver->value($key, $line), $columnLine['keys']),
+                array_map(static fn (string $key): string => $productRow[$key] ?? '', $columnLine['keys']),
             ),
             $column['lines'],
         );
@@ -169,7 +150,7 @@ final class ProductsTableRenderer
             $row->addCell($columnWidthsTwips[$columnCount - 2])->addText((string) $totalsRow['label'], ['bold' => $bold]);
         }
 
-        $value = $this->variableResolver->substitute((string) $totalsRow['variable'], $context->quote, $context->actor);
+        $value = $context->substitute((string) $totalsRow['variable']);
         $row->addCell($columnWidthsTwips[$columnCount - 1])->addText($value, ['bold' => $bold]);
     }
 

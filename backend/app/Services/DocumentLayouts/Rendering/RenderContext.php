@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\DocumentLayouts\Rendering;
 
-use App\Models\Quote;
 use App\Models\User;
 
 /**
  * The per-generation context threaded through every block renderer: the
- * Quote being rendered (with every relation the resolver needs already
- * eager-loaded by QuoteDocumentGenerator), the acting User (for the D-6 PII
+ * DocumentRenderSubject being rendered (already prepared by DocumentGenerator),
+ * the acting User (for the D-6 PII
  * mask), and the page's usable width in twips (computed once by DocxRenderer,
  * see RenderingUnits::usableWidthTwips() — the single percent->twips
  * conversion point spec 0070 requires).
@@ -18,10 +17,21 @@ use App\Models\User;
 final readonly class RenderContext
 {
     public function __construct(
-        public Quote $quote,
+        public DocumentRenderSubject $subject,
         public User $actor,
         public int $usableWidthTwips,
     ) {}
+
+    /**
+     * Replace every `{category.key}` token of $text with the subject's value.
+     */
+    public function substitute(string $text): string
+    {
+        return VariableTokens::replace(
+            $text,
+            fn (string $category, string $key): string => $this->subject->resolveVariable($category, $key, $this->actor),
+        );
+    }
 
     public function percentToTwips(int $percent): int
     {

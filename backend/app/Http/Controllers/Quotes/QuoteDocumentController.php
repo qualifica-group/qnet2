@@ -9,9 +9,10 @@ use App\Http\Controllers\Abstract\BaseApiController;
 use App\Models\Quote;
 use App\Models\User;
 use App\Services\DocumentLayouts\QuoteDocumentLayoutResolver;
+use App\Services\DocumentLayouts\Rendering\DocumentGenerator;
 use App\Services\DocumentLayouts\Rendering\DocxToPdfConverter;
 use App\Services\DocumentLayouts\Rendering\Exceptions\InvalidDocumentLayoutConfigException;
-use App\Services\DocumentLayouts\Rendering\QuoteDocumentGenerator;
+use App\Services\DocumentLayouts\Rendering\QuoteRenderSubject;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,7 +28,7 @@ use Throwable;
  * `streamDownload`, not the async ExportRun pipeline (a quote's line count is
  * bounded by ValidatesQuoteLines, so the cost is bounded by construction).
  *
- * The document is rendered as OOXML by QuoteDocumentGenerator and converted by
+ * The document is rendered as OOXML by DocumentGenerator and converted by
  * DocxToPdfConverter: PDF is the DELIVERED format, DOCX stays the internal
  * rendering format.
  *
@@ -48,7 +49,7 @@ class QuoteDocumentController extends BaseApiController
 
     public function __construct(
         private readonly QuoteDocumentLayoutResolver $layoutResolver,
-        private readonly QuoteDocumentGenerator $generator,
+        private readonly DocumentGenerator $generator,
         private readonly DocxToPdfConverter $pdfConverter,
     ) {}
 
@@ -65,7 +66,7 @@ class QuoteDocumentController extends BaseApiController
                 return $this->fail(__('quotes.no_layout_available'), HttpStatusEnum::UNPROCESSABLE_ENTITY->value);
             }
 
-            $docx = $this->generator->generate($quote, $layout, $actor);
+            $docx = $this->generator->generate(QuoteRenderSubject::for($quote), $layout, $actor);
 
             return $this->streamPdf($this->pdfConverter->convert($docx), "{$quote->code}.pdf");
         } catch (InvalidDocumentLayoutConfigException $exception) {

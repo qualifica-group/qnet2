@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\DocumentLayouts;
 
+use App\Enums\DocumentLayoutModule;
 use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\DocumentLayouts\DocumentLayoutPreviewRequest;
 use App\Models\DocumentLayout;
+use App\Models\Invoice;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\DocumentLayouts\Rendering\DocumentGenerator;
+use App\Services\DocumentLayouts\Rendering\DocumentRenderSubject;
 use App\Services\DocumentLayouts\Rendering\DocxToPdfConverter;
 use App\Services\DocumentLayouts\Rendering\Exceptions\InvalidDocumentLayoutConfigException;
-use App\Services\DocumentLayouts\Rendering\QuoteDocumentGenerator;
+use App\Services\DocumentLayouts\Rendering\Invoices\InvoiceRenderSubject;
+use App\Services\DocumentLayouts\Rendering\Invoices\InvoiceSampleFactory;
+use App\Services\DocumentLayouts\Rendering\QuoteRenderSubject;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -34,6 +40,9 @@ use Throwable;
  * quotes). The sample's foreign keys are all unset, so every relation
  * VariableResolver/ProductsTableRenderer reads resolves to null/empty by
  * construction — rendered exactly like a real quote with no data.
+ *
+ * For an `invoices` layout (spec 0195 D-9) the same three steps apply with
+ * `invoice_id` / `invoices.view` / an in-memory sample Invoice.
  */
 class DocumentLayoutPreviewController extends BaseApiController
 {
@@ -46,8 +55,9 @@ class DocumentLayoutPreviewController extends BaseApiController
     private const string SAMPLE_TITLE = 'Sample quote';
 
     public function __construct(
-        private readonly QuoteDocumentGenerator $generator,
+        private readonly DocumentGenerator $generator,
         private readonly DocxToPdfConverter $pdfConverter,
+        private readonly InvoiceSampleFactory $invoiceSamples,
     ) {}
 
     public function __invoke(DocumentLayoutPreviewRequest $request, DocumentLayout $documentLayout): StreamedResponse|JsonResponse
@@ -57,9 +67,8 @@ class DocumentLayoutPreviewController extends BaseApiController
 
             /** @var User $actor */
             $actor = $request->user();
-            $quote = $this->resolveQuote($request, $actor);
 
-            $docx = $this->generator->generate($quote, $documentLayout, $actor);
+            $docx = $this->generator->generate($this->resolveSubject($request, $documentLayout, $actor), $documentLayout, $actor);
 
             return $this->streamPdf($this->pdfConverter->convert($docx), "{$documentLayout->code}-preview.pdf");
         } catch (InvalidDocumentLayoutConfigException $exception) {
@@ -67,6 +76,30 @@ class DocumentLayoutPreviewController extends BaseApiController
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['documentLayout' => $documentLayout->id]);
         }
+    }
+
+    private function resolveSubject(DocumentLayoutPreviewRequest $request, DocumentLayout $layout, User $actor): DocumentRenderSubject
+    {
+        return match ($layout->module) {
+            DocumentLayoutModule::Invoices => InvoiceRenderSubject::for($this->resolveInvoice($request, $actor)),
+            DocumentLayoutModule::Quotes => QuoteRenderSubject::for($this->resolveQuote($request, $actor)),
+        };
+    }
+
+    private function resolveInvoice(DocumentLayoutPreviewRequest $request, User $actor): Invoice
+    {
+        $invoiceId = $request->invoiceId();
+
+        if ($invoiceId !== null) {
+            $invoice = Invoice::query()->findOrFail($invoiceId);
+            $this->authorize('view', $invoice);
+
+            return $invoice;
+        }
+
+        $latest = $actor->can('invoices.view') ? Invoice::query()->latest('id')->first() : null;
+
+        return $latest ?? $this->invoiceSamples->make();
     }
 
     private function resolveQuote(DocumentLayoutPreviewRequest $request, User $actor): Quote

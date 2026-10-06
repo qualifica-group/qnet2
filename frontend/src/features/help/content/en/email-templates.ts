@@ -3,7 +3,7 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'email-templates',
   title: 'Email templates',
-  summary: 'Reusable templates with placeholders to compose work order emails.',
+  summary: 'Reusable templates with placeholders to compose work order and invoice emails.',
   sections: [
     {
       id: 'overview',
@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "The module is found in **Configuration › Email templates**. A template is the **Subject**/**Body** pair the work order's email composer offers when you pick **Email template**: today the only available **Module** is **Work orders**.",
+          text: "The module is found in **Configuration › Email templates**. A template is the **Subject**/**Body** pair the work order's email composer offers when you pick **Email template**: the available **Modules** are **Work orders** and **Invoices**.",
         },
         {
           type: 'note',
@@ -52,6 +52,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'paragraph',
+          text: 'The **Invoices** module offers the **Invoice**, **Customer**, **Company**, **Payment**, **Totals** and **Sender** placeholders, plus the **Reminder** ones: the **overdue due dates list** and the **overdue amount**.',
+        },
+        {
           type: 'note',
           text: "Placeholders are resolved ONLY ONCE, when you pick the template in the composer: subject and body stay freely editable afterwards and are never recalculated when sending. An unknown placeholder, or one with no data to show, simply comes out empty.",
         },
@@ -63,7 +67,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "An **Active** template is selectable from a work order's email composer.",
+          text: "An **Active** template is selectable from a work order's email composer (Work orders templates) or an active invoice's, including the **Reminder** (Invoices templates).",
         },
       ],
     },

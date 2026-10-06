@@ -9,6 +9,7 @@ return [
     'variables' => [
         'categories' => [
             'work_order' => 'Work order',
+            'reminder' => 'Reminder',
             'sender' => 'Sender',
         ],
 
@@ -19,6 +20,11 @@ return [
             'start_date' => 'Start date',
             'callback_date' => 'Callback date',
             'description' => 'Description',
+        ],
+
+        'reminder' => [
+            'overdue_installments' => 'Overdue installments list',
+            'overdue_amount' => 'Overdue amount',
         ],
 
         'sender' => [

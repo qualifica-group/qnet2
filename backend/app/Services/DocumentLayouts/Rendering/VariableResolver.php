@@ -25,14 +25,6 @@ use App\Models\User;
  */
 final class VariableResolver
 {
-    /**
-     * Matches a `{category.key}` token: category and key are both
-     * snake_case identifiers (letters/digits/underscore), split on the
-     * FIRST dot only — `quote_attributes` is itself an underscored
-     * category name, not a nested path.
-     */
-    private const string TOKEN_PATTERN = '/\{([a-zA-Z][a-zA-Z0-9_]*)\.([a-zA-Z0-9_]+)\}/';
-
     public function __construct(
         private readonly QuoteFieldResolver $quoteFields,
         private readonly PartyFieldResolver $partyFields,
@@ -48,14 +40,10 @@ final class VariableResolver
      */
     public function substitute(string $text, Quote $quote, User $actor): string
     {
-        return (string) preg_replace_callback(
-            self::TOKEN_PATTERN,
-            fn (array $matches): string => $this->resolve($matches[1], $matches[2], $quote, $actor),
-            $text,
-        );
+        return VariableTokens::replace($text, fn (string $category, string $key): string => $this->resolve($category, $key, $quote, $actor));
     }
 
-    private function resolve(string $category, string $key, Quote $quote, User $actor): string
+    public function resolve(string $category, string $key, Quote $quote, User $actor): string
     {
         return match ($category) {
             'quote' => $this->quoteFields->quote($key, $quote) ?? '',

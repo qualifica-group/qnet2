@@ -40,6 +40,7 @@ final class InvoiceColumnCatalog
             self::column('collected_amount', 'number'),
             self::column('residual_amount', 'number'),
             self::column('payment_status', 'badge', options: InvoicePaymentStatus::values()),
+            self::column(InvoiceReminderColumn::ID, 'date', sortable: true, filter: 'date'),
             self::column('tag', 'badge', filter: 'set', options: InvoiceTag::values()),
             self::column('deviation', 'number'),
             self::column('document_year', 'number', visible: false, filter: 'set'),
@@ -82,6 +83,9 @@ final class InvoiceColumnCatalog
             ['key' => 'details', 'label' => 'invoices.actions.details', 'icon' => 'file-pen-line', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.update'],
             ['key' => 'delete', 'label' => 'actions.delete', 'icon' => 'trash', 'type' => 'danger', 'confirm' => true, 'permission' => 'invoices.delete'],
             ['key' => 'activity', 'label' => 'actions.activity', 'icon' => 'history', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.viewActivity'],
+            ['key' => 'pdf', 'label' => 'invoices.actions.pdf', 'icon' => 'file-down', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.view'],
+            ['key' => 'email', 'label' => 'invoices.actions.email', 'icon' => 'mail', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.sendEmail'],
+            ['key' => 'remind', 'label' => 'invoices.actions.remind', 'icon' => 'bell-ring', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.sendEmail'],
         ];
     }
 

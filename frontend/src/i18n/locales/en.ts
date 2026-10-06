@@ -39,7 +39,7 @@ import { quotes } from './en-quotes'
 import { contractStatuses } from './en-contract-statuses'
 import { contracts } from './en-contracts'
 import { workOrders } from './en-work-orders'
-import { workOrderEmails } from './en-work-order-emails'
+import { outboundEmails } from './en-outbound-emails'
 import { emailTemplates } from './en-email-templates'
 import { documentBundles } from './en-document-bundles'
 import { taskTemplates } from './en-task-templates'
@@ -459,7 +459,7 @@ export const en = {
   contractStatuses,
   contracts,
   workOrders,
-  workOrderEmails,
+  outboundEmails,
   emailTemplates,
   documentBundles,
   taskTemplates,

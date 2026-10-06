@@ -15,14 +15,17 @@ import {
   WIDTH_PCT_MAX,
   WIDTH_PCT_MIN,
 } from '@/features/document-layouts/layout-config-defaults'
-import { PRODUCTS_TABLE_SOURCES } from '@/features/document-layouts/layout-config'
+import { COLUMN_KEYS_BY_SOURCE, PRODUCTS_TABLE_SOURCES_BY_MODULE } from '@/features/document-layouts/products-table-sources'
 import type { ProductColumn, ProductsTableBlock, ProductsTableSource } from '@/features/document-layouts/layout-config'
+import type { DocumentLayoutModule } from '@/features/document-layouts/types'
 import type { DocumentLayoutVariablesCatalog } from '@/features/document-layouts/variables-api'
 
 const DEFAULT_HEADER_BACKGROUND = 'DDDDDD'
 
 interface ProductsTableInspectorProps {
   block: ProductsTableBlock
+  /** Layout module: decides which sources are selectable (defaults to quotes). */
+  module?: DocumentLayoutModule
   variablesCatalog?: DocumentLayoutVariablesCatalog
   onChange: (next: ProductsTableBlock) => void
   disabled: boolean
@@ -42,7 +45,7 @@ interface ColumnEntry {
  * key the drag list — every mutation re-derives `block.columns` from it and
  * calls `onChange`, so the saved config never carries the synthetic id.
  */
-export function ProductsTableInspector({ block, variablesCatalog, onChange, disabled }: ProductsTableInspectorProps) {
+export function ProductsTableInspector({ block, module = 'quotes', variablesCatalog, onChange, disabled }: ProductsTableInspectorProps) {
   const { t } = useTranslation()
   const sourceId = useId()
   const [entries, setEntries] = useState<ColumnEntry[]>(() =>
@@ -53,6 +56,19 @@ export function ProductsTableInspector({ block, variablesCatalog, onChange, disa
   function emit(nextEntries: ColumnEntry[]) {
     setEntries(nextEntries)
     onChange({ ...block, columns: nextEntries.map((entry) => entry.column) })
+  }
+
+  function changeSource(source: ProductsTableSource) {
+    const allowedKeys = COLUMN_KEYS_BY_SOURCE[source]
+    const keysStillValid = entries.every((entry) =>
+      entry.column.lines.every((line) => line.keys.every((key) => allowedKeys.includes(key))),
+    )
+    if (keysStillValid) {
+      onChange({ ...block, source })
+      return
+    }
+    setEntries([])
+    onChange({ ...block, source, columns: [] })
   }
 
   function handleReorder(orderedIds: string[]) {
@@ -84,14 +100,14 @@ export function ProductsTableInspector({ block, variablesCatalog, onChange, disa
           </label>
           <Select
             value={block.source}
-            onValueChange={(value) => onChange({ ...block, source: value as ProductsTableSource })}
+            onValueChange={(value) => changeSource(value as ProductsTableSource)}
             disabled={disabled}
           >
             <SelectTrigger id={sourceId} className="h-7 w-full text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {PRODUCTS_TABLE_SOURCES.map((source) => (
+              {PRODUCTS_TABLE_SOURCES_BY_MODULE[module].map((source) => (
                 <SelectItem key={source} value={source}>
                   {t(`documentLayouts.editor.productsTable.sources.${source}`)}
                 </SelectItem>
@@ -141,6 +157,7 @@ export function ProductsTableInspector({ block, variablesCatalog, onChange, disa
           renderItem={(entry) => (
             <ProductColumnEditor
               column={entry.column}
+              source={block.source}
               onChange={(next) => updateColumn(entry.id, next)}
               onRemove={() => removeColumn(entry.id)}
               disabled={disabled}

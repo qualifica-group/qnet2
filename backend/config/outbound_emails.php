@@ -1,5 +1,8 @@
 <?php
 
+use App\Services\OutboundEmails\Owners\InvoiceEmailOwner;
+use App\Services\OutboundEmails\Owners\WorkOrderEmailOwner;
+
 return [
 
     /*
@@ -43,5 +46,21 @@ return [
     */
 
     'max_recipients' => (int) env('OUTBOUND_EMAILS_MAX_RECIPIENTS', 50),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Email owners (spec 0195, D-10)
+    |--------------------------------------------------------------------------
+    |
+    | Morph alias => App\Services\OutboundEmails\EmailOwner implementation of
+    | every record type that can own OutboundEmails. Resolved lazily by
+    | EmailOwnerRegistry; a new owner is registered by adding one line here.
+    |
+    */
+
+    'owners' => [
+        'work_order' => WorkOrderEmailOwner::class,
+        'invoice' => InvoiceEmailOwner::class,
+    ],
 
 ];

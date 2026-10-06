@@ -103,7 +103,7 @@ class AttachmentService
 
     /**
      * Store an in-memory binary (not an HTTP upload) as an attachment of
-     * $owner — spec 0175, D-7d: the quote PDF `QuoteDocumentGenerator`/
+     * $owner — spec 0175, D-7d: the quote PDF `DocumentGenerator`/
      * `DocxToPdfConverter` render is never persisted on its own, only ever
      * as a copy directly on the OutboundEmail it is imported into. Same
      * write-then-persist consistency shape as persist(): the binary is

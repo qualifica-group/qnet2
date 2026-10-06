@@ -75,9 +75,10 @@ final class DocumentLayoutConfigValidator
         // Step 4: the three zones, each a list of blocks — `totals.rows[].variable`
         // is checked against the catalogue's `totals` tokens, resolved once here.
         $totalsTokens = $this->variableCatalog->totalsVariableTokens($module);
+        $productSources = DocumentLayoutProductSources::for($module);
 
         foreach (self::ZONE_KEYS as $zone) {
-            $this->assertZone($zone, $config[$zone] ?? null, $layout, $totalsTokens, $errors);
+            $this->assertZone($zone, $config[$zone] ?? null, $layout, $totalsTokens, $productSources, $errors);
         }
 
         return $errors->all();
@@ -140,8 +141,9 @@ final class DocumentLayoutConfigValidator
 
     /**
      * @param  array<int, string>  $totalsTokens
+     * @param  array<string, array<int, string>>  $productSources
      */
-    private function assertZone(string $zone, mixed $zoneValue, ?DocumentLayout $layout, array $totalsTokens, DocumentLayoutConfigErrorBag $errors): void
+    private function assertZone(string $zone, mixed $zoneValue, ?DocumentLayout $layout, array $totalsTokens, array $productSources, DocumentLayoutConfigErrorBag $errors): void
     {
         if (! is_array($zoneValue)) {
             $errors->add("config.{$zone}", 'The zone must be an object.');
@@ -164,7 +166,7 @@ final class DocumentLayoutConfigValidator
         }
 
         foreach ($blocks as $index => $block) {
-            $this->blockValidator->validate("config.{$zone}.blocks.{$index}", $zone, $block, $layout, $totalsTokens, $errors);
+            $this->blockValidator->validate("config.{$zone}.blocks.{$index}", $zone, $block, $layout, $totalsTokens, $productSources, $errors);
         }
     }
 }

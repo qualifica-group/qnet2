@@ -3,6 +3,42 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0195 PDF + EMAIL/SOLLECITO FATTURE — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-06)
+
+- Spec `docs/specs/0195-invoice-pdf-and-email.xml` (approvata; D-13 rev: rate scadute del sollecito come elenco `<ul>`,
+  EmailHtmlSanitizer non ammette tabelle).
+- Rendering layout reso generico: interfaccia `DocumentRenderSubject` (module/prepare/resolveVariable/productRows),
+  `DocumentGenerator::generate(subject, layout, actor)` (QuoteDocumentGenerator ELIMINATO), `QuoteRenderSubject::for()`,
+  `InvoiceRenderSubject` + `InvoiceFieldResolver` + `InvoiceSampleFactory` (Rendering/Invoices). Sorgenti products_table
+  per modulo in `DocumentLayoutProductSources::for()` (invoices: invoice_lines, installments). DocumentLayoutModule::Invoices.
+- PDF: GET /api/invoices/{id}/pdf?layout_id= (layout default attivo del modulo invoices, altrimenti 422
+  'No document layout available for invoices.'); `InvoicePdfRenderer::render(Invoice, User, ?layout)`. Preview layout accetta invoice_id.
+- Email generalizzate per owner: interfaccia `EmailOwner` + `EmailOwnerRegistry` (config outbound_emails.owners:
+  work_order, invoice), controller base `Http/Controllers/OwnerEmails/*`, `OutboundEmailComposeContextBuilder` generico,
+  `outbound_emails.purpose` document|reminder. Rotte commesse INVARIATE; fatture: invoices/{id}/emails/* (routes/api/invoice-emails.php)
+  + POST .../emails/reminder (409 senza rate scadute). EmailTemplateModule::Invoices con variabili reminder.*.
+  SSRM invoices: colonna last_reminder_at, azioni pdf/email/remind. Permessi invoices.viewEmails/sendEmail
+  (permissions.actions view_emails/send_email).
+- FE: features/work-order-emails -> features/outbound-emails (owner `{type:'work-orders'|'invoices', id}`, namespace
+  i18n outboundEmails); document-layouts modulo Fatture + layout di partenza (invoice-layout-starter.ts); invoices: azioni
+  PDF/Email/Sollecita + tab Email nel dettaglio; `normalizeBlobError` condiviso in lib/download.ts. Guide IT/EN aggiornate
+  (invoices, document-layouts, email-templates).
+- Test esistenti toccati (solo nomi classe/import/fixture/sentinel): Quote document tests (DocumentGenerator), DocumentLayoutCrudTest
+  e VariableEndpointTest (sentinel invoices -> contracts), QuoteWorkflowMigrationTest (131), InvoicesTableTest (+colonna/azione),
+  FE outbound-emails (rename), document-layout-schema.test.ts (sentinel).
+- Verifier: Pest 9400/9404 (3 soffice, 1 skipped), Vitest 6785 (flaky sotto carico, verdi da soli), tsc -b, Pint puliti,
+  ESLint solo i 2 errori preesistenti. AC-001..007 PASS.
+- Dopo il deploy: `php artisan permissions:sync` (fatto in locale) e creare un Layout Documento modulo Fatture come
+  predefinito (senza layout il PDF da' 422). Logo: immagine del layout (nessuna variabile logo sede per le fatture).
+- Fix post-verifica: DocxToPdfConverter costruiva `file://C:\...` (soffice exit 1 su Windows; ora `fileUri()` ->
+  `file:///C:/...`) e l'output cp1252 di soffice rompeva la risposta JSON (`mb_scrub`). Riguarda tutti i PDF (offerte,
+  anteprima layout, allegato PDF offerta nelle email, fatture). In locale serve `LIBREOFFICE_BINARY` nel .env (percorso
+  completo di soffice.exe). Layout di partenza Fatture: totali come token `{totals.x}`, descrizione sola, niente riga
+  incassato/residuo, scadenze solo N./Scadenza/Importo. lang/it.json: etichette enum fatture. Layout "Fattura standard"
+  (invoice-standard) creato a mano nel DB locale. Aperto: scelta del layout per singola fattura (A al download / B salvato).
+- Aperto: manuale Claude Docs non aggiornato (access denied) -> Fatture Attive (PDF/Email/Sollecita/Ultimo sollecito),
+  Layout (modulo Fatture), Modelli email (modulo Fatture). HANDOFF.md ~400 KB: archiviare in docs/handoff-archive/.
+
 ## SPEC 0194 FATTURAZIONE ATTIVA (invoices) — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-06)
 
 - Spec `docs/specs/0194-active-invoicing.xml` (approvata). Tabelle `invoices` (type proforma|invoice, company_id emittente,

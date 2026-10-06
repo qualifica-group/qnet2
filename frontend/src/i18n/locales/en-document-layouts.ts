@@ -13,6 +13,7 @@ export const documentLayouts = {
   forbidden: "You don't have permission to view document layouts.",
   modules: {
     quotes: 'Quotes',
+    invoices: 'Invoices',
   },
   columns: {
     name: 'Name',
@@ -159,7 +160,7 @@ export const documentLayouts = {
     },
     productsTable: {
       source: 'Source',
-      sources: { offer_lines: 'Offer lines', cost_lines: 'Cost lines' },
+      sources: { offer_lines: 'Offer lines', cost_lines: 'Cost lines', invoice_lines: 'Invoice lines', installments: 'Installments' },
       widthPct: 'Width (%)',
       showHeader: 'Show header row',
       headerBackground: 'Header background',
@@ -187,6 +188,11 @@ export const documentLayouts = {
         net_amount: 'Net amount',
         vat_amount: 'VAT amount',
         total_amount: 'Total amount',
+        sequence: 'Installment number',
+        due_date: 'Due date',
+        amount: 'Amount',
+        payment_method_code: 'Payment method',
+        status: 'Status',
       },
     },
     divider: {

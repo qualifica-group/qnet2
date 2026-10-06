@@ -13,10 +13,10 @@ import type { DocumentLayoutConfig } from '@/features/document-layouts/layout-co
 
 /**
  * Supported consumer modules for a layout (`App\Enums\DocumentLayoutModule`).
- * Only `quotes` exists today; the enum is deliberately extendable without a
+ * `quotes` and `invoices` (spec 0195); the enum is deliberately extendable without a
  * frontend shape change (spec 0069 goal).
  */
-export const DOCUMENT_LAYOUT_MODULES = ['quotes'] as const
+export const DOCUMENT_LAYOUT_MODULES = ['quotes', 'invoices'] as const
 export type DocumentLayoutModule = (typeof DOCUMENT_LAYOUT_MODULES)[number]
 
 /** Metadata-only projection of an uploaded layout image (no binary/data URI). */

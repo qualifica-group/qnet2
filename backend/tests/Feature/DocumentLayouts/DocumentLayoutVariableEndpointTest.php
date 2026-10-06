@@ -50,7 +50,7 @@ it('422 when `module` is out of the enum (AC-045)', function () {
     $actor = documentLayoutUserWith(['viewAny']);
     Sanctum::actingAs($actor);
 
-    $this->getJson('/api/document-layouts/variables?module=invoices')
+    $this->getJson('/api/document-layouts/variables?module=contracts')
         ->assertStatus(422)->assertJsonValidationErrors('module');
 });
 

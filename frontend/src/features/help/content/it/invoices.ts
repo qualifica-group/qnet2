@@ -11,7 +11,6 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'Il modulo si trova in **Contabilità › Attiva › Fatture Attive**. Elenca i documenti emessi: usa le schede **Tutte**, **Proforma** e **Fatture**, scegli l\'**anno** e, nella barra dei mesi, seleziona uno o più mesi (ognuno mostra il numero di documenti e il totale) oppure **tutti**.' },
         { type: 'paragraph', text: 'In fondo all\'elenco trovi i **totali del filtro corrente**: imponibile, IVA, totale, incassato e residuo. Puoi anche filtrare, ordinare ed esportare l\'elenco.' },
-        { type: 'note', text: 'La generazione del PDF e l\'invio per email dei documenti arriveranno in una prossima versione.' },
       ],
     },
     {
@@ -79,6 +78,45 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'warning', text: 'Se elimini un proforma, la richiesta di origine torna **Da evadere** e può essere emessa di nuovo, ma il numero eliminato non viene riutilizzato.' },
+      ],
+    },
+    {
+      id: 'pdf',
+      title: 'Scaricare il PDF',
+      blocks: [
+        { type: 'paragraph', text: 'Con **Scarica PDF** sulla riga (o nel dettaglio) QNet genera il documento usando il **layout Fatture attivo e predefinito** (vedi la guida Layout).' },
+        { type: 'warning', text: 'Se non esiste un layout del modulo **Fatture** attivo e predefinito, compare un errore: creane uno in **Configurazione › Layout**.' },
+      ],
+    },
+    {
+      id: 'email',
+      title: 'Inviare il documento per email',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Sulla riga premi **Invia email**: si apre il composer.',
+            'Il **destinatario** è la **PEC** del cliente, se presente, altrimenti la sua **email**; il **PDF** è già allegato.',
+            'Completa oggetto e corpo (puoi scegliere un **Modello email** del modulo Fatture) e invia.',
+          ],
+        },
+        { type: 'paragraph', text: 'Nel dettaglio del documento la scheda **Email** mostra lo storico delle email inviate. Servono i permessi per **inviare** e **visualizzare** le email delle fatture.' },
+      ],
+    },
+    {
+      id: 'reminder',
+      title: 'Sollecitare un pagamento',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Premi **Sollecita** sulla riga: l\'azione è attiva solo se almeno una scadenza è **scaduta**.',
+            'QNet crea una **bozza di sollecito** con il PDF allegato e apre il composer.',
+            'Scegli un **Modello email** del modulo Fatture: può usare le variabili della **elenco delle scadenze scadute** e dell\'**importo scaduto**.',
+            'Controlla e invia.',
+          ],
+        },
+        { type: 'paragraph', text: 'La colonna **Ultimo sollecito** dell\'elenco indica quando è stato inviato l\'ultimo sollecito.' },
       ],
     },
   ],

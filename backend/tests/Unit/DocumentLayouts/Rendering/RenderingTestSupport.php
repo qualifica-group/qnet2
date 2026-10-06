@@ -20,7 +20,8 @@ use App\Models\Registry;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\VatRate;
-use App\Services\DocumentLayouts\Rendering\QuoteDocumentGenerator;
+use App\Services\DocumentLayouts\Rendering\DocumentGenerator;
+use App\Services\DocumentLayouts\Rendering\QuoteRenderSubject;
 use Database\Factories\DocumentLayoutFactory;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -161,7 +162,7 @@ if (! function_exists('dlrDocConfig')) {
      */
     function dlrRender(array $config, Quote $quote, ?User $actor = null): string
     {
-        return app(QuoteDocumentGenerator::class)->generate($quote, dlrLayout($config), $actor ?? User::factory()->create());
+        return app(DocumentGenerator::class)->generate(QuoteRenderSubject::for($quote), dlrLayout($config), $actor ?? User::factory()->create());
     }
 
     /**
@@ -417,7 +418,7 @@ if (! function_exists('dlrDocConfig')) {
      * real 1x1 PNG on the `local` disk — the caller must `Storage::fake('local')`
      * first) it owns, so an `image` block referencing it passes
      * DocumentLayoutConfigValidator's ownership check (called by
-     * QuoteDocumentGenerator before rendering). $configBuilder receives the
+     * DocumentGenerator before rendering). $configBuilder receives the
      * attachment id and returns the full config tree to persist.
      *
      * @param  callable(int): array<string, mixed>  $configBuilder

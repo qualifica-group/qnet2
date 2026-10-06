@@ -6,12 +6,14 @@ import { SpacerBlockInspector } from '@/features/document-layouts/editor/inspect
 import { TableBlockInspector } from '@/features/document-layouts/editor/inspector/table-block-inspector'
 import { TextBlockInspector } from '@/features/document-layouts/editor/inspector/text-block-inspector'
 import type { Block, DocumentLayoutZoneName } from '@/features/document-layouts/layout-config'
+import type { DocumentLayoutModule } from '@/features/document-layouts/types'
 import type { DocumentLayoutVariablesCatalog } from '@/features/document-layouts/variables-api'
 
 interface BlockInspectorDispatchProps {
   zone: DocumentLayoutZoneName
   block: Block
   layoutId: number | null
+  module?: DocumentLayoutModule
   variablesCatalog?: DocumentLayoutVariablesCatalog
   disabled: boolean
   onChange: (next: Block) => void
@@ -23,6 +25,7 @@ export function BlockInspectorDispatch({
   zone,
   block,
   layoutId,
+  module,
   variablesCatalog,
   disabled,
   onChange,
@@ -37,7 +40,13 @@ export function BlockInspectorDispatch({
       return <TableBlockInspector block={block} onChange={onChange} disabled={disabled} />
     case 'products_table':
       return (
-        <ProductsTableInspector block={block} variablesCatalog={variablesCatalog} onChange={onChange} disabled={disabled} />
+        <ProductsTableInspector
+          block={block}
+          module={module}
+          variablesCatalog={variablesCatalog}
+          onChange={onChange}
+          disabled={disabled}
+        />
       )
     case 'page_break':
       return <PageBreakBlockInspector />

@@ -12,7 +12,7 @@ import { useAbilities } from '@/features/auth/use-abilities'
 import { NotesSection } from '@/features/notes/notes-section'
 import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { useWorkOrderEmailsTab } from '@/features/work-order-emails/use-work-order-emails-tab'
+import { useOutboundEmailsTab } from '@/features/outbound-emails/use-outbound-emails-tab'
 import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { WorkOrderDetailHeader, WorkOrderDetailStats } from '@/features/work-orders/work-order-detail-header'
 import { WorkOrderDetailSections } from '@/features/work-orders/work-order-detail-sections'
@@ -36,8 +36,8 @@ function useCollaborationTabs(workOrder: WorkOrderDetailWithPermissions): Record
   const { t } = useTranslation()
   const { can } = useAbilities()
   const registryDocumentsTab = useRegistryDocumentsTab(workOrder.registry?.id)
-  const workOrderEmailsTab = useWorkOrderEmailsTab(
-    workOrder.id,
+  const outboundEmailsTab = useOutboundEmailsTab(
+    { type: 'work-orders', id: workOrder.id },
     workOrder.permissions.actions.view_emails,
     workOrder.permissions.actions.send_email,
   )
@@ -78,8 +78,8 @@ function useCollaborationTabs(workOrder: WorkOrderDetailWithPermissions): Record
     tabs.push(registryDocumentsTab)
   }
 
-  if (workOrderEmailsTab) {
-    tabs.push(workOrderEmailsTab)
+  if (outboundEmailsTab) {
+    tabs.push(outboundEmailsTab)
   }
 
   if (workOrder.permissions.actions.view_activity) {

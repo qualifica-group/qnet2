@@ -5,9 +5,10 @@ declare(strict_types=1);
 use App\Models\DocumentLayout;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\DocumentLayouts\Rendering\DocumentGenerator;
 use App\Services\DocumentLayouts\Rendering\DocxToPdfConverter;
 use App\Services\DocumentLayouts\Rendering\Exceptions\DocumentConversionException;
-use App\Services\DocumentLayouts\Rendering\QuoteDocumentGenerator;
+use App\Services\DocumentLayouts\Rendering\QuoteRenderSubject;
 use Database\Factories\DocumentLayoutFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -45,7 +46,7 @@ function pdfSourceDocx(): string
     ]);
     $quote = Quote::factory()->create(['layout_id' => $layout->id]);
 
-    return app(QuoteDocumentGenerator::class)->generate($quote, $layout, User::factory()->create());
+    return app(DocumentGenerator::class)->generate(QuoteRenderSubject::for($quote), $layout, User::factory()->create());
 }
 
 it('converts a rendered docx into a single-page PDF', function () {

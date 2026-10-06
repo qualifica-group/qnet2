@@ -11,11 +11,9 @@ use Illuminate\Validation\Rule;
 /**
  * Validates the query for GET /api/email-templates/variables (spec 0175,
  * D-4): `module` is the only input, required and constrained to the enum —
- * mirrors DocumentLayoutVariableRequest. No `module()` accessor: unlike
- * DocumentLayoutVariableController, EmailTemplateVariableController never
- * needs the resolved value — EmailTemplateModule has only ONE case today
- * (D-10), so WorkOrderEmailVariableCatalog is not yet module-dispatched;
- * `rules()` alone is enough to reject an out-of-enum value with a 422.
+ * mirrors DocumentLayoutVariableRequest. `module()` hands the resolved enum
+ * to EmailTemplateVariableController, which picks the catalogue of the
+ * module's EmailOwner (spec 0195, D-10).
  *
  * Authorization is intentionally NOT handled here (it stays in the
  * controller via authorize('email-templates.view')).
@@ -26,6 +24,11 @@ class EmailTemplateVariableRequest extends FormRequest
     {
         // Authorization handled in the controller.
         return true;
+    }
+
+    public function module(): EmailTemplateModule
+    {
+        return EmailTemplateModule::from((string) $this->validated('module'));
     }
 
     /**

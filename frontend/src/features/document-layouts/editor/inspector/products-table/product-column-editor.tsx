@@ -13,17 +13,18 @@ import {
   WIDTH_PCT_MIN,
 } from '@/features/document-layouts/layout-config-defaults'
 import { ALIGN_LCR } from '@/features/document-layouts/layout-config'
-import type { AlignLCR, ProductColumn, ProductColumnLine } from '@/features/document-layouts/layout-config'
+import type { AlignLCR, ProductColumn, ProductColumnLine, ProductsTableSource } from '@/features/document-layouts/layout-config'
 
 interface ProductColumnEditorProps {
   column: ProductColumn
+  source: ProductsTableSource
   onChange: (next: ProductColumn) => void
   onRemove: () => void
   disabled: boolean
 }
 
 /** One `products_table` column: label, width, alignment, and its stacked `lines` (D-11). */
-export function ProductColumnEditor({ column, onChange, onRemove, disabled }: ProductColumnEditorProps) {
+export function ProductColumnEditor({ column, source, onChange, onRemove, disabled }: ProductColumnEditorProps) {
   const { t } = useTranslation()
   const alignId = useId()
   const linesFull = column.lines.length >= MAX_LINES_PER_PRODUCT_COLUMN
@@ -101,6 +102,7 @@ export function ProductColumnEditor({ column, onChange, onRemove, disabled }: Pr
           <ProductColumnLineEditor
             key={index}
             line={line}
+            source={source}
             onChange={(next) => updateLine(index, next)}
             onRemove={() => removeLine(index)}
             canRemove={column.lines.length > 1}

@@ -11,6 +11,7 @@ import { createDocumentLayout, updateDocumentLayout } from '@/features/document-
 import { parseConfigValidationErrors } from '@/features/document-layouts/editor/config-validation-errors'
 import type { ConfigValidationError } from '@/features/document-layouts/editor/config-validation-errors'
 import { createEmptyDocumentLayoutConfig } from '@/features/document-layouts/layout-config-defaults'
+import { createStarterConfigForModule } from '@/features/document-layouts/invoice-layout-starter'
 import type { DocumentLayoutConfig } from '@/features/document-layouts/layout-config'
 import {
   buildCreatePayload,
@@ -22,9 +23,11 @@ import {
   type CreateDocumentLayoutFormValues,
   type UpdateDocumentLayoutFormValues,
 } from '@/features/document-layouts/document-layout-schema'
+import { DOCUMENT_LAYOUT_MODULES } from '@/features/document-layouts/types'
 import type {
   DocumentLayoutDetail,
   DocumentLayoutFormMode,
+  DocumentLayoutModule,
 } from '@/features/document-layouts/types'
 
 /** Server-side field names mapped onto the form for 422 handling. */
@@ -40,6 +43,12 @@ interface UseDocumentLayoutFormArgs {
 
 function initialConfig(mode: DocumentLayoutFormMode): DocumentLayoutConfig {
   return mode.type === 'edit' ? mode.documentLayout.config : createEmptyDocumentLayoutConfig()
+}
+
+/** True while `config` is still untouched: the empty config or any module's starter. */
+function isPristineConfig(config: DocumentLayoutConfig): boolean {
+  const serialized = JSON.stringify(config)
+  return DOCUMENT_LAYOUT_MODULES.some((module) => JSON.stringify(createStarterConfigForModule(module)) === serialized)
 }
 
 /**
@@ -128,8 +137,18 @@ export function useDocumentLayoutForm({ mode, onSuccess }: UseDocumentLayoutForm
     }
   }
 
+  // In create mode, switching module swaps in that module's starter config, but
+  // only while the user has not edited the content yet.
+  function onModuleChange(module: DocumentLayoutModule) {
+    if (isEdit) {
+      return
+    }
+    setConfig((current) => (isPristineConfig(current) ? createStarterConfigForModule(module) : current))
+  }
+
   return {
     form,
+    onModuleChange,
     isEdit,
     serverError,
     onSubmit,

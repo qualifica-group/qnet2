@@ -45,12 +45,12 @@ it('AC-007: exposes the contract columns, the year/month filter columns and the 
     expect($columns->keys()->all())->toBe([
         'id', 'number_label', 'number', 'document_date', 'type', 'external_number', 'external_date', 'customer',
         'company', 'payment_method', 'work_order_code', 'quote_code', 'net_amount', 'vat_amount', 'total_amount',
-        'collected_amount', 'residual_amount', 'payment_status', 'tag', 'deviation', 'document_year', 'document_month',
+        'collected_amount', 'residual_amount', 'payment_status', 'last_reminder_at', 'tag', 'deviation', 'document_year', 'document_month',
     ])
         ->and($columns['document_month']['filterType'])->toBe('set')
         ->and($columns['document_year']['filterable'])->toBeTrue()
         ->and($columns['document_year']['visible'])->toBeFalse()
-        ->and(collect($data['actions'])->pluck('key')->all())->toBe(['view', 'update', 'details', 'delete', 'activity'])
+        ->and(collect($data['actions'])->pluck('key')->all())->toBe(['view', 'update', 'details', 'delete', 'activity', 'pdf'])
         ->and(collect($data['actions'])->firstWhere('key', 'details')['icon'])->toBe('file-pen-line')
         ->and($data['defaultSort'])->toBe([
             ['columnId' => 'document_date', 'direction' => 'desc'],
@@ -80,7 +80,7 @@ it('AC-007: rows carry the contract fields, the collected/residual amounts and t
             'number', 'document_date', 'external_number', 'external_date', 'customer', 'company', 'payment_method',
             'work_order_code', 'quote_code', 'net_amount', 'vat_amount', 'tag', 'deviation', 'actions',
         )
-        ->and($rows[$paid->id]['actions'])->toBe(['view', 'update', 'details', 'delete', 'activity'])
+        ->and($rows[$paid->id]['actions'])->toBe(['view', 'update', 'details', 'delete', 'activity', 'pdf'])
         ->and($rows[$notDue->id]['payment_status'])->toBe('not_due')
         ->and($rows[$overdue->id]['payment_status'])->toBe('overdue')
         ->and($rows[$serious->id]['payment_status'])->toBe('seriously_overdue')

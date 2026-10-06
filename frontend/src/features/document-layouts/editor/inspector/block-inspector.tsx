@@ -3,12 +3,14 @@ import { BlockInspectorDispatch } from '@/features/document-layouts/editor/inspe
 import type { ConfigValidationError } from '@/features/document-layouts/editor/config-validation-errors'
 import type { BlockSelection } from '@/features/document-layouts/editor/use-document-layout-editor'
 import type { Block, DocumentLayoutConfig, DocumentLayoutZoneName } from '@/features/document-layouts/layout-config'
+import type { DocumentLayoutModule } from '@/features/document-layouts/types'
 import type { DocumentLayoutVariablesCatalog } from '@/features/document-layouts/variables-api'
 
 interface BlockInspectorProps {
   selection: BlockSelection | null
   config: DocumentLayoutConfig
   layoutId: number | null
+  module?: DocumentLayoutModule
   variablesCatalog?: DocumentLayoutVariablesCatalog
   configErrors: ConfigValidationError[]
   disabled: boolean
@@ -28,6 +30,7 @@ export function BlockInspector({
   selection,
   config,
   layoutId,
+  module,
   variablesCatalog,
   configErrors,
   disabled,
@@ -65,6 +68,7 @@ export function BlockInspector({
         zone={selection.zone}
         block={block}
         layoutId={layoutId}
+        module={module}
         variablesCatalog={variablesCatalog}
         disabled={disabled}
         onChange={(next) => onUpdateBlock(selection.zone, next)}

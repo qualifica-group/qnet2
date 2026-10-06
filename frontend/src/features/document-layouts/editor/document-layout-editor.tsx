@@ -91,6 +91,7 @@ export function DocumentLayoutEditor({ config, onChange, module, layoutId, confi
             selection={editor.selection}
             config={config}
             layoutId={layoutId}
+            module={module}
             variablesCatalog={variablesQuery.data}
             configErrors={configErrors}
             disabled={disabled}

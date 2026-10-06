@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\DocumentLayouts\Rendering;
 
-use App\Models\Quote;
 use App\Models\User;
 use PhpOffice\PhpWord\Element\Section;
 use PhpOffice\PhpWord\PhpWord;
@@ -36,7 +35,7 @@ final class DocxRenderer
     /**
      * @param  array<string, mixed>  $config
      */
-    public function render(array $config, Quote $quote, User $actor): PhpWord
+    public function render(array $config, DocumentRenderSubject $subject, User $actor): PhpWord
     {
         $phpWord = new PhpWord;
         $this->applyDefaultFont($phpWord, $config['page']['default_font']);
@@ -48,7 +47,7 @@ final class DocxRenderer
             (int) $margins['right'],
         );
 
-        $context = new RenderContext($quote, $actor, $usableWidthTwips);
+        $context = new RenderContext($subject, $actor, $usableWidthTwips);
         $section = $phpWord->addSection($this->pageStyle($config['page']));
 
         $this->renderHeader($section, $config['header']['blocks'], $context);

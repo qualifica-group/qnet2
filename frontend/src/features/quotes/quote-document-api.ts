@@ -1,33 +1,9 @@
-import axios from 'axios'
 import { apiClient } from '@/api/client'
-import { filenameFromContentDisposition, saveBlob } from '@/lib/download'
+import { filenameFromContentDisposition, normalizeBlobError, saveBlob } from '@/lib/download'
 
 /** Fallback filename when the response carries no `Content-Disposition` header (should never happen server-side, spec 0070). */
 function fallbackDocumentFilename(quoteCode: string): string {
   return `${quoteCode}.pdf`
-}
-
-/**
- * A failed `responseType: 'blob'` request receives its JSON error envelope as
- * an opaque `Blob`, not the parsed `{success,message}` object axios hands a
- * normal JSON response — so `error.response?.data?.message` (how the rest of
- * the app reads a business 422's message, e.g. `DocumentLayoutsTable`'s
- * delete-guard handling) would silently read `undefined` here. Rewrites the
- * SAME axios error's `data` in place from the blob's text, so
- * `use-quote-document.ts` can read `error.response.data.message` exactly like
- * every other 422 handler in the app (AC-303's `no_layout_available`).
- */
-async function normalizeBlobError(error: unknown): Promise<unknown> {
-  if (!axios.isAxiosError(error) || !(error.response?.data instanceof Blob)) {
-    return error
-  }
-  try {
-    const text = await error.response.data.text()
-    error.response.data = JSON.parse(text)
-  } catch {
-    // Not a JSON body (e.g. an HTML 500 page): leave the blob as-is.
-  }
-  return error
 }
 
 /**

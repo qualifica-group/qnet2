@@ -86,7 +86,7 @@ it('create: 422 when module is not in the enum (AC-016)', function () {
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/document-layouts', [
-        'name' => 'Invalid Module', 'code' => 'invalid_module', 'module' => 'invoices', 'config' => DocumentLayoutFactory::minimalConfig(),
+        'name' => 'Invalid Module', 'code' => 'invalid_module', 'module' => 'contracts', 'config' => DocumentLayoutFactory::minimalConfig(),
     ])->assertStatus(422)->assertJsonValidationErrors('module');
 });
 

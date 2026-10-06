@@ -123,5 +123,19 @@
     "You do not have the permissions needed to view this task. To request access, contact one of the people responsible for it and ask to be added as a watcher.": "Non disponi dei permessi necessari per visualizzare questa attivita'. Per richiedere l'accesso, contatta uno dei responsabili dell'attivita' e chiedi di essere aggiunto come osservatore.",
     "This task is not available.": "Questa attivita' non e' disponibile.",
     "One or more tasks are not compatible with this bulk action.": "Una o piu' attivita' non sono compatibili con questa azione massiva.",
-    "The operation took too long: narrow your search or filters and try again.": "L'operazione ha richiesto troppo tempo: restringi la ricerca o i filtri e riprova."
+    "The operation took too long: narrow your search or filters and try again.": "L'operazione ha richiesto troppo tempo: restringi la ricerca o i filtri e riprova.",
+    "Proforma": "Proforma",
+    "Invoice": "Fattura",
+    "Unpaid": "Non pagata",
+    "Partially paid": "Parzialmente pagata",
+    "Paid": "Pagata",
+    "Estimate": "Preventivo",
+    "Final": "Consuntivo",
+    "Not due": "Non scaduta",
+    "Overdue": "Scaduta",
+    "Seriously overdue": "Scaduta da oltre 21 giorni",
+    "Split": "Proporzionale su tutte le rate",
+    "On first installment": "Tutta sulla prima rata",
+    "On last installment": "Tutta sull'ultima rata",
+    "First installment is VAT only": "Prima rata solo IVA"
 }

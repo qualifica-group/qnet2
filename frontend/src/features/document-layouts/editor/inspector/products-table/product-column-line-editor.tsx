@@ -6,11 +6,12 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { IntegerField } from '@/features/document-layouts/editor/shared/integer-field'
 import { FONT_SIZE_MAX, FONT_SIZE_MIN, MAX_KEYS_PER_LINE } from '@/features/document-layouts/layout-config-defaults'
-import { COLUMN_KEYS } from '@/features/document-layouts/layout-config'
-import type { ColumnKey, ProductColumnLine } from '@/features/document-layouts/layout-config'
+import { COLUMN_KEYS_BY_SOURCE } from '@/features/document-layouts/products-table-sources'
+import type { ColumnKey, ProductColumnLine, ProductsTableSource } from '@/features/document-layouts/layout-config'
 
 interface ProductColumnLineEditorProps {
   line: ProductColumnLine
+  source: ProductsTableSource
   onChange: (next: ProductColumnLine) => void
   onRemove: () => void
   canRemove: boolean
@@ -20,10 +21,10 @@ interface ProductColumnLineEditorProps {
 /**
  * One `products_table` column line (D-11: a column's cell content stacks
  * `lines` paragraphs, each composed from `keys` joined by `separator`).
- * Keys come from the CLOSED `COLUMN_KEYS` allow-list — `discount` is not a
+ * Keys come from the CLOSED per-source allow-list (`COLUMN_KEYS_BY_SOURCE`) — `discount` is not a
  * member of that list (D-4), so it can never appear here (AC-123).
  */
-export function ProductColumnLineEditor({ line, onChange, onRemove, canRemove, disabled }: ProductColumnLineEditorProps) {
+export function ProductColumnLineEditor({ line, source, onChange, onRemove, canRemove, disabled }: ProductColumnLineEditorProps) {
   const { t } = useTranslation()
   const separatorId = useId()
   const keysFull = line.keys.length >= MAX_KEYS_PER_LINE
@@ -42,7 +43,7 @@ export function ProductColumnLineEditor({ line, onChange, onRemove, canRemove, d
   return (
     <div className="flex flex-col gap-1.5 rounded-md border border-border p-2">
       <div className="flex flex-wrap gap-x-3 gap-y-1">
-        {COLUMN_KEYS.map((key) => {
+        {COLUMN_KEYS_BY_SOURCE[source].map((key) => {
           const checked = line.keys.includes(key)
           return (
             <label key={key} className="flex items-center gap-1 text-xs text-muted-foreground">

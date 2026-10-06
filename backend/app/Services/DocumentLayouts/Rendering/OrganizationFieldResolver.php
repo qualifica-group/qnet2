@@ -36,7 +36,15 @@ final class OrganizationFieldResolver
 
     public function companySite(string $key, Quote $quote): ?string
     {
-        $site = $quote->companySite;
+        return $this->siteField($key, $quote->companySite);
+    }
+
+    /**
+     * The `company_site` variables for a site that does not come from a Quote
+     * (e.g. an Invoice's quote site, spec 0195 D-7): same keys, same formatting.
+     */
+    public function siteField(string $key, ?CompanySite $site): ?string
+    {
         $address = $site === null ? null : PrimaryAddressPicker::pick($site->personalData?->addresses ?? collect());
         $bank = $this->primaryBank($site);
 

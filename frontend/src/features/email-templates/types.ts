@@ -7,7 +7,7 @@
 import type { ResourcePermissions } from '@/features/authorization/types'
 
 /** The only admitted value today (D-10); kept as an array so the module Select/schema extend without a shape change (mirrors `DOCUMENT_LAYOUT_MODULES`). */
-export const EMAIL_TEMPLATE_MODULES = ['work_orders'] as const
+export const EMAIL_TEMPLATE_MODULES = ['work_orders', 'invoices'] as const
 export type EmailTemplateModule = (typeof EMAIL_TEMPLATE_MODULES)[number]
 
 /**

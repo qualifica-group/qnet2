@@ -29,9 +29,10 @@ return [
     'attachments_limit_exceeded' => 'The total attachments size exceeds the :max_kb KB limit.',
     'template_not_available' => 'The selected template is not available for this module.',
     'attachment_not_available' => 'One or more selected files are not available for this commessa.',
+    'attachment_source_not_supported' => 'The selected attachment source is not supported.',
     'document_bundle_not_available' => 'The selected document bundle is not available.',
 
-    // WorkOrderEmailComposeContextBuilder (D-5): suggestion label for the
+    // WorkOrderEmailOwner (spec 0175 D-5): suggestion label for the
     // commessa's own supervisors/participants.
     'recipient_supervisor' => 'Supervisor',
     'recipient_participant' => 'Participant',

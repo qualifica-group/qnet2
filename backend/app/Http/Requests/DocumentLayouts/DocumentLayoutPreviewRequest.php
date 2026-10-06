@@ -30,12 +30,21 @@ class DocumentLayoutPreviewRequest extends FormRequest
     {
         return [
             'quote_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'invoice_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
         ];
     }
 
     public function quoteId(): ?int
     {
         $value = $this->validated('quote_id');
+
+        return $value === null ? null : (int) $value;
+    }
+
+    /** Spec 0195 D-9: the invoice to preview an `invoices` layout against. */
+    public function invoiceId(): ?int
+    {
+        $value = $this->validated('invoice_id');
 
         return $value === null ? null : (int) $value;
     }

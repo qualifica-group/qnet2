@@ -60,8 +60,9 @@ final class DocumentLayoutBlockValidator
 
     /**
      * @param  array<int, string>  $totalsTokens
+     * @param  array<string, array<int, string>>  $productSources
      */
-    public function validate(string $path, string $zone, mixed $block, ?DocumentLayout $layout, array $totalsTokens, DocumentLayoutConfigErrorBag $errors): void
+    public function validate(string $path, string $zone, mixed $block, ?DocumentLayout $layout, array $totalsTokens, array $productSources, DocumentLayoutConfigErrorBag $errors): void
     {
         if (! is_array($block)) {
             $errors->add($path, 'A block must be an object.');
@@ -83,7 +84,7 @@ final class DocumentLayoutBlockValidator
             'text' => $this->validateTextBlock($path, $block, $errors),
             'image' => $this->validateImageBlock($path, $zone, $block, $layout, $errors),
             'table' => $this->tableValidator->validate($path, $block, $this, $errors),
-            'products_table' => $this->productsTableValidator->validate($path, $block, $totalsTokens, $errors),
+            'products_table' => $this->productsTableValidator->validate($path, $block, $totalsTokens, $productSources, $errors),
             'page_break' => ConfigShapeAssertions::assertKnownKeys($path, $block, self::SIMPLE_KEYS, $errors),
             'spacer' => $this->validateSpacerBlock($path, $block, $errors),
             'divider' => $this->validateDividerBlock($path, $block, $errors),

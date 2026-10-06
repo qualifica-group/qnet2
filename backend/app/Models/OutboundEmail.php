@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OutboundEmailPurpose;
 use App\Enums\OutboundEmailStatus;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\HasAttachments;
@@ -27,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * (create as draft, queue, mark sent/failed), mirroring `WorkOrder::code`.
  * Only the composer's own content fields are client-writable.
  */
-#[Fillable(['email_template_id', 'to_recipients', 'cc_recipients', 'bcc_recipients', 'subject', 'body'])]
+#[Fillable(['email_template_id', 'to_recipients', 'cc_recipients', 'bcc_recipients', 'subject', 'body', 'purpose'])]
 class OutboundEmail extends BaseModel
 {
     /** @use HasFactory<OutboundEmailFactory> */
@@ -49,6 +50,7 @@ class OutboundEmail extends BaseModel
     {
         return [
             'status' => OutboundEmailStatus::class,
+            'purpose' => OutboundEmailPurpose::class,
             'to_recipients' => 'array',
             'cc_recipients' => 'array',
             'bcc_recipients' => 'array',

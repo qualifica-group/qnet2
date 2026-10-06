@@ -26,9 +26,6 @@ final class DocumentLayoutProductsTableBlockValidator
     private const array BORDERS_KEYS = ['size', 'color'];
 
     /** @var array<int, string> */
-    private const array SOURCE_VALUES = ['offer_lines', 'cost_lines'];
-
-    /** @var array<int, string> */
     private const array COLUMN_KEYS = ['lines', 'label', 'width_pct', 'align'];
 
     /** @var array<int, string> */
@@ -36,17 +33,6 @@ final class DocumentLayoutProductsTableBlockValidator
 
     /** @var array<int, string> */
     private const array LINE_KEYS = ['keys', 'separator', 'bold', 'italic', 'size'];
-
-    /**
-     * The ColumnKey allow-list (data_contract, config_schema #4) — every
-     * key has a verified quote_lines/product source. `discount` is
-     * deliberately absent (D-4).
-     *
-     * @var array<int, string>
-     */
-    private const array COLUMN_KEY_VALUES = [
-        'code', 'name', 'description', 'additional_description', 'quantity', 'unit_price', 'vat_rate', 'net_amount', 'vat_amount', 'total_amount',
-    ];
 
     /** @var array<int, string> */
     private const array TOTALS_KEYS = ['show', 'rows'];
@@ -57,18 +43,23 @@ final class DocumentLayoutProductsTableBlockValidator
     /**
      * @param  array<string, mixed>  $block
      * @param  array<int, string>  $totalsTokens
+     * @param  array<string, array<int, string>>  $productSources  the layout module's source => ColumnKey allow-list
      */
-    public function validate(string $path, array $block, array $totalsTokens, DocumentLayoutConfigErrorBag $errors): void
+    public function validate(string $path, array $block, array $totalsTokens, array $productSources, DocumentLayoutConfigErrorBag $errors): void
     {
         ConfigShapeAssertions::assertKnownKeys($path, $block, self::PRODUCTS_TABLE_KEYS, $errors);
-        ConfigShapeAssertions::assertEnum("{$path}.source", $block['source'] ?? null, self::SOURCE_VALUES, $errors);
+        ConfigShapeAssertions::assertEnum("{$path}.source", $block['source'] ?? null, array_keys($productSources), $errors);
         ConfigShapeAssertions::assertIntInRange("{$path}.width_pct", $block['width_pct'] ?? null, 1, 100, $errors);
         $this->assertBorders("{$path}.borders", $block['borders'] ?? null, $errors);
         ConfigShapeAssertions::assertBool("{$path}.show_header", $block['show_header'] ?? null, $errors);
         ConfigShapeAssertions::assertNullableHexColor("{$path}.header_background", $block['header_background'] ?? null, $errors);
         ConfigShapeAssertions::assertNullableString("{$path}.empty_text", $block['empty_text'] ?? null, $errors);
 
-        $this->assertColumns("{$path}.columns", $block['columns'] ?? null, $errors);
+        // The ColumnKey allow-list follows the chosen source; an invalid source
+        // is already reported above, so no key is accepted for it.
+        $source = $block['source'] ?? null;
+        $columnKeys = is_string($source) ? ($productSources[$source] ?? []) : [];
+        $this->assertColumns("{$path}.columns", $block['columns'] ?? null, $columnKeys, $errors);
         $this->assertTotals("{$path}.totals", $block['totals'] ?? null, $totalsTokens, $errors);
     }
 
@@ -89,7 +80,7 @@ final class DocumentLayoutProductsTableBlockValidator
         ConfigShapeAssertions::assertHexColor("{$path}.color", $borders['color'] ?? null, $errors);
     }
 
-    private function assertColumns(string $path, mixed $columns, DocumentLayoutConfigErrorBag $errors): void
+    private function assertColumns(string $path, mixed $columns, array $columnKeys, DocumentLayoutConfigErrorBag $errors): void
     {
         if (! is_array($columns) || ! array_is_list($columns) || $columns === []) {
             $errors->add($path, 'Must be a non-empty array of columns.');
@@ -102,11 +93,11 @@ final class DocumentLayoutProductsTableBlockValidator
         }
 
         foreach ($columns as $index => $column) {
-            $this->assertColumn("{$path}.{$index}", $column, $errors);
+            $this->assertColumn("{$path}.{$index}", $column, $columnKeys, $errors);
         }
     }
 
-    private function assertColumn(string $path, mixed $column, DocumentLayoutConfigErrorBag $errors): void
+    private function assertColumn(string $path, mixed $column, array $columnKeys, DocumentLayoutConfigErrorBag $errors): void
     {
         if (! is_array($column)) {
             $errors->add($path, 'A column must be an object.');
@@ -119,10 +110,10 @@ final class DocumentLayoutProductsTableBlockValidator
         ConfigShapeAssertions::assertIntInRange("{$path}.width_pct", $column['width_pct'] ?? null, 1, 100, $errors);
         ConfigShapeAssertions::assertEnum("{$path}.align", $column['align'] ?? null, self::COLUMN_ALIGN_VALUES, $errors);
 
-        $this->assertLines("{$path}.lines", $column['lines'] ?? null, $errors);
+        $this->assertLines("{$path}.lines", $column['lines'] ?? null, $columnKeys, $errors);
     }
 
-    private function assertLines(string $path, mixed $lines, DocumentLayoutConfigErrorBag $errors): void
+    private function assertLines(string $path, mixed $lines, array $columnKeys, DocumentLayoutConfigErrorBag $errors): void
     {
         if (! is_array($lines) || ! array_is_list($lines) || $lines === []) {
             $errors->add($path, 'Must be a non-empty array of lines.');
@@ -135,11 +126,11 @@ final class DocumentLayoutProductsTableBlockValidator
         }
 
         foreach ($lines as $index => $line) {
-            $this->assertLine("{$path}.{$index}", $line, $errors);
+            $this->assertLine("{$path}.{$index}", $line, $columnKeys, $errors);
         }
     }
 
-    private function assertLine(string $path, mixed $line, DocumentLayoutConfigErrorBag $errors): void
+    private function assertLine(string $path, mixed $line, array $columnKeys, DocumentLayoutConfigErrorBag $errors): void
     {
         if (! is_array($line)) {
             $errors->add($path, 'A line must be an object.');
@@ -153,10 +144,10 @@ final class DocumentLayoutProductsTableBlockValidator
         ConfigShapeAssertions::assertBool("{$path}.italic", $line['italic'] ?? null, $errors);
         ConfigShapeAssertions::assertNullableIntInRange("{$path}.size", $line['size'] ?? null, DocumentLayoutConfigLimits::FONT_SIZE_MIN, DocumentLayoutConfigLimits::FONT_SIZE_MAX, $errors);
 
-        $this->assertKeys("{$path}.keys", $line['keys'] ?? null, $errors);
+        $this->assertKeys("{$path}.keys", $line['keys'] ?? null, $columnKeys, $errors);
     }
 
-    private function assertKeys(string $path, mixed $keys, DocumentLayoutConfigErrorBag $errors): void
+    private function assertKeys(string $path, mixed $keys, array $columnKeys, DocumentLayoutConfigErrorBag $errors): void
     {
         if (! is_array($keys) || ! array_is_list($keys) || $keys === []) {
             $errors->add($path, 'Must be a non-empty array of column keys.');
@@ -169,7 +160,7 @@ final class DocumentLayoutProductsTableBlockValidator
         }
 
         foreach ($keys as $index => $key) {
-            if (! in_array($key, self::COLUMN_KEY_VALUES, true)) {
+            if (! in_array($key, $columnKeys, true)) {
                 $errors->add("{$path}.{$index}", 'Unknown column key.');
             }
         }

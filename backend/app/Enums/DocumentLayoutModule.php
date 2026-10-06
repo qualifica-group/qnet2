@@ -27,6 +27,9 @@ enum DocumentLayoutModule: string
     #[IsDefault(true)]
     case Quotes = 'quotes';
 
+    #[Label('document_layouts.modules.invoices')]
+    case Invoices = 'invoices';
+
     /**
      * The i18n key for the module's display label, resolved with __() by the
      * consumer (e.g. `DocumentLayoutResource::module_label`, spec 0070). Kept

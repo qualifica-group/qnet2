@@ -15,6 +15,7 @@ export const documentLayouts = {
   forbidden: 'Non hai i permessi per visualizzare i layout.',
   modules: {
     quotes: 'Preventivi',
+    invoices: 'Fatture',
   },
   columns: {
     name: 'Nome',
@@ -161,7 +162,7 @@ export const documentLayouts = {
     },
     productsTable: {
       source: 'Origine',
-      sources: { offer_lines: 'Righe di offerta', cost_lines: 'Righe di costo' },
+      sources: { offer_lines: 'Righe di offerta', cost_lines: 'Righe di costo', invoice_lines: 'Righe di fattura', installments: 'Rate di pagamento' },
       widthPct: 'Larghezza (%)',
       showHeader: 'Mostra riga di intestazione',
       headerBackground: 'Sfondo intestazione',
@@ -189,6 +190,11 @@ export const documentLayouts = {
         net_amount: 'Importo netto',
         vat_amount: 'Importo IVA',
         total_amount: 'Importo totale',
+        sequence: 'Numero rata',
+        due_date: 'Scadenza',
+        amount: 'Importo',
+        payment_method_code: 'Metodo di pagamento',
+        status: 'Stato',
       },
     },
     divider: {

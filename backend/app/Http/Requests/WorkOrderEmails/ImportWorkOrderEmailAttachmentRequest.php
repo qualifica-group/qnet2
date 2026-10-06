@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests\WorkOrderEmails;
 
 use App\DataObjects\WorkOrderEmails\ImportAttachmentsData;
+use App\Services\OutboundEmails\EmailOwnerRegistry;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -33,11 +35,28 @@ class ImportWorkOrderEmailAttachmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'source' => ['required', Rule::in(['documents', 'document_bundle', 'quote_pdf'])],
+            'source' => ['required', Rule::in($this->ownerImportSources())],
             'attachment_ids' => ['required_if:source,documents', 'sometimes', 'array', 'min:1'],
             'attachment_ids.*' => ['integer'],
             'document_bundle_id' => ['required_if:source,document_bundle', 'sometimes', 'integer'],
         ];
+    }
+
+    /**
+     * The `source` values the route's owner (the bound model of the nested
+     * route, e.g. the work order) supports, per its EmailOwner.
+     *
+     * @return array<int, string>
+     */
+    private function ownerImportSources(): array
+    {
+        foreach ($this->route()?->parameters() ?? [] as $parameter) {
+            if ($parameter instanceof Model) {
+                return app(EmailOwnerRegistry::class)->for($parameter)->importSources();
+            }
+        }
+
+        return [];
     }
 
     public function toData(): ImportAttachmentsData

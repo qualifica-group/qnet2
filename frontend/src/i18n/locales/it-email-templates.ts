@@ -5,8 +5,8 @@
  * `en-email-templates.ts`.
  *
  * Chiavi base per FE-02 (modulo "Modelli email"): tabella, dettaglio e form
- * con picker segnaposto (AC-022). `modules.work_orders` e' l'unico valore
- * ammesso oggi (D-10), ma resta una mappa per estendersi in futuro senza
+ * con picker segnaposto (AC-022). `modules` ammette work_orders e invoices
+ * (D-10, spec 0195), resta una mappa per estendersi in futuro senza
  * rompere la forma.
  */
 
@@ -24,6 +24,7 @@ export const emailTemplates = {
   },
   modules: {
     work_orders: 'Commesse',
+    invoices: 'Fatture',
   },
   detail: {
     title: 'Dettaglio modello email',

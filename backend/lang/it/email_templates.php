@@ -9,6 +9,7 @@ return [
     'variables' => [
         'categories' => [
             'work_order' => 'Commessa',
+            'reminder' => 'Sollecito',
             'sender' => 'Mittente',
         ],
 
@@ -19,6 +20,11 @@ return [
             'start_date' => 'Data avvio',
             'callback_date' => 'Data richiamo',
             'description' => 'Descrizione',
+        ],
+
+        'reminder' => [
+            'overdue_installments' => 'Elenco rate scadute',
+            'overdue_amount' => 'Importo scaduto',
         ],
 
         'sender' => [

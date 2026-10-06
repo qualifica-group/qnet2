@@ -17,7 +17,8 @@ vi.mock('@/api/client', () => ({
   apiClient: { post: vi.fn() },
 }))
 
-vi.mock('@/lib/download', () => ({
+vi.mock('@/lib/download', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/download')>()),
   saveBlob: vi.fn(),
   filenameFromContentDisposition: (header: unknown) => {
     const match = typeof header === 'string' ? /filename="?([^";]+)"?/.exec(header) : null

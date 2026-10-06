@@ -10,6 +10,7 @@ use App\Models\Address;
 use App\Models\PersonalData;
 use App\Models\Quote;
 use App\Models\Referent;
+use App\Models\Registry;
 use App\Models\User;
 use App\Support\AddressLabel;
 
@@ -40,8 +41,15 @@ final class PartyFieldResolver
 
     public function client(string $key, Quote $quote, User $actor): ?string
     {
-        $registry = $quote->opportunity?->registry;
+        return $this->registryField($key, $quote->opportunity?->registry, $actor);
+    }
 
+    /**
+     * The `client` variables for any Registry (an Invoice's customer, spec
+     * 0195 D-7): same keys, same PII masking as `client.*`.
+     */
+    public function registryField(string $key, ?Registry $registry, User $actor): ?string
+    {
         if (in_array($key, self::CLIENT_MASKABLE_KEYS, true) && ! $this->personalDataFieldVisible($actor, $key)) {
             return '';
         }
@@ -71,6 +79,14 @@ final class PartyFieldResolver
             'address_country' => ValueFormatter::text($address?->country?->localizedName()),
             default => null,
         };
+    }
+
+    /**
+     * The registry's primary PEC address (no PII masking: a contact, D-6).
+     */
+    public function registryPec(?Registry $registry): string
+    {
+        return ValueFormatter::text($this->contactValue($registry?->personalData, ContactTypeEnum::Pec));
     }
 
     public function referent(string $key, Quote $quote): ?string

@@ -76,7 +76,7 @@ describe('buildCreateDocumentLayoutSchema (spec 0069, AC-110)', () => {
 
   it('rejects a module outside the enum', () => {
     const schema = buildCreateDocumentLayoutSchema(i18n.t)
-    expect(schema.safeParse({ ...VALID_PAYLOAD, module: 'invoices' }).success).toBe(false)
+    expect(schema.safeParse({ ...VALID_PAYLOAD, module: 'contracts' }).success).toBe(false)
   })
 
   it('accepts the only supported module (quotes)', () => {

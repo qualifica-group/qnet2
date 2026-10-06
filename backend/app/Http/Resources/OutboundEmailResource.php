@@ -41,6 +41,7 @@ class OutboundEmailResource extends JsonResource
         return [
             'id' => $this->id,
             'status' => $this->status->value,
+            'purpose' => $this->purpose?->value,
             'email_template_id' => $this->email_template_id,
             'sender' => [
                 'id' => $this->sender->id,

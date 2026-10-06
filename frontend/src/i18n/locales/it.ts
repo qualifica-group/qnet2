@@ -34,7 +34,7 @@ import { quotes } from './it-quotes'
 import { contractStatuses } from './it-contract-statuses'
 import { contracts } from './it-contracts'
 import { workOrders } from './it-work-orders'
-import { workOrderEmails } from './it-work-order-emails'
+import { outboundEmails } from './it-outbound-emails'
 import { emailTemplates } from './it-email-templates'
 import { documentBundles } from './it-document-bundles'
 import { taskTemplates } from './it-task-templates'
@@ -445,7 +445,7 @@ export const it: TranslationResources = {
   contractStatuses,
   contracts,
   workOrders,
-  workOrderEmails,
+  outboundEmails,
   emailTemplates,
   documentBundles,
   taskTemplates,

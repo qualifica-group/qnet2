@@ -3,7 +3,7 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'email-templates',
   title: 'Modelli email',
-  summary: 'Modelli riusabili con segnaposto per comporre le email delle commesse.',
+  summary: 'Modelli riusabili con segnaposto per comporre le email di commesse e fatture.',
   sections: [
     {
       id: 'overview',
@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Il modulo si trova in **Configurazione › Modelli email**. Un modello è la coppia **Oggetto**/**Corpo** che il composer email di una commessa propone quando scegli **Modello email**: oggi l'unico **Modulo** disponibile è **Commesse**.",
+          text: "Il modulo si trova in **Configurazione › Modelli email**. Un modello è la coppia **Oggetto**/**Corpo** che il composer email di una commessa propone quando scegli **Modello email**: i **Moduli** disponibili sono **Commesse** e **Fatture**.",
         },
         {
           type: 'note',
@@ -52,6 +52,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'paragraph',
+          text: "Il modulo **Fatture** offre i segnaposto **Fattura**, **Cliente**, **Società**, **Pagamento**, **Totali** e **Mittente**, più quelli del **Sollecito**: la **elenco delle scadenze scadute** e l'**importo scaduto**.",
+        },
+        {
           type: 'note',
           text: "I segnaposto si risolvono UNA SOLA VOLTA, quando scegli il modello nel composer: oggetto e corpo restano poi liberamente modificabili e non vengono ricalcolati all'invio. Un segnaposto sconosciuto, o senza un dato da mostrare, diventa semplicemente vuoto.",
         },
@@ -63,7 +67,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Un modello **Attivo** è selezionabile dal composer email di una commessa.',
+          text: 'Un modello **Attivo** è selezionabile dal composer email di una commessa (modelli del modulo Commesse) o di una fattura attiva, anche per il **Sollecito** (modelli del modulo Fatture).',
         },
       ],
     },

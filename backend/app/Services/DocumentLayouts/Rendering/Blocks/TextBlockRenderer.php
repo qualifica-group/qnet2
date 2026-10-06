@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\DocumentLayouts\Rendering\Blocks;
 
 use App\Services\DocumentLayouts\Rendering\RenderContext;
-use App\Services\DocumentLayouts\Rendering\VariableResolver;
 use PhpOffice\PhpWord\Element\AbstractContainer;
 use PhpOffice\PhpWord\Element\TextRun;
 use PhpOffice\PhpWord\SimpleType\LineSpacingRule;
@@ -27,8 +26,6 @@ use PhpOffice\PhpWord\Style\Paragraph;
 final class TextBlockRenderer
 {
     private const array FIELD_TYPES = ['page' => 'PAGE', 'total_pages' => 'NUMPAGES'];
-
-    public function __construct(private readonly VariableResolver $variableResolver) {}
 
     /**
      * @param  array<string, mixed>  $block
@@ -65,7 +62,7 @@ final class TextBlockRenderer
             return;
         }
 
-        $resolvedText = $this->variableResolver->substitute((string) ($run['text'] ?? ''), $context->quote, $context->actor);
+        $resolvedText = $context->substitute((string) ($run['text'] ?? ''));
         $textRun->addText($resolvedText, $fontStyle);
     }
 

@@ -3,13 +3,13 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'document-layouts',
   title: 'Layouts',
-  summary: "A layout is the graphic template qnet uses to generate a quote's document.",
+  summary: "A layout is the graphic template qnet uses to generate a quote's or an invoice's document.",
   sections: [
     {
       id: 'overview',
       title: 'Overview',
       blocks: [
-        { type: 'paragraph', text: 'The module is found in **Configuration › Layouts**. Today the only available **Module** is **Quotes**; the document is downloaded with **Download quote** on the quote.' },
+        { type: 'paragraph', text: 'The module is found in **Configuration › Layouts**. The available **Modules** are **Quotes** (the document is downloaded with **Download quote** on the quote) and **Invoices** (downloaded with **Download PDF** in Active invoices).' },
       ],
     },
     {
@@ -32,7 +32,7 @@ const guide: HelpGuide = {
             ['**Text**', 'Paragraphs with style, font, color and alignment; here you find **Insert page number** and **Insert page total**.'],
             ['**Image**', 'For example a logo, **Inline** or **Behind the page** as a background. To upload it, save the layout first.'],
             ['**Table**', 'A free-form table, with rows, columns and borders.'],
-            ['**Product table**', 'Lists **Quote lines** or **Cost lines**, with the chosen columns (Code, Name, Quantity, Unit price, VAT rate, amounts) and the total rows.'],
+            ['**Product table**', 'For **Quotes** it lists **Quote lines** or **Cost lines**; for **Invoices** the **Document lines** or the **Due dates**. You choose the columns (Code, Name, Quantity, Unit price, VAT rate, amounts) and the total rows.'],
             ['**Page break**, **Spacer**, **Divider**', 'Layout and pagination.'],
           ],
         },
@@ -46,6 +46,15 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: "Variables are placeholders that, when the document is generated, become the quote's actual data. Select some text in the preview and, in the **Variables** panel, click the piece of data you need." },
         { type: 'paragraph', text: 'Available groups: **Quote**, **Totals**, **Customer**, **Opportunity**, **Referent**, **Salesperson**, **Referrer**, **Supervisor**, **Company**, **Site** (with bank and IBAN), **Operational site**, **Custom fields** and **Quote attributes**. The last two update on their own when you add fields or attributes.' },
         { type: 'paragraph', text: 'A choice attribute prints its options\' **labels**, not their codes; for a multiple choice, the labels are separated by commas.' },
+      ],
+    },
+    {
+      id: 'invoices-module',
+      title: 'The Invoices module',
+      blocks: [
+        { type: 'paragraph', text: 'When you choose the **Invoices** **Module** on creation, the new layout starts **prefilled** with a starter structure: company, customer, title, document lines table with totals, collected and outstanding, due dates table, payment with bank and IBAN, notes. You can edit it freely.' },
+        { type: 'paragraph', text: 'Available variables: **Document**, **Customer**, **Company**, **Site**, **Payment and bank**, **Totals**, **Work order** and **Quote**.' },
+        { type: 'note', text: 'Invoices have no automatic site logo yet: upload the logo as an **Image** of the layout.' },
       ],
     },
     {

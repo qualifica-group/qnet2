@@ -19,6 +19,7 @@ final readonly class ImportAttachmentsData
         public string $source,
         public array $attachmentIds = [],
         public ?int $documentBundleId = null,
+        public ?int $layoutId = null,
     ) {}
 
     /**
@@ -30,6 +31,7 @@ final readonly class ImportAttachmentsData
             source: (string) $data['source'],
             attachmentIds: array_map(static fn ($id): int => (int) $id, (array) ($data['attachment_ids'] ?? [])),
             documentBundleId: isset($data['document_bundle_id']) ? (int) $data['document_bundle_id'] : null,
+            layoutId: isset($data['layout_id']) ? (int) $data['layout_id'] : null,
         );
     }
 }

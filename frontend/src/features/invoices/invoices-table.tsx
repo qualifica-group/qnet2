@@ -1,17 +1,19 @@
 import { useCallback, useRef } from 'react'
 import type { ICellRendererParams } from 'ag-grid-community'
-import { FilePen, FileText } from 'lucide-react'
+import { BellRing, FileDown, FilePen, FileText, Mail } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { INVOICES_DOMAIN } from '@/features/invoices/api'
 import { invoiceColumnRenderers } from '@/features/invoices/column-renderers'
 import { InvoiceDeleteDialog } from '@/features/invoices/invoice-delete-dialog'
+import { InvoiceEmailComposerHost } from '@/features/invoices/invoice-email-composer-host'
 import { InvoiceDetailPanel } from '@/features/invoices/invoice-detail-panel'
 import { InvoiceDetailSheet } from '@/features/invoices/invoice-detail-sheet'
 import { InvoiceDetailsDialog } from '@/features/invoices/invoice-details-dialog'
 import { InvoiceEditorDialog } from '@/features/invoices/invoice-editor-dialog'
 import { InvoiceListToolbar } from '@/features/invoices/invoice-list-toolbar'
 import { InvoiceTotalsFooter } from '@/features/invoices/invoice-totals-footer'
+import { useInvoiceActionState } from '@/features/invoices/use-invoice-action-state'
 import { useInvoiceListFilters } from '@/features/invoices/use-invoice-list-filters'
 import { useInvoiceRowActions } from '@/features/invoices/use-invoice-row-actions'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
@@ -19,7 +21,13 @@ import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { TableRow } from '@/features/table/types'
 
 /** Icon keys the backend catalog uses for the invoice-specific `details` action. */
-const INVOICE_ACTION_ICONS: ActionIconMap = { 'file-text': FileText, 'file-pen-line': FilePen }
+const INVOICE_ACTION_ICONS: ActionIconMap = {
+  'file-text': FileText,
+  'file-pen-line': FilePen,
+  'file-down': FileDown,
+  mail: Mail,
+  'bell-ring': BellRing,
+}
 
 /**
  * Thin Fatture Attive adapter over the generic table: type tabs and month strip
@@ -30,6 +38,7 @@ export function InvoicesTable() {
   const tableRef = useRef<TableViewHandle>(null)
   const filters = useInvoiceListFilters(tableRef)
   const actions = useInvoiceRowActions()
+  const resolveActionState = useInvoiceActionState()
   // The mutation hooks already invalidate every invoice query (monthly summary, detail): only the SSRM cache needs a purge.
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
 
@@ -57,6 +66,7 @@ export function InvoicesTable() {
         forcedFilterModel={filters.forcedFilterModel}
         onFilterModelChange={filters.onFilterModelChange}
         onAction={actions.handleAction}
+        resolveActionState={resolveActionState}
         masterDetail
         detailCellRenderer={renderDetail}
         detailRowAutoHeight
@@ -75,6 +85,7 @@ export function InvoicesTable() {
           onSaved={handleSaved}
         />
       ) : null}
+      <InvoiceEmailComposerHost target={actions.emailFlow.target} onClose={actions.emailFlow.closeComposer} />
       <ResourceActivityDialog
         resource={INVOICES_DOMAIN}
         row={actions.activityRow}

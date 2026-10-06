@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0195-invoice-pdf-and-email" status="approved" owner="utente" date="2026-10-06">
+
+  <goal>
+    Completare la Fatturazione Attiva (spec 0194).
+    - PDF: la proforma/fattura si scarica in PDF, impaginata da un Layout Documento
+      configurabile del nuovo modulo "Fatture".
+    - Email: il documento si invia al cliente dalla stessa finestra di composizione, con lo
+      stesso storico email gia' usati per le commesse, PDF allegato.
+    - Sollecito: sui documenti con rate scadute l'utente invia manualmente un sollecito
+      precompilato con le rate scadute e il residuo.
+  </goal>
+
+  <context>
+    Brief: prompt_temp.md + legacy QNet (Proforma::downloadPDF, invia-email-proforma-invoice,
+    invia-email-sollecito-proforma-invoice). Branch feature/amministrazione, dopo il commit 99b1303f (spec 0194).
+
+    Nomi qnet2 verificati 2026-10-06:
+    - Layout documento (spec 0069/0070): tabella `document_layouts` (module, is_default, config json),
+      enum DocumentLayoutModule (solo Quotes), DocumentLayoutDefaultManager (generico per module),
+      DocumentLayoutConfigValidator, DocumentLayoutVariableCatalog::categoriesFor/totalsVariableTokens (match per
+      modulo), DocumentLayoutProductsTableBlockValidator::SOURCE_VALUES (offer_lines|cost_lines).
+    - Rendering in app/Services/DocumentLayouts/Rendering, oggi LEGATO A Quote:
+      - QuoteDocumentGenerator::generate(Quote, DocumentLayout, User): docx bytes;
+      - DocxRenderer::render(config, Quote, User), RenderContext(Quote, actor, usableWidthTwips);
+      - VariableResolver -> QuoteFieldResolver / PartyFieldResolver / OrganizationFieldResolver / DynamicFieldResolver;
+      - BlockRenderer + Blocks/* (text, image, table, products_table, page_break, spacer, divider);
+      - ProductsTableRenderer + ProductLineColumnResolver(QuoteLine).
+      Generici: DocxToPdfConverter::convert(docx): pdf (LibreOffice, config/documents.php). Endpoint
+      POST quotes/{quote}/document (sincrono, stream PDF), POST document-layouts/{id}/preview.
+      FE: features/document-layouts (DOCUMENT_LAYOUT_MODULES = ['quotes'], editor, variable picker per modulo,
+      products-table inspector), features/quotes/quote-document-api.ts.
+    - Email commesse (spec 0175):
+      - tabella `outbound_emails` (emailable morph, email_template_id, status draft|queued|sent|failed, recipients
+        json, subject, body, queued/sent/failed_at); OutboundEmail::ATTACHMENT_COLLECTION;
+      - `email_templates` (module: EmailTemplateModule solo WorkOrders);
+      - servizi LEGATI A WorkOrder: OutboundEmailService (listForWorkOrder, createDraft(WorkOrder..), send ->
+        SendOutboundEmailJob in coda, mailer config outbound_emails.mailer), OutboundEmailAttachmentImportService::
+        import(WorkOrder..) (sorgenti documents|document_bundle|quote pdf), WorkOrderEmailComposeContextBuilder,
+        WorkOrderEmailVariableCatalog/Resolver;
+      - rotte work-orders/{workOrder}/emails/*, controller app/Http/Controllers/WorkOrderEmails/*;
+      - permessi work-orders.viewEmails/sendEmail;
+      - FE features/work-order-emails/* (tutti i componenti prendono workOrderId), features/email-templates
+        (EMAIL_TEMPLATE_MODULES = ['work_orders']), components/ui/email-recipients-input.tsx.
+    - Invoice (spec 0194): customer() -> Registry (personalData.contacts: ContactTypeEnum email|pec,
+      HasContacts::primaryContact), company() -> Company (denomination, vat_number, primaryAddress),
+      financialAccount() (name, iban), paymentMethod() (name, payment_instructions), lines(), installments(),
+      quote() -> companySite() (logo per sede: CompanySite::logo()/logoDataUri()). Morph alias `invoice` gia' presente.
+      InvoicePaymentStatusResolver, InvoiceService::RESOURCE_RELATIONS.
+
+    Decisioni utente 2026-10-06:
+    - D-1 PDF da Layout Documento configurabili: nuovo modulo `invoices`. Il motore di rendering diventa
+      indipendente dall'offerta.
+    - D-2 Email: si GENERALIZZA l'infrastruttura email delle commesse per proprietario (commessa | fattura).
+      Stessa finestra, stesso storico, template email con nuovo modulo `invoices`.
+    - D-3 Sollecito MANUALE (nessun invio schedulato).
+    - D-4 PDF rigenerato al volo a ogni download. L'email allega il file generato (copia di cio' che e' stato spedito).
+
+    Decisioni tecniche proposte (D-5..D-14, da validare con la spec):
+    - D-5 Astrazione di rendering con due implementazioni reali (Quote, Invoice): interfaccia
+      `DocumentRenderSubject`. Fornisce:
+      - module(): DocumentLayoutModule;
+      - resolveVariable(category, key, User): string;
+      - productRows(source): list di righe con colonne nominate;
+      - totals(): net/vat/total.
+      RenderContext porta il subject al posto di Quote. QuoteRenderSubject incapsula i resolver esistenti, SENZA
+      cambiare l'output delle offerte. `DocumentGenerator::generate(DocumentRenderSubject, DocumentLayout, User)`
+      sostituisce QuoteDocumentGenerator (che diventa un sottile wrapper o viene eliminato aggiornando i chiamanti).
+    - D-6 Sorgenti del blocco products_table per modulo:
+      - quotes: offer_lines|cost_lines (invariati);
+      - invoices: `invoice_lines` (colonne code, name, description, quantity, unit_price, vat_rate, net_amount,
+        vat_amount, total_amount) e `installments` (colonne sequence, due_date, amount, payment_method_code,
+        status). Il validator accetta solo le sorgenti del modulo del layout.
+    - D-7 Variabili del modulo invoices (catalogo + resolver):
+      - invoice: number_label, type_label, document_date, external_number, external_date, notes, tag_label;
+      - customer: name, vat_number, tax_code, sdi_code, address, pec, email;
+      - company: name, vat_number, address (dalla societa' emittente) + company_site.* dalla sede dell'offerta, se
+        presente (logo e dati sede);
+      - payment: method_name, payment_instructions, bank_name, iban;
+      - totals: net, vat, total, collected, residual;
+      - work_order: code, title; quote: code.
+      Token sconosciuto = stringa vuota (comportamento esistente).
+    - D-8 Scelta del layout: default attivo del modulo invoices. GET pdf accetta un `layout_id` opzionale (stesso
+      modulo, attivo). Nessun layout -> 422 'No document layout available for invoices.'. Nessuna colonna
+      layout_id su invoices. Un nuovo layout del modulo Fatture nell'editor parte precompilato con un layout di
+      partenza (logo sede, intestazione societa', cliente, righe, totali, scadenze, banca) definito nel FE.
+    - D-9 Anteprima layout: POST document-layouts/{id}/preview per il modulo invoices usa invoice_id se passato,
+      altrimenti l'ultima fattura visibile, altrimenti un documento di esempio in memoria (come le offerte).
+    - D-10 Email generalizzate. Contratto `EmailOwner` registrato per morph alias (work_order, invoice) che fornisce:
+      - le ability viewEmails/sendEmail;
+      - i suggerimenti destinatari e il destinatario di default;
+      - le sorgenti allegati importabili;
+      - il catalogo/resolver variabili e il modulo template.
+      OutboundEmailService, AttachmentImportService e ComposeContextBuilder lavorano sull'owner. Le rotte delle
+      commesse restano INVARIATE (stessa shape). Le fatture ottengono le stesse rotte sotto invoices/{invoice}/emails/*.
+    - D-11 `outbound_emails.purpose` string(16) nullable — document|reminder (NULL per le email commesse
+      esistenti). L'SSRM invoices espone `last_reminder_at` (ultima email reminder inviata, via subquery).
+    - D-12 Compose invoice:
+      - destinatario di default = PEC primaria del cliente, altrimenti email primaria;
+      - suggerimenti = email/pec del cliente e dei suoi referenti;
+      - sorgente allegato `invoice_pdf` (PDF dal layout default) gia' allegata alla bozza creata con
+        `attach_pdf: true` (default true).
+    - D-13 Sollecito:
+      - azione `remind` abilitata solo se payment_status in overdue|seriously_overdue (altrimenti 409 sulla bozza
+        reminder);
+      - crea una bozza purpose=reminder con PDF allegato;
+      - variabili extra `reminder.overdue_installments` (elenco HTML: n., scadenza, importo, residuo — rev. 2026-10-06: elenco e non tabella perche' EmailHtmlSanitizer non ammette le tabelle) e
+        `reminder.overdue_amount`, risolte nel template scelto.
+    - D-14 Permessi nuovi: invoices.viewEmails, invoices.sendEmail. Il download PDF richiede invoices.view.
+      FE: features/work-order-emails diventa features/outbound-emails con prop `owner: { type: 'work-orders' |
+      'invoices', id }` (base URL) e i18n namespace `outboundEmails`. La UI commesse resta identica.
+  </context>
+
+  <scope>
+    <in>
+      <item>Refactor rendering D-5 (subject) con output offerte invariato (test documento offerta esistenti verdi).</item>
+      <item>DocumentLayoutModule::Invoices, InvoiceRenderSubject, catalogo variabili invoices, sorgenti products_table D-6, validator per modulo, anteprima D-9.</item>
+      <item>GET /api/invoices/{invoice}/pdf.</item>
+      <item>Generalizzazione email D-10 (backend + FE), purpose D-11, EmailTemplateModule::Invoices + variabili invoice/reminder, sorgente allegato invoice_pdf.</item>
+      <item>Rotte invoices/{invoice}/emails/* (stessa shape delle commesse) + POST invoices/{invoice}/emails/reminder.</item>
+      <item>Permessi invoices.viewEmails/sendEmail; azioni riga invoices `pdf`, `email`, `remind`; colonna last_reminder_at.</item>
+      <item>FE: modulo Fatture nei Layout (sorgenti, layout di partenza), azioni PDF/Email/Sollecita in elenco e dettaglio, sezione Email nel dettaglio fattura, modulo Fatture nei template email.</item>
+      <item>Guide in-app IT/EN aggiornate: invoices, document-layouts, email-templates; guida work-orders se cambia testo.</item>
+      <item>Test ESSENZIALI, vedi acceptance_criteria.</item>
+    </in>
+    <out>
+      <item>Solleciti automatici/schedulati (D-3).</item>
+      <item>Archivio storico dei PDF generati (D-4).</item>
+      <item>Fatturazione elettronica SDI/XML, integrazione Fatture in Cloud.</item>
+      <item>Scelta del layout salvata sul documento; email per le offerte o altri moduli.</item>
+      <item>Logo a livello di societa' (resta per sede, tramite la sede dell'offerta).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <table name="outbound_emails (alter)">purpose string(16) nullable, index (emailable_type, emailable_id, purpose) — document|reminder.</table>
+    <enum name="DocumentLayoutModule">+ invoices (label document_layouts.modules.invoices)</enum>
+    <enum name="EmailTemplateModule">+ invoices</enum>
+
+    <endpoint method="GET" path="/api/invoices/{invoice}/pdf?layout_id=">
+      <response status="200">application/pdf, Content-Disposition attachment "{type}_{number}_{year}.pdf" (es. proforma_12_2026.pdf)</response>
+      <errors>403 senza invoices.view; 422 { success:false, message:'No document layout available for invoices.' }; 422 layout_id di altro modulo o inattivo; 422 config layout non valida (eccezione esistente); 503/500 conversione PDF fallita con messaggio envelope esistente</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/document-layouts/variables?module=invoices (esistente)">
+      <response status="200">categorie D-7 nella stessa shape del modulo quotes</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/document-layouts/{documentLayout}/preview (esistente)">
+      <request>+ invoice_id opzionale quando module = invoices</request>
+      <response status="200">application/pdf</response>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT|PATCH|DELETE" path="/api/invoices/{invoice}/emails[...] (nuove, shape IDENTICA a work-orders/{workOrder}/emails[...])">
+      <response status="200">
+        compose-context, render-template, index, store, show, update, destroy, {email}/send, attachments
+        store/import/delete/download: stessi request/response delle commesse.
+        compose-context aggiunge default_to: string[] e sources: ['invoice_pdf', 'documents'].
+        attachments/import accetta source 'invoice_pdf' (+ layout_id opzionale).
+        store accetta attach_pdf: bool (default true) e restituisce la bozza con il PDF gia' allegato.
+        OutboundEmailResource aggiunge purpose: 'document'|'reminder'|null.
+      </response>
+      <errors>403 senza invoices.viewEmails (lettura) / invoices.sendEmail (scrittura, invio); errori 409/422 esistenti del modulo email</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/invoices/{invoice}/emails/reminder">
+      <request>{ email_template_id: int|null (modulo invoices) }</request>
+      <response status="201">{ success, message:'Created', data: OutboundEmailResource (draft, purpose=reminder, subject/body renderizzati dal template se fornito, PDF allegato, to = default_to) }</response>
+      <errors>403 senza invoices.sendEmail; 409 { success:false, message:'This invoice has no overdue installments.' } se payment_status non e' overdue|seriously_overdue</errors>
+    </endpoint>
+    <endpoint method="* (esistenti)" path="/api/work-orders/{workOrder}/emails[...]">
+      <response status="200">INVARIATE (contratto e permessi work-orders.*); purpose null.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/email-templates/variables?module=invoices (esistente generalizzato per modulo)">
+      <response status="200">categorie invoice, customer, company, payment, totals, sender, reminder (overdue_installments, overdue_amount)</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/invoices/rows (esistente)">
+      <response status="200">+ colonna last_reminder_at (date|null, sortabile, filtro data); azioni + pdf (icona file-down, invoices.view), email (icona mail, invoices.sendEmail), remind (icona bell-ring, invoices.sendEmail; il FE la disabilita se payment_status non e' overdue|seriously_overdue)</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/invoices/{invoice} (esistente)">
+      <response status="200">permissions.actions += viewEmails, sendEmail</response>
+    </endpoint>
+
+    <permissions>invoices.viewEmails, invoices.sendEmail (in aggiunta a 0194).</permissions>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Regressione offerte: i test esistenti di generazione documento offerta e di anteprima layout restano verdi senza modifiche alle asserzioni (output offerte invariato dopo il refactor D-5).</criterion>
+    <criterion id="AC-002">Layout modulo invoices:
+      - con un blocco products_table source invoice_lines e uno installments il DOCX generato contiene le righe e le
+        scadenze del documento;
+      - variabili {invoice.number_label}, {customer.name}, {payment.iban}, {totals.total} sostituite;
+      - source offer_lines su un layout invoices -> 422 dal validator.</criterion>
+    <criterion id="AC-003">GET pdf:
+      - con layout default -> 200 application/pdf e nome "proforma_N_YYYY.pdf" (converter sostituito da un double
+        nei test);
+      - senza layout -> 422 con il messaggio del contratto; layout_id di modulo quotes -> 422;
+      - senza invoices.view -> 403.</criterion>
+    <criterion id="AC-004">Email fattura:
+      - compose-context restituisce default_to = PEC primaria del cliente (altrimenti email);
+      - store con attach_pdf=true crea una bozza con un allegato PDF;
+      - send accoda SendOutboundEmailJob (Queue::fake);
+      - senza invoices.sendEmail -> 403; senza invoices.viewEmails, index -> 403.</criterion>
+    <criterion id="AC-005">Sollecito:
+      - su un documento con una rata scaduta POST reminder crea una bozza purpose=reminder con il body che contiene la
+        elenco delle rate scadute e l'importo scaduto;
+      - su un documento senza rate scadute -> 409;
+      - dopo l'invio l'SSRM invoices espone last_reminder_at.</criterion>
+    <criterion id="AC-006">Regressione email commesse: i test esistenti work-order-emails (BE e FE) restano verdi. Ammesse solo modifiche di import/percorso dovute al rename FE, dichiarate.</criterion>
+    <criterion id="AC-007">(FE)
+      - Elenco Fatture: l'azione PDF scarica il file; l'azione Email apre il composer con destinatario precompilato e
+        PDF allegato; Sollecita e' disabilitata senza rate scadute.
+      - Nell'editor layout il modulo Fatture offre le sorgenti invoice_lines/installments e un layout di partenza.
+      - Parity i18n e guide verdi; tsc -b, ESLint, Pint puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Test essenziali (richiesta utente):
+      - 1 file Pest per il rendering invoices (AC-002) e 1 per pdf (AC-003);
+      - 1 per email fattura + sollecito (AC-004, AC-005);
+      - suite esistenti offerte/email commesse come regressione (AC-001, AC-006);
+      - FE: 1 test azioni PDF/Email/Sollecita, test esistenti work-order-emails adeguati al rename;
+      - parity i18n/help.</item>
+    <item>Nessuna nuova dipendenza (niente dompdf): DOCX via PhpWord + DocxToPdfConverter esistente; nei test il converter e' sostituito da un double (soffice assente in locale).</item>
+    <item>L'interfaccia DocumentRenderSubject / EmailOwner esiste perche' ha due implementazioni reali: niente altre astrazioni speculative.</item>
+    <item>Authz server-side su ogni endpoint; variabili risolte con il mascheramento dati personali esistente (PartyFieldResolver) dove applicabile; HTML del template e della tabella sollecito sanificato (EmailHtmlSanitizer) e con escape dei valori.</item>
+    <item>Contratto email commesse INVARIATO (rotte, payload, permessi): solo refactor interno.</item>
+    <item>File &lt; 300 righe (500 hard); identificatori inglesi; etichette in i18n; UI compatta e responsive.</item>
+    <item>Test esistenti da aggiornare per requisito cambiato: QuoteWorkflowMigrationTest (+1 migrazione), FieldCatalogueEndpointTest/permessi se contano le ability, test FE con import dai percorsi rinominati.</item>
+    <item>Dopo il deploy: php artisan permissions:sync. Manuale Claude Docs da aggiornare se accessibile, altrimenti segnalare.</item>
+  </constraints>
+
+</spec>

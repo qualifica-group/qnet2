@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use App\Services\DocumentLayouts\Rendering\QuoteDocumentGenerator;
+use App\Services\DocumentLayouts\Rendering\DocumentGenerator;
+use App\Services\DocumentLayouts\Rendering\QuoteRenderSubject;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -26,7 +27,7 @@ it('a behind_page header image is floating (behind, page-anchored) with its medi
         'header' => ['blocks' => [dlrImageBlockConfig($attachmentId, ['wrap' => 'behind_page', 'width' => 595, 'height' => 842])]],
     ]));
 
-    $binary = app(QuoteDocumentGenerator::class)->generate(dlrFullQuote(), $layout, User::factory()->create());
+    $binary = app(DocumentGenerator::class)->generate(QuoteRenderSubject::for(dlrFullQuote()), $layout, User::factory()->create());
     $zip = dlrOpenZip($binary);
 
     $mediaFound = false;
@@ -64,7 +65,7 @@ it('an inline image block is in the text flow with its declared width/height (po
         'body' => ['blocks' => [dlrImageBlockConfig($attachmentId, ['wrap' => 'inline', 'width' => 120, 'height' => 60])]],
     ]));
 
-    $binary = app(QuoteDocumentGenerator::class)->generate(dlrFullQuote(), $layout, User::factory()->create());
+    $binary = app(DocumentGenerator::class)->generate(QuoteRenderSubject::for(dlrFullQuote()), $layout, User::factory()->create());
     $zip = dlrOpenZip($binary);
     $documentXml = (string) $zip->getFromName('word/document.xml');
 

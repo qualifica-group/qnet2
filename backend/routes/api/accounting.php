@@ -9,3 +9,4 @@
 require __DIR__.'/financial-accounts.php';
 require __DIR__.'/proforma-requests.php';
 require __DIR__.'/invoices.php';
+require __DIR__.'/invoice-emails.php';

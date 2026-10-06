@@ -13,7 +13,7 @@ import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { DocumentLayoutEditor } from '@/features/document-layouts/editor/document-layout-editor'
 import { useDocumentLayoutForm } from '@/features/document-layouts/use-document-layout-form'
-import { DOCUMENT_LAYOUT_MODULES } from '@/features/document-layouts/types'
+import { DOCUMENT_LAYOUT_MODULES, type DocumentLayoutModule } from '@/features/document-layouts/types'
 import type {
   DocumentLayoutDetail,
   DocumentLayoutFormMode,
@@ -47,7 +47,7 @@ interface DocumentLayoutFormBodyProps {
 export function DocumentLayoutFormBody({ mode, onSuccess, onCancel }: DocumentLayoutFormBodyProps) {
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit, config, onConfigChange, configErrors } = useDocumentLayoutForm({
+  const { form, serverError, onSubmit, config, onConfigChange, configErrors, onModuleChange } = useDocumentLayoutForm({
     mode,
     onSuccess,
   })
@@ -134,7 +134,14 @@ export function DocumentLayoutFormBody({ mode, onSuccess, onCancel }: DocumentLa
                     hint={mode.type === 'edit' ? t('documentLayouts.form.hints.moduleLocked') : undefined}
                   >
                     {({ field, disabled }) => (
-                      <Select value={field.value} onValueChange={field.onChange} disabled={disabled}>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value)
+                          onModuleChange(value as DocumentLayoutModule)
+                        }}
+                        disabled={disabled}
+                      >
                         <FormControl>
                           <SelectTrigger className="w-full">
                             <SelectValue />

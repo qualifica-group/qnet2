@@ -11,7 +11,6 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'The module is under **Accounting › Receivables › Active invoices**. It lists issued documents: use the **All**, **Proformas** and **Invoices** tabs, pick the **year** and, in the month strip, select one or more months (each shows its document count and total) or **all**.' },
         { type: 'paragraph', text: 'At the bottom of the list you find the **totals of the current filter**: taxable amount, VAT, total, collected and outstanding. You can also filter, sort and export the list.' },
-        { type: 'note', text: 'PDF generation and sending documents by email will come in a later release.' },
       ],
     },
     {
@@ -79,6 +78,45 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'warning', text: 'If you delete a proforma, the source request returns to **Pending** and can be issued again, but the deleted number is not reused.' },
+      ],
+    },
+    {
+      id: 'pdf',
+      title: 'Download the PDF',
+      blocks: [
+        { type: 'paragraph', text: 'With **Download PDF** on the row (or in the detail) QNet generates the document using the **active default Invoices layout** (see the Layouts guide).' },
+        { type: 'warning', text: 'If there is no active default layout of the **Invoices** module, an error is shown: create one in **Configuration › Layouts**.' },
+      ],
+    },
+    {
+      id: 'email',
+      title: 'Send the document by email',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'On the row press **Send email**: the composer opens.',
+            'The **recipient** is the customer\'s **PEC**, if any, otherwise their **email**; the **PDF** is already attached.',
+            'Complete subject and body (you can pick an **Email template** of the Invoices module) and send.',
+          ],
+        },
+        { type: 'paragraph', text: 'In the document detail the **Email** tab shows the history of sent emails. You need the permissions to **send** and **view** invoice emails.' },
+      ],
+    },
+    {
+      id: 'reminder',
+      title: 'Send a payment reminder',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Press **Send reminder** on the row: the action is enabled only if at least one due date is **overdue**.',
+            'QNet creates a **reminder draft** with the PDF attached and opens the composer.',
+            'Pick an **Email template** of the Invoices module: it can use the variables for the **overdue due dates list** and the **overdue amount**.',
+            'Review and send.',
+          ],
+        },
+        { type: 'paragraph', text: 'The **Last reminder** column of the list shows when the last reminder was sent.' },
       ],
     },
   ],

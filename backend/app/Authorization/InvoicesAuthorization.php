@@ -49,7 +49,7 @@ class InvoicesAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'view_activity', 'collect'];
+        return ['delete', 'export', 'view_activity', 'collect', 'view_emails', 'send_email'];
     }
 
     /**
@@ -79,6 +79,8 @@ class InvoicesAuthorization extends AbstractResourceAuthorization
             'export' => $actor->can('invoices.export'),
             'view_activity' => $model !== null && $actor->can('invoices.viewActivity'),
             'collect' => $model !== null && $actor->can('invoices.collect'),
+            'view_emails' => $model !== null && $actor->can('invoices.viewEmails'),
+            'send_email' => $model !== null && $actor->can('invoices.sendEmail'),
         ];
     }
 }

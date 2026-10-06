@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { FileText } from 'lucide-react'
+import { FileDown, FileText } from 'lucide-react'
 import { DetailEmpty, DetailError, DetailLoading, DetailMonogram } from '@/components/detail/detail-panel'
+import { Button } from '@/components/ui/button'
+import { RecordCollaborationCard, type RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import {
   RecordCanvas,
   RecordCard,
@@ -18,11 +20,24 @@ import {
   InvoiceTypeBadge,
   PaymentStatusIndicator,
 } from '@/features/invoices/invoice-status-badges'
+import { useInvoicePdfDownload } from '@/features/invoices/use-invoice-pdf-download'
+import { useOutboundEmailsTab } from '@/features/outbound-emails/use-outbound-emails-tab'
 import { useInvoice } from '@/features/invoices/use-invoice-queries'
 import type { InvoiceWithPermissions } from '@/features/invoices/types'
 
+/** "Nuova email" of a document attaches its PDF (spec 0195 D-12). */
+const INVOICE_DRAFT_PAYLOAD = { attach_pdf: true }
+
 function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermissions; onChanged: () => void }) {
   const { t } = useTranslation()
+  const { download, isDownloading } = useInvoicePdfDownload()
+  const emailsTab = useOutboundEmailsTab(
+    { type: 'invoices', id: invoice.id },
+    invoice.permissions.actions.view_emails,
+    invoice.permissions.actions.send_email,
+    INVOICE_DRAFT_PAYLOAD,
+  )
+  const tabs: RecordCollaborationTab[] = emailsTab ? [emailsTab] : []
   const externalReference = invoice.external_number
     ? `${invoice.external_number} - ${formatDate(invoice.external_date)}`
     : null
@@ -34,6 +49,12 @@ function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermiss
           media={<DetailMonogram name={invoice.number_label} icon={<FileText />} />}
           title={t('invoices.detail.title', { number: invoice.number_label })}
           subtitle={invoice.customer.name}
+          actions={
+            <Button variant="secondary" size="sm" disabled={isDownloading} onClick={() => void download(invoice.id)}>
+              <FileDown className="size-3.5" aria-hidden="true" />
+              {t('invoices.actions.pdf')}
+            </Button>
+          }
           badges={
             <>
               <InvoiceTypeBadge type={invoice.type} />
@@ -88,6 +109,7 @@ function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermiss
         <div className="border-t p-4">
           <InvoiceDocumentSections invoice={invoice} onChanged={onChanged} />
         </div>
+        {tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}
       </RecordCard>
     </RecordCanvas>
   )

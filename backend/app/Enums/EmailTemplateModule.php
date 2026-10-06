@@ -10,4 +10,6 @@ namespace App\Enums;
 enum EmailTemplateModule: string
 {
     case WorkOrders = 'work_orders';
+
+    case Invoices = 'invoices';
 }

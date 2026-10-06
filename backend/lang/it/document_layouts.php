@@ -4,6 +4,7 @@ return [
 
     'modules' => [
         'quotes' => 'Preventivi',
+        'invoices' => 'Fatture',
     ],
 
     // Business messages (D-7, spec 0069): thrown by
@@ -18,6 +19,8 @@ return [
     // as a 422 ValidationException when a layout is referenced by at least
     // one Quote, keyed on `quotes`.
     'layout_in_use' => 'Layout utilizzato da :count preventivi: puoi solo disattivarlo.',
+
+    'invoice_no_layout_available' => 'Nessun layout documento disponibile per le fatture.',
 
     // Image guard (spec 0069, MT-4).
     'image_in_use' => 'Questa immagine è referenziata da un blocco della configurazione corrente: rimuovi il blocco prima di eliminarla.',
@@ -37,6 +40,10 @@ return [
             'operational_site' => 'Sede operativa',
             'custom_fields' => 'Campi personalizzati',
             'quote_attributes' => 'Attributi offerta',
+            'invoice' => 'Fattura',
+            'customer' => 'Cliente',
+            'payment' => 'Pagamento',
+            'work_order' => 'Commessa',
             'document' => 'Documento',
         ],
 
@@ -57,6 +64,11 @@ return [
             'cost_vat' => 'IVA sui costi',
             'cost_gross' => 'Costi lordi',
             'margin_net' => 'Margine netto',
+            'net' => 'Totale netto',
+            'vat' => 'IVA',
+            'total' => 'Totale',
+            'collected' => 'Incassato',
+            'residual' => 'Residuo',
         ],
 
         'client' => [
@@ -116,6 +128,7 @@ return [
             'address' => 'Indirizzo',
             'address_city' => 'Comune',
             'address_postal_code' => 'CAP',
+            'name' => 'Nome',
         ],
 
         'company_site' => [
@@ -131,10 +144,48 @@ return [
             'label' => 'Sede operativa',
         ],
 
+        'invoice' => [
+            'number_label' => 'Numero',
+            'type_label' => 'Tipo documento',
+            'document_date' => 'Data documento',
+            'external_number' => 'Numero esterno',
+            'external_date' => 'Data esterna',
+            'notes' => 'Note',
+            'tag_label' => 'Stima/definitiva',
+        ],
+
+        'customer' => [
+            'name' => 'Nome',
+            'address' => 'Indirizzo',
+            'vat_number' => 'Partita IVA',
+            'tax_code' => 'Codice fiscale',
+            'sdi_code' => 'Codice SDI',
+            'pec' => 'PEC',
+            'email' => 'Email',
+        ],
+
+        'payment' => [
+            'method_name' => 'Metodo di pagamento',
+            'payment_instructions' => 'Istruzioni di pagamento',
+            'bank_name' => 'Banca',
+            'iban' => 'IBAN',
+        ],
+
+        'work_order' => [
+            'code' => 'Codice commessa',
+            'title' => 'Titolo',
+        ],
+
         'document' => [
             'generated_at' => 'Data generazione',
             'generated_by' => 'Generato da',
         ],
+    ],
+
+    'installment_status' => [
+        'unpaid' => 'Non pagata',
+        'partially_paid' => 'Pagata parzialmente',
+        'paid' => 'Pagata',
     ],
 
 ];

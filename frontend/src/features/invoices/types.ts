@@ -23,7 +23,7 @@ export const INSTALLMENT_STATUSES = ['unpaid', 'partially_paid', 'paid'] as cons
 export type InstallmentStatus = (typeof INSTALLMENT_STATUSES)[number]
 
 /** Row actions the SSRM rows may carry. */
-export type InvoiceRowAction = 'view' | 'update' | 'details' | 'delete' | 'activity'
+export type InvoiceRowAction = 'view' | 'update' | 'details' | 'delete' | 'activity' | 'pdf' | 'email' | 'remind'
 
 /** `{id, name}` projection of a related record. */
 export interface NamedRef {
@@ -231,6 +231,7 @@ export interface InvoiceRow {
   payment_status: InvoicePaymentStatus
   tag: InvoiceTag | null
   deviation: string | null
+  last_reminder_at: string | null
   actions: InvoiceRowAction[]
 }
 
