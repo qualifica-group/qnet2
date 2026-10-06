@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'In the Work order detail the **Costs** section compares the **budgeted** costs (the offer cost lines imputed to the work order\'s revenue lines) with the **actual** costs entered here. It only appears if you may view costs.',
+          text: 'In the Work order detail, below the main card, **Tasks** and **Costs** share one card as two tabs you switch between: **Tasks** is open by default. The **Costs** tab compares the **budgeted** costs (the offer cost lines imputed to the work order\'s revenue lines) with the **actual** costs entered here. It only appears if you may view costs.',
         },
         {
           type: 'table',

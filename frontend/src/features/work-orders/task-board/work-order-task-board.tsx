@@ -1,5 +1,6 @@
 /**
- * The Commessa detail's Task board (spec 0146, D-5/AC-024): replaces the
+ * The Commessa detail's Task board (spec 0146, D-5/AC-024), the "Task" tab of
+ * `WorkOrderDetailWorkTabs`: replaces the
  * `TableView domain="tasks"` panel (`work-order-tasks-section.tsx`, spec
  * 0133/D-10) with the grouped Lista/Board kanban pair. Orchestrates
  * `use-task-board-state.ts` (filters/selection/derived groups) and
@@ -8,13 +9,12 @@
  */
 
 import { useCallback, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Layers, MoreHorizontal, Plus } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
-import { RecordCard, RecordCardHeader } from '@/components/detail/record-panel'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
@@ -32,9 +32,15 @@ import { useTaskBoardViewMode } from '@/features/work-orders/task-board/use-task
 
 interface WorkOrderTaskBoardProps {
   workOrderId: number
+  /**
+   * Header slot of the hosting card (the detail's Task | Costi strip): the
+   * "Nuovo task" button and the "..." menu are portaled there, so they live
+   * and unmount with this tab. `null` until the slot is attached.
+   */
+  actionsContainer: HTMLElement | null
 }
 
-export function WorkOrderTaskBoard({ workOrderId }: WorkOrderTaskBoardProps) {
+export function WorkOrderTaskBoard({ workOrderId, actionsContainer }: WorkOrderTaskBoardProps) {
   const { t } = useTranslation()
   const { can } = useAbilities()
   const invalidateBoard = useInvalidateTaskBoard(workOrderId)
@@ -58,48 +64,39 @@ export function WorkOrderTaskBoard({ workOrderId }: WorkOrderTaskBoardProps) {
   const [isCreatingStage, setIsCreatingStage] = useState(false)
 
   const hasAnyStage = (state.payload?.stages.length ?? 0) > 0
-  const rootCount = state.payload?.tasks.filter((task) => task.parent_task_id === null).length ?? 0
   const selectedIds = [...state.selectedTaskIds]
 
-  return (
-    <RecordCard>
-      <RecordCardHeader
-        title={
-          <span className="flex items-center gap-2">
-            <span className="truncate">{t('workOrders.taskBoard.title')}</span>
-            <Badge variant="secondary" aria-label={t('workOrders.taskBoard.countLabel', { count: rootCount })}>
-              {rootCount}
-            </Badge>
-          </span>
-        }
-        actions={
-          <span className="flex items-center gap-1.5">
-            {!state.isReadOnly && can('tasks.create') ? (
-              <Button size="sm" onClick={() => addTask(null)}>
-                <Plus aria-hidden="true" />
-                {t('tasks.form.newTask')}
-              </Button>
-            ) : null}
-            {!state.isReadOnly ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="icon-sm" variant="outline" className="bg-card" aria-label={t('workOrders.taskBoard.headerMenuLabel')}>
-                    <MoreHorizontal aria-hidden="true" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => setIsCreatingStage(true)}>
-                    <Layers aria-hidden="true" />
-                    {t('workOrders.taskBoard.stage.new')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
-          </span>
-        }
-      />
+  const headerActions = (
+    <>
+      {!state.isReadOnly && can('tasks.create') ? (
+        <Button size="sm" onClick={() => addTask(null)}>
+          <Plus aria-hidden="true" />
+          {t('tasks.form.newTask')}
+        </Button>
+      ) : null}
+      {!state.isReadOnly ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon-sm" variant="outline" className="bg-card" aria-label={t('workOrders.taskBoard.headerMenuLabel')}>
+              <MoreHorizontal aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => setIsCreatingStage(true)}>
+              <Layers aria-hidden="true" />
+              {t('workOrders.taskBoard.stage.new')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
+    </>
+  )
 
-      {/* Rung-2 canvas under the white header: toolbar, KPI tiles and each phase's task card are raised on it. */}
+  return (
+    <>
+      {actionsContainer ? createPortal(headerActions, actionsContainer) : null}
+
+      {/* Rung-2 canvas under the card's tab strip: toolbar, KPI tiles and each phase's task card are raised on it. */}
       <div className="flex min-w-0 flex-col gap-4 bg-surface p-4">
         {state.isReadOnly && state.payload ? (
           <p className="rounded-lg bg-card px-3 py-2 text-xs text-muted-foreground ring-1 ring-border/70" role="status">
@@ -179,6 +176,6 @@ export function WorkOrderTaskBoard({ workOrderId }: WorkOrderTaskBoardProps) {
       <TaskBoardStageCreateDialog workOrderId={workOrderId} open={isCreatingStage} onOpenChange={setIsCreatingStage} />
 
       {sheet}
-    </RecordCard>
+    </>
   )
 }

@@ -66,10 +66,8 @@ export const workOrders = {
    * itself, `bulk.*` the massive-actions bar and its per-action dialogs.
    */
   taskBoard: {
-    title: 'Task board',
+    title: 'Tasks',
     headerMenuLabel: 'More actions',
-    countLabel_one: '{{count}} task',
-    countLabel_other: '{{count}} task',
     loadError: 'Unable to load the task board. Please try again.',
     viewToggle: {
       list: 'List',

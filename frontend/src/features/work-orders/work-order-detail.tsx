@@ -16,8 +16,7 @@ import { useWorkOrderEmailsTab } from '@/features/work-order-emails/use-work-ord
 import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { WorkOrderDetailHeader, WorkOrderDetailStats } from '@/features/work-orders/work-order-detail-header'
 import { WorkOrderDetailSections } from '@/features/work-orders/work-order-detail-sections'
-import { WorkOrderCostsSection } from '@/features/work-order-costs/work-order-costs-section'
-import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
+import { WorkOrderDetailWorkTabs } from '@/features/work-orders/work-order-detail-work-tabs'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 interface WorkOrderDetailViewProps {
@@ -93,13 +92,13 @@ function useCollaborationTabs(workOrder: WorkOrderDetailWithPermissions): Record
  * Read-only detail of a single work order (AC-075), laid out exactly like the
  * Opportunita' record: on the left ONE card carrying identity header, KPI strip
  * and titled sections; the collaboration card (notes, documents, activity log,
- * spec 0134 D-3) on the right; the Costi section (spec 0190, only with `view_costs`) and the Task board (spec 0146, D-10: replaces the
- * old `TableView domain="tasks"` panel) full width below both, only with
- * `tasks.viewAny` (AC-024); a metadata footer last.
+ * spec 0134 D-3) on the right; full width below both, ONE card switching
+ * between the Task board (spec 0146, only with `tasks.viewAny`, AC-024; open
+ * by default) and the Costi section (spec 0190, only with `view_costs`); a
+ * metadata footer last.
  */
 export function WorkOrderDetailView({ workOrder, onEdit }: WorkOrderDetailViewProps) {
   const { t } = useTranslation()
-  const { can } = useAbilities()
   const collaborationTabs = useCollaborationTabs(workOrder)
   const createdAt = formatDateTime(workOrder.created_at)
   const updatedAt = formatDateTime(workOrder.updated_at)
@@ -116,11 +115,7 @@ export function WorkOrderDetailView({ workOrder, onEdit }: WorkOrderDetailViewPr
         </RecordCard>
       </RecordBody>
 
-      {workOrder.permissions.actions.view_costs ? (
-        <WorkOrderCostsSection workOrderId={workOrder.id} canManage={workOrder.permissions.actions.manage_costs === true} />
-      ) : null}
-
-      {can('tasks.viewAny') ? <WorkOrderTaskBoard workOrderId={workOrder.id} /> : null}
+      <WorkOrderDetailWorkTabs workOrder={workOrder} />
 
       <RecordMeta>
         {createdAt ? (

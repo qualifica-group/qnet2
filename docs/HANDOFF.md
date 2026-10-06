@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMMESSA: TASK E COSTI IN UNA CARD A TAB (TASK DI DEFAULT) — VERDE, NON COMMITTATO (2026-10-06)
+
+- Richiesta utente: nel dettaglio commessa Costi e Task stanno nello stesso punto, come tab da alternare, con icona
+  sul tab Task, Task aperto di default. Solo frontend, nessun contratto API toccato.
+- Nuovo `features/work-orders/work-order-detail-work-tabs.tsx` (`WorkOrderDetailWorkTabs`): una `RecordCard` con
+  strip `Tabs` (Task `ListChecks` | Costi `Euro`), gate invariati (`tasks.viewAny`, `view_costs`), nessun tab = niente
+  card. `WorkOrderDetailView` monta solo questo al posto delle due card.
+- `WorkOrderTaskBoard` non ha piu' card/header: nuova prop obbligatoria `actionsContainer: HTMLElement | null`, il
+  bottone "Nuovo task" e il menu "..." vanno via `createPortal` nello slot a destra della strip (spariscono col tab
+  Costi). Rimosso il badge conteggio dell'header (i KPI mostrano gia' i totali) e le chiavi `taskBoard.countLabel_*`;
+  `workOrders.taskBoard.title` ora vale "Task"/"Tasks" (etichetta del tab). `WorkOrderCostsSection` non ha piu'
+  card/header (il titolo e' il tab), resta `p-4` + sotto-tab Confronto/Costi effettivi.
+- Tab Radix con smontaggio dei contenuti inattivi: passando a Costi e tornando, filtri/selezione del board si
+  azzerano (la vista Lista/Board resta, e' persistita).
+- REQUIREMENT CHANGED dichiarato nei test: `work-order-detail.test.tsx` (blocco Costi seleziona prima il tab Costi),
+  `work-order-costs-section.test.tsx` (rimossa l'asserzione sull'heading "Costs"), `work-order-task-board.test.tsx`
+  (passa `actionsContainer`). Nuovo `work-order-detail-work-tabs.test.tsx` (default Task, switch, gate, portal).
+- Guida in-app IT/EN `work-orders` (sezione `costs`) aggiornata. Manuale Claude Docs: accesso negato -> aggiornare a
+  mano la parte Commesse/Costi (Task e Costi nella stessa card a tab, Task di default).
+- Verifica: Vitest work-orders/work-order-costs/help 45 file / 358 verdi; `tsc -b --force` 0; ESLint 0; screenshot
+  reali `/work-orders/95` desktop light/dark e 375px, nessuno scroll orizzontale.
+
 ## TASK: RIGHE SOTTO-TASK COLORATE PER TIPO (stile q-net) — VERDE, NON COMMITTATO (2026-10-06)
 
 - Contratto (spec 0101 data_contract + 0155): `subtasks[]` aggiunge `task_type` (badgeRef nullable) e `task_status`
@@ -174,28 +196,6 @@
   altrimenti dipinge sopra il ring del trigger precedente; `ring-card` anche sul chip "+N" (entrambi gli host stanno
   su `--card`). Verificato nel browser (Playwright headless). Utente: nessun altro campo del dettaglio da rendere
   editabile (creatore, bloccato, data completamento, feedback chiusura restano sola lettura).
-- ATTENZIONE RHF: `resetOptions` di `useForm` si fonde in OGNI `reset` -> in edit `keepDirtyValues: true` serve solo
-  al re-sync `values`; ogni reset che deve scartare passa `keepDirtyValues: false` (test di regressione in
-  `task-detail-inline-edit.test.tsx`: un annullo non finisce nel PATCH successivo).
-- i18n: + `tasks.detail.inlineEdit.{edit,save,cancel,apply,revert}`, `tasks.detail.recurrenceRule`,
-  `tasks.form.leaveConfirm.*`; rimosse le chiavi orfane (anche `form.header.*`, `form.sections.subtasks.title`)
-  (`form.summary.*` tranne `recurrenceOff`, `form.header.status`, `form.editTitle/editSubtitle`, titoli/descrizioni
-  delle sezioni del vecchio form). Guida in-app `tasks` IT/EN: nuova sezione `editing-a-task`, tabella creazione.
-- Test cambiati per requisito (dichiarati nei file): chiusura sempre visibile, regola ricorrenza x2, change_status =
-  nessuna matita, blocco ricorrenza verificato in creazione; casi edit migrati in `task-detail-editors.test.tsx`;
-  nuovi `task-detail-inline-edit.test.tsx`, helper `task-detail-test-helpers.tsx`, test rotte tasks in
-  `module-routes.test.tsx`.
-- Verifica: `tsc -b --force` 0; eslint pulito sui file toccati (2 errori preesistenti in `quotes/column-renderers.tsx`
-  e `registry-form-metadata.test.tsx`, non toccati); vitest completo 885 file / 6732 test verdi. NON verificato a
-  occhio nel browser.
-- Da fare: manuale Claude Docs (doc non accessibile da questa sessione) — sezioni Task: modifica dal dettaglio,
-  creazione. Chiavi i18n orfane preesistenti: `tasks.detail.status`, `detail.minutesValue`, `form.completionDate`,
-  `form.closureFeedback*`. HANDOFF ~400 KB: va archiviato.
-
-## UTENTE "ASSEGNABILE" (spec 0194) — VERDE, COMMITTATO (2026-10-05)
-
-- Colonna `employment_profiles.is_assignable` (default true, migrazione `2026_10_05_100000_...`; rollback
-  `QuoteWorkflowMigrationTest` ora `--step 126`). API `employment.is_assignable`, field permission propria (chiavi
 - FIX editor griglia Assegnatari/Osservatori (NON COMMITTATO): `MultiSelectCellEditor` mostrava "Questa riga non ha
   ancora un ambito" su ogni colonna SENZA `relation.scope` (bloccava come "scope vuoto"). Ora il blocco/sblocco
   d'ambito vale solo se la colonna dichiara `scope`; altrimenti catalogo completo, nessun footer. Vale anche per gli
@@ -220,6 +220,28 @@
   tsc -b 0; eslint/pint puliti. Verificato in browser (Playwright headless): editor Assegnatari con 27 utenti+avatar,
   chip rossi, clic icona -> dialogo Completa senza editor, icona piena sui completati. Guida in-app IT/EN aggiornata
   (`list-editing-and-bulk`). Manuale Claude Docs: da aggiornare stessa sezione.
+- ATTENZIONE RHF: `resetOptions` di `useForm` si fonde in OGNI `reset` -> in edit `keepDirtyValues: true` serve solo
+  al re-sync `values`; ogni reset che deve scartare passa `keepDirtyValues: false` (test di regressione in
+  `task-detail-inline-edit.test.tsx`: un annullo non finisce nel PATCH successivo).
+- i18n: + `tasks.detail.inlineEdit.{edit,save,cancel,apply,revert}`, `tasks.detail.recurrenceRule`,
+  `tasks.form.leaveConfirm.*`; rimosse le chiavi orfane (anche `form.header.*`, `form.sections.subtasks.title`)
+  (`form.summary.*` tranne `recurrenceOff`, `form.header.status`, `form.editTitle/editSubtitle`, titoli/descrizioni
+  delle sezioni del vecchio form). Guida in-app `tasks` IT/EN: nuova sezione `editing-a-task`, tabella creazione.
+- Test cambiati per requisito (dichiarati nei file): chiusura sempre visibile, regola ricorrenza x2, change_status =
+  nessuna matita, blocco ricorrenza verificato in creazione; casi edit migrati in `task-detail-editors.test.tsx`;
+  nuovi `task-detail-inline-edit.test.tsx`, helper `task-detail-test-helpers.tsx`, test rotte tasks in
+  `module-routes.test.tsx`.
+- Verifica: `tsc -b --force` 0; eslint pulito sui file toccati (2 errori preesistenti in `quotes/column-renderers.tsx`
+  e `registry-form-metadata.test.tsx`, non toccati); vitest completo 885 file / 6732 test verdi. NON verificato a
+  occhio nel browser.
+- Da fare: manuale Claude Docs (doc non accessibile da questa sessione) — sezioni Task: modifica dal dettaglio,
+  creazione. Chiavi i18n orfane preesistenti: `tasks.detail.status`, `detail.minutesValue`, `form.completionDate`,
+  `form.closureFeedback*`. HANDOFF ~400 KB: va archiviato.
+
+## UTENTE "ASSEGNABILE" (spec 0194) — VERDE, COMMITTATO (2026-10-05)
+
+- Colonna `employment_profiles.is_assignable` (default true, migrazione `2026_10_05_100000_...`; rollback
+  `QuoteWorkflowMigrationTest` ora `--step 126`). API `employment.is_assignable`, field permission propria (chiavi
   `employment.*` da 14 a 15). Scrittura tri-state: chiave assente = invariata (`EmploymentData::$isAssignable` ?bool,
   NON come `is_manager`).
 - Enforcement (D-1, solo assegnazione operatori): `LeadOperatorDistributor::operatorIdsBySite` (pool Sede di

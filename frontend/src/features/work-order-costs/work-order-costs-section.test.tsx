@@ -81,7 +81,6 @@ describe('WorkOrderCostsSection — Comparison tab (AC-011)', () => {
     renderSection(false)
 
     expect(await screen.findByRole('tab', { name: 'Comparison' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Costs' })).toBeInTheDocument()
     expect(screen.getAllByText('Budgeted cost')[0].parentElement).toHaveTextContent('80.00')
     expect(screen.getAllByText('Actual margin')[0].parentElement).toHaveTextContent('700.00')
 

@@ -428,27 +428,38 @@ describe('WorkOrderDetailView — collaboration', () => {
   })
 })
 
-/** Spec 0190 AC-011: the Costi section follows `permissions.actions.view_costs` alone. */
+/**
+ * Spec 0190 AC-011: the Costi section follows `permissions.actions.view_costs` alone.
+ * REQUIREMENT CHANGED (user directive 2026-10-06): Costi is a tab next to the
+ * Task board in one card, Task open by default, so the Costi tab is selected first.
+ */
 describe('WorkOrderDetailView — Costi section (spec 0190)', () => {
   function withActions(actions: Record<string, boolean>) {
     const base = workOrder()
     return workOrder({ permissions: { ...base.permissions, actions } })
   }
 
+  function openCostsTab() {
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Costs' }))
+  }
+
   it('is not rendered without view_costs', () => {
     render(<WorkOrderDetailView workOrder={withActions({ manage_costs: true })} />)
 
+    expect(screen.queryByRole('tab', { name: 'Costs' })).not.toBeInTheDocument()
     expect(screen.queryByText(/costs-section/)).not.toBeInTheDocument()
   })
 
   it('is rendered read-only with view_costs alone', () => {
     render(<WorkOrderDetailView workOrder={withActions({ view_costs: true })} />)
+    openCostsTab()
 
     expect(screen.getByText('costs-section manage:false')).toBeInTheDocument()
   })
 
   it('is editable with view_costs and manage_costs', () => {
     render(<WorkOrderDetailView workOrder={withActions({ view_costs: true, manage_costs: true })} />)
+    openCostsTab()
 
     expect(screen.getByText('costs-section manage:true')).toBeInTheDocument()
   })

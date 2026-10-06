@@ -66,10 +66,8 @@ export const workOrders = {
    * `bulk.*` la barra delle azioni massive e i suoi dialog.
    */
   taskBoard: {
-    title: 'Task board',
+    title: 'Task',
     headerMenuLabel: 'Altre azioni',
-    countLabel_one: '{{count}} task',
-    countLabel_other: '{{count}} task',
     loadError: 'Impossibile caricare il task board. Riprova.',
     viewToggle: {
       list: 'Lista',

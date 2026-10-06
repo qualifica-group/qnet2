@@ -182,7 +182,7 @@ export function TaskSubtasksSection({
       className={className}
       action={
         canCreateSubtask ? (
-          <Button type="button" variant="outline" size="sm" className="bg-card" onClick={onCreate}>
+          <Button type="button" size="sm" onClick={onCreate}>
             <Plus className="size-3.5" aria-hidden="true" />
             {t('tasks.detail.createSubtask')}
           </Button>
