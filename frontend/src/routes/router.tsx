@@ -37,6 +37,7 @@ const VatRatesPage = lazyRoute(() => import('@/pages/vat-rates-page'))
 const UnitsOfMeasurePage = lazyRoute(() => import('@/pages/units-of-measure-page'))
 const FinancialAccountsPage = lazyRoute(() => import('@/pages/financial-accounts-page'))
 const ProformaRequestsPage = lazyRoute(() => import('@/pages/proforma-requests-page'))
+const InvoicesPage = lazyRoute(() => import('@/pages/invoices-page'))
 const ProductTypologiesPage = lazyRoute(() => import('@/pages/product-typologies-page'))
 const PaymentMethodsPage = lazyRoute(() => import('@/pages/payment-methods-page'))
 const TagsPage = lazyRoute(() => import('@/pages/tags-page'))
@@ -227,6 +228,10 @@ export const router = createBrowserRouter([
           {
             path: 'proforma-requests',
             element: <ProformaRequestsPage />,
+          },
+          {
+            path: 'invoices',
+            element: <InvoicesPage />,
           },
           {
             path: 'product-typologies',

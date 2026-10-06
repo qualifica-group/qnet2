@@ -41,6 +41,21 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'issue',
+      title: 'Emettere il proforma',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Sulla riga della richiesta **Da evadere** premi l’azione **Emetti proforma** (serve il permesso di creazione fatture).',
+            'Nella finestra controlla l’intestazione, aggiungi le righe dalle **Righe disponibili** della commessa (**Aggiungi** o **Aggiungi tutte**) e verifica le scadenze e i totali.',
+            'Premi **Emetti**: il proforma riceve il numero N/AAAA della società emittente e la richiesta passa a **Evasa**.',
+          ],
+        },
+        { type: 'paragraph', text: 'Una volta evasa, l’azione è disattivata. Se elimini il proforma da **Fatture Attive**, la richiesta torna **Da evadere** e puoi emetterlo di nuovo. Vedi la guida **Fatture Attive**.' },
+      ],
+    },
+    {
       id: 'manage',
       title: 'Aprire, modificare ed eliminare',
       blocks: [

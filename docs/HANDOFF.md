@@ -3,6 +3,37 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0194 FATTURAZIONE ATTIVA (invoices) — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-06)
+
+- Spec `docs/specs/0194-active-invoicing.xml` (approvata). Tabelle `invoices` (type proforma|invoice, company_id emittente,
+  number+year unici per societa', customer_registry_id, proforma_request_id unique, importi dec(15,2), external_number/date,
+  tag estimate|final, deviation), `invoice_lines` (IVA per riga, quote_line_id sorgente), `invoice_installments`
+  (collected_amount/at), `invoice_number_sequences` (lockForUpdate). payment_methods +installments_count,
+  days_between_installments, end_of_month, end_of_month_extra_days, vat_allocation split|first|last|vat_first
+  (payment_days = giorni alla prima scadenza).
+- Regole: un documento per richiesta (crea -> richiesta issued; elimina -> torna pending; numeri mai riusati); importi
+  SEMPRE ricalcolati dal server; PUT/DELETE -> 409 con incassi; PATCH details sempre (external_number -> type invoice);
+  stato pagamento calcolato (`App\Services\Invoices\InvoicePaymentStatusResolver`, soglia
+  `InvoicePaymentStatus::SERIOUSLY_OVERDUE_DAYS`=21); scadenze `InstallmentScheduleCalculator` (centesimi interi, FM in mesi).
+- Endpoint: GET/POST /api/proforma-requests/{id}/invoice-draft|invoice; POST /api/invoices/installment-preview;
+  GET /api/invoices/monthly-summary; GET/PUT/DELETE /api/invoices/{id}; PATCH /api/invoices/{id}/details;
+  PUT/DELETE /api/invoice-installments/{id}/collection; SSRM `invoices` (colonne nascoste document_year/document_month
+  come set filter, meta.aggregates). Rotte contabilita' raggruppate in routes/api/accounting.php (api.php a 499 righe).
+  Riga proforma-requests: `invoice_id` + azione `invoice` (file-plus-2, invoices.create). Menu Contabilita' > Attiva > Fatture Attive.
+- FE: features/invoices (modale `InvoiceEditorDialog` create|edit, elenco con tab/striscia mesi/footer/master-detail,
+  dialog dettagli/incasso/elimina). Infra tabella: nuove prop additive `forcedFilterModel`/`onFilterModelChange` e
+  `TableViewHandle.setFilterModel`. i18n contabilita' in it/en-accounting.ts (en.ts era a 503 -> 499: risolto).
+  Guide in-app IT/EN: `invoices` nuova, `proforma-requests` e `payment-methods` aggiornate.
+- Test toccati per requisito cambiato: QuoteWorkflowMigrationTest (rollback 125 -> 130), FieldCatalogueEndpointTest
+  (+invoices), PaymentMethodMetaTest/TableTest (ordine campi), help-guide-keys.test.ts (57 -> 58), test FE payment-methods (fixture).
+- Verifier: Pest parallelo 9373/9377 (3 = soffice, 1 skipped), Vitest 6777 (flaky sotto carico, verdi da soli), tsc -b, Pint
+  puliti; ESLint 2 errori preesistenti fuori scope (quotes/column-renderers.tsx, registries/registry-form-metadata.test.tsx).
+  AC-001..010 PASS (copertura FE debole su incasso da riga espansa).
+- Dopo il deploy: `php artisan permissions:sync` (fatto in locale) + assegnare invoices.* ai ruoli non super-admin.
+- Aperto: manuale Claude Docs NON aggiornato (connettore: access denied) -> sezioni Contabilita' > Attiva > Fatture Attive,
+  Richieste Proforma (azione Emetti proforma), Modalita' di pagamento (rate). Prossima spec 0195: PDF documento + invio
+  email/sollecito. `prompt_temp.md` in root non va committato.
+
 ## SPEC 0193 RICHIESTE PROFORMA (proforma-requests) — VERDE, COMMITTATO, BRANCH feature/amministrazione (2026-10-06)
 
 - Spec `docs/specs/0193-proforma-requests.xml` (approvata). Tabella `proforma_requests` (work_order_id cascade, kind

@@ -32,6 +32,7 @@ class ProformaRequestService
         'paymentMethod:id,name',
         'assignee:id,name',
         'assigner:id,name',
+        'invoice:id,proforma_request_id,number,year',
     ];
 
     /**

@@ -14,6 +14,7 @@ use App\Models\DocumentLayout;
 use App\Models\EmailTemplate;
 use App\Models\FieldChangeRequest;
 use App\Models\FinancialAccount;
+use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
@@ -259,6 +260,10 @@ return [
         // spec 0193: richieste proforma.
         'proforma-requests' => [
             'model' => ProformaRequest::class,
+        ],
+        // spec 0194: fatture attive.
+        'invoices' => [
+            'model' => Invoice::class,
         ],
         'units-of-measure' => [
             'model' => UnitOfMeasure::class,

@@ -2,6 +2,8 @@
 
 namespace App\DataObjects\PaymentMethods;
 
+use App\Enums\VatAllocation;
+
 /**
  * Validated payload for creating a payment method (POST /api/payment-methods,
  * spec 0068). Declared DTO (no "magic flying array") so the
@@ -27,6 +29,11 @@ final readonly class CreatePaymentMethodData
         public ?string $paymentInstructions,
         public ?int $paymentDays,
         public bool $isActive,
+        public int $installmentsCount = 1,
+        public int $daysBetweenInstallments = 0,
+        public bool $endOfMonth = false,
+        public ?int $endOfMonthExtraDays = null,
+        public VatAllocation $vatAllocation = VatAllocation::Split,
     ) {}
 
     /**
@@ -44,6 +51,11 @@ final readonly class CreatePaymentMethodData
             paymentInstructions: array_key_exists('payment_instructions', $data) ? $data['payment_instructions'] : null,
             paymentDays: array_key_exists('payment_days', $data) && $data['payment_days'] !== null ? (int) $data['payment_days'] : null,
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
+            installmentsCount: (int) ($data['installments_count'] ?? 1),
+            daysBetweenInstallments: (int) ($data['days_between_installments'] ?? 0),
+            endOfMonth: (bool) ($data['end_of_month'] ?? false),
+            endOfMonthExtraDays: isset($data['end_of_month_extra_days']) ? (int) $data['end_of_month_extra_days'] : null,
+            vatAllocation: VatAllocation::from($data['vat_allocation'] ?? VatAllocation::Split->value),
         );
     }
 
@@ -59,6 +71,11 @@ final readonly class CreatePaymentMethodData
             'description' => $this->description,
             'payment_instructions' => $this->paymentInstructions,
             'payment_days' => $this->paymentDays,
+            'installments_count' => $this->installmentsCount,
+            'days_between_installments' => $this->daysBetweenInstallments,
+            'end_of_month' => $this->endOfMonth,
+            'end_of_month_extra_days' => $this->endOfMonthExtraDays,
+            'vat_allocation' => $this->vatAllocation,
             'is_active' => $this->isActive,
         ];
     }

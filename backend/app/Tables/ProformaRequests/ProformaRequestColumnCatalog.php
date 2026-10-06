@@ -136,6 +136,7 @@ final class ProformaRequestColumnCatalog
             ['key' => 'view', 'label' => 'actions.view', 'icon' => 'eye', 'type' => 'link', 'confirm' => false, 'permission' => 'proforma-requests.view'],
             ['key' => 'update', 'label' => 'actions.edit', 'icon' => 'pencil', 'type' => 'action', 'confirm' => false, 'permission' => 'proforma-requests.update'],
             ['key' => 'notes', 'label' => 'actions.notes', 'icon' => 'messages-square', 'type' => 'action', 'confirm' => false, 'permission' => 'proforma-requests.view'],
+            ['key' => 'invoice', 'label' => 'invoices.actions.issue', 'icon' => 'file-plus-2', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.create'],
             ['key' => 'delete', 'label' => 'actions.delete', 'icon' => 'trash', 'type' => 'danger', 'confirm' => true, 'permission' => 'proforma-requests.delete'],
             ['key' => 'activity', 'label' => 'actions.activity', 'icon' => 'history', 'type' => 'action', 'confirm' => false, 'permission' => 'proforma-requests.viewActivity'],
         ];

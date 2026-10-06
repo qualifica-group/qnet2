@@ -38,7 +38,7 @@ it('GET /api/tables/payment-methods/columns: 403 without viewAny, 200 with the 9
         ->and($data['searchable'])->toBe(['name', 'code', 'payment_method_code']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'code', 'payment_method_code', 'description', 'payment_days', 'sort_order', 'is_active', 'created_at', 'updated_at']);
+    expect($ids)->toBe(['id', 'name', 'code', 'payment_method_code', 'description', 'payment_days', 'installments_count', 'days_between_installments', 'end_of_month', 'end_of_month_extra_days', 'vat_allocation', 'sort_order', 'is_active', 'created_at', 'updated_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['name']['sortable'])->toBeTrue()

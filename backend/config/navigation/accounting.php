@@ -33,6 +33,13 @@ return [
                     'route' => '/proforma-requests',
                     'permission' => 'proforma-requests.view',
                 ],
+                [
+                    'key' => 'invoices',
+                    'label' => 'navigation.invoices',
+                    'icon' => 'file-text',
+                    'route' => '/invoices',
+                    'permission' => 'invoices.view',
+                ],
             ],
         ],
     ],

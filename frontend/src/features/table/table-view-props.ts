@@ -50,6 +50,14 @@ export interface TableViewProps extends RowActionsOptions {
    * Must be a module-level constant: it feeds a memo keyed on identity.
    */
   defaultFilterModel?: Record<string, unknown>
+  /**
+   * Column filters merged OVER the saved/default model at mount, so an adapter
+   * that owns a companion control (e.g. the invoices month strip) always starts
+   * with the grid and the control in agreement. Keep the identity stable.
+   */
+  forcedFilterModel?: Record<string, unknown>
+  /** Called with the live column filter model whenever it changes. */
+  onFilterModelChange?: (model: Record<string, unknown>) => void
   /** Per-domain custom cell renderers, keyed by column id. Optional. */
   renderers?: TableRendererMap
   /**

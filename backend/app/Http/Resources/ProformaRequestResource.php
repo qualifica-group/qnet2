@@ -31,6 +31,7 @@ class ProformaRequestResource extends JsonResource
             'company' => $company === null ? null : ['id' => $company->id, 'name' => $company->denomination],
             'supplier' => $this->supplier === null ? null : ['id' => $this->supplier->id, 'name' => $this->supplier->name],
             'payment_method' => $this->paymentMethod === null ? null : ['id' => $this->paymentMethod->id, 'name' => $this->paymentMethod->name],
+            'invoice' => $this->invoice === null ? null : ['id' => $this->invoice->id, 'number_label' => $this->invoice->number.'/'.$this->invoice->year],
             'assigned_to' => ['id' => $this->assignee->id, 'name' => $this->assignee->name],
             'assigned_by' => ['id' => $this->assigner->id, 'name' => $this->assigner->name],
             'created_at' => $this->created_at,

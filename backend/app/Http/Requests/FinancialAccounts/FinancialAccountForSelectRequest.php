@@ -11,7 +11,8 @@ use Illuminate\Validation\Rule;
 /**
  * Validates the query for GET /api/financial-accounts/for-select (ADR 0011,
  * spec 0189): the standard search/pagination/hydration plus the optional
- * `type` filter (e.g. only bank accounts for the card's "associate to" picker).
+ * `type` filter (e.g. only bank accounts for the card's "associate to" picker)
+ * and `company_id` filter (bank of the issuing company, spec 0194).
  */
 class FinancialAccountForSelectRequest extends FormRequest
 {
@@ -30,6 +31,7 @@ class FinancialAccountForSelectRequest extends FormRequest
         return [
             'search' => ['nullable', 'string', 'max:255'],
             'type' => ['sometimes', 'string', Rule::enum(FinancialAccountType::class)],
+            'company_id' => ['sometimes', 'integer', 'min:1'],
             'offset' => ['sometimes', 'integer', 'min:0'],
             'limit' => ['sometimes', 'integer', 'min:1', "max:{$maxLimit}"],
             'ids' => ['sometimes', 'array'],
@@ -43,6 +45,13 @@ class FinancialAccountForSelectRequest extends FormRequest
         $validated = $this->validated();
 
         return ForSelectQuery::fromValidated($validated);
+    }
+
+    public function companyId(): ?int
+    {
+        $companyId = $this->validated('company_id');
+
+        return $companyId === null ? null : (int) $companyId;
     }
 
     public function accountType(): ?FinancialAccountType

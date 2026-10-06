@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
-import { MessagesSquare } from 'lucide-react'
+import { FilePlus2, MessagesSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/page-header'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -14,6 +14,8 @@ import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { deleteProformaRequest, PROFORMA_REQUESTS_DOMAIN } from '@/features/proforma-requests/api'
 import { proformaRequestColumnRenderers } from '@/features/proforma-requests/column-renderers'
+import { InvoiceEditorDialog } from '@/features/invoices/invoice-editor-dialog'
+import { INVOICE_ACTION_KEY, isRequestIssued, useInvoiceActionState } from '@/features/proforma-requests/invoice-row-action'
 import { ProformaRequestEditScreen } from '@/features/proforma-requests/proforma-request-edit-screen'
 
 /**
@@ -26,8 +28,8 @@ const PENDING_ONLY_FILTER: Record<string, unknown> = {
   status: { filterType: 'set', values: ['pending'] },
 }
 
-/** The backend fixes the notes action icon key as 'messages-square'. */
-const PROFORMA_ACTION_ICONS: ActionIconMap = { 'messages-square': MessagesSquare }
+/** The backend fixes the action icon keys: notes = 'messages-square', invoice = 'file-plus-2'. */
+const PROFORMA_ACTION_ICONS: ActionIconMap = { 'messages-square': MessagesSquare, 'file-plus-2': FilePlus2 }
 
 /**
  * Thin Proforma requests adapter over the generic table. No create action:
@@ -44,6 +46,8 @@ export function ProformaRequestsTable() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [editId, setEditId] = useState<number | null>(null)
   const [notesId, setNotesId] = useState<number | null>(null)
+  const [invoiceRequestId, setInvoiceRequestId] = useState<number | null>(null)
+  const resolveActionState = useInvoiceActionState()
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
   const { openView, sheet } = useModuleOpener(PROFORMA_REQUESTS_DOMAIN, { onSaved: refreshGrid })
@@ -80,6 +84,12 @@ export function ProformaRequestsTable() {
         case 'notes':
           setNotesId(Number(row.id))
           break
+        case INVOICE_ACTION_KEY:
+          // Issued requests are inert (the button is disabled too): guards a stale row.
+          if (!isRequestIssued(row)) {
+            setInvoiceRequestId(Number(row.id))
+          }
+          break
         case 'activity':
           setActivityRow(row)
           break
@@ -93,6 +103,11 @@ export function ProformaRequestsTable() {
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])
 
   const closeEdit = useCallback(() => setEditId(null), [])
+  const closeInvoice = useCallback(() => setInvoiceRequestId(null), [])
+  const handleInvoiced = useCallback(() => {
+    setInvoiceRequestId(null)
+    refreshGrid()
+  }, [refreshGrid])
   const handleEdited = useCallback(() => {
     setEditId(null)
     refreshGrid()
@@ -108,6 +123,7 @@ export function ProformaRequestsTable() {
         renderers={proformaRequestColumnRenderers}
         defaultFilterModel={PENDING_ONLY_FILTER}
         iconMap={PROFORMA_ACTION_ICONS}
+        resolveActionState={resolveActionState}
         onAction={handleAction}
         isBusy={isBusy}
       />
@@ -125,6 +141,16 @@ export function ProformaRequestsTable() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {invoiceRequestId !== null ? (
+        <InvoiceEditorDialog
+          mode="create"
+          proformaRequestId={invoiceRequestId}
+          open
+          onClose={closeInvoice}
+          onSaved={handleInvoiced}
+        />
+      ) : null}
 
       <NotesDialog
         entityType={PROFORMA_REQUESTS_DOMAIN}

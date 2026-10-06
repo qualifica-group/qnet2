@@ -11,6 +11,12 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 
+/** Closed set of `VatAllocation` values, in display order (spec 0194 D-10). */
+export const VAT_ALLOCATIONS = ['split', 'first', 'last', 'vat_first'] as const
+
+/** How the invoice VAT is spread over the installments. */
+export type VatAllocation = (typeof VAT_ALLOCATIONS)[number]
+
 /**
  * Single payment method detail returned by GET/POST/PATCH /payment-methods
  * (envelope `data`). Matches `PaymentMethodResource`.
@@ -25,6 +31,11 @@ export interface PaymentMethodDetail {
   description: string | null
   payment_instructions: string | null
   payment_days: number | null
+  installments_count: number
+  days_between_installments: number
+  end_of_month: boolean
+  end_of_month_extra_days: number | null
+  vat_allocation: VatAllocation
   sort_order: number
   is_active: boolean
   created_at: string
@@ -52,6 +63,11 @@ export interface CreatePaymentMethodPayload {
   description?: string | null
   payment_instructions?: string | null
   payment_days?: number | null
+  installments_count?: number
+  days_between_installments?: number
+  end_of_month?: boolean
+  end_of_month_extra_days?: number | null
+  vat_allocation?: VatAllocation
   is_active?: boolean
 }
 

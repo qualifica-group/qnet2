@@ -31,7 +31,7 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class UpdatePaymentMethodRequest extends FormRequest
 {
-    use EnforcesFieldPermissions;
+    use EnforcesFieldPermissions, ValidatesInstallmentConfig;
 
     private const int NAME_MAX = 191;
 
@@ -62,6 +62,7 @@ class UpdatePaymentMethodRequest extends FormRequest
             'payment_instructions' => ['sometimes', 'nullable', 'string', 'max:'.self::INSTRUCTIONS_MAX],
             'payment_days' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:'.self::PAYMENT_DAYS_MAX],
             'is_active' => ['sometimes', 'boolean'],
+            ...$this->installmentRules(),
         ];
     }
 
@@ -69,6 +70,7 @@ class UpdatePaymentMethodRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
+            $this->assertVatAllocationFitsInstallments($validator, $this->route('paymentMethod'));
         });
     }
 

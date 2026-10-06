@@ -17,13 +17,11 @@ import { registries } from './it-registries'
 import { attributes, productCategories, products } from './it-products'
 import { customFields } from './it-custom-fields'
 import { sectors } from './it-sectors'
+import { accounting } from './it-accounting'
 import { sources } from './it-sources'
 import { vatRates } from './it-vat-rates'
 import { unitsOfMeasure } from './it-units-of-measure'
-import { financialAccounts } from './it-financial-accounts'
-import { proformaRequests } from './it-proforma-requests'
 import { productTypologies } from './it-product-typologies'
-import { paymentMethods } from './it-payment-methods'
 import { tags } from './it-tags'
 import { pipelineStatuses } from './it-pipeline-statuses'
 import { projects } from './it-projects'
@@ -432,10 +430,8 @@ export const it: TranslationResources = {
   sources,
   vatRates,
   unitsOfMeasure,
-  financialAccounts,
-  proformaRequests,
+  ...accounting,
   productTypologies,
-  paymentMethods,
   tags,
   projects: { ...projects, stats: moduleStats.projects },
   pipelineStatuses,

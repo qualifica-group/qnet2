@@ -1,4 +1,4 @@
-import { forwardRef, type ReactNode } from 'react'
+import { forwardRef, useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -38,6 +38,8 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       scope,
       rowScope,
       defaultFilterModel,
+      forcedFilterModel,
+      onFilterModelChange,
       onRowCountChanged,
       renderers,
       onAction,
@@ -79,6 +81,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         opportunityId,
         quoteId,
         defaultFilterModel,
+        forcedFilterModel,
         onRowCountChanged,
         onAction,
         isBusy,
@@ -97,6 +100,11 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       },
       ref,
     )
+
+    const { filterModel } = view
+    useEffect(() => {
+      onFilterModelChange?.(filterModel)
+    }, [filterModel, onFilterModelChange])
 
     let content: ReactNode
     if (isPending) {

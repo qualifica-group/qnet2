@@ -18,6 +18,11 @@ export interface TableViewHandle {
   refresh: () => void
   /** Clears the current row selection (call after a bulk action succeeds). */
   clearSelection: () => void
+  /**
+   * Merges `patch` into the live column filter model; a `null` value removes
+   * that column's filter. No-op until the grid is ready.
+   */
+  setFilterModel: (patch: Record<string, unknown>) => void
 }
 
 export interface UseTableViewGridStateArgs {
@@ -27,6 +32,8 @@ export interface UseTableViewGridStateArgs {
   quoteId?: number
   /** Applied when the saved filter model is empty (see `TableViewProps.defaultFilterModel`). */
   defaultFilterModel?: Record<string, unknown>
+  /** Merged over the saved/default model at mount (see `TableViewProps.forcedFilterModel`). */
+  forcedFilterModel?: Record<string, unknown>
   onRowCountChanged?: (count: number | null) => void
   getBulkActions?: (selection: TableSelection) => BulkAction[]
   disableBuiltinDelete?: boolean
@@ -80,6 +87,7 @@ export function useTableViewGridState(
     opportunityId,
     quoteId,
     defaultFilterModel,
+    forcedFilterModel,
     onRowCountChanged,
     getBulkActions,
     disableBuiltinDelete,
@@ -102,8 +110,9 @@ export function useTableViewGridState(
   // config load so it can seed the persisted-baseline ref below.
   const initialFilterModel = useMemo(() => {
     const saved = config?.filterState ?? EMPTY_FILTER_MODEL
-    return Object.keys(saved).length === 0 && defaultFilterModel ? defaultFilterModel : saved
-  }, [config?.filterState, defaultFilterModel])
+    const base = Object.keys(saved).length === 0 && defaultFilterModel ? defaultFilterModel : saved
+    return forcedFilterModel ? { ...base, ...forcedFilterModel } : base
+  }, [config?.filterState, defaultFilterModel, forcedFilterModel])
 
   // SSRM rows are not cached by TanStack Query, so they cannot be invalidated
   // through the queryClient. We hold the grid API and purge its server-side
@@ -252,9 +261,26 @@ export function useTableViewGridState(
     datasourceRef.current = datasource
   }, [datasource])
 
-  useImperativeHandle(ref, () => ({ refresh: refreshGrid, clearSelection }), [
+  const setFilterModel = useCallback(
+    (patch: Record<string, unknown>) => {
+      if (!gridApi) {
+        return
+      }
+      const next = { ...gridApi.getFilterModel(), ...patch }
+      for (const key of Object.keys(next)) {
+        if (next[key] === null) {
+          delete next[key]
+        }
+      }
+      gridApi.setFilterModel(next)
+    },
+    [gridApi],
+  )
+
+  useImperativeHandle(ref, () => ({ refresh: refreshGrid, clearSelection, setFilterModel }), [
     refreshGrid,
     clearSelection,
+    setFilterModel,
   ])
 
   return {

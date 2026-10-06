@@ -28,6 +28,7 @@ export const navigation = {
   financialAccounts: 'Gestione Conti',
   accountingReceivable: 'Attiva',
   proformaRequests: 'Richieste Proforma',
+  invoices: 'Fatture Attive',
   productTypologies: 'Tipologie Prodotto',
   paymentMethods: 'Modalità di Pagamento',
   tags: 'Tag',

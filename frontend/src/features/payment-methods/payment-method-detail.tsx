@@ -35,6 +35,11 @@ export function PaymentMethodDetailView({ paymentMethod, onEdit }: PaymentMethod
   const { t } = useTranslation()
   const createdAt = formatDateTime(paymentMethod.created_at)
   const updatedAt = formatDateTime(paymentMethod.updated_at)
+  const endOfMonthLabel = !paymentMethod.end_of_month
+    ? t('common.no')
+    : paymentMethod.end_of_month_extra_days === null
+      ? t('common.yes')
+      : t('paymentMethods.detail.endOfMonthWithExtra', { days: paymentMethod.end_of_month_extra_days })
   const canEdit = paymentMethod.permissions.resource.update
   const canViewActivity = paymentMethod.permissions.actions.view_activity
 
@@ -70,6 +75,18 @@ export function PaymentMethodDetailView({ paymentMethod, onEdit }: PaymentMethod
                 </RecordField>
                 <RecordField label={t('paymentMethods.detail.payment_days')}>
                   {paymentMethod.payment_days !== null ? paymentMethod.payment_days : <DetailEmpty />}
+                </RecordField>
+                <RecordField label={t('paymentMethods.detail.installments_count')}>
+                  {paymentMethod.installments_count}
+                </RecordField>
+                <RecordField label={t('paymentMethods.detail.days_between_installments')}>
+                  {paymentMethod.days_between_installments}
+                </RecordField>
+                <RecordField label={t('paymentMethods.detail.end_of_month')}>
+                  {endOfMonthLabel}
+                </RecordField>
+                <RecordField label={t('paymentMethods.detail.vat_allocation')}>
+                  {t(`paymentMethods.vatAllocations.${paymentMethod.vat_allocation}`)}
                 </RecordField>
                 <RecordField label={t('paymentMethods.detail.sort_order')}>
                   {paymentMethod.sort_order}

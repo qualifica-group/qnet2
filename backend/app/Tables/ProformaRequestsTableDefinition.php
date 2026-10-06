@@ -53,6 +53,7 @@ class ProformaRequestsTableDefinition extends AbstractTableDefinition
             'paymentMethod:id,name',
             'assignee:id,name',
             'assigner:id,name',
+            'invoice:id,proforma_request_id',
         ]);
     }
 
@@ -115,6 +116,7 @@ class ProformaRequestsTableDefinition extends AbstractTableDefinition
             'supplier' => $row->supplier === null ? null : ['id' => $row->supplier->id, 'name' => $row->supplier->name],
             'payment_method' => $row->paymentMethod === null ? null : ['id' => $row->paymentMethod->id, 'name' => $row->paymentMethod->name],
             'status' => $row->status->value,
+            'invoice_id' => $row->invoice?->id,
             'note' => $row->note,
             'assigned_to' => ['id' => $row->assignee->id, 'name' => $row->assignee->name],
             'assigned_by' => ['id' => $row->assigner->id, 'name' => $row->assigner->name],
@@ -138,6 +140,11 @@ class ProformaRequestsTableDefinition extends AbstractTableDefinition
             if ($gate->allows($ability, $row)) {
                 $allowed[] = $key;
             }
+        }
+
+        // Issuing a document is gated by the invoices module, not by this policy.
+        if ($actor->can('invoices.create')) {
+            $allowed[] = 'invoice';
         }
 
         return $allowed;

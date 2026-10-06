@@ -30,6 +30,7 @@ use App\Models\EmailTemplate;
 use App\Models\EmploymentProfile;
 use App\Models\FieldChangeRequest;
 use App\Models\FinancialAccount;
+use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Note;
 use App\Models\OperationalSite;
@@ -195,6 +196,7 @@ class AppServiceProvider extends ServiceProvider
             'unit_of_measure' => UnitOfMeasure::class,
             'financial_account' => FinancialAccount::class,
             'proforma_request' => ProformaRequest::class,
+            'invoice' => Invoice::class,
             'product_typology' => ProductTypology::class,
             'source' => Source::class,
             'sector' => Sector::class,

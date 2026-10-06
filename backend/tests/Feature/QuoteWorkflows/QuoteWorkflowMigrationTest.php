@@ -202,9 +202,11 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_10_02_100000_add_simplified_offer_line_override_to_product_categories_table`
     // (123rd), the per-node simplified offer-line override, and spec 0189's
     // `2026_10_05_100000_create_financial_accounts_table` (124th), and spec
-    // 0193's `2026_10_06_100000_create_proforma_requests_table` (125th).
+    // 0193's `2026_10_06_100000_create_proforma_requests_table` (125th), and spec
+    // 0194's five migrations `2026_10_07_100000_add_installment_config_to_payment_methods_table`
+    // (126th) through `2026_10_07_100400_create_invoice_installments_table` (130th).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 125]);
+    Artisan::call('migrate:rollback', ['--step' => 130]);
     // `2026_10_02_120000_add_old_id_to_operational_records_tables` (1st),
     // the legacy anchors of registries/opportunities/quotes/work orders, and
     // spec 0190's `2026_10_02_130000_create_work_order_costs_table` (2nd),

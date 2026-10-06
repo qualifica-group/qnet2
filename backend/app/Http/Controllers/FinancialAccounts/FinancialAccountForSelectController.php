@@ -23,7 +23,7 @@ class FinancialAccountForSelectController extends BaseApiController
     public function __invoke(FinancialAccountForSelectRequest $request): JsonResponse
     {
         try {
-            $result = $this->service->forSelect($request->toData(), $request->accountType());
+            $result = $this->service->forSelect($request->toData(), $request->accountType(), $request->companyId());
 
             return $this->paginatedResponse(
                 FinancialAccountForSelectResource::collection($result->items),

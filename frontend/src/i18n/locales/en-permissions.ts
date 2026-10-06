@@ -65,6 +65,7 @@ export const permissions = {
     viewEmails: 'View emails',
     sendEmail: 'Send email',
     revealCardNumber: 'Reveal card number',
+    collect: 'Record collections',
   },
   resources: {
     users: 'Users',
@@ -116,6 +117,7 @@ export const permissions = {
     'units-of-measure': 'Units of Measure',
     'financial-accounts': 'Financial accounts',
     'proforma-requests': 'Proforma requests',
+    invoices: 'Active invoices',
     'product-typologies': 'Product Typologies',
     // Task module and its five configurators (spec 0101).
     tasks: 'Tasks',

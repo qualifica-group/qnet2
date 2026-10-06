@@ -15,6 +15,7 @@ use App\Tables\EmailTemplatesTableDefinition;
 use App\Tables\EnrolleeManagementTableDefinition;
 use App\Tables\FieldChangeRequestsTableDefinition;
 use App\Tables\FinancialAccountsTableDefinition;
+use App\Tables\InvoicesTableDefinition;
 use App\Tables\LeadImportsTableDefinition;
 use App\Tables\LeadsTableDefinition;
 use App\Tables\NotificationsTableDefinition;
@@ -121,6 +122,8 @@ return [
         'units-of-measure' => UnitsOfMeasureTableDefinition::class,
         'financial-accounts' => FinancialAccountsTableDefinition::class,
         'proforma-requests' => ProformaRequestsTableDefinition::class,
+        // spec 0194: active invoicing (proforma and invoices).
+        'invoices' => InvoicesTableDefinition::class,
         'product-typologies' => ProductTypologiesTableDefinition::class,
         // spec 0101: il modulo Task e i suoi cinque configuratori.
         'tasks' => TasksTableDefinition::class,

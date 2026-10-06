@@ -241,3 +241,58 @@ it('delete: 404 for a non-existent id (AC-027)', function () {
 
     $this->deleteJson('/api/payment-methods/999999')->assertNotFound();
 });
+
+// ---------------------------------------------------------------------------
+// installment configuration (spec 0194, AC-008)
+// ---------------------------------------------------------------------------
+
+it('installments: the 5 configuration fields save on create/update and read back; defaults apply (AC-008)', function () {
+    $actor = paymentMethodUserWith(['create', 'update', 'view']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/payment-methods', ['name' => 'Plain', 'code' => 'plain'])
+        ->assertCreated()
+        ->assertJsonPath('data.installments_count', 1)
+        ->assertJsonPath('data.days_between_installments', 0)
+        ->assertJsonPath('data.end_of_month', false)
+        ->assertJsonPath('data.end_of_month_extra_days', null)
+        ->assertJsonPath('data.vat_allocation', 'split');
+
+    $id = $this->postJson('/api/payment-methods', [
+        'name' => 'Three installments', 'code' => 'three', 'payment_days' => 30,
+        'installments_count' => 3, 'days_between_installments' => 30, 'end_of_month' => true,
+        'end_of_month_extra_days' => 10, 'vat_allocation' => 'vat_first',
+    ])->assertCreated()->json('data.id');
+
+    $this->getJson("/api/payment-methods/{$id}")
+        ->assertJsonPath('data.installments_count', 3)
+        ->assertJsonPath('data.days_between_installments', 30)
+        ->assertJsonPath('data.end_of_month', true)
+        ->assertJsonPath('data.end_of_month_extra_days', 10)
+        ->assertJsonPath('data.vat_allocation', 'vat_first');
+
+    $this->patchJson("/api/payment-methods/{$id}", ['vat_allocation' => 'last', 'end_of_month_extra_days' => null])
+        ->assertOk()
+        ->assertJsonPath('data.vat_allocation', 'last')
+        ->assertJsonPath('data.end_of_month_extra_days', null)
+        ->assertJsonPath('data.installments_count', 3);
+});
+
+it('installments: 422 on vat_first with a single installment, on bounds, and on missing days between (AC-008)', function () {
+    $actor = paymentMethodUserWith(['create', 'update']);
+    $existing = PaymentMethod::factory()->create(['installments_count' => 1]);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/payment-methods', ['name' => 'X', 'code' => 'x1', 'installments_count' => 1, 'vat_allocation' => 'vat_first'])
+        ->assertUnprocessable()->assertJsonValidationErrors(['vat_allocation']);
+    $this->postJson('/api/payment-methods', ['name' => 'X', 'code' => 'x2', 'installments_count' => 61])
+        ->assertUnprocessable()->assertJsonValidationErrors(['installments_count']);
+    $this->postJson('/api/payment-methods', ['name' => 'X', 'code' => 'x3', 'installments_count' => 2])
+        ->assertUnprocessable()->assertJsonValidationErrors(['days_between_installments']);
+    $this->postJson('/api/payment-methods', ['name' => 'X', 'code' => 'x4', 'end_of_month_extra_days' => 32])
+        ->assertUnprocessable()->assertJsonValidationErrors(['end_of_month_extra_days']);
+    $this->patchJson("/api/payment-methods/{$existing->id}", ['vat_allocation' => 'vat_first'])
+        ->assertUnprocessable()->assertJsonValidationErrors(['vat_allocation']);
+
+    $this->assertDatabaseMissing('payment_methods', ['code' => 'x1']);
+});

@@ -41,6 +41,11 @@ class PaymentMethodsAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('payment_instructions', 'textarea'),
             new FieldDefinition('payment_days', 'number'),
+            new FieldDefinition('installments_count', 'number'),
+            new FieldDefinition('days_between_installments', 'number'),
+            new FieldDefinition('end_of_month', 'boolean'),
+            new FieldDefinition('end_of_month_extra_days', 'number'),
+            new FieldDefinition('vat_allocation', 'select'),
             new FieldDefinition('is_active', 'boolean'),
         ];
     }
@@ -71,6 +76,11 @@ class PaymentMethodsAuthorization extends AbstractResourceAuthorization
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'payment_instructions' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'payment_days' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'installments_count' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'days_between_installments' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'end_of_month' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'end_of_month_extra_days' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'vat_allocation' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }

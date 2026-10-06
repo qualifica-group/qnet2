@@ -68,6 +68,7 @@ export const permissions = {
     viewEmails: 'Vedere le email',
     sendEmail: 'Inviare email',
     revealCardNumber: 'Rivelare numero carta',
+    collect: 'Registra incassi',
   },
   resources: {
     users: 'Utenti',
@@ -119,6 +120,7 @@ export const permissions = {
     'units-of-measure': 'Unita di Misura',
     'financial-accounts': 'Gestione Conti',
     'proforma-requests': 'Richieste Proforma',
+    invoices: 'Fatture Attive',
     'product-typologies': 'Tipologie Prodotto',
     // Modulo Task e i suoi cinque configuratori (spec 0101).
     tasks: 'Task',

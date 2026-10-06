@@ -24,10 +24,22 @@ const guide: HelpGuide = {
             ['**Codice modalità di pagamento**', 'Codice per l’esterno, ad esempio MP01.'],
             ['**Descrizione**', 'Descrizione della modalità di pagamento.'],
             ['**Istruzioni di pagamento**', 'Testo con le istruzioni per il cliente.'],
-            ['**Giorni di pagamento**', 'Numero di giorni previsti per il pagamento.'],
+            ['**Giorni di pagamento**', 'Giorni alla **prima scadenza**, contati dalla data del documento.'],
+            ['**Numero di rate**', 'In quante rate si divide il pagamento (1 = rata unica).'],
+            ['**Giorni tra le rate**', 'Distanza in giorni tra una rata e la successiva (con più di una rata).'],
+            ['**Fine mese**', 'Sposta ogni scadenza a fine mese; puoi aggiungere **giorni extra** (ad esempio FM+10 = fine mese più 10 giorni).'],
+            ['**Ripartizione IVA**', 'Come si distribuisce l’IVA sulle rate: **proporzionale** su tutte, **tutta sulla prima**, **tutta sull’ultima**, oppure **prima rata solo IVA**. Le ultime tre richiedono almeno 2 rate.'],
             ['**Attivo**', 'Se lo spegni, la modalità sparisce dai menu a tendina ma i record che la usano restano intatti.'],
           ],
         },
+      ],
+    },
+    {
+      id: 'installments',
+      title: 'Rate e scadenze',
+      blocks: [
+        { type: 'paragraph', text: 'Quando emetti un proforma (vedi la guida Fatture Attive) le **scadenze** si calcolano dalla modalità di pagamento scelta: la prima a **Giorni di pagamento** dalla data del documento, le successive ogni **Giorni tra le rate**, con l’eventuale fine mese. Gli importi seguono la **Ripartizione IVA**.' },
+        { type: 'tip', text: 'Esempio: 3 rate, 30 giorni tra le rate, fine mese + 10 giorni, IVA proporzionale.' },
       ],
     },
     {

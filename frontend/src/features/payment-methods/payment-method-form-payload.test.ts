@@ -13,6 +13,11 @@ const formValues: PaymentMethodFormValues = {
   description: 'Standard bank transfer',
   payment_instructions: 'Use IBAN IT00X0000000000000000000000',
   payment_days: 30,
+  installments_count: 1,
+  days_between_installments: 0,
+  end_of_month: false,
+  end_of_month_extra_days: null,
+  vat_allocation: 'split',
   is_active: true,
 }
 
@@ -27,6 +32,11 @@ function original(
     description: 'Standard bank transfer',
     payment_instructions: 'Use IBAN IT00X0000000000000000000000',
     payment_days: 30,
+    installments_count: 1,
+    days_between_installments: 0,
+    end_of_month: false,
+    end_of_month_extra_days: null,
+    vat_allocation: 'split',
     sort_order: 10,
     is_active: true,
     created_at: '2026-01-01T00:00:00Z',
@@ -49,6 +59,11 @@ describe('buildCreatePayload (spec 0068, AC-101)', () => {
       description: 'Standard bank transfer',
       payment_instructions: 'Use IBAN IT00X0000000000000000000000',
       payment_days: 30,
+      installments_count: 1,
+      days_between_installments: 0,
+      end_of_month: false,
+      end_of_month_extra_days: null,
+      vat_allocation: 'split',
       is_active: true,
     })
   })

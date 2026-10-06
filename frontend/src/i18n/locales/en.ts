@@ -22,13 +22,11 @@ import { registries } from './en-registries'
 import { attributes, productCategories, products } from './en-products'
 import { customFields } from './en-custom-fields'
 import { sectors } from './en-sectors'
+import { accounting } from './en-accounting'
 import { sources } from './en-sources'
 import { vatRates } from './en-vat-rates'
 import { unitsOfMeasure } from './en-units-of-measure'
-import { financialAccounts } from './en-financial-accounts'
-import { proformaRequests } from './en-proforma-requests'
 import { productTypologies } from './en-product-typologies'
-import { paymentMethods } from './en-payment-methods'
 import { tags } from './en-tags'
 import { pipelineStatuses } from './en-pipeline-statuses'
 import { projects } from './en-projects'
@@ -446,10 +444,8 @@ export const en = {
   sources,
   vatRates,
   unitsOfMeasure,
-  financialAccounts,
-  proformaRequests,
+  ...accounting,
   productTypologies,
-  paymentMethods,
   tags,
   projects: { ...projects, stats: moduleStats.projects },
   pipelineStatuses,

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\VatAllocation;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\PaymentMethodFactory;
@@ -23,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * App\Services\PaymentMethods\PaymentMethodOrderManager, never accepted from
  * the client at the FormRequest layer.
  */
-#[Fillable(['name', 'code', 'payment_method_code', 'description', 'payment_instructions', 'payment_days', 'sort_order', 'is_active'])]
+#[Fillable(['name', 'code', 'payment_method_code', 'description', 'payment_instructions', 'payment_days', 'installments_count', 'days_between_installments', 'end_of_month', 'end_of_month_extra_days', 'vat_allocation', 'sort_order', 'is_active'])]
 class PaymentMethod extends BaseModel
 {
     /** @use HasFactory<PaymentMethodFactory> */
@@ -36,6 +37,11 @@ class PaymentMethod extends BaseModel
     {
         return [
             'payment_days' => 'int',
+            'installments_count' => 'int',
+            'days_between_installments' => 'int',
+            'end_of_month' => 'bool',
+            'end_of_month_extra_days' => 'int',
+            'vat_allocation' => VatAllocation::class,
             'sort_order' => 'int',
             'is_active' => 'bool',
         ];

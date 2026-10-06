@@ -25,6 +25,7 @@ export interface TableViewControllerArgs extends RowActionsOptions {
   opportunityId?: number
   quoteId?: number
   defaultFilterModel?: Record<string, unknown>
+  forcedFilterModel?: Record<string, unknown>
   onRowCountChanged?: (count: number | null) => void
   onAction: RowActionHandler
   getBulkActions?: (selection: TableSelection) => BulkAction[]
@@ -63,6 +64,8 @@ export interface TableViewControllerResult {
   setFiltersCustomizedLocally: (hasFilters: boolean) => void
   handleColumnStateChanged: () => void
   handleGridFilterChanged: () => void
+  /** The grid's live column filter model (for adapters mirroring it, e.g. a month strip). */
+  filterModel: Record<string, unknown>
   handleResetLayout: () => Promise<void>
   handleResetFilters: () => Promise<void>
   resettingLayout: boolean
@@ -93,6 +96,7 @@ export function useTableViewController(
     opportunityId,
     quoteId,
     defaultFilterModel,
+    forcedFilterModel,
     onRowCountChanged,
     onAction,
     isBusy,
@@ -118,6 +122,7 @@ export function useTableViewController(
       opportunityId,
       quoteId,
       defaultFilterModel,
+      forcedFilterModel,
       onRowCountChanged,
       getBulkActions,
       disableBuiltinDelete,
@@ -178,6 +183,7 @@ export function useTableViewController(
     setFiltersCustomizedLocally: filters.setFiltersCustomizedLocally,
     handleColumnStateChanged: filters.handleColumnStateChanged,
     handleGridFilterChanged: filters.handleGridFilterChanged,
+    filterModel: filters.filterModel,
     handleResetLayout: filters.handleResetLayout,
     handleResetFilters: filters.handleResetFilters,
     resettingLayout: filters.resettingLayout,

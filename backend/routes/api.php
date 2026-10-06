@@ -339,8 +339,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Referents CRUD (spec 0016) + rewards lazy detail (spec 0059), extracted
     // (file-size split, engineering.md §6) and required INSIDE this auth group.
     require __DIR__.'/api/referents.php';
-    require __DIR__.'/api/financial-accounts.php'; // Financial accounts (spec 0189)
-    require __DIR__.'/api/proforma-requests.php'; // Proforma requests (spec 0193)
+    require __DIR__.'/api/accounting.php'; // Accounting: financial accounts, proforma requests, invoices
 
     require __DIR__.'/api/rewards.php'; // Reward inline status edit (spec 0060 §4, file-size split engineering.md §6)
 

@@ -46,6 +46,7 @@ export interface UseTableViewFiltersStateResult {
   setFiltersCustomizedLocally: (hasFilters: boolean) => void
   handleColumnStateChanged: () => void
   handleGridFilterChanged: () => void
+  filterModel: Record<string, unknown>
   handleResetLayout: () => Promise<void>
   handleResetFilters: () => Promise<void>
   resettingLayout: boolean
@@ -209,6 +210,7 @@ export function useTableViewFiltersState(
     setFiltersCustomizedLocally,
     handleColumnStateChanged,
     handleGridFilterChanged,
+    filterModel,
     handleResetLayout,
     handleResetFilters,
     resettingLayout,

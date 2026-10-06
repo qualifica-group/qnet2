@@ -30,6 +30,11 @@ const SERVER_ERROR_FIELDS = [
   'description',
   'payment_instructions',
   'payment_days',
+  'installments_count',
+  'days_between_installments',
+  'end_of_month',
+  'end_of_month_extra_days',
+  'vat_allocation',
   'is_active',
 ] as const
 
@@ -67,6 +72,11 @@ export function usePaymentMethodForm({ mode, onSuccess }: UsePaymentMethodFormAr
         description: mode.paymentMethod.description,
         payment_instructions: mode.paymentMethod.payment_instructions,
         payment_days: mode.paymentMethod.payment_days,
+        installments_count: mode.paymentMethod.installments_count,
+        days_between_installments: mode.paymentMethod.days_between_installments,
+        end_of_month: mode.paymentMethod.end_of_month,
+        end_of_month_extra_days: mode.paymentMethod.end_of_month_extra_days,
+        vat_allocation: mode.paymentMethod.vat_allocation,
         is_active: mode.paymentMethod.is_active,
       }
     }
@@ -77,6 +87,11 @@ export function usePaymentMethodForm({ mode, onSuccess }: UsePaymentMethodFormAr
       description: null,
       payment_instructions: null,
       payment_days: null,
+      installments_count: 1,
+      days_between_installments: 0,
+      end_of_month: false,
+      end_of_month_extra_days: null,
+      vat_allocation: 'split',
       is_active: true,
     }
   }, [mode])

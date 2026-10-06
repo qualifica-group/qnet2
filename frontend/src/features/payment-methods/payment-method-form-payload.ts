@@ -6,6 +6,21 @@ import type {
 import type { PaymentMethodFormValues } from '@/features/payment-methods/use-payment-method-form'
 
 /**
+ * The installment configuration (spec 0194 D-10). `days_between_installments`
+ * is null in the form when untouched on a single installment: the server needs
+ * an integer, so it falls back to 0.
+ */
+function rateFields(values: PaymentMethodFormValues) {
+  return {
+    installments_count: values.installments_count,
+    days_between_installments: values.days_between_installments ?? 0,
+    end_of_month: values.end_of_month,
+    end_of_month_extra_days: values.end_of_month ? values.end_of_month_extra_days : null,
+    vat_allocation: values.vat_allocation,
+  }
+}
+
+/**
  * Builds the create payload: every field but `sort_order`, which is
  * server-managed (D-1) and never a form field.
  */
@@ -17,6 +32,7 @@ export function buildCreatePayload(values: PaymentMethodFormValues): CreatePayme
     description: values.description,
     payment_instructions: values.payment_instructions,
     payment_days: values.payment_days,
+    ...rateFields(values),
     is_active: values.is_active,
   }
 }
@@ -47,6 +63,22 @@ export function buildUpdatePayload(
   }
   if (values.payment_days !== original.payment_days) {
     payload.payment_days = values.payment_days
+  }
+  const rates = rateFields(values)
+  if (rates.installments_count !== original.installments_count) {
+    payload.installments_count = rates.installments_count
+  }
+  if (rates.days_between_installments !== original.days_between_installments) {
+    payload.days_between_installments = rates.days_between_installments
+  }
+  if (rates.end_of_month !== original.end_of_month) {
+    payload.end_of_month = rates.end_of_month
+  }
+  if (rates.end_of_month_extra_days !== original.end_of_month_extra_days) {
+    payload.end_of_month_extra_days = rates.end_of_month_extra_days
+  }
+  if (rates.vat_allocation !== original.vat_allocation) {
+    payload.vat_allocation = rates.vat_allocation
   }
   if (values.is_active !== original.is_active) {
     payload.is_active = values.is_active

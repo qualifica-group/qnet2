@@ -2,6 +2,8 @@
 
 namespace App\DataObjects\PaymentMethods;
 
+use App\Enums\VatAllocation;
+
 /**
  * Validated payload for a partial (PATCH) payment method update (PUT/PATCH
  * /api/payment-methods/{paymentMethod}, spec 0068).
@@ -32,6 +34,12 @@ final readonly class UpdatePaymentMethodData
         public bool $paymentDaysSubmitted = false,
         public ?bool $isActive = null,
         public bool $isActiveSubmitted = false,
+        public ?int $installmentsCount = null,
+        public ?int $daysBetweenInstallments = null,
+        public ?bool $endOfMonth = null,
+        public ?int $endOfMonthExtraDays = null,
+        public bool $endOfMonthExtraDaysSubmitted = false,
+        public ?VatAllocation $vatAllocation = null,
     ) {}
 
     /**
@@ -53,6 +61,12 @@ final readonly class UpdatePaymentMethodData
             paymentDaysSubmitted: array_key_exists('payment_days', $data),
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
             isActiveSubmitted: array_key_exists('is_active', $data),
+            installmentsCount: isset($data['installments_count']) ? (int) $data['installments_count'] : null,
+            daysBetweenInstallments: isset($data['days_between_installments']) ? (int) $data['days_between_installments'] : null,
+            endOfMonth: array_key_exists('end_of_month', $data) ? (bool) $data['end_of_month'] : null,
+            endOfMonthExtraDays: isset($data['end_of_month_extra_days']) ? (int) $data['end_of_month_extra_days'] : null,
+            endOfMonthExtraDaysSubmitted: array_key_exists('end_of_month_extra_days', $data),
+            vatAllocation: isset($data['vat_allocation']) ? VatAllocation::from($data['vat_allocation']) : null,
         );
     }
 
@@ -88,6 +102,26 @@ final readonly class UpdatePaymentMethodData
 
         if ($this->isActiveSubmitted) {
             $attributes['is_active'] = $this->isActive;
+        }
+
+        if ($this->installmentsCount !== null) {
+            $attributes['installments_count'] = $this->installmentsCount;
+        }
+
+        if ($this->daysBetweenInstallments !== null) {
+            $attributes['days_between_installments'] = $this->daysBetweenInstallments;
+        }
+
+        if ($this->endOfMonth !== null) {
+            $attributes['end_of_month'] = $this->endOfMonth;
+        }
+
+        if ($this->endOfMonthExtraDaysSubmitted) {
+            $attributes['end_of_month_extra_days'] = $this->endOfMonthExtraDays;
+        }
+
+        if ($this->vatAllocation !== null) {
+            $attributes['vat_allocation'] = $this->vatAllocation;
         }
 
         return $attributes;

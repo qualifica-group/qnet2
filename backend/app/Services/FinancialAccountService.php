@@ -93,11 +93,12 @@ class FinancialAccountService
      * Minimal, searchable, paginated list for the for-select standard
      * (ADR 0011), optionally narrowed to one account type.
      */
-    public function forSelect(ForSelectQuery $query, ?FinancialAccountType $type = null): ForSelectResult
+    public function forSelect(ForSelectQuery $query, ?FinancialAccountType $type = null, ?int $companyId = null): ForSelectResult
     {
         $filtered = FinancialAccount::query()
             ->select(['id', 'name', 'iban', 'type'])
             ->when($type !== null, fn (Builder $builder) => $builder->where('type', $type?->value))
+            ->when($companyId !== null, fn (Builder $builder) => $builder->where('company_id', $companyId))
             ->when($query->hasSearch(), fn (Builder $builder) => $builder->where('name', 'like', '%'.$query->search.'%'));
 
         $result = $query->page($filtered, fn (Builder $builder) => $builder->orderBy('name')->orderBy('id'));

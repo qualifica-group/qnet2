@@ -41,6 +41,21 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'issue',
+      title: 'Issue the proforma',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'On a **Pending** request row press the **Issue proforma** action (the invoice create permission is required).',
+            'In the dialog check the header, add lines from the work order’s **Available lines** (**Add** or **Add all**) and review the due dates and totals.',
+            'Press **Issue**: the proforma gets the issuing company’s N/YYYY number and the request becomes **Issued**.',
+          ],
+        },
+        { type: 'paragraph', text: 'Once issued, the action is disabled. If you delete the proforma from **Active invoices**, the request returns to **Pending** and can be issued again. See the **Active invoices** guide.' },
+      ],
+    },
+    {
       id: 'manage',
       title: 'Open, edit and delete',
       blocks: [

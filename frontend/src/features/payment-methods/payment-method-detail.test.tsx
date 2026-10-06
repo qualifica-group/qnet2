@@ -35,6 +35,11 @@ function paymentMethod(
     description: 'Standard bank transfer',
     payment_instructions: 'Use the company IBAN',
     payment_days: 30,
+    installments_count: 1,
+    days_between_installments: 0,
+    end_of_month: false,
+    end_of_month_extra_days: null,
+    vat_allocation: 'split',
     sort_order: 10,
     is_active: true,
     created_at: '2026-01-01T09:00:00Z',
@@ -114,7 +119,7 @@ describe('PaymentMethodDetailView — detail fields (AC-107)', () => {
   })
 
   it('shows the inactive status', () => {
-    render(<PaymentMethodDetailView paymentMethod={paymentMethod({ is_active: false })} />)
+    render(<PaymentMethodDetailView paymentMethod={paymentMethod({ is_active: false, end_of_month: true })} />)
 
     expect(screen.getByText('No')).toBeInTheDocument()
   })

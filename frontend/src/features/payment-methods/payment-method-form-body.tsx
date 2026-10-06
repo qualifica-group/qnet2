@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Form, FormControl } from '@/components/ui/form'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
+import { PaymentMethodRateFields } from '@/features/payment-methods/payment-method-rate-fields'
 import { usePaymentMethodForm } from '@/features/payment-methods/use-payment-method-form'
 import type {
   PaymentMethodDetail,
@@ -206,6 +207,8 @@ export function PaymentMethodFormBody({ mode, onSuccess, onCancel }: PaymentMeth
               </MetaField>
             </FormSection>
           )}
+
+          <PaymentMethodRateFields control={form.control} />
 
           {serverError && (
             <p className="text-sm font-medium text-destructive" role="alert">

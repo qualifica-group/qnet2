@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0194-active-invoicing" status="approved" owner="utente" date="2026-10-06">
+
+  <goal>
+    Fatturazione Attiva. Dall'elenco Richieste Proforma (spec 0193) la Contabilita' apre, con
+    un'azione di riga, la modale di emissione del documento (proforma) precompilata dalle
+    righe della commessa: righe dall'offerta, da catalogo o libere, pagamento, banca, data,
+    note e totali, con lo scadenzario delle rate calcolato dal metodo di pagamento. In
+    Contabilita' › Attiva › Fatture Attive un elenco AG Grid mostra proforma e fatture. Ha
+    una striscia mesi con conteggi e totali, i totali del filtro corrente e il dettaglio di
+    righe e scadenze. Permette visualizza, modifica, elimina, registrazione del numero
+    fattura esterno (proforma → fattura), tag, scostamento e registrazione degli incassi
+    sulle rate.
+  </goal>
+
+  <context>
+    Brief utente: prompt_temp.md + sorgenti legacy QNet (Livewire Accounting\GenerateProForma,
+    Proforma\Proforma, tabelle `proformas`/`proformaservices`, model Proformaservice/Proformfora).
+    Branch: feature/amministrazione. Segue la spec 0193 (proforma_requests).
+
+    Nomi qnet2 verificati 2026-10-06:
+    - ProformaRequest (`proforma_requests`: work_order_id, kind consultancy|institution,
+      supplier_id -> registries, payment_method_id, status pending|issued, issued_at, note).
+      Service app/Services/ProformaRequestService.php; catalogo azioni
+      app/Tables/ProformaRequests/ProformaRequestColumnCatalog.php; FE
+      features/proforma-requests/proforma-requests-table.tsx (RowActionHandler con switch su
+      action.key); `resolveActionState` generico in features/table/row-actions.tsx.
+    - Commessa WorkOrder::quoteLines() (righe REVENUE coperte, pivot quote_line_work_order);
+      WorkOrder -> Quote (company_id -> companies, payment_method_id, opportunity()->registry()).
+    - QuoteLine: product_id, additional_description, quantity dec(15,2), unit_price dec(15,2),
+      vat_rate_id -> vat_rates, net_amount/vat_amount/total_amount, line_type REVENUE|COST.
+    - Product: price, vat_rate_id, supplier_id -> registries, product_typology_id ->
+      product_typologies (code consultancy|institution, IMMUTABILE).
+    - VatRate (`vat_rates`: name, rate dec(5,2)).
+    - PaymentMethod (`payment_methods`: name, code, payment_method_code "MP05", description,
+      payment_instructions, payment_days nullable, sort_order, is_active). NESSUNA config di
+      rateizzazione oggi; nessun servizio scadenze.
+    - Company (`companies`: denomination, vat_number) = societa' emittente (dall'offerta).
+      FinancialAccount (`financial_accounts`: type bank_account|card|cash, company_id, name, iban).
+    - Registry = intestatario (dati fiscali in personal_data, indirizzo in addresses).
+    - Tabelle: AbstractTableDefinition con `aggregates(Builder)` -> meta.aggregates nella
+      risposta SSRM (spec 0156, gia' consumato dal FE: features/table/rows-types.ts),
+      applyDerivedFilter/applyDerivedSort; export generico POST exports/{domain}.
+    - Envelope: BaseApiController (ok/created/okWithPermissions/noContent/fail).
+    - Menu: config/navigation/accounting.php, gruppo `accounting-receivable` ("Attiva").
+    - Modulo di riferimento della pipeline: FinancialAccounts (spec 0189); master-detail:
+      features/opportunities/opportunity-quotes-detail-renderer.tsx; editor righe:
+      features/quotes/quote-lines-field.tsx, quote-product-select.tsx, quote-totals.ts.
+
+    Decisioni utente 2026-10-06:
+    - D-1 Scadenzario: si ESTENDE payment_methods con la configurazione di rateizzazione.
+      Alla creazione si genera la tabella delle rate `invoice_installments`.
+    - D-2 Righe Ente (kind=institution): precompilate con quantita'/prezzo/IVA della riga
+      d'offerta, modificabili a mano. Intestatario = fornitore della richiesta. Nessun
+      documento "ProformaEnte" e nessun calcolo provvigioni.
+    - D-3 Documento unico come nel legacy: nasce `proforma` con progressivo. Diventa
+      `invoice` (fattura) quando si registrano il numero e la data esterni (Fatture in
+      Cloud). L'elenco ha i tab Tutte / Proforma / Fatture.
+    - D-4 Extra richiesti: Registra incasso e Tag Preventivo/Consuntivo + scostamento in
+      QUESTA spec. PDF documento e Invio email/sollecito: decisione utente 2026-10-06, vanno
+      entrambi nella spec successiva 0195, vedi scope/out.
+
+    Decisioni tecniche proposte (D-5..D-16, da validare con la spec):
+    - D-5 Tabelle inglesi: `invoices`, `invoice_lines`, `invoice_installments`,
+      `invoice_number_sequences` (FK vere, importi dec(15,2), utf8mb4). Migliorie sul legacy:
+      quantita' dec(15,2) (era 5,2), IVA su riga (vat_rate_id + importi calcolati
+      persistiti), niente join per `document_number` sulle scadenze (FK invoice_id),
+      societa' emittente esplicita.
+    - D-6 Numerazione: progressivo per (societa' emittente, anno della data documento) in
+      `invoice_number_sequences` con lockForUpdate nella transazione. Unique
+      (company_id, year, number); etichetta "{number}/{year}". Un numero eliminato NON
+      viene riutilizzato.
+    - D-7 Un documento per richiesta: crearlo imposta la richiesta `issued` + issued_at. Se
+      la richiesta e' gia' issued -> 409. Eliminare il documento riporta la richiesta a
+      pending (issued_at NULL), cosi' si puo' rigenerare.
+    - D-8 Intestatario precompilato: consultancy -> registry dell'opportunita' dell'offerta;
+      institution -> supplier della richiesta (se NULL -> registry dell'opportunita').
+      Sempre modificabile nella modale. Societa' emittente precompilata da quote.company_id,
+      modificabile. Banca = financial_account di tipo bank_account della stessa societa',
+      precompilata se ne esiste una sola.
+    - D-9 Righe disponibili: righe REVENUE della commessa filtrate per tipologia della
+      richiesta (consultancy; institution + stesso supplier_id o NULL). La modale le mostra
+      in una tabella con "Aggiungi" per riga e "Aggiungi tutte"; una riga gia' aggiunta mostra
+      "Aggiunta". Si possono aggiungere righe da catalogo (prodotto -> descrizione, prezzo,
+      IVA di default) o libere (solo descrizione). Gli importi sono ricalcolati SEMPRE dal
+      server (net = qty*price arrotondato a 2, vat = net*rate/100 arrotondato a 2); il client
+      fa solo l'anteprima.
+    - D-10 Rateizzazione su payment_methods (nuove colonne): installments_count (default 1),
+      payment_days ESISTENTE = giorni alla prima scadenza, days_between_installments
+      (default 0), end_of_month bool, end_of_month_extra_days nullable (es. FM+10),
+      vat_allocation split|first|last|vat_first (default split). Mesi esclusi del legacy
+      (exclude_month) NON portati.
+    - D-11 Calcolo scadenze (classe pura InstallmentScheduleCalculator).
+      - Data della rata i: base = data documento + payment_days + (i-1)*days_between.
+      - Con end_of_month l'offset si conta in mesi (ceil(giorni/30)) e si va a fine mese,
+        come il legacy ("30 gg DF FM"). Poi si sommano end_of_month_extra_days.
+      - Importi: split = totale/n; first|last = imponibile/n con l'IVA intera sulla
+        prima/ultima rata; vat_first = rata 1 solo IVA e imponibile su n-1 rate (richiede
+        n>=2, altrimenti 422 sul metodo).
+      - Arrotondamento a 2 decimali, residuo sull'ultima rata: la somma delle rate e' sempre
+        uguale al totale.
+    - D-12 Le rate si calcolano lato server alla creazione e si ricalcolano alla modifica.
+      Un endpoint di anteprima alimenta la modale. Nessuna modifica manuale delle singole
+      rate (fuori scope).
+    - D-13 Incasso per rata: collected_amount + collected_at. Stato unpaid|partially_paid|paid
+      derivato (paid se collected >= amount). Annullabile. Stato di pagamento del documento
+      calcolato (non persistito) in elenco e dettaglio:
+      - paid: tutte le rate pagate;
+      - not_due: prima rata non pagata non ancora scaduta;
+      - overdue: scaduta da 1 a 21 giorni;
+      - seriously_overdue: scaduta da oltre 21 giorni (soglia in costante, come il legacy).
+    - D-14 Modifica completa (PUT: date, pagamento, banca, intestatario, righe -> rate
+      ricalcolate) ed eliminazione SOLO se nessuna rata ha incassi -> 409. La modifica
+      "dettagli" (PATCH: numero/data esterni, tag, scostamento, note interne) e' sempre
+      consentita. Numero esterno valorizzato -> type=invoice; svuotato -> type=proforma.
+    - D-15 Elenco: dominio SSRM `invoices`.
+      - Tab tipo = filtro set su `type`.
+      - Striscia mesi = filtro derivato `document_month` (set 1..12) + `document_year`.
+        Conteggi e totali per mese da GET /api/invoices/monthly-summary?year=&type=.
+      - Footer totali (imponibile, IVA, totale, incassato, residuo) = meta.aggregates sulla
+        query filtrata.
+      - Default: anno corrente, mese corrente, tab Tutte, sort document_date desc, number desc.
+      - Master-detail: la riga espansa carica GET /api/invoices/{id} (righe + rate).
+    - D-16 Azione di riga `invoice` (icona file-plus-2) nell'elenco Richieste Proforma, con
+      permesso invoices.create, disabilitata se status=issued (resolveActionState).
+      ProformaRequestResource aggiunge `invoice: {id, number_label}|null`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazioni: alter payment_methods (D-10); invoices, invoice_lines, invoice_installments, invoice_number_sequences.</item>
+      <item>Model Invoice (LogsModelActivity), InvoiceLine, InvoiceInstallment, InvoiceNumberSequence; enum InvoiceType, InvoiceTag, InvoicePaymentStatus, InstallmentStatus, VatAllocation; factory.</item>
+      <item>PaymentMethod: FormRequest/Resource/DTO/TableDefinition estesi con i campi di rateizzazione; FE form metodo di pagamento esteso.</item>
+      <item>InstallmentScheduleCalculator (puro) + InvoiceNumberAllocator + InvoiceService (draft, create, update, updateDetails, delete, recordCollection, clearCollection) + InvoiceDraftBuilder.</item>
+      <item>Policy InvoicePolicy, InvoicesAuthorization, config/authorization.php, permessi invoices.*.</item>
+      <item>FormRequest, Resource, controller, rotte routes/api/invoices.php.</item>
+      <item>TableDefinition `invoices` + ColumnCatalog + aggregates + filtri derivati mese/anno + config/tables.php; export generico.</item>
+      <item>Endpoint monthly-summary e installment-preview.</item>
+      <item>Azione `invoice` + campo `invoice` nelle Richieste Proforma (backend catalogo/resource + FE).</item>
+      <item>Menu: voce "Fatture Attive" sotto accounting-receivable; activity log; morph map `invoice`.</item>
+      <item>FE modulo features/invoices: modale emissione/modifica (righe disponibili, editor righe, testata, anteprima rate, totali), elenco con tab tipo, striscia mesi, footer totali, master-detail, dettaglio, dialog dettagli (numero esterno/tag/scostamento/note interne), registra/annulla incasso, elimina. Pagina, rotta, breadcrumb, i18n IT/EN, permessi, icona.</item>
+      <item>Guide in-app IT/EN: nuova `invoices`, aggiornate `proforma-requests` e `payment-methods`.</item>
+      <item>Test ESSENZIALI (richiesta utente), vedi acceptance_criteria.</item>
+    </in>
+    <out>
+      <item>PDF del documento e invio email/sollecito (spec 0195: DocumentLayoutModule::Invoices + generatore DOCX->PDF esistente; EmailTemplateModule::Invoices + outbound_emails polimorfico esistente).</item>
+      <item>Fatturazione elettronica SDI/XML e integrazione API Fatture in Cloud (il numero esterno si inserisce a mano).</item>
+      <item>Documento "ProformaEnte" e calcolo provvigioni fornitore (D-2).</item>
+      <item>Modifica manuale delle singole rate; mesi esclusi nella rateizzazione.</item>
+      <item>Filtro per categoria prodotto e per business unit del legacy (la colonna U.A. diventa la societa' emittente).</item>
+      <item>Import dei record legacy proformas/proformaservices/schedules.</item>
+      <item>Note CRM sul documento; creazione documenti senza richiesta proforma.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <table name="payment_methods (alter)">
+      installments_count unsignedTinyInteger NOT NULL default 1 (1..60);
+      days_between_installments unsignedSmallInteger NOT NULL default 0;
+      end_of_month boolean NOT NULL default false;
+      end_of_month_extra_days unsignedTinyInteger nullable (0..31);
+      vat_allocation string(16) NOT NULL default 'split' — split|first|last|vat_first.
+      (payment_days esistente = giorni alla prima scadenza; NULL = 0.)
+    </table>
+    <table name="invoice_number_sequences">
+      id; company_id FK companies cascadeOnDelete; year unsignedSmallInteger; last_number unsignedInteger default 0;
+      unique(company_id, year); timestamps.
+    </table>
+    <table name="invoices">
+      id bigIncrements;
+      type string(16) NOT NULL default 'proforma', index — proforma|invoice;
+      company_id FK companies restrictOnDelete; number unsignedInteger; year unsignedSmallInteger;
+      unique(company_id, year, number);
+      document_date date, index;
+      proforma_request_id FK proforma_requests nullable nullOnDelete, unique;
+      work_order_id FK work_orders nullable nullOnDelete, index; quote_id FK quotes nullable nullOnDelete;
+      customer_registry_id FK registries restrictOnDelete, index;
+      payment_method_id FK payment_methods restrictOnDelete;
+      financial_account_id FK financial_accounts nullable nullOnDelete;
+      net_amount, vat_amount, total_amount decimal(15,2) NOT NULL;
+      external_number string(30) nullable, index; external_date date nullable;
+      notes text nullable (stampate); internal_note text nullable;
+      tag string(16) nullable — estimate|final; deviation decimal(15,2) nullable;
+      created_by FK users restrictOnDelete; timestamps.
+      Indici: (year, document_date), (type, document_date).
+    </table>
+    <table name="invoice_lines">
+      id; invoice_id FK invoices cascadeOnDelete, index;
+      quote_line_id FK quote_lines nullable nullOnDelete; product_id FK products nullable restrictOnDelete;
+      description string(500) NOT NULL; quantity decimal(15,2); unit_price decimal(15,2);
+      vat_rate_id FK vat_rates restrictOnDelete; net_amount, vat_amount, total_amount decimal(15,2);
+      sort_order unsignedSmallInteger; timestamps.
+    </table>
+    <table name="invoice_installments">
+      id; invoice_id FK invoices cascadeOnDelete; sequence unsignedTinyInteger; unique(invoice_id, sequence);
+      due_date date, index; amount decimal(15,2); payment_method_code string(32) nullable (snapshot MP..);
+      collected_amount decimal(15,2) nullable; collected_at date nullable; timestamps.
+    </table>
+
+    <resource name="InvoiceResource">
+      { id, type, number, year, number_label: "12/2026", document_date, company: {id, name},
+        customer: {id, name, vat_number|null}, payment_method: {id, name}, financial_account: {id, name, iban}|null,
+        proforma_request: {id, kind}|null, work_order: {id, code, title}|null, quote: {id, code}|null,
+        net_amount, vat_amount, total_amount, collected_amount, residual_amount,
+        payment_status: "paid"|"not_due"|"overdue"|"seriously_overdue",
+        external_number, external_date, notes, internal_note, tag: "estimate"|"final"|null, deviation,
+        has_collections: bool,
+        lines: [{ id, quote_line_id, product: {id, name}|null, description, quantity, unit_price,
+                  vat_rate: {id, name, rate}, net_amount, vat_amount, total_amount, sort_order }],
+        installments: [{ id, sequence, due_date, amount, payment_method_code, collected_amount,
+                         collected_at, status: "unpaid"|"partially_paid"|"paid" }],
+        created_by: {id, name}, created_at, updated_at }
+      Importi serializzati come stringhe decimali "1234.50" (coerente con i decimal cast).
+    </resource>
+
+    <payload name="InvoiceWritePayload (POST create / PUT update)">
+      { document_date: date (required), company_id: int (required, exists companies),
+        customer_registry_id: int (required, exists registries), payment_method_id: int (required, attivo),
+        financial_account_id: int|null (bank_account della stessa company_id, altrimenti 422),
+        notes: string|null (max 5000), internal_note: string|null (max 5000),
+        tag: "estimate"|"final"|null,
+        lines: [ { quote_line_id: int|null, product_id: int|null, description: string (required, max 500),
+                   quantity: decimal (required, gt 0, max 9999999), unit_price: decimal (required, between -9999999999 and 9999999999),
+                   vat_rate_id: int (required, exists vat_rates) } ] (required, min 1, max 200) }
+      Il totale documento deve essere > 0 -> altrimenti 422 { errors.lines: 'The document total must be greater than zero.' }.
+      quote_line_id deve appartenere alle righe della commessa della richiesta (altrimenti 422).
+    </payload>
+
+    <endpoint method="GET" path="/api/proforma-requests/{proformaRequest}/invoice-draft">
+      <response status="200">{ success, message, data: {
+        proforma_request: {id, kind, note}, work_order: {id, code, title}, quote: {id, code},
+        defaults: { document_date: today, company: {id, name}|null, customer: {id, name}|null,
+                    payment_method: {id, name}|null, financial_account: {id, name, iban}|null, notes: null },
+        available_lines: [{ quote_line_id, product: {id, name}, description, quantity, unit_price,
+                            vat_rate: {id, name, rate}, net_amount, vat_amount, total_amount }],
+        bank_accounts: [{ id, name, iban, company_id }] } }</response>
+      <errors>403 senza invoices.create o senza proforma-requests.view; 404; 409 'This proforma request has already been invoiced.'</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/proforma-requests/{proformaRequest}/invoice">
+      <request>InvoiceWritePayload</request>
+      <response status="201">{ success, message: 'Created', data: InvoiceResource }. La richiesta passa a issued + issued_at. Tutto in una transazione.</response>
+      <errors>403 come sopra; 409 gia' fatturata; 422 validazione</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/invoices/installment-preview">
+      <request>{ document_date: date, payment_method_id: int, net_amount: decimal, vat_amount: decimal, total_amount: decimal }</request>
+      <response status="200">{ success, message, data: [{ sequence, due_date, amount, payment_method_code }] }</response>
+      <errors>403 senza invoices.create e senza invoices.update; 422 (vat_first con 1 rata -> errors.payment_method_id)</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/invoices/{invoice}">
+      <response status="200">{ success, message, data: InvoiceResource, permissions }</response>
+      <errors>403 senza invoices.view; 404</errors>
+    </endpoint>
+    <endpoint method="PUT" path="/api/invoices/{invoice}">
+      <request>InvoiceWritePayload (company_id NON modificabile: diverso dall'attuale -> 422; numero invariato)</request>
+      <response status="200">{ success, message: 'OK', data: InvoiceResource, permissions } — righe sostituite, rate ricalcolate</response>
+      <errors>403 senza invoices.update; 409 'This invoice has collected installments and cannot be modified.'; 422</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/invoices/{invoice}/details">
+      <request>{ external_number: string|null (max 30), external_date: date|null (required_with external_number), tag: "estimate"|"final"|null, deviation: decimal|null, internal_note: string|null }</request>
+      <response status="200">{ success, message: 'OK', data: InvoiceResource, permissions } — type = external_number ? invoice : proforma</response>
+      <errors>403 senza invoices.update; 422</errors>
+    </endpoint>
+    <endpoint method="DELETE" path="/api/invoices/{invoice}">
+      <response status="204">nessun body; la richiesta proforma collegata torna pending (issued_at NULL)</response>
+      <errors>403 senza invoices.delete; 409 'This invoice has collected installments and cannot be deleted.'</errors>
+    </endpoint>
+    <endpoint method="PUT" path="/api/invoice-installments/{installment}/collection">
+      <request>{ collected_amount: decimal (required, gt 0, lte amount), collected_at: date (required) }</request>
+      <response status="200">{ success, message: 'OK', data: InvoiceResource (del documento) }</response>
+      <errors>403 senza invoices.collect; 422</errors>
+    </endpoint>
+    <endpoint method="DELETE" path="/api/invoice-installments/{installment}/collection">
+      <response status="200">{ success, message: 'OK', data: InvoiceResource } — collected_amount/at azzerati</response>
+      <errors>403 senza invoices.collect</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/invoices/monthly-summary?year=2026&amp;type=all|proforma|invoice">
+      <response status="200">{ success, message, data: { year, months: [{ month: 1..12, count, total_amount }] (12 voci sempre presenti) } }</response>
+      <errors>403 senza invoices.viewAny; 422 year fuori 2000..2100</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/invoices/rows (SSRM generico)">
+      <response status="200">righe { id, number_label, number, document_date, type, external_number, external_date,
+        customer, company, payment_method, work_order_code, quote_code, net_amount, vat_amount, total_amount,
+        collected_amount, residual_amount, payment_status, tag, deviation,
+        actions: [view|update|details|delete|activity] };
+        filtri: set su type/payment_method/company/tag; testo su customer/external_number/number_label; date su document_date;
+        derivati document_year (set) e document_month (set 1..12); sort su document_date/number/customer/total_amount;
+        default sort document_date desc, number desc; meta.aggregates { net_amount, vat_amount, total_amount, collected_amount, residual_amount } sulla query filtrata.
+        collected_amount via withSum (nessun N+1); payment_status da subquery sulla prima rata non pagata.</response>
+      <errors>403 senza invoices.viewAny</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/proforma-requests/rows (esistente)">
+      <response status="200">ogni riga aggiunge invoice_id: int|null; nuova azione `invoice` (icona file-plus-2, permesso invoices.create) nel catalogo</response>
+    </endpoint>
+    <endpoint method="PUT|POST" path="/api/payment-methods (esistenti)">
+      <request>+ installments_count int 1..60; days_between_installments int 0..365 (required se installments_count > 1);
+        end_of_month bool; end_of_month_extra_days int 0..31|null; vat_allocation split|first|last|vat_first (vat_first richiede installments_count >= 2)</request>
+      <response status="200">PaymentMethodResource + gli stessi 5 campi</response>
+    </endpoint>
+
+    <permissions>invoices.viewAny|view|create|update|delete|export|viewActivity|collect (import escluso).</permissions>
+    <navigation>
+      accounting › accounting-receivable › children += { key: 'invoices', label: 'navigation.invoices'
+      ("Fatture Attive"), icon: 'file-text', route: '/invoices', permission: 'invoices.view' }
+    </navigation>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">InstallmentScheduleCalculator (unit):
+      - 3 rate, 30 gg, 30 tra rate, split, totale 1000.00 -> importi 333.33/333.33/333.34;
+      - FM su data 31/01 con 30 gg -> 28/02 (29 in bisestile); FM+10 -> 10/03;
+      - first e last -> IVA intera sulla prima/ultima rata;
+      - vat_first con n=3 -> rata 1 = IVA, imponibile su 2 rate;
+      - la somma delle rate e' sempre uguale al totale.</criterion>
+    <criterion id="AC-002">Draft di una richiesta institution del fornitore A: available_lines contiene solo le righe Ente
+      di A della commessa e il customer di default e' A. Per una consultancy: solo righe Consulenza, customer = registry
+      dell'opportunita', company = quote.company_id.</criterion>
+    <criterion id="AC-003">POST invoice:
+      - crea documento type=proforma con numero = ultimo+1 per (company, anno) e importi ricalcolati dal server
+        (il client manda un net falso -> ignorato);
+      - crea le rate secondo il metodo di pagamento;
+      - porta la richiesta a issued con issued_at;
+      - un secondo POST -> 409 senza record creati;
+      - totale 0 -> 422; quote_line_id estraneo alla commessa -> 422; banca di altra societa' -> 422.</criterion>
+    <criterion id="AC-004">Due societa' diverse nello stesso anno hanno progressivi indipendenti. Il cambio anno riparte da 1.
+      Dopo un DELETE il numero non viene riassegnato.</criterion>
+    <criterion id="AC-005">PATCH details:
+      - external_number + external_date -> type=invoice; svuotato -> type=proforma;
+      - incasso su una rata -> status della rata e collected_amount aggiornati;
+      - con un incasso registrato PUT e DELETE -> 409;
+      - annullato l'incasso, DELETE -> 204 e la richiesta torna pending.</criterion>
+    <criterion id="AC-006">Authz: senza il permesso relativo -> 403 su draft/create (invoices.create), show (view),
+      PUT/PATCH (update), DELETE (delete), collection (collect), tabella e monthly-summary (viewAny).</criterion>
+    <criterion id="AC-007">SSRM invoices:
+      - colonne del contratto; filtro document_month=[1,3] + document_year=2026 restituisce solo quei mesi;
+      - meta.aggregates sono uguali alla somma delle righe filtrate;
+      - monthly-summary restituisce 12 mesi con count/total per tipo;
+      - SSRM proforma-requests espone invoice_id e l'azione `invoice` solo con invoices.create.</criterion>
+    <criterion id="AC-008">PaymentMethod: i 5 nuovi campi si salvano e si rileggono; vat_first con 1 rata -> 422.</criterion>
+    <criterion id="AC-009">(FE) Dalla Richiesta Proforma l'azione `invoice` apre la modale precompilata.
+      - "Aggiungi"/"Aggiungi tutte" spostano le righe disponibili nel documento (marcate "Aggiunta");
+      - riga da catalogo e riga libera aggiungibili; totali e anteprima rate si aggiornano al cambio di pagamento/righe;
+      - "Emetti" crea il documento e aggiorna la griglia; con richiesta issued l'azione e' disabilitata.</criterion>
+    <criterion id="AC-010">(FE) Elenco Fatture Attive:
+      - tab Tutte/Proforma/Fatture e click su un mese filtrano la griglia; footer totali da meta.aggregates;
+      - la riga espansa mostra righe e scadenze, con registra/annulla incasso secondo i permessi;
+      - azioni dettagli/modifica/elimina secondo i permessi;
+      - parity i18n e guide IT/EN verdi; tsc -b, ESLint, Pint puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Test essenziali (richiesta utente):
+      - 1 unit Pest per il calcolatore (AC-001);
+      - 1 feature Pest per draft/create/numbering (AC-002..004);
+      - 1 per details/collection/delete + authz (AC-005..006);
+      - 1 per tabelle/summary (AC-007);
+      - AC-008 aggiunto al test esistente dei metodi di pagamento;
+      - FE: 1 test della modale (AC-009) e 1 della striscia mesi/footer (AC-010);
+      - parity i18n/help. Nessuna suite estesa.</item>
+    <item>Nessuna nuova dipendenza. Authz server-side su ogni endpoint (Policy) + TableDefinition::viewAny.</item>
+    <item>Importi ricalcolati SEMPRE lato server con arrotondamento a 2 decimali (bcmath/round, niente float accumulati su somme di documento); il client fa solo anteprima.</item>
+    <item>Numerazione dentro DB::transaction con lockForUpdate sulla sequenza: nessun duplicato sotto concorrenza (garantito anche dall'unique).</item>
+    <item>Tipologie risolte per product_typologies.code, mai per nome. Soglia "seriamente scaduta" (21 gg) in costante.</item>
+    <item>Nessun N+1 nell'SSRM (withSum/subquery); filtri derivati da allow-list, nessun whereRaw/orderByRaw da input; `$request->safe()`; $fillable esplicito; nessun throttle.</item>
+    <item>Identificatori inglesi, etichette italiane in i18n; file &lt; 300 righe (500 hard): la modale va divisa (testata, righe disponibili, editor righe, rate+totali). UI compatta e responsive (375/768/1024).</item>
+    <item>Test esistenti da aggiornare per requisito cambiato: QuoteWorkflowMigrationTest (step rollback +N migrazioni), FieldCatalogueEndpointTest (+ invoices), help-guide-keys.test.ts (+1 chiave).</item>
+    <item>Dopo il deploy: php artisan permissions:sync. Manuale Claude Docs: aggiornare se il connettore e' accessibile, altrimenti segnalare le sezioni.</item>
+  </constraints>
+
+</spec>

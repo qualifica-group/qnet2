@@ -21,7 +21,7 @@ it('200: field catalogue is [name, code, payment_method_code, description, payme
         ->assertJsonPath('success', true);
 
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
-    expect($keys)->toBe(['name', 'code', 'payment_method_code', 'description', 'payment_instructions', 'payment_days', 'is_active']);
+    expect($keys)->toBe(['name', 'code', 'payment_method_code', 'description', 'payment_instructions', 'payment_days', 'installments_count', 'days_between_installments', 'end_of_month', 'end_of_month_extra_days', 'vat_allocation', 'is_active']);
 
     $fields = collect($response->json('data.fields'))->keyBy('key');
     expect($fields['name']['mandatory'])->toBeTrue()
