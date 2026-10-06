@@ -156,6 +156,13 @@ export const tasks = {
     created_at: 'Created at',
     updated_at: 'Updated at',
     recurrenceRule: 'Rule',
+    recurrenceCard: {
+      offHint: 'This task does not repeat. Turn on a recurrence to generate its future occurrences automatically.',
+      endsNever: 'No end date',
+      endsOn: 'Until {{date}}',
+      endsAfter_one: '{{count}} occurrence',
+      endsAfter_other: '{{count}} occurrences',
+    },
     inlineEdit: {
       edit: 'Edit {{field}}',
       save: 'Save',
@@ -181,6 +188,10 @@ export const tasks = {
       deleteSuccess: 'Sub-task deleted.',
       deleteError: 'Could not delete the sub-task. Please try again.',
       reorderError: 'Could not reorder the sub-tasks. Please try again.',
+      doneOf_one: 'of {{count}} done',
+      doneOf_other: 'of {{count}} done',
+      overallProgress: 'Overall sub-task progress',
+      emptyHint: 'Break the work into smaller steps, each with its own status, assignees and progress.',
     },
   },
   form: {

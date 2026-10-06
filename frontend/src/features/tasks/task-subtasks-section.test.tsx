@@ -139,6 +139,34 @@ describe('TaskSubtasksSection — listing (AC-085)', () => {
     expect(screen.getByText(label('tasks.detail.subtasksEmpty'))).toBeInTheDocument()
   })
 
+  it('sums up the done children and their mean completion above the list', () => {
+    renderSection([
+      taskSubtask({ completion_percentage: 100 }),
+      taskSubtask({ id: 102, title: 'Inviare la conferma', completion_percentage: 50 }),
+    ])
+
+    expect(screen.getByText(label('tasks.detail.subtaskPanel.doneOf_other').replace('{{count}}', '2'))).toBeInTheDocument()
+    expect(
+      screen.getByRole('progressbar', { name: label('tasks.detail.subtaskPanel.overallProgress') }),
+    ).toHaveAttribute('aria-valuenow', '75')
+  })
+
+  it('explains the panel in its empty state and shows no summary', () => {
+    renderSection([])
+
+    expect(screen.getByText(label('tasks.detail.subtaskPanel.emptyHint'))).toBeInTheDocument()
+    expect(
+      screen.queryByRole('progressbar', { name: label('tasks.detail.subtaskPanel.overallProgress') }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows the assignees as avatars rather than a comma list', () => {
+    renderSection([taskSubtask({ assignees: [{ id: 31, name: 'Dario Dini' }] })])
+
+    expect(screen.queryByText('Dario Dini')).not.toBeInTheDocument()
+    expect(screen.getByText('DD')).toBeInTheDocument()
+  })
+
   it('renders the child status badge and its own derived percentage', () => {
     renderSection([taskSubtask({ completion_percentage: 75 })])
 

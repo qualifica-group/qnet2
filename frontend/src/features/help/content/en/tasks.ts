@@ -321,11 +321,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "In the detail's **Sub-tasks** panel, drag a row (by its handle) to reorder it, and each row lets you complete, reopen or delete that single sub-task, whenever your permissions allow it.",
+          text: "The detail's **Sub-tasks** panel shows at the top how many sub-tasks are done and the overall progress. Press a sub-task's title to open it in a window above the parent task, which stays open underneath: changes made there refresh the list right away. Drag a row (by its handle) to reorder it; the circle at the start of the row completes the sub-task (the green check reopens it) and the bin, shown when you hover the row, deletes it, whenever your permissions allow it.",
         },
         {
           type: 'paragraph',
-          text: 'With **Recurring** on, QNet creates the future occurrences by itself. Pick the frequency — Daily, Weekly, Monthly, Yearly or Custom (every N days) — the interval in **Repeat every** and the end: On a date, After a number of occurrences or Never. "After a number of occurrences" counts the occurrences actually created, not the calculated candidates.',
+          text: 'In the detail, the **Recurrence** section sums the rule up in a tile: frequency, the descriptive sentence, the picked weekdays, the end and "Workdays only". Press the tile (or the pencil) to edit it. With **Recurring** on, QNet creates the future occurrences by itself. Pick the frequency — Daily, Weekly, Monthly, Yearly or Custom (every N days) — the interval in **Repeat every** and the end: On a date, After a number of occurrences or Never. "After a number of occurrences" counts the occurrences actually created, not the calculated candidates.',
         },
         {
           type: 'paragraph',

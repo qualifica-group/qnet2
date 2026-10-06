@@ -25,6 +25,17 @@ export function monthName(month: number, language: string): string {
 }
 
 /**
+ * Locale-aware one-letter weekday ("L"/"M" in Italian, "M"/"T" in English)
+ * for an ISO weekday (Monday=1). 2024-01-01 was a Monday, so the ISO day maps
+ * straight onto a January 2024 date.
+ */
+export function weekdayInitial(weekday: number, language: string): string {
+  return new Intl.DateTimeFormat(language, { weekday: 'narrow', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(2024, 0, weekday)),
+  )
+}
+
+/**
  * English ordinal suffix per `Intl.PluralRules` category ("1st"/"2nd"/
  * "3rd"/"4th"...). Italian has no per-number ordinal suffix at all (just the
  * "°" mark), so it never consults this table.

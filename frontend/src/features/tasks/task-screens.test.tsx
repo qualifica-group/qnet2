@@ -33,9 +33,9 @@ function accessDeniedError(): AxiosError {
 }
 
 /**
- * "Crea sotto-task" always opens the create form in a Sheet above the parent,
- * whatever the actor's open-mode preference; opening an existing child keeps
- * honoring that preference. `useModuleOpener` and the presentational view are
+ * "Crea sotto-task" and opening an existing child both mount a Sheet above
+ * the parent, whatever the actor's open-mode preference (AC-085, user
+ * directive 2026-10-06). `useModuleOpener` and the presentational view are
  * stubbed: this suite covers only the wiring `TaskDetailScreen` owns.
  */
 const TASK_ID = 7
@@ -95,13 +95,12 @@ function renderScreen(): QueryClient {
   return queryClient
 }
 
-function lastOpeners(): { preference: OpenerStub; forced: OpenerStub } {
-  const preference = openers.findLast((stub) => stub.options?.forceMode === undefined)
+function lastForcedOpener(): OpenerStub {
   const forced = openers.findLast((stub) => stub.options?.forceMode === OPEN_MODE_MODAL)
-  if (!preference || !forced) {
-    throw new Error('expected both openers to be mounted')
+  if (!forced) {
+    throw new Error('expected the modal-forced opener to be mounted')
   }
-  return { preference, forced }
+  return forced
 }
 
 describe('TaskDetailScreen', () => {
@@ -114,19 +113,18 @@ describe('TaskDetailScreen', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'create-subtask' }))
 
-    const { preference, forced } = lastOpeners()
-    expect(forced.openCreateWith).toHaveBeenCalledWith({ parent_task_id: TASK_ID })
-    expect(preference.openCreateWith).not.toHaveBeenCalled()
+    expect(lastForcedOpener().openCreateWith).toHaveBeenCalledWith({ parent_task_id: TASK_ID })
   })
 
-  it('opens an existing subtask through the preference-driven opener', async () => {
+  // REQUIREMENT CHANGED (user directive 2026-10-06): an existing child no
+  // longer honors the open-mode preference — it opens in the modal too.
+  it('opens an existing subtask in the modal above the parent', async () => {
     renderScreen()
 
     fireEvent.click(await screen.findByRole('button', { name: 'open-subtask' }))
 
-    const { preference, forced } = lastOpeners()
-    expect(preference.openView).toHaveBeenCalledWith({ id: 99, actions: [] })
-    expect(forced.openView).not.toHaveBeenCalled()
+    expect(lastForcedOpener().openView).toHaveBeenCalledWith({ id: 99, actions: [] })
+    expect(openers.every((stub) => stub.options?.forceMode === OPEN_MODE_MODAL)).toBe(true)
   })
 
   // The subtask form reads the parent through the SAME detail query key: its

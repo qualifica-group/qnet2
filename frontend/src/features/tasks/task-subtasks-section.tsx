@@ -2,22 +2,19 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { CheckCircle2, ListTree, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { ListTree, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CompletionBar } from '@/components/completion-bar'
 import { RecordSection } from '@/components/detail/record-panel'
 import { SortableList, type SortableListItem } from '@/components/ui/sortable-list'
 import { useConfirm } from '@/components/confirm-dialog-context'
-import { Can } from '@/features/auth/can'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { deleteTask, fetchTask, taskDetailQueryKey, uncompleteTask } from '@/features/tasks/api'
 import { TaskCompleteDialog } from '@/features/tasks/task-complete-dialog'
-import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
+import { TaskSubtaskRow } from '@/features/tasks/task-subtask-row'
+import { subtaskProgress } from '@/features/tasks/task-subtask-progress'
 import { useReorderTaskSubtasks } from '@/features/tasks/use-task-mutations'
 import type { TaskSubtask } from '@/features/tasks/types'
-
-/** Resource-level permission gating the child rows' own affordance (unrelated to `create_subtask`). */
-const VIEW_PERMISSION = 'tasks.view'
 
 interface TaskSubtasksSectionProps {
   /** The parent's own id (spec 0155 D-4): the reorder endpoint and every cache invalidation below target it. */
@@ -48,98 +45,40 @@ interface SortableSubtaskItem extends SortableListItem {
   subtask: TaskSubtask
 }
 
-interface TaskSubtaskRowProps {
-  subtask: TaskSubtask
-  onOpen: (subtaskId: number) => void
-  onComplete: (subtask: TaskSubtask) => void
-  onReopen: (subtask: TaskSubtask) => void
-  onDelete: (subtask: TaskSubtask) => void
-  isBusy: boolean
-}
-
-/**
- * One child row. Defined at module level, never inside the section: a
- * component redeclared per render would remount the whole list on every
- * parent update.
- */
-function TaskSubtaskRow({
-  subtask,
-  onOpen,
-  onComplete,
-  onReopen,
-  onDelete,
-  isBusy,
-}: TaskSubtaskRowProps) {
+/** The panel's header band: "2 di 5 completati" and the children's mean completion. */
+function SubtaskProgressBand({ subtasks }: { subtasks: TaskSubtask[] }) {
   const { t } = useTranslation()
-  const assignees = subtask.assignees.map((user) => user.name).join(', ')
+  const { done, total, average } = subtaskProgress(subtasks)
 
   return (
-    <div className="flex flex-1 flex-col gap-1.5 @md:flex-row @md:items-center @md:gap-3">
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <Can
-          permission={VIEW_PERMISSION}
-          fallback={<span className="truncate text-sm">{subtask.title}</span>}
-        >
-          <button
-            type="button"
-            onClick={() => onOpen(subtask.id)}
-            className="truncate rounded text-left text-sm font-medium text-foreground underline-offset-2 outline-none hover:underline focus-visible:ring-[2px] focus-visible:ring-ring/50"
-          >
-            {subtask.title}
-          </button>
-        </Can>
-        <TaskLookupBadge value={subtask.task_status} />
-      </div>
-
+    <div className="flex flex-col gap-1.5 rounded-lg bg-muted/40 px-3 py-2 @md:flex-row @md:items-center @md:gap-4">
+      <p className="shrink-0 text-xs text-muted-foreground">
+        <span className="text-sm font-semibold tabular-nums text-foreground">{done}</span>{' '}
+        {t('tasks.detail.subtaskPanel.doneOf', { count: total })}
+      </p>
       <CompletionBar
-        value={subtask.completion_percentage}
-        label={t('tasks.detail.completionPercentage')}
+        value={average}
+        label={t('tasks.detail.subtaskPanel.overallProgress')}
         barClassName="flex-1"
         valueClassName="w-9 text-right"
-        className="shrink-0 @md:w-40"
+        className="min-w-0 flex-1"
       />
+    </div>
+  )
+}
 
-      <p className="min-w-0 truncate text-xs text-muted-foreground @md:w-44">
-        {assignees === '' ? t('tasks.detail.noAssignees') : assignees}
-      </p>
+/** No children yet: a dashed placeholder that says what the panel is for. */
+function SubtasksEmptyState() {
+  const { t } = useTranslation()
 
-      <div className="flex shrink-0 items-center gap-0.5">
-        {subtask.permissions.actions.complete ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            disabled={isBusy}
-            onClick={() => onComplete(subtask)}
-            aria-label={t('tasks.detail.subtaskPanel.complete')}
-          >
-            <CheckCircle2 className="size-3.5" aria-hidden="true" />
-          </Button>
-        ) : null}
-        {subtask.permissions.actions.uncomplete ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            disabled={isBusy}
-            onClick={() => onReopen(subtask)}
-            aria-label={t('tasks.detail.subtaskPanel.reopen')}
-          >
-            <RotateCcw className="size-3.5" aria-hidden="true" />
-          </Button>
-        ) : null}
-        {subtask.permissions.actions.delete ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            disabled={isBusy}
-            onClick={() => onDelete(subtask)}
-            aria-label={t('tasks.detail.subtaskPanel.delete')}
-          >
-            <Trash2 className="size-3.5" aria-hidden="true" />
-          </Button>
-        ) : null}
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-dashed p-3">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <ListTree className="size-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground">{t('tasks.detail.subtasksEmpty')}</p>
+        <p className="text-xs text-muted-foreground">{t('tasks.detail.subtaskPanel.emptyHint')}</p>
       </div>
     </div>
   )
@@ -250,25 +189,28 @@ export function TaskSubtasksSection({
       }
     >
       {subtasks.length > 0 ? (
-        <SortableList
-          items={items}
-          onReorder={handleReorder}
-          isPinned={() => !canReorder}
-          dragHandleLabel={t('tasks.detail.subtaskPanel.reorderHandle')}
-          pinnedRowClassName="bg-surface"
-          renderItem={(item) => (
-            <TaskSubtaskRow
-              subtask={item.subtask}
-              onOpen={onOpen}
-              onComplete={(subtask) => setCompletingId(subtask.id)}
-              onReopen={(subtask) => void handleReopen(subtask)}
-              onDelete={(subtask) => void handleDelete(subtask)}
-              isBusy={busyId === item.subtask.id || (completingId === item.subtask.id && completingLoading)}
-            />
-          )}
-        />
+        <>
+          <SubtaskProgressBand subtasks={subtasks} />
+          <SortableList
+            items={items}
+            onReorder={handleReorder}
+            isPinned={() => !canReorder}
+            dragHandleLabel={t('tasks.detail.subtaskPanel.reorderHandle')}
+            pinnedRowClassName="bg-surface"
+            renderItem={(item) => (
+              <TaskSubtaskRow
+                subtask={item.subtask}
+                onOpen={onOpen}
+                onComplete={(subtask) => setCompletingId(subtask.id)}
+                onReopen={(subtask) => void handleReopen(subtask)}
+                onDelete={(subtask) => void handleDelete(subtask)}
+                isBusy={busyId === item.subtask.id || (completingId === item.subtask.id && completingLoading)}
+              />
+            )}
+          />
+        </>
       ) : (
-        <p className="text-xs text-muted-foreground">{t('tasks.detail.subtasksEmpty')}</p>
+        <SubtasksEmptyState />
       )}
 
       {completingTask ? (

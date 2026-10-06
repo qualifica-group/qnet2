@@ -324,11 +324,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Nel pannello **Sotto-task** del dettaglio trascini le righe (con l\'apposita maniglia) per riordinarle, e da ogni riga puoi completare, riaprire o eliminare il singolo sotto-task, quando i tuoi permessi lo consentono.',
+          text: 'Il pannello **Sotto-task** del dettaglio mostra in alto quanti sotto-task sono completati e l\'avanzamento complessivo. Premi il titolo di un sotto-task per aprirlo in una finestra sopra il task padre, che resta aperto sotto: le modifiche fatte lì aggiornano subito l\'elenco. Trascini le righe (con l\'apposita maniglia) per riordinarle; il cerchio a inizio riga completa il sotto-task (la spunta verde lo riapre) e il cestino, che compare passando sulla riga, lo elimina, quando i tuoi permessi lo consentono.',
         },
         {
           type: 'paragraph',
-          text: 'Con **Ricorrenza attiva** QNet crea da solo le occorrenze future. Scegli la frequenza — Giornaliera, Settimanale, Mensile, Annuale o Personalizzata (ogni N giorni) — l\'intervallo in **Ripeti ogni** e la fine: A una data, Dopo un numero di occorrenze o Mai. "Dopo un numero di occorrenze" conta le occorrenze effettivamente create, non i candidati calcolati.',
+          text: 'Nel dettaglio la sezione **Ricorrenza** riassume la regola in un riquadro: frequenza, frase descrittiva, giorni della settimana scelti, fine e "Solo giorni lavorativi". Premi il riquadro (o la matita) per modificarla. Con **Ricorrenza attiva** QNet crea da solo le occorrenze future. Scegli la frequenza — Giornaliera, Settimanale, Mensile, Annuale o Personalizzata (ogni N giorni) — l\'intervallo in **Ripeti ogni** e la fine: A una data, Dopo un numero di occorrenze o Mai. "Dopo un numero di occorrenze" conta le occorrenze effettivamente create, non i candidati calcolati.',
         },
         {
           type: 'paragraph',

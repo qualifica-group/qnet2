@@ -15,7 +15,7 @@ import {
   TaskWorkOrderStageField,
 } from '@/features/tasks/task-links-section'
 import { TaskRecurrenceFields } from '@/features/tasks/task-recurrence-section'
-import { formatTaskRecurrenceRule } from '@/features/tasks/task-recurrence-format'
+import { TaskRecurrenceSummary } from '@/features/tasks/task-recurrence-summary'
 import { TaskReferentField, TaskRegistryField } from '@/features/tasks/task-registry-section'
 import type { TaskDetailSectionProps } from '@/features/tasks/task-detail-sections'
 
@@ -197,23 +197,20 @@ export function TaskDetailClosureSection({ task, editor }: TaskDetailSectionProp
 }
 
 export function TaskDetailRecurrenceSection({ task, editor }: TaskDetailSectionProps) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { form, inline } = editor
 
   return (
     <RecordSection title={t('tasks.form.sections.recurrence.title')} icon={<Repeat />}>
-      <RecordFieldList>
-        <TaskInlineField
-          field="recurrence"
-          label={t('tasks.detail.recurrenceRule')}
-          inline={inline}
-          editor={<TaskRecurrenceFields control={form.control} />}
-        >
-          {task.recurrence
-            ? formatTaskRecurrenceRule(task.recurrence, t, i18n.language)
-            : t('tasks.form.summary.recurrenceOff')}
-        </TaskInlineField>
-      </RecordFieldList>
+      <TaskInlineField
+        field="recurrence"
+        label={t('tasks.detail.recurrenceRule')}
+        inline={inline}
+        layout="block"
+        editor={<TaskRecurrenceFields control={form.control} />}
+      >
+        <TaskRecurrenceSummary rule={task.recurrence} />
+      </TaskInlineField>
     </RecordSection>
   )
 }

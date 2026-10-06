@@ -38,12 +38,13 @@ function asRow(id: number): TableRow {
  * Sheet (`useModuleOpener`) and by the generic dedicated pages
  * (`ModuleDetailPage`/`ModuleFormPage`).
  *
- * AC-085: opening a child goes through the SAME opener every other surface
- * uses, so it honors the actor's own modal/page preference. "Crea sotto-task"
- * instead always mounts the Sheet above the parent (`forceMode`, spec 0067
- * D-3): the parent detail is never abandoned while adding a child. It passes
- * `parent_task_id` through `ModuleCreateParams` (spec 0045) — the single
- * channel a create form gets its context through.
+ * AC-085 (user directive 2026-10-06): opening a child and "Crea sotto-task"
+ * both mount the Sheet above the parent, whatever the actor's open-mode
+ * preference (`forceMode`, spec 0067 D-3): the parent detail is never
+ * abandoned while working on a child, and every save in the Sheet refreshes
+ * its `subtasks` list. The create passes `parent_task_id` through
+ * `ModuleCreateParams` (spec 0045) — the single channel a create form gets
+ * its context through.
  *
  * Spec 0195: the detail edits its fields in place, so `onEdit` is never
  * used; each save reports through `onChanged` (the modal host refreshes its
@@ -52,11 +53,15 @@ function asRow(id: number): TableRow {
 export function TaskDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const { openView, sheet } = useModuleOpener(TASKS_DOMAIN)
-  const { openCreateWith: openSubtaskCreate, sheet: subtaskSheet } = useModuleOpener(TASKS_DOMAIN, {
+  const {
+    openView: openSubtask,
+    openCreateWith: openSubtaskCreate,
+    sheet: subtaskSheet,
+  } = useModuleOpener(TASKS_DOMAIN, {
     forceMode: OPEN_MODE_MODAL,
     viewAfterCreate: true,
-    // The parent stays mounted underneath: refresh its `subtasks` list.
+    // The parent stays mounted underneath: refresh its `subtasks` list after
+    // a create, or after an in-place save on an opened child.
     onSaved: () => queryClient.invalidateQueries({ queryKey: taskDetailQueryKey(id) }),
   })
   const { data: task, isLoading, isError, error, refetch } = useEntityDetail(taskDetailQueryKey(id), () =>
@@ -67,7 +72,7 @@ export function TaskDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   // generic error state, with no Riprova.
   const accessDenied = isError ? taskAccessDeniedInfo(error) : null
 
-  // The sheets render OUTSIDE the loading branch: the subtask form reads the
+  // The sheet renders OUTSIDE the loading branch: the subtask form reads the
   // parent through this same query key and refetches it on mount. Swapping
   // them for the skeleton during that refetch would remount the form, which
   // refetches again — an endless reload loop.
@@ -89,7 +94,7 @@ export function TaskDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
       <TaskDetailView
         task={task}
         onChanged={onChanged}
-        onOpenSubtask={(subtaskId) => openView(asRow(subtaskId))}
+        onOpenSubtask={(subtaskId) => openSubtask(asRow(subtaskId))}
         onCreateSubtask={() => openSubtaskCreate({ parent_task_id: task.id })}
       />
     )
@@ -98,7 +103,6 @@ export function TaskDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   return (
     <>
       {content}
-      {sheet}
       {subtaskSheet}
     </>
   )

@@ -27,24 +27,51 @@ const CONFIRM_ON_ENTER_INPUT_TYPES = new Set(['text', 'date', 'time', 'number'])
 const EDITING_ROW_CLASS =
   '-mx-2 my-1 rounded-lg border border-ring/50 bg-muted/40 px-2 shadow-sm ring-[3px] ring-ring/15 [&_dt]:font-medium [&_dt]:text-foreground'
 
-interface EditorRowProps {
-  field: string
+/**
+ * `row`: the spec-sheet row, label column then value. `block`: a value that
+ * names itself (e.g. the recurrence tile) across the section's full width,
+ * its label kept for assistive tech only.
+ */
+type TaskInlineFieldLayout = 'row' | 'block'
+
+interface FieldFrameProps {
+  layout: TaskInlineFieldLayout
   label: string
   icon?: ReactNode
   children: ReactNode
 }
 
-/**
- * The detail's own row layout — label column, value column — with the
- * field's control as the value. `MetaFieldRowContext` tells the control's
- * `MetaField` that this row already shows its label: it keeps it for
- * assistive tech only and sets its hint beside the control.
- */
-function EditorRow({ field, label, icon, children }: EditorRowProps) {
+function FieldFrame({ layout, label, icon, children }: FieldFrameProps) {
+  if (layout === 'block') {
+    return (
+      <div className="flex min-w-0 flex-col py-1">
+        <span className="sr-only">{label}</span>
+        {children}
+      </div>
+    )
+  }
   return (
     <RecordField label={label} icon={icon}>
-      <MetaFieldRowContext.Provider value={field}>{children}</MetaFieldRowContext.Provider>
+      {children}
     </RecordField>
+  )
+}
+
+interface EditorRowProps extends FieldFrameProps {
+  field: string
+}
+
+/**
+ * The detail's own row layout with the field's control as the value.
+ * `MetaFieldRowContext` tells the control's `MetaField` that this row
+ * already shows its label: it keeps it for assistive tech only and sets its
+ * hint beside the control.
+ */
+function EditorRow({ field, children, ...frame }: EditorRowProps) {
+  return (
+    <FieldFrame {...frame}>
+      <MetaFieldRowContext.Provider value={field}>{children}</MetaFieldRowContext.Provider>
+    </FieldFrame>
   )
 }
 
@@ -58,6 +85,8 @@ interface TaskInlineFieldProps {
   editor: ReactNode
   /** Extra condition on top of the field permission (e.g. the referent needs an anagrafica). */
   canEdit?: boolean
+  /** Defaults to `row`; see `TaskInlineFieldLayout`. */
+  layout?: TaskInlineFieldLayout
   /** The persisted value, as the read-only detail always rendered it. */
   children: ReactNode
 }
@@ -78,6 +107,7 @@ export function TaskInlineField({
   inline,
   editor,
   canEdit = true,
+  layout = 'row',
   children,
 }: TaskInlineFieldProps) {
   const { t } = useTranslation()
@@ -132,7 +162,7 @@ export function TaskInlineField({
         onKeyDown={handleKeyDown}
         onPointerDownCapture={outsidePointer.onPointerDownCapture}
       >
-        <EditorRow field={field} label={label} icon={icon}>
+        <EditorRow field={field} label={label} icon={icon} layout={layout}>
           <div className="flex min-w-0 flex-col gap-2">
             {editor}
             {inline.error ? (
@@ -169,7 +199,7 @@ export function TaskInlineField({
   }
 
   return (
-    <RecordField label={label} icon={icon}>
+    <FieldFrame layout={layout} label={label} icon={icon}>
       {editable ? (
         <div className="group flex min-w-0 items-start gap-1.5">
           {/* Mouse shortcut only: the pencil is the keyboard/screen-reader path. */}
@@ -198,7 +228,7 @@ export function TaskInlineField({
           {closedError}
         </p>
       ) : null}
-    </RecordField>
+    </FieldFrame>
   )
 }
 

@@ -157,6 +157,13 @@ export const tasks = {
     created_at: 'Creato il',
     updated_at: 'Aggiornato il',
     recurrenceRule: 'Regola',
+    recurrenceCard: {
+      offHint: 'Il task non si ripete. Attiva una ricorrenza per generarne in automatico le occorrenze future.',
+      endsNever: 'Nessuna data di fine',
+      endsOn: 'Fino al {{date}}',
+      endsAfter_one: '{{count}} occorrenza',
+      endsAfter_other: '{{count}} occorrenze',
+    },
     inlineEdit: {
       edit: 'Modifica {{field}}',
       save: 'Salva',
@@ -182,6 +189,10 @@ export const tasks = {
       deleteSuccess: 'Sotto-task eliminato.',
       deleteError: 'Impossibile eliminare il sotto-task. Riprova.',
       reorderError: 'Impossibile riordinare i sotto-task. Riprova.',
+      doneOf_one: 'di {{count}} completato',
+      doneOf_other: 'di {{count}} completati',
+      overallProgress: 'Avanzamento complessivo dei sotto-task',
+      emptyHint: 'Suddividi il lavoro in passi più piccoli, ciascuno con stato, assegnatari e avanzamento propri.',
     },
   },
   form: {

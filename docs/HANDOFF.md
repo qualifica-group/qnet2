@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## TASK: SOTTO-TASK E RICORRENZA NEL DETTAGLIO (RESTYLE) + SOTTO-TASK IN MODALE — VERDE, NON COMMITTATO (2026-10-06)
+## TASK: SOTTO-TASK E RICORRENZA NEL DETTAGLIO (RESTYLE) + SOTTO-TASK IN MODALE — VERDE, COMMITTATO (2026-10-06)
 
 - Ricorrenza: `TaskRecurrenceSummary` (nuovo, `task-recurrence-summary.tsx`) = valore letto della riga in place.
   Spento: riquadro tratteggiato + hint. Acceso: velo `bg-primary/5`, eyebrow frequenza, frase
