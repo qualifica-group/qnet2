@@ -13,6 +13,8 @@ export interface TaskInlineEdit {
   start: (field: string) => void
   cancel: () => void
   save: () => void
+  /** A press outside the open row: Cancel on the detail (nothing saved), "Fatto" on a create draft (nothing lost). */
+  dismiss: () => void
   isSaving: boolean
   /** A refused save the open editor's own field message cannot carry (generic server error). */
   error: string | null
@@ -90,6 +92,7 @@ export function useTaskInlineEdit(task: TaskDetailWithPermissions, onChanged?: (
     start,
     cancel,
     save,
+    dismiss: cancel,
     isSaving: form.formState.isSubmitting,
     error: serverError,
     confirmLabel: t('tasks.detail.inlineEdit.save'),

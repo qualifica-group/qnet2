@@ -14,6 +14,7 @@ import {
   TaskTypeField,
 } from '@/features/tasks/task-classification-section'
 import { TaskDescriptionField, TaskParentField, TaskTitleField } from '@/features/tasks/task-identity-section'
+import { useTaskCascadeEditable } from '@/features/tasks/task-inline-cascade'
 import { TaskInlineField } from '@/features/tasks/task-inline-field'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { TaskPeopleList, TaskPerson } from '@/features/tasks/task-people-list'
@@ -49,6 +50,7 @@ function lookupDisplay(value: TaskLookupRef | null) {
 export function TaskDetailIdentitySection({ task, editor }: TaskDetailSectionProps) {
   const { t } = useTranslation()
   const { form, inline, handleParentChange } = editor
+  const cascadeEditable = useTaskCascadeEditable(task)
 
   return (
     <RecordSection title={t('tasks.detail.sections.identity')} icon={<ClipboardList />}>
@@ -73,6 +75,7 @@ export function TaskDetailIdentitySection({ task, editor }: TaskDetailSectionPro
           field="parent_task_id"
           label={t('tasks.form.parentTask')}
           inline={inline}
+          canEdit={cascadeEditable('parent_task_id')}
           editor={
             <TaskParentField
               control={form.control}
@@ -210,6 +213,7 @@ export function TaskDetailPeopleSection({ task, editor }: TaskDetailSectionProps
 
 export function TaskDetailPlanningSection({ task, editor }: TaskDetailSectionProps) {
   const { t } = useTranslation()
+  const { field } = useResourcePermissions()
   const { form, inline } = editor
 
   return (
@@ -256,9 +260,11 @@ export function TaskDetailPlanningSection({ task, editor }: TaskDetailSectionPro
           {task.estimated_minutes !== null ? formatMinutesLabel(task.estimated_minutes) : <DetailEmpty />}
         </TaskInlineField>
         {/* Set by the completion flow (Completa), never by a form (D-6). */}
-        <RecordField label={t('tasks.detail.completionDate')}>
-          {formatDate(task.completion_date) || <DetailEmpty />}
-        </RecordField>
+        {field('completion_date').visible ? (
+          <RecordField label={t('tasks.detail.completionDate')}>
+            {formatDate(task.completion_date) || <DetailEmpty />}
+          </RecordField>
+        ) : null}
       </RecordFieldList>
     </RecordSection>
   )

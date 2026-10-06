@@ -54,7 +54,7 @@ final class TaskWriteLock
      */
     public const array OPERATIVE_KEYS = ['task_status_id', 'closure_feedback'];
 
-    private const string STRUCTURAL_WRITE_MESSAGE = 'This task is frozen: only its status and closure feedback can be changed.';
+    public const string STRUCTURAL_WRITE_MESSAGE = 'This task is frozen: only its status and closure feedback can be changed.';
 
     private const string DELETE_MESSAGE = 'This task is frozen and cannot be deleted.';
 
@@ -115,6 +115,19 @@ final class TaskWriteLock
     }
 
     /**
+     * Whether a PATCH by $actor may touch only the OPERATIVE_KEYS of $task:
+     * its own freeze (as assertStructuralWriteAllowed() reads it, D-8
+     * super-admin carve-out included) or an ancestor's (D-9). The ONE rule
+     * both that assertion and the field-permission ceiling
+     * (TasksAuthorization, spec 0195) read, so the detail never offers an
+     * edit the PATCH would refuse.
+     */
+    public static function isStructurallyLocked(Task $task, ?User $actor = null): bool
+    {
+        return self::isLockedForUpdate($task, $actor) || self::isLockedByAncestor($task);
+    }
+
+    /**
      * @param  array<int, string>  $submittedKeys
      * @param  User|null  $actor  D-8 (spec 0153): a super-admin bypasses
      *                            $task's OWN frozen-GROUP veto (closed/in-validation) for this PATCH —
@@ -125,7 +138,7 @@ final class TaskWriteLock
      */
     public static function assertStructuralWriteAllowed(Task $task, array $submittedKeys, ?User $actor = null): void
     {
-        if (! self::isLockedForUpdate($task, $actor) && ! self::isLockedByAncestor($task)) {
+        if (! self::isStructurallyLocked($task, $actor)) {
             return;
         }
 

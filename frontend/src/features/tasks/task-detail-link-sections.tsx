@@ -3,8 +3,10 @@ import { Contact, Link2, MessageSquareWarning, Repeat } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
 import { RecordLink } from '@/components/detail/record-link'
+import { useResourcePermissions } from '@/features/authorization/permissions'
 import { TaskClosureFlagField } from '@/features/tasks/task-closure-section'
 import { leadRefOf, workOrderRefOf, workOrderStageOf } from '@/features/tasks/task-form-hydration'
+import { useTaskCascadeEditable } from '@/features/tasks/task-inline-cascade'
 import { TaskInlineField } from '@/features/tasks/task-inline-field'
 import {
   TaskLeadField,
@@ -37,6 +39,8 @@ export function TaskDetailLinksSection({ task, editor }: TaskDetailSectionProps)
     handleWorkOrderChange,
     handleWorkOrderItemChange,
   } = editor
+  // Spec 0195: an editor whose cascade would write a locked field never opens.
+  const cascadeEditable = useTaskCascadeEditable(task)
   // Spec 0146 D-3: the fase exists only on a commessa-linked task with no parent.
   const showStage = task.work_order_id !== null && task.parent_task_id === null
 
@@ -47,6 +51,7 @@ export function TaskDetailLinksSection({ task, editor }: TaskDetailSectionProps)
           field="registry_id"
           label={t('tasks.detail.registry')}
           icon={<Contact />}
+          canEdit={cascadeEditable('registry_id')}
           inline={inline}
           editor={
             <TaskRegistryField control={form.control} registry={task.registry} onRegistryChange={handleRegistryChange} />
@@ -79,6 +84,7 @@ export function TaskDetailLinksSection({ task, editor }: TaskDetailSectionProps)
         <TaskInlineField
           field="opportunity_id"
           label={t('tasks.detail.opportunity')}
+          canEdit={cascadeEditable('opportunity_id')}
           inline={inline}
           editor={
             <TaskOpportunityField
@@ -99,6 +105,7 @@ export function TaskDetailLinksSection({ task, editor }: TaskDetailSectionProps)
         <TaskInlineField
           field="work_order_id"
           label={t('tasks.detail.workOrder')}
+          canEdit={cascadeEditable('work_order_id')}
           inline={inline}
           editor={
             <>
@@ -152,6 +159,7 @@ export function TaskDetailLinksSection({ task, editor }: TaskDetailSectionProps)
 
 export function TaskDetailClosureSection({ task, editor }: TaskDetailSectionProps) {
   const { t } = useTranslation()
+  const { field } = useResourcePermissions()
   const { form, inline } = editor
 
   return (
@@ -174,13 +182,15 @@ export function TaskDetailClosureSection({ task, editor }: TaskDetailSectionProp
           {t(task.requires_validation ? 'common.yes' : 'common.no')}
         </TaskInlineField>
         {/* Written only from the completion pop-up (spec 0121 D-7). */}
-        <RecordField label={t('tasks.detail.closureFeedback')}>
-          {task.closure_feedback ? (
-            <span className="whitespace-pre-wrap">{task.closure_feedback}</span>
-          ) : (
-            <DetailEmpty />
-          )}
-        </RecordField>
+        {field('closure_feedback').visible ? (
+          <RecordField label={t('tasks.detail.closureFeedback')}>
+            {task.closure_feedback ? (
+              <span className="whitespace-pre-wrap">{task.closure_feedback}</span>
+            ) : (
+              <DetailEmpty />
+            )}
+          </RecordField>
+        ) : null}
       </RecordFieldList>
     </RecordSection>
   )

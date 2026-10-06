@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/formatting/date-display'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
+import { useResourcePermissions } from '@/features/authorization/permissions'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
 import { TaskLookupBadge } from '@/features/tasks/task-lookup-badge'
 import { formatTaskRecurrenceRule } from '@/features/tasks/task-recurrence-format'
@@ -31,6 +32,9 @@ interface TaskDetailHeaderProps {
  */
 export function TaskDetailHeader({ task }: TaskDetailHeaderProps) {
   const { t, i18n } = useTranslation()
+  // A field the actor's role hides stays out of the band too, not only out of its section row.
+  const { field } = useResourcePermissions()
+  const isVisible = (key: string) => field(key).visible
 
   return (
     <RecordCardHeader
@@ -38,21 +42,25 @@ export function TaskDetailHeader({ task }: TaskDetailHeaderProps) {
         <DetailMonogram name={task.title} icon={<ListChecks />} className="size-10 text-base [&>svg]:size-5" />
       }
       title={task.title}
-      subtitle={task.parent_task ? t('tasks.detail.childOf', { title: task.parent_task.title }) : undefined}
+      subtitle={
+        task.parent_task && isVisible('parent_task_id')
+          ? t('tasks.detail.childOf', { title: task.parent_task.title })
+          : undefined
+      }
       badges={
         <>
-          <TaskLookupBadge value={task.task_status} />
-          <TaskLookupBadge value={task.task_type} />
-          <TaskLookupBadge value={task.task_priority} />
-          <TaskLookupBadge value={task.task_importance} />
-          <TaskLookupBadge value={task.task_category} />
+          {isVisible('task_status_id') ? <TaskLookupBadge value={task.task_status} /> : null}
+          {isVisible('task_type_id') ? <TaskLookupBadge value={task.task_type} /> : null}
+          {isVisible('task_priority_id') ? <TaskLookupBadge value={task.task_priority} /> : null}
+          {isVisible('task_importance_id') ? <TaskLookupBadge value={task.task_importance} /> : null}
+          {isVisible('task_category_id') ? <TaskLookupBadge value={task.task_category} /> : null}
           {task.is_blocked ? (
             <Badge variant="secondary" className={cn(BADGE_BASE, 'gap-1.5', BADGE_COLOR_CLASSES.red)}>
               <ShieldAlert className="size-3.5 shrink-0" aria-hidden="true" />
               {t('tasks.detail.blocked')}
             </Badge>
           ) : null}
-          {task.recurrence ? (
+          {task.recurrence && isVisible('recurrence') ? (
             <Badge variant="secondary" className={cn(BADGE_BASE, 'gap-1.5', BADGE_COLOR_CLASSES.indigo)}>
               <Repeat className="size-3.5 shrink-0" aria-hidden="true" />
               {formatTaskRecurrenceRule(task.recurrence, t, i18n.language)}
@@ -94,6 +102,7 @@ interface TaskStatsStripProps {
 /** The strip itself, fed by the persisted task (detail) or the live form values (create, spec 0195 D-8). */
 export function TaskStatsStrip({ completionPercentage, startDate, endDate, estimatedMinutes }: TaskStatsStripProps) {
   const { t } = useTranslation()
+  const { field } = useResourcePermissions()
   const formattedStart = formatDate(startDate)
   const formattedEnd = formatDate(endDate)
 
@@ -109,12 +118,18 @@ export function TaskStatsStrip({ completionPercentage, startDate, endDate, estim
           )
         }
       />
-      <RecordStat label={t('tasks.detail.startDate')} value={formattedStart || <DetailEmpty />} />
-      <RecordStat label={t('tasks.detail.endDate')} value={formattedEnd || <DetailEmpty />} />
-      <RecordStat
-        label={t('tasks.detail.estimatedMinutes')}
-        value={estimatedMinutes !== null ? formatMinutesLabel(estimatedMinutes) : <DetailEmpty />}
-      />
+      {field('start_date').visible ? (
+        <RecordStat label={t('tasks.detail.startDate')} value={formattedStart || <DetailEmpty />} />
+      ) : null}
+      {field('end_date').visible ? (
+        <RecordStat label={t('tasks.detail.endDate')} value={formattedEnd || <DetailEmpty />} />
+      ) : null}
+      {field('estimated_minutes').visible ? (
+        <RecordStat
+          label={t('tasks.detail.estimatedMinutes')}
+          value={estimatedMinutes !== null ? formatMinutesLabel(estimatedMinutes) : <DetailEmpty />}
+        />
+      ) : null}
     </RecordStatStrip>
   )
 }

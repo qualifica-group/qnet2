@@ -120,6 +120,24 @@ describe('TaskDetailView — in-place editing (spec 0195)', () => {
     expect(updateTask).not.toHaveBeenCalled()
   })
 
+  it('closes the editor on a press outside the row, discarding the edit without any request', () => {
+    const task = taskDetailWithPermissions()
+    renderTaskDetail(task)
+
+    fireEvent.click(queryInlineEditButton(label('tasks.form.title'))!)
+    const input = screen.getByRole('textbox', { name: label('tasks.form.title') })
+    fireEvent.change(input, { target: { value: 'Da scartare' } })
+    // A press inside the open row keeps it open.
+    fireEvent.pointerDown(input)
+    expect(screen.getByRole('textbox', { name: label('tasks.form.title') })).toBeInTheDocument()
+
+    fireEvent.pointerDown(document.body)
+
+    expect(screen.queryByRole('textbox', { name: label('tasks.form.title') })).not.toBeInTheDocument()
+    expect(screen.queryByText('Da scartare')).not.toBeInTheDocument()
+    expect(updateTask).not.toHaveBeenCalled()
+  })
+
   it('shows no affordance on a field the actor may not edit (AC-004)', () => {
     renderTaskDetail(
       taskDetailWithPermissions({

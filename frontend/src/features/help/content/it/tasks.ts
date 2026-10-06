@@ -129,7 +129,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Premi **Nuovo task**.',
-            'Compila i campi: il modulo è identico al dettaglio del task (vedi tabella), con i campi chiusi, vuoti o già precompilati. Premi la **matita** (o fai clic sul valore) per aprirne uno, poi **Fatto** per tenerlo o **Ripristina** per riportarlo com\'era.',
+            'Compila i campi: il modulo è identico al dettaglio del task (vedi tabella), con i campi chiusi, vuoti o già precompilati. Premi la **matita** (o fai clic sul valore) per aprirne uno, poi **Fatto** per tenerlo (anche un clic fuori dal campo lo tiene e lo chiude) o **Ripristina** per riportarlo com\'era.',
             'Se vuoi, aggiungi file nella scheda **Allegati** della card laterale (dove nel dettaglio trovi i Documenti): vengono caricati appena il task è salvato.',
             'Premi **Salva**: vengono controllati tutti i campi insieme e gli errori compaiono sotto le righe interessate.',
           ],
@@ -200,16 +200,16 @@ const guide: HelpGuide = {
             'Apri il task dall\'elenco (o dalla Kanban).',
             'Passa col mouse sul campo da cambiare e premi la **matita** (o fai clic sul valore).',
             'Modifica il valore nel controllo che compare.',
-            'Premi **Salva** (o Invio nei campi di testo e data) per salvare solo quel campo; **Annulla** (o Esc) per lasciarlo com\'era.',
+            'Premi **Salva** (o Invio nei campi di testo e data) per salvare solo quel campo; **Annulla** (o Esc, o un clic fuori dal campo aperto) per chiuderlo lasciandolo com\'era, senza salvare.',
           ],
         },
         {
           type: 'note',
-          text: 'Un campo senza matita non è modificabile da te in quel momento (permessi, task in validazione o chiuso, task bloccato per lo Stato). Creatore, Data completamento, Feedback di chiusura e Bloccato restano in sola lettura: cambiano solo con le azioni (Completa, Blocca, Sblocca...).',
+          text: 'Un campo senza matita non è modificabile da te in quel momento: i permessi del tuo ruolo lo rendono in sola lettura, sul task sei solo osservatore (nessuna matita), oppure il task, o un task padre, è bloccato, in validazione o chiuso (resta modificabile solo lo Stato, se il task lo consente). I campi che il tuo ruolo nasconde non compaiono affatto, nemmeno nell\'intestazione e nei riquadri in alto. Creatore, Data completamento, Feedback di chiusura e Bloccato restano in sola lettura: cambiano solo con le azioni (Completa, Blocca, Sblocca...).',
         },
         {
           type: 'note',
-          text: 'Le regole sono quelle della creazione: cambiare l\'**Anagrafica** azzera Referente, Opportunità e Lead nello stesso salvataggio; scegliere una **Commessa** toglie l\'Opportunità e propone subito la Fase.',
+          text: 'Le regole sono quelle della creazione: cambiare l\'**Anagrafica** azzera Referente, Opportunità e Lead nello stesso salvataggio; scegliere una **Commessa** toglie l\'Opportunità e propone subito la Fase. Se uno dei campi che verrebbero cambiati insieme non è modificabile da te, anche il campo di partenza (Anagrafica, Commessa, Opportunità o Task padre) resta senza matita.',
         },
       ],
     },

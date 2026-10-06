@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TASK — PERMESSI CAMPO DEL DETTAGLIO IN PLACE (spec 0195 D-6a/b/c) — VERDE, NON COMMITTATO (2026-10-06)
+
+- Audit (sonda Pest, poi rimossa): la matrice per ruolo arrivava gia' al dettaglio, ma (1) l'osservatore con
+  `tasks.update` riceveva 6 campi editabili + `change_status` e la PATCH dava 403; (2) su task congelato tutti i 27
+  campi erano editabili e la PATCH dava 422; (3) la cascata anagrafica falliva se referente/opportunita'/lead erano
+  bloccati; (4) i campi nascosti restavano in header/KPI/righe di sola lettura.
+- Backend: `TasksAuthorization::actorMayWrite()` su un task ESISTENTE (`exists`) = `$actor->can('update', $task)`
+  (Policy); il ceiling aggiunge `TaskWriteLock::isStructurallyLocked()` (nuovo, pubblico, riusato da
+  `assertStructuralWriteAllowed`) -> solo `OPERATIVE_KEYS` editabili. `new Task` della griglia e create invariati.
+  `EnforcesFieldPermissions::fieldNotEditableMessage()` (hook nuovo, default 'field not editable');
+  `UpdateTaskRequest` lo sovrascrive col messaggio frozen e salta il controllo campi se la Policy rifiuta (403).
+  `TaskWriteLock::STRUCTURAL_WRITE_MESSAGE` ora public.
+- Frontend: header/KPI/data completamento/feedback chiusura filtrati per `field(x).visible`; nuovo
+  `task-inline-cascade.ts` (`useTaskCascadeEditable`) passato come `canEdit` a anagrafica/commessa/opportunita'/padre.
+- Test: nuovo `TaskDetailFieldPermissionsTest` (6), `task-inline-cascade.test.ts` (6),
+  `task-detail-field-permissions.test.tsx` (5). REQUIREMENT CHANGED dichiarato in `TaskMetaTest` AC-054 (fixture:
+  l'attore e' il creatore, altrimenti la Policy da' 403 prima del 422 di matrice).
+- Verifica: pest completo 9283 (1 fallito -> AC-054 corretto e rieseguito verde); vitest 888 file / 6746 test verdi
+  (1 errore non gestito "window is not defined" da `request-work-panel-transfer.test.tsx`, verde isolato 2/2,
+  preesistente); `tsc -b --force` 0; eslint pulito sui file toccati; pint ok. Guida in-app tasks IT/EN aggiornata.
+- Clic fuori (spec 0195 D-2a, NON COMMITTATO): `use-outside-pointer-dismiss.ts` (pointerdown su `document` +
+  `onPointerDownCapture` della riga: le pressioni in portal del campo bubblano nell'albero React e contano come
+  "dentro"); `TaskInlineEdit.dismiss` = `cancel` nel dettaglio, `save` ("Fatto") nella bozza di creazione; inattivo
+  durante `isSaving`. Test: hook (3), dettaglio (1), bozza (1). Guida IT/EN aggiornata. Vitest tasks/help/modules
+  83 file / 632 test verdi, tsc 0, eslint pulito.
+- Da fare: manuale Claude Docs (doc non condiviso con la sessione), sezione Task "Modificare un task" (matite e
+  permessi, campi nascosti, cascate, clic fuori = annulla; in creazione clic fuori = Fatto).
+  Non verificato a occhio nel browser. Fuori scope: l'API restituisce i valori dei campi nascosti (UI-only).
+
 ## TASK — DETTAGLIO EDITABILE IN PLACE + CREAZIONE COL LAYOUT DEL DETTAGLIO (spec 0195) — VERDE, NON COMMITTATO (2026-10-06)
 
 - Niente piu' pagina edit: registry `generateEditRoute: false` (nuovo flag `ModuleRegistryEntry`, default true) =>
@@ -42,6 +71,13 @@
 - Regola generale persone (NON COMMITTATO): `components/user-avatar-stack.tsx` (`UserAvatarStack`, max 5 avatar +
   chip "+N" con hover card dei restanti) estratto da `UserStackCell` (griglia) e usato da `TaskPeopleList` oltre
   3 persone (fino a 3 resta la lista con i nomi). Candidati da valutare: chip Responsabili nella scheda utente.
+- FIX stack avatar (NON COMMITTATO): gli avatar si fondevano uno sull'altro (Assegnatari/Osservatori del dettaglio e
+  celle multi-utente della griglia). `AvatarGroup` mette il ring solo sui figli DIRETTI `[data-slot=avatar]`, ma lo
+  stack avvolge ogni avatar nel trigger della hover card -> nessun separatore. Ora `STACK_SEPARATOR_CLASS`
+  (`relative rounded-full ring-2 ring-card`) sul trigger: `relative` serve perche' l'avatar e' posizionato e
+  altrimenti dipinge sopra il ring del trigger precedente; `ring-card` anche sul chip "+N" (entrambi gli host stanno
+  su `--card`). Verificato nel browser (Playwright headless). Utente: nessun altro campo del dettaglio da rendere
+  editabile (creatore, bloccato, data completamento, feedback chiusura restano sola lettura).
 - ATTENZIONE RHF: `resetOptions` di `useForm` si fonde in OGNI `reset` -> in edit `keepDirtyValues: true` serve solo
   al re-sync `values`; ogni reset che deve scartare passa `keepDirtyValues: false` (test di regressione in
   `task-detail-inline-edit.test.tsx`: un annullo non finisce nel PATCH successivo).

@@ -26,6 +26,25 @@
     - D-6: campi di sola lettura restano tali: creatore, data completamento, feedback di chiusura, bloccato
       (azioni Blocca/Sblocca), percentuale di completamento. Un campo non editabile per field permission (o
       per un attore senza `update`) non mostra alcuna affordance di modifica.
+    - D-2a (utente 2026-10-06, "quando clicchi fuori dal contenitore aperto voglio che si chiuda"): una pressione
+      fuori dalla riga aperta la chiude (`inline.dismiss`, `useOutsidePointerDismiss`): nel dettaglio = Annulla
+      (niente PATCH), nella creazione = Fatto (il valore resta nella bozza). "Dentro" segue l'albero React: tendine
+      e popover in portal del campo non chiudono la riga. Mai durante un salvataggio in corso.
+    - D-6a (utente 2026-10-06, "permessi a livello di campo, gestito anche questo"): `permissions.fields` di un task
+      ESISTENTE e' l'AND di tre cancelli, cosi' la matita compare solo dove la PATCH passa:
+      (1) matrice per ruolo + campi protetti (invariato); (2) `TaskPolicy::update` (abilita' + scope + ruolo sul
+      record: l'osservatore puro non ha campi editabili ne' `change_status`/`close_via_status`);
+      (3) `TaskWriteLock::isStructurallyLocked` (bloccato, in validazione/chiuso, o antenato congelato; carve-out
+      super-admin D-8 di spec 0153): restano editabili solo `task_status_id`/`closure_feedback`. Contesto create e
+      `new Task` della griglia invariati (solo abilita'). `UpdateTaskRequest` salta il controllo campi quando la
+      Policy rifiuta (resta il 403) e sui campi congelati usa il messaggio di `TaskWriteLock`.
+    - D-6b: un campo nascosto dalla matrice (`visible: false`) sparisce da TUTTO il dettaglio: righe, badge
+      dell'intestazione (tipo/priorita'/importanza/categoria/padre/ricorrenza), striscia KPI (date, stima), righe
+      di sola lettura (data completamento, feedback di chiusura). Solo UI: l'API restituisce ancora il valore
+      (comportamento di progetto, fuori scope).
+    - D-6c: un editor la cui cascata (D-3) scriverebbe un campo non editabile non si apre: anagrafica (referente,
+      opportunita', lead, commessa, fase), commessa (fase, opportunita'; imposta l'anagrafica), opportunita'
+      (commessa, fase), task padre (fase). Un dipendente gia' vuoto non blocca (`task-inline-cascade.ts`).
     - D-7: nel pannello modale il salvataggio di un campo NON chiude il pannello (si continua a lavorare sul
       record); chi ha aperto il pannello viene avvisato a ogni salvataggio (nuovo
       `ModuleDetailScreenProps.onChanged`, cablato da `useModuleOpener` sul suo `onSaved`) e aggiorna la propria
@@ -71,5 +90,10 @@
       righe chiuse, nessun POST se invalido.</ac>
     <ac id="AC-009">Uscita dalla creazione (Annulla, chiusura pannello, link, reload): popup di conferma; rifiutando
       si resta; dopo il salvataggio nessun popup.</ac>
+    <ac id="AC-010">Osservatore con `tasks.update`: nessun campo editabile nel dettaglio, PATCH 403; task congelato:
+      editabili solo stato e feedback, PATCH strutturale 422 col messaggio di blocco
+      (`TaskDetailFieldPermissionsTest`).</ac>
+    <ac id="AC-011">Campo nascosto dalla matrice assente anche da intestazione e KPI; editor a cascata senza matita
+      se un dipendente e' bloccato (`task-detail-field-permissions.test.tsx`, `task-inline-cascade.test.ts`).</ac>
   </acceptance>
 </spec>

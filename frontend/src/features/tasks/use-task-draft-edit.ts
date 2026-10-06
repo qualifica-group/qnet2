@@ -43,6 +43,8 @@ export function useTaskDraftEdit(form: UseFormReturn<TaskFormValues>): TaskInlin
     start,
     cancel,
     save,
+    // Nothing is persisted yet: a stray click must not wipe what was typed.
+    dismiss: save,
     isSaving: false,
     error: null,
     confirmLabel: t('tasks.detail.inlineEdit.apply'),

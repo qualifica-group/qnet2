@@ -7,6 +7,7 @@ use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\Tasks\TaskAbilityResolver;
+use App\Services\Tasks\TaskWriteLock;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -65,7 +66,9 @@ use Illuminate\Validation\Rule;
  */
 class UpdateTaskRequest extends FormRequest
 {
-    use EnforcesFieldPermissions;
+    use EnforcesFieldPermissions {
+        fieldNotEditableMessage as genericFieldNotEditableMessage;
+    }
 
     private const int TITLE_MAX = 191;
 
@@ -148,8 +151,35 @@ class UpdateTaskRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $this->enforceFieldPermissions($validator);
+            // Spec 0195: the field ceiling now folds in TaskPolicy::update(),
+            // so an actor the Policy refuses would read every field locked.
+            // Their relevant failure is the controller's 403, never a
+            // field-level 422 ahead of it.
+            if ($this->user()?->can('update', $this->task())) {
+                $this->enforceFieldPermissions($validator);
+            }
         });
+    }
+
+    /**
+     * A field locked by the Task's freeze keeps TaskWriteLock's own message
+     * (spec 0195: the ceiling now carries that lock too, and refuses the
+     * change before TaskService would).
+     */
+    protected function fieldNotEditableMessage(string $field): string
+    {
+        $isFrozenKey = ! in_array($field, TaskWriteLock::OPERATIVE_KEYS, true)
+            && TaskWriteLock::isStructurallyLocked($this->task(), $this->user());
+
+        return $isFrozenKey ? TaskWriteLock::STRUCTURAL_WRITE_MESSAGE : $this->genericFieldNotEditableMessage($field);
+    }
+
+    private function task(): Task
+    {
+        /** @var Task $task */
+        $task = $this->route('task');
+
+        return $task;
     }
 
     protected function authorizationResource(): string
@@ -159,10 +189,7 @@ class UpdateTaskRequest extends FormRequest
 
     protected function authorizationModel(): ?Model
     {
-        /** @var Task $task */
-        $task = $this->route('task');
-
-        return $task;
+        return $this->task();
     }
 
     /**

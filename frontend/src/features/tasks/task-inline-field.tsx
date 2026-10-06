@@ -7,6 +7,7 @@ import { RecordField } from '@/components/detail/record-panel'
 import { MetaFieldRowContext } from '@/features/authorization/meta-field-row-context'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { cn } from '@/lib/utils'
+import { useOutsidePointerDismiss } from '@/features/tasks/use-outside-pointer-dismiss'
 import type { TaskInlineEdit } from '@/features/tasks/use-task-inline-edit'
 
 /** What the editor focuses on open: a text-like input, the rich-text surface or a picker trigger. */
@@ -66,8 +67,9 @@ interface TaskInlineFieldProps {
  * persisted value as before, a pencil (on hover with a mouse, always on
  * touch) — or a click on the value itself — opens the field's own control
  * with Confirm/Cancel. Confirm PATCHes that field alone; Cancel or Esc
- * restores it. Hidden fields render nothing, non-editable ones no affordance
- * (D-6), exactly as `MetaField` would decide.
+ * restores it, and a press outside the row closes it (`inline.dismiss`).
+ * Hidden fields render nothing, non-editable ones no affordance (D-6),
+ * exactly as `MetaField` would decide.
  */
 export function TaskInlineField({
   field,
@@ -88,6 +90,9 @@ export function TaskInlineField({
   const closedError = firstMessage(getFieldState(field, formState).error)
   const isEditing = inline.editingField === field
   const editable = canEdit && permission.editable && !permission.disabled
+  // A press anywhere outside the open row closes it (user directive 2026-10-06);
+  // never mid-save, so the PATCH in flight keeps its editor and its error slot.
+  const outsidePointer = useOutsidePointerDismiss(isEditing && !inline.isSaving, inline.dismiss)
 
   // Moves focus into the control that just replaced the value (DOM sync only).
   useEffect(() => {
@@ -121,7 +126,12 @@ export function TaskInlineField({
     }
 
     return (
-      <div ref={editorRef} className={EDITING_ROW_CLASS} onKeyDown={handleKeyDown}>
+      <div
+        ref={editorRef}
+        className={EDITING_ROW_CLASS}
+        onKeyDown={handleKeyDown}
+        onPointerDownCapture={outsidePointer.onPointerDownCapture}
+      >
         <EditorRow field={field} label={label} icon={icon}>
           <div className="flex min-w-0 flex-col gap-2">
             {editor}

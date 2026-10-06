@@ -86,6 +86,17 @@ describe('Task create draft — rows start closed (spec 0195 D-8)', () => {
     expect(screen.getAllByText('Preparare il report').length).toBeGreaterThanOrEqual(2)
   })
 
+  it('a press outside the open row closes it keeping the typed value, like "Done"', () => {
+    renderCreate()
+    openInlineEditor(label('tasks.form.title'))
+
+    fireEvent.change(titleInput() as HTMLElement, { target: { value: 'Preparare il report' } })
+    fireEvent.pointerDown(document.body)
+
+    expect(titleInput()).not.toBeInTheDocument()
+    expect(screen.getAllByText('Preparare il report').length).toBeGreaterThanOrEqual(2)
+  })
+
   it('"Revert" puts the draft back as the row found it', async () => {
     renderCreate()
     openInlineEditor(label('tasks.form.title'))

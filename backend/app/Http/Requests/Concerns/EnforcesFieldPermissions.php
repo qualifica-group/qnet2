@@ -86,9 +86,19 @@ trait EnforcesFieldPermissions
             }
 
             if ($this->fieldValueChanged($field, $model)) {
-                $validator->errors()->add($field, 'field not editable');
+                $validator->errors()->add($field, $this->fieldNotEditableMessage($field));
             }
         }
+    }
+
+    /**
+     * The message for a refused change on $field. A FormRequest whose
+     * resource knows WHY the field is locked (e.g. a frozen record) overrides
+     * it to keep that reason instead of the generic one.
+     */
+    protected function fieldNotEditableMessage(string $field): string
+    {
+        return 'field not editable';
     }
 
     /**

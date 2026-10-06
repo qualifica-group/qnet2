@@ -126,7 +126,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Press **New task**.',
-            'Fill in the fields: the form is identical to the task detail (see table), with the fields closed, empty or prefilled. Press the **pencil** (or click the value) to open one, then **Done** to keep it or **Revert** to put it back as it was.',
+            'Fill in the fields: the form is identical to the task detail (see table), with the fields closed, empty or prefilled. Press the **pencil** (or click the value) to open one, then **Done** to keep it (a click outside the field also keeps it and closes it) or **Revert** to put it back as it was.',
             'If you want, add files in the **Attachments** tab of the side card (where the detail keeps its Documents): they are uploaded once the task is saved.',
             'Press **Save**: every field is checked at once and any error shows under its row.',
           ],
@@ -197,16 +197,16 @@ const guide: HelpGuide = {
             'Open the task from the list (or the Kanban).',
             'Hover the field to change and press the **pencil** (or click the value).',
             'Change the value in the control that appears.',
-            'Press **Save** (or Enter in text and date fields) to save that field alone; **Cancel** (or Esc) to leave it as it was.',
+            'Press **Save** (or Enter in text and date fields) to save that field alone; **Cancel** (or Esc, or a click outside the open field) to close it as it was, without saving.',
           ],
         },
         {
           type: 'note',
-          text: 'A field without a pencil cannot be edited by you right now (permissions, task in validation or closed, blocked task for the Status). Creator, Completion date, Closure feedback and Blocked stay read-only: they change only through the actions (Complete, Block, Unblock...).',
+          text: 'A field without a pencil cannot be edited by you right now: your role\'s permissions make it read-only, you are only a watcher on the task (no pencil at all), or the task, or a parent task, is blocked, in validation or closed (only the Status stays editable, when the task allows it). Fields your role hides do not appear at all, not even in the header and the top tiles. Creator, Completion date, Closure feedback and Blocked stay read-only: they change only through the actions (Complete, Block, Unblock...).',
         },
         {
           type: 'note',
-          text: 'The rules are the same as on create: changing the **Registry** clears Referent, Opportunity and Lead in the same save; picking a **Work order** removes the Opportunity and offers the Stage right away.',
+          text: 'The rules are the same as on create: changing the **Registry** clears Referent, Opportunity and Lead in the same save; picking a **Work order** removes the Opportunity and offers the Stage right away. When one of the fields that would change along with it is not editable by you, the starting field (Registry, Work order, Opportunity or Parent task) has no pencil either.',
         },
       ],
     },
