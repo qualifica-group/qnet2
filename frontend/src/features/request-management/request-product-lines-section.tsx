@@ -5,6 +5,7 @@ import { FormSection } from '@/components/form-section'
 import { MetaField } from '@/features/authorization/MetaField'
 import { ProductLinesField } from '@/features/product-lines/product-lines-field'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
+import { useOfferLinesCoherence } from '@/features/request-management/use-offer-lines-coherence'
 
 interface RequestProductLinesSectionProps {
   control: Control<RequestWorkFormValues>
@@ -18,9 +19,12 @@ interface RequestProductLinesSectionProps {
  * `MetaField` like every other field here so its gating comes from the
  * server-derived permissions. No `knownLines` (spec 0132): every label
  * resolves off the cached category tree, not a persisted-row projection.
+ * Re-pointing or removing a row empties the offer rows whose product that
+ * classification no longer covers (`useOfferLinesCoherence`).
  */
 export function RequestProductLinesSection({ control }: RequestProductLinesSectionProps) {
   const { t } = useTranslation()
+  const resetUncoveredOfferRows = useOfferLinesCoherence(control)
 
   return (
     <FormSection
@@ -36,7 +40,14 @@ export function RequestProductLinesSection({ control }: RequestProductLinesSecti
         hint={t('requestManagement.workPanel.productLines.hint')}
       >
         {({ field, disabled }) => (
-          <ProductLinesField value={field.value} onChange={field.onChange} disabled={disabled} />
+          <ProductLinesField
+            value={field.value}
+            onChange={(rows) => {
+              field.onChange(rows)
+              resetUncoveredOfferRows(rows)
+            }}
+            disabled={disabled}
+          />
         )}
       </MetaField>
     </FormSection>

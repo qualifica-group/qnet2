@@ -80,6 +80,7 @@ function product(overrides: Partial<ProductDetailWithPermissions> = {}): Product
     category_id: 3,
     category: { id: 3, name: 'Laptops' },
     product_type: 'SERVICE',
+    usages: ['SALE', 'COST'],
     created_at: '2026-01-01T00:00:00Z',
     vat_rate_id: null,
     vat_rate: null,

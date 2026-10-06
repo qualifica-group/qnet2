@@ -10,8 +10,9 @@ use App\Enums\ProductUsage;
  * spec 0061 for `attributeValues`; spec 0065, D-1b for `code`). Declared DTO
  * (no "magic flying array") so the StoreProductRequest → ProductService
  * contract is explicit — see standards/architecture.md → Data Transfer
- * Objects. `cost`/`price`/`productType` are all required by the FormRequest,
- * so they cross as non-null values. `code` is optional: absent/null/empty
+ * Objects. `productType` is required by the FormRequest and crosses as non-null;
+ * `cost`/`price` (spec 0191) are nullable because each is mandatory only
+ * for its usage (Sellable -> price, Usable as cost -> cost), absent = null. `code` is optional: absent/null/empty
  * means the Service falls back to the sequential PRD-0001 generator.
  * `unitOfMeasureId` (spec 0088, D-4) is likewise optional: absent OR null
  * both collapse to the Service falling back to the default unit — on
@@ -31,8 +32,8 @@ final readonly class CreateProductData
     public function __construct(
         public string $name,
         public ?string $description,
-        public float $cost,
-        public float $price,
+        public ?float $cost,
+        public ?float $price,
         public int $categoryId,
         public ProductType $productType,
         public ?int $vatRateId = null,
@@ -54,8 +55,8 @@ final readonly class CreateProductData
         return new self(
             name: (string) $data['name'],
             description: array_key_exists('description', $data) ? $data['description'] : null,
-            cost: (float) $data['cost'],
-            price: (float) $data['price'],
+            cost: isset($data['cost']) ? (float) $data['cost'] : null,
+            price: isset($data['price']) ? (float) $data['price'] : null,
             categoryId: (int) $data['category_id'],
             productType: ProductType::from((string) $data['product_type']),
             vatRateId: array_key_exists('vat_rate_id', $data) && $data['vat_rate_id'] !== null ? (int) $data['vat_rate_id'] : null,

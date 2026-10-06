@@ -32,6 +32,11 @@ use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Roles;
  * that as competent for nothing. Their unrestricted role already sees every
  * record without a remote membership.
  *
+ * Added after the sheet (user directive 2026-10-05): Martina Mosca mirrors
+ * Michela Fabozzi; Giovanna Gervasio, Raffaele Distico, Gessica Crispo and
+ * Emanuele Ascione mirror Rosa Falzarano, except they are competent for the
+ * whole APL branch.
+ *
  * The teaching supervisor (Marlena Jaruga) is likewise competent for nothing
  * (user decision 2026-09-16), but keeps her enabled cities: her role sees the
  * requests by Sede (`viewSite`), so the memberships are her whole reach.
@@ -66,7 +71,12 @@ final class OperatorRoster
      */
     public const array OPERATORS = [
         ['Michela', 'Fabozzi', 'michela.fabozzi@qualificagroup.com', 'Coordinatore Commerciale', Roles::COORDINATOR_ROLE, 'Frattamaggiore', [], []],
+        ['Martina', 'Mosca', 'martina.mosca@qualificagroup.com', 'Coordinatore Commerciale', Roles::COORDINATOR_ROLE, 'Frattamaggiore', [], []],
         ['Rosa', 'Falzarano', 'rosa.falzarano@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], []],
+        ['Giovanna', 'Gervasio', 'giovanna.gervasio@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], ['APL']],
+        ['Raffaele', 'Distico', 'raffaele.distico@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], ['APL']],
+        ['Gessica', 'Crispo', 'gessica.crispo@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], ['APL']],
+        ['Emanuele', 'Ascione', 'emanuele.ascione@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], ['APL']],
         ['Fabrizio', 'Aliberti', 'fabrizio.aliberti@qualificagroup.com', 'Supervisor Commerciale', Roles::SUPERVISOR_ROLE, 'Frattamaggiore', [], []],
         ['Umberto', 'Santamaria', 'umberto.santamaria@qualificagroup.com', 'Responsabile Marketing', Roles::COORDINATOR_ROLE, 'Frattamaggiore', [], []],
         ['Simona', 'Chiacchio', 'simona.chiacchio@qualificagroup.com', 'Commerciale - Supporto Marketing', Roles::COORDINATOR_ROLE, 'Frattamaggiore', [], []],

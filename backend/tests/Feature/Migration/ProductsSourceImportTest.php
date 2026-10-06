@@ -270,3 +270,44 @@ it('fails a product whose required category is not migrated, without blocking a 
         ->and($fresh->failed_rows)->toBe(1)
         ->and(collect($fresh->report)->firstWhere('level', 'error'))->not->toBeNull();
 });
+
+it('files a product of the legacy "APL old" branch on the manual category replacing its own (user directive 2026-10-05)', function () {
+    seedMigrationsConfig();
+    $manualRoot = ProductCategory::factory()->create(['name' => 'APL', 'parent_id' => null]);
+    $targets = collect(['Apprendistato', 'Tirocinio', 'Orientamento specialistico'])
+        ->mapWithKeys(fn (string $name) => [$name => ProductCategory::factory()->create(['name' => $name, 'parent_id' => $manualRoot->id])->id]);
+
+    // The legacy branch as ProductCategoriesSource imports it.
+    $legacyRoot = ProductCategory::factory()->create(['old_id' => 10, 'name' => 'APL old', 'parent_id' => null]);
+    foreach ([11 => 'Formazione Apprendistato', 12 => 'Tirocini extracurriculari privati', 13 => 'Orientamento Specialistico old', 14 => 'Ricerca e Selezione'] as $oldId => $name) {
+        ProductCategory::factory()->create(['old_id' => $oldId, 'name' => $name, 'parent_id' => $legacyRoot->id]);
+    }
+    $elsewhere = ProductCategory::factory()->create(['old_id' => 20, 'name' => 'Tirocini extracurriculari privati', 'parent_id' => null]);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/products*' => Http::response([
+            'items' => collect([1 => 11, 2 => 12, 3 => 13, 4 => 14, 5 => 20])
+                ->map(fn (int $categoryId, int $id) => ['id' => $id, 'name' => "Product {$id}", 'category_id' => $categoryId, 'product_type' => 'SERVICE'])
+                ->values()->all(),
+            'pagination' => ['total' => 5],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'products']);
+
+    runMigrationJobFor($run);
+
+    $categoryOf = fn (int $oldId) => Product::query()->where('old_id', $oldId)->value('category_id');
+
+    expect($categoryOf(1))->toBe($targets['Apprendistato'])
+        ->and($categoryOf(2))->toBe($targets['Tirocinio'])
+        ->and($categoryOf(3))->toBe($targets['Orientamento specialistico'])
+        // No manual replacement: kept on its legacy node, with a warning.
+        ->and($categoryOf(4))->toBe(ProductCategory::query()->where('old_id', 14)->value('id'))
+        // Same name outside the legacy APL branch: untouched.
+        ->and($categoryOf(5))->toBe($elsewhere->id)
+        ->and($run->fresh()->created_rows)->toBe(5)
+        ->and(collect($run->fresh()->report)->pluck('message')->filter(fn (string $message) => str_contains($message, 'no manual replacement'))->count())
+        ->toBe(1);
+});

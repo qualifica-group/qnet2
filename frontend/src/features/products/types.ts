@@ -147,8 +147,9 @@ export interface CreateProductPayload {
   code?: string
   name: string
   description?: string | null
-  cost: number
-  price: number
+  /** `null` when the matching usage is off (spec 0191). */
+  cost: number | null
+  price: number | null
   category_id: number
   product_type: ProductType
   /** At least one (spec 0142); omitted resolves server-side to `['SALE']`. */

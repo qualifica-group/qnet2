@@ -1,31 +1,28 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import type { RequestDashboardData } from '@/features/request-management/dashboard-api'
+import type { DashboardDateRange } from '@/features/request-management/dashboard-period-presets'
+import { UNASSIGNED_OPERATOR_KEY } from '@/features/request-management/dashboard-leaderboard'
 import type {
   RequestReportCategory,
   RequestReportOperator,
   RequestReportSite,
 } from '@/features/request-management/report-api'
+import { DashboardCategoryPanel } from '@/features/request-management/request-dashboard-category-panel'
+import { DashboardCategoryStrip } from '@/features/request-management/request-dashboard-category-strip'
 import { RequestDashboardFilterBar } from '@/features/request-management/request-dashboard-filter-bar'
-import {
-  DashboardCategorySection,
-  DashboardOverallSection,
-} from '@/features/request-management/request-dashboard-section'
+import { DashboardOverview } from '@/features/request-management/request-dashboard-overview'
+import { DashboardNotice, DashboardSkeleton } from '@/features/request-management/request-dashboard-states'
 import { RequestReportFiltersDialog } from '@/features/request-management/request-report-filters-dialog'
 import {
   isCategoriesEmpty,
   isRequestReportQueryReady,
   toRequestReportFilterPayload,
 } from '@/features/request-management/request-report-schema'
-import { useRequestDashboard } from '@/features/request-management/use-request-dashboard'
-import {
-  dashboardCollapseTargets,
-  type RequestDashboardCollapse,
-  useRequestDashboardCollapse,
-} from '@/features/request-management/use-request-dashboard-collapse'
+import { useRequestDashboard, useRequestDashboardPrevious } from '@/features/request-management/use-request-dashboard'
+import { OVERVIEW_TAB, useRequestDashboardTab } from '@/features/request-management/use-request-dashboard-tab'
 import { useRequestReportCategories } from '@/features/request-management/use-request-report-categories'
 import { useRequestReportOperators } from '@/features/request-management/use-request-report-operators'
 import { useRequestReportSites } from '@/features/request-management/use-request-report-sites'
@@ -37,9 +34,6 @@ import {
 } from '@/features/request-management/use-request-report-filters'
 import type { UseQueryResult } from '@tanstack/react-query'
 
-const SKELETON_GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6'
-const SKELETON_TILE_COUNT = 4
-
 /** Hoisted so an unloaded operator/site list keeps a STABLE identity across renders. */
 const EMPTY_KEYS: string[] = []
 const EMPTY_CATEGORIES: RequestReportCategory[] = []
@@ -48,6 +42,7 @@ const EMPTY_OPERATORS: RequestReportOperator[] = []
 
 const HTTP_FORBIDDEN = 403
 const HTTP_UNPROCESSABLE = 422
+
 
 /**
  * Picks the message that tells the operator WHY the dashboard is missing and
@@ -70,101 +65,73 @@ function dashboardErrorKey(error: unknown): string {
   return 'requestManagement.dashboard.errors.generic'
 }
 
-interface DashboardNoticeProps {
-  message: string
-  tone: 'error' | 'info'
-  onRetry?: () => void
-}
-
-/** One notice box for every "nothing to chart" outcome, retryable when a refetch can help. */
-function DashboardNotice({ message, tone, onRetry }: DashboardNoticeProps) {
-  const { t } = useTranslation()
-
-  return (
-    <div className="flex flex-col items-start gap-2 rounded-xl border bg-card p-3">
-      <p
-        className={tone === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}
-        role={tone === 'error' ? 'alert' : 'status'}
-      >
-        {message}
-      </p>
-      {onRetry ? (
-        <Button variant="outline" size="sm" onClick={onRetry}>
-          {t('common.retry')}
-        </Button>
-      ) : null}
-    </div>
-  )
-}
-
-/** Placeholder rows shaped like the eventual tiles/charts, shown while the aggregates load. */
-function DashboardSkeleton() {
-  return (
-    <div className="flex flex-col gap-3">
-      <div className={SKELETON_GRID_CLASS}>
-        {Array.from({ length: SKELETON_TILE_COUNT }).map((_, index) => (
-          <div key={index} className="flex flex-col gap-2 rounded-xl border bg-card p-3">
-            <Skeleton className="h-3 w-16" />
-            <Skeleton className="h-6 w-12" />
-          </div>
-        ))}
-      </div>
-      <Skeleton className="h-48 w-full sm:h-64" />
-    </div>
-  )
-}
-
 interface DashboardResultsProps {
   query: UseQueryResult<RequestDashboardData>
-  collapse: RequestDashboardCollapse
+  previous: RequestDashboardData | undefined
+  unassignedLabel: string | undefined
 }
 
 /**
  * The three states the dashboard can be in (spec 0107 AC-048): loading
- * skeleton, a retryable error, and the results — the overall tiles over the
- * union of the selected categories (D-8), then one section per category
- * (rev-3 D-10). Since rev-3 nothing is dropped for being 0, so a section is
- * always rendered for every selected category: an empty week is an answer.
- *
- * Every section, and the two blocks inside it, fold independently; the state
- * is owned by the dashboard (one hook for the whole page) rather than per
- * section, so it survives a section unmounting on a refetch and is persisted
- * in a single storage entry (user directive 2026-09-08).
+ * skeleton, a retryable error, and the results as tabs (spec 0192 D-1) —
+ * the overview, then one tab per returned category. Since rev-3 nothing is
+ * dropped for being 0, so every selected category gets its tab: an empty
+ * week is an answer. A filter change keeps the previous numbers on screen,
+ * dimmed, until the new ones land.
  */
-function DashboardResults({ query, collapse }: DashboardResultsProps) {
+function DashboardResults({ query, previous, unassignedLabel }: DashboardResultsProps) {
   const { t } = useTranslation()
-  const { data, error, isLoading, isError, refetch } = query
+  const { data, error, isLoading, isError, isPlaceholderData, refetch } = query
+  const categoryKeys = data ? data.categories.map((category) => category.key) : EMPTY_KEYS
+  const { tab, setTab } = useRequestDashboardTab(categoryKeys)
 
   return (
-    <div aria-busy={isLoading} className="flex flex-col gap-3">
+    <div aria-busy={isLoading || isPlaceholderData} className="flex flex-col gap-3">
       {isLoading ? <DashboardSkeleton /> : null}
 
       {isError ? (
         <DashboardNotice tone="error" message={t(dashboardErrorKey(error))} onRetry={() => void refetch()} />
       ) : null}
 
-      {data && data.summary.length > 0 ? (
-        <DashboardOverallSection items={data.summary} collapse={collapse} />
-      ) : null}
+      {data ? (
+        <Tabs
+          value={tab}
+          onValueChange={setTab}
+          className={isPlaceholderData ? 'gap-3 opacity-60 transition-opacity' : 'gap-3 transition-opacity'}
+        >
+          <DashboardCategoryStrip categories={data.categories} value={tab} onSelect={setTab} />
 
-      {data?.categories.map((category) => (
-        <DashboardCategorySection key={category.key} category={category} collapse={collapse} />
-      ))}
+          <TabsContent value={OVERVIEW_TAB}>
+            <DashboardOverview data={data} previous={previous} onSelectCategory={setTab} />
+          </TabsContent>
+          {data.categories.map((category) => (
+            <TabsContent key={category.key} value={category.key}>
+              <DashboardCategoryPanel
+                category={category}
+                previous={previous?.categories.find((candidate) => candidate.key === category.key)}
+                unassignedLabel={unassignedLabel}
+              />
+            </TabsContent>
+          ))}
+        </Tabs>
+      ) : null}
     </div>
   )
 }
 
 /**
  * Gestione Richieste's statistics dashboard (spec 0107 D-1, moved to its own
- * page by spec 0185): deliberately NOT `ModuleStatsPanel`/`GET /stats/{domain}`
- * (spec 0026), which this module never calls. Always rendered; the page that
- * mounts it is gated by `REQUEST_STATISTICS_PERMISSION`.
+ * page by spec 0185, redesigned by spec 0192): deliberately NOT
+ * `ModuleStatsPanel`/`GET /stats/{domain}` (spec 0026), which this module
+ * never calls. Always rendered; the page that mounts it is gated by
+ * `REQUEST_STATISTICS_PERMISSION`.
  *
  * Owns the APPLIED filters (user directive 2026-09-08), restored from the
  * operator's last session by `useRequestReportFilters`. They are plain state,
  * not a `useForm()` instance: editing happens in `RequestReportFiltersDialog`,
  * which receives them and hands back a set already validated by the shared Zod
- * schema — so the query still gates on `isRequestReportQueryReady`, never on
+ * schema, and the toolbar's one-click periods replace only the two dates —
+ * so the query still gates on `isRequestReportQueryReady`, never on
  * unvalidated input. `RequestDashboardFilterBar` generates the CSV from the
  * same state, which is why nothing else may hold a copy of it.
  */
@@ -231,11 +198,11 @@ export function RequestDashboard() {
   // different cache entry.
   const payload = toRequestReportFilterPayload(filters, operatorKeys, siteKeys)
   const dashboardQuery = useRequestDashboard(payload, filtersReady)
-  // Held here, not in `DashboardResults`, so the bar's expand/collapse-all
-  // button and the sections read and write the SAME state.
-  const collapse = useRequestDashboardCollapse()
-  const collapseTargets = dashboardCollapseTargets(dashboardQuery.data)
-  const allExpanded = collapse.areAllOpen(collapseTargets)
+  const previousData = useRequestDashboardPrevious(payload, filtersReady)
+  const unassignedLabel = operators?.find((operator) => operator.key === UNASSIGNED_OPERATOR_KEY)?.label
+
+  // A preset changes the dates only: every other filter stays as applied.
+  const applyPeriod = (range: DashboardDateRange) => setFilters((current) => ({ ...current, ...range }))
 
   return (
     <section aria-label={t('requestManagement.dashboard.regionLabel')} className="flex flex-col gap-4">
@@ -247,9 +214,7 @@ export function RequestDashboard() {
         operators={operators ?? EMPTY_OPERATORS}
         filtersReady={filtersReady}
         onEdit={() => setFiltersOpen(true)}
-        allExpanded={allExpanded}
-        canToggleExpanded={collapseTargets.length > 0}
-        onToggleExpanded={() => collapse.setAllOpen(collapseTargets, !allExpanded)}
+        onApplyPeriod={applyPeriod}
       />
 
       {categoriesQuery.isError ? (
@@ -261,7 +226,7 @@ export function RequestDashboard() {
       ) : categoriesEmpty ? (
         <DashboardNotice tone="info" message={t('requestManagement.dashboard.noCategories')} />
       ) : (
-        <DashboardResults query={dashboardQuery} collapse={collapse} />
+        <DashboardResults query={dashboardQuery} previous={previousData} unassignedLabel={unassignedLabel} />
       )}
 
       <RequestReportFiltersDialog

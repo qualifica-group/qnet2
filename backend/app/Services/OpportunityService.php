@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 /**
  * Business logic for the `opportunities` resource (spec 0040): create/
@@ -229,42 +230,7 @@ class OpportunityService
             // the whole create — bulk conversion included — rolls back.
             $this->openOpportunityGuard->assertNoOpenOpportunity((int) $attributes['registry_id']);
 
-            // `opportunities.name` is NOT NULL but the automatic value
-            // (`OPP_{id}`) depends on the row's own id — seed only a non-null
-            // placeholder here to satisfy the constraint at INSERT, mirroring
-            // RegistryService::create's own placeholder.
-            $attributes['name'] = '';
-
-            $opportunity = Opportunity::create($attributes);
-
-            $this->nameWriter->write($opportunity, $data->name);
-
-            $attachedManagers = [];
-
-            if ($data->hasManagerSlots()) {
-                $syncMap = ManagerPositions::syncMap($data->managerSlots);
-                $attachedManagers = ManagerPositions::attachedPositions($syncMap, PositionalPivotSync::sync($opportunity->managers(), $syncMap));
-            }
-
-            if ($data->hasProductLines()) {
-                $this->productLineWriter->sync($opportunity, $data->productLines);
-            }
-
-            // "Prodotti di interesse" (user directive 2026-07-22): synced
-            // AFTER the product lines, because the writer checks each product
-            // against the categories they cover — a product outside them is
-            // refused (user directive 2026-08-05, ProductCategoryCoherence),
-            // rolling this whole transaction back.
-            if ($data->hasProductsOfInterest()) {
-                $this->productInterestWriter->sync($opportunity, $data->productsOfInterest);
-            }
-
-            // spec 0059: `reporter_id` is part of the initial insert (not a
-            // "change" on create), so a sync here already targets the right
-            // beneficiary — no retarget() step is needed, unlike update().
-            if ($data->hasRewards()) {
-                $this->rewardAssignmentWriter->sync($opportunity, $data->rewards);
-            }
+            [$opportunity, $attachedManagers] = $this->persist($data, $attributes);
 
             // spec 0081: dispatched last, when `name` is already written and
             // the manager slots are final.
@@ -288,6 +254,64 @@ class OpportunityService
         });
 
         return $this->loadDetail($opportunity);
+    }
+
+    /**
+     * Legacy import (spec 0189, G-4): create()'s persistence without the
+     * one-open-opportunity guard (legacy registries have several), the
+     * assignment notifications, the lead path and loadDetail().
+     */
+    public function import(CreateOpportunityData $data): Opportunity
+    {
+        if ($data->leadId !== null) {
+            throw new InvalidArgumentException('An imported opportunity cannot be linked to a lead.');
+        }
+
+        return DB::transaction(fn (): Opportunity => $this->persist($data, $data->attributes())[0]);
+    }
+
+    /**
+     * The write shared by create() and import(); never notifies.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array{0: Opportunity, 1: array<int, int>} the opportunity and its attached managers (userId => position)
+     */
+    private function persist(CreateOpportunityData $data, array $attributes): array
+    {
+        // `opportunities.name` is NOT NULL but the automatic value (`OPP_{id}`)
+        // depends on the row's own id: a non-null placeholder at INSERT.
+        $attributes['name'] = '';
+
+        $opportunity = Opportunity::create($attributes);
+
+        $this->nameWriter->write($opportunity, $data->name);
+
+        $attachedManagers = [];
+
+        if ($data->hasManagerSlots()) {
+            $syncMap = ManagerPositions::syncMap($data->managerSlots);
+            $attachedManagers = ManagerPositions::attachedPositions($syncMap, PositionalPivotSync::sync($opportunity->managers(), $syncMap));
+        }
+
+        if ($data->hasProductLines()) {
+            $this->productLineWriter->sync($opportunity, $data->productLines);
+        }
+
+        // "Prodotti di interesse" (user directive 2026-07-22): AFTER the product
+        // lines, because the writer refuses a product outside the categories
+        // they cover (user directive 2026-08-05, ProductCategoryCoherence).
+        if ($data->hasProductsOfInterest()) {
+            $this->productInterestWriter->sync($opportunity, $data->productsOfInterest);
+        }
+
+        // spec 0059: `reporter_id` is part of the initial insert (not a
+        // "change" on create), so a sync here already targets the right
+        // beneficiary — no retarget() step is needed, unlike update().
+        if ($data->hasRewards()) {
+            $this->rewardAssignmentWriter->sync($opportunity, $data->rewards);
+        }
+
+        return [$opportunity, $attachedManagers];
     }
 
     /**

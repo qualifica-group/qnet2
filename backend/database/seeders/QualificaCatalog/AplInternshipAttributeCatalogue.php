@@ -14,8 +14,7 @@ use App\Enums\LayoutSectionVariant;
  * below.
  *
  * They are the category's WHOLE offer form: it is cut off the "APL" root
- * (CategoryInheritanceRules), which on an imported database carries the
- * Ricerca & Selezione job-description fields.
+ * (CategoryInheritanceRules), so a field assigned on the root never reaches it.
  *
  * NOT FIELDS, by design: the sheet's "Utente" is the opportunity's registry;
  * "Commerciale" and "Segnalatore" are the offer's own `commercial_id` and
@@ -31,36 +30,56 @@ use App\Enums\LayoutSectionVariant;
 final class AplInternshipAttributeCatalogue
 {
     /**
-     * Seeded under "APL" so it exists on a clean database too; on an imported
-     * one ProductCategoriesSource adopts it by this exact name.
+     * Seeded under "APL"; it replaces the legacy "Tirocini extracurriculari
+     * privati", which the import files under "APL old" and whose products it
+     * moves here (LegacyAplBranch, user directive 2026-10-05).
      */
-    public const string CATEGORY = 'Tirocini extracurriculari privati';
+    public const string CATEGORY = 'Tirocinio';
+
+    /**
+     * The decree and reporting references, shared with the apprenticeship and
+     * orientation practices (ApprenticeshipAttributeCatalogue,
+     * AplOrientationAttributeCatalogue): one attribute per concept across the
+     * APL branch, so the values filter and report together.
+     *
+     * @var array{code: string, name: string, type: string, options: list<array{value: string, label: string}>}
+     */
+    public const array DECREE_STATUS = ['code' => 'decree_status', 'name' => 'Decreto', 'type' => 'enum', 'options' => [
+        ['value' => 'lost', 'label' => 'Persa'],
+        ['value' => 'sent', 'label' => 'Inviata'],
+        ['value' => 'accepted', 'label' => 'Accolta'],
+        ['value' => 'paid', 'label' => 'Pagata'],
+    ]];
+
+    /** @var array{code: string, name: string, type: string} */
+    public const array DECREE_ID = ['code' => 'decree_id', 'name' => 'ID decreto', 'type' => 'text'];
+
+    /** @var array{code: string, name: string, type: string} */
+    public const array REPORTING_ID = ['code' => 'reporting_id', 'name' => 'ID rendicontazione', 'type' => 'text'];
+
+    /** @var array{code: string, name: string, type: string} */
+    public const array PRACTICE_END_DATE = ['code' => 'practice_end_date', 'name' => 'Data fine', 'type' => 'date'];
 
     /**
      * @var list<array{code: string, name: string, type: string, options?: list<array{value: string, label: string}>}>
      */
     public const array ATTRIBUTES = [
         ['code' => 'practice_start_date', 'name' => 'Data inizio', 'type' => 'date'],
-        ['code' => 'practice_end_date', 'name' => 'Data fine', 'type' => 'date'],
+        self::PRACTICE_END_DATE,
         ['code' => 'registers_status', 'name' => 'Registri', 'type' => 'enum', 'options' => [
             ['value' => 'entered', 'label' => 'Inserito'],
             ['value' => 'not_entered', 'label' => 'Non inserito'],
         ]],
-        ['code' => 'decree_status', 'name' => 'Decreto', 'type' => 'enum', 'options' => [
-            ['value' => 'lost', 'label' => 'Persa'],
-            ['value' => 'sent', 'label' => 'Inviata'],
-            ['value' => 'accepted', 'label' => 'Accolta'],
-            ['value' => 'paid', 'label' => 'Pagata'],
-        ]],
+        self::DECREE_STATUS,
         ['code' => 'practice_number', 'name' => 'Numero pratica', 'type' => 'text'],
-        ['code' => 'reporting_id', 'name' => 'ID rendicontazione', 'type' => 'text'],
-        ['code' => 'decree_id', 'name' => 'ID decreto', 'type' => 'text'],
+        self::REPORTING_ID,
+        self::DECREE_ID,
     ];
 
     /**
      * The offer form in the sheet's reading order: the header the operator
-     * checks first (registers, decree and the internship's dates),
-     * highlighted; then the practice references.
+     * checks first (registers, decree and the internship's dates), then the
+     * practice references. Every section white (user directive 2026-10-05).
      *
      * @var list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>
      */
@@ -68,7 +87,7 @@ final class AplInternshipAttributeCatalogue
         ['apl-internship-status', 'Stato pratica', [
             ['registers_status', 'decree_status'],
             ['practice_start_date', 'practice_end_date'],
-        ], ['variant' => LayoutSectionVariant::Highlighted, 'columns' => 2, 'description' => 'Registri, decreto e periodo del tirocinio.']],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Registri, decreto e periodo del tirocinio.']],
         ['apl-internship-data', 'Dati pratica', [
             ['practice_number'],
             ['reporting_id', 'decree_id'],

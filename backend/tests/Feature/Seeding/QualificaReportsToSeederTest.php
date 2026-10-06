@@ -52,6 +52,8 @@ it('syncs every listed account onto its managers', function (): void {
 
     expect(managerEmailsOf('michela.fabozzi@qualificagroup.com'))->toBe([])
         ->and(managerEmailsOf('rosa.falzarano@qualificagroup.com'))->toBe(['michela.fabozzi@qualificagroup.com'])
+        ->and(managerEmailsOf('giovanna.gervasio@qualificagroup.com'))->toBe([])
+        ->and(managerEmailsOf('martina.mosca@qualificagroup.com'))->toBe(['michela.fabozzi@qualificagroup.com'])
         ->and(managerEmailsOf('simona.chiacchio@qualificagroup.com'))->toBe([
             'fabrizio.aliberti@qualificagroup.com',
             'rosa.falzarano@qualificagroup.com',

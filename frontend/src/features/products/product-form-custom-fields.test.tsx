@@ -170,7 +170,6 @@ describe('ProductForm — custom fields (spec 0021)', () => {
 
     fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'ThinkPad X1' } })
     fireEvent.click(screen.getByText('select-category-3'))
-    fireEvent.change(screen.getByLabelText(/^Cost/), { target: { value: '800' } })
     fireEvent.change(screen.getByLabelText(/^Price/), { target: { value: '1200' } })
     fireEvent.change(await screen.findByRole('textbox', { name: 'Notes' }), {
       target: { value: 'Key product' },

@@ -5,10 +5,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { RequestDashboard } from '@/features/request-management/request-dashboard'
-import type { RequestReportCategory } from '@/features/request-management/report-api'
 import type { RequestDashboardData } from '@/features/request-management/dashboard-api'
-import { ENROLLEE_MODULE, RequestModuleProvider } from '@/features/request-management/request-module'
-import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
+import { DASHBOARD_CATEGORIES, dashboardData } from '@/features/request-management/request-dashboard-fixtures'
+import { todayReportRange } from '@/features/request-management/request-report-schema'
 
 /**
  * Spec 0107 AC-041..AC-044, AC-048: the dashboard panel, driven entirely
@@ -22,6 +21,11 @@ import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
  * rendered fields rather than hardcoded — AC-056/AC-057 (current week)
  * already have their own dedicated, fake-timer-based coverage in
  * `request-report-schema.test.ts`.
+ *
+ * Spec 0192 redesigned the results as tabs (overview + one per category)
+ * and added, for a closed period, a second call for the previous period of
+ * equal length: assertions on the APPLIED period's request therefore pick it
+ * by its dates instead of counting every call.
  */
 
 const fetchRequestManagementReportCategoriesMock = vi.fn()
@@ -50,62 +54,6 @@ vi.mock('@/features/request-management/dashboard-api', () => ({
   fetchRequestManagementDashboard: (...args: unknown[]) => fetchRequestManagementDashboardMock(...args),
 }))
 
-const CATEGORIES: RequestReportCategory[] = [
-  { key: 'gol', label: 'GOL', depth: 0, parent_key: null },
-  { key: 'consulenza', label: 'Consulenza', depth: 0, parent_key: null },
-]
-
-function dashboardData(overrides: Partial<RequestDashboardData> = {}): RequestDashboardData {
-  return {
-    applied: {
-      date_from: '2026-09-07',
-      date_to: '2026-09-11',
-      category_keys: ['gol', 'consulenza'],
-      row_mode: 'all',
-      operator_keys: null,
-      site_keys: null,
-    },
-    summary: [{ key: 'phone_calls', label: 'N. Telefonate Effettuate', value: 12 }],
-    categories: [
-      {
-        key: 'gol',
-        label: 'GOL',
-        summary: [
-          { key: 'phone_calls', label: 'N. Telefonate Effettuate', value: 8 },
-          { key: 'aule_gestione', label: 'Aule in gestione', value: 0 },
-        ],
-        charts: [
-          {
-            id: 'indicator-gol',
-            scope: 'indicator',
-            indicator_key: null,
-            indicator_label: null,
-            points: [
-              { label: 'N. Telefonate Effettuate', value: 8 },
-              { label: 'Aule in gestione', value: 0 },
-            ],
-          },
-        ],
-      },
-      {
-        key: 'consulenza',
-        label: 'Consulenza',
-        summary: [{ key: 'phone_calls', label: 'N. Telefonate Effettuate', value: 4 }],
-        charts: [
-          {
-            id: 'operator-consulenza-phone_calls',
-            scope: 'operator',
-            indicator_key: 'phone_calls',
-            indicator_label: 'N. Telefonate Effettuate',
-            points: [{ label: 'Ada Rossi', value: 4 }],
-          },
-        ],
-      },
-    ],
-    ...overrides,
-  }
-}
-
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
@@ -114,7 +62,7 @@ beforeEach(() => {
   // The applied filters are persisted (user directive 2026-09-08): without this
   // one test's selection would seed the next one's mount.
   window.localStorage.clear()
-  fetchRequestManagementReportCategoriesMock.mockReset().mockResolvedValue(CATEGORIES)
+  fetchRequestManagementReportCategoriesMock.mockReset().mockResolvedValue(DASHBOARD_CATEGORIES)
   // Spec 0109: the tests below assert the branch flow; the GA2 list is opted
   // into per test (see the operator-filter cases) and empty otherwise.
   fetchRequestManagementReportOperatorsMock.mockReset().mockResolvedValue([])
@@ -139,6 +87,11 @@ async function openFilters() {
   fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
   fireEvent.click(await screen.findByRole('button', { name: /^Categories/ }))
   return screen.findByRole('checkbox', { name: 'GOL' })
+}
+
+/** Radix tabs activate on a primary-button mousedown, not on click. */
+function openTab(tab: HTMLElement) {
+  fireEvent.mouseDown(tab, { button: 0, ctrlKey: false })
 }
 
 /** The applied-filter chips of the bar (user directive 2026-09-18). */
@@ -208,30 +161,32 @@ describe('RequestDashboard', () => {
   it('fetches the dashboard on the seeded filters, and refetches on an applied change (AC-044)', async () => {
     renderDashboard()
 
-    await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(1))
-    const initialQuery = fetchRequestManagementDashboardMock.mock.calls[0][1]
-    expect(initialQuery).toEqual({
-      date_from: expect.any(String),
-      date_to: expect.any(String),
-      category_keys: ['gol', 'consulenza'],
-      row_mode: 'all',
-    })
+    const today = todayReportRange()
+    await waitFor(() =>
+      expect(fetchRequestManagementDashboardMock).toHaveBeenCalledWith('/request-management', {
+        ...today,
+        category_keys: ['gol', 'consulenza'],
+        row_mode: 'all',
+      }),
+    )
 
     await openFilters()
     fireEvent.change(screen.getByLabelText(/^To/), { target: { value: '2099-01-31' } })
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
 
-    await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(2))
-    expect(fetchRequestManagementDashboardMock).toHaveBeenLastCalledWith(
-      '/request-management',
-      expect.objectContaining({ date_from: initialQuery.date_from, date_to: '2099-01-31' }),
+    await waitFor(() =>
+      expect(fetchRequestManagementDashboardMock).toHaveBeenCalledWith(
+        '/request-management',
+        expect.objectContaining({ date_from: today.date_from, date_to: '2099-01-31' }),
+      ),
     )
   })
 
   it('blocks the fetch and shows the validation error when every branch is deselected (AC-044)', async () => {
     renderDashboard()
     const gol = await openFilters()
-    await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(1))
+    // The applied period and, the default range being closed, its previous one.
+    await waitFor(() => expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(2))
 
     fireEvent.click(gol)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Consulenza' }))
@@ -239,8 +194,8 @@ describe('RequestDashboard', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Select at least one category.')
     // An empty selection is never applied, so it never reaches the server:
-    // the panel is still on the filters of the only call made so far.
-    expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(1)
+    // the panel is still on the filters of the calls made so far.
+    expect(fetchRequestManagementDashboardMock).toHaveBeenCalledTimes(2)
   })
 
   it('shows a skeleton while loading, then the summary tiles and charts (AC-048)', async () => {
@@ -257,10 +212,8 @@ describe('RequestDashboard', () => {
 
     resolveDashboard(dashboardData())
 
-    expect(await screen.findByRole('heading', { name: 'GOL' })).toBeInTheDocument()
-    expect(
-      within(screen.getByRole('region', { name: 'GOL' })).getByRole('heading', { name: 'Charts (1)' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('tab', { name: 'GOL' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Overall' })).toBeInTheDocument()
     expect(container.querySelector('[data-slot="skeleton"]')).not.toBeInTheDocument()
   })
 
@@ -274,7 +227,7 @@ describe('RequestDashboard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
 
-    expect(await screen.findByRole('heading', { name: 'GOL' })).toBeInTheDocument()
+    expect(await screen.findByRole('tab', { name: 'GOL' })).toBeInTheDocument()
   })
 
   it.each([
@@ -330,7 +283,7 @@ describe('RequestDashboard', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load categories.')
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByRole('heading', { name: 'GOL' })).toBeInTheDocument()
+    expect(await screen.findByRole('tab', { name: 'GOL' })).toBeInTheDocument()
     expect(fetchRequestManagementDashboardMock).toHaveBeenCalled()
   })
 
@@ -342,127 +295,11 @@ describe('RequestDashboard', () => {
     )
 
     renderDashboard()
+    openTab(await screen.findByRole('tab', { name: 'GOL' }))
 
     // Spec 0141: a reportable category with no column configured has neither
     // tiles nor charts — both blocks fold to their own compact empty notice.
     expect(await screen.findByText('No columns configured for this category.')).toBeInTheDocument()
     expect(screen.getByText('No charts to show for this selection.')).toBeInTheDocument()
-  })
-
-  it('renders a section per category, with only the columns THAT category configures, zeros included (spec 0141 D-3/D-5)', async () => {
-    renderDashboard()
-
-    // Overall tiles first, then one section per selected category.
-    const headings = await screen.findAllByRole('heading', { level: 2 })
-    expect(headings.map((heading) => heading.textContent)).toEqual(['Overall', 'GOL', 'Consulenza'])
-
-    const gol = screen.getByRole('region', { name: 'GOL' })
-    // A 0 column is a tile like any other since rev-3.
-    expect(within(gol).getByText('Aule in gestione')).toBeInTheDocument()
-
-    // Charts start folded, so opening the block is what reveals their titles.
-    fireEvent.click(within(gol).getByRole('button', { name: 'Charts (1)' }))
-    expect(await within(gol).findByRole('heading', { name: 'Indicators' })).toBeInTheDocument()
-
-    // An operator chart keeps its own indicator as the title, the category
-    // being the section it sits in.
-    const consulenza = screen.getByRole('region', { name: 'Consulenza' })
-    fireEvent.click(within(consulenza).getByRole('button', { name: 'Charts (1)' }))
-    expect(
-      await within(consulenza).findByRole('heading', { name: 'N. Telefonate Effettuate' }),
-    ).toBeInTheDocument()
-  })
-
-  it('opens on the tiles and keeps the charts folded away (user directive 2026-09-08)', async () => {
-    renderDashboard()
-
-    const gol = await screen.findByRole('region', { name: 'GOL' })
-
-    expect(within(gol).getByRole('button', { name: 'Summary' })).toHaveAttribute('aria-expanded', 'true')
-    expect(within(gol).getByRole('button', { name: 'Charts (1)' })).toHaveAttribute('aria-expanded', 'false')
-    expect(within(gol).getByText('N. Telefonate Effettuate')).toBeInTheDocument() // the tile
-    expect(within(gol).queryByRole('heading', { name: 'Indicators' })).not.toBeInTheDocument()
-  })
-
-  it('persists every collapse toggle and restores it on the next mount (user directive 2026-09-08)', async () => {
-    const { unmount } = renderDashboard()
-
-    const gol = await screen.findByRole('region', { name: 'GOL' })
-    fireEvent.click(within(gol).getByRole('button', { name: 'Summary' })) // fold the tiles
-    fireEvent.click(within(gol).getByRole('button', { name: 'GOL' })) // fold the whole section
-
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'GOL' })).toHaveAttribute('aria-expanded', 'false'),
-    )
-    unmount()
-
-    renderDashboard()
-
-    const restored = await screen.findByRole('region', { name: 'GOL' })
-    expect(within(restored).getByRole('button', { name: 'GOL' })).toHaveAttribute('aria-expanded', 'false')
-
-    // Re-opening the section shows the tiles still folded from the last session.
-    fireEvent.click(within(restored).getByRole('button', { name: 'GOL' }))
-    expect(await within(restored).findByRole('button', { name: 'Summary' })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    )
-  })
-
-  it('expands every section and block at once, charts included, and persists it', async () => {
-    const { unmount } = renderDashboard()
-
-    const gol = await screen.findByRole('region', { name: 'GOL' })
-    fireEvent.click(within(gol).getByRole('button', { name: 'GOL' })) // fold one section by hand
-    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))
-
-    for (const name of ['Overall', 'GOL', 'Consulenza']) {
-      const section = screen.getByRole('region', { name })
-      for (const toggle of within(section).getAllByRole('button')) {
-        expect(toggle).toHaveAttribute('aria-expanded', 'true')
-      }
-    }
-    expect(await within(gol).findByRole('heading', { name: 'Indicators' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Collapse all' })).toBeInTheDocument()
-    unmount()
-
-    renderDashboard()
-
-    const restored = await screen.findByRole('region', { name: 'GOL' })
-    expect(within(restored).getByRole('button', { name: 'Charts (1)' })).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('button', { name: 'Collapse all' })).toBeInTheDocument()
-  })
-
-  it('offers the same expand-all in Gestione Iscritti, remembered apart from Gestione Richieste', async () => {
-    render(
-      <RequestModuleProvider module={ENROLLEE_MODULE}>
-        <RequestDashboard />
-      </RequestModuleProvider>,
-      { wrapper: wrapper() },
-    )
-
-    const gol = await screen.findByRole('region', { name: 'GOL' })
-    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))
-
-    expect(within(gol).getByRole('button', { name: 'Charts (1)' })).toHaveAttribute('aria-expanded', 'true')
-    expect(window.localStorage.getItem(`${ENROLLEE_MODULE.key}.dashboard-collapse`)).not.toBeNull()
-    expect(window.localStorage.getItem(`${REQUEST_MANAGEMENT_DOMAIN}.dashboard-collapse`)).toBeNull()
-  })
-
-  it('collapses every section once everything is open, and reopening one shows its content', async () => {
-    renderDashboard()
-
-    await screen.findByRole('region', { name: 'GOL' })
-    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Collapse all' }))
-
-    for (const name of ['Overall', 'GOL', 'Consulenza']) {
-      expect(screen.getByRole('button', { name })).toHaveAttribute('aria-expanded', 'false')
-    }
-    expect(screen.getByRole('button', { name: 'Expand all' })).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'GOL' }))
-    const gol = screen.getByRole('region', { name: 'GOL' })
-    expect(await within(gol).findByRole('button', { name: 'Charts (1)' })).toHaveAttribute('aria-expanded', 'true')
   })
 })

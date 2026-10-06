@@ -206,6 +206,7 @@ export const requestManagement = {
     dialogTitle: 'Offer rows',
     dialogDescription: 'Edit product, quantity, unit price and VAT of this offer\'s rows.',
     validationSummary: 'Check the highlighted rows before saving.',
+    prunedNotice: 'Removed from the offer rows, their product category is no longer selected: {{names}}.',
   },
   workPanel: {
     loadError: 'Could not load the record.',
@@ -400,8 +401,19 @@ export const requestManagement = {
     regionLabel: 'Request Management dashboard',
     pageForbidden: "You don't have permission to view Request Management Statistics.",
     editFilters: 'Filters',
-    expandAll: 'Expand all',
-    collapseAll: 'Collapse all',
+    // Spec 0192: one-click periods in the toolbar.
+    periods: {
+      label: 'Period',
+      today: 'Today',
+      yesterday: 'Yesterday',
+      last7Days: 'Last 7 days',
+      thisMonth: 'This month',
+      lastMonth: 'Last month',
+      all: 'All time',
+      custom: 'Custom',
+    },
+    tabsLabel: 'Statistics sections',
+    overviewTab: 'Overview',
     applied: {
       title: 'Applied filters',
       period: 'Period',
@@ -430,8 +442,29 @@ export const requestManagement = {
     // Spec 0141: a reportable category may have no column configured.
     tilesEmpty: 'No columns configured for this category.',
     overall: 'Overall',
-    indicatorsChartTitle: 'Indicators',
-    tilesTitle: 'Summary',
-    chartsTitle: 'Charts ({{count}})',
+    indicatorsChartTitle: 'Indicator profile',
+    // Spec 0192 D-4: comparison with the previous period of equal length.
+    trend: {
+      new: 'New',
+      vsPrevious: 'Previous period: {{value}}',
+    },
+    shares: {
+      title: 'Split by category',
+      others: 'Other categories',
+      item: '{{label}}: {{value}} ({{percent}}%)',
+      lead: '{{label}} {{percent}}%',
+      more: '+{{count}} more',
+    },
+    heatmap: {
+      title: 'Categories × indicators map',
+      description: 'Darker = higher value for that indicator. Click a category to open it.',
+      category: 'Category',
+      notConfigured: 'Not configured',
+    },
+    leaderboard: {
+      title: 'Operator ranking',
+      rank: 'Rank',
+      operator: 'Operator',
+    },
   },
 }

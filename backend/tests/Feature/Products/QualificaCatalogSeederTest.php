@@ -58,6 +58,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
 
     $selectable = ProductCategory::query()->where('is_selectable', true)->pluck('name')->sort()->values()->all();
     expect($selectable)->toBe([
+        // The APL apprenticeships (user directives 2026-10-05).
+        'Apprendistato',
         'Autofinanziato - Campania', 'Autofinanziato - Lazio',
         'Autofinanziato - Lombardia', 'Autofinanziato - Sicilia',
         'Autoimpiego',
@@ -67,11 +69,11 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',
-        'Orientamento Specialistico',
+        'Orientamento specialistico',
         // The Consulenza leaf (user directive 2026-09-28).
         'Presa Appuntamenti',
-        // The APL internships (user directive 2026-10-01).
-        'Tirocini extracurriculari privati',
+        // The APL internships (user directives 2026-10-02, 2026-10-05).
+        'Tirocinio',
         'Yisu',
     ]);
 
@@ -150,7 +152,7 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
 
     // APL as its own root (was: 'seeds "APL" as a root of its own, with its offer one level down (user directive 2026-09-07)')
     $aplRoot = ProductCategory::query()->where('name', 'APL')->firstOrFail();
-    $aplOffer = ProductCategory::query()->where('name', 'Orientamento Specialistico')->firstOrFail();
+    $aplOffer = ProductCategory::query()->where('name', 'Orientamento specialistico')->firstOrFail();
 
     expect($aplRoot->parent_id)->toBeNull()
         ->and($aplRoot->is_selectable)->toBeFalsy()
@@ -158,7 +160,7 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         ->and($aplOffer->parent_id)->toBe($aplRoot->id)
         ->and($aplOffer->is_selectable)->toBeTruthy()
         ->and(Product::query()->where('category_id', $aplOffer->id)->pluck('name')->all())
-        ->toBe(['Orientamento Specialistico']);
+        ->toBe(['Orientamento specialistico']);
 
     // Single-offer category products (was: 'seeds one product named after each single-offer category, idempotently')
     foreach (CatalogProducts::SINGLE_OFFER_CATEGORIES as $name) {

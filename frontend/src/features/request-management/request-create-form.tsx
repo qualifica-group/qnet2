@@ -29,6 +29,7 @@ import {
   OPERATIONAL_SITES_VIEW_ANY_PERMISSION,
 } from '@/features/request-management/use-request-actor-defaults'
 import { useRequestSiteOperatorLink } from '@/features/request-management/use-request-site-operator-link'
+import { useOfferLinesCoherence } from '@/features/request-management/use-offer-lines-coherence'
 
 /**
  * DOM id bridging the sticky header's save action to the RHF `<form>` below,
@@ -144,6 +145,10 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
   // the endpoint.
   const siteLink = useRequestSiteOperatorLink(form, { canPickSite })
 
+  // Same rule as the work panel: re-pointing a product line empties the offer
+  // rows whose product the new classification no longer covers.
+  const resetUncoveredOfferRows = useOfferLinesCoherence(form.control)
+
   return (
     <div className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
       <RequestCreateHeader
@@ -205,7 +210,13 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
                       <FormLabel required>
                         {t('requestManagement.workPanel.productLines.fieldLabel')}
                       </FormLabel>
-                      <ProductLinesField value={field.value} onChange={field.onChange} />
+                      <ProductLinesField
+                        value={field.value}
+                        onChange={(rows) => {
+                          field.onChange(rows)
+                          resetUncoveredOfferRows(rows)
+                        }}
+                      />
                       <p className="text-xs text-muted-foreground">
                         {t('requestManagement.workPanel.productLines.hint')}
                       </p>

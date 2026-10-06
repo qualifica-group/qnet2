@@ -23,6 +23,266 @@
 - Ambiente locale: il php.ini di Laragon non ha pdo_sqlite/sqlite3/zip e il runner parallelo vuole memory_limit ~2G.
 - Aperto: manuale Claude Docs (sezione Contabilita' > Gestione Conti) NON aggiornato: il connettore non ha accesso al documento.
   Guide in-app IT/EN `financial-accounts` fatte. Nell'elenco la modifica passa dal dettaglio (azioni riga: view/delete/activity), come UoM.
+## FIX RIGHE OFFERTA AL CAMBIO LINEA DI PRODOTTO (Gestione Richieste) — VERDE, NON COMMITTATO (2026-10-05)
+
+- Bug: in creazione (`/request-management/new`) e in lavorazione, sostituendo la linea di prodotto la riga d'offerta
+  restava sul prodotto della categoria tolta (il picker offriva gia' solo i prodotti della nuova); al salvataggio
+  `OpportunityProductLineCoverage` rimetteva la vecchia categoria.
+- Nuovo `frontend/src/features/request-management/use-offer-lines-coherence.ts`: `resetUncoveredOfferRows` (pura) +
+  `useOfferLinesCoherence(control)`; stesso schema di `useProductsOfInterestCoherence` (funzione chiamata
+  nell'`onChange` del `ProductLinesField`, non un effect). Categoria del prodotto da `meta.category_id` della query
+  for-select by-ids; riga scoperta -> `createEmptyLineRow()` in place (l'autofill mono-prodotto la riempie se la nuova
+  categoria ha un solo prodotto); prodotto non ancora risolto = tenuto; `offer_lines` non scrivibile = nessuna azione.
+  Toast `requestManagement.offerLines.prunedNotice` (IT/EN).
+- Cablato in `request-product-lines-section.tsx` (lavorazione) e `request-create-form.tsx` (creazione). Harness di
+  `product-lines-wiring-parity.test.tsx` aggiornato (QueryClient + `offer_lines: []`), asserzioni invariate.
+- Guida in-app `request-management` IT/EN aggiornata (voce "Linee di prodotto"). Manuale Claude Docs NON aggiornato
+  (doc non condiviso con la sessione): sezione "Lavorare una richiesta" / "Creare una nuova richiesta".
+- Tabella (decisione utente 2026-10-05, "cancella le righe"): `RequestManagementService::updateWork`, se la classificazione
+  cambia SENZA `offer_lines` nel payload (cella "Categoria prodotto"), chiama `RequestOfferLineWriter::dropUncovered`:
+  riscrive via `apply()` solo le righe REVENUE ancora coperte (ids invariati -> provvigioni/descrizione aggiuntiva
+  conservate), le altre vengono eliminate. Le righe COSTO non sono toccate. `OfferLinesColumn::project` ora espone anche
+  `category_id`; `product-lines-cell-editor.tsx` mostra l'avviso `table.productLinesEditor.droppedOfferLines` prima del
+  commit. Test: `RequestManagementProductLinesOfferPruneTest.php`. Iscritti usa lo stesso pannello/tabella: coperto.
+- Nota: vale anche per il pannello se arriva `product_lines` senza `offer_lines` (es. attore senza scrittura sulle righe
+  offerta): le righe scoperte vengono eliminate lo stesso, come effetto della classificazione.
+
+## APL MANUALE + "APL OLD" DALLA MIGRAZIONE — VERDE, COMMITTATO (2026-10-05)
+
+- Decisioni utente (AskUserQuestion 2026-10-05): il ramo APL legacy NON e' piu' adottato da quello manuale; diventa
+  la categoria radice "APL old" + funzione aziendale "APL OLD" (come FORMAZIONE OLD); APL manuale = regole IDENTICHE
+  a Formazione (contratti compresi); TUTTI i prodotti del ramo legacy sulle nuove categorie; nessuna conversione
+  dei DB gia' importati ("come fa con Formazione": vale a ogni import).
+- Nuovo `app/Migrations/Support/LegacyAplBranch.php`: `manualNodeNamed()` (nodo del ramo manuale "APL" con quel nome,
+  confronto case-insensitive in PHP — SQLite e MySQL si comportano uguale), `legacyName()` (suffisso " old"),
+  `LEGACY_ROOT` = "APL old", `PRODUCT_CATEGORIES` (Formazione Apprendistato -> Apprendistato, Tirocini extracurriculari
+  privati -> Tirocinio, Orientamento Specialistico -> Orientamento specialistico), `productCategoryFor()`.
+- `ProductCategoriesSource::processRow`: un record legacy con nome di un nodo del ramo APL manuale non viene adottato,
+  viene creato come "<nome> old" (solo se collide: "APL old", "Orientamento Specialistico old"; gli altri tengono il
+  nome); il gemello della radice nasce radice (no parent, no relink). Warning "Legacy twin ..." nel report.
+- `ProductsSource`: categoria risolta -> `LegacyAplBranch::productCategoryFor` (nodo del ramo "APL old" -> categoria
+  manuale; senza sostituto resta sul nodo legacy con warning "no manual replacement"). DA CHIEDERE all'utente: i figli
+  legacy di APL oltre ai tre noti (l'albero legacy non e' leggibile: qnet.test risponde "authentication required").
+- "APL old" NON selezionabile (richiesta utente successiva, stesso giorno): `ProductCategoriesSource::afterImport`
+  = Step 1 `relinkDetached()` + Step 2 `LegacyAplBranch::closeLegacyBranch($createdIds)` -> radice e TUTTO il ramo
+  `is_selectable=false`, solo sui nodi creati in QUELLA run (una riapertura a mano sopravvive al re-import).
+  Nota: per FORMAZIONE OLD il codice non forza nulla, `is_selectable` arriva dal legacy.
+- `CategoryBusinessFunctionLinker::REDIRECTED_FUNCTIONS` + `'APL' => 'APL OLD'`. `QualificaLegacyImportSeeder::
+  nestImportedCategories` esclude "APL old" (resta radice, non va sotto Consulenza).
+- Seed: categorie rinominate `Apprendistato` / `Tirocinio` / `Orientamento specialistico` (costanti CATEGORY dei tre
+  cataloghi APL, `CATALOG`, `REPORTABLE_CATEGORIES`, `SINGLE_OFFER_CATEGORIES` -> anche il prodotto seedato si chiama
+  "Orientamento specialistico"). `CatalogRootRules::TRAINING_RULES` condivise da Formazione e APL (single, una offerta,
+  `generates_contract=false`, riga semplificata, etichette G.A. Tutor/Operatore/Partner commerciale/Segnalatore).
+- Test: nuovo `Migration/LegacyAplBranchImportTest.php` (3), `ProductsSourceImportTest` (+1), `QualificaLegacyImportSeederTest`
+  end-to-end riscritto (Formazione adottata, APL old radice su APL OLD, prodotti sulle nuove categorie, mappa legata al
+  catalogo reale), `QualificaCatalogRootRulesTest` (+1 APL = Formazione). Requisito cambiato: i test generici di adozione
+  usavano "APL" come esempio -> ora "Consulenza"/"Presa Appuntamenti"; liste nomi aggiornate in 6 test seed.
+  Suite completa 9254 passed / 1 skipped, Pint pulito.
+- Attenzione: un DB gia' importato con l'adozione vecchia NON viene convertito; un re-seed li' crea "Apprendistato" e
+  "Tirocinio" accanto ai nodi vecchi. Strada pulita: migrate:fresh + QualificaProductionDataSeeder.
+- Manuale: guide in-app nessun impatto (non citano APL); manuale Claude Docs non condiviso con la sessione — verificare
+  se cita i nomi delle categorie APL o che APL genera contratti.
+
+## ALLEGATI .ZIP AMMESSI — VERDE, COMMITTATO (2026-10-05)
+
+- `config/attachments.php` `allowed_mime_types` + `application/zip`. Unica allow-list condivisa: vale per
+  `POST /api/attachments` (tutte le sezioni Documenti), allegati email Commessa (`StoreWorkOrderEmailAttachmentRequest`)
+  e import `DocumentBundlesSource`. La regola `mimetypes:` valida il MIME rilevato dal CONTENUTO (finfo), quindi un
+  .zip vero passa e un file rinominato no; il `mime_type` salvato resta quello del client (`getClientMimeType()`, invariato).
+- Test: `AttachmentCrudTest` "201 for a real .zip archive" (zip reale via `ZipArchive`). FE invariato: `attachment-tile.tsx`
+  ha gia' l'icona archivio per `application/zip`.
+- Manuale: guide in-app nessun impatto (non elencano i formati allegati); manuale Claude Docs non accessibile dalla
+  sessione — verificare se elenca i formati ammessi.
+
+## SPEC 0192 REDESIGN STATISTICHE GESTIONE RICHIESTE — VERDE, NON COMMITTATO (2026-10-05)
+
+- Spec `docs/specs/0192-request-statistics-redesign.xml` (D-1..D-9 utente). Solo FE, endpoint/numeri/export invariati.
+- `/request-statistics`: toolbar con preset periodo (`dashboard-period-presets.ts`, preset DERIVATO dalle date, "Personalizzato"
+  apre il pannello filtri), tab Panoramica + una per categoria (`use-request-dashboard-tab.ts`, localStorage
+  `{module}.dashboard-tab`, `OVERVIEW_TAB`), KPI con contatore animato (`hooks/use-count-up.ts`, off senza matchMedia o
+  con reduced-motion) e delta vs periodo precedente (`useRequestDashboardPrevious`: seconda chiamata allo STESSO endpoint,
+  solo con periodo chiuso, niente placeholder; `dashboard-comparison.ts`, `unhandled_*` invertiti), ripartizione per
+  categoria per RANGO (top 4 colori + "Altre", `dashboard-overview.ts::categoryShares`), heatmap normalizzata per colonna,
+  classifica operatori = pivot dei grafici `operator` (`dashboard-leaderboard.ts`; "Non assegnato" riconosciuto dalla
+  label dell'operatore `UNASSIGNED_OPERATOR_KEY`, sempre ultimo, mai sul podio). Query principale `keepPreviousData`.
+- Eliminati `request-dashboard-section.tsx` e `use-request-dashboard-collapse.ts` (espandi/comprimi non esiste piu').
+  Chiavi i18n rimosse: `expandAll`, `collapseAll`, `tilesTitle`, `chartsTitle`.
+- Scroller orizzontali con `w-0 min-w-full` (tab, heatmap, classifica): senza, 19 categorie allargavano la pagina.
+- Richieste utente successive (stesso giorno): (1) hover classifica uniforme — la cella sticky "Operatore" ha fondo
+  opaco, su hover prende `color-mix(in oklab, --muted 40%, --card)` (oklab: in oklch la card acromatica dava una
+  tinta rosa); (2) valori colorati per indicatore: `INDICATOR_COLORS`/`indicatorTint` in `dashboard-indicator-meta.ts`
+  (pastiglia tinta 18% + testo foreground, mai testo nel colore serie; zeri grigi; barre piene); (3) tab "come in
+  Gestione Richieste": `request-dashboard-category-strip.tsx` riusa `useCategoryTabFit` (tipo allargato a `{ id:
+  number }`, id = POSIZIONE della categoria) e `CategoryMoreButton` — "Altre (N)" con ricerca, categoria aperta sempre
+  in riga. Niente preferiti: l'endpoint `category-tab-preferences` richiede `request-management.viewAny`.
+- Test: `dashboard-*.test.ts` (logica), `request-dashboard-tabs.test.tsx` (redesign), `request-dashboard.test.tsx` e
+  `-filter-bar.test.tsx` adeguati (requisito cambiato: niente collapse; il periodo chiuso fa 2 chiamate), fixture in
+  `request-dashboard-fixtures.ts`. Suite FE completa 6702 verde, tsc pulito, ESLint pulito sui file toccati (2 errori
+  preesistenti altrove: `quotes/column-renderers.tsx`, `registries/registry-form-metadata.test.tsx`).
+- Verificato a schermo (Playwright, 1440 chiaro/scuro e 375): nessuno scroll orizzontale di pagina.
+- Guida in-app `request-statistics` IT/EN aggiornata. Da fare: manuale Claude Docs (doc non condiviso con la sessione).
+
+## CATALOGO: "ORIENTAMENTO SPECIALISTICO" (CAMPI OFFERTA + STATI PRATICA) + SEZIONI SEED BIANCHE — VERDE, COMMITTATO (2026-10-05)
+
+- Fonte: PDF "Campi Misure APL" (scheda Orientamento/SFL GOL). Decisione utente 2026-10-05: torna la scheda del
+  2026-10-01 (mai committata, era stata sostituita dai Tirocini), ACCANTO a Tirocini e Apprendistato. Stati: "se tra le
+  sottocategorie APL sono gli stessi unisci, altrimenti ognuno il proprio" -> liste diverse, quindi ognuna la sua.
+- Registro unico `QualificaCatalog/AplPracticeCatalogue` (QUOTE_ATTRIBUTES, FORMS, STATUS_SECTIONS, WORKFLOWS) per le 3
+  pratiche APL: lo leggono `QualificaCatalogSeeder`, `QualificaQuoteLayoutSeeder::OWN_FORMS`, `WorkflowStatusCatalogue`.
+  Nuova pratica APL = una riga per mappa qui + barriera in `CategoryInheritanceRules` + nodo in `CATALOG`. Ha liberato
+  righe: `WorkflowStatusCatalogue` 497, `QualificaCatalogSeeder` 499 (ancora al limite: prossima aggiunta -> split).
+- Campi (`AplOrientationAttributeCatalogue`, categoria esistente "Orientamento Specialistico", barriera
+  `inherits_quote_attributes=false`): `sfl_renewal_status` (Da rinnovare/Rinnovato), `decree_status`, `deliverable_policies`
+  (integer 1-4), `last_active_policy_date`, `orientation_measure` (Presa in carico/Orientamento/Accompagnamento),
+  `sfl_months_received` (integer 0-12), `practice_end_date` (ora costante condivisa
+  `AplInternshipAttributeCatalogue::PRACTICE_END_DATE`), `reporting_id`, `decree_id`, `orientation_convocation_date`,
+  `orientation_intake_date`, `orientation_session_date`, `orientation_job_support_{1,2,3}_date`. Sezioni Testata / Dati
+  pratica / Percorso.
+- NON campi: Utente = anagrafica; Operatore/Commerciale/Segnalatore = campi offerta; SGA/Commessa/Valore = commessa.
+  "Ultima politica" (testata) e "Ultima politica attiva" = un solo campo data. Automazioni del PDF (data fine calcolata,
+  rinnovo SFL mensile) NON implementate: valori manuali. Da proporre come follow-up.
+- Stati (`AplOrientationWorkflowStatusCatalogue`, sezione `apl_orientation`, categoria esatta, vince sul ramo APL): Da
+  convocare (open) / Convocato, Presa in carico, Monitoraggio SFL (pending) / Fine pratica (won) / Perso (lost). Nessun
+  "Non risponde". IMPATTO: la lista ramo "APL" (Nuovo Contatto ... Assegnato) non si applica piu' a nessuna categoria
+  seedata; per l'orientamento le colonne report APL (nuovi contatti, invio presa in carico) restano senza dati.
+- Sezioni seed tutte BIANCHE (decisione utente 2026-10-05): Tirocini "Stato pratica" e Apprendistato "Dati pratica" da
+  `Highlighted` a `Default`. `QualificaQuoteLayoutSeeder::PREVIOUSLY_HIGHLIGHTED` riconosce il blob odierno con quelle
+  sezioni grigie e lo ricompone; un layout modificato a mano in altro modo resta intatto. `ECampusAttributeCatalogue::
+  PREVIOUS_SECTIONS` resta Highlighted (storico, serve al riconoscimento).
+- Test: nuovo `Products/QualificaAplOrientationCatalogueTest` (4, incluso grigio->bianco e layout a mano preservato);
+  requisito cambiato: rimosso "Orientamento senza campi propri" (InternshipTest), varianti `default`, layout quote 11->12,
+  `QUOTE_LAYOUT_OWN_CATEGORIES` +Orientamento, "Non risponde" esclude `AplPracticeCatalogue::WORKFLOWS`. Suite completa
+  verde (9249 passed, 1 skipped), Pint pulito. Seed applicato al DB locale `qnet2` (verificato).
+- Da fare: rieseguire `QualificaProductionDataSeeder` su staging/prod. Su DB importato "Orientamento Specialistico" puo'
+  avere un layout legacy: il seeder non lo tocca (dato utente) -> i nuovi campi finirebbero in "altre informazioni".
+- Manuale: nessun impatto (dati di seed; guide in-app e Manuale QNet non elencano campi/stati per categoria).
+
+## SPEC 0191 PREZZO/COSTO PRODOTTO PER UTILIZZO — VERDE, NON COMMITTATO (2026-10-05)
+
+- Spec `docs/specs/0191-product-pricing-by-usage.xml` (approved, D-1..D-9 utente). Prezzo obbligatorio/visibile sse
+  `SALE`, Costo sse `COST`, margine sse entrambi. Togliere un utilizzo NON cancella il valore (nascosto, non validato).
+- BE: regola unica nel trait `Http/Requests/Concerns/RequiresPricingForUsages` (Store+Update, `withValidator`), sui
+  valori EFFETTIVI (usages inviati ?? salvati ?? `[SALE]`; valore inviato ?? salvato) -> 422 `price`/`cost`. Regole base
+  `nullable|numeric`. `CreateProductData` `?float cost/price`. Sorgenti migrazione legacy invariate.
+- FE: unica regola in `features/products/product-pricing-visibility.ts::productPricingVisibility` (schema, sezione
+  prezzi, riepilogo, dettaglio). `CreateProductPayload.cost/price: number | null`; update a diff. Griglia invariata
+  (mostra il valore salvato anche se non pertinente, D-7). Nessuna bonifica dati, nessuna migrazione.
+- Test: `ProductPricingByUsageTest` (AC-001..006, 008), `ProductCrudTest` POST vuoto senza errore `cost` (requisito
+  cambiato); FE `product-form-pricing.test.tsx`, `product-pricing-visibility.test.ts`, schema/payload/detail aggiornati;
+  test form che compilavano il Costo su prodotto solo Vendibile adeguati (D-1). Suite completa BE/FE verde, tsc pulito.
+- Guida in-app products IT/EN aggiornata. Da fare: manuale Claude Docs (doc non condiviso con la sessione) — sezione
+  Prodotti > Prezzi e fornitura, Dettaglio, flusso "voce di costo".
+
+## SEED OPERATORI: 4 SUPERVISOR APL + MARTINA MOSCA — VERDE, COMMITTATO (2026-10-05)
+
+- `OperatorRoster`: Giovanna Gervasio, Raffaele Distico, Gessica Crispo, Emanuele Ascione = riga di Rosa Falzarano
+  (`Supervisor Commerciale`, `SUPERVISOR_ROLE`, sede fisica Frattamaggiore, nessuna sede remota) ma con competenza
+  `['APL']` (copre tutto il ramo, INV-2). Martina Mosca = riga di Michela Fabozzi (`COORDINATOR_ROLE`, nessuna competenza).
+- Rimossi da `StaffRoster` (i due roster restano disgiunti, conteggio condiviso 71 -> 76). Gli account gia' esistenti in
+  prod con ruolo base convergono al prossimo `QualificaOperatorSeeder` (ruolo/sedi/competenza; password intatta).
+- `ReportsToRoster` (decisione utente 2026-10-05): i 4 non rispondono a nessuno; Mosca risponde a Fabozzi. I 4 NON sono
+  in `COMMERCIAL_SUPERVISORS` (non sono "Risponde a" dei commerciali).
+- Test: `QualificaOperatorSeederTest` conteggio 67 -> 72 (requisito cambiato) + test dedicato; asserzioni in
+  `QualificaReportsToSeederTest`.
+
+## CATALOGO: "FORMAZIONE APPRENDISTATO" (CAMPI OFFERTA + STATI PRATICA) — VERDE, COMMITTATO (2026-10-05)
+
+- Foglio "Apprendistato - Campi Operatore", sezioni DATI PRATICA, FORMAZIONE, FORMAZIONE - UNITA' FORMATIVE. Stesso
+  schema dei Tirocini APL: `QualificaCatalog/ApprenticeshipAttributeCatalogue.php` (CATEGORY "Formazione Apprendistato",
+  sotto "APL", selezionabile, barriera `inherits_quote_attributes=false`) + `ApprenticeshipWorkflowStatusCatalogue.php`.
+- Campi: `decree_status`/`decree_id`/`reporting_id` RIUSATI dai Tirocini (ora costanti `AplInternshipAttributeCatalogue::
+  DECREE_STATUS|DECREE_ID|REPORTING_ID`), `teaching_tutor` (relation users), `hiring_date`, `contract_duration_months`,
+  `contract_end_date`, `company_training_capacity` (enum 3); per ognuna delle 11 UF `apprenticeship_<yN_ufN|yN_stage>_
+  {done_by_us (boolean), reason (enum 3 suggerimenti), sessions (table: day date + hours decimal)}`. Ore previste = descrizione sezione.
+- NON campi: Operatore = `operator_id`, Commerciale/Segnalatore = `commercial_id`/`reporter_id` dell'offerta, Percorso =
+  storico stati, annualita' = prodotto (1°/2°/3° Anno). Allegati per UF: nessun tipo file. Somma ore vs previste: non automatica.
+- Stati (prima classificazione, da affinare): "Attesa Abilitazione CPI" open (pinned), 4 pending, "Pratica conclusa"
+  closed_won (pinned); closed_lost resta "Chiusa negativa" (il foglio non ha perdite). No "Non risponde".
+- `QualificaQuoteLayoutSeeder`: nuovo `OWN_FORMS` (categoria => sezioni proprie) per Tirocini e Apprendistato, perche'
+  condividono codici e da una lista comune filtrata ognuna avrebbe reso le sezioni dell'altra.
+- ATTENZIONE limiti: `QualificaCatalogSeeder.php` e `WorkflowStatusCatalogue.php` a 499 righe: la prossima aggiunta richiede uno split.
+- DB dev importato: la categoria (old_id 115) ha gia' 20 campi offerta legacy Ricerca & Selezione e un layout legacy;
+  il seeder non li tocca (layout = dato utente) -> i nuovi campi finirebbero in "altre informazioni". Da decidere con l'utente.
+- Test: `tests/Feature/Products/QualificaApprenticeshipCatalogueTest.php` (3); aggiornati elenchi categorie in
+  QualificaCatalogSeederTest, QualificaQuoteLayoutSeederTest, QualificaContactProcessingSeederTest, QualificaWorkflowSeederTest.
+- Manuale: guide in-app nessun impatto (non descrivono form per categoria); manuale Claude Docs non accessibile dalla sessione.
+
+## FIX TABELLE RIGHE CHE SFORANO SU MOBILE — VERDE, NON COMMITTATO (2026-10-05)
+
+- Bug: su schermo stretto le righe offerta (Gestione Richieste, Offerte tab offerta/costi) uscivano dalla card. Causa:
+  `FormItem` e' `grid gap-2`, la sua colonna `auto` prendeva il min-content della tabella (`min-w-[994px]`), quindi
+  la cella si allargava e l'`overflow-x-auto` interno non scorreva mai.
+- Fix: costante `LINE_TABLE_SCROLL_CLASS` in `components/record-form/layout.ts` (`... contain-inline-size`, stesso
+  rimedio di `table-field-desktop-view.tsx`), usata da `QuoteLinesField`, `QuoteLinesReadOnlyList`,
+  `WorkOrderCostsLinesField`, `ContractProgramLinesTable`. Nuove tabelle larghe a righe: usare questa costante.
+- Test: `quotes/quote-lines-field-layout.test.tsx` (2), `quote-lines-read-only.test.tsx` (+1). Manuale: nessun impatto.
+
+## FIX DEMO SEED: OFFERTE/COMMESSE/TASK VUOTI — VERDE, NON COMMITTATO (2026-10-02)
+
+- `DemoDataSeeder` si interrompeva in `DemoQuoteSeeder` (422 su attributi offerta `relation`/enum multiselect/`table`,
+  arrivati col catalogo e-Campus): niente offerte, commesse, contratti, task, timesheet, allegati, notifiche.
+  Fix: `database/seeders/Support/DemoAttributeValueFaker.php` (relation = primo id reale del target via
+  `CustomFieldEntityRegistry`, `many`/multiselect = array, table = [], time/email/url/color validi), usato da
+  `DemoQuoteSeeder` al posto del vecchio `fakeAttributeValue`.
+- Secondo blocco emerso subito dopo: `DemoTaskSeeder::buildRootData` collegava commessa E opportunita' insieme (422
+  spec 0154 D-11). Ora sono esclusivi e con commessa l'anagrafica resta vuota (la riempie il server dalla catena).
+- Test: `tests/Feature/Seeding/DemoAttributeValueFakerTest.php` (3), `DemoTaskSeederTest` (+1). DB dev riseminato:
+  20 offerte, 10 commesse, 2 contratti, 60 task, 114 time entries.
+
+## SPEC 0190 COSTI COMMESSA (PREVENTIVATO VS EFFETTIVO) — VERDE, NON COMMITTATO (2026-10-02)
+
+- Spec `docs/specs/0190-work-order-costs.xml` (approved; D-1..D-4 utente, D-5..D-9 approvate col piano). Il legacy
+  (`manageorder/{id}` tab amministrazione, `AnalisiPreventiva`) modificava in place i costi dell'offerta: qui i costi
+  reali sono un'entita' della commessa e `quote_lines` resta in sola lettura.
+- Dati: tabella `work_order_costs` (migrazione `2026_10_02_130000`), model `WorkOrderCost` (`LogsModelActivity`, morph
+  `work_order_cost` in `AppServiceProvider`), `WorkOrder::costs()`. FK: `quote_line_id` = riga ricavo della commessa
+  (riferimento), `supplier_id` = registry `is_supplier`, `incurred_on` obbligatoria.
+- API: `GET|PUT /api/work-orders/{workOrder}/costs` (`routes/api/work-order-costs.php`, `WorkOrderCostController`,
+  `SyncWorkOrderCostsRequest` con authz in `authorize()` = 403 prima della 422, `WorkOrderCostWriter` set completo,
+  `WorkOrderCostOverviewBuilder` confronto in centesimi). Preventivato = COST con `offer_line_id` tra le righe della
+  commessa; COST generiche = `unallocated_lines` fuori dai totali; effettivo include i non attribuiti.
+- Permessi: `work-orders.viewCosts` / `manageCosts` (policy + visibilita'), flag `permissions.actions.view_costs` /
+  `manage_costs`. Applicati sul DB dev (`migrate` + `permissions:sync`).
+- Frontend: `features/work-order-costs/` (sezione `WorkOrderCostsSection` in `work-order-detail.tsx`, tab Confronto e
+  Costi effettivi; riga propria che compone `QuoteProductSelect`/`computeLineAmounts`, `QuoteLineRow` invariato).
+  i18n sotto `workOrders.costs.*` (`{it,en}-work-order-costs.ts`, `en.ts` a 499 righe). Guida in-app `work-orders`
+  IT/EN con sezione `costs`; parity test adeguato (la nota `in-development` resta singola).
+- Test: `WorkOrderCostsTest` (AC-001..010), `work-order-costs-*.test.*` + `work-order-detail.test.tsx` (AC-011..014).
+  `QuoteWorkflowMigrationTest` rollback step 124 -> 125. `WorkOrderSecurityTest` conteggio permessi 12 -> 14.
+  `lines.*.id` e' `distinct` (id duplicato nel PUT = 422). Prefill da `products.cost`: `cost-row-product.test.ts`.
+- Da fare: manuale Claude Docs (doc non condiviso con la sessione) — sezione Commesse > Costi. Fuori scope: provvigioni
+  nel margine, ODA/fatture passive, costi orari personale, migrazione costi legacy.
+
+## SPEC 0189 IMPORT LEGACY ANAGRAFICHE / OPPORTUNITA' / OFFERTE / COMMESSE — VERDE, NON COMMITTATO (2026-10-02)
+
+- Spec `docs/specs/0189-legacy-registries-opportunities-quotes-work-orders-migration.xml` (decisioni G-1..G-11 del lead,
+  da confermare dall'utente; contratto delle 4 API congelato li').
+- LEGACY `/Users/Repository/qnet` (non committato): NUOVI `Api/V2/{Registry,Opportunity,Quote,WorkOrder}MigrationController`,
+  `Support/Migration/{MigrationFieldFormatter,LegacyReferenceLookup}`; route `GET /api/v2/migration/{registries,
+  opportunities,quotes,work-orders}`. Esportano solo record importabili (G-1: opportunita' con cliente, offerte di
+  opportunita' esportate, commesse di offerte esportate). `AppServiceProvider.php`/`config/database.php` legacy erano
+  gia' modificati e NON fanno parte di questa feature.
+- qnet-2: migrazione `2026_10_02_120000_add_old_id_to_operational_records_tables` (old_id su registries, opportunities,
+  quotes, quote_lines, work_orders; applicata al DB locale; `QuoteWorkflowMigrationTest` step 123 -> 124). Sorgenti
+  `RegistriesSource`, `OpportunitiesSource`, `QuotesSource`, `WorkOrdersSource` (+ concern `MapsLegacy*`, support
+  `LegacyQuoteStatusApplier`, `PersonNameSplitter` = nome/cognome privati ricostruiti dal codice fiscale), registrate in
+  `config/migrations.php` e `MigrationOrder` fasi 7-10. `OpportunityService::import()` (niente guard "una opportunita'
+  aperta", niente notifiche/lead). `AbstractMigrationSource`: report bufferizzato (flush ogni 200 voci + a fine run).
+  Nessuna notifica (manager/supervisori scritti dopo la create), activity log disattivato (`withoutLogs`), commesse
+  senza task template.
+- Verifica: Pest completo 9216 pass / 0 fail / 1 skip; Pint, `tsc -b --force`, Vitest help/migrations 128 verdi.
+  E2E reale su DB temporaneo `qnet2_e2e` (copia di qnet2 + users/referents): registries 20696/0 falliti (286 s),
+  opportunities 19561/0 (217 s), quotes 17281/0 (608 s; 39837 righe, 11107 contratti), work-orders 16024/0 (176 s);
+  0 notifiche, 0 task, 0 activity_log.
+- Decisione utente 2026-10-02 (opzione C, sostituisce la A data poco prima): una riga offerta legacy gia' collegata a
+  un'altra commessa viene DUPLICATA sull'offerta per ogni commessa successiva (`Migrations\Support\QuoteLineDuplicator`:
+  stesso prodotto/importi/provvigioni, senza old_id, totali e margine ricalcolati) e la copia collegata alla commessa.
+  Il vincolo una-riga-una-commessa resta. Test `WorkOrdersSourceImportTest` aggiornato (requisito cambiato).
+- Aperti: 1341 righe offerta senza prodotto (sconti/detrazioni non migrati o
+  servizio vuoto); fuori scope: note, documenti, valori campi flessibili, fasi/task commesse, tag/ATECO anagrafiche,
+  richieste GOL senza cliente. `OpportunityService.php` a 498 righe: va splittato. Manuale Claude Docs NON aggiornato
+  (documento non accessibile da questa sessione): aggiungere la sezione import operativo in "Migrazioni".
+  `docs/HANDOFF.md` supera di molto i 50 KB: va archiviato.
 
 ## PRODOTTI: DESCRIZIONE NEI SELECT + AREA E-CAMPUS — VERDE, NON COMMITTATO (2026-10-02)
 

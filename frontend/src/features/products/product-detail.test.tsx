@@ -87,3 +87,29 @@ describe('ProductDetailView — VAT rate + Supplier', () => {
     expect(screen.queryByText('Supplier')).not.toBeInTheDocument()
   })
 })
+
+describe('ProductDetailView — price/cost/margin by usage (spec 0191 AC-013)', () => {
+  it('shows the price only, no cost nor margin, for a Sellable-only product', () => {
+    render(<ProductDetailView product={product({ usages: ['SALE'] })} />)
+
+    expect(screen.getByText('Price')).toBeInTheDocument()
+    expect(screen.queryByText('Cost')).not.toBeInTheDocument()
+    expect(screen.queryByText('Margin')).not.toBeInTheDocument()
+  })
+
+  it('shows the cost only, no price nor margin, for a cost-only product', () => {
+    render(<ProductDetailView product={product({ usages: ['COST'] })} />)
+
+    expect(screen.getByText('Cost')).toBeInTheDocument()
+    expect(screen.queryByText('Price')).not.toBeInTheDocument()
+    expect(screen.queryByText('Margin')).not.toBeInTheDocument()
+  })
+
+  it('shows price, cost and margin when both usages are on', () => {
+    render(<ProductDetailView product={product({ usages: ['SALE', 'COST'] })} />)
+
+    expect(screen.getByText('Price')).toBeInTheDocument()
+    expect(screen.getByText('Cost')).toBeInTheDocument()
+    expect(screen.getByText('Margin')).toBeInTheDocument()
+  })
+})

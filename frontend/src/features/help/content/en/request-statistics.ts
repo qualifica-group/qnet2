@@ -4,7 +4,7 @@ const guide: HelpGuide = {
   key: 'request-statistics',
   title: 'Request Management Statistics',
   summary:
-    'Request Management Statistics shows how work on requests is going over a chosen period, with tiles, charts and CSV/Excel export.',
+    'Request Management Statistics shows how work on requests is going over a chosen period, with indicators and comparison with the previous period, a category map, the operator ranking and CSV/Excel export.',
   sections: [
     {
       id: 'statistics-access',
@@ -42,45 +42,66 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The browser remembers the last filters applied.',
+          text: 'The browser remembers the last filters applied and the last tab opened.',
         },
         {
           type: 'table',
           headers: ['Part', 'Content'],
           rows: [
             [
+              'Period',
+              'Top left: **Today**, **Yesterday**, **Last 7 days** (today included), **This month** (from the 1st to today), **Last month** and **All time** (no date limit) apply with one click and change the dates only. **Custom** opens the Filters panel to pick any dates, and is highlighted when the applied dates match no quick choice.',
+            ],
+            ['Generate report and Filters', 'Top right: the CSV/Excel file and the panel with every other filter.'],
+            [
               'Applied filters',
-              'A box for Period, Categories, Sites, Operators, Rows: colored if it narrows the data, neutral if it means "everything". On the right, **Generate report** and **Filters**.',
+              'A box for Period, Categories, Sites, Operators, Rows: colored if it narrows the data, neutral if it means "everything".',
+            ],
+            ['Tabs', '**Overview**, then the selected categories that fit on the row; the others are in the **More (N)** menu, with a search. The open category always stays visible on the row.'],
+          ],
+        },
+        {
+          type: 'table',
+          headers: ['Tab', 'Content'],
+          rows: [
+            [
+              'Overview › Overall',
+              'One box per column, across every selected category together: a request present in several categories counts once. Under the number a colored bar shows how much each category weighs (hover for name, value and percentage); the split is computed on the sum of the categories, which can exceed the overall total.',
             ],
             [
-              'Overall total',
-              'One box per column, across every selected category together. A request present in several categories counts once.',
+              'Overview › Categories × indicators map',
+              'One row per category, one column per indicator: the darker the color, the higher the value compared with the other categories for that indicator. "—" marks a column not configured for the category. Click a category to open its tab.',
             ],
             [
-              'Summary per category',
-              'One box for every column configured for the category, with the total value (zeros included).',
+              'Category tab',
+              'One box for every column configured for the category (zeros included), the **Indicator profile** chart with the column totals and the **Operator ranking**. With Rows = Total only there is no ranking; with Operators only there is no Indicator profile.',
             ],
             [
-              'Charts per category',
-              '**Indicators** compares the totals of the columns; then a chart per column with a bar per operator, from the highest value down.',
+              'Operator ranking',
+              'One row per GA2 operator and one column per indicator, with a bar proportional to the highest value of the column. It opens sorted on the first column, highest first; click a heading to sort, click again to reverse. Each indicator has its own color (dot in the heading, bar and non-zero values); zeros stay gray. The top three get the podium when their value is above zero; Unassigned always stays last, with no rank.',
             ],
           ],
         },
         {
           type: 'paragraph',
-          text: 'Every section collapses and expands with the arrow next to its title. The double-arrow button next to **Filters** opens everything at once (**Expand all**, charts included) or, when everything is already open, collapses every section (**Collapse all**).',
+          text: "**Change against the previous period.** When both From and To are filled in, every box shows the percentage change against the previous period of the same length (for Last 7 days, the 7 days before), with every other filter unchanged. Green = improvement, red = worsening; **New** = the value was 0 in the previous period. Hover the change to read the previous period's value.",
+        },
+        {
+          type: 'note',
+          text: 'The "unhandled" columns (unhandled callbacks and new contacts) carry the amber icon: they are numbers to bring down, so for them a rise is red and a drop is green.',
         },
         {
           type: 'table',
-          headers: ['Panel', 'CSV/Excel file'],
+          headers: ['Page', 'CSV/Excel file'],
           rows: [
             ['Updates right away', 'Is prepared and then downloaded'],
             ['Has the Overall total', 'Has no overall total row'],
-            ['Per-operator values only in the charts', 'One row for every operator'],
+            ['Per-operator values in the Operator ranking', 'One row for every operator'],
             [
               "Only each category's configured columns",
               'Every column used by at least one selected category',
             ],
+            ['Change against the previous period', "Only the chosen period's values"],
           ],
         },
       ],
@@ -91,7 +112,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Click **Filters** to open the **Report and statistics filters** panel: change the values and press **Apply** (or **Cancel**). **Reset filters** restores the initial values (today, every category, site and operator, Everything mode): the change takes effect only after **Apply**. The same filters apply to charts and file.',
+          text: 'The quick period choices change the dates only. For everything else click **Filters** (or **Custom**) to open the **Report and statistics filters** panel: change the values and press **Apply** (or **Cancel**). **Reset filters** restores the initial values (today, every category, site and operator, Everything mode): the change takes effect only after **Apply**. The same filters apply to charts and file.',
         },
         {
           type: 'table',
@@ -272,6 +293,7 @@ const guide: HelpGuide = {
             "**Why don't some columns change with the period?** Unhandled Callbacks, Unhandled New Contacts and Potential Leads always look at the situation today. For the period figure use their \"(selected period)\" version, which you switch on in the category's Report columns.",
             '**Why is Enrolled 0 even though I have requests closed with a positive outcome?** Enrolled, Deals Closed and Handover Sent count the requests created in the chosen period: with today as the period, the ones created on earlier days are left out. Widen the From/To period.',
             '**Why is the Overall total lower than the sum of the categories?** A request present in several selected categories counts once in the overall total.',
+            '**Why do I not see the percentage change?** It needs a period with both From and To (All time or a single bound have no previous period); when the value is 0 both now and in the previous period no change is shown.',
           ],
         },
       ],

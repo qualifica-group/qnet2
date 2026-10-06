@@ -4,6 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import type { ContractProgrammableLine } from '@/features/contracts/types'
+import { LINE_TABLE_SCROLL_CLASS } from '@/components/record-form/layout'
 
 /** Checkbox / product / category / quantity / UM / occupation (D-11: no other columns). */
 const LINES_GRID_CLASS = 'grid grid-cols-[28px_minmax(160px,1.4fr)_minmax(100px,1fr)_80px_64px_minmax(110px,1fr)] gap-2'
@@ -66,7 +67,7 @@ export function ContractProgramLinesTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border bg-surface">
+    <div className={LINE_TABLE_SCROLL_CLASS}>
       <div className="min-w-[560px] text-xs">
         <div className={`${LINES_GRID_CLASS} items-center border-b bg-muted/40 px-2 py-1.5 font-medium text-muted-foreground`}>
           <span className="sr-only">{t('contracts.actions.programDialog.lineSelectHeader')}</span>

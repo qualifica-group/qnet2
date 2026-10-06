@@ -29,6 +29,10 @@ export const migrations = {
     'product-category-attributes': 'Categorie prodotto — collega attributi',
     'attribute-layouts': 'Layout attributi',
     products: 'Prodotti',
+    registries: 'Anagrafiche',
+    opportunities: 'Opportunità',
+    quotes: 'Offerte',
+    'work-orders': 'Commesse',
   },
   page: {
     sourceLabel: 'Sorgente',

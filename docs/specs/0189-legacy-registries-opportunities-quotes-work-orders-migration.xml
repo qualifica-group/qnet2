@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0189-legacy-registries-opportunities-quotes-work-orders-migration" status="approved" owner="utente" date="2026-10-02">
+
+  <goal>
+    Dalla sezione Migrazioni (`/migrations`) si importano dal legacy anche i dati operativi: anagrafiche clienti,
+    opportunita', offerte (con righe, provvigioni, stato e contratto) e commesse (con righe collegate, supervisori e
+    partecipanti), idempotenti per `old_id`, senza notifiche/email ne' log di attivita' di massa.
+  </goal>
+
+  <context>
+    - Richiesta utente 2026-10-02: "importare anche anagrafiche, commesse, offerte e opportunita' da qnet legacy;
+      gestisci tutto e dimmi cosa manca; crea le /migrations e le api in qnet vecchio".
+    - Legacy `/Users/Repository/qnet`: `companies` (20.696), `opportunities` (30.275), `quotations` (47.522) +
+      `quotationservices` (71.557), `orders` (16.162) + `orderservices`, `responsabile_services`, `partecipant_services`.
+      Le API di migrazione stanno in `Api/V2/*MigrationController` + `routes/apiV2.php` prefisso `migration`
+      (gruppo auth:api + v2.access), envelope `{items, pagination:{total,offset,limit,total_pages}}`, limit max 100.
+    - qnet-2: motore `app/Migrations` (spec 0013), creazione tramite i Service di dominio + `old_id` post-create.
+      Catena obbligatoria: Registry &lt;- Opportunity (registry_id NOT NULL) &lt;- Quote (opportunity_id NOT NULL)
+      &lt;- WorkOrder (quote_id NOT NULL). Nessuna delle 4 tabelle ha `old_id`.
+    - Decisioni del lead (2026-10-02, da confermare dall'utente, elencate nel riepilogo):
+      G-1 il legacy esporta SOLO record importabili: opportunita' con cliente esistente (escluse ~10.700 richieste
+      GOL senza cliente), offerte la cui opportunita' e' esportata (escluse ~19.500 offerte orfane/placeholder GOL),
+      commesse la cui offerta e' esportata. Gli esclusi non compaiono nel report come errori.
+      G-2 nessuna notifica/email: manager e supervisore si scrivono DOPO la create (pivot posizionale / forceFill),
+      mai passati al Service che li notificherebbe; commesse senza task template (niente stage/task/email).
+      G-3 activity log disattivato durante l'import delle 4 sorgenti (`activity()->withoutLogs`): centinaia di
+      migliaia di righe "creato da super-admin" non sono audit reale.
+      G-4 `OpportunityService::import()`: stesso percorso di `create()` ma senza il vincolo "una sola opportunita'
+      aperta per anagrafica" (nel legacy 2.035 clienti ne hanno piu' di una), senza notifiche, lead e loadDetail.
+      G-5 codici: offerta `QUO-%04d` dell'id legacy, commessa `COM-%04d` dell'id legacy; se il codice e' gia' preso
+      si genera il successivo con warning. Il `number` legacy non e' usabile (vuoto o "10" sul 96%).
+      G-6 stato offerta, risolto DOPO la create dentro il workflow risolto dell'offerta (mai id fissi): legacy 0
+      Presentata -> stato `open` del set; 6 Accettata dal cliente -> primo stato del gruppo `pending` del set, se
+      manca `open`; 1,2,3,4,8 (contratti) -> stato di sistema `closed_won`; 5 Rifiutata -> `closed_lost`. Se il
+      set non ha lo stato o l'offerta non ha righe ricavo (vincolo closed_won/closed_lost) resta `open` + warning.
+      G-7 contratto: per i closed_won si crea con `ContractLifecycleManager` (rispetta ContractEligibility), poi si
+      allinea al legacy: `accepted_at`=accepted_data, `validated_at`=validated_data, `renewal_date`; stato per nome
+      1 "Da validare", 3 "Da programmare", 2 "Programmato", 4 "In scadenza", 8 stato di sistema `terminated`.
+      G-8 righe: solo `quotationservices` come righe RICAVO (prodotto `old_source=services`); `quotationproducts` e'
+      vuota; i costi legacy (quotationequipments 85) fuori scope. Riga senza prodotto migrato (1.353, soprattutto
+      sconti/detrazioni) -> scartata con warning. `quote_lines.old_id` = `quotationservices.id`.
+      G-9 provvigioni riga: solo se il legacy ha percentuale (PERCENTAGE) o importo (FIXED_AMOUNT); agent ->
+      commercial (referente), signaler -> reporter (referente), supervisor -> supervisor (utente), supplier ->
+      supplier (anagrafica). Origin ManualOverride.
+      G-10 commessa: righe collegate da `orderservices.quotation_service` (fallback: riga dell'offerta con lo
+      stesso service_id); una riga gia' collegata a un'altra commessa resta alla prima (id minore) + warning
+      (qnet-2 vieta riga su due commesse). Decisione utente 2026-10-02 (opzione C): nel legacy una riga
+      puo' stare su piu' commesse (rinnovi/cicli, pianificazione per quantita', doppioni); per ogni commessa successiva
+      la riga viene DUPLICATA sull'offerta (stesso prodotto, importi e provvigioni, senza old_id) e la copia collegata
+      alla commessa; totali e margine dell'offerta ricalcolati (crescono della copia). Il vincolo resta. Stato legacy 1,2 -> aperta; 3 Chiusa, 4 Annullata, 5 Disdetta ->
+      `is_force_closed` con motivo "Chiusa (legacy)" / "Annullata (legacy)" / "Disdetta (legacy)".
+      G-11 anagrafica: `is_private=1` -> scheda persona fisica (nome/cognome separati dal legacy con la sua stessa
+      regola `separaNomeCognome`), altrimenti azienda; P.IVA segnaposto (`0`,`1`,`.`, solo zeri) scartata, prefisso
+      `IT` rimosso; sede legale = indirizzo primario `legal_seat`, `company_addresses` = indirizzi aggiuntivi.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy: 4 endpoint `GET /api/v2/migration/{registries,opportunities,quotes,work-orders}` (contratto sotto).</item>
+      <item>qnet-2: migrazione `old_id` su registries, opportunities, quotes, quote_lines, work_orders; 4 sorgenti
+        `RegistriesSource`, `OpportunitiesSource`, `QuotesSource`, `WorkOrdersSource` registrate in
+        `config/migrations.php` e in `MigrationOrder` (fasi 7-10); `OpportunityService::import()` (G-4).</item>
+      <item>Report del run accumulato in memoria e scritto una volta per pagina (oggi riscrive tutto il JSON a ogni
+        warning: quadratico su decine di migliaia di righe).</item>
+      <item>Etichette `/migrations` IT/EN, guida in-app `migrations` IT/EN, manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Note (activity_log legacy), documenti/allegati, valori campi flessibili (`pre_info_*`, `orderisos`),
+        fasi/task delle commesse, storico fasi opportunita', tag e ATECO delle anagrafiche, referenti "responsabile"
+        testuali delle anagrafiche, richieste GOL senza cliente (G-1), costi legacy delle offerte.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <shape name="Envelope comune">
+      `{ items: [...], pagination: { total, offset, limit, total_pages } }`; query `offset` (min 0), `limit` (1..100),
+      `search` opzionale. Ordinamento stabile per id crescente. Date `Y-m-d` o null; datetime `Y-m-d H:i:s` o null.
+      Ogni id di riferimento e' l'id LEGACY (rimappato in qnet-2 via `old_id`); 0 e riferimenti orfani -> null.
+    </shape>
+    <shape name="GET migration/registries (companies)">
+      { id:int, is_private:bool, company_name:?string, first_name:?string, last_name:?string, tax_code:?string,
+        vat_number:?string, sdi_code:?string, vat_group:?string, is_supplier:bool, is_qualified_supplier:bool,
+        agreement_status:?("negotiating"|"rejected"|"agreed"), agreement_notes:?string,
+        size_class:?("micro"|"small"|"medium"|"large"), employee_count:?int,
+        source_id:?int (legacy sources.id risolto per descrizione dal testo libero), source_label:?string (testo grezzo),
+        sectors:string[] (token di settore_ea separati da virgola e trimmati, come EaSectorMigrationController),
+        supervisor_user_id:?int (commercial_supervisor_id), manager_user_ids:int[] (assigned_id, assigned2_id; ordine
+        = posizione), commercial_referent_id:?int (agent_id), reporter_referent_id:?int (signaler_id),
+        referent_ids:int[] (company_contacts.contact_id distinti, solo contatti esistenti),
+        email, pec, phone, phone2, fax, website: ?string,
+        country, region, province, city, street, postal_code: ?string (sede legale),
+        addresses: [{ site_type:("delivery"|"billing"|"operational_site"), country, region, province, city, street,
+          postal_code }] (company_addresses; type 1/2/3, altro -> operational_site),
+        created_at, updated_at }
+    </shape>
+    <shape name="GET migration/opportunities">
+      Solo opportunita' con customer_id esistente in companies (G-1).
+      { id:int, registry_id:int (customer_id), title:?string, referent_id:?int (contact_id),
+        commercial_referent_id:?int (commerciale_id), reporter_referent_id:?int (segnalatore_id),
+        supervisor_user_id:?int (supervisore_id), manager_user_ids:int[] (assigned_to, assigned2_to, assigned3_to,
+        assigned4_to, poi responsabile_opportunities.id_utente; distinti, ordine = posizione, max 12),
+        source_id:?int (source, 0 -> null), operational_site_id:?int (sede_id),
+        product_category_ids:int[] (opportunityservicecategories.service_category_id distinti),
+        start_date:?date (date_start), expected_close_date:?date (data_chiusura_stimata ?? date_end),
+        estimated_value:?number (value ?? valore_stimato), notes:?string (colonna note),
+        reserved_notes:?string, status:?int (fase legacy), status_label:?string, created_at, updated_at }
+    </shape>
+    <shape name="GET migration/quotes">
+      Solo offerte la cui opportunita' e' esportata (G-1).
+      { id:int, opportunity_id:int, title:?string, description:?string, quote_date:?date (datequotation),
+        status:int (status_quotation), accepted_at:?date (accepted_data), validated_at:?date (validated_data),
+        declined_at:?date, renewal_date:?date, commercial_referent_id:?int (agent_id),
+        reporter_referent_id:?int (signaler_id), supervisor_user_id:?int, manager_user_ids:int[] (assigned_to,
+        assigned2_to), company_site_id:?int (business_unit -> company_profiles), operational_site_id:?int (sede_id),
+        payment_method_id:?int (payment_id),
+        lines: [{ id:int (quotationservices.id), product_id:?int (service_id; 0 -> null), description:?string,
+          quantity:?number, unit_price:?number (price), vat_rate_id:?int (rate),
+          commissions: [{ role:("commercial"|"reporter"|"supervisor"|"supplier"),
+            recipient_id:int (contacts.id per commercial/reporter, users.id per supervisor, companies.id per supplier),
+            percentage:?number, amount:?number }] }],
+        created_at, updated_at }
+    </shape>
+    <shape name="GET migration/work-orders">
+      Solo commesse la cui offerta e' esportata (G-1).
+      { id:int, quote_id:int (quotation_id), title:?string, type:("processing"|"project") (tipo_commessa),
+        start_date:?date (datestart), end_date:?date (dateend), callback_date:?date (recall_date),
+        description:?string, notes:?string (note), status:int (1..5), status_label:?string,
+        quote_line_ids:int[] (orderservices.quotation_service esistenti; fallback per service_id sull'offerta),
+        supervisor_user_ids:int[] (responsabile_services.id_utente distinti),
+        participant_user_ids:int[] (partecipant_services.id_utente distinti, ordine di inserimento, max 12),
+        created_at, updated_at }
+    </shape>
+  </data_contract>
+
+  <acceptance_criteria>
+    <ac id="AC-001">Le 5 tabelle hanno `old_id` nullable unico, non mass-assignable.</ac>
+    <ac id="AC-002">Ogni sorgente crea il record via Service di dominio, imposta `old_id` e i timestamp legacy; un
+      secondo run salta tutto (skipped) senza duplicati.</ac>
+    <ac id="AC-003">Un riferimento non migrato (utente, referente, sede, categoria, prodotto, anagrafica,
+      opportunita', offerta) e' un warning non bloccante, tranne il padre obbligatorio (anagrafica per
+      l'opportunita', opportunita' per l'offerta, offerta per la commessa): riga fallita con messaggio chiaro.</ac>
+    <ac id="AC-004">Nessuna notifica o email e nessuna riga activity_log prodotta dall'import delle 4 sorgenti.</ac>
+    <ac id="AC-005">Opportunita': piu' opportunita' aperte sulla stessa anagrafica si importano tutte.</ac>
+    <ac id="AC-006">Offerta: righe ricavo con prodotto/IVA rimappati, totali ricalcolati, stato secondo G-6, contratto
+      secondo G-7, provvigioni secondo G-9, `quote_lines.old_id` valorizzato.</ac>
+    <ac id="AC-007">Commessa: codice G-5, righe G-10, supervisori/partecipanti rimappati, chiusura forzata G-10,
+      nessun task/stage creato.</ac>
+    <ac id="AC-008">Le 4 sorgenti compaiono in `/migrations` (etichette IT/EN) e nel piano nelle fasi 7-10.</ac>
+  </acceptance_criteria>
+</spec>

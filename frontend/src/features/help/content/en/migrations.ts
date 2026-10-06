@@ -3,13 +3,13 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'migrations',
   title: 'Migrations',
-  summary: 'The Migrations module imports data from an external system into qnet, usually at startup: roles, users, companies, sites, referents, products.',
+  summary: 'The Migrations module imports data from an external system into qnet, usually at startup: roles, users, companies, sites, referents, products, registries, opportunities, quotes and work orders.',
   sections: [
     {
       id: 'overview',
       title: 'Overview',
       blocks: [
-        { type: 'paragraph', text: 'The module is found in **Administration › Migrations** and is restricted to the **super-admin** role. Each **Source** represents a type of data to import: Roles, Users, Business functions, Companies, Company sites, Operational sites, Referent types, Referents, Sources, Tags, Sectors, VAT rates, Attributes, Product categories, Products, Cost products, Email templates, Document bundles, Task templates and Attribute layouts.' },
+        { type: 'paragraph', text: 'The module is found in **Administration › Migrations** and is restricted to the **super-admin** role. Each **Source** represents a type of data to import: Roles, Users, Business functions, Companies, Company sites, Operational sites, Referent types, Referents, Sources, Tags, Sectors, VAT rates, Attributes, Product categories, Products, Cost products, Email templates, Document bundles, Task templates, Attribute layouts, Registries, Opportunities, Quotes and Work orders.' },
         { type: 'note', text: 'The **Cost products** source imports the legacy QNet costs: warehouse articles, vehicles, equipment and expense reports. Each item becomes a product **Usable as cost** (Costs tab of the offer only) under the **Costi** category, in the **Articoli**, **Veicoli**, **Attrezzature** and **Note spese** sub-categories; an article lands in an Articoli sub-category named after its legacy category. License plate, serial number, brand, model, barcode, ministerial code and storage position become product attributes. For articles the cost is the legacy purchase price. Run **VAT rates** first, otherwise the rate stays empty with a warning.' },
         { type: 'note', text: 'The **Email templates** and **Document bundles** sources import the legacy QNet email templates and document bundles, the latter together with all their files. A name already in use gets a numeric suffix; a file that is too large or has a disallowed format is skipped with a warning instead of failing the row.' },
         { type: 'note', text: 'The **Attribute layouts** source imports the Work order sections of all legacy cards (ISO, SOA, Safety, Avvalimenti, GDPR, R&D, PAL, Subsidized finance, Tenders, Site partnerships, Education, GOL Training) and, for the Offer, the "Preliminary info" of the legacy opportunity (ISO with the groups of the category standard only and the Sites table, SOA, Avvalimenti, GDPR, R&D, Tenders, Partnerships, Projects, Education). The **Processing status** field receives the statuses of the family (root) of the category. A category receives the fields (Work order and Offer) only from the cards of its own products. Run **Attributes**, **Product categories** and **Product categories — link attributes** first: a layout using a field not linked to the category is discarded. An existing layout is never overwritten. The field values of individual work orders are not imported, nor are the free notes of the Preliminary info and the GOL Training fields of the Offer. The fields and layouts of the Training branch configured in QNet are not modified.' },
@@ -30,6 +30,20 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'steps', items: ['After checking the preview, click **Import this source**.', 'Read the confirmation window and click **Start import**.', 'Follow the progress. At the end you see the summary: **Total rows**, **Created**, **Skipped** and **Failed**.', 'Check **Warnings and errors** for rows with problems.'] },
         { type: 'tip', text: 'The import keeps running even if you close the window. Records already imported are skipped, so you can repeat the import without creating duplicates.' },
+      ],
+    },
+    {
+      id: 'operational-records',
+      title: 'Registries, opportunities, quotes and work orders',
+      blocks: [
+        { type: 'paragraph', text: 'The **Registries**, **Opportunities**, **Quotes** and **Work orders** sources import the operational data of the legacy QNet. Run them in this order and after **Users**, **Referents**, **Sources**, **Sectors**, **Operational sites**, **Product categories**, **Products**, **VAT rates**, **Payment methods** and **Company sites**: each source links the records already imported by the previous ones.' },
+        { type: 'list', items: [
+          '**Registries**: a private customer becomes an individual card, the others a company card. The registered office is the primary address, the other legacy sites become additional addresses. Placeholder VAT numbers (0, 1, dot) are not imported.',
+          '**Opportunities**: only those with a customer are imported. GOL course requests without a customer are not imported. A customer can have several open opportunities.',
+          '**Quotes**: the quotes of the imported opportunities, with code **QUO-** followed by the legacy id, the revenue lines, VAT and the commissions that have a percentage or an amount. The status follows the legacy one: presented stays open, declined becomes closed lost, accepted or contracted becomes closed won and creates the contract with the legacy status and dates.',
+          '**Work orders**: imported with code **COM-** followed by the legacy id, the linked quote lines, supervisors and participants. Work orders closed, cancelled or terminated in the legacy arrive force-closed with the reason.',
+        ] },
+        { type: 'note', text: 'No notifications or emails are sent and no activity log entries are written during this import. Notes, documents, flexible field values, work order stages and tasks are not imported. A quote line without an imported product (for example a discount) is skipped with a warning; a line already linked to another work order stays on the first one, and each later work order gets a copy of the line, with its commissions, added to the quote: the quote total grows accordingly.' },
       ],
     },
     {

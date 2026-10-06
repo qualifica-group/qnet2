@@ -27,11 +27,17 @@ import { enumLabelOf } from '@/features/config/enum-label'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { formatDecimal } from '@/features/products/column-renderers'
 import { computeProductMargin } from '@/features/products/product-margin'
+import { productPricingVisibility } from '@/features/products/product-pricing-visibility'
+import { DEFAULT_PRODUCT_USAGES } from '@/features/products/product-form-payload'
 import { ProductAttributeValuesSection } from '@/features/products/product-attribute-values-section'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
 
-/** Three KPI tiles, not the strip's default four: a product prices on exactly these numbers. */
-const STAT_STRIP_CLASS = '@2xl:grid-cols-3'
+/** One column per visible KPI tile (price / cost / margin, spec 0191), never the strip's default four. */
+const STAT_STRIP_CLASS: Record<number, string> = {
+  1: '@2xl:grid-cols-1',
+  2: '@2xl:grid-cols-2',
+  3: '@2xl:grid-cols-3',
+}
 
 interface ProductDetailViewProps {
   product: ProductDetailWithPermissions
@@ -58,6 +64,9 @@ export function ProductDetailView({ product, onEdit }: ProductDetailViewProps) {
     ? [activityLogTab('products', product.id, t('activityLog.title'))]
     : []
   const margin = computeProductMargin(product.cost, product.price)
+  // A server that omits `usages` means the default, Sellable only (spec 0142 D-3).
+  const pricing = productPricingVisibility(product.usages ?? DEFAULT_PRODUCT_USAGES)
+  const statCount = Number(pricing.price) + Number(pricing.cost) + Number(pricing.margin)
   const productTypeLabel = enumLabelOf('product_type', product.product_type)
 
   return (
@@ -91,36 +100,44 @@ export function ProductDetailView({ product, onEdit }: ProductDetailViewProps) {
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
 
-          <RecordStatStrip className={STAT_STRIP_CLASS}>
-            <RecordStat
-              label={t('products.columns.price')}
-              icon={<TrendingUp aria-hidden="true" />}
-              value={formatDecimal(product.price) || <DetailEmpty />}
-            />
-            <RecordStat
-              label={t('products.columns.cost')}
-              icon={<TrendingDown aria-hidden="true" />}
-              value={formatDecimal(product.cost) || <DetailEmpty />}
-            />
-            <RecordStat
-              label={t('products.margin')}
-              icon={<Wallet aria-hidden="true" />}
-              value={
-                margin ? (
-                  <span className={cn(margin.amount < 0 && 'text-destructive')}>
-                    {formatDecimal(margin.amount)}
-                  </span>
-                ) : (
-                  <DetailEmpty />
-                )
-              }
-              hint={
-                margin && margin.percent !== null
-                  ? t('products.marginPercent', { percent: formatDecimal(margin.percent) })
-                  : undefined
-              }
-            />
-          </RecordStatStrip>
+          {statCount > 0 ? (
+            <RecordStatStrip className={STAT_STRIP_CLASS[statCount]}>
+              {pricing.price ? (
+                <RecordStat
+                  label={t('products.columns.price')}
+                  icon={<TrendingUp aria-hidden="true" />}
+                  value={formatDecimal(product.price) || <DetailEmpty />}
+                />
+              ) : null}
+              {pricing.cost ? (
+                <RecordStat
+                  label={t('products.columns.cost')}
+                  icon={<TrendingDown aria-hidden="true" />}
+                  value={formatDecimal(product.cost) || <DetailEmpty />}
+                />
+              ) : null}
+              {pricing.margin ? (
+                <RecordStat
+                  label={t('products.margin')}
+                  icon={<Wallet aria-hidden="true" />}
+                  value={
+                    margin ? (
+                      <span className={cn(margin.amount < 0 && 'text-destructive')}>
+                        {formatDecimal(margin.amount)}
+                      </span>
+                    ) : (
+                      <DetailEmpty />
+                    )
+                  }
+                  hint={
+                    margin && margin.percent !== null
+                      ? t('products.marginPercent', { percent: formatDecimal(margin.percent) })
+                      : undefined
+                  }
+                />
+              ) : null}
+            </RecordStatStrip>
+          ) : null}
 
           <RecordSectionsGrid>
             <RecordSection title={t('products.form.sections.identity.title')} icon={<Package />}>

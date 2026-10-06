@@ -56,6 +56,18 @@ export const FIELD_GRID_CLASS = 'grid min-w-0 items-start gap-4 @2xl:grid-cols-2
 export const FIELD_STACK_CLASS = 'flex min-w-0 flex-col gap-2'
 
 /**
+ * The horizontal scroller around a wide line table (offer/cost lines, their
+ * read-only lists, work-order costs, contract program lines). Those tables
+ * carry a fixed `min-w-[...]`, and an `auto` grid track (a `FormItem` is
+ * `grid gap-2`) sizes itself on that min-content: the cell grew to the
+ * table's width and pushed the whole card off a narrow screen, while the
+ * scroller never scrolled. `contain-inline-size` drops the table's width
+ * from the ancestors' intrinsic sizing, so the box takes the available
+ * width and the table scrolls inside it.
+ */
+export const LINE_TABLE_SCROLL_CLASS = 'overflow-x-auto rounded-lg border bg-surface contain-inline-size'
+
+/**
  * The "Note generali" callout chrome. Amber, not the brand hue (user directive
  * 2026-07-29): the whole surface scale is blue-grey, so a `primary` wash on
  * `bg-surface` separates by lightness only and reads as the same plane. A warm

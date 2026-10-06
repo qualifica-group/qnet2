@@ -8,6 +8,8 @@ import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 import { buildAttributeEnumSchema } from '@/features/request-management/attribute-values-schema'
+import { productPricingVisibility } from '@/features/products/product-pricing-visibility'
+import type { ProductUsage } from '@/features/products/types'
 
 /**
  * Zod schema for the product create/edit form's GENERIC fields, built as a
@@ -43,7 +45,7 @@ function baseFields(t: TFunction) {
     description: z.string().nullable(),
     // cost/price/category_id are held nullable so the controlled inputs can
     // represent "empty"; the required-value superRefine below rejects a null
-    // at submit, mirroring the backend's `required` rules.
+    // at submit (cost/price only when their usage is on), mirroring the backend.
     cost: z.number().nonnegative(t('products.form.costInvalid')).nullable(),
     price: z.number().nonnegative(t('products.form.priceInvalid')).nullable(),
     category_id: z.number().nullable(),
@@ -60,14 +62,21 @@ function baseFields(t: TFunction) {
 
 function withRequiredValueRules<T extends z.ZodTypeAny>(schema: T, t: TFunction) {
   return schema.superRefine((values, ctx) => {
-    const record = values as { category_id: number | null; cost: number | null; price: number | null }
+    const record = values as {
+      category_id: number | null
+      cost: number | null
+      price: number | null
+      usages: ProductUsage[]
+    }
+    // Spec 0191 D-1: a value is required only when its usage is on; a hidden one is not validated.
+    const visibility = productPricingVisibility(record.usages)
     if (record.category_id === null) {
       ctx.addIssue({ code: 'custom', path: ['category_id'], message: t('products.form.categoryRequired') })
     }
-    if (record.cost === null) {
+    if (visibility.cost && record.cost === null) {
       ctx.addIssue({ code: 'custom', path: ['cost'], message: t('products.form.costRequired') })
     }
-    if (record.price === null) {
+    if (visibility.price && record.price === null) {
       ctx.addIssue({ code: 'custom', path: ['price'], message: t('products.form.priceRequired') })
     }
   })

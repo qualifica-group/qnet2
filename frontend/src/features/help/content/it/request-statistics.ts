@@ -4,7 +4,7 @@ const guide: HelpGuide = {
   key: 'request-statistics',
   title: 'Statistiche Gestione Richieste',
   summary:
-    'Statistiche Gestione Richieste mostra l\'andamento del lavoro sulle richieste in un periodo scelto, con riquadri, grafici ed esportazione CSV/Excel.',
+    'Statistiche Gestione Richieste mostra l\'andamento del lavoro sulle richieste in un periodo scelto, con indicatori e confronto sul periodo precedente, mappa per categoria, classifica operatori ed esportazione CSV/Excel.',
   sections: [
     {
       id: 'statistics-access',
@@ -42,45 +42,66 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Il browser ricorda gli ultimi filtri applicati.',
+          text: "Il browser ricorda gli ultimi filtri applicati e l'ultima scheda aperta.",
         },
         {
           type: 'table',
           headers: ['Parte', 'Contenuto'],
           rows: [
             [
+              'Periodo',
+              'In alto a sinistra: **Oggi**, **Ieri**, **Ultimi 7 giorni** (oggi compreso), **Questo mese** (dal giorno 1 a oggi), **Mese scorso** e **Tutto** (nessun limite di date) si applicano con un clic e cambiano solo le date. **Personalizzato** apre il pannello Filtri per scegliere date qualsiasi ed è evidenziato quando le date applicate non corrispondono a nessuna scelta rapida.',
+            ],
+            ['Genera report e Filtri', 'In alto a destra: il file CSV/Excel e il pannello con tutti gli altri filtri.'],
+            [
               'Filtri applicati',
-              'Un riquadro per Periodo, Categorie, Sedi, Operatori, Righe: colorato se restringe i dati, neutro se vale "tutto". A destra **Genera report** e **Filtri**.',
+              'Un riquadro per Periodo, Categorie, Sedi, Operatori, Righe: colorato se restringe i dati, neutro se vale "tutto".',
+            ],
+            ['Schede', "**Panoramica**, poi le categorie selezionate che stanno nella riga; le altre sono nel menu **Altre (N)**, con la ricerca. La categoria aperta resta sempre visibile nella riga."],
+          ],
+        },
+        {
+          type: 'table',
+          headers: ['Scheda', 'Contenuto'],
+          rows: [
+            [
+              'Panoramica › Totale complessivo',
+              "Una casella per colonna, su tutte le categorie selezionate insieme: una richiesta presente in più categorie conta una volta sola. Sotto il numero una barra colorata mostra quanto pesa ogni categoria (passa il mouse per nome, valore e percentuale); la ripartizione è calcolata sulla somma delle categorie, che può superare il totale complessivo.",
             ],
             [
-              'Totale complessivo',
-              'Una casella per colonna, su tutte le categorie selezionate insieme. Una richiesta presente in più categorie conta una volta sola.',
+              'Panoramica › Mappa categorie × indicatori',
+              "Una riga per categoria, una colonna per indicatore: più il colore è intenso, più il valore è alto rispetto alle altre categorie per quell'indicatore. \"—\" indica una colonna non configurata per la categoria. Clicca una categoria per aprirne la scheda.",
             ],
             [
-              'Riepilogo per categoria',
-              'Una casella per ogni colonna configurata per la categoria, con il valore totale (zeri compresi).',
+              'Scheda categoria',
+              'Una casella per ogni colonna configurata per la categoria (zeri compresi), il grafico **Profilo indicatori** con i totali delle colonne e la **Classifica operatori**. Con Righe = Solo totale la classifica non compare; con Solo operatori non compare il Profilo indicatori.',
             ],
             [
-              'Grafici per categoria',
-              '**Indicatori** confronta i totali delle colonne; poi un grafico per colonna con una barra per operatore, dal valore più alto.',
+              'Classifica operatori',
+              "Una riga per operatore GA2 e una colonna per indicatore, con una barra proporzionale al valore più alto della colonna. Si apre ordinata sulla prima colonna, dal valore più alto; clicca un'intestazione per ordinare, un secondo clic inverte l'ordine. Ogni indicatore ha un suo colore (pallino nell'intestazione, barra e valori diversi da zero); gli zeri restano grigi. I primi tre hanno il podio, se il valore è maggiore di zero; Non assegnato resta sempre in fondo, senza posizione.",
             ],
           ],
         },
         {
           type: 'paragraph',
-          text: 'Ogni sezione si chiude e riapre con la freccia accanto al titolo. Il pulsante con la doppia freccia, accanto a **Filtri**, apre tutto in un colpo (**Espandi tutto**, grafici compresi) oppure, se è già tutto aperto, chiude tutte le sezioni (**Comprimi tutto**).',
+          text: '**Variazione rispetto al periodo precedente.** Se Dal e Al sono entrambi compilati, ogni casella mostra la variazione percentuale rispetto al periodo precedente della stessa durata (per Ultimi 7 giorni, i 7 giorni prima), con tutti gli altri filtri uguali. Verde = miglioramento, rosso = peggioramento; **Nuovo** = nel periodo precedente il valore era 0. Passa il mouse sulla variazione per leggere il valore del periodo precedente.',
+        },
+        {
+          type: 'note',
+          text: 'Le colonne "non gestiti" (Richiami e Nuovi contatti non gestiti) hanno l\'icona ambra: sono numeri da far scendere, quindi per loro un aumento è rosso e un calo è verde.',
         },
         {
           type: 'table',
-          headers: ['Pannello', 'File CSV/Excel'],
+          headers: ['Pagina', 'File CSV/Excel'],
           rows: [
             ['Si aggiorna subito', 'Viene preparato e poi scaricato'],
             ['Ha il Totale complessivo', 'Non ha una riga di totale generale'],
-            ['Valori per operatore solo nei grafici', 'Una riga per ogni operatore'],
+            ['Valori per operatore nella Classifica operatori', 'Una riga per ogni operatore'],
             [
               'Solo le colonne configurate di ogni categoria',
               'Tutte le colonne usate da almeno una categoria selezionata',
             ],
+            ['Variazione sul periodo precedente', 'Solo i valori del periodo scelto'],
           ],
         },
       ],
@@ -91,7 +112,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Clicca **Filtri** per aprire il pannello **Filtri report e statistiche**: modifica i valori e premi **Applica** (o **Annulla**). **Azzera filtri** riporta i valori iniziali (oggi, tutte le categorie, sedi e operatori, modalità Tutto): la modifica vale solo dopo **Applica**. Gli stessi filtri valgono per grafici e file.',
+          text: 'Le scelte rapide del periodo cambiano solo le date. Per tutto il resto clicca **Filtri** (o **Personalizzato**) per aprire il pannello **Filtri report e statistiche**: modifica i valori e premi **Applica** (o **Annulla**). **Azzera filtri** riporta i valori iniziali (oggi, tutte le categorie, sedi e operatori, modalità Tutto): la modifica vale solo dopo **Applica**. Gli stessi filtri valgono per grafici e file.',
         },
         {
           type: 'table',
@@ -272,6 +293,7 @@ const guide: HelpGuide = {
             '**Perché alcune colonne non cambiano con il periodo?** N. Richiami non gestiti, N. Nuovi contatti non gestiti e N. Potenziali associati guardano sempre alla situazione di oggi. Per il dato del periodo usa la loro versione "(nel periodo selezionato)", da attivare in Colonne report della categoria.',
             '**Perché Associati vale 0 anche se ho richieste chiuse con esito positivo?** Associati, Trattative Concluse e Invio Presa in carico contano le richieste create nel periodo scelto: con il periodo di oggi restano fuori quelle create nei giorni precedenti. Allarga il periodo Dal/Al.',
             '**Perché il Totale complessivo è più basso della somma delle categorie?** Una richiesta presente in più categorie selezionate conta una volta sola nel totale complessivo.',
+            '**Perché non vedo la variazione percentuale?** Serve un periodo con entrambe le date Dal e Al (Tutto o un solo estremo non hanno un periodo precedente); se il valore è 0 sia ora sia nel periodo precedente la variazione non compare.',
           ],
         },
       ],

@@ -168,6 +168,16 @@ class WorkOrder extends BaseModel
     }
 
     /**
+     * The ACTUAL costs entered on this commessa (spec 0190), in grid order.
+     *
+     * @return HasMany<WorkOrderCost, $this>
+     */
+    public function costs(): HasMany
+    {
+        return $this->hasMany(WorkOrderCost::class)->orderBy('sort_order');
+    }
+
+    /**
      * This commessa's email history and drafts (spec 0175, D-2/D-10): every
      * `OutboundEmail` sent or drafted from its "Email" tab, newest first is
      * the caller's own concern — no default ordering here.

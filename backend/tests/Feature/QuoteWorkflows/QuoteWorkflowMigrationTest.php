@@ -204,6 +204,12 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_10_05_100000_create_financial_accounts_table` (124th).
     // Adding a migration means bumping this number.
     Artisan::call('migrate:rollback', ['--step' => 124]);
+    // `2026_10_02_120000_add_old_id_to_operational_records_tables` (124th),
+    // the legacy anchors of registries/opportunities/quotes/work orders, and
+    // spec 0190's `2026_10_02_130000_create_work_order_costs_table` (125th),
+    // the work order's actual costs.
+    // Adding a migration means bumping this number.
+    Artisan::call('migrate:rollback', ['--step' => 125]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

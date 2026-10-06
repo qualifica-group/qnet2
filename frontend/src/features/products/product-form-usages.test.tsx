@@ -151,7 +151,6 @@ beforeEach(() => {
 
 function completeRequiredCreateFields() {
   fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'ThinkPad X1' } })
-  fireEvent.change(screen.getByLabelText('Cost'), { target: { value: '800' } })
   fireEvent.change(screen.getByLabelText('Price'), { target: { value: '1200' } })
   fireEvent.click(screen.getByTestId('category-select'))
 }
@@ -172,6 +171,7 @@ describe('ProductForm — offer usages (spec 0142)', () => {
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Usable as cost' }))
     completeRequiredCreateFields()
+    fireEvent.change(screen.getByLabelText('Cost'), { target: { value: '800' } })
     save()
 
     await waitFor(() => expect(createProductMock).toHaveBeenCalledTimes(1))
@@ -184,7 +184,8 @@ describe('ProductForm — offer usages (spec 0142)', () => {
     })
 
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Sellable' }))
-    completeRequiredCreateFields()
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'ThinkPad X1' } })
+    fireEvent.click(screen.getByTestId('category-select'))
     save()
 
     expect(await screen.findByText('Select at least one usage.')).toBeInTheDocument()

@@ -31,7 +31,9 @@ final class CategoryBusinessFunctionLinker
      * catalogue's own "Formazione" branch, where
      * QualificaBusinessFunctionLinkSeeder assigns it: the imported nodes get a
      * function of their own instead, so the two branches never resolve to the
-     * same one. Match on the name is case-insensitive.
+     * same one. "APL" likewise (user directive 2026-10-05): the legacy APL
+     * tree is imported beside the manual one (LegacyAplBranch), never on its
+     * function. Match on the name is case-insensitive.
      *
      * Deliberately out of the ADOPTION path (fillFreeSlot): an adopted
      * category is a qnet node of the static catalogue, and it keeps the
@@ -41,6 +43,7 @@ final class CategoryBusinessFunctionLinker
      */
     private const array REDIRECTED_FUNCTIONS = [
         'Formazione' => 'FORMAZIONE OLD',
+        'APL' => 'APL OLD',
     ];
 
     /**

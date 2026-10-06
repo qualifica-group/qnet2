@@ -46,7 +46,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Click the **Product category** cell to change it without opening the request: pick the parent category, then the product category. If the current category is managed as a single row (for example Formazione), the one you pick replaces it; otherwise it is added to the others, and single-row categories cannot be picked (the same holds for the second row of the form). The **X** removes a category.',
+          text: 'Click the **Product category** cell to change it without opening the request: pick the parent category, then the product category. If the current category is managed as a single row (for example Formazione), the one you pick replaces it; otherwise it is added to the others, and single-row categories cannot be picked (the same holds for the second row of the form). The **X** removes a category. Offer rows whose product belongs to a removed category are deleted on save: a warning lists them first.',
         },
       ],
     },
@@ -89,7 +89,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Product lines**: they decide the selectable products and the request-specific fields.',
+            '**Product lines**: they decide the selectable products and the request-specific fields. Changing or removing a line empties the offer rows whose product belongs to a category no longer picked: pick the product again.',
             '**Offer rows**: products, quantities, prices and VAT.',
             '**Status**: some statuses require a **Note**.',
             '**Client details**, **Attribution** and **Team** (**Supervisor** and **Account managers**).',

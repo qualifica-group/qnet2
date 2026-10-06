@@ -71,6 +71,12 @@ describe('QuoteLinesReadOnlyList', () => {
     render(<QuoteLinesReadOnlyList lines={[lineFixture()]} showCommissions />)
     expect(screen.getByRole('button', { name: /commission/i })).toBeInTheDocument()
   })
+
+  it('keeps the wide table scrolling inside its box on a narrow screen', () => {
+    render(<QuoteLinesReadOnlyList lines={[lineFixture()]} />)
+    const scroller = screen.getByText(i18n.t('quotes.form.lineProductHeader')).parentElement?.parentElement?.parentElement
+    expect(scroller).toHaveClass('overflow-x-auto', 'contain-inline-size')
+  })
 })
 
 /** Spec 0144 AC-016: the Cost variant's "Associated product" column. */

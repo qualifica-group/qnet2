@@ -10,7 +10,7 @@ use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Database\Seeders\Concerns\RetiresAttributes;
 use Database\Seeders\Concerns\SeedsAttributeLayouts;
-use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\AplPracticeCatalogue;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
@@ -71,10 +71,16 @@ class QualificaQuoteLayoutSeeder extends Seeder
         // The e-Campus form, styled (user directive 2026-10-01): it resolves
         // on the "Corsi E-Campus" branch alone, cut off the three sets above.
         ...ECampusAttributeCatalogue::SECTIONS,
-        // The APL internships' form (user directive 2026-10-02), on their
-        // category alone, cut off the APL root.
-        ...AplInternshipAttributeCatalogue::SECTIONS,
     ];
+
+    /**
+     * Category name => the form composed for it INSTEAD of SECTIONS: the APL
+     * practices, each cut off the APL root (AplPracticeCatalogue::FORMS says
+     * why each keeps a form of its own).
+     *
+     * @var array<string, list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>>
+     */
+    private const array OWN_FORMS = AplPracticeCatalogue::FORMS;
 
     /**
      * The compositions PREVIOUS revisions of this seeder wrote, recognised
@@ -118,6 +124,16 @@ class QualificaQuoteLayoutSeeder extends Seeder
         ],
     ];
 
+    /**
+     * The sections the revisions before 2026-10-05 seeded HIGHLIGHTED (grey).
+     * The user directive of that day wants every seeded section white: a blob
+     * that is today's form but for those sections' variant is recognised and
+     * recomposed. One edited by hand in any other way stays untouched.
+     *
+     * @var list<string>
+     */
+    private const array PREVIOUSLY_HIGHLIGHTED = ['apl-internship-status', 'apprenticeship-data'];
+
     public function __construct(
         private readonly AttributeLayoutService $layouts,
         private readonly CategoryHierarchy $hierarchy,
@@ -133,7 +149,7 @@ class QualificaQuoteLayoutSeeder extends Seeder
     /**
      * Every category an offer can be filed under for these sets: the whole
      * Formazione branch, the training fields reaching it all by inheritance,
-     * plus the APL internships.
+     * plus the categories with a form of their own (OWN_FORMS).
      *
      * @return Collection<int, ProductCategory>
      */
@@ -150,7 +166,7 @@ class QualificaQuoteLayoutSeeder extends Seeder
         // 2026-09-10 directive, so its layout would prune to nothing anyway.
         $categories = ProductCategory::query()
             ->whereIn('id', $branchIds)
-            ->orWhere('name', AplInternshipAttributeCatalogue::CATEGORY)
+            ->orWhereIn('name', array_keys(self::OWN_FORMS))
             ->get();
 
         // Root-first: seedLayout() asks what each category INHERITS, which is
@@ -173,7 +189,7 @@ class QualificaQuoteLayoutSeeder extends Seeder
             return;
         }
 
-        $sections = $this->sections($effective);
+        $sections = $this->sections($category, $effective);
 
         // Spec 0115: a row saying exactly what the ancestor's already says is
         // 15 copies of one form to maintain. Write nothing — and drop the copy
@@ -220,7 +236,26 @@ class QualificaQuoteLayoutSeeder extends Seeder
             }
         }
 
-        return $this->isRetiredECampusComposition($blob);
+        return $this->isRetiredECampusComposition($blob)
+            || $this->composesAs($blob, $this->highlightedAsBefore($this->sections($category, $effective)));
+    }
+
+    /**
+     * $sections with the PREVIOUSLY_HIGHLIGHTED ones grey again, as written
+     * before every seeded section turned white.
+     *
+     * @param  list<array<string, mixed>>  $sections
+     * @return list<array<string, mixed>>
+     */
+    private function highlightedAsBefore(array $sections): array
+    {
+        return array_map(static function (array $section): array {
+            if (in_array($section['id'], self::PREVIOUSLY_HIGHLIGHTED, true)) {
+                $section['variant'] = LayoutSectionVariant::Highlighted->value;
+            }
+
+            return $section;
+        }, $sections);
     }
 
     /**
@@ -245,9 +280,9 @@ class QualificaQuoteLayoutSeeder extends Seeder
      * @param  list<string>  $effective
      * @return list<array<string, mixed>>
      */
-    private function sections(array $effective): array
+    private function sections(ProductCategory $category, array $effective): array
     {
-        return $this->compose(self::SECTIONS, $effective);
+        return $this->compose(self::OWN_FORMS[$category->name] ?? self::SECTIONS, $effective);
     }
 
     /**

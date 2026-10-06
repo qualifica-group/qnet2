@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\RequestManagement;
 
 use App\DataObjects\Quotes\UpdateQuoteData;
+use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\User;
@@ -81,6 +82,46 @@ final class RequestOfferLineWriter
 
         $old['offer_lines'] = $before;
         $changed['offer_lines'] = $after;
+    }
+
+    /**
+     * Deletes the rows whose product the Opportunity's (just replaced)
+     * product lines no longer cover (bug 2026-10-05, user decision "cancella
+     * le righe"): reached when the classification changes on a write that
+     * does not carry `offer_lines` — the grid's category cell — so the offer
+     * lands where the work panel lands when it empties those rows and saves.
+     * Without it the next offer save would put the removed category back
+     * (OpportunityProductLineCoverage). The kept rows are resubmitted as they
+     * stand, ids included, through the same full-replace as apply(): their
+     * provvigioni and additional description survive untouched.
+     *
+     * @param  array<string, mixed>  $changed
+     * @param  array<string, mixed>  $old
+     */
+    public function dropUncovered(Quote $quote, Opportunity $opportunity, User $actor, array &$changed, array &$old): void
+    {
+        // Step 1: the categories the classification covers now.
+        $coveredCategoryIds = $opportunity->productLines()->pluck('product_category_id')->map(intval(...))->all();
+
+        // Step 2: the persisted rows, split by whether their product is still covered.
+        $lines = $quote->offerLines()->with('product:id,category_id')->get();
+        $kept = $lines->filter(
+            static fn (QuoteLine $line): bool => in_array((int) $line->product?->category_id, $coveredCategoryIds, true),
+        );
+
+        if ($kept->count() === $lines->count()) {
+            return;
+        }
+
+        // Step 3: rewrite with the covered rows only, in their own order.
+        $this->apply($quote, $actor, $kept->values()->map(static fn (QuoteLine $line, int $index): array => [
+            'id' => $line->id,
+            'product_id' => $line->product_id,
+            'quantity' => (float) $line->quantity,
+            'unit_price' => (float) $line->unit_price,
+            'vat_rate_id' => $line->vat_rate_id,
+            'sort_order' => $index,
+        ])->all(), $changed, $old);
     }
 
     /**

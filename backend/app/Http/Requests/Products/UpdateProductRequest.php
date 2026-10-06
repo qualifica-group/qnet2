@@ -6,6 +6,7 @@ use App\DataObjects\Products\UpdateProductData;
 use App\Enums\ProductType;
 use App\Enums\ProductUsage;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\RequiresPricingForUsages;
 use App\Models\Product;
 use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
@@ -35,6 +36,7 @@ use Illuminate\Validation\Rule;
 class UpdateProductRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
+    use RequiresPricingForUsages;
 
     public function authorize(): bool
     {
@@ -50,8 +52,8 @@ class UpdateProductRequest extends FormRequest
         return [
             'name' => ['sometimes', 'required', 'string', 'max:191'],
             'description' => ['sometimes', 'nullable', 'string'],
-            'cost' => ['sometimes', 'required', 'numeric'],
-            'price' => ['sometimes', 'required', 'numeric'],
+            'cost' => ['sometimes', 'nullable', 'numeric'],
+            'price' => ['sometimes', 'nullable', 'numeric'],
             // Spec 0074 D-3b: the product's CURRENT category is exempt, so a
             // partial update that resubmits it unchanged still passes once
             // that category has been made unselectable.
@@ -75,6 +77,7 @@ class UpdateProductRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
+            $this->enforcePricingForUsages($validator);
         });
     }
 

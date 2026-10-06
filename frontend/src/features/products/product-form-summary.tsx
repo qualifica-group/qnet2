@@ -8,6 +8,7 @@ import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { FlatCategoryOption } from '@/features/product-categories/flatten-tree'
 import { formatDecimal } from '@/features/products/column-renderers'
 import { computeProductMargin } from '@/features/products/product-margin'
+import { productPricingVisibility } from '@/features/products/product-pricing-visibility'
 import type { ProductFormValues } from '@/features/products/use-product-form'
 
 /**
@@ -50,12 +51,14 @@ export function ProductFormSummary({ control, categoryOptions, selected }: Produ
   const categoryId = useWatch({ control, name: 'category_id' })
   const cost = useWatch({ control, name: 'cost' })
   const price = useWatch({ control, name: 'price' })
+  const usages = useWatch({ control, name: 'usages' })
   const vatRateId = useWatch({ control, name: 'vat_rate_id' })
   const supplierId = useWatch({ control, name: 'supplier_id' })
   const unitOfMeasureId = useWatch({ control, name: 'unit_of_measure_id' })
   const productTypologyId = useWatch({ control, name: 'product_typology_id' })
 
   const categoryName = categoryOptions.find((option) => option.id === categoryId)?.name ?? null
+  const pricing = productPricingVisibility(usages)
   const margin = computeProductMargin(cost, price)
 
   return (
@@ -74,22 +77,28 @@ export function ProductFormSummary({ control, categoryOptions, selected }: Produ
         <SummaryRow label={t('products.form.unitOfMeasure')}>
           {relationName(selected.unitOfMeasure, unitOfMeasureId) ?? EMPTY_VALUE}
         </SummaryRow>
-        <SummaryRow label={t('products.form.cost')}>{formatDecimal(cost) || EMPTY_VALUE}</SummaryRow>
-        <SummaryRow label={t('products.form.price')}>{formatDecimal(price) || EMPTY_VALUE}</SummaryRow>
-        <SummaryRow label={t('products.margin')}>
-          {margin ? (
-            <span className={cn('flex items-baseline gap-1.5', margin.amount < 0 && 'text-destructive')}>
-              <span className="tabular-nums">{formatDecimal(margin.amount)}</span>
-              {margin.percent !== null ? (
-                <span className="text-xs font-normal text-muted-foreground">
-                  {t('products.marginPercent', { percent: formatDecimal(margin.percent) })}
-                </span>
-              ) : null}
-            </span>
-          ) : (
-            EMPTY_VALUE
-          )}
-        </SummaryRow>
+        {pricing.cost ? (
+          <SummaryRow label={t('products.form.cost')}>{formatDecimal(cost) || EMPTY_VALUE}</SummaryRow>
+        ) : null}
+        {pricing.price ? (
+          <SummaryRow label={t('products.form.price')}>{formatDecimal(price) || EMPTY_VALUE}</SummaryRow>
+        ) : null}
+        {pricing.margin ? (
+          <SummaryRow label={t('products.margin')}>
+            {margin ? (
+              <span className={cn('flex items-baseline gap-1.5', margin.amount < 0 && 'text-destructive')}>
+                <span className="tabular-nums">{formatDecimal(margin.amount)}</span>
+                {margin.percent !== null ? (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {t('products.marginPercent', { percent: formatDecimal(margin.percent) })}
+                  </span>
+                ) : null}
+              </span>
+            ) : (
+              EMPTY_VALUE
+            )}
+          </SummaryRow>
+        ) : null}
         <SummaryRow label={t('products.form.vatRate')}>
           {relationName(selected.vatRate, vatRateId) ?? EMPTY_VALUE}
         </SummaryRow>

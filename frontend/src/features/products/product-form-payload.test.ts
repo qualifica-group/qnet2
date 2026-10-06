@@ -60,6 +60,13 @@ function values(overrides: Partial<ProductFormValues> = {}): ProductFormValues {
 }
 
 describe('buildCreatePayload', () => {
+  it('spec 0191: sends the non-pertinent amount as null, as typed in the form', () => {
+    const payload = buildCreatePayload(values({ usages: ['COST'], price: null }), [])
+
+    expect(payload.price).toBeNull()
+    expect(payload.cost).toBe(800)
+  })
+
   it('builds the create payload with the generic fields', () => {
     expect(buildCreatePayload(values(), [])).toEqual({
       name: 'ThinkPad X1',
@@ -149,6 +156,12 @@ describe('buildUpdatePayload', () => {
     expect(
       buildUpdatePayload(values({ usages: ['COST', 'SALE'] }), original({ usages: ['SALE', 'COST'] }), []),
     ).toEqual({})
+  })
+
+  it('spec 0191 AC-010: dropping a usage leaves cost/price out of the PATCH', () => {
+    expect(
+      buildUpdatePayload(values({ usages: ['COST'] }), original({ usages: ['SALE', 'COST'] }), []),
+    ).toEqual({ usages: ['COST'] })
   })
 
   it('includes only the changed VAT rate id', () => {

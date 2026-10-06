@@ -4,14 +4,19 @@ use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\OperationalSite;
+use App\Models\Opportunity;
+use App\Models\Quote;
+use App\Models\QuoteLine;
 use App\Models\Referent;
 use App\Models\ReferentType;
+use App\Models\Registry;
 use App\Models\Role;
 use App\Models\Sector;
 use App\Models\Source;
 use App\Models\Tag;
 use App\Models\TaskTemplate;
 use App\Models\User;
+use App\Models\WorkOrder;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,6 +41,11 @@ dataset('old_id_tables', [
     'tags' => ['tags'],
     'sectors' => ['sectors'],
     'task_templates' => ['task_templates'],
+    'registries' => ['registries'],
+    'opportunities' => ['opportunities'],
+    'quotes' => ['quotes'],
+    'quote_lines' => ['quote_lines'],
+    'work_orders' => ['work_orders'],
 ]);
 
 /**
@@ -57,6 +67,11 @@ function oldIdFactoryFor(string $table): Factory
         'tags' => Tag::factory(),
         'sectors' => Sector::factory(),
         'task_templates' => TaskTemplate::factory(),
+        'registries' => Registry::factory(),
+        'opportunities' => Opportunity::factory(),
+        'quotes' => Quote::factory(),
+        'quote_lines' => QuoteLine::factory(),
+        'work_orders' => WorkOrder::factory(),
     };
 }
 

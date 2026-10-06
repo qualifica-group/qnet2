@@ -21,7 +21,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 // The APL internships (user directive 2026-10-02, "Campi Misure APL" sheet):
 // "Tirocini extracurriculari privati" gets its own offer fields, form and
-// working states; "Orientamento Specialistico" keeps none of its own.
+// working states.
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
@@ -60,21 +60,12 @@ it('gives the APL internships their own offer fields and form, cut off the APL r
 
     expect($layouts->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All))->not->toBeNull()
         ->and(array_column($sections, 'title'))->toBe(['Stato pratica', 'Dati pratica'])
-        ->and(array_column($sections, 'variant'))->toBe(['highlighted', 'default'])
+        // Every seeded section white (user directive 2026-10-05).
+        ->and(array_column($sections, 'variant'))->toBe(['default', 'default'])
         ->and($codesBySection)->toBe([
             ['registers_status', 'decree_status', 'practice_start_date', 'practice_end_date'],
             ['practice_number', 'reporting_id', 'decree_id'],
         ]);
-});
-
-it('leaves Orientamento Specialistico without offer fields of its own', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $orientation = ProductCategory::query()->where('name', 'Orientamento Specialistico')->sole();
-
-    expect($orientation->inherits_quote_attributes)->toBeTrue()
-        ->and($orientation->attributes()->wherePivot('context', AttributeContext::Quote->value)->count())->toBe(0)
-        ->and(QuoteWorkflow::query()->where('name', 'Orientamento Specialistico')->exists())->toBeFalse();
 });
 
 it('gives the APL internships their own working states, winning over the APL branch set', function (): void {

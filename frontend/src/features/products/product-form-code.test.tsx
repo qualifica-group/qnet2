@@ -167,10 +167,9 @@ beforeEach(() => {
   })
 })
 
-/** Fills the create-form fields required alongside the code: name, cost, price, category. */
+/** Fills the create-form fields required alongside the code: name, price (Sellable by default, so no cost), category. */
 function completeRequiredCreateFields() {
   fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'ThinkPad X1' } })
-  fireEvent.change(screen.getByLabelText('Cost'), { target: { value: '800' } })
   fireEvent.change(screen.getByLabelText('Price'), { target: { value: '1200' } })
   fireEvent.click(screen.getByTestId('category-select'))
 }

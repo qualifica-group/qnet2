@@ -52,8 +52,8 @@ final class CatalogProducts
     /**
      * The subcategories that host ONE offer of their own instead of a course
      * list: one SERVICE product per category, named exactly like it (user
-     * directive 2026-09-04). "Orientamento Specialistico" is the single offer
-     * of the "APL" root (user directive 2026-09-07). "DIL" was one too until
+     * directive 2026-09-04). "Orientamento specialistico" is the single offer
+     * of the "APL" root (user directives 2026-09-07, 2026-10-05). "DIL" was one too until
      * its course catalogue arrived (user directive 2026-09-17): it is now a
      * container like its GOL sibling, its courses filed on "DIL - Lombardia".
      * A "DIL" product an earlier revision seeded is left untouched. Cost and
@@ -69,7 +69,7 @@ final class CatalogProducts
     public const array SINGLE_OFFER_CATEGORIES = [
         'Autoimpiego',
         'Yisu',
-        'Orientamento Specialistico',
+        'Orientamento specialistico',
     ];
 
     /**

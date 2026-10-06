@@ -58,3 +58,23 @@ if (! function_exists('workOrderEmailActor')) {
         return $user;
     }
 }
+
+if (! function_exists('workOrderCostsUserWith')) {
+    /**
+     * A user holding the given work-orders abilities plus `viewAll` (so the
+     * membership scoping never interferes), spec 0190.
+     *
+     * @param  array<int, string>  $abilities  e.g. ['viewCosts', 'manageCosts']
+     */
+    function workOrderCostsUserWith(array $abilities): User
+    {
+        foreach (['view', 'viewCosts', 'manageCosts', 'viewAll'] as $ability) {
+            Permission::findOrCreate("work-orders.{$ability}");
+        }
+
+        $user = User::factory()->create();
+        $user->givePermissionTo(array_map(fn (string $ability): string => "work-orders.{$ability}", [...$abilities, 'viewAll']));
+
+        return $user;
+    }
+}

@@ -5,7 +5,10 @@
  * and the model are `WorkOrder`/`work-orders` (spec §context).
  */
 
+import { workOrderCosts } from './en-work-order-costs'
+
 export const workOrders = {
+  costs: workOrderCosts,
   title: 'Work Orders',
   subtitle: 'Browse, filter and manage the work orders linked to your offers.',
   forbidden: "You don't have permission to view work orders.",

@@ -72,6 +72,17 @@ final class MigrationOrder
         // only accepts codes the category has ALREADY linked for the context,
         // so this needs the phase 5 `product-category-attributes` pivot.
         ['attribute-layouts'],
+
+        // Phases 7-10 — the legacy operational records (spec 0189), a strict
+        // parent chain, one phase per link. Registries remap users, referents,
+        // sources and sectors (phases 1-2); opportunities need their registry
+        // plus categories and operational sites; quotes need their opportunity
+        // plus products, VAT rates, payment methods and company sites; work
+        // orders need their quote and its lines.
+        ['registries'],
+        ['opportunities'],
+        ['quotes'],
+        ['work-orders'],
     ];
 
     /**

@@ -47,7 +47,7 @@ vi.mock('@/features/products/products-of-interest-field', () => ({
   ProductsOfInterestField: () => <div data-testid="products-of-interest-stub" />,
 }))
 
-/** The opportunity section prunes through a cached for-select query, so it needs a client. */
+/** Both sections prune through a cached for-select query (products of interest / offer rows), so they need a client. */
 function withQueryClient({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>
@@ -68,7 +68,7 @@ function OpportunityHarness() {
 
 function RequestWorkHarness() {
   const form = useForm<RequestWorkFormValues>({
-    defaultValues: { product_lines: ROWS },
+    defaultValues: { product_lines: ROWS, offer_lines: [] },
   })
   return (
     <Form {...form}>
@@ -85,7 +85,7 @@ describe('product-lines wiring parity (AC-043)', () => {
   })
 
   it('request-management work panel: forwards the RHF value untouched to ProductLinesField', () => {
-    render(<RequestWorkHarness />)
+    render(<RequestWorkHarness />, { wrapper: withQueryClient })
 
     expect(screen.getByTestId('value')).toHaveTextContent(JSON.stringify(ROWS))
   })
@@ -101,7 +101,7 @@ describe('product-lines wiring parity (AC-043)', () => {
     const opportunityDisabled = screen.getByTestId('disabled').textContent
     opportunity.unmount()
 
-    const request = render(<RequestWorkHarness />)
+    const request = render(<RequestWorkHarness />, { wrapper: withQueryClient })
     expect(screen.getByTestId('disabled')).toHaveTextContent(opportunityDisabled ?? '')
     request.unmount()
   })

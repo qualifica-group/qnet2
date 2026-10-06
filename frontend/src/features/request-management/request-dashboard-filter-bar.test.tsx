@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import i18n from '@/i18n'
+import { presetRange } from '@/features/request-management/dashboard-period-presets'
 import { RequestDashboardFilterBar } from '@/features/request-management/request-dashboard-filter-bar'
 import {
   requestReportDefaultValues,
@@ -107,9 +108,9 @@ function generate(format: 'CSV' | 'Excel (XLSX)') {
   fireEvent.click(screen.getByRole('menuitem', { name: format }))
 }
 
-function renderBar(filtersReady = true, filters = APPLIED_FILTERS, allExpanded = false, canToggleExpanded = true) {
+function renderBar(filtersReady = true, filters = APPLIED_FILTERS) {
   const onEdit = vi.fn()
-  const onToggleExpanded = vi.fn()
+  const onApplyPeriod = vi.fn()
   render(
     <RequestDashboardFilterBar
       filters={filters}
@@ -119,13 +120,11 @@ function renderBar(filtersReady = true, filters = APPLIED_FILTERS, allExpanded =
       operators={OPERATORS}
       filtersReady={filtersReady}
       onEdit={onEdit}
-      allExpanded={allExpanded}
-      canToggleExpanded={canToggleExpanded}
-      onToggleExpanded={onToggleExpanded}
+      onApplyPeriod={onApplyPeriod}
     />,
     { wrapper: wrapper() },
   )
-  return { onEdit, onToggleExpanded }
+  return { onEdit, onApplyPeriod }
 }
 
 describe('RequestDashboardFilterBar', () => {
@@ -160,18 +159,29 @@ describe('RequestDashboardFilterBar', () => {
     expect(period.textContent).toBe(expected)
   })
 
-  it('offers expand all while something is folded, collapse all once everything is open', () => {
-    const { onToggleExpanded } = renderBar()
+  it('applies a one-click period, dates only (spec 0192 D-2, AC-001)', () => {
+    const { onApplyPeriod } = renderBar()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))
-    expect(onToggleExpanded).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('button', { name: 'Collapse all' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Yesterday' }))
+
+    expect(onApplyPeriod).toHaveBeenCalledWith(presetRange('yesterday'))
   })
 
-  it('names the collapse action when everything is expanded, and disables it with nothing rendered', () => {
-    renderBar(true, APPLIED_FILTERS, true, false)
+  it('presses the preset the applied dates match (spec 0192 AC-001)', () => {
+    renderBar(true, { ...APPLIED_FILTERS, ...presetRange('last7Days') })
 
-    expect(screen.getByRole('button', { name: 'Collapse all' })).toBeDisabled()
+    const periods = within(screen.getByRole('group', { name: 'Period' }))
+    expect(periods.getByRole('button', { name: 'Last 7 days' })).toHaveAttribute('aria-pressed', 'true')
+    expect(periods.getByRole('button', { name: 'Custom' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('presses Custom for dates matching no preset, and opens the sheet from it (spec 0192 AC-001)', () => {
+    const { onEdit } = renderBar(true, { ...APPLIED_FILTERS, date_from: '2020-01-01', date_to: '2020-01-02' })
+
+    const custom = screen.getByRole('button', { name: 'Custom' })
+    expect(custom).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(custom)
+    expect(onEdit).toHaveBeenCalledTimes(1)
   })
 
   it('names the narrowed dimensions, operators included when they follow the sites', () => {

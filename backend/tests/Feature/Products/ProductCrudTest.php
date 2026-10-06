@@ -247,7 +247,8 @@ it('create: 403 without products.create / 422 without the required generic field
     Sanctum::actingAs($actor);
     $this->postJson('/api/products', [])
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['name', 'category_id', 'cost', 'price', 'product_type']);
+        ->assertJsonValidationErrors(['name', 'category_id', 'price', 'product_type'])
+        ->assertJsonMissingValidationErrors(['cost']);
 });
 
 it('create: invalid product_type → 422', function () {

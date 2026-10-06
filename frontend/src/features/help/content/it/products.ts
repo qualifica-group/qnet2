@@ -139,15 +139,15 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],
           rows: [
-            ['Costo', 'Quanto costa a te il prodotto. Obbligatorio, zero o positivo.'],
-            ['Prezzo', 'Il prezzo di vendita. Obbligatorio, zero o positivo.'],
+            ['Costo', "Quanto costa a te il prodotto. Obbligatorio se il prodotto è Utilizzabile come costo, zero o positivo; compare solo in quel caso."],
+            ['Prezzo', 'Il prezzo di vendita. Obbligatorio se il prodotto è Vendibile, zero o positivo; compare solo in quel caso.'],
             ['IVA', "L'aliquota IVA, dall'elenco IVA."],
             ['Fornitore', 'Chi fornisce il prodotto.'],
           ],
         },
         {
           type: 'paragraph',
-          text: 'Sotto costo e prezzo compare il Margine (prezzo meno costo) con la percentuale sul prezzo. Si aggiorna mentre scrivi.',
+          text: 'Se il prodotto è sia Vendibile sia Utilizzabile come costo, sotto costo e prezzo compare il Margine (prezzo meno costo) con la percentuale sul prezzo. Si aggiorna mentre scrivi. Se togli un utilizzo, il campo sparisce ma il valore già scritto resta: ricompare se lo rispunti.',
         },
         {
           type: 'warning',
@@ -184,7 +184,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Dal menu Azioni scegli Visualizza per aprire la scheda in sola lettura. Trovi codice e nome, il Margine in evidenza, le sezioni Anagrafica, Classificazione e Prezzi e fornitura, i valori degli attributi, lo storico delle modifiche (se hai il permesso) e la data Creato il.',
+          text: 'Dal menu Azioni scegli Visualizza per aprire la scheda in sola lettura. Trovi codice e nome, Prezzo, Costo e Margine in evidenza (ciascuno solo se pertinente: il Margine compare solo con entrambi gli utilizzi), le sezioni Anagrafica, Classificazione e Prezzi e fornitura, i valori degli attributi, lo storico delle modifiche (se hai il permesso) e la data Creato il.',
         },
         {
           type: 'paragraph',
@@ -203,7 +203,7 @@ const guide: HelpGuide = {
             'Lascia il Codice proposto e scrivi il Nome, per esempio "Trasferta in treno".',
             'Scegli la Categoria giusta.',
             'In Utilizzo in offerta togli Vendibile e spunta Utilizzabile come costo.',
-            "Inserisci Costo e Prezzo, poi scegli l'IVA.",
+            "Inserisci il Costo, poi scegli l'IVA.",
             'Compila gli attributi richiesti e premi Salva.',
           ],
         },

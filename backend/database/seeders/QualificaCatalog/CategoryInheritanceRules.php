@@ -37,8 +37,11 @@ final class CategoryInheritanceRules
      * paperwork nor of the classroom edition Formazione describes.
      *
      * The APL internships likewise (user directive 2026-10-02): their own
-     * form (AplInternshipAttributeCatalogue), none of the Ricerca & Selezione
-     * fields the imported "APL" root carries.
+     * form (AplInternshipAttributeCatalogue), nothing assigned on the "APL"
+     * root (the legacy Ricerca & Selezione fields go to "APL old" since the
+     * user directive 2026-10-05, LegacyAplBranch). So do the apprenticeships and
+     * the orientation practices (ApprenticeshipAttributeCatalogue,
+     * AplOrientationAttributeCatalogue, user directives 2026-10-05).
      *
      * Only the OFFERTA is cut. `inherits_work_order_attributes` is left alone
      * on purpose — the directive is about the offer form, and the two contexts
@@ -50,6 +53,8 @@ final class CategoryInheritanceRules
         'DIL' => ['inherits_quote_attributes' => false],
         ECampusCourseCatalogue::CATEGORY => ['inherits_quote_attributes' => false],
         AplInternshipAttributeCatalogue::CATEGORY => ['inherits_quote_attributes' => false],
+        ApprenticeshipAttributeCatalogue::CATEGORY => ['inherits_quote_attributes' => false],
+        AplOrientationAttributeCatalogue::CATEGORY => ['inherits_quote_attributes' => false],
     ];
 
     public function apply(): void

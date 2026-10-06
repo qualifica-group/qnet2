@@ -78,7 +78,7 @@ export interface ProductLineCellValue {
   business_function_name?: string
 }
 
-/** A product of interest as the row projects it, carrying the category it hangs from (spec 0075 D-6). */
+/** A product as the row projects it (of interest, or on an offer row), carrying the category it hangs from (spec 0075 D-6). */
 interface ProductOfInterestRef {
   id: number
   name: string
@@ -87,6 +87,13 @@ interface ProductOfInterestRef {
 
 /** The row key holding the products whose coverage a removal may break. */
 const PRODUCTS_COLUMN = 'products_of_interest'
+
+/**
+ * The row key holding the offer rows' products (Gestione Richieste only): the
+ * server DELETES the rows a classification change no longer covers (bug
+ * 2026-10-05), so the operator is told before committing.
+ */
+const OFFER_LINES_COLUMN = 'offer_lines'
 
 /** Stable empty tree while the shared query is still loading (mirrors `useProductLinesField`). */
 const EMPTY_TREE: ProductCategoryTreeNode[] = []
@@ -101,9 +108,9 @@ function pairKey(pair: { product_category_id: number }): string {
   return String(pair.product_category_id)
 }
 
-/** The products of the edited row that no remaining pair covers — what the operator is about to disconnect. */
-function uncoveredProducts(row: TableRow | undefined, pairs: ProductLineCellValue[]): string[] {
-  const products = Array.isArray(row?.[PRODUCTS_COLUMN]) ? (row[PRODUCTS_COLUMN] as ProductOfInterestRef[]) : []
+/** The products of the edited row's $column that no remaining pair covers — what the operator is about to disconnect. */
+function uncoveredProducts(row: TableRow | undefined, column: string, pairs: ProductLineCellValue[]): string[] {
+  const products = Array.isArray(row?.[column]) ? (row[column] as ProductOfInterestRef[]) : []
   const covered = new Set(pairs.map((pair) => pair.product_category_id))
 
   return products
@@ -127,7 +134,8 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
 
   const pairs = useMemo(() => value ?? [], [value])
   const selectedKeys = useMemo(() => new Set(pairs.map(pairKey)), [pairs])
-  const orphanedProducts = useMemo(() => uncoveredProducts(data, pairs), [data, pairs])
+  const orphanedProducts = useMemo(() => uncoveredProducts(data, PRODUCTS_COLUMN, pairs), [data, pairs])
+  const droppedOfferProducts = useMemo(() => uncoveredProducts(data, OFFER_LINES_COLUMN, pairs), [data, pairs])
 
   // Spec 0077 INV-3: a `single`-mode card holds exactly one pair, so a pick
   // REPLACES it — the same in-place edit the form's single row offers (spec
@@ -345,6 +353,13 @@ export function ProductLinesCellEditor(props: CustomCellEditorProps<TableRow, Pr
         <p role="alert" className="flex gap-1.5 border-t border-border p-2 text-xs text-muted-foreground">
           <AlertTriangle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
           <span>{t('table.productLinesEditor.uncoveredProducts', { names: orphanedProducts.join(', ') })}</span>
+        </p>
+      ) : null}
+
+      {droppedOfferProducts.length > 0 ? (
+        <p role="alert" className="flex gap-1.5 border-t border-border p-2 text-xs text-muted-foreground">
+          <AlertTriangle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <span>{t('table.productLinesEditor.droppedOfferLines', { names: droppedOfferProducts.join(', ') })}</span>
         </p>
       ) : null}
     </div>

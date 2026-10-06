@@ -8,6 +8,7 @@ use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Support\CategoryBusinessFunctionLinker;
 use App\Migrations\Support\ExternalApiClient;
+use App\Migrations\Support\LegacyAplBranch;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\RequiresQuoteInheritance;
 use App\Services\ProductCategoryService;
@@ -32,6 +33,9 @@ use RuntimeException;
  * is idempotent (skip by old_id); `name` carries no unique index, so a category
  * qnet ALREADY holds under that name is ADOPTED and refreshed rather than
  * duplicated (user directive 2026-09-07, mirrors SourcesSource) — see adopt().
+ * Never into the manual "APL" branch, though: its legacy twin is imported
+ * beside it as "APL old", not selectable (user directive 2026-10-05,
+ * LegacyAplBranch).
  */
 class ProductCategoriesSource extends AbstractMigrationSource
 {
@@ -55,11 +59,21 @@ class ProductCategoriesSource extends AbstractMigrationSource
      */
     private array $detachedIds = [];
 
+    /**
+     * The qnet ids THIS run created. afterImport() closes the ones that end up
+     * in the "APL old" branch; a node an earlier run created is left alone, so
+     * a selectability set by hand survives a re-import.
+     *
+     * @var list<int>
+     */
+    private array $createdIds = [];
+
     public function __construct(
         ExternalApiClient $client,
         private readonly ProductCategoryService $service,
         private readonly RequiresQuoteInheritance $requiresQuote,
         private readonly CategoryBusinessFunctionLinker $businessFunctions,
+        private readonly LegacyAplBranch $aplBranch,
     ) {
         parent::__construct($client);
     }
@@ -147,13 +161,23 @@ class ProductCategoriesSource extends AbstractMigrationSource
         // other external id has claimed — the static catalogue seeds part of
         // the same tree (QualificaCatalogSeeder), and a second row with the
         // same name would be an unusable duplicate in every select.
-        $adopted = ProductCategory::query()->where('name', $name)->whereNull('old_id')->first();
+        $existing = ProductCategory::query()->where('name', $name)->whereNull('old_id')->first();
+        $manualTwin = $this->aplBranch->manualNodeNamed($name);
 
-        if ($adopted !== null) {
-            return $this->adopt($adopted, $externalId, $record);
+        if ($existing !== null && $manualTwin === null) {
+            return $this->adopt($existing, $externalId, $record);
         }
 
-        $parentId = $this->resolveParent($record['parent_id'] ?? null, $warnings, $this->isSelfParented($record));
+        // The legacy twin of a manual APL node is imported beside it, under a
+        // name of its own; the twin of the root stays a root (LegacyAplBranch).
+        $asRoot = $manualTwin !== null && $manualTwin->parent_id === null;
+
+        if ($manualTwin !== null) {
+            $name = $this->aplBranch->legacyName($name);
+            $warnings[] = sprintf('Legacy twin of the catalogue category "%s" imported as "%s" instead of adopted.', $manualTwin->name, $name);
+        }
+
+        $parentId = $asRoot ? null : $this->resolveParent($record['parent_id'] ?? null, $warnings, $this->isSelfParented($record));
 
         if ($this->isSelfParented($record)) {
             $warnings[] = 'parent_id equals the category own id (spec 0183 F-9); imported as a root.';
@@ -181,10 +205,11 @@ class ProductCategoriesSource extends AbstractMigrationSource
 
         $category->old_id = $externalId;
         $category->save();
+        $this->createdIds[] = $category->id;
 
         // Created without the parent its external record names: afterImport()
         // retries it once every node of this run exists.
-        if ($parentId === null && $this->namesAParent($record)) {
+        if ($parentId === null && ! $asRoot && $this->namesAParent($record)) {
             $this->detachedIds[] = $category->id;
         }
 
@@ -304,14 +329,27 @@ class ProductCategoriesSource extends AbstractMigrationSource
     }
 
     /**
-     * Second pass: relink the categories THIS run created detached because
-     * their parent had not been migrated yet ($detachedIds). Now that all
-     * nodes exist, resolve the external parent via `old_id` and set it where it
-     * is still null. Leaves an already-linked or genuinely-rootless category
-     * untouched (idempotent), and never touches a node it did not create —
-     * an ADOPTED root is parentless by design, not by accident.
+     * Second pass, once every node of this run exists.
      */
     protected function afterImport(MigrationImportContext $context): void
+    {
+        // Step 1: the forward references, so each node sits in its branch.
+        $this->relinkDetached();
+
+        // Step 2: the legacy APL tree is never a classification target (user
+        // directive 2026-10-05) — after step 1, which places its late children.
+        $this->aplBranch->closeLegacyBranch($this->createdIds);
+    }
+
+    /**
+     * Relinks the categories THIS run created detached because their parent
+     * had not been migrated yet ($detachedIds): resolve the external parent via
+     * `old_id` and set it where it is still null. Leaves an already-linked or
+     * genuinely-rootless category untouched (idempotent), and never touches a
+     * node it did not create — an ADOPTED root is parentless by design, not by
+     * accident.
+     */
+    private function relinkDetached(): void
     {
         if ($this->detachedIds === []) {
             return;

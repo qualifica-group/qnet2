@@ -9,8 +9,8 @@ use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
- * The ROOT-OWNED rules QualificaCatalog\CatalogRootRules declares for the two
- * catalogue roots, split out of QualificaCatalogSeederTest alongside the
+ * The ROOT-OWNED rules QualificaCatalog\CatalogRootRules declares for the three
+ * catalogue roots ("APL" has the rules of "Formazione" since 2026-10-05), split out of QualificaCatalogSeederTest alongside the
  * production class itself.
  *
  * "Formazione" is worked ONE product line and ONE offer at a time (user
@@ -103,12 +103,27 @@ it('applies every root rule to Formazione and Consulenza, cascades it to their d
         ->toBeTruthy()
         ->and(ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->value('simplified_offer_line'))
         ->toBeFalsy()
-        ->and(ProductCategory::query()->where('name', 'APL')->whereNull('parent_id')->value('simplified_offer_line'))
-        ->toBeFalsy()
         ->and($formazione->fresh()->manager_labels)
         ->toBe([1 => 'Tutor', 2 => 'Operatore', 3 => 'Partner commerciale', 4 => 'Segnalatore']);
 
     expect($molise->fresh()->updated_at)->toEqual($moliseUpdatedAt);
+});
+
+it('works the "APL" branch exactly like "Formazione", down to every subcategory (user directive 2026-10-05)', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $rules = ['management_mode', 'single_quote_per_opportunity', 'generates_contract', 'simplified_offer_line'];
+    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
+    $apl = ProductCategory::query()->where('name', 'APL')->whereNull('parent_id')->firstOrFail();
+    $children = ProductCategory::query()->where('parent_id', $apl->id)->get();
+
+    expect($apl->only($rules))->toBe($formazione->only($rules))
+        ->and($apl->manager_labels)->toBe($formazione->manager_labels)
+        ->and($children)->toHaveCount(3);
+
+    foreach ($children as $child) {
+        expect($child->only($rules))->toBe($formazione->only($rules));
+    }
 });
 
 /**

@@ -2,6 +2,7 @@
 
 use App\Enums\MigrationStatus;
 use App\Enums\ProductUsage;
+use App\Migrations\Support\LegacyAplBranch;
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
 use App\Models\Company;
@@ -277,19 +278,34 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         ->and(MassMigrationRun::query()->latest('id')->first()->status)->toBe(MigrationStatus::Completed);
 });
 
-it('adopts the static catalogue nodes the legacy tree repeats, and never moves an adopted root', function () {
+it('adopts the static "Formazione" root, and imports the legacy APL tree beside the manual one as "APL old"', function () {
     seedMigrationsConfig();
     migrationsSuperAdminActor();
 
-    // The legacy catalogue repeats two names the static one already ships,
-    // both ROOTS: "Formazione" and "APL".
+    // The legacy catalogue repeats two ROOT names the static one ships,
+    // "Formazione" and "APL", and the APL practices under the latter.
     Http::fake([
+        fakeMigrationsBaseUrl().'/business-functions*' => Http::response([
+            'items' => [['id' => 9, 'name' => 'APL']],
+            'pagination' => ['total' => 1],
+        ]),
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
                 ['id' => 55, 'name' => 'Formazione', 'parent_id' => null],
-                ['id' => 56, 'name' => 'APL', 'parent_id' => null],
+                ['id' => 54, 'name' => 'Servizi', 'parent_id' => null],
+                ['id' => 56, 'name' => 'APL', 'parent_id' => 54, 'business_function_id' => 9],
+                ['id' => 57, 'name' => 'Orientamento Specialistico', 'parent_id' => 56, 'business_function_id' => 9],
+                ['id' => 58, 'name' => 'Tirocini extracurriculari privati', 'parent_id' => 56, 'business_function_id' => 9],
+                ['id' => 59, 'name' => 'Formazione Apprendistato', 'parent_id' => 56, 'business_function_id' => 9],
+                ['id' => 60, 'name' => 'Ricerca e Selezione', 'parent_id' => 56, 'business_function_id' => 9],
             ],
-            'pagination' => ['total' => 2],
+            'pagination' => ['total' => 7],
+        ]),
+        fakeMigrationsBaseUrl().'/products*' => Http::response([
+            'items' => collect([201 => 57, 202 => 58, 203 => 59, 204 => 60])
+                ->map(fn (int $categoryId, int $id) => ['id' => $id, 'name' => "Legacy {$id}", 'category_id' => $categoryId, 'product_type' => 'service'])
+                ->values()->all(),
+            'pagination' => ['total' => 4],
         ]),
         fakeMigrationsBaseUrl().'/*' => Http::response(['items' => [], 'pagination' => ['total' => 0]]),
     ]);
@@ -297,21 +313,41 @@ it('adopts the static catalogue nodes the legacy tree repeats, and never moves a
     seedCatalogThenLegacy();
 
     $formazione = ProductCategory::query()->where('name', 'Formazione')->sole();
-    $apl = ProductCategory::query()->where('name', 'APL')->sole();
+    $manualApl = ProductCategory::query()->where('name', 'APL')->sole();
+    $legacyApl = ProductCategory::query()->where('name', LegacyAplBranch::LEGACY_ROOT)->sole();
+    $categoryOf = fn (int $oldId) => Product::query()->where('old_id', $oldId)->first()->category->name;
 
-    // One row each: the legacy rows were adopted, not duplicated.
+    // "Formazione" adopted, not duplicated, and never moved: dragging it
+    // under "Consulenza" would take the whole GOL branch with it.
     expect($formazione->old_id)->toEqual(55)
-        ->and($apl->old_id)->toEqual(56)
-        // An adopted ROOT stays a root: it carries an `old_id` now, but it is
-        // the static catalogue's own node, so the nesting pass must skip it —
-        // moving "Formazione" would drag the whole GOL branch under
-        // "Consulenza", and "APL" must never end up there either (user
-        // directive 2026-09-07).
         ->and($formazione->parent_id)->toBeNull()
-        ->and($apl->parent_id)->toBeNull()
         ->and(ProductCategory::query()->where('name', 'GOL')->value('parent_id'))->toBe($formazione->id)
-        ->and(ProductCategory::query()->where('name', 'Orientamento Specialistico')->value('parent_id'))
-        ->toBe($apl->id);
+        // The manual APL branch adopts nothing (user directive 2026-10-05)...
+        ->and($manualApl->old_id)->toBeNull()
+        ->and($manualApl->parent_id)->toBeNull()
+        ->and(ProductCategory::query()->where('parent_id', $manualApl->id)->whereNotNull('old_id')->exists())->toBeFalse()
+        // ...its legacy twin is a root of its own, never under "Consulenza",
+        // on a function of its own...
+        ->and($legacyApl->old_id)->toEqual(56)
+        ->and($legacyApl->parent_id)->toBeNull()
+        ->and($legacyApl->businessFunction->name)->toBe('APL OLD')
+        // ...and is never a classification target, unlike the manual one.
+        ->and(ProductCategory::query()->whereKey([$legacyApl->id, ...$legacyApl->children()->pluck('id')])->where('is_selectable', true)->exists())->toBeFalse()
+        ->and(ProductCategory::query()->where('parent_id', $manualApl->id)->where('is_selectable', false)->exists())->toBeFalse()
+        ->and(ProductCategory::query()->where('parent_id', $legacyApl->id)->orderBy('name')->pluck('name')->all())
+        ->toBe(['Formazione Apprendistato', 'Orientamento Specialistico old', 'Ricerca e Selezione', 'Tirocini extracurriculari privati'])
+        ->and(ProductCategory::query()->where('name', 'Servizi')->first()->parent->name)->toBe('Consulenza')
+        // ...and its products land on the manual categories replacing the
+        // legacy ones (LegacyAplBranch::PRODUCT_CATEGORIES, bound here to the
+        // real catalogue), save the one with no replacement.
+        ->and($categoryOf(201))->toBe('Orientamento specialistico')
+        ->and($categoryOf(202))->toBe('Tirocinio')
+        ->and($categoryOf(203))->toBe('Apprendistato')
+        ->and($categoryOf(204))->toBe('Ricerca e Selezione');
+
+    foreach (LegacyAplBranch::PRODUCT_CATEGORIES as $manualName) {
+        expect(ProductCategory::query()->where('name', $manualName)->value('parent_id'))->toBe($manualApl->id);
+    }
 });
 
 it('skips the import when no external system is configured', function () {

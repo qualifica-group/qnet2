@@ -58,7 +58,7 @@ it('leaves both roots unassigned with no imported function, then links only "APL
 
     expect($apl()->business_function_id)->toBe($function->id)
         ->and($apl()->businessFunction->name)->toBe('APL')
-        ->and(ProductCategory::query()->where('name', 'Orientamento Specialistico')->value('business_function_id'))
+        ->and(ProductCategory::query()->where('name', 'Orientamento specialistico')->value('business_function_id'))
         ->toBeNull()
         ->and(ProductCategory::query()->whereNull('parent_id')->where('name', 'Consulenza')->value('business_function_id'))
         ->toBeNull();
