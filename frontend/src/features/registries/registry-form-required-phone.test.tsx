@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -32,10 +32,6 @@ const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   fields: {},
   actions: {},
 }
-
-vi.mock('@/features/registries/use-registry-form-meta', () => ({
-  useRegistryFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
-}))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
@@ -75,8 +71,8 @@ function wrapper() {
 }
 
 /** Fills the card fields the save gate checks before it ever reaches the phone. */
-function fillIdentity() {
-  fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
+async function fillIdentity() {
+  fireEvent.change(await screen.findByLabelText(/^First name/), { target: { value: 'Ada' } })
   fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
 }
 
@@ -91,25 +87,25 @@ beforeEach(() => {
 })
 
 describe('RegistryForm — phone required at creation (user directive 2026-09-07)', () => {
-  it('marks the phone quick field as required in create mode, and only that one', () => {
+  it('marks the phone quick field as required in create mode, and only that one', async () => {
     render(
-      <RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    expect(screen.getByLabelText(/^Phone/)).toHaveAttribute('aria-required', 'true')
+    expect(await screen.findByLabelText(/^Phone/)).toHaveAttribute('aria-required', 'true')
     expect(screen.getByLabelText('Email')).toHaveAttribute('aria-required', 'false')
     expect(screen.getByLabelText(/^Phone/).closest('div')?.textContent).toContain('*')
   })
 
   it('refuses the save when no phone number was entered', async () => {
     render(
-      <RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    fillIdentity()
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    await fillIdentity()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() =>
       expect(screen.getByText('Enter at least one phone number.')).toBeInTheDocument(),
@@ -121,13 +117,13 @@ describe('RegistryForm — phone required at creation (user directive 2026-09-07
     createRegistryMock.mockResolvedValue({ id: 1, name: 'Ada Lovelace' })
 
     render(
-      <RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    fillIdentity()
+    await fillIdentity()
     fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(createRegistryMock).toHaveBeenCalledTimes(1))
     const payload = createRegistryMock.mock.calls[0][0]

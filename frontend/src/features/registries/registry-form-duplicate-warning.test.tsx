@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -42,10 +42,6 @@ const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   fields: {},
   actions: {},
 }
-
-vi.mock('@/features/registries/use-registry-form-meta', () => ({
-  useRegistryFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
-}))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
@@ -99,7 +95,7 @@ beforeEach(() => {
 describe('RegistryForm — duplicate warning (user directive 2026-09-09)', () => {
   it('does not check while the form is untouched', async () => {
     render(
-      <RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
@@ -114,11 +110,11 @@ describe('RegistryForm — duplicate warning (user directive 2026-09-09)', () =>
     })
 
     render(
-      <RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    fireEvent.change(screen.getByLabelText('Tax code'), {
+    fireEvent.change(await screen.findByLabelText('Tax code'), {
       target: { value: 'LVLDAA80A01H501V' },
     })
 
@@ -130,11 +126,12 @@ describe('RegistryForm — duplicate warning (user directive 2026-09-09)', () =>
       contacts: undefined,
     })
     // Non-blocking: the panel never disables the save (server-side gate).
-    expect(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' })).not.toBeDisabled()
-    // ...and it lives in the sticky SIDE column (user directive 2026-09-11):
+    expect(screen.getAllByRole('button', { name: 'Save' })[0]).not.toBeDisabled()
+    // ...and it heads the SIDE column (user directive 2026-09-11, spec 0200):
     // at the foot of the form it was off-screen exactly while the operator was
     // typing the field that triggers it.
-    expect(within(screen.getByRole('complementary')).getByRole('status')).toBe(status)
+    const contactsTitle = screen.getByText('Contacts')
+    expect(status.compareDocumentPosition(contactsTitle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('hides the warning again once the matching field is cleared', async () => {
@@ -143,11 +140,11 @@ describe('RegistryForm — duplicate warning (user directive 2026-09-09)', () =>
     })
 
     render(
-      <RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    fireEvent.change(screen.getByLabelText('Tax code'), {
+    fireEvent.change(await screen.findByLabelText('Tax code'), {
       target: { value: 'LVLDAA80A01H501V' },
     })
     await screen.findByRole('status')

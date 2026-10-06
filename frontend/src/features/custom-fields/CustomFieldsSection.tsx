@@ -8,6 +8,7 @@ import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { useResourceMeta } from '@/features/authorization/use-resource-meta'
 import { CUSTOM_FIELD_COMPONENT_REGISTRY } from '@/features/custom-fields/field-component-registry'
+import { groupByLabel, sortVisibleCustomFields } from '@/features/custom-fields/custom-fields-grouping'
 import {
   isCustomFieldDescriptor,
   rawKey,
@@ -35,28 +36,6 @@ interface CustomFieldsSectionProps<TFieldValues extends CustomFieldsFormShape> {
   onOpenChange?: (open: boolean) => void
 }
 
-/** Sort key: tab, then group, then the admin-defined `sort_order` — `tab` only affects ordering here (no tabs UI in this generic engine). */
-function sortKey(descriptor: CustomFieldDescriptor): [string, string, number] {
-  return [descriptor.tab ?? '', descriptor.group ?? '', descriptor.sort_order ?? 0]
-}
-
-/** Groups already-sorted descriptors by their `group` label; `null` = ungrouped, rendered flat (no heading). */
-function groupByLabel(
-  fields: CustomFieldDescriptor[],
-): Map<string | null, CustomFieldDescriptor[]> {
-  const groups = new Map<string | null, CustomFieldDescriptor[]>()
-  for (const descriptor of fields) {
-    const key = descriptor.group ?? null
-    const bucket = groups.get(key)
-    if (bucket) {
-      bucket.push(descriptor)
-    } else {
-      groups.set(key, [descriptor])
-    }
-  }
-  return groups
-}
-
 /**
  * Renders the resource's `source:'custom'` fields (spec 0021 AC-022):
  * ordered by (tab, group, sort_order), each wrapped in `<MetaField>` so the
@@ -78,16 +57,14 @@ export function CustomFieldsSection<TFieldValues extends CustomFieldsFormShape>(
   const { field: fieldPermission } = useResourcePermissions()
   const metaQuery = useResourceMeta(resource, providedFields === undefined)
 
-  const customFields = useMemo(() => {
-    const source = providedFields ?? metaQuery.data?.fields.filter(isCustomFieldDescriptor) ?? []
-    return [...source]
-      .filter((descriptor) => fieldPermission(descriptor.key).visible)
-      .sort((a, b) => {
-        const [aTab, aGroup, aOrder] = sortKey(a)
-        const [bTab, bGroup, bOrder] = sortKey(b)
-        return aTab.localeCompare(bTab) || aGroup.localeCompare(bGroup) || aOrder - bOrder
-      })
-  }, [fieldPermission, metaQuery.data, providedFields])
+  const customFields = useMemo(
+    () =>
+      sortVisibleCustomFields(
+        providedFields ?? metaQuery.data?.fields.filter(isCustomFieldDescriptor) ?? [],
+        fieldPermission,
+      ),
+    [fieldPermission, metaQuery.data, providedFields],
+  )
 
   if (customFields.length === 0) {
     return null
@@ -135,8 +112,12 @@ interface CustomFieldItemProps<TFieldValues extends CustomFieldsFormShape> {
   descriptor: CustomFieldDescriptor
 }
 
-/** One custom field, gated by `<MetaField>` and rendered via the type→component registry. */
-function CustomFieldItem<TFieldValues extends CustomFieldsFormShape>({
+/**
+ * One custom field, gated by `<MetaField>` and rendered via the type→component
+ * registry. Exported for the record detail's in-place rows (spec 0200), which
+ * open on this very control.
+ */
+export function CustomFieldItem<TFieldValues extends CustomFieldsFormShape>({
   control,
   descriptor,
 }: CustomFieldItemProps<TFieldValues>) {

@@ -1,7 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -20,11 +19,9 @@ import type { PersonalDataCard } from '@/features/personal-data/types'
  */
 
 const createRegistryMock = vi.fn()
-const updateRegistryMock = vi.fn()
 
 vi.mock('@/features/registries/api', () => ({
   createRegistry: (...args: unknown[]) => createRegistryMock(...args),
-  updateRegistry: (...args: unknown[]) => updateRegistryMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -156,19 +153,21 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createRegistryMock.mockReset()
-  updateRegistryMock.mockReset()
   fetchResourceMetaMock.mockReset()
   fetchResourceMetaMock.mockResolvedValue({ fields: [PRIORITY_FIELD], permissions: permissionsWithPriority() })
 })
 
 describe('RegistryForm — custom fields (spec 0021)', () => {
-  it('renders the resource custom field control in create mode', async () => {
+  // REQUIREMENT CHANGED (spec 0200 D-5): the create rows start closed; the
+  // pencil opens the field's control.
+  it('renders the resource custom field as a closed row opening on its control', async () => {
     render(
-      <RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    expect(await screen.findByRole('textbox', { name: 'Priority level' })).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Priority level' }))
+    expect(screen.getByRole('textbox', { name: 'Priority level' })).toBeInTheDocument()
   })
 
   it('includes the valued custom field in the create payload', async () => {
@@ -176,7 +175,7 @@ describe('RegistryForm — custom fields (spec 0021)', () => {
     const onSuccess = vi.fn()
 
     render(
-      <RegistryForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />,
+      <RegistryForm onSuccess={onSuccess} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
@@ -184,82 +183,18 @@ describe('RegistryForm — custom fields (spec 0021)', () => {
     fireEvent.change(await screen.findByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
     // Creating an anagrafica requires a phone number (user directive 2026-09-07).
     fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Priority level' }), {
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Priority level' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Priority level' }), {
       target: { value: 'High' },
     })
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
 
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(createRegistryMock).toHaveBeenCalledTimes(1))
     const payload = createRegistryMock.mock.calls[0][0]
     expect(payload.custom_fields).toEqual({ priority_level: 'High' })
   })
-
-  it('seeds the custom field value from the loaded registry detail in edit mode', async () => {
-    render(
-      <RegistryForm
-        mode={{ type: 'edit', registry: registry({ custom_fields: { priority_level: 'Low' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(await screen.findByRole('textbox', { name: 'Priority level' })).toHaveValue('Low')
-  })
-
-  it('sends only the changed custom field on a partial update', async () => {
-    const original = registry({ custom_fields: { priority_level: 'Low' } })
-    updateRegistryMock.mockResolvedValue(original)
-
-    render(
-      <RegistryForm mode={{ type: 'edit', registry: original }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    const priority = await screen.findByRole('textbox', { name: 'Priority level' })
-    fireEvent.change(priority, { target: { value: 'High' } })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateRegistryMock).toHaveBeenCalledTimes(1))
-    const [, payload] = updateRegistryMock.mock.calls[0]
-    expect(payload).toEqual({ custom_fields: { priority_level: 'High' } })
-  })
-
-  it('maps a 422 on custom_fields.<key> inline on the matching control', async () => {
-    updateRegistryMock.mockRejectedValue(
-      new AxiosError(
-        'Unprocessable',
-        '422',
-        undefined,
-        undefined,
-        {
-          status: 422,
-          data: {
-            success: false,
-            message: 'Validation failed',
-            errors: { 'custom_fields.priority_level': ['Priority level must be shorter.'] },
-          },
-        } as never,
-      ),
-    )
-    vi.spyOn(axios, 'isAxiosError').mockReturnValue(true)
-
-    render(
-      <RegistryForm
-        mode={{ type: 'edit', registry: registry({ custom_fields: { priority_level: 'Low' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    await screen.findByRole('textbox', { name: 'Priority level' })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(screen.getByText('Priority level must be shorter.')).toBeInTheDocument())
-    expect(updateRegistryMock).toHaveBeenCalledTimes(1)
-
-    vi.restoreAllMocks()
-  })
+  // REQUIREMENT CHANGED (spec 0200): the edit-mode cases (seed, sparse
+  // PATCH, 422 inline) moved to `registry-detail-inline-edit.test.tsx`.
 })

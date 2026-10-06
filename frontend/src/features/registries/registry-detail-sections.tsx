@@ -1,105 +1,46 @@
-import { useTranslation } from 'react-i18next'
-import { Building2, IdCard, Users } from 'lucide-react'
-import { DetailEmpty } from '@/components/detail/detail-panel'
+import { RecordSectionsGrid } from '@/components/detail/record-panel'
+import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field-record-sections'
+import { persistedRegistryValues } from '@/features/registries/registry-record'
+import { RegistryBusinessRecordSection } from '@/features/registries/registry-record-business'
+import { RegistryIdentityRecordSection } from '@/features/registries/registry-record-identity'
 import {
-  RecordField,
-  RecordFieldList,
-  RecordSection,
-  RecordSectionsGrid,
-} from '@/components/detail/record-panel'
-import { enumLabelOf } from '@/features/config/enum-label'
-import { PersonalDataIdentityRows } from '@/features/personal-data/personal-data-identity-rows'
-import { PersonField, RegistryReferents } from '@/features/registries/registry-detail-people'
-import { RegistryTeamSection } from '@/features/registries/registry-detail-team'
+  RegistryReferentsRecordSection,
+  RegistryRelationsRecordSection,
+  RegistryTeamRecordSection,
+} from '@/features/registries/registry-record-relations'
+import type { RegistryDetailEditor } from '@/features/registries/use-registry-inline-edit'
 import type { RegistryDetailWithPermissions } from '@/features/registries/types'
-
-/** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
-const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
 
 interface RegistryDetailSectionsProps {
   registry: RegistryDetailWithPermissions
+  editor: RegistryDetailEditor
 }
 
 /**
- * The record's `RecordSectionsGrid` body. The sections MIRROR the form's own
- * (`registries.form.sections.*`), title for title: an operator who reads the
- * card and then opens the form finds the same blocks in the same order,
- * instead of a "Dettagli" bag on one side and three sections on the other.
- *
- * People (referenti + G.A.) take the full width: they are cards, not
- * label/value rows, and they are the block a commercial actually comes here
- * for.
+ * The anagrafica record's `RecordSectionsGrid` body, every user-written field
+ * editable in place (spec 0200): the fiscal identity, relations, commercial
+ * data, team, the referenti across the full width, then the custom fields
+ * ("campi flessibili") grouped as the form groups them. The create form
+ * renders the same sections in the same order (`RegistryCreateSections`).
  */
-export function RegistryDetailSections({ registry }: RegistryDetailSectionsProps) {
-  const { t } = useTranslation()
+export function RegistryDetailSections({ registry, editor }: RegistryDetailSectionsProps) {
+  const { form, inline, card } = editor
+  const values = persistedRegistryValues(registry)
+  const sectionProps = { values, form, inline }
 
   return (
     <RecordSectionsGrid>
-      {registry.personal_data ? (
-        <RecordSection title={t('registries.form.sections.identity.title')} icon={<IdCard />}>
-          <PersonalDataIdentityRows card={registry.personal_data} />
-        </RecordSection>
-      ) : null}
-
-      <RecordSection title={t('registries.form.sections.relations.title')} icon={<Building2 />}>
-        <RecordFieldList>
-          <RecordField label={t('registries.form.source')}>
-            {registry.source?.name ?? <DetailEmpty />}
-          </RecordField>
-          <RecordField label={t('registries.form.sectors')}>
-            {registry.sectors.length > 0
-              ? registry.sectors.map((sector) => sector.name).join(', ')
-              : <DetailEmpty />}
-          </RecordField>
-          <RecordField label={t('registries.form.commercial')}>
-            <PersonField person={registry.commercial} />
-          </RecordField>
-          <RecordField label={t('registries.form.reporter')}>
-            <PersonField person={registry.reporter} />
-          </RecordField>
-        </RecordFieldList>
-      </RecordSection>
-
-      <RecordSection title={t('registries.form.sections.business.title')} icon={<Building2 />}>
-        <RecordFieldList>
-          <RecordField label={t('registries.form.vatGroup')}>
-            {registry.vat_group || <DetailEmpty />}
-          </RecordField>
-          <RecordField label={t('registries.form.sizeClass')}>
-            {registry.size_class ? enumLabelOf('size_class', registry.size_class) : <DetailEmpty />}
-          </RecordField>
-          <RecordField label={t('registries.form.employeeCount')}>
-            {registry.employee_count ?? <DetailEmpty />}
-          </RecordField>
-          <RecordField label={t('registries.form.agreementStatus')}>
-            {registry.agreement_status ? (
-              enumLabelOf('agreement_status', registry.agreement_status)
-            ) : (
-              <DetailEmpty />
-            )}
-          </RecordField>
-          <RecordField label={t('registries.form.agreementNotes')}>
-            {registry.agreement_notes || <DetailEmpty />}
-          </RecordField>
-        </RecordFieldList>
-      </RecordSection>
-
-      {/* Same block Opportunità and Offerta carry, same component inside it
-          (user directive 2026-09-11): "un ruolo, una persona", una riga per
-          ciascuno, tutte nella stessa lista. */}
-      <RegistryTeamSection
-        supervisor={registry.supervisor}
-        managers={registry.managers}
-        managerSlots={registry.manager_slots}
+      <RegistryIdentityRecordSection card={registry.personal_data} buffer={card} inline={inline} />
+      <RegistryRelationsRecordSection {...sectionProps} />
+      <RegistryBusinessRecordSection {...sectionProps} />
+      <RegistryTeamRecordSection {...sectionProps} />
+      <RegistryReferentsRecordSection {...sectionProps} />
+      <CustomFieldRecordSections
+        resource="registries"
+        values={values.custom_fields}
+        inline={inline}
+        control={form.control}
       />
-
-      <RecordSection
-        title={t('registries.form.referents')}
-        icon={<Users />}
-        className={FULL_WIDTH_SECTION_CLASS}
-      >
-        <RegistryReferents referents={registry.referents} />
-      </RecordSection>
     </RecordSectionsGrid>
   )
 }

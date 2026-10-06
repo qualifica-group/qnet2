@@ -3,6 +3,49 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ANAGRAFICA — DETTAGLIO EDITABILE IN PLACE (CAMPI FLESSIBILI COMPRESI) + CREAZIONE COME IL DETTAGLIO (spec 0200) — VERDE, NON COMMITTATO (2026-10-06)
+
+- Richiesta utente: "prendi anagrafica e fai le stesse modifiche di commesse ... soprattutto per i campi flessibili.
+  Anche per creazione ... come fatto in task". Solo frontend: la PATCH `/registries/{id}` gia' restituiva
+  `permissions` (ora `updateRegistry` li espone, `RegistryDetailWithPermissions`).
+- Dettaglio (`RegistryDetailView`: niente `onEdit`, nuovo `onChanged`; `ResourcePermissionsProvider` attorno):
+  `useRegistryInlineEdit` su `useRegistryForm` edit (`values` + `keepDirtyValues`, reset dopo PATCH). Submit estratto in
+  `use-registry-form-submit.ts` (`useRegistryFormSubmit`; in edit la scheda anagrafica si valida SOLO se e' nel PATCH:
+  un'anagrafica storica incompleta non blocca gli altri campi). Sezioni condivise dettaglio/creazione:
+  `registry-record-identity.tsx` (Dati anagrafici = UNA riga `REGISTRY_CARD_FIELD` che apre `PersonalDataCardForm`,
+  matita da `personal_data.type`; in creazione sempre aperta), `-record-relations.tsx` (Relazioni, Team con slot vuoti
+  visibili, Referenti a tutta larghezza), `-record-business.tsx` (Fornitore qualificato solo se fornitore). Campi in
+  `registry-relation-fields.tsx` / `-business-fields.tsx`. Valori in `registry-record.ts` (`persistedRegistryValues`).
+- Campi flessibili: NUOVO generico `features/custom-fields/custom-field-record-sections.tsx`
+  (`CustomFieldRecordSections`: gruppi come il form, riga = `RecordInlineField` field `custom_fields.<raw>` metaKey
+  `custom.<raw>`, editor = `CustomFieldItem` ora esportato da `CustomFieldsSection.tsx`) + `custom-field-value-display.tsx`
+  (relazione via `useForSelectLabels`, enum label, Si/No, tabella read-only). Ordinamento/gruppi estratti in
+  `custom-fields-grouping.ts`. Riusabile da ogni modulo con campi personalizzati.
+- Contatti/Indirizzi: `personal-data-read-only-cards.tsx` RINOMINATO `personal-data-record-cards.tsx`
+  (`PersonalDataRecordCards`, `git mv` => rename in staging) con prop `editing` (persistenza immediata dei manager,
+  invalida il dettaglio). `referent-detail.tsx` aggiornato solo nell'import (resta read-only).
+- Creazione: `registry-form-body.tsx` (replica del dettaglio, side = avviso duplicati + Contatti/Indirizzi con campi
+  rapidi, telefono obbligatorio) + `registry-form-header.tsx` (monogramma + nome live, `RegistryStatsStrip` condiviso) +
+  `registry-create-sections.tsx` + `use-registry-draft-values.ts`. `RegistryForm` solo creazione (niente `mode`, meta via
+  `useResourceMeta`); `guarded-registry-form.tsx` (`useFormLeaveGuard`) usato da `RegistryFormScreen` e `RegistryFormPage`.
+  Rotta `registries/:id/edit` rimossa; registry `generateEditRoute: false`. Quick-create (`module-entries.tsx`) senza `mode`.
+- Rimossi: `registry-form-details-tab`, `-form-summary`, `-form-team-section`, `registry-detail-team`,
+  `use-registry-form-meta`, `RegistryDetailStats` (-> `RegistryStatsStrip`); PlannedField "Codici ATECO". i18n orfane
+  rimosse: `form.editTitle/editSubtitle`, `form.groups.*`, `form.atecoCodes*`, `detail.summary.*`,
+  `form.sections.*.description`; nuove `form.leaveConfirm.*`.
+- REQUIREMENT CHANGED dichiarati nei test: `registry-detail.test` (niente Edit), `registry-form-metadata.test` (riscritto:
+  righe chiuse, casi edit spostati), `registry-form-custom-fields.test` (riga chiusa + Fatto), pagine form/detail (niente
+  edit). Nuovi: `registry-detail-inline-edit.test.tsx` (11), fixture `registry-test-fixtures.tsx`.
+- Verifica: Vitest completo 904 file / 6857 verdi; `tsc -b --force` 0; ESLint pulito sui file toccati. Browser reale
+  (Playwright, `/registries/1`, `/registries/new`): desktop light/dark e 375px senza scroll orizzontale, nessun errore
+  runtime; editor Gruppo IVA e Dati anagrafici aperti in place.
+- Guida in-app IT/EN `registries`: nuova `editing-a-registry`, `registry-record` e `new-client-flow` riscritte.
+- Da fare / fuori scope: manuale Claude Docs (doc NON accessibile da questa sessione: "not shared") — sezione
+  Anagrafiche: modifica in place (campi personalizzati, scheda anagrafica, contatti/indirizzi), creazione a righe
+  chiuse. Su mobile Contatti/Indirizzi (telefono obbligatorio) stanno sotto il Salva del corpo, come nei RecordBody degli
+  altri moduli. Chiavi i18n orfane preesistenti `registries.detail.title/subtitle/details`, `form.managersPlaceholder`,
+  `form.managersRemove`.
+
 ## ANAGRAFICA — TAB RECORD COLLEGATI (Opportunita'/Offerte/Commesse/Task) + "NUOVO" PRECOMPILATO (spec 0199) — VERDE, COMMITTATO (2026-10-06)
 
 - Richiesta utente: "in anagrafica tabelle di appoggio per commesse, opportunita', offerte e attivita' associate

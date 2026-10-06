@@ -17,7 +17,7 @@ export const REGISTRY_ATTACHABLE_ALIAS = 'registry'
 
 /**
  * Query key of a single registry's detail (fresh-on-open pattern). Shared by
- * the detail/edit pages and by the post-mutation invalidation, so they can
+ * the detail screens and by the post-mutation invalidation, so they can
  * never drift apart. `null` (an unparsable route param) is a key that is never
  * fetched.
  */
@@ -44,16 +44,19 @@ export async function createRegistry(
   return data.data
 }
 
-/** Partially updates a registry (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a registry (PATCH). Returns the updated resource with the
+ * actor's `permissions` (the server answers `okWithPermissions`), so the
+ * in-place detail can seed its cache with the full shape (spec 0200).
+ */
 export async function updateRegistry(
   id: number,
   payload: UpdateRegistryPayload,
-): Promise<RegistryDetail> {
-  const { data } = await apiClient.patch<ApiResponse<RegistryDetail>>(
-    `/registries/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<RegistryDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<RegistryDetail, ResourcePermissions>
+  >(`/registries/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a registry. Backend responds 204 with no body. */

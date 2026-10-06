@@ -6,7 +6,7 @@ import {
   type RecordCollaborationTab,
 } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
-import { PersonalDataReadOnlyCards } from '@/features/personal-data/personal-data-read-only-cards'
+import { PersonalDataRecordCards } from '@/features/personal-data/personal-data-record-cards'
 import { ReferentDetailHeader, ReferentDetailStats } from '@/features/referents/referent-detail-header'
 import { ReferentDetailSections } from '@/features/referents/referent-detail-sections'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -25,7 +25,7 @@ interface ReferentDetailViewProps {
  * (contacts, addresses) and the activity log on the right, a metadata footer.
  *
  * Deliberately the TWIN of `RegistryDetailView`, down to the shared blocks
- * (`PersonalDataReadOnlyCards`, `PersonalDataIdentityRows`): a referente is an
+ * (`PersonalDataRecordCards`, `PersonalDataIdentityRows`): a referente is an
  * anagraphic card with fewer own fields, and the two screens must not drift on
  * the half they have in common.
  */
@@ -41,7 +41,7 @@ export function ReferentDetailView({ referent, onEdit }: ReferentDetailViewProps
       <RecordBody
         side={
           <>
-            <PersonalDataReadOnlyCards
+            <PersonalDataRecordCards
               card={referent.personal_data}
               contactsTitle={t('referents.form.sections.contacts.title')}
               addressesTitle={t('referents.form.sections.addresses.title')}

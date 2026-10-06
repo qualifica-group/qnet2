@@ -48,24 +48,52 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Per creare una scheda premi Nuova anagrafica. Il modulo è diviso in sezioni; a destra un riquadro Riepilogo si aggiorna mentre compili. Scegli prima il Tipo, Persona fisica o Azienda: i campi cambiano di conseguenza.',
+          text: "Per creare una scheda premi **Nuova anagrafica**: il modulo ha lo stesso aspetto del dettaglio, con le stesse sezioni. I **Dati anagrafici** sono già aperti: scegli prima il Tipo, Persona fisica o Azienda (i campi cambiano di conseguenza); il nome compare in testa alla scheda mentre scrivi. Gli altri campi sono **righe chiuse**: fai clic sulla riga (o sulla matita) per aprirla, poi **Fatto** per tenere il valore o **Ripristina** per riportarlo com'era. Contatti e Indirizzi sono nella colonna di destra. **Salva** controlla tutto e crea l'anagrafica; se esci senza salvare ti viene chiesta conferma.",
         },
         {
           type: 'table',
           headers: ['Sezione', 'Cosa contiene'],
           rows: [
             ['Dati anagrafici', 'Ragione sociale (aziende) oppure Nome e Cognome (persone fisiche), codice fiscale, partita IVA e, per le persone fisiche, data e luogo di nascita.'],
-            ['Relazioni', 'Fonte, Settori merceologici, Referenti, Commerciale e Segnalatore.'],
+            ['Relazioni', 'Fonte, Settori merceologici, Commerciale e Segnalatore.'],
             ['Team', 'Supervisore e Gestori account, in ordine di importanza dal primo in alto; riordinali con Sposta su e Sposta giù.'],
-            ['Dati commerciali', 'Gruppo IVA, Fornitore, Fornitore qualificato, Stato convenzione (In trattativa, Respinta o Concordata) e Classe dimensionale.'],
+            ['Dati commerciali', 'Gruppo IVA, Fornitore, Fornitore qualificato (solo per i fornitori), Stato convenzione (In trattativa, Respinta o Concordata), Classe dimensionale, Numero dipendenti e Note convenzione.'],
             ['Contatti', 'Email, Telefono (obbligatorio), PEC e Fax; con Aggiungi contatto ne inserisci altri e indichi il Contatto principale.'],
             ['Indirizzi', 'Uno o più indirizzi, ciascuno con un Tipo sede: Sede legale, Consegna, Fatturazione o Sede operativa.'],
-            ['Altri campi', "I campi personalizzati delle anagrafiche, tra cui Tag: scegli uno o più tag dall'elenco gestito nel modulo Tag."],
+            ['Referenti', 'Le persone di contatto del cliente, a tutta larghezza sotto le altre sezioni.'],
+            ['Altri campi', "I campi personalizzati delle anagrafiche, tra cui Tag: scegli uno o più tag dall'elenco gestito nel modulo Tag. Compaiono anche nel dettaglio, raggruppati come nel modulo."],
           ],
         },
         {
           type: 'warning',
           text: 'Solo le anagrafiche segnate come Fornitore compaiono tra i fornitori selezionabili nella scheda prodotto.',
+        },
+      ],
+    },
+    {
+      id: 'editing-a-registry',
+      title: "Modificare un'anagrafica",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Non esiste una pagina di modifica separata: l'anagrafica si modifica **direttamente dal suo dettaglio**, un campo alla volta, campi personalizzati compresi.",
+        },
+        {
+          type: 'steps',
+          items: [
+            "Apri l'anagrafica dall'elenco.",
+            'Passa col mouse sul campo da cambiare e premi la **matita** (o fai clic sul valore).',
+            'Modifica il valore nel controllo che compare.',
+            "Premi **Salva** (o Invio nei campi di testo e numero) per salvare solo quel campo; **Annulla** (o Esc, o un clic fuori dal campo aperto) per chiuderlo lasciandolo com'era, senza salvare.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "I **Dati anagrafici** (tipo, nome o ragione sociale, codice fiscale, partita IVA…) si modificano insieme: la matita apre l'intera scheda e Salva aggiorna anche il nome dell'anagrafica. **Contatti** e **Indirizzi**, nella colonna di destra, si aggiungono, modificano ed eliminano lì stesso e si salvano subito.",
+        },
+        {
+          type: 'note',
+          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura.',
         },
       ],
     },
@@ -136,11 +164,11 @@ const guide: HelpGuide = {
             'Se i referenti non esistono ancora, creali da Anagrafiche › Referenti con Nuovo referente.',
             'Apri Anagrafiche › Anagrafiche e premi Nuova anagrafica.',
             'Scegli il Tipo e compila i Dati anagrafici.',
-            'Se compare Possibile duplicato, controlla prima di continuare.',
-            'In Relazioni scegli i Referenti e, se serve, Commerciale e Segnalatore.',
-            'In Team assegna Supervisore e Gestori account.',
-            'Inserisci almeno il telefono nei Contatti.',
-            'In Indirizzi aggiungi un indirizzo per ogni sede con il Tipo sede giusto e premi Salva.',
+            'Se compare Possibile duplicato, in cima alla colonna di destra, controlla prima di continuare.',
+            'Inserisci almeno il telefono nei Contatti, nella colonna di destra.',
+            'In Indirizzi aggiungi un indirizzo per ogni sede con il Tipo sede giusto.',
+            'Apri le righe che ti servono: in Relazioni, se serve, Commerciale e Segnalatore; in Team Supervisore e Gestori account; in Referenti le persone di contatto. Conferma ogni riga con Fatto.',
+            'Premi Salva.',
           ],
         },
       ],

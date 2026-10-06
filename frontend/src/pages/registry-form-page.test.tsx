@@ -5,21 +5,16 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import RegistryFormPage from '@/pages/registry-form-page'
-import type {
-  RegistryDetail,
-  RegistryDetailWithPermissions,
-  RegistryFormMode,
-} from '@/features/registries/types'
+import type { RegistryDetail } from '@/features/registries/types'
 
 /**
- * Spec 0022 AC-A3/AC-A4 — the dedicated registry create/edit page: one page for
- * `/registries/new` and `/registries/:id/edit`, the mode derived from the `:id`
- * param; edit fetches the fresh detail first; a successful save navigates to
- * the detail page; cancel goes back to the detail (edit) or the list (create).
- * `RegistryForm` is stubbed: it is covered by its own suite, and what is under
- * test here is the page's mode/navigation wiring.
+ * Spec 0022 AC-A3 — the dedicated registry create page (`/registries/new`): a
+ * successful save navigates to the detail page, cancel goes back to the list.
+ * REQUIREMENT CHANGED (spec 0200): there is no `/registries/:id/edit` page any
+ * more, the detail edits in place. The guarded form is stubbed: it is covered
+ * by its own suites, and what is under test here is the page's wiring.
  */
-const fetchRegistryMock = vi.fn<(id: number) => Promise<RegistryDetailWithPermissions>>()
+const fetchRegistryMock = vi.fn()
 const canMock = vi.fn<(permission: string) => boolean>()
 
 vi.mock('@/features/registries/api', () => ({
@@ -42,18 +37,16 @@ vi.mock('@/components/page-header', () => ({
 
 const SAVED = { id: 12, name: 'Acme S.p.A.' } as RegistryDetail
 
-vi.mock('@/features/registries/registry-form', () => ({
-  RegistryForm: ({
-    mode,
+vi.mock('@/features/registries/guarded-registry-form', () => ({
+  GuardedRegistryForm: ({
     onSuccess,
     onCancel,
   }: {
-    mode: RegistryFormMode
     onSuccess: (registry: RegistryDetail) => void
     onCancel: () => void
   }) => (
     <div>
-      <span>mode:{mode.type}</span>
+      <span>mode:create</span>
       <button type="button" onClick={() => onSuccess(SAVED)}>
         save
       </button>
@@ -77,7 +70,6 @@ function renderAt(path: string) {
         <LocationProbe />
         <Routes>
           <Route path="/registries/new" element={<RegistryFormPage />} />
-          <Route path="/registries/:id/edit" element={<RegistryFormPage />} />
           <Route path="*" element={null} />
         </Routes>
       </MemoryRouter>
@@ -126,46 +118,5 @@ describe('RegistryFormPage — create (/registries/new)', () => {
 
     expect(screen.getByText("You don't have permission to view registries.")).toBeInTheDocument()
     expect(screen.queryByText('mode:create')).not.toBeInTheDocument()
-  })
-})
-
-describe('RegistryFormPage — edit (/registries/:id/edit)', () => {
-  it('fetches the fresh detail and mounts the form in edit mode', async () => {
-    fetchRegistryMock.mockResolvedValue({ ...SAVED } as RegistryDetailWithPermissions)
-
-    renderAt('/registries/12/edit')
-
-    expect(await screen.findByText('mode:edit')).toBeInTheDocument()
-    expect(fetchRegistryMock).toHaveBeenCalledWith(12)
-  })
-
-  it('navigates to the detail page after a successful save', async () => {
-    fetchRegistryMock.mockResolvedValue({ ...SAVED } as RegistryDetailWithPermissions)
-
-    renderAt('/registries/12/edit')
-
-    fireEvent.click(await screen.findByRole('button', { name: 'save' }))
-
-    expect(screen.getByText('location:/registries/12')).toBeInTheDocument()
-  })
-
-  it('returns to the detail page on cancel', async () => {
-    fetchRegistryMock.mockResolvedValue({ ...SAVED } as RegistryDetailWithPermissions)
-
-    renderAt('/registries/12/edit')
-
-    fireEvent.click(await screen.findByRole('button', { name: 'cancel' }))
-
-    expect(screen.getByText('location:/registries/12')).toBeInTheDocument()
-  })
-
-  it('shows the forbidden fallback without registries.update', () => {
-    fetchRegistryMock.mockResolvedValue({ ...SAVED } as RegistryDetailWithPermissions)
-    canMock.mockImplementation((permission) => permission !== 'registries.update')
-
-    renderAt('/registries/12/edit')
-
-    expect(screen.getByText("You don't have permission to view registries.")).toBeInTheDocument()
-    expect(screen.queryByText('mode:edit')).not.toBeInTheDocument()
   })
 })

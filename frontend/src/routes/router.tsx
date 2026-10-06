@@ -163,10 +163,6 @@ export const router = createBrowserRouter([
             element: <RegistryDetailPage />,
           },
           {
-            path: 'registries/:id/edit',
-            element: <RegistryFormPage />,
-          },
-          {
             path: 'referent-types',
             element: <ReferentTypesPage />,
           },

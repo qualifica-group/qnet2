@@ -48,24 +48,52 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'To create a card press New registry. The form is split into sections; a Summary panel on the right updates as you fill it in. First choose the Type, Individual or Company: fields change accordingly.',
+          text: "To create a card press **New registry**: the form looks like the detail, with the same sections. The **Personal details** are already open: first choose the Type, Individual or Company (fields change accordingly); the name appears at the top of the card as you type. The other fields are **closed rows**: click the row (or its pencil) to open it, then **Done** to keep the value or **Revert** to put it back as it was. Contacts and Addresses are in the right-hand column. **Save** checks everything and creates the registry; leaving without saving asks for confirmation.",
         },
         {
           type: 'table',
           headers: ['Section', 'What it contains'],
           rows: [
             ['Personal details', 'Denomination (companies) or Name and Surname (individuals), tax code, VAT number and, for individuals, date and place of birth.'],
-            ['Relations', 'Source, Business sectors, Referents, Commercial referent and Reporter.'],
+            ['Relations', 'Source, Business sectors, Commercial referent and Reporter.'],
             ['Team', 'Supervisor and Account managers, in order of importance from the top; reorder them with Move up and Move down.'],
-            ['Business data', 'VAT group, Supplier, Qualified supplier, Agreement status (In negotiation, Rejected or Agreed) and Size class.'],
+            ['Business data', 'VAT group, Supplier, Qualified supplier (suppliers only), Agreement status (In negotiation, Rejected or Agreed), Size class, Employee count and Agreement notes.'],
             ['Contacts', 'Email, Phone (required), PEC and Fax; with Add contact you enter more and set the Primary contact.'],
             ['Addresses', 'One or more addresses, each with a Site type: Registered office, Delivery, Billing or Operational site.'],
-            ['Other fields', 'The registry custom fields, including Tag: pick one or more tags from the list managed in the Tags module.'],
+            ['Referents', "The client's contact people, full width below the other sections."],
+            ['Other fields', 'The registry custom fields, including Tag: pick one or more tags from the list managed in the Tags module. They also appear on the detail, grouped as in the form.'],
           ],
         },
         {
           type: 'warning',
           text: 'Only registries marked as Supplier appear among the suppliers selectable on the product card.',
+        },
+      ],
+    },
+    {
+      id: 'editing-a-registry',
+      title: 'Editing a registry',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'There is no separate edit page: the registry is edited **directly from its detail**, one field at a time, custom fields included.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Open the registry from the list.',
+            'Hover the field to change and press the **pencil** (or click the value).',
+            'Change the value in the control that appears.',
+            'Press **Save** (or Enter in text and number fields) to save that field only; **Cancel** (or Esc, or a click outside the open field) closes it as it was, without saving.',
+          ],
+        },
+        {
+          type: 'note',
+          text: "The **Personal details** (type, name or denomination, tax code, VAT number…) are edited together: the pencil opens the whole card and Save also updates the registry's name. **Contacts** and **Addresses**, in the right-hand column, are added, edited and deleted right there and saved at once.",
+        },
+        {
+          type: 'note',
+          text: 'A field without a pencil is not editable by you: your role permissions make it read-only.',
         },
       ],
     },
@@ -136,11 +164,11 @@ const guide: HelpGuide = {
             'If the referents do not exist yet, create them from Registries › Referents with New referent.',
             'Open Registries › Registries and press New registry.',
             'Choose the Type and fill in the personal details.',
-            'If Possible duplicate appears, check it before continuing.',
-            'In Relations choose the Referents and, if needed, Commercial referent and Reporter.',
-            'In Team assign Supervisor and Account managers.',
-            'Enter at least the phone number in Contacts.',
-            'In Addresses add an address for each site with the right Site type and press Save.',
+            'If Possible duplicate appears, at the top of the right-hand column, check it before continuing.',
+            'Enter at least the phone number in Contacts, in the right-hand column.',
+            'In Addresses add an address for each site with the right Site type.',
+            'Open the rows you need: in Relations, if needed, Commercial referent and Reporter; in Team Supervisor and Account managers; in Referents the contact people. Confirm each row with Done.',
+            'Press Save.',
           ],
         },
       ],

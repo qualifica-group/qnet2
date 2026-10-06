@@ -38,17 +38,11 @@ export const registries = {
       sectors: 'Business sectors',
       employees: 'Employees',
     },
-    summary: {
-      title: 'Summary',
-      description: 'Updated as you type.',
-    },
   },
   form: {
     newRegistry: 'New registry',
     createTitle: 'Create registry',
     createSubtitle: 'Add a new registry to your organization.',
-    editTitle: 'Edit registry',
-    editSubtitle: 'Update the selected registry.',
     source: 'Source',
     sourcePlaceholder: 'Select a source…',
     sourceSearch: 'Search sources…',
@@ -86,13 +80,6 @@ export const registries = {
     commercialPlaceholder: 'Select a commercial referent…',
     reporter: 'Reporter',
     reporterPlaceholder: 'Select a reporter…',
-    // Micro-headings of the two groups inside the "Relations" section.
-    groups: {
-      origin: 'Origin & classification',
-      people: 'Reference people',
-    },
-    atecoCodes: 'ATECO codes',
-    atecoCodesComingSoon: 'Coming soon',
     vatGroup: 'VAT group',
     vatGroupMax: 'VAT group must be at most 191 characters.',
     isSupplier: 'Supplier',
@@ -114,30 +101,30 @@ export const registries = {
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the registry. Please try again.',
     deleteForbidden: 'You cannot delete this registry.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The registry has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Personal details',
-        description: 'Identifying details of the registry.',
       },
       relations: {
         title: 'Relations',
-        description: 'Source, sectors, referents, commercial and reporter.',
       },
       team: {
         title: 'Team',
-        description: 'Supervisor and account managers.',
       },
       business: {
         title: 'Business details',
-        description: 'VAT group, supplier status, convention and size.',
       },
       contacts: {
         title: 'Contacts',
-        description: 'Phone and email contact details.',
       },
       addresses: {
         title: 'Addresses',
-        description: 'Registered offices, delivery and billing addresses.',
       },
     },
   },

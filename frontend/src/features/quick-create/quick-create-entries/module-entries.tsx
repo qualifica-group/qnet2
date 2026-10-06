@@ -137,7 +137,6 @@ const registries: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <RegistryForm
-          mode={{ type: 'create' }}
           onSuccess={(registry) => onSuccess({ id: registry.id, name: registry.name })}
           onCancel={onCancel}
         />
