@@ -46,6 +46,12 @@ vi.mock('@/features/attachments/documents-section', () => ({
   },
 }))
 
+// Spec 0199: the related-records tabs mount the modules' own grids; their
+// gating and wiring are covered by `registry-related-records.test.tsx`.
+vi.mock('@/features/registries/registry-related-records', () => ({
+  RegistryRelatedRecords: ({ registryId }: { registryId: number }) => <div>{`related-records:${registryId}`}</div>,
+}))
+
 function card(overrides: Partial<PersonalDataCard> = {}): PersonalDataCard {
   return {
     id: 1,
@@ -244,6 +250,13 @@ describe('RegistryDetailView — documents tab (spec 0173)', () => {
     expect(screen.getByRole('tab', { name: 'Documents' })).toBeInTheDocument()
     expect(screen.getByText('documents-section:registry:1')).toBeInTheDocument()
     expect(documentsSectionMock).toHaveBeenCalledWith(expect.objectContaining({ resource: 'registry', id: 1 }))
+  })
+})
+
+describe('RegistryDetailView — related records (spec 0199)', () => {
+  it("mounts the client's related-records tabs for this anagrafica", () => {
+    render(<RegistryDetailView registry={registry()} />)
+    expect(screen.getByText('related-records:1')).toBeInTheDocument()
   })
 })
 

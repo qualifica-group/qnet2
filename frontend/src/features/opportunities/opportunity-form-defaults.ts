@@ -65,13 +65,20 @@ export function editDefaults(opportunity: OpportunityDetail): OpportunityFormVal
   }
 }
 
-/** Default values of a brand-new opportunity, seeded from the lead it converts when there is one. */
-export function createDefaults(fromLead: OpportunityFromLeadContext | undefined): OpportunityFormValues {
+/**
+ * Default values of a brand-new opportunity, seeded from the lead it converts
+ * when there is one, or opened on `registryId` (spec 0199, the anagrafica
+ * detail's tab: its roles are handed down by `useOpportunityRegistryPreset`).
+ */
+export function createDefaults(
+  fromLead: OpportunityFromLeadContext | undefined,
+  registryId?: number,
+): OpportunityFormValues {
   const empty: OpportunityFormValues = {
     // Spec 0171, D-5: no quote exists yet, so there is no automatic title to
     // prefill — blank lets the server derive it.
     name: '',
-    registry_id: null,
+    registry_id: registryId ?? null,
     referent_id: null,
     commercial_id: null,
     reporter_id: null,

@@ -66,6 +66,8 @@ export type TaskFormMode =
       taskStatusId?: number | null
       /** Spec 0157 D-4: prefill for the "Data fine" field, from `ModuleCreateParams.end_date` (the Kanban per-column "+"). */
       endDate?: string | null
+      /** Spec 0199: prefill for the "Anagrafica" field, from `ModuleCreateParams.registry_id` (the anagrafica's Task tab). */
+      registryId?: number | null
     }
   | { type: 'edit'; task: TaskDetailWithPermissions }
   /**

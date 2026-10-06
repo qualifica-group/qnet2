@@ -5,11 +5,16 @@ namespace App\Http\Requests\Quotes;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\Http\Controllers\Abstract\BaseApiController;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates the query for GET /api/quotes/for-select (ADR 0011), mirroring
  * OpportunityForSelectRequest. Pagination bounds mirror
  * BaseApiController::validateRequest (offset >= 0, 1 <= limit <= MAX_LIMIT).
+ *
+ * `registry_id` (spec 0199): ADDITIVE, optional client filter via
+ * `opportunity.registry_id` (the Commessa form's Offerta picker opened from
+ * the Anagrafica detail) — no behaviour change when absent.
  */
 class QuoteForSelectRequest extends FormRequest
 {
@@ -34,6 +39,7 @@ class QuoteForSelectRequest extends FormRequest
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
             'include_total' => ['sometimes', 'boolean'],
+            'registry_id' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
         ];
     }
 

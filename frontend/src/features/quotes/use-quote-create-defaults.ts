@@ -8,7 +8,7 @@ import {
   type OpportunityForSelectMeta,
 } from '@/features/opportunities/for-select-api'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
-import { parseQuoteCreateProductIds } from '@/features/quotes/quote-create-params'
+import { parseQuoteCreateProductIds, QUOTE_CREATE_REGISTRY_PARAM } from '@/features/quotes/quote-create-params'
 import { QUOTES_LAYOUT_MODULE_PARAM } from '@/features/quotes/quote-field-strings'
 import { DEFAULT_MANAGER_SLOTS } from '@/features/quotes/quote-schema'
 import { createEmptyLineRow, DEFAULT_LINE_QUANTITY, lineValuesFromProduct } from '@/features/quotes/use-quote-lines-field'
@@ -66,6 +66,8 @@ export function useQuoteCreateDefaults(mode: QuoteCreateFormMode, quoteForm: Quo
   // opportunity detail's "Crea Offerta" panel) is locked, and the same `meta`
   // — the for-select item its own row is labelled from — feeds the roles.
   const forcedOpportunityId = typeof mode.params?.opportunity_id === 'number' ? mode.params.opportunity_id : null
+  const registryParam = mode.params?.[QUOTE_CREATE_REGISTRY_PARAM]
+  const opportunityRegistryId = typeof registryParam === 'number' ? registryParam : null
   const forcedOpportunityLabels = useForSelectLabels({
     resource: OPPORTUNITIES_FOR_SELECT_RESOURCE,
     ids: forcedOpportunityId !== null ? [forcedOpportunityId] : NO_IDS,
@@ -145,6 +147,8 @@ export function useQuoteCreateDefaults(mode: QuoteCreateFormMode, quoteForm: Quo
     inheritedMeta: pickedMeta ?? forcedOpportunity?.meta ?? null,
     forcedOpportunity,
     isOpportunityForced: forcedOpportunityId !== null,
+    /** Spec 0199: the anagrafica the Opportunita' picker is narrowed to (its Offerte tab), `null` = none. */
+    opportunityRegistryId,
     handleOpportunityItemChange,
     defaultLayout,
   }

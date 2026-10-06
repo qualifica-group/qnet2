@@ -30,6 +30,12 @@ export interface TableRowScope {
    * domain but `work-orders`.
    */
   quoteId?: number
+  /**
+   * Row-set scope to one Anagrafica (spec 0199, the registry detail's related
+   * records tabs): the client's own Opportunita'/Offerte/Commesse/Task. A no-op
+   * for every domain but `opportunities`, `quotes`, `work-orders`, `tasks`.
+   */
+  registryId?: number
 }
 
 /** SSRM rows request payload (AG Grid IServerSideGetRowsRequest subset). */
@@ -64,6 +70,8 @@ export interface TableRowsPayload {
   opportunityId?: number | null
   /** Row-set scope to one Contract's Offerta (spec 0095 D-8), same rule as above; a no-op for every domain but `work-orders`. */
   quoteId?: number | null
+  /** Row-set scope to one Anagrafica (spec 0199), same rule as above. */
+  registryId?: number | null
   /**
    * Server-side tree data (spec 0157 D-1): `true` requests the domain's tree
    * shape instead of the flat one. Omitted/`false` ⇒ today's flat behavior,
@@ -175,6 +183,8 @@ export interface TableColumnValuesPayload {
   opportunityId?: number | null
   /** Row-set scope to one Contract's Offerta (spec 0095 D-8), same rule as above. */
   quoteId?: number | null
+  /** Row-set scope to one Anagrafica (spec 0199), same rule as above. */
+  registryId?: number | null
 }
 
 /** Response of POST /tables/{domain}/values (envelope `data`). */

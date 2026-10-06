@@ -57,6 +57,8 @@ export interface CreateExportPayload {
    * today's unscoped export, unchanged.
    */
   quoteId?: number | null
+  /** Row-set scope to one Anagrafica (spec 0199); a no-op for every domain but `opportunities`, `quotes`, `work-orders`, `tasks`. */
+  registryId?: number | null
 }
 
 /** The export run resource returned by every endpoint (`ExportRunResource`). */

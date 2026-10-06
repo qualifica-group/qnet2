@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Tables\WorkOrders;
+namespace App\Tables\Registries;
 
 use App\Models\User;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
@@ -10,52 +10,32 @@ use App\Tables\RegistryScopable;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 
 /**
- * Decorator that scopes the `work-orders` domain to a single Quote (spec
- * 0095, D-8): the Contratto detail's "Commesse" tab, filtered to the
- * offer's own work orders. `work_orders.quote_id` is a REAL, NOT NULL,
- * indexed column (D-5 of spec 0093), so a single `where()` in `baseQuery()`
- * is the entire scope — the scope is `quoteId`, not `contractId`, because
- * Contratto and Offerta are 1:1 (`contracts.quote_id` UNIQUE) and
- * `work_orders.quote_id` already exists, so filtering by it needs no join.
- * Ricalca 1:1 `App\Tables\Quotes\OpportunityScopedTableDefinition` (spec
- * 0067) — every other method (columns/filters/actions/sort-filter-search
- * allow-lists/resolveConfig/defaultColumnLayout) is IDENTICAL scoped or
- * not, hence pure passthrough to $inner.
+ * Decorator that scopes a domain to a single client/Anagrafica (spec 0199)
+ * for the domains that carry a REAL `registry_id` column (`opportunities`,
+ * `tasks`): a single `where()` on the fully-qualified column handed in by
+ * `TableRegistry` is the entire scope. Every other method is IDENTICAL
+ * scoped or not, hence pure passthrough to $inner.
  *
- * Pure passthrough when no scope has been set (rows()/values()/columns()
- * without `quoteId`): every existing caller of the `work-orders` domain
- * (the standalone Commesse list page) is byte-identical to today (AC-054).
- *
- * Composed OUTSIDE `CustomFieldAwareTableDefinition` in
- * `TableRegistry::resolve()` (`work-orders` is custom-fieldable): `$inner`
- * is already the custom-field-augmented definition, so `custom.*` columns
- * work unchanged inside a Quote-scoped grid too.
- *
- * Also the `RegistryScopable` of `work-orders` (spec 0199): the client of a
- * Commessa is its Offerta's Opportunity's, so the scope is a `whereIn` on the
- * client's Offerte, in AND with the Quote scope. This is the outermost
- * decorator of the domain, hence the one `instanceof RegistryScopable` sees.
+ * Pure passthrough when no scope has been set: every existing caller is
+ * byte-identical to today. Composed OUTSIDE `CustomFieldAwareTableDefinition`
+ * in `TableRegistry::resolve()`, so `custom.*` columns work unchanged.
  */
-class QuoteScopedTableDefinition implements RegistryScopable, TableDefinition
+class RegistryScopedTableDefinition implements RegistryScopable, TableDefinition
 {
     use DelegatesUnaugmentedTableMethods;
 
-    private ?int $quoteScope = null;
-
     private ?int $registryScope = null;
 
-    public function __construct(private readonly TableDefinition $inner) {}
+    public function __construct(
+        private readonly TableDefinition $inner,
+        private readonly string $registryColumn,
+    ) {}
 
-    /**
-     * Narrows `baseQuery()` to one Quote's own work orders (null = no scope,
-     * the "Commesse" list page's own unscoped behavior).
-     */
-    public function scopeToQuote(?int $quoteId): void
+    public function scopeToRegistry(?int $registryId): void
     {
-        $this->quoteScope = $quoteId;
+        $this->registryScope = $registryId;
     }
 
     /**
@@ -65,30 +45,11 @@ class QuoteScopedTableDefinition implements RegistryScopable, TableDefinition
     {
         $query = $this->inner->baseQuery();
 
-        if ($this->quoteScope !== null) {
-            $query->where('work_orders.quote_id', $this->quoteScope);
+        if ($this->registryScope === null) {
+            return $query;
         }
 
-        if ($this->registryScope !== null) {
-            $query->whereIn(
-                'work_orders.quote_id',
-                DB::table('quotes')
-                    ->select('quotes.id')
-                    ->join('opportunities', 'opportunities.id', '=', 'quotes.opportunity_id')
-                    ->where('opportunities.registry_id', $this->registryScope),
-            );
-        }
-
-        return $query;
-    }
-
-    /**
-     * Narrows `baseQuery()` to the Commesse of one client's Offerte (null =
-     * no scope).
-     */
-    public function scopeToRegistry(?int $registryId): void
-    {
-        $this->registryScope = $registryId;
+        return $query->where($this->registryColumn, $this->registryScope);
     }
 
     /**

@@ -10,10 +10,12 @@ import { QuoteDetailView } from '@/features/quotes/quote-detail'
 import {
   QUOTE_CREATE_OPPORTUNITY_PARAM,
   QUOTE_CREATE_PRODUCT_IDS_PARAM,
+  QUOTE_CREATE_REGISTRY_PARAM,
 } from '@/features/quotes/quote-create-params'
 import { parseEntityId } from '@/routes/entity-id'
 import { OPEN_MODE_PAGE } from '@/features/modules/types'
 import type {
+  ModuleCreateParams,
   ModuleDetailScreenProps,
   ModuleFormScreenProps,
   ModuleRegistryEntry,
@@ -103,13 +105,17 @@ export function QuoteFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenP
   // `product_ids` travels verbatim (a comma-separated string either way) —
   // `useQuoteCreateDefaults` parses it where it seeds the offer rows.
   const productIds = mode.params?.[QUOTE_CREATE_PRODUCT_IDS_PARAM]
-  const params =
+  // Spec 0199: the anagrafica's Offerte tab narrows the Opportunita' picker.
+  const registryId = parseEntityId(String(mode.params?.[QUOTE_CREATE_REGISTRY_PARAM] ?? ''))
+  const params: ModuleCreateParams | undefined =
     opportunityId !== null
       ? {
           [QUOTE_CREATE_OPPORTUNITY_PARAM]: opportunityId,
           ...(productIds !== undefined ? { [QUOTE_CREATE_PRODUCT_IDS_PARAM]: productIds } : {}),
         }
-      : undefined
+      : registryId !== null
+        ? { [QUOTE_CREATE_REGISTRY_PARAM]: registryId }
+        : undefined
 
   return (
     <>

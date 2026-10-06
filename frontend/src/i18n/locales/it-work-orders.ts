@@ -251,6 +251,7 @@ export const workOrders = {
   },
   form: {
     createTitle: 'Crea commessa',
+    newWorkOrder: 'Nuova commessa',
     createSubtitle: 'Aggiungi una nuova commessa.',
     code: 'Commessa n.',
     codePlaceholder: 'Generato automaticamente se lasciato vuoto',

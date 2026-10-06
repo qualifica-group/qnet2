@@ -132,7 +132,7 @@ export function useOpportunityForm({ mode }: UseOpportunityFormArgs) {
   )
 
   const defaultValues = useMemo<OpportunityFormValues>(
-    () => (mode.type === 'edit' ? editDefaults(mode.opportunity) : createDefaults(mode.fromLead)),
+    () => (mode.type === 'edit' ? editDefaults(mode.opportunity) : createDefaults(mode.fromLead, mode.registryId)),
     [mode],
   )
 

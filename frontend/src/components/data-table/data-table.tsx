@@ -87,6 +87,8 @@ interface DataTableProps {
    * `work-orders`.
    */
   quoteId?: number
+  /** Row-set scope to one Anagrafica (spec 0199); a no-op for every domain but `opportunities`, `quotes`, `work-orders`, `tasks`. */
+  registryId?: number
   /** Backend-driven column schema. */
   columns: TableColumn[]
   /** SSRM datasource feeding the grid. */
@@ -201,6 +203,7 @@ export function DataTable({
   productCategoryId,
   opportunityId,
   quoteId,
+  registryId,
   columns,
   datasource,
   blockSize,
@@ -255,6 +258,7 @@ export function DataTable({
         productCategoryId,
         opportunityId,
         quoteId,
+        registryId,
         columns,
         cellRenderers,
         renderRowActions,
@@ -270,6 +274,7 @@ export function DataTable({
       productCategoryId,
       opportunityId,
       quoteId,
+      registryId,
       columns,
       cellRenderers,
       renderRowActions,

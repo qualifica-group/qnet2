@@ -13,6 +13,7 @@ import { PersonalDataReadOnlyCards } from '@/features/personal-data/personal-dat
 import { REGISTRY_ATTACHABLE_ALIAS } from '@/features/registries/api'
 import { RegistryDetailHeader, RegistryDetailStats } from '@/features/registries/registry-detail-header'
 import { RegistryDetailSections } from '@/features/registries/registry-detail-sections'
+import { RegistryRelatedRecords } from '@/features/registries/registry-related-records'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { RegistryDetailWithPermissions } from '@/features/registries/types'
 
@@ -58,8 +59,8 @@ function useCollaborationTabs(registry: RegistryDetailWithPermissions): RecordCo
  * Read-only detail of a single anagrafica, rendered as an enterprise-CRM
  * record — the same kit the Opportunità record uses (user directive
  * 2026-09-11): identity + KPI + sections on the left, "how to reach them"
- * (contacts, addresses) and the documents/activity tabs on the right, a
- * metadata footer.
+ * (contacts, addresses) and the documents/activity tabs on the right, the
+ * client's related records in tabs below (spec 0199), a metadata footer.
  *
  * Container-query driven (`RecordCanvas`), so the same tree renders correctly
  * on the dedicated `/registries/:id` page and inside the modal Sheet the
@@ -95,6 +96,9 @@ export function RegistryDetailView({ registry, onEdit }: RegistryDetailViewProps
           <RegistryDetailSections registry={registry} />
         </RecordCard>
       </RecordBody>
+
+      {/* Spec 0199: the client's Opportunita'/Offerte/Commesse/Task, full width below the record. */}
+      <RegistryRelatedRecords registryId={registry.id} />
 
       {createdAt ? (
         <RecordMeta>

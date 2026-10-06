@@ -27,6 +27,7 @@ interface TableViewSlotsArgs {
   getSearchTerm: () => string
   opportunityId?: number
   quoteId?: number
+  registryId?: number
 }
 
 interface TableViewSlots {
@@ -58,6 +59,7 @@ export function buildTableViewSlots({
   getSearchTerm,
   opportunityId,
   quoteId,
+  registryId,
 }: TableViewSlotsArgs): TableViewSlots {
   const savedViewsSlot = (
     <SavedViewsSlot
@@ -101,6 +103,7 @@ export function buildTableViewSlots({
           customFilterRules={customFilters.active.state?.rules ?? null}
           opportunityId={opportunityId}
           quoteId={quoteId}
+          registryId={registryId}
         />
       ) : null}
 

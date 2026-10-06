@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Table;
 
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
+use App\Tables\RegistryScopable;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
@@ -72,6 +73,11 @@ class TableValuesRequest extends FormRequest
             // Spec 0095, D-8: scopes `work-orders` distinct-values to one
             // Quote's own Commesse — a no-op key for every other domain.
             'quoteId' => ['sometimes', 'nullable', 'integer', Rule::exists('quotes', 'id')],
+
+            // Spec 0199: scopes `opportunities`/`quotes`/`work-orders`/`tasks`
+            // to one client's records (the Anagrafica detail tabs) — a no-op
+            // key for every other domain.
+            'registryId' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
         ];
     }
 
@@ -102,7 +108,7 @@ class TableValuesRequest extends FormRequest
     /**
      * Validated payload with the `limit`/`filterModel` defaults applied.
      *
-     * @return array{columnId: string, search: string|null, limit: int, filterModel: array<string, array<string, mixed>>, productCategoryId: int|null, opportunityId: int|null, quoteId: int|null}
+     * @return array{columnId: string, search: string|null, limit: int, filterModel: array<string, array<string, mixed>>, productCategoryId: int|null, opportunityId: int|null, quoteId: int|null, registryId: int|null}
      */
     public function payload(): array
     {
@@ -116,6 +122,7 @@ class TableValuesRequest extends FormRequest
             'productCategoryId' => isset($validated['productCategoryId']) ? (int) $validated['productCategoryId'] : null,
             'opportunityId' => isset($validated['opportunityId']) ? (int) $validated['opportunityId'] : null,
             'quoteId' => isset($validated['quoteId']) ? (int) $validated['quoteId'] : null,
+            'registryId' => isset($validated['registryId']) ? (int) $validated['registryId'] : null,
         ];
     }
 
@@ -140,6 +147,10 @@ class TableValuesRequest extends FormRequest
 
             if ($definition instanceof QuoteScopedTableDefinition) {
                 $definition->scopeToQuote($this->quoteIdInput());
+            }
+
+            if ($definition instanceof RegistryScopable) {
+                $definition->scopeToRegistry($this->registryIdInput());
             }
 
             $this->resolvedDefinition = $definition;
@@ -177,6 +188,17 @@ class TableValuesRequest extends FormRequest
     private function quoteIdInput(): ?int
     {
         $value = $this->input('quoteId');
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    /**
+     * The raw `registryId` request input, coerced to int (spec 0199),
+     * mirroring `quoteIdInput()`.
+     */
+    private function registryIdInput(): ?int
+    {
+        $value = $this->input('registryId');
 
         return is_numeric($value) ? (int) $value : null;
     }

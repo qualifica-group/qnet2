@@ -1,65 +1,36 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
-import { MessagesSquare, Paperclip, Plus } from 'lucide-react'
-import { toast } from 'sonner'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
 import { useAbilities } from '@/features/auth/use-abilities'
-import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
-import { DocumentsDialog } from '@/features/attachments/documents-dialog'
 import { ModuleStatsPanel } from '@/features/stats/module-stats-panel'
 import { StatsToggleButton } from '@/features/stats/stats-toggle-button'
 import { useStatsPanel } from '@/features/stats/use-stats-panel'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
-import { useModuleOpener } from '@/features/modules/use-module-opener'
-import { NotesDialog } from '@/features/notes/notes-dialog'
-import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
-import type { ActionIconMap } from '@/features/table/action-icon-map'
-import type { RowActionHandler } from '@/features/table/row-actions'
-import type { TableActionDefinition, TableRow } from '@/features/table/types'
+import { OPPORTUNITIES_ACTION_ICONS } from '@/features/opportunities/action-icons'
 import { opportunityColumnRenderers } from '@/features/opportunities/column-renderers'
 import { OpportunityQuotesDetailRenderer } from '@/features/opportunities/opportunity-quotes-detail-renderer'
-import {
-  deleteOpportunity,
-  OPPORTUNITIES_DOMAIN,
-  OPPORTUNITY_ATTACHABLE_ALIAS,
-} from '@/features/opportunities/api'
-
-/**
- * Domain icon overrides for the 'documents'/'notes' row actions: the backend
- * action catalog fixes their icon keys as 'paperclip'/'messages-square',
- * absent from the shared defaults in `action-icon-map.ts`. Hoisted at module
- * level (not inline in JSX), mirroring `REQUEST_MANAGEMENT_ACTION_ICONS`, so
- * its identity stays stable across renders. `messages-square` is the SAME
- * `MessagesSquare` the notes surfaces themselves use (`NotesSection`,
- * `NotesDialog`, the detail tab): one visual identity for the feature.
- */
-const OPPORTUNITIES_ACTION_ICONS: ActionIconMap = {
-  paperclip: Paperclip,
-  'messages-square': MessagesSquare,
-}
+import { OPPORTUNITIES_DOMAIN } from '@/features/opportunities/api'
+import { useOpportunityRowActions } from '@/features/opportunities/use-opportunity-row-actions'
 
 /**
  * Thin Opportunities adapter over the generic table (spec 0040, mirrors
  * Leads). It mounts `<TableView>` with the `opportunities` domain, its custom
  * cell renderers and a row-action handler, and delegates the open mode (modal
  * Sheet vs dedicated page) of view/edit/create to `useModuleOpener`, resolved
- * from the user's preference (spec 0042). It still owns the delete flow
- * (confirm + toast + grid refresh) and refreshes the SSRM grid after every
- * mutation. Permission gating is an affordance only; the backend re-authorizes
- * each call.
+ * from the user's preference (spec 0042). Every row action's behavior lives in
+ * `useOpportunityRowActions`, shared with the anagrafica detail's Opportunita'
+ * tab (spec 0199); this adapter refreshes the SSRM grid and the stats panel
+ * after every mutation. Permission gating is an affordance only; the backend
+ * re-authorizes each call.
  *
  * Row actions mirror Gestione Richieste exactly (user directive 2026-08-05):
  * `view`, `documents`, `notes` inline, `delete`/`activity` in the overflow —
  * `edit` is NOT among them, the detail surface owns the Edit button
- * (`detailOwnsEditAction`, still gated by `opportunities.update`). The `notes`
- * action opens the agnostic `NotesDialog` on the SAME thread the detail view
- * mounts: the notes registry maps the Opportunity record under the
- * `request-management` entity_type, so that slug — not `opportunities` — is
- * what the dialog must pass.
+ * (`detailOwnsEditAction`, still gated by `opportunities.update`).
  */
 export function OpportunitiesTable() {
   const { t } = useTranslation()
@@ -72,97 +43,16 @@ export function OpportunitiesTable() {
   const invalidateStats = useInvalidateModuleStats(OPPORTUNITIES_DOMAIN)
 
   const tableRef = useRef<TableViewHandle>(null)
-  const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
 
-  const [deletingId, setDeletingId] = useState<number | null>(null)
-  const [activityRow, setActivityRow] = useState<TableRow | null>(null)
-  const [documentsRowId, setDocumentsRowId] = useState<number | null>(null)
-  const [notesRowId, setNotesRowId] = useState<number | null>(null)
-
-  // After a modal create/edit succeeds the Sheet closes itself; the grid and
-  // the stats panel are this adapter's to refresh. The detail query is
-  // invalidated inside `OpportunityFormScreen`. Page mode never calls this.
-  const onSaved = useCallback(() => {
-    refreshGrid()
+  // Every mutation (modal save, delete, documents/notes change) refreshes the
+  // grid and the stats panel; page mode never calls it. The detail query is
+  // invalidated inside `OpportunityFormScreen`.
+  const handleMutated = useCallback(() => {
+    tableRef.current?.refresh()
     invalidateStats()
-  }, [refreshGrid, invalidateStats])
+  }, [invalidateStats])
 
-  const { openCreate, openView, sheet } = useModuleOpener(OPPORTUNITIES_DOMAIN, { onSaved })
-
-  const runDelete = useCallback(
-    async (row: TableRow) => {
-      setDeletingId(Number(row.id))
-      try {
-        await deleteOpportunity(Number(row.id))
-        toast.success(t('opportunities.form.deleted'))
-        refreshGrid()
-        invalidateStats()
-      } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === 403) {
-          toast.error(t('opportunities.form.deleteForbidden'))
-        } else {
-          toast.error(t('opportunities.form.deleteError'))
-        }
-      } finally {
-        setDeletingId(null)
-      }
-    },
-    [refreshGrid, t, invalidateStats],
-  )
-
-  const handleAction: RowActionHandler = useCallback(
-    (action: TableActionDefinition, row: TableRow) => {
-      switch (action.key) {
-        case 'view':
-          openView(row)
-          break
-        case 'delete':
-          void runDelete(row)
-          break
-        case 'activity':
-          setActivityRow(row)
-          break
-        case 'documents':
-          setDocumentsRowId(Number(row.id))
-          break
-        case 'notes':
-          setNotesRowId(Number(row.id))
-          break
-        default:
-          break
-      }
-    },
-    [openView, runDelete],
-  )
-
-  // Documents are edited from inside the dialog (upload/delete); refresh the
-  // grid on close so the row's `documents_count` badge reflects the change.
-  const handleDocumentsOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        setDocumentsRowId(null)
-        refreshGrid()
-      }
-    },
-    [refreshGrid],
-  )
-
-  // Notes are added/deleted from inside the dialog: the badge follows each
-  // write immediately (`onThreadChanged`), not only the close — chi scrive una
-  // nota si aspetta di vedere il conteggio salire subito. La chiusura resta il
-  // secondo giro, per le scritture che il dialog non riporta (edit di terzi).
-  const handleNotesOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        setNotesRowId(null)
-        refreshGrid()
-      }
-    },
-    [refreshGrid],
-  )
-
-  const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])
+  const { handleAction, isBusy, openCreate, sheet, dialogs } = useOpportunityRowActions({ onMutated: handleMutated })
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -200,28 +90,7 @@ export function OpportunitiesTable() {
 
       {sheet}
 
-      <ResourceActivityDialog
-        resource={OPPORTUNITIES_DOMAIN}
-        row={activityRow}
-        onOpenChange={(open) => {
-          if (!open) {
-            setActivityRow(null)
-          }
-        }}
-      />
-
-      <DocumentsDialog
-        resource={OPPORTUNITY_ATTACHABLE_ALIAS}
-        id={documentsRowId}
-        onOpenChange={handleDocumentsOpenChange}
-      />
-
-      <NotesDialog
-        entityType={REQUEST_MANAGEMENT_DOMAIN}
-        entityId={notesRowId}
-        onThreadChanged={refreshGrid}
-        onOpenChange={handleNotesOpenChange}
-      />
+      {dialogs}
     </div>
   )
 }

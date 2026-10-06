@@ -64,6 +64,7 @@ export function QuoteCreateSections({ quoteForm, draft, defaults }: QuoteCreateS
         opportunity={{
           onItemChange: defaults.handleOpportunityItemChange,
           forceDisabled: defaults.isOpportunityForced,
+          registryId: defaults.opportunityRegistryId,
         }}
       />
 

@@ -3,6 +3,42 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ANAGRAFICA — TAB RECORD COLLEGATI (Opportunita'/Offerte/Commesse/Task) + "NUOVO" PRECOMPILATO (spec 0199) — VERDE, COMMITTATO (2026-10-06)
+
+- Richiesta utente: "in anagrafica tabelle di appoggio per commesse, opportunita', offerte e attivita' associate
+  all'anagrafica ... tab sotto con le tabelle filtrate per il cliente". Scelte utente: attivita' = modulo Task;
+  ogni tab ha anche "Nuovo" precompilato.
+- Backend: scope di righe `registry` (come `opportunityId` 0067 / `quoteId` 0095). Chiave `registryId` su
+  rows/values/export, query `registry_id` su columns. Interfaccia `App\Tables\RegistryScopable`; nuovo decoratore
+  `Tables\Registries\RegistryScopedTableDefinition` (opportunities -> `opportunities.registry_id`, tasks ->
+  `tasks.registry_id`, esterno in `TableRegistry::REGISTRY_SCOPE_COLUMNS`); `OpportunityScopedTableDefinition`
+  (quotes, via opportunita' del cliente) e `QuoteScopedTableDefinition` (work-orders, via offerta -> opportunita')
+  implementano anche `RegistryScopable` (un secondo wrapper li nasconderebbe agli `instanceof`). Controlli sempre
+  con `instanceof RegistryScopable`. `GET /quotes/for-select?registry_id=` (solo pagina, non l'hydration `ids`).
+  Test: `tests/Feature/Tables/RegistryRowScopeTest.php` (29).
+- Frontend framework: `TableRowScope.registryId` propagato come `quoteId` (table-view, controller, grid-state,
+  slots, ssrm-datasource, data-table, column-def-builder, column-filters, export). Chiave filtri locali: segmento
+  anagrafica aggiunto SOLO se presente (chiavi esistenti invariate).
+- UI: `registry-related-records.tsx` (card a tab sotto `RecordBody`, tab gated da `<modulo>.viewAny`, contatore
+  dopo il primo caricamento, griglia montata solo nella tab attiva), `registry-related-panels.tsx` (un pannello per
+  modulo sul SUO hook azioni, sheet forzato), `registry-related-grid.tsx` (Nuovo + `TableView rowScope`).
+  Tab Task: override di visita `assignment` = `visible` (con viewAll/viewSite) o `all`, invece di "assegnati a me".
+- Estratti: `useOpportunityRowActions` (da `OpportunitiesTable`, secondo call site), `opportunities/action-icons.ts`,
+  `tasks/action-icons.ts` (`TASK_ACTION_ICONS`), `tasks/task-form-defaults.ts` (`use-task-form.ts` superava 500).
+  `useWorkOrderRowActions` espone `openCreateWith`.
+- Create param `registry_id`: Opportunita' -> `OpportunityCreateFormMode.registryId` (default + ruoli ereditati
+  una volta, `useOpportunityRegistryPreset`; ignorato con `lead_id`); Offerte -> `QUOTE_CREATE_REGISTRY_PARAM`
+  restringe il selettore Opportunita' (ignorato con `opportunity_id`); Commesse -> `registryId` fino a
+  `WorkOrderQuoteField` (selettore Offerta ristretto); Task -> `TaskFormMode.registryId`.
+- CONFLITTO SEGNALATO: spec 0093 D-13 diceva "nessuna creazione commessa dalla lista"; ora la tab Commesse
+  dell'anagrafica offre "Nuova commessa" (scelta utente esplicita), la pagina elenco resta senza.
+- Verifica: Vitest completo 903 file / 6853 verdi (+ test registries dopo override Task: 90); `tsc -b --force` 0;
+  ESLint sui file toccati 0; Pest completo 9326 passati / 1 skipped; Pint pulito. Non verificato nel browser reale.
+- Manuale: guida in-app IT/EN `registries` nuova sezione `related-records`. Manuale Claude Docs NON accessibile
+  (doc non condiviso con la sessione) -> da aggiornare la sezione Anagrafiche.
+- Fuori scope segnalato: errore ESLint preesistente `registry-form-metadata.test.tsx:271` (`_omit`);
+  HANDOFF.md ~430 KB, va archiviato in `docs/handoff-archive/`.
+
 ## ANAGRAFICHE: "TAG" COME CAMPO PERSONALIZZATO — VERDE, NON COMMITTATO (2026-10-06)
 
 - Richiesta utente: select con i tag in anagrafica, come campo personalizzato (non colonna nativa). Nessun codice

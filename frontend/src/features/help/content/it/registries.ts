@@ -96,6 +96,37 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'related-records',
+      title: 'Opportunità, offerte, commesse e task del cliente',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Sotto la scheda dell'anagrafica trovi le schede Opportunità, Offerte, Commesse e Task: ognuna mostra la stessa tabella del modulo, con i soli record di quel cliente. Il numero accanto al nome compare dopo aver aperto la scheda.",
+        },
+        {
+          type: 'list',
+          items: [
+            'Ricerca, filtri, colonne ed esportazione funzionano come nella pagina del modulo, ma restano limitati al cliente.',
+            "Le azioni della riga (Visualizza, Note, Documenti, Elimina…) aprono il record in un pannello sopra l'anagrafica, senza lasciarla.",
+            'Le Offerte sono quelle delle opportunità del cliente; le Commesse quelle nate dalle sue offerte; i Task quelli collegati al cliente, anche tramite una sua commessa.',
+          ],
+        },
+        {
+          type: 'steps',
+          items: [
+            'Apri la scheda del modulo che ti serve.',
+            'Premi il pulsante Nuova opportunità, Nuova offerta, Nuova commessa o Nuovo task sopra la tabella.',
+            "Compila il modulo: l'Opportunità e il Task partono già sull'anagrafica (l'opportunità prende anche Commerciale, Segnalatore, Supervisore e Gestori account del cliente); per l'Offerta e la Commessa la scelta dell'opportunità o dell'offerta propone solo quelle del cliente.",
+            'Salva: la tabella della scheda si aggiorna.',
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'Vedi solo le schede dei moduli che puoi consultare, e il pulsante di creazione solo se puoi creare in quel modulo.',
+        },
+      ],
+    },
+    {
       id: 'new-client-flow',
       title: 'Flusso tipico: un nuovo cliente con referenti e sedi',
       blocks: [

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Control } from 'react-hook-form'
 import { FormControl } from '@/components/ui/form'
@@ -75,11 +76,20 @@ interface OpportunityFieldProps extends RelationFieldProps {
   onItemChange: (item: ForSelectItem | null) => void
   /** Spec 0067 AC-050/052: locked to the Opportunity the create params preset. */
   forceDisabled: boolean
+  /** Spec 0199: only this anagrafica's opportunities are offered; `null`/absent = the whole list. */
+  registryId?: number | null
 }
 
 /** "Opportunita'": chosen at creation only (AC-025), the field permission locks it afterwards. */
-export function QuoteOpportunityField({ control, selected, onItemChange, forceDisabled }: OpportunityFieldProps) {
+export function QuoteOpportunityField({
+  control,
+  selected,
+  onItemChange,
+  forceDisabled,
+  registryId = null,
+}: OpportunityFieldProps) {
   const { t } = useTranslation()
+  const params = useMemo(() => (registryId !== null ? { registry_id: registryId } : undefined), [registryId])
   return (
     <RelationSelectField
       control={control}
@@ -91,6 +101,7 @@ export function QuoteOpportunityField({ control, selected, onItemChange, forceDi
       selected={selected}
       onItemChange={onItemChange}
       forceDisabled={forceDisabled}
+      params={params}
       {...quoteRelationLabels(t)}
     />
   )

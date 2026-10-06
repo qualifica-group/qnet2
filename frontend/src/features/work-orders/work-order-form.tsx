@@ -13,6 +13,8 @@ interface WorkOrderFormProps {
   onSuccess: (workOrder: WorkOrderDetail) => void
   /** Called when the user cancels the form. */
   onCancel: () => void
+  /** Spec 0199: narrows the Offerta picker to one anagrafica's offers (create from its Commesse tab). */
+  registryId?: number | null
 }
 
 /**
@@ -23,7 +25,7 @@ interface WorkOrderFormProps {
  * (`GET /work-orders/next-code`, D-1), kept uncached (`staleTime`/`gcTime` 0,
  * mirrors `QuoteForm`) so every new form gets a fresh suggestion.
  */
-export function WorkOrderForm({ onSuccess, onCancel }: WorkOrderFormProps) {
+export function WorkOrderForm({ onSuccess, onCancel, registryId = null }: WorkOrderFormProps) {
   const { t } = useTranslation()
   const metaQuery = useResourceMeta('work-orders', true)
 
@@ -53,7 +55,12 @@ export function WorkOrderForm({ onSuccess, onCancel }: WorkOrderFormProps) {
 
   return (
     <ResourcePermissionsProvider permissions={metaQuery.data?.permissions ?? null}>
-      <WorkOrderFormBody onSuccess={onSuccess} onCancel={onCancel} initialCode={nextCode.data ?? ''} />
+      <WorkOrderFormBody
+        onSuccess={onSuccess}
+        onCancel={onCancel}
+        initialCode={nextCode.data ?? ''}
+        registryId={registryId}
+      />
     </ResourcePermissionsProvider>
   )
 }

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { toast } from 'sonner'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
-import type { OpenMode } from '@/features/modules/types'
+import type { ModuleCreateParams, OpenMode } from '@/features/modules/types'
 import { deleteWorkOrder, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { REOPEN_PAYLOAD, useWorkOrderClosure } from '@/features/work-orders/use-work-order-closure'
 import { WorkOrderForceCloseDialog } from '@/features/work-orders/work-order-force-close-dialog'
@@ -11,7 +11,7 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 export interface UseWorkOrderRowActionsOptions {
-  /** Called after anything that changes the displayed rows: a delete, a forced closure, a reopen. */
+  /** Called after anything that changes the displayed rows: a save, a delete, a forced closure, a reopen. */
   onMutated: () => void
   /**
    * Forces the open mode of view instead of honoring the user's
@@ -27,6 +27,13 @@ export interface UseWorkOrderRowActionsResult {
   isBusy: (row: TableRow) => boolean
   activityRow: TableRow | null
   closeActivity: (open: boolean) => void
+  /**
+   * Opens the create form seeded with `params`, in the same Sheet as view:
+   * only the anagrafica detail's Commesse tab offers it (spec 0199,
+   * `registry_id` narrows the Offerta picker) — the list page still does not
+   * (spec 0093 D-13).
+   */
+  openCreateWith: (params: ModuleCreateParams) => void
   sheet: ReactNode
   /** The "Chiusura forzata" reason dialog of the `force_close` row action: the host mounts it. */
   forceCloseDialog: ReactNode
@@ -41,8 +48,7 @@ export interface UseWorkOrderRowActionsResult {
  * standalone Commesse grid (`WorkOrdersTable`) and the Contract detail's
  * Commesse tab (`ContractWorkOrdersSection`, spec 0095 D-9). Extracted so a
  * duplicated switch can never drift the way `useQuoteRowActions` documents
- * (`use-opportunity-quotes-panel.ts`). No `create` here (spec 0093 D-13):
- * a work order is only ever generated from a Contract's "Programma" action.
+ * (`use-opportunity-quotes-panel.ts`).
  */
 export function useWorkOrderRowActions({
   onMutated,
@@ -56,7 +62,7 @@ export function useWorkOrderRowActions({
   const [reopeningId, setReopeningId] = useState<number | null>(null)
   const { mutateAsync: changeClosure } = useWorkOrderClosure()
 
-  const { openView, sheet } = useModuleOpener(WORK_ORDERS_DOMAIN, {
+  const { openCreateWith, openView, sheet } = useModuleOpener(WORK_ORDERS_DOMAIN, {
     onSaved: onMutated,
     forceMode,
   })
@@ -148,5 +154,5 @@ export function useWorkOrderRowActions({
     />
   )
 
-  return { handleAction, isBusy, activityRow, closeActivity, sheet, forceCloseDialog }
+  return { handleAction, isBusy, activityRow, closeActivity, openCreateWith, sheet, forceCloseDialog }
 }

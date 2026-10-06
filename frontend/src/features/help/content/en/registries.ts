@@ -96,6 +96,37 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'related-records',
+      title: "The client's opportunities, quotes, work orders and tasks",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Below the registry record you find the Opportunities, Quotes, Work orders and Tasks tabs: each shows the module's own table, with only that client's records. The number next to the name appears once you have opened the tab.",
+        },
+        {
+          type: 'list',
+          items: [
+            "Search, filters, columns and export work as on the module's page, but stay limited to the client.",
+            'Row actions (View, Notes, Documents, Delete…) open the record in a panel above the registry, without leaving it.',
+            "Quotes are those of the client's opportunities; work orders those born from its quotes; tasks those linked to the client, also through one of its work orders.",
+          ],
+        },
+        {
+          type: 'steps',
+          items: [
+            'Open the tab of the module you need.',
+            'Press New opportunity, New quote, New work order or New task above the table.',
+            "Fill in the form: the opportunity and the task already start on the registry (the opportunity also takes the client's Sales rep, Reporter, Supervisor and Account managers); for the quote and the work order, the opportunity or quote picker offers only the client's ones.",
+            "Save: the tab's table refreshes.",
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'You only see the tabs of the modules you can view, and the create button only if you can create in that module.',
+        },
+      ],
+    },
+    {
       id: 'new-client-flow',
       title: 'Typical flow: a new client with referents and sites',
       blocks: [

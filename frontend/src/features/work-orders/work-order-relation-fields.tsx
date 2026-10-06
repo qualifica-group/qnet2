@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWatch, type Control } from 'react-hook-form'
 import { ManagerSlotsField } from '@/components/form/manager-slots-field'
@@ -27,11 +28,14 @@ interface QuoteFieldProps extends FieldProps {
   selected: RelationFieldRef | null
   /** AC-072: a new offer drops the lines picked from the old one (`useWorkOrderForm.handleQuoteChange`). */
   onQuoteChange: () => void
+  /** Spec 0199: only this anagrafica's offers are offered; `null`/absent = the whole list. */
+  registryId?: number | null
 }
 
 /** "Offerta collegata": chosen at creation only (D-5), the field permission locks it afterwards. */
-export function WorkOrderQuoteField({ control, selected, onQuoteChange }: QuoteFieldProps) {
+export function WorkOrderQuoteField({ control, selected, onQuoteChange, registryId = null }: QuoteFieldProps) {
   const { t } = useTranslation()
+  const params = useMemo(() => (registryId !== null ? { registry_id: registryId } : undefined), [registryId])
   return (
     <RelationSelectField
       control={control}
@@ -41,6 +45,7 @@ export function WorkOrderQuoteField({ control, selected, onQuoteChange }: QuoteF
       resource={QUOTES_FOR_SELECT_RESOURCE}
       searchPlaceholder={t('workOrders.form.quoteSearchPlaceholder')}
       selected={selected}
+      params={params}
       onValueChange={onQuoteChange}
       placeholder={t('workOrders.form.quotePlaceholder')}
       emptyLabel={t('workOrders.form.quoteEmpty')}

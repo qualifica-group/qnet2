@@ -9,7 +9,9 @@ import type { ModuleCreateParams } from '@/features/modules/types'
  * opportunity create is refused because the anagrafica already has an open
  * one, the refusal offers to add the products straight onto THAT opportunity
  * — so the offer form opens with its rows already filled in, instead of the
- * operator rebuilding them by hand.
+ * operator rebuilding them by hand. `registry_id` (spec 0199, the anagrafica
+ * detail's Offerte tab) does not preset anything: it narrows the Opportunita'
+ * picker to that client's opportunities.
  *
  * Params travel through a query string (`ModuleFormPage`) or straight through
  * the modal opener, so every value arrives as `string | number`: the parsers
@@ -18,6 +20,8 @@ import type { ModuleCreateParams } from '@/features/modules/types'
 export const QUOTE_CREATE_OPPORTUNITY_PARAM = 'opportunity_id'
 
 export const QUOTE_CREATE_PRODUCT_IDS_PARAM = 'product_ids'
+
+export const QUOTE_CREATE_REGISTRY_PARAM = 'registry_id'
 
 /** Multi-valued params travel as one comma-separated string: `URLSearchParams` has no list shape. */
 const PRODUCT_IDS_SEPARATOR = ','

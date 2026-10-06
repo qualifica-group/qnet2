@@ -6,6 +6,7 @@ import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
 import { OpportunityCreateSections } from '@/features/opportunities/opportunity-create-sections'
 import { OpportunityFormHeader } from '@/features/opportunities/opportunity-form-header'
+import { useOpportunityRegistryPreset } from '@/features/opportunities/use-opportunity-registry-preset'
 import {
   useOpportunityForm,
   useOpportunityFormSubmit,
@@ -38,6 +39,7 @@ interface OpportunityFormBodyProps {
 export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFormBodyProps) {
   const { t } = useTranslation()
   const { form } = useOpportunityForm({ mode })
+  useOpportunityRegistryPreset(mode.registryId, form.setValue, form.getValues)
 
   // `useOpportunityLeadSelection` needs `form.setValue`, so it can only run
   // AFTER `useOpportunityForm` — and `leadSubmission` (below) can only be

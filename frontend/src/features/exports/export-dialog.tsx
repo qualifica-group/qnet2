@@ -68,6 +68,8 @@ export interface ExportDialogProps {
    * export, unchanged.
    */
   quoteId?: number | null
+  /** Row-set scope to one Anagrafica (spec 0199); a no-op for every domain but `opportunities`, `quotes`, `work-orders`, `tasks`. */
+  registryId?: number | null
 }
 
 /**
@@ -88,6 +90,7 @@ export function ExportDialog({
   customFilterRules,
   opportunityId,
   quoteId,
+  registryId,
 }: ExportDialogProps) {
   const { t } = useTranslation()
   const exportState = useExport({ domain })
@@ -119,6 +122,7 @@ export function ExportDialog({
       ...(customFilterRules ? { customFilterRules } : {}),
       ...(opportunityId != null ? { opportunityId } : {}),
       ...(quoteId != null ? { quoteId } : {}),
+      ...(registryId != null ? { registryId } : {}),
     })
   }
 

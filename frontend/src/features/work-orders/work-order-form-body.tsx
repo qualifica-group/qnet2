@@ -20,6 +20,8 @@ interface WorkOrderFormBodyProps {
   onCancel: () => void
   /** Sequential code suggestion prefilled into the `code` default (D-1). */
   initialCode?: string
+  /** Spec 0199: narrows the Offerta picker to one anagrafica's offers (create from its Commesse tab). */
+  registryId?: number | null
 }
 
 /**
@@ -34,7 +36,7 @@ interface WorkOrderFormBodyProps {
  * `ResourcePermissions`. Pure composition: every non-render concern lives in
  * `useWorkOrderForm`.
  */
-export function WorkOrderFormBody({ onSuccess, onCancel, initialCode }: WorkOrderFormBodyProps) {
+export function WorkOrderFormBody({ onSuccess, onCancel, initialCode, registryId = null }: WorkOrderFormBodyProps) {
   const { t } = useTranslation()
   const workOrderForm = useWorkOrderForm({ mode: CREATE_MODE, onSuccess, initialCode })
   const { form, serverError, onSubmit } = workOrderForm
@@ -56,7 +58,7 @@ export function WorkOrderFormBody({ onSuccess, onCancel, initialCode }: WorkOrde
                 submitError={serverError}
                 onCancel={onCancel}
               />
-              <WorkOrderCreateSections workOrderForm={workOrderForm} draft={draft} />
+              <WorkOrderCreateSections workOrderForm={workOrderForm} draft={draft} registryId={registryId} />
             </RecordCard>
 
             {/* The same actions the identity band carries, repeated where the

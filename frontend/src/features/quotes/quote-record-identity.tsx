@@ -40,6 +40,8 @@ interface StatusContext {
 interface OpportunityContext {
   onItemChange: (item: ForSelectItem | null) => void
   forceDisabled: boolean
+  /** Spec 0199: narrows the picker to one anagrafica's opportunities (create from its Offerte tab). */
+  registryId?: number | null
 }
 
 /** Detail: the parent record is fixed (AC-025), its row only reads. */

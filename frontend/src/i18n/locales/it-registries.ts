@@ -25,6 +25,12 @@ export const registries = {
     // Scheda in sola lettura dei documenti dell'anagrafica nei dettagli di
     // Opportunita', Offerte e Commesse (spec 0173).
     registryDocumentsTab: 'Documenti anagrafica',
+    // Tab dei record collegati al cliente sotto la scheda (spec 0199).
+    related: {
+      title: 'Record collegati',
+      countLabel_one: '{{count}} record collegato',
+      countLabel_other: '{{count}} record collegati',
+    },
     // Etichette della striscia KPI: sono SUE, non quelle del form, perche' le
     // sezioni sotto portano gia' "Referenti"/"Settori" sulle righe che ne
     // elencano i nomi.

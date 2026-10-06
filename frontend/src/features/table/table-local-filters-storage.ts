@@ -21,6 +21,7 @@ export interface TableLocalFiltersScope {
   productCategoryId?: number
   opportunityId?: number
   quoteId?: number
+  registryId?: number
 }
 
 export const EMPTY_TABLE_LOCAL_FILTERS: TableLocalFilters = { search: '', customFilter: null }
@@ -49,6 +50,8 @@ const storedFiltersSchema = z.object({
  * Per-user key: several people can share a browser, and one user's filters
  * must never open on another's table. The scope parts keep an embedded,
  * scoped table (e.g. an Opportunity's Quotes panel) apart from the module page.
+ * The Anagrafica segment (spec 0199) is appended only when set, so every key
+ * written before it existed still reads back.
  */
 export function tableLocalFiltersKey(scope: TableLocalFiltersScope): string {
   return [
@@ -58,6 +61,7 @@ export function tableLocalFiltersKey(scope: TableLocalFiltersScope): string {
     scope.productCategoryId ?? '',
     scope.opportunityId ?? '',
     scope.quoteId ?? '',
+    ...(scope.registryId != null ? [scope.registryId] : []),
   ].join(':')
 }
 

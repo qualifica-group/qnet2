@@ -37,6 +37,8 @@ function idsOf(id: number | null | undefined): number[] {
 interface DraftProps {
   workOrderForm: WorkOrderFormState
   draft: InlineEdit
+  /** Spec 0199: narrows the Offerta picker to one anagrafica's offers (create from its Commesse tab). */
+  registryId?: number | null
 }
 
 /**
@@ -44,7 +46,7 @@ interface DraftProps {
  * picked — once created the offer is fixed (D-5) and the detail shows the
  * contract born from it instead.
  */
-function WorkOrderOfferSection({ workOrderForm, draft }: DraftProps) {
+function WorkOrderOfferSection({ workOrderForm, draft, registryId = null }: DraftProps) {
   const { t } = useTranslation()
   const { form, handleQuoteChange } = workOrderForm
   const [quoteId, quoteLineIds] = useWatch({ control: form.control, name: ['quote_id', 'quote_line_ids'] })
@@ -64,7 +66,14 @@ function WorkOrderOfferSection({ workOrderForm, draft }: DraftProps) {
           field="quote_id"
           label={t('workOrders.form.quoteId')}
           inline={draft}
-          editor={<WorkOrderQuoteField control={form.control} selected={null} onQuoteChange={handleQuoteChange} />}
+          editor={
+            <WorkOrderQuoteField
+              control={form.control}
+              selected={null}
+              onQuoteChange={handleQuoteChange}
+              registryId={registryId}
+            />
+          }
         >
           {quoteId !== null ? (quoteLabels.get(quoteId)?.label ?? PENDING_LABEL) : <DetailEmpty />}
         </RecordInlineField>
@@ -104,7 +113,7 @@ function WorkOrderOfferSection({ workOrderForm, draft }: DraftProps) {
  * The form holds ids only: the closed rows name them through
  * `useForSelectLabels`, the very cache the pickers fill for their own trigger.
  */
-export function WorkOrderCreateSections({ workOrderForm, draft }: DraftProps) {
+export function WorkOrderCreateSections({ workOrderForm, draft, registryId = null }: DraftProps) {
   const { t } = useTranslation()
   const { form, attributeContext, attributesLoading } = workOrderForm
   const values = useWatch({ control: form.control })
@@ -153,7 +162,7 @@ export function WorkOrderCreateSections({ workOrderForm, draft }: DraftProps) {
         inline={draft}
       />
 
-      <WorkOrderOfferSection workOrderForm={workOrderForm} draft={draft} />
+      <WorkOrderOfferSection workOrderForm={workOrderForm} draft={draft} registryId={registryId} />
 
       {attributesLoading ? (
         <RecordSection

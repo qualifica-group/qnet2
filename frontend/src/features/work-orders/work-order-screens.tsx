@@ -6,6 +6,7 @@ import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { fetchWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { WorkOrderForm } from '@/features/work-orders/work-order-form'
+import { parseEntityId } from '@/routes/entity-id'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
 import { OPEN_MODE_PAGE } from '@/features/modules/types'
 import type {
@@ -86,7 +87,11 @@ export function WorkOrderFormScreen({ mode, onSuccess, onCancel }: ModuleFormScr
   return (
     <>
       {leaveGuard.navigationGuard}
-      <WorkOrderForm onSuccess={handleSuccess} onCancel={() => void handleCancel()} />
+      <WorkOrderForm
+        registryId={parseEntityId(String(mode.params?.registry_id ?? ''))}
+        onSuccess={handleSuccess}
+        onCancel={() => void handleCancel()}
+      />
     </>
   )
 }

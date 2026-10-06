@@ -153,6 +153,25 @@ describe('WorkOrderFormBody — offer and lines (AC-071)', () => {
   })
 })
 
+/** Spec 0199: "New work order" from the anagrafica detail's Commesse tab. */
+describe('WorkOrderFormBody — anagrafica scope (spec 0199)', () => {
+  it("narrows the Offer picker to the anagrafica's offers", async () => {
+    render(
+      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+        <WorkOrderFormBody onSuccess={vi.fn()} onCancel={vi.fn()} initialCode="COM-0002" registryId={8} />
+      </ResourcePermissionsProvider>,
+      { wrapper: wrapper() },
+    )
+
+    fireEvent.click(pencil(label('workOrders.form.quoteId')))
+    fireEvent.click(screen.getByRole('combobox', { name: label('workOrders.form.quoteId') }))
+
+    await waitFor(() =>
+      expect(fetchForSelectMock).toHaveBeenCalledWith('quotes', expect.objectContaining({ params: { registry_id: 8 } })),
+    )
+  })
+})
+
 /** Spec 0096: the participant slots, relabelled "Participant n" through `ManagerSlotsField`'s own `labels`. */
 describe('WorkOrderFormBody — participants (spec 0096)', () => {
   it('names the people being assigned "participants" everywhere, not "account managers"', () => {

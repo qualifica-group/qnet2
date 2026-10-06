@@ -251,6 +251,7 @@ export const workOrders = {
   },
   form: {
     createTitle: 'Create work order',
+    newWorkOrder: 'New work order',
     createSubtitle: 'Add a new work order.',
     code: 'Work order no.',
     codePlaceholder: 'Auto-generated when left empty',

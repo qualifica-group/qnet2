@@ -25,6 +25,11 @@ export const registries = {
     // Read-only tab of the registry's documents on the Opportunity, Quote and
     // Work order details (spec 0173).
     registryDocumentsTab: 'Registry documents',
+    related: {
+      title: 'Related records',
+      countLabel_one: '{{count}} related record',
+      countLabel_other: '{{count}} related records',
+    },
     // The KPI strip's own labels, not the form's: the sections below already
     // carry "Referents"/"Sectors" on the rows that list their names.
     stats: {

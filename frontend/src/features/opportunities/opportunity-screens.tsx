@@ -82,17 +82,23 @@ export function OpportunityFormScreen({ mode, onSuccess, onCancel }: ModuleFormS
   }
 
   const leadId = parseEntityId(String(mode.params?.lead_id ?? ''))
-  return <OpportunityCreateScreen leadId={leadId} onSuccess={handleSuccess} onCancel={onCancel} />
+  // Spec 0199: "Nuova opportunita'" from the anagrafica detail's tab.
+  const registryId = parseEntityId(String(mode.params?.registry_id ?? ''))
+  return (
+    <OpportunityCreateScreen leadId={leadId} registryId={registryId} onSuccess={handleSuccess} onCancel={onCancel} />
+  )
 }
 
 interface OpportunityCreateScreenProps {
   leadId: number | null
+  /** Ignored when converting a lead: the lead's own anagrafica wins (BR-1). */
+  registryId: number | null
   onSuccess: (opportunity: OpportunityDetail) => void
   onCancel: () => void
 }
 
 /** Resolves the `?lead_id=N` create-from-lead context (D-2 short-circuit included) before mounting the form. */
-function OpportunityCreateScreen({ leadId, onSuccess, onCancel }: OpportunityCreateScreenProps) {
+function OpportunityCreateScreen({ leadId, registryId, onSuccess, onCancel }: OpportunityCreateScreenProps) {
   const { t } = useTranslation()
   const createMode = useOpportunityCreateMode(leadId)
 
@@ -129,7 +135,8 @@ function OpportunityCreateScreen({ leadId, onSuccess, onCancel }: OpportunityCre
     )
   }
 
-  return <GuardedOpportunityForm mode={createMode.mode} onSuccess={onSuccess} onCancel={onCancel} />
+  const mode = leadId === null && registryId !== null ? { ...createMode.mode, registryId } : createMode.mode
+  return <GuardedOpportunityForm mode={mode} onSuccess={onSuccess} onCancel={onCancel} />
 }
 
 interface GuardedOpportunityFormProps {

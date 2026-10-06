@@ -25,6 +25,7 @@ export interface UseTableViewGridStateArgs {
   productCategoryId?: number
   opportunityId?: number
   quoteId?: number
+  registryId?: number
   onRowCountChanged?: (count: number | null) => void
   getBulkActions?: (selection: TableSelection) => BulkAction[]
   disableBuiltinDelete?: boolean
@@ -77,6 +78,7 @@ export function useTableViewGridState(
     productCategoryId,
     opportunityId,
     quoteId,
+    registryId,
     onRowCountChanged,
     getBulkActions,
     disableBuiltinDelete,
@@ -150,7 +152,7 @@ export function useTableViewGridState(
 
   // The quick search and active custom filter kept in the browser across a
   // reload; column/advanced filters are restored from the config instead.
-  const localFilters = useTableLocalFilters({ domain, productCategoryId, opportunityId, quoteId })
+  const localFilters = useTableLocalFilters({ domain, productCategoryId, opportunityId, quoteId, registryId })
 
   // Client-only toolbar state (search term + ⌘K, floating filters, fullscreen,
   // live row count), owned by a dedicated hook so this component stays a thin
@@ -231,6 +233,7 @@ export function useTableViewGridState(
         productCategoryId,
         opportunityId,
         quoteId,
+        registryId,
         onAggregates: setAggregates,
         treeData,
       }),
@@ -242,6 +245,7 @@ export function useTableViewGridState(
       productCategoryId,
       opportunityId,
       quoteId,
+      registryId,
       treeData,
     ],
   )

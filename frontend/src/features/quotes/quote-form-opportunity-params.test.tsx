@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -160,5 +160,22 @@ describe('QuoteFormBody — Opportunity preset via create params (spec 0067)', (
     expect(opportunityField).not.toBeDisabled()
     expect(opportunityField).toHaveTextContent('Select…')
     expect(rowValue('Commercial')).not.toContain('Sara Conti')
+  })
+})
+
+describe("QuoteFormBody — anagrafica's Offerte tab (spec 0199)", () => {
+  it('narrows the Opportunity picker to the anagrafica, leaving it editable', async () => {
+    renderForm({ type: 'create', params: { registry_id: 8 } })
+
+    openRow('Opportunity')
+    fireEvent.click(screen.getByRole('combobox', { name: 'Opportunity' }))
+
+    await waitFor(() =>
+      expect(fetchForSelectMock).toHaveBeenCalledWith(
+        'opportunities',
+        expect.objectContaining({ params: { registry_id: 8 } }),
+      ),
+    )
+    expect(screen.getByRole('combobox', { name: 'Opportunity' })).not.toBeDisabled()
   })
 })

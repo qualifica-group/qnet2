@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0199-registry-related-records-tabs" status="approved" owner="utente" date="2026-10-06">
+
+  <goal>
+    Il dettaglio dell'Anagrafica mostra, sotto la scheda, le tabelle di appoggio dei record collegati al cliente:
+    Opportunita', Offerte, Commesse e Task, una per tab, ognuna la STESSA griglia del modulo filtrata
+    sull'anagrafica, con un pulsante "Nuovo" che apre la creazione gia' legata al cliente.
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-06, "tabelle di appoggio per commesse, opportunita', offerte e attivita' associate
+      all'anagrafica ... tab sotto con le tabelle filtrate per il cliente"): "attivita'" = modulo Task (scelta utente);
+      la Cronologia attivita' resta nella card laterale.
+    - D-2 (scelta utente): ogni tab ha anche "Nuovo" precompilato con l'anagrafica.
+    - D-3: legame al cliente. Opportunita' `opportunities.registry_id`; Offerte via `quotes.opportunity_id` ->
+      opportunita' del cliente; Commesse via `work_orders.quote_id` -> offerta -> opportunita' del cliente; Task
+      `tasks.registry_id` (che copre anche i task di commesse/opportunita': il backend deriva il cliente).
+    - D-4: stessa meccanica del pannello Offerte dell'Opportunita' (spec 0067) e della tab Commesse del Contratto
+      (spec 0095): `TableView` del modulo con `rowScope`, renderer/azioni di riga/icone del modulo, sheet forzato
+      (il cliente non si abbandona). Il filtro e' uno scope di righe, mai un filtro utente: non entra in chiavi di
+      config/preferenze/filtri salvati; i filtri locali del toolbar hanno chiave per scope (come gli altri scope).
+    - D-5: tab in una card a tutta larghezza sotto il corpo del record (la colonna e' troppo stretta per
+      toolbar + griglia). Una tab esiste solo col `viewAny` del modulo; nessuna tab = nessuna card. Contatore nella
+      tab dalla griglia (`onRowCountChanged`). Le griglie montano solo quando la loro tab e' attiva.
+    - D-6: "Nuovo" (solo col `create` del modulo), sempre in sheet:
+      Opportunita' -> anagrafica impostata con la stessa ereditarieta' ruoli/gestori della scelta manuale
+      (il rifiuto "opportunita' aperta" resta quello del server); Offerte -> il selettore Opportunita' mostra solo
+      quelle del cliente; Commesse -> il selettore Offerta mostra solo quelle del cliente; Task -> anagrafica
+      impostata (referente/opportunita'/lead gia' filtrati sul cliente dalla cascata esistente).
+      Dopo il salvataggio la griglia della tab si ricarica.
+  </context>
+
+  <contract>
+    <backend>
+      Nuovo scope di righe `registry` per i domini `opportunities`, `quotes`, `work-orders`, `tasks`:
+      - `POST /api/tables/{domain}/rows` e `/values`: chiave opzionale `registryId` (int, exists registries).
+      - `GET /api/tables/{domain}/columns`: query opzionale `registry_id` (shape invariata).
+      - `POST /api/exports/{domain}`: chiave opzionale `registryId`.
+      Assente = comportamento attuale byte-identico; no-op per ogni altro dominio. In AND con filtri/ricerca/
+      altri scope. Interfaccia `App\Tables\RegistryScopable::scopeToRegistry(?int)`: implementata dal nuovo
+      decoratore `App\Tables\Registries\RegistryScopedTableDefinition` (opportunities, tasks) e dai decoratori
+      esistenti `OpportunityScopedTableDefinition` (quotes) e `QuoteScopedTableDefinition` (work-orders).
+      `GET /api/quotes/for-select`: filtro opzionale `registry_id` (via `opportunity.registry_id`).
+      Autorizzazione invariata (viewAny della definition, policy per riga).
+    </backend>
+    <frontend>
+      `TableRowScope.registryId` (propagato a rows/values/export e alla chiave dei filtri locali).
+      Create params `registry_id` per `opportunities`, `quotes`, `work-orders`, `tasks`.
+      Nuovi: `features/registries/registry-related-records.tsx` (card a tab), un pannello per modulo;
+      `useOpportunityRowActions` estratto da `OpportunitiesTable` (secondo call site).
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Rows/values/export con `registryId` restituiscono solo i record del cliente per i 4 domini;
+      senza `registryId` risposta invariata; altri domini ignorano la chiave.</ac>
+    <ac id="AC-002">Senza `viewAny` sul modulo la tab non c'e'; utente senza permesso sul dominio -> 403 come oggi.</ac>
+    <ac id="AC-003">Il dettaglio anagrafica mostra le tab disponibili, con contatore; la griglia e' quella del modulo.</ac>
+    <ac id="AC-004">"Nuovo" apre la creazione in sheet legata al cliente (D-6); dopo il salvataggio la griglia si
+      ricarica. Senza `create` nessun pulsante.</ac>
+    <ac id="AC-005">`/api/quotes/for-select?registry_id=X` restituisce solo offerte di opportunita' del cliente X.</ac>
+    <ac id="AC-006">Guida in-app IT/EN `registries` aggiornata.</ac>
+  </acceptance>
+</spec>

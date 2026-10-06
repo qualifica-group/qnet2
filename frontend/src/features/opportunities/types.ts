@@ -366,7 +366,12 @@ export interface OpportunityFromLeadContext {
 }
 
 /** The create form's own mode (spec 0198): a persisted opportunity is edited in place on its detail. */
-export type OpportunityCreateFormMode = { type: 'create'; fromLead?: OpportunityFromLeadContext }
+export type OpportunityCreateFormMode = {
+  type: 'create'
+  fromLead?: OpportunityFromLeadContext
+  /** Spec 0199: "Nuova opportunita'" from the anagrafica detail's tab opens on that anagrafica. */
+  registryId?: number
+}
 
 /** Discriminated form mode of `useOpportunityForm`: create, or `edit` driven by the in-place detail. */
 export type OpportunityFormMode =
