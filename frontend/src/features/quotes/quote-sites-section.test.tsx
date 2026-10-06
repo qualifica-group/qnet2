@@ -1,11 +1,12 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { QuoteFormBody } from '@/features/quotes/quote-form-body'
+import { openRow, rowValue } from '@/features/quotes/quote-test-helpers'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { OpportunityForSelectItem } from '@/features/opportunities/for-select-api'
 import type { ResourcePermissions } from '@/features/authorization/types'
@@ -23,7 +24,7 @@ vi.mock('@/features/quotes/api', async () => {
   return { ...actual, createQuote: vi.fn(), updateQuote: vi.fn(), fetchQuoteNextCode: vi.fn() }
 })
 
-// `QuoteLayoutSection` (spec 0070) resolves its create-mode default straight
+// The create form (spec 0070) resolves its default layout straight
 // off `useForSelect`, independent of the `AsyncPaginatedSelect` stub below —
 // mocked here so it never hits the real network in this suite, which is
 // scoped to the sites cascade, not the layout field.
@@ -135,23 +136,33 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
+/** Opens the closed row `label` (unless already open) and picks option `id` in its stubbed select. */
+function pick(label: string, id: number) {
+  if (screen.queryByTestId(`select-${label}`) === null) {
+    openRow(label)
+  }
+  fireEvent.click(screen.getByRole('button', { name: `select ${label} ${id}` }))
+}
+
 describe('QuoteFormBody — company and sites', () => {
   it('prefills the operational site from the picked opportunity, and clears it for one without', async () => {
     renderCreateForm()
 
-    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITH_SITE.id}` }).click()
-    await waitFor(() => expect(screen.getByTestId('value-Operational site')).toHaveTextContent('91'))
+    pick('Opportunity', OPPORTUNITY_WITH_SITE.id)
+    await waitFor(() => expect(rowValue('Operational site')).toContain('Via Ereditata 1 - Milano'))
 
-    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITHOUT_SITE.id}` }).click()
-    await waitFor(() => expect(screen.getByTestId('value-Operational site')).toHaveTextContent(''))
+    pick('Opportunity', OPPORTUNITY_WITHOUT_SITE.id)
+    await waitFor(() => expect(rowValue('Operational site')).not.toContain('Via Ereditata 1 - Milano'))
   })
 
   it('keeps the company site picker locked until a company is picked', async () => {
     renderCreateForm()
 
+    openRow('Company site')
     expect(screen.getByTestId('disabled-Company site')).toHaveTextContent('yes')
 
-    screen.getByRole('button', { name: 'select Company 55' }).click()
+    pick('Company', 55)
+    openRow('Company site')
 
     await waitFor(() => expect(screen.getByTestId('disabled-Company site')).toHaveTextContent('no'))
   })
@@ -159,13 +170,12 @@ describe('QuoteFormBody — company and sites', () => {
   it('clears the picked company site when the company changes', async () => {
     renderCreateForm()
 
-    screen.getByRole('button', { name: 'select Company 55' }).click()
-    await waitFor(() => expect(screen.getByTestId('value-Company')).toHaveTextContent('55'))
-
-    screen.getByRole('button', { name: 'select Company site 56' }).click()
+    pick('Company', 55)
+    pick('Company site', 56)
     await waitFor(() => expect(screen.getByTestId('value-Company site')).toHaveTextContent('56'))
 
-    screen.getByRole('button', { name: 'select Company 56' }).click()
+    pick('Company', 56)
+    openRow('Company site')
 
     await waitFor(() => expect(screen.getByTestId('value-Company site')).toHaveTextContent(''))
   })

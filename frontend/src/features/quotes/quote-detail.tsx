@@ -1,8 +1,6 @@
-import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessagesSquare, Paperclip, TrendingDown, TrendingUp } from 'lucide-react'
-import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
-import { FormTabStrip, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
+import { MessagesSquare, Paperclip } from 'lucide-react'
+import { Form } from '@/components/ui/form'
 import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
@@ -15,32 +13,18 @@ import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { NotesSection } from '@/features/notes/notes-section'
 import { QuoteDetailHeader, QuoteDetailStats } from '@/features/quotes/quote-detail-header'
+import { QuoteDetailLines } from '@/features/quotes/quote-detail-lines'
 import { QuoteDetailSections } from '@/features/quotes/quote-detail-sections'
-import { QuoteLinesReadOnlyList } from '@/features/quotes/quote-lines-read-only'
-import {
-  QuoteSummary,
-  totalsFromPersistedSummary,
-  typologyBucketsFromPersistedSummary,
-} from '@/features/quotes/quote-summary'
-import { round2 } from '@/features/quotes/quote-totals'
-import {
-  computeProductMargins,
-  costLinesFromPersistedCostLines,
-  productLinesFromPersistedOfferLines,
-} from '@/features/quotes/quote-product-margins-calc'
-import { QuoteProductMargins } from '@/features/quotes/quote-product-margins'
+import { useQuoteInlineEdit } from '@/features/quotes/use-quote-inline-edit'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
 
-const OFFER_TAB = 'offer'
-const COSTS_TAB = 'costs'
-
 interface QuoteDetailViewProps {
   quote: QuoteDetailWithPermissions
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the offer (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
@@ -105,156 +89,65 @@ function useCollaborationTabs(quote: QuoteDetailWithPermissions): RecordCollabor
 }
 
 /**
- * The record card's closing band (user directive: no card and no heading of its
- * own — the components sit directly in the record, and strip, rows and summary
- * share ONE band with no rule between them): the two line sets behind a tab
- * strip, then the persisted summary (`quote.summary`, D-9). No client
- * recomputation here, the server value is authoritative for an already-saved
- * quote. The summary sits inside `Tabs` but outside any `TabsContent`, so it
- * stays visible on both tabs — the same placement the form gives its live
- * preview. The strip stays controlled so it can hand the selection over to its
- * select fallback when the tabs no longer fit.
+ * Detail of a single offer (spec 0065), rendered as an enterprise-CRM record
+ * on the same `RecordCanvas` kit as `/opportunities/:id`: on the left ONE card
+ * carrying identity + KPI strip + titled sections and, as its closing band,
+ * the offer/cost rows with the persisted summary; the collaboration card
+ * (note, documenti, attivita') on the right; a metadata footer below.
+ * Container-query driven, so the same tree renders correctly both inside a
+ * resizable Sheet and on the full-bleed page.
+ *
+ * There is no edit page (spec 0197, the Commesse model): the sections' fields
+ * and the two line sets edit IN PLACE, one at a time (`RecordInlineField`,
+ * driven by `useQuoteInlineEdit`), each save a PATCH of that field alone.
  */
-function QuoteDetailLines({ quote }: { quote: QuoteDetailWithPermissions }) {
-  const { t } = useTranslation()
-  const [activeTab, setActiveTab] = useState(OFFER_TAB)
-  const totals = totalsFromPersistedSummary(quote.summary)
-  const showCommissions = quote.permissions.fields.commissions?.visible ?? true
-
-  // Spec 0144 AC-016: the cost list's own "Associated product" cell resolves
-  // an `offer_line_id` through this SAME offer's persisted revenue rows.
-  const offerLineLabelsById = useMemo(() => {
-    const labels: Record<number, string> = {}
-    quote.offer_lines.forEach((line, index) => {
-      labels[line.id] = t('quotes.form.costsTab.associatedProductOption', {
-        product: line.product.name,
-        n: index + 1,
-      })
-    })
-    return labels
-  }, [quote.offer_lines, t])
-
-  // Spec 0145 (D-1), revenue variant only: `offer_line_id -> imputed cost
-  // net`, feeding each row's own commissions dialog base (D-1/D-2).
-  const allocatedCostNetByOfferId = useMemo(() => {
-    const totals: Record<number, number> = {}
-    for (const cost of quote.cost_lines) {
-      if (cost.offer_line_id != null) {
-        totals[cost.offer_line_id] = round2((totals[cost.offer_line_id] ?? 0) + Number(cost.net_amount))
-      }
-    }
-    return totals
-  }, [quote.cost_lines])
-
-  // Spec 0144 AC-015: the detail's own "Margine per prodotto" block reads the
-  // CONGEALED `net_amount`s (D-9), never recomputed client-side. Spec 0145
-  // (D-9): the "Commissioni" column sums each row's persisted
-  // `calculated_amount`; the block itself is hidden without the SAME
-  // `showCommissions` field permission.
-  const productMargins = useMemo(
-    () =>
-      computeProductMargins(
-        productLinesFromPersistedOfferLines(quote.offer_lines),
-        costLinesFromPersistedCostLines(quote.cost_lines),
-      ),
-    [quote.offer_lines, quote.cost_lines],
-  )
-
+export function QuoteDetailView(props: QuoteDetailViewProps) {
+  // The edit form reads the field permissions while it is built, so the
+  // provider wraps the whole detail, not just the sections.
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-0">
-      {/* Strip, righe e riepilogo nella STESSA banda, senza filetti in mezzo
-          (direttiva utente): la strip etichetta la tabella che le sta sotto e
-          il riepilogo ne e' il totale — un filetto li staccherebbe da cio' che
-          descrivono. */}
-      <div className="flex min-w-0 flex-col gap-3 border-t p-4">
-        <FormTabStrip value={activeTab} onValueChange={setActiveTab}>
-          <TabsTrigger value={OFFER_TAB} className={FORM_TAB_TRIGGER_CLASS}>
-            <TrendingUp aria-hidden="true" />
-            {t('quotes.form.tabs.offer')}
-          </TabsTrigger>
-          <TabsTrigger value={COSTS_TAB} className={FORM_TAB_TRIGGER_CLASS}>
-            <TrendingDown aria-hidden="true" />
-            {t('quotes.form.tabs.costs')}
-          </TabsTrigger>
-        </FormTabStrip>
-        <TabsContent value={OFFER_TAB}>
-          <QuoteLinesReadOnlyList
-            lines={quote.offer_lines}
-            showCommissions={showCommissions}
-            allocatedCostNetById={allocatedCostNetByOfferId}
-          />
-        </TabsContent>
-        <TabsContent value={COSTS_TAB}>
-          <QuoteLinesReadOnlyList
-            lines={quote.cost_lines}
-            variant="cost"
-            offerLineLabelsById={offerLineLabelsById}
-          />
-        </TabsContent>
-        <QuoteSummary
-          totals={totals}
-          commissionTotals={{
-            commercial: Number(quote.summary.commissions?.commercial ?? 0),
-            reporter: Number(quote.summary.commissions?.reporter ?? 0),
-            supervisor: Number(quote.summary.commissions?.supervisor ?? 0),
-            supplier: Number(quote.summary.commissions?.supplier ?? 0),
-          }}
-          typologyBuckets={typologyBucketsFromPersistedSummary(quote.summary)}
-        />
-        <QuoteProductMargins
-          rows={productMargins.rows}
-          genericCostNet={productMargins.genericCostNet}
-          showCommissions={showCommissions}
-        />
-      </div>
-    </Tabs>
+    <ResourcePermissionsProvider permissions={props.quote.permissions}>
+      <QuoteDetailContent {...props} />
+    </ResourcePermissionsProvider>
   )
 }
 
-/**
- * Read-only detail of a single offer (spec 0065), rendered as an
- * enterprise-CRM record on the same `RecordCanvas` kit as
- * `/opportunities/:id`: on the left ONE card carrying identity + KPI strip +
- * titled sections and, as its closing band, the offer/cost rows with the
- * persisted summary; the collaboration card (note, attività) on the right; a
- * metadata footer below. Container-query driven, so the same tree renders
- * correctly both inside a resizable Sheet and on the full-bleed page.
- */
-export function QuoteDetailView({ quote, onEdit }: QuoteDetailViewProps) {
+function QuoteDetailContent({ quote, onChanged }: QuoteDetailViewProps) {
   const { t } = useTranslation()
+  const editor = useQuoteInlineEdit(quote, onChanged)
   const collaborationTabs = useCollaborationTabs(quote)
   const createdAt = formatDateTime(quote.created_at)
   const updatedAt = formatDateTime(quote.updated_at)
 
   return (
-    <ResourcePermissionsProvider permissions={quote.permissions}>
-      <RecordCanvas>
-        <RecordBody
-          side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
-        >
-          <RecordCard>
-            <QuoteDetailHeader quote={quote} onEdit={onEdit} />
-            <QuoteDetailStats quote={quote} />
-            <QuoteDetailSections quote={quote} />
-            <QuoteDetailLines quote={quote} />
-          </RecordCard>
-        </RecordBody>
+    <RecordCanvas>
+      <RecordBody
+        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+      >
+        <RecordCard>
+          <QuoteDetailHeader quote={quote} />
+          <QuoteDetailStats quote={quote} />
+          {/* Provider only (no DOM): the inline editors share the edit form. */}
+          <Form {...editor.form}>
+            <QuoteDetailSections quote={quote} editor={editor} />
+            <QuoteDetailLines quote={quote} editor={editor} />
+          </Form>
+        </RecordCard>
+      </RecordBody>
 
-        <RecordMeta>
-          {createdAt ? (
-            <span>
-              <span className="font-medium">{t('quotes.detail.createdAt')}</span>{' '}
-              <span aria-hidden="true">·</span> {createdAt}
-            </span>
-          ) : null}
-          {updatedAt ? (
-            <span>
-              <span className="font-medium">{t('quotes.detail.updatedAt')}</span>{' '}
-              <span aria-hidden="true">·</span> {updatedAt}
-            </span>
-          ) : null}
-        </RecordMeta>
-      </RecordCanvas>
-    </ResourcePermissionsProvider>
+      <RecordMeta>
+        {createdAt ? (
+          <span>
+            <span className="font-medium">{t('quotes.detail.createdAt')}</span>{' '}
+            <span aria-hidden="true">·</span> {createdAt}
+          </span>
+        ) : null}
+        {updatedAt ? (
+          <span>
+            <span className="font-medium">{t('quotes.detail.updatedAt')}</span>{' '}
+            <span aria-hidden="true">·</span> {updatedAt}
+          </span>
+        ) : null}
+      </RecordMeta>
+    </RecordCanvas>
   )
 }

@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { QuoteFormScreen } from '@/features/quotes/quote-screens'
 import type { ModuleFormScreenMode } from '@/features/modules/types'
-import type { QuoteFormMode } from '@/features/quotes/types'
+import type { QuoteCreateFormMode } from '@/features/quotes/types'
 
 /**
  * Spec 0067 AC-050/AC-053: `QuoteFormScreen`'s create branch must read
@@ -16,12 +16,9 @@ import type { QuoteFormMode } from '@/features/quotes/types'
  */
 
 vi.mock('@/features/quotes/quote-form', () => ({
-  QuoteForm: ({ mode }: { mode: QuoteFormMode }) => (
-    <p>
-      form ready, opportunity {mode.type === 'create' ? String(mode.params?.opportunity_id ?? 'none') : 'n/a'}
-    </p>
+  QuoteForm: ({ mode }: { mode: QuoteCreateFormMode }) => (
+    <p>form ready, opportunity {String(mode.params?.opportunity_id ?? 'none')}</p>
   ),
-  QuoteFormSkeleton: () => <p>loading</p>,
 }))
 
 function renderScreen(mode: ModuleFormScreenMode) {
@@ -50,5 +47,12 @@ describe('QuoteFormScreen create adapter (spec 0067)', () => {
     renderScreen({ type: 'create' })
 
     expect(screen.getByText('form ready, opportunity none')).toBeInTheDocument()
+  })
+
+  // Spec 0197: the detail edits in place, so there is no edit form to open.
+  it('renders no edit form', () => {
+    const { container } = renderScreen({ type: 'edit', id: 9 })
+
+    expect(container).toBeEmptyDOMElement()
   })
 })

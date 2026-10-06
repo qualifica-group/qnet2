@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next'
 import { Download, FileText, HandCoins, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Button } from '@/components/ui/button'
 import { WorkflowStatusBadge } from '@/features/quote-workflows/workflow-status-badge'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
@@ -21,21 +20,18 @@ const COMMISSION_ROLES = ['commercial', 'reporter', 'supervisor', 'supplier'] as
 
 interface QuoteDetailHeaderProps {
   quote: QuoteDetailWithPermissions
-  /** Opens the module's edit surface; absent = no edit affordance. */
-  onEdit?: () => void
 }
 
 /**
  * Identity band: monogram, title, code subtitle, working-status pill, and the
- * two record-level actions (generate the `.docx`, edit) pinned top-right —
- * where every other CRM record surface in this app puts them, instead of the
- * standalone action bar the previous layout kept under the hero.
+ * record-level action (generate the `.docx`) pinned top-right — where every
+ * other CRM record surface in this app puts them. There is no Edit button:
+ * the record edits in place, field by field (spec 0197).
  */
-export function QuoteDetailHeader({ quote, onEdit }: QuoteDetailHeaderProps) {
+export function QuoteDetailHeader({ quote }: QuoteDetailHeaderProps) {
   const { t } = useTranslation()
   const { generate: generateDocument, isGenerating } = useQuoteDocument()
   const canGenerateDocument = quote.permissions.actions.generate_document
-  const canEdit = quote.permissions.resource.update
   const generatingThisQuote = isGenerating(quote.id)
 
   return (
@@ -56,75 +52,70 @@ export function QuoteDetailHeader({ quote, onEdit }: QuoteDetailHeaderProps) {
         />
       }
       actions={
-        <>
-          {canGenerateDocument ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => void generateDocument(quote.id, quote.code)}
-              disabled={generatingThisQuote}
-            >
-              <Download aria-hidden="true" />
-              {generatingThisQuote ? t('quotes.detail.generatingDocument') : t('actions.generatePdf')}
-            </Button>
-          ) : null}
-          {canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
-        </>
+        canGenerateDocument ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => void generateDocument(quote.id, quote.code)}
+            disabled={generatingThisQuote}
+          >
+            <Download aria-hidden="true" />
+            {generatingThisQuote ? t('quotes.detail.generatingDocument') : t('actions.generatePdf')}
+          </Button>
+        ) : null
       }
     />
   )
 }
 
-interface QuoteDetailStatsProps {
-  quote: QuoteDetailWithPermissions
+interface QuoteStatsStripProps {
+  revenueNet: number
+  revenueGross: number
+  costNet: number
+  costGross: number
+  marginNet: number
+  /** The total commissioned amount; `null` hides the tile (no commissions visibility). */
+  commissionTotal: number | null
 }
 
 /**
- * KPI strip over the PERSISTED summary (D-9), never a client recomputation:
- * net revenue, net cost, net margin and the total commissioned amount — the
- * four numbers an operator scans before reading a single row. The per-role and
- * per-VAT breakdown stays in `QuoteSummary`, below the rows.
- *
- * The commission total is hidden entirely when the actor may not see
- * commissions, the same field gate the rows themselves honour.
+ * KPI strip of the offer record: net revenue, net cost, net margin and the
+ * total commissioned amount — the four numbers an operator scans before
+ * reading a single row. Pure render: the detail feeds the persisted summary
+ * (D-9), the create form the live totals of the lines being typed.
  */
-export function QuoteDetailStats({ quote }: QuoteDetailStatsProps) {
+export function QuoteStatsStrip({
+  revenueNet,
+  revenueGross,
+  costNet,
+  costGross,
+  marginNet,
+  commissionTotal,
+}: QuoteStatsStripProps) {
   const { t } = useTranslation()
-  const marginNet = Number(quote.summary.margin.net)
-  const showCommissions = quote.permissions.fields.commissions?.visible ?? true
-  const commissionTotal = COMMISSION_ROLES.reduce(
-    (total, role) => total + Number(quote.summary.commissions?.[role] ?? 0),
-    0,
-  )
 
   return (
     <RecordStatStrip>
       <RecordStat
         label={t('quotes.columns.revenueNet')}
         icon={<TrendingUp aria-hidden="true" />}
-        value={formatQuoteAmount(Number(quote.summary.revenue.net))}
-        hint={t('quotes.detail.stats.grossHint', {
-          amount: formatQuoteAmount(Number(quote.summary.revenue.gross)),
-        })}
+        value={formatQuoteAmount(revenueNet)}
+        hint={t('quotes.detail.stats.grossHint', { amount: formatQuoteAmount(revenueGross) })}
       />
       <RecordStat
         label={t('quotes.columns.costNet')}
         icon={<TrendingDown aria-hidden="true" />}
-        value={formatQuoteAmount(Number(quote.summary.cost.net))}
-        hint={t('quotes.detail.stats.grossHint', {
-          amount: formatQuoteAmount(Number(quote.summary.cost.gross)),
-        })}
+        value={formatQuoteAmount(costNet)}
+        hint={t('quotes.detail.stats.grossHint', { amount: formatQuoteAmount(costGross) })}
       />
       <RecordStat
         label={t('quotes.columns.marginNet')}
         icon={<Wallet aria-hidden="true" />}
-        value={
-          <span className={cn(marginNet < 0 && 'text-destructive')}>{formatQuoteAmount(marginNet)}</span>
-        }
+        value={<span className={cn(marginNet < 0 && 'text-destructive')}>{formatQuoteAmount(marginNet)}</span>}
         hint={t('quotes.form.summary.marginHint')}
       />
-      {showCommissions ? (
+      {commissionTotal !== null ? (
         <RecordStat
           label={t('quotes.detail.stats.commissions')}
           icon={<HandCoins aria-hidden="true" />}
@@ -132,5 +123,29 @@ export function QuoteDetailStats({ quote }: QuoteDetailStatsProps) {
         />
       ) : null}
     </RecordStatStrip>
+  )
+}
+
+/**
+ * The detail's KPI strip over the PERSISTED summary (D-9), never a client
+ * recomputation. The commission total is hidden entirely when the actor may
+ * not see commissions, the same field gate the rows themselves honour.
+ */
+export function QuoteDetailStats({ quote }: { quote: QuoteDetailWithPermissions }) {
+  const showCommissions = quote.permissions.fields.commissions?.visible ?? true
+  const commissionTotal = COMMISSION_ROLES.reduce(
+    (total, role) => total + Number(quote.summary.commissions?.[role] ?? 0),
+    0,
+  )
+
+  return (
+    <QuoteStatsStrip
+      revenueNet={Number(quote.summary.revenue.net)}
+      revenueGross={Number(quote.summary.revenue.gross)}
+      costNet={Number(quote.summary.cost.net)}
+      costGross={Number(quote.summary.cost.gross)}
+      marginNet={Number(quote.summary.margin.net)}
+      commissionTotal={showCommissions ? commissionTotal : null}
+    />
   )
 }

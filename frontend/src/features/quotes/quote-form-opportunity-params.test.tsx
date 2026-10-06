@@ -1,11 +1,12 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { QuoteFormBody } from '@/features/quotes/quote-form-body'
+import { clickCreateSave, openRow, queryPencil, rowValue } from '@/features/quotes/quote-test-helpers'
 import { createQuote } from '@/features/quotes/api'
 import type { OpportunityForSelectItem } from '@/features/opportunities/for-select-api'
 import type { ResourcePermissions } from '@/features/authorization/types'
@@ -94,10 +95,10 @@ function wrapper() {
   )
 }
 
-function renderForm(mode: Parameters<typeof QuoteFormBody>[0]['mode']) {
+function renderForm(mode: Parameters<typeof QuoteFormBody>[0]['mode'], initialCode = '') {
   render(
     <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-      <QuoteFormBody mode={mode} onSuccess={vi.fn()} onCancel={vi.fn()} initialCode="" />
+      <QuoteFormBody mode={mode} onSuccess={vi.fn()} onCancel={vi.fn()} initialCode={initialCode} />
     </ResourcePermissionsProvider>,
     { wrapper: wrapper() },
   )
@@ -121,27 +122,22 @@ beforeEach(() => {
 })
 
 describe('QuoteFormBody — Opportunity preset via create params (spec 0067)', () => {
-  it('AC-050/051: prefills the Opportunity with its name and locks the field', async () => {
+  it('AC-050/051: prefills the Opportunity with its name and locks the row', async () => {
     renderForm({ type: 'create', params: { opportunity_id: 55 } })
 
-    const opportunityField = screen.getByRole('combobox', { name: 'Opportunity' })
-    await waitFor(() => expect(opportunityField).toHaveTextContent('OPP_55'))
-    expect(opportunityField).toBeDisabled()
+    await waitFor(() => expect(rowValue('Opportunity')).toContain('OPP_55'))
+    expect(queryPencil('Opportunity')).not.toBeInTheDocument()
   })
 
   it('AC-051: the create payload carries the forced opportunity_id', async () => {
-    renderForm({ type: 'create', params: { opportunity_id: 55, product_ids: String(SEEDED_PRODUCT_ITEM.id) } })
+    renderForm({ type: 'create', params: { opportunity_id: 55, product_ids: String(SEEDED_PRODUCT_ITEM.id) } }, 'QUO-0001')
 
-    fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'QUO-0001' } })
-    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Quote for OPP_55' } })
-    await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Opportunity' })).toHaveTextContent('OPP_55'),
-    )
+    await waitFor(() => expect(rowValue('Opportunity')).toContain('OPP_55'))
     // Spec 0102 AC-001: wait for the deep-link seeded row before submitting,
     // or the create schema rejects on an empty `offer_lines` (AC-040).
     await waitFor(() => expect(screen.getByLabelText('Row 1 quantity')).toHaveValue(1))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    clickCreateSave()
 
     await waitFor(() => expect(createQuote).toHaveBeenCalled())
     expect(vi.mocked(createQuote).mock.calls[0][0]).toMatchObject({ opportunity_id: 55 })
@@ -150,19 +146,19 @@ describe('QuoteFormBody — Opportunity preset via create params (spec 0067)', (
   it('AC-052: the three commercial roles are precompiled from the forced Opportunity meta', async () => {
     renderForm({ type: 'create', params: { opportunity_id: 55 } })
 
-    await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Commercial' })).toHaveTextContent('Sara Conti'),
-    )
-    expect(screen.getByRole('combobox', { name: 'Reporter' })).toHaveTextContent('Elio Fabbri')
-    expect(screen.getByRole('combobox', { name: 'Supervisor' })).toHaveTextContent('Ivo Bianchi')
+    await waitFor(() => expect(rowValue('Commercial')).toContain('Sara Conti'))
+    expect(rowValue('Reporter')).toContain('Elio Fabbri')
+    expect(rowValue('Supervisor')).toContain('Ivo Bianchi')
   })
 
-  it('AC-053: with no params, the Opportunity field stays empty and enabled', async () => {
+  it('AC-053: with no params, the Opportunity row stays empty and editable', async () => {
     renderForm({ type: 'create' })
 
+    expect(queryPencil('Opportunity')).toBeInTheDocument()
+    openRow('Opportunity')
     const opportunityField = screen.getByRole('combobox', { name: 'Opportunity' })
     expect(opportunityField).not.toBeDisabled()
     expect(opportunityField).toHaveTextContent('Select…')
-    expect(screen.getByRole('combobox', { name: 'Commercial' })).toHaveTextContent('Select…')
+    expect(rowValue('Commercial')).not.toContain('Sara Conti')
   })
 })

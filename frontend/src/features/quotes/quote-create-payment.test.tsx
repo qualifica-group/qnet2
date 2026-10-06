@@ -1,5 +1,4 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -7,16 +6,17 @@ import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { QuoteFormBody } from '@/features/quotes/quote-form-body'
-import { createQuote, updateQuote } from '@/features/quotes/api'
+import { clickCreateSave, openRow } from '@/features/quotes/quote-test-helpers'
+import { createQuote } from '@/features/quotes/api'
 import type { ResourcePermissions } from '@/features/authorization/types'
-import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
 
 /**
- * Directive 2026-07-30: the "Note" tab became "Note e pagamenti" and hosts a
- * payment method picker fed by the `payment-methods` for-select, persisted on
- * the quote as `payment_method_id`. Renders the real `AsyncPaginatedSelect`
- * (not stubbed), only the HTTP layer is mocked — mirrors
- * `quote-layout-section.test.tsx`.
+ * Directive 2026-07-30: the payment method picker fed by the
+ * `payment-methods` for-select, persisted on the quote as
+ * `payment_method_id` — since spec 0197 a row of the create draft's
+ * "Documento e pagamento" section, next to which the internal notes have their
+ * own full-width row. Renders the real `AsyncPaginatedSelect` (not stubbed),
+ * only the HTTP layer is mocked.
  */
 
 vi.mock('@/features/quotes/api', async () => {
@@ -95,59 +95,6 @@ function wrapper() {
   )
 }
 
-function quoteFixture(overrides: Partial<QuoteDetailWithPermissions> = {}): QuoteDetailWithPermissions {
-  return {
-    id: 9,
-    code: 'QUO-0009',
-    title: 'Sample quote',
-    opportunity_id: 55,
-    opportunity: { id: 55, name: 'OPP_55' },
-    quote_workflow_status_id: 1,
-    quote_workflow_status: WORKFLOW_STATUS_OPEN,
-    quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
-    applicable_attributes: [],
-    attribute_layout: null,
-    commercial_id: null,
-    commercial: null,
-    reporter_id: null,
-    reporter: null,
-    supervisor_id: null,
-    supervisor: null,
-    company_id: null,
-    company: null,
-    company_site_id: null,
-    company_site: null,
-    operational_site_id: null,
-    operational_site: null,
-    layout_id: null,
-    layout: null,
-    payment_method_id: null,
-    payment_method: null,
-    internal_notes: null,
-    attribute_values: {},
-    offer_lines: [],
-    cost_lines: [],
-    summary: {
-      revenue: { net: '0.00', vat: '0.00', gross: '0.00' },
-      cost: { net: '0.00', vat: '0.00', gross: '0.00' },
-      margin: { net: '0.00' },
-    product_typologies: [],
-    },
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z',
-    permissions: FULL_ACCESS_PERMISSIONS,
-    ...overrides,
-  }
-}
-
-/**
- * Opens the renamed tab; the picker lives inside its (lazily rendered)
- * content. Radix activates a tab on mousedown, not click.
- */
-function openNotesTab() {
-  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Notes and payments' }))
-}
-
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
@@ -158,23 +105,23 @@ beforeEach(() => {
   // Reset the submit spies too: every assertion below reads `mock.calls[0]`,
   // which would otherwise be the previous test's submit.
   vi.mocked(createQuote).mockReset()
-  vi.mocked(updateQuote).mockReset()
 })
 
-describe('QuoteNotesTab — create mode', () => {
-  it('renames the tab to cover payments and exposes the payment method picker', () => {
+describe('Quote create form — payment method and internal notes', () => {
+  it('offers the payment method and the internal notes as rows of the draft', () => {
     servePaymentMethods()
 
     render(
       <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-        <QuoteFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} initialCode="" />
+        <QuoteFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} initialCode="QUO-0001" />
       </ResourcePermissionsProvider>,
       { wrapper: wrapper() },
     )
 
-    openNotesTab()
-
+    openRow('Payment method')
     expect(screen.getByRole('combobox', { name: 'Payment method' })).toBeInTheDocument()
+
+    openRow('Internal notes')
     expect(screen.getByLabelText('Internal notes')).toBeInTheDocument()
   })
 
@@ -187,18 +134,17 @@ describe('QuoteNotesTab — create mode', () => {
           mode={{ type: 'create', params: { opportunity_id: 55, product_ids: String(SEEDED_PRODUCT_ITEM.id) } }}
           onSuccess={vi.fn()}
           onCancel={vi.fn()}
-          initialCode=""
+          initialCode="QUO-0001"
         />
       </ResourcePermissionsProvider>,
       { wrapper: wrapper() },
     )
 
-    // Spec 0102 AC-001: wait for the deep-link seeded row (visible on the
-    // default-active Offer tab) before switching away, or the create schema
-    // rejects on an empty `offer_lines` (AC-040).
+    // Spec 0102 AC-001: wait for the deep-link seeded row before saving, or
+    // the create schema rejects on an empty `offer_lines` (AC-040).
     await waitFor(() => expect(screen.getByLabelText('Row 1 quantity')).toHaveValue(1))
 
-    openNotesTab()
+    openRow('Payment method')
     fireEvent.click(screen.getByRole('combobox', { name: 'Payment method' }))
     fireEvent.click(await screen.findByRole('option', { name: 'Bonifico 30gg' }))
 
@@ -206,9 +152,7 @@ describe('QuoteNotesTab — create mode', () => {
       expect(screen.getByRole('combobox', { name: 'Payment method' })).toHaveTextContent('Bonifico 30gg'),
     )
 
-    fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'QUO-0001' } })
-    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Quote with payment' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    clickCreateSave()
 
     await waitFor(() => expect(createQuote).toHaveBeenCalled())
     expect(vi.mocked(createQuote).mock.calls[0][0]).toMatchObject({ payment_method_id: 7 })
@@ -223,7 +167,7 @@ describe('QuoteNotesTab — create mode', () => {
           mode={{ type: 'create', params: { opportunity_id: 55, product_ids: String(SEEDED_PRODUCT_ITEM.id) } }}
           onSuccess={vi.fn()}
           onCancel={vi.fn()}
-          initialCode=""
+          initialCode="QUO-0001"
         />
       </ResourcePermissionsProvider>,
       { wrapper: wrapper() },
@@ -233,46 +177,9 @@ describe('QuoteNotesTab — create mode', () => {
     // or the create schema rejects on an empty `offer_lines` (AC-040).
     await waitFor(() => expect(screen.getByLabelText('Row 1 quantity')).toHaveValue(1))
 
-    fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'QUO-0002' } })
-    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Quote without payment' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    clickCreateSave()
 
     await waitFor(() => expect(createQuote).toHaveBeenCalled())
     expect(vi.mocked(createQuote).mock.calls[0][0]).toMatchObject({ payment_method_id: null })
-  })
-})
-
-describe('QuoteNotesTab — edit mode', () => {
-  it('shows the persisted payment method straight off the loaded quote', () => {
-    const quote = quoteFixture({ payment_method_id: 7, payment_method: { id: 7, name: 'Bonifico 30gg' } })
-
-    render(
-      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-        <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
-      </ResourcePermissionsProvider>,
-      { wrapper: wrapper() },
-    )
-
-    openNotesTab()
-
-    expect(screen.getByRole('combobox', { name: 'Payment method' })).toHaveTextContent('Bonifico 30gg')
-  })
-
-  it('omits payment_method_id from the PATCH payload when it did not change', async () => {
-    servePaymentMethods()
-    const quote = quoteFixture({ payment_method_id: 7, payment_method: { id: 7, name: 'Bonifico 30gg' } })
-
-    render(
-      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-        <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
-      </ResourcePermissionsProvider>,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Renamed quote' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateQuote).toHaveBeenCalled())
-    expect(vi.mocked(updateQuote).mock.calls[0][1]).not.toHaveProperty('payment_method_id')
   })
 })

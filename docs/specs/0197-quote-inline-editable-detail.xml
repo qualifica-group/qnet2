@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0197-quote-inline-editable-detail" status="approved" owner="utente" date="2026-10-06">
+
+  <goal>
+    L'Offerta riceve le stesse modifiche della Commessa (spec 0196) e del Task (spec 0195): niente pagina di
+    modifica, il dettaglio (`/quotes/:id` e lo stesso schermo nel pannello modale) si edita in place campo per
+    campo, campi flessibili ("Informazioni aggiuntive") compresi; la creazione e' una replica del dettaglio a
+    righe chiuse.
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-06, "prendi offerte e fai le stesse modifiche di commesse ... soprattutto per i campi
+      flessibili. Anche per creazione"): regole 0195 D-2/D-2a/D-3/D-4/D-7/D-8/D-9 e 0196 D-2/D-4 applicate alle
+      Offerte, coi componenti condivisi (`RecordInlineField`, `useDraftInlineEdit`, `useFormLeaveGuard`).
+    - D-2: ogni Attributo applicabile e' una riga del layout di dettaglio (`attribute_view_layout`, come prima), gate unico `attribute_values`, editor `AttributeLayoutField`. PATCH con la mappa intera.
+    - D-3: righe non editabili: `code` e `opportunity_id` (ceiling backend, solo creazione). Anagrafica, Referente,
+      Fonte, Funzioni/categorie e Note generali restano proiezioni read-only dell'Opportunita'. I buoni si editano
+      nell'editor del Segnalatore (dove gia' stavano nel form); la sezione Buoni resta read-only.
+    - D-4: lo Stato e' una riga (badge come valore) il cui editor porta la Nota di transizione quando richiesta.
+      Le Righe offerta e le Righe costo sono due righe a tutta larghezza nella banda finale (tab Offerta/Costi);
+      aprendone una il riepilogo diventa quello live. L'editor delle Righe offerta mostra sotto la griglia gli
+      Attributi che i nuovi prodotti portano (stesso PATCH). Finche' i prodotti sono quelli salvati il set viene
+      dall'offerta, senza `POST /quotes/form-context`.
+    - D-5: cambio Commerciale/Segnalatore/Supervisore = PATCH del solo ruolo: il backend risincronizza da se'
+      le provvigioni delle righe (`QuoteService::update`) e ritarga i buoni al nuovo Segnalatore.
+    - D-6: creazione = replica del dettaglio: header (monogramma + titolo/codice live, Annulla/Salva), striscia
+      KPI live, sezioni a righe chiuse (Fatto/Ripristina), banda righe con le griglie Offerta/Costi APERTE (sono
+      editor tabellari, non campi) e il riepilogo live. Le righe chiuse nominano gli id via `useForSelectLabels`
+      (i ruoli ereditati dall'Opportunita' col nome del suo `meta`). Restano: eredita' ruoli/sede/G.A.
+      dall'Opportunita', Opportunita' forzata da `params`, prodotti seminati da `product_ids`, layout predefinito.
+      Uscita senza salvare con conferma.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica: PATCH /api/quotes/{id} parziale esistente (gia' con `permissions` nell'envelope).</backend>
+    <frontend>
+      Registry `quotes`: `generateEditRoute: false`. `QuoteDetailView` perde `onEdit`, guadagna `onChanged`.
+      `QuoteForm`/`QuoteFormBody` solo creazione (`QuoteCreateFormMode`); il ramo edit di `QuoteFormMode` resta
+      per `useQuoteForm`, usato dal dettaglio (`useQuoteInlineEdit`). `updateQuote` restituisce
+      `QuoteDetailWithPermissions`. `QuoteWorkflowStatusField` (usato da Gestione Richieste) invariato, i suoi
+      controlli estratti in `QuoteWorkflowStatusControls`.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/quotes/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su un campo editabile: Salva invia il solo campo cambiato; Annulla/Esc/clic fuori non chiamano.</ac>
+    <ac id="AC-003">Ogni Attributo e' una riga editabile nel suo layout; senza permesso `attribute_values` nessuna matita.</ac>
+    <ac id="AC-004">Stato: la Nota compare e viaggia solo se lo stato di destinazione la richiede.</ac>
+    <ac id="AC-005">Righe offerta/costo editabili dal dettaglio; nuovi Attributi compilabili nello stesso salvataggio.</ac>
+    <ac id="AC-006">Creazione: righe chiuse, Fatto/Ripristina, Salva valida tutto (nessun POST se invalido), uscita con conferma;
+      eredita' dall'Opportunita', Opportunita' forzata, prodotti seminati e layout predefinito invariati.</ac>
+    <ac id="AC-007">Guida in-app IT/EN `quotes` aggiornata (modifica, stato, creazione).</ac>
+  </acceptance>
+</spec>

@@ -58,6 +58,9 @@ export const quotes = {
     layout: 'Layout',
     paymentMethod: 'Payment method',
     rewards: 'Rewards',
+    rewardsCount_one: '{{count}} reward assigned',
+    rewardsCount_other: '{{count}} rewards assigned',
+    newAttributes: 'Additional information brought by the new products',
     createdAt: 'Created at',
     updatedAt: 'Updated at',
     linesEmpty: 'No rows yet.',
@@ -82,8 +85,6 @@ export const quotes = {
     newQuote: 'New quote',
     createTitle: 'Create quote',
     createSubtitle: 'Add a new quote linked to an opportunity.',
-    editTitle: 'Edit quote',
-    editSubtitle: 'Update the selected quote.',
     forbidden: "You don't have permission for this action.",
     code: 'Code',
     codePlaceholder: 'Leave blank to auto-generate it',
@@ -149,6 +150,12 @@ export const quotes = {
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The quote has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     created: 'Quote created successfully.',
     updated: 'Quote updated successfully.',
     deleted: 'Quote deleted successfully.',
@@ -162,19 +169,12 @@ export const quotes = {
       },
       identity: {
         title: 'Quote',
-        description: 'Code, title, linked opportunity and commercial team.',
       },
       team: {
         title: 'Team',
-        description: 'Supervisor and account managers for this quote.',
       },
       sites: {
         title: 'Company and sites',
-        description: 'Issuing company and site, plus the reference operational site.',
-      },
-      layout: {
-        title: 'Document layout',
-        description: 'Layout used to generate the quote document.',
       },
       workflowStatus: {
         title: 'Status',
@@ -184,19 +184,10 @@ export const quotes = {
         title: 'Offer',
         description: "Revenue rows expected from the quote.",
       },
-      costs: {
-        title: 'Costs',
-        description: 'Cost rows expected from the quote.',
-      },
-      notes: {
-        title: 'Notes and payments',
-        description: 'Agreed payment method plus internal remarks, never shown to the customer.',
-      },
     },
     tabs: {
       offer: 'Offer',
       costs: 'Costs',
-      notes: 'Notes and payments',
       tabHasErrors: 'This section has errors',
     },
     offerTab: {

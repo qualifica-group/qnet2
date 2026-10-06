@@ -1,5 +1,4 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -7,14 +6,17 @@ import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { QuoteFormBody } from '@/features/quotes/quote-form-body'
-import { fetchQuoteFormContext, updateQuote } from '@/features/quotes/api'
-import type { ApplicableAttributeSummary, QuoteDetailWithPermissions, QuoteLine } from '@/features/quotes/types'
+import { createQuote, fetchQuoteFormContext } from '@/features/quotes/api'
+import { clickCreateSave, openRow, pressRowButton, queryPencil, rowValue } from '@/features/quotes/quote-test-helpers'
+import type { ApplicableAttributeSummary } from '@/features/quotes/types'
 import type { FieldPermission, ResourcePermissions } from '@/features/authorization/types'
 
 /**
- * Spec 0065: AC-070 (tabs + always-visible summary), AC-077 (a field marked
- * non-editable by permissions renders disabled via `MetaField`), AC-082 (the
- * `code` field is prefilled in create and read-only in edit).
+ * The create form as a replica of the quote detail (spec 0197 D-6): closed
+ * rows that open on their pencil, Done/Revert on the draft, the Offerta/Costi
+ * grids open with the summary always visible (spec 0065 AC-070), a field
+ * marked non-editable by permissions offering no pencil (AC-077), the `code`
+ * prefilled (AC-082), and Save validating the whole draft.
  */
 
 vi.mock('@/features/quotes/api', async () => {
@@ -67,69 +69,6 @@ const READONLY_FIELD: FieldPermission = {
   disabled: true,
 }
 
-function quoteFixture(): QuoteDetailWithPermissions {
-  return {
-    id: 9,
-    code: 'QUO-0009',
-    title: 'Sample quote',
-    opportunity_id: 55,
-    opportunity: { id: 55, name: 'OPP_55' },
-    quote_workflow_status_id: 1,
-    quote_workflow_status: WORKFLOW_STATUS_OPEN,
-    quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
-    applicable_attributes: [],
-    attribute_layout: null,
-    commercial_id: null,
-    commercial: null,
-    reporter_id: null,
-    reporter: null,
-    supervisor_id: null,
-    supervisor: null,
-    company_id: null,
-    company: null,
-    company_site_id: null,
-    company_site: null,
-    operational_site_id: null,
-    operational_site: null,
-    layout_id: null,
-    layout: null,
-    payment_method_id: null,
-    payment_method: null,
-    internal_notes: null,
-    attribute_values: {},
-    offer_lines: [],
-    cost_lines: [],
-    summary: {
-      revenue: { net: '0.00', vat: '0.00', gross: '0.00' },
-      cost: { net: '0.00', vat: '0.00', gross: '0.00' },
-      margin: { net: '0.00' },
-    product_typologies: [],
-    },
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z',
-    permissions: FULL_ACCESS_PERMISSIONS,
-  }
-}
-
-/** A persisted offer line carrying a product: the trigger of the dynamic-fields resolution (spec 0084 D-5). */
-function offerLineFixture(): QuoteLine {
-  return {
-    id: 1,
-    product_id: 7,
-    product: { id: 7, name: 'Product 7', code: 'P7', category: null, product_typology: null, business_function: null },
-    quantity: '1.00',
-    unit_of_measure: null,
-    additional_description: null,
-    unit_price: '100.00',
-    vat_rate_id: null,
-    vat_rate: null,
-    net_amount: '100.00',
-    vat_amount: '0.00',
-    total_amount: '100.00',
-    sort_order: 0,
-  }
-}
-
 /** One applicable Attribute, NOT required: nothing on it may block the save. */
 function attributeFixture(type: string, code: string): ApplicableAttributeSummary {
   return {
@@ -172,23 +111,28 @@ beforeEach(() => {
   // Idem per la mutation: senza azzerarla, un `toHaveBeenCalledTimes(1)` passa
   // per merito della chiamata del test precedente e l'asserzione non verifica
   // piu' nulla.
-  vi.mocked(updateQuote).mockReset()
+  vi.mocked(createQuote).mockReset()
 })
 
-describe('QuoteFormBody (spec 0065)', () => {
-  it('shows the three tabs and keeps the economic summary visible below them regardless of the active tab (AC-070)', () => {
-    render(
-      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-        <QuoteFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} initialCode="" />
-      </ResourcePermissionsProvider>,
-      { wrapper: wrapper() },
-    )
+function renderCreate(permissions: ResourcePermissions = FULL_ACCESS_PERMISSIONS, initialCode = 'QUO-0007') {
+  const onSuccess = vi.fn()
+  render(
+    <ResourcePermissionsProvider permissions={permissions}>
+      <QuoteFormBody mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} initialCode={initialCode} />
+    </ResourcePermissionsProvider>,
+    { wrapper: wrapper() },
+  )
+  return { onSuccess }
+}
+
+describe('QuoteFormBody — the detail replica (spec 0197)', () => {
+  it('shows the Offer/Costs strip with its grids open and the summary visible on both tabs (AC-070)', () => {
+    renderCreate()
 
     expect(screen.getByRole('tab', { name: 'Offer' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Costs' })).toBeInTheDocument()
-    // Renamed by the 2026-07-30 directive: the tab now also hosts the payment
-    // method picker, so it is "Notes and payments"/"Note e pagamenti".
-    expect(screen.getByRole('tab', { name: 'Notes and payments' })).toBeInTheDocument()
+    // The grid is an editor of its own: open, on its single empty row (directive 2026-09-01).
+    expect(screen.getByLabelText('Row 1 quantity')).toBeInTheDocument()
     expect(screen.getByText('Expected revenue')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('tab', { name: 'Costs' }))
@@ -196,266 +140,138 @@ describe('QuoteFormBody (spec 0065)', () => {
     expect(screen.getByText('Expected revenue')).toBeInTheDocument()
   })
 
-  it('prefills the code field with the suggested sequential code in create mode, editable (AC-082)', () => {
-    render(
-      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-        <QuoteFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} initialCode="QUO-0007" />
-      </ResourcePermissionsProvider>,
-      { wrapper: wrapper() },
-    )
+  it('opens every field row closed, the code prefilled with the suggestion (AC-082)', () => {
+    renderCreate()
+
+    expect(rowValue('Code')).toBe('QUO-0007')
+    expect(screen.queryByRole('combobox', { name: 'Commercial' })).not.toBeInTheDocument()
+
+    openRow('Code')
 
     const codeInput = screen.getByLabelText('Code') as HTMLInputElement
     expect(codeInput.value).toBe('QUO-0007')
     expect(codeInput).not.toBeDisabled()
   })
 
-  it('shows the persisted code read-only in edit mode, without requesting a next-code (AC-082)', () => {
-    const quote = quoteFixture()
-    const editPermissions: ResourcePermissions = {
-      ...FULL_ACCESS_PERMISSIONS,
-      fields: { code: READONLY_FIELD },
-    }
+  it('offers no pencil on a field the permissions mark non-editable (AC-077)', () => {
+    renderCreate({ ...FULL_ACCESS_PERMISSIONS, fields: { commercial_id: READONLY_FIELD } })
 
-    render(
-      <ResourcePermissionsProvider permissions={editPermissions}>
-        <QuoteFormBody mode={{ type: 'edit', quote: { ...quote, permissions: editPermissions } }} onSuccess={vi.fn()} onCancel={vi.fn()} />
-      </ResourcePermissionsProvider>,
-      { wrapper: wrapper() },
-    )
-
-    const codeInput = screen.getByLabelText('Code') as HTMLInputElement
-    expect(codeInput.value).toBe('QUO-0009')
-    expect(codeInput).toBeDisabled()
+    expect(queryPencil('Commercial')).not.toBeInTheDocument()
+    expect(queryPencil('Reporter')).toBeInTheDocument()
   })
 
-  it('disables a field the permissions mark non-editable, via MetaField (AC-077)', () => {
-    const permissions: ResourcePermissions = {
-      ...FULL_ACCESS_PERMISSIONS,
-      fields: { commercial_id: READONLY_FIELD },
-    }
+  it('keeps a value on Done and restores the draft on Revert, without saving anything', () => {
+    renderCreate()
 
-    render(
-      <ResourcePermissionsProvider permissions={permissions}>
-        <QuoteFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} initialCode="" />
-      </ResourcePermissionsProvider>,
-      { wrapper: wrapper() },
-    )
+    openRow('Title')
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Fornitura annuale' } })
+    pressRowButton('Done')
+    expect(rowValue('Title')).toBe('Fornitura annuale')
 
-    expect(screen.getByRole('combobox', { name: 'Commercial' })).toBeDisabled()
+    openRow('Title')
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Altro titolo' } })
+    pressRowButton('Revert')
+    expect(rowValue('Title')).toBe('Fornitura annuale')
+    expect(vi.mocked(createQuote)).not.toHaveBeenCalled()
   })
 
-  // Spec 0084 D-5 regression: the applicable set arrives AFTER the form is
-  // built, so a quote saved before an Attribute was configured (or simply left
-  // blank) has no key for it in `attribute_values`. Without seeding one per
-  // applicable `code`, the rebuilt Zod object rejects the missing keys and
-  // `handleSubmit` aborts with errors on fields the operator never touched —
-  // the save button visibly does nothing.
-  it('saves in edit mode when the resolved attributes have no stored value yet', async () => {
-    const quote = quoteFixture()
-    quote.offer_lines = [offerLineFixture()]
-    vi.mocked(fetchQuoteFormContext).mockResolvedValue({
-      applicable_attributes: [attributeFixture('text', 'colour'), attributeFixture('boolean', 'urgent')],
-      attribute_layout: null,
-    })
-    vi.mocked(updateQuote).mockResolvedValue(quote)
+  it('validates the whole draft on Save: no request, the error under its closed row', async () => {
+    renderCreate()
 
-    render(
-      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-        <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
-      </ResourcePermissionsProvider>,
-      { wrapper: wrapper() },
-    )
+    clickCreateSave()
 
-    await screen.findByLabelText('colour')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(1))
-  })
-
-  // Regressione 2026-08-06: un'offerta senza alcun valore dinamico salvato
-  // arriva con `attribute_values` serializzato come ARRAY vuoto (`[]`, la
-  // resa JSON di un array PHP vuoto), non come mappa. Lo Zod `z.object` lo
-  // rifiuta, l'errore cade su `attribute_values` — che nessun input rende — e
-  // `handleSubmit` aborta: il pulsante Salva non fa nulla. La seed non lo
-  // ripara, perche' con set applicabile vuoto produce `{}` e
-  // `setValue(name, {})` di RHF non ha chiavi su cui ricorrere.
-  it('saves in edit mode when the stored attribute map arrives as an empty array', async () => {
-    const quote = quoteFixture()
-    quote.offer_lines = [offerLineFixture()]
-    quote.attribute_values = [] as unknown as typeof quote.attribute_values
-    vi.mocked(fetchQuoteFormContext).mockResolvedValue({
-      applicable_attributes: [],
-      attribute_layout: null,
-    })
-    vi.mocked(updateQuote).mockResolvedValue(quote)
-
-    render(
-      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-        <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
-      </ResourcePermissionsProvider>,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Nuovo titolo' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText('Opportunity is required.')).toBeInTheDocument()
+    expect(vi.mocked(createQuote)).not.toHaveBeenCalled()
   })
 
   // Spec 0084 D-5 (direttiva utente 2026-08-06): l'innesco della sezione e' la
   // SCELTA DEL PRODOTTO. Senza prodotto non c'e' categoria, quindi nessun
-  // attributo: la sezione non deve esistere affatto. Un placeholder "nessun
-  // campo aggiuntivo" sotto i totali di un'offerta appena aperta si legge come
-  // un difetto, non come un'informazione.
-  it('does not render the additional-information section until a product is picked (AC-034)', async () => {
-    const quote = quoteFixture()
-    quote.offer_lines = []
+  // attributo: la sezione non deve esistere, e nemmeno l'endpoint viene
+  // interrogato (AC-034).
+  it('does not render the additional-information section until a product is picked (AC-034)', () => {
     vi.mocked(fetchQuoteFormContext).mockResolvedValue({
       applicable_attributes: [attributeFixture('text', 'colour')],
       attribute_layout: null,
     })
 
-    render(
-      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-        <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
-      </ResourcePermissionsProvider>,
-      { wrapper: wrapper() },
-    )
+    renderCreate()
 
-    await screen.findByRole('button', { name: 'Save' })
-
-    expect(
-      screen.queryByText(/Informazioni aggiuntive|Additional information/),
-    ).not.toBeInTheDocument()
-    // E nemmeno l'endpoint viene interrogato: senza prodotti non c'e' nulla da
-    // risolvere, e chiamarlo costerebbe un round trip per un set vuoto.
+    expect(screen.queryByText('Additional information')).not.toBeInTheDocument()
     expect(vi.mocked(fetchQuoteFormContext)).not.toHaveBeenCalled()
   })
+})
 
-  // AC-035: con un prodotto scelto la catena prodotto -> categoria -> attributi
-  // si risolve e la sezione compare, SENZA che l'offerta sia salvata.
-  it('resolves and shows the section once an offer line carries a product (AC-035)', async () => {
-    const quote = quoteFixture()
-    quote.offer_lines = [offerLineFixture()]
-    vi.mocked(fetchQuoteFormContext).mockResolvedValue({
-      applicable_attributes: [attributeFixture('text', 'colour')],
-      attribute_layout: null,
-    })
+describe('QuoteFormBody — manager promotion dialog (spec 0087 D-6)', () => {
+  function membershipError(message: string) {
+    return { isAxiosError: true, response: { status: 422, data: { errors: { manager_slots: [message] } } } }
+  }
 
+  /** A draft the create schema accepts: an Opportunita' and one priced product row. */
+  function fillValidDraft() {
+    fetchForSelectMock.mockImplementation((resource: string) =>
+      Promise.resolve(
+        resource === 'opportunities'
+          ? { ...EMPTY_PAGE, items: [{ id: 55, label: 'OPP_55', meta: null }] }
+          : resource === 'products'
+            ? { ...EMPTY_PAGE, items: [{ id: 7, label: 'Product 7', meta: { code: 'P7', price: '100.00', cost: null, vat_rate_id: null, vat_rate_name: null, vat_rate: null } }] }
+            : EMPTY_PAGE,
+      ),
+    )
+  }
+
+  it('asks for confirmation and retries with the promote flag when accepted (AC-005)', async () => {
+    fillValidDraft()
+    vi.mocked(createQuote)
+      .mockRejectedValueOnce(membershipError('Anna Bianchi is not yet an account manager of the opportunity.'))
+      .mockResolvedValueOnce({ id: 9 } as never)
     render(
       <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-        <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
+        <QuoteFormBody
+          mode={{ type: 'create', params: { opportunity_id: 55, product_ids: '7' } }}
+          onSuccess={vi.fn()}
+          onCancel={vi.fn()}
+          initialCode="QUO-0007"
+        />
       </ResourcePermissionsProvider>,
       { wrapper: wrapper() },
     )
+    await waitFor(() => expect(screen.getByLabelText('Row 1 quantity')).toHaveValue(1))
 
-    expect(await screen.findByLabelText('colour')).toBeInTheDocument()
-    expect(vi.mocked(fetchQuoteFormContext)).toHaveBeenCalledWith([offerLineFixture().product_id])
+    clickCreateSave()
+
+    const dialog = await screen.findByRole('alertdialog')
+    expect(within(dialog).getByText('Anna Bianchi is not yet an account manager of the opportunity.')).toBeInTheDocument()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add and save' }))
+
+    await waitFor(() => expect(vi.mocked(createQuote)).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(createQuote).mock.calls[1][0]).toMatchObject({ promote_managers_to_opportunity: true })
   })
 
-  // AC-036: la sezione sta SOTTO il blocco dei tab righe (quindi sotto Costi) e
-  // SOPRA il riepilogo economico. Verificato sull'ordine nel DOM, non
-  // sull'aspetto: e' l'unica proprieta' oggettiva della richiesta.
-  it('renders the section below the line tabs and above the economic summary (AC-036)', async () => {
-    const quote = quoteFixture()
-    quote.offer_lines = [offerLineFixture()]
-    vi.mocked(fetchQuoteFormContext).mockResolvedValue({
-      applicable_attributes: [attributeFixture('text', 'colour')],
-      attribute_layout: null,
-    })
-
+  it('cancels the save outright on decline, without retrying (user directive 2026-08-31)', async () => {
+    fillValidDraft()
+    vi.mocked(createQuote).mockRejectedValue(membershipError('Anna Bianchi is not yet an account manager of the opportunity.'))
+    const onSuccess = vi.fn()
     render(
       <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-        <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
+        <QuoteFormBody
+          mode={{ type: 'create', params: { opportunity_id: 55, product_ids: '7' } }}
+          onSuccess={onSuccess}
+          onCancel={vi.fn()}
+          initialCode="QUO-0007"
+        />
       </ResourcePermissionsProvider>,
       { wrapper: wrapper() },
     )
+    await waitFor(() => expect(screen.getByLabelText('Row 1 quantity')).toHaveValue(1))
 
-    const section = await screen.findByText(/Informazioni aggiuntive|Additional information/)
-    const costsTab = screen.getByRole('tab', { name: /Costi|Costs/ })
-    const summary = screen.getByText(/Ricavi attesi|Expected revenue/)
+    clickCreateSave()
 
-    expect(costsTab.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(section.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  })
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
 
-  // Spec 0087 D-6/AC-004/AC-005: a picked G.A. that is not yet a G.A. of the
-  // linked Opportunity is refused with a 422 on `manager_slots`. The form
-  // must ask before widening the Opportunity's own team, and only retry with
-  // `promote_managers_to_opportunity: true` on an explicit confirm.
-  describe('manager promotion dialog (spec 0087 D-6)', () => {
-    function membershipError(message: string) {
-      return { isAxiosError: true, response: { status: 422, data: { errors: { manager_slots: [message] } } } }
-    }
-
-    it('asks for confirmation and retries with the promote flag when accepted (AC-005)', async () => {
-      const quote = quoteFixture()
-      vi.mocked(updateQuote)
-        .mockRejectedValueOnce(membershipError('Anna Bianchi is not yet an account manager of the opportunity.'))
-        .mockResolvedValueOnce(quote)
-
-      render(
-        <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-          <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
-        </ResourcePermissionsProvider>,
-        { wrapper: wrapper() },
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-      const dialog = await screen.findByRole('alertdialog')
-      expect(
-        within(dialog).getByText('Anna Bianchi is not yet an account manager of the opportunity.'),
-      ).toBeInTheDocument()
-
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Add and save' }))
-
-      await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(2))
-      expect(vi.mocked(updateQuote).mock.calls[1][1]).toMatchObject({ promote_managers_to_opportunity: true })
-    })
-
-    it('cancels the save outright on decline, without retrying (user directive 2026-08-31)', async () => {
-      const quote = quoteFixture()
-      vi.mocked(updateQuote).mockRejectedValue(membershipError('Anna Bianchi is not yet an account manager of the opportunity.'))
-      const onSuccess = vi.fn()
-
-      render(
-        <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-          <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={onSuccess} onCancel={vi.fn()} />
-        </ResourcePermissionsProvider>,
-        { wrapper: wrapper() },
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-      const dialog = await screen.findByRole('alertdialog')
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
-
-      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-      expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(1)
-      expect(onSuccess).not.toHaveBeenCalled()
-    })
-
-    it('does not open the dialog for an unrelated 422 (e.g. commercial_id)', async () => {
-      const quote = quoteFixture()
-      vi.mocked(updateQuote).mockRejectedValue({
-        isAxiosError: true,
-        response: { status: 422, data: { errors: { commercial_id: ['The selected commercial is invalid.'] } } },
-      })
-
-      render(
-        <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-          <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
-        </ResourcePermissionsProvider>,
-        { wrapper: wrapper() },
-      )
-
-      fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Updated title' } })
-      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-      await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(1))
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(vi.mocked(createQuote)).toHaveBeenCalledTimes(1)
+    expect(onSuccess).not.toHaveBeenCalled()
   })
 })

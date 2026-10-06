@@ -2,8 +2,6 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWatch, type Control } from 'react-hook-form'
 import type { TFunction } from 'i18next'
-import { TrendingDown } from 'lucide-react'
-import { FormSection } from '@/components/form-section'
 import { MetaField } from '@/features/authorization/MetaField'
 import { QuoteLinesField, knownProductsFrom, knownVatRatesFrom } from '@/features/quotes/quote-lines-field'
 import { sanitizeCostOfferLineKeys } from '@/features/quotes/quote-line-values'
@@ -84,33 +82,27 @@ export function QuoteCostsTab({
   )
 
   return (
-    <FormSection
-      icon={TrendingDown}
-      title={t('quotes.form.sections.costs.title')}
-      description={t('quotes.form.sections.costs.description')}
+    <MetaField
+      control={control}
+      name="cost_lines"
+      metaKey="cost_lines"
+      label={t('quotes.form.costsTab.fieldLabel')}
     >
-      <MetaField
-        control={control}
-        name="cost_lines"
-        metaKey="cost_lines"
-        label={t('quotes.form.costsTab.fieldLabel')}
-      >
-        {({ field, disabled }) => (
-          <QuoteLinesField
-            value={sanitizeCostOfferLineKeys(field.value, validOfferLineKeys)}
-            onChange={field.onChange}
-            variant="cost"
-            disabled={disabled}
-            categoryIds={undefined}
-            errors={errors}
-            knownProducts={knownProducts}
-            knownVatRates={knownVatRates}
-            vatRatePercentFor={vatRatePercentFor}
-            rememberVatRatePercent={rememberVatRatePercent}
-            offerLineOptions={offerLineOptions.length > 0 ? offerLineOptions : NO_OFFER_LINE_OPTIONS}
-          />
-        )}
-      </MetaField>
-    </FormSection>
+      {({ field, disabled }) => (
+        <QuoteLinesField
+          value={sanitizeCostOfferLineKeys(field.value, validOfferLineKeys)}
+          onChange={field.onChange}
+          variant="cost"
+          disabled={disabled}
+          categoryIds={undefined}
+          errors={errors}
+          knownProducts={knownProducts}
+          knownVatRates={knownVatRates}
+          vatRatePercentFor={vatRatePercentFor}
+          rememberVatRatePercent={rememberVatRatePercent}
+          offerLineOptions={offerLineOptions.length > 0 ? offerLineOptions : NO_OFFER_LINE_OPTIONS}
+        />
+      )}
+    </MetaField>
   )
 }

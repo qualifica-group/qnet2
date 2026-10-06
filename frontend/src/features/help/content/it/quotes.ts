@@ -10,14 +10,17 @@ const guide: HelpGuide = {
       title: "Creare un'offerta",
       blocks: [
         {
+          type: 'paragraph',
+          text: "Il modulo di creazione ha lo stesso aspetto del dettaglio dell'offerta: le stesse sezioni e righe, **chiuse**. Apri una riga con la matita, compila il campo e premi **Fatto** per tenerlo (o **Ripristina** per riportarlo com'era). Il **Codice** è già proposto.",
+        },
+        {
           type: 'steps',
           items: [
             "Apri **Offerte** e clicca **Nuova offerta** (oppure parti dalla scheda dell'opportunità).",
-            'Compila i dati principali (vedi tabella).',
-            "Nella scheda **Offerta** aggiungi le righe dei prodotti venduti.",
-            'Nella scheda **Costi** aggiungi le righe di costo.',
-            'Nella scheda **Note e pagamenti** indica il metodo di pagamento e le note interne.',
-            'Clicca **Salva**.',
+            "Nei **Dati offerta** scegli l'**Opportunità**: Commerciale, Segnalatore, Supervisore, Gestori account e Sede operativa vengono precompilati dall'opportunità (puoi cambiarli).",
+            'Compila le altre righe che ti servono (vedi tabella).',
+            'In fondo, nella scheda **Offerta** aggiungi le righe dei prodotti venduti e nella scheda **Costi** le righe di costo: le griglie sono già aperte e il riepilogo si aggiorna mentre scrivi.',
+            'Clicca **Salva** (in alto o in fondo): QNet controlla tutti i campi e crea l\'offerta; gli errori compaiono sotto le righe da correggere.',
           ],
         },
         {
@@ -26,15 +29,19 @@ const guide: HelpGuide = {
           rows: [
             [
               'Dati offerta',
-              '**Codice**, **Titolo**, **Opportunità**, **Commerciale**, **Segnalatore**',
-              'Lascia vuoto il codice per generarlo in automatico.',
+              '**Codice**, **Titolo**, **Opportunità**',
+              "L'opportunità non si cambia dopo la creazione.",
             ],
+            ['Anagrafica e contatti', '**Commerciale**, **Segnalatore** (con i suoi **Buoni**)', "Precompilati dall'opportunità."],
             ['Team', '**Supervisore**, **Gestori account**', "Sincronizzati con l'opportunità."],
             ['Società e sedi', '**Società**, **Società sede**, **Sede operativa**', 'Scegli prima la società.'],
-            ['Layout documento', '**Layout**', 'Il modello usato per il PDF.'],
-            ['Stato', '**Stato**, **Nota**', 'Vedi sotto.'],
-            ['Note e pagamenti', '**Metodo di pagamento**, **Note interne**', 'Le note interne non sono visibili al cliente.'],
+            ['Documento e pagamento', '**Layout**, **Metodo di pagamento**', 'Il layout predefinito è già proposto.'],
+            ['Note interne', '**Note interne**', 'Non sono visibili al cliente.'],
           ],
+        },
+        {
+          type: 'note',
+          text: "Le **Informazioni aggiuntive** compaiono appena una riga offerta ha un prodotto che le prevede. Uscendo senza salvare (Annulla, chiusura del pannello, un link) ti viene chiesta conferma.",
         },
         {
           type: 'note',
@@ -43,6 +50,37 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: "Il **Titolo** è facoltativo: se lo lasci vuoto QNet usa il codice dell'offerta seguito dai prodotti delle sue righe di ricavo (per esempio QUO-0042 - ISO 9001 + SOA) e lo aggiorna quando cambi le righe. Se scrivi un titolo tuo resta quello; svuota il campo per tornare al titolo automatico.",
+        },
+      ],
+    },
+    {
+      id: 'editing-a-quote',
+      title: "Modificare un'offerta",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Non esiste una pagina di modifica separata: l'offerta si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga) e le righe **Offerta** e **Costi**.",
+        },
+        {
+          type: 'steps',
+          items: [
+            "Apri l'offerta dall'elenco.",
+            'Passa col mouse sul campo da cambiare e premi la **matita** (o fai clic sul valore).',
+            'Modifica il valore nel controllo che compare.',
+            "Premi **Salva** (o Invio nei campi di testo) per salvare solo quel campo; **Annulla** (o Esc, o un clic fuori dal campo aperto) per chiuderlo lasciandolo com'era, senza salvare.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Codice, Opportunità). Anagrafica, Referente, Fonte, Funzioni aziendali e Note generali vengono dall'opportunità e restano in sola lettura.",
+        },
+        {
+          type: 'list',
+          items: [
+            "Le righe **Offerta** e **Costi** hanno una matita ciascuna: si apre la griglia di modifica e il riepilogo sotto mostra i totali di ciò che stai scrivendo. Se i nuovi prodotti portano altre Informazioni aggiuntive, compaiono sotto la griglia: compilale nello stesso salvataggio (quelle obbligatorie servono per salvare).",
+            "I **Buoni** si modificano dalla riga **Segnalatore**. Cambiando Commerciale, Segnalatore o Supervisore QNet aggiorna da sé le commissioni delle righe.",
+            "Cambiando la **Società** la **Società sede** viene svuotata nello stesso salvataggio.",
+          ],
         },
       ],
     },
@@ -98,9 +136,9 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri l\'offerta in modifica.',
-            'Nella sezione **Stato** scegli il nuovo stato.',
-            'Se lo stato è segnato **Nota richiesta**, scrivi la **Nota** (viene registrata tra le note dell\'opportunità).',
+            "Nel dettaglio dell'offerta premi la matita della riga **Stato** (nei Dati offerta).",
+            'Scegli il nuovo stato.',
+            'Se lo stato è segnato **Nota richiesta**, scrivi la **Nota** che compare sotto (viene registrata tra le note dell\'opportunità).',
             'Clicca **Salva**.',
           ],
         },

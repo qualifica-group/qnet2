@@ -1,25 +1,21 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { WORKFLOW_STATUS_OPEN } from '@/features/quotes/quote-fixtures'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { QuoteFormBody } from '@/features/quotes/quote-form-body'
+import { clickCreateSave, rowValue } from '@/features/quotes/quote-test-helpers'
 import { createQuote } from '@/features/quotes/api'
 import type { ResourcePermissions } from '@/features/authorization/types'
-import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
 
 /**
- * Spec 0070 AC-310/AC-312: the Layout field precompiles with the `quotes`
- * module's active default in create mode (without the user picking it), and
- * shows a persisted-but-deactivated layout's label in edit mode straight off
- * the loaded quote (the same `{id,name}` ref every other relation field
- * hydrates its `selected` prop from — no special-case code needed for a
- * deactivated layout). Renders the real `AsyncPaginatedSelect` (not
- * stubbed), only the HTTP layer is mocked — mirrors
- * `quote-form-opportunity-params.test.tsx`.
+ * Spec 0070 AC-310: the create draft's Layout row precompiles with the
+ * `quotes` module's active default (without the user picking it) and the
+ * create payload carries it. Only the HTTP layer is mocked. The detail's
+ * side (AC-312, a deactivated layout still shown) lives in
+ * `quote-detail.test.tsx`/`quote-detail-inline-edit.test.tsx`.
  */
 
 vi.mock('@/features/quotes/api', async () => {
@@ -90,51 +86,6 @@ function wrapper() {
   )
 }
 
-function quoteFixture(overrides: Partial<QuoteDetailWithPermissions> = {}): QuoteDetailWithPermissions {
-  return {
-    id: 9,
-    code: 'QUO-0009',
-    title: 'Sample quote',
-    opportunity_id: 55,
-    opportunity: { id: 55, name: 'OPP_55' },
-    quote_workflow_status_id: 1,
-    quote_workflow_status: WORKFLOW_STATUS_OPEN,
-    quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
-    applicable_attributes: [],
-    attribute_layout: null,
-    commercial_id: null,
-    commercial: null,
-    reporter_id: null,
-    reporter: null,
-    supervisor_id: null,
-    supervisor: null,
-    company_id: null,
-    company: null,
-    company_site_id: null,
-    company_site: null,
-    operational_site_id: null,
-    operational_site: null,
-    layout_id: null,
-    layout: null,
-    payment_method_id: null,
-    payment_method: null,
-    internal_notes: null,
-    attribute_values: {},
-    offer_lines: [],
-    cost_lines: [],
-    summary: {
-      revenue: { net: '0.00', vat: '0.00', gross: '0.00' },
-      cost: { net: '0.00', vat: '0.00', gross: '0.00' },
-      margin: { net: '0.00' },
-    product_typologies: [],
-    },
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z',
-    permissions: FULL_ACCESS_PERMISSIONS,
-    ...overrides,
-  }
-}
-
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
@@ -144,7 +95,7 @@ beforeEach(() => {
   fetchForSelectMock.mockResolvedValue(EMPTY_PAGE)
 })
 
-describe('QuoteLayoutSection — create mode (AC-310)', () => {
+describe('Quote create form — default layout (spec 0070 AC-310)', () => {
   it('precompiles the field with the quotes module active default, without the user picking it', async () => {
     fetchForSelectMock.mockImplementation(
       (resource: string, params: { params?: Record<string, unknown> }) => {
@@ -161,14 +112,12 @@ describe('QuoteLayoutSection — create mode (AC-310)', () => {
 
     render(
       <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-        <QuoteFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} initialCode="" />
+        <QuoteFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} initialCode="QUO-0001" />
       </ResourcePermissionsProvider>,
       { wrapper: wrapper() },
     )
 
-    await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Layout' })).toHaveTextContent('Offerta economica'),
-    )
+    await waitFor(() => expect(rowValue('Layout')).toContain('Offerta economica'))
   })
 
   it('carries the precompiled layout_id in the create payload', async () => {
@@ -198,39 +147,20 @@ describe('QuoteLayoutSection — create mode (AC-310)', () => {
           mode={{ type: 'create', params: { opportunity_id: 55, product_ids: String(SEEDED_PRODUCT_ITEM.id) } }}
           onSuccess={vi.fn()}
           onCancel={vi.fn()}
-          initialCode=""
+          initialCode="QUO-0001"
         />
       </ResourcePermissionsProvider>,
       { wrapper: wrapper() },
     )
 
-    await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Layout' })).toHaveTextContent('Offerta economica'),
-    )
+    await waitFor(() => expect(rowValue('Layout')).toContain('Offerta economica'))
     // Spec 0102 AC-001: wait for the deep-link seeded row before submitting,
     // or the create schema rejects on an empty `offer_lines` (AC-040).
     await waitFor(() => expect(screen.getByLabelText('Row 1 quantity')).toHaveValue(1))
 
-    fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'QUO-0001' } })
-    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Quote with default layout' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    clickCreateSave()
 
     await waitFor(() => expect(createQuote).toHaveBeenCalled())
     expect(vi.mocked(createQuote).mock.calls[0][0]).toMatchObject({ layout_id: 12 })
-  })
-})
-
-describe('QuoteLayoutSection — edit mode (AC-312)', () => {
-  it('shows the persisted layout even when it has since been deactivated', () => {
-    const quote = quoteFixture({ layout_id: 41, layout: { id: 41, name: 'Layout disattivato' } })
-
-    render(
-      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-        <QuoteFormBody mode={{ type: 'edit', quote }} onSuccess={vi.fn()} onCancel={vi.fn()} />
-      </ResourcePermissionsProvider>,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.getByRole('combobox', { name: 'Layout' })).toHaveTextContent('Layout disattivato')
   })
 })

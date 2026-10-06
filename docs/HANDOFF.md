@@ -3,6 +3,47 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## OFFERTE — DETTAGLIO EDITABILE IN PLACE + CREAZIONE COME IL DETTAGLIO (spec 0197) — VERDE, COMMITTATO (2026-10-06)
+
+- Richiesta utente: "prendi offerte e fai le stesse modifiche di commesse ... soprattutto per i campi flessibili.
+  Anche per creazione ... come fatto in task". Solo frontend: la PATCH `/quotes/{id}` gia' restituiva `permissions`
+  e gia' risincronizza provvigioni (cambio Commerciale/Segnalatore/Supervisore) e buoni (cambio Segnalatore).
+- Dettaglio (`QuoteDetailView`, niente `onEdit`, nuovo `onChanged`): `useQuoteInlineEdit` su `useQuoteForm` edit
+  (`values` + `keepDirtyValues`, reset dopo PATCH, `clearServerError`). Sezioni: `quote-record-identity.tsx` (Note
+  interne callout; "Dati offerta" = Codice, Titolo, Stato con nota di transizione via `QuoteWorkflowStatusControls`,
+  Opportunita'), Contesto read-only in `quote-detail-sections.tsx`, `quote-record-people.tsx` (Anagrafica e contatti
+  con Segnalatore+buoni; Team = Supervisore + G.A. in una riga), `quote-record-company.tsx` (Societa'/sedi con
+  cascata sede; Documento e pagamento), `quote-attributes-section.tsx` (un Attributo = una riga, layout
+  `attribute_view_layout`; `QuoteNewAttributesFields`). Banda righe `quote-detail-lines.tsx`: Righe offerta / Righe
+  costo = due `RecordInlineField` block; aperta una, il riepilogo diventa `QuoteLinesLiveSummary`.
+  `useQuoteFormContext(ids, persisted)` non chiama form-context finche' i prodotti sono quelli salvati.
+- Creazione: `quote-form-body.tsx` (replica: `quote-form-header.tsx` con KPI live via `useQuoteLiveTotals`,
+  `quote-create-sections.tsx` a righe chiuse con nomi da `useQuoteDraftLabels`, `quote-create-lines.tsx` con griglie
+  APERTE + riepilogo live + pallino errori), `useQuoteCreateDefaults` (eredita' ruoli/sede/G.A. dall'Opportunita',
+  Opportunita' forzata da params, prodotti seminati, layout predefinito), `useFormLeaveGuard`; registry
+  `generateEditRoute: false`; `QuoteForm` solo create (`QuoteCreateFormMode`, `RecordFormSkeleton`).
+- Estratti: `quote-form-defaults.ts`, `use-quote-line-caches.ts` (da `use-quote-form.ts`), `use-quote-live-totals.ts`
+  (da `quote-summary.tsx`), `QuoteStatsStrip`, campi `quote-identity-fields.tsx`/`quote-relation-fields.tsx`,
+  `quote-field-strings.ts`, `quote-lines-editors.tsx`; `components/record-form/first-error-message.ts` condiviso
+  (rimossa la copia identica in `use-work-order-inline-edit.ts`). `QuoteOfferTab`/`QuoteCostsTab` senza FormSection.
+- Rimossi: `quote-team-section`(+test), `quote-sites-section`, `quote-layout-section`, `quote-notes-tab`,
+  `quote-detail-attributes`; chiavi `form.editTitle/editSubtitle`, `form.sections.{layout,notes,costs}`, le
+  `description` di identity/team/sites, `form.tabs.notes`. Nuove: `form.leaveConfirm.*`, `detail.rewardsCount_*`,
+  `detail.newAttributes`. `QuoteWorkflowStatusField`/`QuoteDynamicFieldsSection` restano (Gestione Richieste).
+- REQUIREMENT CHANGED nei test: `quote-form-body.test` (creazione a righe chiuse; i casi edit spostati nel nuovo
+  `quote-detail-inline-edit.test`, 11), `quote-form-opportunity-{roles,params}`, `-seeded-products`,
+  `quote-sites-section.test` (aprono le righe), `quote-layout-section.test`->`quote-create-layout.test`,
+  `quote-notes-tab.test`->`quote-create-payment.test`, `quotes-i18n.test`, `quote-screens.test` (nessun form edit),
+  `quote-detail.test` (wrapper con `ConfirmContext`). Helper `quote-test-helpers.ts`.
+- Verifica: Vitest Offerte+Gestione Richieste+Contratti+Commesse+moduli verdi; suite completa 6777 verdi, 20 rossi
+  tutti in `opportunities/*` + `product-lines-wiring-parity` (refactor Opportunita' spec 0198 in corso in un'altra
+  sessione, file loro). `tsc -b --force`: 0 errori fuori da `opportunities/*`. ESLint pulito sui file toccati.
+  NON verificato nel browser reale (Playwright non installato nel progetto).
+- Guida in-app IT/EN `quotes`: nuova sezione `editing-a-quote`, `create-a-quote` e `change-the-quote-status` riscritte.
+- Da fare: verifica browser (desktop light/dark, 375px) di `/quotes/:id` e `/quotes/new`; manuale Claude Docs
+  (sezione Offerte: modifica in place, campi flessibili, stato, righe, creazione) — il connettore c'era ma il doc
+  non e' condiviso con la sessione (accesso negato).
+
 ## COMMESSE — DETTAGLIO EDITABILE IN PLACE + CREAZIONE COME IL DETTAGLIO + CHIUSURA FORZATA COME AZIONE (spec 0196) — VERDE, COMMITTATO (2026-10-06)
 
 - Richiesta utente: stesse modifiche dei Task (spec 0195) sulle Commesse, "soprattutto per i campi flessibili";

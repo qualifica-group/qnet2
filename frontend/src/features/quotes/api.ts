@@ -65,10 +65,17 @@ export async function createQuote(payload: CreateQuotePayload): Promise<QuoteDet
   return data.data
 }
 
-/** Partially updates a quote (PATCH). Returns the updated resource. */
-export async function updateQuote(id: number, payload: UpdateQuotePayload): Promise<QuoteDetail> {
-  const { data } = await apiClient.patch<ApiResponse<QuoteDetail>>(`/quotes/${id}`, payload)
-  return data.data
+/**
+ * Partially updates a quote (PATCH). Returns the updated resource with the
+ * permissions re-evaluated on it: the in-place detail (spec 0197) keeps
+ * rendering from the saved record, so a lock the save introduced must show.
+ */
+export async function updateQuote(id: number, payload: UpdateQuotePayload): Promise<QuoteDetailWithPermissions> {
+  const { data } = await apiClient.patch<ApiResponseWithPermissions<QuoteDetail, ResourcePermissions>>(
+    `/quotes/${id}`,
+    payload,
+  )
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a quote. Backend responds 200 with no data (`quote_lines` cascade, AC-026). */

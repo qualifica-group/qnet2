@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import axios from 'axios'
 import i18n from '@/i18n'
+import { ConfirmContext } from '@/components/confirm-dialog-context'
 import { QuoteDetailView } from '@/features/quotes/quote-detail'
 import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
@@ -118,13 +119,16 @@ beforeEach(() => {
  * Spec 0085: il dettaglio Offerta monta la sezione Note, che usa React Query.
  * Un client NUOVO per ogni render (non uno condiviso a livello di file) cosi'
  * la cache di un test non puo' influenzarne un altro. Il `MemoryRouter` serve
- * al link verso l'Opportunita' padre nella sezione Contesto.
+ * al link verso l'Opportunita' padre; il `ConfirmContext` al form in place
+ * (spec 0197), che chiede conferma prima di promuovere un G.A.
  */
 function renderDetail(ui: ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>{ui}</MemoryRouter>
+      <ConfirmContext.Provider value={() => Promise.resolve(true)}>
+        <MemoryRouter>{ui}</MemoryRouter>
+      </ConfirmContext.Provider>
     </QueryClientProvider>,
   )
 }

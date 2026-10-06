@@ -321,6 +321,12 @@ export type QuoteFormMode =
   | { type: 'create'; params?: ModuleCreateParams }
   | { type: 'edit'; quote: QuoteDetailWithPermissions }
 
+/**
+ * The only mode the create form renders (spec 0197): a persisted quote is
+ * edited in place on its detail, which drives `useQuoteForm` in `edit` mode.
+ */
+export type QuoteCreateFormMode = Extract<QuoteFormMode, { type: 'create' }>
+
 /** A single labeled choice of an enum-type Attribute (spec 0049). */
 export interface AttributeOptionRef {
   value: string

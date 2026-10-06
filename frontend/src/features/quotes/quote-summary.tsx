@@ -1,18 +1,11 @@
 /* eslint-disable react-refresh/only-export-components -- small formatting/mapping helpers (`formatQuoteAmount`/`totalsFromPersistedSummary`) shared by the row editor and the read-only detail view, colocated with the summary component they feed */
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWatch, type Control } from 'react-hook-form'
+import type { Control } from 'react-hook-form'
 import { HandCoins, Shapes, TrendingDown, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
 import i18n from '@/i18n'
 import { cn } from '@/lib/utils'
-import {
-  computeQuoteTotals,
-  EMPTY_QUOTE_TOTALS_SUMMARY,
-  round2,
-  type QuoteAmountAggregate,
-  type QuoteLineForTotals,
-  type QuoteTotalsSummary,
-} from '@/features/quotes/quote-totals'
+import { round2, type QuoteAmountAggregate, type QuoteTotalsSummary } from '@/features/quotes/quote-totals'
 import {
   computeProductMargins,
   costLinesFromFormCostLines,
@@ -20,10 +13,11 @@ import {
 } from '@/features/quotes/quote-product-margins-calc'
 import { QuoteProductMargins } from '@/features/quotes/quote-product-margins'
 import { useResourcePermissions } from '@/features/authorization/permissions'
-import type { QuoteFormValues, QuoteLineFormValues } from '@/features/quotes/quote-schema'
+import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteSummary as QuoteSummaryData, QuoteTypologyTotal } from '@/features/quotes/types'
 import type { ForSelectItem } from '@/features/for-select/types'
-import { calculateCommissionTotals, sumCommissionTotals, type CommissionTotals } from './commission-calculator'
+import { useQuoteLiveTotals } from '@/features/quotes/use-quote-live-totals'
+import type { CommissionTotals } from './commission-calculator'
 
 /**
  * Formats a plain, already-numeric amount using the active UI locale (mirrors
@@ -36,24 +30,6 @@ export function formatQuoteAmount(value: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value)
-}
-
-/**
- * Maps a row's nullable form values onto `quote-totals.ts`'s input shape,
- * defaulting an untouched field to 0 (mirrors the server's own handling of an
- * empty tab, AC-042). `vatRatePercentFor` resolves the row's own
- * `vat_rate_id` to a percentage from the shared cache seeded by
- * `use-quote-form.ts` (the picker itself never exposes one).
- */
-function toLineForTotals(
-  row: QuoteLineFormValues,
-  vatRatePercentFor: (vatRateId: number) => number | null,
-): QuoteLineForTotals {
-  return {
-    quantity: row.quantity ?? 0,
-    unitPrice: row.unit_price ?? 0,
-    vatRatePercent: row.vat_rate_id !== null ? vatRatePercentFor(row.vat_rate_id) : null,
-  }
 }
 
 /** Maps the persisted `QuoteSummary` (decimal strings, D-9) onto the numeric shape the presentational component renders. */
@@ -268,12 +244,11 @@ const NO_TYPOLOGY_OPTIONS: ForSelectItem[] = []
 const NO_PRODUCT_NAME = (): string | null => null
 
 /**
- * Live client-side preview (AC-071): recomputes on every `offer_lines`/
- * `cost_lines` keystroke via `useWatch`, zero network calls —
- * `computeQuoteTotals`/`EMPTY_QUOTE_TOTALS_SUMMARY` from `quote-totals.ts`
- * (D-9) are the only math involved, byte-for-byte the server's own rounding
- * rule (D-12). Mounted as a sibling of the form's `<Tabs>`, never inside a
- * `TabsContent`, so it stays visible regardless of the active tab (AC-070).
+ * Live client-side preview (AC-071): the totals of `useQuoteLiveTotals`,
+ * recomputed on every keystroke with zero network calls, plus the
+ * per-typology and per-product breakdowns of the same rows. Mounted as a
+ * sibling of the rows' `<Tabs>`, never inside a `TabsContent`, so it stays
+ * visible regardless of the active tab (AC-070).
  */
 export function QuoteLiveSummary({
   control,
@@ -282,33 +257,8 @@ export function QuoteLiveSummary({
   typologyOptions = NO_TYPOLOGY_OPTIONS,
   productNameFor = NO_PRODUCT_NAME,
 }: QuoteLiveSummaryProps) {
-  const offerLines = useWatch({ control, name: 'offer_lines' })
-  const costLines = useWatch({ control, name: 'cost_lines' })
+  const { offerLines, costLines, commissionTotals, totals } = useQuoteLiveTotals(control, vatRatePercentFor)
   const { field: fieldPermission } = useResourcePermissions()
-
-  // Spec 0145 D-1/D-9: the base of a PERCENTAGE commission is this row's own
-  // net minus whatever cost the SAME `cost_lines` imputes to it — the one
-  // base rule reused by the summary here, the dialog and the per-product
-  // margins block below.
-  const commissionTotals = useMemo(
-    () => calculateCommissionTotals(offerLines, costLines),
-    [offerLines, costLines],
-  )
-
-  // Spec 0145 D-3/D-8: the live margin nets out the SAME live commission
-  // preview above — `computeQuoteTotals` itself stays commission-agnostic
-  // (D-5's original revenue - cost), the subtraction happens here so the
-  // detail path (already net from the server, D-4) never double-subtracts.
-  const totals = useMemo(() => {
-    if (offerLines.length === 0 && costLines.length === 0) {
-      return EMPTY_QUOTE_TOTALS_SUMMARY
-    }
-    const base = computeQuoteTotals(
-      offerLines.map((row) => toLineForTotals(row, vatRatePercentFor)),
-      costLines.map((row) => toLineForTotals(row, vatRatePercentFor)),
-    )
-    return { ...base, margin: { net: round2(base.margin.net - sumCommissionTotals(commissionTotals)) } }
-  }, [offerLines, costLines, vatRatePercentFor, commissionTotals])
 
   // Spec 0099, D-6: the SAME arithmetic the buckets' server-side counterpart
   // uses — each revenue row's already-rounded net (`quote-totals.ts`), summed

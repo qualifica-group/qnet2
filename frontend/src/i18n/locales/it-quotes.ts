@@ -58,6 +58,9 @@ export const quotes = {
     layout: 'Layout',
     paymentMethod: 'Metodo di pagamento',
     rewards: 'Buoni',
+    rewardsCount_one: '{{count}} buono assegnato',
+    rewardsCount_other: '{{count}} buoni assegnati',
+    newAttributes: 'Informazioni aggiuntive portate dai nuovi prodotti',
     createdAt: 'Creato il',
     updatedAt: 'Aggiornato il',
     linesEmpty: 'Nessuna riga presente.',
@@ -82,8 +85,6 @@ export const quotes = {
     newQuote: 'Nuova offerta',
     createTitle: 'Crea offerta',
     createSubtitle: "Aggiungi una nuova offerta collegata a un'opportunità.",
-    editTitle: 'Modifica offerta',
-    editSubtitle: "Aggiorna l'offerta selezionata.",
     forbidden: 'Non hai i permessi per questa azione.',
     code: 'Codice',
     codePlaceholder: 'Lascia vuoto per generarlo automaticamente',
@@ -149,6 +150,12 @@ export const quotes = {
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: "L'offerta non è ancora stata creata: i dati inseriti andranno persi.",
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     created: 'Offerta creata con successo.',
     updated: 'Offerta aggiornata con successo.',
     deleted: 'Offerta eliminata con successo.',
@@ -162,19 +169,12 @@ export const quotes = {
       },
       identity: {
         title: 'Dati offerta',
-        description: "Codice, titolo, opportunità collegata e team commerciale.",
       },
       team: {
         title: 'Team',
-        description: "Supervisore e gestori account di questa offerta.",
       },
       sites: {
         title: 'Società e sedi',
-        description: 'Società e sede che emettono l\'offerta, sede operativa di riferimento.',
-      },
-      layout: {
-        title: 'Layout documento',
-        description: 'Layout usato per generare il documento dell\'offerta.',
       },
       workflowStatus: {
         title: 'Stato',
@@ -184,19 +184,10 @@ export const quotes = {
         title: 'Offerta',
         description: "Righe di ricavo previste dall'offerta.",
       },
-      costs: {
-        title: 'Costi',
-        description: "Righe di costo previste dall'offerta.",
-      },
-      notes: {
-        title: 'Note e pagamenti',
-        description: 'Metodo di pagamento concordato e annotazioni interne, non visibili al cliente.',
-      },
     },
     tabs: {
       offer: 'Offerta',
       costs: 'Costi',
-      notes: 'Note e pagamenti',
       tabHasErrors: 'Questa sezione contiene errori',
     },
     offerTab: {

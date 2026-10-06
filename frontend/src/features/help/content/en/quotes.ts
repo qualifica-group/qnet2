@@ -10,31 +10,34 @@ const guide: HelpGuide = {
       title: 'Creating a quote',
       blocks: [
         {
+          type: 'paragraph',
+          text: 'The create form looks like the quote detail: the same sections and rows, **closed**. Open a row with its pencil, fill in the field and press **Done** to keep it (or **Revert** to put it back as it was). The **Code** is already suggested.',
+        },
+        {
           type: 'steps',
           items: [
             'Open **Quotes** and click **New quote** (or start from the opportunity record).',
-            'Fill in the main data (see table).',
-            'On the **Offer** tab, add the sold product rows.',
-            'On the **Costs** tab, add the cost rows.',
-            'On the **Notes and payments** tab, set the payment method and internal notes.',
-            'Click **Save**.',
+            'In **Quote data**, pick the **Opportunity**: Commercial, Reporter, Supervisor, Account managers and Operational site are prefilled from it (you can change them).',
+            'Fill in the other rows you need (see table).',
+            'At the bottom, add the sold product rows on the **Offer** tab and the cost rows on the **Costs** tab: the grids are already open and the summary updates as you type.',
+            'Click **Save** (top or bottom): QNet checks every field and creates the quote; errors show under the rows to fix.',
           ],
         },
         {
           type: 'table',
           headers: ['Section', 'Fields', 'Notes'],
           rows: [
-            [
-              'Quote data',
-              '**Code**, **Title**, **Opportunity**, **Commercial**, **Reporter**',
-              'Leave the code blank to generate it automatically.',
-            ],
+            ['Quote data', '**Code**, **Title**, **Opportunity**', 'The opportunity cannot change after creation.'],
+            ['Registry and contacts', '**Commercial**, **Reporter** (with their **Rewards**)', 'Prefilled from the opportunity.'],
             ['Team', '**Supervisor**, **Account managers**', 'Synced with the opportunity.'],
             ['Company and sites', '**Company**, **Company site**, **Operational site**', 'Pick the company first.'],
-            ['Document layout', '**Layout**', 'The template used for the PDF.'],
-            ['Status', '**Status**, **Note**', 'See below.'],
-            ['Notes and payments', '**Payment method**, **Internal notes**', 'Internal notes are never shown to the client.'],
+            ['Document and payment', '**Layout**, **Payment method**', 'The default layout is already suggested.'],
+            ['Internal notes', '**Internal notes**', 'Never shown to the client.'],
           ],
+        },
+        {
+          type: 'note',
+          text: 'The **Additional information** appears as soon as an offer row has a product that requires it. Leaving without saving (Cancel, closing the panel, a link) asks for confirmation.',
         },
         {
           type: 'note',
@@ -43,6 +46,37 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: "The **Title** is optional: left blank, QNet uses the quote code followed by the products on its revenue lines (for example QUO-0042 - ISO 9001 + SOA) and updates it when the lines change. A title you type stays yours; clear the field to go back to the automatic title.",
+        },
+      ],
+    },
+    {
+      id: 'editing-a-quote',
+      title: 'Editing a quote',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'There is no separate edit page: a quote is edited **straight from its detail**, one field at a time, including the **Additional information** (each flexible field has its own row) and the **Offer** and **Costs** rows.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Open the quote from the list.',
+            'Hover the field to change and press its **pencil** (or click the value).',
+            'Change the value in the control that appears.',
+            "Press **Save** (or Enter in text fields) to save that field alone; **Cancel** (or Esc, or a click outside the open field) closes it unchanged, without saving.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "A field without a pencil is not editable by you: your role's permissions make it read-only, or it is chosen at creation only (Code, Opportunity). Registry, Referent, Source, Business functions and General notes come from the opportunity and stay read-only.",
+        },
+        {
+          type: 'list',
+          items: [
+            'The **Offer** and **Costs** rows have a pencil each: the editing grid opens and the summary below shows the totals of what you are typing. If the new products bring more Additional information, it appears under the grid: fill it in the same save (required ones are needed to save).',
+            '**Rewards** are edited from the **Reporter** row. Changing the Commercial, Reporter or Supervisor makes QNet update the rows\' commissions by itself.',
+            'Changing the **Company** clears the **Company site** in the same save.',
+          ],
         },
       ],
     },
@@ -98,9 +132,9 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open the quote for editing.',
-            'In the **Status** section, choose the new status.',
-            'If the status is flagged **Note required**, write the **Note** (it is recorded among the notes of the opportunity).',
+            "On the quote detail, press the pencil of the **Status** row (in Quote data).",
+            'Choose the new status.',
+            'If the status is flagged **Note required**, write the **Note** that appears below (it is recorded among the notes of the opportunity).',
             'Click **Save**.',
           ],
         },
