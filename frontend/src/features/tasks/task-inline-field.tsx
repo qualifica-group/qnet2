@@ -4,6 +4,7 @@ import { useFormContext, type FieldError, type FieldErrors } from 'react-hook-fo
 import { Check, Loader2, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RecordField } from '@/components/detail/record-panel'
+import { MetaFieldRowContext } from '@/features/authorization/meta-field-row-context'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { cn } from '@/lib/utils'
 import type { TaskInlineEdit } from '@/features/tasks/use-task-inline-edit'
@@ -18,37 +19,30 @@ const INTERACTIVE_SELECTOR = 'a, button, input, [role="button"]'
 const CONFIRM_ON_ENTER_INPUT_TYPES = new Set(['text', 'date', 'time', 'number'])
 
 /**
- * The row already names the field in its label column: the control's own
- * `FormLabel` stays for assistive tech (it is what names the control) but is
- * hidden from sight, so the label never reads twice.
+ * The open row reads as "being edited" at a glance: the focus color's hairline
+ * and halo around the whole row, on a tint veil over the card (a veil, not a
+ * new surface — ui-design.md §1-bis), its label promoted to the value's weight.
  */
-const ROW_CONTROL_CLASS = 'min-w-0 [&_[data-slot=form-label]]:sr-only'
+const EDITING_ROW_CLASS =
+  '-mx-2 my-1 rounded-lg border border-ring/50 bg-muted/40 px-2 shadow-sm ring-[3px] ring-ring/15 [&_dt]:font-medium [&_dt]:text-foreground'
 
-interface TaskFieldRowProps {
-  /** The field's `metaKey`: a hidden field drops the whole row, label included. */
+interface EditorRowProps {
   field: string
   label: string
   icon?: ReactNode
-  /** The field's control (a `MetaField`-based component): it keeps its own messages and hints. */
   children: ReactNode
 }
 
 /**
- * One OPEN field row of a task record (spec 0195): the detail's own row
- * layout — label column, value column — with the control as the value. The
- * create form is made of these, and the detail shows an inline editor in one,
- * so both read exactly like the detail.
+ * The detail's own row layout — label column, value column — with the
+ * field's control as the value. `MetaFieldRowContext` tells the control's
+ * `MetaField` that this row already shows its label: it keeps it for
+ * assistive tech only and sets its hint beside the control.
  */
-export function TaskFieldRow({ field, label, icon, children }: TaskFieldRowProps) {
-  const { field: fieldPermission } = useResourcePermissions()
-
-  if (!fieldPermission(field).visible) {
-    return null
-  }
-
+function EditorRow({ field, label, icon, children }: EditorRowProps) {
   return (
     <RecordField label={label} icon={icon}>
-      <div className={ROW_CONTROL_CLASS}>{children}</div>
+      <MetaFieldRowContext.Provider value={field}>{children}</MetaFieldRowContext.Provider>
     </RecordField>
   )
 }
@@ -127,21 +121,22 @@ export function TaskInlineField({
     }
 
     return (
-      <div ref={editorRef} onKeyDown={handleKeyDown}>
-        <TaskFieldRow field={field} label={label} icon={icon}>
-          <div className="flex flex-col gap-2">
+      <div ref={editorRef} className={EDITING_ROW_CLASS} onKeyDown={handleKeyDown}>
+        <EditorRow field={field} label={label} icon={icon}>
+          <div className="flex min-w-0 flex-col gap-2">
             {editor}
             {inline.error ? (
               <p role="alert" className="text-xs font-medium text-destructive">
                 {inline.error}
               </p>
             ) : null}
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="secondary" size="sm" onClick={inline.cancel} disabled={inline.isSaving}>
+            {/* Side by side, never wrapped apart: cancel then confirm, at the row's end. */}
+            <div className="flex items-center justify-end gap-2">
+              <Button type="button" variant="ghost" size="xs" onClick={inline.cancel} disabled={inline.isSaving}>
                 <X aria-hidden="true" />
                 {inline.cancelLabel}
               </Button>
-              <Button type="button" size="sm" onClick={inline.save} disabled={inline.isSaving}>
+              <Button type="button" size="xs" onClick={inline.save} disabled={inline.isSaving}>
                 {inline.isSaving ? (
                   <Loader2 className="animate-spin" aria-hidden="true" />
                 ) : (
@@ -151,7 +146,7 @@ export function TaskInlineField({
               </Button>
             </div>
           </div>
-        </TaskFieldRow>
+        </EditorRow>
       </div>
     )
   }

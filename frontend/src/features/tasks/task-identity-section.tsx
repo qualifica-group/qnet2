@@ -24,9 +24,9 @@ interface TaskIdentitySectionProps {
 
 /*
  * "Identita'": what the task IS (title, description) and where it sits in the
- * hierarchy (parent task). Rendered as the form's lead card, without a section
- * header: the title is the first thing to type, so it gets the prominent,
- * document-like input CRM forms open with.
+ * hierarchy (parent task). Each field opens inside a record row ("Dati"
+ * section of the detail and of the create form, spec 0195), so the title uses
+ * the standard input size like every other row.
  *
  * AC-082: the parent picker never offers the task itself — `exclude_id` is
  * pushed to `GET /api/tasks/for-select`, so the option is gone from the LIST
@@ -46,7 +46,6 @@ export function TaskTitleField({ control }: Pick<TaskIdentitySectionProps, 'cont
           <Input
             autoComplete="off"
             placeholder={t('tasks.form.titlePlaceholder')}
-            className="h-10 text-base font-semibold md:text-base"
             disabled={disabled}
             readOnly={readOnly}
             {...field}

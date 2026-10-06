@@ -31,6 +31,11 @@
   (X/overlay/Esc del pannello, `SheetCloseGuardContext` in `useModuleOpener`) + `NavigationLeaveBlocker`
   (`useBlocker`, montato solo sotto data router: i test con MemoryRouter non lo hanno) + `beforeunload`;
   `allowLeave()` prima di `onSuccess`. Cablato in `TaskFormScreen`.
+- Editor inline (NON COMMITTATO, dopo b388f49d): riga aperta = pannello evidenziato (`EDITING_ROW_CLASS`: bordo/alone
+  `ring`, velo `bg-muted/40`, etichetta in evidenza), Annulla/Salva `size="xs"` affiancati senza a capo, nessun
+  testo di scorciatoie (richiesta utente). `MetaFieldRowContext` (features/authorization): il `MetaField` del campo
+  della riga nasconde la propria etichetta (sr-only) e mette l'hint accanto al controllo; i sotto-campi (ricorrenza,
+  fase, notifiche) restano etichettati. Titolo con input di misura standard.
 - ATTENZIONE RHF: `resetOptions` di `useForm` si fonde in OGNI `reset` -> in edit `keepDirtyValues: true` serve solo
   al re-sync `values`; ogni reset che deve scartare passa `keepDirtyValues: false` (test di regressione in
   `task-detail-inline-edit.test.tsx`: un annullo non finisce nel PATCH successivo).
