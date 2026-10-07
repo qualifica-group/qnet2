@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Enums\SupplierCommissionDirection;
 use App\Models\Product;
 use App\Models\ProductTypology;
 use App\Models\QuoteLine;
@@ -131,9 +132,10 @@ if (! function_exists('contractDataLine')) {
     /**
      * Programs a REVENUE line of the given typology into $workOrder (spec 0201).
      *
-     * @param  string  $typologyCode  'institution' (Ente) or any other code (Consulenza)
+     * @param  string  $typologyCode  any typology code; it never decides the calculation (spec 0202)
+     * @param  SupplierCommissionDirection|null  $direction  the frozen Supplier commission snapshot of the line
      */
-    function contractDataLine(WorkOrder $workOrder, string $typologyCode, float $net): QuoteLine
+    function contractDataLine(WorkOrder $workOrder, string $typologyCode, float $net, ?SupplierCommissionDirection $direction = null): QuoteLine
     {
         $typology = ProductTypology::firstOrCreate(['code' => $typologyCode], ['name' => ucfirst($typologyCode)]);
         $product = Product::factory()->create(['product_typology_id' => $typology->id]);
@@ -144,6 +146,7 @@ if (! function_exists('contractDataLine')) {
             'unit_price' => $net,
             'net_amount' => $net,
             'total_amount' => $net,
+            'supplier_commission_direction' => $direction,
         ]);
         $workOrder->quoteLines()->attach($line->id);
 

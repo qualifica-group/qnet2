@@ -117,7 +117,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Il riepilogo mostra, in quest\'ordine, **Ricavi attesi**, **Costi attesi**, il **Riepilogo Commissioni** e il **Margine atteso** (ricavi netti meno costi netti meno commissioni), oltre al **Riepilogo per Tipologia Prodotto**. Le commissioni a percentuale si calcolano sul margine della riga prodotto (ricavo netto meno i costi imputati a quella riga, mai sotto zero): il **Margine per prodotto** mostra ricavo, costo imputato, commissioni e margine di ogni riga prodotto, più una riga "Costi generici" per i costi non associati. Questo blocco è visibile solo a chi può vedere le commissioni.',
+          text: 'Il riepilogo mostra, in quest\'ordine, **Ricavi attesi**, **Costi attesi**, il **Riepilogo Commissioni** e il **Margine atteso** (somma dei margini delle righe meno i costi generici: una riga con commissione Fornitore **ricevuta** ha come ricavo la sola commissione, le altre sono imponibile meno costi e commissioni pagate; i **Ricavi attesi** non cambiano), oltre al **Riepilogo per Tipologia Prodotto**. Le commissioni a percentuale si calcolano sul margine della riga prodotto (ricavo netto meno i costi imputati a quella riga, mai sotto zero): il **Margine per prodotto** mostra ricavo, costo imputato, commissioni e margine di ogni riga prodotto (sulle righe con commissione ricevuta compare "ricavo = commissione ricevuta"), più una riga "Costi generici" per i costi non associati. Questo blocco è visibile solo a chi può vedere le commissioni.',
         },
         {
           type: 'warning',

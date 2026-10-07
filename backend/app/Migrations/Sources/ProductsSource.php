@@ -30,10 +30,10 @@ use RuntimeException;
  * `vat_rate_id` IS remapped via `old_id` (vat-rates must be migrated first),
  * but unlike the category it is OPTIONAL: an unmigrated reference leaves the
  * column null with a non-fatal warning instead of failing the row.
- * `supplier_id` is still NOT remapped: `registries` carries no `old_id` and has
- * no migration source, so its external reference cannot be resolved. It is left
- * null; a non-fatal warning is surfaced when the external record carries one,
- * so the operator knows the link was dropped.
+ * `supplier_id` is NOT remapped here: products come BEFORE the registries (which
+ * carry the `old_id` the supplier resolves through). It is left null with a
+ * non-fatal warning when the external record carries one; the later
+ * ProductSuppliersSource fills it once the registries are migrated (spec 0203).
  *
  * `code` (spec 0065, D-1) carries the external `code` as-is when present; an
  * absent/blank value leaves it null so ProductService::create() falls back to

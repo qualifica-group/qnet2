@@ -1,5 +1,12 @@
+import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
+
+/** What a picked product brings to a revenue row besides its prices (spec 0202 D-12). */
+export interface LineCommissionDefaults {
+  commissions: QuoteLineFormValues['commissions']
+  supplierCommissionDirection: SupplierCommissionDirection | null
+}
 
 /** Which of the product's two prices the tab precompiles from (D-6). */
 export type QuoteLineVariant = 'revenue' | 'cost'
@@ -141,7 +148,7 @@ export function useQuoteLinesField({
     index: number,
     productId: number | null,
     item: QuoteProductForSelectItem | null,
-    commissions?: QuoteLineFormValues['commissions'],
+    defaults?: LineCommissionDefaults,
     simplified = false,
   ) => {
     if (productId === null || !item) {
@@ -174,7 +181,12 @@ export function useQuoteLinesField({
               // overwritten: only an empty row gets the default. Simplified
               // rows have no way to type one, so the default always applies.
               ...(simplified || row.quantity === null ? { quantity: DEFAULT_LINE_QUANTITY } : {}),
-              ...(commissions ? { commissions } : {}),
+              ...(defaults
+                ? {
+                    commissions: defaults.commissions,
+                    supplier_commission_direction: defaults.supplierCommissionDirection,
+                  }
+                : {}),
             }
           : row,
       ),

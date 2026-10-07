@@ -81,7 +81,7 @@ const guide: HelpGuide = {
           headers: ['Item', 'Meaning'],
           rows: [
             ['Variance', 'Actual cost minus budgeted cost: a positive value is an **overrun** (flagged with an icon and text, not by colour alone).'],
-            ['Margin', 'Net revenue of the work order lines minus costs, computed on the net amount. Commissions are excluded.'],
+            ['Margin', 'Revenue of the work order lines minus costs. Revenue is the net amount, except on lines with a **received** supplier commission, where it is the supplier commission alone (as in the Contract data tab). Other commissions are excluded.'],
             ['Unattributed', 'Actual costs with no reference offer line: they are part of the total actual cost.'],
           ],
         },
@@ -122,17 +122,17 @@ const guide: HelpGuide = {
             ['Net amount', 'Quantity times unit price, as saved on the offer.'],
             ['Supplier commission', 'The supplier commission on the line, if you can see it.'],
             ['Net of commissions', 'Net amount minus all the line\'s commissions, if you can see them.'],
-            ['Effective revenue', 'For an **Institution** line it is the Supplier commission alone; for any other typology (Consulting) it is the net amount.'],
+            ['Effective revenue', 'If the line\'s typology has the Supplier commission **received** it is the Supplier commission alone; if it is **paid** or not calculated it is the net amount.'],
             ['Payment', 'Payment status, payment agreement and unpaid flag of the line.'],
           ],
         },
         {
           type: 'paragraph',
-          text: 'Under each line you find the **formula in plain words**, for example "Net amount 2 × 500.00 = 1,000.00 → revenue 1,000.00" for a Consulting line, or "Supplier commission 10% of 2,000.00 = 200.00 → revenue 200.00" for an Institution one. At the top are the totals: Net amount, then for **each product typology** the net amount and the effective revenue (even at 0.00), then Total revenue and, if visible, Commissions and Net of commissions. If you cannot see commissions, the related columns and totals are not shown.',
+          text: 'Under each line you find the **formula in plain words**, for example "Net amount 2 × 500.00 = 1,000.00 → revenue 1,000.00" for a line without a received commission (with a **paid** commission the formula adds it as a cost), or "Supplier commission received: 10% of 2,000.00 = 200.00 → revenue 200.00". At the top are the totals: Net amount, then for **each product typology** the net amount and the effective revenue (even at 0.00), then Total revenue and, if visible, Commissions and Net of commissions. If you cannot see commissions, the related columns and totals are not shown.',
         },
         {
           type: 'warning',
-          text: 'A warning with an icon and text appears when an Institution line has no Supplier commission (revenue 0.00) or when the commission was calculated on a previous base: save the offer again to update it.',
+          text: 'A warning with an icon and text appears when a line with a received Supplier commission has none (revenue 0.00) or when the commission was calculated on a previous base: save the offer again to update it.',
         },
         {
           type: 'steps',

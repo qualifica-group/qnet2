@@ -209,9 +209,14 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // (126th), the "Assegnabile" switch, and spec 0201's
     // `2026_10_07_100000_create_work_order_payment_statuses_table` (127th) and
     // `2026_10_07_100100_create_work_order_line_payments_table` (128th), the
-    // commessa line payment statuses and data.
+    // commessa line payment statuses and data, and spec 0202's
+    // `2026_10_07_110000_add_supplier_commission_to_product_typologies_table`
+    // (129th) and `2026_10_07_110100_add_supplier_commission_direction_to_quote_lines_table`
+    // (130th), the Supplier commission direction by typology, and spec 0203's
+    // `2026_10_07_105900_add_old_id_to_commission_configurations_table`
+    // (a further one, 131 in all), the legacy anchor of commission rules.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 128]);
+    Artisan::call('migrate:rollback', ['--step' => 131]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

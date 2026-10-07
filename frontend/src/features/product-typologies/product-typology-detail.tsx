@@ -70,6 +70,20 @@ export function ProductTypologyDetailView({ productTypology, onEdit }: ProductTy
                 </RecordField>
               </RecordFieldList>
             </RecordSection>
+            <RecordSection title={t('productTypologies.form.sections.commission.title')} full>
+              <RecordFieldList>
+                <RecordField label={t('productTypologies.form.supplierCommissionEnabled')}>
+                  {productTypology.supplier_commission_enabled ? t('common.yes') : t('common.no')}
+                </RecordField>
+                {productTypology.supplier_commission_direction ? (
+                  <RecordField label={t('productTypologies.form.supplierCommissionDirection')}>
+                    {t(
+                      `productTypologies.supplierCommissionDirection.${productTypology.supplier_commission_direction}`,
+                    )}
+                  </RecordField>
+                ) : null}
+              </RecordFieldList>
+            </RecordSection>
           </RecordSectionsGrid>
         </RecordCard>
       </RecordBody>

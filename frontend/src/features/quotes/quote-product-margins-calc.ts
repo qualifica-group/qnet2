@@ -15,7 +15,13 @@
  * numbers.
  */
 
-import { allocatedCostNetByOfferLineKey, calculateCommissionAmount, calculateCommissionBaseNet } from '@/features/quotes/commission-calculator'
+import {
+  allocatedCostNetByOfferLineKey,
+  calculateCommissionAmount,
+  calculateCommissionBaseNet,
+  calculateLineMarginBeforeCosts,
+} from '@/features/quotes/commission-calculator'
+import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
 import { isPristineLineRow, lineClientKey } from '@/features/quotes/quote-line-values'
 import { round2 } from '@/features/quotes/quote-totals'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
@@ -38,6 +44,10 @@ export interface ProductMarginProductInput {
    * computed without them.
    */
   commissionsNet: number
+  /** Spec 0202 D-8: the Supplier part of `commissionsNet` (0 when the row has none). */
+  supplierCommissionNet?: number
+  /** Spec 0202 D-7: frozen Supplier commission direction; null = calculation disabled. */
+  supplierCommissionDirection?: SupplierCommissionDirection | null
 }
 
 /** One COST row's contribution, attributed or generic. */
@@ -54,6 +64,7 @@ export interface ProductMarginRow {
   revenueNet: number
   costNet: number
   commissionsNet: number
+  supplierCommissionDirection: SupplierCommissionDirection | null
   margin: number
 }
 
@@ -86,6 +97,7 @@ export function computeProductMargins(
 
   const rows = productLines.map((line) => {
     const costNet = costNetByKey.get(line.key) ?? 0
+    const supplierCommissionNet = line.supplierCommissionNet ?? 0
     return {
       key: line.key,
       productName: line.productName,
@@ -93,9 +105,16 @@ export function computeProductMargins(
       revenueNet: line.net,
       costNet,
       commissionsNet: line.commissionsNet,
-      // Spec 0145 (D-9): net of commissions when known, unchanged (pre-0145)
-      // when the caller has no visibility into them (D-9's documented gap).
-      margin: round2(line.net - costNet - line.commissionsNet),
+      supplierCommissionDirection: line.supplierCommissionDirection ?? null,
+      // Spec 0202 D-8: the row's margin by its frozen Supplier commission direction.
+      margin: round2(
+        calculateLineMarginBeforeCosts(
+          line.net,
+          supplierCommissionNet,
+          round2(line.commissionsNet - supplierCommissionNet),
+          line.supplierCommissionDirection,
+        ) - costNet,
+      ),
     }
   })
 
@@ -123,11 +142,14 @@ export function productLinesFromFormOfferLines(
     const key = row.client_key ?? `index-${index}`
     const net = round2((row.quantity ?? 0) * (row.unit_price ?? 0))
     const base = calculateCommissionBaseNet(net, costNetByKey.get(key) ?? 0)
-    const commissionsNet = round2(
-      (row.commissions ?? []).reduce(
-        (sum, commission) => round2(sum + calculateCommissionAmount(commission.commission_type, commission.value, base)),
-        0,
-      ),
+    const amountOf = (commission: NonNullable<QuoteLineFormValues['commissions']>[number]) =>
+      calculateCommissionAmount(commission.commission_type, commission.value, base)
+    const commissions = row.commissions ?? []
+    const commissionsNet = round2(commissions.reduce((sum, commission) => round2(sum + amountOf(commission)), 0))
+    const supplierCommissionNet = round2(
+      commissions
+        .filter((commission) => commission.recipient_role === 'SUPPLIER')
+        .reduce((sum, commission) => round2(sum + amountOf(commission)), 0),
     )
     lines.push({
       key,
@@ -135,6 +157,8 @@ export function productLinesFromFormOfferLines(
       rowNumber: index + 1,
       net,
       commissionsNet,
+      supplierCommissionNet,
+      supplierCommissionDirection: row.commissions ? row.supplier_commission_direction ?? null : null,
     })
     return lines
   }, [])
@@ -157,13 +181,20 @@ export function costLinesFromFormCostLines(costLines: QuoteLineFormValues[]): Pr
  * server ran D-1/D-6 at save time and its numbers are authoritative.
  */
 export function productLinesFromPersistedOfferLines(offerLines: QuoteLine[]): ProductMarginProductInput[] {
-  return offerLines.map((line, index) => ({
-    key: lineClientKey(line.id),
-    productName: line.product.name,
-    rowNumber: index + 1,
-    net: Number(line.net_amount),
-    commissionsNet: round2((line.commissions ?? []).reduce((sum, commission) => sum + Number(commission.calculated_amount), 0)),
-  }))
+  return offerLines.map((line, index) => {
+    const commissions = line.commissions ?? []
+    const sumOf = (list: typeof commissions) =>
+      round2(list.reduce((sum, commission) => sum + Number(commission.calculated_amount), 0))
+    return {
+      key: lineClientKey(line.id),
+      productName: line.product.name,
+      rowNumber: index + 1,
+      net: Number(line.net_amount),
+      commissionsNet: sumOf(commissions),
+      supplierCommissionNet: sumOf(commissions.filter((commission) => commission.recipient_role === 'SUPPLIER')),
+      supplierCommissionDirection: line.supplier_commission_direction ?? null,
+    }
+  })
 }
 
 /** Detail mapping (spec 0144): persisted COST rows, `offer_line_id` resolved to the SAME `line-<id>` scheme as the offer row's own key. */

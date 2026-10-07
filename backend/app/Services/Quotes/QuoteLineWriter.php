@@ -21,6 +21,7 @@ final class QuoteLineWriter
         private readonly QuoteTotalsCalculator $calculator,
         private readonly QuoteLineCommissionWriter $commissionWriter,
         private readonly CostLineAllocationResolver $allocationResolver,
+        private readonly SupplierCommissionDirectionResolver $directionResolver,
     ) {}
 
     /**
@@ -53,6 +54,9 @@ final class QuoteLineWriter
 
         $rates = $this->resolveVatRates($lines);
         $units = $this->resolveProductUnits($lines);
+        $directions = $type === QuoteLineType::Revenue
+            ? $this->directionResolver->forProducts(array_map(static fn (QuoteLineData $line): int => $line->productId, $lines))
+            : [];
         // Spec 0144, D-2/D-4: only a COST row ever carries an allocation — a
         // REVENUE row's own `offer_line_id` is always NULL, so resolving it
         // for the other type would be dead work at best.
@@ -85,6 +89,12 @@ final class QuoteLineWriter
                 // unit on the very next unrelated edit, erasing the freeze
                 // (bug found by the verifier, fixed 2026-09-01).
                 'unit_of_measure_id' => $isNew || $productChanged ? ($units[$data->productId] ?? null) : $line->unit_of_measure_id,
+                // Spec 0202, D-3/D-7: same freeze rule as the unit above — the
+                // Supplier commission direction is written ONLY when the REVENUE
+                // row is created or its product changes. A COST row never has one.
+                'supplier_commission_direction' => $type === QuoteLineType::Cost
+                    ? null
+                    : ($isNew || $productChanged ? ($directions[$data->productId] ?? null) : $line->supplier_commission_direction),
                 'additional_description' => $data->hasAdditionalDescription ? $data->additionalDescription : $line->additional_description,
                 'net_amount' => $amounts['net'],
                 'vat_amount' => $amounts['vat'],

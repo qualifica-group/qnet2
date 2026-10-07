@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Quotes;
 
+use App\Enums\CommissionRecipientRole;
 use App\Enums\QuoteLineType;
+use App\Enums\SupplierCommissionDirection;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 
@@ -45,7 +47,8 @@ final class QuoteTotalsCalculator
      * was actually rewritten by this write. Margin is revenue net minus cost
      * net minus the total of every REVENUE line's commissions, all roles
      * (spec 0145, D-3/D-4 — supersedes spec 0065 D-5) and MAY be negative
-     * (AC-043, no clamp). The caller MUST have already run
+     * (AC-043, no clamp), corrected for RECEIVED Supplier-commission lines (spec
+     * 0202, D-8). The caller MUST have already run
      * QuoteLineCommissionWriter::recalculateQuoteMargins() on $quote in this
      * same write, so `calculated_amount` reflects the current margin base.
      *
@@ -62,8 +65,32 @@ final class QuoteTotalsCalculator
             'revenue_vat' => $revenue['vat'],
             'cost_net' => $cost['net'],
             'cost_vat' => $cost['vat'],
-            'margin_net' => round($revenue['net'] - $cost['net'] - $commissions, 2, PHP_ROUND_HALF_UP),
+            'margin_net' => round($revenue['net'] - $cost['net'] - $commissions + $this->receivedAdjustment($quote), 2, PHP_ROUND_HALF_UP),
         ];
+    }
+
+    /**
+     * Spec 0202, D-8: a RECEIVED line's own margin is `s - c - p` (the
+     * Supplier commission IS its revenue) instead of the generic
+     * `n - c - p - s` already inside the formula above, so each such line adds
+     * the difference `2s - n` (n = net, s = its Supplier commission). Lines
+     * PAID or without a direction need no correction (D-8 null = generic).
+     * Revenue/VAT/gross are untouched (D-9).
+     */
+    private function receivedAdjustment(Quote $quote): float
+    {
+        $received = QuoteLine::query()
+            ->where('quote_id', $quote->id)
+            ->where('line_type', QuoteLineType::Revenue)
+            ->where('supplier_commission_direction', SupplierCommissionDirection::Received);
+
+        $net = (float) (clone $received)->sum('net_amount');
+        $supplier = (float) (clone $received)
+            ->join('quote_line_commissions', 'quote_lines.id', '=', 'quote_line_commissions.quote_line_id')
+            ->where('quote_line_commissions.recipient_role', CommissionRecipientRole::Supplier)
+            ->sum('quote_line_commissions.calculated_amount');
+
+        return 2 * $supplier - $net;
     }
 
     /**

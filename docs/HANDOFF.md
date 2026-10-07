@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMMISSIONE FORNITORE PER TIPOLOGIA (spec 0202) + REGOLE PROVVIGIONI LEGACY (spec 0203) — VERDE, NON COMMITTATO (2026-10-07)
+
+- Spec 0202 (decisioni utente): impostazione sulla TIPOLOGIA prodotto, mai piu' sul codice `institution`:
+  `product_typologies.supplier_commission_enabled` + `supplier_commission_direction` (enum
+  `App\Enums\SupplierCommissionDirection` RECEIVED|PAID). Snapshot congelato `quote_lines.supplier_commission_direction`
+  scritto SOLO da `QuoteLineWriter` alla creazione della riga REVENUE o al cambio prodotto (duplicator copia).
+  Calcolo NO = nessuna commissione Fornitore. Margine (server `QuoteTotalsCalculator`, FE `commission-calculator.ts`):
+  RECEIVED s−c−p, PAID n−c−p−s, null n−c−p; ricavi/IVA/documenti invariati. `POST /api/quotes/commission-defaults`
+  risponde `{commissions, supplier_commission_direction}`. Contract data: `lines[].supplier_commission_direction`
+  (non piu' `is_institution`). D-14: anche il tab Costi usa il ricavo effettivo, regola unica in
+  `App\Services\WorkOrders\LineEffectiveRevenue`. Migrazione: institution -> RECEIVED, altre -> PAID, nuove tipologie
+  spente; `ProductTypology::factory()->supplierCommission()` nei test che vogliono la commissione Fornitore.
+- Spec 0203: repo legacy `qnet` nuovo `Api/V2/CommissionConfigurationMigrationController` +
+  `GET api/v2/migration/commission-configurations` (sola lettura, 615 regole: 595 commercial/contact, 19
+  supplier/company, 1 senza ruolo; `type` = tipo destinatario, `tipology` = ruolo). qnet-2: sorgenti
+  `commission-configurations` (via `CommissionConfigurationService`, `old_id` nuovo su `commission_configurations`) e
+  `product-suppliers` (imposta `products.supplier_id` solo se vuoto), fase subito dopo `registries`. Stima: 30 regole
+  falliranno comunque (29 senza destinatario + 1 senza ruolo); le altre importabili solo con anagrafiche/referenti
+  migrati. Nel dev DB nessuna anagrafica migrata: import non provato end-to-end.
+- Verifica (verifier): Pest suite completa 9418/9419 (1 skip); Pint ok; Vitest 6970/6971 (timeout sotto carico
+  `attribute-form-table-editor`, verde da solo); `tsc -b --force` 0; ESLint 1 errore preesistente
+  `quotes/column-renderers.tsx:11`; HTTP reale + endpoint legacy reale; screenshot `v3-*`. Dopo D-14: Pest WorkOrders
+  227/227, Vitest help+work-order-costs 131.
+- Aperto: `margin_net` persistito delle offerte esistenti si aggiorna solo al prossimo salvataggio (0145 D-5);
+  canali Gestione Richieste/Lead senza test dedicato sullo snapshot (passano dal writer condiviso); percentuali
+  legacy ora applicate al margine riga, non al prezzo.
+- Al commit: due repo (qnet-2 e qnet legacy); in qnet-2 ESCLUDERE i file di altre sessioni (registries,
+  commission-configurations FE, `RegistryScopedTableDefinition`, `TableRegistry`).
+
 ## ANAGRAFICA — TAB "COMMISSIONI CONFIGURATE" (spec 0204) — VERDE, COMMITTATO (2026-10-07)
 
 - Richiesta utente: "aggiungere un tab commissioni configurate (collegamento tramite commissioni configuratore) su

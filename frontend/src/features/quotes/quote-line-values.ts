@@ -58,6 +58,7 @@ export function linesToFormValues(lines: QuoteLine[], withCommissions = true): Q
       ...(withCommissions
         ? {
             additional_description: line.additional_description ?? null,
+            supplier_commission_direction: line.supplier_commission_direction ?? null,
             commissions: (line.commissions ?? []).map((commission) => ({
               ...commission,
               value: Number(commission.value),

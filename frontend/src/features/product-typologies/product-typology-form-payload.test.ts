@@ -10,6 +10,8 @@ const formValues: ProductTypologyFormValues = {
   name: 'Kilogram',
   code: 'kilogram',
   description: 'Mass unit',
+  supplier_commission_enabled: false,
+  supplier_commission_direction: null,
 }
 
 function original(
@@ -20,6 +22,8 @@ function original(
     name: 'Kilogram',
       code: 'kilogram',
     description: 'Mass unit',
+    supplier_commission_enabled: false,
+    supplier_commission_direction: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     permissions: {
@@ -37,6 +41,8 @@ describe('buildCreatePayload (spec 0099)', () => {
       name: 'Kilogram',
           code: 'kilogram',
       description: 'Mass unit',
+      supplier_commission_enabled: false,
+      supplier_commission_direction: null,
     })
   })
 })
@@ -63,5 +69,40 @@ describe('buildUpdatePayload (spec 0099, D-1)', () => {
     const divergedCode = { ...formValues, code: 'gram' }
     const payload = buildUpdatePayload(divergedCode, original())
     expect(payload).not.toHaveProperty('code')
+  })
+
+  it('sends enabled and direction when the commission is switched on', () => {
+    expect(
+      buildUpdatePayload(
+        { ...formValues, supplier_commission_enabled: true, supplier_commission_direction: 'PAID' },
+        original(),
+      ),
+    ).toEqual({ supplier_commission_enabled: true, supplier_commission_direction: 'PAID' })
+  })
+
+  it('sends a null direction when the commission is switched off, even with a stale form direction', () => {
+    const enabledOriginal = original({
+      supplier_commission_enabled: true,
+      supplier_commission_direction: 'RECEIVED',
+    })
+    expect(
+      buildUpdatePayload(
+        { ...formValues, supplier_commission_enabled: false, supplier_commission_direction: 'RECEIVED' },
+        enabledOriginal,
+      ),
+    ).toEqual({ supplier_commission_enabled: false, supplier_commission_direction: null })
+  })
+
+  it('sends only the direction when just the direction changes', () => {
+    const enabledOriginal = original({
+      supplier_commission_enabled: true,
+      supplier_commission_direction: 'RECEIVED',
+    })
+    expect(
+      buildUpdatePayload(
+        { ...formValues, supplier_commission_enabled: true, supplier_commission_direction: 'PAID' },
+        enabledOriginal,
+      ),
+    ).toEqual({ supplier_commission_direction: 'PAID' })
   })
 })

@@ -113,7 +113,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The summary shows, in this order, **Expected revenue**, **Expected cost**, the **Commission Summary** and the **Expected margin** (net revenue minus net cost minus commissions), plus the **Product Typology Summary**. Percentage commissions are calculated on the product row\'s own margin (its net revenue minus the costs imputed to it, never below zero): the **Margin per product** block shows revenue, imputed cost, commissions and margin for each product row, plus a "Generic costs" row for unattributed costs. This block is visible only to users who can see commissions.',
+          text: 'The summary shows, in this order, **Expected revenue**, **Expected cost**, the **Commission Summary** and the **Expected margin** (sum of the line margins minus generic costs: a line with a **received** Supplier commission has the commission alone as revenue, the others are net amount minus costs and paid commissions; **Expected revenue** does not change), plus the **Product Typology Summary**. Percentage commissions are calculated on the product row\'s own margin (its net revenue minus the costs imputed to it, never below zero): the **Margin per product** block shows revenue, imputed cost, commissions and margin for each product row (lines with a received commission carry the note "revenue = received commission"), plus a "Generic costs" row for unattributed costs. This block is visible only to users who can see commissions.',
         },
         {
           type: 'warning',

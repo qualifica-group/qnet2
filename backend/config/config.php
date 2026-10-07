@@ -12,6 +12,7 @@ use App\Enums\ProductUsage;
 use App\Enums\ReferentContactScopeEnum;
 use App\Enums\SiteTypeEnum;
 use App\Enums\SizeClassEnum;
+use App\Enums\SupplierCommissionDirection;
 use App\Enums\TaskAssignmentScope;
 use App\Enums\TaskDueWindow;
 use App\Enums\TaskListStatus;
@@ -90,6 +91,9 @@ return [
         'task_list_status' => TaskListStatus::class,
         'task_due_window' => TaskDueWindow::class,
         'task_assignment_scope' => TaskAssignmentScope::class,
+        // Product typology Supplier commission direction (spec 0202): the
+        // typology form's Received/Paid select and the grid's badge column.
+        'supplier_commission_direction' => SupplierCommissionDirection::class,
     ],
 
 ];

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\BusinessFunction;
+use App\Models\CommissionConfiguration;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\OperationalSite;
@@ -46,6 +47,7 @@ dataset('old_id_tables', [
     'quotes' => ['quotes'],
     'quote_lines' => ['quote_lines'],
     'work_orders' => ['work_orders'],
+    'commission_configurations' => ['commission_configurations'],
 ]);
 
 /**
@@ -72,6 +74,7 @@ function oldIdFactoryFor(string $table): Factory
         'quotes' => Quote::factory(),
         'quote_lines' => QuoteLine::factory(),
         'work_orders' => WorkOrder::factory(),
+        'commission_configurations' => CommissionConfiguration::factory(),
     };
 }
 

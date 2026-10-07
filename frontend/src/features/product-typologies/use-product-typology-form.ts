@@ -23,7 +23,13 @@ import type {
 } from '@/features/product-typologies/types'
 
 /** Server-side field names mapped onto the form for 422 handling. */
-const SERVER_ERROR_FIELDS = ['name', 'code', 'description'] as const
+const SERVER_ERROR_FIELDS = [
+  'name',
+  'code',
+  'description',
+  'supplier_commission_enabled',
+  'supplier_commission_direction',
+] as const
 
 export type ProductTypologyFormValues = CreateProductTypologyFormValues & UpdateProductTypologyFormValues
 
@@ -56,9 +62,17 @@ export function useProductTypologyForm({ mode, onSuccess }: UseProductTypologyFo
         name: mode.productTypology.name,
         code: mode.productTypology.code,
         description: mode.productTypology.description,
+        supplier_commission_enabled: mode.productTypology.supplier_commission_enabled,
+        supplier_commission_direction: mode.productTypology.supplier_commission_direction,
       }
     }
-    return { name: '', code: '', description: null }
+    return {
+      name: '',
+      code: '',
+      description: null,
+      supplier_commission_enabled: false,
+      supplier_commission_direction: null,
+    }
   }, [mode])
 
   const form = useForm<ProductTypologyFormValues>({

@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0203-legacy-commission-rules-migration" status="implemented" owner="nicola" date="2026-10-07">
+
+  <goal>
+    Portare in qnet-2 le regole provvigionali del vecchio gestionale (Ente/Fornitore e tutti gli altri ruoli) come
+    regole del Configuratore Commissioni, e collegare ai prodotti migrati il loro fornitore, cosi' che le nuove
+    righe d'offerta calcolino da sole le provvigioni previste dal qnet vecchio.
+  </goal>
+
+  <context>
+    Legacy (`/Users/Repository/qnet`, DB `qnet`, verificato 2026-10-07):
+    - `service_commissions` (615 righe): `type` = tipo di destinatario (1 azienda `companies`, 2 utente `users`,
+      3 contatto `contacts`; `ListServiceCommission::nameArchive`), `tipology` = ruolo (1 Commerciale,
+      2 Segnalatore, 3 Supervisore, 4 Fornitore; `CommissionService::accetta`), `archive_id` = id del destinatario
+      nella tabella di `type`, `category_id` (614) oppure `service_id` (1), `percentual` (613 > 0), `cost`
+      (0 righe > 0), `note`. Distribuzione: type 1 + tipology 4 = 19 (Fornitore su aziende), type 3 + tipology 1 =
+      595 (Commerciale su contatti), type 2 + tipology null = 1 (utente senza ruolo, su servizio).
+    - Calcolo legacy (`CalcolaProvvigioneTrait`): % sul prezzo unitario; in qnet-2 la base e' il margine riga
+      (spec 0145 D-1, confermato spec 0202 D-5): gli stessi valori % daranno importi diversi dal legacy.
+    - `services.supplier_id` -> `companies` (250/250 verificati). L'API legacy `migration/products` lo espone gia'
+      (`ProductMigrationController`), ma `ProductsSource` NON lo rimappa: i prodotti (fase 5) arrivano prima
+      delle anagrafiche (fase 7) e il commento in `ProductsSource:33` e' superato (le anagrafiche ora hanno
+      `old_id`, spec 0189). Senza `products.supplier_id` la commissione Fornitore non nasce
+      (`QuoteCommissionInitializer:51`).
+
+    qnet-2:
+    - `CommissionConfiguration` (recipient_role, application_scope PRODUCT|PRODUCT_CATEGORY|RECIPIENT,
+      recipient_type/recipient_id, commission_type PERCENTAGE|FIXED_AMOUNT, value, priority, valid_from,
+      valid_until, status, internal_note), ruoli ammessi per tipo destinatario in
+      `CommissionRecipientRole::allowedRecipientTypes()` (SUPPLIER solo `registry`).
+    - Mappature legacy gia' usate da `MapsLegacyQuoteLines`: commercial/reporter -> `Referent` (contacts),
+      supervisor -> `User`, supplier -> `Registry` (companies), via `old_id`.
+    - Motore migrazioni: `AbstractMigrationSource`, `config/migrations.php`, `App\Migrations\MigrationOrder`,
+      API legacy sotto `routes/apiV2.php` prefisso `v2/migration` (`*MigrationController`, paginati
+      search/offset/limit).
+
+    Decisioni utente 2026-10-07:
+    D-1 — Autorizzata la modifica al repo legacy: nuovo endpoint di SOLA LETTURA.
+    D-2 — Si importano le regole di TUTTI i ruoli.
+    D-3 — Esecuzione dalla sezione Migrazioni (piano massivo), non dal seeder di produzione.
+
+    Decisioni proposte, da validare con l'approvazione:
+    D-4 — Endpoint legacy `GET /api/v2/migration/commission-configurations` (nuovo
+          `CommissionConfigurationMigrationController`, stessa forma degli altri): per riga `id`, `role`
+          (commercial|reporter|supervisor|supplier|null da `tipology`), `recipient_kind` (company|user|contact da
+          `type`), `recipient_id`, `category_id`, `product_id` (= service_id), `percentage`, `amount`, `note`,
+          `created_at`. Nessuna scrittura sul DB legacy.
+    D-5 — Sorgente qnet-2 `commission-configurations`: una `CommissionConfiguration` per regola legacy, creata dal
+          servizio di dominio (stesse validazioni del Configuratore). Ruolo da `role`; destinatario rimappato via
+          `old_id` (company -> registry, contact -> referent, user -> user); scope PRODUCT_CATEGORY (categoria) o
+          PRODUCT (servizio); PERCENTAGE con `percentage`, altrimenti FIXED_AMOUNT con `amount`; `status` ACTIVE;
+          `valid_from` = data `created_at` legacy; `priority` default; `internal_note` = nota legacy; nome
+          "Legacy - &lt;ruolo&gt; - &lt;destinatario&gt; - &lt;categoria o prodotto&gt;"; `old_id` = id legacy.
+    D-6 — Righe non importabili, riportate come fallite con messaggio leggibile (mai inventate): ruolo null (la
+          regola utente senza ruolo), tipo destinatario non ammesso dal ruolo, destinatario/categoria/prodotto non
+          migrati, nessun importo. Idempotente: un `old_id` gia' importato si salta.
+    D-7 — Nuova sorgente `product-suppliers`: rilegge l'endpoint legacy `migration/products` gia' esistente e
+          imposta `products.supplier_id` sul prodotto con quell'`old_id` risolvendo `supplier_id` sulle anagrafiche
+          (`registries.old_id`); solo se oggi e' vuoto (non sovrascrive una scelta fatta in qnet-2); fornitore non
+          migrato -> warning. Aggiorna il commento superato di `ProductsSource`.
+    D-8 — Ordine: nuova fase subito dopo `registries` con `product-suppliers` e `commission-configurations`
+          (hanno bisogno di anagrafiche, referenti, utenti, categorie, prodotti; nessuna dipendenza tra loro).
+    D-9 — Nessun ricalcolo delle offerte gia' migrate: le loro commissioni restano quelle importate per riga
+          (spec 0189). Le regole valgono per le righe nuove (e per le commissioni mancanti al salvataggio, come oggi).
+  </context>
+
+  <scope>
+    <in>
+      <item>Repo legacy: `CommissionConfigurationMigrationController` + rotta in `routes/apiV2.php` (sola lettura) + test se il repo li ha per gli altri controller.</item>
+      <item>qnet-2: sorgenti `commission-configurations` e `product-suppliers`, registrazione in `config/migrations.php` e `MigrationOrder`, `old_id` su `commission_configurations` se manca (migrazione nuova).</item>
+      <item>Test Pest con client API fake (pattern dei test delle altre sorgenti).</item>
+      <item>Guida in-app della sezione Migrazioni, se elenca le sorgenti; manuale segnalato.</item>
+    </in>
+    <out>
+      <item>Seeder di produzione (D-3).</item>
+      <item>Ricalcolo delle commissioni o dei margini delle offerte gia' migrate (D-9).</item>
+      <item>Conversione della base di calcolo legacy (prezzo) in quella qnet-2 (margine): si copiano i valori %.</item>
+      <item>Qualsiasi scrittura sul DB legacy.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="(legacy) /api/v2/migration/commission-configurations">
+      <request>`search`?, `offset`?, `limit`? (max 100) come gli altri controller di migrazione.</request>
+      <response status="200">Stessa envelope paginata degli altri `*MigrationController`; item:
+        { "id": int, "role": "commercial"|"reporter"|"supervisor"|"supplier"|null,
+          "recipient_kind": "company"|"user"|"contact"|null, "recipient_id": int|null,
+          "category_id": int|null, "product_id": int|null, "percentage": float|null, "amount": float|null,
+          "note": string|null, "created_at": string|null }</response>
+      <errors>401/403 come gli altri endpoint v2 (`auth:api`, `v2.access`).</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Endpoint legacy: restituisce le 615 regole con role/recipient_kind mappati da tipology/type, paginato; nessuna scrittura.</criterion>
+    <criterion id="AC-002">Regola Fornitore (company, categoria, 10%) -> CommissionConfiguration SUPPLIER, recipient registry (old_id), scope PRODUCT_CATEGORY, PERCENTAGE 10, ACTIVE, old_id valorizzato.</criterion>
+    <criterion id="AC-003">Regola Commerciale (contact, categoria) -> COMMERCIAL con recipient referent; regola su servizio -> scope PRODUCT.</criterion>
+    <criterion id="AC-004">Ruolo null, tipo destinatario non ammesso, riferimento non migrato o importo assente -> riga fallita con messaggio; nessuna regola creata.</criterion>
+    <criterion id="AC-005">Re-run: nessun duplicato (old_id saltato).</criterion>
+    <criterion id="AC-006">`product-suppliers`: prodotto migrato con supplier legacy migrato -> `supplier_id` impostato; gia' valorizzato -> non toccato; fornitore non migrato -> warning.</criterion>
+    <criterion id="AC-007">Le due sorgenti sono registrate e nella fase subito dopo `registries`; il test di registro/ordine migrazioni e' aggiornato.</criterion>
+    <criterion id="AC-008">End-to-end (test): dopo import, una nuova riga d'offerta con un prodotto Ente della categoria coperta crea la commissione Fornitore al valore della regola legacy.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; sola lettura sul legacy; regole create dal servizio di dominio, mai insert grezzi.</item>
+    <item>Identificatori in inglese; file &lt;= 300 righe; migrazioni nuove e reversibili.</item>
+  </constraints>
+
+  <tasks>
+    <task id="T-01" lane="legacy" depends="">Endpoint legacy (repo qnet). AC-001.</task>
+    <task id="T-02" lane="backend" depends="contratto + 0202 backend chiuso">Sorgente `commission-configurations` (+ old_id se serve). AC-002..AC-005, AC-008.</task>
+    <task id="T-03" lane="backend" depends="T-02">Sorgente `product-suppliers`, registrazione e ordine. AC-006, AC-007.</task>
+    <task id="T-04" lane="verifier" depends="T-01..T-03">Test, chiamata reale all'endpoint legacy locale, dry-run delle sorgenti sul DB di sviluppo se configurato.</task>
+  </tasks>
+
+  <risks>
+    <r id="R-1">Base di calcolo diversa dal legacy (margine vs prezzo): stessi %, importi diversi. Da comunicare.</r>
+    <r id="R-2">Gli id legacy di companies/contacts/users si sovrappongono: il mapping DEVE usare `type`, mai indovinare la tabella dall'id.</r>
+    <r id="R-3">Il backend della spec 0202 e' in corso su file vicini (commissioni, migrazione legacy delle righe): T-02/T-03 partono solo dopo la sua chiusura, per non avere due agenti sugli stessi file.</r>
+  </risks>
+
+</spec>

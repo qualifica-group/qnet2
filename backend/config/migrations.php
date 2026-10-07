@@ -4,6 +4,7 @@ use App\Migrations\Sources\AttributeLayoutsSource;
 use App\Migrations\Sources\AttributesSource;
 use App\Migrations\Sources\BusinessFunctionMembersSource;
 use App\Migrations\Sources\BusinessFunctionsSource;
+use App\Migrations\Sources\CommissionConfigurationsSource;
 use App\Migrations\Sources\CompaniesSource;
 use App\Migrations\Sources\CompanySitesSource;
 use App\Migrations\Sources\CostProductsSource;
@@ -15,6 +16,7 @@ use App\Migrations\Sources\PaymentMethodsSource;
 use App\Migrations\Sources\ProductCategoriesSource;
 use App\Migrations\Sources\ProductCategoryAttributesSource;
 use App\Migrations\Sources\ProductsSource;
+use App\Migrations\Sources\ProductSuppliersSource;
 use App\Migrations\Sources\QuotesSource;
 use App\Migrations\Sources\ReferentsSource;
 use App\Migrations\Sources\ReferentTypesSource;
@@ -107,6 +109,10 @@ return [
         'work-orders' => WorkOrdersSource::class,
         // spec 0201: the per-commessa payment data, copied onto every line.
         'work-order-line-payments' => WorkOrderLinePaymentsSource::class,
+        // spec 0203: the product supplier link and the legacy commission rules,
+        // both needing the migrated registries.
+        'product-suppliers' => ProductSuppliersSource::class,
+        'commission-configurations' => CommissionConfigurationsSource::class,
     ],
 
 ];

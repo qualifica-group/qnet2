@@ -18,12 +18,16 @@ use Illuminate\Support\Collection;
  * lines, plus the informational generic ones) and the net-amount comparison
  * (D-5: delta = actual - budget, margin = revenue - cost). Unallocated budget
  * lines never enter the totals (D-1); unattributed actual costs always do.
+ * A line's revenue is its effective revenue (spec 0202, D-8): the supplier
+ * commission on a RECEIVED line, the net amount otherwise.
  * Amounts are summed as integer cents to avoid float drift.
  */
 final class WorkOrderCostOverviewBuilder
 {
     /** Relations the QuoteLineResource reads per budget line. */
     private const array BUDGET_LINE_RELATIONS = ['product.category', 'product.productTypology', 'product.unitOfMeasure', 'vatRate', 'unitOfMeasure', 'quote', 'commissions'];
+
+    public function __construct(private readonly LineEffectiveRevenue $effectiveRevenue) {}
 
     /**
      * @return array<string, mixed>
@@ -32,7 +36,7 @@ final class WorkOrderCostOverviewBuilder
     {
         // Step 1: load the actual costs, the commessa's revenue lines and the offer's COST lines
         $costs = $workOrder->costs()->with(['product.category', 'product.unitOfMeasure', 'vatRate', 'unitOfMeasure', 'supplier'])->get();
-        $revenueLines = $workOrder->quoteLines()->with('product')->get();
+        $revenueLines = $workOrder->quoteLines()->with(['product', 'commissions'])->get();
         $budgetLines = $this->budgetLines($workOrder);
         $allocated = $budgetLines->whereIn('offer_line_id', $revenueLines->modelKeys())->values();
         $unallocated = $budgetLines->whereNull('offer_line_id')->values();
@@ -94,7 +98,7 @@ final class WorkOrderCostOverviewBuilder
         return [
             'quote_line_id' => $line->id,
             'product' => ['id' => $line->product?->id, 'code' => $line->product?->code, 'name' => $line->product?->name],
-            'revenue_cents' => $this->cents(collect([$line]), 'net_amount'),
+            'revenue_cents' => $this->effectiveRevenue->cents($line),
             'budget_cents' => $this->cents($allocated->where('offer_line_id', $line->id), 'net_amount'),
             'actual_cents' => $this->cents($costs->where('quote_line_id', $line->id), 'net_amount'),
         ];

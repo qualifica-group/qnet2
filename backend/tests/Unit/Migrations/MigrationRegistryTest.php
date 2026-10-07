@@ -5,6 +5,7 @@ use App\Migrations\Sources\AttributeLayoutsSource;
 use App\Migrations\Sources\AttributesSource;
 use App\Migrations\Sources\BusinessFunctionMembersSource;
 use App\Migrations\Sources\BusinessFunctionsSource;
+use App\Migrations\Sources\CommissionConfigurationsSource;
 use App\Migrations\Sources\CompaniesSource;
 use App\Migrations\Sources\CompanySitesSource;
 use App\Migrations\Sources\CostProductsSource;
@@ -16,6 +17,7 @@ use App\Migrations\Sources\PaymentMethodsSource;
 use App\Migrations\Sources\ProductCategoriesSource;
 use App\Migrations\Sources\ProductCategoryAttributesSource;
 use App\Migrations\Sources\ProductsSource;
+use App\Migrations\Sources\ProductSuppliersSource;
 use App\Migrations\Sources\QuotesSource;
 use App\Migrations\Sources\ReferentsSource;
 use App\Migrations\Sources\ReferentTypesSource;
@@ -81,18 +83,21 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'quotes' => QuotesSource::class,
         'work-orders' => WorkOrdersSource::class,
         'work-order-line-payments' => WorkOrderLinePaymentsSource::class,
+        'product-suppliers' => ProductSuppliersSource::class,
+        'commission-configurations' => CommissionConfigurationsSource::class,
     ]);
 });
 
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(28)
+    expect($sources)->toHaveCount(30)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'company-sites', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
             'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'attributes', 'product-categories',
             'product-category-attributes', 'attribute-layouts', 'products', 'cost-products', 'email-templates', 'document-bundles',
             'registries', 'opportunities', 'quotes', 'work-orders', 'work-order-line-payments',
+            'product-suppliers', 'commission-configurations',
         ]);
 });

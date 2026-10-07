@@ -37,6 +37,8 @@ class ProductTypologiesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('code', 'text'),
             new FieldDefinition('name', 'text', mandatory: true),
             new FieldDefinition('description', 'textarea'),
+            new FieldDefinition('supplier_commission_enabled', 'boolean'),
+            new FieldDefinition('supplier_commission_direction', 'select'),
         ];
     }
 
@@ -63,6 +65,8 @@ class ProductTypologiesAuthorization extends AbstractResourceAuthorization
             'code' => $mayWrite && $model === null ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'name' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'supplier_commission_enabled' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'supplier_commission_direction' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

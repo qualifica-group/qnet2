@@ -13,6 +13,7 @@ use App\Models\Opportunity;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductTypology;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\QuoteWorkflowStatus;
@@ -43,6 +44,7 @@ if (! function_exists('legacyQuoteServiceProduct')) {
 
         return Product::factory()->saleOnly()->create([
             'category_id' => $category->id,
+            'product_typology_id' => ProductTypology::factory()->supplierCommission(),
             'old_source' => 'services',
             'old_id' => $legacyId,
         ]);

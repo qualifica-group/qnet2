@@ -58,6 +58,8 @@ class QuoteLineResource extends JsonResource
             // CURRENT unit, so an old row never renders blank.
             'unit_of_measure' => $this->summarizeUnitOfMeasure(),
             'additional_description' => $this->additional_description,
+            // Spec 0202, D-7: the frozen Supplier commission direction (null = not calculated).
+            'supplier_commission_direction' => $this->supplier_commission_direction?->value,
             'unit_price' => $this->unit_price,
             'vat_rate_id' => $this->vat_rate_id,
             'vat_rate' => $this->summarizeVatRate(),

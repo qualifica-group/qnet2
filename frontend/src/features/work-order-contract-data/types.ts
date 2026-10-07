@@ -4,6 +4,8 @@
  * only formats them, every figure is computed server-side.
  */
 
+import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
+
 export type ContractCommissionType = 'PERCENTAGE' | 'FIXED_AMOUNT'
 
 export type ContractDataWarning = 'missing_supplier_commission' | 'stale_commission_base'
@@ -36,7 +38,8 @@ export interface ContractDataLine {
   quote_line_id: number
   product: { id: number; code: string; name: string }
   typology: { id: number; code: string; name: string } | null
-  is_institution: boolean
+  /** Spec 0202 D-11: read from the row's frozen snapshot; null = Supplier commission not calculated. */
+  supplier_commission_direction: SupplierCommissionDirection | null
   quantity: string
   unit_price: string
   net_amount: string

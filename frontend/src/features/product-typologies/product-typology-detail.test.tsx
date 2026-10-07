@@ -31,6 +31,8 @@ function productTypology(
     name: 'Kilogram',
     code: 'kilogram',
     description: 'Mass unit',
+    supplier_commission_enabled: false,
+    supplier_commission_direction: null,
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-02-15T14:30:00Z',
     permissions: {
@@ -127,5 +129,28 @@ describe('ProductTypologyDetailView — edit action', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
 
     expect(onEdit).toHaveBeenCalledOnce()
+  })
+})
+
+describe('ProductTypologyDetailView — supplier commission (spec 0202)', () => {
+  it('shows the switch as off and no direction when disabled', () => {
+    render(<ProductTypologyDetailView productTypology={productTypology()} />)
+
+    expect(screen.getByText('Supplier commission calculation')).toBeInTheDocument()
+    expect(screen.queryByText('Direction')).not.toBeInTheDocument()
+  })
+
+  it('shows the direction label when enabled', () => {
+    render(
+      <ProductTypologyDetailView
+        productTypology={productTypology({
+          supplier_commission_enabled: true,
+          supplier_commission_direction: 'RECEIVED',
+        })}
+      />,
+    )
+
+    expect(screen.getByText('Direction')).toBeInTheDocument()
+    expect(screen.getByText('Received')).toBeInTheDocument()
   })
 })

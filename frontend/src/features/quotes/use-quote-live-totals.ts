@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useWatch, type Control } from 'react-hook-form'
-import { calculateCommissionTotals, sumCommissionTotals } from '@/features/quotes/commission-calculator'
+import { calculateCommissionTotals, calculateMarginBeforeCosts } from '@/features/quotes/commission-calculator'
 import {
   computeQuoteTotals,
   EMPTY_QUOTE_TOTALS_SUMMARY,
@@ -48,10 +48,12 @@ export function useQuoteLiveTotals(
     [offerLines, costLines],
   )
 
-  // Spec 0145 D-3/D-8: the live margin nets out the SAME live commission
-  // preview above — `computeQuoteTotals` itself stays commission-agnostic
-  // (D-5's original revenue - cost), the subtraction happens here so the
-  // detail path (already net from the server, D-4) never double-subtracts.
+  // Spec 0202 D-8: the live margin is the sum of every row's margin by its
+  // frozen Supplier commission direction (RECEIVED: s - p; PAID: n - p - s;
+  // none: n - p) minus ALL cost rows. `computeQuoteTotals` itself stays
+  // commission-agnostic (D-5's revenue - cost, Ricavi attesi unchanged, D-9);
+  // the margin is replaced here so the detail path (already net from the
+  // server) never double-subtracts.
   const totals = useMemo(() => {
     if (offerLines.length === 0 && costLines.length === 0) {
       return EMPTY_QUOTE_TOTALS_SUMMARY
@@ -60,8 +62,8 @@ export function useQuoteLiveTotals(
       offerLines.map((row) => toLineForTotals(row, vatRatePercentFor)),
       costLines.map((row) => toLineForTotals(row, vatRatePercentFor)),
     )
-    return { ...base, margin: { net: round2(base.margin.net - sumCommissionTotals(commissionTotals)) } }
-  }, [offerLines, costLines, vatRatePercentFor, commissionTotals])
+    return { ...base, margin: { net: round2(calculateMarginBeforeCosts(offerLines, costLines) - base.cost.net) } }
+  }, [offerLines, costLines, vatRatePercentFor])
 
   return { offerLines, costLines, commissionTotals, totals }
 }

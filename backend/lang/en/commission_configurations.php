@@ -12,6 +12,10 @@ return [
         'product' => 'Product',
         'recipient' => 'Recipient',
     ],
+    'directions' => [
+        'received' => 'Received (collected by us)',
+        'paid' => 'Paid (cost to the supplier)',
+    ],
     'types' => [
         'fixed_amount' => 'Fixed amount',
         'percentage' => 'Percentage',

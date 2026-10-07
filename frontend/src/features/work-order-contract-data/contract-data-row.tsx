@@ -95,7 +95,7 @@ export function ContractDataRow({
             <span>
               <span className="font-mono text-muted-foreground">{line.product.code}</span> {line.product.name}
             </span>
-            <Badge variant={line.is_institution ? 'secondary' : 'outline'} className="w-fit text-[11px]">
+            <Badge variant={line.supplier_commission_direction === 'RECEIVED' ? 'secondary' : 'outline'} className="w-fit text-[11px]">
               {line.typology?.name ?? t('workOrders.contractData.kind.consultancy')}
             </Badge>
           </div>

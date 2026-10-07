@@ -1,4 +1,4 @@
-import { Shapes } from 'lucide-react'
+import { Percent, Shapes } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FormSection } from '@/components/form-section'
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Form, FormControl } from '@/components/ui/form'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
+import { SupplierCommissionFields } from '@/features/product-typologies/supplier-commission-fields'
 import { useProductTypologyForm } from '@/features/product-typologies/use-product-typology-form'
 import type {
   ProductTypologyDetail,
@@ -39,6 +40,9 @@ export function ProductTypologyFormBody({ mode, onSuccess, onCancel }: ProductTy
     fieldPermission('name').visible ||
     fieldPermission('code').visible ||
     fieldPermission('description').visible
+  const commissionVisible =
+    fieldPermission('supplier_commission_enabled').visible ||
+    fieldPermission('supplier_commission_direction').visible
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
@@ -101,6 +105,16 @@ export function ProductTypologyFormBody({ mode, onSuccess, onCancel }: ProductTy
                   </FormControl>
                 )}
               </MetaField>
+            </FormSection>
+          )}
+
+          {commissionVisible && (
+            <FormSection
+              icon={Percent}
+              title={t('productTypologies.form.sections.commission.title')}
+              description={t('productTypologies.form.sections.commission.description')}
+            >
+              <SupplierCommissionFields form={form} />
             </FormSection>
           )}
 

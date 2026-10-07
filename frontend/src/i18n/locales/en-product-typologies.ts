@@ -18,6 +18,8 @@ export const productTypologies = {
     name: 'Name',
     code: 'Code',
     description: 'Description',
+    supplier_commission_enabled: 'Supplier commission',
+    supplier_commission_direction: 'Commission direction',
     created_at: 'Created at',
     updated_at: 'Updated at',
   },
@@ -51,19 +53,33 @@ export const productTypologies = {
     codeInvalid:
       'Code must start with a lowercase letter and contain only lowercase letters, digits and underscores.',
     descriptionMax: 'Description may contain at most 500 characters.',
+    supplierCommissionEnabled: "Supplier commission calculation",
+    supplierCommissionDirection: "Direction",
+    supplierCommissionDirectionPlaceholder: "Select the direction",
+    supplierCommissionDirectionRequired: "The direction is required when the Supplier commission is enabled.",
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the product typology. Please retry.',
     deleteForbidden: 'You cannot delete this product typology.',
     deleteInUse:
       'This product typology cannot be deleted because it is linked to one or more products.',
     sections: {
+      commission: {
+        title: "Supplier commission",
+        description: "Whether and how the Supplier commission is calculated.",
+      },
       identity: {
         title: 'Details',
         description: 'Name, code and description.',
       },
     },
     hints: {
+      supplierCommissionDirection:
+        "Received: the commission is the line revenue, the taxable amount goes to the supplier. Paid: it is a cost towards the supplier.",
       codeLocked: 'The code cannot be changed after creation.',
     },
+  },
+  supplierCommissionDirection: {
+    RECEIVED: "Received",
+    PAID: "Paid",
   },
 }

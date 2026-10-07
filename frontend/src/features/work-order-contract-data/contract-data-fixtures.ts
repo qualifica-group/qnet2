@@ -2,12 +2,12 @@ import type { ContractDataLine, WorkOrderContractData } from '@/features/work-or
 
 const NO_PAYMENT = { status: null, payment_agreement: null, has_unpaid: false }
 
-/** Consulting line: 2 x 500.00 = 1000.00, a 200.00 commission (Supplier 150.00 + other 50.00). */
-export const CONSULTANCY_LINE: ContractDataLine = {
+/** PAID line: 2 x 500.00 = 1000.00, a 250.00 commission (Supplier 150.00 paid + other 100.00). */
+export const PAID_LINE: ContractDataLine = {
   quote_line_id: 11,
   product: { id: 1, code: 'CON-001', name: 'Consulenza qualita' },
   typology: { id: 1, code: 'consultancy', name: 'Consulenza' },
-  is_institution: false,
+  supplier_commission_direction: 'PAID',
   quantity: '2.00',
   unit_price: '500.00',
   net_amount: '1000.00',
@@ -19,12 +19,12 @@ export const CONSULTANCY_LINE: ContractDataLine = {
   payment: NO_PAYMENT,
 }
 
-/** Institution line with a percentage Supplier commission: 10% of 2000.00 = 200.00. */
-export const INSTITUTION_LINE: ContractDataLine = {
+/** RECEIVED line with a percentage Supplier commission: 10% of 2000.00 = 200.00 is its revenue. */
+export const RECEIVED_LINE: ContractDataLine = {
   quote_line_id: 12,
   product: { id: 2, code: 'ENT-001', name: 'Certificazione ente' },
   typology: { id: 2, code: 'institution', name: 'Ente' },
-  is_institution: true,
+  supplier_commission_direction: 'RECEIVED',
   quantity: '1.00',
   unit_price: '2000.00',
   net_amount: '2000.00',
@@ -41,7 +41,7 @@ export const INSTITUTION_LINE: ContractDataLine = {
 }
 
 export const CONTRACT_DATA: WorkOrderContractData = {
-  lines: [CONSULTANCY_LINE, INSTITUTION_LINE],
+  lines: [PAID_LINE, RECEIVED_LINE],
   totals: {
     net_amount: '3000.00',
     typologies: [
@@ -58,7 +58,7 @@ export const CONTRACT_DATA: WorkOrderContractData = {
 
 /** What an actor without commission visibility receives (spec 0201 D-10). */
 export const CONTRACT_DATA_HIDDEN_COMMISSIONS: WorkOrderContractData = {
-  lines: [CONSULTANCY_LINE, INSTITUTION_LINE].map((line) => ({
+  lines: [PAID_LINE, RECEIVED_LINE].map((line) => ({
     ...line,
     supplier_commission: null,
     commissions_amount: null,

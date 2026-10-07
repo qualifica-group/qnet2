@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\SupplierCommissionDirection;
 use App\Models\ProductTypology;
 use Illuminate\Database\Seeder;
 
@@ -28,17 +29,23 @@ use Illuminate\Database\Seeder;
 class ProductTypologySeeder extends Seeder
 {
     /**
-     * @var array<int, array{0: string, 1: string}>
+     * [code, name, Supplier commission direction] (spec 0202): both enabled.
+     *
+     * @var array<int, array{0: string, 1: string, 2: SupplierCommissionDirection}>
      */
     private const array TYPOLOGIES = [
-        ['institution', 'Ente'],
-        ['consultancy', 'Consulenza'],
+        ['institution', 'Ente', SupplierCommissionDirection::Received],
+        ['consultancy', 'Consulenza', SupplierCommissionDirection::Paid],
     ];
 
     public function run(): void
     {
-        foreach (self::TYPOLOGIES as [$code, $name]) {
-            ProductTypology::firstOrCreate(['code' => $code], ['name' => $name]);
+        foreach (self::TYPOLOGIES as [$code, $name, $direction]) {
+            ProductTypology::firstOrCreate(['code' => $code], [
+                'name' => $name,
+                'supplier_commission_enabled' => true,
+                'supplier_commission_direction' => $direction,
+            ]);
         }
     }
 }

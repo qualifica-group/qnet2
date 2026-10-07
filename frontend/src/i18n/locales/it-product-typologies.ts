@@ -20,6 +20,8 @@ export const productTypologies = {
     name: 'Nome',
     code: 'Codice',
     description: 'Descrizione',
+    supplier_commission_enabled: 'Commissione Fornitore',
+    supplier_commission_direction: 'Verso commissione',
     created_at: 'Creato il',
     updated_at: 'Aggiornato il',
   },
@@ -53,19 +55,33 @@ export const productTypologies = {
     codeInvalid:
       'Il codice deve iniziare con una lettera minuscola e contenere solo lettere minuscole, cifre e underscore.',
     descriptionMax: 'La descrizione può contenere al massimo 500 caratteri.',
+    supplierCommissionEnabled: "Calcolo commissione Fornitore",
+    supplierCommissionDirection: "Verso",
+    supplierCommissionDirectionPlaceholder: "Seleziona il verso",
+    supplierCommissionDirectionRequired: "Il verso è obbligatorio quando la commissione Fornitore è attiva.",
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la tipologia prodotto. Riprova.',
     deleteForbidden: 'Non puoi eliminare questa tipologia prodotto.',
     deleteInUse:
       'Impossibile eliminare la Tipologia Prodotto perché risulta associata a uno o più prodotti.',
     sections: {
+      commission: {
+        title: "Commissione Fornitore",
+        description: "Se e come si calcola la commissione Fornitore.",
+      },
       identity: {
         title: 'Dettagli',
         description: 'Nome, codice e descrizione.',
       },
     },
     hints: {
+      supplierCommissionDirection:
+        "Ricevuta: la commissione è il ricavo della riga, l'imponibile passa al fornitore. Pagata: è un costo verso il fornitore.",
       codeLocked: 'Il codice non può essere modificato dopo la creazione.',
     },
+  },
+  supplierCommissionDirection: {
+    RECEIVED: "Ricevuta",
+    PAID: "Pagata",
   },
 }

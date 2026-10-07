@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SupplierCommissionDirection;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\ProductTypologyFactory;
@@ -24,11 +25,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * (D-5): the typology classifies the Product and is read live through it, so
  * `products` is the ONLY referenced-by set the delete guard checks (D-8).
  */
-#[Fillable(['name', 'code', 'description'])]
+#[Fillable(['name', 'code', 'description', 'supplier_commission_enabled', 'supplier_commission_direction'])]
 class ProductTypology extends BaseModel
 {
     /** @use HasFactory<ProductTypologyFactory> */
     use HasFactory, LogsModelActivity;
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'supplier_commission_enabled' => 'boolean',
+            'supplier_commission_direction' => SupplierCommissionDirection::class,
+        ];
+    }
 
     /**
      * The Products classified with this typology — the ONLY referenced-by set

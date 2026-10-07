@@ -176,7 +176,7 @@ export function QuoteLinesField({
         }]
       })
       const existingRoles = new Set(retained.map((commission) => commission.recipient_role))
-      const additions = defaults
+      const additions = defaults.commissions
         .filter((commission) => changedRoles.includes(commission.recipient_role as typeof changedRoles[number]) && !existingRoles.has(commission.recipient_role))
         .map((commission) => ({
           id: commission.id,
@@ -213,7 +213,15 @@ export function QuoteLinesField({
       if (!accepted) return false
     }
     if (productId === null || !item || variant === 'cost' || !withCommissions || !commissionContext) {
-      setProduct(index, productId, item, variant === 'revenue' && withCommissions ? [] : undefined, simplified)
+      setProduct(
+        index,
+        productId,
+        item,
+        variant === 'revenue' && withCommissions
+          ? { commissions: [], supplierCommissionDirection: null }
+          : undefined,
+        simplified,
+      )
       return true
     }
     const unitPrice = item.meta.price === null ? 0 : Number(item.meta.price)
@@ -226,18 +234,21 @@ export function QuoteLinesField({
         reporter_id: commissionContext.reporterId,
         supervisor_id: commissionContext.supervisorId,
       })
-      setProduct(index, productId, item, defaults.map((commission) => ({
-        id: commission.id,
-        recipient_role: commission.recipient_role,
-        recipient_type: commission.recipient_type,
-        recipient_id: commission.recipient_id,
-        recipient: commission.recipient,
-        commission_type: commission.commission_type,
-        value: Number(commission.value),
-        internal_note: commission.internal_note,
-        origin: commission.origin,
-        commission_configuration_id: commission.commission_configuration_id,
-      })))
+      setProduct(index, productId, item, {
+        supplierCommissionDirection: defaults.supplier_commission_direction,
+        commissions: defaults.commissions.map((commission) => ({
+          id: commission.id,
+          recipient_role: commission.recipient_role,
+          recipient_type: commission.recipient_type,
+          recipient_id: commission.recipient_id,
+          recipient: commission.recipient,
+          commission_type: commission.commission_type,
+          value: Number(commission.value),
+          internal_note: commission.internal_note,
+          origin: commission.origin,
+          commission_configuration_id: commission.commission_configuration_id,
+        })),
+      })
       return true
     } catch {
       toast.error(t('quotes.form.commissions.defaultsError'))

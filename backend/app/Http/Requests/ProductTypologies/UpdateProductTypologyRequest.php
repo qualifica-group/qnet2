@@ -3,6 +3,7 @@
 namespace App\Http\Requests\ProductTypologies;
 
 use App\DataObjects\ProductTypologies\UpdateProductTypologyData;
+use App\Enums\SupplierCommissionDirection;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\ProductTypology;
 use Illuminate\Contracts\Validation\Validator;
@@ -53,6 +54,24 @@ class UpdateProductTypologyRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:'.self::NAME_MAX, Rule::unique('product_typologies', 'name')->ignore($ignoreId)],
             'code' => ['prohibited'],
             'description' => ['sometimes', 'nullable', 'string', 'max:'.self::DESCRIPTION_MAX],
+            'supplier_commission_enabled' => ['sometimes', 'boolean'],
+            'supplier_commission_direction' => $this->directionRules(),
+        ];
+    }
+
+    /**
+     * The direction is mandatory when the switch is on (spec 0202, D-7); with
+     * the switch off a submitted value is accepted but discarded (the Service
+     * forces null).
+     *
+     * @return array<int, mixed>
+     */
+    private function directionRules(): array
+    {
+        return [
+            'nullable',
+            Rule::requiredIf(fn (): bool => $this->boolean('supplier_commission_enabled')),
+            Rule::enum(SupplierCommissionDirection::class),
         ];
     }
 

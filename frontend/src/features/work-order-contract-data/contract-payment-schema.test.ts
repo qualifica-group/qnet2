@@ -6,7 +6,7 @@ import {
   paymentFormDefaults,
   PAYMENT_AGREEMENT_MAX_LENGTH,
 } from '@/features/work-order-contract-data/contract-payment-schema'
-import { CONSULTANCY_LINE, INSTITUTION_LINE } from '@/features/work-order-contract-data/contract-data-fixtures'
+import { PAID_LINE, RECEIVED_LINE } from '@/features/work-order-contract-data/contract-data-fixtures'
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -33,12 +33,12 @@ describe('buildContractPaymentSchema', () => {
 
 describe('paymentFormDefaults / buildContractPaymentPayload', () => {
   it('starts from the persisted payment, an absent agreement becoming an empty string', () => {
-    expect(paymentFormDefaults(CONSULTANCY_LINE)).toEqual({
+    expect(paymentFormDefaults(PAID_LINE)).toEqual({
       work_order_payment_status_id: null,
       payment_agreement: '',
       has_unpaid: false,
     })
-    expect(paymentFormDefaults(INSTITUTION_LINE)).toEqual({
+    expect(paymentFormDefaults(RECEIVED_LINE)).toEqual({
       work_order_payment_status_id: 3,
       payment_agreement: 'Saldo a 30 giorni',
       has_unpaid: true,
@@ -46,17 +46,17 @@ describe('paymentFormDefaults / buildContractPaymentPayload', () => {
   })
 
   it('sends nothing when nothing changed', () => {
-    expect(buildContractPaymentPayload(paymentFormDefaults(INSTITUTION_LINE), INSTITUTION_LINE)).toEqual({})
+    expect(buildContractPaymentPayload(paymentFormDefaults(RECEIVED_LINE), RECEIVED_LINE)).toEqual({})
   })
 
   it('sends only the changed keys', () => {
-    const values = { ...paymentFormDefaults(INSTITUTION_LINE), has_unpaid: false }
-    expect(buildContractPaymentPayload(values, INSTITUTION_LINE)).toEqual({ has_unpaid: false })
+    const values = { ...paymentFormDefaults(RECEIVED_LINE), has_unpaid: false }
+    expect(buildContractPaymentPayload(values, RECEIVED_LINE)).toEqual({ has_unpaid: false })
   })
 
   it('sends a cleared status and an emptied agreement as null', () => {
     const values = { work_order_payment_status_id: null, payment_agreement: '', has_unpaid: true }
-    expect(buildContractPaymentPayload(values, INSTITUTION_LINE)).toEqual({
+    expect(buildContractPaymentPayload(values, RECEIVED_LINE)).toEqual({
       work_order_payment_status_id: null,
       payment_agreement: null,
     })

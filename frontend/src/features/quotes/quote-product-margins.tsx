@@ -62,11 +62,18 @@ export function QuoteProductMargins({ rows, genericCostNet, showCommissions = tr
           <tbody>
             {rows.map((row) => (
               <tr key={row.key} className="border-b last:border-b-0">
-                <td className="max-w-0 truncate py-1">
-                  {t('quotes.form.costsTab.associatedProductOption', {
-                    product: row.productName ?? t('quotes.form.commissions.productFallback'),
-                    n: row.rowNumber,
-                  })}
+                <td className="max-w-0 py-1">
+                  <div className="truncate">
+                    {t('quotes.form.costsTab.associatedProductOption', {
+                      product: row.productName ?? t('quotes.form.commissions.productFallback'),
+                      n: row.rowNumber,
+                    })}
+                  </div>
+                  {row.supplierCommissionDirection === 'RECEIVED' ? (
+                    <div className="truncate text-[11px] text-muted-foreground">
+                      {t('quotes.form.summary.productMargins.receivedRevenueNote')}
+                    </div>
+                  ) : null}
                 </td>
                 <td className="py-1 text-right tabular-nums">{formatQuoteAmount(row.revenueNet)}</td>
                 <td className="py-1 text-right tabular-nums">{formatQuoteAmount(row.costNet)}</td>

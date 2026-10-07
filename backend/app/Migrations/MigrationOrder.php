@@ -73,18 +73,24 @@ final class MigrationOrder
         // so this needs the phase 5 `product-category-attributes` pivot.
         ['attribute-layouts'],
 
-        // Phases 7-10 — the legacy operational records (spec 0189), a strict
+        // Phases 7 and 9-11 — the legacy operational records (spec 0189), a strict
         // parent chain, one phase per link. Registries remap users, referents,
         // sources and sectors (phases 1-2); opportunities need their registry
         // plus categories and operational sites; quotes need their opportunity
         // plus products, VAT rates, payment methods and company sites; work
         // orders need their quote and its lines.
         ['registries'],
+
+        // Phase 8 — spec 0203: the product supplier link and the legacy
+        // commission rules. Both resolve registries via old_id (supplier /
+        // company recipient) and need referents, users, categories and products
+        // from the earlier phases; they have no dependency on each other.
+        ['product-suppliers', 'commission-configurations'],
         ['opportunities'],
         ['quotes'],
         ['work-orders'],
 
-        // Phase 11 — the legacy payment data of a commessa (spec 0201): needs
+        // Phase 12 — the legacy payment data of a commessa (spec 0201): needs
         // the migrated work orders and their lines, and the reference payment
         // statuses seeded with their legacy `old_id`.
         ['work-order-line-payments'],

@@ -3,6 +3,7 @@
 use App\Enums\CommissionRecipientRole as Role;
 use App\Enums\CommissionType;
 use App\Enums\QuoteLineType;
+use App\Enums\SupplierCommissionDirection;
 use App\Models\ProductTypology;
 use App\Models\QuoteLine;
 use App\Models\Role as RoleModel;
@@ -23,10 +24,10 @@ function contractDataUrl(WorkOrder $workOrder): string
     return "/api/work-orders/{$workOrder->id}/contract-data";
 }
 
-it('AC-001: effective revenue is the net for Consulenza and the Fornitore commission for Ente, totals split', function () {
+it('AC-001: effective revenue is the net without a direction and the Fornitore commission for RECEIVED, totals split', function () {
     $workOrder = WorkOrder::factory()->create();
     $consultancy = contractDataLine($workOrder, 'consultancy', 1000);
-    $institution = contractDataLine($workOrder, 'institution', 2000);
+    $institution = contractDataLine($workOrder, 'institution', 2000, SupplierCommissionDirection::Received);
     contractDataCommission($institution, Role::Supplier, CommissionType::Percentage, 10, 200);
     $empty = ProductTypology::factory()->create(['name' => 'Zeta empty']);
     Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
@@ -35,9 +36,9 @@ it('AC-001: effective revenue is the net for Consulenza and the Fornitore commis
     $lines = collect($data['lines'])->keyBy('quote_line_id');
 
     expect($lines[$consultancy->id]['effective_revenue'])->toBe('1000.00')
-        ->and($lines[$consultancy->id]['is_institution'])->toBeFalse()
+        ->and($lines[$consultancy->id]['supplier_commission_direction'])->toBeNull()
         ->and($lines[$institution->id]['effective_revenue'])->toBe('200.00')
-        ->and($lines[$institution->id]['is_institution'])->toBeTrue()
+        ->and($lines[$institution->id]['supplier_commission_direction'])->toBe('RECEIVED')
         ->and($data['totals']['net_amount'])->toBe('3000.00')
         ->and($data['totals']['effective_revenue'])->toBe('1200.00')
         ->and($data['totals']['commissions_amount'])->toBe('200.00')
@@ -55,13 +56,13 @@ it('AC-001: effective revenue is the net for Consulenza and the Fornitore commis
 
 it('GET returns the frozen line shape', function () {
     $workOrder = WorkOrder::factory()->create();
-    $line = contractDataLine($workOrder, 'institution', 1000);
+    $line = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Received);
     contractDataCommission($line, Role::Supplier, CommissionType::Percentage, 15, 150);
     Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
 
     $row = $this->getJson(contractDataUrl($workOrder))->assertOk()->json('data.lines.0');
 
-    expect($row)->toHaveKeys(['quote_line_id', 'product', 'typology', 'is_institution', 'quantity', 'unit_price', 'net_amount', 'supplier_commission', 'commissions_amount', 'net_of_commissions', 'effective_revenue', 'warnings', 'payment'])
+    expect($row)->toHaveKeys(['quote_line_id', 'product', 'typology', 'supplier_commission_direction', 'quantity', 'unit_price', 'net_amount', 'supplier_commission', 'commissions_amount', 'net_of_commissions', 'effective_revenue', 'warnings', 'payment'])
         ->and($row['product'])->toHaveKeys(['id', 'code', 'name'])
         ->and($row['typology'])->toHaveKeys(['id', 'code', 'name'])
         ->and($row['supplier_commission'])->toBe(['commission_type' => 'PERCENTAGE', 'value' => '15.0000', 'base_amount' => '1000.00', 'amount' => '150.00', 'is_stale' => false])
@@ -72,7 +73,7 @@ it('GET returns the frozen line shape', function () {
 
 it('AC-002: commissions_amount sums every commission and net_of_commissions subtracts it', function () {
     $workOrder = WorkOrder::factory()->create();
-    $line = contractDataLine($workOrder, 'institution', 1000);
+    $line = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Received);
     contractDataCommission($line, Role::Supplier, CommissionType::FixedAmount, 200, 200);
     contractDataCommission($line, Role::Commercial, CommissionType::FixedAmount, 50, 50);
     Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
@@ -82,9 +83,9 @@ it('AC-002: commissions_amount sums every commission and net_of_commissions subt
     expect($row['commissions_amount'])->toBe('250.00')->and($row['net_of_commissions'])->toBe('750.00');
 });
 
-it('AC-003: an Ente line without Fornitore commission has 0.00 revenue and a warning', function () {
+it('AC-003: a RECEIVED line without Fornitore commission has 0.00 revenue and a warning', function () {
     $workOrder = WorkOrder::factory()->create();
-    $line = contractDataLine($workOrder, 'institution', 1000);
+    $line = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Received);
     contractDataCommission($line, Role::Commercial, CommissionType::FixedAmount, 50, 50);
     Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
 
@@ -97,7 +98,7 @@ it('AC-003: an Ente line without Fornitore commission has 0.00 revenue and a war
 
 it('AC-004: FIXED_AMOUNT is the value itself, with no base', function () {
     $workOrder = WorkOrder::factory()->create();
-    $line = contractDataLine($workOrder, 'institution', 1000);
+    $line = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Received);
     contractDataCommission($line, Role::Supplier, CommissionType::FixedAmount, 300, 300);
     Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
 
@@ -111,7 +112,7 @@ it('AC-004: FIXED_AMOUNT is the value itself, with no base', function () {
 
 it('AC-005: a PERCENTAGE amount that differs from base x value is stale and the base is the margin', function () {
     $workOrder = WorkOrder::factory()->create();
-    $line = contractDataLine($workOrder, 'institution', 1000);
+    $line = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Received);
     // A COST line imputed to the revenue line shrinks the margin base to 800.
     QuoteLine::factory()->create([
         'quote_id' => $workOrder->quote_id, 'line_type' => QuoteLineType::Cost,
@@ -129,9 +130,9 @@ it('AC-005: a PERCENTAGE amount that differs from base x value is stale and the 
         ->and($row['warnings'])->toBe(['stale_commission_base']);
 });
 
-it('AC-006: without commission visibility the commission fields and totals are null, Ente revenue stays', function () {
+it('AC-006: without commission visibility the commission fields and totals are null, RECEIVED revenue stays', function () {
     $workOrder = WorkOrder::factory()->create();
-    $line = contractDataLine($workOrder, 'institution', 1000);
+    $line = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Received);
     contractDataCommission($line, Role::Supplier, CommissionType::Percentage, 10, 100);
 
     foreach (['view', 'viewContractData', 'viewAll'] as $ability) {
@@ -209,4 +210,21 @@ it('runs the same number of queries whatever the number of lines (no N+1)', func
     $countQueries(1);
 
     expect($countQueries(8))->toBe($countQueries(2));
+});
+
+it('spec 0202 AC-008: a PAID line keeps the net as revenue and raises no warning, whatever its typology code', function () {
+    $workOrder = WorkOrder::factory()->create();
+    $paid = contractDataLine($workOrder, 'institution', 1000, SupplierCommissionDirection::Paid);
+    contractDataCommission($paid, Role::Supplier, CommissionType::FixedAmount, 90, 90);
+    $disabled = contractDataLine($workOrder, 'institution', 500);
+    Sanctum::actingAs(workOrderPaymentsUserWith(['viewContractData']));
+
+    $lines = collect($this->getJson(contractDataUrl($workOrder))->assertOk()->json('data.lines'))->keyBy('quote_line_id');
+
+    expect($lines[$paid->id]['effective_revenue'])->toBe('1000.00')
+        ->and($lines[$paid->id]['supplier_commission_direction'])->toBe('PAID')
+        ->and($lines[$paid->id]['warnings'])->toBe([])
+        ->and($lines[$disabled->id]['effective_revenue'])->toBe('500.00')
+        ->and($lines[$disabled->id]['supplier_commission_direction'])->toBeNull()
+        ->and($lines[$disabled->id]['warnings'])->toBe([]);
 });

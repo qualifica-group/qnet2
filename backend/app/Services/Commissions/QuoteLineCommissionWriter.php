@@ -9,6 +9,7 @@ use App\DataObjects\Commissions\CommissionCalculationInput;
 use App\DataObjects\Commissions\QuoteCommissionDefaultsData;
 use App\DataObjects\Quotes\QuoteLineCommissionData;
 use App\Enums\CommissionOrigin;
+use App\Enums\CommissionRecipientRole;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\Referent;
@@ -36,6 +37,16 @@ final class QuoteLineCommissionWriter
     /** @param array<int, QuoteLineCommissionData>|null $submitted */
     public function sync(QuoteLine $line, ?array $submitted, bool $regenerate = false): void
     {
+        // Spec 0202, D-6: a line without a frozen direction has no Supplier
+        // commission at all, neither automatic nor a submitted manual one.
+        if ($line->supplier_commission_direction === null) {
+            $line->commissions()->where('recipient_role', CommissionRecipientRole::Supplier)->delete();
+            $submitted = $submitted === null ? null : array_values(array_filter(
+                $submitted,
+                static fn (QuoteLineCommissionData $commission): bool => $commission->role !== CommissionRecipientRole::Supplier,
+            ));
+        }
+
         // Spec 0145, D-1: resolved ONCE per call and reused below, so a
         // manual override and the automatic defaults never disagree on it.
         $base = $this->baseResolver->resolve($line);
@@ -226,7 +237,7 @@ final class QuoteLineCommissionWriter
             reporterId: null,
             supervisorId: null,
             referenceDate: new DateTimeImmutable,
-        ));
+        ), $line->supplier_commission_direction);
     }
 
     private function validatedRecipient(QuoteLineCommissionData $commission): Model

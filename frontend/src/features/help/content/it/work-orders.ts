@@ -81,7 +81,7 @@ const guide: HelpGuide = {
           headers: ['Voce', 'Significato'],
           rows: [
             ['Scostamento', 'Costo effettivo meno costo preventivato: se positivo è uno **sforamento** (segnalato con icona e testo, non solo con il colore).'],
-            ['Margine', 'Ricavo netto delle righe della commessa meno i costi, calcolato sull\'imponibile. Le provvigioni sono escluse.'],
+            ['Margine', 'Ricavo delle righe della commessa meno i costi. Il ricavo è l\'imponibile, tranne sulle righe con commissione Fornitore **ricevuta**, dove è la sola commissione Fornitore (come nel tab Dati contrattuali). Le altre provvigioni sono escluse.'],
             ['Non attribuiti', 'Costi effettivi senza una riga offerta di riferimento: entrano nel costo effettivo totale.'],
           ],
         },
@@ -122,17 +122,17 @@ const guide: HelpGuide = {
             ['Imponibile', 'Quantità per prezzo unitario, come salvato sull\'offerta.'],
             ['Commissione Fornitore', 'La commissione del fornitore sulla riga, se la vedi.'],
             ['Netto commissioni', 'Imponibile meno tutte le commissioni della riga, se le vedi.'],
-            ['Ricavo effettivo', 'Per una riga **Ente** è la sola commissione Fornitore; per ogni altra tipologia (Consulenza) è l\'imponibile.'],
+            ['Ricavo effettivo', 'Se la tipologia della riga ha la commissione Fornitore **ricevuta** è la sola commissione Fornitore; se è **pagata** o non calcolata è l\'imponibile.'],
             ['Pagamento', 'Stato di pagamento, accordo sui pagamenti e insoluti della riga.'],
           ],
         },
         {
           type: 'paragraph',
-          text: 'Sotto ogni riga trovi la **formula in chiaro**, ad esempio "Imponibile 2 × 500,00 = 1.000,00 → ricavo 1.000,00" per una Consulenza, oppure "Commissione Fornitore 10% di 2.000,00 = 200,00 → ricavo 200,00" per un Ente. In alto i totali: Imponibile, poi per **ogni tipologia di prodotto** l\'imponibile e il ricavo effettivo (anche a 0,00), quindi Totale Ricavi e, se visibili, Commissioni e Netto commissioni. Se non vedi le commissioni, le relative colonne e totali non compaiono.',
+          text: 'Sotto ogni riga trovi la **formula in chiaro**, ad esempio "Imponibile 2 × 500,00 = 1.000,00 → ricavo 1.000,00" per una riga senza commissione ricevuta (con commissione **pagata** la formula la aggiunge come costo), oppure "Commissione Fornitore ricevuta: 10% di 2.000,00 = 200,00 → ricavo 200,00". In alto i totali: Imponibile, poi per **ogni tipologia di prodotto** l\'imponibile e il ricavo effettivo (anche a 0,00), quindi Totale Ricavi e, se visibili, Commissioni e Netto commissioni. Se non vedi le commissioni, le relative colonne e totali non compaiono.',
         },
         {
           type: 'warning',
-          text: 'Un avviso con icona e testo compare se a una riga Ente manca la commissione Fornitore (ricavo 0,00) oppure se la commissione è stata calcolata su una base precedente: salva di nuovo l\'offerta per aggiornarla.',
+          text: 'Un avviso con icona e testo compare se a una riga con commissione Fornitore ricevuta manca la commissione (ricavo 0,00) oppure se la commissione è stata calcolata su una base precedente: salva di nuovo l\'offerta per aggiornarla.',
         },
         {
           type: 'steps',

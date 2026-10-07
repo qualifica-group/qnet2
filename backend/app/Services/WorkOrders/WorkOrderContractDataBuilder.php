@@ -7,6 +7,7 @@ namespace App\Services\WorkOrders;
 use App\DataObjects\Commissions\CommissionCalculationInput;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Enums\SupplierCommissionDirection;
 use App\Models\ProductTypology;
 use App\Models\QuoteLine;
 use App\Models\QuoteLineCommission;
@@ -22,9 +23,10 @@ use Illuminate\Support\Collection;
  * figure comes from data already persisted on the offer (D-7), nothing is
  * recalculated into storage; amounts are summed as integer cents.
  *
- * Per line: "effective revenue" is the Fornitore commission for an Ente line and
- * the net amount for any other typology (D-1/D-8), next to the spec 0145
- * "net of commissions". When a line carries several Fornitore commissions,
+ * Per line: "effective revenue" is the Fornitore commission for a line whose
+ * frozen Supplier commission direction is RECEIVED and the net amount
+ * otherwise (spec 0202, D-8/D-11 — the typology code is never read), next to
+ * the spec 0145 "net of commissions". When a line carries several Fornitore commissions,
  * `amount` is their sum while `commission_type`/`value`/`base_amount` describe
  * the first one. The commission details are hidden (null) unless the actor sees
  * the offer's `commissions` and `commission_value` fields (D-10), the same rule
@@ -32,9 +34,6 @@ use Illuminate\Support\Collection;
  */
 final class WorkOrderContractDataBuilder
 {
-    /** Typology code of an Ente product (spec 0201, D-8). */
-    private const string INSTITUTION_TYPOLOGY_CODE = 'institution';
-
     public const string WARNING_MISSING_SUPPLIER_COMMISSION = 'missing_supplier_commission';
 
     public const string WARNING_STALE_COMMISSION_BASE = 'stale_commission_base';
@@ -46,6 +45,7 @@ final class WorkOrderContractDataBuilder
         private readonly QuoteCommissionPayloadRedactor $redactor,
         private readonly QuoteLineCommissionBaseResolver $baseResolver,
         private readonly CommissionCalculator $calculator,
+        private readonly LineEffectiveRevenue $effectiveRevenue,
     ) {}
 
     /**
@@ -103,13 +103,14 @@ final class WorkOrderContractDataBuilder
     private function row(QuoteLine $line, string $base, bool $visible): array
     {
         $typology = $line->product?->productTypology;
-        $institution = $typology?->code === self::INSTITUTION_TYPOLOGY_CODE;
+        $direction = $line->supplier_commission_direction;
+        $received = $direction === SupplierCommissionDirection::Received;
         $supplier = $line->commissions->filter(fn (QuoteLineCommission $c): bool => $c->recipient_role === CommissionRecipientRole::Supplier)->sortBy('id')->values();
 
         $net = $this->cents($line->net_amount);
-        $supplierCents = $supplier->sum(fn (QuoteLineCommission $c): int => $this->cents($c->calculated_amount));
+        $supplierCents = $this->effectiveRevenue->supplierCommissionCents($line);
         $commissions = $line->commissions->sum(fn (QuoteLineCommission $c): int => $this->cents($c->calculated_amount));
-        $revenue = $institution ? $supplierCents : $net;
+        $revenue = $this->effectiveRevenue->cents($line);
         $stale = $supplier->contains(fn (QuoteLineCommission $c): bool => $this->isStale($c, $base));
 
         return [
@@ -117,7 +118,7 @@ final class WorkOrderContractDataBuilder
                 'quote_line_id' => $line->id,
                 'product' => ['id' => $line->product?->id, 'code' => $line->product?->code, 'name' => $line->product?->name],
                 'typology' => $typology ? ['id' => $typology->id, 'code' => $typology->code, 'name' => $typology->name] : null,
-                'is_institution' => $institution,
+                'supplier_commission_direction' => $direction?->value,
                 'quantity' => $this->money($line->quantity),
                 'unit_price' => $this->money($line->unit_price),
                 'net_amount' => $this->format($net),
@@ -125,7 +126,7 @@ final class WorkOrderContractDataBuilder
                 'commissions_amount' => $visible ? $this->format($commissions) : null,
                 'net_of_commissions' => $visible ? $this->format($net - $commissions) : null,
                 'effective_revenue' => $this->format($revenue),
-                'warnings' => $this->warnings($institution, $supplier->isEmpty(), $visible && $stale),
+                'warnings' => $this->warnings($received, $supplier->isEmpty(), $visible && $stale),
                 'payment' => $this->paymentPayload($line),
             ],
             'net' => $net,
@@ -164,10 +165,10 @@ final class WorkOrderContractDataBuilder
     /**
      * @return array<int, string>
      */
-    private function warnings(bool $institution, bool $noSupplier, bool $stale): array
+    private function warnings(bool $received, bool $noSupplier, bool $stale): array
     {
         return array_values(array_filter([
-            $institution && $noSupplier ? self::WARNING_MISSING_SUPPLIER_COMMISSION : null,
+            $received && $noSupplier ? self::WARNING_MISSING_SUPPLIER_COMMISSION : null,
             $stale ? self::WARNING_STALE_COMMISSION_BASE : null,
         ]));
     }

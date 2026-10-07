@@ -232,6 +232,7 @@ export const quotes = {
       productMargins: {
         title: 'Margine per prodotto',
         genericCosts: 'Costi generici',
+        receivedRevenueNote: 'ricavo = commissione ricevuta',
       },
     },
     lineProductHeader: 'Prodotto',

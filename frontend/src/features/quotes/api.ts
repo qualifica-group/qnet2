@@ -1,5 +1,6 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse, ApiResponseWithPermissions } from '@/api/types'
+import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
   CreateQuotePayload,
@@ -93,10 +94,20 @@ export interface QuoteCommissionDefaultsPayload {
   reference_date?: string
 }
 
+/**
+ * Spec 0202 D-12: the default commissions of a new row plus the Supplier
+ * commission direction of the requested product's typology (`null` = the
+ * calculation is disabled, the server creates no Supplier commission).
+ */
+export interface QuoteCommissionDefaults {
+  commissions: QuoteLineCommission[]
+  supplier_commission_direction: SupplierCommissionDirection | null
+}
+
 export async function fetchQuoteCommissionDefaults(
   payload: QuoteCommissionDefaultsPayload,
-): Promise<QuoteLineCommission[]> {
-  const { data } = await apiClient.post<ApiResponse<QuoteLineCommission[]>>(
+): Promise<QuoteCommissionDefaults> {
+  const { data } = await apiClient.post<ApiResponse<QuoteCommissionDefaults>>(
     '/quotes/commission-defaults',
     payload,
   )

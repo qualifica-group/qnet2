@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { COMMISSION_ROLES, COMMISSION_TYPES } from '@/features/commission-configurations/types'
+import { SUPPLIER_COMMISSION_DIRECTIONS } from '@/features/product-typologies/types'
 import { MAX_MANAGER_SLOTS } from '@/components/form/manager-slots-limits'
 import {
   buildAttributeValuesSchema,
@@ -123,6 +124,10 @@ export function quoteLineRowSchema(t: TFunction) {
       // Spec 0144 D-1/D-4, COST rows only: the `client_key` of the associated
       // OFFER row, or `null` for a generic cost. Ignored on OFFER rows.
       offer_line_key: z.string().nullable().optional(),
+      // Spec 0202 D-12, REVENUE rows only: the direction frozen on the saved row,
+      // or the one the commission-defaults response gave a new row. Read-only
+      // for the live margin preview; never sent (`toLineInputs`).
+      supplier_commission_direction: z.enum(SUPPLIER_COMMISSION_DIRECTIONS).nullable().optional(),
       commissions: z.array(z.object({
         id: z.number().optional(),
         recipient_role: z.enum(COMMISSION_ROLES),

@@ -1,5 +1,6 @@
+import { SupplierCommissionDirectionCell } from '@/features/product-typologies/supplier-commission-direction-cell'
 import { DateTimeCell } from '@/features/table/cell-renderers'
-import { CodeBadgeCell } from '@/features/table/rich-cells'
+import { BooleanBadgeCell, CodeBadgeCell } from '@/features/table/rich-cells'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
 /**
@@ -11,6 +12,8 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
  */
 export const productTypologyColumnRenderers: TableRendererMap = {
   code: (params) => <CodeBadgeCell {...params} />,
+  supplier_commission_enabled: (params) => <BooleanBadgeCell {...params} />,
+  supplier_commission_direction: ({ value }) => <SupplierCommissionDirectionCell value={value} />,
   created_at: (params) => <DateTimeCell {...params} />,
   updated_at: (params) => <DateTimeCell {...params} />,
 }

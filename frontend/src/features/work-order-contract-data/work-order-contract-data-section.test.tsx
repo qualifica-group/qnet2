@@ -5,10 +5,10 @@ import { AxiosError, type AxiosResponse } from 'axios'
 import i18n from '@/i18n'
 import { WorkOrderContractDataSection } from '@/features/work-order-contract-data/work-order-contract-data-section'
 import {
-  CONSULTANCY_LINE,
+  PAID_LINE,
   CONTRACT_DATA,
   CONTRACT_DATA_HIDDEN_COMMISSIONS,
-  INSTITUTION_LINE,
+  RECEIVED_LINE,
 } from '@/features/work-order-contract-data/contract-data-fixtures'
 import type {
   ContractDataLine,
@@ -102,8 +102,8 @@ describe('WorkOrderContractDataSection - formulas and totals (AC-016)', () => {
     for (const name of ['Product', 'Net amount', 'Supplier commission', 'Net of commissions', 'Effective revenue', 'Payment']) {
       expect(screen.getByRole('columnheader', { name })).toBeInTheDocument()
     }
-    expect(screen.getByText('Net amount 2 × 500.00 = 1,000.00 → revenue 1,000.00')).toBeInTheDocument()
-    expect(screen.getByText('Supplier commission 10% of 2,000.00 = 200.00 → revenue 200.00')).toBeInTheDocument()
+    expect(screen.getByText('Net amount 2 × 500.00 = 1,000.00 → revenue 1,000.00 · Supplier commission paid: 15% of 1,000.00 = 150.00 (a cost, it does not reduce the revenue)')).toBeInTheDocument()
+    expect(screen.getByText('Supplier commission received: 10% of 2,000.00 = 200.00 → revenue 200.00')).toBeInTheDocument()
     expect(screen.getByText('Net of commissions: 1,000.00 − 250.00 = 750.00')).toBeInTheDocument()
 
     const totals = screen.getAllByRole('definition').map((node) => node.textContent)
@@ -129,7 +129,7 @@ describe('WorkOrderContractDataSection - formulas and totals (AC-016)', () => {
     expect(screen.queryByRole('columnheader', { name: 'Net of commissions' })).not.toBeInTheDocument()
     expect(screen.queryByText('Commissions')).not.toBeInTheDocument()
     expect(screen.getAllByRole('definition')).toHaveLength(5)
-    expect(screen.getByText('Institution revenue 200.00')).toBeInTheDocument()
+    expect(screen.getByText('Supplier commission received: revenue 200.00')).toBeInTheDocument()
   })
 
   it('keeps the table inside its own horizontal scroll container', async () => {
@@ -144,14 +144,14 @@ describe('WorkOrderContractDataSection - warnings (AC-018)', () => {
     fetchMock.mockResolvedValue({
       ...CONTRACT_DATA,
       lines: [
-        { ...INSTITUTION_LINE, supplier_commission: null, effective_revenue: '0.00', warnings: ['missing_supplier_commission'] },
-        { ...CONSULTANCY_LINE, warnings: ['stale_commission_base'] },
+        { ...RECEIVED_LINE, supplier_commission: null, effective_revenue: '0.00', warnings: ['missing_supplier_commission'] },
+        { ...PAID_LINE, warnings: ['stale_commission_base'] },
       ],
     })
     renderSection(false)
     await screen.findByRole('table')
 
-    expect(screen.getByText('Supplier commission missing: the Institution revenue is 0.00.')).toBeInTheDocument()
+    expect(screen.getByText('Supplier commission received missing: the revenue is 0.00.')).toBeInTheDocument()
     expect(screen.getByText('Amount calculated on a previous base: save the quote again to update it.')).toBeInTheDocument()
   })
 })
@@ -169,7 +169,7 @@ describe('WorkOrderContractDataSection - payment display and editor (AC-017)', (
 
   it('sends only the changed keys on Done and updates the row from the answer', async () => {
     const saved: ContractDataLine = {
-      ...CONSULTANCY_LINE,
+      ...PAID_LINE,
       payment: { status: STATUS_ITEMS[1], payment_agreement: 'Rate mensili', has_unpaid: false },
     }
     updateMock.mockResolvedValue(saved)
@@ -189,7 +189,7 @@ describe('WorkOrderContractDataSection - payment display and editor (AC-017)', (
   })
 
   it('sends the unpaid flag alone when it is the only change', async () => {
-    updateMock.mockResolvedValue({ ...INSTITUTION_LINE, payment: { ...INSTITUTION_LINE.payment, has_unpaid: false } })
+    updateMock.mockResolvedValue({ ...RECEIVED_LINE, payment: { ...RECEIVED_LINE.payment, has_unpaid: false } })
     renderSection(true)
     await screen.findByRole('table')
 

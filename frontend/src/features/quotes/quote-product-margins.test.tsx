@@ -33,7 +33,7 @@ describe('computeProductMargins', () => {
 
     const { rows, genericCostNet } = computeProductMargins(productLines, costLines)
 
-    expect(rows).toEqual([{ key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 0, margin: 70 }])
+    expect(rows).toEqual([{ key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 0, supplierCommissionDirection: null, margin: 70 }])
     expect(genericCostNet).toBe(0)
   })
 
@@ -43,7 +43,7 @@ describe('computeProductMargins', () => {
 
     const { rows, genericCostNet } = computeProductMargins(productLines, costLines)
 
-    expect(rows[0]).toMatchObject({ costNet: 0, commissionsNet: 0, margin: 100 })
+    expect(rows[0]).toMatchObject({ costNet: 0, commissionsNet: 0, supplierCommissionDirection: null, margin: 100 })
     expect(genericCostNet).toBe(40)
   })
 
@@ -53,7 +53,7 @@ describe('computeProductMargins', () => {
 
     const { rows, genericCostNet } = computeProductMargins(productLines, costLines)
 
-    expect(rows[0]).toMatchObject({ costNet: 0, commissionsNet: 0, margin: 100 })
+    expect(rows[0]).toMatchObject({ costNet: 0, commissionsNet: 0, supplierCommissionDirection: null, margin: 100 })
     expect(genericCostNet).toBe(15)
   })
 
@@ -71,7 +71,7 @@ describe('computeProductMargins', () => {
       { offerLineKey: 'a', net: 15 },
     ]
 
-    expect(computeProductMargins(productLines, costLines).rows[0]).toMatchObject({ costNet: 25, commissionsNet: 0, margin: 75 })
+    expect(computeProductMargins(productLines, costLines).rows[0]).toMatchObject({ costNet: 25, commissionsNet: 0, supplierCommissionDirection: null, margin: 75 })
   })
 
   it('invariant: sum(margins) - genericCostNet == revenue.net - cost.net, whatever the mix', () => {
@@ -111,6 +111,7 @@ describe('computeProductMargins', () => {
     expect(computeProductMargins(productLines, costLines).rows[0]).toMatchObject({
       costNet: 30,
       commissionsNet: 15,
+      supplierCommissionDirection: null,
       margin: 55,
     })
   })
@@ -156,7 +157,7 @@ describe('productLinesFromFormOfferLines / costLinesFromFormCostLines', () => {
       [],
       (id) => (id === 7 ? 'Widget Pro' : null),
     )
-    expect(rows).toEqual([{ key: 'line-7', productName: 'Widget Pro', rowNumber: 1, net: 10, commissionsNet: 0 }])
+    expect(rows).toEqual([{ key: 'line-7', productName: 'Widget Pro', rowNumber: 1, net: 10, commissionsNet: 0, supplierCommissionNet: 0, supplierCommissionDirection: null }])
   })
 
   /**
@@ -259,8 +260,8 @@ describe('QuoteProductMargins (component)', () => {
     render(
       <QuoteProductMargins
         rows={[
-          { key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 0, margin: 70 },
-          { key: 'b', productName: 'Gadget', rowNumber: 2, revenueNet: 20, costNet: 35, commissionsNet: 0, margin: -15 },
+          { key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 0, supplierCommissionDirection: null, margin: 70 },
+          { key: 'b', productName: 'Gadget', rowNumber: 2, revenueNet: 20, costNet: 35, commissionsNet: 0, supplierCommissionDirection: null, margin: -15 },
         ]}
         genericCostNet={12}
       />,
@@ -277,7 +278,7 @@ describe('QuoteProductMargins (component)', () => {
   it('falls back to a generic product label when the name could not be resolved', () => {
     render(
       <QuoteProductMargins
-        rows={[{ key: 'a', productName: null, rowNumber: 1, revenueNet: 10, costNet: 0, commissionsNet: 0, margin: 10 }]}
+        rows={[{ key: 'a', productName: null, rowNumber: 1, revenueNet: 10, costNet: 0, commissionsNet: 0, supplierCommissionDirection: null, margin: 10 }]}
         genericCostNet={0}
       />,
     )
@@ -288,7 +289,7 @@ describe('QuoteProductMargins (component)', () => {
   it('shows the Commissions column and value by default', () => {
     render(
       <QuoteProductMargins
-        rows={[{ key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 7, margin: 63 }]}
+        rows={[{ key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 7, supplierCommissionDirection: null, margin: 63 }]}
         genericCostNet={0}
       />,
     )
@@ -301,11 +302,27 @@ describe('QuoteProductMargins (component)', () => {
   it('renders nothing when showCommissions is false (no commissions permission)', () => {
     const { container } = render(
       <QuoteProductMargins
-        rows={[{ key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 7, margin: 63 }]}
+        rows={[{ key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 7, supplierCommissionDirection: null, margin: 63 }]}
         genericCostNet={0}
         showCommissions={false}
       />,
     )
     expect(container).toBeEmptyDOMElement()
+  })
+})
+
+describe('QuoteProductMargins - RECEIVED rows (spec 0202 D-13, AC-010)', () => {
+  it('notes that the revenue of a RECEIVED row is the received commission', () => {
+    render(
+      <QuoteProductMargins
+        rows={[
+          { key: 'a', productName: 'Ente', rowNumber: 1, revenueNet: 2000, costNet: 0, commissionsNet: 250, supplierCommissionDirection: 'RECEIVED', margin: 150 },
+          { key: 'b', productName: 'Corso', rowNumber: 2, revenueNet: 1000, costNet: 100, commissionsNet: 90, supplierCommissionDirection: 'PAID', margin: 810 },
+        ]}
+        genericCostNet={30}
+      />,
+    )
+
+    expect(screen.getAllByText('revenue = received commission')).toHaveLength(1)
   })
 })

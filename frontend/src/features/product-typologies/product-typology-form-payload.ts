@@ -11,7 +11,14 @@ export function buildCreatePayload(values: ProductTypologyFormValues): CreatePro
     name: values.name,
     code: values.code,
     description: values.description,
+    supplier_commission_enabled: values.supplier_commission_enabled,
+    supplier_commission_direction: normalizedDirection(values),
   }
+}
+
+/** Disabled commission always sends a null direction (spec 0202 D-7). */
+function normalizedDirection(values: ProductTypologyFormValues) {
+  return values.supplier_commission_enabled ? values.supplier_commission_direction : null
 }
 
 /**
@@ -31,6 +38,13 @@ export function buildUpdatePayload(
   }
   if (values.description !== original.description) {
     payload.description = values.description
+  }
+  if (values.supplier_commission_enabled !== original.supplier_commission_enabled) {
+    payload.supplier_commission_enabled = values.supplier_commission_enabled
+  }
+  const direction = normalizedDirection(values)
+  if (direction !== original.supplier_commission_direction) {
+    payload.supplier_commission_direction = direction
   }
 
   return payload

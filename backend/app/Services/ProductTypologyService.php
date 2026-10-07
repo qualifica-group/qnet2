@@ -29,7 +29,15 @@ class ProductTypologyService
         // Unconditional save: fire the model's saved event even when no native
         // attribute changed, so the HasCustomFields write pipeline (spec 0021)
         // persists a custom-fields-only edit. A clean save runs no UPDATE query.
-        $productTypology->fill($attributes)->save();
+        $productTypology->fill($attributes);
+
+        // Spec 0202 D-7: a disabled switch (submitted now or already stored)
+        // never keeps a direction.
+        if (! $productTypology->supplier_commission_enabled) {
+            $productTypology->supplier_commission_direction = null;
+        }
+
+        $productTypology->save();
 
         return $productTypology->fresh();
     }

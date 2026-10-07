@@ -26,7 +26,23 @@ const guide: HelpGuide = {
             ['Nome', 'Il nome della tipologia.'],
             ['Codice', 'Un codice univoco.'],
             ['Descrizione', 'Testo libero facoltativo.'],
+            ['Calcolo commissione Fornitore', 'Interruttore: se attivo, sulle nuove righe d\'offerta di questa tipologia si calcola la commissione Fornitore.'],
+            ['Verso', 'Visibile e obbligatorio solo con l\'interruttore attivo. **Ricevuta**: la commissione è il ricavo della riga e l\'imponibile passa al fornitore. **Pagata**: è un costo verso il fornitore.'],
           ],
+        },
+      ],
+    },
+    {
+      id: 'supplier-commission',
+      title: 'Commissione Fornitore',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Con l\'interruttore spento la commissione Fornitore non viene creata sulle righe di questa tipologia, anche se esiste una regola. Il margine della riga dipende dal verso: **Ricevuta** = commissione Fornitore meno costi e altre commissioni; **Pagata** = imponibile meno costi, altre commissioni e commissione Fornitore; **disattivato** = imponibile meno costi e altre commissioni.',
+        },
+        {
+          type: 'warning',
+          text: 'L\'impostazione si congela sulla riga d\'offerta quando la riga viene creata: cambiare la tipologia vale solo per le righe nuove, le righe esistenti non cambiano.',
         },
       ],
     },
