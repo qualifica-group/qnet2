@@ -33,6 +33,7 @@ const guide: HelpGuide = {
             'Open Registries › Registries.',
             'Type in the Search… field at the top of the table: the list updates as you type.',
             'To narrow the search use the column filters, for example Source, Supplier or Agreement status.',
+            "The Commercial, Supervisor, Reporter and Operators columns show the registry's team: Operators lists the Account managers in their order. You can filter them by name and sort them, except Operators, which can only be filtered.",
             'To see the card, open the row Actions menu and choose View.',
           ],
         },

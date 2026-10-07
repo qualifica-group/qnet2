@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ANAGRAFICHE — TABELLA: COLONNE COMMERCIALE / SUPERVISORE / SEGNALATORE / OPERATORI — VERDE, COMMITTATO (2026-10-07)
+
+- Richiesta utente: "aggiungere nella tabella anagrafiche le colonne commerciali, supervisori, segnalatori e operatori".
+  Decisione utente: "Operatori" = TUTTI i gestori account (`managers`, pivot `registry_user`, in ordine di position),
+  non il solo GA2.
+- Backend: nuovo `Tables/Registries/RegistryRelationColumns` (filtro set whereHas per nome, sort subquery correlata,
+  distinct + "(Vuoti)") per `source`/`commercial`/`supervisor`/`reporter` + `managers` (non ordinabile), come
+  `OpportunityRelationColumns`. `RegistriesTableDefinition` delega (logica `source` spostata li', 323 -> 273 righe),
+  eager load `commercial`, `supervisor.avatar`, `reporter`, `managers.avatar`; righe: `commercial`/`reporter`
+  `{id,name}|null`, `supervisor` `{id,name,avatar_url}|null`, `managers` array. Catalogo: 4 colonne prima di
+  `created_at` + filtri. Spec 0020 (contratto columns/rows) aggiornata.
+- Frontend: `registryColumnRenderers` -> `RelationCell` (commercial Briefcase, reporter UserRound), `UserCell`,
+  `UserStackCell`. Label `registries.columns.{commercial,supervisor,reporter,managers}` IT/EN ("Operatori"/"Operators").
+- Test: `RegistryTableTest` colonne 8 -> 12 (REQUIREMENT CHANGED); nuovo `RegistryTableTeamColumnsTest` (7);
+  `column-renderers.test.tsx` +3 casi. Guida in-app `registries` IT/EN (passo in "Cercare un'anagrafica").
+- Manuale Claude Docs: NON aggiornato (doc non accessibile dalla sessione) -> sezione Anagrafiche > tabella/ricerca.
+
 ## TEAM — EDITOR GESTORI ACCOUNT COME COMMESSE (ANAGRAFICHE/OPPORTUNITA'/OFFERTE) — VERDE, COMMITTATO (2026-10-07)
 
 - Richiesta utente: "modificando il team lo spazio e' davvero poco, fallo come in commesse".

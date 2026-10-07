@@ -9,10 +9,11 @@ namespace App\Tables\Registries;
  * Extracted out of RegistriesTableDefinition (file-size split,
  * engineering.md §6): pure data (no logic), mirroring ReferentColumnCatalog.
  *
- * `source` has no real DB column of its own (it is the related Source's
- * name) — DERIVED, handled by RegistriesTableDefinition's
- * applyDerivedFilter/applyDerivedSort/distinctValues, mirroring
- * ReferentsTableDefinition's `referent_type`. `is_supplier`/
+ * `source`/`commercial`/`supervisor`/`reporter` have no real DB column of
+ * their own (each is the related row's name) and `managers` is the
+ * `registry_user` pivot (to-many, labelled "Operatori") — all DERIVED,
+ * handled by RegistryRelationColumns, mirroring the Opportunita' catalogue;
+ * `managers` is filterable but not sortable (no single sort key). `is_supplier`/
  * `agreement_status`/`size_class` ARE real columns, so the generic engine
  * handles their `set` filter and sort; only their distinct-values need a
  * definition override (cast-bypassing `toBase()`, mirroring
@@ -91,6 +92,20 @@ final class RegistryColumnCatalog
                 'sortable' => false,
                 'filterable' => false,
             ],
+            self::relationColumn('commercial'),
+            self::relationColumn('supervisor'),
+            self::relationColumn('reporter'),
+            [
+                // Account managers (registry_user pivot, to-many), rendered as
+                // an avatar stack under the "Operatori" label.
+                'id' => 'managers',
+                'label' => 'registries.columns.managers',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
             [
                 'id' => 'created_at',
                 'label' => 'registries.columns.created_at',
@@ -114,7 +129,30 @@ final class RegistryColumnCatalog
             ['columnId' => 'is_supplier', 'type' => 'set'],
             ['columnId' => 'agreement_status', 'type' => 'set'],
             ['columnId' => 'size_class', 'type' => 'set'],
+            ['columnId' => 'commercial', 'type' => 'set'],
+            ['columnId' => 'supervisor', 'type' => 'set'],
+            ['columnId' => 'reporter', 'type' => 'set'],
+            ['columnId' => 'managers', 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],
+        ];
+    }
+
+    /**
+     * A simple relation-name derived column (own FK on the registry), sorted
+     * via a correlated subquery and filtered via whereHas by name.
+     *
+     * @return array<string, mixed>
+     */
+    private static function relationColumn(string $id): array
+    {
+        return [
+            'id' => $id,
+            'label' => "registries.columns.{$id}",
+            'type' => 'text',
+            'visible' => true,
+            'sortable' => true,
+            'filterable' => true,
+            'filterType' => 'set',
         ];
     }
 

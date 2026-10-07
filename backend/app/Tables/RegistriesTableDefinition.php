@@ -3,13 +3,12 @@
 namespace App\Tables;
 
 use App\Models\Registry;
-use App\Models\Source;
 use App\Models\User;
 use App\Tables\Registries\RegistryColumnCatalog;
+use App\Tables\Registries\RegistryRelationColumns;
 use App\Tables\Shared\PrimaryContactColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -20,23 +19,22 @@ use Illuminate\Support\Facades\Gate;
  * distinct-values need a definition override for the cast-bearing three
  * (is_supplier/agreement_status/size_class — `pluck()` through the model
  * cast would hydrate an uncastable-to-string bool/BackedEnum, mirroring
- * ReferentsTableDefinition's `distinctContactScopes`). `source` (belongsTo)
- * has no real DB column of its own and is DERIVED: its set filter/sort/
- * distinct-values are resolved here against the related source's name,
- * mirroring ReferentsTableDefinition's `referent_type`. `primary_contact` is
+ * ReferentsTableDefinition's `distinctContactScopes`). `source`/
+ * `commercial`/`supervisor`/`reporter` (belongsTo) and `managers` (the
+ * `registry_user` pivot, shown as "Operatori") have no real DB column of
+ * their own and are DERIVED: their set filter/sort/distinct-values are
+ * resolved by RegistryRelationColumns against the related row's name,
+ * mirroring OpportunityRelationColumns. `primary_contact` is
  * COMPUTED from the card's eager-loaded contacts via the shared
  * PrimaryContactColumn, display-only here (neither sortable nor filterable —
  * spec 0020 data contract, unlike the identical Users/Referents column).
  */
 class RegistriesTableDefinition extends AbstractTableDefinition
 {
-    /**
-     * Maximum number of names honoured in the `source` set filter. Caps the
-     * WHERE IN cardinality (defence in depth); excess values ignored.
-     */
-    private const int MAX_FILTER_VALUES = 200;
-
-    public function __construct(private readonly PrimaryContactColumn $contactColumn) {}
+    public function __construct(
+        private readonly PrimaryContactColumn $contactColumn,
+        private readonly RegistryRelationColumns $relationColumns,
+    ) {}
 
     public function domain(): string
     {
@@ -60,11 +58,12 @@ class RegistriesTableDefinition extends AbstractTableDefinition
      */
     public function baseQuery(): Builder
     {
-        // Eager-load source + the card's contacts (spec 0020 AC-015), so
-        // mapRow reads source/primary_contact entirely from memory — a fixed
-        // number of queries regardless of row count.
+        // Eager-load every relation mapRow touches (spec 0020 AC-015), so
+        // each row is read entirely from memory — a fixed number of queries
+        // regardless of row count. supervisor/managers pull their avatar too,
+        // so the person cells render a real avatar without a per-row query.
         return Registry::query()
-            ->with(['source', 'personalData.contacts'])
+            ->with(['source', 'commercial', 'supervisor.avatar', 'reporter', 'managers.avatar', 'personalData.contacts'])
             // Per-row count for the `documents` action badge (spec 0173),
             // scoped to the 'documents' collection only, as Opportunita'.
             ->withCount(['attachments as documents_count' => fn (Builder $q) => $q->where('collection', 'documents')]);
@@ -124,15 +123,41 @@ class RegistriesTableDefinition extends AbstractTableDefinition
         return [
             'id' => $row->id,
             'name' => $row->name,
-            'source' => $row->source !== null
-                ? ['id' => $row->source->id, 'name' => $row->source->name]
-                : null,
+            'source' => $this->summarize($row->source),
             'is_supplier' => $row->is_supplier,
             'agreement_status' => $row->agreement_status?->value,
             'size_class' => $row->size_class?->value,
             'primary_contact' => $this->contactColumn->format($row->personalData?->contacts),
+            'commercial' => $this->summarize($row->commercial),
+            'supervisor' => $this->userSummary($row->supervisor),
+            'reporter' => $this->summarize($row->reporter),
+            'managers' => $row->managers->map(fn (User $user): array => $this->userSummary($user))->all(),
             'created_at' => $row->created_at,
             'documents_count' => (int) ($row->documents_count ?? 0),
+        ];
+    }
+
+    /**
+     * @return array{id: int, name: string}|null
+     */
+    private function summarize(?Model $related): ?array
+    {
+        return $related === null ? null : ['id' => $related->id, 'name' => $related->name];
+    }
+
+    /**
+     * A person summary carrying the inline avatar (data URI), so the
+     * supervisor and managers cells render a real avatar, not just initials —
+     * mirrors OpportunitiesTableDefinition::userSummary(). Null when unset.
+     *
+     * @return array{id: int, name: string, avatar_url: string|null}|null
+     */
+    private function userSummary(?User $user): ?array
+    {
+        return $user === null ? null : [
+            'id' => $user->id,
+            'name' => $user->name,
+            'avatar_url' => $user->avatarDataUri(),
         ];
     }
 
@@ -165,9 +190,9 @@ class RegistriesTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Handle the derived `source` filter (no real DB column): a set filter
-     * (whereHas by name) applied in AND. Every real column falls through to
-     * the generic engine.
+     * The relation-derived columns (`source`/`commercial`/`supervisor`/
+     * `reporter`/`managers`) are delegated to RegistryRelationColumns; every
+     * real column falls through to the generic engine.
      *
      * @param  Builder<Registry>  $query
      * @param  array<string, mixed>  $columnConfig
@@ -175,108 +200,33 @@ class RegistriesTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
-        if ($columnId !== 'source') {
-            return false;
-        }
-
-        $values = $filter['values'] ?? null;
-
-        if (! is_array($values)) {
-            return true;
-        }
-
-        $names = array_slice(array_values(array_filter(
-            $values,
-            static fn ($value): bool => is_string($value) && $value !== '',
-        )), 0, self::MAX_FILTER_VALUES);
-
-        $matchesBlank = $this->matchesBlankEntry($filter);
-
-        if ($names === [] && ! $matchesBlank) {
-            return true;
-        }
-
-        $query->where(static function (Builder $group) use ($names, $matchesBlank): void {
-            if ($names !== []) {
-                $group->whereHas('source', static function (Builder $relatedQuery) use ($names): void {
-                    $relatedQuery->whereIn('name', $names);
-                });
-            }
-
-            // The blank entry ("(Vuoti)"): the registries with no source.
-            if ($matchesBlank) {
-                $group->orWhereDoesntHave('source');
-            }
-        });
-
-        return true;
+        return $this->relationColumns->applyFilter($query, $columnId, $filter);
     }
 
     /**
-     * ORDER BY the derived `source` column via a correlated subquery, so
-     * sorting never needs a row-multiplying JOIN on the main query.
-     *
      * @param  Builder<Registry>  $query
      */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
-        if ($columnId !== 'source') {
-            return false;
-        }
-
-        $query->orderBy(
-            Source::query()
-                ->select('name')
-                ->whereColumn('sources.id', 'registries.source_id')
-                ->limit(1),
-            $direction,
-        );
-
-        return true;
+        return $this->relationColumns->applySort($query, $columnId, $direction);
     }
 
     /**
-     * Excel-like distinct values (spec 0004/0005) for `source` (derived:
-     * related source NAMES) and the three cast-bearing real columns
-     * (`is_supplier`, `agreement_status`, `size_class`), all scoped by
-     * `$query` (already narrowed by every OTHER active filter).
+     * Excel-like distinct values (spec 0004/0005): the relation-derived
+     * columns via RegistryRelationColumns, the three cast-bearing real
+     * columns (`is_supplier`, `agreement_status`, `size_class`) here, all
+     * scoped by `$query` (already narrowed by every OTHER active filter).
      *
      * @param  Builder<Registry>  $query
      * @param  array<string, mixed>  $columnConfig
-     * @return array<int, string>|null
+     * @return array<int, string|null>|null
      */
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
         return match ($columnId) {
-            'source' => $this->distinctSourceNames($query, $search, $limit),
             'is_supplier', 'agreement_status', 'size_class' => $this->distinctRawColumn($query, $columnId, $search, $limit),
-            default => null,
+            default => $this->relationColumns->distinctValues($columnId, $search, $query, $limit),
         };
-    }
-
-    /**
-     * @param  Builder<Registry>  $query
-     * @return array<int, string>
-     */
-    private function distinctSourceNames(Builder $query, ?string $search, int $limit): array
-    {
-        $sourceIds = (clone $query)->whereNotNull('source_id')->select('source_id');
-
-        $values = DB::table('sources')
-            ->whereIn('id', $sourceIds)
-            ->when($search !== null && $search !== '', function ($builder) use ($search): void {
-                $builder->where('name', 'like', '%'.$this->escapeLike($search).'%');
-            })
-            ->distinct()
-            ->orderBy('name')
-            ->limit($limit)
-            ->pluck('name')
-            ->map(static fn (mixed $name): string => (string) $name)
-            ->all();
-
-        return $this->withBlankEntry($values, $search, fn (): bool => (clone $query)
-            ->whereDoesntHave('source')
-            ->exists());
     }
 
     /**

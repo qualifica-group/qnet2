@@ -78,3 +78,20 @@ describe('registryColumnRenderers.primary_contact', () => {
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 })
+
+describe('registryColumnRenderers team columns', () => {
+  it.each(['commercial', 'reporter'])('renders the %s referent name', (columnId) => {
+    renderCell(columnId, { id: 7, name: 'Carla Rossi' })
+    expect(screen.getByText('Carla Rossi')).toBeInTheDocument()
+  })
+
+  it.each(['commercial', 'reporter', 'supervisor', 'managers'])('renders an em dash for %s when unset', (columnId) => {
+    renderCell(columnId, columnId === 'managers' ? [] : null)
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+
+  it('wires supervisor and managers ("Operatori") to the shared person cells', () => {
+    expect(registryColumnRenderers.supervisor).toBeTypeOf('function')
+    expect(registryColumnRenderers.managers).toBeTypeOf('function')
+  })
+})

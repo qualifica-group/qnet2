@@ -33,6 +33,7 @@ const guide: HelpGuide = {
             'Apri Anagrafiche › Anagrafiche.',
             "Scrivi nel campo Cerca… in alto nella tabella: l'elenco si aggiorna mentre scrivi.",
             'Per restringere la ricerca usa i filtri sulle colonne, per esempio Fonte, Fornitore o Stato convenzione.',
+            "Le colonne Commerciale, Supervisore, Segnalatore e Operatori mostrano il team dell'anagrafica: Operatori riporta i Gestori account nel loro ordine. Puoi filtrarle per nome e ordinarle, tranne Operatori che si filtra soltanto.",
             'Per vedere la scheda, apri il menu Azioni della riga e scegli Visualizza.',
           ],
         },

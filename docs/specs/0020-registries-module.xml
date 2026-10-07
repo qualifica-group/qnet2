@@ -173,6 +173,10 @@
           { id:'agreement_status', type:'text', sortable:true, filterable:true, filterType:'set', visible:true },     <!-- enum -->
           { id:'size_class', type:'text', sortable:true, filterable:true, filterType:'set', visible:true },           <!-- enum -->
           { id:'primary_contact', type:'text', sortable:false, filterable:false, visible:true },                      <!-- derived: contatto primario carta -->
+          { id:'commercial', type:'text', sortable:true, filterable:true, filterType:'set', visible:true },          <!-- derived: nome referente commerciale (2026-10-07) -->
+          { id:'supervisor', type:'text', sortable:true, filterable:true, filterType:'set', visible:true },          <!-- derived: nome utente supervisore (2026-10-07) -->
+          { id:'reporter', type:'text', sortable:true, filterable:true, filterType:'set', visible:true },            <!-- derived: nome referente segnalatore (2026-10-07) -->
+          { id:'managers', type:'text', sortable:false, filterable:true, filterType:'set', visible:true },           <!-- derived: registry_user, label "Operatori" (2026-10-07) -->
           { id:'created_at', type:'datetime', sortable:true, filterable:true, filterType:'date', visible:true }
         ]
         + defaultSort [{columnId:'created_at', direction:'desc'}], defaultPagination {limit:25},
@@ -192,9 +196,14 @@
           agreement_status: 'negotiating'|'rejected'|'agreed' | null,
           size_class: 'micro'|'small'|'medium'|'large' | null,
           primary_contact: { type:string, value:string } | null,
+          commercial: { id:number, name:string } | null,
+          supervisor: { id:number, name:string, avatar_url:string|null } | null,
+          reporter: { id:number, name:string } | null,
+          managers: [ { id:number, name:string, avatar_url:string|null } ],   <!-- in ordine di position -->
           created_at:string, actions:string[]
         } ], pagination:{ total, offset, limit, total_pages } }
-        Eager loading di source + personalData.contacts (no N+1); nessun campo sensibile.
+        Eager loading di source + commercial + supervisor.avatar + reporter + managers.avatar + personalData.contacts (no N+1); nessun campo sensibile.
+        Filtro set/sort/distinct dei derivati (source/commercial/supervisor/reporter/managers) in `Tables/Registries/RegistryRelationColumns`.
       </response>
       <errors>403 se manca registries.viewAny.</errors>
     </endpoint>

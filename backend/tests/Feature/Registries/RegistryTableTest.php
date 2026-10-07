@@ -36,7 +36,7 @@ if (! function_exists('registryTableUserWith')) {
 // AC-015 — columns config
 // ---------------------------------------------------------------------------
 
-it('returns the 8 columns in order with the declared flags, 403 without viewAny', function () {
+it('returns the 12 columns in order with the declared flags, 403 without viewAny', function () {
     $actor = registryTableUserWith([]);
     Sanctum::actingAs($actor);
     $this->getJson('/api/tables/registries/columns')->assertForbidden();
@@ -55,7 +55,10 @@ it('returns the 8 columns in order with the declared flags, 403 without viewAny'
         ->and($data['searchable'])->toBe(['name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'source', 'is_supplier', 'agreement_status', 'size_class', 'primary_contact', 'created_at']);
+    expect($ids)->toBe([
+        'id', 'name', 'source', 'is_supplier', 'agreement_status', 'size_class', 'primary_contact',
+        'commercial', 'supervisor', 'reporter', 'managers', 'created_at',
+    ]);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['name']['filterType'])->toBe('text')

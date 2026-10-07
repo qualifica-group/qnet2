@@ -15,6 +15,10 @@ export const registries = {
     agreement_status: 'Convention status',
     size_class: 'Size class',
     primary_contact: 'Primary contact',
+    commercial: 'Commercial',
+    supervisor: 'Supervisor',
+    reporter: 'Reporter',
+    managers: 'Operators',
     created_at: 'Created at',
   },
   detail: {
