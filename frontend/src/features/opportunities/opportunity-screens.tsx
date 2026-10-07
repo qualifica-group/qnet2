@@ -39,12 +39,14 @@ export function OpportunityDetailScreen({ id, onChanged }: ModuleDetailScreenPro
     data: opportunity,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(opportunityDetailQueryKey(id), () => fetchOpportunity(id))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('opportunities.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

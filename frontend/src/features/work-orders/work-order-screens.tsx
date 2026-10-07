@@ -32,12 +32,14 @@ export function WorkOrderDetailScreen({ id, onChanged }: ModuleDetailScreenProps
     data: workOrder,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(workOrderDetailQueryKey(id), () => fetchWorkOrder(id))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('workOrders.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

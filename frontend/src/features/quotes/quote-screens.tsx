@@ -40,12 +40,14 @@ export function QuoteDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
     data: quote,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(quoteDetailQueryKey(id), () => fetchQuote(id))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('quotes.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

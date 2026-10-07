@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ERRORE CONTROLLATO 404/403 SU TUTTI I DETTAGLI/EDIT RECORD — VERDE, NON COMMITTATO (2026-10-07)
+
+- Richiesta utente (es. `/work-orders/10` inesistente mostrava "errore + Riprova"). `DetailError` ora richiede
+  `error: unknown`: 404/403 -> `RecordUnavailable` (nessun Riprova, testi `common.recordUnavailable.*`), altro ->
+  messaggio (`role="alert"`) + Riprova. Il typecheck obbliga ogni chiamante a passare `error`.
+- Esteso a tutte le schermate dettaglio + edit loader dei moduli (blocchi errore inline duplicati sostituiti da
+  `DetailError`), pagine prodotto/referente/anagrafica/import lead (`useLeadImportDetail` espone `error`),
+  `RequestWorkPanelScreen` (chiavi `requestManagement.workPanel.unavailable.*` rimosse, ora in `common`).
+- Task: il 403 con contatti (`TaskAccessDenied`, spec 0155 D-7) resta prioritario; il 404 passa da `DetailError`.
+- Test nuovo `components/detail/detail-error.test.tsx`; FAQ guida `general` IT/EN.
+- Verifica: `tsc -b --force` 0; ESLint pulito sui file toccati; Vitest completo 6979/6987, gli 8 falliti sono in
+  `product-typology-schema/form-payload` (campo `color` in lavorazione da altra sessione, file non toccati).
+- Aperto (non implementato, fuori scope): backend logga + alert Teams sui 403 da policy (`handleControllerException`);
+  per le Commesse il 403 da scoping membership e' un caso quotidiano -> valutare 403 con contatti (Responsabili) come Task.
+- Manuale Claude Docs: da aggiornare FAQ/Domande frequenti (record non trovato / accesso negato).
+
 ## COMPLETA TASK — SEGNATEMPO PER TUTTI GLI ASSEGNATARI A SCELTA (spec 0205) — VERDE, COMMITTATO (2026-10-07)
 
 - RETTIFICA spec 0155 D-6 (allineamento a q-net). BE: `for_all_assignees` omesso -> true (`CompleteTaskData`

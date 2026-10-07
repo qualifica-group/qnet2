@@ -27,6 +27,7 @@ export default function RegistryDetailPage() {
     data: registry,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(
     registryDetailQueryKey(registryId),
@@ -59,6 +60,7 @@ export default function RegistryDetailPage() {
       <div className="flex flex-1 flex-col overflow-hidden rounded-lg border">
         {isError ? (
           <DetailError
+            error={error}
             message={t('registries.detail.loadError')}
             retryLabel={t('common.retry')}
             onRetry={() => refetch()}

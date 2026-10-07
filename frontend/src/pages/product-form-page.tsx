@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
+import { DetailError } from '@/components/detail/detail-panel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -32,6 +32,7 @@ export default function ProductFormPage() {
     data: product,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(
     productDetailQueryKey(productId),
@@ -70,14 +71,12 @@ export default function ProductFormPage() {
             `formOwnsHeader` modules do on the generic page. */}
         <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
           {isError ? (
-            <div className="flex flex-col items-start gap-3 p-4">
-              <p className="text-sm text-destructive" role="alert">
-                {t('products.detail.loadError')}
-              </p>
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                {t('common.retry')}
-              </Button>
-            </div>
+            <DetailError
+              error={error}
+              message={t('products.detail.loadError')}
+              retryLabel={t('common.retry')}
+              onRetry={() => refetch()}
+            />
           ) : isEdit && (isLoading || !product) ? (
             <div className="flex flex-col gap-4 p-4" aria-hidden="true">
               <Skeleton className="h-9 w-full" />

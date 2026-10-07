@@ -29,6 +29,7 @@ export default function ProductDetailPage() {
     data: product,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(
     productDetailQueryKey(productId),
@@ -58,6 +59,7 @@ export default function ProductDetailPage() {
       <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
         {isError ? (
           <DetailError
+            error={error}
             message={t('products.detail.loadError')}
             retryLabel={t('common.retry')}
             onRetry={() => refetch()}

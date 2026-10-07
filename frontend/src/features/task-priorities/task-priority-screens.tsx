@@ -1,7 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
@@ -33,12 +32,14 @@ export function TaskPriorityDetailScreen({ id, onEdit }: ModuleDetailScreenProps
     data: taskPriority,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(detailQueryKey(id), () => fetchTaskPriority(id))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('taskPriorities.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}
@@ -87,17 +88,18 @@ function TaskPriorityEditScreen({ taskPriorityId, onSuccess, onCancel }: TaskPri
     data: taskPriority,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(detailQueryKey(taskPriorityId), () => fetchTaskPriority(taskPriorityId))
 
   if (isError) {
     return (
-      <div className="flex flex-col items-start gap-3 p-4">
-        <p className="text-sm text-destructive">{t('taskPriorities.detail.loadError')}</p>
-        <Button variant="outline" size="sm" className="bg-card" onClick={() => refetch()}>
-          {t('common.retry')}
-        </Button>
-      </div>
+      <DetailError
+        error={error}
+        message={t('taskPriorities.detail.loadError')}
+        retryLabel={t('common.retry')}
+        onRetry={() => refetch()}
+      />
     )
   }
 

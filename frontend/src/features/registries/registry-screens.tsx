@@ -32,12 +32,14 @@ export function RegistryDetailScreen({ id, onChanged }: ModuleDetailScreenProps)
     data: registry,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(registryDetailQueryKey(id), () => fetchRegistry(id))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('registries.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

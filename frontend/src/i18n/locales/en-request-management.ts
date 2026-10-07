@@ -212,16 +212,6 @@ export const requestManagement = {
   },
   workPanel: {
     loadError: 'Could not load the record.',
-    unavailable: {
-      notFound: {
-        title: 'Record not found',
-        description: 'The record you are looking for does not exist or has been deleted.',
-      },
-      forbidden: {
-        title: 'Access denied',
-        description: 'You do not have the necessary permissions to view this record.',
-      },
-    },
     saving: 'Saving…',
     save: 'Save',
     saved: 'Working data saved.',

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
+import { DetailError } from '@/components/detail/detail-panel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchProject, projectDetailQueryKey } from '@/features/projects/api'
@@ -24,17 +24,18 @@ export function ProjectDuplicateLoader({ projectId, onSuccess, onCancel }: Proje
     data: project,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(projectDetailQueryKey(projectId), () => fetchProject(projectId))
 
   if (isError) {
     return (
-      <div className="flex flex-col items-start gap-3 p-4">
-        <p className="text-sm text-destructive">{t('projects.detail.loadError')}</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          {t('common.retry')}
-        </Button>
-      </div>
+      <DetailError
+        error={error}
+        message={t('projects.detail.loadError')}
+        retryLabel={t('common.retry')}
+        onRetry={() => refetch()}
+      />
     )
   }
 

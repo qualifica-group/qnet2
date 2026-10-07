@@ -44,12 +44,14 @@ export function CompanyDetailView({ companyId, onEdit }: CompanyDetailProps) {
     data: company,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(['companies', 'detail', companyId], () => fetchCompany(companyId))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('companies.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

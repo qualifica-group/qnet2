@@ -30,12 +30,14 @@ export function ProjectDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
     data: project,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(projectDetailQueryKey(id), () => fetchProject(id))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('projects.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

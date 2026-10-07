@@ -25,7 +25,7 @@ export default function LeadImportDetailPage() {
   const { runId: runIdParam } = useParams()
   const runId = parseEntityId(runIdParam)
 
-  const { run, summary, isLoading, isError, refetch, summaryIsLoading, summaryIsError, isResumable } =
+  const { run, summary, isLoading, isError, error, refetch, summaryIsLoading, summaryIsError, isResumable } =
     useLeadImportDetail(runId)
 
   useBreadcrumbTitle(`/imports/${runIdParam}`, run?.original_filename)
@@ -62,6 +62,7 @@ export default function LeadImportDetailPage() {
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {isError ? (
             <DetailError
+              error={error}
               message={t('leadImports.detail.loadError')}
               retryLabel={t('common.retry')}
               onRetry={() => refetch()}

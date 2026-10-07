@@ -40,12 +40,14 @@ export function UserDetailView({ userId, onEdit }: UserDetailProps) {
     data: user,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(['users', 'detail', userId], () => fetchUser(userId))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('users.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

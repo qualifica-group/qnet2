@@ -82,6 +82,7 @@ export function TaskDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   } else if (isError) {
     content = (
       <DetailError
+        error={error}
         message={t('tasks.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

@@ -20,12 +20,14 @@ export function ContractDetailScreen({ id }: ModuleDetailScreenProps) {
     data: contract,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(contractDetailQueryKey(id), () => fetchContract(id))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('contracts.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

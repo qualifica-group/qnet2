@@ -25,6 +25,17 @@ export const common = {
   openDetailPage: 'Apri pagina di dettaglio',
   /** Appended to the name when duplicating a record (row action "duplicate"); leading space by design. */
   copySuffix: ' (copia)',
+  /** Final state of a record fetch answered 404/403 (`DetailError`, `RecordUnavailable`): no retry. */
+  recordUnavailable: {
+    notFound: {
+      title: 'Record non trovato',
+      description: 'Il record che cerchi non esiste o è stato eliminato.',
+    },
+    forbidden: {
+      title: 'Accesso negato',
+      description: 'Non hai i permessi necessari per visualizzare questo record.',
+    },
+  },
   /** In-place editing of a record's rows (spec 0195): the pencil, and the open row's confirm/cancel. */
   inlineEdit: {
     edit: 'Modifica {{field}}',

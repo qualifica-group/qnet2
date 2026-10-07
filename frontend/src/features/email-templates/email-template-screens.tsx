@@ -1,7 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
@@ -33,12 +32,14 @@ export function EmailTemplateDetailScreen({ id, onEdit }: ModuleDetailScreenProp
     data: emailTemplate,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(detailQueryKey(id), () => fetchEmailTemplate(id))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('emailTemplates.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}
@@ -85,17 +86,18 @@ function EmailTemplateEditScreen({ emailTemplateId, onSuccess, onCancel }: Email
     data: emailTemplate,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(detailQueryKey(emailTemplateId), () => fetchEmailTemplate(emailTemplateId))
 
   if (isError) {
     return (
-      <div className="flex flex-col items-start gap-3 p-4">
-        <p className="text-sm text-destructive">{t('emailTemplates.detail.loadError')}</p>
-        <Button variant="outline" size="sm" className="bg-card" onClick={() => refetch()}>
-          {t('common.retry')}
-        </Button>
-      </div>
+      <DetailError
+        error={error}
+        message={t('emailTemplates.detail.loadError')}
+        retryLabel={t('common.retry')}
+        onRetry={() => refetch()}
+      />
     )
   }
 

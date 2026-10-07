@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- module registry adapter: exports the `moduleScreen` descriptor alongside its screen components (spec 0042 pattern, same as `project-screens.tsx`) */
 import { useTranslation } from 'react-i18next'
+import { DetailError } from '@/components/detail/detail-panel'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchUser } from '@/features/users/api'
 import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
@@ -63,17 +63,18 @@ function EditUserLoader({ userId, onSuccess, onCancel }: EditUserLoaderProps) {
     data: user,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(['users', 'detail', userId], () => fetchUser(userId))
 
   if (isError) {
     return (
-      <div className="flex flex-col items-start gap-3 p-4">
-        <p className="text-sm text-destructive">{t('users.detail.loadError')}</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          {t('common.retry')}
-        </Button>
-      </div>
+      <DetailError
+        error={error}
+        message={t('users.detail.loadError')}
+        retryLabel={t('common.retry')}
+        onRetry={() => refetch()}
+      />
     )
   }
 

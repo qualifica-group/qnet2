@@ -28,6 +28,7 @@ export default function ReferentDetailPage() {
     data: referent,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(
     referentDetailQueryKey(referentId),
@@ -60,6 +61,7 @@ export default function ReferentDetailPage() {
       <div className="flex flex-1 flex-col overflow-hidden rounded-lg border">
         {isError ? (
           <DetailError
+            error={error}
             message={t('referents.detail.loadError')}
             retryLabel={t('common.retry')}
             onRetry={() => refetch()}

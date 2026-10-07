@@ -25,6 +25,17 @@ export const common = {
   /** Sheet toolbar action that leaves the modal for the record's dedicated detail page. */
   openDetailPage: 'Open detail page',
   copySuffix: ' (copy)',
+  /** Final state of a record fetch answered 404/403 (`DetailError`, `RecordUnavailable`): no retry. */
+  recordUnavailable: {
+    notFound: {
+      title: 'Record not found',
+      description: 'The record you are looking for does not exist or has been deleted.',
+    },
+    forbidden: {
+      title: 'Access denied',
+      description: 'You do not have the necessary permissions to view this record.',
+    },
+  },
   /** In-place editing of a record's rows (spec 0195): the pencil, and the open row's confirm/cancel. */
   inlineEdit: {
     edit: 'Edit {{field}}',
