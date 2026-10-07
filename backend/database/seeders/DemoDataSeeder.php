@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\Quote;
@@ -43,6 +44,8 @@ class DemoDataSeeder extends Seeder
         // would trip the FK restriction before the downstream seeders get a
         // chance to clear their own rows. All four tables are re-seeded
         // below (same pre-clear pattern as DemoProjectSeeder with campaigns).
+        // Invoices go first: they restrict their customer registry and company.
+        Invoice::query()->delete();
         WorkOrder::query()->delete();
         Quote::query()->delete();
         Opportunity::query()->delete();
@@ -127,6 +130,9 @@ class DemoDataSeeder extends Seeder
         // Commesse (spec 0093): depends on DemoQuoteSeeder for the quotes and
         // their own REVENUE lines — must run after it.
         $this->call(DemoWorkOrderSeeder::class);
+        // One proforma request + document per work order (spec 0194): needs the
+        // work orders, the installment payment methods and the bank accounts.
+        $this->call(DemoInvoiceSeeder::class);
         // Plans a callback on some of the requests through the module's own
         // write path. Spec 0086 (D-1) made the Offerta that path's subject, so
         // this now depends on DemoQuoteSeeder and must run AFTER it.

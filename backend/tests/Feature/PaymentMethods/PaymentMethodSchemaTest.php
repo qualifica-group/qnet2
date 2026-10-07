@@ -5,6 +5,8 @@ use App\DataObjects\PaymentMethods\UpdatePaymentMethodData;
 use App\Http\Requests\PaymentMethods\StorePaymentMethodRequest;
 use App\Http\Requests\PaymentMethods\UpdatePaymentMethodRequest;
 use App\Models\PaymentMethod;
+use App\Services\Invoices\InstallmentScheduleCalculator;
+use Carbon\CarbonImmutable;
 use Database\Seeders\DemoPaymentMethodSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -137,6 +139,21 @@ it('DemoPaymentMethodSeeder creates at least the 6 catalogued methods with uniqu
 
     $orders = PaymentMethod::query()->orderBy('sort_order')->pluck('sort_order');
     expect($orders->values()->all())->toBe($orders->sort()->values()->all());
+});
+
+it('DemoPaymentMethodSeeder installment terms all produce a schedule with the configured number of installments', function () {
+    $this->seed(DemoPaymentMethodSeeder::class);
+    $calculator = new InstallmentScheduleCalculator;
+
+    $installmentMethods = PaymentMethod::query()->where('installments_count', '>', 1)->get();
+    expect($installmentMethods->count())->toBeGreaterThanOrEqual(8);
+
+    foreach ($installmentMethods as $method) {
+        $schedule = $calculator->calculate(CarbonImmutable::parse('2026-01-15'), $method, '1000.00', '220.00', '1220.00');
+
+        expect($schedule)->toHaveCount($method->installments_count, $method->code)
+            ->and(array_sum(array_map(fn (array $row): float => (float) $row['amount'], $schedule)))->toEqualWithDelta(1220.0, 0.001);
+    }
 });
 
 it('DemoPaymentMethodSeeder run twice leaves the same row count, idempotent via code (AC-130)', function () {

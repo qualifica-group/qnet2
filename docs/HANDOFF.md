@@ -3,6 +3,42 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0196 RIMODULAZIONE RATE + INCASSO PARZIALE — BRANCH feature/amministrazione (2026-10-07)
+
+- Spec `docs/specs/0196-invoice-installment-rebalancing.xml` (approvata, D-1..D-15).
+- Rimodulazione: PUT /api/invoices/{id} con incassi NON e' piu' 409. document_date/payment_method_id/customer_registry_id
+  bloccati (422 per campo); rate incassate intatte, partially_paid chiusa a collected_amount, residuo in parti uguali
+  sulle rate aperte (vat_allocation ignorata); totale minore dell'incassato -> 422 `lines`; uguale -> rate aperte eliminate;
+  nessuna rata aperta e residuo maggiore di 0 -> nuova rata ultima due_date + 30. Azzera tutti i `redistribution_snapshot`.
+- Incasso: `InvoiceCollectionService::record/clear` (record/clear USCITI da InvoiceService). PUT collection su rata gia'
+  incassata -> 409. Parziale: `residual_mode` spread|new_installment (enum ResidualMode), `residual_due_date` per
+  new_installment; la rata si chiude a collected_amount. Snapshot json `redistribution_snapshot` sulla rata incassata
+  ({installments:[{id,sequence,amount}], created_installment_id}). DELETE: ripristino esatto; 409 "Clear the later
+  collections first." se una rata spalmata/creata e' incassata dopo; senza snapshot azzera solo l'incasso.
+- Servizi: `InstallmentRebalancer` (puro, centesimi, RESIDUAL_INSTALLMENT_DAYS=30), `InvoiceScheduleRebalancer`,
+  `InvoiceCollectionService`. Preview: `invoice_id` opzionale, righe con `collected_amount` + `locked`.
+- FE: dialog incasso con scelta residuo (`invoice-collection-residual*.ts(x)`), "Registra incasso" (default + HandCoins)
+  solo su rate aperte, "Annulla incasso" (outline + Undo2) con AlertDialog di conferma (`invoice-clear-collection-dialog.tsx`);
+  editor con campi bloccati e preview con invoice_id. Guide in-app invoices IT/EN aggiornate.
+- `DemoInvoiceSeeder` ora registra gli incassi via InvoiceCollectionService (parziale = spread).
+- Manuale Claude Docs (KwvSrXafsGqT9qzZULxJhh) NON accessibile da questa sessione: da aggiornare a mano le sezioni
+  Fatture > Modifica documento (rimodulazione con incassi) e Fatture > Incassi (incasso parziale, conferma annullamento).
+- Ambiente: il PHP Laragon in bash non ha pdo_sqlite/zip attive; i test girano con PHPRC su un php.ini temporaneo.
+  QuoteDocumentPdfTest fallisce in locale per assenza di LibreOffice (ambientale).
+
+## FIX LINK MAIL TESTUALI — VERDE, NON COMMITTATO (2026-10-07)
+
+- `emails/reset-password-plain` e `emails/welcome-user-plain` stampavano `{{ $url }}` → `&amp;email=` nel corpo testo:
+  il parametro `email` si perdeva e la pagina reset/set-password mostrava subito "link non valido". Ora `{!! $url !!}`
+  (testo puro, URL costruito server-side). Test: `tests/Feature/Mail/PlainTextEmailLinkTest.php`.
+- Dati demo fatture: `DemoPaymentMethodSeeder` + 9 forme rateali (codici `riba_30_60`, `riba_30_60_90`, `riba_30_60_90_eom`,
+  `bank_transfer_30_120_eom_10`, `bank_transfer_60_90_120`, `bank_transfer_30_60_90_vat_first|vat_last`,
+  `vat_upfront_30_60_90`, `direct_debit_12_monthly`). Nuovo `DemoInvoiceSeeder` (dopo DemoWorkOrderSeeder in DemoDataSeeder):
+  1 proforma request + documento per commessa via `InvoiceService`, date relative a oggi, incassi misti; `DemoDataSeeder`
+  ora cancella le Invoice prima delle WorkOrder (restrict su registry/company). Seeder eseguiti sul DB locale; il re-run
+  completo di DemoDataSeeder NON e' stato provato.
+- Locale: `backend/.env` MAIL_MAILER=log (nessun SMTP catcher su 1025); i link reset finiscono in `storage/logs/laravel.log`.
+
 ## SPEC 0195 PDF + EMAIL/SOLLECITO FATTURE — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-06)
 
 - Spec `docs/specs/0195-invoice-pdf-and-email.xml` (approvata; D-13 rev: rate scadute del sollecito come elenco `<ul>`,
