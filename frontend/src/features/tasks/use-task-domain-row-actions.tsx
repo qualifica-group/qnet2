@@ -135,7 +135,7 @@ export function useTaskDomainRowActions({
 
   const dialogSlot: ReactNode =
     dialog.kind === 'complete' ? (
-      <TaskCompleteDialog open onOpenChange={handleDialogOpenChange} task={dialog.task} forAllAssignees />
+      <TaskCompleteDialog open onOpenChange={handleDialogOpenChange} task={dialog.task} />
     ) : dialog.kind === 'approve' || dialog.kind === 'reject' ? (
       <TaskValidationDialog open onOpenChange={handleDialogOpenChange} mode={dialog.kind} task={dialog.task} />
     ) : dialog.kind === 'request_update' ? (

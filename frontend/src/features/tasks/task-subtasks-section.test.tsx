@@ -36,17 +36,10 @@ vi.mock('@/features/tasks/api', async () => {
 
 // The full completion flow (feedback/validation/segnatempo) is already
 // covered by `task-complete-dialog.test.tsx`; this suite only checks that the
-// panel opens it with the right task and `forAllAssignees={false}` (D-6).
+// panel opens it with the right task.
 vi.mock('@/features/tasks/task-complete-dialog', () => ({
-  TaskCompleteDialog: ({
-    open,
-    task,
-    forAllAssignees,
-  }: {
-    open: boolean
-    task: { id: number }
-    forAllAssignees: boolean
-  }) => (open ? <p>{`complete-dialog:${task.id}:${String(forAllAssignees)}`}</p> : null),
+  TaskCompleteDialog: ({ open, task }: { open: boolean; task: { id: number } }) =>
+    open ? <p>{`complete-dialog:${task.id}`}</p> : null,
 }))
 
 const label = (key: string) => i18n.t(key)
@@ -273,7 +266,7 @@ function deletableSubtask(id: number) {
 
 /** Spec 0155 D-5/AC-007: each row's own `permissions.actions` gates complete/reopen/delete. */
 describe('TaskSubtasksSection — row actions (AC-007)', () => {
-  it('shows Completa only when the child permits it, and opens the dialog with forAllAssignees=false', async () => {
+  it('shows Completa only when the child permits it, and opens the dialog for that child', async () => {
     vi.mocked(fetchTask).mockResolvedValueOnce(taskDetailWithPermissions({ id: 101 }))
     renderSection([
       taskSubtask({ id: 101, permissions: { actions: { ...NO_TASK_ACTIONS, complete: true, delete: false } } }),
@@ -284,7 +277,7 @@ describe('TaskSubtasksSection — row actions (AC-007)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: label('tasks.detail.subtaskPanel.complete') }))
 
-    expect(await screen.findByText('complete-dialog:101:false')).toBeInTheDocument()
+    expect(await screen.findByText('complete-dialog:101')).toBeInTheDocument()
   })
 
   it('shows Riapri only when the child permits it; confirming reopens and refreshes the parent', async () => {

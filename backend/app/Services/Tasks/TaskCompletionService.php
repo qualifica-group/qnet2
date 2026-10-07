@@ -208,8 +208,8 @@ final class TaskCompletionService
     }
 
     /**
-     * D-6 (spec 0155): `for_all_assignees` false logs `data->timeEntry` for
-     * $actor alone, unchanged from before this spec. `true` logs an
+     * D-6 (spec 0155, default flipped to true by spec 0205): `for_all_assignees`
+     * false logs `data->timeEntry` for $actor alone. `true` logs an
      * IDENTICAL copy of the SAME (immutable) DTO for every assignee of
      * $task, or for $actor when it has none — `TimeEntryService::create()`
      * builds one fresh TimeEntry row per call, so reusing the readonly DTO

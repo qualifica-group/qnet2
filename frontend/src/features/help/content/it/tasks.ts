@@ -281,7 +281,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Completando un task dal dettaglio (o dall\'elenco) il segnatempo viene registrato per **tutti gli assegnatari**, uno identico per ciascuno (per te soltanto se il task non ne ha). Completando un singolo sotto-task dal pannello Sotto-task, invece, il segnatempo si registra solo per te: non è una scelta disponibile, dipende da dove completi il task.',
+          text: 'Nella finestra Completa la casella **Registra il segnatempo per tutti gli assegnatari** è spuntata di default: il segnatempo viene registrato per tutti gli assegnatari, uno identico per ciascuno (per te soltanto se il task non ne ha). Togli la spunta per registrarlo solo per te. La scelta vale ovunque completi il task: dettaglio, elenco, kanban e pannello Sotto-task.',
         },
         {
           type: 'note',

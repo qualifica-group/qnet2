@@ -224,8 +224,6 @@ export function TaskSubtasksSection({
             }
           }}
           task={completingTask}
-          // Spec 0155 D-6: the sub-task panel never completes for every assignee.
-          forAllAssignees={false}
           onCompleted={() => void invalidateParent()}
         />
       ) : null}

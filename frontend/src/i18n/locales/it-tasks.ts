@@ -458,6 +458,7 @@ export const tasks = {
       timeEntryTitle: 'Segnatempo',
       timeEntryDescription: 'Registra il tempo dedicato per completare il task.',
       trackTime: 'Registra il tempo',
+      forAllAssignees: 'Registra il segnatempo per tutti gli assegnatari',
       confirm: 'Completa',
       saving: 'Salvataggio…',
       success: 'Task completato.',

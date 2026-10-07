@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMPLETA TASK — SEGNATEMPO PER TUTTI GLI ASSEGNATARI A SCELTA (spec 0205) — VERDE, COMMITTATO (2026-10-07)
+
+- RETTIFICA spec 0155 D-6 (allineamento a q-net). BE: `for_all_assignees` omesso -> true (`CompleteTaskData`
+  default true); false esplicito -> solo l'attore. Bulk invariato (sempre true).
+- FE: `TaskCompleteDialog` ha il campo form `for_all_assignees` (casella, default spuntata, visibile solo se si
+  registra un segnatempo) e lo invia sempre. Prop `forAllAssignees` rimossa da dialog e chiamanti (dettaglio, lista,
+  cella stato, kanban, pannello sottotask). i18n `tasks.actions.completeDialog.forAllAssignees`; guida `tasks` IT/EN.
+- Test cambiati per requisito cambiato: `TaskCompleteForAllAssigneesTest` (default true, false esplicito),
+  `task-complete-dialog.test.tsx` (casella), `task-subtasks-section.test.tsx` (mock senza prop).
+- `QualificaSampleTaskSeeder::complete()` passa `forAllAssignees: false` (un segnatempo per task, come prima).
+- Verifica: Pest suite completa 9429/9430 (1 skip); Pint ok; Vitest tasks+help 604/604; `tsc -b --force` 0;
+  ESLint pulito sui file toccati.
+- Manuale Claude Docs: NON aggiornato (doc non condiviso con la sessione) — sezione Task > Completamento/Segnatempo.
+- Al commit ESCLUDERE i file di altre sessioni (contract-data FE, seeder showcase commissioni).
+
 ## COMMISSIONE FORNITORE PER TIPOLOGIA (spec 0202) + REGOLE PROVVIGIONI LEGACY (spec 0203) — VERDE, NON COMMITTATO (2026-10-07)
 
 - Spec 0202 (decisioni utente): impostazione sulla TIPOLOGIA prodotto, mai piu' sul codice `institution`:

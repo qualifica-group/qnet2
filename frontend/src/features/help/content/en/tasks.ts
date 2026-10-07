@@ -278,7 +278,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Completing a task from the detail (or from the list) logs the time entry for **every assignee**, one identical entry each (yourself alone when the task has none). Completing a single sub-task from the Sub-tasks panel instead only logs it for you — this is not a choice you make, it depends on where you complete the task.",
+          text: "In the Complete dialog the **Log the time entry for all assignees** checkbox is checked by default: the time entry is logged for every assignee, one identical entry each (yourself alone when the task has none). Uncheck it to log it for yourself only. The choice works wherever you complete the task: detail, list, kanban and Sub-tasks panel.",
         },
         {
           type: 'note',

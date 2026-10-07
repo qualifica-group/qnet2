@@ -237,7 +237,8 @@ class QualificaSampleTaskSeeder extends Seeder
 
     /**
      * "Completa", by the Task's first assignee: with `requires_validation`
-     * off the Task closes positively, and the action writes its segnatempo.
+     * off the Task closes positively, and the action writes its segnatempo
+     * for that assignee alone (spec 0205 flipped the default to every assignee).
      *
      * @param  Collection<int, TaskType>  $taskTypes
      */
@@ -253,6 +254,7 @@ class QualificaSampleTaskSeeder extends Seeder
                 notes: $faker->boolean(40) ? $faker->sentence(8) : null,
                 taskId: $task->id,
             ),
+            forAllAssignees: false,
         ), $assignee);
     }
 

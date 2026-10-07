@@ -451,6 +451,7 @@ export const tasks = {
       timeEntryTitle: 'Time entry',
       timeEntryDescription: 'Log the time spent to complete the task.',
       trackTime: 'Track time',
+      forAllAssignees: 'Log the time entry for all assignees',
       confirm: 'Complete',
       saving: 'Saving…',
       success: 'Task completed.',

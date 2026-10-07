@@ -12,7 +12,7 @@ uses(RefreshDatabase::class);
 /*
 |--------------------------------------------------------------------------
 | POST /api/tasks/{task}/complete, `for_all_assignees` (spec 0155, D-6,
-| AC-008)
+| AC-008; default flipped to true by spec 0205)
 |--------------------------------------------------------------------------
 */
 
@@ -54,15 +54,17 @@ it('AC-008: for_all_assignees creates one identical time entry per assignee', fu
     $this->assertDatabaseHas('time_entries', ['task_id' => $task->id, 'user_id' => $second->id, 'minutes' => 45]);
 });
 
-it('AC-008: without for_all_assignees only the actor gets a time entry', function () {
+it('spec 0205: for_all_assignees false logs the time entry for the actor alone', function () {
     $actor = taskCompleteAllActorWith(['complete']);
     $second = User::factory()->create();
     $task = Task::factory()->create();
     $task->assignees()->attach([$actor->id, $second->id]);
     Sanctum::actingAs($actor);
 
-    $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])
-        ->assertOk();
+    $this->postJson("/api/tasks/{$task->id}/complete", [
+        'time_entry' => validTimeEntryPayload(),
+        'for_all_assignees' => false,
+    ])->assertOk();
 
     $this->assertDatabaseCount('time_entries', 1);
     $this->assertDatabaseHas('time_entries', ['task_id' => $task->id, 'user_id' => $actor->id]);
@@ -82,7 +84,7 @@ it('AC-008: for_all_assignees with zero assignees logs the entry for the actor a
     $this->assertDatabaseHas('time_entries', ['task_id' => $task->id, 'user_id' => $actor->id]);
 });
 
-it('for_all_assignees defaults to false when absent', function () {
+it('spec 0205: for_all_assignees defaults to true when absent', function () {
     $actor = taskCompleteAllActorWith(['complete']);
     $second = User::factory()->create();
     $task = Task::factory()->create();
@@ -92,5 +94,5 @@ it('for_all_assignees defaults to false when absent', function () {
     $this->postJson("/api/tasks/{$task->id}/complete", ['time_entry' => validTimeEntryPayload()])
         ->assertOk();
 
-    expect(TimeEntry::where('task_id', $task->id)->count())->toBe(1);
+    expect(TimeEntry::where('task_id', $task->id)->count())->toBe(2);
 });

@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import axios from 'axios'
 import type { TFunction } from 'i18next'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,7 @@ function buildCompleteTaskSchema(t: TFunction, requiresFeedback: boolean, toVali
     .object({
       closure_feedback: z.string(),
       validation_status_id: z.number().nullable(),
+      for_all_assignees: z.boolean(),
     })
     .superRefine((values, ctx) => {
       if (requiresFeedback && values.closure_feedback.trim() === '') {
@@ -63,7 +65,7 @@ function buildCompleteTaskSchema(t: TFunction, requiresFeedback: boolean, toVali
 type CompleteTaskFormValues = z.infer<ReturnType<typeof buildCompleteTaskSchema>>
 
 function completeTaskDefaultValues(): CompleteTaskFormValues {
-  return { closure_feedback: '', validation_status_id: null }
+  return { closure_feedback: '', validation_status_id: null, for_all_assignees: true }
 }
 
 /**
@@ -73,25 +75,21 @@ function completeTaskDefaultValues(): CompleteTaskFormValues {
  * task that requires it (spec 0123 D-1); `undefined` (so the key is dropped
  * at the wire boundary) when the task's own segnatempo is optional and the
  * "Registra il tempo" switch is off (spec 0162 D-3). `for_all_assignees`
- * (spec 0155 D-6) is sent only when `true` — the server default (`false`)
- * already covers the sub-task panel's own case.
+ * (spec 0205, RECTIFIES spec 0155 D-6) is always sent: the actor's own
+ * checkbox choice, checked by default.
  */
 function buildCompletePayload(
   values: CompleteTaskFormValues,
   toValidation: boolean,
   timeEntry: CompleteTaskTimeEntryPayload | undefined,
-  forAllAssignees: boolean,
 ): CompleteTaskPayload {
-  const payload: CompleteTaskPayload = { time_entry: timeEntry }
+  const payload: CompleteTaskPayload = { time_entry: timeEntry, for_all_assignees: values.for_all_assignees }
   const feedback = values.closure_feedback.trim()
   if (feedback !== '') {
     payload.closure_feedback = feedback
   }
   if (toValidation) {
     payload.validation_status_id = values.validation_status_id
-  }
-  if (forAllAssignees) {
-    payload.for_all_assignees = true
   }
   return payload
 }
@@ -100,12 +98,6 @@ interface TaskCompleteDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   task: TaskDetailWithPermissions
-  /**
-   * Spec 0155 D-6: `true` from the task detail (and list); `false` from the
-   * sub-task panel and the kanban — q-net's own behaviour, no user-facing
-   * toggle. Required (no default) so every call site states its own intent.
-   */
-  forAllAssignees: boolean
   /**
    * Fires after a successful completion, in addition to closing the dialog.
    * The sub-task panel uses it to refresh the PARENT's own cached detail —
@@ -128,7 +120,6 @@ export function TaskCompleteDialog({
   open,
   onOpenChange,
   task,
-  forAllAssignees,
   onCompleted,
 }: TaskCompleteDialogProps) {
   const { t } = useTranslation()
@@ -166,7 +157,7 @@ export function TaskCompleteDialog({
     }
     try {
       await completeMutation.mutateAsync(
-        buildCompletePayload(values, toValidation, timeEntryPayload, forAllAssignees),
+        buildCompletePayload(values, toValidation, timeEntryPayload),
       )
     } catch (error) {
       // 409 (Task bloccato, AC-044) has no field to attach to: a dedicated
@@ -264,6 +255,25 @@ export function TaskCompleteDialog({
               ) : null}
 
               <TaskCompleteTimeEntryToggleSection timeEntryForm={timeEntryForm} disabled={completeMutation.isPending} />
+
+              {timeEntryForm.enabled ? (
+                <FormField
+                  control={form.control}
+                  name="for_all_assignees"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center gap-2">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) => field.onChange(checked === true)}
+                          disabled={completeMutation.isPending}
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal">{t('tasks.actions.completeDialog.forAllAssignees')}</FormLabel>
+                    </FormItem>
+                  )}
+                />
+              ) : null}
             </form>
           </Form>
         </div>
