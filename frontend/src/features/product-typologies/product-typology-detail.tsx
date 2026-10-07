@@ -15,6 +15,7 @@ import { RecordBody } from '@/components/detail/record-body'
 import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { ProductTypologyDetailWithPermissions } from '@/features/product-typologies/types'
 
@@ -65,6 +66,9 @@ export function ProductTypologyDetailView({ productTypology, onEdit }: ProductTy
           <RecordSectionsGrid>
             <RecordSection title={t('productTypologies.form.sections.identity.title')} full>
               <RecordFieldList>
+                <RecordField label={t('productTypologies.detail.color')}>
+                  <ProductTypologyBadge name={productTypology.name} color={productTypology.color} />
+                </RecordField>
                 <RecordField label={t('productTypologies.detail.description')}>
                   {productTypology.description ? productTypology.description : <DetailEmpty />}
                 </RecordField>

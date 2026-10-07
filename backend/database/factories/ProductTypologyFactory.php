@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\SupplierCommissionDirection;
 use App\Models\ProductTypology;
+use App\Support\BadgeTokens;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -27,6 +28,7 @@ class ProductTypologyFactory extends Factory
             'name' => fake()->unique()->words(2, true),
             'code' => 'typology_'.$suffix,
             'description' => fake()->optional()->sentence(),
+            'color' => fake()->randomElement(BadgeTokens::colors()),
         ];
     }
 

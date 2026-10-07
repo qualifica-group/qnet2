@@ -56,15 +56,8 @@ export function WorkOrderQuoteField({ control, selected, onQuoteChange, registry
   )
 }
 
-interface QuoteLinesFieldProps extends FieldProps {
-  /** The persisted work order, whose own lines the picker must keep offering (spec 0095 D-7); absent on create. */
-  exceptWorkOrderId?: number
-  /** `{id, label}` of the already-selected lines, so a badge never falls back to `#id`. */
-  selectedItems?: ForSelectItem[]
-}
-
 /** "Righe prodotto", scoped to the offer the form currently holds. */
-export function WorkOrderQuoteLinesFormField({ control, exceptWorkOrderId, selectedItems }: QuoteLinesFieldProps) {
+export function WorkOrderQuoteLinesFormField({ control }: FieldProps) {
   const { t } = useTranslation()
   const quoteId = useWatch({ control, name: 'quote_id' })
 
@@ -75,8 +68,6 @@ export function WorkOrderQuoteLinesFormField({ control, exceptWorkOrderId, selec
           value={field.value}
           onChange={field.onChange}
           quoteId={quoteId}
-          exceptWorkOrderId={exceptWorkOrderId}
-          selectedItems={selectedItems}
           disabled={disabled}
         />
       )}

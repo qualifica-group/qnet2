@@ -26,6 +26,8 @@ const NAME_MAX_LENGTH = 191
 const CODE_MAX_LENGTH = 64
 /** Backend `code` shape: snake_case identifier (spec engineering.md §1.2). */
 const CODE_PATTERN = /^[a-z][a-z0-9_]*$/
+/** Backend `color` column limit (string(32)). */
+const COLOR_MAX_LENGTH = 32
 /** Backend `description` column limit (`max:500`). */
 const DESCRIPTION_MAX_LENGTH = 500
 
@@ -45,6 +47,10 @@ function baseFields(t: TFunction) {
       .string()
       .max(DESCRIPTION_MAX_LENGTH, t('productTypologies.form.descriptionMax'))
       .nullable(),
+    color: z
+      .string()
+      .min(1, t('productTypologies.form.colorRequired'))
+      .max(COLOR_MAX_LENGTH, t('productTypologies.form.colorMax')),
     supplier_commission_enabled: z.boolean(),
     supplier_commission_direction: z.enum(SUPPLIER_COMMISSION_DIRECTIONS).nullable(),
   }

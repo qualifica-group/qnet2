@@ -214,9 +214,11 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // (129th) and `2026_10_07_110100_add_supplier_commission_direction_to_quote_lines_table`
     // (130th), the Supplier commission direction by typology, and spec 0203's
     // `2026_10_07_105900_add_old_id_to_commission_configurations_table`
-    // (a further one, 131 in all), the legacy anchor of commission rules.
+    // (a further one, 131 in all), the legacy anchor of commission rules, and
+    // spec 0204's `2026_10_07_120000_add_color_to_product_typologies_table`
+    // (132nd), the typology badge color.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 131]);
+    Artisan::call('migrate:rollback', ['--step' => 132]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

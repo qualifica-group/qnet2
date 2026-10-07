@@ -6,6 +6,7 @@ use App\DataObjects\ProductTypologies\UpdateProductTypologyData;
 use App\Enums\SupplierCommissionDirection;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\ProductTypology;
+use App\Support\BadgeTokens;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -54,6 +55,7 @@ class UpdateProductTypologyRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:'.self::NAME_MAX, Rule::unique('product_typologies', 'name')->ignore($ignoreId)],
             'code' => ['prohibited'],
             'description' => ['sometimes', 'nullable', 'string', 'max:'.self::DESCRIPTION_MAX],
+            'color' => ['sometimes', 'required', 'string', Rule::in(BadgeTokens::colors())],
             'supplier_commission_enabled' => ['sometimes', 'boolean'],
             'supplier_commission_direction' => $this->directionRules(),
         ];

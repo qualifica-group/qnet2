@@ -28,6 +28,8 @@ export interface ProductTypologyDetail {
   code: string
   name: string
   description: string | null
+  /** Badge colour token (`BADGE_COLOR_TOKENS`), required (spec 0204 D-3). */
+  color: string
   /** Whether the Supplier commission is calculated for lines of this typology (spec 0202). */
   supplier_commission_enabled: boolean
   /** Required when enabled, null when disabled (spec 0202 D-7). */
@@ -51,6 +53,7 @@ export interface CreateProductTypologyPayload {
   name: string
   code: string
   description?: string | null
+  color: string
   supplier_commission_enabled: boolean
   supplier_commission_direction: SupplierCommissionDirection | null
 }

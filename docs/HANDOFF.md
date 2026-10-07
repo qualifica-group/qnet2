@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## ERRORE CONTROLLATO 404/403 SU TUTTI I DETTAGLI/EDIT RECORD — VERDE, NON COMMITTATO (2026-10-07)
+## ERRORE CONTROLLATO 404/403 SU TUTTI I DETTAGLI/EDIT RECORD — VERDE, COMMITTATO 4cf92317 (2026-10-07)
 
 - Richiesta utente (es. `/work-orders/10` inesistente mostrava "errore + Riprova"). `DetailError` ora richiede
   `error: unknown`: 404/403 -> `RecordUnavailable` (nessun Riprova, testi `common.recordUnavailable.*`), altro ->
@@ -34,7 +34,7 @@
 - Manuale Claude Docs: NON aggiornato (doc non condiviso con la sessione) — sezione Task > Completamento/Segnatempo.
 - Al commit ESCLUDERE i file di altre sessioni (contract-data FE, seeder showcase commissioni).
 
-## COMMISSIONE FORNITORE PER TIPOLOGIA (spec 0202) + REGOLE PROVVIGIONI LEGACY (spec 0203) — VERDE, NON COMMITTATO (2026-10-07)
+## COMMISSIONE FORNITORE PER TIPOLOGIA (spec 0202) + REGOLE PROVVIGIONI LEGACY (spec 0203) — VERDE, COMMITTATO 48d2bff0 + legacy qnet 06f523fa (2026-10-07)
 
 - Spec 0202 (decisioni utente): impostazione sulla TIPOLOGIA prodotto, mai piu' sul codice `institution`:
   `product_typologies.supplier_commission_enabled` + `supplier_commission_direction` (enum
@@ -62,6 +62,10 @@
   legacy ora applicate al margine riga, non al prezzo.
 - Al commit: due repo (qnet-2 e qnet legacy); in qnet-2 ESCLUDERE i file di altre sessioni (registries,
   commission-configurations FE, `RegistryScopedTableDefinition`, `TableRegistry`).
+- Seguito (NON COMMITTATO): `DemoCommissionShowcaseSeeder` (+ `DemoCatalog/DemoCommissionShowcaseCatalogue`) in
+  `DemoDataSeeder` dopo `DemoContractSeeder`: 6 commesse "Demo commissioni - ..." (dev DB: id 11-16) con un caso
+  ciascuna (PAID, RECEIVED %, RECEIVED fissa, fornitore mancante, tipologia `demo_training` senza calcolo, mista con
+  costi e stati pagamento). Regole scope PRODUCT solo sui prodotti showcase. Test Seeding 142/142, Pint ok.
 
 ## ANAGRAFICA — TAB "COMMISSIONI CONFIGURATE" (spec 0204) — VERDE, COMMITTATO (2026-10-07)
 

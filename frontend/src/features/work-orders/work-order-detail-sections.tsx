@@ -8,52 +8,15 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import { RecordInlineField } from '@/components/record-form/record-inline-field'
-import { quoteLineToForSelectItem } from '@/features/work-orders/quote-line-label'
-import {
-  WorkOrderAttributesSection,
-  WorkOrderNewAttributesFields,
-} from '@/features/work-orders/work-order-attributes-section'
+import { WorkOrderAttributesSection } from '@/features/work-orders/work-order-attributes-section'
+import { WorkOrderContractDataPanel } from '@/features/work-orders/work-order-detail-contract-data-panel'
 import { WorkOrderIdentitySection, WorkOrderInternalNotesRow } from '@/features/work-orders/work-order-record-identity'
 import { WorkOrderTeamSection } from '@/features/work-orders/work-order-record-team'
-import { WorkOrderQuoteLinesFormField } from '@/features/work-orders/work-order-relation-fields'
 import type { WorkOrderDetailEditor } from '@/features/work-orders/use-work-order-inline-edit'
-import type { WorkOrderDetailWithPermissions, WorkOrderQuoteLine } from '@/features/work-orders/types'
+import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 /** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
 const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
-
-/**
- * Read-only list of the linked offer's REVENUE lines (D-6/D-7), ordered like
- * the picker, in the same plain-list idiom the Opportunita' record uses for its
- * products of interest.
- */
-function WorkOrderLinesList({ lines }: { lines: WorkOrderQuoteLine[] }) {
-  if (lines.length === 0) {
-    return <DetailEmpty />
-  }
-
-  const sorted = [...lines].sort((a, b) => a.sort_order - b.sort_order)
-
-  return (
-    <ul className="flex flex-col gap-1">
-      {sorted.map((line) => (
-        <li key={line.id} className="flex min-w-0 items-baseline gap-2">
-          {line.product ? (
-            <>
-              <span className="shrink-0 font-mono text-xs text-muted-foreground">{line.product.code}</span>
-              <RecordLink domain="products" id={line.product.id} className="min-w-0 font-medium">
-                {line.product.name}
-              </RecordLink>
-            </>
-          ) : (
-            <DetailEmpty />
-          )}
-        </li>
-      ))}
-    </ul>
-  )
-}
 
 type LinkedRecord = { id: number; name: string } | null | undefined
 
@@ -79,13 +42,11 @@ interface DetailSectionProps {
 
 /**
  * Contratto: the client and the contract are reached through the offer
- * (read-only, server-derived); the offer's lines edit in place, together with
- * the Attributes a new line brings in.
+ * (read-only, server-derived). The contract data have their own full-width
+ * section right after (`WorkOrderContractDataPanel`).
  */
-function WorkOrderContractSection({ workOrder, editor }: DetailSectionProps) {
+function WorkOrderContractSection({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
   const { t } = useTranslation()
-  const { form, inline, attributeContext } = editor
-  const persistedCodes = new Set(workOrder.applicable_attributes.map((attribute) => attribute.code))
 
   return (
     <RecordSection title={t('workOrders.detail.sections.contract')} icon={<FileSignature />}>
@@ -108,27 +69,6 @@ function WorkOrderContractSection({ workOrder, editor }: DetailSectionProps) {
             <DetailEmpty />
           )}
         </RecordField>
-        <RecordInlineField
-          field="quote_line_ids"
-          label={t('workOrders.detail.lines')}
-          inline={inline}
-          editor={
-            <>
-              <WorkOrderQuoteLinesFormField
-                control={form.control}
-                exceptWorkOrderId={workOrder.id}
-                selectedItems={workOrder.quote_lines.map(quoteLineToForSelectItem)}
-              />
-              <WorkOrderNewAttributesFields
-                attributes={attributeContext.applicable_attributes}
-                persistedCodes={persistedCodes}
-                control={form.control}
-              />
-            </>
-          }
-        >
-          <WorkOrderLinesList lines={workOrder.quote_lines} />
-        </RecordInlineField>
       </RecordFieldList>
     </RecordSection>
   )
@@ -205,9 +145,11 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
         inline={inline}
       />
 
-      <WorkOrderContractSection workOrder={workOrder} editor={editor} />
+      <WorkOrderContractSection workOrder={workOrder} />
 
       <WorkOrderCompanySection workOrder={workOrder} />
+
+      <WorkOrderContractDataPanel workOrder={workOrder} />
 
       <WorkOrderAttributesSection
         attributes={workOrder.applicable_attributes}

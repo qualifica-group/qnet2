@@ -258,7 +258,8 @@ it('AC-002: the backfill maps institution to RECEIVED, the others to PAID, copie
 });
 
 it('AC-002: the migrations are reversible', function () {
-    expect(Artisan::call('migrate:rollback', ['--step' => 2]))->toBe(0);
+    // 3 steps: spec 0204's color migration is the latest one, on top of the two of spec 0202.
+    expect(Artisan::call('migrate:rollback', ['--step' => 3]))->toBe(0);
     expect(Schema::hasColumn('quote_lines', 'supplier_commission_direction'))->toBeFalse()
         ->and(Schema::hasColumn('product_typologies', 'supplier_commission_enabled'))->toBeFalse();
 });

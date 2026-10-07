@@ -55,6 +55,12 @@ vi.mock('@/features/auth/use-abilities', () => ({
 
 const activityLogSectionMock = vi.fn()
 
+vi.mock('@/features/work-order-contract-data/work-order-contract-data-section', () => ({
+  WorkOrderContractDataSection: ({ canManage }: { canManage: boolean }) => (
+    <div>contract-data-section manage:{String(canManage)}</div>
+  ),
+}))
+
 vi.mock('@/features/activity-log/activity-log-section', () => ({
   ActivityLogSection: (props: { resource: string; id: number }) => {
     activityLogSectionMock(props)
@@ -315,6 +321,27 @@ describe('WorkOrderDetailView — related records', () => {
     expect(hrefOf('Onboarding cliente')).toBe('/task-templates/3')
     expect(hrefOf('Consulenza')).toBe('/products/1')
     expect(hrefOf('Installazione')).toBe('/products/2')
+  })
+
+  it('shows the contract data section with view_contract_data, in place of the plain list', () => {
+    const base = workOrder()
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({ permissions: { ...base.permissions, actions: { view_contract_data: true, manage_payments: true } } })}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Contract data' })).toBeInTheDocument()
+    expect(screen.getByText('contract-data-section manage:true')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Consulenza' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the plain product list, links included, without view_contract_data', () => {
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
+
+    expect(screen.getByRole('heading', { name: 'Contract data' })).toBeInTheDocument()
+    expect(screen.queryByText(/contract-data-section/)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Consulenza' })).toHaveAttribute('href', '/products/1')
   })
 
   it("links the client registry reached through the commessa's offer", () => {

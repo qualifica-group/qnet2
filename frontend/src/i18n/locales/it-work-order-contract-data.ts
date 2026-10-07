@@ -1,6 +1,6 @@
 /**
- * Dati contrattuali di commessa (spec 0201): tab "Dati contrattuali" del
- * dettaglio commessa, annidato in `workOrders.contractData` (file affiancato:
+ * Dati contrattuali di commessa (spec 0201): blocco dati contrattuali della
+ * card del dettaglio commessa, annidato in `workOrders.contractData` (file affiancato:
  * `it-work-orders.ts` e' vicino al limite dimensionale, vedi
  * `.claude/rules/engineering.md` §6).
  */
@@ -20,47 +20,69 @@ export const workOrderContractData = {
     netOfCommissions: 'Netto commissioni',
     effectiveRevenue: 'Ricavo effettivo',
     payment: 'Pagamento',
+    actions: 'Azioni',
+  },
+  /** Abbreviated headers of the wide table; the full label stays as accessible name and tooltip. */
+  columnsShort: {
+    unitPrice: 'Prezzo',
+    supplierCommission: 'Comm. Fornitore',
+    netOfCommissions: 'Netto comm.',
+    effectiveRevenue: 'Ricavo',
   },
   kind: {
     consultancy: 'Consulenza',
   },
   totals: {
     netAmount: 'Imponibile',
-    typologyNet: 'Imponibile',
-    typologyRevenue: 'Ricavo',
     revenue: 'Totale Ricavi',
     commissions: 'Commissioni',
     netOfCommissions: 'Netto commissioni',
+    byTypology: 'Ricavo per tipologia (imponibile → ricavo)',
   },
-  formula: {
-    net: 'Imponibile {{quantity}} × {{unitPrice}} = {{net}} → ricavo {{revenue}}',
-    paid: '{{net}} · Commissione Fornitore pagata: {{commission}} (è un costo, non riduce il ricavo)',
-    paidPercentage: '{{rate}}% di {{base}} = {{amount}}',
-    paidAmount: '{{amount}}',
-    received: 'Commissione Fornitore ricevuta: {{commission}} → ricavo {{revenue}}',
-    receivedPercentage: '{{rate}}% di {{base}} = {{amount}}',
-    receivedAmount: 'fissa {{amount}}',
-    receivedMissing: 'Commissione Fornitore ricevuta mancante → ricavo {{revenue}}',
-    receivedHidden: 'Commissione Fornitore ricevuta: ricavo {{revenue}}',
-    netOfCommissions: 'Netto commissioni: {{net}} − {{commissions}} = {{result}}',
+  hint: {
+    netAmountRule: 'Quantità × prezzo unitario.',
+    netAmountFormula: '{{quantity}} × {{unitPrice}} = {{net}}',
+    commissionTitle: {
+      RECEIVED: 'Commissione Fornitore ricevuta',
+      PAID: 'Commissione Fornitore pagata',
+    },
+    commissionPercentage: '{{rate}}% di {{base}} = {{amount}}',
+    commissionFixed: 'Importo fisso: {{amount}}',
+    commissionBase: 'La base è il margine della riga.',
+    netOfCommissionsRule: 'Imponibile meno tutte le commissioni della riga.',
+    netOfCommissionsFormula: '{{net}} − {{commissions}} = {{result}}',
+    revenueReceived: 'Commissione Fornitore ricevuta: il ricavo è la commissione, non l\'imponibile.',
+    revenuePaid: 'Commissione Fornitore pagata: il ricavo è l\'imponibile, la commissione è un costo.',
+    revenueNone: 'Commissione Fornitore non calcolata: il ricavo è l\'imponibile.',
+    revenueFrom: '{{detail}} → ricavo {{revenue}}',
+    revenueOnly: 'Ricavo {{revenue}}',
+    receivedMissing: 'Commissione mancante → ricavo {{revenue}}',
+    totals: {
+      netAmount: 'Somma degli imponibili di tutte le righe.',
+      revenue: 'Somma dei ricavi effettivi delle righe: commissione ricevuta, altrimenti imponibile.',
+      commissions: 'Somma delle commissioni di tutte le righe.',
+      netOfCommissions: 'Imponibile meno commissioni.',
+    },
   },
   warnings: {
+    title: 'Avviso',
     missingSupplierCommission: 'Commissione Fornitore ricevuta mancante: il ricavo è 0,00.',
     staleCommissionBase: 'Importo calcolato su una base precedente: salva di nuovo l\'offerta per aggiornarlo.',
   },
   payment: {
     noStatus: 'Nessuno stato',
-    unpaid: 'Insoluti',
+    unpaid: 'Insoluto',
     edit: 'Modifica il pagamento di {{product}}',
   },
   editor: {
+    title: 'Pagamento riga: {{product}}',
+    description: 'Stato di pagamento, accordo e insoluti della riga.',
     status: 'Stato pagamento',
     noStatus: 'Nessuno stato',
     agreement: 'Accordo sui pagamenti',
     agreementMax: 'L\'accordo può contenere al massimo 2000 caratteri.',
     unpaid: 'Insoluti',
-    done: 'Fatto',
-    reset: 'Ripristina',
+    save: 'Salva',
     saveError: 'Impossibile salvare i dati di pagamento. Riprova.',
   },
 }

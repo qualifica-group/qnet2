@@ -80,7 +80,7 @@ class QuoteLineResource extends JsonResource
     }
 
     /**
-     * @return array{id: int, code: string, name: string, category: array{id: int, name: string}|null, product_typology: array{id: int, name: string}|null, business_function: array{id: int, name: string}|null}|null
+     * @return array{id: int, code: string, name: string, category: array{id: int, name: string}|null, product_typology: array{id: int, name: string, color: string}|null, business_function: array{id: int, name: string}|null}|null
      */
     private function summarizeProduct(): ?array
     {
@@ -126,11 +126,11 @@ class QuoteLineResource extends JsonResource
     }
 
     /**
-     * @return array{id: int, name: string}|null
+     * @return array{id: int, name: string, color: string}|null
      */
     private function summarizeProductTypology(?ProductTypology $productTypology): ?array
     {
-        return $productTypology === null ? null : ['id' => $productTypology->id, 'name' => $productTypology->name];
+        return $productTypology === null ? null : ['id' => $productTypology->id, 'name' => $productTypology->name, 'color' => $productTypology->color];
     }
 
     /**

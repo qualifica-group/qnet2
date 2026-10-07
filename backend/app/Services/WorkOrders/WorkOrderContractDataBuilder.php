@@ -117,7 +117,7 @@ final class WorkOrderContractDataBuilder
             'payload' => [
                 'quote_line_id' => $line->id,
                 'product' => ['id' => $line->product?->id, 'code' => $line->product?->code, 'name' => $line->product?->name],
-                'typology' => $typology ? ['id' => $typology->id, 'code' => $typology->code, 'name' => $typology->name] : null,
+                'typology' => $typology ? ['id' => $typology->id, 'code' => $typology->code, 'name' => $typology->name, 'color' => $typology->color] : null,
                 'supplier_commission_direction' => $direction?->value,
                 'quantity' => $this->money($line->quantity),
                 'unit_price' => $this->money($line->unit_price),
@@ -211,17 +211,18 @@ final class WorkOrderContractDataBuilder
      * (same criterion as QuoteTypologySummaryCalculator, spec 0201 D-15).
      *
      * @param  array<int, array{payload: array<string, mixed>, net: int, revenue: int, typology_id: int|null, commissions: int}>  $rows
-     * @return array<int, array{id: int, name: string, net_amount: string, effective_revenue: string}>
+     * @return array<int, array{id: int, name: string, color: string, net_amount: string, effective_revenue: string}>
      */
     private function typologyTotals(array $rows): array
     {
-        return ProductTypology::query()->orderBy('name')->orderBy('id')->get(['id', 'name'])
+        return ProductTypology::query()->orderBy('name')->orderBy('id')->get(['id', 'name', 'color'])
             ->map(function (ProductTypology $typology) use ($rows): array {
                 $own = array_filter($rows, fn (array $row): bool => $row['typology_id'] === $typology->id);
 
                 return [
                     'id' => $typology->id,
                     'name' => $typology->name,
+                    'color' => $typology->color,
                     'net_amount' => $this->format(array_sum(array_column($own, 'net'))),
                     'effective_revenue' => $this->format(array_sum(array_column($own, 'revenue'))),
                 ];

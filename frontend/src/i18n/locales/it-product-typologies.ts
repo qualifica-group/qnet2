@@ -19,6 +19,7 @@ export const productTypologies = {
   columns: {
     name: 'Nome',
     code: 'Codice',
+    color: 'Colore',
     description: 'Descrizione',
     supplier_commission_enabled: 'Commissione Fornitore',
     supplier_commission_direction: 'Verso commissione',
@@ -29,6 +30,7 @@ export const productTypologies = {
     title: 'Dettaglio tipologia prodotto',
     subtitle: 'Visualizzazione in sola lettura della tipologia selezionata.',
     loadError: 'Impossibile caricare la tipologia prodotto. Riprova.',
+    color: 'Colore',
     description: 'Descrizione',
     created_at: 'Creato il',
     updated_at: 'Aggiornato il',
@@ -41,6 +43,7 @@ export const productTypologies = {
     editSubtitle: 'Aggiorna la tipologia prodotto selezionata.',
     name: 'Nome',
     code: 'Codice',
+    color: 'Colore',
     description: 'Descrizione',
     save: 'Salva',
     saving: 'Salvataggio…',
@@ -54,6 +57,8 @@ export const productTypologies = {
     codeMax: 'Il codice può contenere al massimo 64 caratteri.',
     codeInvalid:
       'Il codice deve iniziare con una lettera minuscola e contenere solo lettere minuscole, cifre e underscore.',
+    colorRequired: 'Il colore è obbligatorio.',
+    colorMax: 'Il colore può contenere al massimo 32 caratteri.',
     descriptionMax: 'La descrizione può contenere al massimo 500 caratteri.',
     supplierCommissionEnabled: "Calcolo commissione Fornitore",
     supplierCommissionDirection: "Verso",

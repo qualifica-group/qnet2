@@ -77,6 +77,7 @@ function productTypology(
     name: 'Kilogram',
     code: 'kilogram',
     description: 'Mass unit',
+    color: 'blue',
     supplier_commission_enabled: false,
     supplier_commission_direction: null,
     created_at: null as unknown as string,
@@ -127,6 +128,23 @@ describe('ProductTypologyForm — create (spec 0099)', () => {
     expect(createProductTypologyMock).not.toHaveBeenCalled()
   })
 
+  it('starts with the gray color and sends the one picked (spec 0204 D-3)', async () => {
+    createProductTypologyMock.mockResolvedValue(productTypology())
+
+    render(
+      <ProductTypologyForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Kilogram' } })
+    fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: 'kilogram' } })
+    fireEvent.click(screen.getByRole('button', { name: /gray/i }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Blue' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(createProductTypologyMock).toHaveBeenCalledWith(expect.objectContaining({ color: 'blue' })))
+  })
+
   it('submits the create payload on save', async () => {
     createProductTypologyMock.mockResolvedValue(productTypology())
     const onSuccess = vi.fn()
@@ -143,8 +161,9 @@ describe('ProductTypologyForm — create (spec 0099)', () => {
     await waitFor(() => expect(createProductTypologyMock).toHaveBeenCalledTimes(1))
     expect(createProductTypologyMock).toHaveBeenCalledWith({
       name: 'Kilogram',
-        code: 'kilogram',
+      code: 'kilogram',
       description: null,
+      color: 'gray',
       supplier_commission_enabled: false,
       supplier_commission_direction: null,
     })

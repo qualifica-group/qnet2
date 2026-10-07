@@ -121,6 +121,7 @@ class ProductTypologiesTableDefinition extends AbstractTableDefinition
             'name' => $row->name,
             'code' => $row->code,
             'description' => $row->description,
+            'color' => $row->color,
             'supplier_commission_enabled' => $row->supplier_commission_enabled,
             'supplier_commission_direction' => $row->supplier_commission_direction?->value,
             'created_at' => $row->created_at,

@@ -19,6 +19,7 @@ final readonly class CreateProductTypologyData
         public string $name,
         public string $code,
         public ?string $description,
+        public string $color,
         public bool $supplierCommissionEnabled = false,
         public ?SupplierCommissionDirection $supplierCommissionDirection = null,
     ) {}
@@ -36,6 +37,7 @@ final readonly class CreateProductTypologyData
             name: (string) $data['name'],
             code: (string) $data['code'],
             description: array_key_exists('description', $data) ? $data['description'] : null,
+            color: (string) $data['color'],
             supplierCommissionEnabled: $enabled,
             // Spec 0202 D-7: a disabled switch always stores a null direction.
             supplierCommissionDirection: $enabled && isset($data['supplier_commission_direction'])
@@ -53,6 +55,7 @@ final readonly class CreateProductTypologyData
             'name' => $this->name,
             'code' => $this->code,
             'description' => $this->description,
+            'color' => $this->color,
             'supplier_commission_enabled' => $this->supplierCommissionEnabled,
             'supplier_commission_direction' => $this->supplierCommissionDirection,
         ];

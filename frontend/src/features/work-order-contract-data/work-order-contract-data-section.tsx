@@ -12,8 +12,8 @@ interface WorkOrderContractDataSectionProps {
 }
 
 /**
- * "Dati contrattuali" tab of the work order detail (spec 0201), hosted by
- * `WorkOrderDetailWorkTabs`. The caller mounts it only with
+ * Contract data of the work order (spec 0201), hosted by the "product lines"
+ * section of the work order record card. The caller mounts it only with
  * `view_contract_data`, so the query never fires for an actor who may not see it.
  */
 export function WorkOrderContractDataSection({ workOrderId, canManage }: WorkOrderContractDataSectionProps) {
@@ -22,7 +22,7 @@ export function WorkOrderContractDataSection({ workOrderId, canManage }: WorkOrd
 
   if (contractData.isPending) {
     return (
-      <div role="status" aria-label={t('workOrders.contractData.loading')} className="flex flex-col gap-2 p-4">
+      <div role="status" aria-label={t('workOrders.contractData.loading')} className="flex flex-col gap-2">
         <Skeleton className="h-16 w-full" />
         <Skeleton className="h-24 w-full" />
       </div>
@@ -31,7 +31,7 @@ export function WorkOrderContractDataSection({ workOrderId, canManage }: WorkOrd
 
   if (contractData.isError) {
     return (
-      <div role="alert" className="flex items-center gap-3 p-4 text-sm text-destructive">
+      <div role="alert" className="flex items-center gap-3 text-sm text-destructive">
         {t('workOrders.contractData.loadError')}
         <Button type="button" variant="outline" size="sm" className="bg-card" onClick={() => void contractData.refetch()}>
           {t('common.retry')}
@@ -43,7 +43,7 @@ export function WorkOrderContractDataSection({ workOrderId, canManage }: WorkOrd
   const { data } = contractData
 
   return (
-    <div className="flex flex-col gap-3 p-4">
+    <div className="flex flex-col gap-3">
       {data.lines.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('workOrders.contractData.empty')}</p>
       ) : (

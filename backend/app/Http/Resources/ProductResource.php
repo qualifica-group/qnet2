@@ -130,7 +130,7 @@ class ProductResource extends JsonResource
     }
 
     /**
-     * @return array{id: int, name: string}|null
+     * @return array{id: int, name: string, color: string}|null
      */
     private function productTypologySummary(?ProductTypology $productTypology): ?array
     {
@@ -138,6 +138,6 @@ class ProductResource extends JsonResource
             return null;
         }
 
-        return ['id' => $productTypology->id, 'name' => $productTypology->name];
+        return ['id' => $productTypology->id, 'name' => $productTypology->name, 'color' => $productTypology->color];
     }
 }

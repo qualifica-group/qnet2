@@ -208,11 +208,11 @@ describe('WorkOrderDetailView — in-place editing', () => {
     expect(screen.getByText('Participant 3')).toBeInTheDocument()
   })
 
-  it('does not resolve the Attributes again for the persisted lines', () => {
+  it('offers no way to edit the product lines: they are fixed at creation', () => {
     renderDetail(workOrder())
 
-    fireEvent.click(queryPencil(label('workOrders.detail.lines'))!)
-
+    expect(queryPencil(label('workOrders.detail.lines'))).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /lines/i })).not.toBeInTheDocument()
     expect(fetchWorkOrderFormContext).not.toHaveBeenCalled()
   })
 })

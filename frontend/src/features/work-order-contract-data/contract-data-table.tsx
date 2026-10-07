@@ -1,14 +1,33 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ContractDataRow } from '@/features/work-order-contract-data/contract-data-row'
+import { ContractPaymentDialog } from '@/features/work-order-contract-data/contract-payment-dialog'
 import type { WorkOrderContractData } from '@/features/work-order-contract-data/types'
 
-/** Columns that exist whatever the actor sees: product, quantity, unit price, net, revenue, payment. */
-const BASE_COLUMN_COUNT = 6
-/** The two commission columns (Supplier commission, net of commissions). */
-const COMMISSION_COLUMN_COUNT = 2
+/** Opaque twin of the header's `bg-muted/40` wash, so the pinned cell hides what scrolls under it. */
+const STICKY_ACTIONS_HEAD =
+  'sticky right-0 z-10 bg-[color-mix(in_srgb,var(--muted)_40%,var(--surface))] shadow-[-6px_0_6px_-6px_rgb(0_0_0/0.25)]'
 
-const HEAD_CELL = 'px-2 py-1.5 font-medium'
+const HEAD_CELL = 'px-2 py-1.5 font-medium whitespace-nowrap'
+
+interface HeadProps {
+  /** Key of `columns`; the full label is the accessible name and the tooltip. */
+  column: string
+  /** Key of `columnsShort`, when the column is abbreviated. */
+  short?: string
+  align?: 'left' | 'right'
+}
+
+function Head({ column, short, align = 'right' }: HeadProps) {
+  const { t } = useTranslation()
+  const full = t(`workOrders.contractData.columns.${column}`)
+
+  return (
+    <th scope="col" aria-label={full} className={`${HEAD_CELL} ${align === 'right' ? 'text-right' : 'text-left'}`}>
+      <span title={full}>{short ? t(`workOrders.contractData.columnsShort.${short}`) : full}</span>
+    </th>
+  )
+}
 
 interface ContractDataTableProps {
   workOrderId: number
@@ -16,48 +35,56 @@ interface ContractDataTableProps {
   canManage: boolean
 }
 
-/** The lines table. It scrolls inside its own container, never the page. One payment editor open at a time. */
+/**
+ * The lines. From `md` a one-row-per-line table that scrolls inside its own
+ * container when narrow; below `md` the same markup lays each line out as a
+ * compact card (one DOM, so tooltips and the actions button stay single).
+ */
 export function ContractDataTable({ workOrderId, data, canManage }: ContractDataTableProps) {
   const { t } = useTranslation()
   const [editingLineId, setEditingLineId] = useState<number | null>(null)
-  const columnCount = BASE_COLUMN_COUNT + (data.commissions_visible ? COMMISSION_COLUMN_COUNT : 0)
+  const editingLine = data.lines.find((line) => line.quote_line_id === editingLineId) ?? null
 
   return (
-    <div className="overflow-x-auto rounded-lg border bg-surface">
-      <table className="w-full min-w-[720px] text-xs">
+    <div className="relative overflow-x-auto rounded-lg border bg-surface">
+      <table className="block w-full text-xs md:table md:min-w-[1100px]">
         <caption className="sr-only">{t('workOrders.contractData.tableCaption')}</caption>
-        <thead className="bg-muted/40 text-[11px] text-muted-foreground">
+        <thead className="hidden bg-muted/40 text-[11px] text-muted-foreground md:table-header-group">
           <tr>
-            <th scope="col" className={`${HEAD_CELL} text-left`}>{t('workOrders.contractData.columns.product')}</th>
-            <th scope="col" className={`${HEAD_CELL} text-right`}>{t('workOrders.contractData.columns.quantity')}</th>
-            <th scope="col" className={`${HEAD_CELL} text-right`}>{t('workOrders.contractData.columns.unitPrice')}</th>
-            <th scope="col" className={`${HEAD_CELL} text-right`}>{t('workOrders.contractData.columns.netAmount')}</th>
+            <Head column="product" align="left" />
+            <Head column="quantity" />
+            <Head column="unitPrice" short="unitPrice" />
+            <Head column="netAmount" />
             {data.commissions_visible ? (
               <>
-                <th scope="col" className={`${HEAD_CELL} text-right`}>{t('workOrders.contractData.columns.supplierCommission')}</th>
-                <th scope="col" className={`${HEAD_CELL} text-right`}>{t('workOrders.contractData.columns.netOfCommissions')}</th>
+                <Head column="supplierCommission" short="supplierCommission" />
+                <Head column="netOfCommissions" short="netOfCommissions" />
               </>
             ) : null}
-            <th scope="col" className={`${HEAD_CELL} text-right`}>{t('workOrders.contractData.columns.effectiveRevenue')}</th>
-            <th scope="col" className={`${HEAD_CELL} text-left`}>{t('workOrders.contractData.columns.payment')}</th>
+            <Head column="effectiveRevenue" short="effectiveRevenue" />
+            <Head column="payment" align="left" />
+            {canManage ? (
+              <th scope="col" className={`${HEAD_CELL} ${STICKY_ACTIONS_HEAD}`}>
+                <span className="sr-only">{t('workOrders.contractData.columns.actions')}</span>
+              </th>
+            ) : null}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="block md:table-row-group">
           {data.lines.map((line) => (
             <ContractDataRow
               key={line.quote_line_id}
-              workOrderId={workOrderId}
               line={line}
               commissionsVisible={data.commissions_visible}
-              columnCount={columnCount}
               canManage={canManage}
-              isEditing={editingLineId === line.quote_line_id}
               onEdit={() => setEditingLineId(line.quote_line_id)}
-              onCloseEditor={() => setEditingLineId(null)}
             />
           ))}
         </tbody>
       </table>
+      {editingLine ? (
+        <ContractPaymentDialog workOrderId={workOrderId} line={editingLine} onClose={() => setEditingLineId(null)} />
+      ) : null}
     </div>
   )
 }

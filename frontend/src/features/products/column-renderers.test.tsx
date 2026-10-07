@@ -67,3 +67,10 @@ describe('productColumnRenderers.cost / price', () => {
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 })
+
+describe('productColumnRenderers.product_typology (spec 0204 AC-005)', () => {
+  it('renders the typology as a badge in its colour', () => {
+    renderCell('product_typology', { id: 2, name: 'Ente', color: 'violet' })
+    expect(screen.getByText('Ente')).toHaveClass('bg-violet-100')
+  })
+})

@@ -37,7 +37,7 @@ export interface ContractLinePayment {
 export interface ContractDataLine {
   quote_line_id: number
   product: { id: number; code: string; name: string }
-  typology: { id: number; code: string; name: string } | null
+  typology: { id: number; code: string; name: string; color: string } | null
   /** Spec 0202 D-11: read from the row's frozen snapshot; null = Supplier commission not calculated. */
   supplier_commission_direction: SupplierCommissionDirection | null
   quantity: string
@@ -54,6 +54,7 @@ export interface ContractDataLine {
 export interface ContractTypologyTotal {
   id: number
   name: string
+  color: string
   net_amount: string
   effective_revenue: string
 }

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0204-product-typology-color" status="approved" owner="nicola" date="2026-10-07">
+
+  <goal>
+    Ogni tipologia prodotto (Consulenza, Ente, Formazione, ...) ha un colore configurabile dal modulo Tipologie
+    prodotto, e ovunque l'applicazione mostra la tipologia la rende con lo stesso badge colorato.
+  </goal>
+
+  <context>
+    Verificato 2026-10-07:
+    - Token colore condivisi: backend `App\Support\BadgeTokens::colors()` (14 token: slate, gray, red, orange, amber,
+      yellow, green, emerald, teal, blue, indigo, violet, purple, pink), gia' usato in validazione
+      (`Rule::in(BadgeTokens::colors())`, es. `StoreTaskImportanceRequest`); frontend
+      `features/custom-fields/badge-color-tokens.ts` (`BADGE_COLOR_TOKENS`, `tintClassFor`, `swatchClassFor`) e il
+      selettore `features/custom-fields/components/color-token-picker.tsx` (`ColorTokenPicker`), usato dai form degli
+      stati (es. `reward-status-form-body.tsx`).
+    - Modulo tipologie: backend `ProductTypology*` (model, request, DTO, service, resource, authorization, column
+      catalog, table definition, seeder), FE `features/product-typologies/`.
+    - Dove la tipologia arriva al FE (riepilogo `{id, name}` o simile): `ProductResource`, `ProductForSelectResource`
+      (se la espone), `QuoteLineResource::summarizeProductTypology`, `QuoteResource` summary `product_typologies`
+      (`QuoteTypologySummaryCalculator`), tabella prodotti (colonna tipologia), `ProductTypologyForSelectResource`,
+      contract data commessa (`lines[].typology`, `totals.typologies[]`, `WorkOrderContractDataBuilder`).
+    - FE che la mostra: `features/products/` (colonna tabella, dettaglio, sezione classificazione, riepilogo form),
+      `features/quotes/` (righe, dettaglio righe, riepilogo per tipologia, select prodotto), blocco Dati contrattuali
+      della commessa (in corso di spostamento nella card commessa).
+
+    Decisioni utente 2026-10-07:
+    D-1 — Colore sulla tipologia, configurabile dalla tabella/modulo Tipologie prodotto.
+    D-2 — Il colore si riporta nel blocco Dati contrattuali della commessa e in ogni altra parte dove compare la
+          tipologia.
+
+    Decisioni proposte, da validare con l'approvazione:
+    D-3 — Colonna `product_typologies.color` string(32) NOT NULL, valori `BadgeTokens::colors()`. Migrazione:
+          default `gray` per tutte, poi `institution` -> `violet`, `consultancy` -> `blue`; il seeder reference e i
+          seeder demo (es. `demo_training` -> `amber`) impostano il colore. Form: obbligatorio, selettore
+          `ColorTokenPicker`, default `gray` in creazione.
+    D-4 — Ogni payload che oggi espone la tipologia di un prodotto aggiunge `color` accanto a `id`/`name` (stessa
+          chiave ovunque: `{ id, name, color }`, piu' `code` dove c'e' gia'), compreso `totals.typologies[]` e
+          `summary.product_typologies[]`.
+    D-5 — Un solo componente FE `ProductTypologyBadge` ({ name, color }) basato su `tintClassFor`, usato in tutti i
+          punti dove oggi si mostra il nome della tipologia; colonna della tabella prodotti e tabella tipologie con
+          lo stesso badge. Contrasto AA in light/dark come gli altri badge di stato.
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: migrazione + model/request/DTO/service/resource/authorization (FieldDefinition `color`)/column catalog/table definition/seeder; `color` in tutti i payload elencati (D-4).</item>
+      <item>Frontend: campo colore nel form tipologie, colonna colore nella tabella tipologie, `ProductTypologyBadge` ovunque (D-5), tipi aggiornati.</item>
+      <item>Guide in-app IT/EN `product-typologies` (campo colore).</item>
+      <item>Test Pest e Vitest per ogni AC.</item>
+    </in>
+    <out>
+      <item>Icona per tipologia.</item>
+      <item>Colori per categorie prodotto o altri cataloghi.</item>
+      <item>Cambi alla logica di calcolo commissioni/margine (spec 0202 invariata).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET|POST|PUT|PATCH" path="/api/product-typologies[/{id}]">
+      <request>store: `color` required, in BadgeTokens::colors(); update: `color` sometimes|required, stesso set.</request>
+      <response status="200">Resource + `color: string`; field permission `color`; tabella SSRM colonna `color`.</response>
+      <errors>422 colore mancante o fuori dal set.</errors>
+    </endpoint>
+    <endpoint method="GET" path="prodotti, offerte, commessa contract-data (payload esistenti)">
+      <response status="200">Ogni oggetto tipologia esposto diventa `{ id, name, color }` (+ `code` dove gia' presente); `totals.typologies[]` e `summary.product_typologies[]` aggiungono `color`.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Tipologia: create senza colore o con colore fuori set -> 422; update/show/tabella espongono `color`.</criterion>
+    <criterion id="AC-002">Migrazione: tutte le tipologie esistenti hanno un colore (institution violet, consultancy blue, altre gray); reversibile.</criterion>
+    <criterion id="AC-003">Prodotto, riga d'offerta, riepilogo per tipologia dell'offerta e contract data della commessa espongono `color` della tipologia.</criterion>
+    <criterion id="AC-004">FE: form tipologie con selettore colore obbligatorio; tabella tipologie con badge colorato.</criterion>
+    <criterion id="AC-005">FE: `ProductTypologyBadge` usato in tabella/dettaglio prodotti, righe e riepilogo offerta, blocco Dati contrattuali commessa; nessun punto mostra piu' la tipologia come testo semplice dove prima c'era un badge o un'etichetta.</criterion>
+    <criterion id="AC-006">Guida in-app `product-typologies` IT/EN aggiornata, parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; riuso di `BadgeTokens`, `BADGE_COLOR_TOKENS`/`tintClassFor`, `ColorTokenPicker`.</item>
+    <item>Migrazione nuova e reversibile; file &lt;= 300 righe; zero dead code.</item>
+  </constraints>
+
+  <tasks>
+    <task id="T-01" lane="backend" depends="">Colonna, modulo tipologie, `color` in tutti i payload, seeder. AC-001..AC-003.</task>
+    <task id="T-02" lane="frontend" depends="contratto + fine spostamento blocco Dati contrattuali">Form/tabella tipologie, `ProductTypologyBadge` ovunque, guida. AC-004..AC-006.</task>
+    <task id="T-03" lane="verifier" depends="T-01, T-02">Test, HTTP reale, screenshot dei punti in cui compare la tipologia.</task>
+  </tasks>
+
+</spec>

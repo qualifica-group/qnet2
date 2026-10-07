@@ -21,6 +21,7 @@ class ProductTypologyResource extends JsonResource
             'code' => $this->code,
             'name' => $this->name,
             'description' => $this->description,
+            'color' => $this->color,
             'supplier_commission_enabled' => $this->supplier_commission_enabled,
             'supplier_commission_direction' => $this->supplier_commission_direction?->value,
             'created_at' => $this->created_at,

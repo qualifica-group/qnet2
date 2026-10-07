@@ -11,6 +11,7 @@ export function buildCreatePayload(values: ProductTypologyFormValues): CreatePro
     name: values.name,
     code: values.code,
     description: values.description,
+    color: values.color,
     supplier_commission_enabled: values.supplier_commission_enabled,
     supplier_commission_direction: normalizedDirection(values),
   }
@@ -38,6 +39,9 @@ export function buildUpdatePayload(
   }
   if (values.description !== original.description) {
     payload.description = values.description
+  }
+  if (values.color !== original.color) {
+    payload.color = values.color
   }
   if (values.supplier_commission_enabled !== original.supplier_commission_enabled) {
     payload.supplier_commission_enabled = values.supplier_commission_enabled

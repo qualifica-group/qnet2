@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * (D-5): the typology classifies the Product and is read live through it, so
  * `products` is the ONLY referenced-by set the delete guard checks (D-8).
  */
-#[Fillable(['name', 'code', 'description', 'supplier_commission_enabled', 'supplier_commission_direction'])]
+#[Fillable(['name', 'code', 'description', 'color', 'supplier_commission_enabled', 'supplier_commission_direction'])]
 class ProductTypology extends BaseModel
 {
     /** @use HasFactory<ProductTypologyFactory> */

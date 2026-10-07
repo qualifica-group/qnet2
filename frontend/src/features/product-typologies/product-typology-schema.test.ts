@@ -13,6 +13,7 @@ const VALID_PAYLOAD = {
   name: 'Kilogram',
   code: 'kilogram',
   description: null,
+  color: 'blue',
   supplier_commission_enabled: false,
   supplier_commission_direction: null,
 }
@@ -21,6 +22,12 @@ describe('buildCreateProductTypologySchema (spec 0099)', () => {
   it('accepts a valid payload', () => {
     const schema = buildCreateProductTypologySchema(i18n.t)
     expect(schema.safeParse(VALID_PAYLOAD).success).toBe(true)
+  })
+
+  it('requires a color (spec 0204 D-3)', () => {
+    const schema = buildCreateProductTypologySchema(i18n.t)
+    expect(schema.safeParse({ ...VALID_PAYLOAD, color: '' }).success).toBe(false)
+    expect(schema.safeParse({ ...VALID_PAYLOAD, color: undefined }).success).toBe(false)
   })
 
   it('rejects an empty name', () => {

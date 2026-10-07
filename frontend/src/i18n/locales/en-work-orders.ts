@@ -49,13 +49,11 @@ export const workOrders = {
     taskTemplate: 'Task template',
     lines: 'Product lines',
     additionalInformation: 'Additional information',
-    /** Under the product lines' editor: the Attributes the newly picked lines bring in. */
-    newAttributes: 'Additional information of the new lines',
     created_at: 'Created at',
     updated_at: 'Updated at',
     sections: {
       identity: 'Details',
-      contract: 'Contract and product lines',
+      contract: 'Contract',
       team: 'Supervisors and participants',
       company: 'Company and sites',
       closure: 'Closure',

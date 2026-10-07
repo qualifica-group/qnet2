@@ -10,6 +10,11 @@ import type {
 /** Resource segment for the product-typologies for-select endpoint. */
 export const PRODUCT_TYPOLOGIES_FOR_SELECT_RESOURCE = 'product-typologies'
 
+/** A typology option; `meta.color` is its badge colour token (spec 0204 D-4). */
+export interface ProductTypologyForSelectItem extends ForSelectItem {
+  meta: { color: string }
+}
+
 /**
  * Fetches a page of product typology options from
  * `GET /api/product-typologies/for-select`. Thin wrapper over the generic
@@ -17,8 +22,8 @@ export const PRODUCT_TYPOLOGIES_FOR_SELECT_RESOURCE = 'product-typologies'
  */
 export function fetchProductTypologiesForSelect(
   params: ForSelectParams = {},
-): Promise<PaginatedResponse<ForSelectItem>> {
-  return fetchForSelect(PRODUCT_TYPOLOGIES_FOR_SELECT_RESOURCE, params)
+): Promise<PaginatedResponse<ProductTypologyForSelectItem>> {
+  return fetchForSelect<ProductTypologyForSelectItem>(PRODUCT_TYPOLOGIES_FOR_SELECT_RESOURCE, params)
 }
 
 interface UseProductTypologiesForSelectOptions {
@@ -52,7 +57,7 @@ const ALL_TYPOLOGIES_LIMIT = 100
 const ALL_TYPOLOGIES_STALE_MS = 5 * 60 * 1000
 
 /** Hoisted so a pending/failed query returns a stable reference (no re-render churn). */
-const NO_TYPOLOGIES: ForSelectItem[] = []
+const NO_TYPOLOGIES: ProductTypologyForSelectItem[] = []
 
 /**
  * The FULL configured typology catalogue, as the Offer summary needs it
@@ -62,7 +67,7 @@ const NO_TYPOLOGIES: ForSelectItem[] = []
  * an infinite/searchable query built for a picker, while this consumer wants
  * one flat, complete, search-less list.
  */
-export function useAllProductTypologies(): ForSelectItem[] {
+export function useAllProductTypologies(): ProductTypologyForSelectItem[] {
   const { data } = useQuery({
     queryKey: [PRODUCT_TYPOLOGIES_FOR_SELECT_RESOURCE, 'all'],
     queryFn: () => fetchProductTypologiesForSelect({ offset: 0, limit: ALL_TYPOLOGIES_LIMIT }),

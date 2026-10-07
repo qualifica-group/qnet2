@@ -3,6 +3,7 @@ import { FolderTree, Hash, Package, TrendingDown, TrendingUp, Wallet } from 'luc
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { RecordBody } from '@/components/detail/record-body'
+import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import {
   RecordCanvas,
   RecordCard,
@@ -93,7 +94,7 @@ export function ProductDetailView({ product, onEdit }: ProductDetailViewProps) {
                 </Badge>
                 <Badge variant="secondary">{productTypeLabel}</Badge>
                 {product.product_typology ? (
-                  <Badge variant="outline">{product.product_typology.name}</Badge>
+                  <ProductTypologyBadge name={product.product_typology.name} color={product.product_typology.color} />
                 ) : null}
               </>
             }
@@ -177,7 +178,7 @@ export function ProductDetailView({ product, onEdit }: ProductDetailViewProps) {
                 ) : null}
                 {product.product_typology ? (
                   <RecordField label={t('products.form.productTypology')}>
-                    {product.product_typology.name}
+                    <ProductTypologyBadge name={product.product_typology.name} color={product.product_typology.color} />
                   </RecordField>
                 ) : null}
                 {product.unit_of_measure ? (

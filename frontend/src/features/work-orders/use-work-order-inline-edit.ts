@@ -8,21 +8,11 @@ import { useWorkOrderForm, type WorkOrderFormValues } from '@/features/work-orde
 import type { WorkOrderDetailWithPermissions, WorkOrderFormMode } from '@/features/work-orders/types'
 
 /**
- * Fields an editor shows besides its own: their messages are on screen, so a
- * refusal on them needs no toast: the lines carry the Attributes they bring
- * in (`WorkOrderNewAttributesFields`).
- */
-const EDITOR_COMPANION_FIELDS: Record<string, string[]> = {
-  quote_line_ids: ['attribute_values'],
-}
-
-/**
  * Drives the work order detail's in-place editing (spec 0195 applied to
  * Commesse, user directive 2026-10-06) on top of the edit-mode
  * `useWorkOrderForm`: ONE editor open at a time, and Confirm submits the whole
  * form, whose diff-based PATCH (`buildUpdatePayload`) sends only what that
- * editor changed — plus the Attributes new offer lines bring in. A
- * successful save resets
+ * editor changed. A successful save resets
  * the form on the saved record and closes the editor.
  *
  * Opening another row first discards the unconfirmed one: an edit is never
@@ -60,8 +50,7 @@ export function useWorkOrderInlineEdit(workOrder: WorkOrderDetailWithPermissions
   // A rule failing on a field the open editor does not show (e.g. a required
   // Attribute a historical record left empty) has no message on screen: say it.
   const handleInvalid = (errors: FieldErrors<WorkOrderFormValues>) => {
-    const shownFields = editingField === null ? [] : [editingField, ...(EDITOR_COMPANION_FIELDS[editingField] ?? [])]
-    if (!shownFields.some((field) => get(errors, field) !== undefined)) {
+    if (editingField === null || get(errors, editingField) === undefined) {
       toast.error(firstErrorMessage(errors) ?? t('workOrders.form.genericError'))
     }
   }

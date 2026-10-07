@@ -88,35 +88,3 @@ export function WorkOrderAttributesSection({
     </RecordSection>
   )
 }
-
-interface WorkOrderNewAttributesFieldsProps {
-  /** The set the lines being edited resolve to, live. */
-  attributes: ApplicableAttributeSummary[]
-  /** The codes the persisted lines already cover: those keep their own rows. */
-  persistedCodes: ReadonlySet<string>
-  control: Control<WorkOrderFormValues>
-}
-
-/**
- * The Attributes a change of quote lines brings in, filled in the lines'
- * own editor: they have no row on the detail until the lines are saved, and a
- * required one would otherwise refuse that very save.
- */
-export function WorkOrderNewAttributesFields({ attributes, persistedCodes, control }: WorkOrderNewAttributesFieldsProps) {
-  const { t } = useTranslation()
-  const effectiveAttributes = useEffectiveAttributes(attributes)
-  const added = effectiveAttributes.filter((attribute) => !persistedCodes.has(attribute.code))
-
-  if (added.length === 0) {
-    return null
-  }
-
-  return (
-    <div className="flex flex-col gap-3 rounded-md border border-border/60 bg-card p-3">
-      <p className="text-xs font-semibold text-muted-foreground">{t('workOrders.detail.newAttributes')}</p>
-      {added.map((attribute) => (
-        <AttributeLayoutField key={attribute.code} control={control} attribute={attribute} disabled={false} readOnly={false} />
-      ))}
-    </div>
-  )
-}

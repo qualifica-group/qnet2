@@ -28,11 +28,11 @@ function supplierDirectionActor(): User
 it('AC-001: enabled without a direction is a 422', function () {
     Sanctum::actingAs(supplierDirectionActor());
 
-    $this->postJson('/api/product-typologies', ['name' => 'Formazione', 'code' => 'training', 'supplier_commission_enabled' => true])
+    $this->postJson('/api/product-typologies', ['name' => 'Formazione', 'code' => 'training', 'color' => 'gray', 'supplier_commission_enabled' => true])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('supplier_commission_direction');
 
-    $this->postJson('/api/product-typologies', ['name' => 'Formazione', 'code' => 'training', 'supplier_commission_enabled' => true, 'supplier_commission_direction' => 'BOTH'])
+    $this->postJson('/api/product-typologies', ['name' => 'Formazione', 'code' => 'training', 'color' => 'gray', 'supplier_commission_enabled' => true, 'supplier_commission_direction' => 'BOTH'])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('supplier_commission_direction');
 });
@@ -40,17 +40,17 @@ it('AC-001: enabled without a direction is a 422', function () {
 it('AC-001: a new typology is born disabled and a direction is stored only with the switch on', function () {
     Sanctum::actingAs(supplierDirectionActor());
 
-    $this->postJson('/api/product-typologies', ['name' => 'Formazione', 'code' => 'training'])
+    $this->postJson('/api/product-typologies', ['name' => 'Formazione', 'code' => 'training', 'color' => 'gray'])
         ->assertCreated()
         ->assertJsonPath('data.supplier_commission_enabled', false)
         ->assertJsonPath('data.supplier_commission_direction', null);
 
-    $this->postJson('/api/product-typologies', ['name' => 'Altro', 'code' => 'other', 'supplier_commission_enabled' => false, 'supplier_commission_direction' => 'PAID'])
+    $this->postJson('/api/product-typologies', ['name' => 'Altro', 'code' => 'other', 'color' => 'gray', 'supplier_commission_enabled' => false, 'supplier_commission_direction' => 'PAID'])
         ->assertCreated()
         ->assertJsonPath('data.supplier_commission_enabled', false)
         ->assertJsonPath('data.supplier_commission_direction', null);
 
-    $this->postJson('/api/product-typologies', ['name' => 'Ricevuta', 'code' => 'received', 'supplier_commission_enabled' => true, 'supplier_commission_direction' => 'RECEIVED'])
+    $this->postJson('/api/product-typologies', ['name' => 'Ricevuta', 'code' => 'received', 'color' => 'gray', 'supplier_commission_enabled' => true, 'supplier_commission_direction' => 'RECEIVED'])
         ->assertCreated()
         ->assertJsonPath('data.supplier_commission_enabled', true)
         ->assertJsonPath('data.supplier_commission_direction', 'RECEIVED');

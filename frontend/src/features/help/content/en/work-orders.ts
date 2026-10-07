@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'When you change the **Product lines**, the Additional information the new lines bring in appears under the field: fill it in the same save (the required ones are needed to save).',
+          text: 'The **Product lines** are chosen when the work order is created and cannot be changed afterwards: in the detail you see them in the **Contract data** section. The Additional information the lines bring in is filled in at creation (the required ones are needed to save).',
         },
       ],
     },
@@ -74,14 +74,14 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'In the Work order detail, below the main card, **Contract data**, **Tasks** and **Costs** share one card as tabs you switch between: **Contract data** is open by default (or the first one you may see). The **Costs** tab compares the **budgeted** costs (the offer cost lines imputed to the work order\'s revenue lines) with the **actual** costs entered here. It only appears if you may view costs.',
+          text: 'In the Work order detail, below the main card, **Tasks** and **Costs** share one card as tabs you switch between: **Tasks** is open by default (or the first one you may see). The **Contract data** is not a tab: it sits in the main card, in the **Contract data** section. The **Costs** tab compares the **budgeted** costs (the offer cost lines imputed to the work order\'s revenue lines) with the **actual** costs entered here. It only appears if you may view costs.',
         },
         {
           type: 'table',
           headers: ['Item', 'Meaning'],
           rows: [
             ['Variance', 'Actual cost minus budgeted cost: a positive value is an **overrun** (flagged with an icon and text, not by colour alone).'],
-            ['Margin', 'Revenue of the work order lines minus costs. Revenue is the net amount, except on lines with a **received** supplier commission, where it is the supplier commission alone (as in the Contract data tab). Other commissions are excluded.'],
+            ['Margin', 'Revenue of the work order lines minus costs. Revenue is the net amount, except on lines with a **received** supplier commission, where it is the supplier commission alone (as in the Contract data). Other commissions are excluded.'],
             ['Unattributed', 'Actual costs with no reference offer line: they are part of the total actual cost.'],
           ],
         },
@@ -111,7 +111,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Contract data** tab of the Work order detail, next to **Tasks** and **Costs**, shows for each product line the amounts already saved on the offer and **explains how the revenue comes about**. It only appears if you may view contract data. On narrow screens the table scrolls inside its own frame.',
+          text: 'In the main card of the Work order detail, the **Contract data** section shows for each product line the amounts already saved on the offer and **explains how the revenue comes about**. Without the permission to view contract data you only see the list of products. The product name is a **link** to the product. Each product line sits on **a single row** (code, name and typology side by side); on narrow screens each row becomes a compact card.',
         },
         {
           type: 'table',
@@ -123,23 +123,24 @@ const guide: HelpGuide = {
             ['Supplier commission', 'The supplier commission on the line, if you can see it.'],
             ['Net of commissions', 'Net amount minus all the line\'s commissions, if you can see them.'],
             ['Effective revenue', 'If the line\'s typology has the Supplier commission **received** it is the Supplier commission alone; if it is **paid** or not calculated it is the net amount.'],
-            ['Payment', 'Payment status, payment agreement and unpaid flag of the line.'],
+            ['Payment', 'Payment status (a badge in the status colour), an **Unpaid** badge when there are unpaid amounts; the payment agreement is in the cell tooltip.'],
+            ['Actions', 'The pencil button opens the **Line payment** popup (only if you may manage payments).'],
           ],
         },
         {
           type: 'paragraph',
-          text: 'Under each line you find the **formula in plain words**, for example "Net amount 2 × 500.00 = 1,000.00 → revenue 1,000.00" for a line without a received commission (with a **paid** commission the formula adds it as a cost), or "Supplier commission received: 10% of 2,000.00 = 200.00 → revenue 200.00". At the top are the totals: Net amount, then for **each product typology** the net amount and the effective revenue (even at 0.00), then Total revenue and, if visible, Commissions and Net of commissions. If you cannot see commissions, the related columns and totals are not shown.',
+          text: 'The **how it is calculated** of each amount is in its tooltip: hover, use the keyboard (Tab) or tap the dashed-underlined amount to see the formula, for example "2 × 500.00 = 1,000.00" for the Net amount, "10% of 2,000.00 = 200.00" for the Supplier commission (with type, base = line margin and amount), "1,000.00 − 250.00 = 750.00" for the Net of commissions and the reason of the Effective revenue (received commission, or net amount). At the top a row of indicators: Net amount, Total revenue and, if visible, Commissions and Net of commissions, each with its tooltip; below, **Revenue by typology** with the net amount → revenue of each typology (those at 0.00 are dimmed). If you cannot see commissions, the related columns and indicators are not shown.'
         },
         {
           type: 'warning',
-          text: 'A warning with an icon and text appears when a line with a received Supplier commission has none (revenue 0.00) or when the commission was calculated on a previous base: save the offer again to update it.',
+          text: 'A warning icon next to the product (with the text in its tooltip) appears when a line with a received Supplier commission has none (revenue 0.00) or when the commission was calculated on a previous base: save the offer again to update it.',
         },
         {
           type: 'steps',
           items: [
-            'Press the pencil in the line\'s **Payment** column (only available if you may manage payments).',
+            'Press the pencil button at the end of the line (only available if you may manage payments): the **Line payment** popup opens.',
             'Choose the **payment status**, write the **payment agreement** and say whether there are **unpaid** amounts.',
-            'Press **Done** to save the line, or **Reset** to discard the changes.',
+            'Press **Save** to save the line and close the popup, or **Cancel** to discard the changes.',
           ],
         },
         {

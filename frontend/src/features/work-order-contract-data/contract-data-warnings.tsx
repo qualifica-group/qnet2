@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { TriangleAlert } from 'lucide-react'
+import { CalculationHint } from '@/features/work-order-contract-data/calculation-hint'
 import type { ContractDataWarning } from '@/features/work-order-contract-data/types'
 
 const WARNING_KEYS: Record<ContractDataWarning, string> = {
@@ -7,22 +8,20 @@ const WARNING_KEYS: Record<ContractDataWarning, string> = {
   stale_commission_base: 'workOrders.contractData.warnings.staleCommissionBase',
 }
 
-/** Warnings of a line: icon plus text, so the signal never rests on colour alone. */
+/**
+ * Warnings of a line as warning icons: the text is in the hint (mouse, focus,
+ * tap) and also `sr-only`, so the signal never rests on colour alone.
+ */
 export function ContractDataWarnings({ warnings }: { warnings: ContractDataWarning[] }) {
   const { t } = useTranslation()
 
-  if (warnings.length === 0) {
-    return null
-  }
-
-  return (
-    <ul className="flex flex-col gap-0.5">
-      {warnings.map((warning) => (
-        <li key={warning} className="flex items-center gap-1.5 text-[11px] font-medium text-destructive">
-          <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" />
-          {t(WARNING_KEYS[warning])}
-        </li>
-      ))}
-    </ul>
-  )
+  return warnings.map((warning) => {
+    const text = t(WARNING_KEYS[warning])
+    return (
+      <CalculationHint key={warning} title={t('workOrders.contractData.warnings.title')} lines={[text]} className="shrink-0 text-destructive no-underline">
+        <TriangleAlert aria-hidden="true" className="size-3.5" />
+        <span className="sr-only">{text}</span>
+      </CalculationHint>
+    )
+  })
 }

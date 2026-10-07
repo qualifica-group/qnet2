@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Form, FormControl } from '@/components/ui/form'
+import { ColorTokenPicker } from '@/features/custom-fields/components/color-token-picker'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { SupplierCommissionFields } from '@/features/product-typologies/supplier-commission-fields'
@@ -39,7 +40,8 @@ export function ProductTypologyFormBody({ mode, onSuccess, onCancel }: ProductTy
   const identityVisible =
     fieldPermission('name').visible ||
     fieldPermission('code').visible ||
-    fieldPermission('description').visible
+    fieldPermission('description').visible ||
+    fieldPermission('color').visible
   const commissionVisible =
     fieldPermission('supplier_commission_enabled').visible ||
     fieldPermission('supplier_commission_direction').visible
@@ -81,6 +83,19 @@ export function ProductTypologyFormBody({ mode, onSuccess, onCancel }: ProductTy
                 {({ field, disabled, readOnly }) => (
                   <FormControl>
                     <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
+                  </FormControl>
+                )}
+              </MetaField>
+
+              <MetaField
+                control={form.control}
+                name="color"
+                metaKey="color"
+                label={t('productTypologies.form.color')}
+              >
+                {({ field, disabled }) => (
+                  <FormControl>
+                    <ColorTokenPicker value={field.value} onChange={field.onChange} disabled={disabled} />
                   </FormControl>
                 )}
               </MetaField>

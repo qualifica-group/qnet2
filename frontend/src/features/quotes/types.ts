@@ -115,6 +115,8 @@ export interface QuoteSummary {
 export interface QuoteTypologyTotal {
   id: number
   name: string
+  /** Badge colour token (spec 0204 D-4). */
+  color: string
   /** decimal(15,2) as a string, like every other amount in the summary block. */
   net: string
 }

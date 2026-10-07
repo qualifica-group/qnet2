@@ -129,7 +129,7 @@ it('show: ProductResource exposes product_typology_id and product_typology (AC-0
     $this->getJson("/api/products/{$product->id}")
         ->assertOk()
         ->assertJsonPath('data.product_typology_id', $typology->id)
-        ->assertJsonPath('data.product_typology', ['id' => $typology->id, 'name' => 'Ente Locale']);
+        ->assertJsonPath('data.product_typology', ['id' => $typology->id, 'name' => 'Ente Locale', 'color' => $typology->color]);
 });
 
 it('for-select: the product meta carries its typology (feeds the offer live summary)', function () {
@@ -139,7 +139,7 @@ it('for-select: the product meta carries its typology (feeds the offer live summ
 
     $this->getJson('/api/products/for-select?ids[]='.$product->id)
         ->assertOk()
-        ->assertJsonPath('items.0.meta.product_typology', ['id' => $typology->id, 'name' => 'Consulenza']);
+        ->assertJsonPath('items.0.meta.product_typology', ['id' => $typology->id, 'name' => 'Consulenza', 'color' => $typology->color]);
 });
 
 // ---------------------------------------------------------------------------

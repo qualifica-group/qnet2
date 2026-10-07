@@ -5,10 +5,7 @@ import i18n from '@/i18n'
 import { Form } from '@/components/ui/form'
 import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
-import {
-  WorkOrderAttributesSection,
-  WorkOrderNewAttributesFields,
-} from '@/features/work-orders/work-order-attributes-section'
+import { WorkOrderAttributesSection } from '@/features/work-orders/work-order-attributes-section'
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { WorkOrderFormValues } from '@/features/work-orders/use-work-order-form'
@@ -18,7 +15,7 @@ import type { ApplicableAttributeSummary } from '@/features/work-orders/types'
  * "Informazioni aggiuntive" of the work order record (spec 0098), every
  * Attribute an in-place row (user directive 2026-10-06): the configured
  * layout sections, the read-only table rendering (spec 0180), the single
- * `attribute_values` gate (AC-024), and the Attributes new lines bring in.
+ * `attribute_values` gate (AC-024).
  */
 
 // Relation-type Attribute controls read the abilities to gate their quick-create slot.
@@ -157,35 +154,5 @@ describe('WorkOrderAttributesSection', () => {
     )
 
     expect(screen.queryByText('Gate 3')).not.toBeInTheDocument()
-  })
-})
-
-function NewAttributesHarness({ persistedCodes }: { persistedCodes: string[] }) {
-  const form = useForm<WorkOrderFormValues>({
-    defaultValues: { attribute_values: {} } as unknown as WorkOrderFormValues,
-  })
-  return (
-    <Form {...form}>
-      <WorkOrderNewAttributesFields
-        attributes={[SITE_ACCESS, attribute({ id: 3, code: 'gate_code', name: 'Gate code' })]}
-        persistedCodes={new Set(persistedCodes)}
-        control={form.control}
-      />
-    </Form>
-  )
-}
-
-describe('WorkOrderNewAttributesFields', () => {
-  it('offers only the Attributes the persisted lines did not cover', () => {
-    render(<NewAttributesHarness persistedCodes={['site_access']} />)
-
-    expect(screen.getByRole('textbox', { name: 'Gate code' })).toBeInTheDocument()
-    expect(screen.queryByRole('textbox', { name: 'Site access' })).not.toBeInTheDocument()
-  })
-
-  it('renders nothing when no new Attribute comes in', () => {
-    render(<NewAttributesHarness persistedCodes={['site_access', 'gate_code']} />)
-
-    expect(screen.queryByText(i18n.t('workOrders.detail.newAttributes'))).not.toBeInTheDocument()
   })
 })

@@ -15,13 +15,13 @@ export const FOR_SELECT_PAGE_SIZE = 25
  * `{ success, message, data }` envelope (ADR 0011). `ids[]` is sent only when
  * non-empty to hydrate already-selected values in edit mode.
  */
-export async function fetchForSelect(
+export async function fetchForSelect<T extends ForSelectItem = ForSelectItem>(
   resource: string,
   params: ForSelectParams = {},
-): Promise<ForSelectResponse<ForSelectItem>> {
+): Promise<ForSelectResponse<T>> {
   const { search, offset = 0, limit = FOR_SELECT_PAGE_SIZE, ids, includeTotal, params: extraParams } = params
 
-  const { data } = await apiClient.get<ForSelectResponse<ForSelectItem>>(
+  const { data } = await apiClient.get<ForSelectResponse<T>>(
     `/${resource}/for-select`,
     {
       params: {

@@ -15,7 +15,8 @@ import { QuoteProductMargins } from '@/features/quotes/quote-product-margins'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteSummary as QuoteSummaryData, QuoteTypologyTotal } from '@/features/quotes/types'
-import type { ForSelectItem } from '@/features/for-select/types'
+import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
+import type { ProductTypologyForSelectItem } from '@/features/product-typologies/for-select-api'
 import { useQuoteLiveTotals } from '@/features/quotes/use-quote-live-totals'
 import type { CommissionTotals } from './commission-calculator'
 
@@ -88,6 +89,7 @@ function QuoteAmountBlock({ icon: Icon, title, aggregate, netLabel, vatLabel, gr
 export interface QuoteTypologyBucket {
   id: number
   name: string
+  color: string
   net: number
 }
 
@@ -101,6 +103,7 @@ export function typologyBucketsFromPersistedSummary(
   return (summary.product_typologies ?? []).map((entry: QuoteTypologyTotal) => ({
     id: entry.id,
     name: entry.name,
+    color: entry.color,
     net: Number(entry.net),
   }))
 }
@@ -127,11 +130,13 @@ function QuoteTypologyBlock({ buckets }: { buckets: QuoteTypologyBucket[] }) {
           {t('quotes.form.summary.noProductTypologies')}
         </p>
       ) : (
-        <dl className="grid max-h-32 gap-1 overflow-y-auto text-xs">
+        <dl className="grid max-h-32 grid-cols-[minmax(0,1fr)] gap-1 overflow-y-auto text-xs">
           {buckets.map((bucket) => (
             <div key={bucket.id} className="flex items-center justify-between gap-2">
-              <dt className="min-w-0 truncate text-muted-foreground">{bucket.name}</dt>
-              <dd className="font-medium tabular-nums">{formatQuoteAmount(bucket.net)}</dd>
+              <dt className="min-w-0">
+                <ProductTypologyBadge name={bucket.name} color={bucket.color} className="max-w-full justify-start truncate" />
+              </dt>
+              <dd className="shrink-0 font-medium tabular-nums">{formatQuoteAmount(bucket.net)}</dd>
             </div>
           ))}
         </dl>
@@ -230,7 +235,7 @@ interface QuoteLiveSummaryProps {
    * own (frontend.md §6), so the preview itself still costs zero requests per
    * keystroke (AC-060). Empty renders the block's own empty state.
    */
-  typologyOptions?: ForSelectItem[]
+  typologyOptions?: ProductTypologyForSelectItem[]
   /**
    * Spec 0144: resolves a picked product's name for the "Margine per
    * prodotto" block — the row itself carries only `product_id` (D-5-like).
@@ -239,7 +244,7 @@ interface QuoteLiveSummaryProps {
 }
 
 /** Hoisted: an inline `[]` default would be a new reference on every render. */
-const NO_TYPOLOGY_OPTIONS: ForSelectItem[] = []
+const NO_TYPOLOGY_OPTIONS: ProductTypologyForSelectItem[] = []
 /** Hoisted: an inline function default would be a new reference on every render. */
 const NO_PRODUCT_NAME = (): string | null => null
 
@@ -281,6 +286,7 @@ export function QuoteLiveSummary({
     return typologyOptions.map((option) => ({
       id: option.id,
       name: option.label,
+      color: option.meta.color,
       net: round2(netByTypologyId.get(option.id) ?? 0),
     }))
   }, [offerLines, productTypologyIdFor, typologyOptions])

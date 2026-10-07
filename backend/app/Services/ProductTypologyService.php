@@ -64,7 +64,7 @@ class ProductTypologyService
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
-        $base = ProductTypology::query()->select(['id', 'code', 'name']);
+        $base = ProductTypology::query()->select(['id', 'code', 'name', 'color']);
 
         if ($query->hasSearch()) {
             $base->where('name', 'like', '%'.$query->search.'%');
@@ -112,7 +112,7 @@ class ProductTypologyService
 
         /** @var Collection<int, ProductTypology> $hydrated */
         $hydrated = ProductTypology::query()
-            ->select(['id', 'code', 'name'])
+            ->select(['id', 'code', 'name', 'color'])
             ->whereIn('id', $missingIds)
             ->orderBy('name')
             ->orderBy('id')

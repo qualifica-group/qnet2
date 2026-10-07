@@ -50,6 +50,14 @@ final class ProductTypologyColumnCatalog
                 'filterType' => 'text',
             ],
             [
+                'id' => 'color',
+                'label' => 'productTypologies.columns.color',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => false,
+            ],
+            [
                 'id' => 'supplier_commission_enabled',
                 'label' => 'productTypologies.columns.supplier_commission_enabled',
                 'type' => 'boolean',

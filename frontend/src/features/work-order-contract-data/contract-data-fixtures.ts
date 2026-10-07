@@ -6,7 +6,7 @@ const NO_PAYMENT = { status: null, payment_agreement: null, has_unpaid: false }
 export const PAID_LINE: ContractDataLine = {
   quote_line_id: 11,
   product: { id: 1, code: 'CON-001', name: 'Consulenza qualita' },
-  typology: { id: 1, code: 'consultancy', name: 'Consulenza' },
+  typology: { id: 1, code: 'consultancy', name: 'Consulenza', color: 'blue' },
   supplier_commission_direction: 'PAID',
   quantity: '2.00',
   unit_price: '500.00',
@@ -23,7 +23,7 @@ export const PAID_LINE: ContractDataLine = {
 export const RECEIVED_LINE: ContractDataLine = {
   quote_line_id: 12,
   product: { id: 2, code: 'ENT-001', name: 'Certificazione ente' },
-  typology: { id: 2, code: 'institution', name: 'Ente' },
+  typology: { id: 2, code: 'institution', name: 'Ente', color: 'violet' },
   supplier_commission_direction: 'RECEIVED',
   quantity: '1.00',
   unit_price: '2000.00',
@@ -45,9 +45,9 @@ export const CONTRACT_DATA: WorkOrderContractData = {
   totals: {
     net_amount: '3000.00',
     typologies: [
-      { id: 1, name: 'Consulenza', net_amount: '1000.00', effective_revenue: '1000.00' },
-      { id: 2, name: 'Ente', net_amount: '2000.00', effective_revenue: '200.00' },
-      { id: 3, name: 'Formazione', net_amount: '0.00', effective_revenue: '0.00' },
+      { id: 1, name: 'Consulenza', color: 'blue', net_amount: '1000.00', effective_revenue: '1000.00' },
+      { id: 2, name: 'Ente', color: 'violet', net_amount: '2000.00', effective_revenue: '200.00' },
+      { id: 3, name: 'Formazione', color: 'amber', net_amount: '0.00', effective_revenue: '0.00' },
     ],
     effective_revenue: '1200.00',
     commissions_amount: '450.00',

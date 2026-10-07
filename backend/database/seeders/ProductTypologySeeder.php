@@ -29,20 +29,21 @@ use Illuminate\Database\Seeder;
 class ProductTypologySeeder extends Seeder
 {
     /**
-     * [code, name, Supplier commission direction] (spec 0202): both enabled.
+     * [code, name, Supplier commission direction, badge color] (specs 0202, 0204): both enabled.
      *
-     * @var array<int, array{0: string, 1: string, 2: SupplierCommissionDirection}>
+     * @var array<int, array{0: string, 1: string, 2: SupplierCommissionDirection, 3: string}>
      */
     private const array TYPOLOGIES = [
-        ['institution', 'Ente', SupplierCommissionDirection::Received],
-        ['consultancy', 'Consulenza', SupplierCommissionDirection::Paid],
+        ['institution', 'Ente', SupplierCommissionDirection::Received, 'violet'],
+        ['consultancy', 'Consulenza', SupplierCommissionDirection::Paid, 'blue'],
     ];
 
     public function run(): void
     {
-        foreach (self::TYPOLOGIES as [$code, $name, $direction]) {
+        foreach (self::TYPOLOGIES as [$code, $name, $direction, $color]) {
             ProductTypology::firstOrCreate(['code' => $code], [
                 'name' => $name,
+                'color' => $color,
                 'supplier_commission_enabled' => true,
                 'supplier_commission_direction' => $direction,
             ]);

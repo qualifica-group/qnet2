@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Cambiando le **Righe prodotto**, sotto il campo compaiono le Informazioni aggiuntive che le nuove righe portano con sé: compilale nello stesso salvataggio (quelle obbligatorie servono per salvare).',
+          text: 'Le **Righe prodotto** si scelgono alla creazione della commessa e poi non si modificano: nel dettaglio le vedi nella sezione **Dati contrattuali**. Le Informazioni aggiuntive che le righe portano con sé si compilano in creazione (quelle obbligatorie servono per salvare).',
         },
       ],
     },
@@ -74,14 +74,14 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Nel dettaglio della Commessa, sotto la scheda principale, **Dati contrattuali**, **Task** e **Costi** stanno nella stessa card come schede da alternare: all\'apertura è attiva **Dati contrattuali** (se non hai il permesso di vederla, la prima disponibile). La scheda **Costi** confronta i costi **preventivati** (le righe di costo dell\'offerta imputate alle righe di ricavo della commessa) con i costi **effettivi** inseriti qui. Compare solo se hai il permesso di vedere i costi.',
+          text: 'Nel dettaglio della Commessa, sotto la scheda principale, **Task** e **Costi** stanno nella stessa card come schede da alternare: all\'apertura è attiva **Task** (se non hai il permesso di vederla, la prima disponibile). I **Dati contrattuali** non sono una scheda: stanno nella card principale, nella sezione **Dati contrattuali**. La scheda **Costi** confronta i costi **preventivati** (le righe di costo dell\'offerta imputate alle righe di ricavo della commessa) con i costi **effettivi** inseriti qui. Compare solo se hai il permesso di vedere i costi.',
         },
         {
           type: 'table',
           headers: ['Voce', 'Significato'],
           rows: [
             ['Scostamento', 'Costo effettivo meno costo preventivato: se positivo è uno **sforamento** (segnalato con icona e testo, non solo con il colore).'],
-            ['Margine', 'Ricavo delle righe della commessa meno i costi. Il ricavo è l\'imponibile, tranne sulle righe con commissione Fornitore **ricevuta**, dove è la sola commissione Fornitore (come nel tab Dati contrattuali). Le altre provvigioni sono escluse.'],
+            ['Margine', 'Ricavo delle righe della commessa meno i costi. Il ricavo è l\'imponibile, tranne sulle righe con commissione Fornitore **ricevuta**, dove è la sola commissione Fornitore (come nei Dati contrattuali). Le altre provvigioni sono escluse.'],
             ['Non attribuiti', 'Costi effettivi senza una riga offerta di riferimento: entrano nel costo effettivo totale.'],
           ],
         },
@@ -111,7 +111,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La scheda **Dati contrattuali** del dettaglio Commessa, accanto a **Task** e **Costi**, mostra per ogni riga prodotto gli importi già salvati sull\'offerta e **spiega come si arriva al ricavo**. Compare solo se hai il permesso di vedere i dati contrattuali. Su schermi stretti la tabella scorre dentro il suo riquadro.',
+          text: 'Nella card principale del dettaglio Commessa, la sezione **Dati contrattuali** mostra per ogni riga prodotto gli importi già salvati sull\'offerta e **spiega come si arriva al ricavo**. Senza il permesso di vedere i dati contrattuali vedi solo l\'elenco dei prodotti. Il nome del prodotto è un **link** al prodotto. Ogni riga prodotto sta su **una sola riga** (codice, nome e tipologia affiancati); su schermi stretti ogni riga diventa una scheda compatta.',
         },
         {
           type: 'table',
@@ -123,23 +123,24 @@ const guide: HelpGuide = {
             ['Commissione Fornitore', 'La commissione del fornitore sulla riga, se la vedi.'],
             ['Netto commissioni', 'Imponibile meno tutte le commissioni della riga, se le vedi.'],
             ['Ricavo effettivo', 'Se la tipologia della riga ha la commissione Fornitore **ricevuta** è la sola commissione Fornitore; se è **pagata** o non calcolata è l\'imponibile.'],
-            ['Pagamento', 'Stato di pagamento, accordo sui pagamenti e insoluti della riga.'],
+            ['Pagamento', 'Stato di pagamento (badge del colore dello stato), badge **Insoluto** se ci sono insoluti; l\'accordo sui pagamenti si legge nel tooltip della cella.'],
+            ['Azioni', 'Il pulsante con la matita apre il popup **Pagamento riga** (solo con il permesso di gestire i pagamenti).'],
           ],
         },
         {
           type: 'paragraph',
-          text: 'Sotto ogni riga trovi la **formula in chiaro**, ad esempio "Imponibile 2 × 500,00 = 1.000,00 → ricavo 1.000,00" per una riga senza commissione ricevuta (con commissione **pagata** la formula la aggiunge come costo), oppure "Commissione Fornitore ricevuta: 10% di 2.000,00 = 200,00 → ricavo 200,00". In alto i totali: Imponibile, poi per **ogni tipologia di prodotto** l\'imponibile e il ricavo effettivo (anche a 0,00), quindi Totale Ricavi e, se visibili, Commissioni e Netto commissioni. Se non vedi le commissioni, le relative colonne e totali non compaiono.',
+          text: 'Il **come si calcola** ogni importo sta nel tooltip: passa il mouse, naviga con la tastiera (Tab) o tocca l\'importo sottolineato a tratti per vedere la formula, ad esempio "2 × 500,00 = 1.000,00" per l\'Imponibile, "10% di 2.000,00 = 200,00" per la Commissione Fornitore (con tipo, base = margine della riga e importo), "1.000,00 − 250,00 = 750,00" per il Netto commissioni e il perché del Ricavo effettivo (commissione ricevuta, oppure imponibile). In alto una riga di indicatori: Imponibile, Totale Ricavi e, se visibili, Commissioni e Netto commissioni, ciascuno col suo tooltip; sotto, **Ricavo per tipologia** con imponibile → ricavo di ogni tipologia (quelle a 0,00 sono attenuate). Se non vedi le commissioni, le relative colonne e indicatori non compaiono.'
         },
         {
           type: 'warning',
-          text: 'Un avviso con icona e testo compare se a una riga con commissione Fornitore ricevuta manca la commissione (ricavo 0,00) oppure se la commissione è stata calcolata su una base precedente: salva di nuovo l\'offerta per aggiornarla.',
+          text: 'Un\'icona di avviso accanto al prodotto (con il testo nel tooltip) compare se a una riga con commissione Fornitore ricevuta manca la commissione (ricavo 0,00) oppure se la commissione è stata calcolata su una base precedente: salva di nuovo l\'offerta per aggiornarla.',
         },
         {
           type: 'steps',
           items: [
-            'Premi la matita nella colonna **Pagamento** della riga (disponibile solo con il permesso di gestire i pagamenti).',
+            'Premi il pulsante con la matita a fine riga (disponibile solo con il permesso di gestire i pagamenti): si apre il popup **Pagamento riga**.',
             'Scegli lo **stato di pagamento**, scrivi l\'**accordo sui pagamenti** e indica se ci sono **insoluti**.',
-            'Premi **Fatto** per salvare la riga, oppure **Ripristina** per annullare le modifiche.',
+            'Premi **Salva** per salvare la riga e chiudere il popup, oppure **Annulla** per scartare le modifiche.',
           ],
         },
         {

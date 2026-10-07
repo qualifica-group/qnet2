@@ -189,7 +189,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
      * Mirrors ProductResource's typology summary shape (spec 0099), so the
      * grid cell and the detail view read the same fields.
      *
-     * @return array{id: int, name: string}|null
+     * @return array{id: int, name: string, color: string}|null
      */
     private function productTypologySummary(?ProductTypology $productTypology): ?array
     {
@@ -197,7 +197,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
             return null;
         }
 
-        return ['id' => $productTypology->id, 'name' => $productTypology->name];
+        return ['id' => $productTypology->id, 'name' => $productTypology->name, 'color' => $productTypology->color];
     }
 
     /**

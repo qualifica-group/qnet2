@@ -27,9 +27,13 @@ const SERVER_ERROR_FIELDS = [
   'name',
   'code',
   'description',
+  'color',
   'supplier_commission_enabled',
   'supplier_commission_direction',
 ] as const
+
+/** Colour a new typology starts with (spec 0204 D-3). */
+const DEFAULT_COLOR = 'gray'
 
 export type ProductTypologyFormValues = CreateProductTypologyFormValues & UpdateProductTypologyFormValues
 
@@ -62,6 +66,7 @@ export function useProductTypologyForm({ mode, onSuccess }: UseProductTypologyFo
         name: mode.productTypology.name,
         code: mode.productTypology.code,
         description: mode.productTypology.description,
+        color: mode.productTypology.color,
         supplier_commission_enabled: mode.productTypology.supplier_commission_enabled,
         supplier_commission_direction: mode.productTypology.supplier_commission_direction,
       }
@@ -70,6 +75,7 @@ export function useProductTypologyForm({ mode, onSuccess }: UseProductTypologyFo
       name: '',
       code: '',
       description: null,
+      color: DEFAULT_COLOR,
       supplier_commission_enabled: false,
       supplier_commission_direction: null,
     }

@@ -1,133 +1,80 @@
 import { useTranslation } from 'react-i18next'
 import { Pencil } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Amount, PaymentCell, ProductCell } from '@/features/work-order-contract-data/contract-data-cells'
 import { money, plainNumber } from '@/features/work-order-contract-data/contract-data-format'
-import { netOfCommissionsFormula, revenueFormula } from '@/features/work-order-contract-data/contract-data-formulas'
-import { ContractDataWarnings } from '@/features/work-order-contract-data/contract-data-warnings'
-import { ContractPaymentEditor } from '@/features/work-order-contract-data/contract-payment-editor'
-import { PaymentStatusLabel } from '@/features/work-order-contract-data/payment-status-label'
+import {
+  commissionHint,
+  netAmountHint,
+  netOfCommissionsHint,
+  revenueHint,
+} from '@/features/work-order-contract-data/contract-data-formulas'
 import type { ContractDataLine } from '@/features/work-order-contract-data/types'
 
-const CELL = 'px-2 py-1.5'
-const NUMERIC_CELL = `${CELL} text-right tabular-nums whitespace-nowrap`
+/**
+ * Below `md` each row is a card (grid of label/value pairs, the labels drawn
+ * from `data-label`); from `md` it is a plain single-height table row.
+ */
+const CELL = 'px-2 py-1.5 md:table-cell md:align-middle'
+const NUMERIC_CELL = `${CELL} flex items-baseline justify-between gap-2 tabular-nums md:w-px md:text-right md:whitespace-nowrap`
+const LABEL = 'before:text-[11px] before:text-muted-foreground before:content-[attr(data-label)] md:before:content-none'
 
-interface PaymentCellProps {
+interface ContractDataRowProps {
   line: ContractDataLine
+  commissionsVisible: boolean
   canManage: boolean
-  isEditing: boolean
   onEdit: () => void
 }
 
-function PaymentCell({ line, canManage, isEditing, onEdit }: PaymentCellProps) {
+/** One product line: figures with their calculation hints, payment, and the single actions button. */
+export function ContractDataRow({ line, commissionsVisible, canManage, onEdit }: ContractDataRowProps) {
   const { t } = useTranslation()
-  const { status, payment_agreement: agreement, has_unpaid: hasUnpaid } = line.payment
+  const label = (key: string) => t(`workOrders.contractData.columns.${key}`)
 
   return (
-    <td className={`${CELL} min-w-44`}>
-      <div className="flex items-start justify-between gap-1">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          {status ? (
-            <PaymentStatusLabel status={status} />
-          ) : (
-            <span className="text-muted-foreground">{t('workOrders.contractData.payment.noStatus')}</span>
-          )}
-          {agreement ? (
-            <span className="max-w-56 truncate text-[11px] text-muted-foreground" title={agreement}>
-              {agreement}
-            </span>
-          ) : null}
-          <span className="text-[11px] text-muted-foreground">
-            {t('workOrders.contractData.payment.unpaid')}:{' '}
-            {hasUnpaid ? t('common.yes') : t('common.no')}
-          </span>
-        </div>
-        {canManage && !isEditing ? (
+    <tr className="relative grid grid-cols-2 gap-x-3 border-t first:border-t-0 md:table-row">
+      <th scope="row" className={`${CELL} col-span-2 pr-10 text-left font-normal md:w-full md:min-w-[20rem] md:max-w-0 md:pr-2`}>
+        <ProductCell line={line} />
+      </th>
+      <td data-label={label('quantity')} className={`${NUMERIC_CELL} ${LABEL}`}>
+        {plainNumber(line.quantity)}
+      </td>
+      <td data-label={label('unitPrice')} className={`${NUMERIC_CELL} ${LABEL}`}>
+        {money(line.unit_price)}
+      </td>
+      <td data-label={label('netAmount')} className={`${NUMERIC_CELL} ${LABEL}`}>
+        <Amount value={line.net_amount} hint={netAmountHint(line, t)} />
+      </td>
+      {commissionsVisible ? (
+        <>
+          <td data-label={label('supplierCommission')} className={`${NUMERIC_CELL} ${LABEL}`}>
+            <Amount value={line.supplier_commission?.amount ?? null} hint={commissionHint(line, t)} />
+          </td>
+          <td data-label={label('netOfCommissions')} className={`${NUMERIC_CELL} ${LABEL}`}>
+            <Amount value={line.net_of_commissions} hint={netOfCommissionsHint(line, t)} />
+          </td>
+        </>
+      ) : null}
+      <td data-label={label('effectiveRevenue')} className={`${NUMERIC_CELL} ${LABEL} font-medium`}>
+        <Amount value={line.effective_revenue} hint={revenueHint(line, commissionsVisible, t)} />
+      </td>
+      <td data-label={label('payment')} className={`${CELL} col-span-2 flex items-center justify-between gap-2 md:min-w-[16rem] md:whitespace-nowrap ${LABEL}`}>
+        <PaymentCell line={line} />
+      </td>
+      {canManage ? (
+        <td className="absolute top-1.5 right-2 md:sticky md:right-0 md:z-10 md:table-cell md:bg-surface md:px-2 md:py-1.5 md:text-right md:align-middle md:shadow-[-6px_0_6px_-6px_rgb(0_0_0/0.25)]">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="icon-xs"
+            className="bg-card"
             aria-label={t('workOrders.contractData.payment.edit', { product: line.product.name })}
             onClick={onEdit}
           >
             <Pencil aria-hidden="true" />
           </Button>
-        ) : null}
-      </div>
-    </td>
-  )
-}
-
-interface ContractDataRowProps {
-  workOrderId: number
-  line: ContractDataLine
-  commissionsVisible: boolean
-  /** Total number of columns, for the full-width rows under the line. */
-  columnCount: number
-  canManage: boolean
-  isEditing: boolean
-  onEdit: () => void
-  onCloseEditor: () => void
-}
-
-/**
- * One product line of the contract data table: the figures, the readable
- * formula (with warnings) under them and, while editing, the payment editor.
- */
-export function ContractDataRow({
-  workOrderId,
-  line,
-  commissionsVisible,
-  columnCount,
-  canManage,
-  isEditing,
-  onEdit,
-  onCloseEditor,
-}: ContractDataRowProps) {
-  const { t } = useTranslation()
-  const netFormula = netOfCommissionsFormula(line, t)
-
-  return (
-    <>
-      <tr className="border-t align-top">
-        <th scope="row" className={`${CELL} min-w-40 text-left font-normal`}>
-          <div className="flex flex-col gap-1">
-            <span>
-              <span className="font-mono text-muted-foreground">{line.product.code}</span> {line.product.name}
-            </span>
-            <Badge variant={line.supplier_commission_direction === 'RECEIVED' ? 'secondary' : 'outline'} className="w-fit text-[11px]">
-              {line.typology?.name ?? t('workOrders.contractData.kind.consultancy')}
-            </Badge>
-          </div>
-        </th>
-        <td className={NUMERIC_CELL}>{plainNumber(line.quantity)}</td>
-        <td className={NUMERIC_CELL}>{money(line.unit_price)}</td>
-        <td className={NUMERIC_CELL}>{money(line.net_amount)}</td>
-        {commissionsVisible ? (
-          <>
-            <td className={NUMERIC_CELL}>
-              {line.supplier_commission ? money(line.supplier_commission.amount) : '—'}
-            </td>
-            <td className={NUMERIC_CELL}>{line.net_of_commissions ? money(line.net_of_commissions) : '—'}</td>
-          </>
-        ) : null}
-        <td className={`${NUMERIC_CELL} font-medium`}>{money(line.effective_revenue)}</td>
-        <PaymentCell line={line} canManage={canManage} isEditing={isEditing} onEdit={onEdit} />
-      </tr>
-      <tr>
-        <td colSpan={columnCount} className="px-2 pb-1.5 text-[11px] text-muted-foreground">
-          <p>{revenueFormula(line, commissionsVisible, t)}</p>
-          {netFormula ? <p>{netFormula}</p> : null}
-          <ContractDataWarnings warnings={line.warnings} />
         </td>
-      </tr>
-      {isEditing ? (
-        <tr>
-          <td colSpan={columnCount} className="border-t bg-muted/40 px-2 py-2">
-            <ContractPaymentEditor workOrderId={workOrderId} line={line} onClose={onCloseEditor} />
-          </td>
-        </tr>
       ) : null}
-    </>
+    </tr>
   )
 }

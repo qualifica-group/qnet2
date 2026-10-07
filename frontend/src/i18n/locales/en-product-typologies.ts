@@ -17,6 +17,7 @@ export const productTypologies = {
   columns: {
     name: 'Name',
     code: 'Code',
+    color: 'Color',
     description: 'Description',
     supplier_commission_enabled: 'Supplier commission',
     supplier_commission_direction: 'Commission direction',
@@ -27,6 +28,7 @@ export const productTypologies = {
     title: 'Product typology detail',
     subtitle: 'Read-only view of the selected product typology.',
     loadError: 'Unable to load the product typology. Please retry.',
+    color: 'Color',
     description: 'Description',
     created_at: 'Created at',
     updated_at: 'Updated at',
@@ -39,6 +41,7 @@ export const productTypologies = {
     editSubtitle: 'Update the selected product typology.',
     name: 'Name',
     code: 'Code',
+    color: 'Color',
     description: 'Description',
     save: 'Save',
     saving: 'Saving…',
@@ -52,6 +55,8 @@ export const productTypologies = {
     codeMax: 'Code may contain at most 64 characters.',
     codeInvalid:
       'Code must start with a lowercase letter and contain only lowercase letters, digits and underscores.',
+    colorRequired: 'The color is required.',
+    colorMax: 'The color can be at most 32 characters.',
     descriptionMax: 'Description may contain at most 500 characters.',
     supplierCommissionEnabled: "Supplier commission calculation",
     supplierCommissionDirection: "Direction",

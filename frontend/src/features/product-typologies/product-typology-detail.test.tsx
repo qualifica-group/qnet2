@@ -31,6 +31,7 @@ function productTypology(
     name: 'Kilogram',
     code: 'kilogram',
     description: 'Mass unit',
+    color: 'blue',
     supplier_commission_enabled: false,
     supplier_commission_direction: null,
     created_at: '2026-01-01T09:00:00Z',
