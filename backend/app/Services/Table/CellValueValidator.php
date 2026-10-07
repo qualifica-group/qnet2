@@ -344,12 +344,18 @@ final class CellValueValidator
     }
 
     /**
+     * Keyed on the declared scalar `editor` when present, else the rendering
+     * `type` (spec 0055 D-1: the editor is a domain choice). Spec 0206: a
+     * `text`-rendered column edited as a `boolean`/`enum` (e.g. the
+     * registries' `is_supplier`/`agreement_status`) validates the value it
+     * actually submits. The non-scalar editors returned earlier in validate().
+     *
      * @param  array<string, mixed>  $column
      * @return array<int, mixed>
      */
     private function typeRules(array $column): array
     {
-        return match ($column['type'] ?? null) {
+        return match ($column['editor'] ?? $column['type'] ?? null) {
             'text' => ['string'],
             'number' => ['numeric'],
             'boolean' => ['boolean'],

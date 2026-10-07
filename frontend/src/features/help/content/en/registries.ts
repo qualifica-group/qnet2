@@ -99,6 +99,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'list-editing',
+      title: "Quick editing from the list",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Clicking an editable cell (Source, Supplier, Convention status, Size class, Commercial, Supervisor, Reporter, Operators) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
+        },
+        {
+          type: 'note',
+          text: "Unticking **Supplier** also clears Qualified supplier, as from the detail. Removing or adding people in **Operators** keeps everyone else in their position. The **Name** comes from the personal data and is changed from the detail; Primary contact and Created at stay read-only.",
+        },
+      ],
+    },
+    {
       id: 'registry-documents',
       title: 'Registry documents',
       blocks: [

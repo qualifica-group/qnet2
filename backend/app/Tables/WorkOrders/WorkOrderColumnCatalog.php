@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tables\WorkOrders;
 
+use App\Enums\WorkOrderType;
+
 /**
  * Declarative column/filter/action catalogue for the `work-orders` domain
  * (spec 0093). Extracted out of WorkOrdersTableDefinition (file-size split,
@@ -20,6 +22,11 @@ namespace App\Tables\WorkOrders;
  * `status` is `sortable: false` (no single sort key for a derived state) and
  * `set`-filterable over its 4 values; `completion_percentage` is sortable
  * but not filterable (D-10).
+ *
+ * Spec 0206: `title`/`type`/`callback_date`/`start_date`/`supervisors` are
+ * inline-editable and write through WorkOrderCellWriter (the form's own
+ * UpdateWorkOrderRequest + WorkOrderService). `is_force_closed` stays a row
+ * action (it needs a reason, D-7); every other column is read-only.
  */
 final class WorkOrderColumnCatalog
 {
@@ -48,6 +55,8 @@ final class WorkOrderColumnCatalog
                 'filterable' => true,
                 'filterType' => 'text',
                 'searchable' => true,
+                'editable' => true,
+                'nullable' => false,
             ],
             [
                 // `quotes.code`, derived through the `quote` relation (D-2).
@@ -80,6 +89,10 @@ final class WorkOrderColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'set',
+                // Spec 0206: options feed the cell validator and the rich select.
+                'options' => WorkOrderType::values(),
+                'editable' => true,
+                'nullable' => false,
             ],
             [
                 'id' => 'callback_date',
@@ -89,6 +102,8 @@ final class WorkOrderColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'date',
+                'editable' => true,
+                'nullable' => true,
             ],
             [
                 'id' => 'is_force_closed',
@@ -147,6 +162,8 @@ final class WorkOrderColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'date',
+                'editable' => true,
+                'nullable' => false,
             ],
             [
                 // Responsabili (spec 0096, D-7): a to-many over the
@@ -160,6 +177,10 @@ final class WorkOrderColumnCatalog
                 'sortable' => false,
                 'filterable' => true,
                 'filterType' => 'set',
+                'editable' => true,
+                'editor' => 'multiselect',
+                'relation' => ['resource' => 'users'],
+                'editableField' => 'supervisor_ids',
             ],
         ];
     }

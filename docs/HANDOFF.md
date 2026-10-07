@@ -3,6 +3,24 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## APL TIROCINIO: MODULO OFFERTA RIVISTO (SOGGETTO OSPITANTE, VIA REGISTRI/DECRETO/NUMERO PRATICA) — VERDE, NON COMMITTATO (2026-10-07)
+
+- Direttiva utente 2026-10-07 su "Tirocinio" (`AplInternshipAttributeCatalogue`): Tutor scartato; il tirocinante e'
+  l'anagrafica cliente collegata all'offerta (nessun campo); nuovo `host_registry` "Soggetto ospitante" (relation ->
+  `registries`, come `user_registry` dell'orientamento); tolti `registers_status`, `decree_status`, `practice_number`.
+- Modulo: "Testata" (`reporting_id`, `decree_id`) / "Dati tirocinio" (`internship_type`, `vacancy_code`,
+  `inail_position_number`, `liability_policy_number`, `insurance_company` — tutti `text` — + date) / "Soggetto
+  ospitante" (`host_registry`).
+- Installazioni gia' seminate: `AplPracticeCatalogue::RETIRED_ATTRIBUTES` -> `QualificaQuoteLayoutSeeder` Step 1 li
+  stacca SOLO da Tirocinio (`RetiresAttributes::retireCategoryAttributeCodes`, nuovo; `decree_status` resta su
+  apprendistato/orientamento) e li toglie dal suo layout; il vecchio modulo (anche grigio) e' riconosciuto via
+  `PREVIOUS_FORMS` e ricomposto. Righe attributo e valori salvati restano.
+- Test: Tirocinio aggiornati + nuovo upgrade test (white/grey); apprendistato aggiornato; il test "grigio -> bianco"
+  dell'orientamento ora usa l'apprendistato. Pest Products+Seeding+ProductCategories+Migration 653/653, Pint ok.
+- Aperto: "Tipologia tirocinio" e' testo libero (nessuna lista valori fornita); il tipo di un attributo gia' seminato
+  non viene riallineato dal seeder (`firstOrCreate` su `code`), quindi convertirlo a enum dopo il deploy richiede un
+  passo esplicito. Manuale Claude Docs non accessibile.
+
 ## ANAGRAFICHE: TAB "COMMISSIONI CONFIGURATE" SU OGNI ANAGRAFICA — VERDE, NON COMMITTATO (2026-10-07)
 
 - Richiesta utente: la tab deve comparire a prescindere da `is_supplier` ("tutte le anagrafiche sono potenzialmente

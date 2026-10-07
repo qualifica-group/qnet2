@@ -85,6 +85,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'list-editing',
+      title: "Quick editing from the list",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Clicking an editable cell (Title, Status, Commercial, Reporter, Supervisor, Account managers, Company, Company site, Operational site) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
+        },
+        {
+          type: 'note',
+          text: "**Status** only offers the statuses of the quote's workflow and asks for the **note** when the chosen status requires it. Changing the **Company** clears the Company site; the Company site is picked among the row's company sites. Changing a role recalculates the line commissions as from the detail; an empty Title goes back to the automatic title.",
+        },
+        {
+          type: 'paragraph',
+          text: "Removing or adding people in **Account managers** keeps everyone else in their position. Code, Opportunity, Net revenue/cost/margin, Created at, Next callback and Alert stay read-only.",
+        },
+      ],
+    },
+    {
       id: 'offer-and-cost-lines',
       title: 'Offer rows and cost rows',
       blocks: [

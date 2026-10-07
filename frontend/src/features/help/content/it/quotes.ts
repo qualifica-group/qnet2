@@ -89,6 +89,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'list-editing',
+      title: "Modifica rapida dall'elenco",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Un clic su una cella modificabile (Titolo, Stato, Commerciale, Segnalatore, Supervisore, Gestori account, Società, Società sede, Sede operativa) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+        },
+        {
+          type: 'note',
+          text: "Lo **Stato** offre solo gli stati del workflow dell'offerta e chiede la **nota** quando lo stato scelto la richiede. Cambiando la **Società** la Società sede si svuota; la Società sede si sceglie tra le sedi della società della riga. Cambiando un ruolo le commissioni delle righe si ricalcolano come dal dettaglio; un Titolo vuoto torna al titolo automatico.",
+        },
+        {
+          type: 'paragraph',
+          text: "Togliendo o aggiungendo persone nei **Gestori account** gli altri restano nella loro posizione. Restano in sola lettura Codice, Opportunità, Ricavo/Costo/Margine netto, Creato il, Prossimo richiamo e Avviso.",
+        },
+      ],
+    },
+    {
       id: 'offer-and-cost-lines',
       title: 'Righe offerta e righe di costo',
       blocks: [

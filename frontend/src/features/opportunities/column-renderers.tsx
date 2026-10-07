@@ -11,6 +11,7 @@ import {
   RelationCell,
 } from '@/features/table/rich-cells'
 import { OpportunityStatusCell } from '@/features/opportunities/opportunity-status-cell'
+import { ProductCategoriesCell } from '@/features/product-lines/product-categories-cell'
 import { UserCell, UserStackCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
@@ -24,10 +25,11 @@ import type { TableRendererMap } from '@/features/table/renderer-registry'
 export const OPPORTUNITY_STATUS_BADGE_CLASSES = BADGE_COLOR_CLASSES
 
 /**
- * Renders an AGGREGATED to-many column (`product_category`/`business_function`,
- * amendment rev.3): the backend maps these to a comma-joined string of the
- * opportunity's product-line names (or null), not a single `{id, name}` ref.
- * Truncated with a native tooltip when it overflows.
+ * Renders the AGGREGATED `business_function` column (amendment rev.3): a
+ * comma-joined string of the opportunity's product-line function names (or
+ * null), not a single `{id, name}` ref. Truncated with a native tooltip when
+ * it overflows. `product_category` carries the editable pairs instead (spec
+ * 0206 D-9) and renders through the shared ProductCategoriesCell.
  */
 function NamesCell({ value }: ICellRendererParams) {
   if (typeof value !== 'string' || value === '') {
@@ -103,7 +105,7 @@ export const opportunityColumnRenderers: TableRendererMap = {
   managers: (params) => <UserStackCell {...params} />,
   source: (params) => <RelationCell {...params} icon={Radio} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
-  product_category: (params) => <NamesCell {...params} />,
+  product_category: (params) => <ProductCategoriesCell {...params} />,
   business_function: (params) => <NamesCell {...params} />,
   products_of_interest: (params) => <RefNamesCell {...params} />,
   estimated_value: (params) => <CurrencyCell {...params} />,

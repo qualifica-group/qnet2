@@ -50,7 +50,21 @@ final class AplPracticeCatalogue
      * @var array<string, list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>>
      */
     public const array PREVIOUS_FORMS = [
+        AplInternshipAttributeCatalogue::CATEGORY => AplInternshipAttributeCatalogue::PREVIOUS_SECTIONS,
         AplOrientationAttributeCatalogue::CATEGORY => AplOrientationAttributeCatalogue::PREVIOUS_SECTIONS,
+    ];
+
+    /**
+     * Category name => the OFFERTA-context codes a previous revision assigned
+     * there and the catalogue no longer does, withdrawn from that category
+     * alone by QualificaQuoteLayoutSeeder: the assignments are additive, so
+     * dropping a code from a catalogue is otherwise a no-op on an installation
+     * already seeded.
+     *
+     * @var array<string, list<string>>
+     */
+    public const array RETIRED_ATTRIBUTES = [
+        AplInternshipAttributeCatalogue::CATEGORY => AplInternshipAttributeCatalogue::RETIRED_ATTRIBUTES,
     ];
 
     /**

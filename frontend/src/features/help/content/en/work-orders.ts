@@ -37,6 +37,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'list-editing',
+      title: "Quick editing from the list",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Clicking an editable cell (Title, Work order type, Callback date, Start date, Supervisors) edits it **directly in the list**, with the **same rules as the detail**: for example the Title, the Start date and at least one Supervisor are mandatory; an invalid value is refused and the cell goes back to its previous value.",
+        },
+        {
+          type: 'note',
+          text: "**Force closing** stays a row action (it asks for a reason), not a cell. Work order no., Contract no., Linked offer, Status, Completion, Created at and Updated at stay read-only.",
+        },
+      ],
+    },
+    {
       id: 'force-close',
       title: 'Forced closure and reopening',
       blocks: [

@@ -80,6 +80,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'list-editing',
+      title: "Quick editing from the list",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Clicking an editable cell (Name, Registry, Contact, Sales rep, Supervisor, Account managers, Source, Product category, Products of interest, Estimated value, Probability, Start date, Expected close date) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
+        },
+        {
+          type: 'note',
+          text: "Changing the **Registry** from the list clears the Contact and fills the **empty** roles (Sales rep, Reporter, Supervisor, Account managers) with the new registry's ones; roles already set stay as they were (the list does not ask for confirmation). The Contact is picked among the row's registry contacts; an empty Name goes back to the automatic title.",
+        },
+        {
+          type: 'paragraph',
+          text: "Removing or adding people in **Account managers** keeps everyone else in their position; newcomers take the first free slot. Operational site, Status (computed from the quotes), Business function (derived from the category) and Created at stay read-only.",
+        },
+      ],
+    },
+    {
       id: 'from-a-lead',
       title: 'Inheritance from a lead',
       blocks: [

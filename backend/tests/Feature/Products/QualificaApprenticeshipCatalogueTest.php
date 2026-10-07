@@ -62,9 +62,10 @@ it('gives the apprenticeships their own offer fields, cut off the APL root', fun
         // 8 practice/training fields + 11 UF x (done by us, reason, days).
         ->and($ownCodes)->toHaveCount(8 + 11 * 3);
 
-    // One "Decreto" attribute for every APL practice, not a copy per category.
+    // One "Decreto" attribute for every APL practice that keeps it, not a copy
+    // per category: the internships dropped it (user directive 2026-10-07).
     expect(Attribute::query()->where('code', 'decree_status')->sole()->categories()->pluck('name')->sort()->values()->all())
-        ->toBe(collect([AplInternshipAttributeCatalogue::CATEGORY, ApprenticeshipAttributeCatalogue::CATEGORY, AplOrientationAttributeCatalogue::CATEGORY])->sort()->values()->all());
+        ->toBe(collect([ApprenticeshipAttributeCatalogue::CATEGORY, AplOrientationAttributeCatalogue::CATEGORY])->sort()->values()->all());
 
     expect(Attribute::query()->where('code', 'company_training_capacity')->sole()->options()->count())->toBe(3)
         ->and(Attribute::query()->where('code', 'apprenticeship_y2_stage_reason')->sole()->options()->orderBy('sort_order')->pluck('label')->all())
@@ -104,10 +105,11 @@ it('lays the apprenticeship offer form out per UF, leaving the internship form a
     $internship = ProductCategory::query()->where('name', AplInternshipAttributeCatalogue::CATEGORY)->sole();
     $internshipSections = $layouts->resolveWithFallback($internship, AttributeContext::Quote, FormMode::Create)['sections'];
 
-    expect(array_column($internshipSections, 'title'))->toBe(['Stato pratica', 'Dati pratica'])
+    expect(array_column($internshipSections, 'title'))->toBe(['Testata', 'Dati tirocinio', 'Soggetto ospitante'])
         ->and(apprenticeshipSectionCodes($internshipSections))->toBe([
-            ['registers_status', 'decree_status', 'practice_start_date', 'practice_end_date'],
-            ['practice_number', 'reporting_id', 'decree_id'],
+            ['reporting_id', 'decree_id'],
+            ['internship_type', 'vacancy_code', 'inail_position_number', 'liability_policy_number', 'insurance_company', 'practice_start_date', 'practice_end_date'],
+            ['host_registry'],
         ]);
 });
 

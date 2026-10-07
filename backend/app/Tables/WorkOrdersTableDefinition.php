@@ -11,6 +11,7 @@ use App\Models\WorkOrder;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrderService;
+use App\Tables\WorkOrders\WorkOrderCellWriter;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
 use App\Tables\WorkOrders\WorkOrderDerivedColumns;
 use Illuminate\Database\Eloquent\Builder;
@@ -46,7 +47,23 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         private readonly WorkOrderService $service,
         private readonly WorkOrderStatusResolver $statusResolver,
         private readonly WorkOrderDerivedColumns $derivedColumns,
+        private readonly WorkOrderCellWriter $cellWriter,
     ) {}
+
+    /**
+     * Spec 0206, D-2: the inline cell edit follows the form's rules —
+     * UpdateWorkOrderRequest + WorkOrderService::update() through
+     * WorkOrderCellWriter, never the generic `$row->update()` (which could
+     * not sync `supervisor_ids` and would skip the form's own validation).
+     */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var WorkOrder $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+
+        return $this->cellWriter->write($row, $columnId, $value, $actor);
+    }
 
     public function domain(): string
     {

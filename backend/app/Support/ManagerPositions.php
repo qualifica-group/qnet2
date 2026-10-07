@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Illuminate\Database\Eloquent\Model;
+
 /**
  * Single source of truth for the "Gestore Account" position cap (spec 0080,
  * amendment A1, D2): the highest pivot `position` a `manager_slots` payload
@@ -75,6 +77,77 @@ final class ManagerPositions
         }
 
         return $positions;
+    }
+
+    /**
+     * The persisted team as `userId => position`, read off a `managers()`
+     * relation loaded with its pivot `position` — the input slotsFromIds()
+     * expects.
+     *
+     * @param  iterable<int, Model>  $managers
+     * @return array<int, int>
+     */
+    public static function positionsOf(iterable $managers): array
+    {
+        $positions = [];
+
+        foreach ($managers as $manager) {
+            $positions[(int) $manager->getKey()] = (int) $manager->getRelationValue('pivot')->getAttribute('position');
+        }
+
+        return $positions;
+    }
+
+    /**
+     * Turns a grid cell's plain list of people into the `manager_slots`
+     * payload, for a team model (spec 0206, D-3).
+     *
+     * @param  array<int, int|string>  $userIds
+     * @return array<int, int|null>
+     */
+    public static function slotsFor(Model $owner, array $userIds): array
+    {
+        $owner->loadMissing('managers');
+
+        return self::slotsFromIds(self::positionsOf($owner->getRelationValue('managers')), array_map('intval', $userIds));
+    }
+
+    /**
+     * The `manager_slots` payload for a grid cell that edits the team as a
+     * plain list of people (spec 0206, D-3): whoever stays keeps their
+     * position, whoever left frees theirs, and each newcomer takes the first
+     * free slot (or the next one after the last). Trailing empty slots are
+     * dropped; the result still goes through ValidatesManagerSlots.
+     *
+     * @param  array<int, int>  $currentPositions  userId => 1-based position, as persisted
+     * @param  array<int, int>  $userIds  the people the cell now holds
+     * @return array<int, int|null>
+     */
+    public static function slotsFromIds(array $currentPositions, array $userIds): array
+    {
+        $slots = [];
+
+        foreach ($currentPositions as $userId => $position) {
+            $slots[$position - 1] = in_array($userId, $userIds, true) ? $userId : null;
+        }
+
+        $slots = $slots === [] ? [] : array_replace(array_fill(0, max(array_keys($slots)) + 1, null), $slots);
+
+        foreach (array_diff($userIds, array_keys($currentPositions)) as $newcomer) {
+            $free = array_search(null, $slots, true);
+
+            if ($free === false) {
+                $slots[] = $newcomer;
+            } else {
+                $slots[$free] = $newcomer;
+            }
+        }
+
+        while ($slots !== [] && end($slots) === null) {
+            array_pop($slots);
+        }
+
+        return $slots;
     }
 
     /**

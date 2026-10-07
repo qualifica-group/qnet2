@@ -29,12 +29,15 @@ use App\Tables\Shared\ProductsOfInterestColumn;
  * no own name — sort/filter/distinct pass through its primary address
  * `line1`, delegated to the shared App\Tables\Shared\OperationalSiteColumn,
  * never the generic name-based DERIVED_RELATIONS mechanism) — sortable AND
- * filterable (set), but deliberately NOT declared `editable` (out of scope:
- * the field is edited from the form, never inline in the grid).
+ * filterable (set), but NOT `editable`: the form does not offer it either
+ * (spec 0198 D-2).
  *
- * `name` is NOT declared `editable` here: the title is edited from the form
- * only (spec 0171), where OpportunityNameWriter decides automatic vs manual;
- * the column stays sortable/filterable/searchable.
+ * Spec 0206: every column the form edits as a single field is
+ * inline-editable through OpportunityCellWriter (UpdateOpportunityRequest +
+ * OpportunityService) — `name` included (RETTIFICA 0171: the
+ * OpportunityNameWriter still decides automatic vs manual). `status`,
+ * `business_function` (derived from the product lines) and `created_at`
+ * stay read-only.
  */
 final class OpportunityColumnCatalog
 {
@@ -53,13 +56,20 @@ final class OpportunityColumnCatalog
                 'filterable' => true,
                 'filterType' => 'text',
                 'searchable' => true,
-                // Spec 0171: edited from the form only, never inline.
-                'editable' => false,
+                // Spec 0206, D-8: written by OpportunityNameWriter through the
+                // service (blank = back to the automatic title).
+                'editable' => true,
+                'nullable' => true,
             ],
-            self::derivedColumn('registry', 'opportunities.columns.registry'),
-            self::derivedColumn('referent', 'opportunities.columns.referent'),
-            self::derivedColumn('commercial', 'opportunities.columns.commercial'),
-            self::derivedColumn('supervisor', 'opportunities.columns.supervisor'),
+            [...self::derivedColumn('registry', 'opportunities.columns.registry'), ...self::editableRelation('registries', 'registry_id', nullable: false)],
+            [
+                ...self::derivedColumn('referent', 'opportunities.columns.referent'),
+                ...self::editableRelation('referents', 'referent_id'),
+                // As in the form, only the anagrafica's own referents (BR-4).
+                'relation' => ['resource' => 'referents', 'scope' => ['registry_id' => 'registry'], 'lockScope' => true],
+            ],
+            [...self::derivedColumn('commercial', 'opportunities.columns.commercial'), ...self::editableRelation('referents', 'commercial_id')],
+            [...self::derivedColumn('supervisor', 'opportunities.columns.supervisor'), ...self::editableRelation('users', 'supervisor_id')],
             // Account managers (opportunity_user pivot, to-many), rendered as an
             // avatar stack. Not sortable (a to-many value has no single sort
             // key); filterable via whereHas on the manager's name.
@@ -71,11 +81,21 @@ final class OpportunityColumnCatalog
                 'sortable' => false,
                 'filterable' => true,
                 'filterType' => 'set',
+                'editable' => true,
+                'editor' => 'multiselect',
+                'relation' => ['resource' => 'users'],
+                'editableField' => 'manager_slots',
             ],
-            self::derivedColumn('source', 'opportunities.columns.source'),
+            [...self::derivedColumn('source', 'opportunities.columns.source'), ...self::editableRelation('sources', 'source_id')],
             self::derivedColumn('operational_site', 'opportunities.columns.operationalSite'),
             OpportunityStatusColumn::declaration('opportunities.columns.status'),
-            self::aggregatedColumn('product_category', 'opportunities.columns.productCategory'),
+            [
+                ...self::aggregatedColumn('product_category', 'opportunities.columns.productCategory'),
+                // Spec 0206, D-9: the same two-step editor as Gestione Richieste.
+                'editable' => true,
+                'editor' => 'product_lines',
+                'editableField' => 'product_lines',
+            ],
             self::aggregatedColumn('business_function', 'opportunities.columns.businessFunction'),
             ProductsOfInterestColumn::declaration('opportunities.columns.productsOfInterest'),
             [
@@ -86,11 +106,8 @@ final class OpportunityColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'number',
-                // Inline cell-editing (spec 0053): real, fillable, nullable
-                // column; mirrors UpdateOpportunityRequest's own bounds.
                 'editable' => true,
                 'nullable' => true,
-                'rules' => ['min:0', 'max:9999999999999.99'],
             ],
             [
                 'id' => 'success_probability',
@@ -100,11 +117,8 @@ final class OpportunityColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'number',
-                // Inline cell-editing (spec 0053): real, fillable, nullable
-                // column; mirrors UpdateOpportunityRequest's own bounds.
                 'editable' => true,
                 'nullable' => true,
-                'rules' => ['between:0,100'],
             ],
             [
                 'id' => 'start_date',
@@ -114,8 +128,6 @@ final class OpportunityColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'date',
-                // Inline cell-editing (spec 0053): real, fillable, nullable
-                // column, not mandatory in OpportunitiesAuthorization.
                 'editable' => true,
                 'nullable' => true,
             ],
@@ -127,7 +139,6 @@ final class OpportunityColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'date',
-                // Inline cell-editing (spec 0053): real, fillable, nullable column.
                 'editable' => true,
                 'nullable' => true,
             ],
@@ -140,6 +151,23 @@ final class OpportunityColumnCatalog
                 'filterable' => true,
                 'filterType' => 'date',
             ],
+        ];
+    }
+
+    /**
+     * Spec 0206: the inline-editing keys of a single-id relation column —
+     * `editableField` is the form's own key, written through
+     * OpportunityCellWriter.
+     *
+     * @return array<string, mixed>
+     */
+    private static function editableRelation(string $resource, string $editableField, bool $nullable = true): array
+    {
+        return [
+            'editable' => true,
+            'relation' => ['resource' => $resource],
+            'editableField' => $editableField,
+            'nullable' => $nullable,
         ];
     }
 

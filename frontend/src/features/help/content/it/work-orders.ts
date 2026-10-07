@@ -37,6 +37,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'list-editing',
+      title: "Modifica rapida dall'elenco",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Un clic su una cella modificabile (Titolo, Tipo commessa, Data richiamo, Data inizio, Responsabili) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: per esempio il Titolo, la Data inizio e almeno un Responsabile sono obbligatori; un valore non valido viene rifiutato e la cella torna al valore di prima.",
+        },
+        {
+          type: 'note',
+          text: "La **Chiusura forzata** resta un'azione di riga (chiede il motivo), non una cella. Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Stato, Completamento, Creata il e Aggiornata il.",
+        },
+      ],
+    },
+    {
       id: 'force-close',
       title: 'Chiusura forzata e riapertura',
       blocks: [

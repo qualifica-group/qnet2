@@ -99,6 +99,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'list-editing',
+      title: "Modifica rapida dall'elenco",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Un clic su una cella modificabile (Fonte, Fornitore, Stato convenzione, Classe dimensionale, Commerciale, Supervisore, Segnalatore, Operatori) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+        },
+        {
+          type: 'note',
+          text: "Togliendo la spunta **Fornitore** si toglie anche Fornitore qualificato, come dal dettaglio. Togliendo o aggiungendo persone negli **Operatori** gli altri restano nella loro posizione. Il **Nome** deriva dai dati anagrafici e si cambia dal dettaglio; Contatto principale e Creato il restano in sola lettura.",
+        },
+      ],
+    },
+    {
       id: 'registry-documents',
       title: "Documenti dell'anagrafica",
       blocks: [

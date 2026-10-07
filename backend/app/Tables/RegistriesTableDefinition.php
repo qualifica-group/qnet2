@@ -4,11 +4,13 @@ namespace App\Tables;
 
 use App\Models\Registry;
 use App\Models\User;
+use App\Tables\Registries\RegistryCellWriter;
 use App\Tables\Registries\RegistryColumnCatalog;
 use App\Tables\Registries\RegistryRelationColumns;
 use App\Tables\Shared\PrimaryContactColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -31,10 +33,37 @@ use Illuminate\Support\Facades\Gate;
  */
 class RegistriesTableDefinition extends AbstractTableDefinition
 {
+    /** Real enum columns whose id is also their config enum key (config/config.php). */
+    private const array ENUM_COLUMNS = ['agreement_status', 'size_class'];
+
     public function __construct(
         private readonly PrimaryContactColumn $contactColumn,
         private readonly RegistryRelationColumns $relationColumns,
+        private readonly RegistryCellWriter $cellWriter,
     ) {}
+
+    /**
+     * Spec 0206: the enum editors of `agreement_status`/`size_class` label
+     * their options from the same config enums the form's selects read.
+     */
+    protected function enumKeyFor(string $columnId, User $actor): ?string
+    {
+        return in_array($columnId, self::ENUM_COLUMNS, true) ? $columnId : null;
+    }
+
+    /**
+     * Spec 0206, D-2: the inline cell edit follows the form's rules —
+     * UpdateRegistryRequest + RegistryService::update() through
+     * RegistryCellWriter, never the generic `$row->update()`.
+     */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var Registry $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+
+        return $this->cellWriter->write($row, $columnId, $value, $actor);
+    }
 
     public function domain(): string
     {

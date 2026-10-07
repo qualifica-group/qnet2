@@ -80,6 +80,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'list-editing',
+      title: "Modifica rapida dall'elenco",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Un clic su una cella modificabile (Nome, Anagrafica, Referente, Commerciale, Supervisore, Gestori account, Fonte, Categoria prodotto, Prodotti di interesse, Valore stimato, Probabilità, Data inizio, Data chiusura prevista) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+        },
+        {
+          type: 'note',
+          text: "Cambiando l'**Anagrafica** dall'elenco il Referente si svuota e i ruoli **vuoti** (Commerciale, Segnalatore, Supervisore, Gestori account) prendono quelli della nuova anagrafica; i ruoli già compilati restano com'erano (dall'elenco non c'è la richiesta di conferma). Il Referente si sceglie tra quelli dell'anagrafica della riga; un Nome vuoto torna al titolo automatico.",
+        },
+        {
+          type: 'paragraph',
+          text: "Togliendo o aggiungendo persone nei **Gestori account** gli altri restano nella loro posizione; i nuovi occupano il primo posto libero. Restano in sola lettura Sede operativa, Stato (calcolato dalle offerte), Funzione aziendale (deriva dalla categoria) e Creato il.",
+        },
+      ],
+    },
+    {
       id: 'from-a-lead',
       title: 'Ereditarietà da un lead',
       blocks: [

@@ -16,6 +16,7 @@ use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\AplOrientationAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\ApprenticeshipAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Database\Seeders\QualificaQuoteLayoutSeeder;
@@ -151,25 +152,25 @@ it('turns a section an earlier revision seeded grey white, never one edited by h
     test()->seed(QualificaCatalogSeeder::class);
 
     $layouts = app(AttributeLayoutService::class);
-    $internship = ProductCategory::query()->where('name', AplInternshipAttributeCatalogue::CATEGORY)->sole();
-    $seeded = $layouts->resolveExact($internship, AttributeContext::Quote, LayoutFormScope::All);
+    $apprenticeship = ProductCategory::query()->where('name', ApprenticeshipAttributeCatalogue::CATEGORY)->sole();
+    $seeded = $layouts->resolveExact($apprenticeship, AttributeContext::Quote, LayoutFormScope::All);
 
-    // The blob the previous revision wrote: today's, its header highlighted.
+    // The blob the previous revision wrote: today's, its first section highlighted.
     $grey = $seeded;
     $grey['sections'][0]['variant'] = 'highlighted';
-    $layouts->upsert($internship, AttributeContext::Quote, LayoutFormScope::All, $grey);
+    $layouts->upsert($apprenticeship, AttributeContext::Quote, LayoutFormScope::All, $grey);
 
     test()->seed(QualificaQuoteLayoutSeeder::class);
 
-    expect($layouts->resolveExact($internship, AttributeContext::Quote, LayoutFormScope::All))->toBe($seeded);
+    expect($layouts->resolveExact($apprenticeship, AttributeContext::Quote, LayoutFormScope::All))->toBe($seeded);
 
     // Grey AND renamed: a human's work, left exactly as it is.
     $handEdited = $grey;
     $handEdited['sections'][0]['title'] = 'Rinominata a mano';
-    $layouts->upsert($internship, AttributeContext::Quote, LayoutFormScope::All, $handEdited);
+    $layouts->upsert($apprenticeship, AttributeContext::Quote, LayoutFormScope::All, $handEdited);
 
     test()->seed(QualificaQuoteLayoutSeeder::class);
 
-    expect($layouts->resolveExact($internship, AttributeContext::Quote, LayoutFormScope::All)['sections'][0])
+    expect($layouts->resolveExact($apprenticeship, AttributeContext::Quote, LayoutFormScope::All)['sections'][0])
         ->toMatchArray(['title' => 'Rinominata a mano', 'variant' => 'highlighted']);
 });
