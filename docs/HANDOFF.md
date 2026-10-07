@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## RIGHE PRODOTTO DI CONTRATTI, COMMESSE, GESTIONE RICHIESTE (STESSE REGOLE OFFERTE) — VERDE, COMMITTATO (2026-10-07)
+
+- Regola comune: min-width del wrapper = tracce + 8px*gap + 16px (`px-2`), icone `icon-sm` con `mt-0.5` sulle righe
+  `items-start` con input h-9, dialog con lista lunga = flex-col + `max-h-[85vh]` + corpo `min-h-0 flex-1 overflow-y-auto`.
+- Commesse: `work-order-costs/work-order-cost-row.tsx` `COST_ROW_MIN_WIDTH_CLASS` 1180 -> 1284, cestino `mt-0.5`.
+- Contratti: `contract-program-lines-table.tsx` min-w 560 -> 598; `contract-program-dialog.tsx` ora con altezza massima,
+  header/footer fissi e corpo scorrevole (prima, con molte righe, usciva dallo schermo). Righe del dettaglio contratto
+  gia' corrette via `QuoteLinesReadOnlyList` condiviso.
+- Gestione Richieste: `offer-lines-dialog.tsx` stesso fix di scroll del popup commissioni; righe del pannello gia'
+  corrette via `QuoteLinesField` condiviso.
+- Verificato: tabella "Dati contrattuali" della commessa e' una `<table>` reale, gia' corretta (nessuna modifica).
+- Screenshot Playwright di contratto 20, commessa 32 (Costi effettivi), richiesta 44, scrollati a destra: ok.
+  Vitest completo 7012/7012, `tsc -b --force` 0, ESLint pulito. Manuale: nessun impatto (solo layout).
+
 ## OFFERTE: RIGHE PRODOTTO, DATI AVANZATI, POPUP COMMISSIONI — VERDE, COMMITTATO (2026-10-07)
 
 - Header righe spezzato allo scroll: i `min-w-[...]` erano piu' stretti della somma colonne+gap+`px-2` -> la griglia

@@ -68,7 +68,8 @@ export function ContractProgramLinesTable({
 
   return (
     <div className={LINE_TABLE_SCROLL_CLASS}>
-      <div className="min-w-[560px] text-xs">
+      {/* Tracks + gaps + the rows' `px-2`: narrower, the header's tint stops mid-row when scrolled. */}
+      <div className="min-w-[598px] text-xs">
         <div className={`${LINES_GRID_CLASS} items-center border-b bg-muted/40 px-2 py-1.5 font-medium text-muted-foreground`}>
           <span className="sr-only">{t('contracts.actions.programDialog.lineSelectHeader')}</span>
           <span>{t('contracts.actions.programDialog.lineProductHeader')}</span>
