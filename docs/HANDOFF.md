@@ -3,6 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GRIGLIE OFFERTE/COMMESSE/ANAGRAFICHE/OPPORTUNITA': OGNI COLONNA EDITABILE IN CELLA CON LE REGOLE DEL FORM — VERDE, COMMITTATO (2026-10-07)
+
+- Spec `docs/specs/0206-main-modules-grid-inline-editing.xml` (decisioni utente: cambio Anagrafica opportunita' in
+  cella = azzera Referente + riempie solo i ruoli VUOTI; "Chiusura forzata" commessa resta azione di riga).
+- Regola: cella editabile sse il form la edita come campo singolo. Scrittura = STESSA FormRequest di update + STESSO
+  service: nuovo `Services/Table/FormRequestCellValidator` (costruisce la FormRequest con payload JSON della sola
+  cella, attore, riga come parametro di rotta, `validateResolved()`), writer per dominio `WorkOrderCellWriter`,
+  `RegistryCellWriter`, `QuoteCellWriter`, `OpportunityCellWriter` chiamati da `updateCell()` (Offerte via trait
+  `Tables/Quotes/Concerns/WritesQuoteCells`: `QuotesTableDefinition` e' a 499 righe, va splittata alla prossima modifica).
+- Gestori (`managers` -> `manager_slots`): cella multiselect di persone; `ManagerPositions::slotsFor/slotsFromIds/
+  positionsOf` conservano le posizioni di chi resta, i nuovi nel primo slot libero.
+- `RelationValueScopeChecker` + `referents`, `companies`, `company-sites`. `CellValueValidator::typeRules` usa
+  l'`editor` scalare se dichiarato (registries `is_supplier` editor boolean, `agreement_status`/`size_class` editor
+  enum con `enumKey`), cosi' `type`/filtri restano invariati.
+- Offerte: stato = editor `select` notable (catalogo condiviso `Tables/Shared/QuoteWorkflowStatusOptions`, usato
+  anche da Gestione Richieste) + `quote_workflow_status_options` per riga (eager load offerLines.product.category,
+  opportunity.productLines/customFieldValueRow); cambio Societa' azzera la Sede societa'; sede scoped su `company`.
+- Opportunita': `name` ora editabile (RETTIFICA 0171, passa da OpportunityNameWriter); `product_category` = coppie
+  (`Tables/Shared/ProductLinePairsColumn`, estratto da RequestRowMapper) con editor `product_lines`; FE renderer
+  condiviso `features/product-lines/product-categories-cell.tsx`. Tolte le `rules` di catalogo duplicate del form.
+- Export: una lista di riepiloghi in una colonna non-tags esce come nomi separati da `; ` (prima JSON).
+- Test: 4 nuovi `*GridInlineEditTest` (27 test); RETTIFICA requisito in `OpportunityTableTest` (AC-105) e
+  `opportunities/column-renderers.test.tsx` (product_category a coppie). Backend completo 9457/9459 (1 skipped;
+  1 fallimento intermittente preesistente `DemoOpportunitySeederTest` multi-line, verde 3/3 isolato), Vitest
+  7012/7012, `tsc -b --force` 0, ESLint pulito, Pint ok. Guide in-app IT/EN (sezione `list-editing`) dei 4 moduli.
+- Manuale Claude Docs NON aggiornato (doc non accessibile): sezioni Opportunita', Offerte, Commesse, Anagrafiche ->
+  "Modifica rapida dall'elenco".
+- Da verificare a mano nel browser (non fatto): editor nelle quattro griglie. Nota preesistente: le date in riga
+  arrivano ISO (Carbon), l'editor `date` le mostra vuote all'apertura (stesso comportamento gia' nei Task).
+
 ## APL TIROCINIO: MODULO OFFERTA RIVISTO (SOGGETTO OSPITANTE, VIA REGISTRI/DECRETO/NUMERO PRATICA) — VERDE, NON COMMITTATO (2026-10-07)
 
 - Direttiva utente 2026-10-07 su "Tirocinio" (`AplInternshipAttributeCatalogue`): Tutor scartato; il tirocinante e'
