@@ -10,7 +10,6 @@ import {
   QuoteLinesLiveSummary,
   QuoteOfferLinesEditor,
 } from '@/features/quotes/quote-lines-editors'
-import { QuoteProductMargins } from '@/features/quotes/quote-product-margins'
 import {
   computeProductMargins,
   costLinesFromPersistedCostLines,
@@ -50,23 +49,18 @@ function PersistedLinesSummary({ quote }: { quote: QuoteDetailWithPermissions })
   )
 
   return (
-    <>
-      <QuoteSummary
-        totals={totalsFromPersistedSummary(quote.summary)}
-        commissionTotals={{
-          commercial: Number(quote.summary.commissions?.commercial ?? 0),
-          reporter: Number(quote.summary.commissions?.reporter ?? 0),
-          supervisor: Number(quote.summary.commissions?.supervisor ?? 0),
-          supplier: Number(quote.summary.commissions?.supplier ?? 0),
-        }}
-        typologyBuckets={typologyBucketsFromPersistedSummary(quote.summary)}
-      />
-      <QuoteProductMargins
-        rows={productMargins.rows}
-        genericCostNet={productMargins.genericCostNet}
-        showCommissions={showCommissions}
-      />
-    </>
+    <QuoteSummary
+      totals={totalsFromPersistedSummary(quote.summary)}
+      commissionTotals={{
+        commercial: Number(quote.summary.commissions?.commercial ?? 0),
+        reporter: Number(quote.summary.commissions?.reporter ?? 0),
+        supervisor: Number(quote.summary.commissions?.supervisor ?? 0),
+        supplier: Number(quote.summary.commissions?.supplier ?? 0),
+      }}
+      typologyBuckets={typologyBucketsFromPersistedSummary(quote.summary)}
+      productMargins={productMargins}
+      showProductMargins={showCommissions}
+    />
   )
 }
 

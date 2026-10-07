@@ -368,6 +368,10 @@ describe('QuoteDetailView — Margine per prodotto', () => {
     })
     renderDetail(<QuoteDetailView quote={quote} />)
 
+    // User directive 2026-10-07: collapsed inside the summary until asked for.
+    expect(screen.queryByText('Margin per product')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show advanced data' }))
+
     expect(screen.getByText('Margin per product')).toBeInTheDocument()
     expect(screen.getByText('70.00')).toBeInTheDocument() // 100.00 - 30.00
     expect(screen.getByText('Generic costs')).toBeInTheDocument()
@@ -382,11 +386,13 @@ describe('QuoteDetailView — Margine per prodotto', () => {
       },
     })
     renderDetail(<QuoteDetailView quote={quote} />)
+    expect(screen.queryByRole('button', { name: 'Show advanced data' })).not.toBeInTheDocument()
     expect(screen.queryByText('Margin per product')).not.toBeInTheDocument()
   })
 
   it('hides the block when the offer has no product row', () => {
     renderDetail(<QuoteDetailView quote={quoteFixture()} />)
+    expect(screen.queryByRole('button', { name: 'Show advanced data' })).not.toBeInTheDocument()
     expect(screen.queryByText('Margin per product')).not.toBeInTheDocument()
   })
 

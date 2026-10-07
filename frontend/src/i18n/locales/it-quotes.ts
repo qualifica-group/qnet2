@@ -230,6 +230,8 @@ export const quotes = {
       productTypologies: 'Riepilogo per Tipologia Prodotto',
       noProductTypologies: 'Nessuna tipologia prodotto configurata.',
       roles: { commercial: 'Commerciale', reporter: 'Segnalatore', supervisor: 'Supervisore', supplier: 'Fornitore' },
+      showAdvanced: 'Mostra dati avanzati',
+      hideAdvanced: 'Nascondi dati avanzati',
       productMargins: {
         title: 'Margine per prodotto',
         genericCosts: 'Costi generici',
@@ -303,7 +305,29 @@ export const quotes = {
       regenerateDescription: 'Il cambio prodotto sostituisce sia le commissioni automatiche sia le modifiche manuali della riga.',
       regenerateConfirm: 'Sostituisci commissioni',
       roles: { COMMERCIAL: 'Commerciale', REPORTER: 'Segnalatore', SUPERVISOR: 'Supervisore', SUPPLIER: 'Fornitore' },
+      originRule: 'Regola:',
+      originHints: {
+        PRODUCT: 'Calcolata dalla regola del Configuratore Commissioni impostata su questo prodotto.',
+        PRODUCT_CATEGORY: 'Calcolata dalla regola del Configuratore Commissioni impostata sulla categoria del prodotto.',
+        RECIPIENT: 'Calcolata dalla regola del Configuratore Commissioni impostata su questo destinatario.',
+        MANUAL_OVERRIDE: 'Valore cambiato a mano su questa riga: non segue più le regole del Configuratore Commissioni.',
+      },
       origins: { PRODUCT: 'Prodotto', PRODUCT_CATEGORY: 'Categoria', RECIPIENT: 'Regola personale', MANUAL_OVERRIDE: 'Modifica manuale' },
+      base: {
+        lineNet: 'Imponibile riga',
+        allocatedCost: 'Costi imputati',
+        base: 'Base di calcolo',
+        total: 'Totale commissioni',
+      },
+      columns: { role: 'Ruolo e destinatario', amount: 'Importo' },
+      typeShort: { PERCENTAGE: '%', FIXED_AMOUNT: '€' },
+      addNote: 'Aggiungi nota',
+      systemDefault: {
+        label: 'Calcolo di sistema',
+        none: 'Il Configuratore Commissioni non prevede commissioni per questo ruolo.',
+        inUse: 'In uso',
+        apply: 'Applica calcolo di sistema',
+      },
     },
   },
 }

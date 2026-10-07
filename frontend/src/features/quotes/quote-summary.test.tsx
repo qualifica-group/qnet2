@@ -66,13 +66,9 @@ describe('QuoteLiveSummary (spec 0065 AC-071)', () => {
   it('renders the initial revenue net/vat/gross and margin from the seeded rows', () => {
     render(<Harness />)
 
-    // Spec 0144: with a single (generic-cost) product row, its own "Margine
-    // per prodotto" net/margin cells are numerically IDENTICAL to the
-    // aggregate revenue net (both read straight off the one row) — 3 nodes,
-    // not 1: the aggregate card, the margin block's revenue cell and its
-    // margin cell (the cost stays generic, so the row's own margin equals
-    // its own revenue).
-    expect(screen.getAllByText('10.00')).toHaveLength(3)
+    // The "Margine per prodotto" block is collapsed by default (user
+    // directive 2026-10-07): only the aggregate card carries the net.
+    expect(screen.getByText('10.00')).toBeInTheDocument()
     expect(screen.getByText('2.20')).toBeInTheDocument() // revenue vat
     expect(screen.getByText('12.20')).toBeInTheDocument() // revenue gross
     expect(screen.getByText('7.00')).toBeInTheDocument() // margin: 10.00 - 3.00
@@ -86,7 +82,7 @@ describe('QuoteLiveSummary (spec 0065 AC-071)', () => {
 
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Quantity' }), { target: { value: '3' } })
 
-    expect(screen.getAllByText('30.00')).toHaveLength(3) // see comment above
+    expect(screen.getByText('30.00')).toBeInTheDocument() // see comment above
     expect(screen.getByText('6.60')).toBeInTheDocument() // revenue vat
     expect(screen.getByText('27.00')).toBeInTheDocument() // margin: 30.00 - 3.00
     expect(getSpy).not.toHaveBeenCalled()
@@ -96,12 +92,19 @@ describe('QuoteLiveSummary (spec 0065 AC-071)', () => {
     postSpy.mockRestore()
   })
 
-  // Spec 0144 AC-015: the block sits right below the aggregate summary,
-  // showing the generic cost bucket for a cost the seeded fixture never
-  // associates.
-  it('renders the Margin per product block with a generic-cost row', () => {
+  // Spec 0144 AC-015: the block sits inside the summary, behind the "advanced
+  // data" toggle (user directive 2026-10-07), showing the generic cost bucket
+  // for a cost the seeded fixture never associates.
+  it('renders the Margin per product block with a generic-cost row once advanced data is shown', () => {
     render(<Harness />)
 
+    const toggle = screen.getByRole('button', { name: 'Show advanced data' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Margin per product')).not.toBeInTheDocument()
+
+    fireEvent.click(toggle)
+
+    expect(screen.getByRole('button', { name: 'Hide advanced data' })).toHaveAttribute('aria-expanded', 'true')
     const marginsTable = within(screen.getByRole('table'))
     expect(screen.getByText('Margin per product')).toBeInTheDocument()
     expect(marginsTable.getByText('Generic costs')).toBeInTheDocument()
@@ -206,9 +209,9 @@ describe('QuoteLiveSummary — commissions on margin (spec 0145 AC-010)', () => 
   it('bases the live commission on the row net minus its imputed cost, and nets the margin by it', () => {
     render(<CommissionHarness />)
 
-    // Scoped to each card: the "Margine per prodotto" block below renders the
-    // SAME two numbers on this single-row fixture (a row fully covered by its
-    // own imputed cost), so an unscoped query would be ambiguous.
+    // Scoped to each card: the "Margine per prodotto" block, once expanded,
+    // renders the SAME two numbers on this single-row fixture (a row fully
+    // covered by its own imputed cost), so an unscoped query would be ambiguous.
     const commissionsCard = screen.getByText(i18n.t('quotes.form.summary.commissions')).closest('div')!.parentElement!
     const marginCard = screen.getByText(i18n.t('quotes.form.summary.margin')).closest('div')!.parentElement!
 

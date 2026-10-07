@@ -104,6 +104,24 @@ export interface QuoteCommissionDefaults {
   supplier_commission_direction: SupplierCommissionDirection | null
 }
 
+/**
+ * Query key of a line's system-calculated commissions, as the commissions
+ * dialog shows them beside the row's own (possibly overridden) ones. Keyed on
+ * every input the server's rules resolve against.
+ */
+export function quoteCommissionDefaultsQueryKey(payload: QuoteCommissionDefaultsPayload) {
+  return [
+    'quotes',
+    'commission-defaults',
+    payload.quote_id ?? null,
+    payload.product_id,
+    payload.line_net_amount,
+    payload.commercial_id ?? null,
+    payload.reporter_id ?? null,
+    payload.supervisor_id ?? null,
+  ] as const
+}
+
 export async function fetchQuoteCommissionDefaults(
   payload: QuoteCommissionDefaultsPayload,
 ): Promise<QuoteCommissionDefaults> {

@@ -229,6 +229,8 @@ export const quotes = {
       productTypologies: 'Product Typology Summary',
       noProductTypologies: 'No product typology configured.',
       roles: { commercial: 'Commercial', reporter: 'Reporter', supervisor: 'Supervisor', supplier: 'Supplier' },
+      showAdvanced: 'Show advanced data',
+      hideAdvanced: 'Hide advanced data',
       productMargins: {
         title: 'Margin per product',
         genericCosts: 'Generic costs',
@@ -302,7 +304,29 @@ export const quotes = {
       regenerateDescription: 'Changing the product replaces both automatic commissions and manual overrides on this line.',
       regenerateConfirm: 'Replace commissions',
       roles: { COMMERCIAL: 'Commercial', REPORTER: 'Reporter', SUPERVISOR: 'Supervisor', SUPPLIER: 'Supplier' },
+      originRule: 'Rule:',
+      originHints: {
+        PRODUCT: 'Calculated by the Commission Configurator rule set on this product.',
+        PRODUCT_CATEGORY: "Calculated by the Commission Configurator rule set on the product's category.",
+        RECIPIENT: 'Calculated by the Commission Configurator rule set on this recipient.',
+        MANUAL_OVERRIDE: 'Value changed by hand on this line: it no longer follows the Commission Configurator rules.',
+      },
       origins: { PRODUCT: 'Product', PRODUCT_CATEGORY: 'Category', RECIPIENT: 'Personal rule', MANUAL_OVERRIDE: 'Manual override' },
+      base: {
+        lineNet: 'Line net',
+        allocatedCost: 'Imputed costs',
+        base: 'Calculation base',
+        total: 'Total commissions',
+      },
+      columns: { role: 'Role and recipient', amount: 'Amount' },
+      typeShort: { PERCENTAGE: '%', FIXED_AMOUNT: '€' },
+      addNote: 'Add note',
+      systemDefault: {
+        label: 'System calculation',
+        none: 'The Commission Configurator grants no commission for this role.',
+        inUse: 'In use',
+        apply: 'Apply system calculation',
+      },
     },
   },
 }

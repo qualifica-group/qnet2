@@ -3,6 +3,39 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## OFFERTE: RIGHE PRODOTTO, DATI AVANZATI, POPUP COMMISSIONI — VERDE, COMMITTATO (2026-10-07)
+
+- Header righe spezzato allo scroll: i `min-w-[...]` erano piu' stretti della somma colonne+gap+`px-2` -> la griglia
+  sforava il wrapper e la tinta dell'header si fermava. Ricalcolati in `quote-line-grid.ts` (1180/1136/1304/776/732) e
+  `quote-lines-read-only.tsx` (1138/1306). Regola: min-w = tracce + 8px*gap + 16px. Se cambi una colonna, ricalcola.
+- Icona commissioni disallineata: riga read-only `items-center`; riga in modifica bottoni `icon-sm` con `mt-0.5`
+  (centrati sugli input h-9).
+- "Margine per prodotto" spostato DENTRO `QuoteSummary` (nuove prop `productMargins`, `showProductMargins`), chiuso di
+  default dietro il toggle "Mostra dati avanzati" (aria-expanded). Card ora `bg-card` (sta su `bg-surface`).
+  `QuoteLiveSummary` e `PersistedLinesSummary` passano i dati; niente piu' `QuoteProductMargins` standalone.
+- Popup commissioni: `DialogContent` flex-col (era grid: la riga `auto` cresceva oltre `max-h` e il contenuto usciva);
+  corpo `min-h-0 flex-1 overflow-y-auto`. STESSO DIFETTO NON CORRETTO in `request-management/offer-lines-dialog.tsx`.
+- Popup commissioni (solo modificabile): per ogni ruolo "Calcolo di sistema" da `POST /quotes/commission-defaults`
+  (nuovo `quoteCommissionDefaultsQueryKey`), componente `quote-commission-system-default.tsx`; "Applica calcolo di
+  sistema" sostituisce l'override mantenendo `id` e nota. Read-only: non mostrato (l'endpoint esige update+commissions
+  editable).
+- Popup commissioni RIFATTO (richiesta utente "come i migliori CRM"): logica in `use-quote-commissions-draft.ts`
+  (bozza, query destinatari/default, patch/add/applySystemDefault/remove, canSave, totali); riga ruolo in
+  `quote-commission-role-row.tsx` (icona ruolo, destinatario, badge origine, SegmentedControl %/EUR, valore con suffisso,
+  importo, cestino; nota apribile con "Aggiungi nota"; in sola lettura valori in chiaro, non controlli disabilitati);
+  `quote-commissions-dialog.tsx` = guscio size "lg" con striscia KPI (imponibile riga, costi imputati, base, totale).
+  Nomi accessibili invariati (Recipient/Value/Calculated amount/Remove commission/...). Verificato con screenshot
+  Playwright 1440 e 390 px (token Sanctum temporaneo creato e poi eliminato).
+- Badge origine: `quote-commission-origin-badge.tsx` -> "Regola: Prodotto"/"Regola: Categoria" (prefisso solo per questi due),
+  "Regola personale" e "Modifica manuale" invariati (AC-017); tooltip `originHints.*`, focusabile da tastiera. Test dedicato.
+- i18n popup: `quotes.form.commissions.{base.*,columns.*,typeShort.*,addNote,originRule,originHints.*}` (IT/EN).
+- i18n: `quotes.form.summary.{showAdvanced,hideAdvanced}`, `quotes.form.commissions.systemDefault.*` (IT/EN).
+- Test: RETTIFICA requisito in `quote-summary.test.tsx`/`quote-detail.test.tsx` (blocco chiuso di default);
+  3 nuovi test in `quote-commissions-dialog.test.tsx`. Vitest completo 7010/7010, `tsc -b --force` 0, ESLint pulito
+  sui file toccati (errore preesistente in `quotes/column-renderers.tsx`).
+- Guide in-app IT/EN (quotes) aggiornate. Manuale Claude Docs NON aggiornato (doc non accessibile): sezione Offerte
+  -> riepilogo/Margine per prodotto e Commissioni di riga.
+
 ## NOTE GENERALI/INTERNE NELLO STILE DI GESTIONE RICHIESTE (Opportunita', Commesse, Offerte) — VERDE, NON COMMITTATO (2026-10-07)
 
 - Richiesta utente: note generali/interne di Opportunita', Commesse e Offerte con lo stesso stile di Gestione Richieste.

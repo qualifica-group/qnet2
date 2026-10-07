@@ -106,7 +106,7 @@ const guide: HelpGuide = {
             'On the **Offer** tab, pick only **Sellable** products (proposed price: sale price); on the **Costs** tab, only products **Usable as a cost** (proposed price: cost).',
             'Once a product is chosen, QNet prefills unit, price and VAT: you can edit them.',
             '**Additional description** adds text to the row, printable on the quote document.',
-            "Each row's **Commissions** can only be opened and changed for that row.",
+            "Each row's **Commissions** can only be opened and changed for that row. The popup shows the line net, imputed costs, calculation base and total commissions at the top; each role carries a label with the commission's origin (**Rule: Product**, **Rule: Category** or **Personal rule** when it comes from a Configurator rule, **Manual override** when it was changed by hand; hovering the label explains it). While editing, every role also shows the **System calculation** (what the Commission Configurator grants): if you changed the value by hand you can keep it or go back to the calculation with **Apply system calculation**.",
             'Every cost row has an **Associated product**: pick "None (generic cost)" or a row from the Products tab to attribute that cost to that sale. Deleting the associated product row sends the cost back to "None" automatically.',
             'At most 200 rows per tab.',
           ],
@@ -117,7 +117,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The summary shows, in this order, **Expected revenue**, **Expected cost**, the **Commission Summary** and the **Expected margin** (sum of the line margins minus generic costs: a line with a **received** Supplier commission has the commission alone as revenue, the others are net amount minus costs and paid commissions; **Expected revenue** does not change), plus the **Product Typology Summary**. Percentage commissions are calculated on the product row\'s own margin (its net revenue minus the costs imputed to it, never below zero): the **Margin per product** block shows revenue, imputed cost, commissions and margin for each product row (lines with a received commission carry the note "revenue = received commission"), plus a "Generic costs" row for unattributed costs. This block is visible only to users who can see commissions.',
+          text: 'The summary shows, in this order, **Expected revenue**, **Expected cost**, the **Commission Summary** and the **Expected margin** (sum of the line margins minus generic costs: a line with a **received** Supplier commission has the commission alone as revenue, the others are net amount minus costs and paid commissions; **Expected revenue** does not change), plus the **Product Typology Summary**. Percentage commissions are calculated on the product row\'s own margin (its net revenue minus the costs imputed to it, never below zero): the **Margin per product** block shows revenue, imputed cost, commissions and margin for each product row (lines with a received commission carry the note "revenue = received commission"), plus a "Generic costs" row for unattributed costs. The block opens with **Show advanced data**, under the summary cards, and is visible only to users who can see commissions.',
         },
         {
           type: 'warning',

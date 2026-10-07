@@ -33,7 +33,7 @@ export function QuoteProductMargins({ rows, genericCostNet, showCommissions = tr
   }
 
   return (
-    <div className="rounded-lg border bg-surface p-3">
+    <div className="rounded-md border bg-card p-3">
       <div id={titleId} className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-foreground">
         <Calculator aria-hidden="true" className="size-3.5" />
         {t('quotes.form.summary.productMargins.title')}

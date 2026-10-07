@@ -1,15 +1,17 @@
 /* eslint-disable react-refresh/only-export-components -- small formatting/mapping helpers (`formatQuoteAmount`/`totalsFromPersistedSummary`) shared by the row editor and the read-only detail view, colocated with the summary component they feed */
-import { useMemo } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Control } from 'react-hook-form'
-import { HandCoins, Shapes, TrendingDown, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
+import { ChevronDown, HandCoins, Shapes, TrendingDown, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
 import i18n from '@/i18n'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { round2, type QuoteAmountAggregate, type QuoteTotalsSummary } from '@/features/quotes/quote-totals'
 import {
   computeProductMargins,
   costLinesFromFormCostLines,
   productLinesFromFormOfferLines,
+  type ProductMarginsSummary,
 } from '@/features/quotes/quote-product-margins-calc'
 import { QuoteProductMargins } from '@/features/quotes/quote-product-margins'
 import { useResourcePermissions } from '@/features/authorization/permissions'
@@ -149,13 +151,19 @@ interface QuoteSummaryProps {
   totals: QuoteTotalsSummary
   commissionTotals?: CommissionTotals
   typologyBuckets?: QuoteTypologyBucket[]
+  /** The "Margine per prodotto" breakdown, revealed by the "advanced data" toggle under the cards. */
+  productMargins?: ProductMarginsSummary
+  /** The `commissions` field permission: denied, the breakdown and its toggle are hidden (user decision 2026-09-22). */
+  showProductMargins?: boolean
 }
 
 /**
  * Presentational economic summary (D-5, spec 0145 D-8): Ricavi Attesi / Costi
  * Attesi / Riepilogo Commissioni / Margine Atteso / Riepilogo per Tipologia,
  * IN THIS ORDER — the margin sits right after the commissions it nets out
- * (D-3), never clamped to zero (AC-043). Pure render — every number is
+ * (D-3), never clamped to zero (AC-043). The "Margine per prodotto" table is
+ * advanced data: collapsed under a toggle so the cards stay the headline
+ * (user directive 2026-10-07). Pure render — every number is
  * precomputed by the caller (`QuoteLiveSummary` for the live form preview,
  * `totalsFromPersistedSummary` for the read-only detail).
  */
@@ -163,9 +171,14 @@ export function QuoteSummary({
   totals,
   commissionTotals = { commercial: 0, reporter: 0, supervisor: 0, supplier: 0 },
   typologyBuckets = EMPTY_TYPOLOGY_BUCKETS,
+  productMargins,
+  showProductMargins = true,
 }: QuoteSummaryProps) {
   const { t } = useTranslation()
+  const advancedId = useId()
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const marginNegative = totals.margin.net < 0
+  const hasAdvanced = productMargins !== undefined && showProductMargins && productMargins.rows.length > 0
 
   return (
     <div className="rounded-lg border bg-surface p-3">
@@ -217,6 +230,27 @@ export function QuoteSummary({
         </div>
         <QuoteTypologyBlock buckets={typologyBuckets} />
       </div>
+      {hasAdvanced ? (
+        <div className="mt-3 flex flex-col gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-expanded={advancedOpen}
+            aria-controls={advancedId}
+            onClick={() => setAdvancedOpen((open) => !open)}
+            className="h-7 self-start bg-card text-xs"
+          >
+            <ChevronDown aria-hidden="true" className={cn('size-3.5 transition-transform', advancedOpen && 'rotate-180')} />
+            {t(advancedOpen ? 'quotes.form.summary.hideAdvanced' : 'quotes.form.summary.showAdvanced')}
+          </Button>
+          {advancedOpen ? (
+            <div id={advancedId}>
+              <QuoteProductMargins rows={productMargins.rows} genericCostNet={productMargins.genericCostNet} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -303,17 +337,12 @@ export function QuoteLiveSummary({
   )
 
   return (
-    <div className="flex flex-col gap-3">
-      <QuoteSummary
-        totals={totals}
-        commissionTotals={commissionTotals}
-        typologyBuckets={typologyBuckets}
-      />
-      <QuoteProductMargins
-        rows={productMargins.rows}
-        genericCostNet={productMargins.genericCostNet}
-        showCommissions={fieldPermission('commissions').visible}
-      />
-    </div>
+    <QuoteSummary
+      totals={totals}
+      commissionTotals={commissionTotals}
+      typologyBuckets={typologyBuckets}
+      productMargins={productMargins}
+      showProductMargins={fieldPermission('commissions').visible}
+    />
   )
 }

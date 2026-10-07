@@ -6,7 +6,7 @@ import i18n from '@/i18n'
 import { ConfirmContext } from '@/components/confirm-dialog-context'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import type { FieldPermission, ResourcePermissions } from '@/features/authorization/types'
-import type { QuoteCommissionRecipientMap } from './types'
+import type { QuoteCommissionRecipientMap, QuoteLineCommission } from './types'
 import { QuoteCommissionsDialog } from './quote-commissions-dialog'
 
 /**
@@ -18,9 +18,25 @@ import { QuoteCommissionsDialog } from './quote-commissions-dialog'
 vi.mock('./api', () => ({
   fetchQuoteCommissionRecipients: vi.fn(),
   quoteCommissionRecipientsQueryKey: (payload: Record<string, unknown>) => ['recipients', payload],
+  fetchQuoteCommissionDefaults: vi.fn(),
+  quoteCommissionDefaultsQueryKey: (payload: Record<string, unknown>) => ['defaults', payload],
 }))
 
-const { fetchQuoteCommissionRecipients } = await import('./api')
+const { fetchQuoteCommissionDefaults, fetchQuoteCommissionRecipients } = await import('./api')
+
+/** The Configuratore's own 5% for the Commerciale, as `POST /quotes/commission-defaults` returns it. */
+const COMMERCIAL_SYSTEM_DEFAULT: QuoteLineCommission = {
+  recipient_role: 'COMMERCIAL',
+  recipient_type: 'referent',
+  recipient_id: 9,
+  recipient: { id: 9, name: 'Mario Rossi' },
+  commission_type: 'PERCENTAGE',
+  value: '5.0000',
+  calculated_amount: '10.00',
+  internal_note: null,
+  origin: 'PRODUCT',
+  commission_configuration_id: 3,
+}
 
 const ALL_ROLES_PICKED: QuoteCommissionRecipientMap = {
   COMMERCIAL: { type: 'referent', id: 9, name: 'Mario Rossi' },
@@ -72,6 +88,8 @@ beforeAll(async () => i18n.changeLanguage('en'))
 beforeEach(() => {
   vi.mocked(fetchQuoteCommissionRecipients).mockReset()
   vi.mocked(fetchQuoteCommissionRecipients).mockResolvedValue(ALL_ROLES_PICKED)
+  vi.mocked(fetchQuoteCommissionDefaults).mockReset()
+  vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue({ commissions: [], supplier_commission_direction: null })
 })
 
 describe('QuoteCommissionsDialog', () => {
@@ -416,5 +434,98 @@ describe('QuoteCommissionsDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove commission' }))
     expect(confirm).not.toHaveBeenCalled()
     expect(screen.getAllByText('No commission for this role.')).toHaveLength(4)
+  })
+
+  /** User directive 2026-10-07: the rules' own commission stays visible beside a manual override. */
+  it('shows the system calculation beside a manual override and restores it on demand', async () => {
+    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue({
+      commissions: [COMMERCIAL_SYSTEM_DEFAULT],
+      supplier_commission_direction: null,
+    })
+    const onSave = vi.fn()
+    renderDialog(
+      <QuoteCommissionsDialog
+        open
+        onOpenChange={vi.fn()}
+        lineNumber={1}
+        productName="Router"
+        productId={4}
+        commissionContext={COMMISSION_CONTEXT}
+        quantity={2}
+        unitPrice={100}
+        commissions={[{
+          id: 70,
+          recipient_role: 'COMMERCIAL',
+          recipient_type: 'referent',
+          recipient_id: 9,
+          commission_type: 'PERCENTAGE',
+          value: 12,
+          internal_note: 'kept',
+          origin: 'MANUAL_OVERRIDE',
+          commission_configuration_id: null,
+        }]}
+        disabled={false}
+        onSave={onSave}
+      />,
+    )
+
+    expect(await screen.findByText(/5\.00%/)).toBeInTheDocument()
+    expect(screen.getAllByText('The Commission Configurator grants no commission for this role.')).toHaveLength(3)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply system calculation' }))
+
+    expect(screen.getByLabelText('Value')).toHaveValue(5)
+    expect(screen.getByText('In use')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Apply system calculation' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Save commissions' }))
+    expect(onSave).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 70, value: 5, origin: 'PRODUCT', commission_configuration_id: 3, internal_note: 'kept' }),
+    ])
+  })
+
+  it('applies the system calculation to a role that has no commission yet', async () => {
+    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue({
+      commissions: [COMMERCIAL_SYSTEM_DEFAULT],
+      supplier_commission_direction: null,
+    })
+    renderDialog(
+      <QuoteCommissionsDialog
+        open
+        onOpenChange={vi.fn()}
+        lineNumber={1}
+        productName="Router"
+        productId={4}
+        commissionContext={COMMISSION_CONTEXT}
+        quantity={2}
+        unitPrice={100}
+        commissions={[]}
+        disabled={false}
+        onSave={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply system calculation' }))
+
+    expect(screen.getByLabelText('Calculated amount')).toHaveTextContent('10.00')
+    expect(screen.getByText('Product')).toBeInTheDocument()
+  })
+
+  it('never asks for the system calculation in a read-only dialog', () => {
+    renderDialog(
+      <QuoteCommissionsDialog
+        open
+        onOpenChange={vi.fn()}
+        lineNumber={1}
+        productName="Router"
+        productId={4}
+        quantity={2}
+        unitPrice={100}
+        commissions={[]}
+        disabled
+        onSave={vi.fn()}
+      />,
+    )
+
+    expect(fetchQuoteCommissionDefaults).not.toHaveBeenCalled()
   })
 })
