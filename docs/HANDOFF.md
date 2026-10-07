@@ -3,6 +3,53 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMMESSA — TAB "DATI CONTRATTUALI" + STATI PAGAMENTO PER RIGA (spec 0201) — VERDE, NON COMMITTATO (2026-10-07)
+
+- Richiesta utente: nel dettaglio commessa gli stati di pagamento per ogni prodotto e una sezione che spiega i calcoli
+  per riga (riferimento legacy `qnet` `manageorder/{id}` "Dati contrattuali commessa", `Manageorder::calcolaDatiContrattuali`).
+- Decisioni utente: ricavo per riga visibile in DUE letture (legacy: tipologia `institution` = commissione Fornitore,
+  altre = imponibile; spec 0145: netto commissioni); catalogo stati CONFIGURABILE con flag `allows_delivery`; per riga
+  stato + accordo + insoluti; notifica "si puo' consegnare"; migrazione dal legacy; terzo tab dopo Task/Costi;
+  D-15 totali PER TIPOLOGIA flessibili (tutte le `product_typologies`, zero-filled, come `QuoteTypologySummaryCalculator`).
+- Backend: lookup `work_order_payment_statuses` (`WorkOrderPaymentStatus`, `WorkOrderPaymentStatusService`, CRUD +
+  for-select `{id,label,name,color,allows_delivery}` + reorder, TableDefinition `work-order-payment-statuses`, seeder
+  `WorkOrderPaymentStatusSeeder` in DatabaseSeeder e QualificaProductionDataSeeder, 10 stati legacy `old_id` 1..10);
+  `work_order_line_payments` (`WorkOrderLinePayment`, audit, UNIQUE quote_line_id, status FK restrictOnDelete),
+  cancellato da `WorkOrderLineWriter` quando la riga esce; `GET /api/work-orders/{id}/contract-data` e
+  `PATCH .../contract-data/lines/{quoteLine}` (`WorkOrderContractDataBuilder`, `WorkOrderLinePaymentWriter`,
+  `routes/api/work-order-contract-data.php`); permessi `work-orders.viewContractData`/`managePayments`, flag
+  `view_contract_data`/`manage_payments`; `WorkOrderLineDeliverableNotification` (+ `AssignmentTargetEnum::WorkOrder`,
+  `RecordLinkResolver`); sorgente migrazione `work-order-line-payments` (fase 11 `MigrationOrder`). Commissioni
+  nascoste con la regola di `QuoteResource::summarizeTotals`. Piu' commissioni Fornitore: amount = somma, type/value
+  della prima per id.
+- Frontend: `features/work-order-contract-data/` (tab, tabella con formule sotto la riga, card totali per tipologia,
+  editor inline pagamento), `features/work-order-payment-statuses/` (modulo impostazioni, route
+  `/work-order-payment-statuses`, nodo nav in `config/navigation/configuration.php`), i18n `{it,en}-work-order-contract-data.ts`
+  e `{it,en}-work-order-payment-statuses.ts`, guide in-app `work-orders#contract-data` + nuova `work-order-payment-statuses`.
+- Verifica (verifier indipendente): Pest 883/883 aree feature (suite completa backend 9366/9368: il fallimento era
+  `RegistryTableTest` delle modifiche registries di un'altra sessione, ora verde 12/12); Pint ok; Vitest 72 file / 588;
+  `tsc -b --force` 0; ESLint 0; HTTP reale su commessa 1 (GET/PATCH/404/422/for-select) poi ripristinato; screenshot
+  1280/375 light/dark, nessuno scroll orizzontale.
+- Aperto: (1) API legacy `work-orders` (repo `/Users/Repository/qnet`) deve esporre `stato_pagamento`,
+  `accordo_pagamento`, `insoluti` di `orderisos` — NON autorizzato, sorgente testata solo con client fake;
+  (2) C-2: eventuali attributi commessa `stato_pagamento`/`accordo_pagamento`/`insoluti` diventano doppioni;
+  (3) manuale Claude Docs: accesso negato -> aggiornare a mano (dettaglio Commessa tab "Dati contrattuali", nuovo modulo
+  "Stati pagamento commessa"); (4) la regola "ricavo = commissione Fornitore" resta legata al codice tipologia
+  `institution`; (5) nel dev DB la commessa 89 non esiste.
+- Seguito (utente): tab "Dati contrattuali" PRIMO e aperto di default (ordine Dati contrattuali, Task, Costi) in
+  `work-order-detail-work-tabs.tsx`; 2 test del file aggiornati (requisito cambiato), guide `work-orders` IT/EN.
+- PROVATI E ANNULLATI su richiesta utente ("torna a quando ti ho chiesto di spostare dati contrattuali con il tab", da
+  rivedere con calma): flag tipologia `revenue_from_supplier_commission`, commissioni di tutti i ruoli per riga + card
+  per ruolo, riepilogo stile offerta (costi/margine), seeder `DemoSupplierCommissionSeeder`. Codice e spec riportati
+  allo stato D-15 + tab primo; non riproporli senza nuova richiesta. Residuo NON ripristinabile nel DB dev: le
+  commissioni delle offerte demo sono state rigenerate (Commerciale/Segnalatore/Supervisore/Fornitore) e puntano a
+  regole "Demo commissione ..." ora SUSPENDED (le non referenziate eliminate); prodotti tutti `institution`, nessun
+  `supplier_id`, anagrafica fornitore demo eliminata. Per un DB pulito serve un reseed (solo su conferma utente).
+- Verifica dopo il ripristino: Pest WorkOrders+WorkOrderPaymentStatuses+source+ProductTypologies+Authorization 368/368;
+  Vitest contract-data/payment-statuses/work-orders/product-typologies/help/i18n/routes 77 file / 628, quotes 354/354;
+  `tsc -b --force` 0; ESLint 0; nessun residuo di identificatori annullati (grep).
+- Al commit: ESCLUDERE i file registries non di questa feature (altra sessione).
+
 ## ANAGRAFICHE — TABELLA: COLONNE COMMERCIALE / SUPERVISORE / SEGNALATORE / OPERATORI — VERDE, COMMITTATO (2026-10-07)
 
 - Richiesta utente: "aggiungere nella tabella anagrafiche le colonne commerciali, supervisori, segnalatori e operatori".

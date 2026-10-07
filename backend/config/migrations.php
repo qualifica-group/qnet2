@@ -26,6 +26,7 @@ use App\Migrations\Sources\TagsSource;
 use App\Migrations\Sources\TaskTemplatesSource;
 use App\Migrations\Sources\UsersSource;
 use App\Migrations\Sources\VatRatesSource;
+use App\Migrations\Sources\WorkOrderLinePaymentsSource;
 use App\Migrations\Sources\WorkOrdersSource;
 
 return [
@@ -104,6 +105,8 @@ return [
         'opportunities' => OpportunitiesSource::class,
         'quotes' => QuotesSource::class,
         'work-orders' => WorkOrdersSource::class,
+        // spec 0201: the per-commessa payment data, copied onto every line.
+        'work-order-line-payments' => WorkOrderLinePaymentsSource::class,
     ],
 
 ];

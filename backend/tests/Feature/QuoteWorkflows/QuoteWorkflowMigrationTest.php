@@ -206,9 +206,12 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // spec 0190's `2026_10_02_130000_create_work_order_costs_table` (125th),
     // the work order's actual costs, and spec 0194's
     // `2026_10_05_100000_add_is_assignable_to_employment_profiles_table`
-    // (126th), the "Assegnabile" switch.
+    // (126th), the "Assegnabile" switch, and spec 0201's
+    // `2026_10_07_100000_create_work_order_payment_statuses_table` (127th) and
+    // `2026_10_07_100100_create_work_order_line_payments_table` (128th), the
+    // commessa line payment statuses and data.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 126]);
+    Artisan::call('migrate:rollback', ['--step' => 128]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

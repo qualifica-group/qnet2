@@ -27,6 +27,7 @@ use App\Migrations\Sources\TagsSource;
 use App\Migrations\Sources\TaskTemplatesSource;
 use App\Migrations\Sources\UsersSource;
 use App\Migrations\Sources\VatRatesSource;
+use App\Migrations\Sources\WorkOrderLinePaymentsSource;
 use App\Migrations\Sources\WorkOrdersSource;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -79,18 +80,19 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'opportunities' => OpportunitiesSource::class,
         'quotes' => QuotesSource::class,
         'work-orders' => WorkOrdersSource::class,
+        'work-order-line-payments' => WorkOrderLinePaymentsSource::class,
     ]);
 });
 
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(27)
+    expect($sources)->toHaveCount(28)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'company-sites', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
             'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'attributes', 'product-categories',
             'product-category-attributes', 'attribute-layouts', 'products', 'cost-products', 'email-templates', 'document-bundles',
-            'registries', 'opportunities', 'quotes', 'work-orders',
+            'registries', 'opportunities', 'quotes', 'work-orders', 'work-order-line-payments',
         ]);
 });

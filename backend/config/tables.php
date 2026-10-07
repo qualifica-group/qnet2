@@ -48,6 +48,7 @@ use App\Tables\TaskTypesTableDefinition;
 use App\Tables\UnitsOfMeasureTableDefinition;
 use App\Tables\UsersTableDefinition;
 use App\Tables\VatRatesTableDefinition;
+use App\Tables\WorkOrderPaymentStatusesTableDefinition;
 use App\Tables\WorkOrdersTableDefinition;
 
 return [
@@ -108,6 +109,8 @@ return [
         'quote-workflows' => QuoteWorkflowsTableDefinition::class,
         // spec 0093: le Commesse, collegate a un'offerta e alle sue righe.
         'work-orders' => WorkOrdersTableDefinition::class,
+        // spec 0201: the configurable payment statuses of a commessa line.
+        'work-order-payment-statuses' => WorkOrderPaymentStatusesTableDefinition::class,
         'request-management' => RequestManagementTableDefinition::class,
         // spec 0130: "Gestione Iscritti", the same grid restricted to
         // validated/closed_won rows and governed by its own permission set.

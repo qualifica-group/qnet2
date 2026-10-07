@@ -55,6 +55,7 @@ export const navigation = {
   rewards: 'Premi e Incentivi',
   rewardTypes: 'Buoni, Premi e Incentivi',
   rewardStatuses: 'Stati Buoni Collegati',
+  workOrderPaymentStatuses: 'Stati pagamento commessa',
   rewardedReferents: 'Referenti con Buoni',
   documentLayouts: 'Layout',
   opportunitiesAndCommesse: 'Opportunità e Commesse',

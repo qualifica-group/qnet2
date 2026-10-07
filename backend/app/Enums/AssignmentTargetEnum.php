@@ -24,4 +24,7 @@ enum AssignmentTargetEnum: string
     case Opportunity = 'OPPORTUNITY';
 
     case Quote = 'QUOTE';
+
+    /** Spec 0201: a Commessa, target of the "line can be delivered" notification only. */
+    case WorkOrder = 'WORK_ORDER';
 }

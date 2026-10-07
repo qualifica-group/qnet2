@@ -64,6 +64,7 @@ const ASSIGNABLE_RESOURCES = [
   'registries',
   'request-management',
   'reward-statuses',
+  'work-order-payment-statuses',
   'reward-types',
   'rewarded-referents',
   'roles',

@@ -24,6 +24,12 @@ vi.mock('@/features/work-order-costs/work-order-costs-section', () => ({
   WorkOrderCostsSection: ({ canManage }: { canManage: boolean }) => <div>costs-section manage:{String(canManage)}</div>,
 }))
 
+vi.mock('@/features/work-order-contract-data/work-order-contract-data-section', () => ({
+  WorkOrderContractDataSection: ({ canManage }: { canManage: boolean }) => (
+    <div>contract-data-section manage:{String(canManage)}</div>
+  ),
+}))
+
 function workOrder(actions: Record<string, boolean>): WorkOrderDetailWithPermissions {
   return {
     id: 4,
@@ -93,5 +99,31 @@ describe('WorkOrderDetailWorkTabs', () => {
     const { container } = render(<WorkOrderDetailWorkTabs workOrder={workOrder({})} />)
 
     expect(container).toBeEmptyDOMElement()
+  })
+
+  it('puts the Contract data tab first and open by default with view_contract_data (AC-015)', () => {
+    render(<WorkOrderDetailWorkTabs workOrder={workOrder({ view_costs: true, view_contract_data: true })} />)
+
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Contract data', 'Tasks', 'Costs'])
+    expect(screen.getByRole('tab', { name: 'Contract data' })).toHaveAttribute('data-state', 'active')
+    expect(screen.queryByText('task-board')).not.toBeInTheDocument()
+  })
+
+  it('has no Contract data tab without view_contract_data (AC-015)', () => {
+    render(<WorkOrderDetailWorkTabs workOrder={workOrder({ view_costs: true, manage_payments: true })} />)
+
+    expect(screen.queryByRole('tab', { name: 'Contract data' })).not.toBeInTheDocument()
+  })
+
+  it('passes manage_payments to the Contract data section and unmounts it when switching to Tasks', () => {
+    render(
+      <WorkOrderDetailWorkTabs workOrder={workOrder({ view_contract_data: true, manage_payments: true })} />,
+    )
+    expect(screen.getByText('contract-data-section manage:true')).toBeInTheDocument()
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Tasks' }))
+
+    expect(screen.queryByText(/contract-data-section/)).not.toBeInTheDocument()
+    expect(screen.getByText('task-board')).toBeInTheDocument()
   })
 })

@@ -90,6 +90,8 @@
     "You were assigned as Account Manager": "Sei stato inserito come Gestore Account",
     ":actor assigned you as Supervisor on :label.": ":actor ti ha inserito come Supervisore su :label.",
     ":actor assigned you as Account Manager :position on :label.": ":actor ti ha inserito come Gestore Account :position su :label.",
+    "Line ready for delivery": "Riga consegnabile",
+    ":actor set the payment status of \":product\" on :label to \":status\": it can be delivered.": ":actor ha impostato lo stato di pagamento di \":product\" su :label a \":status\": si può consegnare.",
     "Contact transferred": "Contatto trasferito",
     "Contact no longer assigned to you": "Contatto non piu' in gestione",
     "New contact assigned to you": "Nuovo contatto assegnato",

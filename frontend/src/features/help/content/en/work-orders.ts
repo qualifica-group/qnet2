@@ -74,7 +74,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'In the Work order detail, below the main card, **Tasks** and **Costs** share one card as two tabs you switch between: **Tasks** is open by default. The **Costs** tab compares the **budgeted** costs (the offer cost lines imputed to the work order\'s revenue lines) with the **actual** costs entered here. It only appears if you may view costs.',
+          text: 'In the Work order detail, below the main card, **Contract data**, **Tasks** and **Costs** share one card as tabs you switch between: **Contract data** is open by default (or the first one you may see). The **Costs** tab compares the **budgeted** costs (the offer cost lines imputed to the work order\'s revenue lines) with the **actual** costs entered here. It only appears if you may view costs.',
         },
         {
           type: 'table',
@@ -102,6 +102,49 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: 'Actual costs can also be entered on a completed or closed work order, since they often arrive after closure.',
+        },
+      ],
+    },
+    {
+      id: 'contract-data',
+      title: 'Contract data',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'The **Contract data** tab of the Work order detail, next to **Tasks** and **Costs**, shows for each product line the amounts already saved on the offer and **explains how the revenue comes about**. It only appears if you may view contract data. On narrow screens the table scrolls inside its own frame.',
+        },
+        {
+          type: 'table',
+          headers: ['Column', 'Meaning'],
+          rows: [
+            ['Product', 'Code, name and typology of the product.'],
+            ['Qty and Unit price', 'Quantity and price of the line.'],
+            ['Net amount', 'Quantity times unit price, as saved on the offer.'],
+            ['Supplier commission', 'The supplier commission on the line, if you can see it.'],
+            ['Net of commissions', 'Net amount minus all the line\'s commissions, if you can see them.'],
+            ['Effective revenue', 'For an **Institution** line it is the Supplier commission alone; for any other typology (Consulting) it is the net amount.'],
+            ['Payment', 'Payment status, payment agreement and unpaid flag of the line.'],
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: 'Under each line you find the **formula in plain words**, for example "Net amount 2 × 500.00 = 1,000.00 → revenue 1,000.00" for a Consulting line, or "Supplier commission 10% of 2,000.00 = 200.00 → revenue 200.00" for an Institution one. At the top are the totals: Net amount, then for **each product typology** the net amount and the effective revenue (even at 0.00), then Total revenue and, if visible, Commissions and Net of commissions. If you cannot see commissions, the related columns and totals are not shown.',
+        },
+        {
+          type: 'warning',
+          text: 'A warning with an icon and text appears when an Institution line has no Supplier commission (revenue 0.00) or when the commission was calculated on a previous base: save the offer again to update it.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Press the pencil in the line\'s **Payment** column (only available if you may manage payments).',
+            'Choose the **payment status**, write the **payment agreement** and say whether there are **unpaid** amounts.',
+            'Press **Done** to save the line, or **Reset** to discard the changes.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Payment statuses are configured in **Work order payment statuses**. When a line moves to a status flagged **Can be delivered**, the work order supervisors and participants are notified. Payment data can also be edited on a completed or closed work order.',
         },
       ],
     },

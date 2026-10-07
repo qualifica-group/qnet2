@@ -178,6 +178,16 @@ class WorkOrder extends BaseModel
     }
 
     /**
+     * The per-line payment data of this commessa (spec 0201).
+     *
+     * @return HasMany<WorkOrderLinePayment, $this>
+     */
+    public function linePayments(): HasMany
+    {
+        return $this->hasMany(WorkOrderLinePayment::class);
+    }
+
+    /**
      * This commessa's email history and drafts (spec 0175, D-2/D-10): every
      * `OutboundEmail` sent or drafted from its "Email" tab, newest first is
      * the caller's own concern — no default ordering here.

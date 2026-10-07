@@ -83,6 +83,11 @@ final class MigrationOrder
         ['opportunities'],
         ['quotes'],
         ['work-orders'],
+
+        // Phase 11 — the legacy payment data of a commessa (spec 0201): needs
+        // the migrated work orders and their lines, and the reference payment
+        // statuses seeded with their legacy `old_id`.
+        ['work-order-line-payments'],
     ];
 
     /**

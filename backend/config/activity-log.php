@@ -46,6 +46,7 @@ use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Models\VatRate;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderPaymentStatus;
 use App\RequestManagement\EnrolleeManagementActivityAuthorizer;
 use App\RequestManagement\RequestManagementActivityAuthorizer;
 
@@ -258,6 +259,9 @@ return [
         ],
         'work-orders' => [
             'model' => WorkOrder::class,
+        ],
+        'work-order-payment-statuses' => [
+            'model' => WorkOrderPaymentStatus::class,
         ],
         // spec 0175: i due configuratori del modulo email della Commessa.
         // `outbound-emails` non e' qui (D-15): un invio non lascia voce nel

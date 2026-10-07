@@ -46,6 +46,7 @@ use App\Authorization\TaskTypesAuthorization;
 use App\Authorization\UnitsOfMeasureAuthorization;
 use App\Authorization\UsersAuthorization;
 use App\Authorization\VatRatesAuthorization;
+use App\Authorization\WorkOrderPaymentStatusesAuthorization;
 use App\Authorization\WorkOrdersAuthorization;
 
 return [
@@ -101,6 +102,7 @@ return [
         'quote-workflows' => QuoteWorkflowsAuthorization::class,
         // spec 0093: le Commesse, collegate a un'offerta e alle sue righe.
         'work-orders' => WorkOrdersAuthorization::class,
+        'work-order-payment-statuses' => WorkOrderPaymentStatusesAuthorization::class,
         // spec 0175: le email della Commessa e i loro due configuratori.
         'email-templates' => EmailTemplatesAuthorization::class,
         'document-bundles' => DocumentBundlesAuthorization::class,

@@ -54,6 +54,7 @@ export const navigation = {
   rewards: 'Rewards & Incentives',
   rewardTypes: 'Vouchers, Rewards and Incentives',
   rewardStatuses: 'Reward Statuses',
+  workOrderPaymentStatuses: 'Work order payment statuses',
   rewardedReferents: 'Rewarded Referents',
   documentLayouts: 'Layouts',
   opportunitiesAndCommesse: 'Opportunities & Contracts',

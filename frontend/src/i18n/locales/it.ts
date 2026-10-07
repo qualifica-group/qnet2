@@ -51,6 +51,7 @@ import {
 import { commissionConfigurations } from './it-commission-configurations'
 import { rewardTypes } from './it-reward-types'
 import { rewardStatuses } from './it-reward-statuses'
+import { workOrderPaymentStatuses } from './it-work-order-payment-statuses'
 import { rewardedReferents } from './it-rewarded-referents'
 import { documentLayouts } from './it-document-layouts'
 import { dashboard } from './it-dashboard'
@@ -448,6 +449,7 @@ export const it: TranslationResources = {
   fieldChangeRequests,
   rewardTypes,
   rewardStatuses,
+  workOrderPaymentStatuses,
   rewardedReferents,
   notes,
   richText,

@@ -105,6 +105,7 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaTaskTaxonomySeeder::class);
         $this->call(TestUsersSeeder::class);
         $this->call(ProductTypologySeeder::class);
+        $this->call(WorkOrderPaymentStatusSeeder::class);
         $this->call(QualificaLegacyImportSeeder::class);
         $this->call(QualificaBusinessFunctionLinkSeeder::class);
         $this->call(QualificaOperatorSeeder::class);

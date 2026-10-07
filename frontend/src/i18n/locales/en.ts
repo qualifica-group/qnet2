@@ -56,6 +56,7 @@ import {
 import { commissionConfigurations } from './en-commission-configurations'
 import { rewardTypes } from './en-reward-types'
 import { rewardStatuses } from './en-reward-statuses'
+import { workOrderPaymentStatuses } from './en-work-order-payment-statuses'
 import { rewardedReferents } from './en-rewarded-referents'
 import { fieldChangeRequests } from './en-field-change-requests'
 import { documentLayouts } from './en-document-layouts'
@@ -462,6 +463,7 @@ export const en = {
   fieldChangeRequests,
   rewardTypes,
   rewardStatuses,
+  workOrderPaymentStatuses,
   rewardedReferents,
   notes,
   richText,

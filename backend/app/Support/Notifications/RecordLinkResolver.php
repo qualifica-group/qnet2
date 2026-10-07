@@ -38,7 +38,7 @@ final class RecordLinkResolver
      * decisione utente): an Opportunity never falls back to request
      * management, which opens Offerte, never Opportunities.
      *
-     * @param  int  $recordId  the Registry, Opportunity or Quote id
+     * @param  int  $recordId  the Registry, Opportunity, Quote or WorkOrder id
      * @param  RequestModule  $module  the request module an Offerta falls
      *                                 back to (spec 0130): the transfer passes
      *                                 the actor's, every assignment the default
@@ -53,6 +53,9 @@ final class RecordLinkResolver
                 ? "/opportunities/{$recordId}"
                 : null,
             AssignmentTargetEnum::Quote => self::quotePath($notifiable, $recordId, $module),
+            AssignmentTargetEnum::WorkOrder => $notifiable->can('work-orders.view')
+                ? "/work-orders/{$recordId}"
+                : null,
         };
     }
 

@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Euro, ListChecks } from 'lucide-react'
+import { Euro, FileText, ListChecks } from 'lucide-react'
 import { RecordCard } from '@/components/detail/record-panel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAbilities } from '@/features/auth/use-abilities'
+import { WorkOrderContractDataSection } from '@/features/work-order-contract-data/work-order-contract-data-section'
 import { WorkOrderCostsSection } from '@/features/work-order-costs/work-order-costs-section'
 import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
@@ -19,9 +20,11 @@ interface WorkTab {
 }
 
 /**
- * Full-width card below the work order record hosting the Task board (spec
- * 0146) and the Costi section (spec 0190) as switchable tabs, Task first and
- * open by default. Each tab keeps its own gate (`tasks.viewAny`, `view_costs`)
+ * Full-width card below the work order record hosting the Dati contrattuali
+ * section (spec 0201), the Task board (spec 0146) and the Costi section (spec
+ * 0190) as switchable tabs, in that order: the first tab present is the one
+ * open by default (user directive 2026-10-07: Dati contrattuali first). Each
+ * tab keeps its own gate (`view_contract_data`, `tasks.viewAny`, `view_costs`)
  * and is absent when unauthorized; no tab left = no card. The active tab's
  * header actions are portaled by the tab itself into the slot on the right of
  * the strip, so the strip stays the only header row of the card.
@@ -31,6 +34,20 @@ export function WorkOrderDetailWorkTabs({ workOrder }: { workOrder: WorkOrderDet
   const { can } = useAbilities()
   const [actionsContainer, setActionsContainer] = useState<HTMLDivElement | null>(null)
   const tabs: WorkTab[] = []
+
+  if (workOrder.permissions.actions.view_contract_data) {
+    tabs.push({
+      value: 'contract-data',
+      label: t('workOrders.contractData.title'),
+      icon: <FileText className="size-3.5" aria-hidden="true" />,
+      content: (
+        <WorkOrderContractDataSection
+          workOrderId={workOrder.id}
+          canManage={workOrder.permissions.actions.manage_payments === true}
+        />
+      ),
+    })
+  }
 
   if (can('tasks.viewAny')) {
     tabs.push({

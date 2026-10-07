@@ -42,7 +42,10 @@ final class WorkOrderLineWriter
         $this->assertBelongToRevenueLines($quoteId, $quoteLineIds);
         $this->assertNotAlreadyProgrammed($workOrder, $quoteLineIds);
 
-        $workOrder->quoteLines()->sync($quoteLineIds);
+        $changes = $workOrder->quoteLines()->sync($quoteLineIds);
+
+        // Spec 0201, D-11: a line that leaves the commessa takes its payment data with it.
+        $workOrder->linePayments()->whereIn('quote_line_id', $changes['detached'])->delete();
     }
 
     /**

@@ -64,6 +64,9 @@ export const permissions = {
     // on top of BasePolicy's CRUD (`work-orders.viewEmails`/`sendEmail`).
     viewEmails: 'View emails',
     sendEmail: 'Send email',
+    // Spec 0201 D-10: work order Contract data tab and per-line payment management.
+    viewContractData: 'View contract data',
+    managePayments: 'Manage payments',
   },
   resources: {
     users: 'Users',
@@ -107,6 +110,7 @@ export const permissions = {
     registries: 'Registries',
     'request-management': 'Request Management',
     'reward-statuses': 'Reward Statuses',
+    'work-order-payment-statuses': 'Work order payment statuses',
     'reward-types': 'Vouchers, Rewards and Incentives',
     'rewarded-referents': 'Rewarded Referents',
     sectors: 'Sectors',

@@ -65,6 +65,9 @@ const EnrolleeManagementPage = lazyRoute(() => import('@/pages/enrollee-manageme
 const EnrolleeManagementDetailPage = lazyRoute(() => import('@/pages/enrollee-management-detail-page'))
 const RewardTypesPage = lazyRoute(() => import('@/pages/reward-types-page'))
 const RewardStatusesPage = lazyRoute(() => import('@/pages/reward-statuses-page'))
+const WorkOrderPaymentStatusesPage = lazyRoute(
+  () => import('@/pages/work-order-payment-statuses-page'),
+)
 const RewardedReferentsPage = lazyRoute(() => import('@/pages/rewarded-referents-page'))
 const DocumentLayoutsPage = lazyRoute(() => import('@/pages/document-layouts-page'))
 const EmailTemplatesPage = lazyRoute(() => import('@/pages/email-templates-page'))
@@ -340,6 +343,10 @@ export const router = createBrowserRouter([
           {
             path: 'reward-statuses',
             element: <RewardStatusesPage />,
+          },
+          {
+            path: 'work-order-payment-statuses',
+            element: <WorkOrderPaymentStatusesPage />,
           },
           {
             path: 'rewarded-referents',

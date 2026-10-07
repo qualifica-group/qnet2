@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * One revenue or cost row against a Quote (spec 0065, D-11): revenue and cost
@@ -100,6 +101,15 @@ class QuoteLine extends BaseModel
     public function commissions(): HasMany
     {
         return $this->hasMany(QuoteLineCommission::class);
+    }
+
+    /**
+     * The payment data of this line once programmed into a commessa (spec
+     * 0201): at most one, `quote_line_id` is unique.
+     */
+    public function payment(): HasOne
+    {
+        return $this->hasOne(WorkOrderLinePayment::class);
     }
 
     /**
