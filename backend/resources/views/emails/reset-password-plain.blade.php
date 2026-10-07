@@ -4,7 +4,7 @@
 
 {{ __('You are receiving this email because we received a password reset request for your account.') }}
 
-{{ __('Reset password') }}: {{ $url }}
+{{ __('Reset password') }}: {!! $url !!}
 
 {{ __('This link will expire in :count minutes.', ['count' => $expireMinutes]) }}
 
