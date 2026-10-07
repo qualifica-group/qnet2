@@ -15,6 +15,14 @@
   Telefono obbligatorio (+ indirizzo visibile), `-custom-fields` digita nel campo Telefono; rimossi
   `ContactsManagerStub`/`STUB_PHONE` e l'`eslint-disable` ormai inutile dalle fixture.
 - Guida in-app IT/EN `registries`: creazione con campi gia' pronti, passi del flusso nuovo cliente aggiornati.
+- SEGUITO (utente: "aggiungi sempre in anagrafica, aggiungi indirizzo per aggiungere piu indirizzi"):
+  `AddressesManager` nuova prop opt-in `multipleOnCreate` (con `createMode`): form inline + lista + "Aggiungi
+  indirizzo" (dialog). Stato `inlineKey` = `_key` dell'indirizzo posseduto dal form inline, cosi' un indirizzo aggiunto
+  dal dialog non ci "salta" dentro; il principale resta unico (`normalizePrimary`), svuotato l'inline passa al primo
+  degli altri. `PersonalDataChildCards` la attiva con `createMode` (solo anagrafica; referenti/utenti invariati).
+  Test: 3 nuovi in `addresses-manager.test.tsx` + "Add address" visibile in `registry-form-required-phone`. Guide
+  IT/EN aggiornate. `addresses-manager.tsx` 405 righe (sopra soft limit 300, era gia' 368): split candidato = estrarre
+  lista+dialog in `addresses-list.tsx`.
 - Manuale Claude Docs: sezione Anagrafiche > creazione da allineare.
 
 ## ANAGRAFICA — DETTAGLIO EDITABILE IN PLACE (CAMPI FLESSIBILI COMPRESI) + CREAZIONE COME IL DETTAGLIO (spec 0200) — VERDE, COMMITTATO b9d9f79b + SEGUITO (2026-10-06)

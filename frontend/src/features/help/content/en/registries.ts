@@ -48,7 +48,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "To create a card press **New registry**: the form looks like the detail, with the same sections and **closed rows**. Click a row (or its pencil) to open it, then **Done** to keep the value or **Revert** to put it back as it was. In the **Personal details** first choose the Type, Individual or Company (fields change accordingly): on Done the name appears at the top of the card. Contacts and Addresses are in the right-hand column, with their fields ready to fill: Email, Phone (required), PEC and Fax, plus **Add contact** for more, and one address with its Site type (further sites are added from the detail after saving). **Save** checks everything and creates the registry; leaving without saving asks for confirmation.",
+          text: "To create a card press **New registry**: the form looks like the detail, with the same sections and **closed rows**. Click a row (or its pencil) to open it, then **Done** to keep the value or **Revert** to put it back as it was. In the **Personal details** first choose the Type, Individual or Company (fields change accordingly): on Done the name appears at the top of the card. Contacts and Addresses are in the right-hand column, with their fields ready to fill: Email, Phone (required), PEC and Fax, plus **Add contact** for more, and one address with its Site type, plus **Add address** for further sites. **Save** checks everything and creates the registry; leaving without saving asks for confirmation.",
         },
         {
           type: 'table',
@@ -166,7 +166,7 @@ const guide: HelpGuide = {
             'Open the Personal details, choose the Type, fill them in and press Done.',
             'If Possible duplicate appears, at the top of the right-hand column, check it before continuing.',
             'In Contacts, in the right-hand column, fill in at least the Phone.',
-            'Fill in the address with the right Site type; further sites are added from the detail with Add address.',
+            'Fill in the address with the right Site type; with Add address enter the further sites.',
             'Open the rows you need: in Relations, if needed, Commercial referent and Reporter; in Team Supervisor and Account managers; in Referents the contact people. Confirm each row with Done.',
             'Press Save.',
           ],

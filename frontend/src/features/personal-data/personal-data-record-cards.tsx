@@ -55,7 +55,7 @@ interface PersonalDataChildCardsProps {
   /**
    * A create form's buffer: the managers lay out their quick fields (email,
    * phone, PEC, fax and the address form) ready to fill, as the create forms
-   * always did, instead of an empty list with "Add".
+   * always did, each with its "Add" for further contacts and addresses.
    */
   createMode?: boolean
   /** The quick contact fields marked required; only with `createMode`. */
@@ -125,6 +125,7 @@ export function PersonalDataChildCards({
                 showSiteType={showSiteType}
                 persistence={persistence}
                 createMode={createMode}
+                multipleOnCreate={createMode}
               />
             ) : (
               <DetailEmpty />

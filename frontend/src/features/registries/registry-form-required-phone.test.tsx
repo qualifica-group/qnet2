@@ -92,8 +92,9 @@ describe('RegistryForm — phone required at creation (user directive 2026-09-07
     expect(await screen.findByLabelText(/^Phone/)).toHaveAttribute('aria-required', 'true')
     expect(screen.getByLabelText('Email')).toHaveAttribute('aria-required', 'false')
     expect(screen.getByLabelText(/^Phone/).closest('div')?.textContent).toContain('*')
-    // The address is laid out ready to fill too, not behind an "Add" (user 2026-10-07).
+    // The address is laid out ready to fill too, with "Add address" for further sites (user 2026-10-07).
     expect(screen.getByLabelText('Address')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add address' })).toBeInTheDocument()
   })
 
   it('refuses the save when no phone number was entered', async () => {
