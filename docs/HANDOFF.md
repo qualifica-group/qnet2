@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## NOTE GENERALI/INTERNE NELLO STILE DI GESTIONE RICHIESTE (Opportunita', Commesse, Offerte) — VERDE, NON COMMITTATO (2026-10-07)
+
+- Richiesta utente: note generali/interne di Opportunita', Commesse e Offerte con lo stesso stile di Gestione Richieste.
+- Nuovo `components/record-form/notes-callout-row.tsx` (`NotesCalloutRow`): callout ambra sempre presente se il campo
+  e' modificabile (vuoto -> placeholder), testo dentro il callout, editor inline (matita/clic) aperto DENTRO il callout
+  con textarea senza bordo. Read-only + vuoto -> niente. Sostituisce le tre righe duplicate
+  (`OpportunityGeneralNotesRow`, `WorkOrderInternalNotesRow`, `QuoteInternalNotesRow`, ora wrapper sottili).
+- `layout.ts`: nuove costanti `GENERAL_NOTES_TEXT_CLASS`, `GENERAL_NOTES_TEXTAREA_CLASS` (riusate anche dai due file
+  note di Gestione Richieste e da `GeneralNotesCallout`). `WorkOrderTextAreaField` ha prop `className` opzionale.
+- Offerta: "Note generali dell'opportunita'" (ereditate, read-only) tolte dalla sezione Contesto -> `GeneralNotesCallout`
+  a piena larghezza sotto le Note interne.
+- i18n nuove: `quotes.form.internalNotesPlaceholder`, `workOrders.detail.internalNotesPlaceholder` (IT/EN).
+- Test: nuovo `notes-callout-row.test.tsx`; RETTIFICA requisito in `opportunity-detail-sections.test.tsx` (vuoto +
+  modificabile ora mostra il callout); `quote-create-payment.test.tsx` query per ruolo textbox (il nome ora e' anche
+  della regione). Vitest completo 7007/7007, `tsc -b --force` 0, ESLint pulito.
+- Guide in-app IT/EN: tip nelle sezioni "Modificare ..." di opportunities/work-orders/quotes.
+- Manuale Claude Docs: NON aggiornato (doc non accessibile dalla sessione) -> sezioni Opportunita'/Commesse/Offerte
+  "Modificare ...".
+
 ## ERRORE CONTROLLATO 404/403 SU TUTTI I DETTAGLI/EDIT RECORD — VERDE, COMMITTATO 4cf92317 (2026-10-07)
 
 - Richiesta utente (es. `/work-orders/10` inesistente mostrava "errore + Riprova"). `DetailError` ora richiede

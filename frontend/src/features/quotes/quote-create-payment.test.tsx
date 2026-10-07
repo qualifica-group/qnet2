@@ -122,7 +122,7 @@ describe('Quote create form — payment method and internal notes', () => {
     expect(screen.getByRole('combobox', { name: 'Payment method' })).toBeInTheDocument()
 
     openRow('Internal notes')
-    expect(screen.getByLabelText('Internal notes')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Internal notes' })).toBeInTheDocument()
   })
 
   it('sends the picked payment_method_id in the create payload', async () => {

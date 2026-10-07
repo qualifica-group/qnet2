@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Handshake } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
+import { GeneralNotesCallout } from '@/components/record-form/general-notes-callout'
 import { RecordField, RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
 import { RewardChipsSection } from '@/features/rewards/reward-chips-section'
@@ -20,8 +21,9 @@ const EMPTY_PRODUCT_LINES: ProductLine[] = []
 
 /**
  * Contesto: what the Offerta INHERITS from its Opportunita' and does not own
- * (user request 2026-08-31) — source, product lines and general notes, a
- * read-only projection of the parent record.
+ * (user request 2026-08-31) — source and product lines, a read-only projection
+ * of the parent record. The inherited general notes are not a row here: they
+ * wear the notes callout, next to the offer's own internal notes.
  */
 function QuoteContextSection({ quote }: { quote: QuoteDetailWithPermissions }) {
   const { t } = useTranslation()
@@ -34,15 +36,6 @@ function QuoteContextSection({ quote }: { quote: QuoteDetailWithPermissions }) {
         </RecordField>
         <RecordField label={t('quotes.detail.productLines')}>
           <ProductLinesReadOnlyList lines={quote.product_lines ?? EMPTY_PRODUCT_LINES} />
-        </RecordField>
-        <RecordField label={t('quotes.detail.opportunityGeneralNotes')}>
-          {quote.general_notes ? (
-            // Pasted multi-line notes; capped and scrollable so a long one
-            // does not push the rest of the section away.
-            <p className="max-h-40 overflow-y-auto break-words whitespace-pre-wrap">{quote.general_notes}</p>
-          ) : (
-            <DetailEmpty />
-          )}
         </RecordField>
       </RecordFieldList>
     </RecordSection>
@@ -57,7 +50,8 @@ interface QuoteDetailSectionsProps {
 /**
  * The offer record's `RecordSectionsGrid` body, every user-written field
  * editable in place (spec 0197, the Commesse model): the internal notes
- * callout first, then the offer's data (status included), the inherited
+ * callout first and the Opportunita''s inherited general notes below it, then
+ * the offer's data (status included), the inherited
  * context, contacts, buoni, team, company and sites, document and payment,
  * and the collected Attribute values — each Attribute a row of its own. The
  * offer and cost rows are the record card's closing band (`QuoteDetailLines`).
@@ -73,6 +67,13 @@ export function QuoteDetailSections({ quote, editor }: QuoteDetailSectionsProps)
         notes={quote.internal_notes}
         control={control}
         inline={inline}
+        className={FULL_WIDTH_SECTION_CLASS}
+      />
+
+      {/* Inherited from the Opportunita', read-only: hidden when it carries none. */}
+      <GeneralNotesCallout
+        title={t('quotes.detail.opportunityGeneralNotes')}
+        notes={quote.general_notes}
         className={FULL_WIDTH_SECTION_CLASS}
       />
 

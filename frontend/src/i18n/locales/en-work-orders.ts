@@ -46,6 +46,7 @@ export const workOrders = {
     forceCloseReason: 'Force close reason',
     description: 'Description',
     internalNotes: 'Work order notes',
+    internalNotesPlaceholder: 'Write a note about this work order…',
     taskTemplate: 'Task template',
     lines: 'Product lines',
     additionalInformation: 'Additional information',

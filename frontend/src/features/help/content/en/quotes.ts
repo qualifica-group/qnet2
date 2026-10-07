@@ -67,6 +67,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'tip',
+          text: "The **Internal notes** sit in the yellow box at the top of the detail, like the General notes in Request management: when empty the box invites you to write them; with the pencil (or a click on the text) you write them right inside the box. Right below, in a matching read-only box, you find the **Opportunity general notes**.",
+        },
+        {
           type: 'note',
           text: "A field without a pencil is not editable by you: your role's permissions make it read-only, or it is chosen at creation only (Code, Opportunity). Registry, Referent, Source, Business functions and General notes come from the opportunity and stay read-only.",
         },

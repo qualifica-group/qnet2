@@ -4,6 +4,7 @@ import { FormControl } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
+import { GENERAL_NOTES_TEXTAREA_CLASS } from '@/components/record-form/layout'
 import { MetaField } from '@/features/authorization/MetaField'
 import { cn } from '@/lib/utils'
 import {
@@ -169,6 +170,7 @@ export function OpportunityGeneralNotesField({ control }: FieldProps) {
         <div className="flex flex-col gap-1">
           <FormControl>
             <Textarea
+              className={GENERAL_NOTES_TEXTAREA_CLASS}
               rows={4}
               placeholder={t('opportunities.form.generalNotesPlaceholder')}
               disabled={disabled}

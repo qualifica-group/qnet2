@@ -143,6 +143,7 @@ export const quotes = {
       operationalSite: 'Prefilled from the selected opportunity; you can change it.',
     },
     internalNotes: 'Internal notes',
+    internalNotesPlaceholder: 'Write an internal note about this offer…',
     internalNotesMax: 'Internal notes must be at most 5000 characters.',
     selectPlaceholder: 'Select…',
     selectEmpty: 'No results found.',

@@ -46,6 +46,7 @@ export const workOrders = {
     forceCloseReason: 'Motivo chiusura',
     description: 'Descrizione',
     internalNotes: 'Note commessa',
+    internalNotesPlaceholder: 'Scrivi una nota su questa commessa…',
     taskTemplate: 'Modello di Task',
     lines: 'Righe prodotto',
     additionalInformation: 'Informazioni aggiuntive',

@@ -66,6 +66,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'tip',
+          text: "Le **Note generali** stanno nel riquadro giallo in cima al dettaglio, come in Gestione Richieste: se sono vuote il riquadro invita a scriverle; con la matita (o un clic sul testo) le scrivi direttamente nel riquadro.",
+        },
+        {
           type: 'note',
           text: "Alcuni campi si portano dietro altri valori nello stesso salvataggio: cambiando l'**Anagrafica** il Referente si svuota e Commerciale, Segnalatore, Supervisore e Gestori account vengono proposti da quelli dell'anagrafica (con conferma se sono diversi); cambiando le **Righe di classificazione** i Prodotti di interesse non più coperti vengono tolti; i **Buoni assegnati** si modificano dal campo **Segnalatore**, di cui sono il premio.",
         },

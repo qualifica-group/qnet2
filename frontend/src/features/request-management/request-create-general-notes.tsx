@@ -5,8 +5,10 @@ import { useController, type Control } from 'react-hook-form'
 import { Textarea } from '@/components/ui/textarea'
 import {
   GENERAL_NOTES_CALLOUT_CLASS,
+  GENERAL_NOTES_TEXTAREA_CLASS,
   GENERAL_NOTES_TITLE_CLASS,
 } from '@/components/record-form/layout'
+import { cn } from '@/lib/utils'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
 
 interface RequestCreateGeneralNotesProps {
@@ -19,10 +21,8 @@ interface RequestCreateGeneralNotesProps {
  * same micro-title, same first position in the side column. The operator who
  * opens the request types here what the operator working it will read there.
  *
- * The textarea is deliberately unstyled (`border-0 bg-transparent`, no focus
- * ring of its own): the callout IS the field's surface, and a second bordered
- * box inside it would stack two containers on the same plane (ui-design.md
- * §1-bis).
+ * The textarea is deliberately unstyled (`GENERAL_NOTES_TEXTAREA_CLASS`): the
+ * callout IS the field's surface.
  *
  * Later edits stay the opportunities form's job (spec 0049 D-5 keeps the sales
  * dimensions out of the panel); nothing changes there.
@@ -43,7 +43,7 @@ export function RequestCreateGeneralNotes({ control }: RequestCreateGeneralNotes
         aria-label={t('requestManagement.form.create.generalNotes.label')}
         rows={4}
         placeholder={t('requestManagement.form.create.generalNotes.placeholder')}
-        className="mt-2 min-h-0 resize-y border-0 bg-transparent p-0 text-sm leading-relaxed shadow-none focus-visible:ring-0 dark:bg-transparent"
+        className={cn('mt-2', GENERAL_NOTES_TEXTAREA_CLASS)}
       />
     </section>
   )

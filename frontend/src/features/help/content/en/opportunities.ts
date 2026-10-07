@@ -66,6 +66,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'tip',
+          text: "The **General notes** sit in the yellow box at the top of the detail, as in Request management: when empty the box invites you to write them; with the pencil (or a click on the text) you write them right inside the box.",
+        },
+        {
           type: 'note',
           text: "Some fields carry other values into the same save: changing the **Registry** clears the Contact and proposes the registry's Sales rep, Reporter, Supervisor and Account managers (asking first if they differ); changing the **Classification rows** removes the Products of interest they no longer cover; the **Assigned rewards** are edited from the **Reporter** field, whose reward they are.",
         },

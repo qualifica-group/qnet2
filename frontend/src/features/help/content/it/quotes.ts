@@ -71,6 +71,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'tip',
+          text: "Le **Note interne** stanno nel riquadro giallo in cima al dettaglio, come le Note generali in Gestione Richieste: se sono vuote il riquadro invita a scriverle; con la matita (o un clic sul testo) le scrivi direttamente nel riquadro. Subito sotto, in un riquadro uguale ma in sola lettura, trovi le **Note generali dell'opportunità**.",
+        },
+        {
           type: 'note',
           text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Codice, Opportunità). Anagrafica, Referente, Fonte, Funzioni aziendali e Note generali vengono dall'opportunità e restano in sola lettura.",
         },

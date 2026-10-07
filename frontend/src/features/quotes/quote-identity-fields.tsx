@@ -5,6 +5,7 @@ import { FormControl } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
+import { GENERAL_NOTES_TEXTAREA_CLASS } from '@/components/record-form/layout'
 import { MetaField } from '@/features/authorization/MetaField'
 import { DOCUMENT_LAYOUTS_FOR_SELECT_RESOURCE } from '@/features/document-layouts/for-select-api'
 import { OPPORTUNITIES_FOR_SELECT_RESOURCE } from '@/features/opportunities/for-select-api'
@@ -107,7 +108,10 @@ export function QuoteOpportunityField({
   )
 }
 
-/** "Note interne" (max 5000), never shown to the customer: an emptied box is `null`. */
+/**
+ * "Note interne" (max 5000), never shown to the customer: an emptied box is
+ * `null`. Written inside the notes callout (`NotesCalloutRow`), hence unstyled.
+ */
 export function QuoteInternalNotesField({ control }: FieldProps) {
   const { t } = useTranslation()
   return (
@@ -115,6 +119,8 @@ export function QuoteInternalNotesField({ control }: FieldProps) {
       {({ field, disabled, readOnly }) => (
         <FormControl>
           <Textarea
+            className={GENERAL_NOTES_TEXTAREA_CLASS}
+            placeholder={t('quotes.form.internalNotesPlaceholder')}
             disabled={disabled}
             readOnly={readOnly}
             rows={6}

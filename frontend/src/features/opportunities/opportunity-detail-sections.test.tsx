@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen, within } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -181,8 +181,43 @@ describe('OpportunityDetailSections — general notes', () => {
     expect(screen.getByText(/First line/)).toHaveClass('whitespace-pre-wrap')
   })
 
-  it('renders no empty box when the opportunity carries no note', () => {
+  /*
+   * Requirement changed (user directive 2026-10-07, "lo stesso stile come in
+   * gestione richieste"): an editable record with no note shows the empty
+   * callout inviting the note, as the request work panel does; only a
+   * read-only one still shows nothing.
+   */
+  it('renders the empty callout with its placeholder when the note is editable', () => {
     render(<Sections opportunity={opportunity({ general_notes: null })} />)
+
+    const region = screen.getByRole('region', { name: /general notes/i })
+    expect(region).toHaveTextContent('Write a note about this opportunity…')
+    expect(region).toHaveClass(...GENERAL_NOTES_CALLOUT_CLASS.split(' '))
+  })
+
+  it('opens the textarea inside the callout', () => {
+    render(<Sections opportunity={opportunity({ general_notes: null })} />)
+
+    const region = screen.getByRole('region', { name: /general notes/i })
+    fireEvent.click(within(region).getByRole('button', { name: /edit general notes/i }))
+
+    expect(within(region).getByRole('textbox', { name: /general notes/i })).toBeInTheDocument()
+  })
+
+  it('renders no empty box when the note is read-only and empty', () => {
+    render(
+      <Sections
+        opportunity={opportunity({
+          general_notes: null,
+          permissions: {
+            ...FULL_PERMISSIONS,
+            fields: {
+              general_notes: { visible: true, hidden: false, editable: false, readonly: true, required: false, disabled: false },
+            },
+          },
+        })}
+      />,
+    )
 
     expect(screen.queryByRole('region', { name: /general notes/i })).not.toBeInTheDocument()
   })

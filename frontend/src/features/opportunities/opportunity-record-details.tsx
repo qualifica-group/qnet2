@@ -3,9 +3,8 @@ import { ClipboardList } from 'lucide-react'
 import type { UseFormReturn } from 'react-hook-form'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordFieldList, RecordSection } from '@/components/detail/record-panel'
-import { GeneralNotesCallout } from '@/components/record-form/general-notes-callout'
+import { NotesCalloutRow } from '@/components/record-form/notes-callout-row'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
-import { useResourcePermissions } from '@/features/authorization/permissions'
 import { formatDecimal } from '@/features/products/column-renderers'
 import { formatDate } from '@/lib/formatting/date-display'
 import {
@@ -101,37 +100,21 @@ interface OpportunityGeneralNotesRowProps {
 }
 
 /**
- * "Note generali" across the record's full width, in the amber callout every
- * record shows its notes in (`GeneralNotesCallout`) — the text the operator
- * reads first; a click on it (or its pencil) opens the textarea. With no
- * note, an editable record shows a plain empty row to add one, a read-only
- * one shows nothing at all.
+ * "Note generali" across the record's full width, in the request work panel's
+ * callout (`NotesCalloutRow`) — the text the operator reads first.
  */
 export function OpportunityGeneralNotesRow({ notes, form, inline, className }: OpportunityGeneralNotesRowProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const label = t('opportunities.form.sections.generalNotes.title')
-  const hasNotes = notes !== null && notes.trim() !== ''
-  const isEditing = inline.editingField === 'general_notes'
-
-  if (!hasNotes && !isEditing && !fieldPermission('general_notes').editable) {
-    return null
-  }
 
   return (
-    // A list of its own: the row form needs a `<dl>` around it, as in every section.
-    <RecordFieldList className={className}>
-      <RecordInlineField
-        field="general_notes"
-        label={label}
-        inline={inline}
-        // Open, always a labelled row: a draft emptied while typing must not
-        // swap the frame (and remount the textarea) under the cursor.
-        layout={hasNotes && !isEditing ? 'block' : 'row'}
-        editor={<OpportunityGeneralNotesField control={form.control} />}
-      >
-        {hasNotes ? <GeneralNotesCallout title={label} notes={notes} /> : <DetailEmpty />}
-      </RecordInlineField>
-    </RecordFieldList>
+    <NotesCalloutRow
+      field="general_notes"
+      title={t('opportunities.form.sections.generalNotes.title')}
+      notes={notes}
+      placeholder={t('opportunities.form.generalNotesPlaceholder')}
+      inline={inline}
+      editor={<OpportunityGeneralNotesField control={form.control} />}
+      className={className}
+    />
   )
 }

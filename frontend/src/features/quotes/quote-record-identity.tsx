@@ -4,10 +4,9 @@ import { useWatch, type Control } from 'react-hook-form'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { RecordFieldList, RecordSection } from '@/components/detail/record-panel'
-import { GeneralNotesCallout } from '@/components/record-form/general-notes-callout'
+import { NotesCalloutRow } from '@/components/record-form/notes-callout-row'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
-import { useResourcePermissions } from '@/features/authorization/permissions'
 import { WorkflowStatusBadge } from '@/features/quote-workflows/workflow-status-badge'
 import {
   QuoteCodeField,
@@ -150,38 +149,19 @@ interface QuoteInternalNotesRowProps {
   className?: string
 }
 
-/**
- * "Note interne" across the record's full width, in the amber callout every
- * record shows its notes in (`GeneralNotesCallout`, the field's own look in
- * the form since the user directive 2026-08-06); a click on it (or its pencil)
- * opens the textarea. With no note, an editable record shows a plain empty
- * row to add one, a read-only one shows nothing at all.
- */
+/** "Note interne" across the record's full width, in the request work panel's callout (`NotesCalloutRow`). */
 export function QuoteInternalNotesRow({ notes, control, inline, className }: QuoteInternalNotesRowProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const label = t('quotes.form.internalNotes')
-  const hasNotes = notes !== null && notes.trim() !== ''
-  const isEditing = inline.editingField === 'internal_notes'
-
-  if (!hasNotes && !isEditing && !fieldPermission('internal_notes').editable) {
-    return null
-  }
 
   return (
-    // A list of its own: the row form needs a `<dl>` around it, as in every section.
-    <RecordFieldList className={className}>
-      <RecordInlineField
-        field="internal_notes"
-        label={label}
-        inline={inline}
-        // Open, always a labelled row: a draft emptied while typing must not
-        // swap the frame (and remount the textarea) under the cursor.
-        layout={hasNotes && !isEditing ? 'block' : 'row'}
-        editor={<QuoteInternalNotesField control={control} />}
-      >
-        {hasNotes ? <GeneralNotesCallout title={label} notes={notes} /> : <DetailEmpty />}
-      </RecordInlineField>
-    </RecordFieldList>
+    <NotesCalloutRow
+      field="internal_notes"
+      title={t('quotes.form.internalNotes')}
+      notes={notes}
+      placeholder={t('quotes.form.internalNotesPlaceholder')}
+      inline={inline}
+      editor={<QuoteInternalNotesField control={control} />}
+      className={className}
+    />
   )
 }

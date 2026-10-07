@@ -3,10 +3,10 @@ import { ClipboardList, Lock } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
-import { GeneralNotesCallout } from '@/components/record-form/general-notes-callout'
+import { GENERAL_NOTES_TEXTAREA_CLASS } from '@/components/record-form/layout'
+import { NotesCalloutRow } from '@/components/record-form/notes-callout-row'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
-import { useResourcePermissions } from '@/features/authorization/permissions'
 import { formatDate } from '@/lib/formatting/date-display'
 import {
   WorkOrderCallbackDateField,
@@ -146,37 +146,27 @@ interface WorkOrderInternalNotesRowProps {
   className?: string
 }
 
-/**
- * "Note interne" across the record's full width, in the amber callout every
- * record shows its notes in (`GeneralNotesCallout`); a click on it (or its
- * pencil) opens the textarea. With no note, an editable record shows a plain
- * empty row to add one, a read-only one shows nothing at all.
- */
+/** "Note commessa" across the record's full width, in the request work panel's callout (`NotesCalloutRow`). */
 export function WorkOrderInternalNotesRow({ notes, form, inline, className }: WorkOrderInternalNotesRowProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
   const label = t('workOrders.detail.internalNotes')
-  const hasNotes = notes !== null && notes.trim() !== ''
-  const isEditing = inline.editingField === 'internal_notes'
-
-  if (!hasNotes && !isEditing && !fieldPermission('internal_notes').editable) {
-    return null
-  }
 
   return (
-    // A list of its own: the row form needs a `<dl>` around it, as in every section.
-    <RecordFieldList className={className}>
-      <RecordInlineField
-        field="internal_notes"
-        label={label}
-        inline={inline}
-        // Open, always a labelled row: a draft emptied while typing must not
-        // swap the frame (and remount the textarea) under the cursor.
-        layout={hasNotes && !isEditing ? 'block' : 'row'}
-        editor={<WorkOrderTextAreaField control={form.form.control} name="internal_notes" label={label} />}
-      >
-        {hasNotes ? <GeneralNotesCallout title={label} notes={notes} /> : <DetailEmpty />}
-      </RecordInlineField>
-    </RecordFieldList>
+    <NotesCalloutRow
+      field="internal_notes"
+      title={label}
+      notes={notes}
+      placeholder={t('workOrders.detail.internalNotesPlaceholder')}
+      inline={inline}
+      editor={
+        <WorkOrderTextAreaField
+          control={form.form.control}
+          name="internal_notes"
+          label={label}
+          className={GENERAL_NOTES_TEXTAREA_CLASS}
+        />
+      }
+      className={className}
+    />
   )
 }

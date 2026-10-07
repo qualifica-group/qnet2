@@ -23,6 +23,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'tip',
+          text: "The **Work order notes** sit in the yellow box at the top of the detail, like the General notes in Request management: when empty the box invites you to write them; with the pencil (or a click on the text) you write them right inside the box.",
+        },
+        {
           type: 'note',
           text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Client registry, Contract, Company and sites come from the offer; Status and Completion are computed from the tasks.',
         },

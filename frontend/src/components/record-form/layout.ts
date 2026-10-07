@@ -78,3 +78,20 @@ export const GENERAL_NOTES_CALLOUT_CLASS =
 
 export const GENERAL_NOTES_TITLE_CLASS =
   'flex items-center gap-1.5 text-xs font-semibold tracking-tight text-amber-800 uppercase dark:text-amber-300'
+
+/**
+ * The note's text inside the callout. `whitespace-pre-wrap`: operators paste
+ * multi-line notes; capped and scrollable so a long one never pushes the rest
+ * of the column away.
+ */
+export const GENERAL_NOTES_TEXT_CLASS =
+  'max-h-64 overflow-y-auto text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground'
+
+/**
+ * The textarea written INSIDE the callout, deliberately unstyled (no border,
+ * no fill, no focus ring of its own): the callout IS the field's surface, and
+ * a second bordered box inside it would stack two containers on the same
+ * plane (ui-design.md §1-bis).
+ */
+export const GENERAL_NOTES_TEXTAREA_CLASS =
+  'min-h-0 resize-y border-0 bg-transparent p-0 text-sm leading-relaxed shadow-none focus-visible:ring-0 dark:bg-transparent'
