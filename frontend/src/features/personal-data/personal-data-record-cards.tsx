@@ -6,6 +6,7 @@ import { Mail, MapPin } from 'lucide-react'
 import { AddressesManager } from '@/features/personal-data/addresses-manager'
 import { ContactsManager } from '@/features/personal-data/contacts-manager'
 import { cardOwnerRef, cardToDraft } from '@/features/personal-data/drafts'
+import type { QuickContactType } from '@/features/personal-data/quick-contacts'
 import type {
   OwnerRef,
   PersonalDataCard,
@@ -51,6 +52,14 @@ interface PersonalDataChildCardsProps {
   persistence?: OwnerRef
   /** Receives every change of the buffer; absent = read-only. */
   onChange?: (patch: Pick<PersonalDataDraft, 'contacts'> | Pick<PersonalDataDraft, 'addresses'>) => void
+  /**
+   * A create form's buffer: the managers lay out their quick fields (email,
+   * phone, PEC, fax and the address form) ready to fill, as the create forms
+   * always did, instead of an empty list with "Add".
+   */
+  createMode?: boolean
+  /** The quick contact fields marked required; only with `createMode`. */
+  requiredCreateTypes?: QuickContactType[]
   contactsBoxProps?: CardBoxProps
   addressesBoxProps?: CardBoxProps
 }
@@ -67,6 +76,8 @@ export function PersonalDataChildCards({
   fieldPermission,
   persistence,
   onChange,
+  createMode = false,
+  requiredCreateTypes,
   contactsBoxProps,
   addressesBoxProps,
 }: PersonalDataChildCardsProps) {
@@ -88,6 +99,8 @@ export function PersonalDataChildCards({
                 fieldPermission={permission}
                 showHeader={false}
                 persistence={persistence}
+                createMode={createMode}
+                requiredCreateTypes={requiredCreateTypes}
               />
             ) : (
               <DetailEmpty />
@@ -111,6 +124,7 @@ export function PersonalDataChildCards({
                 showHeader={false}
                 showSiteType={showSiteType}
                 persistence={persistence}
+                createMode={createMode}
               />
             ) : (
               <DetailEmpty />

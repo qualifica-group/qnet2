@@ -48,7 +48,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Per creare una scheda premi **Nuova anagrafica**: il modulo ha lo stesso aspetto del dettaglio, con le stesse sezioni e **righe chiuse**. Fai clic sulla riga (o sulla matita) per aprirla, poi **Fatto** per tenere il valore o **Ripristina** per riportarlo com'era. Nei **Dati anagrafici** scegli prima il Tipo, Persona fisica o Azienda (i campi cambiano di conseguenza): con Fatto il nome compare in testa alla scheda. Contatti e Indirizzi sono nella colonna di destra, con **Aggiungi contatto** e **Aggiungi indirizzo**. **Salva** controlla tutto e crea l'anagrafica; se esci senza salvare ti viene chiesta conferma.",
+          text: "Per creare una scheda premi **Nuova anagrafica**: il modulo ha lo stesso aspetto del dettaglio, con le stesse sezioni e **righe chiuse**. Fai clic sulla riga (o sulla matita) per aprirla, poi **Fatto** per tenere il valore o **Ripristina** per riportarlo com'era. Nei **Dati anagrafici** scegli prima il Tipo, Persona fisica o Azienda (i campi cambiano di conseguenza): con Fatto il nome compare in testa alla scheda. Contatti e Indirizzi sono nella colonna di destra, con i campi già pronti da compilare: Email, Telefono (obbligatorio), PEC e Fax, più **Aggiungi contatto** per altri recapiti, e un indirizzo con il suo Tipo sede (le altre sedi si aggiungono dal dettaglio dopo il salvataggio). **Salva** controlla tutto e crea l'anagrafica; se esci senza salvare ti viene chiesta conferma.",
         },
         {
           type: 'table',
@@ -165,8 +165,8 @@ const guide: HelpGuide = {
             'Apri Anagrafiche › Anagrafiche e premi Nuova anagrafica.',
             'Apri i Dati anagrafici, scegli il Tipo, compilali e premi Fatto.',
             'Se compare Possibile duplicato, in cima alla colonna di destra, controlla prima di continuare.',
-            'Con Aggiungi contatto inserisci almeno un telefono nei Contatti, nella colonna di destra.',
-            'Con Aggiungi indirizzo aggiungi un indirizzo per ogni sede con il Tipo sede giusto.',
+            'Nei Contatti, nella colonna di destra, compila almeno il Telefono.',
+            'Compila l\'indirizzo con il Tipo sede giusto; le altre sedi le aggiungi dal dettaglio con Aggiungi indirizzo.',
             'Apri le righe che ti servono: in Relazioni, se serve, Commerciale e Segnalatore; in Team Supervisore e Gestori account; in Referenti le persone di contatto. Conferma ogni riga con Fatto.',
             'Premi Salva.',
           ],

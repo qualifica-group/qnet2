@@ -8,6 +8,7 @@ import { IdentityDuplicateWarning } from '@/features/identity-duplicates/identit
 import { useIdentityDuplicateCheck } from '@/features/identity-duplicates/use-identity-duplicate-check'
 import { emptyPersonalDataDraft } from '@/features/personal-data/drafts'
 import { PersonalDataChildCards } from '@/features/personal-data/personal-data-record-cards'
+import type { QuickContactType } from '@/features/personal-data/quick-contacts'
 import type { PersonalDataDraft } from '@/features/personal-data/types'
 import {
   anagraphicSectionProps,
@@ -20,6 +21,14 @@ import { useRegistryDraftInlineEdit } from '@/features/registries/use-registry-d
 import { useRegistryForm } from '@/features/registries/use-registry-form'
 import { useRegistryFormSubmit } from '@/features/registries/use-registry-form-submit'
 import type { RegistryDetail } from '@/features/registries/types'
+
+/**
+ * An anagrafica must be reachable by phone at creation (user directive
+ * 2026-09-07, same rule the referenti carry): the quick field carries the
+ * asterisk, `useRegistryFormSubmit` blocks the save, and StoreRegistryRequest
+ * enforces it server-side.
+ */
+const REQUIRED_CREATE_CONTACT_TYPES: QuickContactType[] = ['phone']
 
 /** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
 const REGISTRY_FORM_ID = 'registry-form'
@@ -38,7 +47,8 @@ interface RegistryFormBodyProps {
  * card with its identity band, KPI strip and sections, every row closed until
  * clicked — the anagraphic card too (`RegistryCreateSections`) — and the same
  * Contatti/Indirizzi cards in the side column, here kept in the draft until
- * Salva. A phone number is still required (`useRegistryFormSubmit`). There is
+ * Salva and laid out with their quick fields ready to fill (user 2026-10-07),
+ * the phone one required. There is
  * no edit form: the detail edits a persisted anagrafica in place.
  *
  * The duplicate warning heads the side column. It refuses nothing: the save
@@ -80,6 +90,8 @@ export function RegistryFormBody({ onSuccess, onCancel }: RegistryFormBodyProps)
         showSiteType
         fieldPermission={fieldPermission}
         onChange={(patch) => setProfileDraft({ ...profileDraft, ...patch })}
+        createMode
+        requiredCreateTypes={REQUIRED_CREATE_CONTACT_TYPES}
         contactsBoxProps={anagraphicSectionProps('contacts')}
         addressesBoxProps={anagraphicSectionProps('addresses')}
       />

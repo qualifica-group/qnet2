@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ANAGRAFICA — CREAZIONE: CAMPI RAPIDI CONTATTI/INDIRIZZO RIPRISTINATI (2026-10-07)
+
+- Richiesta utente: "in creazione anagrafica prima c'erano precompilati i contatti e indirizzi, voglio che siano
+  comunque precompilati per essere modificati". Annulla la scelta di 0155abca ("in creazione niente piu' campi rapidi").
+- `PersonalDataChildCards` (`personal-data-record-cards.tsx`): nuove prop opzionali `createMode` +
+  `requiredCreateTypes`, passate a `ContactsManager`/`AddressesManager` (quick field email/telefono/PEC/fax + form
+  indirizzo inline). `registry-form-body.tsx` le passa con `REQUIRED_CREATE_CONTACT_TYPES = ['phone']` (asterisco sul
+  Telefono). Il dettaglio resta invariato (niente createMode).
+- REQUIREMENT CHANGED (di nuovo) nei test: `registry-form-required-phone` ripristina il test del quick field
+  Telefono obbligatorio (+ indirizzo visibile), `-custom-fields` digita nel campo Telefono; rimossi
+  `ContactsManagerStub`/`STUB_PHONE` e l'`eslint-disable` ormai inutile dalle fixture.
+- Guida in-app IT/EN `registries`: creazione con campi gia' pronti, passi del flusso nuovo cliente aggiornati.
+- Manuale Claude Docs: sezione Anagrafiche > creazione da allineare.
+
 ## ANAGRAFICA — DETTAGLIO EDITABILE IN PLACE (CAMPI FLESSIBILI COMPRESI) + CREAZIONE COME IL DETTAGLIO (spec 0200) — VERDE, COMMITTATO b9d9f79b + SEGUITO (2026-10-06)
 
 - SEGUITO (dopo b9d9f79b), richiesta utente "/registries/new allineato a come e' stato fatto l'edit":

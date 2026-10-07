@@ -11,12 +11,11 @@ import { fillCardNames } from '@/features/registries/registry-test-fixtures'
 
 /**
  * An anagrafica must be reachable by phone at creation (user directive
- * 2026-09-07), the rule the referenti already carried: the save is refused
- * without a number. Client twin of `StoreRegistryRequest` +
- * `ValidatesRequiredPhoneContact`; the server side is covered by
- * `RegistryCrudTest`. REQUIREMENT CHANGED (spec 0200, aligned with the
- * detail): the contacts are the detail's card ("Add contact"), no quick
- * fields, so no asterisk on a quick Phone field any more.
+ * 2026-09-07), the rule the referenti already carried: the quick field is
+ * marked required and the save is refused without a number. Client twin of
+ * `StoreRegistryRequest` + `ValidatesRequiredPhoneContact`; the server side is
+ * covered by `RegistryCrudTest`. REQUIREMENT CHANGED back (user 2026-10-07):
+ * the create form lays the quick contact fields out again, ready to fill.
  */
 
 const createRegistryMock = vi.fn()
@@ -64,10 +63,6 @@ vi.mock('@/components/ui/async-paginated-multi-select', () => ({
   AsyncPaginatedMultiSelect: () => <div />,
 }))
 
-vi.mock('@/features/personal-data/contacts-manager', async () => ({
-  ContactsManager: (await import('@/features/registries/registry-test-fixtures')).ContactsManagerStub,
-}))
-
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
@@ -88,6 +83,19 @@ beforeEach(() => {
 })
 
 describe('RegistryForm — phone required at creation (user directive 2026-09-07)', () => {
+  it('marks the phone quick field as required in create mode, and only that one', async () => {
+    render(
+      <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    expect(await screen.findByLabelText(/^Phone/)).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByLabelText('Email')).toHaveAttribute('aria-required', 'false')
+    expect(screen.getByLabelText(/^Phone/).closest('div')?.textContent).toContain('*')
+    // The address is laid out ready to fill too, not behind an "Add" (user 2026-10-07).
+    expect(screen.getByLabelText('Address')).toBeInTheDocument()
+  })
+
   it('refuses the save when no phone number was entered', async () => {
     render(
       <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
@@ -112,7 +120,7 @@ describe('RegistryForm — phone required at creation (user directive 2026-09-07
     )
 
     await fillCardNames()
-    fireEvent.click(screen.getByRole('button', { name: 'add-phone' }))
+    fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(createRegistryMock).toHaveBeenCalledTimes(1))

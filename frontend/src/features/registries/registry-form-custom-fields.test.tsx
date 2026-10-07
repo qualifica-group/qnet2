@@ -25,10 +25,6 @@ vi.mock('@/features/registries/api', () => ({
   createRegistry: (...args: unknown[]) => createRegistryMock(...args),
 }))
 
-vi.mock('@/features/personal-data/contacts-manager', async () => ({
-  ContactsManager: (await import('@/features/registries/registry-test-fixtures')).ContactsManagerStub,
-}))
-
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
@@ -186,7 +182,7 @@ describe('RegistryForm — custom fields (spec 0021)', () => {
 
     await fillCardNames()
     // Creating an anagrafica requires a phone number (user directive 2026-09-07).
-    fireEvent.click(screen.getByRole('button', { name: 'add-phone' }))
+    fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
     fireEvent.click(await screen.findByRole('button', { name: 'Edit Priority level' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Priority level' }), {
       target: { value: 'High' },

@@ -1,11 +1,10 @@
-/* eslint-disable react-refresh/only-export-components -- test doubles and helpers colocated on purpose */
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import type { FieldPermission, ResourcePermissions } from '@/features/authorization/types'
-import type { ContactDraft, PersonalDataCard } from '@/features/personal-data/types'
+import type { PersonalDataCard } from '@/features/personal-data/types'
 import type { RegistryDetailWithPermissions } from '@/features/registries/types'
 
 /** Shared fixtures of the anagrafica create/detail suites (spec 0200). */
@@ -114,37 +113,6 @@ export function registryFixture(overrides: Partial<RegistryDetailWithPermissions
 /** The pencil of the in-place row labelled `field`. */
 export function pencilOf(field: string): HTMLElement {
   return screen.getByRole('button', { name: `Edit ${field}` })
-}
-
-/** The phone number the contacts stub adds. */
-export const STUB_PHONE = '+39 333 1234567'
-
-/**
- * Stand-in for `ContactsManager` (covered by its own suites): lists the
- * buffer and adds one phone contact, enough to drive the create gates.
- */
-export function ContactsManagerStub({
-  value,
-  onChange,
-}: {
-  value: ContactDraft[]
-  onChange: (next: ContactDraft[]) => void
-}) {
-  return (
-    <div>
-      {value.map((contact) => (
-        <span key={contact._key}>{contact.value}</span>
-      ))}
-      <button
-        type="button"
-        onClick={() =>
-          onChange([...value, { _key: 'stub-phone', type: 'phone', value: STUB_PHONE, label: null, is_primary: true }])
-        }
-      >
-        add-phone
-      </button>
-    </div>
-  )
 }
 
 /** Opens the create form's anagraphic card row, types an individual's names, keeps them with Done. */
