@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tables\Registries;
 
+use App\Models\Registry;
 use App\Models\User;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
 use App\Tables\RegistryScopable;
@@ -13,10 +14,13 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Decorator that scopes a domain to a single client/Anagrafica (spec 0199)
- * for the domains that carry a REAL `registry_id` column (`opportunities`,
+ * for the domains that carry a REAL registry id column (`opportunities`,
  * `tasks`): a single `where()` on the fully-qualified column handed in by
- * `TableRegistry` is the entire scope. Every other method is IDENTICAL
- * scoped or not, hence pure passthrough to $inner.
+ * `TableRegistry` is the entire scope. A polymorphic column (the recipient
+ * of `commission-configurations`, spec 0204) also gets its morph type
+ * column, pinned to the Registry alias so a referent or user with the same
+ * id never matches. Every other method is IDENTICAL scoped or not, hence
+ * pure passthrough to $inner.
  *
  * Pure passthrough when no scope has been set: every existing caller is
  * byte-identical to today. Composed OUTSIDE `CustomFieldAwareTableDefinition`
@@ -31,6 +35,7 @@ class RegistryScopedTableDefinition implements RegistryScopable, TableDefinition
     public function __construct(
         private readonly TableDefinition $inner,
         private readonly string $registryColumn,
+        private readonly ?string $morphTypeColumn = null,
     ) {}
 
     public function scopeToRegistry(?int $registryId): void
@@ -49,7 +54,13 @@ class RegistryScopedTableDefinition implements RegistryScopable, TableDefinition
             return $query;
         }
 
-        return $query->where($this->registryColumn, $this->registryScope);
+        $query->where($this->registryColumn, $this->registryScope);
+
+        if ($this->morphTypeColumn !== null) {
+            $query->where($this->morphTypeColumn, (new Registry)->getMorphClass());
+        }
+
+        return $query;
     }
 
     /**

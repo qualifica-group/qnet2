@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { CalendarRange, CircleDollarSign, FileText, Settings2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
@@ -10,8 +11,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
+import { useForSelectLabels } from '@/features/for-select/use-for-select'
 import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
+import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { CommissionConfigurationRecipientField } from './commission-configuration-recipient-field'
 import { useCommissionConfigurationForm } from './use-commission-configuration-form'
 import {
@@ -30,6 +33,8 @@ interface Props {
   onSuccess: (configuration: CommissionConfigurationDetail) => void
   onCancel: () => void
 }
+
+const NO_IDS: number[] = []
 
 const OPTIONS = {
   recipient_role: ['COMMERCIAL', 'REPORTER', 'SUPERVISOR', 'SUPPLIER'],
@@ -59,7 +64,18 @@ export function CommissionConfigurationFormBody({ mode, onSuccess, onCancel }: P
   const selectedCategory =
     mode.type === 'edit' ? mode.configuration.product_category : null
   const selectedProduct = mode.type === 'edit' ? mode.configuration.product : null
-  const selectedRecipient = mode.type === 'edit' ? (mode.configuration.recipient ?? null) : null
+  // A create seeded with a supplier (spec 0204 D-4) only knows its id: the
+  // picker's label comes from the registries for-select hydration.
+  const presetRegistryId = mode.type === 'create' ? (mode.supplierRegistryId ?? null) : null
+  const presetIds = useMemo(() => (presetRegistryId === null ? NO_IDS : [presetRegistryId]), [presetRegistryId])
+  const presetLabels = useForSelectLabels({ resource: REGISTRIES_FOR_SELECT_RESOURCE, ids: presetIds })
+  const presetLabel = presetRegistryId === null ? undefined : presetLabels.get(presetRegistryId)?.label
+  const selectedRecipient =
+    mode.type === 'edit'
+      ? (mode.configuration.recipient ?? null)
+      : presetRegistryId !== null && presetLabel !== undefined
+        ? { id: presetRegistryId, name: presetLabel }
+        : null
   const scopeRelationField =
     scope === 'PRODUCT' ? 'product_id' : scope === 'PRODUCT_CATEGORY' ? 'product_category_id' : null
   const scopeVisible =

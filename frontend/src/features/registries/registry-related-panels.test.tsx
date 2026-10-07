@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import {
+  RegistryCommissionConfigurationsPanel,
   RegistryOpportunitiesPanel,
   RegistryQuotesPanel,
   RegistryTasksPanel,
@@ -86,6 +87,14 @@ const CASES: PanelCase[] = [
     createLabel: 'New work order',
   },
   { name: 'Task', Panel: RegistryTasksPanel, domain: 'tasks', createPermission: 'tasks.create', createLabel: 'New task' },
+  // Spec 0204: the supplier's configured commissions, same mechanics.
+  {
+    name: 'Commissioni configurate',
+    Panel: RegistryCommissionConfigurationsPanel,
+    domain: 'commission-configurations',
+    createPermission: 'commission-configurations.create',
+    createLabel: 'New configuration',
+  },
 ]
 
 const REGISTRY_ID = 7

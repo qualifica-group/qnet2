@@ -156,6 +156,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'configured-commissions',
+      title: "The supplier's configured commissions",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'On a registry marked as **Supplier**, next to the other tabs you find **Configured commissions**: the Commission Configurator table with only the rules that have this registry as **Recipient**. Supplier rules valid for every supplier do not appear here.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Open the **Configured commissions** tab.',
+            'Use **View** on the row to open the rule in a panel above the registry, or **Delete** if it is not in use.',
+            'For a new rule press **New configuration**: the form starts with Recipient role **Supplier**, scope **Specific recipient** and this registry as Recipient. Type the name, complete Calculation and Validity and press **Save**.',
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'The tab appears only if you can view the Commission Configurator; the New configuration button only if you can create one.',
+        },
+      ],
+    },
+    {
       id: 'new-client-flow',
       title: 'Typical flow: a new client with referents and sites',
       blocks: [

@@ -2,6 +2,10 @@ import { useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { useAbilities } from '@/features/auth/use-abilities'
+import { COMMISSION_CONFIGURATIONS_DOMAIN } from '@/features/commission-configurations/api'
+import { commissionConfigurationColumnRenderers } from '@/features/commission-configurations/column-renderers'
+import { COMMISSION_CREATE_REGISTRY_PARAM } from '@/features/commission-configurations/types'
+import { useCommissionConfigurationRowActions } from '@/features/commission-configurations/use-commission-configuration-row-actions'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import { NotesDialog } from '@/features/notes/notes-dialog'
 import { OPPORTUNITIES_ACTION_ICONS } from '@/features/opportunities/action-icons'
@@ -231,5 +235,40 @@ export function RegistryTasksPanel({ registryId, onRowCountChanged }: RegistryRe
       <ResourceActivityDialog resource={TASKS_DOMAIN} row={activityRow} onOpenChange={closeActivity} />
       <NotesDialog entityType={TASKS_DOMAIN} entityId={notesRowId} onThreadChanged={refresh} onOpenChange={closeNotes} />
     </TaskCompleteRowContext.Provider>
+  )
+}
+
+/** Spec 0204: the Configuratore commissioni rules whose recipient is this supplier. */
+export function RegistryCommissionConfigurationsPanel({ registryId, onRowCountChanged }: RegistryRelatedPanelProps) {
+  const { t } = useTranslation()
+  const { can } = useAbilities()
+  const { tableRef, refresh } = useRelatedGridRefresh()
+  const { handleAction, isBusy, openCreateWith, sheet, dialogs } = useCommissionConfigurationRowActions({
+    onMutated: refresh,
+    forceMode: OPEN_MODE_MODAL,
+  })
+
+  return (
+    <>
+      <RegistryRelatedGrid
+        ref={tableRef}
+        domain={COMMISSION_CONFIGURATIONS_DOMAIN}
+        registryId={registryId}
+        renderers={commissionConfigurationColumnRenderers}
+        onAction={handleAction}
+        isBusy={isBusy}
+        onRowCountChanged={onRowCountChanged}
+        create={
+          can('commission-configurations.create')
+            ? {
+                label: t('commissionConfigurations.form.new'),
+                onCreate: () => openCreateWith({ [COMMISSION_CREATE_REGISTRY_PARAM]: registryId }),
+              }
+            : null
+        }
+      />
+      {sheet}
+      {dialogs}
+    </>
   )
 }

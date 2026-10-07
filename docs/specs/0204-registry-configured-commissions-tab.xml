@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0204-registry-configured-commissions-tab" status="implemented" owner="utente" date="2026-10-07">
+
+  <goal>
+    Il dettaglio dell'Anagrafica fornitore guadagna, tra le tab dei record collegati (spec 0199), la tab
+    "Commissioni configurate": la griglia del Configuratore commissioni filtrata sulle regole che hanno questa
+    anagrafica come destinatario, con "Nuova regola" che apre il form del Configuratore gia' legato al fornitore.
+  </goal>
+
+  <context>
+    - Richiesta utente 2026-10-07: "aggiungere un tab commissioni configurate (collegamento tramite commissioni
+      configuratore) su anagrafica".
+    - D-1 (scelta utente): perimetro = regole con destinatario questa anagrafica
+      (`commission_configurations.recipient_type = 'registry'` AND `recipient_id = :registry`, spec 0089 D-1). Niente
+      regole dei referenti collegati ne' regole di prodotto senza destinatario.
+    - D-2 (scelta utente): la tab esiste solo se l'anagrafica e' fornitore (`is_supplier`) e l'utente ha
+      `commission-configurations.viewAny`; "Nuova regola" solo con `commission-configurations.create`.
+    - D-3: stessa meccanica della 0199: `TableView` del dominio `commission-configurations` con `rowScope.registryId`,
+      renderer/azioni del modulo (view/delete/activity), sheet forzato. Le azioni di riga del Configuratore passano in
+      `useCommissionConfigurationRowActions` (secondo call site, come `useOpportunityRowActions`).
+    - D-4: "Nuova configurazione" apre il form con il create param `registry_id` (stessa chiave della 0199,
+      `COMMISSION_CREATE_REGISTRY_PARAM`); il form parte con `recipient_role=SUPPLIER`, `recipient_type=registry`,
+      `recipient_id=:registry`, `application_scope=RECIPIENT` (regola personale su ogni prodotto, modificabile nel form).
+      Il nome del destinatario si idrata con `useForSelectLabels` sul for-select delle anagrafiche.
+  </context>
+
+  <contract>
+    <backend>
+      `commission-configurations` diventa `RegistryScopable` via `RegistryScopedTableDefinition` (colonna
+      `commission_configurations.recipient_id` + colonna tipo morph `commission_configurations.recipient_type` =
+      alias morph di `Registry`). Chiavi esistenti della 0199: `registryId` su rows/values/export, `registry_id` su
+      columns. Senza scope risposta invariata; autorizzazione invariata (viewAny della definition).
+    </backend>
+    <frontend>
+      `RegistryRelatedRecords` riceve `isSupplier`; nuova tab `commission-configurations` (supplierOnly).
+      `RegistryCommissionConfigurationsPanel` in `registry-related-panels.tsx`. `CommissionConfigurationFormMode`
+      create con `supplierRegistryId` opzionale, letto da `mode.params.registry_id`.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Rows/values/export di `commission-configurations` con `registryId` restituiscono solo le regole con
+      destinatario quell'anagrafica (non quelle di un referente/utente con lo stesso id); senza `registryId` invariato.</ac>
+    <ac id="AC-002">La tab compare solo per anagrafiche fornitore e con `commission-configurations.viewAny`.</ac>
+    <ac id="AC-003">"Nuova configurazione" apre il form precompilato (Fornitore, destinatario = anagrafica); dopo il salvataggio
+      la griglia si ricarica. Senza `create` nessun pulsante.</ac>
+    <ac id="AC-004">Guide in-app IT/EN `registries` (e `commission-configurations`) aggiornate.</ac>
+  </acceptance>
+</spec>

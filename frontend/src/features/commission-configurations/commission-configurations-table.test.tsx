@@ -12,7 +12,7 @@ const opener = vi.hoisted(() => ({
 }))
 const toastError = vi.hoisted(() => vi.fn())
 
-vi.mock('./api', () => ({ deleteCommissionConfiguration: vi.fn() }))
+vi.mock('./api', () => ({ COMMISSION_CONFIGURATIONS_DOMAIN: 'commission-configurations', deleteCommissionConfiguration: vi.fn() }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: toastError } }))
 vi.mock('@/features/auth/can', () => ({ Can: ({ children }: { children: React.ReactNode }) => children }))
 vi.mock('@/components/page-header', () => ({ PageHeader: ({ actions }: { actions: React.ReactNode }) => <div>{actions}</div> }))

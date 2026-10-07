@@ -15,22 +15,31 @@ vi.mock('@/components/form/relation-select-field', async () => {
     // `useController`), so tests can both read the current value and simulate
     // a pick — the real `AsyncPaginatedSelect` needs network data this suite
     // does not provide.
-    RelationSelectField: ({ control, name, label, resource }: {
+    RelationSelectField: ({ control, name, label, resource, selected }: {
       control: Parameters<typeof useController>[0]['control']
       name: Parameters<typeof useController>[0]['name']
       label: string
       resource: string
+      selected: { id: number; name: string } | null
     }) => {
       const { field } = useController({ control, name })
       return (
         <div>
           <span>{`${label}: ${resource}: ${String(field.value)}`}</span>
+          {selected ? <span>{`${name} selected: ${selected.name}`}</span> : null}
           <button type="button" onClick={() => field.onChange(99)}>{`pick ${name}`}</button>
         </div>
       )
     },
   }
 })
+
+// Spec 0204: the supplier preset hydrates its picker label from the registries for-select.
+vi.mock('@/features/for-select/use-for-select', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/for-select/use-for-select')>()),
+  useForSelectLabels: ({ ids }: { ids: number[] }) =>
+    new Map(ids.map((id) => [id, { id, label: `Supplier ${id}` }])),
+}))
 
 const editable: FieldPermission = {
   visible: true,
@@ -192,5 +201,15 @@ describe('CommissionConfigurationFormBody', () => {
     expect(screen.queryByText('Calculation')).not.toBeInTheDocument()
     expect(screen.queryByText('Validity')).not.toBeInTheDocument()
     expect(screen.queryByText('Internal note')).not.toBeInTheDocument()
+  })
+
+  it('opens on a personal SUPPLIER rule for the supplier a registry tab seeded (spec 0204)', () => {
+    render(wrapper(
+      <CommissionConfigurationFormBody mode={{ type: 'create', supplierRegistryId: 12 }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+    ))
+    expect(screen.getByText('Recipient: registries: 12')).toBeInTheDocument()
+    expect(screen.getByText('recipient_id selected: Supplier 12')).toBeInTheDocument()
+    expect(screen.queryByText(/^Product category:/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: /^Recipient type/ })).not.toBeInTheDocument()
   })
 })

@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
+import { parseEntityId } from '@/routes/entity-id'
 import type { ModuleDetailScreenProps, ModuleFormScreenProps, ModuleRegistryEntry } from '@/features/modules/types'
 import {
   commissionConfigurationDetailKey,
@@ -13,7 +14,7 @@ import {
 } from './api'
 import { CommissionConfigurationForm } from './commission-configuration-form'
 import { CommissionConfigurationDetailView } from './commission-configuration-detail'
-import type { CommissionConfigurationDetail } from './types'
+import { COMMISSION_CREATE_REGISTRY_PARAM, type CommissionConfigurationDetail } from './types'
 
 export function CommissionConfigurationDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
@@ -52,7 +53,7 @@ export function CommissionConfigurationFormScreen({ mode, onSuccess, onCancel }:
     onSuccess(configuration.id)
   }
   return mode.type === 'create'
-    ? <CommissionConfigurationForm mode={{ type: 'create' }} onSuccess={saved} onCancel={onCancel} />
+    ? <CommissionConfigurationForm mode={{ type: 'create', supplierRegistryId: parseEntityId(String(mode.params?.[COMMISSION_CREATE_REGISTRY_PARAM] ?? '')) }} onSuccess={saved} onCancel={onCancel} />
     : <EditLoader id={mode.id} onSuccess={saved} onCancel={onCancel} />
 }
 

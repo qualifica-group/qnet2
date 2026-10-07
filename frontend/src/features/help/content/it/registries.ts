@@ -156,6 +156,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'configured-commissions',
+      title: 'Commissioni configurate del fornitore',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Su un'anagrafica segnata come **Fornitore**, accanto alle altre schede trovi **Commissioni configurate**: la tabella del Configuratore Commissioni con le sole regole che hanno questa anagrafica come **Destinatario**. Le regole Fornitore valide per tutti i fornitori non compaiono qui.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Apri la scheda **Commissioni configurate**.',
+            'Usa **Visualizza** sulla riga per aprire la regola in un pannello sopra l\'anagrafica, oppure **Elimina** se non è in uso.',
+            "Per una nuova regola premi **Nuova configurazione**: il modulo parte con Ruolo destinatario **Fornitore**, ambito **Destinatario specifico** e questa anagrafica come Destinatario. Scrivi il nome, completa Calcolo e Validità e premi **Salva**.",
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'La scheda compare solo se puoi consultare il Configuratore Commissioni; il pulsante Nuova configurazione solo se puoi crearne.',
+        },
+      ],
+    },
+    {
       id: 'new-client-flow',
       title: 'Flusso tipico: un nuovo cliente con referenti e sedi',
       blocks: [

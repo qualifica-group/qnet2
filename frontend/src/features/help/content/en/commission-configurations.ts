@@ -24,6 +24,7 @@ const guide: HelpGuide = {
           'In **Validity** indicate the **Validity start date** (required), the optional **Validity end date** and the **Status** (Active or Suspended).',
           'If you want, add an **Internal service note** and press **Save**.',
         ] },
+        { type: 'tip', text: 'The rules of a single supplier can also be viewed and created from its registry detail, in the **Configured commissions** tab: there the form already starts with Role **Supplier** and that registry as Recipient.' },
       ],
     },
     {

@@ -66,6 +66,11 @@ describe('commission configuration screens', () => {
     expect(onSuccess).toHaveBeenCalledWith(1)
   })
 
+  it('reads the supplier registry from the create params (spec 0204)', () => {
+    render(<CommissionConfigurationFormScreen mode={{ type: 'create', params: { registry_id: 12 } }} onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
+    expect(formProps.current?.mode).toEqual({ type: 'create', supplierRegistryId: 12 })
+  })
+
   it('covers edit loading, error retry and ready states', () => {
     const refetch = vi.fn()
     useDetail.mockReturnValue({ data: undefined, isLoading: true, isError: false, refetch })

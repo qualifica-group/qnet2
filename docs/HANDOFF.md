@@ -3,7 +3,34 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## COMMESSA — TAB "DATI CONTRATTUALI" + STATI PAGAMENTO PER RIGA (spec 0201) — VERDE, NON COMMITTATO (2026-10-07)
+## ANAGRAFICA — TAB "COMMISSIONI CONFIGURATE" (spec 0204) — VERDE, COMMITTATO (2026-10-07)
+
+- Richiesta utente: "aggiungere un tab commissioni configurate (collegamento tramite commissioni configuratore) su
+  anagrafica". Scelte utente: perimetro = regole con destinatario QUESTA anagrafica (`recipient_type='registry'`,
+  `recipient_id`), niente referenti/prodotti forniti; tab SOLO su anagrafiche fornitore (`is_supplier`) + Nuovo.
+- Backend: `commission-configurations` aggiunto a `TableRegistry::REGISTRY_SCOPE_COLUMNS`
+  (`commission_configurations.recipient_id`) + nuova `REGISTRY_SCOPE_MORPH_TYPE_COLUMNS` (`recipient_type`);
+  `RegistryScopedTableDefinition` ha il param opzionale `morphTypeColumn` (where = alias morph di `Registry`). Chiavi
+  `registryId`/`registry_id` della 0199 invariate. Test: `tests/Feature/Tables/RegistryCommissionConfigurationScopeTest.php` (6).
+- Frontend: azioni di riga del Configuratore estratte in `use-commission-configuration-row-actions.tsx`
+  (`CommissionConfigurationsTable` ci si appoggia); tab `commission-configurations` (`supplierOnly`, icona Percent) in
+  `RegistryRelatedRecords` (nuova prop `isSupplier`, passata da `registry-detail.tsx`); `RegistryCommissionConfigurationsPanel`.
+  Create param `registry_id` (`COMMISSION_CREATE_REGISTRY_PARAM`) -> `CommissionConfigurationFormMode` create
+  `supplierRegistryId` -> defaults SUPPLIER/RECIPIENT/registry (`createDefaults`); label del destinatario via
+  `useForSelectLabels`. i18n `registries.detail.related.commissionConfigurations`. Guide IT/EN: `registries#configured-commissions`
+  (nuova) + tip in `commission-configurations#create-configuration`.
+- Test aggiornati (solo setup, nessuna asserzione cambiata): mock `./api` con `COMMISSION_CONFIGURATIONS_DOMAIN`,
+  mock pannelli con il nuovo export, prop `isSupplier={false}` nei casi esistenti. Nuovi casi: tab fornitore/permessi,
+  pannello (5 casi della describe.each), preset form/screen/body.
+- Verifica: Pest Tables+Table+Exports+CommissionConfigurations+Registries 513 verdi; Pint ok; Vitest registries+
+  commission-configurations+help+i18n 54 file / 444; `tsc -b --force` 0; ESLint pulito. Browser NON verificato
+  (backend dev non attivo, Playwright non installato).
+- Manuale Claude Docs: da aggiornare (Anagrafiche > dettaglio fornitore, tab Commissioni configurate; Configuratore
+  Commissioni > creazione dal fornitore).
+- Commit con i soli file di questa feature (esclusi quelli delle spec 0202 e 0203-legacy-commission-rules-migration,
+  altra sessione). Spec rinumerata 0204 per collisione con la 0203 creata in parallelo.
+
+## COMMESSA — TAB "DATI CONTRATTUALI" + STATI PAGAMENTO PER RIGA (spec 0201) — VERDE, COMMITTATO 1e512ce4 (2026-10-07)
 
 - Richiesta utente: nel dettaglio commessa gli stati di pagamento per ogni prodotto e una sezione che spiega i calcoli
   per riga (riferimento legacy `qnet` `manageorder/{id}` "Dati contrattuali commessa", `Manageorder::calcolaDatiContrattuali`).

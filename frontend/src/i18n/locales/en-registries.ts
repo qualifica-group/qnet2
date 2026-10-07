@@ -31,6 +31,7 @@ export const registries = {
     registryDocumentsTab: 'Registry documents',
     related: {
       title: 'Related records',
+      commissionConfigurations: 'Configured commissions',
       countLabel_one: '{{count}} related record',
       countLabel_other: '{{count}} related records',
     },

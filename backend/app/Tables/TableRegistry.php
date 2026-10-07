@@ -49,6 +49,15 @@ class TableRegistry
     private const array REGISTRY_SCOPE_COLUMNS = [
         'opportunities' => 'opportunities.registry_id',
         'tasks' => 'tasks.registry_id',
+        'commission-configurations' => 'commission_configurations.recipient_id',
+    ];
+
+    /**
+     * The morph type column of the REGISTRY_SCOPE_COLUMNS entries that are
+     * polymorphic (spec 0204): the Configuratore commissioni's recipient.
+     */
+    private const array REGISTRY_SCOPE_MORPH_TYPE_COLUMNS = [
+        'commission-configurations' => 'commission_configurations.recipient_type',
     ];
 
     public function __construct(private readonly Container $container) {}
@@ -61,7 +70,8 @@ class TableRegistry
      * 0130), THEN in `OpportunityScopedTableDefinition` (spec 0067) for
      * `quotes`, THEN in `QuoteScopedTableDefinition` (spec 0095) for
      * `work-orders`, THEN in `RegistryScopedTableDefinition` (spec 0199) for
-     * `opportunities`/`tasks` — one line each here, zero per-module code.
+     * `opportunities`/`tasks`/`commission-configurations` (spec 0204) — one
+     * line each here, zero per-module code.
      *
      * @throws ModelNotFoundException when the domain is not registered.
      */
@@ -190,6 +200,7 @@ class TableRegistry
         $wrapped = $this->container->make(RegistryScopedTableDefinition::class, [
             'inner' => $definition,
             'registryColumn' => $column,
+            'morphTypeColumn' => self::REGISTRY_SCOPE_MORPH_TYPE_COLUMNS[$domain] ?? null,
         ]);
 
         return $wrapped;

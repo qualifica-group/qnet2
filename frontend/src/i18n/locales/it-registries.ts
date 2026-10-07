@@ -32,6 +32,7 @@ export const registries = {
     // Tab dei record collegati al cliente sotto la scheda (spec 0199).
     related: {
       title: 'Record collegati',
+      commissionConfigurations: 'Commissioni configurate',
       countLabel_one: '{{count}} record collegato',
       countLabel_other: '{{count}} record collegati',
     },
