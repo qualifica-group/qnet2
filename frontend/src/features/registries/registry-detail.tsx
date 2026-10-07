@@ -131,7 +131,7 @@ function RegistryDetailContent({ registry, onChanged }: RegistryDetailViewProps)
       </RecordBody>
 
       {/* Spec 0199: the client's Opportunita'/Offerte/Commesse/Task, full width below the record. */}
-      <RegistryRelatedRecords registryId={registry.id} isSupplier={registry.is_supplier} />
+      <RegistryRelatedRecords registryId={registry.id} />
 
       {createdAt ? (
         <RecordMeta>

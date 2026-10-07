@@ -157,11 +157,11 @@ const guide: HelpGuide = {
     },
     {
       id: 'configured-commissions',
-      title: 'Commissioni configurate del fornitore',
+      title: 'Commissioni configurate',
       blocks: [
         {
           type: 'paragraph',
-          text: "Su un'anagrafica segnata come **Fornitore**, accanto alle altre schede trovi **Commissioni configurate**: la tabella del Configuratore Commissioni con le sole regole che hanno questa anagrafica come **Destinatario**. Le regole Fornitore valide per tutti i fornitori non compaiono qui.",
+          text: "Su ogni anagrafica, che sia segnata come **Fornitore** o no, accanto alle altre schede trovi **Commissioni configurate**: la tabella del Configuratore Commissioni con le sole regole che hanno questa anagrafica come **Destinatario**. Le regole Fornitore valide per tutti i fornitori non compaiono qui.",
         },
         {
           type: 'steps',

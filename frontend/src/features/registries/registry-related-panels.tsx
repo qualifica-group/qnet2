@@ -238,7 +238,7 @@ export function RegistryTasksPanel({ registryId, onRowCountChanged }: RegistryRe
   )
 }
 
-/** Spec 0204: the Configuratore commissioni rules whose recipient is this supplier. */
+/** Spec 0204: the Configuratore commissioni rules whose recipient is this anagrafica, supplier or not. */
 export function RegistryCommissionConfigurationsPanel({ registryId, onRowCountChanged }: RegistryRelatedPanelProps) {
   const { t } = useTranslation()
   const { can } = useAbilities()

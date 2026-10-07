@@ -24,8 +24,6 @@ interface RelatedTab {
   labelKey: string
   icon: ReactNode
   Panel: ComponentType<RegistryRelatedPanelProps>
-  /** Shown only on a supplier anagrafica (spec 0204 D-2). */
-  supplierOnly?: boolean
 }
 
 const RELATED_TABS: readonly RelatedTab[] = [
@@ -63,24 +61,22 @@ const RELATED_TABS: readonly RelatedTab[] = [
     labelKey: 'registries.detail.related.commissionConfigurations',
     icon: <Percent className="size-3.5" aria-hidden="true" />,
     Panel: RegistryCommissionConfigurationsPanel,
-    supplierOnly: true,
   },
 ]
 
 interface RegistryRelatedRecordsProps {
   registryId: number
-  isSupplier: boolean
 }
 
 /**
  * The anagrafica's related records (spec 0199): Opportunita', Offerte,
  * Commesse and Task of this client, one tab each, plus the Configuratore
- * commissioni rules naming a supplier as recipient (spec 0204), full width below the record
+ * commissioni rules naming it as recipient (spec 0204), full width below the record
  * (a side column is too narrow for a toolbar + grid). Only the active tab's
  * grid is mounted; its counter appears once that grid has reported its total
  * and stays while the user moves to another tab. No tab left = no card.
  */
-export function RegistryRelatedRecords({ registryId, isSupplier }: RegistryRelatedRecordsProps) {
+export function RegistryRelatedRecords({ registryId }: RegistryRelatedRecordsProps) {
   const { t } = useTranslation()
   const { can } = useAbilities()
   const [counts, setCounts] = useState<Record<string, number>>({})
@@ -101,7 +97,7 @@ export function RegistryRelatedRecords({ registryId, isSupplier }: RegistryRelat
     [],
   )
 
-  const tabs = RELATED_TABS.filter((tab) => can(tab.permission) && (isSupplier || !tab.supplierOnly))
+  const tabs = RELATED_TABS.filter((tab) => can(tab.permission))
 
   if (tabs.length === 0) {
     return null

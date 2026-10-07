@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ANAGRAFICHE: TAB "COMMISSIONI CONFIGURATE" SU OGNI ANAGRAFICA — VERDE, NON COMMITTATO (2026-10-07)
+
+- Richiesta utente: la tab deve comparire a prescindere da `is_supplier` ("tutte le anagrafiche sono potenzialmente
+  con commissioni"). Spec 0204 D-2/AC-002 emendate.
+- `registry-related-records.tsx`: rimossi `supplierOnly` e la prop `isSupplier` (gate solo su
+  `commission-configurations.viewAny`); `registry-detail.tsx` non passa piu' `is_supplier`. Back-end invariato (lo scope
+  `registryId` e il destinatario `registry` del ruolo SUPPLIER non richiedono il flag fornitore).
+- Test `registry-related-records.test.tsx` aggiornati al nuovo requisito. Guide in-app IT/EN `registries` e
+  `commission-configurations` aggiornate.
+- Verificato: Vitest registries/help/commission-configurations 263/263, `tsc -b --force` 0, ESLint pulito.
+
 ## RIGHE PRODOTTO DI CONTRATTI, COMMESSE, GESTIONE RICHIESTE (STESSE REGOLE OFFERTE) — VERDE, COMMITTATO (2026-10-07)
 
 - Regola comune: min-width del wrapper = tracce + 8px*gap + 16px (`px-2`), icone `icon-sm` con `mt-0.5` sulle righe

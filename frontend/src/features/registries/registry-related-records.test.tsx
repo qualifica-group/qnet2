@@ -48,17 +48,17 @@ beforeEach(() => {
 
 describe('RegistryRelatedRecords (spec 0199)', () => {
   it('shows one tab per module, the first one open on this anagrafica', () => {
-    render(<RegistryRelatedRecords registryId={5} isSupplier={false} />)
+    render(<RegistryRelatedRecords registryId={5} />)
 
     const tabs = screen.getAllByRole('tab').map((tab) => tab.textContent)
-    expect(tabs).toEqual(['Opportunities', 'Quotes', 'Work orders', 'Tasks'])
+    expect(tabs).toEqual(['Opportunities', 'Quotes', 'Work orders', 'Tasks', 'Configured commissions'])
     expect(screen.getByText('opportunities-panel:5')).toBeInTheDocument()
     expect(screen.queryByText('quotes-panel:5')).not.toBeInTheDocument()
   })
 
   it("leaves out the tab of a module the user cannot list", () => {
     canMock.mockImplementation((permission) => permission !== 'quotes.viewAny')
-    render(<RegistryRelatedRecords registryId={5} isSupplier={false} />)
+    render(<RegistryRelatedRecords registryId={5} />)
 
     expect(screen.queryByRole('tab', { name: 'Quotes' })).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Work orders' })).toBeInTheDocument()
@@ -66,31 +66,29 @@ describe('RegistryRelatedRecords (spec 0199)', () => {
 
   it('renders nothing when no module can be listed', () => {
     canMock.mockReturnValue(false)
-    const { container } = render(<RegistryRelatedRecords registryId={5} isSupplier={false} />)
+    const { container } = render(<RegistryRelatedRecords registryId={5} />)
 
     expect(container).toBeEmptyDOMElement()
   })
 
   it("shows a tab's counter once its grid reports the total", () => {
-    render(<RegistryRelatedRecords registryId={5} isSupplier={false} />)
+    render(<RegistryRelatedRecords registryId={5} />)
 
     expect(screen.queryByLabelText('4 related records')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'opportunities reports' }))
     expect(screen.getByLabelText('4 related records')).toHaveTextContent('4')
   })
 
-  it('adds the configured commissions tab on a supplier anagrafica only (spec 0204)', () => {
-    render(<RegistryRelatedRecords registryId={5} isSupplier />)
+  it('mounts the configured commissions panel on any anagrafica, supplier or not (spec 0204)', () => {
+    render(<RegistryRelatedRecords registryId={5} />)
 
-    const tabs = screen.getAllByRole('tab').map((tab) => tab.textContent)
-    expect(tabs).toEqual(['Opportunities', 'Quotes', 'Work orders', 'Tasks', 'Configured commissions'])
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Configured commissions' }))
     expect(screen.getByText('commission-configurations-panel:5')).toBeInTheDocument()
   })
 
   it('leaves out the configured commissions tab without the Configuratore viewAny', () => {
     canMock.mockImplementation((permission) => permission !== 'commission-configurations.viewAny')
-    render(<RegistryRelatedRecords registryId={5} isSupplier />)
+    render(<RegistryRelatedRecords registryId={5} />)
 
     expect(screen.queryByRole('tab', { name: 'Configured commissions' })).not.toBeInTheDocument()
   })

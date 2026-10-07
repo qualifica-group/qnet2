@@ -157,11 +157,11 @@ const guide: HelpGuide = {
     },
     {
       id: 'configured-commissions',
-      title: "The supplier's configured commissions",
+      title: 'Configured commissions',
       blocks: [
         {
           type: 'paragraph',
-          text: 'On a registry marked as **Supplier**, next to the other tabs you find **Configured commissions**: the Commission Configurator table with only the rules that have this registry as **Recipient**. Supplier rules valid for every supplier do not appear here.',
+          text: 'On every registry, whether marked as **Supplier** or not, next to the other tabs you find **Configured commissions**: the Commission Configurator table with only the rules that have this registry as **Recipient**. Supplier rules valid for every supplier do not appear here.',
         },
         {
           type: 'steps',
