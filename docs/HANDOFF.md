@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TEAM — EDITOR GESTORI ACCOUNT COME COMMESSE (ANAGRAFICHE/OPPORTUNITA'/OFFERTE) — VERDE, COMMITTATO (2026-10-07)
+
+- Richiesta utente: "modificando il team lo spazio e' davvero poco, fallo come in commesse".
+- Causa: `ManagerSlotsField` senza `labels` usa il badge numerico compatto (numero + picker + 3 pulsanti su una riga,
+  picker schiacciato nella colonna valore del dettaglio). Commesse passa sempre le etichette -> layout "named"
+  (etichetta su riga propria, picker a tutta larghezza).
+- Fix: nuovo `managerSlotLabels(t, labels)` in `features/shared/manager-position-label.ts` (mappa COMPLETA 1..
+  `MAX_MANAGER_SLOTS`, override di categoria sopra il default "Gestore account n"). Usato da `RegistryManagersField`,
+  `OpportunityManagersField` (rimosso `toSlotLabels` locale), `QuoteManagersField` (non usa piu' `toManagerSlotLabels`,
+  che resta per Gestione richieste). `ManagerSlotsField` invariato (solo commenti): Gestione richieste mantiene il badge.
+- Test: `opportunity-relation-fields.test.tsx` aggiornato (requisito cambiato: ora inoltra sempre la mappa completa);
+  nuovo `manager-position-label.test.ts`. Manuale: nessun impatto.
+- Nota: `help-guide-keys.test.ts` (55 -> 56) e gli errori `tsc` in `work-order-payment-statuses/` sono del lavoro
+  parallelo spec 0201, non di questa modifica.
+
 ## ANAGRAFICA — CREAZIONE: CAMPI RAPIDI CONTATTI/INDIRIZZO RIPRISTINATI (2026-10-07)
 
 - Richiesta utente: "in creazione anagrafica prima c'erano precompilati i contatti e indirizzi, voglio che siano

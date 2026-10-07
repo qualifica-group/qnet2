@@ -4,6 +4,7 @@ import { ManagerSlotsField } from '@/components/form/manager-slots-field'
 import { RelationMultiSelectField } from '@/components/form/relation-multi-select-field'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
 import { MetaField } from '@/features/authorization/MetaField'
+import { managerSlotLabels } from '@/features/shared/manager-position-label'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { SECTORS_FOR_SELECT_RESOURCE } from '@/features/sectors/for-select-api'
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
@@ -142,8 +143,9 @@ export function RegistrySupervisorField({ control, selected }: SelectedFieldProp
 
 /**
  * "Gestori account": the ordered, gap-aware "G.A. n" slots in ONE editor —
- * moving a person between slots is one change. No per-position labels: the
- * relabeling of spec 0080 is driven by a Product Category this module has none of.
+ * moving a person between slots is one change. Only the default denominations:
+ * the relabeling of spec 0080 is driven by a Product Category this module has
+ * none of.
  */
 export function RegistryManagersField({ control, selected }: SelectedListFieldProps) {
   const { t } = useTranslation()
@@ -155,6 +157,7 @@ export function RegistryManagersField({ control, selected }: SelectedListFieldPr
           onChange={field.onChange}
           selectedItems={selected.map((ref) => ({ id: ref.id, label: ref.name }))}
           disabled={disabled}
+          labels={managerSlotLabels(t, undefined)}
         />
       )}
     </MetaField>

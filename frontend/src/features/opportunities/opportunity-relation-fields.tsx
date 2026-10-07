@@ -12,6 +12,7 @@ import type { ProductLineRow } from '@/features/product-lines/types'
 import { ProductsOfInterestField } from '@/features/products/products-of-interest-field'
 import { useProductsOfInterestCoherence } from '@/features/products/use-products-of-interest-coherence'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
+import { managerSlotLabels } from '@/features/shared/manager-position-label'
 import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { OpportunityContactRecap } from '@/features/opportunities/opportunity-contact-recap'
@@ -130,12 +131,6 @@ export function OpportunitySupervisorField({ control, selected }: SelectedFieldP
   )
 }
 
-/** Converts the wire `manager_labels` (string position keys) to `ManagerSlotsField`'s own `Record<number, string>`. */
-function toSlotLabels(source: Record<string, string>): Record<number, string> | undefined {
-  const entries = Object.entries(source).map(([position, label]) => [Number(position), label] as const)
-  return entries.length > 0 ? Object.fromEntries(entries) : undefined
-}
-
 interface ManagersFieldProps extends FieldProps {
   /** `{id, label}` of the filled slots. */
   selected: ForSelectItem[]
@@ -151,7 +146,7 @@ interface ManagersFieldProps extends FieldProps {
 export function OpportunityManagersField({ control, selected, synchronized }: ManagersFieldProps) {
   const { t } = useTranslation()
   const productLines = useWatch({ control, name: 'product_lines' })
-  const slotLabels = toSlotLabels(useOpportunityManagerLabels(productLines))
+  const slotLabels = managerSlotLabels(t, useOpportunityManagerLabels(productLines))
 
   return (
     <div className="flex flex-col gap-2">

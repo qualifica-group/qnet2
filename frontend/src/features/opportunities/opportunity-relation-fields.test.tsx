@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { Form } from '@/components/ui/form'
+import { MAX_MANAGER_SLOTS } from '@/components/form/manager-slots-limits'
 import { OpportunityManagersField } from '@/features/opportunities/opportunity-relation-fields'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
 import type { ProductLineRow } from '@/features/product-lines/types'
@@ -64,29 +65,34 @@ beforeEach(() => {
   fetchCategoryManagerLabelsMock.mockReset()
 })
 
+/** The labels the field forwarded, keyed by position, as `ManagerSlotsField` received them. */
+function forwardedLabels(): Record<string, string> {
+  return JSON.parse(screen.getByTestId('manager-slots-field').getAttribute('data-labels') || '{}')
+}
+
 describe('OpportunityManagersField', () => {
   // AC-043/044: `ManagerSlotsField` itself renders the resolved override
   // (`manager-slots-field.test.tsx`); this asserts the field resolves it
-  // LIVE from `product_lines` and forwards it converted to the field's own
-  // `Record<number, string>` shape.
-  it('AC-043: forwards no `labels` with no product lines picked (Registries-parity default)', () => {
+  // LIVE from `product_lines` and forwards EVERY slot's label — the override
+  // where configured, the shared default elsewhere — so the editor always
+  // takes its named layout, as Commesse does (user request 2026-10-07).
+  it('AC-043: forwards the shared default label for every slot with no product lines picked', () => {
     render(<ManagersHarness />)
 
-    expect(screen.getByTestId('manager-slots-field')).toHaveAttribute('data-labels', '')
+    const labels = forwardedLabels()
+    expect(Object.keys(labels)).toHaveLength(MAX_MANAGER_SLOTS)
+    expect(labels[1]).toBe('Account manager 1')
+    expect(labels[MAX_MANAGER_SLOTS]).toBe(`Account manager ${MAX_MANAGER_SLOTS}`)
     expect(fetchCategoryManagerLabelsMock).not.toHaveBeenCalled()
   })
 
-  it('AC-044: resolves the picked category and converts wire string keys into position-number keys', async () => {
+  it('AC-044: resolves the picked category and puts its label on the matching position', async () => {
     fetchCategoryManagerLabelsMock.mockResolvedValue({ '1': 'Commercial' })
 
     render(<ManagersHarness productLines={[{ root_category_id: null, product_category_id: 500 }]} />)
 
-    await waitFor(() =>
-      expect(screen.getByTestId('manager-slots-field')).toHaveAttribute(
-        'data-labels',
-        JSON.stringify({ 1: 'Commercial' }),
-      ),
-    )
+    await waitFor(() => expect(forwardedLabels()[1]).toBe('Commercial'))
+    expect(forwardedLabels()[2]).toBe('Account manager 2')
   })
 
   it('AC-053 (amendment A1): threads a label configured past the 4th position the same as any other', async () => {
@@ -94,12 +100,8 @@ describe('OpportunityManagersField', () => {
 
     render(<ManagersHarness productLines={[{ root_category_id: null, product_category_id: 500 }]} />)
 
-    await waitFor(() =>
-      expect(screen.getByTestId('manager-slots-field')).toHaveAttribute(
-        'data-labels',
-        JSON.stringify({ 5: 'Field consultant' }),
-      ),
-    )
+    await waitFor(() => expect(forwardedLabels()[5]).toBe('Field consultant'))
+    expect(forwardedLabels()[1]).toBe('Account manager 1')
   })
 
   // Spec 0087 (D-7): on a persisted opportunity the G.A. are kept identical

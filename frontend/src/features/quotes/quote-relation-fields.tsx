@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Info } from 'lucide-react'
 import { useWatch, type Control, type UseFormSetValue } from 'react-hook-form'
-import { toManagerSlotLabels } from '@/lib/utils'
 import { ManagerSlotsField } from '@/components/form/manager-slots-field'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
 import { MetaField } from '@/features/authorization/MetaField'
@@ -9,6 +8,7 @@ import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-a
 import { COMPANY_SITES_FOR_SELECT_RESOURCE } from '@/features/company-sites/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
+import { managerSlotLabels } from '@/features/shared/manager-position-label'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { quoteRelationLabels } from '@/features/quotes/quote-field-strings'
 import { useQuoteManagerLabels } from '@/features/quotes/use-quote-manager-labels'
@@ -83,7 +83,7 @@ export function QuoteManagersField({ control, selectedItems, synchronized }: Man
   const { t } = useTranslation()
   const opportunityId = useWatch({ control, name: 'opportunity_id' })
   const offerLines = useWatch({ control, name: 'offer_lines' })
-  const slotLabels = toManagerSlotLabels(useQuoteManagerLabels(offerLines ?? [], opportunityId))
+  const slotLabels = managerSlotLabels(t, useQuoteManagerLabels(offerLines ?? [], opportunityId))
 
   return (
     <div className="flex flex-col gap-2">
