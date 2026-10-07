@@ -57,9 +57,21 @@ const guide: HelpGuide = {
           items: [
             'Espandi la riga del documento per vedere **Righe** e **Scadenze**.',
             'Su una scadenza premi **Registra incasso** e compila la finestra.',
-            'Per correggere un incasso premi **Annulla incasso** sulla stessa scadenza.',
+            'Per correggere un incasso premi **Annulla incasso** sulla stessa scadenza e conferma nella finestra che si apre.',
           ],
         },
+        { type: 'paragraph', text: '**Registra incasso** compare solo sulle scadenze non ancora incassate; su una scadenza incassata trovi **Annulla incasso**.' },
+        { type: 'paragraph', text: '**Incasso parziale.** Se l\'importo incassato è inferiore alla rata, la rata si chiude all\'importo incassato e devi scegliere cosa fare del residuo:' },
+        {
+          type: 'table',
+          headers: ['Scelta', 'Effetto'],
+          rows: [
+            ['**Spalma sulle rate successive**', 'Il residuo è diviso in parti uguali tra le rate successive non incassate. Non è disponibile se non ci sono rate successive da incassare.'],
+            ['**Nuova scadenza per il residuo**', 'Il residuo diventa una nuova rata subito dopo quella incassata, con la data che indichi (proposta: scadenza della rata + 30 giorni). Le rate successive scalano di una posizione.'],
+          ],
+        },
+        { type: 'paragraph', text: '**Annullare un incasso** che aveva ridistribuito il residuo ripristina esattamente il piano precedente (importi e numerazione delle rate; l\'eventuale rata residua viene eliminata).' },
+        { type: 'warning', text: 'Gli incassi si annullano in **ordine inverso**: se una rata toccata dalla ridistribuzione è stata incassata dopo, devi prima **annullare gli incassi successivi**. Se nel frattempo il documento è stato rimodulato, l\'annullamento azzera solo l\'incasso e le rate restano come sono.' },
       ],
     },
     {
@@ -71,7 +83,7 @@ const guide: HelpGuide = {
           headers: ['Azione', 'Cosa fa'],
           rows: [
             ['**Visualizza**', 'Apre il documento in sola lettura.'],
-            ['**Modifica**', 'Riapre la finestra di emissione. Non è disponibile se almeno una scadenza è già incassata.'],
+            ['**Modifica**', 'Riapre la finestra di emissione, anche con incassi presenti (**rimodulazione**): data documento, cliente e modalità di pagamento diventano di sola lettura, le rate incassate restano e il residuo (nuovo totale meno incassato) è diviso in parti uguali tra le rate non incassate, che mantengono la scadenza. Il totale non può essere inferiore all\'incassato; se è uguale, le rate aperte vengono eliminate. Se non ci sono rate aperte e il totale cresce, viene creata una nuova rata a +30 giorni dall\'ultima scadenza. L\'anteprima delle scadenze mostra già il piano rimodulato.'],
             ['**Dettagli**', 'Registra **numero e data esterni** di Fatture in Cloud: il proforma diventa **Fattura**. Svuotandoli torna proforma. Qui trovi anche tag, scostamento e note interne.'],
             ['**Elimina**', 'Rimuove il documento dopo conferma. Non è possibile se ha incassi.'],
             ['**Attività**', 'Mostra lo storico delle modifiche.'],

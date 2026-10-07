@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next'
+import { HandCoins, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/formatting/date-display'
+import { isCollected } from '@/features/invoices/invoice-collection-residual'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import { InstallmentStatusBadge } from '@/features/invoices/invoice-status-badges'
 import type { InvoiceInstallment } from '@/features/invoices/types'
@@ -51,7 +53,7 @@ export function InvoiceInstallmentsTable({
         </thead>
         <tbody>
           {installments.map((installment) => {
-            const hasCollection = installment.collected_amount !== null
+            const hasCollection = isCollected(installment)
             return (
               <tr key={installment.id} className="border-b border-border last:border-b-0">
                 <td className={CELL}>{installment.sequence}</td>
@@ -66,26 +68,29 @@ export function InvoiceInstallmentsTable({
                 {canCollect ? (
                   <td className="px-2 py-1 text-right">
                     <div className="flex justify-end gap-1">
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="secondary"
-                        disabled={busyInstallmentId === installment.id}
-                        onClick={() => onRecord(installment)}
-                      >
-                        {t('invoices.detail.recordCollection')}
-                      </Button>
                       {hasCollection ? (
                         <Button
                           type="button"
                           size="xs"
-                          variant="secondary"
+                          variant="outline"
                           disabled={busyInstallmentId === installment.id}
                           onClick={() => onClear(installment)}
                         >
+                          <Undo2 aria-hidden="true" />
                           {t('invoices.detail.clearCollection')}
                         </Button>
-                      ) : null}
+                      ) : (
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="default"
+                          disabled={busyInstallmentId === installment.id}
+                          onClick={() => onRecord(installment)}
+                        >
+                          <HandCoins aria-hidden="true" />
+                          {t('invoices.detail.recordCollection')}
+                        </Button>
+                      )}
                     </div>
                   </td>
                 ) : null}

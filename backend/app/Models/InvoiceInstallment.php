@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 #[Fillable([
     'invoice_id', 'sequence', 'due_date', 'amount', 'payment_method_code',
-    'collected_amount', 'collected_at',
+    'collected_amount', 'collected_at', 'redistribution_snapshot',
 ])]
 class InvoiceInstallment extends BaseModel
 {
@@ -33,6 +33,7 @@ class InvoiceInstallment extends BaseModel
             'amount' => 'decimal:2',
             'collected_amount' => 'decimal:2',
             'collected_at' => 'date',
+            'redistribution_snapshot' => 'array',
         ];
     }
 

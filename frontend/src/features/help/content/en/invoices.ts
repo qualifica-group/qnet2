@@ -57,9 +57,21 @@ const guide: HelpGuide = {
           items: [
             'Expand the document row to see **Lines** and **Due dates**.',
             'On a due date press **Record collection** and fill in the dialog.',
-            'To correct a collection press **Clear collection** on the same due date.',
+            'To correct a collection press **Clear collection** on the same due date and confirm in the dialog that opens.',
           ],
         },
+        { type: 'paragraph', text: '**Record collection** appears only on due dates not yet collected; a collected due date shows **Clear collection** instead.' },
+        { type: 'paragraph', text: '**Partial collection.** If the collected amount is lower than the installment, the installment is closed at the collected amount and you choose what to do with the residual:' },
+        {
+          type: 'table',
+          headers: ['Choice', 'Effect'],
+          rows: [
+            ['**Spread over the later installments**', 'The residual is split equally across the later installments not yet collected. Not available when there are no later open installments.'],
+            ['**New due date for the residual**', 'The residual becomes a new installment right after the collected one, with the date you set (proposed: installment due date + 30 days). Later installments shift by one position.'],
+          ],
+        },
+        { type: 'paragraph', text: '**Clearing a collection** that redistributed the residual restores exactly the previous plan (amounts and installment numbering; the residual installment, if any, is deleted).' },
+        { type: 'warning', text: 'Collections are cleared in **reverse order**: if an installment touched by the redistribution was collected afterwards, you must first **clear the later collections**. If the document was rebalanced in the meantime, clearing only resets the collection and the installments stay as they are.' },
       ],
     },
     {
@@ -71,7 +83,7 @@ const guide: HelpGuide = {
           headers: ['Action', 'What it does'],
           rows: [
             ['**View**', 'Opens the document read-only.'],
-            ['**Edit**', 'Reopens the issue dialog. Not available if any due date is already collected.'],
+            ['**Edit**', 'Reopens the issue dialog, even with collections present (**rebalancing**): document date, customer and payment method become read-only, collected installments stay and the residual (new total minus collected) is split equally across the installments not collected, which keep their due date. The total cannot be lower than the amount collected; if equal, the open installments are removed. With no open installments and a higher total, a new installment is created 30 days after the last due date. The due date preview already shows the rebalanced plan.'],
             ['**Details**', 'Records the **external number and date** from Fatture in Cloud: the proforma becomes an **Invoice**. Clearing them turns it back into a proforma. Tag, deviation and internal notes are here too.'],
             ['**Delete**', 'Removes the document after confirmation. Not possible if it has collections.'],
             ['**Activity**', 'Shows the change history.'],

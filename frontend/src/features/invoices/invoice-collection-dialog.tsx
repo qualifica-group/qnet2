@@ -5,21 +5,27 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input'
 import { formatDate } from '@/lib/formatting/date-display'
 import { formatEuro, parseNumberInput } from '@/features/invoices/invoice-format'
+import { InvoiceCollectionResidualFields } from '@/features/invoices/invoice-collection-residual-fields'
 import { useInvoiceCollectionForm } from '@/features/invoices/use-invoice-collection-form'
 import type { InvoiceInstallment } from '@/features/invoices/types'
 
 interface CollectionFormProps {
   installment: InvoiceInstallment
+  installments: readonly InvoiceInstallment[]
   onClose: () => void
   onSaved?: () => void
 }
 
-function CollectionForm({ installment, onClose, onSaved }: CollectionFormProps) {
+function CollectionForm({ installment, installments, onClose, onSaved }: CollectionFormProps) {
   const { t } = useTranslation()
-  const { form, submit, isPending } = useInvoiceCollectionForm(installment, () => {
-    onSaved?.()
-    onClose()
-  })
+  const { form, submit, isPending, isPartial, canSpread, residualMode, residualAmount } = useInvoiceCollectionForm(
+    installment,
+    installments,
+    () => {
+      onSaved?.()
+      onClose()
+    },
+  )
 
   return (
     <Form {...form}>
@@ -59,6 +65,14 @@ function CollectionForm({ installment, onClose, onSaved }: CollectionFormProps) 
             </FormItem>
           )}
         />
+        {isPartial ? (
+          <InvoiceCollectionResidualFields
+            form={form}
+            residualAmount={residualAmount}
+            canSpread={canSpread}
+            residualMode={residualMode}
+          />
+        ) : null}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" size="sm" onClick={onClose}>
             {t('invoices.collection.cancel')}
@@ -74,13 +88,15 @@ function CollectionForm({ installment, onClose, onSaved }: CollectionFormProps) 
 
 interface InvoiceCollectionDialogProps {
   installment: InvoiceInstallment | null
+  /** All installments of the document: they decide whether the residual can be spread. */
+  installments: readonly InvoiceInstallment[]
   onClose: () => void
   /** Called after a successful save (the caller refreshes its grid). */
   onSaved?: () => void
 }
 
 /** "Registra incasso" for one installment; the form remounts per installment via `key`. */
-export function InvoiceCollectionDialog({ installment, onClose, onSaved }: InvoiceCollectionDialogProps) {
+export function InvoiceCollectionDialog({ installment, installments, onClose, onSaved }: InvoiceCollectionDialogProps) {
   const { t } = useTranslation()
   return (
     <Dialog open={installment !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
@@ -97,7 +113,15 @@ export function InvoiceCollectionDialog({ installment, onClose, onSaved }: Invoi
             </DialogDescription>
           ) : null}
         </DialogHeader>
-        {installment ? <CollectionForm key={installment.id} installment={installment} onClose={onClose} onSaved={onSaved} /> : null}
+        {installment ? (
+          <CollectionForm
+            key={installment.id}
+            installment={installment}
+            installments={installments}
+            onClose={onClose}
+            onSaved={onSaved}
+          />
+        ) : null}
       </DialogContent>
     </Dialog>
   )

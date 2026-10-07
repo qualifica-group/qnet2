@@ -6,7 +6,7 @@ use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Invoices\InvoiceCollectionRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Models\InvoiceInstallment;
-use App\Services\Invoices\InvoiceService;
+use App\Services\Invoices\InvoiceCollectionService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Throwable;
@@ -15,13 +15,13 @@ use Throwable;
  * Record / clear the collection of one installment (spec 0194, D-13), gated by
  * the `collect` ability of the parent invoice.
  *
- * @see InvoiceService::recordCollection
+ * @see InvoiceCollectionService
  */
 class InvoiceCollectionController extends BaseApiController
 {
     use AuthorizesRequests;
 
-    public function __construct(private readonly InvoiceService $service) {}
+    public function __construct(private readonly InvoiceCollectionService $service) {}
 
     /**
      * PUT /api/invoice-installments/{installment}/collection
@@ -30,9 +30,8 @@ class InvoiceCollectionController extends BaseApiController
     {
         try {
             $this->authorizeCollect($installment);
-            $payload = $request->payload();
 
-            return $this->ok(new InvoiceResource($this->service->recordCollection($installment, $payload['collected_amount'], $payload['collected_at'])));
+            return $this->ok(new InvoiceResource($this->service->record($installment, $request->payload())));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['installment' => $installment->id]);
         }
@@ -46,7 +45,7 @@ class InvoiceCollectionController extends BaseApiController
         try {
             $this->authorizeCollect($installment);
 
-            return $this->ok(new InvoiceResource($this->service->clearCollection($installment)));
+            return $this->ok(new InvoiceResource($this->service->clear($installment)));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['installment' => $installment->id]);
         }

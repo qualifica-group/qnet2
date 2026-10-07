@@ -139,9 +139,15 @@ export interface InvoiceDetailsPayload {
 }
 
 /** PUT `/invoice-installments/{id}/collection` body. */
+export const RESIDUAL_MODES = ['spread', 'new_installment'] as const
+export type ResidualMode = (typeof RESIDUAL_MODES)[number]
+
+/** `residual_*` travel only on a partial collection (spec 0196, D-5). */
 export interface InvoiceCollectionPayload {
   collected_amount: number
   collected_at: string
+  residual_mode?: ResidualMode
+  residual_due_date?: string
 }
 
 /** A work-order line still available to be copied into the document. */
@@ -182,6 +188,8 @@ export interface InstallmentPreviewPayload {
   net_amount: number
   vat_amount: number
   total_amount: number
+  /** Edited document: lets the server return the rebalanced plan when it has collections (spec 0196, D-15). */
+  invoice_id?: number | null
 }
 
 export interface InstallmentPreviewRow {
@@ -189,6 +197,9 @@ export interface InstallmentPreviewRow {
   due_date: string
   amount: string
   payment_method_code: string | null
+  collected_amount: string | null
+  /** True on a collected installment: it stays as it is in the rebalanced plan. */
+  locked: boolean
 }
 
 export interface MonthlySummaryMonth {

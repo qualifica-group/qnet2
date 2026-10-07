@@ -142,7 +142,15 @@ export const invoices = {
     },
     recordCollection: 'Record collection',
     clearCollection: 'Clear collection',
+    clearCollectionConflict: 'Unable to clear: clear the later collections first.',
     collectionCleared: 'Collection cleared.',
+    clearDialog: {
+      title: 'Clear the collection?',
+      description:
+        'The collection of installment {{sequence}} will be cleared. If it redistributed a residual, the installments go back to how they were before.',
+      cancel: 'Back',
+      confirm: 'Clear collection',
+    },
   },
   details: {
     title: 'Invoice details',
@@ -175,11 +183,23 @@ export const invoices = {
     cancel: 'Cancel',
     saved: 'Collection recorded.',
     genericError: 'Unable to record the collection. Try again.',
+    alreadyCollected: 'The installment is already collected: clear the collection first, then record it again.',
+    residualIntro: 'Partial collection: {{amount}} is still to be collected. Choose what to do with the residual.',
+    residualMode: 'Residual',
+    residualModes: {
+      spread: 'Spread over the later installments',
+      new_installment: 'New due date for the residual',
+    },
+    spreadDisabled: 'There are no later open installments.',
+    residualDueDate: 'New installment date',
     errors: {
       amountInvalid: 'The collected amount must be a number.',
       amountPositive: 'The collected amount must be greater than zero.',
       amountExceeds: 'The collected amount cannot exceed the installment amount.',
       dateRequired: 'The collection date is required.',
+      residualModeRequired: 'Choose how to handle the residual.',
+      noLaterInstallments: 'There are no later installments to spread the residual on.',
+      residualDateRequired: 'The new installment date is required.',
     },
   },
   delete: {
@@ -192,7 +212,9 @@ export const invoices = {
     hasCollections: 'The document has collected installments: clear the collections before deleting it.',
     genericError: 'Unable to delete the document. Try again.',
   },
-  update: {
-    hasCollections: 'The document has collected installments: clear the collections before editing it.',
+  rebalance: {
+    lockedHint: 'The document has collected installments: document date, customer and payment method cannot be changed. Collected installments stay, the others are recalculated on the residual.',
+    statusColumn: 'Collection',
+    collectedBadge: 'Collected {{amount}}',
   },
 }

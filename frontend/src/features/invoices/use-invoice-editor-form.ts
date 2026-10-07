@@ -82,7 +82,13 @@ export function useInvoiceEditorForm({ source, target, onSaved }: UseInvoiceEdit
   const paymentMethodId = useWatch({ control, name: 'payment_method_id' })
   const companyId = useWatch({ control, name: 'company_id' })
   const totals = useMemo(() => totalsOf(lines, vatRefs), [lines, vatRefs])
-  const preview = useInvoiceEditorPreview({ documentDate, paymentMethodId, totals })
+  const collectionsLocked = target.mode === 'edit' && source.hasCollections
+  const preview = useInvoiceEditorPreview({
+    documentDate,
+    paymentMethodId,
+    totals,
+    invoiceId: collectionsLocked && target.mode === 'edit' ? target.invoiceId : null,
+  })
 
   const addedQuoteLineIds = useMemo(
     () => new Set(lines.flatMap((line) => (line.quote_line_id === null ? [] : [line.quote_line_id]))),
@@ -135,9 +141,10 @@ export function useInvoiceEditorForm({ source, target, onSaved }: UseInvoiceEdit
           return
         }
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        const conflictKey =
-          target.mode === 'create' ? 'invoiceEditor.messages.conflictInvoiced' : 'invoiceEditor.messages.conflictCollected'
-        const fallback = status === CONFLICT_STATUS ? t(conflictKey) : t('invoiceEditor.messages.genericError')
+        const fallback =
+          status === CONFLICT_STATUS && target.mode === 'create'
+            ? t('invoiceEditor.messages.conflictInvoiced')
+            : t('invoiceEditor.messages.genericError')
         toast.error(serverMessage(error) ?? fallback)
       },
     })
@@ -150,6 +157,7 @@ export function useInvoiceEditorForm({ source, target, onSaved }: UseInvoiceEdit
     rememberVat,
     lines,
     companyId,
+    collectionsLocked,
     totals,
     preview,
     addedQuoteLineIds,

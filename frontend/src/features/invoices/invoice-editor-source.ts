@@ -47,6 +47,8 @@ export interface EditorSource {
   context: EditorContext
   /** "12/2026" when editing. */
   numberLabel: string | null
+  /** The edited document has collected installments: date, payment method and customer are read-only (spec 0196, D-1). */
+  hasCollections: boolean
 }
 
 const NO_AVAILABLE_LINES: AvailableInvoiceLine[] = []
@@ -83,6 +85,7 @@ export function sourceFromDraft(draft: InvoiceDraft): EditorSource {
       note: draft.proforma_request.note,
     },
     numberLabel: null,
+    hasCollections: false,
   }
 }
 
@@ -120,6 +123,7 @@ export function sourceFromInvoice(invoice: Invoice): EditorSource {
       note: null,
     },
     numberLabel: invoice.number_label,
+    hasCollections: invoice.has_collections,
   }
 }
 

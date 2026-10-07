@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import { INVOICE_TAGS } from '@/features/invoices/types'
+import { isPartialCollection } from '@/features/invoices/invoice-collection-residual'
+import { INVOICE_TAGS, RESIDUAL_MODES } from '@/features/invoices/types'
 
 /**
  * Zod schemas of the invoice forms, mirroring the frozen server rules of
@@ -86,15 +87,39 @@ export function buildInvoiceDetailsSchema(t: TFunction) {
 
 export type InvoiceDetailsFormValues = z.infer<ReturnType<typeof buildInvoiceDetailsSchema>>
 
-/** Collection dialog: 0 < collected_amount <= the installment amount. */
-export function buildInvoiceCollectionSchema(t: TFunction, installmentAmount: number) {
-  return z.object({
-    collected_amount: z
-      .number(t('invoices.collection.errors.amountInvalid'))
-      .gt(0, t('invoices.collection.errors.amountPositive'))
-      .max(installmentAmount, t('invoices.collection.errors.amountExceeds')),
-    collected_at: z.string().min(1, t('invoices.collection.errors.dateRequired')),
-  })
+interface CollectionSchemaOptions {
+  installmentAmount: number
+  /** False when no later open installment exists: "spread" is not allowed. */
+  canSpread: boolean
+}
+
+/**
+ * Collection dialog (spec 0196): 0 < collected_amount <= the installment amount;
+ * a partial amount also needs the residual choice (and its date for a new installment).
+ */
+export function buildInvoiceCollectionSchema(t: TFunction, { installmentAmount, canSpread }: CollectionSchemaOptions) {
+  return z
+    .object({
+      collected_amount: z
+        .number(t('invoices.collection.errors.amountInvalid'))
+        .gt(0, t('invoices.collection.errors.amountPositive'))
+        .max(installmentAmount, t('invoices.collection.errors.amountExceeds')),
+      collected_at: z.string().min(1, t('invoices.collection.errors.dateRequired')),
+      residual_mode: z.enum(RESIDUAL_MODES).optional(),
+      residual_due_date: z.string().optional(),
+    })
+    .superRefine((values, ctx) => {
+      if (!isPartialCollection(values.collected_amount, installmentAmount)) {
+        return
+      }
+      if (values.residual_mode === undefined) {
+        ctx.addIssue({ code: 'custom', path: ['residual_mode'], message: t('invoices.collection.errors.residualModeRequired') })
+      } else if (values.residual_mode === 'spread' && !canSpread) {
+        ctx.addIssue({ code: 'custom', path: ['residual_mode'], message: t('invoices.collection.errors.noLaterInstallments') })
+      } else if (values.residual_mode === 'new_installment' && !values.residual_due_date) {
+        ctx.addIssue({ code: 'custom', path: ['residual_due_date'], message: t('invoices.collection.errors.residualDateRequired') })
+      }
+    })
 }
 
 export type InvoiceCollectionFormValues = z.infer<ReturnType<typeof buildInvoiceCollectionSchema>>

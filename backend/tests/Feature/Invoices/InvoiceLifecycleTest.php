@@ -23,7 +23,7 @@ function issuedInvoice(): array
     return [$request, $data];
 }
 
-it('AC-005: details switch the type, edits recompute, collections lock edit/delete and clearing them frees the delete', function () {
+it('AC-005: details switch the type, edits recompute, collections rebalance the edit and lock the delete until cleared', function () {
     Sanctum::actingAs(invoiceUserWith(INVOICE_ABILITIES));
     [$request, $invoice] = issuedInvoice();
     $url = "/api/invoices/{$invoice['id']}";
@@ -43,11 +43,11 @@ it('AC-005: details switch the type, edits recompute, collections lock edit/dele
     $installment = $this->getJson($url)->assertOk()->json('data.installments.0');
     $collection = "/api/invoice-installments/{$installment['id']}/collection";
     $this->putJson($collection, ['collected_amount' => '9999', 'collected_at' => '2026-04-02'])->assertUnprocessable();
-    $this->putJson($collection, ['collected_amount' => '100', 'collected_at' => '2026-04-02'])
+    $this->putJson($collection, ['collected_amount' => '100', 'collected_at' => '2026-04-02', 'residual_mode' => 'spread'])
         ->assertOk()->assertJsonPath('data.has_collections', true)->assertJsonPath('data.collected_amount', '100.00')
-        ->assertJsonPath('data.residual_amount', '1120.00')->assertJsonPath('data.installments.0.status', 'partially_paid');
+        ->assertJsonPath('data.residual_amount', '1120.00')->assertJsonPath('data.installments.0.status', 'paid');
 
-    $this->putJson($url, $payload)->assertStatus(409)->assertJsonPath('message', 'This invoice has collected installments and cannot be modified.');
+    $this->putJson($url, $payload)->assertOk()->assertJsonPath('data.collected_amount', '100.00')->assertJsonPath('data.installments.0.amount', '100.00');
     $this->deleteJson($url)->assertStatus(409)->assertJsonPath('message', 'This invoice has collected installments and cannot be deleted.');
 
     $this->deleteJson($collection)->assertOk()->assertJsonPath('data.has_collections', false)->assertJsonPath('data.installments.0.status', 'unpaid');

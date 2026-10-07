@@ -52,6 +52,7 @@ export function InvoiceEditorForm({ source, target, onSaved, onCancel }: Invoice
             source={source}
             companyId={editor.companyId}
             companyLocked={!isCreate}
+            collectionsLocked={editor.collectionsLocked}
           />
           {isCreate ? (
             <InvoiceEditorAvailableLines

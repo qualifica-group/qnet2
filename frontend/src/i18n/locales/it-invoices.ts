@@ -143,6 +143,14 @@ export const invoices = {
     recordCollection: 'Registra incasso',
     clearCollection: 'Annulla incasso',
     collectionCleared: 'Incasso annullato.',
+    clearCollectionConflict: 'Impossibile annullare: annulla prima gli incassi successivi.',
+    clearDialog: {
+      title: "Annullare l'incasso?",
+      description:
+        "L'incasso della rata {{sequence}} verrà annullato. Se aveva ridistribuito un residuo, le rate tornano come prima dell'incasso.",
+      cancel: 'Indietro',
+      confirm: 'Annulla incasso',
+    },
   },
   details: {
     title: 'Dettagli fattura',
@@ -175,11 +183,23 @@ export const invoices = {
     cancel: 'Annulla',
     saved: 'Incasso registrato.',
     genericError: "Impossibile registrare l'incasso. Riprova.",
+    alreadyCollected: 'La rata è già incassata: annulla prima l\'incasso, poi registralo di nuovo.',
+    residualIntro: 'Incasso parziale: restano {{amount}} da incassare. Scegli cosa fare del residuo.',
+    residualMode: 'Residuo',
+    residualModes: {
+      spread: 'Spalma sulle rate successive',
+      new_installment: 'Nuova scadenza per il residuo',
+    },
+    spreadDisabled: 'Non ci sono rate successive da incassare.',
+    residualDueDate: 'Data della nuova rata',
     errors: {
       amountInvalid: "L'importo incassato deve essere un numero.",
       amountPositive: "L'importo incassato deve essere maggiore di zero.",
       amountExceeds: "L'importo incassato non può superare l'importo della rata.",
       dateRequired: 'La data di incasso è obbligatoria.',
+      residualModeRequired: 'Scegli come gestire il residuo.',
+      noLaterInstallments: 'Non ci sono rate successive su cui spalmare il residuo.',
+      residualDateRequired: 'La data della nuova rata è obbligatoria.',
     },
   },
   delete: {
@@ -192,7 +212,9 @@ export const invoices = {
     hasCollections: 'Il documento ha rate incassate: annulla gli incassi prima di eliminarlo.',
     genericError: 'Impossibile eliminare il documento. Riprova.',
   },
-  update: {
-    hasCollections: 'Il documento ha rate incassate: annulla gli incassi prima di modificarlo.',
+  rebalance: {
+    lockedHint: 'Il documento ha rate incassate: data documento, cliente e modalità di pagamento non sono modificabili. Le rate incassate restano, le altre vengono ricalcolate sul residuo.',
+    statusColumn: 'Incasso',
+    collectedBadge: 'Incassata {{amount}}',
   },
 }

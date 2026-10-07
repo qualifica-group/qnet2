@@ -4,36 +4,49 @@ import { toast } from 'sonner'
 import { useClearCollection } from '@/features/invoices/use-invoice-queries'
 import type { InvoiceInstallment } from '@/features/invoices/types'
 
-/** Dialog target + "Annulla incasso" mutation shared by every surface listing installments. */
+const CONFLICT_STATUS = 409
+
+/** Dialog targets + confirmed "Annulla incasso" mutation shared by every surface listing installments. */
 export function useInvoiceCollectionActions(onChanged?: () => void) {
   const { t } = useTranslation()
   const [collectTarget, setCollectTarget] = useState<InvoiceInstallment | null>(null)
-  const [busyInstallmentId, setBusyInstallmentId] = useState<number | null>(null)
+  const [clearTarget, setClearTarget] = useState<InvoiceInstallment | null>(null)
   const clearMutation = useClearCollection()
-  const { mutate: clearCollection } = clearMutation
+  const { mutate: clearCollection, isPending: isClearing } = clearMutation
 
   const closeCollect = useCallback(() => setCollectTarget(null), [])
+  const closeClear = useCallback(() => setClearTarget(null), [])
 
-  const clear = useCallback(
-    (installment: InvoiceInstallment) => {
-      setBusyInstallmentId(installment.id)
-      clearCollection(installment.id, {
-        onSuccess: () => {
-          toast.success(t('invoices.detail.collectionCleared'))
-          onChanged?.()
-        },
-        onError: () => toast.error(t('invoices.collection.genericError')),
-        onSettled: () => setBusyInstallmentId(null),
-      })
-    },
-    [clearCollection, onChanged, t],
-  )
+  const confirmClear = useCallback(() => {
+    if (clearTarget === null) {
+      return
+    }
+    clearCollection(clearTarget.id, {
+      onSuccess: () => {
+        toast.success(t('invoices.detail.collectionCleared'))
+        onChanged?.()
+      },
+      onError: (error) =>
+        toast.error(
+          t(
+            error.response?.status === CONFLICT_STATUS
+              ? 'invoices.detail.clearCollectionConflict'
+              : 'invoices.collection.genericError',
+          ),
+        ),
+      onSettled: () => setClearTarget(null),
+    })
+  }, [clearCollection, clearTarget, onChanged, t])
 
   return {
     collectTarget,
     openCollect: setCollectTarget,
     closeCollect,
-    clear,
-    busyInstallmentId,
+    clearTarget,
+    requestClear: setClearTarget,
+    closeClear,
+    confirmClear,
+    isClearing,
+    busyInstallmentId: isClearing ? (clearTarget?.id ?? null) : null,
   }
 }
