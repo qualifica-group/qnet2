@@ -10,6 +10,7 @@ export const registries = {
   forbidden: "You don't have permission to view registries.",
   columns: {
     name: 'Name',
+    registry_type: 'Type',
     source: 'Source',
     is_supplier: 'Supplier',
     agreement_status: 'Convention status',
@@ -20,6 +21,13 @@ export const registries = {
     reporter: 'Reporter',
     managers: 'Operators',
     created_at: 'Created at',
+  },
+  // Tabs above the grid: split individuals from companies (registry_type filter).
+  typeTabs: {
+    label: 'Registry type',
+    all: 'All',
+    individual: 'Individuals',
+    company: 'Companies',
   },
   detail: {
     title: 'Registry details',

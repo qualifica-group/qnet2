@@ -23,20 +23,23 @@ use App\Enums\SizeClassEnum;
  * `distinctContactScopes`). `primary_contact` is COMPUTED from the card's
  * contacts (shared PrimaryContactColumn::format(), like Users/Referents) but,
  * unlike those two, is neither sortable nor filterable here (spec 0020 data
- * contract) — display-only.
+ * contract) — display-only. `registry_type` (person vs company) is DERIVED
+ * from the card's type via the shared PersonalDataTypeColumn.
  *
  * Spec 0206: every column the form edits as a single field is
  * inline-editable through RegistryCellWriter (the form's own
  * UpdateRegistryRequest + RegistryService); `name` (the card's display name),
- * `primary_contact` and `created_at` stay read-only. `managers` is edited as
- * a list of people, mapped onto the positional `manager_slots`.
+ * `registry_type`, `primary_contact` and `created_at` stay read-only.
+ * `managers` is edited as a list of people, mapped onto the positional
+ * `manager_slots`.
  */
 final class RegistryColumnCatalog
 {
     /**
+     * @param  array<int, string>  $typeValues  the PersonalDataTypeEnum values (`registry_type` options)
      * @return array<int, array<string, mixed>>
      */
-    public static function columns(): array
+    public static function columns(array $typeValues): array
     {
         return [
             [
@@ -49,6 +52,20 @@ final class RegistryColumnCatalog
                 'filterType' => 'text',
                 // Global quick-search spans this real column (spec 0009).
                 'searchable' => true,
+            ],
+            [
+                // Person vs company, derived from personalData.type: a BADGE
+                // whose label/color/icon come from the enum (shared
+                // PersonalDataTypeColumn, like the Users `user_type`). Drives
+                // the list's type tabs; read-only (the form owns the card type).
+                'id' => 'registry_type',
+                'label' => 'registries.columns.registry_type',
+                'type' => 'badge',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+                'options' => $typeValues,
             ],
             [
                 // Source's name, derived from the source() relation. Sorted
@@ -144,12 +161,14 @@ final class RegistryColumnCatalog
     }
 
     /**
+     * @param  array<int, string>  $typeValues  the PersonalDataTypeEnum values (`registry_type` options)
      * @return array<int, array<string, mixed>>
      */
-    public static function filters(): array
+    public static function filters(array $typeValues): array
     {
         return [
             ['columnId' => 'name', 'type' => 'text'],
+            ['columnId' => 'registry_type', 'type' => 'set', 'options' => $typeValues],
             ['columnId' => 'source', 'type' => 'set'],
             ['columnId' => 'is_supplier', 'type' => 'set'],
             ['columnId' => 'agreement_status', 'type' => 'set'],

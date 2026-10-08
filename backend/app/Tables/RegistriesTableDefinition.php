@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Tables\Registries\RegistryCellWriter;
 use App\Tables\Registries\RegistryColumnCatalog;
 use App\Tables\Registries\RegistryRelationColumns;
+use App\Tables\Shared\PersonalDataTypeColumn;
 use App\Tables\Shared\PrimaryContactColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -30,16 +31,21 @@ use Illuminate\Support\Facades\Gate;
  * COMPUTED from the card's eager-loaded contacts via the shared
  * PrimaryContactColumn, display-only here (neither sortable nor filterable —
  * spec 0020 data contract, unlike the identical Users/Referents column).
+ * `registry_type` (person vs company, from the card's type) is DERIVED via
+ * the shared PersonalDataTypeColumn, exactly like the Users `user_type`.
  */
 class RegistriesTableDefinition extends AbstractTableDefinition
 {
     /** Real enum columns whose id is also their config enum key (config/config.php). */
     private const array ENUM_COLUMNS = ['agreement_status', 'size_class'];
 
+    private const string TYPE_COLUMN = 'registry_type';
+
     public function __construct(
         private readonly PrimaryContactColumn $contactColumn,
         private readonly RegistryRelationColumns $relationColumns,
         private readonly RegistryCellWriter $cellWriter,
+        private readonly PersonalDataTypeColumn $typeColumn,
     ) {}
 
     /**
@@ -48,7 +54,21 @@ class RegistriesTableDefinition extends AbstractTableDefinition
      */
     protected function enumKeyFor(string $columnId, User $actor): ?string
     {
+        if ($columnId === self::TYPE_COLUMN) {
+            return 'personal_data_type';
+        }
+
         return in_array($columnId, self::ENUM_COLUMNS, true) ? $columnId : null;
+    }
+
+    /**
+     * Badge metadata of the `registry_type` column (PersonalDataTypeEnum).
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    protected function badgesFor(string $columnId, User $actor): ?array
+    {
+        return $columnId === self::TYPE_COLUMN ? $this->typeColumn->badges() : null;
     }
 
     /**
@@ -103,7 +123,7 @@ class RegistriesTableDefinition extends AbstractTableDefinition
      */
     public function columns(): array
     {
-        return RegistryColumnCatalog::columns();
+        return RegistryColumnCatalog::columns($this->typeColumn->values());
     }
 
     /**
@@ -111,7 +131,7 @@ class RegistriesTableDefinition extends AbstractTableDefinition
      */
     public function filters(): array
     {
-        return RegistryColumnCatalog::filters();
+        return RegistryColumnCatalog::filters($this->typeColumn->values());
     }
 
     /**
@@ -152,6 +172,7 @@ class RegistriesTableDefinition extends AbstractTableDefinition
         return [
             'id' => $row->id,
             'name' => $row->name,
+            self::TYPE_COLUMN => $row->personalData?->type?->value,
             'source' => $this->summarize($row->source),
             'is_supplier' => $row->is_supplier,
             'agreement_status' => $row->agreement_status?->value,
@@ -219,9 +240,10 @@ class RegistriesTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * The relation-derived columns (`source`/`commercial`/`supervisor`/
-     * `reporter`/`managers`) are delegated to RegistryRelationColumns; every
-     * real column falls through to the generic engine.
+     * `registry_type` goes to the shared PersonalDataTypeColumn, the
+     * relation-derived columns (`source`/`commercial`/`supervisor`/
+     * `reporter`/`managers`) to RegistryRelationColumns; every real column
+     * falls through to the generic engine.
      *
      * @param  Builder<Registry>  $query
      * @param  array<string, mixed>  $columnConfig
@@ -229,6 +251,12 @@ class RegistriesTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
+        if ($columnId === self::TYPE_COLUMN) {
+            $this->typeColumn->applyFilter($query, $filter);
+
+            return true;
+        }
+
         return $this->relationColumns->applyFilter($query, $columnId, $filter);
     }
 
@@ -237,6 +265,12 @@ class RegistriesTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
+        if ($columnId === self::TYPE_COLUMN) {
+            $query->orderBy($this->typeColumn->sortSubquery('registries', (new Registry)->getMorphClass()), $direction);
+
+            return true;
+        }
+
         return $this->relationColumns->applySort($query, $columnId, $direction);
     }
 
@@ -254,6 +288,7 @@ class RegistriesTableDefinition extends AbstractTableDefinition
     {
         return match ($columnId) {
             'is_supplier', 'agreement_status', 'size_class' => $this->distinctRawColumn($query, $columnId, $search, $limit),
+            self::TYPE_COLUMN => $this->typeColumn->distinctValues($search, $limit),
             default => $this->relationColumns->distinctValues($columnId, $search, $query, $limit),
         };
     }

@@ -20,6 +20,10 @@ export type AgreementStatus = (typeof AGREEMENT_STATUSES)[number]
 export const SIZE_CLASSES = ['micro', 'small', 'medium', 'large'] as const
 export type SizeClass = (typeof SIZE_CLASSES)[number]
 
+/** List tabs over the `registry_type` column (PersonalDataTypeEnum values + "all"). */
+export const REGISTRY_TYPE_TABS = ['all', 'individual', 'company'] as const
+export type RegistryTypeTab = (typeof REGISTRY_TYPE_TABS)[number]
+
 /** A hydrated relation reference ({id, name}), as returned by the registry resource. */
 export interface ReferenceRef {
   id: number

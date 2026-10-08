@@ -10,6 +10,7 @@ export const registries = {
   forbidden: 'Non hai i permessi per visualizzare le anagrafiche.',
   columns: {
     name: 'Nome',
+    registry_type: 'Tipo',
     source: 'Fonte',
     is_supplier: 'Fornitore',
     agreement_status: 'Stato convenzione',
@@ -20,6 +21,13 @@ export const registries = {
     reporter: 'Segnalatore',
     managers: 'Operatori',
     created_at: 'Creato il',
+  },
+  // Tab sopra la griglia: separano persone fisiche e aziende (filtro su registry_type).
+  typeTabs: {
+    label: 'Tipo di anagrafica',
+    all: 'Tutte',
+    individual: 'Persone fisiche',
+    company: 'Aziende',
   },
   detail: {
     title: 'Dettaglio anagrafica',

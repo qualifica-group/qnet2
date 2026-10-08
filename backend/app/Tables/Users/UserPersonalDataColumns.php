@@ -2,11 +2,10 @@
 
 namespace App\Tables\Users;
 
-use App\Enums\PersonalDataTypeEnum;
 use App\Models\Address;
 use App\Models\PersonalData;
 use App\Models\User;
-use App\Tables\Concerns\HandlesBlankSetFilter;
+use App\Tables\Shared\PersonalDataTypeColumn;
 use App\Tables\Shared\PrimaryContactColumn;
 use App\Tables\Users\Concerns\CorrelatesPersonalDataToUser;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,74 +20,42 @@ use Illuminate\Database\Eloquent\Model;
  * Extracted out of UsersTableDefinition (file-size split, engineering.md §6):
  * row formatting, badge/enum metadata, the derived filters/sorts and the
  * Excel-like distinct-values resolution for `user_type` all live in one
- * focused file. The `primary_contact` mechanics are delegated to the shared
- * PrimaryContactColumn (reused verbatim by the referents domain) — this class
- * only binds them to the `users` owner. Behavior is unchanged.
+ * focused file. The `user_type` and `primary_contact` mechanics are delegated
+ * to the shared PersonalDataTypeColumn / PrimaryContactColumn (reused verbatim
+ * by the registries / referents domains) — this class only binds them to the
+ * `users` owner. Behavior is unchanged.
  */
 class UserPersonalDataColumns
 {
     use CorrelatesPersonalDataToUser;
-    use HandlesBlankSetFilter;
+
+    public function __construct(
+        private readonly PrimaryContactColumn $contactColumn,
+        private readonly PersonalDataTypeColumn $typeColumn,
+    ) {}
 
     /**
-     * Maximum number of values honoured in the `user_type` set filter. Caps
-     * the WHERE IN cardinality (defence in depth); excess values are ignored.
-     */
-    private const int MAX_FILTER_VALUES = 200;
-
-    public function __construct(private readonly PrimaryContactColumn $contactColumn) {}
-
-    /**
-     * Plain string[] of the PersonalDataTypeEnum values, used both as the
-     * `user_type` set-filter/distinct-values options and (via typeBadges) the
-     * badge value tokens.
-     *
      * @return array<int, string>
      */
     public function typeValues(): array
     {
-        return array_map(
-            static fn (PersonalDataTypeEnum $case): string => $case->value,
-            PersonalDataTypeEnum::cases(),
-        );
+        return $this->typeColumn->values();
     }
 
     /**
-     * Badge metadata for the `user_type` column: value/label/color/icon for
-     * each PersonalDataTypeEnum case, so the frontend renders the badge
-     * without any knowledge of the User domain.
-     *
      * @return array<int, array<string, mixed>>
      */
     public function typeBadges(): array
     {
-        return array_map(
-            static fn ($meta): array => $meta->toArray(),
-            PersonalDataTypeEnum::options(),
-        );
+        return $this->typeColumn->badges();
     }
 
     /**
-     * Excel-like distinct values (spec 0004) for `user_type`: the same
-     * catalogue, optionally narrowed by a case-insensitive substring search
-     * and capped to `$limit`.
-     *
-     * @return array<int, string>
+     * @return array<int, string|null>
      */
     public function distinctTypeValues(?string $search, int $limit): array
     {
-        $values = $this->typeValues();
-
-        if ($search !== null && $search !== '') {
-            return array_slice(array_values(array_filter(
-                $values,
-                static fn (string $value): bool => stripos($value, $search) !== false,
-            )), 0, $limit);
-        }
-
-        // The blank entry ("(Vuoti)") sits beside the catalogue (itself
-        // offered unscoped): a user may own no personal-data card at all.
-        return array_merge([null], array_slice($values, 0, $limit));
+        return $this->typeColumn->distinctValues($search, $limit);
     }
 
     /**
@@ -108,39 +75,12 @@ class UserPersonalDataColumns
     }
 
     /**
-     * Derived `user_type` set filter on personalData.type. Only valid enum
-     * values are honoured; whereHas implicitly excludes users without a card.
-     *
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $filter
      */
     public function applyTypeFilter(Builder $query, array $filter): void
     {
-        $values = array_values(array_filter(
-            $this->setFilterValues($filter),
-            static fn (string $value): bool => PersonalDataTypeEnum::tryFrom($value) !== null,
-        ));
-
-        $matchesBlank = $this->matchesBlankEntry($filter);
-
-        if ($values === [] && ! $matchesBlank) {
-            return;
-        }
-
-        $query->where(static function (Builder $group) use ($values, $matchesBlank): void {
-            if ($values !== []) {
-                $group->whereHas('personalData', static function (Builder $cardQuery) use ($values): void {
-                    $cardQuery->whereIn('type', $values);
-                });
-            }
-
-            // The blank entry ("(Vuoti)"): no card, or a card with no type.
-            if ($matchesBlank) {
-                $group->orWhereDoesntHave('personalData', static function (Builder $cardQuery): void {
-                    $cardQuery->whereNotNull('type');
-                });
-            }
-        });
+        $this->typeColumn->applyFilter($query, $filter);
     }
 
     /**
@@ -195,9 +135,7 @@ class UserPersonalDataColumns
      */
     public function typeSortSubquery(): Builder
     {
-        return $this->correlateToUser(
-            PersonalData::query()->select('personal_data.type'),
-        );
+        return $this->typeColumn->sortSubquery('users', (new User)->getMorphClass());
     }
 
     /**
@@ -258,28 +196,6 @@ class UserPersonalDataColumns
         $line = trim(implode(', ', array_filter([$street ?: null, $locality ?: null])));
 
         return $line === '' ? null : $line;
-    }
-
-    /**
-     * Extract, sanitize and cap the string values of a set filter payload.
-     *
-     * @param  array<string, mixed>  $filter
-     * @return array<int, string>
-     */
-    private function setFilterValues(array $filter): array
-    {
-        $values = $filter['values'] ?? null;
-
-        if (! is_array($values)) {
-            return [];
-        }
-
-        $clean = array_values(array_filter(
-            $values,
-            static fn ($value): bool => is_string($value) && $value !== '',
-        ));
-
-        return array_slice($clean, 0, self::MAX_FILTER_VALUES);
     }
 
     /**

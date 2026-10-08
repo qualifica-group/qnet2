@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Anagrafiche — tab Tutte / Persone fisiche / Aziende sulla griglia — NON COMMITTATO (2026-10-08)
+
+- Nuova colonna derivata `registry_type` (badge, `enumKey` `personal_data_type`, set filter, ordinabile, read-only) da
+  `personalData.type`, subito dopo `name`. Logica estratta da Utenti in `App\Tables\Shared\PersonalDataTypeColumn`
+  (values/badges/distinctValues/applyFilter/sortSubquery(ownerTable, morph)); `UserPersonalDataColumns` ora delega
+  (API pubblica invariata). `RegistryColumnCatalog::columns/filters` prendono `$typeValues`.
+- FE: `components/ui/filter-tabs.tsx` (`FilterTabs`, strip di tab-preset del filter model, stesso stile di
+  Scadenze/Fatture), `features/registries/use-registry-type-tab.ts` (`REGISTRY_TYPE_FILTER_KEY`, build/read patch;
+  il filter model della griglia e' la fonte di verita'), `REGISTRY_TYPE_TABS` in `types.ts`, i18n
+  `registries.columns.registry_type` + `registries.typeTabs.*`, guida in-app `registries` IT/EN (searching-a-registry).
+- Test: `RegistryTypeColumnTest` (nuovo), `RegistryTableTest` aggiornato (13 colonne: requisito cambiato),
+  `use-registry-type-tab.test.ts`, `registries-table.test.tsx` (tab).
+- Da valutare: `RegistriesTableDefinition` e' a ~340 righe (>300 soft); toolbar Scadenze/Fatture potrebbero migrare
+  a `FilterTabs`. Manuale Claude Docs NON aggiornato (accesso negato) — sezione Anagrafiche > ricerca/elenco.
+
 ## Spec 0207 — Note generali sull'anagrafica — VERDE, COMMITTATO (2026-10-08)
 
 - Colonna `registries.general_notes` (text nullable, max 5000), migrazione `2026_10_11_100000_add_general_notes_to_registries_table`.
