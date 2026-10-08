@@ -24,7 +24,7 @@ export const invoiceEditor = {
   fields: {
     documentDate: 'Data documento',
     company: 'Società emittente',
-    customer: 'Intestatario',
+    customer: 'Cliente',
     paymentMethod: 'Pagamento',
     financialAccount: 'Banca',
     notes: 'Note',
@@ -35,7 +35,7 @@ export const invoiceEditor = {
     noBank: 'Nessuna banca',
     noTag: 'Nessun tag',
     selectCompany: 'Seleziona la società',
-    selectCustomer: 'Seleziona l’intestatario',
+    selectCustomer: 'Seleziona il cliente',
     selectPaymentMethod: 'Seleziona il pagamento',
     searchPlaceholder: 'Cerca…',
     selectEmpty: 'Nessun risultato.',
@@ -113,7 +113,7 @@ export const invoiceEditor = {
   errors: {
     documentDateRequired: 'La data documento è obbligatoria.',
     companyRequired: 'La società emittente è obbligatoria.',
-    customerRequired: 'L’intestatario è obbligatorio.',
+    customerRequired: 'Il cliente è obbligatorio.',
     paymentMethodRequired: 'Il pagamento è obbligatorio.',
     notesMax: 'Il testo può contenere al massimo 5000 caratteri.',
     linesRequired: 'Aggiungi almeno una riga.',

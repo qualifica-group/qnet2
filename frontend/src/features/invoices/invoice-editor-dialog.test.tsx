@@ -101,7 +101,7 @@ describe('InvoiceEditorDialog create (spec 0194 AC-009)', () => {
 
     expect(await screen.findByRole('heading', { name: /Work order #WO-2026-004/ })).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: /Issuing company/ })).toHaveTextContent('Qualifica Srl')
-    expect(screen.getByRole('combobox', { name: /Bill to/ })).toHaveTextContent('Acme Spa')
+    expect(screen.getByRole('combobox', { name: /Customer/ })).toHaveTextContent('Acme Spa')
     expect(screen.getByRole('combobox', { name: /Payment/ })).toHaveTextContent('Bonifico 30 gg')
 
     fireEvent.click(screen.getByRole('button', { name: 'Add line: Consulting day' }))

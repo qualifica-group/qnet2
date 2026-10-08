@@ -45,7 +45,7 @@ export const invoices = {
     type: 'Tipo',
     external_number: 'Numero fattura',
     external_date: 'Data fattura',
-    customer: 'Intestatario',
+    customer: 'Cliente',
     company: 'Società',
     payment_method: 'Pagamento',
     work_order_code: 'Commessa n.',

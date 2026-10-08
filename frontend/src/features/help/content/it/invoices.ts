@@ -22,7 +22,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Parte', 'Cosa fare'],
           rows: [
-            ['**Intestazione**', 'Data documento, società emittente (non modificabile in modifica), intestatario, modalità di pagamento, banca della società, tag **Preventivo/Consuntivo**, note e note interne.'],
+            ['**Intestazione**', 'Data documento, società emittente (non modificabile in modifica), cliente, modalità di pagamento, banca della società, tag **Preventivo/Consuntivo**, note e note interne.'],
             ['**Righe disponibili**', 'Le righe della commessa non ancora usate: **Aggiungi** una riga oppure **Aggiungi tutte**.'],
             ['**Righe del documento**', 'Puoi modificare quantità, prezzo e IVA; ogni riga è un prodotto a catalogo oppure una descrizione libera.'],
             ['**Scadenze**', 'Anteprima delle rate calcolata dalla modalità di pagamento (vedi la guida Modalità di Pagamento).'],

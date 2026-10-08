@@ -24,7 +24,7 @@ export const invoiceEditor = {
   fields: {
     documentDate: 'Document date',
     company: 'Issuing company',
-    customer: 'Bill to',
+    customer: 'Customer',
     paymentMethod: 'Payment',
     financialAccount: 'Bank',
     notes: 'Notes',
@@ -35,7 +35,7 @@ export const invoiceEditor = {
     noBank: 'No bank',
     noTag: 'No tag',
     selectCompany: 'Select the company',
-    selectCustomer: 'Select the bill-to party',
+    selectCustomer: 'Select the customer',
     selectPaymentMethod: 'Select the payment',
     searchPlaceholder: 'Search…',
     selectEmpty: 'No results.',
@@ -113,7 +113,7 @@ export const invoiceEditor = {
   errors: {
     documentDateRequired: 'The document date is required.',
     companyRequired: 'The issuing company is required.',
-    customerRequired: 'The bill-to party is required.',
+    customerRequired: 'The customer is required.',
     paymentMethodRequired: 'The payment is required.',
     notesMax: 'The text can be at most 5000 characters.',
     linesRequired: 'Add at least one line.',
