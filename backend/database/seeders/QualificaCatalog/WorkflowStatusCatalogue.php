@@ -159,11 +159,11 @@ final class WorkflowStatusCatalogue
     private const string APL = 'apl';
 
     /**
-     * Section key => status name => its legend bucket and its description.
-     * Declaration order IS the seeded order for every section whose categories
-     * take the whole list (see WORKFLOWS).
+     * Section key => status name => its legend bucket, its description and,
+     * off-sheet, whether moving onto it demands a note (default: no). Declaration
+     * order IS the seeded order for every section taking the whole list.
      *
-     * @var array<string, array<string, array{legend: string, description: string}>>
+     * @var array<string, array<string, array{legend: string, description: string, requires_note?: bool}>>
      */
     public const array SECTIONS = [
         self::GOL => [
@@ -240,11 +240,11 @@ final class WorkflowStatusCatalogue
             'Appuntamento Fissato' => ['legend' => self::PENDING, 'description' => 'Appuntamento fissato con il cliente/candidato per approfondire la proposta o procedere con la fase successiva.'],
             'Rimandata' => ['legend' => self::OPEN, 'description' => 'Trattativa o contatto posticipato a una data successiva in attesa di un nuovo confronto o aggiornamento.'],
             'VINTO' => ['legend' => self::POSITIVE, 'description' => 'Trattativa conclusa positivamente.'],
-            'Persa' => ['legend' => self::NEGATIVE, 'description' => 'Trattativa conclusa negativamente senza finalizzazione.'],
-            'Annullata' => ['legend' => self::NEGATIVE, 'description' => 'Trattativa o appuntamento annullato e non più proseguito.'],
+            'Persa' => ['legend' => self::NEGATIVE, 'description' => 'Trattativa conclusa negativamente senza finalizzazione.', 'requires_note' => true],
+            'Annullata' => ['legend' => self::NEGATIVE, 'description' => 'Trattativa o appuntamento annullato e non più proseguito.', 'requires_note' => true],
             'Non risponde' => ['legend' => self::OPEN, 'description' => 'Nessuna risposta ricevuta dopo i tentativi di contatto effettuati.'],
             'Irreperibile' => ['legend' => self::NEGATIVE, 'description' => 'Contatto non raggiungibile dopo diversi tentativi tramite i recapiti disponibili.'],
-            'Non pertinente' => ['legend' => self::NEGATIVE, 'description' => 'Contatto non coerente con il servizio, la proposta o il target previsto.'],
+            'Non pertinente' => ['legend' => self::NEGATIVE, 'description' => 'Contatto non coerente con il servizio, la proposta o il target previsto.', 'requires_note' => true],
             'Numero inesistente' => ['legend' => self::NEGATIVE, 'description' => 'Recapito telefonico errato, inesistente o non valido.'],
         ],
         self::APL => [
@@ -487,8 +487,8 @@ final class WorkflowStatusCatalogue
                     'description' => $status['description'],
                     'color' => $legend['color'],
                     'group' => $legend['group'],
-                    // Nothing in the sheet marks a state as note-requiring.
-                    'requires_note' => false,
+                    // Off-sheet: CONSULENZA losses but the unreachable ones (user directive 2026-10-08).
+                    'requires_note' => $status['requires_note'] ?? false,
                 ];
             },
             $names,

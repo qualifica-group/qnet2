@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## STATI CONSULENZA: NOTA OBBLIGATORIA SUGLI ESITI NEGATIVI — VERDE, NON COMMITTATO (2026-10-08)
+
+- `WorkflowStatusCatalogue::SECTIONS` accetta ora una chiave opzionale `requires_note` per stato (default false,
+  letta in `statusesFor()`). CONSULENZA: `Persa` (riga di sistema closed_lost), `Annullata`, `Non pertinente` =
+  nota obbligatoria; `Irreperibile` e `Numero inesistente` no (decisione utente 2026-10-08). Altre liste invariate.
+- Test: `tests/Feature/Seeding/QualificaConsultingStatusNotesTest.php`.
+- Attenzione: `QualificaWorkflowSeeder` salta i workflow gia' esistenti, quindi su un DB gia' seminato il flag va
+  impostato a mano dal configuratore stati (o con un seed su DB pulito).
+
 ## GRIGLIE OFFERTE/COMMESSE/ANAGRAFICHE/OPPORTUNITA': OGNI COLONNA EDITABILE IN CELLA CON LE REGOLE DEL FORM — VERDE, COMMITTATO (2026-10-07)
 
 - Spec `docs/specs/0206-main-modules-grid-inline-editing.xml` (decisioni utente: cambio Anagrafica opportunita' in
