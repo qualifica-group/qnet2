@@ -44,6 +44,7 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
     business_function_id: null,
     requires_quote: false,
     is_selectable: true,
+    is_active: true,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
@@ -56,6 +57,7 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
         id: 100,
         name: 'Root A',
         is_selectable: false,
+        is_active: true,
         children: [
           node({ id: 11, name: 'Category A1', parent_id: 100 }),
           node({ id: 22, name: 'Category A2', parent_id: 100 }),
@@ -65,12 +67,14 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
         id: 200,
         name: 'Root B',
         is_selectable: false,
+        is_active: true,
         children: [
           node({
             id: 201,
             name: 'Container B',
             parent_id: 200,
             is_selectable: false,
+            is_active: true,
             children: [node({ id: 202, name: 'Leaf B', parent_id: 201 })],
           }),
           node({ id: 203, name: 'Dead branch', parent_id: 200, is_selectable: false }),
@@ -82,12 +86,14 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
         id: 300,
         name: 'Root C',
         is_selectable: false,
+        is_active: true,
         children: [
           node({
             id: 301,
             name: 'Group C1',
             parent_id: 300,
             is_selectable: false,
+            is_active: true,
             children: [node({ id: 302, name: 'Leaf C1', parent_id: 301 })],
           }),
           node({ id: 303, name: 'Group C2', parent_id: 300, children: [node({ id: 304, name: 'Leaf C2', parent_id: 303 })] }),

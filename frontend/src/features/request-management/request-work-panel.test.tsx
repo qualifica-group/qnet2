@@ -67,6 +67,7 @@ const { CATEGORY_TREE } = vi.hoisted(() => ({
       business_function_id: 40,
       requires_quote: false,
       is_selectable: false,
+      is_active: true,
       management_mode: 'multiple' as const,
       children: [
         {
@@ -78,6 +79,7 @@ const { CATEGORY_TREE } = vi.hoisted(() => ({
           business_function_id: null,
           requires_quote: false,
           is_selectable: true,
+          is_active: true,
           management_mode: 'multiple' as const,
           children: [],
         },

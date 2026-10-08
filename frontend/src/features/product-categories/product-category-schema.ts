@@ -78,6 +78,7 @@ function baseFields(t: TFunction) {
     business_function_id: z.number().nullable(),
     requires_quote: z.boolean(),
     is_selectable: z.boolean(),
+    is_active: z.boolean(),
     is_reportable: z.boolean().nullable(),
     // null = inherit the nearest configured ancestor's columns (spec 0141);
     // key validity against the catalogue is enforced server-side (422).

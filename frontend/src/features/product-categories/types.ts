@@ -29,6 +29,8 @@ export interface ProductCategoryTreeNode {
   requires_quote: boolean
   /** Whether the node may be picked as a classification target (spec 0074). Per-node: a false one still parents selectable children. */
   is_selectable: boolean
+  /** The node's OWN active flag (spec 0208): false hides the node and its whole subtree from destination pickers. NOT the effective value. */
+  is_active: boolean
   /** The node's OWN report override (user directive 2026-09-18): null inherits the parent's effective value (false at a root). NOT the effective value. */
   is_reportable: boolean | null
   /** The EFFECTIVE management mode: authored by the branch root, mirrored on every descendant server-side (spec 0077). */
@@ -142,6 +144,8 @@ export interface ProductCategoryDetail {
   requires_quote_source_category: { id: number; name: string } | null
   /** Whether the category may be picked as a classification target (spec 0074). */
   is_selectable: boolean
+  /** The category's OWN active flag (spec 0208); the effective value also depends on the ancestors. */
+  is_active: boolean
   /** The category's OWN report override: null inherits the parent's effective value (user directive 2026-09-18). */
   is_reportable: boolean | null
   /** Whether the category is a row of the Gestione Richieste/Iscritti reports and dashboard: own override, else inherited. */
@@ -277,6 +281,8 @@ export interface CreateProductCategoryPayload {
   requires_quote?: boolean
   /** Whether the category may be picked as a classification target (spec 0074); omitted on create means selectable. */
   is_selectable?: boolean
+  /** Whether the category is active (spec 0208); omitted on create means active. */
+  is_active?: boolean
   /** Own report override: true/false forces it, null (or omitted on create) inherits the parent's. */
   is_reportable?: boolean | null
   /** Own report-columns selection (spec 0141): an array forces it, null inherits the nearest configured ancestor's. An empty array is normalized server-side to null. */

@@ -38,6 +38,7 @@ const SERVER_ERROR_FIELDS = [
   'business_function_id',
   'requires_quote',
   'is_selectable',
+  'is_active',
   'is_reportable',
   'report_columns',
   'management_mode',
@@ -93,6 +94,7 @@ function mapCategoryToFormValues(
     business_function_id: category.business_function_id,
     requires_quote: category.requires_quote,
     is_selectable: category.is_selectable,
+    is_active: category.is_active,
     is_reportable: category.is_reportable,
     report_columns: category.report_columns,
     management_mode: category.management_mode,
@@ -171,6 +173,8 @@ export function useProductCategoryForm({ mode, onSuccess }: UseProductCategoryFo
       // Spec 0074: a new category is a usable destination unless the
       // operator explicitly turns it into a container.
       is_selectable: true,
+      // A new category is active unless the operator switches it off (spec 0208).
+      is_active: true,
       // A new category inherits its parent's report flag (a root: not
       // reportable) until the operator forces it — mirrors the backend default.
       is_reportable: null,

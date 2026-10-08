@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Assignment;
 
+use App\Rules\ActiveProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\ProductLines\ProductLineSetValidator;
 use Illuminate\Validation\Rule;
@@ -57,15 +58,18 @@ final class CompetenceLineSetValidator
     /**
      * The per-row rules, keyed for the given collection attribute: the
      * business function is required, the category is OPTIONAL (D-3) and,
-     * when present, need only exist — no selectability constraint (D-6).
+     * when present, must exist and be effectively active (spec 0208) — no
+     * selectability constraint (D-6). The categories already persisted on the
+     * user being updated are exempt from the activity check (spec 0208 D-2).
      *
+     * @param  array<int, int>  $exemptCategoryIds
      * @return array<string, array<int, mixed>>
      */
-    public function rules(string $attribute): array
+    public function rules(string $attribute, array $exemptCategoryIds = []): array
     {
         return [
             $attribute.'.*.business_function_id' => ['required', 'integer', Rule::exists('business_functions', 'id')],
-            $attribute.'.*.product_category_id' => ['nullable', 'integer', Rule::exists('product_categories', 'id')],
+            $attribute.'.*.product_category_id' => ['nullable', 'integer', new ActiveProductCategory($exemptCategoryIds)],
         ];
     }
 

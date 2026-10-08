@@ -79,6 +79,7 @@ export const productCategories = {
   badges: {
     root: 'Radice',
     notSelectable: 'Non selezionabile',
+    notActive: 'Non attiva',
     reportable: 'Visibile nei report',
   },
   columns: {
@@ -90,6 +91,7 @@ export const productCategories = {
     business_function: 'Funzione aziendale',
     requires_quote: 'Prevede preventivo',
     is_selectable: 'Selezionabile',
+    is_active: 'Attiva',
     is_reportable: 'Visibile nei report',
     management_mode: 'Modalità di gestione',
     single_quote_per_opportunity: 'Offerta unica per opportunità',
@@ -188,6 +190,10 @@ export const productCategories = {
     isSelectable: 'Selezionabile',
     isSelectableHint:
       'Se disattivo, la categoria serve solo a raggruppare sottocategorie: sparisce dalle liste di scelta e non è più associabile a un prodotto, a una linea di prodotto, a un progetto, a una campagna o a una regola provvigionale. Le associazioni già esistenti restano.',
+    isActive: 'Attiva',
+    isActiveHint:
+      'Se disattiva, la categoria sparisce con tutto il suo ramo e i suoi prodotti dai campi di inserimento. I collegamenti esistenti restano.',
+    isActiveInheritedNotice: 'Non attiva perché lo è «{{category}}»',
     isReportable: 'Visibile nei report',
     isReportableHint:
       'La categoria compare nei report e nella dashboard di Gestione Richieste e Gestione Iscritti; selezionandola si vedono anche le sue sottocategorie.',
@@ -246,6 +252,9 @@ export const productCategories = {
     isSelectableInfo:
       "Trasforma la categoria in un puro contenitore. Resta padre delle sue sottocategorie e conserva tutte le associazioni già fatte, ma non compare più nelle liste di scelta. A differenza delle altre regole questa appartiene SOLO a questa categoria: non viene mai ereditata, quindi un padre non selezionabile può avere figli selezionabili.",
     isSelectableInfoLabel: 'Maggiori informazioni su Selezionabile',
+    isActiveInfo:
+      "Quando la categoria non è attiva sparisce, insieme a tutte le sue sottocategorie e ai prodotti di quel ramo, dai campi di inserimento e di modifica: non si può più collegare a nulla di nuovo. I collegamenti già esistenti restano validi e vengono ancora mostrati, e i filtri delle griglie continuano a vedere la categoria. A differenza di Selezionabile (che lascia la categoria visibile come contenitore) il flag Attiva si propaga a tutto il ramo, senza modificare il flag delle sottocategorie.",
+    isActiveInfoLabel: 'Maggiori informazioni su Attiva',
     isReportableInfo:
       'Decide se la categoria compare come riga selezionabile nei report e nella dashboard di Gestione Richieste e di Gestione Iscritti. Una sottocategoria eredita il valore del padre: se il padre è visibile nei report lo sono anche i figli, ma ogni figlio può essere forzato a "no" (e con lui le sue sottocategorie). Una categoria esclusa non viene conteggiata neanche nei totali del padre.',
     isReportableInfoLabel: 'Maggiori informazioni su Visibile nei report',

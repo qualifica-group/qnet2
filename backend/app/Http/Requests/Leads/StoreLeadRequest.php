@@ -4,6 +4,7 @@ namespace App\Http\Requests\Leads;
 
 use App\DataObjects\Leads\CreateLeadData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Rules\ActiveCategoryProduct;
 use App\Services\Leads\LeadSourceResolver;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -61,7 +62,7 @@ class StoreLeadRequest extends FormRequest
             'extra_fields.*' => ['string'],
             'convert_to_opportunity' => ['nullable', 'boolean'],
             'products_of_interest' => ['sometimes', 'array'],
-            'products_of_interest.*' => ['integer', Rule::exists('products', 'id')],
+            'products_of_interest.*' => ['integer', new ActiveCategoryProduct],
         ];
     }
 

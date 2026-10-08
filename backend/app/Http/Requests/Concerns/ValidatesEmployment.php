@@ -5,6 +5,7 @@ namespace App\Http\Requests\Concerns;
 use App\DataObjects\Users\EmploymentData;
 use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
+use App\Models\User;
 use App\Services\Assignment\CompetenceLineSetValidator;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -102,7 +103,7 @@ trait ValidatesEmployment
             // not ProductLineSetValidator's — no selectability constraint, a
             // nullable category.
             'employment.product_lines' => ['sometimes', 'nullable', 'array'],
-            ...$this->competenceLineSetValidator()->rules('employment.product_lines'),
+            ...$this->competenceLineSetValidator()->rules('employment.product_lines', $this->exemptCompetenceCategoryIds()),
 
             'employment.qualification_type' => ['nullable', Rule::enum(QualificationTypeEnum::class)],
             'employment.hired_at' => ['nullable', 'date'],
@@ -143,6 +144,27 @@ trait ValidatesEmployment
         foreach ($this->competenceLineSetValidator()->crossRowErrors($lines, 'employment.product_lines') as $key => $message) {
             $validator->errors()->add($key, $message);
         }
+    }
+
+    /**
+     * The categories already persisted on the competence of the user being
+     * updated (spec 0208 D-2). Empty on create (no route model).
+     *
+     * @return array<int, int>
+     */
+    private function exemptCompetenceCategoryIds(): array
+    {
+        $user = $this->route('user');
+
+        if (! $user instanceof User) {
+            return [];
+        }
+
+        return $user->employment?->productLines()
+            ->whereNotNull('product_category_id')
+            ->pluck('product_category_id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all() ?? [];
     }
 
     private function competenceLineSetValidator(): CompetenceLineSetValidator

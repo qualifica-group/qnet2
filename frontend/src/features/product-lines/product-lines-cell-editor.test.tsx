@@ -24,6 +24,7 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
     business_function_id: null,
     requires_quote: false,
     is_selectable: true,
+    is_active: true,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
@@ -33,9 +34,16 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
   return {
     CATEGORY_TREE: [
       node({
+        id: 80,
+        name: 'Dormant root',
+        is_active: false,
+        children: [node({ id: 81, name: 'Dormant child', parent_id: 80 })],
+      }),
+      node({
         id: 70,
         name: 'Single root',
         is_selectable: false,
+        is_active: true,
         management_mode: 'single',
         children: [node({ id: 71, name: 'Luce singola', parent_id: 70, management_mode: 'single' })],
       }),
@@ -43,6 +51,7 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
         id: 6,
         name: 'Multi root',
         is_selectable: false,
+        is_active: true,
         children: [
           node({ id: 7, name: 'Luce', parent_id: 6 }),
           node({
@@ -50,6 +59,7 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
             name: 'Container',
             parent_id: 6,
             is_selectable: false,
+            is_active: true,
             children: [node({ id: 9, name: 'Gas', parent_id: 8 })],
           }),
         ],
@@ -118,6 +128,13 @@ describe('ProductLinesCellEditor (spec 0132 AC-020)', () => {
     expect(onValueChange).toHaveBeenCalledWith([
       { root_category_id: 6, root_category_name: 'Multi root', product_category_id: 9, product_category_name: 'Gas' },
     ])
+  })
+
+  it('spec 0208 AC-019: an inactive root, with its branch, is not offered', async () => {
+    renderEditor([], vi.fn())
+
+    expect(await screen.findByRole('option', { name: 'Multi root' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Dormant root' })).not.toBeInTheDocument()
   })
 
   it('AC-020: the committed pair carries only product_category_id on the wire-facing fields (no business_function_id)', async () => {

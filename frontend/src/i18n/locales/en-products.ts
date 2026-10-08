@@ -79,6 +79,7 @@ export const productCategories = {
   badges: {
     root: 'Root',
     notSelectable: 'Not selectable',
+    notActive: 'Not active',
     reportable: 'Visible in reports',
   },
   columns: {
@@ -90,6 +91,7 @@ export const productCategories = {
     business_function: 'Business function',
     requires_quote: 'Quoted',
     is_selectable: 'Selectable',
+    is_active: 'Active',
     is_reportable: 'Visible in reports',
     management_mode: 'Management mode',
     single_quote_per_opportunity: 'One offer per opportunity',
@@ -186,6 +188,10 @@ export const productCategories = {
     isSelectable: 'Selectable',
     isSelectableHint:
       'When off, the category can only group subcategories: it disappears from the pickers and can no longer be assigned to a product, a product line, a project, a campaign or a commission rule. Existing associations are kept.',
+    isActive: 'Active',
+    isActiveHint:
+      'When off, the category disappears from the input fields together with its whole branch and its products. Existing links are kept.',
+    isActiveInheritedNotice: 'Not active because "{{category}}" is not',
     isReportable: 'Visible in reports',
     isReportableHint:
       'The category appears in the Gestione Richieste and Gestione Iscritti reports and dashboard; selecting it also shows its subcategories.',
@@ -244,6 +250,9 @@ export const productCategories = {
     isSelectableInfo:
       'Turns the category into a pure container. It stays a parent for its subcategories and keeps every association already made, but it no longer appears in the pickers. Unlike the other rules, this one belongs to THIS category alone: it is never inherited, so an unselectable parent can still have selectable children.',
     isSelectableInfoLabel: 'More info about Selectable',
+    isActiveInfo:
+      'When the category is not active it disappears, together with all its subcategories and the products of that branch, from the input and edit fields: nothing new can be linked to it. Existing links stay valid and are still shown, and the grid filters keep seeing the category. Unlike Selectable (which keeps the category visible as a container) the Active flag applies to the whole branch, without changing the subcategories\' own flag.',
+    isActiveInfoLabel: 'More info about Active',
     isReportableInfo:
       'Decides whether the category shows up as a selectable row in the Gestione Richieste and Gestione Iscritti reports and dashboard. A subcategory inherits its parent\'s value: when the parent is visible in the reports so are its children, but each child can be forced to "no" (and its subcategories with it). An excluded category is not counted in its parent\'s totals either.',
     isReportableInfoLabel: 'More info about Visible in reports',

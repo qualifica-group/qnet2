@@ -45,7 +45,11 @@ class SyncWorkOrderCostsRequest extends FormRequest
     public function rules(): array
     {
         $workOrderId = $this->workOrder()->id;
-        $shared = QuoteLineRules::fieldRules('lines', false);
+        $shared = QuoteLineRules::fieldRules(
+            'lines',
+            false,
+            $this->workOrder()->costs()->pluck('product_id')->map(static fn (mixed $id): int => (int) $id)->all(),
+        );
 
         $rules = ['lines' => ['present', 'array', 'max:'.QuoteLineRules::MAX_ROWS]];
 

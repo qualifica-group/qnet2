@@ -5,6 +5,7 @@ namespace App\Services\ProductCategories;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\ProductCategory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -18,7 +19,10 @@ use Illuminate\Support\Collection;
  */
 class ProductCategoryForSelectResolver
 {
-    public function __construct(private readonly CategoryHierarchy $hierarchy) {}
+    public function __construct(
+        private readonly CategoryHierarchy $hierarchy,
+        private readonly CategoryActivity $activity,
+    ) {}
 
     /**
      * Minimal, searchable, paginated product-category list. Every returned
@@ -45,7 +49,16 @@ class ProductCategoryForSelectResolver
         // unconditional — no opt-in param a future consumer could forget.
         // `ids[]` hydration runs its own query below and stays exempt (D-3a),
         // so an already-associated category keeps resolving in edit mode.
+        //
+        // Spec 0208 D-3/D-7: the activity filter (own flag + every ancestor's)
+        // is applied by default too, but as an OPT-OUT: the advanced filters
+        // of the grids pass `include_inactive` because history must stay
+        // searchable. `is_selectable` is unaffected either way.
         $base = ProductCategory::query()->select(['id', 'name'])->where('is_selectable', true);
+
+        if (! $query->includeInactive) {
+            $this->excludeInactive($base);
+        }
 
         if ($query->hasSearch()) {
             $base->where('name', 'like', '%'.$query->search.'%');
@@ -82,6 +95,18 @@ class ProductCategoryForSelectResolver
     }
 
     /**
+     * @param  Builder<ProductCategory>  $base
+     */
+    private function excludeInactive(Builder $base): void
+    {
+        $inactiveIds = $this->activity->inactiveCategoryIds();
+
+        if ($inactiveIds !== []) {
+            $base->whereNotIn('id', $inactiveIds);
+        }
+    }
+
+    /**
      * $rootCategoryId itself PLUS every one of its descendants (spec 0077
      * INV-1 scoping) — a single batched CategoryHierarchy call, never a walk
      * per row.
@@ -107,6 +132,10 @@ class ProductCategoryForSelectResolver
     public function resolveBranches(ForSelectQuery $query): ForSelectResult
     {
         $base = ProductCategory::query()->select(['id', 'name'])->whereHas('children');
+
+        // Spec 0208 D-5: no opt-out here, the criteria editor never needs
+        // inactive branches (saved values still hydrate via `ids[]`).
+        $this->excludeInactive($base);
 
         if ($query->hasSearch()) {
             $base->where('name', 'like', '%'.$query->search.'%');

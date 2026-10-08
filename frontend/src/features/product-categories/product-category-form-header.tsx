@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useWatch, type Control } from 'react-hook-form'
-import { ChartNoAxesColumn, EyeOff, FolderTree, Loader2, TriangleAlert } from 'lucide-react'
+import { ChartNoAxesColumn, EyeOff, FolderTree, Loader2, Power, TriangleAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { RECORD_HEADER_CLASS } from '@/components/record-form/layout'
@@ -55,6 +55,7 @@ export function ProductCategoryFormHeader({
   const { t } = useTranslation()
   const parentId = useWatch({ control, name: 'parent_id' })
   const isSelectable = useWatch({ control, name: 'is_selectable' })
+  const isActive = useWatch({ control, name: 'is_active' })
   const isReportable = useReportableInheritance(control, mode).effective
   const isEdit = mode.type === 'edit'
 
@@ -85,6 +86,12 @@ export function ProductCategoryFormHeader({
           <Badge variant="outline" className="h-5 min-h-5 max-w-full gap-1.5">
             <EyeOff className="size-3" aria-hidden="true" />
             <span className="truncate">{t('productCategories.badges.notSelectable')}</span>
+          </Badge>
+        ) : null}
+        {!isActive ? (
+          <Badge variant="outline" className="h-5 min-h-5 max-w-full gap-1.5">
+            <Power className="size-3" aria-hidden="true" />
+            <span className="truncate">{t('productCategories.badges.notActive')}</span>
           </Badge>
         ) : null}
         {isReportable ? (

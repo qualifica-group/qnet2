@@ -52,9 +52,11 @@ use Illuminate\Database\Eloquent\Builder;
  *   no filter, so every other consumer is unaffected. It only ever NARROWS
  *   (INV-5): it is applied as an exclusion on top of the existing filters,
  *   never as a widening OR.
- * - `includeInactive` (spec 0101, T-03c): ADDITIVE, consumed ONLY by the five
- *   Task configurator services, which otherwise serve `is_active = true`
- *   rows only. The reorder sheet needs EVERY row, active or not: the server
+ * - `includeInactive` (spec 0101, T-03c; spec 0208): ADDITIVE, consumed by the
+ *   five Task configurator services, which otherwise serve `is_active = true`
+ *   rows only, and by product-categories for-select, which otherwise
+ *   excludes the effectively inactive categories (the grid advanced filters
+ *   pass it to keep history searchable). The reorder sheet needs EVERY row, active or not: the server
  *   validates `ordered_ids` against the full set, so a list missing the
  *   deactivated rows is rejected as incomplete. False by default, so every
  *   other consumer keeps its current filtering.

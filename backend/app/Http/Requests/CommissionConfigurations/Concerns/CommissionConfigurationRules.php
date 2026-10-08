@@ -11,6 +11,7 @@ use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
 use App\Models\CommissionConfiguration;
 use App\Models\User;
+use App\Rules\ActiveCategoryProduct;
 use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -41,7 +42,7 @@ trait CommissionConfigurationRules
                 Rule::prohibitedIf(fn () => $this->scopeExcludesCategory()),
             ],
             'product_id' => [
-                'nullable', 'integer', Rule::exists('products', 'id'),
+                'nullable', 'integer', new ActiveCategoryProduct($this->exemptProductIds()),
                 Rule::requiredIf(fn () => $this->input('application_scope') === CommissionApplicationScope::Product->value),
                 Rule::prohibitedIf(fn () => $this->scopeExcludesProduct()),
             ],
@@ -83,6 +84,21 @@ trait CommissionConfigurationRules
 
         return $configuration instanceof CommissionConfiguration && $configuration->product_category_id !== null
             ? [(int) $configuration->product_category_id]
+            : [];
+    }
+
+    /**
+     * The product already persisted on the configuration being updated,
+     * exempt from the inactive-category check (spec 0208 D-2). Empty on create.
+     *
+     * @return array<int, int>
+     */
+    protected function exemptProductIds(): array
+    {
+        $configuration = $this->route('commissionConfiguration');
+
+        return $configuration instanceof CommissionConfiguration && $configuration->product_id !== null
+            ? [(int) $configuration->product_id]
             : [];
     }
 

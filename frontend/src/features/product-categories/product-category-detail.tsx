@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Briefcase, ChartNoAxesColumn, EyeOff, FolderTree, ListChecks, Users } from 'lucide-react'
+import { Briefcase, ChartNoAxesColumn, EyeOff, FolderTree, ListChecks, Power, Users } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
@@ -125,6 +125,12 @@ export function ProductCategoryDetailView({ category, onEdit }: ProductCategoryD
                   <Badge variant="outline">
                     <EyeOff aria-hidden="true" />
                     {t('productCategories.badges.notSelectable')}
+                  </Badge>
+                ) : null}
+                {!category.is_active ? (
+                  <Badge variant="outline">
+                    <Power aria-hidden="true" />
+                    {t('productCategories.badges.notActive')}
                   </Badge>
                 ) : null}
                 {category.effective_is_reportable ? (

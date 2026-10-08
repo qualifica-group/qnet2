@@ -62,6 +62,7 @@ function category(
     effective_business_function: null,
     requires_quote_source_category: null,
     is_selectable: true,
+    is_active: true,
     is_reportable: false,
     effective_is_reportable: false,
     is_reportable_source_category: null,

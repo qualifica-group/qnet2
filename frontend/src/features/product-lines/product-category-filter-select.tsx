@@ -1,8 +1,11 @@
 import { useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select'
+import { activeCategoryTree } from '@/features/product-categories/active-tree'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import { filterCategoriesUnderRoot } from '@/features/product-lines/category-tree-scope'
+
+const EMPTY_IDS: readonly number[] = []
 
 export interface ProductCategoryFilterSelectProps {
   rootCategoryId: number
@@ -37,8 +40,8 @@ export function ProductCategoryFilterSelect({
     () =>
       tree === undefined
         ? []
-        : filterCategoriesUnderRoot(tree, rootCategoryId).map((node) => ({ id: node.id, name: node.name, depth: 0 })),
-    [tree, rootCategoryId],
+        : filterCategoriesUnderRoot(activeCategoryTree(tree, value === null ? EMPTY_IDS : [value]), rootCategoryId).map((node) => ({ id: node.id, name: node.name, depth: 0 })),
+    [tree, rootCategoryId, value],
   )
 
   return (

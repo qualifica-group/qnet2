@@ -93,7 +93,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Alcune categorie compaiono nell'elenco ma non si possono scegliere: servono solo a raggruppare le sottocategorie. In quel caso scegli una sottocategoria. La Funzione aziendale del prodotto deriva dalla categoria e nella scheda è in sola lettura.",
+          text: "Alcune categorie compaiono nell'elenco ma non si possono scegliere: servono solo a raggruppare le sottocategorie. In quel caso scegli una sottocategoria. Le categorie non attive (con tutto il loro ramo) non compaiono tra le scelte; in modifica, la categoria già salvata resta visibile. La Funzione aziendale del prodotto deriva dalla categoria e nella scheda è in sola lettura.",
         },
       ],
     },

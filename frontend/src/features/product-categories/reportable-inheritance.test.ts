@@ -17,6 +17,7 @@ function node(overrides: Partial<ProductCategoryTreeNode>): ProductCategoryTreeN
     business_function_id: null,
     requires_quote: false,
     is_selectable: true,
+    is_active: true,
     is_reportable: null,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,

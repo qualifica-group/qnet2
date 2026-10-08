@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { activeCategoryTree } from '@/features/product-categories/active-tree'
 import { flattenCategoryTree, pruneToPickable, type FlatCategoryOption } from '@/features/product-categories/flatten-tree'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 import {
@@ -6,6 +7,8 @@ import {
   isSingleRootBlocked,
   selectableIdsUnderRoot,
 } from '@/features/product-lines/category-tree-scope'
+
+const NO_KEPT_IDS: readonly number[] = []
 
 /**
  * The step the "add a pair" flow is on: the root category, the OPTIONAL
@@ -33,7 +36,14 @@ interface UseProductLineCellPickerArgs {
  * search over it and what a click on an option does. The intermediate filter
  * is UI-only, like the root: only the final category reaches the pair.
  */
-export function useProductLineCellPicker({ categoryTree, addingBesidePairs, onPick }: UseProductLineCellPickerArgs) {
+export function useProductLineCellPicker({
+  categoryTree: fullTree,
+  addingBesidePairs,
+  onPick,
+}: UseProductLineCellPickerArgs) {
+  // Spec 0208: the editor only ADDS pairs, so there is no saved value to keep;
+  // inactive branches drop out of every step.
+  const categoryTree = useMemo(() => activeCategoryTree(fullTree, NO_KEPT_IDS), [fullTree])
   const [step, setStep] = useState<CellPickStep>('root_category')
   const [rootCategory, setRootCategory] = useState<PickedCategory | null>(null)
   const [filterCategory, setFilterCategory] = useState<PickedCategory | null>(null)

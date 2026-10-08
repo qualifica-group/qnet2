@@ -411,3 +411,15 @@ it('403 without opportunities.export, no ExportRun created (AC-042)', function (
     expect(ExportRun::count())->toBe(0);
     Queue::assertNotPushed(GenerateExportJob::class);
 });
+
+it('advanced filters: product_category forwards source.params.include_inactive (AC-017)', function () {
+    Sanctum::actingAs(opportunityTableUserWith(['viewAny']));
+
+    $filters = collect($this->getJson('/api/tables/opportunities/columns')->assertOk()->json('data.advancedFilters'))
+        ->keyBy('name');
+
+    expect($filters['product_category']['source'])->toBe([
+        'resource' => 'product-categories',
+        'params' => ['include_inactive' => 1],
+    ]);
+});

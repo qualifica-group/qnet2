@@ -9,6 +9,7 @@ use App\Imports\Leads\LeadRowCampaign;
 use App\Imports\Staging\StagedRowBuilder;
 use App\Models\ImportRun;
 use App\Models\ImportRunRow;
+use App\Rules\ActiveCategoryProduct;
 use App\Support\Import\GeoPinValidator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -87,9 +88,24 @@ class UpdateImportRowRequest extends FormRequest
             'operator_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             'operational_site_id' => ['sometimes', 'nullable', 'integer', 'exists:operational_sites,id'],
             'product_ids' => ['sometimes', 'nullable', 'array'],
-            'product_ids.*' => ['integer', 'exists:products,id'],
+            'product_ids.*' => ['integer', new ActiveCategoryProduct($this->persistedRowProductIds())],
             'campaign_id' => ['sometimes', 'nullable', 'integer', 'exists:campaigns,id'],
         ];
+    }
+
+    /**
+     * The products already on the row being edited (spec 0208 D-2): they stay
+     * valid even once their category is deactivated.
+     *
+     * @return array<int, int>
+     */
+    private function persistedRowProductIds(): array
+    {
+        $row = $this->route('row');
+
+        return $row instanceof ImportRunRow
+            ? array_map(static fn (mixed $id): int => (int) $id, $row->product_ids ?? [])
+            : [];
     }
 
     public function withValidator(Validator $validator): void

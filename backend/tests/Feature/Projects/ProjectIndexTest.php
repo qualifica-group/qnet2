@@ -190,3 +190,15 @@ it('summary: leads_count is 0 when there are no leads', function () {
         ->assertOk()
         ->assertJsonPath('data.leads_count', 0);
 });
+
+it('advanced filters: product_category forwards source.params.include_inactive (AC-017)', function () {
+    Sanctum::actingAs(projectUserWith(['viewAny']));
+
+    $filters = collect($this->getJson('/api/tables/projects/columns')->assertOk()->json('data.advancedFilters'))
+        ->keyBy('name');
+
+    expect($filters['product_category']['source'])->toBe([
+        'resource' => 'product-categories',
+        'params' => ['include_inactive' => 1],
+    ]);
+});

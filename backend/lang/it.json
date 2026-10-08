@@ -54,6 +54,8 @@
     "The selected value does not exist or is not available.": "Il valore selezionato non esiste o non è disponibile.",
     "The selected product category is invalid.": "La categoria prodotto selezionata non è valida.",
     "This product category is not selectable.": "Questa categoria prodotto non è selezionabile.",
+    "This product category is not active.": "Questa categoria prodotto non è attiva.",
+    "This product belongs to an inactive category.": "Questo prodotto appartiene a una categoria non attiva.",
     "An unexpected error occurred.": "Si è verificato un errore imprevisto.",
     "Resource not found.": "Risorsa non trovata.",
     "This action is unauthorized.": "Non hai i permessi per questa azione.",

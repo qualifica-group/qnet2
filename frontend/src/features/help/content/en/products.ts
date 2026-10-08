@@ -93,7 +93,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Some categories appear in the list but cannot be chosen: they only group subcategories. In that case choose a subcategory. The product's Business function derives from the category and is read-only on the card.",
+          text: "Some categories appear in the list but cannot be chosen: they only group subcategories. In that case choose a subcategory. Inactive categories (with their whole branch) are not offered; when editing, the category already saved stays visible. The product's Business function derives from the category and is read-only on the card.",
         },
       ],
     },

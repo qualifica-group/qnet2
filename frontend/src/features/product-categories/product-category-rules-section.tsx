@@ -1,6 +1,6 @@
 import { useController, type Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { ChartNoAxesColumn, MousePointerClick, SlidersHorizontal } from 'lucide-react'
+import { ChartNoAxesColumn, MousePointerClick, Power, SlidersHorizontal } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { Badge } from '@/components/ui/badge'
 import { FormControl, FormDescription } from '@/components/ui/form'
@@ -17,6 +17,7 @@ import { ProductCategorySingleQuoteField } from '@/features/product-categories/p
 import { reportableOverrideFor } from '@/features/product-categories/reportable-inheritance'
 import type { ProductCategoryFormMode } from '@/features/product-categories/types'
 import type { ProductCategoryFormValues } from '@/features/product-categories/use-product-category-form'
+import { useInactiveAncestor } from '@/features/product-categories/use-inactive-ancestor'
 import { useReportableInheritance } from '@/features/product-categories/use-reportable-inheritance'
 
 interface ProductCategoryRulesSectionProps {
@@ -66,6 +67,7 @@ export function ProductCategoryRulesSection({
     fieldPermission('generates_contract').visible ||
     fieldPermission('simplified_offer_line').visible ||
     fieldPermission('is_selectable').visible ||
+    fieldPermission('is_active').visible ||
     fieldPermission('is_reportable').visible ||
     fieldPermission('report_columns').visible
 
@@ -87,6 +89,7 @@ export function ProductCategoryRulesSection({
         <ProductCategorySimplifiedOfferLineField control={control} mode={mode} parentId={parentId} />
 
         <SelectableRule control={control} />
+        <ActiveRule control={control} />
         <ReportableRule control={control} mode={mode} />
 
         {reportable.effective ? (
@@ -122,6 +125,53 @@ function SelectableRule({ control }: SelectableRuleProps) {
         hintLabel={t('productCategories.form.isSelectableInfoLabel')}
         description={
           <FormDescription>{t('productCategories.form.isSelectableHint')}</FormDescription>
+        }
+      >
+        {({ field: switchField, disabled }) => (
+          <FormControl>
+            <Switch
+              checked={switchField.value}
+              onCheckedChange={switchField.onChange}
+              disabled={disabled}
+            />
+          </FormControl>
+        )}
+      </MetaField>
+    </ProductCategoryRuleCard>
+  )
+}
+
+/**
+ * `is_active` as a rule tile (spec 0208). The switch edits the category's OWN
+ * flag; when an ancestor is inactive the whole branch is effectively inactive
+ * whatever this flag says, so the tile names the ancestor responsible.
+ */
+function ActiveRule({ control }: SelectableRuleProps) {
+  const { t } = useTranslation()
+  const { field } = useController({ control, name: 'is_active' })
+  const inactiveAncestor = useInactiveAncestor(control)
+
+  return (
+    <ProductCategoryRuleCard icon={Power} active={field.value}>
+      <MetaField
+        control={control}
+        name="is_active"
+        metaKey="is_active"
+        layout="inline"
+        label={t('productCategories.form.isActive')}
+        hint={t('productCategories.form.isActiveInfo')}
+        hintLabel={t('productCategories.form.isActiveInfoLabel')}
+        description={
+          <>
+            <FormDescription>{t('productCategories.form.isActiveHint')}</FormDescription>
+            {inactiveAncestor !== null ? (
+              <p className="text-xs font-medium text-muted-foreground" role="status">
+                {t('productCategories.form.isActiveInheritedNotice', {
+                  category: inactiveAncestor.name,
+                })}
+              </p>
+            ) : null}
+          </>
         }
       >
         {({ field: switchField, disabled }) => (

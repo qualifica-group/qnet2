@@ -26,6 +26,7 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
     business_function_id: null,
     requires_quote: false,
     is_selectable: true,
+    is_active: true,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
@@ -39,6 +40,7 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
         name: 'Formazione',
         business_function_id: 1,
         is_selectable: false,
+        is_active: true,
         children: [
           node({ id: 11, name: 'Consulting', parent_id: 100 }),
           node({ id: 22, name: 'Training', parent_id: 100 }),

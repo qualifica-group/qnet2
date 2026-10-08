@@ -150,6 +150,10 @@ export function ProductCategoryDetailRules({ category }: ProductCategoryDetailRu
           <RuleValue value={yesNo(category.is_selectable)} />
         </RecordField>
 
+        <RecordField label={t('productCategories.form.isActive')}>
+          <RuleValue value={yesNo(category.is_active)} />
+        </RecordField>
+
         <RecordField label={t('productCategories.form.isReportable')}>
           <RuleValue
             value={yesNo(category.effective_is_reportable)}

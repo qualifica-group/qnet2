@@ -67,6 +67,7 @@ const SOURCE: ProductCategoryDetailWithPermissions = {
   effective_business_function: null,
   requires_quote_source_category: null,
   is_selectable: true,
+  is_active: true,
   is_reportable: null,
   effective_is_reportable: false,
   is_reportable_source_category: null,
@@ -141,5 +142,22 @@ describe('ProductCategoryForm — duplicate mode', () => {
       layout_source_id: 4,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(expect.objectContaining({ id: 11 })))
+  })
+
+  it('carries the source is_active flag onto the copy', async () => {
+    render(
+      <ProductCategoryForm
+        mode={{ type: 'duplicate', source: { ...SOURCE, is_active: false } }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    await screen.findByDisplayValue('Laptops (copy)')
+    fireEvent.click(screen.getAllByRole('button', { name: i18n.t('productCategories.form.save') })[0])
+
+    await waitFor(() => expect(createProductCategoryMock).toHaveBeenCalledTimes(1))
+    expect(createProductCategoryMock.mock.calls[0][0]).toMatchObject({ is_active: false })
   })
 })

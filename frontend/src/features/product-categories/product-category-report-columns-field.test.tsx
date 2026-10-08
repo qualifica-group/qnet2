@@ -102,6 +102,7 @@ function category(
     requires_quote: false,
     requires_quote_source_category: null,
     is_selectable: true,
+    is_active: true,
     is_reportable: true,
     effective_is_reportable: true,
     is_reportable_source_category: null,

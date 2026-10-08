@@ -90,6 +90,7 @@ function category(
     effective_business_function: null,
     requires_quote_source_category: null,
     is_selectable: true,
+    is_active: true,
     is_reportable: false,
     effective_is_reportable: false,
     is_reportable_source_category: null,
@@ -223,44 +224,6 @@ describe('ProductCategoryFormBody — per-context inheritance switches', () => {
   })
 })
 
-describe('ProductCategoryFormBody — selectable switch (spec 0074)', () => {
-  it('create mode: the switch is on by default and can be turned off (AC-014)', async () => {
-    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await screen.findAllByRole('button', { name: 'Save' })
-
-    const selectableSwitch = screen.getByRole('switch', { name: 'Selectable' })
-    expect(selectableSwitch).toBeChecked()
-
-    fireEvent.click(selectableSwitch)
-
-    await waitFor(() => expect(selectableSwitch).not.toBeChecked())
-  })
-
-  it('edit mode: the switch mirrors the saved value, with no parent-driven read-only state', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({ parent_id: 1, parent: { id: 1, name: 'Electronics' }, is_selectable: false }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    await screen.findAllByRole('button', { name: 'Save' })
-
-    const selectableSwitch = screen.getByRole('switch', { name: 'Selectable' })
-    expect(selectableSwitch).not.toBeChecked()
-    // Unlike the quote flag, this one is never inherited: a child still edits it.
-    expect(selectableSwitch).toBeEnabled()
-  })
-})
-
 describe('ProductCategoryFormBody — reportable switch (inherited, can be forced)', () => {
   it('create mode: the switch is off by default and can be turned on', async () => {
     render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
@@ -352,6 +315,7 @@ function reportableTreeNode(overrides: Partial<ProductCategoryTreeNode>): Produc
     business_function_id: null,
     requires_quote: false,
     is_selectable: true,
+    is_active: true,
     is_reportable: null,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,

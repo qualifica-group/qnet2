@@ -8,6 +8,7 @@ import {
 } from '@/components/record-form/layout'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
+import { activeCategoryTree } from '@/features/product-categories/active-tree'
 import { collectSelectableIds, flattenCategoryTree } from '@/features/product-categories/flatten-tree'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { useProductForm } from '@/features/products/use-product-form'
@@ -24,10 +25,12 @@ import {
 } from '@/features/products/product-classification-section'
 import { ProductPricingSection } from '@/features/products/product-pricing-section'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
+import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 import type { ProductDetail, ProductFormMode } from '@/features/products/types'
 
 /** Hoisted so the create-mode memo keeps a stable reference across renders. */
 const EMPTY_CATEGORY_IDS: readonly number[] = []
+const EMPTY_TREE: ProductCategoryTreeNode[] = []
 
 /**
  * DOM id bridging the sticky header's save action to the RHF `<form>` below,
@@ -96,14 +99,15 @@ export function ProductFormBody({ mode, onSuccess, onCancel, initialCode }: Prod
   // An unselectable category is LISTED, disabled (user directive
   // 2026-08-03): it is the branch its selectable children hang from, and
   // dropping it left the list reading as unrelated leaves.
-  const categoryOptions = useMemo(
-    () =>
-      flattenCategoryTree(treeQuery.data ?? [], {
-        pickableIds: collectSelectableIds(treeQuery.data ?? []),
-        keepIds: savedCategoryIds,
-      }),
-    [treeQuery.data, savedCategoryIds],
-  )
+  // Spec 0208: an inactive category drops out with its branch, except the
+  // path to the product's saved category.
+  const categoryOptions = useMemo(() => {
+    const tree = activeCategoryTree(treeQuery.data ?? EMPTY_TREE, savedCategoryIds)
+    return flattenCategoryTree(tree, {
+      pickableIds: collectSelectableIds(tree),
+      keepIds: savedCategoryIds,
+    })
+  }, [treeQuery.data, savedCategoryIds])
   const categories: ProductCategoryPicker = {
     options: categoryOptions,
     isPending: treeQuery.isPending,

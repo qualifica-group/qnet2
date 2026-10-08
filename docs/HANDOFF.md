@@ -30,7 +30,7 @@
 - Da fare: manuale Claude Docs (non condiviso con la sessione) — Anagrafiche > duplicati, Gestione Richieste >
   creare/lavorare, Importazioni > duplicati.
 
-## Spec 0208 — Categoria prodotto Attiva / Non attiva — IN CORSO, BE-1 COMMITTATO (2026-10-08)
+## Spec 0208 — Categoria prodotto Attiva / Non attiva — VERDE; BE-1 COMMITTATO 8671e1c6, resto NON COMMITTATO (2026-10-08)
 
 - Spec `docs/specs/0208-product-category-active-flag.xml` (approvata). Non attiva = sparisce con tutto il ramo (D-1)
   e i suoi prodotti (D-4) dai campi di inserimento; storico esente (D-2); filtri avanzati la vedono (D-3,
@@ -39,10 +39,25 @@
   service/resource/authorization, `CategoryTreeBuilder` (`is_active` proprio per nodo, albero completo), colonna
   griglia `is_active` (valore proprio, D-10), `App\Services\ProductCategories\CategoryActivity`
   (`inactiveCategoryIds()`/`isActive()`, 1 query + `parentIdMap`, memo). Rollback test: 145 / 9 step.
-- In corso (non committati): BE-2 for-select categorie/rami/prodotti, BE-3 regole `SelectableProductCategory`
-  estesa + `ActiveProductCategory` + `ActiveCategoryProduct`, FE-1..4 (switch, `activeCategoryTree`, picker,
-  `source.params` filtri avanzati) e guide in-app. Poi verifier completo.
-- Manuale Claude Docs: accesso negato dalla sessione — da aggiornare a mano (Categorie prodotto > regole).
+- BE-2: `ProductCategoryForSelectResolver::resolve` esclude `CategoryActivity::inactiveCategoryIds()` salvo
+  `include_inactive` (nuovo in `ProductCategoryForSelectRequest`); `resolveBranches` sempre; `ProductService::forSelect`
+  esclude i prodotti di categoria non attiva; idratazione `ids[]` sempre esente. Filtri avanzati `product_category` di
+  Opportunita'/Progetti: `source.params.include_inactive = 1` (`source` passa intatto in `resolveAdvancedFilters`).
+- BE-3: `SelectableProductCategory` = esiste -> attiva -> selezionabile (un messaggio). Nuove `ActiveProductCategory`
+  (competenze, `CompetenceLineSetValidator::rules($attribute, $exemptCategoryIds)`) e `ActiveCategoryProduct`
+  (sostituisce `Rule::exists('products')` su `QuoteLineRules::fieldRules(..., $exemptProductIds)`, products_of_interest
+  Lead/Opportunita', Provvigioni, import). Esenti sempre gli id persistiti sul record della route. `lang/it.json`.
+- FE: `product-categories/active-tree.ts` (`activeCategoryTree(nodes, keepIds)`) SOLO nei 5 picker di destinazione
+  (tree/root/filter select, `useProductLineCellPicker`, form Prodotto); regole e picker strutturali sull'albero intero.
+  `active-inheritance.ts` + `use-inactive-ancestor.ts` (avviso nel form), `ActiveRule` nella sezione Regole, badge,
+  colonna. Filtri avanzati: `source.params` fusi con i parametri di dipendenza (`useSourceParams`, booleani -> 1/0).
+  Guide in-app IT/EN `product-categories` e `products`. Test split: `product-category-form-flag-switches.test.tsx`.
+- Verde (verifier): Pest 9761/9762 (1 skipped), Vitest 7183/7183, `tsc -b --force` pulito, ESLint e Pint puliti;
+  AC-001..AC-024 coperti.
+- Note: l'editor di cella non ha valore da tenere (aggiunge solo coppie) -> `keepIds` vuoto; un filtro intermedio
+  corrente non attivo sparisce (non persistito). `ProductService` 366 righe, guide `product-categories` 491 (>300 soft).
+- Manuale Claude Docs: accesso negato dalla sessione — da aggiornare a mano (Categorie prodotto > campi/regole,
+  passaggi "spegni Selezionabile per nascondere" -> "spegni Attiva", messaggi d'errore, form Prodotto).
 
 ## Linee prodotto — filtro intermedio facoltativo + rinomina etichetta — VERDE, NON COMMITTATO (2026-10-08)
 

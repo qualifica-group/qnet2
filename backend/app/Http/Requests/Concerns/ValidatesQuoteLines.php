@@ -158,6 +158,30 @@ trait ValidatesQuoteLines
         // One definition for every channel (App\Quotes\QuoteLineRules): the
         // generic inline-edit engine validates the same rows without being a
         // FormRequest, and a second copy here would drift.
-        return QuoteLineRules::fieldRules($field, withCommissions: $field === 'offer_lines');
+        return QuoteLineRules::fieldRules(
+            $field,
+            withCommissions: $field === 'offer_lines',
+            exemptProductIds: $this->persistedQuoteLineProductIds($field),
+        );
+    }
+
+    /**
+     * The products already on the quote's rows of this tab (spec 0208 D-2):
+     * resubmitting them stays valid even once their category is deactivated.
+     * Empty on create (no route model).
+     *
+     * @return array<int, int>
+     */
+    private function persistedQuoteLineProductIds(string $field): array
+    {
+        $quote = $this->route('quote');
+
+        if (! $quote instanceof Quote) {
+            return [];
+        }
+
+        $lines = $field === 'offer_lines' ? $quote->offerLines() : $quote->costLines();
+
+        return $lines->pluck('product_id')->map(static fn (mixed $id): int => (int) $id)->all();
     }
 }

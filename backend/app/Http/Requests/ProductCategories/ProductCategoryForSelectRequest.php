@@ -13,7 +13,8 @@ use Illuminate\Foundation\Http\FormRequest;
  * EFFECTIVE business function matches — additive/retrocompatible, absent by
  * default. `root_category_id` (spec 0077, optional): scopes the results to
  * the subtree of that branch root (INV-1) — same additive/retrocompatible
- * shape.
+ * shape. `include_inactive` (spec 0208 D-7, optional): lifts the default
+ * exclusion of effectively inactive categories (used by the grid filters).
  *
  * Authorization is intentionally NOT handled here (it stays in the controller
  * via authorize('viewAny', ProductCategory::class)). Pagination bounds mirror
@@ -42,6 +43,7 @@ class ProductCategoryForSelectRequest extends FormRequest
             'ids.*' => ['integer'],
             'business_function_id' => ['sometimes', 'nullable', 'integer', 'exists:business_functions,id'],
             'root_category_id' => ['sometimes', 'nullable', 'integer', 'exists:product_categories,id'],
+            'include_inactive' => ['sometimes', 'boolean'],
         ];
     }
 

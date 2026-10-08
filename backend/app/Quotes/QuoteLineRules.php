@@ -7,6 +7,7 @@ namespace App\Quotes;
 use App\Enums\CommissionOrigin;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Rules\ActiveCategoryProduct;
 use Illuminate\Validation\Rule;
 
 /**
@@ -40,15 +41,16 @@ final class QuoteLineRules
     /**
      * @param  string  $field  the payload key the rows travel under (`offer_lines`, `cost_lines`, or `value` for a single inline cell)
      * @param  bool  $withCommissions  whether the row may carry the provvigioni block at all
+     * @param  array<int, int>  $exemptProductIds  products already persisted on the record being updated (spec 0208 D-2); empty on create
      * @return array<string, array<int, mixed>>
      */
-    public static function fieldRules(string $field, bool $withCommissions): array
+    public static function fieldRules(string $field, bool $withCommissions, array $exemptProductIds = []): array
     {
         $allocatable = $field === self::ALLOCATABLE_FIELD;
 
         return [
             $field => ['sometimes', 'array', 'max:'.self::MAX_ROWS],
-            "{$field}.*.product_id" => ['required', 'integer', Rule::exists('products', 'id')],
+            "{$field}.*.product_id" => ['required', 'integer', new ActiveCategoryProduct($exemptProductIds)],
             "{$field}.*.id" => ['nullable', 'integer', Rule::exists('quote_lines', 'id')],
             // gt:0 (AC-034: 0 and negative rejected); decimal:0,2 caps the
             // input to <= 2 decimal places (AC-032), the SAME rounding scale

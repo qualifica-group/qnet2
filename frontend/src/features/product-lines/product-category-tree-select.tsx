@@ -5,11 +5,14 @@ import {
   flattenCategoryTree,
   pruneToPickable,
 } from '@/features/product-categories/flatten-tree'
+import { activeCategoryTree } from '@/features/product-categories/active-tree'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import {
   pickableCategoryIdsFor,
   selectableIdsUnderRoot,
 } from '@/features/product-lines/category-tree-scope'
+
+const EMPTY_IDS: readonly number[] = []
 
 /**
  * How a row scopes its pickable categories (spec 0132): `'root'` — the card
@@ -74,11 +77,13 @@ export function ProductCategoryTreeSelect({
     if (!tree || !scopeReady) {
       return []
     }
+    // Step 0 (spec 0208): inactive branches drop out, the saved value stays.
+    const visibleTree = activeCategoryTree(tree, value === null ? EMPTY_IDS : [value])
     // Step 1: what this row may actually target, per the scope kind.
     const pickableIds =
       scope.kind === 'root'
-        ? selectableIdsUnderRoot(tree, scope.rootCategoryId as number)
-        : pickableCategoryIdsFor(tree, scope.businessFunctionId as number, {
+        ? selectableIdsUnderRoot(visibleTree, scope.rootCategoryId as number)
+        : pickableCategoryIdsFor(visibleTree, scope.businessFunctionId as number, {
             includeContainers: scope.includeContainers,
           })
     // Step 2: keep the pickable nodes and the ancestors that lead to them,
@@ -87,7 +92,7 @@ export function ProductCategoryTreeSelect({
     // longer qualify — a grandfathered row must not blank out on open.
     const kept = value === null ? pickableIds : new Set([...pickableIds, value])
 
-    return flattenCategoryTree(pruneToPickable(tree, kept), {
+    return flattenCategoryTree(pruneToPickable(visibleTree, kept), {
       pickableIds,
       keepIds: value === null ? undefined : [value],
     })

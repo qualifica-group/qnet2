@@ -110,6 +110,7 @@ function treeNode(
     business_function_id: null,
     requires_quote: false,
     is_selectable: true,
+    is_active: true,
     is_reportable: false,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
@@ -125,6 +126,7 @@ const TREE: ProductCategoryTreeNode[] = [
     id: 1,
     name: 'Container',
     is_selectable: false,
+    is_active: true,
     children: [treeNode({ id: 2, name: 'Laptops', parent_id: 1 })],
   }),
 ]
@@ -194,5 +196,37 @@ describe('ProductFormBody — category picker selectability', () => {
 
     await screen.findByTestId('category-select-stub')
     await waitFor(() => expect(lastOptionIds()).toEqual(['1', '2']))
+  })
+
+  it('omits an inactive branch from the picker (spec 0208 AC-020)', async () => {
+    treeDataMock.mockReturnValue([
+      treeNode({ id: 1, name: 'Inactive root', is_active: false, children: [treeNode({ id: 2, name: 'Child', parent_id: 1 })] }),
+      treeNode({ id: 3, name: 'Active root' }),
+    ])
+
+    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await screen.findByTestId('category-select-stub')
+    await waitFor(() => expect(lastOptionIds()).toEqual(['3']))
+  })
+
+  it('lists the saved category of an inactive branch on edit as context plus the saved value (spec 0208 AC-020)', async () => {
+    treeDataMock.mockReturnValue([
+      treeNode({
+        id: 1,
+        name: 'Inactive root',
+        is_active: false,
+        children: [treeNode({ id: 2, name: 'Laptops', parent_id: 1 }), treeNode({ id: 4, name: 'Other', parent_id: 1 })],
+      }),
+    ])
+
+    render(<ProductForm mode={{ type: 'edit', product: product() }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+      wrapper: wrapper(),
+    })
+
+    await screen.findByTestId('category-select-stub')
+    await waitFor(() => expect(lastOptionIds()).toEqual(['1:disabled', '2']))
   })
 })
