@@ -222,7 +222,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'When you create a registry or a referent, QNet looks for similar cards. If it finds one, it shows Possible duplicate, with the card type (User, Registry or Referent) and the matching data: email, phone, tax code or VAT number.',
+          text: 'When you create a registry or a referent, QNet looks for similar cards. If it finds one, it shows Possible duplicate, with the card type (User, Registry or Referent) and the matching data: email, phone, tax code or VAT number. The same notice appears when you enter a new client from Request management.',
+        },
+        {
+          type: 'paragraph',
+          text: "Tax code and VAT number are compared with each other: a company's tax code is usually its VAT number, so a tax code equal to another card's VAT number is a duplicate.",
         },
         {
           type: 'steps',
@@ -235,7 +239,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'The notice does not block saving. It is up to you to decide whether the card is really a duplicate.',
+          text: 'A tax code, VAT number or phone already on another card blocks saving, wherever you enter it: creation, editing, the contacts of the detail and Request management. An email only raises the notice: it is up to you to decide whether the card is really a duplicate.',
         },
       ],
     },

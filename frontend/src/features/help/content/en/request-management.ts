@@ -77,6 +77,10 @@ const guide: HelpGuide = {
           text: 'Picking an existing registry hides the identity, contacts and address fields and links the request to that client.',
         },
         {
+          type: 'tip',
+          text: 'If the new client you are entering already exists, **Possible duplicate** appears under the registry picker: pick that registry instead of creating another one. A tax code, VAT number or phone already on another card blocks saving (see the **Registries** guide).',
+        },
+        {
           type: 'warning',
           text: 'The **Assigned rewards** can only be added after picking a **Reporter**.',
         },
@@ -107,6 +111,10 @@ const guide: HelpGuide = {
         {
           type: 'warning',
           text: 'Closing with a positive outcome requires the client\'s tax code or VAT number.',
+        },
+        {
+          type: 'warning',
+          text: 'When you edit the client details, from the panel or directly in the table cell, you cannot enter a tax code, VAT number or phone that already belongs to another card: the save is refused. The values already on the client stay editable.',
         },
         {
           type: 'paragraph',

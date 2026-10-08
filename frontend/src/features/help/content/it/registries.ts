@@ -222,7 +222,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Quando crei un'anagrafica o un referente, QNet cerca schede simili. Se ne trova, mostra Possibile duplicato, con il tipo di scheda (Utente, Anagrafica o Referente) e il dato uguale: email, telefono, codice fiscale o partita IVA.",
+          text: "Quando crei un'anagrafica o un referente, QNet cerca schede simili. Se ne trova, mostra Possibile duplicato, con il tipo di scheda (Utente, Anagrafica o Referente) e il dato uguale: email, telefono, codice fiscale o partita IVA. Lo stesso avviso compare quando inserisci un nuovo cliente da Gestione Richieste.",
+        },
+        {
+          type: 'paragraph',
+          text: 'Codice fiscale e partita IVA vengono confrontati tra loro: per le aziende il codice fiscale di solito coincide con la partita IVA, quindi un codice fiscale uguale alla partita IVA di un\'altra scheda è un duplicato.',
         },
         {
           type: 'steps',
@@ -235,7 +239,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: "L'avviso non blocca il salvataggio. Tocca a te decidere se la scheda è davvero un duplicato.",
+          text: "Codice fiscale, partita IVA e telefono già presenti su un'altra scheda bloccano il salvataggio, ovunque li inserisci: creazione, modifica, contatti del dettaglio e Gestione Richieste. L'email invece genera solo l'avviso: tocca a te decidere se la scheda è davvero un duplicato.",
         },
       ],
     },

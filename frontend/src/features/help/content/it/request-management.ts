@@ -77,6 +77,10 @@ const guide: HelpGuide = {
           text: "Scegliendo un'anagrafica esistente, i campi di identità, contatti e indirizzo si nascondono e la richiesta viene collegata a quel cliente.",
         },
         {
+          type: 'tip',
+          text: "Se il nuovo cliente che stai inserendo esiste già, sotto la scelta dell'anagrafica compare **Possibile duplicato**: scegli quell'anagrafica invece di crearne un'altra. Codice fiscale, partita IVA o telefono già presenti su un'altra scheda bloccano il salvataggio (vedi la guida **Anagrafiche**).",
+        },
+        {
           type: 'warning',
           text: 'I **Buoni assegnati** si aggiungono solo dopo aver scelto un **Segnalatore**.',
         },
@@ -107,6 +111,10 @@ const guide: HelpGuide = {
         {
           type: 'warning',
           text: 'Per chiudere con esito positivo serve il codice fiscale oppure la partita IVA del cliente.',
+        },
+        {
+          type: 'warning',
+          text: "Se modifichi i dati del cliente, dal pannello o direttamente nella cella della tabella, non puoi inserire un codice fiscale, una partita IVA o un telefono che appartengono già a un'altra scheda: il salvataggio viene rifiutato. I valori già presenti sul cliente restano modificabili.",
         },
         {
           type: 'paragraph',

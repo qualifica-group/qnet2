@@ -8,6 +8,8 @@ use App\Models\Lead;
 use App\Models\PersonalData;
 use App\Models\Registry;
 use App\Support\ContactValueNormalizer;
+use App\Support\IdentityUniquenessScope;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Resolves the EXISTING Registry (Anagrafica) a staged row collides with, by
@@ -19,7 +21,7 @@ use App\Support\ContactValueNormalizer;
  *
  * Spec 0136 (D-3/D-4): the candidate set is fetched with an INDEXED lookup —
  * `contacts.normalized_value` (`type`, `normalized_value`) for contacts,
- * plain equality on the fiscal column for cards — never a full scan of every
+ * plain equality on both fiscal columns for cards — never a full scan of every
  * contact/card in the database normalized in PHP row by row. Only the fiscal
  * comparison still runs in PHP (`ContactValueNormalizer::taxCode` against the
  * equality-matched candidates), because MySQL's `utf8mb4_unicode_ci`
@@ -32,16 +34,6 @@ final class LeadDuplicateMatcher
 {
     /** Canonical, deterministic order for `LeadDuplicateMatch::$matchedOn`. */
     private const array MATCH_ORDER = ['email', 'phone', 'tax_code', 'vat_number'];
-
-    /**
-     * The fiscal identifiers a row is matched on, in lookup order (user
-     * directive 2026-09-09: a partita IVA identifies a client just as a codice
-     * fiscale does). Both are card COLUMNS, allow-listed here so a mapped field
-     * id can never decide which column is read.
-     *
-     * @var array<int, string>
-     */
-    private const array FISCAL_COLUMNS = ['tax_code', 'vat_number'];
 
     /**
      * The row's dominant Registry match — id, display name, and every
@@ -140,7 +132,7 @@ final class LeadDuplicateMatcher
      */
     private function matchByFiscalColumns(array $mapped): ?int
     {
-        foreach (self::FISCAL_COLUMNS as $column) {
+        foreach (IdentityUniquenessScope::FISCAL_COLUMNS as $column) {
             $registryId = $this->matchByFiscalColumn($column, $mapped);
 
             if ($registryId !== null) {
@@ -152,16 +144,17 @@ final class LeadDuplicateMatcher
     }
 
     /**
-     * Indexed equality on the allow-listed fiscal column (`$column` only
-     * ever comes from FISCAL_COLUMNS, never the mapped field id) narrows the
-     * candidate set; MySQL's `utf8mb4_unicode_ci` collation already folds
-     * case and trailing whitespace, so this over-matches by at most a
-     * handful of rows, never the whole table. The PHP recheck with
+     * The row's value for `$column` is looked up in BOTH fiscal columns of
+     * the cards (user directive 2026-10-08): a company's codice fiscale is
+     * usually its partita IVA, so a row's CF may sit on a card as P.IVA. The
+     * indexed equality on each (allow-listed) column narrows the candidate
+     * set; MySQL's `utf8mb4_unicode_ci` collation already folds case and
+     * trailing whitespace, so this over-matches by at most a handful of rows,
+     * never the whole table. The PHP recheck with
      * `ContactValueNormalizer::taxCode` is a cheap safety net over that
-     * bounded set, ordered by `id` asc — same "first card wins" semantics
-     * as before.
+     * bounded set, ordered by `id` asc — "first card wins".
      *
-     * @param  string  $column  one of FISCAL_COLUMNS
+     * @param  string  $column  one of IdentityUniquenessScope::FISCAL_COLUMNS
      * @param  array<string, mixed>  $mapped
      */
     private function matchByFiscalColumn(string $column, array $mapped): ?int
@@ -174,17 +167,35 @@ final class LeadDuplicateMatcher
 
         $cards = PersonalData::query()
             ->where('personable_type', (new Registry)->getMorphClass())
-            ->where($column, $target)
+            ->where(function (Builder $query) use ($target): void {
+                foreach (IdentityUniquenessScope::FISCAL_COLUMNS as $cardColumn) {
+                    $query->orWhere($cardColumn, $target);
+                }
+            })
             ->orderBy('id')
-            ->get(['id', $column, 'personable_id']);
+            ->get(['id', ...IdentityUniquenessScope::FISCAL_COLUMNS, 'personable_id']);
 
         foreach ($cards as $card) {
-            if (ContactValueNormalizer::taxCode((string) $card->{$column}) === $target) {
+            if ($this->cardHoldsFiscalValue($card, $target)) {
                 return (int) $card->personable_id;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Whether $target (normalized) sits in either fiscal column of $card.
+     */
+    private function cardHoldsFiscalValue(PersonalData $card, string $target): bool
+    {
+        foreach (IdentityUniquenessScope::FISCAL_COLUMNS as $column) {
+            if ($card->{$column} !== null && ContactValueNormalizer::taxCode((string) $card->{$column}) === $target) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -231,10 +242,10 @@ final class LeadDuplicateMatcher
             }
         }
 
-        foreach (self::FISCAL_COLUMNS as $column) {
+        foreach (IdentityUniquenessScope::FISCAL_COLUMNS as $column) {
             $target = $this->normalizedFiscalValue($column, $mapped);
 
-            if ($target !== null && $card->{$column} !== null && ContactValueNormalizer::taxCode((string) $card->{$column}) === $target) {
+            if ($target !== null && $this->cardHoldsFiscalValue($card, $target)) {
                 $matched[] = $column;
             }
         }
@@ -269,7 +280,7 @@ final class LeadDuplicateMatcher
      * `UniquePersonalDataIdentifier` applies to BOTH columns, so the import and
      * the forms can never disagree on "the same P.IVA".
      *
-     * @param  string  $column  one of FISCAL_COLUMNS
+     * @param  string  $column  one of IdentityUniquenessScope::FISCAL_COLUMNS
      * @param  array<string, mixed>  $mapped
      */
     private function normalizedFiscalValue(string $column, array $mapped): ?string

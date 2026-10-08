@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { IdCard, MapPin, Phone, UserRound } from 'lucide-react'
@@ -5,6 +6,8 @@ import { FormSection } from '@/components/form-section'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
+import { IdentityDuplicateWarning } from '@/features/identity-duplicates/identity-duplicate-warning'
+import { useIdentityDuplicateCheck } from '@/features/identity-duplicates/use-identity-duplicate-check'
 import { AddressCreateField } from '@/features/personal-data/address-create-field'
 import { ContactsManager } from '@/features/personal-data/contacts-manager'
 import { PersonalDataCardForm } from '@/features/personal-data/personal-data-card-form'
@@ -47,6 +50,11 @@ interface RequestCreateClientSectionProps {
  * The address group alone is collapsible (user directive 2026-09-10), through
  * `ClientGroup`'s own prop — not a local fold, so the two anagrafica sections
  * keep folding the same way.
+ *
+ * While a new client is being typed, the same live duplicate notice as the
+ * anagrafica form sits under the picker (user directive 2026-10-08): a match
+ * tells the operator to pick the existing anagrafica instead of finding out
+ * from the refused save.
  */
 export function RequestCreateClientSection({
   control,
@@ -62,6 +70,11 @@ export function RequestCreateClientSection({
 }: RequestCreateClientSectionProps) {
   const { t } = useTranslation()
   const { renderAction, selectedItemFor } = useQuickCreateAction(REGISTRIES_FOR_SELECT_RESOURCE)
+  const duplicateDraft = useMemo(() => ({ ...identity, contacts }), [identity, contacts])
+  const { matches: duplicateMatches } = useIdentityDuplicateCheck({
+    enabled: !usingExistingRegistry,
+    profileDraft: duplicateDraft,
+  })
 
   return (
     <FormSection
@@ -101,6 +114,8 @@ export function RequestCreateClientSection({
           </FormItem>
         )}
       />
+
+      <IdentityDuplicateWarning matches={duplicateMatches} />
 
       {!usingExistingRegistry && (
         <>

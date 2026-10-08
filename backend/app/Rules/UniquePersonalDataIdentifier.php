@@ -17,8 +17,10 @@ use InvalidArgumentException;
  * or a partita IVA already held by a user, an anagrafica or a referente blocks
  * the write, whichever of the three carries it.
  *
- * The namespace itself lives in `IdentityUniquenessScope` — this rule only
- * decides WHICH column it interrogates.
+ * The namespace itself lives in `IdentityUniquenessScope`, and so does the
+ * match: the value is compared against BOTH fiscal columns (user directive
+ * 2026-10-08), since a company's codice fiscale is usually its partita IVA.
+ * The column only picks the failure message.
  *
  * The comparison is normalized (upper + trim, ContactValueNormalizer::taxCode)
  * rather than a plain equality: `InputFormat` canonicalizes only what enters
@@ -29,13 +31,11 @@ final class UniquePersonalDataIdentifier implements ValidationRule
 {
     /**
      * The identifier columns this rule may target, mapped to their failure
-     * message. The value reaches `whereRaw` as a bound parameter, but the
-     * COLUMN is interpolated into the SQL, so it is allow-listed here and can
-     * never originate from request input (backend.md §8).
+     * message.
      *
      * @var array<string, string>
      */
-    private const array MESSAGES = [
+    public const array MESSAGES = [
         'tax_code' => 'The tax code is already assigned to another record.',
         'vat_number' => 'The VAT number is already assigned to another record.',
     ];
@@ -71,9 +71,9 @@ final class UniquePersonalDataIdentifier implements ValidationRule
 
     private function isTaken(string $normalized): bool
     {
-        return IdentityUniquenessScope::cards($this->ownerClass, $this->ignoreOwnerId)
-            ->whereNotNull($this->column)
-            ->whereRaw("UPPER(TRIM({$this->column})) = ?", [$normalized])
-            ->exists();
+        return IdentityUniquenessScope::withFiscalIdentifier(
+            IdentityUniquenessScope::cards($this->ownerClass, $this->ignoreOwnerId),
+            $normalized,
+        )->exists();
     }
 }

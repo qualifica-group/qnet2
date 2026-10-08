@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\ContactTypeEnum;
+use App\Models\Contact;
 use App\Models\PersonalData;
 use App\Models\Referent;
 use App\Models\Registry;
@@ -24,12 +26,23 @@ use Illuminate\Database\Eloquent\Model;
  * deliberately OUT: a site is a location of a company that its anagrafica
  * already represents, so its switchboard number is not a second person.
  *
- * The scope is a single source of truth for both surfaces that enforce the
- * constraint — `UniquePersonalDataIdentifier` (fiscal columns) and
- * `ValidatesPhoneUniqueness` (contact rows) — so the two can never drift apart.
+ * The scope is a single source of truth for every surface that enforces the
+ * constraint — `UniquePersonalDataIdentifier` (fiscal columns),
+ * `ValidatesPhoneUniqueness` (contact rows), the contact endpoints and the
+ * request-management client writer — and for the live duplicate panel
+ * (`IdentityDuplicateFinder`), so none of them can drift apart.
  */
 final class IdentityUniquenessScope
 {
+    /**
+     * The fiscal identifier columns of a card. The column name is interpolated
+     * into `whereRaw` (the value stays bound), so it may only ever come from
+     * this allow-list, never from request input (backend.md §8).
+     *
+     * @var array<int, string>
+     */
+    public const array FISCAL_COLUMNS = ['tax_code', 'vat_number'];
+
     /** @var array<int, class-string<Model>> */
     private const array OWNERS = [User::class, Registry::class, Referent::class];
 
@@ -56,6 +69,52 @@ final class IdentityUniquenessScope
                         ->where('personable_id', $ignoreOwnerId),
                 ),
             );
+    }
+
+    /**
+     * Whether a card owned by $personableType (a morph alias) belongs to the
+     * namespace at all — a company-site card does not, and is never checked.
+     */
+    public static function covers(?string $personableType): bool
+    {
+        return in_array($personableType, self::morphClasses(), true);
+    }
+
+    /**
+     * Narrows $cards to those holding $normalized in ANY fiscal column (user
+     * directive 2026-10-08): a company's codice fiscale is usually its partita
+     * IVA, so the value one card stores as CF and another as P.IVA is the same
+     * company. Matching column-to-column only would let that pair through.
+     *
+     * @param  Builder<PersonalData>  $cards  a `cards()` query
+     * @param  string  $normalized  already passed through ContactValueNormalizer::taxCode
+     * @return Builder<PersonalData>
+     */
+    public static function withFiscalIdentifier(Builder $cards, string $normalized): Builder
+    {
+        return $cards->where(function (Builder $query) use ($normalized): void {
+            foreach (self::FISCAL_COLUMNS as $column) {
+                $query->orWhereRaw("UPPER(TRIM({$column})) = ?", [$normalized]);
+            }
+        });
+    }
+
+    /**
+     * Whether one of $cards already carries the phone number $normalized,
+     * through the indexed `normalized_value` column (spec 0136 D-6) — an index
+     * lookup, never a scan of every phone row in the namespace.
+     *
+     * @param  Builder<PersonalData>  $cards  a `cards()` query
+     * @param  string  $normalized  already passed through ContactValueNormalizer::contact
+     */
+    public static function phoneTaken(Builder $cards, string $normalized): bool
+    {
+        return Contact::query()
+            ->where('contactable_type', (new PersonalData)->getMorphClass())
+            ->where('type', ContactTypeEnum::Phone->value)
+            ->where('normalized_value', $normalized)
+            ->whereIn('contactable_id', $cards->select('id'))
+            ->exists();
     }
 
     /**

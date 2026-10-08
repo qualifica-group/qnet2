@@ -76,7 +76,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'I duplicati si riconoscono da email, telefono, codice fiscale e partita IVA.',
+          text: "I duplicati si riconoscono da email, telefono, codice fiscale e partita IVA. Codice fiscale e partita IVA vengono confrontati anche tra loro: un codice fiscale uguale alla partita IVA di un'anagrafica è un duplicato.",
         },
         {
           type: 'paragraph',

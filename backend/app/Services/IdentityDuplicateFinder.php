@@ -32,9 +32,8 @@ use Illuminate\Support\Collection;
  * `ContactValueNormalizer`. Email/phone both match through
  * `normalized_value` (spec 0136 D-6), an indexed `(type, normalized_value)`
  * lookup — never a full-table hydration, since this runs on every debounced
- * keystroke rather than once per import row. The fiscal columns
- * (`matchFiscalColumn`) are untouched by spec 0136 and keep their bound
- * `whereRaw`.
+ * keystroke rather than once per import row. The fiscal identifiers match
+ * across BOTH columns (user directive 2026-10-08), like the write gate.
  */
 final class IdentityDuplicateFinder
 {
@@ -42,16 +41,6 @@ final class IdentityDuplicateFinder
 
     /** Canonical, deterministic order for `IdentityDuplicateMatch::$matchedOn`. */
     private const array MATCH_ORDER = ['email', 'phone', 'tax_code', 'vat_number'];
-
-    /**
-     * The fiscal columns the check covers. The value reaches `whereRaw` as a
-     * bound parameter, but the COLUMN is interpolated into the SQL, so it is
-     * allow-listed here and can never originate from request input
-     * (backend.md §8) — same guard `UniquePersonalDataIdentifier` applies.
-     *
-     * @var array<int, string>
-     */
-    private const array FISCAL_COLUMNS = ['tax_code', 'vat_number'];
 
     /**
      * @return array<int, IdentityDuplicateMatch>
@@ -68,7 +57,7 @@ final class IdentityDuplicateFinder
 
         // Step 3: merge in the fiscal columns, which live on the card itself.
         foreach ($fiscalTargets as $column => $target) {
-            foreach ($this->matchFiscalColumn($column, $target) as $cardId) {
+            foreach ($this->matchFiscalIdentifier($target) as $cardId) {
                 $channelsByCardId[$cardId] = $this->mergeChannel($channelsByCardId[$cardId] ?? [], $column);
             }
         }
@@ -120,7 +109,7 @@ final class IdentityDuplicateFinder
 
         $targets = [];
 
-        foreach (self::FISCAL_COLUMNS as $column) {
+        foreach (IdentityUniquenessScope::FISCAL_COLUMNS as $column) {
             $value = trim((string) ($submitted[$column] ?? ''));
 
             if ($value !== '') {
@@ -170,14 +159,15 @@ final class IdentityDuplicateFinder
     }
 
     /**
-     * @param  string  $column  one of FISCAL_COLUMNS
+     * The cards holding $target in EITHER fiscal column — the write gate's
+     * own cross-column match (`IdentityUniquenessScope::withFiscalIdentifier`),
+     * reported under the submitted field.
+     *
      * @return array<int, int> personal_data.id
      */
-    private function matchFiscalColumn(string $column, string $target): array
+    private function matchFiscalIdentifier(string $target): array
     {
-        return IdentityUniquenessScope::cards()
-            ->whereNotNull($column)
-            ->whereRaw("UPPER(TRIM({$column})) = ?", [$target])
+        return IdentityUniquenessScope::withFiscalIdentifier(IdentityUniquenessScope::cards(), $target)
             ->pluck('id')
             ->unique()
             ->all();

@@ -6,6 +6,7 @@ namespace App\Http\Requests\Concerns;
 
 use App\Models\Registry;
 use App\Rules\UniquePersonalDataIdentifier;
+use App\Support\IdentityUniquenessScope;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -31,14 +32,6 @@ trait ValidatesClientIdentityUniqueness
     use ValidatesPhoneUniqueness;
 
     /**
-     * The fiscal columns of the client card, allow-listed for
-     * `UniquePersonalDataIdentifier` (which interpolates the column name).
-     *
-     * @var array<int, string>
-     */
-    private const array CLIENT_FISCAL_COLUMNS = ['tax_code', 'vat_number'];
-
-    /**
      * Appends the fiscal uniqueness rules to the client identity fields the
      * shape rules already declare — appended, never assigned, so the format
      * rules (`TaxCode`/`VatNumber`) stay in place.
@@ -48,7 +41,7 @@ trait ValidatesClientIdentityUniqueness
      */
     protected function withClientIdentityUniquenessRules(array $rules): array
     {
-        foreach (self::CLIENT_FISCAL_COLUMNS as $column) {
+        foreach (IdentityUniquenessScope::FISCAL_COLUMNS as $column) {
             $rules["client_identity.{$column}"][] = new UniquePersonalDataIdentifier(
                 $column,
                 $this->identityUniquenessOwner() ?? Registry::class,

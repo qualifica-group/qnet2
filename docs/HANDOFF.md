@@ -3,6 +3,33 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Unicita' CF / P.IVA / telefono — varchi chiusi + confronto incrociato — VERDE, COMMITTATO (2026-10-08)
+
+- Direttiva utente: "cliente gia' inserito -> alert P.IVA gia' inserita; controllare i dati univoci". Spec 0037
+  emendamento A2. SDI ed email INVARIATI per scelta utente (SDI non univoco: 0000000 / codici intermediari;
+  email = solo avviso).
+- `IdentityUniquenessScope`: `FISCAL_COLUMNS` (pubblica, unica allow-list), `covers(card)`,
+  `withFiscalIdentifier(cards, value)` (match su ENTRAMBE le colonne: CF di un'azienda = P.IVA),
+  `phoneTaken(cards, normalized)`. Usati da `UniquePersonalDataIdentifier` (ora `MESSAGES` pubblica),
+  `IdentityDuplicateFinder` (`matchFiscalIdentifier`), `ValidatesPhoneUniqueness`, `ValidatesClientIdentityUniqueness`.
+- Cliente ESISTENTE di una richiesta: nuovo `Services/RequestManagement/RequestClientUniquenessGuard`, chiamato da
+  `RequestClientProfileWriter::write()` (pannello) e `writeClientField()` (celle inline). Controlla solo valori che
+  la card non ha gia' (duplicati legacy non bloccano). Errori: `client_identity.*`, `client_contacts.{i}.value`,
+  `client_tax_code|client_vat_number|client_phone`.
+- `POST/PUT /api/contacts`: `StoreContactRequest::validateNamespacePhone` (Update la eredita, numero invariato = no-op,
+  card CompanySite esclusa).
+- FE: `RequestCreateClientSection` mostra `IdentityDuplicateWarning` sotto il picker anagrafica (disattivo con
+  anagrafica esistente). Guide in-app IT/EN `registries` (managing-duplicates: corretto il vecchio "non blocca il
+  salvataggio", falso per CF/P.IVA/telefono) e `request-management` (creating/working).
+- Test: `Identity/FiscalIdentifierCrossMatchTest`, `PersonalData/ContactPhoneUniquenessTest`,
+  `RequestManagement/RequestManagementExistingClientUniquenessTest`, FE `request-create-client-duplicate-warning.test.tsx`.
+- Chiusi anche: `POST/PUT /api/personal-data` (`StorePersonalDataRequest::validateNamespaceFiscalIdentity`, riusa
+  `UniquePersonalDataIdentifier`; `IdentityUniquenessScope::covers` ora prende l'alias morph) e `LeadDuplicateMatcher`
+  (match fiscale su entrambe le colonne, `cardHoldsFiscalValue`); guida in-app `imports` IT/EN aggiornata.
+  Test: `PersonalData/PersonalDataFiscalUniquenessTest`, caso lead in `Identity/FiscalIdentifierCrossMatchTest`.
+- Da fare: manuale Claude Docs (non condiviso con la sessione) — Anagrafiche > duplicati, Gestione Richieste >
+  creare/lavorare, Importazioni > duplicati.
+
 ## Spec 0208 — Categoria prodotto Attiva / Non attiva — IN CORSO, BE-1 COMMITTATO (2026-10-08)
 
 - Spec `docs/specs/0208-product-category-active-flag.xml` (approvata). Non attiva = sparisce con tutto il ramo (D-1)
