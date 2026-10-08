@@ -46,6 +46,8 @@ final readonly class UpdateProductCategoryData
         public bool $requiresQuoteSubmitted = false,
         public ?bool $isSelectable = null,
         public bool $isSelectableSubmitted = false,
+        public ?bool $isActive = null,
+        public bool $isActiveSubmitted = false,
         public ?bool $isReportable = null,
         public bool $isReportableSubmitted = false,
         /** Spec 0141: own report column selection. Normalized (catalog order, [] -> null) by ProductCategoryService, never here — same treatment as manager_labels, excluded from submittedAttributes(). */
@@ -95,6 +97,8 @@ final readonly class UpdateProductCategoryData
             requiresQuoteSubmitted: array_key_exists('requires_quote', $data),
             isSelectable: array_key_exists('is_selectable', $data) ? (bool) $data['is_selectable'] : null,
             isSelectableSubmitted: array_key_exists('is_selectable', $data),
+            isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
+            isActiveSubmitted: array_key_exists('is_active', $data),
             isReportable: isset($data['is_reportable']) ? (bool) $data['is_reportable'] : null,
             isReportableSubmitted: array_key_exists('is_reportable', $data),
             reportColumns: array_key_exists('report_columns', $data) && $data['report_columns'] !== null ? (array) $data['report_columns'] : null,
@@ -180,6 +184,12 @@ final readonly class UpdateProductCategoryData
         // across the subtree, since it is never inherited.
         if ($this->isSelectableSubmitted) {
             $attributes['is_selectable'] = $this->isSelectable;
+        }
+
+        // Spec 0208: the node's OWN flag, written verbatim; the effective
+        // value is resolved at read time (CategoryActivity).
+        if ($this->isActiveSubmitted) {
+            $attributes['is_active'] = $this->isActive;
         }
 
         // Spec 0131: the node's own override (null = inherit), written

@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0208 — Categoria prodotto Attiva / Non attiva — IN CORSO, BE-1 COMMITTATO (2026-10-08)
+
+- Spec `docs/specs/0208-product-category-active-flag.xml` (approvata). Non attiva = sparisce con tutto il ramo (D-1)
+  e i suoi prodotti (D-4) dai campi di inserimento; storico esente (D-2); filtri avanzati la vedono (D-3,
+  `include_inactive`). Distinta da `is_selectable` (spec 0074, invariata).
+- BE-1 committato: migrazione `2026_10_12_100000_add_is_active_to_product_categories_table`, model/requests/DTO/
+  service/resource/authorization, `CategoryTreeBuilder` (`is_active` proprio per nodo, albero completo), colonna
+  griglia `is_active` (valore proprio, D-10), `App\Services\ProductCategories\CategoryActivity`
+  (`inactiveCategoryIds()`/`isActive()`, 1 query + `parentIdMap`, memo). Rollback test: 145 / 9 step.
+- In corso (non committati): BE-2 for-select categorie/rami/prodotti, BE-3 regole `SelectableProductCategory`
+  estesa + `ActiveProductCategory` + `ActiveCategoryProduct`, FE-1..4 (switch, `activeCategoryTree`, picker,
+  `source.params` filtri avanzati) e guide in-app. Poi verifier completo.
+- Manuale Claude Docs: accesso negato dalla sessione — da aggiornare a mano (Categorie prodotto > regole).
+
 ## Linee prodotto — filtro intermedio facoltativo + rinomina etichetta — VERDE, NON COMMITTATO (2026-10-08)
 
 - Direttiva utente: tra Categoria genitore e Categoria prodotto l'OPERATORE puo' aggiungere, riga per riga, un

@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_reportable', 'report_columns', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'simplified_offer_line', 'simplified_offer_line_override', 'manager_labels', 'inherits_manager_labels'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_active', 'is_reportable', 'report_columns', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'simplified_offer_line', 'simplified_offer_line_override', 'manager_labels', 'inherits_manager_labels'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -63,6 +63,10 @@ class ProductCategory extends BaseModel
             // requires_quote): a container category can be unselectable while
             // its children stay selectable, which is the whole point.
             'is_selectable' => 'boolean',
+            // Spec 0208 — this node's OWN flag, never rewritten on children:
+            // the EFFECTIVE activity (an inactive ancestor deactivates the
+            // whole subtree, D-1) is resolved at read time by CategoryActivity.
+            'is_active' => 'boolean',
             // Spec 0131 — whether the category is a row of the Gestione
             // Richieste / Iscritti report. Nullable OWN override (user
             // directive 2026-09-18): null inherits the parent's effective

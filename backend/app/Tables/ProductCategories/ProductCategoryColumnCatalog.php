@@ -110,6 +110,18 @@ final class ProductCategoryColumnCatalog
                 'filterType' => 'boolean',
             ],
             [
+                // Spec 0208 D-10: the node's OWN flag (a real column, sortable
+                // and filterable like is_selectable); the effective value
+                // inherited from an inactive ancestor is not derived here.
+                'id' => 'is_active',
+                'label' => 'productCategories.columns.is_active',
+                'type' => 'boolean',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
+            [
                 // Whether the category is a row of the Gestione Richieste /
                 // Iscritti report (spec 0131): the EFFECTIVE value, inherited
                 // unless overridden (user directive 2026-09-18). Resolved in
@@ -258,6 +270,7 @@ final class ProductCategoryColumnCatalog
             ['columnId' => 'business_function', 'type' => 'set'],
             ['columnId' => 'requires_quote', 'type' => 'boolean'],
             ['columnId' => 'is_selectable', 'type' => 'boolean'],
+            ['columnId' => 'is_active', 'type' => 'boolean'],
             ['columnId' => 'is_reportable', 'type' => 'boolean'],
             ['columnId' => 'management_mode', 'type' => 'set'],
             ['columnId' => 'single_quote_per_opportunity', 'type' => 'boolean'],

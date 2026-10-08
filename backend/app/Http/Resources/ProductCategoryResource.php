@@ -54,6 +54,9 @@ class ProductCategoryResource extends JsonResource
             // target. Per-node, never inherited — a false one still parents
             // selectable children.
             'is_selectable' => (bool) $this->is_selectable,
+            // Spec 0208: this node's OWN flag; the effective value (an
+            // inactive ancestor deactivates the subtree) is CategoryActivity's.
+            'is_active' => (bool) $this->is_active,
             // Spec 0131 (user directive 2026-09-18): this node's OWN override
             // of the report flag, null = inherited. The effective value and
             // its source are attached by the controller.

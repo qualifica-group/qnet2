@@ -185,6 +185,7 @@ class ProductCategoriesTableDefinition extends AbstractTableDefinition
             'business_function' => $this->businessFunctionColumn->nameFor($row->id),
             'requires_quote' => (bool) $row->requires_quote,
             'is_selectable' => (bool) $row->is_selectable,
+            'is_active' => (bool) $row->is_active,
             // EFFECTIVE flag (own override, else inherited — user directive
             // 2026-09-18), not the nullable own column.
             'is_reportable' => $this->effectiveReportable()[$row->id] ?? false,

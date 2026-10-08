@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0208-product-category-active-flag" status="approved" owner="nicola" date="2026-10-08">
+
+  <goal>
+    Ogni categoria prodotto ha l'impostazione "Attiva / Non attiva". Una categoria non attiva, con tutto il suo
+    ramo, sparisce dai campi di inserimento e modifica e non e' piu' selezionabile; spariscono anche i prodotti
+    del ramo. Lo storico resta valido e i filtri delle griglie continuano a vederla.
+  </goal>
+
+  <context>
+    Verificato sul codice reale 2026-10-08.
+
+    Precedente di forma: spec 0074 (`is_selectable`), che resta INVARIATA. `is_selectable=false` lascia il nodo
+    visibile come contenitore; `is_active=false` toglie dai picker il nodo e tutto il suo sottoalbero.
+
+    Pattern `is_active` gia' in uso su task-categories, task-types, task-statuses, task-priorities,
+    task-importances, contract-statuses, payment-methods ecc., con il parametro for-select `include_inactive`
+    (spec 0101 T-03c): `ForSelectQuery::$includeInactive`, mappato da `include_inactive`.
+
+    Canali di scelta di una categoria:
+    - A: for-select piatto `GET /api/product-categories/for-select` (`ProductCategoryForSelectResolver::resolve`,
+      filtro `is_selectable` incondizionato, idratazione `ids[]` esente). Consumatori: form Provvigioni
+      (`commission-configuration-form-body.tsx`), quick-create (`hierarchical-entries.tsx`), criterio
+      `product_category_id` dei Flussi offerta (`QuoteCriterionFieldRegistry`) e i filtri avanzati
+      `product_category` di Opportunita' (`OpportunityAdvancedFilterCatalog`) e Progetti
+      (`ProjectAdvancedFilterCatalog`), con `source: {resource: 'product-categories'}`.
+    - A': `GET /api/product-category-branches/for-select` (`resolveBranches`, criterio "Ramo" dei Flussi offerta).
+    - B: albero `GET /api/product-categories/tree` (`CategoryTreeBuilder::tree`, una query, costruito
+      ricorsivamente dall'alto). Picker di DESTINAZIONE costruiti sull'albero: `ProductCategoryTreeSelect`
+      (righe prodotto e competenze), `ProductCategoryRootSelect`, `ProductCategoryFilterSelect`,
+      `useProductLineCellPicker` (editor di cella), picker categoria del form Prodotto (`product-form-body.tsx`,
+      `flattenCategoryTree` + `collectSelectableIds`). Consumatori STRUTTURALI che devono vedere tutto: parent
+      picker del form categoria, bulk-move, campi di ereditarieta' del form categoria. Consumatori di REGOLE che
+      devono vedere tutto: `resolveRowSetManagementMode`, `resolveSimplifiedOfferLine` (`use-product-lines-field`,
+      `quote-offer-tab`, `request-offer-lines-section`, `use-opportunity-draft-values`, cell editor).
+    - Prodotti: `GET /api/products/for-select` (`ProductService::forSelect`, idratazione `ids[]` esente). Nessun
+      filtro di griglia lo usa (`ProductsOfInterestColumn` lo usa solo come editor di cella; il set filter usa i
+      distinct values).
+
+    Validazione server-side esistente:
+    - Categoria: `App\Rules\SelectableProductCategory($exemptIds)` su `StoreProductRequest`/`UpdateProductRequest`
+      (`category_id`), `ProductLineSetValidator` (`*.product_category_id`, tutte le linee prodotto),
+      `CommissionConfigurationRules` (`product_category_id`). Competenze: `CompetenceLineSetValidator` usa
+      `Rule::exists('product_categories','id')` (nessun vincolo `is_selectable`, spec 0129 D-6).
+    - Prodotto: `Rule::exists('products','id')` su `QuoteLineRules::fieldRules` (`offer_lines`/`cost_lines` di
+      Offerte e Gestione Richieste, costi commessa `SyncWorkOrderCostsRequest`, cella inline via
+      `CellValueValidator`/`OfferLinesColumn`), `products_of_interest.*` di Store/Update Lead e Opportunity,
+      `product_id` di `CommissionConfigurationRules`, `product_ids.*` di `BulkAssignRequest`/`UpdateImportRowRequest`.
+
+    Limiti di dimensione: `CategoryHierarchy` 493 righe e `ProductCategoriesTableDefinition` 463 (vicini al
+    limite 500), `ProductCategoryColumnCatalog` 320 (gia' oltre i 300 soft).
+
+    Decisioni utente 2026-10-08:
+    D-1 Ramo — Una categoria non attiva rende non attivo in modo EFFETTIVO tutto il suo sottoalbero. Il flag dei
+        figli non viene riscritto: e' risolto in lettura. Nessun nodo orfano nei picker ad albero.
+    D-2 Storico — I record gia' collegati restano validi: il valore salvato resta visibile (idratazione) e il
+        record si risalva. Si blocca solo un NUOVO collegamento: sono esenti gli id gia' persistiti sul record in
+        aggiornamento (stessa forma di spec 0074 D-3b).
+    D-3 Filtri — Le categorie non attive restano nei filtri delle griglie. La griglia Categorie le mostra sempre.
+    D-4 Prodotti — I prodotti la cui categoria e' effettivamente non attiva spariscono dai select dei prodotti e
+        non sono selezionabili per un nuovo collegamento (con l'esenzione D-2).
+    D-5 Flussi offerta — I criteri "Categoria" e "Ramo" non elencano le categorie non attive; i valori gia'
+        salvati restano idratati.
+
+    Decisioni di progetto (proposte, da validare con la spec):
+    D-6 Una sola autorita' dell'attivita' effettiva: nuova classe `App\Services\ProductCategories\CategoryActivity`
+        (non dentro `CategoryHierarchy`, a 493 righe). Calcola gli id effettivamente non attivi con UNA query sugli
+        id `is_active=false` + `CategoryHierarchy::parentIdMap()` (gia' memoizzata), con memo per istanza.
+    D-7 For-select categorie: filtro attivo PER DEFAULT (come `is_selectable`, un nuovo consumatore non puo'
+        dimenticarlo); `include_inactive=1` lo toglie. Lo passano solo i due filtri avanzati, tramite un nuovo
+        campo opzionale `source.params` del descrittore dei filtri avanzati (generico, statico).
+    D-8 Albero: ogni nodo porta il proprio `is_active` (valore proprio). L'albero resta COMPLETO. La potatura la
+        fa il frontend, solo nei picker di destinazione, con una funzione pura che conosce il `value` del picker
+        (= id da tenere per D-2). Le regole (modalita' di gestione, riga semplificata) restano sull'albero intero.
+    D-9 Regole di validazione: `SelectableProductCategory` controlla anche l'attivita' (esistenza, poi attiva, poi
+        selezionabile: un solo messaggio per campo). Nuova `App\Rules\ActiveProductCategory($exemptIds)` per le
+        competenze (esistenza + attiva, nessun vincolo `is_selectable`). Nuova
+        `App\Rules\ActiveCategoryProduct($exemptIds)` per i prodotti (esistenza + categoria attiva): SOSTITUISCE
+        `Rule::exists('products','id')` sui punti elencati sopra, non lo affianca.
+    D-10 Griglia Categorie: colonna `is_active` = valore PROPRIO, colonna DB reale ordinabile e filtrabile come
+        `is_selectable` (un filtro sul valore effettivo richiederebbe un hook derivato nella TableDefinition, gia'
+        a 463 righe). Il form categoria mostra il valore ereditato (avviso "non attiva perche' lo e' <antenato>").
+    D-11 Criteri dei Flussi offerta: il filtro e' sul for-select (D-5); la validazione server dei valori criterio
+        resta `exists` (e' configurazione, non un collegamento di classificazione).
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione `product_categories.is_active` BOOLEAN NOT NULL DEFAULT true, after `is_selectable`, reversibile.</item>
+      <item>Model (fillable + cast), Store/UpdateProductCategoryRequest, Create/UpdateProductCategoryData, ProductCategoryService, ProductCategoryResource, ProductCategoriesAuthorization (FieldDefinition boolean, editabile da chi scrive), duplicazione categoria (copia il flag).</item>
+      <item>`CategoryActivity` (D-6); `CategoryTreeBuilder` espone `is_active` per nodo.</item>
+      <item>For-select categorie e rami: esclusione degli effettivamente non attivi, `include_inactive`, idratazione esente.</item>
+      <item>`products/for-select`: esclusione dei prodotti con categoria effettivamente non attiva, idratazione esente.</item>
+      <item>Regole: `SelectableProductCategory` estesa, `ActiveProductCategory`, `ActiveCategoryProduct` con esenzione degli id persistiti, su tutti i punti di validazione elencati nel context.</item>
+      <item>Filtri avanzati: `source.params` (backend catalog Opportunita'/Progetti + tipo FE + merge in `relation-fields.tsx`).</item>
+      <item>Griglia Categorie: colonna + filtro `is_active`, badge.</item>
+      <item>FE: tipi, schema Zod, payload, switch "Attiva" nella sezione Regole con avviso di ereditarieta', funzione pura `activeCategoryTree`, applicata ai 5 picker di destinazione su albero.</item>
+      <item>i18n IT/EN, messaggio backend `lang/it.json`, guida in-app `product-categories` IT/EN, test di rollback delle migrazioni (conteggio step).</item>
+    </in>
+    <out>
+      <item>Nessuna modifica a `is_selectable` e alla spec 0074.</item>
+      <item>Nessuna migrazione dati sulle associazioni esistenti; nessun blocco su cancellazione o spostamento delle categorie.</item>
+      <item>Fatture (`InvoiceWriteRequest`): nessun picker prodotto, il `product_id` arriva dalla commessa; validazione invariata.</item>
+      <item>Endpoint read-only/lenient (`RequestFormContextRequest`, `QuoteFormContextRequest`, `QuoteCommissionDefaultsRequest`, `QuoteCommissionRecipientsRequest`, `TableColumnsRequest`, `ProductForSelectRequest.category_ids`): non sono collegamenti.</item>
+      <item>Griglia e form del modulo Prodotti: l'elenco prodotti mostra tutto; nessun flag "attivo" sul prodotto.</item>
+      <item>Valore effettivo nella colonna di griglia Categorie (D-10).</item>
+      <item>Migrazione dati esterna (`ProductCategoriesSource`): il default true basta.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <db>
+      `product_categories.is_active` BOOLEAN NOT NULL DEFAULT true, `after('is_selectable')`. Nessun indice
+      (tabella piccola, stessa scelta di `is_selectable`). Default true: al deploy nessuna categoria cambia stato.
+    </db>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/product-categories[/{productCategory}]">
+      <request>`is_active`: `sometimes|boolean`. Create senza il campo -> true.</request>
+      <response status="200|201">`ProductCategoryResource` guadagna `"is_active": bool` (valore proprio).</response>
+      <errors>422 se non booleano; 403 senza permesso (invariato).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-categories/{productCategory}">
+      <response status="200">`"is_active": bool`.</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-categories/tree">
+      <response status="200">Ogni nodo guadagna `"is_active": bool` (valore proprio). NESSUN filtro: l'albero resta completo.</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-categories/for-select">
+      <request>Nuovo `include_inactive`: `sometimes|boolean`, default false.</request>
+      <response status="200">Shape invariata. Senza `include_inactive` la lista e il `total` escludono le categorie
+        effettivamente non attive (D-1). `ids[]` idrata comunque. Il filtro `is_selectable` resta invariato in entrambi i casi.</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/product-category-branches/for-select">
+      <response status="200">Shape invariata; esclude i rami effettivamente non attivi; `ids[]` idrata comunque.</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/products/for-select">
+      <response status="200">Shape invariata; esclude i prodotti la cui categoria e' effettivamente non attiva, anche
+        dal `total`; `ids[]` idrata comunque. Combinato in AND con `category_ids` e `product_usage`.</response>
+    </endpoint>
+
+    <advanced_filter_descriptor>
+      `source` diventa `{ resource: string, params?: Record&lt;string, string|number|boolean&gt; }`. I `params`
+      statici si fondono con i parametri di dipendenza (questi ultimi vincono in caso di chiave uguale).
+      `product_category` di Opportunita' e Progetti: `source: { resource: 'product-categories', params: { include_inactive: 1 } }`.
+    </advanced_filter_descriptor>
+
+    <validation>
+      Messaggio categoria: `This product category is not active.` (it: "Questa categoria prodotto non è attiva.").
+      Messaggio prodotto: `This product belongs to an inactive category.` (it: "Questo prodotto appartiene a una
+      categoria non attiva."). 422 sul campo. Esenti gli id gia' persistiti sul record in aggiornamento.
+      - `category_id` di Store/UpdateProduct, `*.product_category_id` di ogni linea prodotto
+        (`ProductLineSetValidator`), `product_category_id` delle Provvigioni -> `SelectableProductCategory`.
+      - `*.product_category_id` delle competenze utente -> `ActiveProductCategory`.
+      - `*.product_id` di `QuoteLineRules` (offer_lines, cost_lines, costi commessa, cella inline),
+        `products_of_interest.*` di Lead e Opportunita', `product_id` delle Provvigioni, `product_ids.*` degli
+        import -> `ActiveCategoryProduct`.
+    </validation>
+
+    <table_grid>
+      `ProductCategoryColumnCatalog`: colonna `is_active` (`type: boolean`, visibile, ordinabile, filtrabile
+      `filterType: boolean`) dopo `is_selectable`, + voce in `filters()`. Riga SSRM: `is_active` bool.
+    </table_grid>
+
+    <frontend>
+      `ProductCategoryTreeNode.is_active: boolean`, `ProductCategoryDetail.is_active: boolean`.
+      Funzione pura `activeCategoryTree(nodes, keepIds): ProductCategoryTreeNode[]` in
+      `features/product-categories/active-tree.ts`: toglie ogni nodo non attivo con il suo sottoalbero, TRANNE il
+      percorso verso un id di `keepIds`; i nodi non attivi conservati solo come percorso diventano
+      `is_selectable: false` (contesto, mai scelta). Riferimento in ingresso invariato se nulla va tolto.
+    </frontend>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un POST /api/product-categories senza `is_active`, allora la categoria e' creata con `is_active=true`.</criterion>
+    <criterion id="AC-002">Dato un PATCH con `is_active=false`, allora il flag e' persistito e il flag proprio dei figli resta invariato.</criterion>
+    <criterion id="AC-003">GET /api/product-categories/{id} e /tree espongono `is_active`; l'albero continua a includere le categorie non attive e i loro figli.</criterion>
+    <criterion id="AC-004">Dato un ramo con radice non attiva, quando chiamo /product-categories/for-select, allora radice e discendenti (anche con flag proprio true) mancano da items e dal total.</criterion>
+    <criterion id="AC-005">Lo stesso for-select con `include_inactive=1` le restituisce, con il filtro `is_selectable` ancora applicato.</criterion>
+    <criterion id="AC-006">Lo stesso for-select con `ids[]` che punta a una categoria non attiva la restituisce (idratazione), senza contarla nel total.</criterion>
+    <criterion id="AC-007">/product-category-branches/for-select esclude un ramo non attivo e lo idrata con `ids[]`.</criterion>
+    <criterion id="AC-008">/products/for-select esclude i prodotti di una categoria discendente di una non attiva, li idrata con `ids[]`, e il total li esclude.</criterion>
+    <criterion id="AC-009">POST /api/products con `category_id` effettivamente non attiva -> 422 `category_id` con il messaggio "not active"; PATCH che rimanda la propria categoria nel frattempo disattivata -> 200; PATCH verso un'altra categoria non attiva -> 422.</criterion>
+    <criterion id="AC-010">POST di un'opportunita' (e di una richiesta) con una linea su categoria non attiva -> 422 su `product_lines.0.product_category_id`; PATCH che rimanda invariate le proprie linee -> 200.</criterion>
+    <criterion id="AC-011">Provvigioni: `product_category_id` non attiva -> 422; `product_id` di categoria non attiva -> 422; valori gia' salvati rimandati invariati -> 200.</criterion>
+    <criterion id="AC-012">Competenze utente: una riga su categoria non attiva -> 422; la stessa riga gia' salvata rimandata invariata -> 200; una categoria contenitore attiva resta ammessa (spec 0129 D-6 invariata).</criterion>
+    <criterion id="AC-013">Righe offerta (Offerte e Gestione Richieste), costi commessa e cella inline: `product_id` di categoria non attiva -> 422 su `*.product_id`; righe esistenti con il proprio prodotto -> 200.</criterion>
+    <criterion id="AC-014">`products_of_interest` di Lead e Opportunita' e `product_ids` degli import: prodotto di categoria non attiva -> 422; valori gia' salvati rimandati invariati -> 200.</criterion>
+    <criterion id="AC-015">Una categoria non attiva e selezionabile produce UN solo messaggio d'errore (quello di attivita'); una attiva non selezionabile mantiene il messaggio di spec 0074.</criterion>
+    <criterion id="AC-016">La griglia Categorie espone la colonna `is_active`, ordinabile e filtrabile; il filtro "No" restituisce le categorie con flag proprio false.</criterion>
+    <criterion id="AC-017">La config dei filtri avanzati di Opportunita' e Progetti espone `source.params.include_inactive` sul filtro `product_category`.</criterion>
+    <criterion id="AC-018">(FE) `activeCategoryTree` toglie un nodo non attivo con tutto il sottoalbero; conserva il percorso verso un id in `keepIds` con gli antenati non attivi a `is_selectable: false`; restituisce lo stesso riferimento se nulla e' non attivo.</criterion>
+    <criterion id="AC-019">(FE) `ProductCategoryTreeSelect`, `ProductCategoryRootSelect`, `ProductCategoryFilterSelect` e il picker dell'editor di cella non elencano le categorie non attive e i loro discendenti, ma elencano il valore gia' selezionato anche se non attivo.</criterion>
+    <criterion id="AC-020">(FE) Il picker categoria del form Prodotto non elenca il ramo non attivo; in modifica elenca la categoria gia' salvata.</criterion>
+    <criterion id="AC-021">(FE) Parent picker del form categoria e bulk-move continuano a elencare TUTTE le categorie, non attive incluse.</criterion>
+    <criterion id="AC-022">(FE) Il form categoria mostra lo switch "Attiva" nella sezione Regole, attivo di default in creazione; sotto un antenato non attivo mostra l'avviso con il nome dell'antenato.</criterion>
+    <criterion id="AC-023">(FE) Il filtro avanzato relation invia i `source.params` statici al for-select, fusi con i parametri di dipendenza.</criterion>
+    <criterion id="AC-024">(FE) La guida in-app `product-categories` IT/EN descrive "Attiva"; `help-content-parity.test.ts` resta verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Authz server-side invariata (Policy categorie); il campo e' governato da `ProductCategoriesAuthorization`.</item>
+    <item>Nessuna query per riga: l'attivita' effettiva si risolve in batch (`CategoryActivity`, una query + `parentIdMap`).</item>
+    <item>Le regole SOSTITUISCONO `exists`, non lo affiancano (un solo messaggio per campo).</item>
+    <item>File entro 500 righe: niente in `CategoryHierarchy`; nessun hook derivato in `ProductCategoriesTableDefinition`.</item>
+    <item>Test di rollback (`QuoteWorkflowMigrationTest`, `SupplierCommissionDirectionTest`): solo il conteggio degli step sale di 1 (requisito cambiato: nuova migrazione).</item>
+    <item>File `frontend/src/features/product-lines/*` con modifiche non committate di un'altra sessione: si toccano solo dopo che quel lavoro e' committato (lane gated).</item>
+    <item>Manuale Claude Docs: sezione Categorie prodotto (impostazioni/regole) e i passaggi che citano "Selezionabile" come modo per nascondere.</item>
+  </constraints>
+
+</spec>

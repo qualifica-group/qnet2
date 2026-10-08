@@ -31,6 +31,8 @@ final readonly class CreateProductCategoryData
         public ?bool $requiresQuote = null,
         /** Spec 0074: a plain per-node flag, defaulting to selectable when omitted. */
         public bool $isSelectable = true,
+        /** Spec 0208: a plain per-node flag, defaulting to active when omitted. */
+        public bool $isActive = true,
         /** Spec 0131 (user directive 2026-09-18): own override of the inherited report flag; null = inherit. */
         public ?bool $isReportable = null,
         /** Spec 0141: own report column selection; null = inherit. Normalized (catalog order, [] -> null) by ProductCategoryService, never here. */
@@ -69,6 +71,7 @@ final readonly class CreateProductCategoryData
             businessFunctionId: array_key_exists('business_function_id', $data) && $data['business_function_id'] !== null ? (int) $data['business_function_id'] : null,
             requiresQuote: array_key_exists('requires_quote', $data) ? (bool) $data['requires_quote'] : null,
             isSelectable: array_key_exists('is_selectable', $data) ? (bool) $data['is_selectable'] : true,
+            isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
             isReportable: isset($data['is_reportable']) ? (bool) $data['is_reportable'] : null,
             reportColumns: array_key_exists('report_columns', $data) && $data['report_columns'] !== null ? (array) $data['report_columns'] : null,
             managementMode: array_key_exists('management_mode', $data) ? CategoryManagementMode::from((string) $data['management_mode']) : null,
