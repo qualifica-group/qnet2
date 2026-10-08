@@ -11,7 +11,7 @@ import {
 import { useUpdateInvoiceDetails } from '@/features/invoices/use-invoice-queries'
 import type { Invoice } from '@/features/invoices/types'
 
-const FIELDS = ['external_number', 'external_date', 'tag', 'deviation', 'internal_note'] as const
+const FIELDS = ['external_number', 'external_date', 'tag', 'deviation', 'internal_note', 'layout_id'] as const
 
 /** Form + submit of the "Dettagli fattura" dialog (PATCH details, always allowed). */
 export function useInvoiceDetailsForm(invoice: Invoice, onDone: () => void) {
@@ -27,6 +27,7 @@ export function useInvoiceDetailsForm(invoice: Invoice, onDone: () => void) {
       tag: invoice.tag,
       deviation: invoice.deviation === null ? null : Number(invoice.deviation),
       internal_note: invoice.internal_note,
+      layout_id: invoice.layout?.id ?? null,
     },
   })
 

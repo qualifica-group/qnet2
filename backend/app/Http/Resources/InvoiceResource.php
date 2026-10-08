@@ -62,6 +62,7 @@ class InvoiceResource extends JsonResource
             'internal_note' => $this->internal_note,
             'tag' => $this->tag,
             'deviation' => $this->deviation,
+            'layout' => $this->layout === null ? null : ['id' => $this->layout->id, 'name' => $this->layout->name],
             'has_collections' => bccomp($collected, '0', 2) > 0,
             'lines' => $this->lines->map(fn (InvoiceLine $line): array => [
                 'id' => $line->id,

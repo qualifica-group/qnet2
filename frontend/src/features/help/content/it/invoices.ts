@@ -97,6 +97,7 @@ const guide: HelpGuide = {
       title: 'Scaricare il PDF',
       blocks: [
         { type: 'paragraph', text: 'Con **Scarica PDF** sulla riga (o nel dettaglio) QNet genera il documento usando il **layout Fatture attivo e predefinito** (vedi la guida Layout).' },
+        { type: 'paragraph', text: 'Il layout scelto nel campo **Layout di stampa** del documento (in **Testata** o in **Dettagli**) è usato per il PDF e per gli allegati di email e solleciti; se il campo è vuoto (**Predefinito**) si usa il layout Fatture attivo e predefinito.' },
         { type: 'warning', text: 'Se non esiste un layout del modulo **Fatture** attivo e predefinito, compare un errore: creane uno in **Configurazione › Layout**.' },
       ],
     },

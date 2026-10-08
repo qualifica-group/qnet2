@@ -40,6 +40,7 @@ const DRAFT: InvoiceDraft = {
     customer: { id: 5, name: 'Acme Spa' },
     payment_method: { id: 2, name: 'Bonifico 30 gg' },
     financial_account: null,
+    layout: null,
     notes: null,
   },
   available_lines: [
@@ -122,6 +123,7 @@ describe('InvoiceEditorDialog create (spec 0194 AC-009)', () => {
       customer_registry_id: 5,
       payment_method_id: 2,
       financial_account_id: null,
+      layout_id: null,
       notes: null,
       internal_note: null,
       tag: null,

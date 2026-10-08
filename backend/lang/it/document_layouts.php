@@ -19,6 +19,7 @@ return [
     // as a 422 ValidationException when a layout is referenced by at least
     // one Quote, keyed on `quotes`.
     'layout_in_use' => 'Layout utilizzato da :count preventivi: puoi solo disattivarlo.',
+    'layout_in_use_invoices' => 'Layout utilizzato da :count fatture: puoi solo disattivarlo.',
 
     'invoice_no_layout_available' => 'Nessun layout documento disponibile per le fatture.',
 

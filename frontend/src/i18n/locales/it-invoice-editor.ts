@@ -30,6 +30,8 @@ export const invoiceEditor = {
     notes: 'Note',
     internalNote: 'Note interne',
     tag: 'Tag',
+    layout: 'Layout di stampa',
+    layoutPlaceholder: 'Predefinito',
     noBank: 'Nessuna banca',
     noTag: 'Nessun tag',
     selectCompany: 'Seleziona la società',

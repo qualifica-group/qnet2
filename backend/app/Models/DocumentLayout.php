@@ -43,6 +43,16 @@ class DocumentLayout extends BaseModel
      */
     public const string IMAGE_COLLECTION = 'layout_image';
 
+    /** The module's current ACTIVE default layout, if any (shared by the document layout resolvers). */
+    public static function activeDefaultFor(DocumentLayoutModule $module): ?self
+    {
+        return static::query()
+            ->where('module', $module->value)
+            ->where('is_active', true)
+            ->where('is_default', true)
+            ->first();
+    }
+
     /**
      * @return array<string, string>
      */

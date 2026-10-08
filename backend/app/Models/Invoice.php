@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'type', 'company_id', 'number', 'year', 'document_date', 'proforma_request_id',
     'work_order_id', 'quote_id', 'customer_registry_id', 'payment_method_id',
     'financial_account_id', 'net_amount', 'vat_amount', 'total_amount', 'external_number',
-    'external_date', 'notes', 'internal_note', 'tag', 'deviation', 'created_by',
+    'external_date', 'notes', 'internal_note', 'tag', 'deviation', 'created_by', 'layout_id',
 ])]
 class Invoice extends BaseModel
 {
@@ -102,6 +102,14 @@ class Invoice extends BaseModel
     public function quote(): BelongsTo
     {
         return $this->belongsTo(Quote::class);
+    }
+
+    /**
+     * @return BelongsTo<DocumentLayout, $this>
+     */
+    public function layout(): BelongsTo
+    {
+        return $this->belongsTo(DocumentLayout::class, 'layout_id');
     }
 
     /**

@@ -11,6 +11,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\Enums\DocumentLayoutModule;
 use App\Models\Attachment;
 use App\Models\DocumentLayout;
+use App\Models\Invoice;
 use App\Models\Quote;
 use App\Services\DocumentLayouts\DocumentLayoutDefaultManager;
 use Illuminate\Support\Collection;
@@ -130,6 +131,14 @@ class DocumentLayoutService
         if ($usageCount > 0) {
             throw ValidationException::withMessages([
                 'quotes' => [__('document_layouts.layout_in_use', ['count' => $usageCount])],
+            ]);
+        }
+
+        $invoiceCount = Invoice::query()->where('layout_id', $documentLayout->id)->count();
+
+        if ($invoiceCount > 0) {
+            throw ValidationException::withMessages([
+                'invoices' => [__('document_layouts.layout_in_use_invoices', ['count' => $invoiceCount])],
             ]);
         }
     }
