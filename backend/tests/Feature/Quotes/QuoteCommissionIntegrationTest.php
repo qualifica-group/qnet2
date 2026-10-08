@@ -7,6 +7,7 @@ use App\Models\CommissionConfiguration;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductTypology;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\QuoteWorkflowStatus;
@@ -44,6 +45,7 @@ it('initializes only recipient-backed revenue commissions and summarizes authori
     $product = Product::factory()->create([
         'category_id' => $category->id,
         'supplier_id' => $supplier->id,
+        'product_typology_id' => ProductTypology::factory()->supplierCommission(),
     ]);
     $opportunity = Opportunity::factory()->create(['commercial_id' => $commercial->id]);
 
@@ -425,8 +427,9 @@ it('initializes defaults in quote-create context and denies missing quote abilit
         'commercial_id' => $commercial->id,
         'reference_date' => '2026-07-29',
     ])->assertOk()
-        ->assertJsonPath('data.0.recipient_role', 'COMMERCIAL')
-        ->assertJsonPath('data.0.calculated_amount', '7.00');
+        ->assertJsonPath('data.commissions.0.recipient_role', 'COMMERCIAL')
+        ->assertJsonPath('data.commissions.0.calculated_amount', '7.00')
+        ->assertJsonPath('data.supplier_commission_direction', null);
 
     $quote = Quote::factory()->create();
     Sanctum::actingAs(quoteCommissionActor([]));

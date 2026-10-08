@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { render, screen } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import RegistryDetailPage from '@/pages/registry-detail-page'
@@ -11,15 +11,10 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 /**
  * Spec 0022 AC-A2/AC-A4 — the dedicated registry detail page: fetches the fresh
  * detail for the `:id` param, renders the (separately covered) presentational
- * view, and never shows a blank page on a failed/forbidden fetch. The record
- * card now owns the single "Edit" affordance (`detailOwnsEditAction`
- * convention, Opportunità, user directive 2026-09-22): the page's own job is
- * only to hand it a navigate-to-edit callback, so the mocked
- * `RegistryDetailView` below stands in for that callback the same way
- * `ModuleDetailPage`'s tests do. Gating the button on the response's
- * `permissions` block is `RegistryDetailView`'s own concern, covered in
- * `registry-detail.test.tsx`. The detail view, the page chrome and the HTTP
- * layer are stubbed: what is under test is the page wiring.
+ * view, and never shows a blank page on a failed/forbidden fetch. There is no
+ * edit page (spec 0200): the view edits in place, so the page hands it no
+ * edit callback. The detail view, the page chrome and the HTTP layer are
+ * stubbed: what is under test is the page wiring.
  */
 const fetchRegistryMock = vi.fn<(id: number) => Promise<RegistryDetailWithPermissions>>()
 
@@ -29,28 +24,12 @@ vi.mock('@/features/registries/api', () => ({
 }))
 
 vi.mock('@/features/registries/registry-detail', () => ({
-  RegistryDetailView: ({
-    registry,
-    onEdit,
-  }: {
-    registry: RegistryDetailWithPermissions
-    onEdit?: () => void
-  }) => (
-    <div>
-      <h2>{registry.name}</h2>
-      {onEdit ? <button onClick={onEdit}>Edit</button> : null}
-    </div>
-  ),
+  RegistryDetailView: ({ registry }: { registry: RegistryDetailWithPermissions }) => <h2>{registry.name}</h2>,
 }))
 
 vi.mock('@/components/page-header', () => ({
   PageHeader: ({ actions }: { actions?: ReactNode }) => <div>{actions}</div>,
 }))
-
-function LocationProbe() {
-  const location = useLocation()
-  return <div data-testid="location">{location.pathname}</div>
-}
 
 function permissions(canUpdate: boolean): ResourcePermissions {
   return {
@@ -83,7 +62,6 @@ function renderAt(path: string) {
         <Routes>
           <Route path="/registries/:id" element={<RegistryDetailPage />} />
         </Routes>
-        <LocationProbe />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -107,14 +85,14 @@ describe('RegistryDetailPage', () => {
     expect(fetchRegistryMock).toHaveBeenCalledWith(12)
   })
 
-  it('passes a navigate-to-edit callback to the record view, which owns the Edit affordance', async () => {
+  // REQUIREMENT CHANGED (spec 0200): no edit page, so no Edit affordance.
+  it('offers no Edit action: the record edits in place', async () => {
     fetchRegistryMock.mockResolvedValue(registry(true))
 
     renderAt('/registries/12')
 
-    const edit = await screen.findByRole('button', { name: 'Edit' })
-    fireEvent.click(edit)
-    expect(screen.getByTestId('location')).toHaveTextContent('/registries/12/edit')
+    await screen.findByRole('heading', { name: 'Acme S.p.A.' })
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
   })
 
   it('shows the error state (never a blank page) when the fetch fails', async () => {

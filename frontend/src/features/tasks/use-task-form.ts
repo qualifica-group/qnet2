@@ -12,6 +12,7 @@ import { useResourcePermissions } from '@/features/authorization/permissions'
 import { createTask, taskDetailQueryKey, updateTask } from '@/features/tasks/api'
 import { taskStatusMetaOf, type TaskStatusForSelectMeta } from '@/features/tasks/for-select-api'
 import { uploadStagedAttachments } from '@/features/tasks/task-form-attachments-upload'
+import { createDefaults, duplicateDefaults, editDefaults } from '@/features/tasks/task-form-defaults'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/tasks/task-form-payload'
 import {
   SERVER_ERROR_FIELDS,
@@ -19,10 +20,9 @@ import {
   TOAST_ONLY_SERVER_ERROR_FIELDS,
   workOrderStageConflictMessage,
 } from '@/features/tasks/task-form-server-error-fields'
-import { emptyRecurrenceDefaults, recurrenceDefaults } from '@/features/tasks/task-recurrence-defaults'
 import { buildTaskSchema, type TaskFormValues } from '@/features/tasks/task-schema'
 import { applySubtaskServerErrors } from '@/features/tasks/task-subtask-rows'
-import { resolveWorkOrderStagePrefill, useTaskFormStageHandlers } from '@/features/tasks/use-task-form-stage-handlers'
+import { useTaskFormStageHandlers } from '@/features/tasks/use-task-form-stage-handlers'
 import { useTaskLookupDefaults } from '@/features/tasks/use-task-lookup-defaults'
 import { useTaskParentPrefill } from '@/features/tasks/use-task-parent-prefill'
 import { useTaskWorkOrderPrefill } from '@/features/tasks/use-task-work-order-prefill'
@@ -31,159 +31,10 @@ import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { TaskDetail, TaskFormMode } from '@/features/tasks/types'
 
-/** Stable module-level default: a fresh `[]` per render would break dependency stability. */
-const EMPTY_IDS: number[] = []
-/** Spec 0155 D-3: the create-only "Sottotask" block starts empty; edit mode never touches this field. */
-const EMPTY_SUBTASKS: TaskFormValues['subtasks'] = []
-
-/** Today as `YYYY-MM-DD` in the ACTOR's own local calendar day (not UTC: a `Y-m-d` due date compares as a plain string). */
-function todayIsoDate(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 interface UseTaskFormArgs {
   mode: TaskFormMode
   /** Called after a successful create/update so the caller can close + refresh. */
   onSuccess: (task: TaskDetail) => void
-}
-
-/**
- * Default values of a brand-new task, with the "crea sotto-task" parent
- * prefill (AC-085), the work order prefill of the Commessa detail's Task tab
- * (spec 0133 D-4) and the requester defaulted to the actor creating it
- * (spec 0118 D-1: `requester_id` is now required, and the actor is the
- * requester in the overwhelming majority of cases) — left modifiable, never
- * locked.
- */
-function createDefaults(
-  parentTaskId: number | null,
-  workOrderId: number | null,
-  workOrderStageId: number | null,
-  requesterId: number | null,
-  taskStatusId: number | null,
-  endDate: string | null,
-): TaskFormValues {
-  // Spec 0154 D-9: today, UNLESS this create is opened as "crea sotto-task",
-  // from a commessa's Task tab, or with an explicit `endDate` prefill (spec
-  // 0157 D-4, the Kanban per-column "+") — all three contexts prefill their
-  // own date range/end date, so this default steps aside for them.
-  const hasLinkContext = parentTaskId !== null || workOrderId !== null || endDate !== null
-  return {
-    title: '',
-    task_status_id: taskStatusId,
-    description: null,
-    is_private: false,
-    registry_id: null,
-    referent_id: null,
-    parent_task_id: parentTaskId,
-    task_type_id: null,
-    task_priority_id: null,
-    task_importance_id: null,
-    task_category_id: null,
-    opportunity_id: null,
-    work_order_id: workOrderId,
-    work_order_stage_id: resolveWorkOrderStagePrefill(parentTaskId, workOrderStageId),
-    lead_id: null,
-    requester_id: requesterId,
-    start_date: null,
-    end_date: endDate ?? (hasLinkContext ? null : todayIsoDate()),
-    start_time: null,
-    end_time: null,
-    estimated_minutes: null,
-    requires_closure_feedback: false,
-    requires_validation: false,
-    is_completed: false,
-    suppress_notifications: false,
-    assignee_ids: EMPTY_IDS,
-    watcher_ids: EMPTY_IDS,
-    recurrence: emptyRecurrenceDefaults(),
-    subtasks: EMPTY_SUBTASKS,
-  }
-}
-
-/**
- * Default values of a "clona" create (spec 0156 D-4): every field copied from
- * `source` EXCEPT the ones the decision explicitly excludes — attachments and
- * segnatempo have no form field to begin with, `subtasks` stays the empty
- * create-only block, the parent link is dropped (`parent_task_id: null`,
- * "il padre non si copia"), `task_status_id` stays unset so the server
- * RE-DERIVES it exactly like a bare create (D-4 "stato ricalcolato"), and
- * `is_completed`/`suppress_notifications` — both per-submit instructions with
- * no persisted counterpart — start unchecked like any other create.
- */
-function duplicateDefaults(source: TaskDetail, copySuffix: string): TaskFormValues {
-  return {
-    title: `${source.title}${copySuffix}`,
-    task_status_id: null,
-    description: source.description,
-    is_private: source.is_private,
-    registry_id: source.registry_id,
-    referent_id: source.referent_id,
-    parent_task_id: null,
-    task_type_id: source.task_type_id,
-    task_priority_id: source.task_priority_id,
-    task_importance_id: source.task_importance_id,
-    task_category_id: source.task_category_id,
-    opportunity_id: source.opportunity_id,
-    work_order_id: source.work_order_id,
-    work_order_stage_id: source.work_order_stage_id,
-    lead_id: source.lead_id,
-    requester_id: source.requester_id,
-    start_date: source.start_date,
-    end_date: source.end_date ?? todayIsoDate(),
-    start_time: source.start_time,
-    end_time: source.end_time,
-    estimated_minutes: source.estimated_minutes,
-    requires_closure_feedback: source.requires_closure_feedback,
-    requires_validation: source.requires_validation,
-    is_completed: false,
-    suppress_notifications: false,
-    assignee_ids: source.assignees.map((user) => user.id),
-    watcher_ids: source.watchers.map((user) => user.id),
-    recurrence: recurrenceDefaults(source.recurrence),
-    subtasks: EMPTY_SUBTASKS,
-  }
-}
-
-/** Default values hydrated from the persisted task (edit mode). */
-function editDefaults(task: TaskDetail): TaskFormValues {
-  return {
-    title: task.title,
-    task_status_id: task.task_status_id,
-    description: task.description,
-    is_private: task.is_private,
-    registry_id: task.registry_id,
-    referent_id: task.referent_id,
-    parent_task_id: task.parent_task_id,
-    task_type_id: task.task_type_id,
-    task_priority_id: task.task_priority_id,
-    task_importance_id: task.task_importance_id,
-    task_category_id: task.task_category_id,
-    opportunity_id: task.opportunity_id,
-    work_order_id: task.work_order_id,
-    work_order_stage_id: task.work_order_stage_id,
-    lead_id: task.lead_id,
-    requester_id: task.requester_id,
-    start_date: task.start_date,
-    end_date: task.end_date,
-    start_time: task.start_time,
-    end_time: task.end_time,
-    estimated_minutes: task.estimated_minutes,
-    requires_closure_feedback: task.requires_closure_feedback,
-    requires_validation: task.requires_validation,
-    // Spec 0154 D-6/D-7: neither has a persisted counterpart — both are
-    // per-submit instructions, so edit mode always starts them unset.
-    is_completed: false,
-    suppress_notifications: false,
-    assignee_ids: task.assignees.map((user) => user.id),
-    watcher_ids: task.watchers.map((user) => user.id),
-    recurrence: recurrenceDefaults(task.recurrence),
-    subtasks: EMPTY_SUBTASKS,
-  }
 }
 
 /**
@@ -241,6 +92,7 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
       user?.id ?? null,
       mode.taskStatusId ?? null,
       mode.endDate ?? null,
+      mode.registryId ?? null,
     )
   }, [mode, user?.id, t])
 
@@ -254,6 +106,15 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
   const [statusMeta, setStatusMeta] = useState<TaskStatusForSelectMeta | null>(() =>
     persistedStatusMeta(mode),
   )
+  // Spec 0195: the task detail keeps this form mounted while a domain action
+  // (Completa, Riapri...) changes the persisted status — re-seed on that
+  // change, during render (React's "adjust state on prop change" pattern).
+  const persistedStatusId = mode.type === 'edit' ? mode.task.task_status_id : null
+  const [statusMetaSeedId, setStatusMetaSeedId] = useState(persistedStatusId)
+  if (statusMetaSeedId !== persistedStatusId) {
+    setStatusMetaSeedId(persistedStatusId)
+    setStatusMeta(persistedStatusMeta(mode))
+  }
 
   /**
    * Files chosen before the task exists (spec 0118 D-7): pure in-memory
@@ -274,9 +135,18 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
   // whose identity never changes but which always runs the latest schema.
   const resolverRef = useRef<Resolver<TaskFormValues>>(zodResolver(buildTaskSchema(t, !isEdit)))
 
+  // Edit mode IS the task detail (spec 0195 D-2): the persisted task can change
+  // under the form (a domain action, a subtask write), so `values` re-syncs it
+  // while `keepDirtyValues` preserves what the user is still editing. Without
+  // it the diff-based PATCH would send a stale untouched value back.
   const form = useForm<TaskFormValues>({
     resolver: (values, context, options) => resolverRef.current(values, context, options),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    // Scoped to that `values` re-sync: every explicit `reset` that means to
+    // DROP an edit passes `keepDirtyValues: false` (RHF merges these options
+    // into every reset, explicit ones winning).
+    resetOptions: isEdit ? { keepDirtyValues: true } : undefined,
   })
 
   // Spec 0123 D-10/D-7: the parent's link fields prefill the empty ones, and
@@ -386,6 +256,8 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
           buildUpdatePayload(values, mode.task, canEditRecurrence),
         )
         queryClient.setQueryData(taskDetailQueryKey(mode.task.id), saved)
+        // Step 2 (edit): the detail stays mounted on the saved task, clean.
+        form.reset(editDefaults(saved), { keepDirtyValues: false })
         toast.success(t('tasks.form.updated'))
         onSuccess(saved)
         return
@@ -451,6 +323,8 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     form,
     isEdit,
     serverError,
+    /** Drops a reported server error, for a caller that discards the edit it belonged to (spec 0195 inline edit). */
+    clearServerError: () => setServerError(null),
     onSubmit,
     handleRegistryChange,
     handleWorkOrderChange,
@@ -472,3 +346,6 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
     workOrderPrefillRef,
   }
 }
+
+/** What `useTaskForm` hands its callers: the form, its cascade handlers and the create-time extras. */
+export type TaskFormState = ReturnType<typeof useTaskForm>

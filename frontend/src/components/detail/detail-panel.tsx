@@ -1,9 +1,12 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { UserAvatar } from '@/components/user-avatar'
 import { avatarInitials } from '@/components/avatar-initials'
 import { avatarColor } from '@/components/avatar-color'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { RecordUnavailable } from '@/components/detail/record-unavailable'
+import { recordUnavailableReason } from '@/lib/record-unavailable-reason'
 import { cn } from '@/lib/utils'
 
 /**
@@ -164,16 +167,38 @@ export function DetailLoading() {
 }
 
 interface DetailErrorProps {
+  /** The rejected fetch's error: a 404/403 answer swaps the retry for the final "record unavailable" state. */
+  error: unknown
   message: string
   retryLabel: string
   onRetry: () => void
 }
 
-/** Shared error state with a retry affordance. */
-export function DetailError({ message, retryLabel, onRetry }: DetailErrorProps) {
+/**
+ * Shared error state of a record fetch. A 404 (does not exist) or 403 (not
+ * visible to the actor) is the server's final answer, so it renders the
+ * controlled `RecordUnavailable` state with no retry; anything else (network
+ * error, 5xx) keeps the message plus the retry affordance.
+ */
+export function DetailError({ error, message, retryLabel, onRetry }: DetailErrorProps) {
+  const { t } = useTranslation()
+  const unavailableReason = recordUnavailableReason(error)
+
+  if (unavailableReason) {
+    return (
+      <RecordUnavailable
+        reason={unavailableReason}
+        title={t(`common.recordUnavailable.${unavailableReason}.title`)}
+        description={t(`common.recordUnavailable.${unavailableReason}.description`)}
+      />
+    )
+  }
+
   return (
     <div className="flex flex-col items-start gap-3 p-6">
-      <p className="text-sm text-destructive">{message}</p>
+      <p className="text-sm text-destructive" role="alert">
+        {message}
+      </p>
       <Button variant="outline" size="sm" onClick={onRetry}>
         {retryLabel}
       </Button>

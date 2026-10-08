@@ -41,7 +41,7 @@ if (! function_exists('runMigrationJobFor')) {
 // never adopted into it (user directive 2026-10-05, LegacyAplBranch)
 // ---------------------------------------------------------------------------
 
-it('imports the legacy APL tree beside the manual one as the root "APL old", idempotently', function () {
+it('imports the legacy APL tree beside the manual one as "APL old", under its legacy parent, idempotently', function () {
     seedMigrationsConfig();
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
@@ -65,20 +65,20 @@ it('imports the legacy APL tree beside the manual one as the root "APL old", ide
     runMigrationJobFor($run);
     runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
 
-    $legacyRoot = ProductCategory::query()->where('old_id', 61)->sole();
+    $legacyTop = ProductCategory::query()->where('old_id', 61)->sole();
 
     expect($manualRoot->fresh()->old_id)->toBeNull()
         ->and($manualChild->fresh()->old_id)->toBeNull()
-        // The twin of the manual root is a root of its own, never under its
-        // legacy parent.
-        ->and($legacyRoot->name)->toBe(LegacyAplBranch::LEGACY_ROOT)
-        ->and($legacyRoot->parent_id)->toBeNull()
+        // The twin of the manual root hangs under its legacy parent, like any
+        // other legacy node (the seed then nests that under "Consulenza").
+        ->and($legacyTop->name)->toBe(LegacyAplBranch::LEGACY_BRANCH)
+        ->and($legacyTop->parent_id)->toBe(ProductCategory::query()->where('old_id', 60)->value('id'))
         // The twin of a manual child takes the suffix; a name the manual
         // branch does not hold is kept.
         ->and(ProductCategory::query()->where('old_id', 62)->first()->only(['name', 'parent_id']))
-        ->toBe(['name' => 'Orientamento Specialistico old', 'parent_id' => $legacyRoot->id])
+        ->toBe(['name' => 'Orientamento Specialistico old', 'parent_id' => $legacyTop->id])
         ->and(ProductCategory::query()->where('old_id', 63)->first()->only(['name', 'parent_id']))
-        ->toBe(['name' => 'Tirocini extracurriculari privati', 'parent_id' => $legacyRoot->id])
+        ->toBe(['name' => 'Tirocini extracurriculari privati', 'parent_id' => $legacyTop->id])
         ->and(ProductCategory::query()->count())->toBe(6)
         ->and(collect($run->fresh()->report)->pluck('message')->filter(fn (string $message) => str_contains($message, 'Legacy twin'))->count())
         ->toBe(2);

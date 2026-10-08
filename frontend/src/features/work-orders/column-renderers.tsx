@@ -1,4 +1,5 @@
-import { BooleanBadgeCell, CodeBadgeCell, DateCell } from '@/features/table/rich-cells'
+import { Building2 } from 'lucide-react'
+import { BooleanBadgeCell, CodeBadgeCell, DateCell, RelationCell } from '@/features/table/rich-cells'
 import { UserStackCell } from '@/features/table/user-cell'
 import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
@@ -22,12 +23,15 @@ import { CompletionCell } from '@/features/table/completion-cell'
  * ("Responsabili", spec 0096) is a to-many of `{id,name,avatar_url}` and
  * reuses the SAME `UserStackCell` the Offerta's and Opportunita's own
  * `managers` columns render with — no second avatar-stack cell.
+ * `registry` (the Anagrafica, `{id, name}` through the quote's opportunity)
+ * renders as the same `RelationCell` the Contratti grid uses.
  * `title`/`contract_number`/`quote` stay on the AG Grid default text cell.
  * `completion_percentage` (spec 0149) renders the shared `CompletionCell`.
  */
 
 export const workOrderColumnRenderers: TableRendererMap = {
   code: (params) => <CodeBadgeCell {...params} />,
+  registry: (params) => <RelationCell {...params} icon={Building2} />,
   is_force_closed: (params) => <BooleanBadgeCell {...params} />,
   callback_date: (params) => <DateCell {...params} />,
   start_date: (params) => <DateCell {...params} />,

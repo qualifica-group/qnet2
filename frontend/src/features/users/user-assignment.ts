@@ -21,9 +21,11 @@ import type { CompetenceLineRow } from '@/features/product-lines/types'
  */
 
 /** Why the person is in no assignment pool at all. Empty when they are assignable. */
-export type AssignmentBlocker = 'competence' | 'site'
+export type AssignmentBlocker = 'disabled' | 'competence' | 'site'
 
 export interface AssignmentSummary {
+  /** Spec 0194: the explicit "Assegnabile" flag; false is a blocker on its own. */
+  isAssignable: boolean
   /** COMPLETE `funzione aziendale -> categoria prodotto` rows: a half-filled row covers nothing. A row with `all_categories` checked (spec 0129 D-3) counts too. */
   competenceCount: number
   /** Spec 0129 D-1: the jolly flag — echoed back so every consumer reads ONE source for "covers everything". */
@@ -38,6 +40,8 @@ export interface AssignmentSummary {
 }
 
 interface AssignmentInput {
+  /** Spec 0194: false blocks every assignment regardless of Sede and competence. */
+  isAssignable: boolean
   competenceRows: readonly CompetenceLineRow[]
   /** Spec 0129 D-1: true bypasses the competence blocker regardless of `competenceRows`. */
   coversAllProductCategories: boolean
@@ -46,6 +50,7 @@ interface AssignmentInput {
 }
 
 export function summarizeAssignment({
+  isAssignable,
   competenceRows,
   coversAllProductCategories,
   primarySiteId,
@@ -60,6 +65,9 @@ export function summarizeAssignment({
   const siteCount = physicalSiteCount + remoteSiteCount
 
   const blockers: AssignmentBlocker[] = []
+  if (!isAssignable) {
+    blockers.push('disabled')
+  }
   if (!coversAllProductCategories && competenceCount === 0) {
     blockers.push('competence')
   }
@@ -68,6 +76,7 @@ export function summarizeAssignment({
   }
 
   return {
+    isAssignable,
     competenceCount,
     coversAllProductCategories,
     physicalSiteCount,
@@ -80,6 +89,8 @@ export function summarizeAssignment({
 
 /** Per-field visibility of the controls the assignment configuration is made of. */
 export interface AssignmentFieldsVisibility {
+  /** The spec 0194 flag carries its own field permission. */
+  isAssignable: boolean
   competence: boolean
   /** The spec 0129 flag carries its own field permission, independent from the competence rows. */
   coversAllProductCategories: boolean
@@ -101,16 +112,18 @@ export interface AssignmentFieldsVisibility {
 export function useAssignmentFieldsVisibility(): AssignmentFieldsVisibility {
   const { field } = useResourcePermissions()
 
+  const isAssignable = field('employment.is_assignable').visible
   const competence = field('employment.product_lines').visible
   const coversAllProductCategories = field('employment.covers_all_product_categories').visible
   const primarySite = field('employment.primary_operational_site_id').visible
   const remoteSites = field('employment.remote_operational_site_ids').visible
 
   return {
+    isAssignable,
     competence,
     coversAllProductCategories,
     primarySite,
     remoteSites,
-    any: competence || coversAllProductCategories || primarySite || remoteSites,
+    any: isAssignable || competence || coversAllProductCategories || primarySite || remoteSites,
   }
 }

@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { parseEntityId } from '@/routes/entity-id'
 import { fetchTask, TASKS_DOMAIN, taskDetailQueryKey } from '@/features/tasks/api'
@@ -37,21 +38,30 @@ function asRow(id: number): TableRow {
  * Sheet (`useModuleOpener`) and by the generic dedicated pages
  * (`ModuleDetailPage`/`ModuleFormPage`).
  *
- * AC-085: opening a child goes through the SAME opener every other surface
- * uses, so it honors the actor's own modal/page preference. "Crea sotto-task"
- * instead always mounts the Sheet above the parent (`forceMode`, spec 0067
- * D-3): the parent detail is never abandoned while adding a child. It passes
- * `parent_task_id` through `ModuleCreateParams` (spec 0045) — the single
- * channel a create form gets its context through.
+ * AC-085 (user directive 2026-10-06): opening a child and "Crea sotto-task"
+ * both mount the Sheet above the parent, whatever the actor's open-mode
+ * preference (`forceMode`, spec 0067 D-3): the parent detail is never
+ * abandoned while working on a child, and every save in the Sheet refreshes
+ * its `subtasks` list. The create passes `parent_task_id` through
+ * `ModuleCreateParams` (spec 0045) — the single channel a create form gets
+ * its context through.
+ *
+ * Spec 0195: the detail edits its fields in place, so `onEdit` is never
+ * used; each save reports through `onChanged` (the modal host refreshes its
+ * grid and keeps the record open).
  */
-export function TaskDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function TaskDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const { openView, sheet } = useModuleOpener(TASKS_DOMAIN)
-  const { openCreateWith: openSubtaskCreate, sheet: subtaskSheet } = useModuleOpener(TASKS_DOMAIN, {
+  const {
+    openView: openSubtask,
+    openCreateWith: openSubtaskCreate,
+    sheet: subtaskSheet,
+  } = useModuleOpener(TASKS_DOMAIN, {
     forceMode: OPEN_MODE_MODAL,
     viewAfterCreate: true,
-    // The parent stays mounted underneath: refresh its `subtasks` list.
+    // The parent stays mounted underneath: refresh its `subtasks` list after
+    // a create, or after an in-place save on an opened child.
     onSaved: () => queryClient.invalidateQueries({ queryKey: taskDetailQueryKey(id) }),
   })
   const { data: task, isLoading, isError, error, refetch } = useEntityDetail(taskDetailQueryKey(id), () =>
@@ -62,7 +72,7 @@ export function TaskDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   // generic error state, with no Riprova.
   const accessDenied = isError ? taskAccessDeniedInfo(error) : null
 
-  // The sheets render OUTSIDE the loading branch: the subtask form reads the
+  // The sheet renders OUTSIDE the loading branch: the subtask form reads the
   // parent through this same query key and refetches it on mount. Swapping
   // them for the skeleton during that refetch would remount the form, which
   // refetches again — an endless reload loop.
@@ -72,6 +82,7 @@ export function TaskDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   } else if (isError) {
     content = (
       <DetailError
+        error={error}
         message={t('tasks.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}
@@ -83,8 +94,8 @@ export function TaskDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
     content = (
       <TaskDetailView
         task={task}
-        onEdit={onEdit}
-        onOpenSubtask={(subtaskId) => openView(asRow(subtaskId))}
+        onChanged={onChanged}
+        onOpenSubtask={(subtaskId) => openSubtask(asRow(subtaskId))}
         onCreateSubtask={() => openSubtaskCreate({ parent_task_id: task.id })}
       />
     )
@@ -93,18 +104,35 @@ export function TaskDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   return (
     <>
       {content}
-      {sheet}
       {subtaskSheet}
     </>
   )
 }
 
 export function TaskFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
+  // Spec 0195 (user directive 2026-10-06): leaving a task being created —
+  // Cancel, the Sheet's X/overlay/Esc, a link, a reload — always asks first.
+  const leaveGuard = useFormLeaveGuard({
+    title: t('tasks.form.leaveConfirm.title'),
+    description: t('tasks.form.leaveConfirm.description'),
+    confirmLabel: t('tasks.form.leaveConfirm.confirm'),
+    cancelLabel: t('tasks.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
   const handleSuccess = (saved: TaskDetail) => {
     queryClient.invalidateQueries({ queryKey: taskDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new task's detail is no "leaving".
+    leaveGuard.allowLeave()
     onSuccess(saved.id)
+  }
+
+  const handleCancel = async () => {
+    if (await leaveGuard.confirmLeave()) {
+      onCancel()
+    }
   }
 
   if (mode.type === 'create') {
@@ -118,57 +146,32 @@ export function TaskFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenPr
     // Spec 0157 D-4: the Kanban's per-column "+" (status OR due-date board).
     const taskStatusId = parseEntityId(String(mode.params?.task_status_id ?? ''))
     const endDate = mode.params?.end_date != null ? String(mode.params.end_date) : null
+    // Spec 0199: "Nuovo task" from the anagrafica detail's Task tab.
+    const registryId = parseEntityId(String(mode.params?.registry_id ?? ''))
     return (
-      <TaskForm
-        mode={{ type: 'create', parentTaskId, workOrderId, workOrderStageId, taskStatusId, endDate }}
-        onSuccess={handleSuccess}
-        onCancel={onCancel}
-      />
+      <>
+        {leaveGuard.navigationGuard}
+        <TaskForm
+          mode={{ type: 'create', parentTaskId, workOrderId, workOrderStageId, taskStatusId, endDate, registryId }}
+          onSuccess={handleSuccess}
+          onCancel={() => void handleCancel()}
+        />
+      </>
     )
   }
 
   if (mode.type === 'duplicate') {
-    return <TaskDuplicateScreen taskId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-  }
-
-  return <TaskEditScreen taskId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-}
-
-interface TaskEditScreenProps {
-  taskId: number
-  onSuccess: (task: TaskDetail) => void
-  onCancel: () => void
-}
-
-/**
- * Fetches the fresh, re-authorized task detail before mounting the edit form,
- * so the partial PATCH starts from authoritative values rather than a stale
- * snapshot.
- */
-function TaskEditScreen({ taskId, onSuccess, onCancel }: TaskEditScreenProps) {
-  const { t } = useTranslation()
-  const { data: task, isLoading, isError, refetch } = useEntityDetail(taskDetailQueryKey(taskId), () =>
-    fetchTask(taskId),
-  )
-
-  if (isError) {
     return (
-      <div className="flex flex-col items-start gap-3 p-4">
-        <p className="text-sm text-destructive" role="alert">
-          {t('tasks.detail.loadError')}
-        </p>
-        <Button variant="outline" size="sm" className="bg-card" onClick={() => refetch()}>
-          {t('common.retry')}
-        </Button>
-      </div>
+      <>
+        {leaveGuard.navigationGuard}
+        <TaskDuplicateScreen taskId={mode.id} onSuccess={handleSuccess} onCancel={() => void handleCancel()} />
+      </>
     )
   }
 
-  if (isLoading || !task) {
-    return <RecordFormSkeleton />
-  }
-
-  return <TaskForm mode={{ type: 'edit', task }} onSuccess={onSuccess} onCancel={onCancel} />
+  // Spec 0195: no edit form — the detail edits in place, and the registry
+  // generates no `:id/edit` route (`generateEditRoute: false`).
+  return null
 }
 
 interface TaskDuplicateScreenProps {
@@ -216,7 +219,8 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.tasks',
   DetailScreen: TaskDetailScreen,
   FormScreen: TaskFormScreen,
-  // The "Modifica" action lives on the task card itself, as on Opportunita'.
+  // Spec 0195: the detail IS the edit form — no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
   // The form renders its own sticky identity bar (heading + actions), so the
   // hosts must not stack a second heading above it.

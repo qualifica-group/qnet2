@@ -1,16 +1,6 @@
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  BadgeCheck,
-  BellRing,
-  CheckCircle2,
-  Lock,
-  MessagesSquare,
-  Plus,
-  RotateCcw,
-  Unlock,
-  XOctagon,
-} from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -22,6 +12,7 @@ import { useStatsPanel } from '@/features/stats/use-stats-panel'
 import { NotesDialog } from '@/features/notes/notes-dialog'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { formatMinutesLabel } from '@/features/time-entries/time-entry-format'
+import { TASK_ACTION_ICONS } from '@/features/tasks/action-icons'
 import { TASKS_DOMAIN } from '@/features/tasks/api'
 import { taskColumnRenderers } from '@/features/tasks/task-column-renderers'
 import { TaskKanbanView } from '@/features/tasks/task-kanban/task-kanban-view'
@@ -29,31 +20,14 @@ import { TaskQuickCreateRow } from '@/features/tasks/task-quick-create-row'
 import { TaskViewModeSelector } from '@/features/tasks/task-view-mode-selector'
 import { useTaskBulkActionsSlot } from '@/features/tasks/use-task-bulk-actions-slot'
 import { useTaskDomainRowActions } from '@/features/tasks/use-task-domain-row-actions'
+import { TaskCompleteRowContext } from '@/features/tasks/task-complete-row-context'
 import { useTaskKanbanMode } from '@/features/tasks/use-task-kanban-mode'
 import { useTaskListUrlFilters } from '@/features/tasks/use-task-list-url-filters'
 import { useTaskListViewMode } from '@/features/tasks/use-task-list-view-mode'
 import { useTaskRowActions } from '@/features/tasks/use-task-row-actions'
 import { useTaskStatusCellIntercept } from '@/features/tasks/use-task-status-cell-intercept'
-import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableRowsAggregates } from '@/features/table/types'
-
-/**
- * The icon names `TaskColumnCatalog::actions()` advertises that the shared
- * `defaultActionIconMap` does not know: without them every domain action fell
- * back to the neutral three-dots glyph. Same glyphs as the detail's
- * `TaskActionsBar`, so an action looks the same in the row and in the detail.
- */
-const TASK_ACTION_ICONS: ActionIconMap = {
-  check: CheckCircle2,
-  'rotate-ccw': RotateCcw,
-  'badge-check': BadgeCheck,
-  'badge-x': XOctagon,
-  lock: Lock,
-  'lock-open': Unlock,
-  'message-circle-question': BellRing,
-  'messages-square': MessagesSquare,
-}
 
 /**
  * Thin `tasks` adapter over the generic table (AC-070, extended by spec
@@ -94,7 +68,11 @@ export function TasksTable() {
   const { viewMode, setViewMode } = useTaskListViewMode()
   const { kanbanMode, setKanbanMode } = useTaskKanbanMode()
 
-  const { handleAction: handleDomainAction, dialogSlot: domainDialogSlot } = useTaskDomainRowActions({
+  const {
+    handleAction: handleDomainAction,
+    completeRow,
+    dialogSlot: domainDialogSlot,
+  } = useTaskDomainRowActions({
     onMutated: handleMutated,
   })
 
@@ -166,23 +144,25 @@ export function TasksTable() {
         // shape (spec 0157 D-1) is a different SSRM request altogether, so it
         // starts its own fresh grid/selection/toolbar state rather than
         // reinterpreting Analitica's.
-        <TableView
-          key={viewMode}
-          ref={tableRef}
-          domain={TASKS_DOMAIN}
-          renderers={taskColumnRenderers}
-          iconMap={TASK_ACTION_ICONS}
-          onAction={handleAction}
-          isBusy={isBusy}
-          advancedFiltersOverride={urlFilters.override}
-          onAdvancedFiltersOverrideCleared={urlFilters.clear}
-          getBulkActions={getBulkActions}
-          disableBuiltinDelete
-          renderFooter={renderFooter}
-          pinnedRowSlot={<TaskQuickCreateRow onCreated={handleMutated} />}
-          interceptCellCommit={interceptCommit}
-          treeData={viewMode === 'synthetic'}
-        />
+        <TaskCompleteRowContext.Provider value={completeRow}>
+          <TableView
+            key={viewMode}
+            ref={tableRef}
+            domain={TASKS_DOMAIN}
+            renderers={taskColumnRenderers}
+            iconMap={TASK_ACTION_ICONS}
+            onAction={handleAction}
+            isBusy={isBusy}
+            advancedFiltersOverride={urlFilters.override}
+            onAdvancedFiltersOverrideCleared={urlFilters.clear}
+            getBulkActions={getBulkActions}
+            disableBuiltinDelete
+            renderFooter={renderFooter}
+            pinnedRowSlot={<TaskQuickCreateRow onCreated={handleMutated} />}
+            interceptCellCommit={interceptCommit}
+            treeData={viewMode === 'synthetic'}
+          />
+        </TaskCompleteRowContext.Provider>
       )}
 
       {sheet}

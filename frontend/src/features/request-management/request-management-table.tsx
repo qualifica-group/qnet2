@@ -388,6 +388,7 @@ export function RequestManagementTable() {
         onSelect={setCategoryId}
         favoriteCategoryIds={categoryTabPreferences.preferences.favorite_category_ids}
         showOnlyFavorites={categoryTabPreferences.preferences.show_only_favorites}
+        favoritesAreDefault={categoryTabPreferences.preferences.is_default}
         onToggleFavorite={categoryTabPreferences.toggleFavorite}
         onShowOnlyFavoritesChange={categoryTabPreferences.setShowOnlyFavorites}
       />

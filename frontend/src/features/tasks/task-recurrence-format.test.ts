@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
-import { formatTaskRecurrenceRule } from '@/features/tasks/task-recurrence-format'
+import { formatTaskRecurrenceRule, weekdayInitial } from '@/features/tasks/task-recurrence-format'
 import { taskRecurrenceDetail } from '@/features/tasks/task-fixtures'
 
 beforeAll(async () => {
@@ -186,5 +186,12 @@ describe('formatTaskRecurrenceRule — spec 0155 D-1', () => {
 
     expect(formatTaskRecurrenceRule(rule, i18n.t, 'en')).toBe('Every year on the 2nd Tuesday of March')
     await i18n.changeLanguage('it')
+  })
+})
+
+describe('weekdayInitial', () => {
+  it('maps the ISO weekday onto the locale initial', () => {
+    expect([1, 2, 3, 4, 5, 6, 7].map((day) => weekdayInitial(day, 'it')).join('')).toBe('LMMGVSD')
+    expect([1, 2, 3, 4, 5, 6, 7].map((day) => weekdayInitial(day, 'en')).join('')).toBe('MTWTFSS')
   })
 })

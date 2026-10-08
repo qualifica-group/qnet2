@@ -34,12 +34,14 @@ export function OperationalSiteDetailScreen({ id, onEdit }: ModuleDetailScreenPr
     data: operationalSite,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(detailQueryKey(id), () => fetchOperationalSite(id))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('operationalSites.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}
@@ -103,6 +105,7 @@ function OperationalSiteEditLoader({
     data: operationalSite,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(detailQueryKey(operationalSiteId), () =>
     fetchOperationalSite(operationalSiteId),
@@ -111,6 +114,7 @@ function OperationalSiteEditLoader({
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('operationalSites.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

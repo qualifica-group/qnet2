@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next'
 import { Building2, Handshake, Truck, Users } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
 import { enumLabelOf } from '@/features/config/enum-label'
 import type { RegistryDetailWithPermissions } from '@/features/registries/types'
@@ -13,24 +12,17 @@ import type { RegistryDetailWithPermissions } from '@/features/registries/types'
  * together — the same split `opportunity-detail-header.tsx` makes.
  */
 
-interface RegistryDetailHeaderProps {
-  registry: RegistryDetailWithPermissions
-  /** Opens the module's edit surface; absent = no edit affordance. */
-  onEdit?: () => void
-}
-
 /**
  * Identity band: monogram, name, the card's kind as subtitle, the commercial
- * pills, edit action.
+ * pills. No edit action: the record edits in place (spec 0200).
  *
  * The pills are the flags a commercial actually scans for — supplier, its
  * qualification, the state of the convenzione — and each is ABSENT when it
  * does not hold, instead of showing "Fornitore: no". A row of negations is
- * noise; the form is where a flag is set, not the card.
+ * noise; the flag rows below are where a flag is set.
  */
-export function RegistryDetailHeader({ registry, onEdit }: RegistryDetailHeaderProps) {
+export function RegistryDetailHeader({ registry }: { registry: RegistryDetailWithPermissions }) {
   const { t } = useTranslation()
-  const canEdit = registry.permissions.resource.update
   const cardKind = registry.personal_data
     ? enumLabelOf('personal_data_type', registry.personal_data.type)
     : null
@@ -61,44 +53,35 @@ export function RegistryDetailHeader({ registry, onEdit }: RegistryDetailHeaderP
           ) : null}
         </>
       }
-      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }
 
+interface RegistryStatsStripProps {
+  referents: number
+  managers: number
+  sectors: number
+  employees: number | null
+}
+
 /**
- * KPI strip: the four counts that size an anagrafica at a glance.
+ * KPI strip: the four counts that size an anagrafica at a glance — the
+ * persisted ones on the detail, the draft's, live, on create (spec 0200).
  *
  * Its labels are its OWN (`registries.detail.stats.*`), not the form's: the
  * sections below already carry "Referenti"/"Settori" on the rows that list the
  * names, and a strip repeating those words would read as the same field twice
  * rather than as a counter of it.
  */
-export function RegistryDetailStats({ registry }: { registry: RegistryDetailWithPermissions }) {
+export function RegistryStatsStrip({ referents, managers, sectors, employees }: RegistryStatsStripProps) {
   const { t } = useTranslation()
 
   return (
     <RecordStatStrip>
-      <RecordStat
-        icon={<Users />}
-        label={t('registries.detail.stats.referents')}
-        value={registry.referents.length}
-      />
-      <RecordStat
-        icon={<Users />}
-        label={t('registries.detail.stats.managers')}
-        value={registry.managers.length}
-      />
-      <RecordStat
-        icon={<Building2 />}
-        label={t('registries.detail.stats.sectors')}
-        value={registry.sectors.length}
-      />
-      <RecordStat
-        icon={<Users />}
-        label={t('registries.detail.stats.employees')}
-        value={registry.employee_count ?? <DetailEmpty />}
-      />
+      <RecordStat icon={<Users />} label={t('registries.detail.stats.referents')} value={referents} />
+      <RecordStat icon={<Users />} label={t('registries.detail.stats.managers')} value={managers} />
+      <RecordStat icon={<Building2 />} label={t('registries.detail.stats.sectors')} value={sectors} />
+      <RecordStat icon={<Users />} label={t('registries.detail.stats.employees')} value={employees ?? <DetailEmpty />} />
     </RecordStatStrip>
   )
 }

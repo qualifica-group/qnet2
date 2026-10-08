@@ -9,6 +9,7 @@ use App\Models\WorkOrder;
 use App\RequestManagement\ApplicableAttribute;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderTaskForceCloser;
+use App\Support\OperationalSiteLabel;
 use App\WorkOrders\WorkOrderAttributeResolver;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -71,6 +72,9 @@ class WorkOrderResource extends JsonResource
             'quote' => $this->summarizeQuote(),
             'contract' => $this->summarizeContract(),
             'registry' => $this->summarizeRegistry(),
+            'company' => $this->summarizeCompany(),
+            'company_site' => $this->summarizeCompanySite(),
+            'operational_site' => OperationalSiteLabel::summarize($this->quote?->operationalSite),
             'quote_lines' => $this->summarizeQuoteLines(),
             // Cast to object, non array: un array PHP vuoto serializza come
             // `[]`, e il form legge la chiave come una MAPPA (Zod
@@ -201,6 +205,30 @@ class WorkOrderResource extends JsonResource
         }
 
         return ['id' => $registry->id, 'name' => $registry->name];
+    }
+
+    /**
+     * The Societa' of the linked quote, the same live projection the Contract
+     * detail shows (ContractResource::summarizeCompany()): `companies` has no
+     * `name` column, its display name IS `denomination`.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    private function summarizeCompany(): ?array
+    {
+        $company = $this->quote?->company;
+
+        return $company === null ? null : ['id' => $company->id, 'name' => $company->denomination];
+    }
+
+    /**
+     * @return array{id: int, name: string}|null
+     */
+    private function summarizeCompanySite(): ?array
+    {
+        $site = $this->quote?->companySite;
+
+        return $site === null ? null : ['id' => $site->id, 'name' => $site->name];
     }
 
     /**

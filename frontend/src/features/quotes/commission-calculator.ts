@@ -1,3 +1,4 @@
+import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
 import type { CommissionRole, CommissionType } from '@/features/commission-configurations/types'
 
 export function roundCommission(value: number): number {
@@ -53,28 +54,79 @@ export function sumCommissionTotals(totals: CommissionTotals): number {
   return roundCommission(totals.commercial + totals.reporter + totals.supervisor + totals.supplier)
 }
 
+/**
+ * Spec 0202 D-8: a REVENUE row's margin BEFORE its imputed costs, from the
+ * direction frozen on the row. RECEIVED: the Supplier commission is the row's
+ * revenue (`s - p`); PAID: it is a cost (`n - p - s`); null: the commission
+ * does not exist (`n - p`). Imputed costs and generic costs are subtracted by
+ * the caller, so row margin and offer margin share this one formula.
+ */
+export function calculateLineMarginBeforeCosts(
+  net: number,
+  supplierCommission: number,
+  otherCommissions: number,
+  direction: SupplierCommissionDirection | null | undefined,
+): number {
+  if (direction === 'RECEIVED') {
+    return roundCommission(supplierCommission - otherCommissions)
+  }
+  return roundCommission(net - otherCommissions - (direction === 'PAID' ? supplierCommission : 0))
+}
+
+type CommissionableLine = {
+  quantity: number | null
+  unit_price: number | null
+  /** Spec 0145: resolves this row's own imputed costs via `costLines` below (D-1). */
+  client_key?: string | null
+  /** Spec 0202 D-12: frozen on a saved row, taken from the defaults response on a new one. */
+  supplier_commission_direction?: SupplierCommissionDirection | null
+  commissions?: Array<{ recipient_role: CommissionRole; commission_type: CommissionType; value: number }>
+}
+
+type CostLineInput = { offer_line_key?: string | null; quantity: number | null; unit_price: number | null }
+
+/** One row's net and its commission amount per role, on the D-1 base. */
+function lineCommissionAmounts(line: CommissionableLine, costNetByKey: Map<string, number>) {
+  const net = roundCommission((line.quantity ?? 0) * (line.unit_price ?? 0))
+  const allocatedCostNet = line.client_key ? costNetByKey.get(line.client_key) ?? 0 : 0
+  const base = calculateCommissionBaseNet(net, allocatedCostNet)
+  const perRole: CommissionTotals = { commercial: 0, reporter: 0, supervisor: 0, supplier: 0 }
+  for (const commission of line.commissions ?? []) {
+    const key = commission.recipient_role.toLowerCase() as Lowercase<CommissionRole>
+    perRole[key] = roundCommission(
+      perRole[key] + calculateCommissionAmount(commission.commission_type, commission.value, base),
+    )
+  }
+  return { net, perRole }
+}
+
 export function calculateCommissionTotals(
-  lines: Array<{
-    quantity: number | null
-    unit_price: number | null
-    /** Spec 0145: resolves this row's own imputed costs via `costLines` below (D-1). */
-    client_key?: string | null
-    commissions?: Array<{ recipient_role: CommissionRole; commission_type: CommissionType; value: number }>
-  }>,
-  costLines: Array<{ offer_line_key?: string | null; quantity: number | null; unit_price: number | null }> = [],
+  lines: CommissionableLine[],
+  costLines: CostLineInput[] = [],
 ): CommissionTotals {
   const costNetByKey = allocatedCostNetByOfferLineKey(costLines)
   const totals: CommissionTotals = { commercial: 0, reporter: 0, supervisor: 0, supplier: 0 }
   for (const line of lines) {
-    const net = roundCommission((line.quantity ?? 0) * (line.unit_price ?? 0))
-    const allocatedCostNet = line.client_key ? costNetByKey.get(line.client_key) ?? 0 : 0
-    const base = calculateCommissionBaseNet(net, allocatedCostNet)
-    for (const commission of line.commissions ?? []) {
-      const key = commission.recipient_role.toLowerCase() as Lowercase<CommissionRole>
-      totals[key] = roundCommission(
-        totals[key] + calculateCommissionAmount(commission.commission_type, commission.value, base),
-      )
+    const { perRole } = lineCommissionAmounts(line, costNetByKey)
+    for (const key of Object.keys(totals) as Array<keyof CommissionTotals>) {
+      totals[key] = roundCommission(totals[key] + perRole[key])
     }
   }
   return totals
+}
+
+/**
+ * Spec 0202 D-8: the live offer margin before costs, i.e. the sum of every
+ * row's `calculateLineMarginBeforeCosts`. The caller subtracts ALL cost rows
+ * (imputed + generic) once. Without a `commissions` block on the row (channel
+ * or permission without commissions) the direction cannot apply: `n - 0 - 0`.
+ */
+export function calculateMarginBeforeCosts(lines: CommissionableLine[], costLines: CostLineInput[]): number {
+  const costNetByKey = allocatedCostNetByOfferLineKey(costLines)
+  return lines.reduce((sum, line) => {
+    const { net, perRole } = lineCommissionAmounts(line, costNetByKey)
+    const direction = line.commissions ? line.supplier_commission_direction : null
+    const others = roundCommission(perRole.commercial + perRole.reporter + perRole.supervisor)
+    return roundCommission(sum + calculateLineMarginBeforeCosts(net, perRole.supplier, others, direction))
+  }, 0)
 }

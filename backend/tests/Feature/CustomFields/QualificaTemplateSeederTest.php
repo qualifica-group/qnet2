@@ -84,6 +84,27 @@ it('provisions the product template: months of validity plus the folder enum, id
         ->and($options->pluck('label')->all())->toBe(['Ente', 'Consulenza']);
 });
 
+it('provisions the registry tags as a multi-select relation over the tags lookup, idempotently', function (): void {
+    test()->seed(QualificaTemplateSeeder::class);
+    test()->seed(QualificaTemplateSeeder::class); // re-run: updateOrCreate, no duplicates.
+
+    $definitions = CustomFieldDefinition::query()->where('entity_type', 'registries')->get();
+
+    expect($definitions)->toHaveCount(1);
+
+    $tags = $definitions->sole();
+
+    expect($tags->key)->toBe('tags')
+        ->and($tags->label)->toBe('Tag')
+        ->and($tags->type)->toBe('relation')
+        ->and($tags->is_active)->toBeTrue()
+        ->and($tags->relation_target)->toBe([
+            'entity_type' => 'tags',
+            'cardinality' => 'many',
+            'for_select_resource' => 'tags',
+        ]);
+});
+
 it('prunes the superseded product expiration date, definition and stored values', function (): void {
     $superseded = CustomFieldDefinition::factory()->create([
         'entity_type' => 'products',

@@ -33,6 +33,12 @@ namespace App\Tables\Quotes;
  * REVENUE lines, else `null` — mirrors ContractColumnCatalog's own `alert`
  * entry (badge, `set`-filterable, never sortable — no single value to order
  * a static two-state enumeration by).
+ *
+ * Spec 0206: every column the form edits as a single field is
+ * inline-editable through QuoteCellWriter (UpdateQuoteRequest +
+ * QuoteService); `code`, `opportunity`, the aggregates, `created_at`,
+ * `next_callback_at` and `alert` stay read-only. `managers` is edited as a
+ * list of people, mapped onto the positional `manager_slots`.
  */
 final class QuoteColumnCatalog
 {
@@ -61,12 +67,23 @@ final class QuoteColumnCatalog
                 'filterable' => true,
                 'filterType' => 'text',
                 'searchable' => true,
+                // Spec 0206: blank = back to the automatic title (QuoteTitleWriter).
+                'editable' => true,
+                'nullable' => true,
             ],
             self::derivedColumn('opportunity', 'quotes.columns.opportunity'),
-            self::derivedColumn('quote_workflow_status', 'quotes.columns.quoteWorkflowStatus'),
-            self::derivedColumn('commercial', 'quotes.columns.commercial'),
-            self::derivedColumn('reporter', 'quotes.columns.reporter'),
-            self::derivedColumn('supervisor', 'quotes.columns.supervisor'),
+            [
+                ...self::derivedColumn('quote_workflow_status', 'quotes.columns.quoteWorkflowStatus'),
+                // Spec 0206, D-6: same select + transition note as Gestione Richieste.
+                'editable' => true,
+                'editor' => 'select',
+                'editableField' => 'quote_workflow_status_id',
+                'nullable' => false,
+                'notable' => true,
+            ],
+            [...self::derivedColumn('commercial', 'quotes.columns.commercial'), ...self::editableRelation('referents', 'commercial_id')],
+            [...self::derivedColumn('reporter', 'quotes.columns.reporter'), ...self::editableRelation('referents', 'reporter_id')],
+            [...self::derivedColumn('supervisor', 'quotes.columns.supervisor'), ...self::editableRelation('users', 'supervisor_id')],
             // "Gestori Account" (spec 0087, D-1/T-10) — mirrors
             // OpportunityColumnCatalog's own `managers` entry: a to-many
             // rendered as an avatar stack, not sortable (no single sort key),
@@ -85,6 +102,10 @@ final class QuoteColumnCatalog
                 'sortable' => false,
                 'filterable' => true,
                 'filterType' => 'set',
+                'editable' => true,
+                'editor' => 'multiselect',
+                'relation' => ['resource' => 'users'],
+                'editableField' => 'manager_slots',
             ],
             [
                 'id' => 'revenue_net',
@@ -125,9 +146,9 @@ final class QuoteColumnCatalog
             // Appended LAST on purpose (user directive 2026-07-30): a column
             // added in the middle would shift every user's persisted column
             // layout (spec 0001); appended, it just shows up at the end.
-            self::derivedColumn('company', 'quotes.columns.company'),
-            self::derivedColumn('company_site', 'quotes.columns.companySite'),
-            self::derivedColumn('operational_site', 'quotes.columns.operationalSite'),
+            [...self::derivedColumn('company', 'quotes.columns.company'), ...self::editableRelation('companies', 'company_id')],
+            [...self::derivedColumn('company_site', 'quotes.columns.companySite'), ...self::editableRelation('company-sites', 'company_site_id', ['company_id' => 'company'])],
+            [...self::derivedColumn('operational_site', 'quotes.columns.operationalSite'), ...self::editableRelation('operational-sites', 'operational_site_id')],
             // Appended LAST for the same reason as the three above (spec
             // 0001): a column inserted mid-catalogue would shift every user's
             // persisted layout.
@@ -152,6 +173,25 @@ final class QuoteColumnCatalog
                 'filterType' => 'set',
                 'options' => ['missing_offer_lines'],
             ],
+        ];
+    }
+
+    /**
+     * Spec 0206: the inline-editing keys of a single-id relation column —
+     * `editableField` is the form's own key, written through QuoteCellWriter;
+     * `$scope` narrows the picker by another cell of the row (the form's own
+     * dependent picker).
+     *
+     * @param  array<string, string>  $scope
+     * @return array<string, mixed>
+     */
+    private static function editableRelation(string $resource, string $editableField, array $scope = []): array
+    {
+        return [
+            'editable' => true,
+            'relation' => $scope === [] ? ['resource' => $resource] : ['resource' => $resource, 'scope' => $scope],
+            'editableField' => $editableField,
+            'nullable' => true,
         ];
     }
 

@@ -19,9 +19,9 @@ interface ManagerSlotsFieldProps {
    * Spec 0080: per-position label override (1-based, mirrors `value`'s own
    * index+1), resolved by the caller from a Product Category's configured G.A.
    * labels. A position missing from the map falls back to the default
-   * "Gestore account n" string, unchanged. OPTIONAL: Registries never passes
-   * it (decision 2 — that path keeps the default labels), which is what keeps
-   * this prop, and every existing call site, non-breaking.
+   * "Gestore account n" string, unchanged. OPTIONAL: a caller that passes
+   * none (Gestione richieste with no category labels) keeps the compact badge;
+   * the record modules pass a full map (`managerSlotLabels`) for the named layout.
    */
   labels?: Record<number, string>
   /**
@@ -108,7 +108,7 @@ export function ManagerSlotsField({
   // `title`-only tooltip is invisible on touch, exactly the reasoning the
   // read-only detail panel already applies. All-or-nothing per field, not
   // per row: a mixed column would be ragged. Callers with no `labels` at all
-  // (Registries, decision 2) keep the compact number badge unchanged.
+  // keep the compact number badge unchanged.
   const hasResolvedLabels = labels !== undefined && Object.keys(labels).length > 0
 
   /** Frozen rows are the first `lockedSlots` ones (see the prop's own note). */

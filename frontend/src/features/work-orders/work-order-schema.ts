@@ -35,8 +35,6 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
     callback_date: z.string().nullable(),
     description: z.string().nullable(),
     internal_notes: z.string().nullable(),
-    is_force_closed: z.boolean(),
-    force_close_reason: z.string().nullable(),
     quote_line_ids: z.array(z.number()),
     // "Modello di Task" (spec 0124 D-9): opzionale, immutabile dopo la
     // creazione (D-5) — resta nella shape CONDIVISA cosi' l'edit form puo'
@@ -78,25 +76,6 @@ function addMissingRequiredAttributes(
 }
 
 /**
- * AC-073: "Motivo chiusura" is required exactly when "Chiusura forzata" is
- * on, mirroring the backend rule (D-4) client-side. Shared by both schemas
- * below so the rule can never drift between create and edit.
- */
-function addForceCloseReasonIssue(
-  values: { is_force_closed: boolean; force_close_reason: string | null },
-  ctx: z.RefinementCtx,
-  t: TFunction,
-): void {
-  if (values.is_force_closed && (values.force_close_reason ?? '').trim() === '') {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['force_close_reason'],
-      message: t('workOrders.form.forceCloseReasonRequired'),
-    })
-  }
-}
-
-/**
  * Create schema. `code` is required (non-empty): the create form always
  * prefills it from `GET /work-orders/next-code` (D-1, mirrors `quotes`), so
  * an emptied field is a deliberate user action the client rejects rather than
@@ -120,7 +99,6 @@ export function buildCreateWorkOrderSchema(t: TFunction, attributes: ApplicableA
           message: t('workOrders.form.quoteRequired'),
         })
       }
-      addForceCloseReasonIssue(values, ctx, t)
       addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
     })
 }
@@ -132,7 +110,6 @@ export function buildCreateWorkOrderSchema(t: TFunction, attributes: ApplicableA
  */
 export function buildUpdateWorkOrderSchema(t: TFunction, attributes: ApplicableAttributeSummary[] = []) {
   return z.object(baseFields(t, attributes)).superRefine((values, ctx) => {
-    addForceCloseReasonIssue(values, ctx, t)
     addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
   })
 }

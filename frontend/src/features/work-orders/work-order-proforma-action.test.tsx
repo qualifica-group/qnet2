@@ -7,7 +7,7 @@ import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { createRowActionsRenderer } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { ProformaSummary } from '@/features/proforma-requests/types'
-import { WORK_ORDER_ACTION_ICONS, useProformaActionState } from '@/features/work-orders/proforma-row-action'
+import { PROFORMA_ACTION_ICONS, useProformaActionState } from '@/features/work-orders/proforma-row-action'
 import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
 
 const fetchSummaryMock = vi.fn<(id: number) => Promise<ProformaSummary>>()
@@ -46,7 +46,7 @@ function renderActionCell(status: string, onAction = vi.fn()) {
   const resolveActionState = renderHook(() => useProformaActionState()).result.current
   const Cell = createRowActionsRenderer([PROFORMA_ACTION], onAction, {
     resolveActionState,
-    iconMap: WORK_ORDER_ACTION_ICONS,
+    iconMap: PROFORMA_ACTION_ICONS,
   })
   const params = { data: row(status) } as unknown as ICellRendererParams
   return render(

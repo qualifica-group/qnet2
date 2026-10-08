@@ -141,8 +141,24 @@ class QualificaQuoteLayoutSeeder extends Seeder
 
     public function run(): void
     {
+        // Step 1: the codes the APL catalogues dropped leave their category,
+        // assignment and form alike, so the layouts below compose without them.
+        $this->retireAplAttributes();
+
+        // Step 2: one form per category.
         foreach ($this->layoutCategories() as $category) {
             $this->seedLayout($category);
+        }
+    }
+
+    private function retireAplAttributes(): void
+    {
+        foreach (AplPracticeCatalogue::RETIRED_ATTRIBUTES as $categoryName => $codes) {
+            $category = ProductCategory::query()->where('name', $categoryName)->first();
+
+            if ($category !== null) {
+                $this->retireCategoryAttributeCodes($category, $codes, AttributeContext::Quote);
+            }
         }
     }
 
@@ -237,7 +253,32 @@ class QualificaQuoteLayoutSeeder extends Seeder
         }
 
         return $this->isRetiredECampusComposition($blob)
+            || $this->isPreviousOwnForm($category, $blob, $effective)
             || $this->composesAs($blob, $this->highlightedAsBefore($this->sections($category, $effective)));
+    }
+
+    /**
+     * Whether $blob is the form a previous revision seeded for a category
+     * with a form of its own (AplPracticeCatalogue::PREVIOUS_FORMS), white or
+     * with its PREVIOUSLY_HIGHLIGHTED sections grey. Composed from today's
+     * codes: a field added since is simply absent from the old rows, and one
+     * retired since was stripped from the blob, so the filter leaves exactly
+     * what is stored.
+     *
+     * @param  array<string, mixed>  $blob
+     * @param  list<string>  $effective
+     */
+    private function isPreviousOwnForm(ProductCategory $category, array $blob, array $effective): bool
+    {
+        $previous = AplPracticeCatalogue::PREVIOUS_FORMS[$category->name] ?? null;
+
+        if ($previous === null) {
+            return false;
+        }
+
+        $sections = $this->compose($previous, $effective);
+
+        return $this->composesAs($blob, $sections) || $this->composesAs($blob, $this->highlightedAsBefore($sections));
     }
 
     /**

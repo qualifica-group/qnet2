@@ -3,7 +3,9 @@
 namespace App\Http\Requests\ProductTypologies;
 
 use App\DataObjects\ProductTypologies\CreateProductTypologyData;
+use App\Enums\SupplierCommissionDirection;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Support\BadgeTokens;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -45,6 +47,25 @@ class StoreProductTypologyRequest extends FormRequest
             'name' => ['required', 'string', 'max:'.self::NAME_MAX, Rule::unique('product_typologies', 'name')],
             'code' => ['required', 'string', 'max:'.self::CODE_MAX, 'regex:/^[a-z][a-z0-9_]*$/', Rule::unique('product_typologies', 'code')],
             'description' => ['sometimes', 'nullable', 'string', 'max:'.self::DESCRIPTION_MAX],
+            'color' => ['required', 'string', Rule::in(BadgeTokens::colors())],
+            'supplier_commission_enabled' => ['sometimes', 'boolean'],
+            'supplier_commission_direction' => $this->directionRules(),
+        ];
+    }
+
+    /**
+     * The direction is mandatory when the switch is on (spec 0202, D-7); with
+     * the switch off a submitted value is accepted but discarded (the Service
+     * forces null).
+     *
+     * @return array<int, mixed>
+     */
+    private function directionRules(): array
+    {
+        return [
+            'nullable',
+            Rule::requiredIf(fn (): bool => $this->boolean('supplier_commission_enabled')),
+            Rule::enum(SupplierCommissionDirection::class),
         ];
     }
 

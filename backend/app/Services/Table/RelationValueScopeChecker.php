@@ -6,8 +6,11 @@ namespace App\Services\Table;
 
 use App\DataObjects\Shared\ForSelectQuery;
 use App\Services\CampaignService;
+use App\Services\CompanyService;
+use App\Services\CompanySiteService;
 use App\Services\OperationalSiteService;
 use App\Services\ProductService;
+use App\Services\ReferentService;
 use App\Services\RegistryService;
 use App\Services\SourceService;
 use App\Services\TaskImportanceService;
@@ -52,6 +55,9 @@ final class RelationValueScopeChecker
         private readonly TaskPriorityService $taskPriorities,
         private readonly TaskImportanceService $taskImportances,
         private readonly WorkOrderService $workOrders,
+        private readonly ReferentService $referents,
+        private readonly CompanyService $companies,
+        private readonly CompanySiteService $companySites,
     ) {}
 
     /**
@@ -80,6 +86,11 @@ final class RelationValueScopeChecker
             'task-priorities' => $this->taskPriorities->forSelect($query)->items,
             'task-importances' => $this->taskImportances->forSelect($query)->items,
             'work-orders' => $this->workOrders->forSelect($query)->items,
+            // Spec 0206, D-10: the team and company pickers of the Offerte,
+            // Anagrafiche and Opportunita' grids.
+            'referents' => $this->referents->forSelect($query)->items,
+            'companies' => $this->companies->forSelect($query)->items,
+            'company-sites' => $this->companySites->forSelect($query)->items,
             default => null,
         };
 

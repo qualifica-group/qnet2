@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0200-registry-inline-editable-detail" status="approved" owner="utente" date="2026-10-06">
+
+  <goal>
+    L'Anagrafica riceve le stesse modifiche della Commessa (spec 0196) e dell'Opportunita' (spec 0198): niente pagina
+    di modifica, il dettaglio (`/registries/:id` e lo stesso schermo nel pannello modale) si edita in place campo per
+    campo, campi flessibili compresi; la creazione e' una replica del dettaglio a righe chiuse, come nei Task.
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-06, "prendi anagrafica e fai le stesse modifiche di commesse ... soprattutto per i campi
+      flessibili. Anche per creazione stessa cosa come fatto in task"): regole 0195 D-2/D-3/D-6/D-7/D-8/D-9 applicate
+      alle Anagrafiche con `RecordInlineField`, `useDraftInlineEdit`, `useFormLeaveGuard` condivisi.
+    - D-2: sezioni del dettaglio (stesso ordine in creazione): Dati anagrafici, Relazioni (Fonte, Settori, Commerciale,
+      Segnalatore), Dati commerciali (Gruppo IVA, Fornitore, Fornitore qualificato solo se fornitore, Stato
+      convenzione, Classe dimensionale, Numero dipendenti, Note convenzione), Team (Supervisore, Gestori account: una
+      riga per tutti gli slot, slot vuoti visibili), Referenti (a tutta larghezza), Campi personalizzati.
+    - D-3 (campi flessibili): i campi personalizzati (spec 0021, es. Tag) compaiono nel dettaglio, raggruppati per
+      `group` come nel form; ogni campo e' una riga editabile in place con lo STESSO controllo del form
+      (`CUSTOM_FIELD_COMPONENT_REGISTRY` dentro `MetaField`), valore letto per tipo (relazione = etichette via
+      for-select, enum = etichetta dell'opzione, booleano Si/No, tabella in sola lettura). Il salvataggio invia il solo
+      campo cambiato (diff sparso esistente `buildCustomFieldsUpdate`). Componente generico in `features/custom-fields`.
+    - D-4 (dati anagrafici): la scheda anagrafica e' UNA riga ("Dati anagrafici") che si apre sul
+      `PersonalDataCardForm` esistente; il PATCH porta `personal_data` solo se la scheda e' cambiata, e la validazione
+      della scheda scatta solo allora (un'anagrafica storica incompleta non blocca la modifica degli altri campi).
+      Matita governata da `personal_data.type`. Contatti e Indirizzi restano nella colonna laterale e diventano
+      gestibili in place con i manager esistenti in persistenza immediata (stesso percorso del vecchio form di
+      modifica), gated da `personal_data.contacts`/`personal_data.addresses`.
+    - D-5 (rivista dall'utente 2026-10-06, "/registries/new allineato a come e' stato fatto l'edit"): creazione =
+      replica del dettaglio (card con monogramma e nome live, striscia KPI live, stesse sezioni a righe chiuse con
+      Fatto/Ripristina, Salva valida tutto, pulsante Indietro come il dettaglio). Anche i Dati anagrafici sono una riga
+      chiusa: "Fatto" non la chiude finche' la scheda e' incompleta, un Salva rifiutato per la scheda la riapre.
+      Contatti e Indirizzi sono le stesse card del dettaglio ("Aggiungi contatto/indirizzo"), tenute in bozza fino al
+      Salva (telefono sempre obbligatorio, senza campi rapidi); sopra, l'avviso Possibile duplicato. Sparisce il
+      Riepilogo laterale. Uscire senza salvare chiede conferma.
+    - D-6 (bug utente 2026-10-06): un campo personalizzato multiplo mai valorizzato arriva dal server come `null`;
+      lo schema lo accetta come "non impostato" (prima rifiutava ogni salvataggio del record).
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica: PATCH /api/registries/{id} parziale esistente (gia' restituisce `permissions`).</backend>
+    <frontend>
+      Rotta `registries/:id/edit` rimossa; `RegistryFormPage` solo creazione; `RegistryDetailView` perde `onEdit`,
+      guadagna `onChanged`; registry `registries`: `generateEditRoute: false`. `updateRegistry` restituisce
+      `RegistryDetailWithPermissions`. `useRegistryForm` in edit = `values` + `keepDirtyValues`, reset dopo PATCH;
+      submit in `useRegistryFormSubmit`. Nuovi `useRegistryInlineEdit`, `CustomFieldRecordSections`.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/registries/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su un campo editabile (campi personalizzati compresi): Salva invia il solo campo cambiato;
+      Annulla/Esc/clic fuori non chiamano.</ac>
+    <ac id="AC-003">Senza `update` nessuna matita; Contatti/Indirizzi in sola lettura.</ac>
+    <ac id="AC-004">Dati anagrafici: Salva invia `personal_data`; scheda invalida = nessun PATCH, errori nell'editor.</ac>
+    <ac id="AC-005">Creazione: righe chiuse, Fatto/Ripristina, Salva valida tutto (nessun POST se invalido, telefono
+      obbligatorio), uscita con conferma.</ac>
+    <ac id="AC-006">Guida in-app IT/EN `registries` aggiornata (modifica dal dettaglio, creazione).</ac>
+  </acceptance>
+</spec>

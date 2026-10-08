@@ -200,22 +200,35 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // 0187's `2026_10_01_000000_add_last_used_at_index_to_personal_access_tokens`
     // (122nd), the online-users read index, and spec 0188's
     // `2026_10_02_100000_add_simplified_offer_line_override_to_product_categories_table`
-    // (123rd), the per-node simplified offer-line override, and spec 0189's
-    // `2026_10_05_100000_create_financial_accounts_table` (124th), and spec
-    // 0193's `2026_10_06_100000_create_proforma_requests_table` (125th), and spec
-    // 0194's five migrations `2026_10_07_100000_add_installment_config_to_payment_methods_table`
-    // (126th) through `2026_10_07_100400_create_invoice_installments_table` (130th), and spec
-    // 0195's `2026_10_08_100000_add_purpose_to_outbound_emails_table` (131st), and spec 0196's
-    // `2026_10_09_100000_add_redistribution_snapshot_to_invoice_installments_table` (132nd), and spec 0197's
-    // `2026_10_10_100000_add_residual_amount_to_invoice_installments_table` (133rd).
-    // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 133]);
-    // `2026_10_02_120000_add_old_id_to_operational_records_tables` (1st),
+    // (123rd), the per-node simplified offer-line override, and
+    // `2026_10_02_120000_add_old_id_to_operational_records_tables` (124th),
     // the legacy anchors of registries/opportunities/quotes/work orders, and
-    // spec 0190's `2026_10_02_130000_create_work_order_costs_table` (2nd),
-    // the work order's actual costs.
+    // spec 0190's `2026_10_02_130000_create_work_order_costs_table` (125th),
+    // the work order's actual costs, and spec 0194's
+    // `2026_10_05_100000_add_is_assignable_to_employment_profiles_table`
+    // (126th), the "Assegnabile" switch, and spec 0189's
+    // `2026_10_05_100000_create_financial_accounts_table` (127th), and spec
+    // 0193's `2026_10_06_100000_create_proforma_requests_table` (128th), and
+    // spec 0194's five invoicing migrations
+    // `2026_10_07_100000_add_installment_config_to_payment_methods_table`
+    // through `2026_10_07_100400_create_invoice_installments_table`, and spec
+    // 0201's `2026_10_07_100000_create_work_order_payment_statuses_table` and
+    // `2026_10_07_100100_create_work_order_line_payments_table`, the commessa
+    // line payment statuses and data (129th-135th interleaved by filename),
+    // and spec 0203's `2026_10_07_105900_add_old_id_to_commission_configurations_table`
+    // (136th), the legacy anchor of commission rules, and spec 0202's
+    // `2026_10_07_110000_add_supplier_commission_to_product_typologies_table`
+    // (137th) and `2026_10_07_110100_add_supplier_commission_direction_to_quote_lines_table`
+    // (138th), the Supplier commission direction by typology, and spec 0204's
+    // `2026_10_07_120000_add_color_to_product_typologies_table` (139th), the
+    // typology badge color, and spec 0195's
+    // `2026_10_08_100000_add_purpose_to_outbound_emails_table` (140th), and
+    // spec 0196's `2026_10_09_100000_add_layout_id_to_invoices_table` (141st)
+    // and `2026_10_09_100000_add_redistribution_snapshot_to_invoice_installments_table`
+    // (142nd), and spec 0197's
+    // `2026_10_10_100000_add_residual_amount_to_invoice_installments_table` (143rd).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 2]);
+    Artisan::call('migrate:rollback', ['--step' => 143]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

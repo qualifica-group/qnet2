@@ -48,6 +48,11 @@ use Illuminate\Database\Eloquent\Model;
  * with a genuine 403 rather than this ceiling's usual 422 (D-12, AC-028):
  * unlike every other protected field, submitting it without the mandate is
  * refused outright, not merely as a no-op change the actor cannot make.
+ * On an existing Task two more gates fold in (spec 0195), so the detail's
+ * in-place editors never offer a write the PATCH refuses: "may write" is the
+ * Policy's record-level `update` (see actorMayWrite()), and a frozen Task
+ * (TaskWriteLock::isStructurallyLocked()) leaves only its operative keys
+ * editable.
  * In CREATE context (`$model === null`) that extra gate is skipped
  * on purpose — there is no record yet to hold a role on, and whoever creates
  * the Task becomes its creator, so every field simply follows
@@ -175,6 +180,9 @@ class TasksAuthorization extends AbstractResourceAuthorization
         $mayWrite = $this->actorMayWrite($actor, $model);
         $mayEditProtectedFields = $model === null
             || ($model instanceof Task && TaskAbilityResolver::canUpdateProtectedFields($actor, $model));
+        // Spec 0195: on a frozen Task the PATCH admits only the operative keys
+        // (TaskWriteLock), so every other field is readonly here too.
+        $isFrozen = $this->isPersistedTask($model) && TaskWriteLock::isStructurallyLocked($model, $actor);
 
         $ceiling = [];
 
@@ -196,7 +204,9 @@ class TasksAuthorization extends AbstractResourceAuthorization
 
             $required = in_array($key, self::MANDATORY_FIELDS, true);
             $isProtected = in_array($key, TaskAbilityResolver::PROTECTED_FIELDS, true);
-            $editable = $mayWrite && (! $isProtected || $mayEditProtectedFields);
+            $editable = $mayWrite
+                && (! $isProtected || $mayEditProtectedFields)
+                && (! $isFrozen || in_array($key, TaskWriteLock::OPERATIVE_KEYS, true));
 
             $ceiling[$key] = $editable
                 ? FieldPermission::visibleEditable(required: $required)
@@ -204,6 +214,31 @@ class TasksAuthorization extends AbstractResourceAuthorization
         }
 
         return $ceiling;
+    }
+
+    /**
+     * Spec 0195: on an existing Task, "may write" is the Policy's own
+     * `update` decision (ability AND visibility scope AND record-role matrix,
+     * TaskPolicy::update()) — a bare watcher holding `tasks.update` may not
+     * PATCH the Task, so no field, nor `change_status`/`close_via_status`,
+     * may advertise otherwise. The create context, and the unsaved `new Task`
+     * the grid resolves its editable columns against, keep the ability alone.
+     */
+    protected function actorMayWrite(User $actor, ?Model $model): bool
+    {
+        if ($this->isPersistedTask($model)) {
+            return $actor->can('update', $model);
+        }
+
+        return parent::actorMayWrite($actor, $model);
+    }
+
+    /**
+     * @phpstan-assert-if-true Task $model
+     */
+    private function isPersistedTask(?Model $model): bool
+    {
+        return $model instanceof Task && $model->exists;
     }
 
     /**

@@ -1,6 +1,9 @@
 <?php
 
+use App\Enums\TaskStatusGroup;
 use App\Models\Task;
+use App\Models\TaskStatus;
+use App\Models\TaskType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
@@ -26,6 +29,27 @@ it('D-5: GET exposes each subtask\'s own position and permissions.actions', func
         ->assertJsonPath('data.subtasks.0.id', $child->id)
         ->assertJsonPath('data.subtasks.0.position', 3)
         ->assertJsonPath('data.subtasks.0.permissions.actions.delete', true);
+});
+
+// The detail tints each child with its type and marks it done off its status
+// phase, the same way the grid's title cell does (user directive 2026-10-06).
+it('GET exposes each subtask\'s own type badge and status phase', function () {
+    $actor = taskActorWith(['view']);
+    $parent = Task::factory()->forCreator($actor)->create();
+    $type = TaskType::factory()->create(['color' => 'blue', 'icon' => 'phone']);
+    $status = TaskStatus::factory()->group(TaskStatusGroup::ClosedPositive)->create();
+    Task::factory()->childOf($parent)->forCreator($actor)->create([
+        'task_type_id' => $type->id,
+        'task_status_id' => $status->id,
+    ]);
+    Task::factory()->childOf($parent)->forCreator($actor)->create(['subtask_position' => 1]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/tasks/{$parent->id}")
+        ->assertOk()
+        ->assertJsonPath('data.subtasks.0.task_type', ['id' => $type->id, 'name' => $type->name, 'color' => 'blue', 'icon' => 'phone'])
+        ->assertJsonPath('data.subtasks.0.task_status.group', TaskStatusGroup::ClosedPositive->value)
+        ->assertJsonPath('data.subtasks.1.task_type', null);
 });
 
 it('D-5: a subtask\'s own permissions.actions.delete is false for an actor without the mandate on it', function () {

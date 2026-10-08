@@ -2,6 +2,9 @@
 
 namespace App\Tables\Registries;
 
+use App\Enums\AgreementStatusEnum;
+use App\Enums\SizeClassEnum;
+
 /**
  * Declarative column/filter/action catalogue for the `registries` domain
  * (spec 0020, "Anagrafiche").
@@ -9,10 +12,11 @@ namespace App\Tables\Registries;
  * Extracted out of RegistriesTableDefinition (file-size split,
  * engineering.md §6): pure data (no logic), mirroring ReferentColumnCatalog.
  *
- * `source` has no real DB column of its own (it is the related Source's
- * name) — DERIVED, handled by RegistriesTableDefinition's
- * applyDerivedFilter/applyDerivedSort/distinctValues, mirroring
- * ReferentsTableDefinition's `referent_type`. `is_supplier`/
+ * `source`/`commercial`/`supervisor`/`reporter` have no real DB column of
+ * their own (each is the related row's name) and `managers` is the
+ * `registry_user` pivot (to-many, labelled "Operatori") — all DERIVED,
+ * handled by RegistryRelationColumns, mirroring the Opportunita' catalogue;
+ * `managers` is filterable but not sortable (no single sort key). `is_supplier`/
  * `agreement_status`/`size_class` ARE real columns, so the generic engine
  * handles their `set` filter and sort; only their distinct-values need a
  * definition override (cast-bypassing `toBase()`, mirroring
@@ -20,6 +24,12 @@ namespace App\Tables\Registries;
  * contacts (shared PrimaryContactColumn::format(), like Users/Referents) but,
  * unlike those two, is neither sortable nor filterable here (spec 0020 data
  * contract) — display-only.
+ *
+ * Spec 0206: every column the form edits as a single field is
+ * inline-editable through RegistryCellWriter (the form's own
+ * UpdateRegistryRequest + RegistryService); `name` (the card's display name),
+ * `primary_contact` and `created_at` stay read-only. `managers` is edited as
+ * a list of people, mapped onto the positional `manager_slots`.
  */
 final class RegistryColumnCatalog
 {
@@ -51,6 +61,7 @@ final class RegistryColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'set',
+                ...self::editableRelation('sources', 'source_id'),
             ],
             [
                 'id' => 'is_supplier',
@@ -60,6 +71,9 @@ final class RegistryColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'set',
+                'editable' => true,
+                'editor' => 'boolean',
+                'nullable' => false,
             ],
             [
                 'id' => 'agreement_status',
@@ -69,6 +83,10 @@ final class RegistryColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'set',
+                'options' => array_column(AgreementStatusEnum::cases(), 'value'),
+                'editable' => true,
+                'editor' => 'enum',
+                'nullable' => true,
             ],
             [
                 'id' => 'size_class',
@@ -78,6 +96,10 @@ final class RegistryColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'set',
+                'options' => array_column(SizeClassEnum::cases(), 'value'),
+                'editable' => true,
+                'editor' => 'enum',
+                'nullable' => true,
             ],
             [
                 // The card's primary contacts (shared PrimaryContactColumn),
@@ -90,6 +112,24 @@ final class RegistryColumnCatalog
                 'visible' => true,
                 'sortable' => false,
                 'filterable' => false,
+            ],
+            [...self::relationColumn('commercial'), ...self::editableRelation('referents', 'commercial_id')],
+            [...self::relationColumn('supervisor'), ...self::editableRelation('users', 'supervisor_id')],
+            [...self::relationColumn('reporter'), ...self::editableRelation('referents', 'reporter_id')],
+            [
+                // Account managers (registry_user pivot, to-many), rendered as
+                // an avatar stack under the "Operatori" label.
+                'id' => 'managers',
+                'label' => 'registries.columns.managers',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => true,
+                'filterType' => 'set',
+                'editable' => true,
+                'editor' => 'multiselect',
+                'relation' => ['resource' => 'users'],
+                'editableField' => 'manager_slots',
             ],
             [
                 'id' => 'created_at',
@@ -114,7 +154,47 @@ final class RegistryColumnCatalog
             ['columnId' => 'is_supplier', 'type' => 'set'],
             ['columnId' => 'agreement_status', 'type' => 'set'],
             ['columnId' => 'size_class', 'type' => 'set'],
+            ['columnId' => 'commercial', 'type' => 'set'],
+            ['columnId' => 'supervisor', 'type' => 'set'],
+            ['columnId' => 'reporter', 'type' => 'set'],
+            ['columnId' => 'managers', 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],
+        ];
+    }
+
+    /**
+     * Spec 0206: the inline-editing keys of a single-id relation column —
+     * `editableField` is the form's own key, written through
+     * RegistryCellWriter.
+     *
+     * @return array<string, mixed>
+     */
+    private static function editableRelation(string $resource, string $editableField): array
+    {
+        return [
+            'editable' => true,
+            'relation' => ['resource' => $resource],
+            'editableField' => $editableField,
+            'nullable' => true,
+        ];
+    }
+
+    /**
+     * A simple relation-name derived column (own FK on the registry), sorted
+     * via a correlated subquery and filtered via whereHas by name.
+     *
+     * @return array<string, mixed>
+     */
+    private static function relationColumn(string $id): array
+    {
+        return [
+            'id' => $id,
+            'label' => "registries.columns.{$id}",
+            'type' => 'text',
+            'visible' => true,
+            'sortable' => true,
+            'filterable' => true,
+            'filterType' => 'set',
         ];
     }
 

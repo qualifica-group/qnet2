@@ -50,6 +50,8 @@ const EDIT_PERMISSIONS: ResourcePermissions = {
     name: EDITABLE,
     code: READONLY,
     description: EDITABLE,
+    supplier_commission_enabled: EDITABLE,
+    supplier_commission_direction: EDITABLE,
   },
   actions: {},
 }
@@ -75,6 +77,9 @@ function productTypology(
     name: 'Kilogram',
     code: 'kilogram',
     description: 'Mass unit',
+    color: 'blue',
+    supplier_commission_enabled: false,
+    supplier_commission_direction: null,
     created_at: null as unknown as string,
     updated_at: null as unknown as string,
     permissions: EDIT_PERMISSIONS,
@@ -123,6 +128,23 @@ describe('ProductTypologyForm — create (spec 0099)', () => {
     expect(createProductTypologyMock).not.toHaveBeenCalled()
   })
 
+  it('starts with the gray color and sends the one picked (spec 0204 D-3)', async () => {
+    createProductTypologyMock.mockResolvedValue(productTypology())
+
+    render(
+      <ProductTypologyForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Kilogram' } })
+    fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: 'kilogram' } })
+    fireEvent.click(screen.getByRole('button', { name: /gray/i }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Blue' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(createProductTypologyMock).toHaveBeenCalledWith(expect.objectContaining({ color: 'blue' })))
+  })
+
   it('submits the create payload on save', async () => {
     createProductTypologyMock.mockResolvedValue(productTypology())
     const onSuccess = vi.fn()
@@ -139,10 +161,65 @@ describe('ProductTypologyForm — create (spec 0099)', () => {
     await waitFor(() => expect(createProductTypologyMock).toHaveBeenCalledTimes(1))
     expect(createProductTypologyMock).toHaveBeenCalledWith({
       name: 'Kilogram',
-        code: 'kilogram',
+      code: 'kilogram',
       description: null,
+      color: 'gray',
+      supplier_commission_enabled: false,
+      supplier_commission_direction: null,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(productTypology()))
+  })
+})
+
+describe('ProductTypologyForm — supplier commission (spec 0202)', () => {
+  it('hides the direction until the switch is on and requires it then', async () => {
+    render(
+      <ProductTypologyForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('switch', { name: /Supplier commission calculation/ }))
+    expect(await screen.findByRole('combobox', { name: /Direction/ })).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Ente' } })
+    fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: 'ente' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(
+      await screen.findByText('The direction is required when the Supplier commission is enabled.'),
+    ).toBeInTheDocument()
+    expect(createProductTypologyMock).not.toHaveBeenCalled()
+  })
+
+  it('sends a null direction after switching the commission off', async () => {
+    metaPermissions = EDIT_PERMISSIONS
+    updateProductTypologyMock.mockResolvedValue(productTypology())
+
+    render(
+      <ProductTypologyForm
+        mode={{
+          type: 'edit',
+          productTypology: productTypology({
+            supplier_commission_enabled: true,
+            supplier_commission_direction: 'PAID',
+          }),
+        }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    fireEvent.click(screen.getByRole('switch', { name: /Supplier commission calculation/ }))
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(updateProductTypologyMock).toHaveBeenCalledTimes(1))
+    expect(updateProductTypologyMock.mock.calls[0][1]).toEqual({
+      supplier_commission_enabled: false,
+      supplier_commission_direction: null,
+    })
   })
 })
 

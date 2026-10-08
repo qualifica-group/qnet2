@@ -45,6 +45,7 @@ export function RoleDetailView({ roleId, onEdit }: RoleDetailProps) {
     data: role,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(['roles', 'detail', roleId], () => fetchRole(roleId))
   const catalogueQuery = usePermissionCatalogue()
@@ -52,6 +53,7 @@ export function RoleDetailView({ roleId, onEdit }: RoleDetailProps) {
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('roles.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

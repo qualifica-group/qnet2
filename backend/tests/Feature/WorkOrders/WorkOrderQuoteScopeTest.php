@@ -100,8 +100,10 @@ it('AC-052: per-row actions in a scoped grid still come from WorkOrderPolicy, ne
         'startRow' => 0, 'endRow' => 25, 'quoteId' => $quote->id,
     ])->assertOk();
 
+    // REQUIREMENT CHANGED (user directive 2026-10-06): `update` now also
+    // grants the per-row "Chiusura forzata" action, still from the Policy.
     $row = $response->json('items.0');
-    expect($row['actions'])->toBe(['view'])
+    expect($row['actions'])->toBe(['view', 'force_close'])
         ->and($row['actions'])->not->toContain('delete');
 });
 

@@ -89,6 +89,32 @@ final class CategoryBusinessFunctionLinker
     }
 
     /**
+     * Makes every category among $createdIds whose EFFECTIVE function is a
+     * REDIRECTED_FUNCTIONS replacement a container: the legacy trees filed
+     * there are history, never a classification target (user directive
+     * 2026-10-05). Scoped to the nodes the caller just created, so an
+     * operator's later choice on an older node is never undone. Per-model
+     * updates, so the activity log records them.
+     *
+     * @param  list<int>  $createdIds
+     */
+    public function closeRedirected(array $createdIds): void
+    {
+        $replacementIds = BusinessFunction::query()->whereIn('name', array_values(self::REDIRECTED_FUNCTIONS))->pluck('id')->all();
+
+        if ($createdIds === [] || $replacementIds === []) {
+            return;
+        }
+
+        ProductCategory::query()
+            ->whereIntegerInRaw('id', $createdIds)
+            ->where('is_selectable', true)
+            ->get()
+            ->filter(fn (ProductCategory $category): bool => in_array($this->hierarchy->effectiveBusinessFunction($category)['id'] ?? null, $replacementIds, true))
+            ->each(fn (ProductCategory $category) => $category->update(['is_selectable' => false]));
+    }
+
+    /**
      * Assigns the external function to an ADOPTED category only when the slot
      * is free: no own value (a qnet assignment is never overwritten), none
      * inherited from an ancestor, none owned by a descendant.

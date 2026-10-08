@@ -189,6 +189,38 @@ it('AC-014: a layout configured on only one of two categories precedes the synth
     expect($sections[1]['title'])->toBe('Altre informazioni');
 });
 
+it('exposes the view-mode layout for the detail next to the edit-mode one the form hydrates from', function () {
+    ['category' => $category, 'product' => $product] = quoteAttributesCategory('viewed_field');
+
+    AttributeLayout::factory()->for($category, 'productCategory')
+        ->withCodes(['viewed_field'], title: 'Shared Section')
+        ->create(['context' => AttributeContext::Quote->value, 'form_mode' => LayoutFormScope::All->value]);
+    AttributeLayout::factory()->for($category, 'productCategory')
+        ->withCodes(['viewed_field'], title: 'Detail Section')
+        ->create(['context' => AttributeContext::Quote->value, 'form_mode' => LayoutFormScope::View->value]);
+
+    Sanctum::actingAs(quoteAttributesUserWith(['create']));
+
+    $created = createQuoteWithOfferLine(auth()->user(), $product)->assertCreated();
+
+    expect($created->json('data.attribute_layout.sections.0.title'))->toBe('Shared Section')
+        ->and($created->json('data.attribute_view_layout.sections.0.title'))->toBe('Detail Section');
+});
+
+it('falls back to the shared layout for the detail when no view-mode layout is configured', function () {
+    ['category' => $category, 'product' => $product] = quoteAttributesCategory('shared_field');
+
+    AttributeLayout::factory()->for($category, 'productCategory')
+        ->withCodes(['shared_field'], title: 'Shared Section')
+        ->create(['context' => AttributeContext::Quote->value, 'form_mode' => LayoutFormScope::All->value]);
+
+    Sanctum::actingAs(quoteAttributesUserWith(['create']));
+
+    $created = createQuoteWithOfferLine(auth()->user(), $product)->assertCreated();
+
+    expect($created->json('data.attribute_view_layout.sections.0.title'))->toBe('Shared Section');
+});
+
 // ---------------------------------------------------------------------------
 // AC-015 — form-context matches what saving the same lines would produce
 // ---------------------------------------------------------------------------

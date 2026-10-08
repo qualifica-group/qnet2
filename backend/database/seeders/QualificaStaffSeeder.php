@@ -16,9 +16,11 @@ use Illuminate\Database\Seeder;
  * and Segnatempo, and its first and last name on the anagrafica.
  *
  * CREATE-ONLY, unlike QualificaOperatorSeeder: an email that already has an
- * account is skipped entirely — its role, name and password were decided
- * elsewhere (the roster, the admin UI) and are never overwritten. A re-run is
- * therefore a no-op for every account it created before.
+ * account keeps its role, name and password — they were decided elsewhere
+ * (the roster, the admin UI) and are never overwritten. The one write on an
+ * existing account is a MISSING employment profile, created with the
+ * "Assegnabile" switch off (spec 0194 D-5); a profile that exists is never
+ * touched. A re-run is therefore a no-op for every account it created before.
  *
  * It seeds the roles itself (QualificaRoleSeeder) so it stays runnable on its
  * own.
@@ -36,18 +38,21 @@ class QualificaStaffSeeder extends Seeder
         $created = 0;
 
         foreach (StaffRoster::USERS as [$firstName, $lastName, $email]) {
-            if (User::query()->where('email', $email)->exists()) {
-                continue;
+            $user = User::query()->where('email', $email)->first();
+
+            if ($user === null) {
+                $user = $this->createAccount($firstName, $lastName, $email);
+                $created++;
             }
 
-            $this->createAccount($firstName, $lastName, $email);
-            $created++;
+            // Staff is never assignable; an existing profile is left alone.
+            $user->employment()->firstOrCreate([], ['is_assignable' => false]);
         }
 
         $this->command?->info(sprintf('%d staff accounts created, %d already present.', $created, count(StaffRoster::USERS) - $created));
     }
 
-    private function createAccount(string $firstName, string $lastName, string $email): void
+    private function createAccount(string $firstName, string $lastName, string $email): User
     {
         $user = new User;
         $user->email = $email;
@@ -59,5 +64,7 @@ class QualificaStaffSeeder extends Seeder
         $user->save();
         $user->syncRoles([OperatorRoleCatalogue::BASE_ROLE]);
         $this->syncPersonName($user, $firstName, $lastName);
+
+        return $user;
     }
 }

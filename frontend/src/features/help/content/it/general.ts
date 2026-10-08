@@ -182,6 +182,7 @@ const guide: HelpGuide = {
           headers: ['Domanda', 'Risposta'],
           rows: [
             ['Non vedo una voce di menu o un pulsante descritto nel manuale.', 'Il menu e le azioni dipendono dai permessi del tuo ruolo. Chiedi all’amministratore di verificare il ruolo in **Amministrazione › Ruoli**.'],
+            ['Aprendo un record vedo **Record non trovato** o **Accesso negato**.', 'Il record non esiste più (è stato eliminato o il collegamento è sbagliato) oppure il tuo ruolo non ti consente di vederlo. Non serve riprovare: verifica il collegamento o chiedi l’accesso all’amministratore o ai responsabili del record.'],
             ['Non riesco a modificare un campo.', 'Il tuo ruolo può averlo in sola lettura, oppure il campo è ereditato (per esempio da un progetto o da un lead) o protetto: nel caso della **Fonte** proponi una modifica dalla guida **Richieste di modifica**.'],
             ['Non riesco a eliminare un valore di configurazione.', 'È già usato da qualche record. Disattivalo con **Attivo**: sparisce dai menu a tendina senza toccare i dati esistenti.'],
             ['Un prodotto non compare tra quelli selezionabili in un’offerta.', 'Controlla **Utilizzo in offerta** nella scheda prodotto (**Vendibile** per la scheda Offerta, **Utilizzabile come costo** per la scheda Costi) e la categoria: i prodotti sono limitati alle categorie dell’opportunità, salvo **Mostra tutti i prodotti**.'],

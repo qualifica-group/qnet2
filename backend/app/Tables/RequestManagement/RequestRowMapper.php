@@ -7,15 +7,14 @@ namespace App\Tables\RequestManagement;
 use App\Enums\ContactTypeEnum;
 use App\Models\Contact;
 use App\Models\Opportunity;
-use App\Models\OpportunityProductLine;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
-use App\Services\ProductCategories\CategoryRootResolver;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Support\ManagerPositions;
 use App\Support\OperationalSiteLabel;
 use App\Tables\Shared\OfferLinesColumn;
+use App\Tables\Shared\ProductLinePairsColumn;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
@@ -52,7 +51,7 @@ final class RequestRowMapper
 {
     public function __construct(
         private readonly QuoteWorkflowResolver $workflowResolver,
-        private readonly CategoryRootResolver $rootResolver,
+        private readonly ProductLinePairsColumn $productLinePairs,
     ) {}
 
     /**
@@ -84,7 +83,7 @@ final class RequestRowMapper
             // 0075), re-derived through `quote.opportunity` (spec 0086).
             // Projected as the {funzione aziendale, categoria} PAIRS — ids
             // for the inline editor to commit, names for the cell to render.
-            'product_categories' => $this->productLinePairs($opportunity),
+            'product_categories' => $this->productLinePairs->project($opportunity),
             // The `product_categories` inline editor's OWN scope (spec 0075,
             // D-6): the opportunity's product-line category ids, unchanged in
             // shape from the former ProductsOfInterestColumn::SCOPE_COLUMN
@@ -240,40 +239,6 @@ final class RequestRowMapper
         }
 
         return ['id' => $related->id, 'name' => $related->name];
-    }
-
-    /**
-     * The `product_categories` column's value (spec 0075): one entry per
-     * persisted product line, carrying BOTH ids (what the inline editor
-     * commits, and what PATCH /rows expects) and both names (what the cell
-     * renders, and what the editor labels its chips with). A line whose
-     * relation is missing is skipped rather than projected half-empty.
-     * `root_category_id`/`root_category_name` (spec 0132) are the root of
-     * the tree the line's category hangs from — resolved via
-     * `$rootResolver` for every line of the OPPORTUNITY in one call, itself
-     * costing at most two queries for the WHOLE page (CategoryRootResolver
-     * memoizes on the mapper-scoped instance), never a query per row.
-     *
-     * @return array<int, array{business_function_id: int, business_function_name: string, product_category_id: int, product_category_name: string, root_category_id: int|null, root_category_name: string|null}>
-     */
-    private function productLinePairs(?Opportunity $opportunity): array
-    {
-        $lines = ($opportunity?->productLines ?? collect())
-            ->filter(static fn (OpportunityProductLine $line): bool => $line->businessFunction !== null && $line->productCategory !== null);
-
-        $rootCategories = $this->rootResolver->rootSummariesFor($lines->pluck('product_category_id')->all());
-
-        return $lines
-            ->map(fn (OpportunityProductLine $line): array => [
-                'business_function_id' => (int) $line->business_function_id,
-                'business_function_name' => (string) $line->businessFunction->name,
-                'product_category_id' => (int) $line->product_category_id,
-                'product_category_name' => (string) $line->productCategory->name,
-                'root_category_id' => $rootCategories[$line->product_category_id]['id'] ?? null,
-                'root_category_name' => $rootCategories[$line->product_category_id]['name'] ?? null,
-            ])
-            ->values()
-            ->all();
     }
 
     /**

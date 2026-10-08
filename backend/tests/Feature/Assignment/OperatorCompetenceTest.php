@@ -408,3 +408,20 @@ it('0110 AC-015: an offer requires the product categories of its opportunity lin
 
     expect($required[$quote->id])->toEqualCanonicalizing([$categoryOne->id, $categoryTwo->id]);
 });
+
+it('coveredCategoryIdsFor answers one user\'s covered subset in input order, [] for a wildcard or no profile (spec 0193)', function () {
+    $function = BusinessFunction::factory()->create();
+    $parent = categoryWithFunction($function);
+    $child = categoryWithFunction($function, $parent);
+    $outside = categoryWithFunction(BusinessFunction::factory()->create());
+    $competence = app(OperatorCompetence::class);
+
+    $user = competentUser($function, $parent);
+    $wildcard = User::factory()->create();
+    EmploymentProfile::factory()->for($wildcard)->coversAllProductCategories()->create();
+
+    expect($competence->coveredCategoryIdsFor($user->id, [$outside->id, $child->id, $parent->id]))->toBe([$child->id, $parent->id])
+        ->and($competence->coveredCategoryIdsFor($wildcard->id, [$child->id]))->toBe([])
+        ->and($competence->coveredCategoryIdsFor(User::factory()->create()->id, [$child->id]))->toBe([])
+        ->and($competence->coveredCategoryIdsFor($user->id, []))->toBe([]);
+});

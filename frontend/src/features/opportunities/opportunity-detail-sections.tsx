@@ -1,199 +1,86 @@
 import { useTranslation } from 'react-i18next'
-import { Building2, Contact, Users } from 'lucide-react'
-import { DetailEmpty } from '@/components/detail/detail-panel'
-import { RecordLink } from '@/components/detail/record-link'
-import {
-  RecordField,
-  RecordFieldList,
-  RecordSection,
-  RecordSectionsGrid,
-} from '@/components/detail/record-panel'
-import { RECORD_PERSON_ROW_CLASS, RecordPerson } from '@/components/detail/record-person'
-import { GeneralNotesCallout } from '@/components/record-form/general-notes-callout'
+import { RecordSectionsGrid } from '@/components/detail/record-panel'
 import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
 import { RewardChipsSection } from '@/features/rewards/reward-chips-section'
-import type {
-  OpportunityDetailWithPermissions as OpportunityDetailData,
-  OpportunityProductOfInterest,
-} from '@/features/opportunities/types'
-import { managerPositionLabel } from '@/features/shared/manager-position-label'
+import { OpportunityClientRecordSection } from '@/features/opportunities/opportunity-record-client'
+import {
+  OpportunityClassificationRecordSection,
+  OpportunityTeamRecordSection,
+} from '@/features/opportunities/opportunity-record-classification'
+import { OpportunityDetailsSection, OpportunityGeneralNotesRow } from '@/features/opportunities/opportunity-record-details'
+import type { OpportunityRecordValues } from '@/features/opportunities/opportunity-record'
+import type { OpportunityDetailEditor } from '@/features/opportunities/use-opportunity-inline-edit'
+import type { OpportunityDetailWithPermissions } from '@/features/opportunities/types'
 
 /** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
 const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
 
-
-/** Stable empty defaults (spec 0049 D-8): a missing key on older fixtures reads the same as `[]`/`{}`. */
-const EMPTY_PRODUCTS_OF_INTEREST: OpportunityProductOfInterest[] = []
-
-
-/**
- * Read-only list of the opportunity's "prodotti di interesse" (user directive
- * 2026-07-22), each with the category it belongs to — the same pairing the
- * picker shows while selecting them.
- */
-function ProductsOfInterestList({ products }: { products: OpportunityProductOfInterest[] }) {
-  if (products.length === 0) {
-    return <DetailEmpty />
+/** The persisted opportunity as the record's rows read it. */
+function persistedValues(opportunity: OpportunityDetailWithPermissions): OpportunityRecordValues {
+  return {
+    name: opportunity.name,
+    start_date: opportunity.start_date,
+    expected_close_date: opportunity.expected_close_date,
+    estimated_value: opportunity.estimated_value,
+    success_probability: opportunity.success_probability,
+    general_notes: opportunity.general_notes ?? null,
+    registry: opportunity.registry,
+    referent: opportunity.referent,
+    commercial: opportunity.commercial,
+    reporter: opportunity.reporter,
+    lead: opportunity.lead,
+    source: opportunity.source,
+    supervisor: opportunity.supervisor,
+    managers: opportunity.managers,
+    manager_labels: opportunity.manager_labels,
+    products_of_interest: opportunity.products_of_interest ?? [],
+    rewards: opportunity.rewards ?? [],
   }
-  return (
-    <ul className="flex flex-col gap-1">
-      {products.map((product) => (
-        <li key={product.id}>
-          <RecordLink domain="products" id={product.id} className="font-medium">
-            {product.name}
-          </RecordLink>
-          {product.product_category ? (
-            <span className="text-muted-foreground"> — {product.product_category.name}</span>
-          ) : null}
-        </li>
-      ))}
-    </ul>
-  )
 }
 
 interface OpportunityDetailSectionsProps {
-  opportunity: OpportunityDetailData
+  opportunity: OpportunityDetailWithPermissions
+  editor: OpportunityDetailEditor
 }
 
 /**
- * The record's `RecordSectionsGrid` body: registry/contacts, classification,
- * team, rewards, general notes and the collected-Attribute values — each an
- * independent `RecordSection`, absent when its own data is empty (spec 0064
- * enterprise-CRM record layout).
+ * The opportunity record's `RecordSectionsGrid` body, every user-written
+ * field editable in place (spec 0198): the general notes callout first, then
+ * details, client and contacts, classification, team and the assigned
+ * rewards (read-only, the block shared with the Offerta; they are edited
+ * with the Segnalatore they belong to). The status is computed from the
+ * quotes (spec 0082): it stays the header pill.
  */
-export function OpportunityDetailSections({ opportunity }: OpportunityDetailSectionsProps) {
+export function OpportunityDetailSections({ opportunity, editor }: OpportunityDetailSectionsProps) {
   const { t } = useTranslation()
-  const sortedManagers = [...opportunity.managers].sort((a, b) => a.position - b.position)
-  const rewards = opportunity.rewards ?? []
+  const { form, inline, blockingOpportunity } = editor
+  const values = persistedValues(opportunity)
+  const sectionProps = { values, form, inline, lockedFields: new Set(opportunity.locked_fields) }
 
   return (
     <RecordSectionsGrid>
-      {/*
-        Lo STESSO callout del form (user directive 2026-08-06), non una resa
-        propria: il componente e il colore sono quelli che il campo indossa
-        mentre lo si scrive. Prima riga della griglia, a tutta larghezza — la
-        stessa posizione che occupa in cima alla colonna laterale del form e del
-        work panel: e' il testo che l'operatore legge PRIMA di scorrere i campi
-        strutturati. Il callout porta gia' il proprio micro-titolo, quindi non
-        sta dentro una `RecordSection` (sarebbero due intestazioni sullo stesso
-        blocco) e si rende da se' nulla quando non ci sono note.
-      */}
-      <GeneralNotesCallout
-        title={t('opportunities.form.sections.generalNotes.title')}
-        notes={opportunity.general_notes}
+      <OpportunityGeneralNotesRow
+        notes={values.general_notes}
+        form={form}
+        inline={inline}
         className={FULL_WIDTH_SECTION_CLASS}
       />
 
-      <RecordSection title={t('opportunities.form.sections.identity.title')} icon={<Contact />}>
-        <RecordFieldList>
-          <RecordField label={t('opportunities.form.registry')}>
-            {opportunity.registry ? (
-              <RecordLink domain="registries" id={opportunity.registry.id}>
-                {opportunity.registry.name}
-              </RecordLink>
-            ) : (
-              <DetailEmpty />
-            )}
-          </RecordField>
-          <RecordField label={t('opportunities.form.referent')}>
-            {opportunity.referent ? (
-              <RecordLink domain="referents" id={opportunity.referent.id}>
-                {opportunity.referent.name}
-              </RecordLink>
-            ) : (
-              <DetailEmpty />
-            )}
-          </RecordField>
-          <RecordField label={t('opportunities.form.commercial')}>
-            {opportunity.commercial ? (
-              <RecordLink domain="referents" id={opportunity.commercial.id}>
-                {opportunity.commercial.name}
-              </RecordLink>
-            ) : (
-              <DetailEmpty />
-            )}
-          </RecordField>
-          <RecordField label={t('opportunities.form.reporter')}>
-            {opportunity.reporter ? (
-              <RecordLink domain="referents" id={opportunity.reporter.id}>
-                {opportunity.reporter.name}
-              </RecordLink>
-            ) : (
-              <DetailEmpty />
-            )}
-          </RecordField>
-          {opportunity.lead ? (
-            <RecordField label={t('opportunities.detail.sourceLead')}>
-              <RecordLink domain="leads" id={opportunity.lead.id}>
-                {opportunity.lead.label}
-              </RecordLink>
-            </RecordField>
-          ) : null}
-        </RecordFieldList>
-      </RecordSection>
+      <OpportunityDetailsSection {...sectionProps} />
 
-      {/*
-        Sede operativa is HIDDEN from this section for the same reason it is
-        hidden in the form (user directive 2026-08-05): it only carries
-        meaning in Gestione Richieste. The value is not removed —
-        `operational_site` stays on the payload and survives every save.
-      */}
-      <RecordSection title={t('opportunities.form.sections.classification.title')} icon={<Building2 />}>
-        <RecordFieldList>
-          <RecordField label={t('opportunities.form.source')}>
-            {opportunity.source?.name ?? <DetailEmpty />}
-          </RecordField>
-          <RecordField label={t('opportunities.form.sections.productLines.title')}>
-            <ProductLinesReadOnlyList lines={opportunity.product_lines} />
-          </RecordField>
-          <RecordField label={t('products.ofInterest.sectionTitle')}>
-            <ProductsOfInterestList
-              products={opportunity.products_of_interest ?? EMPTY_PRODUCTS_OF_INTEREST}
-            />
-          </RecordField>
-        </RecordFieldList>
-      </RecordSection>
+      <OpportunityClientRecordSection {...sectionProps} blockingOpportunity={blockingOpportunity} />
 
-      {/*
-        Team = "un ruolo, una persona", una riga per ciascuno. Il Supervisore e
-        i G.A. sono la stessa cosa (una persona con una denominazione), quindi
-        stanno nella STESSA `RecordFieldList` delle altre sezioni: colonna di
-        etichette allineata, filetti fra le righe, avatar su ogni riga. Prima
-        convivevano due idiomi diversi — il Supervisore come riga spec-sheet e i
-        G.A. come lista a se' con un micro-titolo proprio e l'etichetta di ruolo
-        troncata a `max-w-28` dietro un `title` (invisibile su touch, la stessa
-        ragione per cui spec 0080 la vuole come testo VISIBILE).
-      */}
-      <RecordSection title={t('opportunities.form.sections.team.title')} icon={<Users />}>
-        <RecordFieldList>
-          <RecordField label={t('opportunities.form.supervisor')} className={RECORD_PERSON_ROW_CLASS}>
-            {opportunity.supervisor ? <RecordPerson user={opportunity.supervisor} /> : <DetailEmpty />}
-          </RecordField>
+      <OpportunityClassificationRecordSection
+        {...sectionProps}
+        productLines={<ProductLinesReadOnlyList lines={opportunity.product_lines} />}
+      />
 
-          {sortedManagers.length > 0 ? (
-            sortedManagers.map((manager) => (
-              // `position` e' la chiave, non `id`: e' lo slot a essere unico —
-              // la stessa persona puo' occupare due G.A. diversi.
-              <RecordField
-                key={manager.position}
-                label={managerPositionLabel(t, manager.position, opportunity.manager_labels)}
-                className={RECORD_PERSON_ROW_CLASS}
-              >
-                <RecordPerson user={manager} />
-              </RecordField>
-            ))
-          ) : (
-            <RecordField label={t('opportunities.form.managers')}>
-              <DetailEmpty />
-            </RecordField>
-          )}
-        </RecordFieldList>
-      </RecordSection>
+      <OpportunityTeamRecordSection
+        {...sectionProps}
+        managersSynchronized={opportunity.managers_synchronized ?? false}
+      />
 
-      {/* La STESSA sezione che rende la scheda Offerta (richiesta utente
-          2026-08-31): un solo componente, cosi' i due record non possono
-          divergere sul blocco buoni. */}
-      <RewardChipsSection title={t('opportunities.detail.rewards')} rewards={rewards} />
+      <RewardChipsSection title={t('opportunities.detail.rewards')} rewards={values.rewards} />
     </RecordSectionsGrid>
   )
 }

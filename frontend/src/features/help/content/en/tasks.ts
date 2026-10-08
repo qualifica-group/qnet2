@@ -126,21 +126,24 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Press **New task**.',
-            "Fill in the form's fields (see table).",
-            'If you want, add files in **Attachments**: they are uploaded once the task is saved.',
-            'Press **Save**.',
+            'Fill in the fields: the form is identical to the task detail (see table), with the fields closed, empty or prefilled. Press the **pencil** (or click the value) to open one, then **Done** to keep it (a click outside the field also keeps it and closes it) or **Revert** to put it back as it was.',
+            'If you want, add files in the **Attachments** tab of the side card (where the detail keeps its Documents): they are uploaded once the task is saved.',
+            'Press **Save**: every field is checked at once and any error shows under its row.',
           ],
+        },
+        {
+          type: 'note',
+          text: 'Leaving the create form without saving (Cancel, closing the panel, another link or a page reload) asks for confirmation first: confirming drops what you entered.',
         },
         {
           type: 'table',
           headers: ['Section', 'Main fields'],
           rows: [
-            ['Task', 'Title (required), Description, Parent task.'],
+            ['Details', 'Title (required), Description, Parent task.'],
             [
               'Classification',
               "Status (optional on create: when left unpicked, it starts from the default one), Type, Priority and Importance (all three required, prefilled from the catalog's default row), Category (a tree, indented — you can also pick a parent category).",
             ],
-            ['Account and contact', "Account, Contact (among the account's own)."],
             [
               'People',
               'Requested by (required), Assignees (at least one), Watchers, Private task, Do not send the opening notification.',
@@ -148,7 +151,7 @@ const guide: HelpGuide = {
             ['Scheduling', "Start date, Due date (required, prefilled to today), times, Estimated time (minutes)."],
             [
               'Linked records',
-              'Opportunity, Work order or Lead (Opportunity and Work order exclude each other; picking a Work order sets the account); with a Work order, the Phase to place the task in (open phases only, not for subtasks).',
+              "Account, Contact (among the account's own), Opportunity, Work order or Lead (Opportunity and Work order exclude each other; picking a Work order sets the account); with a Work order, the Phase to place the task in (open phases only, not for subtasks).",
             ],
             ['Closure', 'Feedback required, Validation, Create already completed (create only).'],
             ['Recurrence', 'Frequency and end of the repetition.'],
@@ -172,11 +175,38 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'By default assignees and watchers get the assignment notification on create: turn on **Do not send the opening notification** to create it without alerting them. On edit the same idea is called **Do not notify the newly assigned** and only covers whoever you add with that save.',
+          text: 'By default assignees and watchers get the assignment notification on create: turn on **Do not send the opening notification** to create it without alerting them. In the detail, when editing the **Assignees**, the same idea is called **Do not notify the newly assigned** and only covers whoever you add with that save.',
         },
         {
           type: 'note',
           text: 'Changing the **Account** clears Contact, Opportunity and Lead, and keeps the Work order only when it belongs to the same account. Opportunity, Work order and Lead only list the records of the chosen account once you picked one.',
+        },
+      ],
+    },
+    {
+      id: 'editing-a-task',
+      title: 'Editing a task',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'There is no separate edit page: a task is edited **directly from its detail**, one field at a time.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Open the task from the list (or the Kanban).',
+            'Hover the field to change and press the **pencil** (or click the value).',
+            'Change the value in the control that appears.',
+            'Press **Save** (or Enter in text and date fields) to save that field alone; **Cancel** (or Esc, or a click outside the open field) to close it as it was, without saving.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'A field without a pencil cannot be edited by you right now: your role\'s permissions make it read-only, you are only a watcher on the task (no pencil at all), or the task, or a parent task, is blocked, in validation or closed (only the Status stays editable, when the task allows it). Fields your role hides do not appear at all, not even in the header and the top tiles. Creator, Completion date, Closure feedback and Blocked stay read-only: they change only through the actions (Complete, Block, Unblock...).',
+        },
+        {
+          type: 'note',
+          text: 'The rules are the same as on create: changing the **Registry** clears Referent, Opportunity and Lead in the same save; picking a **Work order** removes the Opportunity and offers the Stage right away. When one of the fields that would change along with it is not editable by you, the starting field (Registry, Work order, Opportunity or Parent task) has no pencil either.',
         },
       ],
     },
@@ -248,7 +278,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Completing a task from the detail (or from the list) logs the time entry for **every assignee**, one identical entry each (yourself alone when the task has none). Completing a single sub-task from the Sub-tasks panel instead only logs it for you — this is not a choice you make, it depends on where you complete the task.",
+          text: "In the Complete dialog the **Log the time entry for all assignees** checkbox is checked by default: the time entry is logged for every assignee, one identical entry each (yourself alone when the task has none). Uncheck it to log it for yourself only. The choice works wherever you complete the task: detail, list, kanban and Sub-tasks panel.",
         },
         {
           type: 'note',
@@ -291,15 +321,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "In the detail's **Sub-tasks** panel, drag a row (by its handle) to reorder it, and each row lets you complete, reopen or delete that single sub-task, whenever your permissions allow it.",
+          text: "The detail's **Sub-tasks** panel shows at the top how many sub-tasks are done and the overall progress. Press a sub-task's title to open it in a window above the parent task, which stays open underneath: changes made there refresh the list right away. Each row takes the colour and icon of the sub-task's type. Drag a row (by its handle) to reorder it. The check icon before the title works as in the list: it turns green on hover and, clicked, completes the sub-task; once completed it is filled in green and, if you may, clicking it reopens it. The bin, shown when you hover the row, deletes it, whenever your permissions allow it.",
         },
         {
           type: 'paragraph',
-          text: 'With **Recurring** on, QNet creates the future occurrences by itself. Pick the frequency — Daily, Weekly, Monthly, Yearly or Custom (every N days) — the interval in **Repeat every** and the end: On a date, After a number of occurrences or Never. "After a number of occurrences" counts the occurrences actually created, not the calculated candidates.',
+          text: 'In the detail, the **Recurrence** section sums the rule up in a tile: frequency, the descriptive sentence, the picked weekdays, the end and "Workdays only". Press the tile (or the pencil) to edit it. With **Recurring** on, QNet creates the future occurrences by itself. Pick the frequency — Daily, Weekly, Monthly, Yearly or Custom (every N days) — and in **Repeat every** how many days, weeks, months or years pass between one occurrence and the next; for Weekly, press the day circles to pick them. Under **Ends** choose Never, On a date or After N times: "After N times" counts the occurrences actually created, not the calculated candidates. At the bottom, the **Rule preview** shows the resulting sentence as you fill it in. Hover the (i) icon next to a field for the full explanation.',
         },
         {
           type: 'paragraph',
-          text: "For a Monthly or Yearly recurrence, choose whether the day is **fixed** (e.g. the 31st of the month) or **ordinal** (e.g. the 2nd Tuesday) — Yearly also asks for the month. With **Workdays only** on, an occurrence that would fall on a Saturday, Sunday, a national holiday, Easter or Easter Monday is never skipped: it shifts to the first working day after it. When the shift makes it coincide with an occurrence already generated, only one remains.",
+          text: "For a Monthly or Yearly recurrence, choose between **Fixed date** (e.g. the 31st of the month) and **Day of the week** (e.g. the 2nd Tuesday) — Yearly also asks for the month. With **Workdays only** on, an occurrence that would fall on a Saturday, Sunday, a national holiday, Easter or Easter Monday is never skipped: it shifts to the first working day after it. When the shift makes it coincide with an occurrence already generated, only one remains.",
         },
         {
           type: 'note',
@@ -334,6 +364,14 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: 'Selecting one or more rows shows the **Actions** bar: Assign (replaces the assignees), Complete, Reopen, Block, Unblock, Priority, Start date, End date, Delete.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Before the **Title** sits the completion icon: when you can complete the task it turns green on hover and, clicked, opens the **Complete** dialog (the same as the action); on a completed task it is solid green. As in work orders, the **End date** of an open task turns red with the warning triangle once it has passed, and is highlighted when it is due today — in the task detail too.',
+        },
+        {
+          type: 'note',
+          text: 'Editing **Assignees** or **Watchers** in the list opens the list of every user with their picture, as in the detail; Watchers leave out the task\'s creator, requester and assignees.',
         },
         {
           type: 'warning',

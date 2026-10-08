@@ -171,7 +171,11 @@ it('AC-054: a role denying estimated_minutes makes it readonly in the meta and 4
 
     $actor = User::factory()->create();
     $actor->assignRole($role);
-    $task = Task::factory()->create(['estimated_minutes' => 30]);
+    // REQUIREMENT CHANGED (spec 0195): the field ceiling now folds in
+    // TaskPolicy::update(), and an actor the Policy refuses gets its 403
+    // rather than a field-level 422. The actor is therefore the creator — one
+    // who may PATCH this Task — so the 422 below is the matrix's alone.
+    $task = Task::factory()->forCreator($actor)->create(['estimated_minutes' => 30]);
     Sanctum::actingAs($actor);
 
     $this->getJson('/api/meta/tasks')

@@ -19,13 +19,14 @@ import type {
 /** Content-only detail screen for the module registry (spec 0042). */
 export function ProformaRequestDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
-  const { data, isLoading, isError, refetch } = useEntityDetail(proformaRequestDetailQueryKey(id), () =>
+  const { data, isLoading, isError, error, refetch } = useEntityDetail(proformaRequestDetailQueryKey(id), () =>
     fetchProformaRequest(id),
   )
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('proformaRequests.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

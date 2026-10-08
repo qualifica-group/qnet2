@@ -4,7 +4,7 @@ import { AsyncPaginatedMultiSelect } from '@/components/ui/async-paginated-multi
 import type { ForSelectItem } from '@/features/for-select/types'
 
 /** Resource segment of the dedicated for-select endpoint (D-8): `GET /api/quote-offer-lines/for-select`. */
-const QUOTE_OFFER_LINES_FOR_SELECT_RESOURCE = 'quote-offer-lines'
+export const QUOTE_OFFER_LINES_FOR_SELECT_RESOURCE = 'quote-offer-lines'
 
 interface WorkOrderQuoteLinesFieldProps {
   /** Selected quote line ids (controlled). */

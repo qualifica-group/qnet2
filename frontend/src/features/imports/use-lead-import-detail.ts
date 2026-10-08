@@ -15,6 +15,8 @@ export interface LeadImportDetailResult {
   summary: ImportRunSummaryReport | undefined
   isLoading: boolean
   isError: boolean
+  /** The run fetch's raw error, so the page can tell a 404/403 apart from a transient failure. */
+  error: unknown
   refetch: () => void
   summaryIsLoading: boolean
   summaryIsError: boolean
@@ -52,6 +54,7 @@ export function useLeadImportDetail(runId: number | null): LeadImportDetailResul
     summary: summaryQuery.data,
     isLoading: runQuery.isLoading,
     isError: runQuery.isError,
+    error: runQuery.error,
     refetch: runQuery.refetch,
     summaryIsLoading: summaryEnabled && summaryQuery.isLoading,
     summaryIsError: summaryEnabled && summaryQuery.isError,

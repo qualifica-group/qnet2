@@ -71,6 +71,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'request-statistics': 'navigation.requestStatistics',
   'reward-types': 'navigation.rewardTypes',
   'reward-statuses': 'navigation.rewardStatuses',
+  'work-order-payment-statuses': 'navigation.workOrderPaymentStatuses',
   'rewarded-referents': 'navigation.rewardedReferents',
   'document-layouts': 'navigation.documentLayouts',
   'email-templates': 'navigation.emailTemplates',

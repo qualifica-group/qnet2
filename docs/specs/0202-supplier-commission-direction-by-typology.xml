@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0202-supplier-commission-direction-by-typology" status="implemented" owner="nicola" date="2026-10-07">
+
+  <goal>
+    La commissione Fornitore diventa configurabile per TIPOLOGIA PRODOTTO: ogni tipologia dice se la commissione
+    Fornitore si calcola e, se si', se e' RICEVUTA (incassata da noi: e' il ricavo della riga) o PAGATA (costo
+    verso il fornitore). Offerta (margine) e commessa (tab Dati contrattuali) usano la stessa regola; il codice
+    non cerca piu' la tipologia "Ente".
+  </goal>
+
+  <context>
+    Oggi (verificato 2026-10-07):
+    - `CommissionRecipientResolver`: il destinatario Fornitore e' `products.supplier_id`; senza fornitore la
+      commissione Fornitore non nasce (`QuoteCommissionInitializer:51`).
+    - `CommissionRuleResolver`: 5 gradini (spec 0089 D-4). `CommissionCalculator`: PERCENTAGE = % x base,
+      FIXED_AMOUNT = valore. Base = margine riga = net − costi COST imputati, min 0 (spec 0145 D-1).
+    - `QuoteTotalsCalculator::aggregates()`: `margin_net = revenue_net − cost_net − TUTTE le commissioni`
+      (spec 0145 D-3): la commissione Fornitore e' sempre trattata come pagata.
+    - FE offerta: `commission-calculator.ts`, `quote-totals.ts`, `quote-product-margins-calc.ts` (anteprima live
+      e "Margine per prodotto"); `QuoteLineResource` espone `product.product_typology` (live).
+    - Commessa: `WorkOrderContractDataBuilder` (spec 0201) decide "ricavo = commissione Fornitore" con
+      `productTypology.code === 'institution'` e espone `lines[].is_institution`.
+    - Modulo `product-typologies` (backend `ProductTypology*`, FE `features/product-typologies/`).
+
+    Decisioni utente 2026-10-07, vincolanti:
+    D-1 — L'impostazione sta sulla TIPOLOGIA PRODOTTO (non sul prodotto). Il codice non legge piu' il codice
+          `institution` per decidere il calcolo.
+    D-2 — Due impostazioni: interruttore "Calcolo commissione Fornitore" si'/no; se si', verso RICEVUTA o PAGATA.
+    D-3 — Nessun ricalcolo retroattivo: l'impostazione si CONGELA sulla riga d'offerta quando la riga nasce
+          (come l'unita' di misura, spec 0088). Cambiare la tipologia vale solo per le righe nuove.
+    D-4 — Il Margine atteso dell'offerta segue la stessa logica (offerta e commessa coerenti).
+    D-5 — Base della percentuale = margine riga (come oggi, spec 0145 D-1), per entrambi i versi.
+    D-6 — Interruttore NO = la commissione Fornitore NON si calcola: anche se esiste una regola, sulla riga non
+          viene creata.
+
+    Decisioni proposte, da validare con l'approvazione:
+    D-7 — Schema tipologia: `product_typologies.supplier_commission_enabled` (bool, default false) e
+          `product_typologies.supplier_commission_direction` (enum `RECEIVED`|`PAID`, nullable; obbligatorio
+          quando enabled, null quando disabled). Snapshot riga: `quote_lines.supplier_commission_direction`
+          (enum `RECEIVED`|`PAID`, nullable = calcolo disattivato), scritto SOLO alla creazione della riga
+          REVENUE dalla tipologia del prodotto; cambiare prodotto su una riga esistente lo riscrive (e' una
+          riga diversa), il resto delle modifiche no.
+    D-8 — Formule per riga REVENUE (n = imponibile, c = costi imputati, s = commissione Fornitore, p = altre
+          commissioni della riga, tutte pagate):
+          - RECEIVED: ricavo effettivo = s; margine riga = s − c − p.
+          - PAID: ricavo effettivo = n; margine riga = n − c − p − s.
+          - null (disattivato): ricavo effettivo = n; margine riga = n − c − p (s non esiste per D-6).
+          Margine atteso offerta = somma dei margini riga − costi COST generici (non imputati), cioe' per
+          PAID/null identico a oggi; cambia solo per le righe RECEIVED. `margin_net` persistito segue la nuova
+          formula al prossimo salvataggio (come spec 0145 D-5).
+    D-9 — Ricavi attesi dell'offerta (net/IVA/lordo), documenti e totali fattura NON cambiano: l'imponibile della
+          riga resta l'importo verso il cliente. Cambia solo il margine.
+    D-10 — Migrazione dati (una volta, nessun ricalcolo di importi): tipologia `code='institution'` ->
+          enabled + RECEIVED; ogni altra tipologia -> enabled + PAID (cosi' il comportamento attuale, che calcola
+          e sottrae la commissione Fornitore ovunque, non cambia). Righe REVENUE esistenti: snapshot copiato dalla
+          tipologia del loro prodotto con lo stesso criterio. Le tipologie nuove nascono disattivate (default).
+    D-11 — Commessa (spec 0201): `lines[].is_institution` diventa `lines[].supplier_commission_direction`
+          (`RECEIVED`|`PAID`|null) letto dallo SNAPSHOT della riga; ricavo effettivo per D-8; warning
+          `missing_supplier_commission` solo con RECEIVED senza commissione Fornitore. Totali per tipologia
+          (0201 D-15) invariati.
+    D-12 — Anteprima offerta (FE): per le righe salvate il verso arriva da `QuoteLineResource`
+          (`supplier_commission_direction`); per le righe nuove dalla risposta dell'endpoint commission-defaults
+          (stessa chiave), cosi' il form non ricalcola regole lato client.
+    D-13 — Formule visibili: nel tab Dati contrattuali la formula dice "Commissione Fornitore ricevuta" o
+          "pagata"; nel "Margine per prodotto" dell'offerta la riga RECEIVED indica "ricavo = commissione
+          ricevuta".
+    D-14 — (utente 2026-10-07, dopo l'implementazione) Anche il confronto del tab Costi della commessa
+          (`WorkOrderCostOverviewBuilder`, spec 0190) usa il ricavo effettivo di D-8: una riga RECEIVED vale la sola
+          commissione Fornitore, le altre l'imponibile; le altre provvigioni restano escluse (0190 invariata).
+          La regola vive in un unico servizio, `App\Services\WorkOrders\LineEffectiveRevenue`, usato anche da
+          `WorkOrderContractDataBuilder`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Colonne tipologia (D-7) + migrazione dati (D-10); modulo Tipologie prodotto: campi nel form (interruttore + scelta verso), dettaglio, colonne tabella, validazione (verso obbligatorio se attivo).</item>
+      <item>Snapshot `quote_lines.supplier_commission_direction` scritto alla creazione della riga (tutti i canali: form offerta, inline edit, Gestione Richieste, conversione Lead, migrazione legacy, duplicazione righe).</item>
+      <item>`QuoteCommissionInitializer`/`QuoteLineCommissionWriter`: nessuna commissione Fornitore se snapshot null (D-6).</item>
+      <item>`QuoteTotalsCalculator` margine (D-8) + anteprima FE (`commission-calculator.ts`, `quote-totals.ts`, `quote-product-margins-calc.ts`, riepilogo).</item>
+      <item>`WorkOrderContractDataBuilder` e tab Dati contrattuali (D-11, D-13).</item>
+      <item>i18n IT/EN; guide in-app `product-typologies`, `quotes` (margine), `work-orders` (contract-data); manuale Claude Docs segnalato.</item>
+      <item>Test Pest e Vitest per ogni AC.</item>
+    </in>
+    <out>
+      <item>Destinatario Fornitore diverso da `products.supplier_id` (resta com'e').</item>
+      <item>Verso RICEVUTA/PAGATA per Commerciale, Segnalatore, Supervisore (restano sempre pagate).</item>
+      <item>Ricalcolo retroattivo di commissioni o `margin_net` delle offerte esistenti.</item>
+      <item>Modifica di Ricavi attesi, IVA, documenti o importi fatturati (D-9).</item>
+      <item>Regole commissione legacy per fornitore (`ServiceCommission`).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET|POST|PUT|PATCH" path="/api/product-typologies[/{id}]">
+      <request>store/update: `supplier_commission_enabled`?: bool (default false), `supplier_commission_direction`?: "RECEIVED"|"PAID"|null — required_if enabled=true, prohibited/forzato null se enabled=false.</request>
+      <response status="200">Resource tipologia + `supplier_commission_enabled: bool`, `supplier_commission_direction: "RECEIVED"|"PAID"|null`. Field permission per entrambi i campi. Tabella SSRM: due colonne con lo stesso nome.</response>
+      <errors>422 verso mancante con enabled=true o valore non ammesso; 403 come oggi.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/quotes/{id} (QuoteLineResource) e endpoint commission-defaults esistente">
+      <response status="200">Ogni riga REVENUE: `supplier_commission_direction: "RECEIVED"|"PAID"|null`. Risposta commission-defaults: stessa chiave, dalla tipologia del prodotto richiesto. `summary.margin.net` segue D-8.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/contract-data">
+      <response status="200">Come spec 0201, con `lines[].is_institution` SOSTITUITO da `lines[].supplier_commission_direction: "RECEIVED"|"PAID"|null`.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Tipologia con enabled=true senza verso -> 422; enabled=false con verso -> salvato con verso null; show/tabella espongono i due campi.</criterion>
+    <criterion id="AC-002">Dopo la migrazione: `institution` = enabled+RECEIVED, altre tipologie = enabled+PAID; righe REVENUE esistenti hanno lo snapshot della tipologia del loro prodotto; nessun importo commissione o `margin_net` modificato dalla migrazione.</criterion>
+    <criterion id="AC-003">Nuova riga d'offerta: snapshot = verso attuale della tipologia (null se disattivata); cambiando poi la tipologia, la riga esistente non cambia (D-3); cambiando il prodotto della riga lo snapshot si aggiorna.</criterion>
+    <criterion id="AC-004">Riga con snapshot null: anche con una regola Fornitore attiva e `supplier_id` valorizzato, nessuna commissione Fornitore viene creata (D-6); le altre commissioni si.</criterion>
+    <criterion id="AC-005">Margine offerta (D-8): con una riga RECEIVED (n 2000, c 0, s 10% = 200, p 50) e una PAID (n 1000, c 100, s 90, p 0) e 30 di costi generici, `margin_net` = (200 − 0 − 50) + (1000 − 100 − 0 − 90) − 30 = 930.00; Ricavi attesi invariati (3000 net).</criterion>
+    <criterion id="AC-006">Margine per prodotto e anteprima live del form danno gli stessi numeri del server per i casi di AC-005 (righe salvate e righe nuove).</criterion>
+    <criterion id="AC-007">Tutti i canali che creano righe REVENUE scrivono lo snapshot (form, inline edit, Gestione Richieste, conversione Lead, migrazione legacy, duplicazione).</criterion>
+    <criterion id="AC-008">Contract data commessa: ricavo effettivo per D-8 dallo snapshot; `supplier_commission_direction` al posto di `is_institution`; warning `missing_supplier_commission` solo per RECEIVED senza commissione; nessun riferimento a `institution` nel builder.</criterion>
+    <criterion id="AC-009">FE Tipologie prodotto: interruttore + scelta verso (visibile e obbligatoria solo con interruttore attivo), dettaglio e colonne.</criterion>
+    <criterion id="AC-010">FE formule: tab Dati contrattuali "Commissione Fornitore ricevuta/pagata"; offerta Margine per prodotto con indicazione "ricavo = commissione ricevuta" sulle righe RECEIVED.</criterion>
+    <criterion id="AC-011">Guide in-app IT/EN aggiornate (product-typologies, quotes, work-orders), parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; migrazioni nuove e reversibili; nessuna migrazione esistente modificata.</item>
+    <item>Calcolo autorevole server-side; il FE replica solo l'anteprima con la stessa formula e deve coincidere (AC-006).</item>
+    <item>Enum PHP dedicato (es. `SupplierCommissionDirection`) con label i18n; identificatori in inglese.</item>
+    <item>File &lt;= 300 righe; zero dead code (rimuovere `is_institution` e il controllo su `institution`).</item>
+  </constraints>
+
+  <tasks>
+    <task id="T-01" lane="backend" depends="">Enum + migrazione tipologie (D-7, D-10) + modulo Tipologie (request, DTO, service, resource, authorization, column catalog, mapRow, seeder reference). AC-001, AC-002 (parte tipologie).</task>
+    <task id="T-02" lane="backend" depends="T-01">Snapshot `quote_lines.supplier_commission_direction`: migrazione + backfill (D-10), scrittura su tutti i canali, `QuoteLineResource`, commission-defaults. AC-002, AC-003, AC-007.</task>
+    <task id="T-03" lane="backend" depends="T-02">Commissioni (D-6) e `QuoteTotalsCalculator` (D-8). AC-004, AC-005.</task>
+    <task id="T-04" lane="backend" depends="T-02">`WorkOrderContractDataBuilder` (D-11). AC-008.</task>
+    <task id="T-05" lane="frontend" depends="contratto">Tipologie prodotto FE. AC-009.</task>
+    <task id="T-06" lane="frontend" depends="contratto">Anteprima/margini offerta FE + tab Dati contrattuali FE + guide. AC-006, AC-010, AC-011.</task>
+    <task id="T-07" lane="verifier" depends="T-01..T-06">Suite completa, coerenza AC-006 server vs anteprima, HTTP reale, screenshot.</task>
+  </tasks>
+
+  <risks>
+    <r id="R-1">Molti canali creano righe REVENUE: se uno non scrive lo snapshot, la riga resta "disattivata" e perde la commissione Fornitore. Mitigazione AC-007 + default sicuro in un unico punto (writer delle righe).</r>
+    <r id="R-2">Anteprima FE e server divergono sul margine: mitigazione AC-006 con gli stessi casi numerici nei due test.</r>
+    <r id="R-3">Le offerte esistenti con righe Ente vedranno un margine diverso al prossimo salvataggio (D-8 su RECEIVED): e' l'effetto voluto di D-4, va comunicato.</r>
+  </risks>
+
+</spec>

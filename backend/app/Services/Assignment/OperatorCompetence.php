@@ -4,6 +4,7 @@ namespace App\Services\Assignment;
 
 use App\Models\EmploymentProfile;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * The ONE reading of "may this user receive this record?" (spec 0110),
@@ -130,8 +131,9 @@ class OperatorCompetence
     }
 
     /**
-     * user id => profile, for the users carrying the wildcard flag (spec 0129
-     * D-1) or at least one competence row (spec 0111). Everyone else is
+     * user id => profile, for the ASSIGNABLE users (spec 0194) carrying the
+     * wildcard flag (spec 0129 D-1) or at least one competence row (spec
+     * 0111). A switched-off user's competence is kept but never read. Everyone else is
      * deliberately absent, and since rev.2 absence means NOT A CANDIDATE
      * (D-9), no longer "competent for everything": the whole population of
      * competent users lives in here.
@@ -146,22 +148,68 @@ class OperatorCompetence
 
         $profiles = EmploymentProfile::query()
             ->select(['id', 'user_id', 'covers_all_product_categories'])
-            ->where('covers_all_product_categories', true)
-            ->orWhereHas('productLines')
+            ->where('is_assignable', true)
+            ->where(static fn (Builder $query): Builder => $query
+                ->where('covers_all_product_categories', true)
+                ->orWhereHas('productLines'))
             ->with('productLines:id,employment_profile_id,business_function_id,product_category_id')
             ->get();
 
         $this->configuredProfiles = [];
 
         foreach ($profiles as $profile) {
-            $this->configuredProfiles[(int) $profile->user_id] = new CompetenceProfile(
-                coveredCategoryIdsByFunction: $this->coveredCategoryIdsByFunction($profile),
-                wildcardFunctionIds: $this->wildcardFunctionIds($profile),
-                allProductCategories: (bool) $profile->covers_all_product_categories,
-            );
+            $this->configuredProfiles[(int) $profile->user_id] = $this->profileOf($profile);
         }
 
         return $this->configuredProfiles;
+    }
+
+    /**
+     * The subset of $categoryIds covered by the competence of ONE user, in the
+     * input order — the same covers() rule as competentUserIds(), but loading
+     * only that user's profile (no scan of every configured one).
+     *
+     * A wildcard profile (`covers_all_product_categories`) and a user with no
+     * profile or no competence row both answer [] on purpose: the caller uses
+     * this to list the categories a user is SPECIFICALLY enabled for (spec
+     * 0193 D-2), and a jolly is enabled for everything, i.e. for nothing in
+     * particular.
+     *
+     * @param  array<int, int>  $categoryIds
+     * @return array<int, int>
+     */
+    public function coveredCategoryIdsFor(int $userId, array $categoryIds): array
+    {
+        if ($categoryIds === []) {
+            return [];
+        }
+
+        $profile = EmploymentProfile::query()
+            ->select(['id', 'user_id', 'covers_all_product_categories'])
+            ->where('user_id', $userId)
+            ->with('productLines:id,employment_profile_id,business_function_id,product_category_id')
+            ->first();
+
+        if ($profile === null || $profile->covers_all_product_categories) {
+            return [];
+        }
+
+        $competence = $this->profileOf($profile);
+        $functionByCategory = $this->effectiveFunctionByCategory();
+
+        return array_values(array_filter(
+            $categoryIds,
+            static fn (int $categoryId): bool => $competence->covers([$categoryId], $functionByCategory),
+        ));
+    }
+
+    private function profileOf(EmploymentProfile $profile): CompetenceProfile
+    {
+        return new CompetenceProfile(
+            coveredCategoryIdsByFunction: $this->coveredCategoryIdsByFunction($profile),
+            wildcardFunctionIds: $this->wildcardFunctionIds($profile),
+            allProductCategories: (bool) $profile->covers_all_product_categories,
+        );
     }
 
     /**

@@ -177,6 +177,10 @@ class QuoteResource extends JsonResource
             'attribute_values' => (object) ($this->attribute_values ?? []),
             'applicable_attributes' => $this->resolveApplicableAttributes(),
             'attribute_layout' => app(QuoteAttributeResolver::class)->layout($this->resource, FormMode::Edit),
+            // The same merge for the read-only detail (FormMode::View, falling
+            // back to the shared layout), so "Informazioni aggiuntive" reads
+            // with the sections/columns configured for viewing.
+            'attribute_view_layout' => app(QuoteAttributeResolver::class)->layout($this->resource, FormMode::View),
             'summary' => $this->summarizeTotals(
                 $commissionPermissions['commissions']->visible
                     && $commissionPermissions['commission_value']->visible,

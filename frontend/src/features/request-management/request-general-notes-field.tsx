@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { FormControl } from '@/components/ui/form'
 import {
   GENERAL_NOTES_CALLOUT_CLASS,
+  GENERAL_NOTES_TEXTAREA_CLASS,
   GENERAL_NOTES_TITLE_CLASS,
 } from '@/components/record-form/layout'
 import { MetaField } from '@/features/authorization/MetaField'
@@ -28,12 +29,9 @@ interface RequestGeneralNotesFieldProps<TFieldValues extends FieldValues> {
  * permission `general_notes` like every other editable field of the panel
  * (a readonly role keeps seeing the note, and the "not editable" hint).
  *
- * Same chrome as the create form's own version and as the opportunity form's:
- * the amber callout, its left rule and its micro-title come from the shared
- * `layout.ts` constants, and the textarea is deliberately unstyled
- * (`border-0 bg-transparent`, no focus ring of its own) because the callout
- * IS the field's surface — a second bordered box inside it would stack two
- * containers on the same plane (ui-design.md §1-bis).
+ * Same chrome as the create form's own version and as the record details'
+ * `NotesCalloutRow`: the amber callout, its left rule, its micro-title and the
+ * unstyled textarea all come from the shared `layout.ts` constants.
  */
 export function RequestGeneralNotesField<TFieldValues extends FieldValues>({
   control,
@@ -57,7 +55,7 @@ export function RequestGeneralNotesField<TFieldValues extends FieldValues>({
         {({ field, disabled, readOnly }) => (
           <FormControl>
             <Textarea
-              className="min-h-0 resize-y border-0 bg-transparent p-0 text-sm leading-relaxed shadow-none focus-visible:ring-0 dark:bg-transparent"
+              className={GENERAL_NOTES_TEXTAREA_CLASS}
               rows={4}
               placeholder={t('requestManagement.workPanel.generalNotes.placeholder')}
               disabled={disabled}

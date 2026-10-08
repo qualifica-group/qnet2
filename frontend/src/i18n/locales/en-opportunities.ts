@@ -48,6 +48,9 @@ export const opportunities = {
     title: 'Opportunity details',
     subtitle: 'Read-only view of the selected opportunity.',
     loadError: 'Unable to load the opportunity. Please try again.',
+    sections: {
+      details: 'Details',
+    },
     sourceLead: 'Originating lead',
     rewards: 'Rewards',
     quotes: {
@@ -64,55 +67,29 @@ export const opportunities = {
   },
   form: {
     newOpportunity: 'New opportunity',
-    header: {
-      status: 'Status',
-      workflowStatus: 'Working',
-      expectedCloseDate: 'Expected close',
-    },
-    summary: {
-      title: 'Opportunity summary',
-      description: 'What you are about to save, read-only.',
-    },
     createTitle: 'Create opportunity',
     createSubtitle: 'Add a new commercial opportunity.',
-    editTitle: 'Edit opportunity',
-    editSubtitle: 'Update the selected opportunity.',
     sections: {
       classification: {
         title: 'Classification',
-        description: 'Source and operational site.',
       },
       lead: {
         title: 'Originating lead',
-        description: 'The lead this opportunity converts: it prefills and locks the derived fields.',
       },
       identity: {
         title: 'Registry & contacts',
-        description: 'The linked registry and its scoped contacts.',
       },
       workflowStatus: {
         title: 'Working status',
-        description: 'Advance the internal working state of the opportunity.',
-      },
-      attribution: {
-        title: 'Attribution',
-        description: 'Provenance and ownership: source and reporter.',
       },
       productLines: {
         title: 'Business functions and product categories',
-        description: 'Link one or more business-function + product-category pairs.',
       },
       team: {
         title: 'Team',
-        description: 'Supervisor and account managers.',
-      },
-      planning: {
-        title: 'Planning',
-        description: 'Dates, estimated value and success probability.',
       },
       generalNotes: {
         title: 'General notes',
-        description: 'Free-form notes about the opportunity.',
       },
     },
     name: 'Title',
@@ -191,6 +168,12 @@ export const opportunities = {
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The opportunity has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     created: 'Opportunity created successfully.',
     updated: 'Opportunity updated successfully.',
     deleted: 'Opportunity deleted successfully.',

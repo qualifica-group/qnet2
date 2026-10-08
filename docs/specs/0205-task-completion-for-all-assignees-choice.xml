@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0205-task-completion-for-all-assignees-choice" status="done" owner="utente" date="2026-10-07">
+
+  <goal>
+    Al completamento di un task l'utente sceglie se registrare il segnatempo per tutti gli assegnatari (default) o solo
+    per se'. RETTIFICA spec 0155 D-6.
+  </goal>
+
+  <context>
+    Allineamento a q-net (backend `qnet` commit 73998583 + checkbox nel frontend `q-net`). Nomi qnet-2 verificati:
+    - `app/Http/Requests/Tasks/CompleteTaskRequest.php`: `for_all_assignees` `sometimes|boolean`.
+    - `app/DataObjects/Tasks/CompleteTaskData.php`: `forAllAssignees`, default false fino a questa spec.
+    - `app/Services/Tasks/TaskCompletionService::logTimeEntries()`: true = una voce identica per assegnatario (per
+      l'attore se non ce ne sono), false = solo l'attore.
+    - FE `features/tasks/task-complete-dialog.tsx`: prop `forAllAssignees` fissata dal chiamante (true da dettaglio,
+      lista, cella stato e kanban; false dal pannello sottotask).
+  </context>
+
+  <decisions>
+    D-1 (utente) `for_all_assignees` assente -> true (era false). Valore false esplicito -> solo l'attore.
+    D-2 (utente) Il dialog Completa mostra la casella "Registra il segnatempo per tutti gli assegnatari", spuntata di
+        default, e invia sempre il valore scelto. La prop `forAllAssignees` viene rimossa: la scelta e' dell'utente,
+        ovunque si completi il task (dettaglio, lista, cella stato, kanban, pannello sottotask).
+    D-3 La casella e' visibile solo quando si registra un segnatempo (nascosta con "Registra il tempo" spento, 0162).
+    D-4 Bulk complete invariato (`for_all_assignees` sempre true lato server, 0156).
+  </decisions>
+
+  <scope>
+    <in>
+      <item>CompleteTaskRequest/CompleteTaskData: default true; docblock TaskCompletionService.</item>
+      <item>QualificaSampleTaskSeeder: `forAllAssignees: false` esplicito (un segnatempo per task, invariato).</item>
+      <item>TaskCompleteDialog con casella; rimozione prop dai chiamanti; i18n IT/EN.</item>
+      <item>Guida in-app IT/EN `tasks`.</item>
+    </in>
+    <out>
+      <item>Bulk complete, creazione "gia' completato" (0154), approvazione validazione.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    POST /api/tasks/{task}/complete: `for_all_assignees` sometimes|boolean, default true se omesso (era false).
+    Nessun altro cambio di shape.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Complete senza `for_all_assignees` su task con 2 assegnatari -> 2 voci di segnatempo.</criterion>
+    <criterion id="AC-002">Complete con `for_all_assignees: false` -> 1 voce, dell'attore.</criterion>
+    <criterion id="AC-003">FE: casella spuntata di default; payload con `for_all_assignees: true`; tolta la spunta -> `false`.</criterion>
+    <criterion id="AC-004">Guide in-app IT/EN aggiornate; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza; nessun cambio di schema DB.
+  </constraints>
+
+</spec>

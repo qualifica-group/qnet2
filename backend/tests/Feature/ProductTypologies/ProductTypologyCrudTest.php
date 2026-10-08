@@ -61,12 +61,13 @@ it('seeder: never overwrites a rename made through the module (AC-004)', functio
 it('create: 201 + persists all fields (AC-010)', function () {
     Sanctum::actingAs(productTypologyUserWith(['create']));
 
-    $this->postJson('/api/product-typologies', ['name' => 'Formazione', 'code' => 'training', 'description' => 'Corsi'])
+    $this->postJson('/api/product-typologies', ['name' => 'Formazione', 'code' => 'training', 'description' => 'Corsi', 'color' => 'amber'])
         ->assertCreated()
         ->assertJsonPath('data.name', 'Formazione')
         ->assertJsonPath('data.code', 'training')
         ->assertJsonPath('data.description', 'Corsi')
-        ->assertJsonStructure(['data' => ['id', 'code', 'name', 'description', 'created_at', 'updated_at'], 'permissions']);
+        ->assertJsonPath('data.color', 'amber')
+        ->assertJsonStructure(['data' => ['id', 'code', 'name', 'description', 'color', 'created_at', 'updated_at'], 'permissions']);
 
     $this->assertDatabaseHas('product_typologies', ['name' => 'Formazione', 'code' => 'training']);
 });
@@ -74,7 +75,7 @@ it('create: 201 + persists all fields (AC-010)', function () {
 it('create: 201 with only name+code, description defaults to null (AC-010)', function () {
     Sanctum::actingAs(productTypologyUserWith(['create']));
 
-    $this->postJson('/api/product-typologies', ['name' => 'Formazione', 'code' => 'training'])
+    $this->postJson('/api/product-typologies', ['name' => 'Formazione', 'code' => 'training', 'color' => 'gray'])
         ->assertCreated()
         ->assertJsonPath('data.description', null);
 });
@@ -173,7 +174,7 @@ it('403 on every CRUD endpoint without the matching permission (AC-021)', functi
     Sanctum::actingAs(productTypologyUserWith([]));
 
     $this->getJson("/api/product-typologies/{$typology->id}")->assertForbidden();
-    $this->postJson('/api/product-typologies', ['name' => 'X', 'code' => 'x_code'])->assertForbidden();
+    $this->postJson('/api/product-typologies', ['name' => 'X', 'code' => 'x_code', 'color' => 'gray'])->assertForbidden();
     $this->patchJson("/api/product-typologies/{$typology->id}", ['name' => 'Y'])->assertForbidden();
     $this->deleteJson("/api/product-typologies/{$typology->id}")->assertForbidden();
 });

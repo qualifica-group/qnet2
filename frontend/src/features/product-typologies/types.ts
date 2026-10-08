@@ -9,6 +9,15 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 
+/** Direction of the Supplier commission (spec 0202 D-2): earned by us or paid to the supplier. */
+export type SupplierCommissionDirection = 'RECEIVED' | 'PAID'
+
+/** Ordered options for the direction picker. */
+export const SUPPLIER_COMMISSION_DIRECTIONS: readonly SupplierCommissionDirection[] = [
+  'RECEIVED',
+  'PAID',
+]
+
 /**
  * Single product typology detail returned by GET/POST/PATCH /product-typologies
  * (envelope `data`). Matches `ProductTypologyResource`.
@@ -19,6 +28,12 @@ export interface ProductTypologyDetail {
   code: string
   name: string
   description: string | null
+  /** Badge colour token (`BADGE_COLOR_TOKENS`), required (spec 0204 D-3). */
+  color: string
+  /** Whether the Supplier commission is calculated for lines of this typology (spec 0202). */
+  supplier_commission_enabled: boolean
+  /** Required when enabled, null when disabled (spec 0202 D-7). */
+  supplier_commission_direction: SupplierCommissionDirection | null
   created_at: string
   updated_at: string
 }
@@ -38,6 +53,9 @@ export interface CreateProductTypologyPayload {
   name: string
   code: string
   description?: string | null
+  color: string
+  supplier_commission_enabled: boolean
+  supplier_commission_direction: SupplierCommissionDirection | null
 }
 
 /**

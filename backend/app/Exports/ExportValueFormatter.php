@@ -79,6 +79,12 @@ class ExportValueFormatter
             return '';
         }
 
+        // A list of summaries (a team, the product-line pairs) exports as
+        // their names, exactly like a `tags` column.
+        if (is_array($value) && array_is_list($value)) {
+            return $this->formatArray($value);
+        }
+
         if (is_array($value)) {
             return (string) ($value['name'] ?? json_encode($value));
         }

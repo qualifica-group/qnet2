@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\RequestManagement;
 
+use App\Models\EmploymentProfile;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
@@ -183,8 +184,11 @@ final class RequestAttributionWriter
         $requiredByQuote = $this->quoteCompetence->requiredByQuote([$quoteId]);
 
         // No Sede: competence alone decides, and the offer stays assignable.
+        // The Sede pool already drops a switched-off operator (spec 0194);
+        // without a Sede the switch is checked here.
         if (($siteByQuote[$quoteId] ?? null) === null) {
-            if ($this->competence->competent([$operatorId], $requiredByQuote[$quoteId] ?? []) !== []) {
+            if (! $this->isSwitchedOff($operatorId)
+                && $this->competence->competent([$operatorId], $requiredByQuote[$quoteId] ?? []) !== []) {
                 return;
             }
         } elseif (in_array($operatorId, $this->candidates->byRecord($siteByQuote, $requiredByQuote)[$quoteId] ?? [], true)) {
@@ -194,6 +198,19 @@ final class RequestAttributionWriter
         throw ValidationException::withMessages([
             'operator_id' => [__('The chosen operator is not enabled for the Sede or the product categories of this request.')],
         ]);
+    }
+
+    /**
+     * Spec 0194: the "Assegnabile" switch is off on the operator's profile. A
+     * user with no profile is not switched off: their assignability is
+     * whatever it was before the switch existed.
+     */
+    private function isSwitchedOff(int $operatorId): bool
+    {
+        return EmploymentProfile::query()
+            ->where('user_id', $operatorId)
+            ->where('is_assignable', false)
+            ->exists();
     }
 
     /**

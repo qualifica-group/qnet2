@@ -39,6 +39,15 @@ final class QuoteForSelectService
             });
         }
 
+        // Client filter (spec 0199): an Offerta has no `registry_id` of its
+        // own — it is its Opportunity's. Bypassed for the ids[] hydration
+        // below exactly like `search` is.
+        if ($query->registryId !== null) {
+            $base->whereHas('opportunity', function (Builder $scoped) use ($query): void {
+                $scoped->where('registry_id', $query->registryId);
+            });
+        }
+
         $window = $query->page($base, static fn ($ordered) => $ordered->orderBy('code')->orderBy('id'));
 
         /** @var Collection<int, Quote> $page */

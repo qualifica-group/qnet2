@@ -36,6 +36,9 @@ class DatabaseSeeder extends Seeder
         // are ordinary rows the module then manages, seeded here for the same
         // reason as the units above.
         $this->call(ProductTypologySeeder::class);
+        // Clean reference data (spec 0201, D-2): the ten legacy payment statuses
+        // of a commessa line, for the same reason as the typologies above.
+        $this->call(WorkOrderPaymentStatusSeeder::class);
         $this->call(DemoUserSeeder::class);
     }
 }

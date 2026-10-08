@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Tables\RequestManagement\Concerns;
 
 use App\Models\Quote;
-use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Tables\Shared\QuoteWorkflowStatusOptions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
@@ -131,15 +131,6 @@ trait WritesInlineEditableCells
             return null;
         }
 
-        return QuoteWorkflowStatus::query()
-            ->orderBy('sort_order')
-            ->get(['id', 'name', 'color', 'requires_note'])
-            ->map(static fn (QuoteWorkflowStatus $status): array => [
-                'value' => $status->id,
-                'label' => $status->name,
-                'color' => $status->color,
-                'requires_note' => $status->requires_note,
-            ])
-            ->all();
+        return QuoteWorkflowStatusOptions::catalog();
     }
 }

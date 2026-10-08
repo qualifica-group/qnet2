@@ -227,7 +227,9 @@ it('rows: an unknown sort column is rejected for the AGGREGATED product_category
     ])->assertStatus(422);
 });
 
-it('rows: product_category/business_function are comma-joined display strings and filter via whereHas (AC-105)', function () {
+// Requirement changed by spec 0206 D-9: `product_category` now carries the
+// function/category pairs its inline editor edits (was a comma-joined string).
+it('rows: product_category carries the editable pairs, business_function stays a display string; both filter via whereHas (AC-105)', function () {
     $actor = opportunityTableUserWith(['viewAny']);
     $businessFunction = BusinessFunction::factory()->create(['name' => 'Vendite']);
     $categoryOne = ProductCategory::factory()->create(['name' => 'Cloud', 'business_function_id' => $businessFunction->id]);
@@ -243,7 +245,7 @@ it('rows: product_category/business_function are comma-joined display strings an
     $response = $this->postJson('/api/tables/opportunities/rows', ['startRow' => 0, 'endRow' => 25])->assertOk();
     $row = collect($response->json('items'))->firstWhere('id', $matching->id);
 
-    expect($row['product_category'])->toBe('Cloud, On-Prem');
+    expect(collect($row['product_category'])->pluck('product_category_name')->all())->toBe(['Cloud', 'On-Prem']);
     expect($row['business_function'])->toBe('Vendite');
 
     $filtered = $this->postJson('/api/tables/opportunities/rows', [

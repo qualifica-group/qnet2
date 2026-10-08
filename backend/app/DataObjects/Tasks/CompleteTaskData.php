@@ -28,11 +28,11 @@ use App\DataObjects\TimeEntries\TimeEntryData;
  * requirement (`TaskTimeEntryRequirement`, the single point) and skips
  * logging entirely when it is null.
  *
- * `forAllAssignees` (spec 0155, D-6) defaults false: `TaskCompletionService`
- * logs `timeEntry` for the acting user alone. `true` logs an identical copy
- * of the SAME `timeEntry` for every assignee of the Task (the actor when
- * there are none) — the flag decides the recipients, never the values. A
- * null `timeEntry` (spec 0162) logs nothing regardless of this flag.
+ * `forAllAssignees` (spec 0205, RECTIFIES spec 0155 D-6) defaults true:
+ * `TaskCompletionService` logs an identical copy of the SAME `timeEntry` for
+ * every assignee of the Task (the actor when there are none). `false` logs it
+ * for the acting user alone — the flag decides the recipients, never the
+ * values. A null `timeEntry` (spec 0162) logs nothing regardless of this flag.
  */
 final readonly class CompleteTaskData
 {
@@ -42,7 +42,7 @@ final readonly class CompleteTaskData
         public bool $closureFeedbackSubmitted = false,
         public ?int $validationStatusId = null,
         public bool $validationStatusIdSubmitted = false,
-        public bool $forAllAssignees = false,
+        public bool $forAllAssignees = true,
     ) {}
 
     /**
@@ -60,7 +60,7 @@ final readonly class CompleteTaskData
                 ? (int) $data['validation_status_id']
                 : null,
             validationStatusIdSubmitted: array_key_exists('validation_status_id', $data) && $data['validation_status_id'] !== null,
-            forAllAssignees: (bool) ($data['for_all_assignees'] ?? false),
+            forAllAssignees: (bool) ($data['for_all_assignees'] ?? true),
         );
     }
 }

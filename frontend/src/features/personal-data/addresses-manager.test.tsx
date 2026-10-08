@@ -397,3 +397,64 @@ describe('AddressesManager (createMode)', () => {
     expect(screen.queryByText('The city is required.')).not.toBeInTheDocument()
   })
 })
+
+/** The anagrafiche create flow: the inline form plus further addresses (user 2026-10-07). */
+function ControlledMultipleAddresses({ onBuffer }: { onBuffer: (next: AddressDraft[]) => void }) {
+  const [value, setValue] = useState<AddressDraft[]>([])
+  const handleChange = (next: AddressDraft[]) => {
+    setValue(next)
+    onBuffer(next)
+  }
+  return <AddressesManager value={value} onChange={handleChange} createMode multipleOnCreate showHeader={false} />
+}
+
+describe('AddressesManager (createMode + multipleOnCreate)', () => {
+  beforeAll(async () => {
+    await i18n.changeLanguage('en')
+  })
+
+  it('lists a dialog-added address under the inline form, which stays blank', () => {
+    const onBuffer = vi.fn()
+    renderWithConfirm(<ControlledMultipleAddresses onBuffer={onBuffer} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add address' }))
+    fireEvent.click(screen.getByTestId('stub-submit'))
+
+    expect(screen.getByText('New Street')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Address\*?$/)).toHaveValue('')
+    expect(onBuffer).toHaveBeenLastCalledWith([expect.objectContaining({ line1: 'New Street', is_primary: true })])
+  })
+
+  it('keeps the inline address primary and in place beside the added ones', () => {
+    const onBuffer = vi.fn()
+    renderWithConfirm(<ControlledMultipleAddresses onBuffer={onBuffer} />)
+    const line1 = screen.getByLabelText(/^Address\*?$/)
+
+    fireEvent.change(line1, { target: { value: 'Via Roma 1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add address' }))
+    fireEvent.click(screen.getByTestId('stub-submit'))
+    fireEvent.change(line1, { target: { value: 'Via Roma 10' } })
+
+    expect(line1).toHaveValue('Via Roma 10')
+    expect(screen.getByText('New Street')).toBeInTheDocument()
+    expect(onBuffer).toHaveBeenLastCalledWith([
+      expect.objectContaining({ line1: 'Via Roma 10', is_primary: true }),
+      expect.objectContaining({ line1: 'New Street', is_primary: false }),
+    ])
+  })
+
+  it('hands the primary to the added address once the inline one is cleared', () => {
+    const onBuffer = vi.fn()
+    renderWithConfirm(<ControlledMultipleAddresses onBuffer={onBuffer} />)
+    const line1 = screen.getByLabelText(/^Address\*?$/)
+
+    fireEvent.change(line1, { target: { value: 'Via Roma 1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add address' }))
+    fireEvent.click(screen.getByTestId('stub-submit'))
+    fireEvent.change(line1, { target: { value: '' } })
+
+    expect(line1).toHaveValue('')
+    expect(screen.getByText('New Street')).toBeInTheDocument()
+    expect(onBuffer).toHaveBeenLastCalledWith([expect.objectContaining({ line1: 'New Street', is_primary: true })])
+  })
+})

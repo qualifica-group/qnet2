@@ -172,6 +172,29 @@ describe('RequestManagementCategoryTabs favorites (spec 0184)', () => {
   })
 })
 
+describe('RequestManagementCategoryTabs competence default (spec 0193)', () => {
+  it('shows "All" plus the default favorites and tells in the menu that they are suggested (AC-008)', () => {
+    renderTabs({
+      categories: MANY,
+      favoriteCategoryIds: [4, 2],
+      showOnlyFavorites: true,
+      favoritesAreDefault: true,
+    })
+
+    expect(inlineTabs()).toEqual(['All', 'ISO 140019', 'Formazione Città7'])
+    fireEvent.click(screen.getByRole('button', { name: /More/ }))
+    expect(screen.getByText(/suggested from the categories you are enabled for/)).toBeInTheDocument()
+  })
+
+  it('shows no suggestion notice once the favorites are the actor own', () => {
+    renderTabs({ categories: MANY, favoriteCategoryIds: [4, 2], showOnlyFavorites: true })
+
+    fireEvent.click(screen.getByRole('button', { name: /More/ }))
+
+    expect(screen.queryByText(/suggested from the categories/)).not.toBeInTheDocument()
+  })
+})
+
 /**
  * Overflow (priority+): jsdom has no layout, so every measured box is stubbed
  * at 100px and the strip at 400px — "All" plus two categories fit next to the

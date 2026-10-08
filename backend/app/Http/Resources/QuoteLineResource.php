@@ -58,6 +58,8 @@ class QuoteLineResource extends JsonResource
             // CURRENT unit, so an old row never renders blank.
             'unit_of_measure' => $this->summarizeUnitOfMeasure(),
             'additional_description' => $this->additional_description,
+            // Spec 0202, D-7: the frozen Supplier commission direction (null = not calculated).
+            'supplier_commission_direction' => $this->supplier_commission_direction?->value,
             'unit_price' => $this->unit_price,
             'vat_rate_id' => $this->vat_rate_id,
             'vat_rate' => $this->summarizeVatRate(),
@@ -78,7 +80,7 @@ class QuoteLineResource extends JsonResource
     }
 
     /**
-     * @return array{id: int, code: string, name: string, category: array{id: int, name: string}|null, product_typology: array{id: int, name: string}|null, business_function: array{id: int, name: string}|null}|null
+     * @return array{id: int, code: string, name: string, category: array{id: int, name: string}|null, product_typology: array{id: int, name: string, color: string}|null, business_function: array{id: int, name: string}|null}|null
      */
     private function summarizeProduct(): ?array
     {
@@ -124,11 +126,11 @@ class QuoteLineResource extends JsonResource
     }
 
     /**
-     * @return array{id: int, name: string}|null
+     * @return array{id: int, name: string, color: string}|null
      */
     private function summarizeProductTypology(?ProductTypology $productTypology): ?array
     {
-        return $productTypology === null ? null : ['id' => $productTypology->id, 'name' => $productTypology->name];
+        return $productTypology === null ? null : ['id' => $productTypology->id, 'name' => $productTypology->name, 'color' => $productTypology->color];
     }
 
     /**

@@ -1,19 +1,21 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { RegistryForm } from '@/features/registries/registry-form'
 import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
 import type { EnumOption } from '@/features/config/types'
+import { fillCardNames } from '@/features/registries/registry-test-fixtures'
 
 /**
  * An anagrafica must be reachable by phone at creation (user directive
  * 2026-09-07), the rule the referenti already carried: the quick field is
  * marked required and the save is refused without a number. Client twin of
  * `StoreRegistryRequest` + `ValidatesRequiredPhoneContact`; the server side is
- * covered by `RegistryCrudTest`.
+ * covered by `RegistryCrudTest`. REQUIREMENT CHANGED back (user 2026-10-07):
+ * the create form lays the quick contact fields out again, ready to fill.
  */
 
 const createRegistryMock = vi.fn()
@@ -32,10 +34,6 @@ const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   fields: {},
   actions: {},
 }
-
-vi.mock('@/features/registries/use-registry-form-meta', () => ({
-  useRegistryFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
-}))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
@@ -74,12 +72,6 @@ function wrapper() {
   )
 }
 
-/** Fills the card fields the save gate checks before it ever reaches the phone. */
-function fillIdentity() {
-  fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
-  fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
-}
-
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
@@ -91,25 +83,28 @@ beforeEach(() => {
 })
 
 describe('RegistryForm — phone required at creation (user directive 2026-09-07)', () => {
-  it('marks the phone quick field as required in create mode, and only that one', () => {
+  it('marks the phone quick field as required in create mode, and only that one', async () => {
     render(
-      <RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    expect(screen.getByLabelText(/^Phone/)).toHaveAttribute('aria-required', 'true')
+    expect(await screen.findByLabelText(/^Phone/)).toHaveAttribute('aria-required', 'true')
     expect(screen.getByLabelText('Email')).toHaveAttribute('aria-required', 'false')
     expect(screen.getByLabelText(/^Phone/).closest('div')?.textContent).toContain('*')
+    // The address is laid out ready to fill too, with "Add address" for further sites (user 2026-10-07).
+    expect(screen.getByLabelText('Address')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add address' })).toBeInTheDocument()
   })
 
   it('refuses the save when no phone number was entered', async () => {
     render(
-      <RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    fillIdentity()
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    await fillCardNames()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() =>
       expect(screen.getByText('Enter at least one phone number.')).toBeInTheDocument(),
@@ -121,13 +116,13 @@ describe('RegistryForm — phone required at creation (user directive 2026-09-07
     createRegistryMock.mockResolvedValue({ id: 1, name: 'Ada Lovelace' })
 
     render(
-      <RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    fillIdentity()
+    await fillCardNames()
     fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(createRegistryMock).toHaveBeenCalledTimes(1))
     const payload = createRegistryMock.mock.calls[0][0]

@@ -94,6 +94,7 @@ export function createColumnValuesGetter(
   productCategoryId?: number,
   opportunityId?: number,
   quoteId?: number,
+  registryId?: number,
 ): SetFilterValuesFunc {
   return (params: SetFilterValuesFuncParams) => {
     const filterModel: Record<string, unknown> = { ...params.api.getFilterModel() }
@@ -105,6 +106,7 @@ export function createColumnValuesGetter(
       ...(productCategoryId != null ? { productCategoryId } : {}),
       ...(opportunityId != null ? { opportunityId } : {}),
       ...(quoteId != null ? { quoteId } : {}),
+      ...(registryId != null ? { registryId } : {}),
     })
       .then((response) => {
         if (response.hasMore) {
@@ -135,9 +137,10 @@ export function buildSetFilterParams(
   productCategoryId?: number,
   opportunityId?: number,
   quoteId?: number,
+  registryId?: number,
 ): ISetFilterParams {
   const params: ISetFilterParams = {
-    values: createColumnValuesGetter(domain, column.id, onTruncated, productCategoryId, opportunityId, quoteId),
+    values: createColumnValuesGetter(domain, column.id, onTruncated, productCategoryId, opportunityId, quoteId, registryId),
     refreshValuesOnOpen: true,
     suppressClearModelOnRefreshValues: true,
     excelMode: 'windows',
@@ -231,12 +234,13 @@ export function buildColumnFilter(
   productCategoryId?: number,
   opportunityId?: number,
   quoteId?: number,
+  registryId?: number,
 ): { filter: ColDef['filter']; filterParams: ColDef['filterParams'] } {
   const filter = resolveFilter(column)
   if (filter === 'agSetColumnFilter') {
     return {
       filter,
-      filterParams: buildSetFilterParams(domain, column, onTruncated, translate, productCategoryId, opportunityId, quoteId),
+      filterParams: buildSetFilterParams(domain, column, onTruncated, translate, productCategoryId, opportunityId, quoteId, registryId),
     }
   }
   if (filter === 'agMultiColumnFilter') {
@@ -245,7 +249,7 @@ export function buildColumnFilter(
       filters: [
         {
           filter: 'agSetColumnFilter',
-          filterParams: buildSetFilterParams(domain, column, onTruncated, translate, productCategoryId, opportunityId, quoteId),
+          filterParams: buildSetFilterParams(domain, column, onTruncated, translate, productCategoryId, opportunityId, quoteId, registryId),
         },
         {
           filter: typedFilter,

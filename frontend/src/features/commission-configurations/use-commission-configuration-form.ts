@@ -18,11 +18,34 @@ import {
   type CommissionConfigurationDetail,
   type CommissionConfigurationFormMode,
   type CommissionConfigurationPayload,
+  type CommissionRole,
 } from './types'
 
 interface Args {
   mode: CommissionConfigurationFormMode
   onSuccess: (configuration: CommissionConfigurationDetail) => void
+}
+
+/** A fresh rule: a role-wide COMMERCIAL default, or a personal SUPPLIER rule on `supplierRegistryId` (spec 0204 D-4). */
+function createDefaults(supplierRegistryId: number | null | undefined): CommissionConfigurationFormValues {
+  const supplierPreset = supplierRegistryId != null
+  const role: CommissionRole = supplierPreset ? 'SUPPLIER' : 'COMMERCIAL'
+  return {
+    name: '',
+    recipient_role: role,
+    application_scope: supplierPreset ? 'RECIPIENT' : 'PRODUCT_CATEGORY',
+    product_category_id: null,
+    product_id: null,
+    recipient_type: COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES[role][0],
+    recipient_id: supplierRegistryId ?? null,
+    commission_type: 'PERCENTAGE',
+    value: 0,
+    priority: 0,
+    valid_from: new Date().toISOString().slice(0, 10),
+    valid_until: null,
+    status: 'ACTIVE',
+    internal_note: null,
+  }
 }
 
 function payload(values: CommissionConfigurationFormValues): CommissionConfigurationPayload {
@@ -69,22 +92,7 @@ export function useCommissionConfigurationForm({ mode, onSuccess }: Args) {
             status: mode.configuration.status,
             internal_note: mode.configuration.internal_note,
           }
-        : {
-            name: '',
-            recipient_role: 'COMMERCIAL',
-            application_scope: 'PRODUCT_CATEGORY',
-            product_category_id: null,
-            product_id: null,
-            recipient_type: COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES.COMMERCIAL[0],
-            recipient_id: null,
-            commission_type: 'PERCENTAGE',
-            value: 0,
-            priority: 0,
-            valid_from: new Date().toISOString().slice(0, 10),
-            valid_until: null,
-            status: 'ACTIVE',
-            internal_note: null,
-          },
+        : createDefaults(mode.supplierRegistryId),
   })
 
   const onSubmit = async (values: CommissionConfigurationFormValues) => {

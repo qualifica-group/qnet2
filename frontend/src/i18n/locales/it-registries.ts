@@ -15,6 +15,10 @@ export const registries = {
     agreement_status: 'Stato convenzione',
     size_class: 'Classe dimensionale',
     primary_contact: 'Contatto principale',
+    commercial: 'Commerciale',
+    supervisor: 'Supervisore',
+    reporter: 'Segnalatore',
+    managers: 'Operatori',
     created_at: 'Creato il',
   },
   detail: {
@@ -25,6 +29,13 @@ export const registries = {
     // Scheda in sola lettura dei documenti dell'anagrafica nei dettagli di
     // Opportunita', Offerte e Commesse (spec 0173).
     registryDocumentsTab: 'Documenti anagrafica',
+    // Tab dei record collegati al cliente sotto la scheda (spec 0199).
+    related: {
+      title: 'Record collegati',
+      commissionConfigurations: 'Commissioni configurate',
+      countLabel_one: '{{count}} record collegato',
+      countLabel_other: '{{count}} record collegati',
+    },
     // Etichette della striscia KPI: sono SUE, non quelle del form, perche' le
     // sezioni sotto portano gia' "Referenti"/"Settori" sulle righe che ne
     // elencano i nomi.
@@ -34,17 +45,11 @@ export const registries = {
       sectors: 'Settori merceologici',
       employees: 'Dipendenti',
     },
-    summary: {
-      title: 'Riepilogo',
-      description: 'Si aggiorna mentre compili.',
-    },
   },
   form: {
     newRegistry: 'Nuova anagrafica',
     createTitle: 'Crea anagrafica',
     createSubtitle: 'Aggiungi una nuova anagrafica alla tua organizzazione.',
-    editTitle: 'Modifica anagrafica',
-    editSubtitle: "Aggiorna l'anagrafica selezionata.",
     source: 'Fonte',
     sourcePlaceholder: 'Seleziona una fonte…',
     sourceSearch: 'Cerca fonti…',
@@ -82,13 +87,6 @@ export const registries = {
     commercialPlaceholder: 'Seleziona un referente commerciale…',
     reporter: 'Segnalatore',
     reporterPlaceholder: 'Seleziona un segnalatore…',
-    // Micro-intestazioni dei due gruppi dentro la sezione "Relazioni".
-    groups: {
-      origin: 'Origine e classificazione',
-      people: 'Persone di riferimento',
-    },
-    atecoCodes: 'Codici ATECO',
-    atecoCodesComingSoon: 'Prossimamente',
     vatGroup: 'Gruppo IVA',
     vatGroupMax: 'Il gruppo IVA può contenere al massimo 191 caratteri.',
     isSupplier: 'Fornitore',
@@ -110,30 +108,30 @@ export const registries = {
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: "Impossibile eliminare l'anagrafica. Riprova.",
     deleteForbidden: 'Non puoi eliminare questa anagrafica.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: "L'anagrafica non è ancora stata creata: i dati inseriti andranno persi.",
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dati anagrafici',
-        description: "Dati identificativi dell'anagrafica.",
       },
       relations: {
         title: 'Relazioni',
-        description: 'Fonte, settori, referenti, commerciale e segnalatore.',
       },
       team: {
         title: 'Team',
-        description: 'Supervisore e gestori account.',
       },
       business: {
         title: 'Dati commerciali',
-        description: 'Gruppo IVA, stato fornitore, convenzione e classe dimensionale.',
       },
       contacts: {
         title: 'Contatti',
-        description: 'Recapiti telefonici ed email.',
       },
       addresses: {
         title: 'Indirizzi',
-        description: 'Sedi legali, di consegna e di fatturazione.',
       },
     },
   },

@@ -1,7 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
@@ -29,12 +28,14 @@ export function LeadDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
     data: lead,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(leadDetailQueryKey(id), () => fetchLead(id))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('leads.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}
@@ -81,17 +82,18 @@ function LeadEditScreen({ leadId, onSuccess, onCancel }: LeadEditScreenProps) {
     data: lead,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(leadDetailQueryKey(leadId), () => fetchLead(leadId))
 
   if (isError) {
     return (
-      <div className="flex flex-col items-start gap-3 p-4">
-        <p className="text-sm text-destructive">{t('leads.detail.loadError')}</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          {t('common.retry')}
-        </Button>
-      </div>
+      <DetailError
+        error={error}
+        message={t('leads.detail.loadError')}
+        retryLabel={t('common.retry')}
+        onRetry={() => refetch()}
+      />
     )
   }
 

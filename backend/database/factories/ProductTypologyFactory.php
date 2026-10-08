@@ -2,7 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Enums\SupplierCommissionDirection;
 use App\Models\ProductTypology;
+use App\Support\BadgeTokens;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -26,6 +28,16 @@ class ProductTypologyFactory extends Factory
             'name' => fake()->unique()->words(2, true),
             'code' => 'typology_'.$suffix,
             'description' => fake()->optional()->sentence(),
+            'color' => fake()->randomElement(BadgeTokens::colors()),
         ];
+    }
+
+    /** Supplier commission switched on with the given direction (spec 0202, D-7). */
+    public function supplierCommission(SupplierCommissionDirection $direction = SupplierCommissionDirection::Paid): static
+    {
+        return $this->state(fn (): array => [
+            'supplier_commission_enabled' => true,
+            'supplier_commission_direction' => $direction,
+        ]);
     }
 }

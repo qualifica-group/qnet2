@@ -1,10 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- renderer registry module: cells are AG Grid render functions, not route/page components */
 import type { ICellRendererParams } from 'ag-grid-community'
-import { Check, X } from 'lucide-react'
+import { Briefcase, Check, UserRound, X } from 'lucide-react'
 import i18n from '@/i18n'
 import { Badge } from '@/components/ui/badge'
 import { enumLabelOf } from '@/features/config/enum-label'
 import { ContactsCell, DateTimeCell } from '@/features/table/cell-renderers'
+import { RelationCell } from '@/features/table/rich-cells'
+import { UserCell, UserStackCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import type { AgreementStatus, ReferenceRef, SizeClass } from '@/features/registries/types'
 
@@ -87,7 +89,10 @@ function SizeClassCell({ value }: ICellRendererParams) {
  * Custom cell renderers keyed by the backend column `id`. Only columns that
  * need special rendering appear here; `name` falls back to the AG Grid
  * default text cell and `created_at`/`primary_contact` reuse the shared
- * domain-agnostic renderers (spec 0020).
+ * domain-agnostic renderers (spec 0020). The team columns reuse the
+ * Opportunita'/Offerte cells: `commercial`/`reporter` are referent relations
+ * with a kind icon, `supervisor` one person, `managers` ("Operatori") an
+ * avatar stack.
  */
 export const registryColumnRenderers: TableRendererMap = {
   source: (params) => <SourceCell {...params} />,
@@ -95,5 +100,9 @@ export const registryColumnRenderers: TableRendererMap = {
   agreement_status: (params) => <AgreementStatusCell {...params} />,
   size_class: (params) => <SizeClassCell {...params} />,
   primary_contact: (params) => <ContactsCell {...params} />,
+  commercial: (params) => <RelationCell {...params} icon={Briefcase} />,
+  supervisor: (params) => <UserCell {...params} />,
+  reporter: (params) => <RelationCell {...params} icon={UserRound} />,
+  managers: (params) => <UserStackCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
 }

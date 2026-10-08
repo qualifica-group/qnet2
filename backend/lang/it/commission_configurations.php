@@ -12,6 +12,10 @@ return [
         'product' => 'Prodotto',
         'recipient' => 'Destinatario',
     ],
+    'directions' => [
+        'received' => 'Ricevuta (incassata da noi)',
+        'paid' => 'Pagata (costo verso il fornitore)',
+    ],
     'types' => [
         'fixed_amount' => 'Importo fisso',
         'percentage' => 'Percentuale',

@@ -9,8 +9,8 @@ import type { ProformaStatus } from '@/features/proforma-requests/types'
 /** The work orders row-action key of the "€" proforma request (spec 0193). */
 export const PROFORMA_ACTION_KEY = 'proforma'
 
-/** Icons the work orders grid adds to the shared action icon map. */
-export const WORK_ORDER_ACTION_ICONS: ActionIconMap = { euro: Euro }
+/** Icon of the "€" proforma row action, merged into the Commesse icon map. */
+export const PROFORMA_ACTION_ICONS: ActionIconMap = { euro: Euro }
 
 /** Icon tint per state: grey = no request, blue = pending, yellow = issued (spec 0193 D-5). */
 const STATUS_CLASS: Record<ProformaStatus, string> = {

@@ -13,7 +13,7 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 import type { TaskDetailWithPermissions } from '@/features/tasks/types'
 
 /**
- * AC-044 (action error split) and the card's "Modifica" action, split out of
+ * AC-044 (action error split), split out of
  * `task-detail.test.tsx` (engineering.md §6, file-size split — mirrors
  * `task-complete-dialog.test.tsx`'s own split from the same file).
  */
@@ -22,6 +22,12 @@ let granted: string[] = []
 
 vi.mock('@/features/modules/use-module-open-mode', () => ({
   useModuleOpenMode: () => 'modal',
+}))
+
+// The detail mounts the edit form behind its inline editors (spec 0195),
+// which reads the connected actor.
+vi.mock('@/features/auth/use-auth', () => ({
+  useAuth: () => ({ user: { id: 99, name: 'Utente Corrente' } }),
 }))
 
 vi.mock('@/features/auth/use-abilities', () => ({
@@ -160,47 +166,5 @@ describe('TaskDetailView — action errors (AC-044)', () => {
 
     await waitFor(() => expect(blockTask).toHaveBeenCalledWith(90))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(label('tasks.actions.errors.blocked')))
-  })
-})
-
-/** The "Modifica" action lives on the task card, gated by `onEdit` AND `permissions.resource.update`. */
-describe('TaskDetailView — edit action on the card', () => {
-  function renderWithEdit(task: TaskDetailWithPermissions, onEdit?: () => void) {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    render(
-      <MemoryRouter>
-        <QueryClientProvider client={client}>
-          <ConfirmContext.Provider value={() => Promise.resolve(true)}>
-            <TaskDetailView task={task} onEdit={onEdit} onOpenSubtask={vi.fn()} onCreateSubtask={vi.fn()} />
-          </ConfirmContext.Provider>
-        </QueryClientProvider>
-      </MemoryRouter>,
-    )
-  }
-
-  it('calls onEdit when the actor can update', () => {
-    const onEdit = vi.fn()
-    renderWithEdit(taskDetailWithPermissions(), onEdit)
-
-    fireEvent.click(screen.getByRole('button', { name: label('common.edit') }))
-
-    expect(onEdit).toHaveBeenCalledOnce()
-  })
-
-  it('hides the action without onEdit', () => {
-    renderWithEdit(taskDetailWithPermissions())
-
-    expect(screen.queryByRole('button', { name: label('common.edit') })).not.toBeInTheDocument()
-  })
-
-  it('hides the action when the actor cannot update', () => {
-    renderWithEdit(
-      taskDetailWithPermissions({
-        permissions: { ...FULL_ACCESS_PERMISSIONS, resource: { ...FULL_ACCESS_PERMISSIONS.resource, update: false } },
-      }),
-      vi.fn(),
-    )
-
-    expect(screen.queryByRole('button', { name: label('common.edit') })).not.toBeInTheDocument()
   })
 })

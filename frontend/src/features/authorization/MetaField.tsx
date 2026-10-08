@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useContext, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   Control,
@@ -14,6 +14,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { FieldHint } from '@/components/field-hint'
+import { MetaFieldRowContext } from '@/features/authorization/meta-field-row-context'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 
 interface MetaFieldRenderArgs<
@@ -97,6 +98,9 @@ export function MetaField<
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
   const permission = fieldPermission(metaKey)
+  // Inside a record row that already labels THIS field (spec 0195), the label
+  // stays for assistive tech only and the hint moves beside the control.
+  const labelledByRow = useContext(MetaFieldRowContext) === name
 
   if (!permission.visible) {
     return null
@@ -109,10 +113,12 @@ export function MetaField<
   const readOnly = permission.readonly
   const requiredMark = required ?? permission.required
 
+  const hintNode = hint ? <FieldHint text={hint} label={hintLabel ?? t('authorization.moreInfo')} /> : null
+
   const labelRow = hint ? (
     <div className="flex items-center gap-1.5">
       <FormLabel required={requiredMark}>{label}</FormLabel>
-      <FieldHint text={hint} label={hintLabel ?? t('authorization.moreInfo')} />
+      {hintNode}
     </div>
   ) : (
     <FormLabel required={requiredMark}>{label}</FormLabel>
@@ -127,7 +133,21 @@ export function MetaField<
       control={control}
       name={name}
       render={({ field }) =>
-        layout === 'inline' ? (
+        labelledByRow ? (
+          <FormItem className={className}>
+            <FormLabel required={requiredMark} className="sr-only">
+              {label}
+            </FormLabel>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <div className={layout === 'inline' ? 'shrink-0' : 'min-w-0 flex-1'}>
+                {children({ field, disabled, readOnly })}
+              </div>
+              {hintNode}
+            </div>
+            {descriptionNode}
+            <FormMessage />
+          </FormItem>
+        ) : layout === 'inline' ? (
           <FormItem className={className}>
             <div className="flex items-start justify-between gap-3">
               <div className="grid min-w-0 gap-1">

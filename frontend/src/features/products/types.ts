@@ -51,6 +51,8 @@ export interface ProductUnitOfMeasureSummary {
 export interface ProductTypologySummary {
   id: number
   name: string
+  /** Badge colour token (spec 0204 D-4). */
+  color: string
 }
 
 /**

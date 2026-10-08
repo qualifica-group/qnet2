@@ -5,6 +5,22 @@ import { enumLabelOf } from '@/features/config/enum-label'
 import type { PersonalDataCard } from '@/features/personal-data/types'
 import { formatDate } from '@/lib/formatting/date-display'
 
+/** The identity fields the rows read: a persisted card, or a create draft. */
+export type PersonalDataIdentity = Pick<
+  PersonalDataCard,
+  | 'type'
+  | 'company_name'
+  | 'first_name'
+  | 'last_name'
+  | 'tax_code'
+  | 'vat_number'
+  | 'sdi_code'
+  | 'birth_date'
+  | 'birth_city'
+  | 'residence_city'
+  | 'gender'
+>
+
 /**
  * The anagraphic card's fiscal identity as read-only record rows, shared by
  * every owner's record screen (anagrafica, referente, and whoever comes next).
@@ -15,7 +31,7 @@ import { formatDate } from '@/lib/formatting/date-display'
  * per module it would be the same twenty rows copied twice, free to answer
  * differently the day the card gains a field.
  */
-export function PersonalDataIdentityRows({ card }: { card: PersonalDataCard }) {
+export function PersonalDataIdentityRows({ card }: { card: PersonalDataIdentity }) {
   const { t } = useTranslation()
 
   return (

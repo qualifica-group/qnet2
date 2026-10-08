@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- module registry adapter: exports the `moduleScreen` descriptor alongside its screen components (spec 0042 pattern, same as `project-screens.tsx`) */
 import { useTranslation } from 'react-i18next'
+import { DetailError } from '@/components/detail/detail-panel'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchRole } from '@/features/roles/api'
@@ -59,17 +59,18 @@ function EditRoleLoader({ roleId, onSuccess, onCancel }: EditRoleLoaderProps) {
     data: role,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(['roles', 'detail', roleId], () => fetchRole(roleId))
 
   if (isError) {
     return (
-      <div className="flex flex-col items-start gap-3 p-4">
-        <p className="text-sm text-destructive">{t('roles.detail.loadError')}</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          {t('common.retry')}
-        </Button>
-      </div>
+      <DetailError
+        error={error}
+        message={t('roles.detail.loadError')}
+        retryLabel={t('common.retry')}
+        onRetry={() => refetch()}
+      />
     )
   }
 

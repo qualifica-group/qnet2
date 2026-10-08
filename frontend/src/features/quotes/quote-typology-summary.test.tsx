@@ -8,7 +8,7 @@ import {
   typologyBucketsFromPersistedSummary,
 } from '@/features/quotes/quote-summary'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
-import type { ForSelectItem } from '@/features/for-select/types'
+import type { ProductTypologyForSelectItem } from '@/features/product-typologies/for-select-api'
 import type { QuoteSummary as QuoteSummaryData } from '@/features/quotes/types'
 
 /**
@@ -17,10 +17,10 @@ import type { QuoteSummary as QuoteSummaryData } from '@/features/quotes/types'
  * form's live preview.
  */
 
-const TYPOLOGY_OPTIONS: ForSelectItem[] = [
-  { id: 1, label: 'Consulenza' },
-  { id: 2, label: 'Ente' },
-  { id: 3, label: 'Formazione' },
+const TYPOLOGY_OPTIONS: ProductTypologyForSelectItem[] = [
+  { id: 1, label: 'Consulenza', meta: { color: 'blue' } },
+  { id: 2, label: 'Ente', meta: { color: 'violet' } },
+  { id: 3, label: 'Formazione', meta: { color: 'amber' } },
 ]
 
 /** Product 10 and 11 are "Ente" (id 2); product 20 is "Consulenza" (id 1); nothing is "Formazione". */
@@ -59,7 +59,7 @@ function Harness({
   options = TYPOLOGY_OPTIONS,
 }: {
   values?: QuoteFormValues
-  options?: ForSelectItem[]
+  options?: ProductTypologyForSelectItem[]
 }) {
   const form = useForm<QuoteFormValues>({ defaultValues: values })
   return (
@@ -99,6 +99,14 @@ describe('QuoteLiveSummary — per-typology block (spec 0099)', () => {
     expect(within(typologyCard()).queryByText('5,400.00')).not.toBeInTheDocument()
   })
 
+  it('spec 0204: each typology is a badge in its own colour, live and persisted', () => {
+    render(<Harness />)
+    const card = typologyCard()
+
+    expect(within(card).getByText('Ente')).toHaveClass('bg-violet-100')
+    expect(within(card).getByText('Formazione')).toHaveClass('bg-amber-100')
+  })
+
   it('AC-051: a configured typology with no line still shows, at 0.00', () => {
     render(<Harness />)
     const card = typologyCard()
@@ -131,7 +139,7 @@ describe('QuoteLiveSummary — per-typology block (spec 0099)', () => {
     render(
       <Harness
         values={{ ...BASE_VALUES, offer_lines: [], cost_lines: [] }}
-        options={[{ id: 99, label: 'Tipologia Inventata' }]}
+        options={[{ id: 99, label: 'Tipologia Inventata', meta: { color: 'pink' } }]}
       />,
     )
 
@@ -145,17 +153,17 @@ describe('typologyBucketsFromPersistedSummary (spec 0099, AC-040)', () => {
     cost: { net: '0.00', vat: '0.00', gross: '0.00' },
     margin: { net: '7500.00' },
     product_typologies: [
-      { id: 1, name: 'Consulenza', net: '2500.00' },
-      { id: 2, name: 'Ente', net: '5000.00' },
-      { id: 3, name: 'Formazione', net: '0.00' },
+      { id: 1, name: 'Consulenza', color: 'blue', net: '2500.00' },
+      { id: 2, name: 'Ente', color: 'violet', net: '5000.00' },
+      { id: 3, name: 'Formazione', color: 'amber', net: '0.00' },
     ],
   }
 
   it('maps the decimal strings onto the card shape', () => {
     expect(typologyBucketsFromPersistedSummary(persisted)).toEqual([
-      { id: 1, name: 'Consulenza', net: 2500 },
-      { id: 2, name: 'Ente', net: 5000 },
-      { id: 3, name: 'Formazione', net: 0 },
+      { id: 1, name: 'Consulenza', color: 'blue', net: 2500 },
+      { id: 2, name: 'Ente', color: 'violet', net: 5000 },
+      { id: 3, name: 'Formazione', color: 'amber', net: 0 },
     ])
   })
 

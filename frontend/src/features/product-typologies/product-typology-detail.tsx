@@ -15,6 +15,7 @@ import { RecordBody } from '@/components/detail/record-body'
 import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { ProductTypologyDetailWithPermissions } from '@/features/product-typologies/types'
 
@@ -65,9 +66,26 @@ export function ProductTypologyDetailView({ productTypology, onEdit }: ProductTy
           <RecordSectionsGrid>
             <RecordSection title={t('productTypologies.form.sections.identity.title')} full>
               <RecordFieldList>
+                <RecordField label={t('productTypologies.detail.color')}>
+                  <ProductTypologyBadge name={productTypology.name} color={productTypology.color} />
+                </RecordField>
                 <RecordField label={t('productTypologies.detail.description')}>
                   {productTypology.description ? productTypology.description : <DetailEmpty />}
                 </RecordField>
+              </RecordFieldList>
+            </RecordSection>
+            <RecordSection title={t('productTypologies.form.sections.commission.title')} full>
+              <RecordFieldList>
+                <RecordField label={t('productTypologies.form.supplierCommissionEnabled')}>
+                  {productTypology.supplier_commission_enabled ? t('common.yes') : t('common.no')}
+                </RecordField>
+                {productTypology.supplier_commission_direction ? (
+                  <RecordField label={t('productTypologies.form.supplierCommissionDirection')}>
+                    {t(
+                      `productTypologies.supplierCommissionDirection.${productTypology.supplier_commission_direction}`,
+                    )}
+                  </RecordField>
+                ) : null}
               </RecordFieldList>
             </RecordSection>
           </RecordSectionsGrid>

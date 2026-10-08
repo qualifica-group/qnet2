@@ -2,12 +2,12 @@ import { useTranslation } from 'react-i18next'
 import { CalendarClock, CalendarDays, CheckCircle2, FileSignature, Hammer } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
 import { CompletionBar } from '@/components/completion-bar'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
 import { formatDate } from '@/lib/formatting/date-display'
 import { cn } from '@/lib/utils'
+import { WorkOrderClosureActions } from '@/features/work-orders/work-order-closure-actions'
 import type { WorkOrderDetailWithPermissions, WorkOrderStatusValue, WorkOrderType } from '@/features/work-orders/types'
 
 /**
@@ -48,14 +48,15 @@ function WorkOrderTypeBadge({ type }: { type: WorkOrderType }) {
 
 interface WorkOrderDetailHeaderProps {
   workOrder: WorkOrderDetailWithPermissions
-  /** Opens the module's existing edit surface; absent = no edit affordance. */
-  onEdit?: () => void
+  /** After the closure action changed the record (spec 0195 D-7: the host refreshes its lists). */
+  onChanged?: () => void
 }
 
-/** Identity band: monogram, title, code subtitle, status/type pills, edit action. */
-export function WorkOrderDetailHeader({ workOrder, onEdit }: WorkOrderDetailHeaderProps) {
-  const canEdit = workOrder.permissions.resource.update
-
+/**
+ * Identity band: monogram, title, code subtitle, status/type pills and the
+ * closure action (the fields edit in place below).
+ */
+export function WorkOrderDetailHeader({ workOrder, onChanged }: WorkOrderDetailHeaderProps) {
   return (
     <RecordCardHeader
       media={
@@ -69,16 +70,27 @@ export function WorkOrderDetailHeader({ workOrder, onEdit }: WorkOrderDetailHead
           <WorkOrderTypeBadge type={workOrder.type} />
         </>
       }
-      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+      actions={<WorkOrderClosureActions workOrder={workOrder} onChanged={onChanged} />}
     />
   )
 }
 
-/** KPI strip: completion, start date, callback date and contract number. */
-export function WorkOrderDetailStats({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
+interface WorkOrderStatsStripProps {
+  /** Computed from the tasks (spec 0149 D-5); `null` on a work order not created yet. */
+  completionPercentage: number | null
+  startDate: string | null
+  callbackDate: string | null
+  contractNumber: string | null
+}
+
+/** KPI strip: completion, start date, callback date and contract number — the detail's, and the create draft's live. */
+export function WorkOrderStatsStrip({
+  completionPercentage,
+  startDate,
+  callbackDate,
+  contractNumber,
+}: WorkOrderStatsStripProps) {
   const { t } = useTranslation()
-  const startDate = formatDate(workOrder.start_date)
-  const callbackDate = formatDate(workOrder.callback_date)
 
   return (
     <RecordStatStrip>
@@ -86,27 +98,39 @@ export function WorkOrderDetailStats({ workOrder }: { workOrder: WorkOrderDetail
         label={t('workOrders.columns.completion_percentage')}
         icon={<CheckCircle2 aria-hidden="true" />}
         value={
-          <CompletionBar
-            value={workOrder.completion_percentage}
-            label={t('workOrders.columns.completion_percentage')}
-          />
+          completionPercentage !== null ? (
+            <CompletionBar value={completionPercentage} label={t('workOrders.columns.completion_percentage')} />
+          ) : (
+            <DetailEmpty />
+          )
         }
       />
       <RecordStat
         label={t('workOrders.detail.startDate')}
         icon={<CalendarDays aria-hidden="true" />}
-        value={startDate || <DetailEmpty />}
+        value={formatDate(startDate) || <DetailEmpty />}
       />
       <RecordStat
         label={t('workOrders.detail.callbackDate')}
         icon={<CalendarClock aria-hidden="true" />}
-        value={callbackDate || <DetailEmpty />}
+        value={formatDate(callbackDate) || <DetailEmpty />}
       />
       <RecordStat
         label={t('workOrders.detail.contractNumber')}
         icon={<FileSignature aria-hidden="true" />}
-        value={workOrder.contract_number ?? <DetailEmpty />}
+        value={contractNumber ?? <DetailEmpty />}
       />
     </RecordStatStrip>
+  )
+}
+
+export function WorkOrderDetailStats({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
+  return (
+    <WorkOrderStatsStrip
+      completionPercentage={workOrder.completion_percentage}
+      startDate={workOrder.start_date}
+      callbackDate={workOrder.callback_date}
+      contractNumber={workOrder.contract_number}
+    />
   )
 }

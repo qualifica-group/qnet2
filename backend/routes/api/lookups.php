@@ -31,6 +31,8 @@ use App\Http\Controllers\UnitsOfMeasure\UnitOfMeasureController;
 use App\Http\Controllers\UnitsOfMeasure\UnitOfMeasureForSelectController;
 use App\Http\Controllers\VatRates\VatRateController;
 use App\Http\Controllers\VatRates\VatRateForSelectController;
+use App\Http\Controllers\WorkOrderPaymentStatuses\WorkOrderPaymentStatusController;
+use App\Http\Controllers\WorkOrderPaymentStatuses\WorkOrderPaymentStatusForSelectController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -346,3 +348,18 @@ Route::get('task-importances/{taskImportance}', [TaskImportanceController::class
 Route::post('task-importances', [TaskImportanceController::class, 'store']);
 Route::match(['put', 'patch'], 'task-importances/{taskImportance}', [TaskImportanceController::class, 'update']);
 Route::delete('task-importances/{taskImportance}', [TaskImportanceController::class, 'destroy']);
+
+// Work order payment statuses CRUD (spec 0201): the configurable payment
+// status of a commessa line, with the `allows_delivery` flag. The delete
+// guard (409 while a line uses it) lives in WorkOrderPaymentStatusService.
+// Authorization (work-order-payment-statuses.view/create/update/delete) is
+// enforced server-side in WorkOrderPaymentStatusController via
+// WorkOrderPaymentStatusPolicy. `for-select` and `reorder` are declared ABOVE
+// the bound wildcard so their literal segments win; for-select is gated by
+// auth:sanctum only (ADR 0011), reorder by `work-order-payment-statuses.update`.
+Route::get('work-order-payment-statuses/for-select', WorkOrderPaymentStatusForSelectController::class);
+Route::post('work-order-payment-statuses/reorder', [WorkOrderPaymentStatusController::class, 'reorder']);
+Route::get('work-order-payment-statuses/{workOrderPaymentStatus}', [WorkOrderPaymentStatusController::class, 'show']);
+Route::post('work-order-payment-statuses', [WorkOrderPaymentStatusController::class, 'store']);
+Route::match(['put', 'patch'], 'work-order-payment-statuses/{workOrderPaymentStatus}', [WorkOrderPaymentStatusController::class, 'update']);
+Route::delete('work-order-payment-statuses/{workOrderPaymentStatus}', [WorkOrderPaymentStatusController::class, 'destroy']);

@@ -10,7 +10,7 @@ import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-profo
 /**
  * Thin work-orders adapter over the generic table. It mounts `<TableView>`
  * with the `work-orders` domain and its custom cell renderers, delegating
- * every row action (view/edit/delete/activity) to `useWorkOrderRowActions`
+ * every row action (view/delete/activity/force close/reopen/proforma) to `useWorkOrderRowActions`
  * (spec 0095 D-9) — the same behavior the Contract detail's Commesse tab
  * uses, so the two can never drift. Permission gating is an affordance only;
  * the backend re-authorizes each call.
@@ -29,6 +29,7 @@ export function WorkOrdersTable() {
     resolveActionState,
     iconMap,
     sheet,
+    forceCloseDialog,
   } = useWorkOrderRowActions({ onMutated: refreshGrid })
 
   return (
@@ -51,6 +52,7 @@ export function WorkOrdersTable() {
       />
 
       {sheet}
+      {forceCloseDialog}
 
       <WorkOrderProformaDialog row={proformaRow} onClose={closeProforma} onSent={refreshGrid} />
 

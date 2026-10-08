@@ -93,6 +93,13 @@ export interface CommissionConfigurationPayload {
 }
 
 export type UpdateCommissionConfigurationPayload = Partial<CommissionConfigurationPayload>
+/** The create param the anagrafica detail seeds the form with (spec 0204 D-4, same key as spec 0199). */
+export const COMMISSION_CREATE_REGISTRY_PARAM = 'registry_id'
+
+/**
+ * `supplierRegistryId` (spec 0204 D-4): a create opened from a supplier's
+ * "Commissioni configurate" tab starts as a SUPPLIER rule on that registry.
+ */
 export type CommissionConfigurationFormMode =
-  | { type: 'create' }
+  | { type: 'create'; supplierRegistryId?: number | null }
   | { type: 'edit'; configuration: CommissionConfigurationDetailWithPermissions }

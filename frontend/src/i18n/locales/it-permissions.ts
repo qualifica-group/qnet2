@@ -69,6 +69,9 @@ export const permissions = {
     sendEmail: 'Inviare email',
     revealCardNumber: 'Rivelare numero carta',
     collect: 'Registra incassi',
+    // Spec 0201 D-10: tab Dati contrattuali della commessa e gestione dei pagamenti per riga.
+    viewContractData: 'Vedere i dati contrattuali',
+    managePayments: 'Gestire i pagamenti',
   },
   resources: {
     users: 'Utenti',
@@ -112,6 +115,7 @@ export const permissions = {
     registries: 'Anagrafiche',
     'request-management': 'Gestione Richieste',
     'reward-statuses': 'Stati Buoni Collegati',
+    'work-order-payment-statuses': 'Stati pagamento commessa',
     'reward-types': 'Buoni, Premi e Incentivi',
     'rewarded-referents': 'Referenti con Buoni',
     sectors: 'Settori',

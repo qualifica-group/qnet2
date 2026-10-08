@@ -1,10 +1,36 @@
+import type { ReactElement } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
+import type { FieldPermission } from '@/features/authorization/types'
 import { OpportunityDetailView } from '@/features/opportunities/opportunity-detail'
 import type { OpportunityDetailWithPermissions } from '@/features/opportunities/types'
 
-/** AC-077: `/opportunities/:id` shows every field read-only via the record-panel kit. */
+/**
+ * AC-077: `/opportunities/:id` shows every field via the record-panel kit;
+ * spec 0198: each editable one through an in-place row (pencil), no Edit page.
+ */
+
+const READ_ONLY_FIELD: FieldPermission = {
+  visible: true,
+  hidden: false,
+  editable: false,
+  readonly: true,
+  required: false,
+  disabled: false,
+}
+
+/** The in-place editor needs a query client (its save) and a router (the record links). */
+function renderDetail(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <MemoryRouter>
+      <QueryClientProvider client={client}>{ui}</QueryClientProvider>
+    </MemoryRouter>,
+  )
+}
 
 /**
  * Since the user directive of 2026-08-06 the Team rows are buttons too: they
@@ -110,7 +136,7 @@ beforeEach(() => {
 
 describe('OpportunityDetailView — read-only (AC-077)', () => {
   it('renders every relation, the planning fields and the manager list', () => {
-    render(<OpportunityDetailView opportunity={opportunity()} />)
+    renderDetail(<OpportunityDetailView opportunity={opportunity()} />)
 
     expect(screen.getByRole('heading', { name: 'Enterprise deal' })).toBeInTheDocument()
     // "Acme S.p.A." appears twice: the header subtitle and the registry field.
@@ -125,7 +151,8 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
     expect(screen.getByText(/Consulting/)).toBeInTheDocument()
     expect(screen.getByText('Anna Bianchi')).toBeInTheDocument()
     expect(screen.getByText('Marco Gialli')).toBeInTheDocument()
-    expect(screen.getByText('60%')).toBeInTheDocument()
+    // The KPI strip and the Details row (spec 0198) both show it.
+    expect(screen.getAllByText('60%')).toHaveLength(2)
   })
 
   /**
@@ -133,14 +160,33 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
    * it already is in the form — the value still travels on the payload.
    */
   it('renders no operational site', () => {
-    render(<OpportunityDetailView opportunity={opportunity()} />)
+    renderDetail(<OpportunityDetailView opportunity={opportunity()} />)
 
     expect(screen.queryByText('Warehouse A - Milan')).not.toBeInTheDocument()
     expect(screen.queryByText('Operational site')).not.toBeInTheDocument()
   })
 
-  it('renders no editable control and no edit action without onEdit', () => {
-    render(<OpportunityDetailView opportunity={opportunity()} />)
+  // REQUIREMENT CHANGED (spec 0198): the record is no longer read-only for an
+  // actor who may write it; a read-only actor still sees no control at all.
+  it('renders no editable control for an actor whose fields are all read-only', () => {
+    const fields = Object.fromEntries(
+      [
+        'name', 'registry_id', 'referent_id', 'commercial_id', 'reporter_id', 'supervisor_id', 'source_id',
+        'product_lines', 'products_of_interest', 'manager_slots', 'start_date', 'estimated_value',
+        'expected_close_date', 'success_probability', 'general_notes',
+      ].map((field) => [field, READ_ONLY_FIELD]),
+    )
+    renderDetail(
+      <OpportunityDetailView
+        opportunity={opportunity({
+          permissions: {
+            resource: { view: true, create: false, update: false, delete: false, export: false, import: false },
+            fields,
+            actions: {},
+          },
+        })}
+      />,
+    )
 
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
@@ -151,7 +197,7 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
   })
 
   it('shows an em dash placeholder for unset optional fields', () => {
-    render(
+    renderDetail(
       <OpportunityDetailView
         opportunity={opportunity({
           referent_id: null,
@@ -180,7 +226,7 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
   })
 
   it('shows the originating lead when the opportunity is linked to one', () => {
-    render(
+    renderDetail(
       <OpportunityDetailView
         opportunity={opportunity({ lead_id: 5, lead: { id: 5, label: 'Mario Rossi' } })}
       />,
@@ -190,52 +236,19 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
   })
 
   it('does not show the originating lead section for a manually created opportunity', () => {
-    render(<OpportunityDetailView opportunity={opportunity({ lead_id: null, lead: null })} />)
+    renderDetail(<OpportunityDetailView opportunity={opportunity({ lead_id: null, lead: null })} />)
 
     expect(screen.queryByText('Originating lead')).not.toBeInTheDocument()
   })
 })
 
-/** The Modifica action, gated by `onEdit` AND `permissions.resource.update`. */
-describe('OpportunityDetailView — edit action', () => {
-  it('shows Modifica when onEdit is supplied and the actor can update', () => {
-    render(<OpportunityDetailView opportunity={opportunity()} onEdit={vi.fn()} />)
-
-    const buttons = mutatingButtons()
-    expect(buttons).toHaveLength(1)
-    expect(buttons[0]).toHaveAccessibleName('Edit')
-  })
-
-  it('hides Modifica when onEdit is absent', () => {
-    render(<OpportunityDetailView opportunity={opportunity()} />)
+/** Spec 0198 AC-001: the detail edits in place, there is no Edit action at all. */
+describe('OpportunityDetailView — no edit page', () => {
+  it('shows no Edit action, only the in-place pencils', () => {
+    renderDetail(<OpportunityDetailView opportunity={opportunity()} />)
 
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-  })
-
-  it('hides Modifica when the actor cannot update the opportunity', () => {
-    render(
-      <OpportunityDetailView
-        opportunity={opportunity({
-          permissions: {
-            resource: { view: true, create: true, update: false, delete: true, export: true, import: true },
-            fields: {},
-            actions: {},
-          },
-        })}
-        onEdit={vi.fn()}
-      />,
-    )
-
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-  })
-
-  it('calls onEdit when Modifica is clicked', () => {
-    const onEdit = vi.fn()
-    render(<OpportunityDetailView opportunity={opportunity()} onEdit={onEdit} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-
-    expect(onEdit).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Title' }) })).toBeInTheDocument()
   })
 })
 
@@ -246,14 +259,14 @@ describe('OpportunityDetailView — edit action', () => {
  */
 describe('OpportunityDetailView — collaboration', () => {
   it('renders no collaboration card when nothing is authorized', () => {
-    render(<OpportunityDetailView opportunity={opportunity()} />)
+    renderDetail(<OpportunityDetailView opportunity={opportunity()} />)
 
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })
 
   it('shows the Notes tab, selected by default, when request-management.view is granted', () => {
     canMock.mockImplementation((permission: string) => permission === 'request-management.view')
-    render(<OpportunityDetailView opportunity={opportunity()} />)
+    renderDetail(<OpportunityDetailView opportunity={opportunity()} />)
 
     const notesTab = screen.getByRole('tab', { name: 'Notes' })
     expect(notesTab).toHaveAttribute('aria-selected', 'true')
@@ -263,7 +276,7 @@ describe('OpportunityDetailView — collaboration', () => {
   })
 
   it('shows the Documents tab, reading the opportunity\'s own view_documents gate', () => {
-    render(
+    renderDetail(
       <OpportunityDetailView
         opportunity={opportunity({
           permissions: {
@@ -282,14 +295,14 @@ describe('OpportunityDetailView — collaboration', () => {
 
   it("shows the read-only Registry documents tab on the opportunity's registry with registries.viewDocuments (spec 0173)", () => {
     canMock.mockImplementation((permission: string) => permission === 'registries.viewDocuments')
-    render(<OpportunityDetailView opportunity={opportunity()} />)
+    renderDetail(<OpportunityDetailView opportunity={opportunity()} />)
 
     expect(screen.getByRole('tab', { name: 'Registry documents' })).toBeInTheDocument()
     expect(screen.getByText('documents:registry:10')).toBeInTheDocument()
   })
 
   it("shows the Activity log tab, reading the opportunity's own view_activity gate", () => {
-    render(
+    renderDetail(
       <OpportunityDetailView
         opportunity={opportunity({
           permissions: {
@@ -309,7 +322,7 @@ describe('OpportunityDetailView — collaboration', () => {
 /** Spec 0059 D-3: the reward assignments recorded for the opportunity's reporter. */
 describe('OpportunityDetailView — rewards', () => {
   it('renders the reward chips when the opportunity carries rewards', () => {
-    render(
+    renderDetail(
       <OpportunityDetailView
         opportunity={opportunity({
           rewards: [
@@ -329,7 +342,7 @@ describe('OpportunityDetailView — rewards', () => {
   })
 
   it('omits the rewards section when there is none', () => {
-    render(<OpportunityDetailView opportunity={opportunity({ rewards: [] })} />)
+    renderDetail(<OpportunityDetailView opportunity={opportunity({ rewards: [] })} />)
 
     expect(screen.queryByText('Rewards')).not.toBeInTheDocument()
   })

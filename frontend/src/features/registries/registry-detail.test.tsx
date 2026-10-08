@@ -1,16 +1,33 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render as rtlRender, screen, within } from '@testing-library/react'
-import type { ReactElement } from 'react'
+import { render as rtlRender, screen, within } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { RegistryDetailView } from '@/features/registries/registry-detail'
 import type { RegistryDetailWithPermissions } from '@/features/registries/types'
 import type { PersonalDataCard } from '@/features/personal-data/types'
 
-/** Every render goes through a Router: the card links related records with real `<Link>`s. */
+/**
+ * Every render goes through a Router (the card links related records with real
+ * `<Link>`s) and a QueryClient (the in-place editor reads the resource meta,
+ * spec 0200).
+ */
 function render(ui: ReactElement) {
-  return rtlRender(ui, { wrapper: MemoryRouter })
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>
+      <MemoryRouter>{children}</MemoryRouter>
+    </QueryClientProvider>
+  )
+  return rtlRender(ui, { wrapper: Wrapper })
 }
+
+// The resource meta carries the custom field definitions (spec 0200 D-3):
+// none here, the in-place rows have their own suite.
+vi.mock('@/features/authorization/api', () => ({
+  fetchResourceMeta: () => Promise.resolve({ fields: [], permissions: { resource: {}, fields: {}, actions: {} } }),
+}))
 
 // Related-record links open their target in a modal through `useModuleOpener`,
 // whose mode resolver reads the authenticated user's preference. The preference
@@ -44,6 +61,12 @@ vi.mock('@/features/attachments/documents-section', () => ({
     documentsSectionMock(props)
     return <div>{`documents-section:${props.resource}:${props.id}`}</div>
   },
+}))
+
+// Spec 0199: the related-records tabs mount the modules' own grids; their
+// gating and wiring are covered by `registry-related-records.test.tsx`.
+vi.mock('@/features/registries/registry-related-records', () => ({
+  RegistryRelatedRecords: ({ registryId }: { registryId: number }) => <div>{`related-records:${registryId}`}</div>,
 }))
 
 function card(overrides: Partial<PersonalDataCard> = {}): PersonalDataCard {
@@ -135,8 +158,7 @@ describe('RegistryDetailView', () => {
 
 /**
  * The record kit the card was rebuilt on (user directive 2026-09-11): the KPI
- * strip that sizes the anagrafica at a glance, the people block, and the Edit
- * action the card now owns instead of leaving it to the page chrome.
+ * strip that sizes the anagrafica at a glance and the people block.
  */
 describe('RegistryDetailView — record card (user directive 2026-09-11)', () => {
   it('counts referents, account managers and sectors in the KPI strip', () => {
@@ -198,28 +220,10 @@ describe('RegistryDetailView — record card (user directive 2026-09-11)', () =>
     expect(within(team).getByText('Account manager 2')).toBeInTheDocument()
   })
 
-  it('offers Edit only when the response grants update AND the host gives a handler', () => {
-    const onEdit = vi.fn()
-
-    const { rerender } = render(<RegistryDetailView registry={registry()} />)
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-
-    rerender(<RegistryDetailView registry={registry()} onEdit={onEdit} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-    expect(onEdit).toHaveBeenCalledTimes(1)
-
-    rerender(
-      <RegistryDetailView
-        registry={registry({
-          permissions: {
-            resource: { view: true, create: false, update: false, delete: false, export: false, import: false },
-            fields: {},
-            actions: {},
-          },
-        })}
-        onEdit={onEdit}
-      />,
-    )
+  // REQUIREMENT CHANGED (spec 0200): there is no edit page, so no Edit action —
+  // the record's fields edit in place (`registry-detail-inline-edit.test.tsx`).
+  it('offers no Edit action: the record edits in place', () => {
+    render(<RegistryDetailView registry={registry()} />)
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
   })
 })
@@ -244,6 +248,13 @@ describe('RegistryDetailView — documents tab (spec 0173)', () => {
     expect(screen.getByRole('tab', { name: 'Documents' })).toBeInTheDocument()
     expect(screen.getByText('documents-section:registry:1')).toBeInTheDocument()
     expect(documentsSectionMock).toHaveBeenCalledWith(expect.objectContaining({ resource: 'registry', id: 1 }))
+  })
+})
+
+describe('RegistryDetailView — related records (spec 0199)', () => {
+  it("mounts the client's related-records tabs for this anagrafica", () => {
+    render(<RegistryDetailView registry={registry()} />)
+    expect(screen.getByText('related-records:1')).toBeInTheDocument()
   })
 })
 

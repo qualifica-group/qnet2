@@ -39,6 +39,7 @@ export function UserFormSummary({ control, selectedPrimaryOperationalSiteItem }:
   const { field: fieldPermission } = useResourcePermissions()
   const assignmentFields = useAssignmentFieldsVisibility()
   const competenceRows = useWatch({ control, name: 'employment.product_lines' })
+  const isAssignable = useWatch({ control, name: 'employment.is_assignable' })
   const coversAllProductCategories = useWatch({ control, name: 'employment.covers_all_product_categories' })
   const primarySiteId = useWatch({ control, name: 'employment.primary_operational_site_id' })
   const remoteSiteIds = useWatch({ control, name: 'employment.remote_operational_site_ids' })
@@ -46,6 +47,7 @@ export function UserFormSummary({ control, selectedPrimaryOperationalSiteItem }:
   const isActive = useWatch({ control, name: 'is_active' })
 
   const summary = summarizeAssignment({
+    isAssignable,
     competenceRows,
     coversAllProductCategories,
     primarySiteId,

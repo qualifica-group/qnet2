@@ -127,11 +127,11 @@ interface InvoiceDetailViewProps {
 /** Full read-only view of a document: header, totals, lines and installments. */
 export function InvoiceDetailView({ invoiceId, onChanged }: InvoiceDetailViewProps) {
   const { t } = useTranslation()
-  const { data, isError, refetch } = useInvoice(invoiceId)
+  const { data, isError, error, refetch } = useInvoice(invoiceId)
 
   if (isError) {
     return (
-      <DetailError message={t('invoices.detail.loadError')} retryLabel={t('common.retry')} onRetry={() => void refetch()} />
+      <DetailError error={error} message={t('invoices.detail.loadError')} retryLabel={t('common.retry')} onRetry={() => void refetch()} />
     )
   }
   if (!data) {

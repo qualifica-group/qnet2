@@ -6,9 +6,11 @@ namespace App\Tables\Quotes;
 
 use App\Models\User;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
+use App\Tables\RegistryScopable;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Decorator that scopes the `quotes` domain to a single Opportunity (spec
@@ -32,12 +34,19 @@ use Illuminate\Database\Eloquent\Model;
  * `TableRegistry::resolve()` (quotes is custom-fieldable): `$inner` is
  * already the custom-field-augmented definition, so `custom.*` columns work
  * unchanged inside an Opportunity-scoped grid too.
+ *
+ * Also the `RegistryScopable` of `quotes` (spec 0199): the client of an
+ * Offerta is its Opportunity's, so the scope is a `whereIn` on the client's
+ * opportunities, in AND with the Opportunity scope. This is the outermost
+ * decorator of the domain, hence the one `instanceof RegistryScopable` sees.
  */
-class OpportunityScopedTableDefinition implements TableDefinition
+class OpportunityScopedTableDefinition implements RegistryScopable, TableDefinition
 {
     use DelegatesUnaugmentedTableMethods;
 
     private ?int $opportunityScope = null;
+
+    private ?int $registryScope = null;
 
     public function __construct(private readonly TableDefinition $inner) {}
 
@@ -57,11 +66,27 @@ class OpportunityScopedTableDefinition implements TableDefinition
     {
         $query = $this->inner->baseQuery();
 
-        if ($this->opportunityScope === null) {
-            return $query;
+        if ($this->opportunityScope !== null) {
+            $query->where('quotes.opportunity_id', $this->opportunityScope);
         }
 
-        return $query->where('quotes.opportunity_id', $this->opportunityScope);
+        if ($this->registryScope !== null) {
+            $query->whereIn(
+                'quotes.opportunity_id',
+                DB::table('opportunities')->select('id')->where('registry_id', $this->registryScope),
+            );
+        }
+
+        return $query;
+    }
+
+    /**
+     * Narrows `baseQuery()` to the Offerte of one client's Opportunities
+     * (null = no scope).
+     */
+    public function scopeToRegistry(?int $registryId): void
+    {
+        $this->registryScope = $registryId;
     }
 
     /**

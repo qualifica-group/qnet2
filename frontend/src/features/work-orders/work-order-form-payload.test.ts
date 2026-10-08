@@ -17,8 +17,6 @@ const formValues: WorkOrderFormValues = {
   callback_date: null,
   description: null,
   internal_notes: null,
-  is_force_closed: false,
-  force_close_reason: null,
   quote_line_ids: [11, 12],
   task_template_id: null,
   attribute_values: {},
@@ -71,8 +69,6 @@ describe('buildCreatePayload (spec 0093, D-1)', () => {
       callback_date: null,
       description: null,
       internal_notes: null,
-      is_force_closed: false,
-      force_close_reason: null,
       quote_line_ids: [11, 12],
       task_template_id: null,
       attribute_values: {},
@@ -88,13 +84,12 @@ describe('buildCreatePayload (spec 0093, D-1)', () => {
     expect(payload).not.toHaveProperty('code')
   })
 
-  it('never sends a reason unless force-closed (D-4)', () => {
-    const payload = buildCreatePayload({
-      ...formValues,
-      is_force_closed: false,
-      force_close_reason: 'Leftover text',
-    })
-    expect(payload.force_close_reason).toBeNull()
+  // REQUIREMENT CHANGED (user directive 2026-10-06): the forced closure is an
+  // action of the detail/grid, never a form field — create sends no closure.
+  it('never sends the forced closure', () => {
+    const payload = buildCreatePayload(formValues)
+    expect(payload).not.toHaveProperty('is_force_closed')
+    expect(payload).not.toHaveProperty('force_close_reason')
   })
 })
 
@@ -144,16 +139,6 @@ describe('buildUpdatePayload (spec 0093, AC-077)', () => {
     ).not.toHaveProperty('quote_line_ids')
   })
 
-  it('clears force_close_reason to null the moment is_force_closed turns off (D-4)', () => {
-    const closedOriginal = original({ is_force_closed: true, force_close_reason: 'Motivo precedente' })
-
-    const payload = buildUpdatePayload(
-      { ...formValues, is_force_closed: false, force_close_reason: null },
-      closedOriginal,
-    )
-
-    expect(payload).toEqual({ is_force_closed: false, force_close_reason: null })
-  })
 })
 
 describe('buildUpdatePayload — responsabili and partecipanti (spec 0096, AC-073)', () => {

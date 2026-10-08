@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import type { ICellRendererParams } from 'ag-grid-community'
 import type { TFunction } from 'i18next'
 import { buildTreeDataGridOptions } from '@/components/data-table/tree-data-grid-options'
 import type { TableColumn, TableRow } from '@/features/table/types'
@@ -29,5 +30,17 @@ describe('buildTreeDataGridOptions', () => {
     const options = buildTreeDataGridOptions(true, 'title', columns, t)
     expect(options.autoGroupColumnDef?.field).toBe('title')
     expect(options.autoGroupColumnDef?.headerName).toBe('tasks.columns.title')
+  })
+
+  // User directive 2026-10-06: the group column stands in for the hidden
+  // title, so it keeps the title's own renderer (the complete toggle).
+  it("renders the group value with the tree group column's own renderer, when the domain has one", () => {
+    const titleRenderer = vi.fn(() => 'rendered')
+    const options = buildTreeDataGridOptions(true, 'title', columns, t, { title: titleRenderer })
+    const params = { value: 'Alfa' } as ICellRendererParams
+
+    expect(options.autoGroupColumnDef?.cellRendererParams.innerRenderer(params)).toBe('rendered')
+    expect(titleRenderer).toHaveBeenCalledWith(params)
+    expect(buildTreeDataGridOptions(true, 'title', columns, t).autoGroupColumnDef?.cellRendererParams.innerRenderer).toBeUndefined()
   })
 })

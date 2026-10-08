@@ -182,6 +182,7 @@ const guide: HelpGuide = {
           headers: ['Question', 'Answer'],
           rows: [
             ["I don't see a menu item or button described in the manual.", 'The menu and actions depend on your role permissions. Ask the administrator to check the role in **Administration › Roles**.'],
+            ['Opening a record shows **Record not found** or **Access denied**.', 'The record no longer exists (it was deleted or the link is wrong) or your role does not allow you to see it. Retrying does not help: check the link or ask the administrator or the record owners for access.'],
             ["I can't edit a field.", 'Your role may have it as read-only, or the field is inherited (for example from a project or a lead) or protected: for **Source**, propose a change from the **Change Requests** guide.'],
             ["I can't delete a configuration value.", "It is already used by some record. Turn off **Active** instead: it disappears from drop-downs without touching existing data."],
             ["A product doesn't show up among the ones selectable on a quote.", 'Check **Usage in quote** on the product record (**Sellable** for the Quote tab, **Usable as cost** for the Costs tab) and the category: products are limited to the categories of the opportunity, unless **Show all products** is on.'],

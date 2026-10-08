@@ -44,6 +44,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Field', 'What to enter'],
           rows: [
+            ['**Assignable**', 'If you turn it off the person receives no assignments at all (Leads, Request Management, Members, import), even with a site and competency. Competency and sites stay configured, ready for when you turn it back on. It is on by default.'],
             ['**Competent for all categories**', 'Turn it on if the person follows any product category. Competency rows disappear and are cleared.'],
             ['**Competency**', 'One row for each pair of business function and product category. A parent category also covers its subcategories. Check "All" to cover every category of that function.'],
             ['**Physical site**', "The person's primary operational site."],
@@ -51,7 +52,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'paragraph', text: 'Physical site and remote sites count the same way for assignment. At the top of the module a label shows **Assignable** or **Not assignable**.' },
-        { type: 'warning', text: 'Without at least one competency and one site, the person receives no assignments. The module flags it with "Missing competency" or "Missing site".' },
+        { type: 'warning', text: 'The person receives assignments only when all three conditions hold: **Assignable** on, at least one competency and at least one site. The module flags the missing one with "Assignment turned off", "Missing competency" or "Missing site".' },
       ],
     },
     {

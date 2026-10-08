@@ -40,11 +40,10 @@ export interface CompleteTaskTimeEntryPayload {
  * own `requires_time_entry` (spec 0162 D-2/D-3) is `false`: the dialog then
  * shows a "Registra il tempo" switch and omits this key when it is off.
  *
- * `for_all_assignees` (spec 0155 D-6): omitted (server default `false`)
- * completes for the acting user alone; `true` logs an identical time entry
- * for every assignee (the actor alone when there is none). The dialog sends
- * it from a `forAllAssignees` PROP, never a user-facing toggle (q-net has
- * none): `true` from the task detail/list, `false` from the sub-task panel.
+ * `for_all_assignees` (spec 0205, RECTIFIES spec 0155 D-6): `true` (also the
+ * server default when omitted) logs an identical time entry for every
+ * assignee (the actor alone when there is none); `false` logs it for the
+ * acting user alone. The dialog always sends the actor's own checkbox choice.
  */
 export interface CompleteTaskPayload {
   closure_feedback?: string | null

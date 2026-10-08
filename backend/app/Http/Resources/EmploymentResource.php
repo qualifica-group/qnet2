@@ -56,6 +56,7 @@ class EmploymentResource extends JsonResource
             'id' => $this->id,
             'is_manager' => $this->is_manager,
             'covers_all_product_categories' => $this->covers_all_product_categories,
+            'is_assignable' => $this->is_assignable,
             'job_description' => $this->job_description,
             'relationship_type' => $this->relationship_type,
             'qualification_type' => $this->qualification_type,

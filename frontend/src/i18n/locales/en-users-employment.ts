@@ -32,6 +32,8 @@ export const usersFormEmployment = {
   reportsToEmpty: 'No users found.',
   reportsToError: 'Unable to load users.',
   reportsToRemove: 'Remove manager',
+  isAssignable: 'Assignable',
+  isAssignableDescription: 'When off, the person receives no assignment at all (Leads, Request Management, Members, import), even with a site and competence.',
   coversAllProductCategories: 'Competent for all categories',
   coversAllProductCategoriesDescription: 'This person is competent on any product category, regardless of business function: the rows below disappear and are cleared.',
   productLines: 'Competence',
@@ -117,6 +119,7 @@ export const usersAssignment = {
     remoteSites: 'Remote sites',
   },
   blockers: {
+    disabled: 'Assignment turned off by the Assignable setting',
     competence: 'No competence configured: without at least one business function + product category pair the person enters no assignment pool.',
     site: 'No operational site: without a physical or remote site the person enters no assignment pool.',
   },
@@ -126,6 +129,7 @@ export const usersAssignment = {
     sitesBreakdown: '{{physical}} physical · {{remote}} remote',
     matching: 'Matching',
     blockers: {
+      disabled: 'Assignment turned off',
       competence: 'Competence missing',
       site: 'Site missing',
     },

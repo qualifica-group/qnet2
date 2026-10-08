@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +26,7 @@ import {
   type PersonalDataFormValues,
 } from '@/features/personal-data/personal-data-schema'
 import type {
+  GeoRef,
   PersonalDataDraft,
   PersonalDataFieldPermissionResolver,
   PersonalDataType,
@@ -98,6 +99,13 @@ export function PersonalDataCardForm({
     },
   })
 
+  // The picked comuni's labels: the buffer carries them, so a closed record row
+  // (and this form, mounted again on the same draft) names them without a search.
+  const [cities, setCities] = useState<{ birth_city?: GeoRef | null; residence_city?: GeoRef | null }>(() => ({
+    birth_city: value.birth_city,
+    residence_city: value.residence_city,
+  }))
+
   // Watch every field so edits flow into the parent buffer. `useWatch` re-renders
   // this component on each change; `isCompany` toggles which fields render.
   const watched = useWatch({ control: form.control })
@@ -146,9 +154,9 @@ export function PersonalDataCardForm({
     // The comuni of birth and residence belong to an individual, like the
     // gender above.
     birth_city_id: isCompany ? null : (watched.birth_city_id ?? null),
-    birth_city: value.birth_city,
+    birth_city: cities.birth_city,
     residence_city_id: isCompany ? null : (watched.residence_city_id ?? null),
-    residence_city: value.residence_city,
+    residence_city: cities.residence_city,
     // Gender is an individual-only attribute: a company card carries none.
     gender: isCompany ? null : (watched.gender ?? null),
     contacts: value.contacts,
@@ -367,6 +375,7 @@ export function PersonalDataCardForm({
             control={form.control}
             value={value}
             fieldPermission={fieldPermission}
+            onCityPicked={(field, city) => setCities((current) => ({ ...current, [field]: city }))}
           />
         )}
       </div>

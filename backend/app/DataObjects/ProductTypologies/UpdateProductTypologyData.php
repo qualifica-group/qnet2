@@ -2,6 +2,8 @@
 
 namespace App\DataObjects\ProductTypologies;
 
+use App\Enums\SupplierCommissionDirection;
+
 /**
  * Validated payload for a partial (PATCH) product typology update
  * (PUT/PATCH /api/product-typologies/{productTypology}, spec 0099).
@@ -21,6 +23,10 @@ final readonly class UpdateProductTypologyData
         public ?string $name = null,
         public ?string $description = null,
         public bool $descriptionSubmitted = false,
+        public ?string $color = null,
+        public ?bool $supplierCommissionEnabled = null,
+        public ?SupplierCommissionDirection $supplierCommissionDirection = null,
+        public bool $supplierCommissionDirectionSubmitted = false,
     ) {}
 
     /**
@@ -34,6 +40,12 @@ final readonly class UpdateProductTypologyData
             name: array_key_exists('name', $data) ? (string) $data['name'] : null,
             description: array_key_exists('description', $data) ? $data['description'] : null,
             descriptionSubmitted: array_key_exists('description', $data),
+            color: array_key_exists('color', $data) ? (string) $data['color'] : null,
+            supplierCommissionEnabled: array_key_exists('supplier_commission_enabled', $data) ? (bool) $data['supplier_commission_enabled'] : null,
+            supplierCommissionDirection: isset($data['supplier_commission_direction'])
+                ? SupplierCommissionDirection::from($data['supplier_commission_direction'])
+                : null,
+            supplierCommissionDirectionSubmitted: array_key_exists('supplier_commission_direction', $data),
         );
     }
 
@@ -53,6 +65,18 @@ final readonly class UpdateProductTypologyData
 
         if ($this->descriptionSubmitted) {
             $attributes['description'] = $this->description;
+        }
+
+        if ($this->color !== null) {
+            $attributes['color'] = $this->color;
+        }
+
+        if ($this->supplierCommissionEnabled !== null) {
+            $attributes['supplier_commission_enabled'] = $this->supplierCommissionEnabled;
+        }
+
+        if ($this->supplierCommissionDirectionSubmitted) {
+            $attributes['supplier_commission_direction'] = $this->supplierCommissionDirection;
         }
 
         return $attributes;

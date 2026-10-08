@@ -33,12 +33,14 @@ export function FinancialAccountDetailScreen({ id, onEdit }: ModuleDetailScreenP
     data: financialAccount,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(detailQueryKey(id), () => fetchFinancialAccount(id))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('financialAccounts.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

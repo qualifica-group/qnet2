@@ -31,7 +31,7 @@ use App\Models\Quote;
 final class QuoteTypologySummaryCalculator
 {
     /**
-     * @return array<int, array{id: int, name: string, net: string}>
+     * @return array<int, array{id: int, name: string, color: string, net: string}>
      */
     public function totals(Quote $quote): array
     {
@@ -40,10 +40,11 @@ final class QuoteTypologySummaryCalculator
         return ProductTypology::query()
             ->orderBy('name')
             ->orderBy('id')
-            ->get(['id', 'name'])
+            ->get(['id', 'name', 'color'])
             ->map(fn (ProductTypology $typology): array => [
                 'id' => $typology->id,
                 'name' => $typology->name,
+                'color' => $typology->color,
                 'net' => $this->format($netByTypologyId[$typology->id] ?? 0),
             ])
             ->all();

@@ -1,12 +1,13 @@
 import { beforeAll, beforeEach, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { QuoteFormBody } from '@/features/quotes/quote-form-body'
 import { createQuote } from '@/features/quotes/api'
+import { clickCreateSave, rowValue } from '@/features/quotes/quote-test-helpers'
 import { quoteCreateHref, parseQuoteCreateProductIds } from '@/features/quotes/quote-create-params'
 import type { ResourcePermissions } from '@/features/authorization/types'
 
@@ -81,10 +82,10 @@ function wrapper() {
   )
 }
 
-function renderForm(params: Record<string, string | number>) {
+function renderForm(params: Record<string, string | number>, initialCode = '') {
   render(
     <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-      <QuoteFormBody mode={{ type: 'create', params }} onSuccess={vi.fn()} onCancel={vi.fn()} initialCode="" />
+      <QuoteFormBody mode={{ type: 'create', params }} onSuccess={vi.fn()} onCancel={vi.fn()} initialCode={initialCode} />
     </ResourcePermissionsProvider>,
     { wrapper: wrapper() },
   )
@@ -133,13 +134,11 @@ it('seeds one offer row per product, priced from the product itself', async () =
 })
 
 it('submits the seeded rows as the offer of the blocking opportunity', async () => {
-  renderForm({ opportunity_id: 25, product_ids: '4,5' })
+  renderForm({ opportunity_id: 25, product_ids: '4,5' }, 'QUO-0001')
 
   await waitFor(() => expect(screen.getByLabelText('Row 1 quantity')).toHaveValue(1))
-  fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'QUO-0001' } })
-  fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Offer for OPP_25' } })
 
-  fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+  clickCreateSave()
 
   await waitFor(() => expect(createQuote).toHaveBeenCalled())
   expect(vi.mocked(createQuote).mock.calls[0][0]).toMatchObject({
@@ -157,9 +156,7 @@ it('submits the seeded rows as the offer of the blocking opportunity', async () 
 it('opens on one empty offer row when the link carries no product', async () => {
   renderForm({ opportunity_id: 25 })
 
-  await waitFor(() =>
-    expect(screen.getByRole('combobox', { name: 'Opportunity' })).toHaveTextContent('OPP_25'),
-  )
+  await waitFor(() => expect(rowValue('Opportunity')).toContain('OPP_25'))
   expect(screen.getByLabelText('Row 1 quantity')).toHaveValue(null)
   expect(screen.queryByLabelText('Row 2 quantity')).not.toBeInTheDocument()
 })

@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import axios from 'axios'
 import i18n from '@/i18n'
+import { ConfirmContext } from '@/components/confirm-dialog-context'
 import { QuoteDetailView } from '@/features/quotes/quote-detail'
 import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
@@ -118,13 +119,16 @@ beforeEach(() => {
  * Spec 0085: il dettaglio Offerta monta la sezione Note, che usa React Query.
  * Un client NUOVO per ogni render (non uno condiviso a livello di file) cosi'
  * la cache di un test non puo' influenzarne un altro. Il `MemoryRouter` serve
- * al link verso l'Opportunita' padre nella sezione Contesto.
+ * al link verso l'Opportunita' padre; il `ConfirmContext` al form in place
+ * (spec 0197), che chiede conferma prima di promuovere un G.A.
  */
 function renderDetail(ui: ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>{ui}</MemoryRouter>
+      <ConfirmContext.Provider value={() => Promise.resolve(true)}>
+        <MemoryRouter>{ui}</MemoryRouter>
+      </ConfirmContext.Provider>
     </QueryClientProvider>,
   )
 }
@@ -177,6 +181,66 @@ describe('QuoteDetailView — Layout field (AC-314)', () => {
   it('shows the empty placeholder when no layout is set', () => {
     renderDetail(<QuoteDetailView quote={quoteFixture()} />)
     expect(detailValueFor('Layout')).toBe('—')
+  })
+})
+
+describe('QuoteDetailView — additional information layout', () => {
+  it('lays the values out on the view-mode layout, not the edit-mode one the form hydrates from', () => {
+    const quote = quoteFixture({
+      applicable_attributes: [
+        {
+              id: 1,
+              code: 'site_access',
+              name: 'Site access',
+              type: 'text',
+              description: null,
+              help_text: null,
+              placeholder: null,
+              icon: null,
+              config: null,
+              relation_target: null,
+              is_required: false,
+              sort_order: 0,
+              options: [],
+            },
+      ],
+      attribute_values: { site_access: 'Gate 3' },
+      attribute_layout: {
+          sections: [
+            {
+              id: 's1',
+              title: 'Edit section',
+              description: null,
+              variant: 'default' as const,
+              collapsible: false,
+              default_collapsed: false,
+              columns: 2 as const,
+              sort_order: 0,
+              rows: [{ id: 'r1', items: [{ attribute_code: 'site_access', width: 'half' as const }] }],
+            },
+          ],
+        },
+      attribute_view_layout: {
+          sections: [
+            {
+              id: 's1',
+              title: 'Detail section',
+              description: null,
+              variant: 'default' as const,
+              collapsible: false,
+              default_collapsed: false,
+              columns: 2 as const,
+              sort_order: 0,
+              rows: [{ id: 'r1', items: [{ attribute_code: 'site_access', width: 'half' as const }] }],
+            },
+          ],
+        },
+    })
+    renderDetail(<QuoteDetailView quote={quote} />)
+
+    expect(screen.getByRole('heading', { name: 'Detail section' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Edit section' })).not.toBeInTheDocument()
+    expect(screen.getByText('Gate 3')).toBeInTheDocument()
   })
 })
 
@@ -304,6 +368,10 @@ describe('QuoteDetailView — Margine per prodotto', () => {
     })
     renderDetail(<QuoteDetailView quote={quote} />)
 
+    // User directive 2026-10-07: collapsed inside the summary until asked for.
+    expect(screen.queryByText('Margin per product')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show advanced data' }))
+
     expect(screen.getByText('Margin per product')).toBeInTheDocument()
     expect(screen.getByText('70.00')).toBeInTheDocument() // 100.00 - 30.00
     expect(screen.getByText('Generic costs')).toBeInTheDocument()
@@ -318,11 +386,13 @@ describe('QuoteDetailView — Margine per prodotto', () => {
       },
     })
     renderDetail(<QuoteDetailView quote={quote} />)
+    expect(screen.queryByRole('button', { name: 'Show advanced data' })).not.toBeInTheDocument()
     expect(screen.queryByText('Margin per product')).not.toBeInTheDocument()
   })
 
   it('hides the block when the offer has no product row', () => {
     renderDetail(<QuoteDetailView quote={quoteFixture()} />)
+    expect(screen.queryByRole('button', { name: 'Show advanced data' })).not.toBeInTheDocument()
     expect(screen.queryByText('Margin per product')).not.toBeInTheDocument()
   })
 

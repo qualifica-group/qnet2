@@ -1,16 +1,33 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ConfirmContext } from '@/components/confirm-dialog-context'
 import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { formatDate } from '@/lib/formatting/date-display'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
-/** Every render goes through a Router: the card links related records with real `<Link>`s. */
+/**
+ * Every render goes through a Router (the card links related records with
+ * real `<Link>`s), a query client (the in-place editors share the edit
+ * form, spec 0195 applied to Commesse) and the confirm service (the header's
+ * "Riapri" action asks first).
+ */
 function render(ui: ReactElement) {
-  return rtlRender(ui, { wrapper: MemoryRouter })
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <ConfirmContext.Provider value={() => Promise.resolve(true)}>{children}</ConfirmContext.Provider>
+        </QueryClientProvider>
+      </MemoryRouter>
+    )
+  }
+  return rtlRender(ui, { wrapper: Wrapper })
 }
 
 // Related-record links open their target in a modal through `useModuleOpener`,
@@ -37,6 +54,12 @@ vi.mock('@/features/auth/use-abilities', () => ({
  */
 
 const activityLogSectionMock = vi.fn()
+
+vi.mock('@/features/work-order-contract-data/work-order-contract-data-section', () => ({
+  WorkOrderContractDataSection: ({ canManage }: { canManage: boolean }) => (
+    <div>contract-data-section manage:{String(canManage)}</div>
+  ),
+}))
 
 vi.mock('@/features/activity-log/activity-log-section', () => ({
   ActivityLogSection: (props: { resource: string; id: number }) => {
@@ -117,10 +140,11 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
     expect(screen.getByRole('heading', { name: 'Installazione impianto' })).toBeInTheDocument()
-    expect(screen.getByText('COM-0001')).toBeInTheDocument()
+    // Header subtitle/KPI and the in-place "Details" rows both show these.
+    expect(screen.getAllByText('COM-0001').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Processing').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Open').length).toBeGreaterThan(0)
-    expect(screen.getByText(formatDate('2026-09-30'))).toBeInTheDocument()
+    expect(screen.getAllByText(formatDate('2026-09-30')).length).toBeGreaterThan(0)
     expect(screen.getByText('QUO-0004')).toBeInTheDocument()
     expect(screen.getByText('Fornitura annuale')).toBeInTheDocument()
   })
@@ -229,27 +253,60 @@ describe('WorkOrderDetailView — additional information (spec 0098, AC-023)', (
     expect(screen.getByText('Site access')).toBeInTheDocument()
     expect(screen.getByText('Gate 3')).toBeInTheDocument()
   })
+
+  it('lays the values out on the configured layout sections, as the form does', () => {
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({
+          applicable_attributes: [
+            {
+              id: 1,
+              code: 'site_access',
+              name: 'Site access',
+              type: 'text',
+              description: null,
+              help_text: null,
+              placeholder: null,
+              icon: null,
+              config: null,
+              relation_target: null,
+              is_required: false,
+              sort_order: 0,
+              options: [],
+            },
+          ],
+          attribute_values: { site_access: 'Gate 3' },
+          attribute_layout: {
+          sections: [
+            {
+              id: 's1',
+              title: 'Access',
+              description: null,
+              variant: 'default' as const,
+              collapsible: false,
+              default_collapsed: false,
+              columns: 2 as const,
+              sort_order: 0,
+              rows: [{ id: 'r1', items: [{ attribute_code: 'site_access', width: 'half' as const }] }],
+            },
+          ],
+        },
+        })}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Access' })).toBeInTheDocument()
+    expect(screen.getByText('Gate 3')).toBeInTheDocument()
+  })
 })
 
-describe('WorkOrderDetailView — edit action on the card', () => {
-  it('renders Edit in the record card and calls onEdit when the actor may update', () => {
-    const onEdit = vi.fn()
-    render(<WorkOrderDetailView workOrder={workOrder()} onEdit={onEdit} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-
-    expect(onEdit).toHaveBeenCalledTimes(1)
-  })
-
-  it('omits Edit without update permission or without an edit surface', () => {
-    const readOnly = workOrder({
-      permissions: { ...workOrder().permissions, resource: { ...workOrder().permissions.resource, update: false } },
-    })
-    const { unmount } = render(<WorkOrderDetailView workOrder={readOnly} onEdit={vi.fn()} />)
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-    unmount()
-
+// REQUIREMENT CHANGED (user directive 2026-10-06, spec 0195 applied to
+// Commesse): the record has no "Edit" action any more — its fields edit in
+// place (`work-order-detail-inline-edit.test.tsx`).
+describe('WorkOrderDetailView — no edit action', () => {
+  it('renders no Edit button on the card', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
+
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
   })
 })
@@ -266,6 +323,27 @@ describe('WorkOrderDetailView — related records', () => {
     expect(hrefOf('Installazione')).toBe('/products/2')
   })
 
+  it('shows the contract data section with view_contract_data, in place of the plain list', () => {
+    const base = workOrder()
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({ permissions: { ...base.permissions, actions: { view_contract_data: true, manage_payments: true } } })}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Contract data' })).toBeInTheDocument()
+    expect(screen.getByText('contract-data-section manage:true')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Consulenza' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the plain product list, links included, without view_contract_data', () => {
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
+
+    expect(screen.getByRole('heading', { name: 'Contract data' })).toBeInTheDocument()
+    expect(screen.queryByText(/contract-data-section/)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Consulenza' })).toHaveAttribute('href', '/products/1')
+  })
+
   it("links the client registry reached through the commessa's offer", () => {
     render(<WorkOrderDetailView workOrder={workOrder({ registry: { id: 7, name: 'Acme S.p.A.' } })} />)
 
@@ -278,6 +356,33 @@ describe('WorkOrderDetailView — related records', () => {
 
     expect(screen.getByText('Client registry')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Acme S.p.A.' })).not.toBeInTheDocument()
+  })
+
+  it("links the company and both sites of the commessa's offer, as the Contract detail does", () => {
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({
+          company: { id: 4, name: 'Qualifica Group S.r.l.' },
+          company_site: { id: 5, name: 'Sede Napoli' },
+          operational_site: { id: 6, label: 'Via Roma 1 - Napoli' },
+        })}
+      />,
+    )
+
+    expect(screen.getByText('Company and sites')).toBeInTheDocument()
+    const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
+    expect(hrefOf('Qualifica Group S.r.l.')).toBe('/companies/4')
+    expect(hrefOf('Sede Napoli')).toBe('/company-sites/5')
+    expect(hrefOf('Via Roma 1 - Napoli')).toBe('/operational-sites/6')
+  })
+
+  it('shows the company and sites rows with the empty placeholder when the offer has none', () => {
+    render(<WorkOrderDetailView workOrder={workOrder({ company: null, company_site: null, operational_site: null })} />)
+
+    expect(screen.getByText('Company')).toBeInTheDocument()
+    expect(screen.getByText('Site')).toBeInTheDocument()
+    expect(screen.getByText('Operational site')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Sede|Via Roma/ })).not.toBeInTheDocument()
   })
 })
 
@@ -356,27 +461,38 @@ describe('WorkOrderDetailView — collaboration', () => {
   })
 })
 
-/** Spec 0190 AC-011: the Costi section follows `permissions.actions.view_costs` alone. */
+/**
+ * Spec 0190 AC-011: the Costi section follows `permissions.actions.view_costs` alone.
+ * REQUIREMENT CHANGED (user directive 2026-10-06): Costi is a tab next to the
+ * Task board in one card, Task open by default, so the Costi tab is selected first.
+ */
 describe('WorkOrderDetailView — Costi section (spec 0190)', () => {
   function withActions(actions: Record<string, boolean>) {
     const base = workOrder()
     return workOrder({ permissions: { ...base.permissions, actions } })
   }
 
+  function openCostsTab() {
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Costs' }))
+  }
+
   it('is not rendered without view_costs', () => {
     render(<WorkOrderDetailView workOrder={withActions({ manage_costs: true })} />)
 
+    expect(screen.queryByRole('tab', { name: 'Costs' })).not.toBeInTheDocument()
     expect(screen.queryByText(/costs-section/)).not.toBeInTheDocument()
   })
 
   it('is rendered read-only with view_costs alone', () => {
     render(<WorkOrderDetailView workOrder={withActions({ view_costs: true })} />)
+    openCostsTab()
 
     expect(screen.getByText('costs-section manage:false')).toBeInTheDocument()
   })
 
   it('is editable with view_costs and manage_costs', () => {
     render(<WorkOrderDetailView workOrder={withActions({ view_costs: true, manage_costs: true })} />)
+    openCostsTab()
 
     expect(screen.getByText('costs-section manage:true')).toBeInTheDocument()
   })

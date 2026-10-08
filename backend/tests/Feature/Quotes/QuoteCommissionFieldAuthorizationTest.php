@@ -111,7 +111,7 @@ it('redacts hidden commission fields from quote detail, defaults and activity', 
         'product_id' => $context['product']->id,
         'line_net_amount' => 100,
         'reference_date' => '2026-07-29',
-    ])->assertOk()->json('data.0');
+    ])->assertOk()->json('data.commissions.0');
     expect($default)->not->toHaveKeys([
         'recipient_type', 'recipient_id', 'value', 'calculated_amount', 'internal_note',
     ])->and($default)->toHaveKeys(['recipient_role', 'commission_type', 'origin']);
@@ -155,8 +155,8 @@ it('keeps readonly values visible and allows only an unchanged nested no-op', fu
         'line_net_amount' => 100,
         'reference_date' => '2026-07-29',
     ])->assertOk()
-        ->assertJsonPath('data.0.value', '5.0000')
-        ->assertJsonPath('data.0.calculated_amount', '5.00');
+        ->assertJsonPath('data.commissions.0.value', '5.0000')
+        ->assertJsonPath('data.commissions.0.calculated_amount', '5.00');
 
     $activityFields = collect(
         $this->getJson("/api/activity-log/quotes/{$context['quote']->id}")

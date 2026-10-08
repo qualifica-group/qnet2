@@ -17,6 +17,7 @@ const guide: HelpGuide = {
       title: 'Creare una configurazione',
       blocks: [
         { type: 'steps', items: ['Apri **Configurazione › Configuratore Commissioni** e premi **Nuova configurazione**.', 'In **Identità e ambito**: scrivi il **Nome configurazione**; scegli il **Ruolo destinatario** (Commerciale, Segnalatore, Supervisore o Fornitore); scegli l’**Ambito di applicazione** (Categoria prodotto, Prodotto o Destinatario specifico).', 'In base all’ambito indica **Categoria prodotto**, **Prodotto** oppure **Tipo destinatario** (Referente, Utente o Anagrafica) e **Destinatario**.', 'In **Calcolo** scegli la **Tipologia commissione** (Importo fisso o Percentuale), il **Valore commissione** e la **Priorità regola**.', 'In **Validità** indica la **Data inizio validità** (obbligatoria), l’eventuale **Data fine validità** e lo **Stato** (Attiva o Sospesa).', 'Se vuoi, aggiungi una **Nota di servizio interna** e premi **Salva**.'] },
+        { type: 'tip', text: 'Le regole di una singola anagrafica (fornitore o no) si consultano e si creano anche dal suo dettaglio, nella scheda **Commissioni configurate**: lì il modulo parte già con Ruolo **Fornitore** e quell’anagrafica come Destinatario.' },
       ],
     },
     {

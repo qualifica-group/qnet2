@@ -1,16 +1,31 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
-import type { ReactElement } from 'react'
+import { fireEvent, render as rtlRender, screen, within } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { GENERAL_NOTES_CALLOUT_CLASS } from '@/components/record-form/layout'
 import { UserDetailSheetContext } from '@/features/users/user-detail-sheet-context'
-import { OpportunityDetailSections } from '@/features/opportunities/opportunity-detail-sections'
+import { OpportunityDetailView } from '@/features/opportunities/opportunity-detail'
 import type { OpportunityDetailWithPermissions } from '@/features/opportunities/types'
 
-/** Every render goes through a Router: the card links related records with real `<Link>`s. */
+/**
+ * Every render goes through a Router (the card links related records with real
+ * `<Link>`s) and a query client (the in-place editor's save, spec 0198).
+ */
 function render(ui: ReactElement) {
-  return rtlRender(ui, { wrapper: MemoryRouter })
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <MemoryRouter>
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    </MemoryRouter>
+  )
+  return rtlRender(ui, { wrapper })
+}
+
+/** The sections as the detail mounts them: inside its permissions and its in-place edit form. */
+function Sections({ opportunity }: { opportunity: OpportunityDetailWithPermissions }) {
+  return <OpportunityDetailView opportunity={opportunity} />
 }
 
 // Related-record links open their target in a modal through `useModuleOpener`,
@@ -81,14 +96,14 @@ beforeAll(async () => {
 
 describe('OpportunityDetailSections — manager role labels (spec 0080)', () => {
   it('AC-032: shows the shared default "Account manager n" as VISIBLE text with no configuration', () => {
-    render(<OpportunityDetailSections opportunity={opportunity()} />)
+    render(<Sections opportunity={opportunity()} />)
 
     expect(screen.getByText('Account manager 1')).toBeInTheDocument()
     expect(screen.getByText('Account manager 2')).toBeInTheDocument()
   })
 
   it("AC-044: shows the opportunity's resolved override as VISIBLE text, unconfigured positions keep the default", () => {
-    render(<OpportunityDetailSections opportunity={opportunity({ manager_labels: { '1': 'Commercial' } })} />)
+    render(<Sections opportunity={opportunity({ manager_labels: { '1': 'Commercial' } })} />)
 
     expect(screen.getByText('Commercial')).toBeInTheDocument()
     expect(screen.getByText('Account manager 2')).toBeInTheDocument()
@@ -100,7 +115,7 @@ describe('OpportunityDetailSections — manager role labels (spec 0080)', () => 
 
     render(
       <UserDetailSheetContext.Provider value={{ openUserDetail: (id) => opened.push(id), canOpenUserDetail: true }}>
-        <OpportunityDetailSections
+        <Sections
           opportunity={opportunity({ supervisor_id: 300, supervisor: { id: 300, name: 'Luca Verdi' } })}
         />
       </UserDetailSheetContext.Provider>,
@@ -116,7 +131,7 @@ describe('OpportunityDetailSections — manager role labels (spec 0080)', () => 
 
   it('shows the supervisor on the same person row as the managers, with its avatar initials', () => {
     render(
-      <OpportunityDetailSections
+      <Sections
         opportunity={opportunity({ supervisor_id: 300, supervisor: { id: 300, name: 'Luca Verdi' } })}
       />,
     )
@@ -129,7 +144,7 @@ describe('OpportunityDetailSections — manager role labels (spec 0080)', () => 
 
   it('AC-053 (amendment A1): a label configured past the 4th position shows the same as the first four', () => {
     render(
-      <OpportunityDetailSections
+      <Sections
         opportunity={opportunity({
           managers: [
             { id: 200, name: 'Anna Bianchi', position: 1 },
@@ -155,7 +170,7 @@ describe('OpportunityDetailSections — manager role labels (spec 0080)', () => 
 describe('OpportunityDetailSections — general notes', () => {
   it('renders the note in the shared callout, preserving its line breaks', () => {
     render(
-      <OpportunityDetailSections
+      <Sections
         opportunity={opportunity({ general_notes: 'First line\nSecond line' })}
       />,
     )
@@ -166,8 +181,43 @@ describe('OpportunityDetailSections — general notes', () => {
     expect(screen.getByText(/First line/)).toHaveClass('whitespace-pre-wrap')
   })
 
-  it('renders no empty box when the opportunity carries no note', () => {
-    render(<OpportunityDetailSections opportunity={opportunity({ general_notes: null })} />)
+  /*
+   * Requirement changed (user directive 2026-10-07, "lo stesso stile come in
+   * gestione richieste"): an editable record with no note shows the empty
+   * callout inviting the note, as the request work panel does; only a
+   * read-only one still shows nothing.
+   */
+  it('renders the empty callout with its placeholder when the note is editable', () => {
+    render(<Sections opportunity={opportunity({ general_notes: null })} />)
+
+    const region = screen.getByRole('region', { name: /general notes/i })
+    expect(region).toHaveTextContent('Write a note about this opportunity…')
+    expect(region).toHaveClass(...GENERAL_NOTES_CALLOUT_CLASS.split(' '))
+  })
+
+  it('opens the textarea inside the callout', () => {
+    render(<Sections opportunity={opportunity({ general_notes: null })} />)
+
+    const region = screen.getByRole('region', { name: /general notes/i })
+    fireEvent.click(within(region).getByRole('button', { name: /edit general notes/i }))
+
+    expect(within(region).getByRole('textbox', { name: /general notes/i })).toBeInTheDocument()
+  })
+
+  it('renders no empty box when the note is read-only and empty', () => {
+    render(
+      <Sections
+        opportunity={opportunity({
+          general_notes: null,
+          permissions: {
+            ...FULL_PERMISSIONS,
+            fields: {
+              general_notes: { visible: true, hidden: false, editable: false, readonly: true, required: false, disabled: false },
+            },
+          },
+        })}
+      />,
+    )
 
     expect(screen.queryByRole('region', { name: /general notes/i })).not.toBeInTheDocument()
   })
@@ -176,7 +226,7 @@ describe('OpportunityDetailSections — general notes', () => {
 describe('OpportunityDetailSections — related records', () => {
   it('links the anagrafica, the referents, the source lead and the products of interest to their records', () => {
     render(
-      <OpportunityDetailSections
+      <Sections
         opportunity={opportunity({
           referent: { id: 20, name: 'Ada Alberti' },
           commercial: { id: 21, name: 'Bruno Bianchi' },

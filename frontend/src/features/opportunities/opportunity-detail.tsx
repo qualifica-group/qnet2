@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { MessagesSquare, Paperclip } from 'lucide-react'
+import { Form } from '@/components/ui/form'
 import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
@@ -9,6 +10,7 @@ import {
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { NotesSection } from '@/features/notes/notes-section'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
 import {
@@ -17,6 +19,7 @@ import {
 } from '@/features/opportunities/opportunity-detail-header'
 import { OpportunityDetailSections } from '@/features/opportunities/opportunity-detail-sections'
 import { OpportunityQuotesSection } from '@/features/opportunities/opportunity-quotes-section'
+import { useOpportunityInlineEdit } from '@/features/opportunities/use-opportunity-inline-edit'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -27,8 +30,8 @@ const DOCUMENTS_TAB = 'documents'
 
 interface OpportunityDetailViewProps {
   opportunity: OpportunityDetailData
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the opportunity (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
@@ -94,16 +97,30 @@ function useCollaborationTabs(opportunity: OpportunityDetailData): RecordCollabo
 }
 
 /**
- * Read-only detail of a single opportunity, rendered as an enterprise-CRM
- * record (spec 0040 AC-077): the identity/KPI/sections card on the left, the
- * collaboration card (notes/documents/activity, spec 0049 AC-064's
- * collected-information lives in the sections card) on the right, the Offerte
+ * Detail of a single opportunity, rendered as an enterprise-CRM record (spec
+ * 0040 AC-077): the identity/KPI/sections card on the left, the
+ * collaboration card (notes/documents/activity) on the right, the Offerte
  * panel full width below both, and a metadata footer. Container-query driven
  * (`RecordCanvas`) so the same tree renders correctly both inside a
  * resizable Sheet and on the full-bleed `/opportunities/:id` page.
+ *
+ * There is no edit page (spec 0198): the sections' fields edit IN PLACE, one
+ * at a time (`RecordInlineField`, driven by `useOpportunityInlineEdit`), each
+ * save a PATCH of that field alone.
  */
-export function OpportunityDetailView({ opportunity, onEdit }: OpportunityDetailViewProps) {
+export function OpportunityDetailView(props: OpportunityDetailViewProps) {
+  // The edit form reads the field permissions while it is built, so the
+  // provider wraps the whole detail, not just the sections.
+  return (
+    <ResourcePermissionsProvider permissions={props.opportunity.permissions}>
+      <OpportunityDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function OpportunityDetailContent({ opportunity, onChanged }: OpportunityDetailViewProps) {
   const { t } = useTranslation()
+  const editor = useOpportunityInlineEdit(opportunity, onChanged)
   const collaborationTabs = useCollaborationTabs(opportunity)
   const createdAt = formatDateTime(opportunity.created_at)
   const updatedAt = formatDateTime(opportunity.updated_at)
@@ -114,9 +131,12 @@ export function OpportunityDetailView({ opportunity, onEdit }: OpportunityDetail
         side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
       >
         <RecordCard>
-          <OpportunityDetailHeader opportunity={opportunity} onEdit={onEdit} />
+          <OpportunityDetailHeader opportunity={opportunity} />
           <OpportunityDetailStats opportunity={opportunity} />
-          <OpportunityDetailSections opportunity={opportunity} />
+          {/* Provider only (no DOM): the inline editors share the edit form. */}
+          <Form {...editor.form}>
+            <OpportunityDetailSections opportunity={opportunity} editor={editor} />
+          </Form>
         </RecordCard>
       </RecordBody>
 

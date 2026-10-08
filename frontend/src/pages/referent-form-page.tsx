@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
+import { DetailError } from '@/components/detail/detail-panel'
 import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -32,6 +32,7 @@ export default function ReferentFormPage() {
     data: referent,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(
     referentDetailQueryKey(referentId),
@@ -69,14 +70,12 @@ export default function ReferentFormPage() {
             sections inside it are the `bg-card` rung (ui-design.md §1-bis). */}
         <div className="flex flex-1 flex-col overflow-hidden rounded-lg border">
           {isError ? (
-            <div className="flex flex-col items-start gap-3 p-4">
-              <p className="text-sm text-destructive" role="alert">
-                {t('referents.detail.loadError')}
-              </p>
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                {t('common.retry')}
-              </Button>
-            </div>
+            <DetailError
+              error={error}
+              message={t('referents.detail.loadError')}
+              retryLabel={t('common.retry')}
+              onRetry={() => refetch()}
+            />
           ) : isEdit && (isLoading || !referent) ? (
             <RecordFormSkeleton />
           ) : (

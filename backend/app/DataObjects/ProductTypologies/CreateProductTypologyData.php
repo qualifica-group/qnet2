@@ -2,6 +2,8 @@
 
 namespace App\DataObjects\ProductTypologies;
 
+use App\Enums\SupplierCommissionDirection;
+
 /**
  * Validated payload for creating a product typology
  * (POST /api/product-typologies, spec 0099). Declared DTO (no "magic flying
@@ -17,6 +19,9 @@ final readonly class CreateProductTypologyData
         public string $name,
         public string $code,
         public ?string $description,
+        public string $color,
+        public bool $supplierCommissionEnabled = false,
+        public ?SupplierCommissionDirection $supplierCommissionDirection = null,
     ) {}
 
     /**
@@ -26,10 +31,18 @@ final readonly class CreateProductTypologyData
      */
     public static function fromValidated(array $data): self
     {
+        $enabled = (bool) ($data['supplier_commission_enabled'] ?? false);
+
         return new self(
             name: (string) $data['name'],
             code: (string) $data['code'],
             description: array_key_exists('description', $data) ? $data['description'] : null,
+            color: (string) $data['color'],
+            supplierCommissionEnabled: $enabled,
+            // Spec 0202 D-7: a disabled switch always stores a null direction.
+            supplierCommissionDirection: $enabled && isset($data['supplier_commission_direction'])
+                ? SupplierCommissionDirection::from($data['supplier_commission_direction'])
+                : null,
         );
     }
 
@@ -42,6 +55,9 @@ final readonly class CreateProductTypologyData
             'name' => $this->name,
             'code' => $this->code,
             'description' => $this->description,
+            'color' => $this->color,
+            'supplier_commission_enabled' => $this->supplierCommissionEnabled,
+            'supplier_commission_direction' => $this->supplierCommissionDirection,
         ];
     }
 }

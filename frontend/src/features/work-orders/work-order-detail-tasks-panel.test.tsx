@@ -1,7 +1,9 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render as rtlRender, screen } from '@testing-library/react'
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ConfirmContext } from '@/components/confirm-dialog-context'
 import i18n from '@/i18n'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
@@ -17,8 +19,19 @@ import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/type
  * (`WorkOrderTaskBoard`), not the old `TableView domain="tasks"` grid
  * (`WorkOrderTasksSection`, removed) — same gate, same mount point (AC-024).
  */
+/** Router for the record links, query client and confirm service for the in-place editors and the closure action. */
 function render(ui: ReactElement) {
-  return rtlRender(ui, { wrapper: MemoryRouter })
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <ConfirmContext.Provider value={() => Promise.resolve(true)}>{children}</ConfirmContext.Provider>
+        </QueryClientProvider>
+      </MemoryRouter>
+    )
+  }
+  return rtlRender(ui, { wrapper: Wrapper })
 }
 
 vi.mock('@/features/modules/use-module-open-mode', () => ({

@@ -17,13 +17,14 @@ interface ProformaRequestEditScreenProps {
  */
 export function ProformaRequestEditScreen({ id, onSuccess, onCancel }: ProformaRequestEditScreenProps) {
   const { t } = useTranslation()
-  const { data, isLoading, isError, refetch } = useEntityDetail(proformaRequestDetailQueryKey(id), () =>
+  const { data, isLoading, isError, error, refetch } = useEntityDetail(proformaRequestDetailQueryKey(id), () =>
     fetchProformaRequest(id),
   )
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('proformaRequests.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

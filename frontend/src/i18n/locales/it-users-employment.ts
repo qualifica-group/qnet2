@@ -32,6 +32,8 @@ export const usersFormEmployment = {
   reportsToEmpty: 'Nessun utente trovato.',
   reportsToError: 'Impossibile caricare gli utenti.',
   reportsToRemove: 'Rimuovi responsabile',
+  isAssignable: 'Assegnabile',
+  isAssignableDescription: 'Se spento la persona non riceve nessuna assegnazione (Lead, Gestione Richieste, Iscritti, import), anche con sede e competenza.',
   coversAllProductCategories: 'Competente per tutte le categorie',
   coversAllProductCategoriesDescription: 'La persona è competente su qualunque categoria prodotto, a prescindere dalla funzione aziendale: le righe sottostanti spariscono e vengono azzerate.',
   productLines: 'Competenza',
@@ -117,6 +119,7 @@ export const usersAssignment = {
     remoteSites: 'Sedi remote',
   },
   blockers: {
+    disabled: "Assegnazione disattivata dall'impostazione Assegnabile",
     competence: 'Nessuna competenza configurata: senza almeno una coppia funzione aziendale + categoria prodotto la persona non entra in nessun abbinamento.',
     site: 'Nessuna sede operativa: senza sede fisica o remota la persona non entra in nessun abbinamento.',
   },
@@ -126,6 +129,7 @@ export const usersAssignment = {
     sitesBreakdown: '{{physical}} fisica · {{remote}} remote',
     matching: 'Abbinamento',
     blockers: {
+      disabled: 'Assegnazione disattivata',
       competence: 'Manca la competenza',
       site: 'Manca la sede',
     },

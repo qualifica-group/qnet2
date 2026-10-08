@@ -6,7 +6,7 @@ import i18n from '@/i18n'
 import { ConfirmContext, type ConfirmFn } from '@/components/confirm-dialog-context'
 import { TaskSubtasksSection } from '@/features/tasks/task-subtasks-section'
 import { deleteTask, fetchTask, reorderTaskSubtasks, uncompleteTask } from '@/features/tasks/api'
-import { NO_TASK_ACTIONS, taskDetailWithPermissions, taskSubtask } from '@/features/tasks/task-fixtures'
+import { NO_TASK_ACTIONS, taskDetailWithPermissions, taskStatus, taskSubtask } from '@/features/tasks/task-fixtures'
 import type { TaskSubtask } from '@/features/tasks/types'
 
 /** Abilities granted to the actor under test; rewritten per test. */
@@ -36,17 +36,10 @@ vi.mock('@/features/tasks/api', async () => {
 
 // The full completion flow (feedback/validation/segnatempo) is already
 // covered by `task-complete-dialog.test.tsx`; this suite only checks that the
-// panel opens it with the right task and `forAllAssignees={false}` (D-6).
+// panel opens it with the right task.
 vi.mock('@/features/tasks/task-complete-dialog', () => ({
-  TaskCompleteDialog: ({
-    open,
-    task,
-    forAllAssignees,
-  }: {
-    open: boolean
-    task: { id: number }
-    forAllAssignees: boolean
-  }) => (open ? <p>{`complete-dialog:${task.id}:${String(forAllAssignees)}`}</p> : null),
+  TaskCompleteDialog: ({ open, task }: { open: boolean; task: { id: number } }) =>
+    open ? <p>{`complete-dialog:${task.id}`}</p> : null,
 }))
 
 const label = (key: string) => i18n.t(key)
@@ -139,6 +132,52 @@ describe('TaskSubtasksSection — listing (AC-085)', () => {
     expect(screen.getByText(label('tasks.detail.subtasksEmpty'))).toBeInTheDocument()
   })
 
+  it('sums up the done children and their mean completion above the list', () => {
+    renderSection([
+      taskSubtask({ completion_percentage: 100 }),
+      taskSubtask({ id: 102, title: 'Inviare la conferma', completion_percentage: 50 }),
+    ])
+
+    expect(screen.getByText(label('tasks.detail.subtaskPanel.doneOf_other').replace('{{count}}', '2'))).toBeInTheDocument()
+    expect(
+      screen.getByRole('progressbar', { name: label('tasks.detail.subtaskPanel.overallProgress') }),
+    ).toHaveAttribute('aria-valuenow', '75')
+  })
+
+  it('explains the panel in its empty state and shows no summary', () => {
+    renderSection([])
+
+    expect(screen.getByText(label('tasks.detail.subtaskPanel.emptyHint'))).toBeInTheDocument()
+    expect(
+      screen.queryByRole('progressbar', { name: label('tasks.detail.subtaskPanel.overallProgress') }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows the assignees as avatars rather than a comma list', () => {
+    renderSection([taskSubtask({ assignees: [{ id: 31, name: 'Dario Dini' }] })])
+
+    expect(screen.queryByText('Dario Dini')).not.toBeInTheDocument()
+    expect(screen.getByText('DD')).toBeInTheDocument()
+  })
+
+  it('shows the type as a tile in its colour and tints the row with it', () => {
+    renderSection([taskSubtask({ task_type: { id: 4, name: 'Telefonata', color: 'blue', icon: 'phone' } })])
+
+    expect(screen.getByRole('img', { name: 'Telefonata' })).toBeInTheDocument()
+    expect(screen.getByRole('listitem')).toHaveClass('bg-blue-500/5')
+  })
+
+  it('draws a done child with the filled check, as the grid does', () => {
+    renderSection([
+      taskSubtask({
+        task_status: taskStatus({ group: 'closed_positive' }),
+        permissions: { actions: { ...NO_TASK_ACTIONS, delete: false } },
+      }),
+    ])
+
+    expect(screen.getByRole('img', { name: label('tasks.actions.complete.done') })).toHaveClass('fill-success')
+  })
+
   it('renders the child status badge and its own derived percentage', () => {
     renderSection([taskSubtask({ completion_percentage: 75 })])
 
@@ -227,7 +266,7 @@ function deletableSubtask(id: number) {
 
 /** Spec 0155 D-5/AC-007: each row's own `permissions.actions` gates complete/reopen/delete. */
 describe('TaskSubtasksSection — row actions (AC-007)', () => {
-  it('shows Completa only when the child permits it, and opens the dialog with forAllAssignees=false', async () => {
+  it('shows Completa only when the child permits it, and opens the dialog for that child', async () => {
     vi.mocked(fetchTask).mockResolvedValueOnce(taskDetailWithPermissions({ id: 101 }))
     renderSection([
       taskSubtask({ id: 101, permissions: { actions: { ...NO_TASK_ACTIONS, complete: true, delete: false } } }),
@@ -238,7 +277,7 @@ describe('TaskSubtasksSection — row actions (AC-007)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: label('tasks.detail.subtaskPanel.complete') }))
 
-    expect(await screen.findByText('complete-dialog:101:false')).toBeInTheDocument()
+    expect(await screen.findByText('complete-dialog:101')).toBeInTheDocument()
   })
 
   it('shows Riapri only when the child permits it; confirming reopens and refreshes the parent', async () => {

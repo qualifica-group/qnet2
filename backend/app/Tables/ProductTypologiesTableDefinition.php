@@ -2,6 +2,7 @@
 
 namespace App\Tables;
 
+use App\Enums\SupplierCommissionDirection;
 use App\Models\ProductTypology;
 use App\Models\User;
 use App\Services\ProductTypologyService;
@@ -88,6 +89,25 @@ class ProductTypologiesTableDefinition extends AbstractTableDefinition
     }
 
     /**
+     * Badge metadata for the Supplier commission direction column (spec 0202).
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    protected function badgesFor(string $columnId, User $actor): ?array
+    {
+        if ($columnId !== 'supplier_commission_direction') {
+            return null;
+        }
+
+        return array_map(static fn ($meta): array => $meta->toArray(), SupplierCommissionDirection::options());
+    }
+
+    protected function enumKeyFor(string $columnId, User $actor): ?string
+    {
+        return $columnId === 'supplier_commission_direction' ? 'supplier_commission_direction' : null;
+    }
+
+    /**
      * Map a ProductTypology to the row payload. `actions` is attached by the
      * generic TableService via actionsFor().
      *
@@ -101,6 +121,9 @@ class ProductTypologiesTableDefinition extends AbstractTableDefinition
             'name' => $row->name,
             'code' => $row->code,
             'description' => $row->description,
+            'color' => $row->color,
+            'supplier_commission_enabled' => $row->supplier_commission_enabled,
+            'supplier_commission_direction' => $row->supplier_commission_direction?->value,
             'created_at' => $row->created_at,
             'updated_at' => $row->updated_at,
         ];

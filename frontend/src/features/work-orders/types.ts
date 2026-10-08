@@ -163,6 +163,14 @@ export interface WorkOrderDetail {
    * pre-existing fixtures stay valid; a missing key reads as `null`.
    */
   registry?: { id: number; name: string } | null
+  /**
+   * Societa' e sedi of the linked quote, the same live projection the Contract
+   * detail shows (`ContractResource`). Optional like `registry`; a missing key
+   * reads as `null`. The operational site has no name: `label` is its address.
+   */
+  company?: { id: number; name: string } | null
+  company_site?: { id: number; name: string } | null
+  operational_site?: { id: number; label: string } | null
   quote_lines: WorkOrderQuoteLine[]
   /** Spec 0124 D-9: `null` when the commessa was not generated from a Modello di Task. */
   task_template: WorkOrderTaskTemplateRef | null

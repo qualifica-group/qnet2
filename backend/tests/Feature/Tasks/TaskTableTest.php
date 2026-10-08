@@ -97,6 +97,21 @@ it('AC-070: the column config exposes the frozen filter catalogue', function () 
     ]);
 });
 
+it('declares the people pickers of the grid like the detail ones: watchers exclude creator, requester and assignees', function () {
+    $actor = taskActorWith(['viewAny']);
+    Sanctum::actingAs($actor);
+
+    $columns = collect($this->getJson('/api/tables/tasks/columns')->assertOk()->json('data.columns'))->keyBy('id');
+
+    // Spec 0118 D-9 / AC-035: the same "not offered" set as the detail's watchers picker.
+    expect($columns['watchers']['relation'])->toBe([
+        'resource' => 'users',
+        'exclude' => ['creator', 'requester', 'assignees'],
+    ])
+        // No scope on either column: the editor lists every user, never "no scope yet".
+        ->and($columns['assignees']['relation'])->toBe(['resource' => 'users']);
+});
+
 it('advertises the domain row actions with the i18n leaf keys the frontend translates', function () {
     Sanctum::actingAs(taskActorWith(['viewAny', 'complete', 'validate', 'block', 'requestUpdate']));
 

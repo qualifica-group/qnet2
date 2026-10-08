@@ -44,6 +44,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],
           rows: [
+            ['**Assegnabile**', 'Se lo spegni la persona non riceve nessuna assegnazione (Lead, Gestione Richieste, Iscritti, import), anche con sede e competenza. Competenza e sedi restano configurate, pronte per quando lo riaccendi. Di default è acceso.'],
             ['**Competente per tutte le categorie**', 'Attivalo se la persona segue qualunque categoria prodotto. Le righe di competenza spariscono e vengono azzerate.'],
             ['**Competenza**', 'Una riga per ogni coppia funzione aziendale e categoria prodotto. Una categoria madre copre anche le sue sottocategorie. Spunta "Tutte" per coprire ogni categoria di quella funzione.'],
             ['**Sede fisica**', 'La sede operativa principale della persona.'],
@@ -51,7 +52,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'paragraph', text: 'Sede fisica e sedi remote valgono allo stesso modo per l’assegnazione. In alto nel modulo un’etichetta indica **Assegnabile** oppure **Non assegnabile**.' },
-        { type: 'warning', text: 'Senza almeno una competenza e una sede, la persona non riceve nessuna assegnazione. Il modulo lo segnala con "Manca la competenza" o "Manca la sede".' },
+        { type: 'warning', text: 'La persona riceve assegnazioni solo se sono vere tutte e tre le condizioni: **Assegnabile** acceso, almeno una competenza e almeno una sede. Il modulo segnala la condizione mancante con "Assegnazione disattivata", "Manca la competenza" o "Manca la sede".' },
       ],
     },
     {

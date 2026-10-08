@@ -35,6 +35,8 @@ interface RequestManagementCategoryTabsProps {
   /** The actor's favourites (spec 0184): shown first, or alone with `showOnlyFavorites`. */
   favoriteCategoryIds: number[]
   showOnlyFavorites: boolean
+  /** The favourites are the ones proposed from the actor's competence, not saved yet (spec 0193). */
+  favoritesAreDefault?: boolean
   onToggleFavorite: (categoryId: number) => void
   onShowOnlyFavoritesChange: (showOnlyFavorites: boolean) => void
 }
@@ -59,6 +61,7 @@ export function RequestManagementCategoryTabs({
   onSelect,
   favoriteCategoryIds,
   showOnlyFavorites,
+  favoritesAreDefault = false,
   onToggleFavorite,
   onShowOnlyFavoritesChange,
 }: RequestManagementCategoryTabsProps) {
@@ -105,6 +108,7 @@ export function RequestManagementCategoryTabs({
             categories={categories}
             favoriteCategoryIds={favoriteCategoryIds}
             showOnlyFavorites={showOnlyFavorites}
+            favoritesAreDefault={favoritesAreDefault}
             hiddenCount={hiddenCount}
             selectedCategoryId={selectedCategoryId}
             onSelect={onSelect}

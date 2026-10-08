@@ -16,6 +16,7 @@ use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\AplOrientationAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\ApprenticeshipAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Database\Seeders\QualificaQuoteLayoutSeeder;
@@ -45,7 +46,7 @@ it('gives the orientation practices their own offer fields, cut off the APL root
         ->and($category->inherits_quote_attributes)->toBeFalse()
         ->and(app(CategoryHierarchy::class)->effectiveAttributes($category, AttributeContext::Quote)->pluck('code')->sort()->values()->all())
         ->toBe(collect($ownCodes)->sort()->values()->all())
-        ->and($ownCodes)->toHaveCount(15);
+        ->and($ownCodes)->toHaveCount(16);
 
     // One "Data fine" attribute shared with the internships, not a copy.
     expect(Attribute::query()->where('code', 'practice_end_date')->sole()->categories()->pluck('name')->sort()->values()->all())
@@ -57,6 +58,17 @@ it('gives the orientation practices their own offer fields, cut off the APL root
         ->toBe(['Presa in carico', 'Orientamento', 'Accompagnamento'])
         ->and(Attribute::query()->where('code', 'deliverable_policies')->sole()->config)->toBe(['min' => 1, 'max' => 4])
         ->and(Attribute::query()->where('code', 'sfl_months_received')->sole()->config)->toBe(['min' => 0, 'max' => 12]);
+
+    // "Anagrafica Utente" (user directive 2026-10-06): a link to one registry.
+    $userRegistry = Attribute::query()->where('code', 'user_registry')->sole();
+
+    expect($userRegistry->name)->toBe('Anagrafica Utente')
+        ->and($userRegistry->type)->toBe('relation')
+        ->and($userRegistry->relation_target)->toBe([
+            'entity_type' => 'registries',
+            'cardinality' => 'one',
+            'for_select_resource' => 'registries',
+        ]);
 });
 
 it('lays the orientation offer form out in the sheet order, every section white', function (): void {
@@ -75,13 +87,41 @@ it('lays the orientation offer form out in the sheet order, every section white'
     expect(array_column($sections, 'title'))->toBe(['Testata', 'Dati pratica', 'Percorso'])
         ->and(array_column($sections, 'variant'))->toBe(['default', 'default', 'default'])
         ->and($codesBySection)->toBe([
-            ['sfl_renewal_status', 'decree_status', 'deliverable_policies', 'last_active_policy_date'],
+            ['user_registry', 'sfl_renewal_status', 'decree_status', 'deliverable_policies', 'last_active_policy_date'],
             ['orientation_measure', 'sfl_months_received', 'practice_end_date', 'reporting_id', 'decree_id'],
             [
                 'orientation_convocation_date', 'orientation_intake_date', 'orientation_session_date',
                 'orientation_job_support_1_date', 'orientation_job_support_2_date', 'orientation_job_support_3_date',
             ],
         ]);
+});
+
+it('recomposes the orientation form the previous revision seeded, never one edited by hand', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $layouts = app(AttributeLayoutService::class);
+    $category = ProductCategory::query()->where('name', AplOrientationAttributeCatalogue::CATEGORY)->sole();
+    $seeded = $layouts->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All);
+
+    // The blob the 2026-10-05 revision wrote: no "Anagrafica Utente" row.
+    $previous = $seeded;
+    array_shift($previous['sections'][0]['rows']);
+    $previous['sections'][0]['description'] = 'Rinnovo SFL, decreto e politiche attive della pratica.';
+    $layouts->upsert($category, AttributeContext::Quote, LayoutFormScope::All, $previous);
+
+    test()->seed(QualificaQuoteLayoutSeeder::class);
+
+    expect($layouts->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All))->toBe($seeded);
+
+    // The same form renamed by hand: a human's work, left exactly as it is.
+    $handEdited = $previous;
+    $handEdited['sections'][0]['title'] = 'Rinominata a mano';
+    $layouts->upsert($category, AttributeContext::Quote, LayoutFormScope::All, $handEdited);
+
+    test()->seed(QualificaQuoteLayoutSeeder::class);
+
+    expect($layouts->resolveExact($category, AttributeContext::Quote, LayoutFormScope::All)['sections'][0]['title'])
+        ->toBe('Rinominata a mano');
 });
 
 it('gives the orientation practices their own working states, winning over the APL branch set', function (): void {
@@ -112,25 +152,25 @@ it('turns a section an earlier revision seeded grey white, never one edited by h
     test()->seed(QualificaCatalogSeeder::class);
 
     $layouts = app(AttributeLayoutService::class);
-    $internship = ProductCategory::query()->where('name', AplInternshipAttributeCatalogue::CATEGORY)->sole();
-    $seeded = $layouts->resolveExact($internship, AttributeContext::Quote, LayoutFormScope::All);
+    $apprenticeship = ProductCategory::query()->where('name', ApprenticeshipAttributeCatalogue::CATEGORY)->sole();
+    $seeded = $layouts->resolveExact($apprenticeship, AttributeContext::Quote, LayoutFormScope::All);
 
-    // The blob the previous revision wrote: today's, its header highlighted.
+    // The blob the previous revision wrote: today's, its first section highlighted.
     $grey = $seeded;
     $grey['sections'][0]['variant'] = 'highlighted';
-    $layouts->upsert($internship, AttributeContext::Quote, LayoutFormScope::All, $grey);
+    $layouts->upsert($apprenticeship, AttributeContext::Quote, LayoutFormScope::All, $grey);
 
     test()->seed(QualificaQuoteLayoutSeeder::class);
 
-    expect($layouts->resolveExact($internship, AttributeContext::Quote, LayoutFormScope::All))->toBe($seeded);
+    expect($layouts->resolveExact($apprenticeship, AttributeContext::Quote, LayoutFormScope::All))->toBe($seeded);
 
     // Grey AND renamed: a human's work, left exactly as it is.
     $handEdited = $grey;
     $handEdited['sections'][0]['title'] = 'Rinominata a mano';
-    $layouts->upsert($internship, AttributeContext::Quote, LayoutFormScope::All, $handEdited);
+    $layouts->upsert($apprenticeship, AttributeContext::Quote, LayoutFormScope::All, $handEdited);
 
     test()->seed(QualificaQuoteLayoutSeeder::class);
 
-    expect($layouts->resolveExact($internship, AttributeContext::Quote, LayoutFormScope::All)['sections'][0])
+    expect($layouts->resolveExact($apprenticeship, AttributeContext::Quote, LayoutFormScope::All)['sections'][0])
         ->toMatchArray(['title' => 'Rinominata a mano', 'variant' => 'highlighted']);
 });

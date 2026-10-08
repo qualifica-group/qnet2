@@ -1,11 +1,10 @@
 import { useTranslation } from 'react-i18next'
-import type { Control } from 'react-hook-form'
+import { useFormContext, useWatch, type Control } from 'react-hook-form'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
 import { FIELD_STACK_CLASS } from '@/components/record-form/layout'
 import { ReporterRewardsField } from '@/components/record-form/reporter-rewards-field'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { OpportunityContactRecap } from '@/features/opportunities/opportunity-contact-recap'
-import type { RewardAssignmentValue } from '@/features/opportunities/reward-assignment-field'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
@@ -15,10 +14,7 @@ const REWARDS_LABEL_PREFIX = 'opportunities.form.rewards'
 interface OpportunityReporterFieldProps {
   control: Control<OpportunityFormValues>
   selected: RelationFieldRef | null
-  reporterId: number | null
-  rewards: RewardAssignmentValue[]
-  onRewardsChange: (next: RewardAssignmentValue[]) => void
-  /** The loaded opportunity's persisted reward assignments (edit mode), `[]` on create. */
+  /** The loaded opportunity's persisted reward assignments (detail), `[]` on create: they name the chips. */
   initialRewards: RewardAssignmentRef[]
 }
 
@@ -30,19 +26,16 @@ interface OpportunityReporterFieldProps {
  * Same flow as Gestione Richieste (user directive 2026-08-05): the reward
  * block is the shared `ReporterRewardsField`, so it APPEARS — tinted inset,
  * motion-safe reveal — only once a Segnalatore is picked, instead of standing
- * there permanently disabled with a "pick a reporter first" hint. That hint
+ * there permanently disabled with a "pick a reporter first" hint. The
+ * rewards travel with the Segnalatore: its in-place row (spec 0198) saves
+ * both in the same PATCH. That hint
  * survives for the one case that needs it: a reporter cleared while rewards
  * are still attached, where the block is the only control able to detach them.
  */
-export function OpportunityReporterField({
-  control,
-  selected,
-  reporterId,
-  rewards,
-  onRewardsChange,
-  initialRewards,
-}: OpportunityReporterFieldProps) {
+export function OpportunityReporterField({ control, selected, initialRewards }: OpportunityReporterFieldProps) {
   const { t } = useTranslation()
+  const { setValue } = useFormContext<OpportunityFormValues>()
+  const [reporterId, rewards] = useWatch({ control, name: ['reporter_id', 'rewards'] })
 
   return (
     <div className={FIELD_STACK_CLASS}>
@@ -65,7 +58,7 @@ export function OpportunityReporterField({
         labelPrefix={REWARDS_LABEL_PREFIX}
         reporterId={reporterId}
         value={rewards}
-        onChange={onRewardsChange}
+        onChange={(next) => setValue('rewards', next, { shouldDirty: true })}
         initialAssignments={initialRewards}
       />
     </div>

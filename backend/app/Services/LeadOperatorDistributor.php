@@ -29,6 +29,9 @@ class LeadOperatorDistributor
      * membership semantics spec 0103 D-1 fixed — PHYSICAL or REMOTE
      * indifferently, ascending operator id — in ONE query (AC-009).
      *
+     * Only ASSIGNABLE members count (spec 0194): this is the one Sede pool
+     * every assignment surface starts from, so the switch is enforced here.
+     *
      * Every requested Sede is present in the answer: one with no operator
      * maps to an EMPTY array, so the caller reads "no candidates" without
      * having to distinguish it from an unknown id.
@@ -53,6 +56,8 @@ class LeadOperatorDistributor
                 'employment_profiles.id',
             )
             ->whereIn('memberships.operational_site_id', $siteIds)
+            // Spec 0194: a member whose "Assegnabile" switch is off is in no pool.
+            ->where('employment_profiles.is_assignable', true)
             ->distinct()
             ->orderBy('users.id')
             ->get(['memberships.operational_site_id as operational_site_id', 'users.id as user_id']);

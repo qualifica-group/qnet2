@@ -134,4 +134,13 @@ class EmploymentProfileFactory extends Factory
     {
         return $this->state(fn (): array => ['covers_all_product_categories' => true]);
     }
+
+    /**
+     * Spec 0194: the "Assegnabile" switch off — in no assignment pool,
+     * whatever its Sedi and competence.
+     */
+    public function notAssignable(): static
+    {
+        return $this->state(fn (): array => ['is_assignable' => false]);
+    }
 }

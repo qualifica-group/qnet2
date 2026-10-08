@@ -46,6 +46,8 @@ interface SortableListProps<T extends SortableListItem> {
   className?: string
   /** Overrides the pinned row's default muted background (e.g. `bg-card` to match the sortable rows). */
   pinnedRowClassName?: string
+  /** Per-item row classes on top of the defaults (e.g. a tint keyed by the item's own type). */
+  itemClassName?: (item: T) => string | undefined
 }
 
 /** Splits `items` into a leading pinned run, the reorderable middle, and a trailing pinned run. */
@@ -98,7 +100,8 @@ function SortableRow<T extends SortableListItem>({
   item,
   renderItem,
   dragHandleLabel,
-}: RowProps<T> & { dragHandleLabel: string }) {
+  className,
+}: RowProps<T> & { dragHandleLabel: string; className?: string }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id })
 
@@ -113,6 +116,7 @@ function SortableRow<T extends SortableListItem>({
       style={style}
       className={cn(
         "flex items-center gap-2 rounded-md border bg-card px-2 py-1.5 text-sm",
+        className,
         isDragging && "z-10 opacity-70 shadow-md"
       )}
     >
@@ -146,6 +150,7 @@ function SortableList<T extends SortableListItem>({
   dragHandleLabel,
   className,
   pinnedRowClassName,
+  itemClassName,
 }: SortableListProps<T>) {
   // Mirrors `items` for optimistic in-place reordering, and re-syncs
   // whenever the caller passes a new `items` reference (e.g. to revert an
@@ -190,17 +195,33 @@ function SortableList<T extends SortableListItem>({
   return (
     <ul className={cn("flex flex-col gap-1.5", className)}>
       {leading.map((item) => (
-        <PinnedRow key={item.id} item={item} renderItem={renderItem} className={pinnedRowClassName} />
+        <PinnedRow
+          key={item.id}
+          item={item}
+          renderItem={renderItem}
+          className={cn(pinnedRowClassName, itemClassName?.(item))}
+        />
       ))}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
           {sortable.map((item) => (
-            <SortableRow key={item.id} item={item} renderItem={renderItem} dragHandleLabel={dragHandleLabel} />
+            <SortableRow
+              key={item.id}
+              item={item}
+              renderItem={renderItem}
+              dragHandleLabel={dragHandleLabel}
+              className={itemClassName?.(item)}
+            />
           ))}
         </SortableContext>
       </DndContext>
       {trailing.map((item) => (
-        <PinnedRow key={item.id} item={item} renderItem={renderItem} className={pinnedRowClassName} />
+        <PinnedRow
+          key={item.id}
+          item={item}
+          renderItem={renderItem}
+          className={cn(pinnedRowClassName, itemClassName?.(item))}
+        />
       ))}
     </ul>
   )

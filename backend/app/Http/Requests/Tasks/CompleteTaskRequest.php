@@ -38,12 +38,11 @@ use Illuminate\Validation\Rule;
  * deliberately does NOT check `time-entries.create` here or anywhere else in
  * this class.
  *
- * `for_all_assignees` (spec 0155, D-6) defaults false: `TaskCompletionService::complete()`
- * then logs the one submitted `time_entry` for the acting user alone, same as
- * before this spec. `true` logs an IDENTICAL copy of it for every assignee
- * (the actor themselves when there are none) — never a per-user choice, the
- * caller decides which value to send (list/detail always send `true`,
- * sub-task panel/kanban always `false`, q-net's own split).
+ * `for_all_assignees` (spec 0205, RECTIFIES spec 0155 D-6) defaults true:
+ * `TaskCompletionService::complete()` then logs an IDENTICAL copy of the one
+ * submitted `time_entry` for every assignee (the actor themselves when there
+ * are none). `false` logs it for the acting user alone. The value is the
+ * actor's own choice (the Completa dialog's checkbox, checked by default).
  */
 class CompleteTaskRequest extends FormRequest
 {

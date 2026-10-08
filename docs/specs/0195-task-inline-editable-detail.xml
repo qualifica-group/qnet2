@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0195-task-inline-editable-detail" status="approved" owner="utente" date="2026-10-06">
+
+  <goal>
+    Il dettaglio del task (`/tasks/:id`, e lo stesso schermo nel pannello modale) diventa direttamente editabile:
+    stesso layout del dettaglio di prima, ma ogni campo modificabile si edita in place. La pagina di modifica
+    separata (`/tasks/:id/edit`) viene eliminata definitivamente.
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-06): resta il layout del dettaglio (header con badge, barra azioni di dominio, KPI,
+      sezioni `RecordSection`, sotto-task, card collaborazione laterale). Niente form a tutta pagina.
+    - D-2 (utente 2026-10-06, scelta "clic sul campo, salva subito"): clic sul valore (o sulla matita) apre
+      l'editor di QUEL campo con Conferma/Annulla; Conferma salva solo quel campo (PATCH parziale), Annulla o Esc
+      ripristina. Un solo campo in modifica alla volta. Nessun pulsante Salva globale.
+    - D-3: gli editor sono gli STESSI controlli del form di creazione (estratti per campo dalle sezioni
+      `task-*-section.tsx`), con le stesse regole: field permissions (`MetaField`), stato con le opzioni
+      disabilitate di sempre e `change_status`, anagrafica che azzera referente/opportunita'/lead (e la commessa
+      se di un'altra anagrafica), commessa/opportunita' mutuamente esclusive, fase solo con commessa e senza padre.
+      Un campo azzerato a cascata viaggia nello stesso PATCH.
+    - D-4: il salvataggio riusa `useTaskForm` in modalita' edit (PATCH diff contro il task persistito,
+      `buildUpdatePayload`, mapping errori 422/409). Il form si riallinea al task quando cambia in cache
+      (azioni di dominio, sotto-task) senza perdere il campo in modifica (`values` + `keepDirtyValues`).
+    - D-5: modificando gli Assegnatari l'editor offre anche "Non notificare i nuovi assegnati"
+      (`suppress_notifications`, istruzione per-salvataggio).
+    - D-6: campi di sola lettura restano tali: creatore, data completamento, feedback di chiusura, bloccato
+      (azioni Blocca/Sblocca), percentuale di completamento. Un campo non editabile per field permission (o
+      per un attore senza `update`) non mostra alcuna affordance di modifica.
+    - D-2a (utente 2026-10-06, "quando clicchi fuori dal contenitore aperto voglio che si chiuda"): una pressione
+      fuori dalla riga aperta la chiude (`inline.dismiss`, `useOutsidePointerDismiss`): nel dettaglio = Annulla
+      (niente PATCH), nella creazione = Fatto (il valore resta nella bozza). "Dentro" segue l'albero React: tendine
+      e popover in portal del campo non chiudono la riga. Mai durante un salvataggio in corso.
+    - D-6a (utente 2026-10-06, "permessi a livello di campo, gestito anche questo"): `permissions.fields` di un task
+      ESISTENTE e' l'AND di tre cancelli, cosi' la matita compare solo dove la PATCH passa:
+      (1) matrice per ruolo + campi protetti (invariato); (2) `TaskPolicy::update` (abilita' + scope + ruolo sul
+      record: l'osservatore puro non ha campi editabili ne' `change_status`/`close_via_status`);
+      (3) `TaskWriteLock::isStructurallyLocked` (bloccato, in validazione/chiuso, o antenato congelato; carve-out
+      super-admin D-8 di spec 0153): restano editabili solo `task_status_id`/`closure_feedback`. Contesto create e
+      `new Task` della griglia invariati (solo abilita'). `UpdateTaskRequest` salta il controllo campi quando la
+      Policy rifiuta (resta il 403) e sui campi congelati usa il messaggio di `TaskWriteLock`.
+    - D-6b: un campo nascosto dalla matrice (`visible: false`) sparisce da TUTTO il dettaglio: righe, badge
+      dell'intestazione (tipo/priorita'/importanza/categoria/padre/ricorrenza), striscia KPI (date, stima), righe
+      di sola lettura (data completamento, feedback di chiusura). Solo UI: l'API restituisce ancora il valore
+      (comportamento di progetto, fuori scope).
+    - D-6c: un editor la cui cascata (D-3) scriverebbe un campo non editabile non si apre: anagrafica (referente,
+      opportunita', lead, commessa, fase), commessa (fase, opportunita'; imposta l'anagrafica), opportunita'
+      (commessa, fase), task padre (fase). Un dipendente gia' vuoto non blocca (`task-inline-cascade.ts`).
+    - D-7: nel pannello modale il salvataggio di un campo NON chiude il pannello (si continua a lavorare sul
+      record); chi ha aperto il pannello viene avvisato a ogni salvataggio (nuovo
+      `ModuleDetailScreenProps.onChanged`, cablato da `useModuleOpener` sul suo `onSaved`) e aggiorna la propria
+      griglia/board senza chiudere.
+    - D-8 (utente 2026-10-06, "anche creazione deve essere adeguato"): il form di creazione/duplica ha lo stesso
+      layout del dettaglio (header sticky con Annulla/Salva, una card con le stesse sezioni e lo stesso ordine:
+      Dati, Classificazione, Persone, Pianificazione, Record collegati, Chiusura, Ricorrenza), con i campi gia'
+      aperti; sotto la card i blocchi solo-creazione (righe Sotto-task, Allegati). Spariscono il riepilogo
+      laterale e i wrapper di sezione del vecchio form: le sezioni `task-*-section.tsx` esportano solo i campi.
+      RETTIFICATA (utente 2026-10-06, "replicare l'edit in creazione", "campi di default chiusi come nell'edit"):
+      la creazione e' una replica del dettaglio — card con header (monogramma + titolo live), striscia KPI live,
+      stesse righe (etichetta | valore) CHIUSE di default, vuote o precompilate, che si aprono sulla matita col
+      controllo del campo; "Fatto" tiene il valore nella bozza (e valida quel campo), "Ripristina" riporta la bozza
+      com'era all'apertura della riga (cascate incluse). Salva in alto valida tutto e crea; gli errori compaiono sotto
+      le righe chiuse. Card laterale col tab Allegati (dove il dettaglio ha i Documenti); Sotto-task come sezione.
+    - D-9 (utente 2026-10-06): uscire dalla creazione chiede SEMPRE conferma — Annulla, X/overlay/Esc del pannello
+      (`SheetCloseGuardContext`/`useSheetCloseGuard` in `useModuleOpener`), navigazione interna (`useBlocker`, solo
+      sotto data router), chiusura/ricarica della scheda (`beforeunload`). Dopo un salvataggio riuscito nessuna
+      conferma. Hook generico `useFormLeaveGuard` (features/modules).
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica: PATCH /api/tasks/{id} parziale esistente.</backend>
+    <frontend>Registry: `ModuleRegistryEntry.generateEditRoute?: boolean` (default true); `false` per `tasks`
+      = nessuna rotta `:id/edit`, nessun `onEdit` passato al `DetailScreen`. `TaskFormScreen` non ha piu' il ramo
+      edit. `TaskDetailView` perde `onEdit` e guadagna `onChanged`. `TaskForm`/`TaskFormBody` accettano solo
+      `TaskCreateFormMode` (create|duplicate); il ramo `'edit'` di `TaskFormMode` resta per `useTaskForm`, usato
+      dal dettaglio (`useTaskInlineEdit`).</frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">`/tasks/:id/edit` non esiste piu' (nessuna rotta generata); nessun pulsante "Modifica" nel
+      dettaglio.</ac>
+    <ac id="AC-002">Clic su un campo editabile mostra il suo editor; Conferma invia un PATCH con il solo campo
+      cambiato (piu' gli eventuali azzerati a cascata) e torna in visualizzazione col valore salvato.</ac>
+    <ac id="AC-003">Annulla/Esc ripristina il valore persistito senza chiamate.</ac>
+    <ac id="AC-004">Campo non editabile (field permission o attore senza update): nessuna affordance.</ac>
+    <ac id="AC-005">Errore 422 sul campo: messaggio sotto l'editor, il campo resta in modifica.</ac>
+    <ac id="AC-006">Guida in-app IT/EN aggiornata (modifica dal dettaglio, sezioni della creazione).</ac>
+    <ac id="AC-007">"Nuovo task" e "Duplica" mostrano le sezioni del dettaglio con i campi aperti; il salvataggio
+      crea il task come prima (POST, allegati e sotto-task inclusi).</ac>
+    <ac id="AC-008">Creazione: righe chiuse di default; Fatto/Ripristina sulla riga; Salva valida tutto, errori sulle
+      righe chiuse, nessun POST se invalido.</ac>
+    <ac id="AC-009">Uscita dalla creazione (Annulla, chiusura pannello, link, reload): popup di conferma; rifiutando
+      si resta; dopo il salvataggio nessun popup.</ac>
+    <ac id="AC-010">Osservatore con `tasks.update`: nessun campo editabile nel dettaglio, PATCH 403; task congelato:
+      editabili solo stato e feedback, PATCH strutturale 422 col messaggio di blocco
+      (`TaskDetailFieldPermissionsTest`).</ac>
+    <ac id="AC-011">Campo nascosto dalla matrice assente anche da intestazione e KPI; editor a cascata senza matita
+      se un dipendente e' bloccato (`task-detail-field-permissions.test.tsx`, `task-inline-cascade.test.ts`).</ac>
+  </acceptance>
+</spec>

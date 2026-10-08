@@ -129,21 +129,24 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Premi **Nuovo task**.',
-            'Compila i campi delle sezioni del modulo (vedi tabella).',
-            'Se vuoi, aggiungi file in **Allegati**: vengono caricati appena il task è salvato.',
-            'Premi **Salva**.',
+            'Compila i campi: il modulo è identico al dettaglio del task (vedi tabella), con i campi chiusi, vuoti o già precompilati. Premi la **matita** (o fai clic sul valore) per aprirne uno, poi **Fatto** per tenerlo (anche un clic fuori dal campo lo tiene e lo chiude) o **Ripristina** per riportarlo com\'era.',
+            'Se vuoi, aggiungi file nella scheda **Allegati** della card laterale (dove nel dettaglio trovi i Documenti): vengono caricati appena il task è salvato.',
+            'Premi **Salva**: vengono controllati tutti i campi insieme e gli errori compaiono sotto le righe interessate.',
           ],
+        },
+        {
+          type: 'note',
+          text: 'Se esci dalla creazione senza salvare (Annulla, chiusura del pannello, un altro link o il ricaricamento della pagina) ti viene chiesta conferma: confermando, i dati inseriti vanno persi.',
         },
         {
           type: 'table',
           headers: ['Sezione', 'Campi principali'],
           rows: [
-            ['Task', 'Titolo (obbligatorio), Descrizione, Task padre.'],
+            ['Dati', 'Titolo (obbligatorio), Descrizione, Task padre.'],
             [
               'Classificazione',
               'Stato (facoltativo in creazione: se non lo scegli, parte da quello predefinito), Tipologia, Priorità e Importanza (tutte e tre obbligatorie, precompilate con la voce predefinita del catalogo), Categoria (ad albero, indentata, puoi scegliere anche una categoria padre).',
             ],
-            ['Anagrafica e referente', 'Anagrafica, Referente (tra quelli dell\'anagrafica).'],
             [
               'Persone',
               'Richiedente (obbligatorio), Assegnatari (almeno uno), Osservatori, Task privato, Non inviare notifica di apertura.',
@@ -151,7 +154,7 @@ const guide: HelpGuide = {
             ['Pianificazione', 'Data inizio, Data fine (obbligatoria, precompilata a oggi), orari, Tempo stimato (minuti).'],
             [
               'Record collegati',
-              'Opportunità, Commessa o Lead (si escludono a vicenda tra Opportunità e Commessa; scegliere una Commessa imposta l\'anagrafica); con una Commessa, la Fase in cui mettere il task (solo fasi aperte, non per i sottotask).',
+              'Anagrafica, Referente (tra quelli dell\'anagrafica), Opportunità, Commessa o Lead (si escludono a vicenda tra Opportunità e Commessa; scegliere una Commessa imposta l\'anagrafica); con una Commessa, la Fase in cui mettere il task (solo fasi aperte, non per i sottotask).',
             ],
             ['Chiusura', 'Feedback obbligatorio, Validazione, Crea già completato (solo in creazione).'],
             ['Ricorrenza', 'Frequenza e fine della ripetizione.'],
@@ -175,11 +178,38 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'Per impostazione predefinita gli assegnatari e gli osservatori ricevono la notifica di assegnazione alla creazione: attiva **Non inviare notifica di apertura** per crearlo senza avvisarli. In modifica la stessa idea si chiama **Non notificare i nuovi assegnati** e riguarda solo chi aggiungi con quel salvataggio.',
+          text: 'Per impostazione predefinita gli assegnatari e gli osservatori ricevono la notifica di assegnazione alla creazione: attiva **Non inviare notifica di apertura** per crearlo senza avvisarli. Nel dettaglio, modificando gli **Assegnatari**, la stessa idea si chiama **Non notificare i nuovi assegnati** e riguarda solo chi aggiungi con quel salvataggio.',
         },
         {
           type: 'note',
           text: 'Cambiare l\'**Anagrafica** azzera Referente, Opportunità e Lead, e mantiene la Commessa solo se appartiene alla stessa anagrafica. Opportunità, Commessa e Lead mostrano solo i record dell\'anagrafica scelta, una volta che ne hai scelta una.',
+        },
+      ],
+    },
+    {
+      id: 'editing-a-task',
+      title: 'Modificare un task',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Non esiste una pagina di modifica separata: il task si modifica **direttamente dal suo dettaglio**, un campo alla volta.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Apri il task dall\'elenco (o dalla Kanban).',
+            'Passa col mouse sul campo da cambiare e premi la **matita** (o fai clic sul valore).',
+            'Modifica il valore nel controllo che compare.',
+            'Premi **Salva** (o Invio nei campi di testo e data) per salvare solo quel campo; **Annulla** (o Esc, o un clic fuori dal campo aperto) per chiuderlo lasciandolo com\'era, senza salvare.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Un campo senza matita non è modificabile da te in quel momento: i permessi del tuo ruolo lo rendono in sola lettura, sul task sei solo osservatore (nessuna matita), oppure il task, o un task padre, è bloccato, in validazione o chiuso (resta modificabile solo lo Stato, se il task lo consente). I campi che il tuo ruolo nasconde non compaiono affatto, nemmeno nell\'intestazione e nei riquadri in alto. Creatore, Data completamento, Feedback di chiusura e Bloccato restano in sola lettura: cambiano solo con le azioni (Completa, Blocca, Sblocca...).',
+        },
+        {
+          type: 'note',
+          text: 'Le regole sono quelle della creazione: cambiare l\'**Anagrafica** azzera Referente, Opportunità e Lead nello stesso salvataggio; scegliere una **Commessa** toglie l\'Opportunità e propone subito la Fase. Se uno dei campi che verrebbero cambiati insieme non è modificabile da te, anche il campo di partenza (Anagrafica, Commessa, Opportunità o Task padre) resta senza matita.',
         },
       ],
     },
@@ -251,7 +281,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Completando un task dal dettaglio (o dall\'elenco) il segnatempo viene registrato per **tutti gli assegnatari**, uno identico per ciascuno (per te soltanto se il task non ne ha). Completando un singolo sotto-task dal pannello Sotto-task, invece, il segnatempo si registra solo per te: non è una scelta disponibile, dipende da dove completi il task.',
+          text: 'Nella finestra Completa la casella **Registra il segnatempo per tutti gli assegnatari** è spuntata di default: il segnatempo viene registrato per tutti gli assegnatari, uno identico per ciascuno (per te soltanto se il task non ne ha). Togli la spunta per registrarlo solo per te. La scelta vale ovunque completi il task: dettaglio, elenco, kanban e pannello Sotto-task.',
         },
         {
           type: 'note',
@@ -294,15 +324,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Nel pannello **Sotto-task** del dettaglio trascini le righe (con l\'apposita maniglia) per riordinarle, e da ogni riga puoi completare, riaprire o eliminare il singolo sotto-task, quando i tuoi permessi lo consentono.',
+          text: 'Il pannello **Sotto-task** del dettaglio mostra in alto quanti sotto-task sono completati e l\'avanzamento complessivo. Premi il titolo di un sotto-task per aprirlo in una finestra sopra il task padre, che resta aperto sotto: le modifiche fatte lì aggiornano subito l\'elenco. Ogni riga ha il colore e l\'icona del tipo del sotto-task. Trascini le righe (con l\'apposita maniglia) per riordinarle. L\'icona di spunta prima del titolo funziona come nell\'elenco: diventa verde passandoci sopra e, cliccandola, completa il sotto-task; quando è completato è piena e verde e, se puoi, cliccandola lo riapri. Il cestino, che compare passando sulla riga, lo elimina, quando i tuoi permessi lo consentono.',
         },
         {
           type: 'paragraph',
-          text: 'Con **Ricorrenza attiva** QNet crea da solo le occorrenze future. Scegli la frequenza — Giornaliera, Settimanale, Mensile, Annuale o Personalizzata (ogni N giorni) — l\'intervallo in **Ripeti ogni** e la fine: A una data, Dopo un numero di occorrenze o Mai. "Dopo un numero di occorrenze" conta le occorrenze effettivamente create, non i candidati calcolati.',
+          text: 'Nel dettaglio la sezione **Ricorrenza** riassume la regola in un riquadro: frequenza, frase descrittiva, giorni della settimana scelti, fine e "Solo giorni lavorativi". Premi il riquadro (o la matita) per modificarla. Con **Ricorrenza attiva** QNet crea da solo le occorrenze future. Scegli la frequenza — Giornaliera, Settimanale, Mensile, Annuale o Personalizzata (ogni N giorni) — e in **Ripeti ogni** quanti giorni, settimane, mesi o anni passano fra un\'occorrenza e l\'altra; per la Settimanale premi i cerchi dei giorni (L M M G V S D) per sceglierli. In **Fine** scegli Mai, A una data o Dopo N volte: "Dopo N volte" conta le occorrenze effettivamente create, non i candidati calcolati. In fondo, l\'**Anteprima della regola** mostra la frase che otterrai mentre la compili. Passa sull\'icona (i) accanto a un campo per la spiegazione completa.',
         },
         {
           type: 'paragraph',
-          text: 'Per una ricorrenza Mensile o Annuale scegli se il giorno è **fisso** (es. il 31 del mese) oppure **ordinale** (es. il 2° martedì): per l\'Annuale scegli anche il mese. Con **Solo giorni lavorativi** attivo, un\'occorrenza che cadrebbe di sabato, domenica, in una festività nazionale, a Pasqua o a Pasquetta non viene saltata: si sposta al primo giorno lavorativo successivo. Se lo spostamento la fa coincidere con un\'occorrenza già generata, ne resta una sola.',
+          text: 'Per una ricorrenza Mensile o Annuale scegli fra **Data fissa** (es. il 31 del mese) e **Giorno della settimana** (es. il 2° martedì): per l\'Annuale scegli anche il mese. Con **Solo giorni lavorativi** attivo, un\'occorrenza che cadrebbe di sabato, domenica, in una festività nazionale, a Pasqua o a Pasquetta non viene saltata: si sposta al primo giorno lavorativo successivo. Se lo spostamento la fa coincidere con un\'occorrenza già generata, ne resta una sola.',
         },
         {
           type: 'note',
@@ -337,6 +367,14 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: 'Selezionando una o più righe compare la barra **Azioni**: Assegna (sostituisce gli assegnatari), Completa, Riapri, Blocca, Sblocca, Priorità, Data inizio, Data fine, Elimina.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Prima del **Titolo** c\'è l\'icona di completamento: se puoi completare il task diventa verde passandoci sopra e, cliccandola, apre la finestra **Completa** (la stessa dell\'azione); su un task completato è verde piena. Come nelle commesse, la **Data fine** di un task aperto diventa rossa con il triangolo di avviso quando è passata, ed evidenziata quando scade oggi — anche nel dettaglio del task.',
+        },
+        {
+          type: 'note',
+          text: 'Modificando nell\'elenco **Assegnatari** o **Osservatori** si apre l\'elenco di tutti gli utenti con la loro foto, come nel dettaglio; negli Osservatori non compaiono creatore, richiedente e assegnatari del task.',
         },
         {
           type: 'warning',

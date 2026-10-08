@@ -60,6 +60,15 @@ return [
             'permission' => 'payment-methods.view',
         ],
         [
+            // Work order payment statuses (spec 0201): the configurable
+            // payment status of a commessa line.
+            'key' => 'work-order-payment-statuses',
+            'label' => 'navigation.workOrderPaymentStatuses',
+            'icon' => 'credit-card',
+            'route' => '/work-order-payment-statuses',
+            'permission' => 'work-order-payment-statuses.view',
+        ],
+        [
             // Document layouts (spec 0069): reusable, block-based
             // document layout catalogue (first consumer: quotes,
             // module-agnostic by design) — a cross-cutting

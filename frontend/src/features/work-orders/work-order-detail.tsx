@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { MessagesSquare, Paperclip } from 'lucide-react'
+import { Form } from '@/components/ui/form'
 import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
@@ -9,6 +10,7 @@ import {
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { NotesSection } from '@/features/notes/notes-section'
 import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -16,14 +18,14 @@ import { useOutboundEmailsTab } from '@/features/outbound-emails/use-outbound-em
 import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { WorkOrderDetailHeader, WorkOrderDetailStats } from '@/features/work-orders/work-order-detail-header'
 import { WorkOrderDetailSections } from '@/features/work-orders/work-order-detail-sections'
-import { WorkOrderCostsSection } from '@/features/work-order-costs/work-order-costs-section'
-import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
+import { WorkOrderDetailWorkTabs } from '@/features/work-orders/work-order-detail-work-tabs'
+import { useWorkOrderInlineEdit } from '@/features/work-orders/use-work-order-inline-edit'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 interface WorkOrderDetailViewProps {
   workOrder: WorkOrderDetailWithPermissions
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the work order (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
@@ -90,16 +92,32 @@ function useCollaborationTabs(workOrder: WorkOrderDetailWithPermissions): Record
 }
 
 /**
- * Read-only detail of a single work order (AC-075), laid out exactly like the
+ * Detail of a single work order (AC-075), laid out exactly like the
  * Opportunita' record: on the left ONE card carrying identity header, KPI strip
  * and titled sections; the collaboration card (notes, documents, activity log,
- * spec 0134 D-3) on the right; the Costi section (spec 0190, only with `view_costs`) and the Task board (spec 0146, D-10: replaces the
- * old `TableView domain="tasks"` panel) full width below both, only with
- * `tasks.viewAny` (AC-024); a metadata footer last.
+ * spec 0134 D-3) on the right; full width below both, ONE card switching
+ * between the Task board (spec 0146, only with `tasks.viewAny`, AC-024; open
+ * by default) and the Costi section (spec 0190, only with `view_costs`); a
+ * metadata footer last.
+ *
+ * There is no edit page (spec 0195 applied to Commesse, user directive
+ * 2026-10-06): the sections' fields edit IN PLACE, one at a time
+ * (`RecordInlineField`, driven by `useWorkOrderInlineEdit`), each save a
+ * PATCH of that field alone.
  */
-export function WorkOrderDetailView({ workOrder, onEdit }: WorkOrderDetailViewProps) {
+export function WorkOrderDetailView(props: WorkOrderDetailViewProps) {
+  // The edit form reads the field permissions while it is built, so the
+  // provider wraps the whole detail, not just the sections.
+  return (
+    <ResourcePermissionsProvider permissions={props.workOrder.permissions}>
+      <WorkOrderDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function WorkOrderDetailContent({ workOrder, onChanged }: WorkOrderDetailViewProps) {
   const { t } = useTranslation()
-  const { can } = useAbilities()
+  const editor = useWorkOrderInlineEdit(workOrder, onChanged)
   const collaborationTabs = useCollaborationTabs(workOrder)
   const createdAt = formatDateTime(workOrder.created_at)
   const updatedAt = formatDateTime(workOrder.updated_at)
@@ -110,17 +128,16 @@ export function WorkOrderDetailView({ workOrder, onEdit }: WorkOrderDetailViewPr
         side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
       >
         <RecordCard>
-          <WorkOrderDetailHeader workOrder={workOrder} onEdit={onEdit} />
+          <WorkOrderDetailHeader workOrder={workOrder} onChanged={onChanged} />
           <WorkOrderDetailStats workOrder={workOrder} />
-          <WorkOrderDetailSections workOrder={workOrder} />
+          {/* Provider only (no DOM): the inline editors share the edit form. */}
+          <Form {...editor.form}>
+            <WorkOrderDetailSections workOrder={workOrder} editor={editor} />
+          </Form>
         </RecordCard>
       </RecordBody>
 
-      {workOrder.permissions.actions.view_costs ? (
-        <WorkOrderCostsSection workOrderId={workOrder.id} canManage={workOrder.permissions.actions.manage_costs === true} />
-      ) : null}
-
-      {can('tasks.viewAny') ? <WorkOrderTaskBoard workOrderId={workOrder.id} /> : null}
+      <WorkOrderDetailWorkTabs workOrder={workOrder} />
 
       <RecordMeta>
         {createdAt ? (

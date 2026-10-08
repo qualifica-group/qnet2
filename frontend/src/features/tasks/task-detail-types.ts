@@ -94,7 +94,10 @@ export interface TaskWorkOrderStageRef {
 export interface TaskSubtask {
   id: number
   title: string
-  task_status: TaskLookupRef
+  /** The full status projection: its `group` marks a done child, as the grid's title cell reads it. */
+  task_status: TaskStatusRef
+  /** The child's type badge, which tints its row in the detail panel; `null` when unset. */
+  task_type: TaskLookupRef | null
   completion_percentage: number
   assignees: TaskNamedRef[]
   position: number

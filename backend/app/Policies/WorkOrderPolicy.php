@@ -107,11 +107,29 @@ class WorkOrderPolicy extends BasePolicy
     }
 
     /**
+     * Gates the "Dati contrattuali" tab and its figures (spec 0201, D-10):
+     * permission plus the same membership scoping as view.
+     */
+    public function viewContractData(User $user, WorkOrder $workOrder): bool
+    {
+        return $user->can($this->permission('viewContractData')) && $this->isInScope($user, $workOrder);
+    }
+
+    /**
+     * Gates editing a line's payment status/agreement/unpaid flag (spec 0201,
+     * D-10/D-12): independent of the commessa's open/closed state.
+     */
+    public function managePayments(User $user, WorkOrder $workOrder): bool
+    {
+        return $user->can($this->permission('managePayments')) && $this->isInScope($user, $workOrder);
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewDocuments', 'viewEmails', 'sendEmail', 'viewCosts', 'manageCosts'];
+        return [...parent::abilities(), 'viewAll', 'viewDocuments', 'viewEmails', 'sendEmail', 'viewCosts', 'manageCosts', 'viewContractData', 'managePayments'];
     }
 
     private function isInScope(User $user, Model $model): bool

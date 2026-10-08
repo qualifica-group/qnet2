@@ -146,7 +146,9 @@ final class TaskColumnCatalog
             self::editableRelationColumn('work_order', 'tasks.columns.work_order', 'work-orders', 'work_order_id', nullable: true),
             self::relationColumn('creator', 'tasks.columns.creator'),
             // Hidden by default — declared for their filters (see docblock).
-            self::editableMultiselectColumn('watchers', 'tasks.columns.watchers', 'users', 'watcher_ids', visible: false),
+            // Spec 0118 D-9 / AC-035: like the detail's watchers picker, the
+            // row's creator, requester and assignees are not offered.
+            self::editableMultiselectColumn('watchers', 'tasks.columns.watchers', 'users', 'watcher_ids', visible: false, exclude: ['creator', 'requester', 'assignees']),
             [
                 'id' => 'completion_date',
                 'label' => 'tasks.columns.completion_date',
@@ -272,17 +274,19 @@ final class TaskColumnCatalog
      * (spec 0156, D-8; user directive 2026-07-23's MULTISELECT_EDITOR
      * shape): unlike `editableRelationColumn()` the value is a LIST of ids,
      * so `editor` is declared explicitly rather than left to the `relation`
-     * default.
+     * default. `$exclude` names the row columns whose people the picker
+     * does not offer (`relation.exclude`).
      *
+     * @param  array<int, string>  $exclude
      * @return array<string, mixed>
      */
-    private static function editableMultiselectColumn(string $id, string $label, string $resource, string $editableField, bool $visible = true): array
+    private static function editableMultiselectColumn(string $id, string $label, string $resource, string $editableField, bool $visible = true, array $exclude = []): array
     {
         return [
             ...self::relationColumn($id, $label, sortable: false, visible: $visible),
             'editable' => true,
             'editor' => 'multiselect',
-            'relation' => ['resource' => $resource],
+            'relation' => $exclude === [] ? ['resource' => $resource] : ['resource' => $resource, 'exclude' => $exclude],
             'editableField' => $editableField,
         ];
     }

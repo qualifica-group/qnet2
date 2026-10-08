@@ -33,6 +33,7 @@ const guide: HelpGuide = {
             'Open Registries › Registries.',
             'Type in the Search… field at the top of the table: the list updates as you type.',
             'To narrow the search use the column filters, for example Source, Supplier or Agreement status.',
+            "The Commercial, Supervisor, Reporter and Operators columns show the registry's team: Operators lists the Account managers in their order. You can filter them by name and sort them, except Operators, which can only be filtered.",
             'To see the card, open the row Actions menu and choose View.',
           ],
         },
@@ -48,23 +49,66 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'To create a card press New registry. The form is split into sections; a Summary panel on the right updates as you fill it in. First choose the Type, Individual or Company: fields change accordingly.',
+          text: "To create a card press **New registry**: the form looks like the detail, with the same sections and **closed rows**. Click a row (or its pencil) to open it, then **Done** to keep the value or **Revert** to put it back as it was. In the **Personal details** first choose the Type, Individual or Company (fields change accordingly): on Done the name appears at the top of the card. Contacts and Addresses are in the right-hand column, with their fields ready to fill: Email, Phone (required), PEC and Fax, plus **Add contact** for more, and one address with its Site type, plus **Add address** for further sites. **Save** checks everything and creates the registry; leaving without saving asks for confirmation.",
         },
         {
           type: 'table',
           headers: ['Section', 'What it contains'],
           rows: [
             ['Personal details', 'Denomination (companies) or Name and Surname (individuals), tax code, VAT number and, for individuals, date and place of birth.'],
-            ['Relations', 'Source, Business sectors, Referents, Commercial referent and Reporter.'],
+            ['Relations', 'Source, Business sectors, Commercial referent and Reporter.'],
             ['Team', 'Supervisor and Account managers, in order of importance from the top; reorder them with Move up and Move down.'],
-            ['Business data', 'VAT group, Supplier, Qualified supplier, Agreement status (In negotiation, Rejected or Agreed) and Size class.'],
+            ['Business data', 'VAT group, Supplier, Qualified supplier (suppliers only), Agreement status (In negotiation, Rejected or Agreed), Size class, Employee count and Agreement notes.'],
             ['Contacts', 'Email, Phone (required), PEC and Fax; with Add contact you enter more and set the Primary contact.'],
             ['Addresses', 'One or more addresses, each with a Site type: Registered office, Delivery, Billing or Operational site.'],
+            ['Referents', "The client's contact people, full width below the other sections."],
+            ['Other fields', 'The registry custom fields, including Tag: pick one or more tags from the list managed in the Tags module. They also appear on the detail, grouped as in the form.'],
           ],
         },
         {
           type: 'warning',
           text: 'Only registries marked as Supplier appear among the suppliers selectable on the product card.',
+        },
+      ],
+    },
+    {
+      id: 'editing-a-registry',
+      title: 'Editing a registry',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'There is no separate edit page: the registry is edited **directly from its detail**, one field at a time, custom fields included.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Open the registry from the list.',
+            'Hover the field to change and press the **pencil** (or click the value).',
+            'Change the value in the control that appears.',
+            'Press **Save** (or Enter in text and number fields) to save that field only; **Cancel** (or Esc, or a click outside the open field) closes it as it was, without saving.',
+          ],
+        },
+        {
+          type: 'note',
+          text: "The **Personal details** (type, name or denomination, tax code, VAT number…) are edited together: the pencil opens the whole card and Save also updates the registry's name. **Contacts** and **Addresses**, in the right-hand column, are added, edited and deleted right there and saved at once.",
+        },
+        {
+          type: 'note',
+          text: 'A field without a pencil is not editable by you: your role permissions make it read-only.',
+        },
+      ],
+    },
+    {
+      id: 'list-editing',
+      title: "Quick editing from the list",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Clicking an editable cell (Source, Supplier, Convention status, Size class, Commercial, Supervisor, Reporter, Operators) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
+        },
+        {
+          type: 'note',
+          text: "Unticking **Supplier** also clears Qualified supplier, as from the detail. Removing or adding people in **Operators** keeps everyone else in their position. The **Name** comes from the personal data and is changed from the detail; Primary contact and Created at stay read-only.",
         },
       ],
     },
@@ -95,6 +139,59 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'related-records',
+      title: "The client's opportunities, quotes, work orders and tasks",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Below the registry record you find the Opportunities, Quotes, Work orders and Tasks tabs: each shows the module's own table, with only that client's records. The number next to the name appears once you have opened the tab.",
+        },
+        {
+          type: 'list',
+          items: [
+            "Search, filters, columns and export work as on the module's page, but stay limited to the client.",
+            'Row actions (View, Notes, Documents, Delete…) open the record in a panel above the registry, without leaving it.',
+            "Quotes are those of the client's opportunities; work orders those born from its quotes; tasks those linked to the client, also through one of its work orders.",
+          ],
+        },
+        {
+          type: 'steps',
+          items: [
+            'Open the tab of the module you need.',
+            'Press New opportunity, New quote, New work order or New task above the table.',
+            "Fill in the form: the opportunity and the task already start on the registry (the opportunity also takes the client's Sales rep, Reporter, Supervisor and Account managers); for the quote and the work order, the opportunity or quote picker offers only the client's ones.",
+            "Save: the tab's table refreshes.",
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'You only see the tabs of the modules you can view, and the create button only if you can create in that module.',
+        },
+      ],
+    },
+    {
+      id: 'configured-commissions',
+      title: 'Configured commissions',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'On every registry, whether marked as **Supplier** or not, next to the other tabs you find **Configured commissions**: the Commission Configurator table with only the rules that have this registry as **Recipient**. Supplier rules valid for every supplier do not appear here.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Open the **Configured commissions** tab.',
+            'Use **View** on the row to open the rule in a panel above the registry, or **Delete** if it is not in use.',
+            'For a new rule press **New configuration**: the form starts with Recipient role **Supplier**, scope **Specific recipient** and this registry as Recipient. Type the name, complete Calculation and Validity and press **Save**.',
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'The tab appears only if you can view the Commission Configurator; the New configuration button only if you can create one.',
+        },
+      ],
+    },
+    {
       id: 'new-client-flow',
       title: 'Typical flow: a new client with referents and sites',
       blocks: [
@@ -103,12 +200,12 @@ const guide: HelpGuide = {
           items: [
             'If the referents do not exist yet, create them from Registries › Referents with New referent.',
             'Open Registries › Registries and press New registry.',
-            'Choose the Type and fill in the personal details.',
-            'If Possible duplicate appears, check it before continuing.',
-            'In Relations choose the Referents and, if needed, Commercial referent and Reporter.',
-            'In Team assign Supervisor and Account managers.',
-            'Enter at least the phone number in Contacts.',
-            'In Addresses add an address for each site with the right Site type and press Save.',
+            'Open the Personal details, choose the Type, fill them in and press Done.',
+            'If Possible duplicate appears, at the top of the right-hand column, check it before continuing.',
+            'In Contacts, in the right-hand column, fill in at least the Phone.',
+            'Fill in the address with the right Site type; with Add address enter the further sites.',
+            'Open the rows you need: in Relations, if needed, Commercial referent and Reporter; in Team Supervisor and Account managers; in Referents the contact people. Confirm each row with Done.',
+            'Press Save.',
           ],
         },
       ],

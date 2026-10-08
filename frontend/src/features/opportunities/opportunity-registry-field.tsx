@@ -14,10 +14,8 @@ interface OpportunityRegistryFieldProps {
   control: Control<OpportunityFormValues>
   setValue: UseFormSetValue<OpportunityFormValues>
   getValues: UseFormGetValues<OpportunityFormValues>
-  /** The loaded opportunity's linked registry, if any (edit mode hydration). */
+  /** The current registry's `{id, name}` (detail, or the lead a create converts), for the trigger label. */
   selected: RelationFieldRef | null
-  /** BR-2: forced read-only when derived from a linked Lead (spec 0040 MT-6). */
-  forceDisabled?: boolean
 }
 
 function toForSelectItem(ref: RelationFieldRef | null): ForSelectItem | null {
@@ -43,7 +41,6 @@ export function OpportunityRegistryField({
   setValue,
   getValues,
   selected,
-  forceDisabled = false,
 }: OpportunityRegistryFieldProps) {
   const { t } = useTranslation()
   const applyRegistrySelection = useRegistryRoleInheritance(setValue, getValues)
@@ -57,7 +54,6 @@ export function OpportunityRegistryField({
   return (
     <MetaField control={control} name="registry_id" metaKey="registry_id" label={t('opportunities.form.registry')}>
       {({ field, disabled }) => {
-        const isDisabled = disabled || forceDisabled
         const quickCreatedMatch = quickCreated.find((ref) => ref.id === field.value) ?? null
         return (
           <FormControl>
@@ -66,7 +62,7 @@ export function OpportunityRegistryField({
               value={field.value}
               onChange={(registryId) => selectRegistry(field, registryId)}
               selectedItem={toForSelectItem(quickCreatedMatch) ?? toForSelectItem(selected)}
-              disabled={isDisabled}
+              disabled={disabled}
               labels={{
                 placeholder: t('opportunities.form.selectPlaceholder'),
                 searchPlaceholder: t('opportunities.form.registrySearch'),
@@ -76,7 +72,7 @@ export function OpportunityRegistryField({
                 triggerLabel: t('opportunities.form.registry'),
                 retry: t('common.retry'),
               }}
-              action={renderAction((ref) => selectRegistry(field, ref.id), isDisabled)}
+              action={renderAction((ref) => selectRegistry(field, ref.id), disabled)}
             />
           </FormControl>
         )

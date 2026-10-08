@@ -185,8 +185,12 @@ export interface TableColumn {
    * `lockScope` (spec 0075 D-4): the scope is not a default the operator may
    * lift — the domain REFUSES what falls outside it, so the editor must not
    * offer the "show the whole catalogue" escape at all.
+   *
+   * `exclude` (multiselect only): ids of the row columns whose ids the picker
+   * does not offer — e.g. a Task's watchers leave out its creator, requester
+   * and assignees (spec 0118 AC-035), as the detail's picker does.
    */
-  relation?: { resource: string; scope?: Record<string, string>; lockScope?: boolean }
+  relation?: { resource: string; scope?: Record<string, string>; lockScope?: boolean; exclude?: string[] }
   /**
    * Whether the column supports a Set Filter value list (POST /values). `false`
    * for computed/derived columns without a queryable value list (e.g. a

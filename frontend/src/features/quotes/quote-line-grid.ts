@@ -28,16 +28,21 @@ export function quoteLineGridClass(
     : 'grid grid-cols-[minmax(200px,1.4fr)_88px_112px_64px_128px_140px_90px_90px_100px_36px] gap-2'
 }
 
+/**
+ * Must equal the sum of the matching grid's tracks + its gaps (8px each) +
+ * the row's `px-2` padding: a narrower wrapper lets the grid overflow it, so
+ * the header's tinted background stops mid-row when scrolled horizontally.
+ */
 export function quoteLineMinWidthClass(
   variant: 'revenue' | 'cost',
   withCommissions = true,
   simplified = false,
 ): string {
   if (simplified) {
-    return variant === 'revenue' && withCommissions ? 'min-w-[664px]' : 'min-w-[614px]'
+    return variant === 'revenue' && withCommissions ? 'min-w-[776px]' : 'min-w-[732px]'
   }
   if (variant === 'cost') {
-    return 'min-w-[1162px]'
+    return 'min-w-[1304px]'
   }
-  return withCommissions ? 'min-w-[1044px]' : 'min-w-[994px]'
+  return withCommissions ? 'min-w-[1180px]' : 'min-w-[1136px]'
 }

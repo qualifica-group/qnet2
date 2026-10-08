@@ -184,7 +184,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Dal menu Azioni scegli Visualizza per aprire la scheda in sola lettura. Trovi codice e nome, Prezzo, Costo e Margine in evidenza (ciascuno solo se pertinente: il Margine compare solo con entrambi gli utilizzi), le sezioni Anagrafica, Classificazione e Prezzi e fornitura, i valori degli attributi, lo storico delle modifiche (se hai il permesso) e la data Creato il.',
+          text: 'Dal menu Azioni scegli Visualizza per aprire la scheda in sola lettura. Trovi codice e nome, Prezzo, Costo e Margine in evidenza (ciascuno solo se pertinente: il Margine compare solo con entrambi gli utilizzi), le sezioni Anagrafica, Classificazione e Prezzi e fornitura, i valori degli attributi (divisi nelle stesse sezioni impostate per la categoria, solo quelli compilati), lo storico delle modifiche (se hai il permesso) e la data Creato il.',
         },
         {
           type: 'paragraph',

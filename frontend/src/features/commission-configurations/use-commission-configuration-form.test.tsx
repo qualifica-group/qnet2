@@ -119,4 +119,30 @@ describe('useCommissionConfigurationForm', () => {
     await act(() => result.current.onSubmit(result.current.form.getValues()))
     expect(applyErrors).toHaveBeenCalled()
   })
+
+  it('seeds a personal SUPPLIER rule on the registry a supplier tab opened it for (spec 0204)', () => {
+    const { result } = renderHook(
+      () => useCommissionConfigurationForm({ mode: { type: 'create', supplierRegistryId: 12 }, onSuccess: vi.fn() }),
+      { wrapper: wrapper() },
+    )
+    expect(result.current.form.getValues()).toMatchObject({
+      recipient_role: 'SUPPLIER',
+      application_scope: 'RECIPIENT',
+      recipient_type: 'registry',
+      recipient_id: 12,
+    })
+  })
+
+  it('keeps the role-wide COMMERCIAL default without a supplier', () => {
+    const { result } = renderHook(
+      () => useCommissionConfigurationForm({ mode: { type: 'create', supplierRegistryId: null }, onSuccess: vi.fn() }),
+      { wrapper: wrapper() },
+    )
+    expect(result.current.form.getValues()).toMatchObject({
+      recipient_role: 'COMMERCIAL',
+      application_scope: 'PRODUCT_CATEGORY',
+      recipient_type: 'referent',
+      recipient_id: null,
+    })
+  })
 })

@@ -1,268 +1,104 @@
 import { useTranslation } from 'react-i18next'
+import { Paperclip } from 'lucide-react'
 import { Form } from '@/components/ui/form'
-import { MAIN_COLUMN_CLASS, PANEL_GRID_CLASS, SIDE_COLUMN_CLASS } from '@/components/record-form/layout'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
+import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
 import { useTaskForm } from '@/features/tasks/use-task-form'
 import { TaskAttachmentStaging } from '@/features/tasks/task-attachment-staging'
-import { TaskClassificationSection } from '@/features/tasks/task-classification-section'
-import { TaskClosureSection } from '@/features/tasks/task-closure-section'
+import { TaskCreateSections } from '@/features/tasks/task-create-sections'
 import { TaskFormHeader } from '@/features/tasks/task-form-header'
-import { TaskFormSubtasksSection } from '@/features/tasks/task-form-subtasks-section'
-import { TaskFormSummary } from '@/features/tasks/task-form-summary'
-import { TaskIdentitySection } from '@/features/tasks/task-identity-section'
-import { TaskLinksSection } from '@/features/tasks/task-links-section'
-import { TaskPeopleSection } from '@/features/tasks/task-people-section'
-import { TaskPlanningSection } from '@/features/tasks/task-planning-section'
-import { TaskRecurrenceSection } from '@/features/tasks/task-recurrence-section'
-import { TaskRegistrySection } from '@/features/tasks/task-registry-section'
-import type { RelationFieldRef } from '@/components/form/relation-select-field'
-import type { TaskDetail, TaskFormMode, TaskNamedRef, TaskWorkOrderStageRef } from '@/features/tasks/types'
+import { duplicateSource } from '@/features/tasks/task-form-hydration'
+import type { TaskCreateFormMode, TaskDetail } from '@/features/tasks/types'
 
-/** DOM id bridging the sticky header's and the footer's save actions to the RHF `<form>`. */
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
 const TASK_FORM_ID = 'task-form'
 
-/** Stable module-level references: a fresh `[]`/`null` per render would break memo/dep stability. */
-const EMPTY_PEOPLE: RelationFieldRef[] = []
-
-/** Separator between a commessa's code and title, matching `WorkOrderForSelectResource::LABEL_SEPARATOR`. */
-const WORK_ORDER_LABEL_SEPARATOR = ' — '
-
-/** The persisted task in edit mode, `null` otherwise — the single source both hydration and locking read (edit-only components: header/summary/classification/parent). */
-function persistedTask(mode: TaskFormMode): TaskDetail | null {
-  return mode.type === 'edit' ? mode.task : null
-}
-
-/**
- * The "clona" source (spec 0156 D-4), `null` outside duplicate mode: feeds
- * ONLY the relation-picker display hydration (registry, referent,
- * opportunity, commessa/fase, lead, requester, assignees, watchers) —
- * everything but the parent link (deliberately excluded, "il padre non si
- * copia") and everything `persistedTask` alone drives (the header/summary's
- * own "Modifica"/"Nuovo" framing, the classification section's edit-vs-create
- * status rule), which must read as a bare create even though the fields
- * start prefilled.
- */
-function duplicateSource(mode: TaskFormMode): TaskDetail | null {
-  return mode.type === 'duplicate' ? mode.source : null
-}
-
-/** `{id, title}` projected onto the `{id, name}` shape every relation picker hydrates from. */
-function parentRefOf(task: TaskDetail | null): RelationFieldRef | null {
-  return task?.parent_task ? { id: task.parent_task.id, name: task.parent_task.title } : null
-}
-
-/**
- * `{id, code, title}` projected onto the `{id, name}` shape the picker
- * hydrates from, composed EXACTLY like `WorkOrderForSelectResource` composes
- * its own `label` — empty-title fallback to the bare code included — so the
- * trigger label and the list options can never read differently.
- *
- * This hydration comes from the TASK's own detail, not from the for-select,
- * which matters: `GET /api/work-orders/for-select` is narrowed by
- * `WorkOrderVisibilityScope`, and `ids[]` deliberately does not bypass it (a
- * blanket bypass would turn the endpoint into an enumeration oracle). A user
- * without visibility on the linked commessa still sees its correct label
- * here, because D-9 does not obscure linked-record labels.
- *
- * The same ref is ALSO passed as the picker's `pinned` option, so the
- * persisted value stays selectable after the user changes the pick — the
- * option list alone would have dropped it. Nothing new is disclosed: it is
- * the value this form already loaded.
- */
-function workOrderRefOf(task: TaskDetail | null): RelationFieldRef | null {
-  const workOrder = task?.work_order
-  if (!workOrder) {
-    return null
-  }
-  const title = workOrder.title.trim()
-  const name = title === '' ? workOrder.code : `${workOrder.code}${WORK_ORDER_LABEL_SEPARATOR}${title}`
-  return { id: workOrder.id, name }
-}
-
-/** The persisted fase (spec 0146 D-3), possibly closed — `useTaskWorkOrderStageOptions` keeps it selectable regardless. */
-function workOrderStageOf(task: TaskDetail | null): TaskWorkOrderStageRef | null {
-  return task?.work_order_stage ?? null
-}
-
-/** `{id, label}` (spec 0154 D-4) projected onto the `{id, name}` shape every relation picker hydrates from. */
-function leadRefOf(task: TaskDetail | null): RelationFieldRef | null {
-  return task?.lead ? { id: task.lead.id, name: task.lead.label } : null
-}
-
-function peopleOf(refs: TaskNamedRef[] | undefined): RelationFieldRef[] {
-  return refs && refs.length > 0 ? refs : EMPTY_PEOPLE
-}
-
-/**
- * The Richiedente picker's hydration: the persisted requester in edit mode
- * (possibly `null` on a historical row, AC-008 — no retroactive sanatoria),
- * or the connected actor's own ref on create (D-1 prefill, `useTaskForm`).
- */
-function requesterRefOf(
-  task: TaskDetail | null,
-  currentUserRef: RelationFieldRef | null,
-): RelationFieldRef | null {
-  return task ? (task.requester ?? null) : currentUserRef
-}
-
-/**
- * The creator id the watchers picker excludes (spec 0118 D-9/AC-035): the
- * persisted `task.creator.id` in edit mode, the connected actor's id on
- * create (`useTaskForm.currentUserRef`) — never a form value (D-10).
- */
-function creatorIdOf(task: TaskDetail | null, currentUserRef: RelationFieldRef | null): number | null {
-  return task ? task.creator.id : (currentUserRef?.id ?? null)
-}
-
 interface TaskFormBodyProps {
-  mode: TaskFormMode
+  mode: TaskCreateFormMode
   onSuccess: (task: TaskDetail) => void
   onCancel: () => void
 }
 
 /**
- * The task create/edit form UI. Every field is wrapped in `MetaField` (spec
- * 0004): hidden means absent, non-editable means disabled, `required` comes
- * from the resolved `ResourcePermissions`. The two fields the backend
+ * The task create/duplicate form UI. Every field is wrapped in `MetaField`
+ * (spec 0004): hidden means absent, non-editable means disabled, `required`
+ * comes from the resolved `ResourcePermissions`. The two fields the backend
  * prohibits — `creator_id` and `completion_percentage` (D-6/D-10) — have no
- * control at all: the former is shown only in the detail, the latter is a
- * read-only readout inside the classification section.
+ * control at all.
  *
- * Same record-form skeleton as the Opportunita' form (`@/components/record-form`):
- * sticky identity bar with the actions, then two columns at `@4xl` — the side
- * column (live summary + closure flags) FIRST in the DOM so a narrow container
- * reads it before the long form, reordered to the right. The main column opens
- * with the title card, then the badge-rendered classification, people,
- * planning, links, recurrence and (create only) attachments.
+ * A replica of the task detail (spec 0195 D-8): the same `RecordCanvas`, the
+ * record card with its identity band, KPI strip and sections (rows closed
+ * until clicked, see `TaskCreateSections`), and the side card where the detail keeps its
+ * documents — here the files staged for upload after the first save. There
+ * is no edit form: the detail edits a persisted task in place.
  *
- * Pure composition: every non-render concern lives in `useTaskForm`, and each
- * group of fields lives in its own section file so no file here approaches
- * the engineering size limits.
+ * Pure composition: every non-render concern lives in `useTaskForm`.
  */
 export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
   const { t } = useTranslation()
+  const taskForm = useTaskForm({ mode, onSuccess })
   const {
     form,
-    isEdit,
     serverError,
     onSubmit,
-    handleRegistryChange,
-    handleWorkOrderChange,
-    handleWorkOrderItemChange,
-    handleOpportunityChange,
-    handleParentChange,
-    handleStatusItemChange,
     completionPercentage,
-    currentUserRef,
     stagedAttachments,
     addStagedAttachments,
     removeStagedAttachment,
-    parentPrefillRefs,
-    workOrderPrefillRef,
-  } = useTaskForm({ mode, onSuccess })
-
-  const task = persistedTask(mode)
-  // Ref-display hydration only (see the function doc); falls back to `task`
-  // so edit mode keeps reading from the exact same source it always did.
-  const hydration = task ?? duplicateSource(mode)
+  } = taskForm
+  const draft = useDraftInlineEdit(form)
   // AC-085: opened as "crea sotto-task", the parent arrives prefilled and locked.
   const parentLocked = mode.type === 'create' && (mode.parentTaskId ?? null) !== null
-
   const { isSubmitting } = form.formState
 
+  const attachmentsTab = {
+    value: 'attachments',
+    label: t('tasks.form.attachments.title'),
+    icon: <Paperclip className="size-3.5" aria-hidden="true" />,
+    content: (
+      <TaskAttachmentStaging files={stagedAttachments} onAdd={addStagedAttachments} onRemove={removeStagedAttachment} />
+    ),
+  }
+
   return (
-    <div className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
-      {/* The provider wraps BOTH columns (it renders no DOM of its own): the
-          side column's closure flags are form fields like any other. */}
-      <Form {...form}>
-        <TaskFormHeader
-          control={form.control}
-          task={task}
-          formId={TASK_FORM_ID}
-          isSubmitting={isSubmitting}
-          submitError={serverError}
-          onCancel={onCancel}
-        />
-
-        <div className={PANEL_GRID_CLASS}>
-          <aside className={SIDE_COLUMN_CLASS}>
-            <TaskFormSummary control={form.control} task={task} />
-            <TaskClosureSection control={form.control} isCreate={!isEdit} />
-          </aside>
-
-          <div className={MAIN_COLUMN_CLASS}>
-            {/* `display: contents`: this native `<form>` only scopes the HTML
-                submit boundary, it must not become an extra flex box. */}
-            <form id={TASK_FORM_ID} onSubmit={form.handleSubmit(onSubmit)} className="contents" noValidate>
-              <TaskIdentitySection
+    <Form {...form}>
+      {/* `display: contents`: this native `<form>` only scopes the HTML submit
+          boundary, it must not become an extra box around the canvas. */}
+      <form id={TASK_FORM_ID} onSubmit={form.handleSubmit(onSubmit)} className="contents" noValidate>
+        <RecordCanvas>
+          <RecordBody side={<RecordCollaborationCard tabs={[attachmentsTab]} />}>
+            <RecordCard>
+              <TaskFormHeader
                 control={form.control}
-                parentTask={parentRefOf(task)}
-                excludeTaskId={task?.id}
-                parentLocked={parentLocked}
-                onParentChange={handleParentChange}
-              />
-
-              <TaskClassificationSection
-                control={form.control}
-                task={task}
-                onStatusItemChange={handleStatusItemChange}
-                completionPercentage={completionPercentage}
-              />
-
-              <TaskPeopleSection
-                control={form.control}
-                requester={requesterRefOf(hydration, currentUserRef)}
-                assignees={peopleOf(hydration?.assignees)}
-                watchers={peopleOf(hydration?.watchers)}
-                creatorId={creatorIdOf(task, currentUserRef)}
-                isCreate={!isEdit}
-              />
-
-              <TaskPlanningSection control={form.control} />
-
-              <TaskRegistrySection
-                control={form.control}
-                registry={hydration?.registry ?? parentPrefillRefs.registry}
-                referent={hydration?.referent ?? parentPrefillRefs.referent}
-                onRegistryChange={handleRegistryChange}
-              />
-
-              <TaskLinksSection
-                control={form.control}
-                opportunity={hydration?.opportunity ?? parentPrefillRefs.opportunity}
-                workOrder={workOrderRefOf(hydration) ?? workOrderPrefillRef ?? parentPrefillRefs.workOrder}
-                lead={leadRefOf(hydration)}
-                workOrderStage={workOrderStageOf(hydration)}
-                onWorkOrderChange={handleWorkOrderChange}
-                onWorkOrderItemChange={handleWorkOrderItemChange}
-                onOpportunityChange={handleOpportunityChange}
-              />
-
-              <TaskRecurrenceSection control={form.control} />
-
-              {mode.type !== 'edit' ? <TaskFormSubtasksSection control={form.control} /> : null}
-
-              {mode.type !== 'edit' ? (
-                <TaskAttachmentStaging
-                  files={stagedAttachments}
-                  onAdd={addStagedAttachments}
-                  onRemove={removeStagedAttachment}
-                />
-              ) : null}
-
-              {/* The same actions the identity bar carries, repeated where the
-                  form ends: the operator finishes typing far from the sticky bar. */}
-              <RecordFormActions
                 formId={TASK_FORM_ID}
                 isSubmitting={isSubmitting}
-                submitLabel={t('tasks.form.save')}
-                submittingLabel={t('tasks.form.saving')}
-                cancel={{ label: t('tasks.form.cancel'), onCancel }}
+                submitError={serverError}
+                onCancel={onCancel}
+                completionPercentage={completionPercentage}
               />
-            </form>
-          </div>
-        </div>
-      </Form>
-    </div>
+              <TaskCreateSections
+                taskForm={taskForm}
+                draft={draft}
+                source={duplicateSource(mode)}
+                parentLocked={parentLocked}
+              />
+            </RecordCard>
+
+            {/* The same actions the identity band carries, repeated where the
+                form ends: the operator finishes typing far from the top. */}
+            <RecordFormActions
+              formId={TASK_FORM_ID}
+              isSubmitting={isSubmitting}
+              submitLabel={t('tasks.form.save')}
+              submittingLabel={t('tasks.form.saving')}
+              cancel={{ label: t('tasks.form.cancel'), onCancel }}
+            />
+          </RecordBody>
+        </RecordCanvas>
+      </form>
+    </Form>
   )
 }

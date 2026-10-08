@@ -244,6 +244,7 @@ const BASE_EMPLOYMENT: EmploymentDetail = {
   company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: [],
+  is_assignable: true,
   covers_all_product_categories: false,
   product_lines: [
     {

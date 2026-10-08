@@ -184,7 +184,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "From the Actions menu choose View to open the read-only card. You find the code and name, Price, Cost and Margin in evidence (each only when relevant: the Margin appears only with both usages), the Identity, Classification and Pricing and supply sections, the attribute values, the change history (if you have permission) and the Created at date.",
+          text: "From the Actions menu choose View to open the read-only card. You find the code and name, Price, Cost and Margin in evidence (each only when relevant: the Margin appears only with both usages), the Identity, Classification and Pricing and supply sections, the attribute values (split into the same sections set up for the category, only the filled ones), the change history (if you have permission) and the Created at date.",
         },
         {
           type: 'paragraph',

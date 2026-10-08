@@ -68,6 +68,12 @@ interface AddressesManagerProps {
    * in create mode.
    */
   createMode?: boolean
+  /**
+   * With `createMode`, lists further addresses under the inline form, added
+   * through the usual "Add" dialog (the anagrafiche: an owner with several
+   * sites). The inline form keeps owning the address it started.
+   */
+  multipleOnCreate?: boolean
 }
 
 /** `new` = the add form is open; a string = that address `_key` is being edited. */
@@ -97,8 +103,9 @@ function locationSummary(address: AddressDraft): string {
  * (persist each change, sync the buffer with the server row whose `is_primary`
  * is authoritative — the backend auto-primaries the first). Single primary per
  * owner, mirroring the backend (ADR 0010). In `createMode`, the list/dialog are
- * replaced by a single inline form (`AddressCreateField`): an owner has at most
- * one address here, and it starts optional.
+ * replaced by a single inline form (`AddressCreateField`) that starts optional;
+ * with `multipleOnCreate` the list and its "Add" dialog follow it, for the
+ * further addresses.
  */
 export function AddressesManager({
   value,
@@ -109,11 +116,15 @@ export function AddressesManager({
   showSiteType = false,
   maxItems,
   createMode = false,
+  multipleOnCreate = false,
 }: AddressesManagerProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
   const { pending, run } = useImmediatePersist()
   const [editing, setEditing] = useState<EditingState>(null)
+  // `multipleOnCreate`: the `_key` of the address the inline form owns, so an
+  // address added through the dialog never moves into it.
+  const [inlineKey, setInlineKey] = useState<string | null>(null)
   const permission = fieldPermission?.('personal_data.addresses')
 
   if (permission && !permission.visible) {
@@ -123,7 +134,7 @@ export function AddressesManager({
   // Hide the "Add" affordance once read-only or the cap (if any) is reached.
   const canAdd = !readOnly && (maxItems === undefined || value.length < maxItems)
 
-  if (createMode) {
+  if (createMode && !multipleOnCreate) {
     return (
       <section className="flex flex-col gap-2">
         {showHeader && (
@@ -155,6 +166,28 @@ export function AddressesManager({
       }))
     }
     return addresses
+  }
+
+  const inlineAddress = value.filter((address) => address._key === inlineKey)
+  const listed = createMode ? value.filter((address) => address._key !== inlineKey) : value
+
+  /** The inline form's edit: replaces (or clears) the address it owns, keeping a single primary. */
+  const handleInlineChange = (next: AddressDraft[]) => {
+    const others = value.filter((address) => address._key !== inlineKey)
+    const draft = next[0]
+    if (!draft) {
+      setInlineKey(null)
+      onChange(normalizePrimary(others))
+      return
+    }
+    const owned = inlineAddress[0]
+    const isPrimary = owned ? owned.is_primary : !others.some((address) => address.is_primary)
+    const kept = { ...draft, is_primary: isPrimary }
+    setInlineKey(kept._key)
+    const nextValue = owned
+      ? value.map((address) => (address._key === owned._key ? kept : address))
+      : [kept, ...others]
+    onChange(normalizePrimary(nextValue, isPrimary ? kept._key : undefined))
   }
 
   /** Merges a just-added draft into the buffer, normalizing the primary flag. */
@@ -258,14 +291,18 @@ export function AddressesManager({
         </div>
       )}
 
-      {value.length === 0 && (
+      {createMode && (
+        <AddressCreateField value={inlineAddress} onChange={handleInlineChange} showSiteType={showSiteType} />
+      )}
+
+      {!createMode && value.length === 0 && (
         <p className="text-sm text-muted-foreground">
           {t('personalData.addresses.empty')}
         </p>
       )}
 
       <ul className="flex flex-col gap-2">
-        {value.map((address) => {
+        {listed.map((address) => {
           const location = locationSummary(address)
           return (
           <li

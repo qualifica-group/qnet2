@@ -176,7 +176,6 @@ export function TaskKanbanView({ mode, onOpenTask, onCreateTask }: TaskKanbanVie
             }
           }}
           task={statusMove.completingTask}
-          forAllAssignees
           onCompleted={statusMove.handleCompleted}
         />
       ) : null}

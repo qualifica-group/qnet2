@@ -6,9 +6,12 @@ use App\Models\Company;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\QuoteService;
 use App\Services\RequestManagement\RequestManagementScope;
+use App\Tables\Quotes\Concerns\WritesQuoteCells;
 use App\Tables\Quotes\QuoteAdvancedFilterCatalog;
+use App\Tables\Quotes\QuoteCellWriter;
 use App\Tables\Quotes\QuoteColumnCatalog;
 use App\Tables\Quotes\QuoteRelationColumns;
 use App\Tables\Shared\OperationalSiteColumn;
@@ -41,6 +44,8 @@ use Illuminate\Support\Facades\Gate;
  */
 class QuotesTableDefinition extends AbstractTableDefinition
 {
+    use WritesQuoteCells;
+
     /** The specially-derived site column (no label column of its own). */
     private const string OPERATIONAL_SITE_COLUMN = 'operational_site';
 
@@ -71,6 +76,8 @@ class QuotesTableDefinition extends AbstractTableDefinition
         private readonly QuoteRelationColumns $relationColumns,
         private readonly OperationalSiteColumn $operationalSiteColumn,
         private readonly QuoteService $service,
+        private readonly QuoteCellWriter $cellWriter,
+        private readonly QuoteWorkflowResolver $workflowResolver,
     ) {}
 
     public function domain(): string
@@ -112,6 +119,8 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // The site has no own name: the composed label needs its primary
             // address + city (mirrors OpportunitiesTableDefinition).
             'operationalSite.addresses.city',
+            // Spec 0206, D-6: read by QuoteWorkflowResolver (per-row status set).
+            'offerLines.product.category', 'opportunity.productLines', 'opportunity.customFieldValueRow',
         ])
             // Per-row count for the `notes` action badge: the notes SCOPED to
             // this Offerta (`notes.quote_id`), not the parent Opportunity's
@@ -186,6 +195,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             'title' => $row->title,
             'opportunity' => $this->summarize($row->opportunity),
             'quote_workflow_status' => $this->summarizeWorkflowStatus($row->quoteWorkflowStatus),
+            'quote_workflow_status_options' => $this->allowedWorkflowStatusIds($row),
             'commercial' => $this->summarize($row->commercial),
             'reporter' => $this->summarize($row->reporter),
             'supervisor' => $this->userSummary($row->supervisor),

@@ -19,8 +19,9 @@ function linesGridClass(variant: 'revenue' | 'cost'): string {
     : 'grid grid-cols-[minmax(200px,1.4fr)_100px_90px_64px_110px_140px_100px_100px_110px_36px] gap-2'
 }
 
+/** Tracks + gaps + the row's `px-2` padding: narrower, the header's tint stops mid-row when scrolled. */
 function linesMinWidthClass(variant: 'revenue' | 'cost'): string {
-  return variant === 'cost' ? 'min-w-[992px]' : 'min-w-[824px]'
+  return variant === 'cost' ? 'min-w-[1306px]' : 'min-w-[1138px]'
 }
 
 interface ReadOnlyLineProps {
@@ -39,7 +40,7 @@ function ReadOnlyLine({ line, index, showCommissions, variant, associatedProduct
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   return (
-    <div className={`${linesGridClass(variant)} border-b px-2 py-1.5 last:border-b-0`}>
+    <div className={`${linesGridClass(variant)} items-center border-b px-2 py-1.5 last:border-b-0`}>
       <span className="truncate">{line.product.name}</span>
       <span className="truncate font-mono text-muted-foreground">{line.product.code}</span>
       <span className="tabular-nums">{formatQuoteAmount(Number(line.quantity))}</span>

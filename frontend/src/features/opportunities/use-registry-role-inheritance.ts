@@ -27,6 +27,16 @@ export const NO_INHERITED_ROLES: InheritedRoles = {
   manager_slots: [],
 }
 
+/**
+ * What the last anagrafica pick of each form handed down, keyed by the form's
+ * own `getValues` (stable for the form's lifetime). It cannot live in a ref of
+ * the hook: the picker mounts only while its row is open (spec 0198), so
+ * closing the row would forget it and the NEXT pick would take the values the
+ * previous anagrafica handed down for ones the user entered, asking to replace
+ * them for nothing.
+ */
+const inheritedByForm = new WeakMap<object, InheritedRoles>()
+
 export function rolesFromRegistryMeta(meta: RegistryMeta | null): InheritedRoles {
   return {
     commercial_id: meta?.commercial?.id ?? null,
@@ -97,7 +107,6 @@ export function useRegistryRoleInheritance(
   const { t } = useTranslation()
   const confirm = useConfirm()
   const queryClient = useQueryClient()
-  const inheritedRef = useRef<InheritedRoles>(NO_INHERITED_ROLES)
   const requestRef = useRef(0)
 
   return async (registryId: number | null) => {
@@ -119,7 +128,8 @@ export function useRegistryRoleInheritance(
       supervisor_id: getValues('supervisor_id'),
       manager_slots: getValues('manager_slots'),
     }
-    const conflicts = conflictingUserRoles(current, inheritedRef.current, next)
+    const previous = inheritedByForm.get(getValues) ?? NO_INHERITED_ROLES
+    const conflicts = conflictingUserRoles(current, previous, next)
     const replace =
       conflicts.length === 0 ||
       (await confirm({
@@ -131,10 +141,10 @@ export function useRegistryRoleInheritance(
       }))
 
     // Step 4: write the result and remember what this anagrafica handed down.
-    const merged = mergeInheritedRoles(current, inheritedRef.current, next, !replace)
+    const merged = mergeInheritedRoles(current, previous, next, !replace)
     for (const key of ROLE_KEYS) {
       setValue(key, merged[key], { shouldDirty: true })
     }
-    inheritedRef.current = next
+    inheritedByForm.set(getValues, next)
   }
 }

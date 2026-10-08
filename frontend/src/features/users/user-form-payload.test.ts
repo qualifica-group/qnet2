@@ -64,6 +64,7 @@ const emptyEmployment: UserFormValues['employment'] = {
   company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: [],
+  is_assignable: true,
   covers_all_product_categories: false,
   product_lines: [],
   qualification_type: null,
@@ -221,6 +222,7 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
       company_id: 5,
       primary_operational_site_id: 8,
       remote_operational_site_ids: [11, 12],
+      is_assignable: true,
       covers_all_product_categories: false,
       product_lines: [],
       qualification_type: 'coordinator',
@@ -316,6 +318,14 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     expect(payload.employment.product_lines).toEqual([])
   })
 
+  it('spec 0194 — always sends is_assignable, true or false', () => {
+    const on = buildCreatePayload({ ...formValues, employment: { ...emptyEmployment, is_assignable: true } }, draft())
+    const off = buildCreatePayload({ ...formValues, employment: { ...emptyEmployment, is_assignable: false } }, draft())
+
+    expect(on.employment.is_assignable).toBe(true)
+    expect(off.employment.is_assignable).toBe(false)
+  })
+
   /** Spec 0129 AC-021: a row with "all categories" checked serializes its category as null. */
   it('AC-021 — serializes an "all categories" row with a null category', () => {
     const payload = buildCreatePayload(
@@ -375,6 +385,7 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
       company_id: null,
       primary_operational_site_id: null,
       remote_operational_site_ids: [],
+      is_assignable: true,
       covers_all_product_categories: false,
       product_lines: [],
       qualification_type: null,

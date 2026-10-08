@@ -14,6 +14,7 @@ import type {
 } from '@/features/request-management/request-write-types'
 import type {
   CategoryTabPreferences,
+  CategoryTabPreferencesPayload,
   ManagerLabels,
   RequestFormContext,
   RequestManagementProductCategory,
@@ -174,14 +175,17 @@ export async function fetchCategoryTabPreferences(basePath: string): Promise<Cat
   return data.data.preferences
 }
 
-/** PUT {basePath}/category-tab-preferences (spec 0184): replaces the whole preference. */
+/** PUT {basePath}/category-tab-preferences (spec 0184): replaces the whole preference; only the two saved fields travel. */
 export async function saveCategoryTabPreferences(
   basePath: string,
-  preferences: CategoryTabPreferences,
+  preferences: CategoryTabPreferencesPayload,
 ): Promise<CategoryTabPreferences> {
   const { data } = await apiClient.put<ApiResponse<{ preferences: CategoryTabPreferences }>>(
     `${basePath}/category-tab-preferences`,
-    preferences,
+    {
+      favorite_category_ids: preferences.favorite_category_ids,
+      show_only_favorites: preferences.show_only_favorites,
+    },
   )
   return data.data.preferences
 }

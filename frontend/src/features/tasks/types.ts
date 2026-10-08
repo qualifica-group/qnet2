@@ -66,6 +66,8 @@ export type TaskFormMode =
       taskStatusId?: number | null
       /** Spec 0157 D-4: prefill for the "Data fine" field, from `ModuleCreateParams.end_date` (the Kanban per-column "+"). */
       endDate?: string | null
+      /** Spec 0199: prefill for the "Anagrafica" field, from `ModuleCreateParams.registry_id` (the anagrafica's Task tab). */
+      registryId?: number | null
     }
   | { type: 'edit'; task: TaskDetailWithPermissions }
   /**
@@ -77,3 +79,10 @@ export type TaskFormMode =
    * place enforcing exactly that list.
    */
   | { type: 'duplicate'; source: TaskDetailWithPermissions }
+
+/**
+ * The modes the task FORM screen mounts: create and duplicate. Edit has no
+ * form screen any more — the detail edits in place on top of `useTaskForm`
+ * (spec 0195), the only consumer of the `'edit'` branch.
+ */
+export type TaskCreateFormMode = Exclude<TaskFormMode, { type: 'edit' }>

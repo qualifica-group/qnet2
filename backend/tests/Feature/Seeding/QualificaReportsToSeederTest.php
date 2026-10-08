@@ -76,7 +76,8 @@ it('converges on a re-run and leaves unlisted accounts alone', function (): void
 
     $operator = User::query()->where('email', 'marco.fedele@qualificagroup.com')->with('employment')->sole();
     $staff = User::query()->where('email', 'nicola.eliseo@qualificagroup.com')->sole();
-    $staffProfile = $staff->employment()->create();
+    // TestUsersSeeder gives the account its (non-assignable) profile, spec 0194.
+    $staffProfile = $staff->employment()->sole();
     $operator->employment->reportsTo()->sync([$staff->id]);
     $staffProfile->reportsTo()->sync([$operator->id]);
 

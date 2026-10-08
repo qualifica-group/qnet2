@@ -68,10 +68,7 @@ function fieldValidationError(errors: Record<string, string[]>): AxiosError {
   return error
 }
 
-function openCompleteDialog(
-  overrides: Partial<TaskDetailWithPermissions> = {},
-  forAllAssignees = true,
-) {
+function openCompleteDialog(overrides: Partial<TaskDetailWithPermissions> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
@@ -82,7 +79,6 @@ function openCompleteDialog(
           permissions: actionPermissions({ complete: true, complete_to_validation: false }),
           ...overrides,
         })}
-        forAllAssignees={forAllAssignees}
       />
     </QueryClientProvider>,
   )
@@ -162,10 +158,14 @@ describe('TaskCompleteDialog', () => {
     )
   })
 
-  /** Spec 0155 D-6: the sub-task panel opens this same dialog with `forAllAssignees={false}` — the key is omitted, not sent as `false`. */
-  it('with forAllAssignees false (sub-task panel): omits for_all_assignees from the payload', async () => {
+  /** Spec 0205 (RECTIFIES spec 0155 D-6): the "all assignees" checkbox is checked by default; unchecking it sends `false`. */
+  it('sends for_all_assignees false when the actor unchecks the all-assignees checkbox', async () => {
     vi.mocked(completeTask).mockResolvedValueOnce(taskDetailWithPermissions())
-    await openCompleteDialog({ requires_closure_feedback: false }, false)
+    await openCompleteDialog({ requires_closure_feedback: false })
+
+    const checkbox = screen.getByRole('checkbox', { name: label('tasks.actions.completeDialog.forAllAssignees') })
+    expect(checkbox).toBeChecked()
+    fireEvent.click(checkbox)
 
     fireEvent.change(screen.getByLabelText(new RegExp(`^${label('timeEntries.form.minutes')}`)), {
       target: { value: '01:00' },
@@ -174,7 +174,7 @@ describe('TaskCompleteDialog', () => {
 
     await waitFor(() => expect(completeTask).toHaveBeenCalled())
     const [, payload] = vi.mocked(completeTask).mock.calls[0]
-    expect(payload).not.toHaveProperty('for_all_assignees')
+    expect(payload).toHaveProperty('for_all_assignees', false)
   })
 
   it('with complete_to_validation true: "Invia in validazione" title, mandatory status picker, no switch (AC-019)', async () => {

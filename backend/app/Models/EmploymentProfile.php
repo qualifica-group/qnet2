@@ -33,6 +33,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'user_id',
     'is_manager',
     'covers_all_product_categories',
+    'is_assignable',
     'job_description',
     'relationship_type',
     'company_id',
@@ -55,6 +56,7 @@ class EmploymentProfile extends BaseModel
         return [
             'is_manager' => 'boolean',
             'covers_all_product_categories' => 'boolean',
+            'is_assignable' => 'boolean',
             'relationship_type' => RelationshipTypeEnum::class,
             'qualification_type' => QualificationTypeEnum::class,
             'hired_at' => 'date:Y-m-d',

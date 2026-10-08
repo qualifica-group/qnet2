@@ -84,8 +84,9 @@ function buildEnumSchema(descriptor: CustomFieldDescriptor, t: TFunction) {
   const invalidMessage = t('customFields.validation.enumInvalid')
 
   if (descriptor.config?.display === 'multiselect') {
-    return z.array(z.string()).superRefine((values, ctx) => {
-      values.forEach((value, index) => {
+    // `null` = not set, as the server returns a multi value nobody filled yet.
+    return z.array(z.string()).nullable().superRefine((values, ctx) => {
+      values?.forEach((value, index) => {
         if (!optionValues.has(value)) {
           ctx.addIssue({ code: 'custom', path: [index], message: invalidMessage })
         }
@@ -104,7 +105,8 @@ function buildEnumSchema(descriptor: CustomFieldDescriptor, t: TFunction) {
 }
 
 function buildRelationSchema(descriptor: CustomFieldDescriptor) {
-  return descriptor.relation?.cardinality === 'many' ? z.array(z.number()) : z.number().nullable()
+  // `null` = not set on both arities, as the server returns an unfilled value.
+  return descriptor.relation?.cardinality === 'many' ? z.array(z.number()).nullable() : z.number().nullable()
 }
 
 /**

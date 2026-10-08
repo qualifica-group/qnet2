@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0196-work-order-inline-editable-detail" status="approved" owner="utente" date="2026-10-06">
+
+  <goal>
+    La Commessa riceve le stesse modifiche del Task (spec 0195): niente pagina di modifica, il dettaglio
+    (`/work-orders/:id` e lo stesso schermo nel pannello modale) si edita in place campo per campo, campi
+    flessibili ("Informazioni aggiuntive") compresi; la creazione e' una replica del dettaglio a righe chiuse.
+    La chiusura forzata diventa un'azione (dettaglio + tabella Commesse), non piu' un campo.
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-06, "stesse modifiche di task ... soprattutto per i campi flessibili"): regole 0195
+      D-2/D-2a/D-3/D-4/D-7/D-8/D-9 applicate alle Commesse. Riga in place condivisa estratta dai Task:
+      `components/record-form/record-inline-field.tsx` (`RecordInlineField`, `InlineEdit`, prop nuove `metaKey`
+      e `className`), `components/record-form/use-draft-inline-edit.ts`, `hooks/use-outside-pointer-dismiss.ts`,
+      i18n `common.inlineEdit.*` (prima `tasks.detail.inlineEdit.*`).
+    - D-2: ogni Attributo applicabile e' una riga del layout configurato (`AttributeLayoutView`, nuova prop
+      opzionale `renderField`), gate unico sul permesso `attribute_values`, editor = `AttributeLayoutField`
+      (nuova prop `hideLabel`). PATCH con la mappa intera (merge sparso lato server).
+    - D-3: righe non editabili per ceiling backend: `code`, `quote_id`, `task_template_id` (solo creazione).
+      Anagrafica cliente, Contratto, Societa' e sedi restano derivati e in sola lettura; Stato/Completamento calcolati.
+    - D-4: cambiando le Righe prodotto, l'editor mostra sotto il picker gli Attributi che le nuove righe portano
+      (`WorkOrderNewAttributesFields`): stesso PATCH, cosi' un Attributo obbligatorio nuovo non blocca il salvataggio.
+      Finche' le righe sono quelle salvate il set viene dalla commessa, senza `POST /work-orders/form-context`.
+    - D-5 (utente 2026-10-06, "chiusura forzata la voglio come un action, non come un campo, stessa action sulla
+      tabella commesse"): azione `force_close` (dialog con motivo obbligatorio e avviso sui task aperti) e la sua
+      inversa `reopen` (conferma; i task chiusi restano chiusi, D-8 spec 0146). Entrambe usano la PATCH esistente
+      (`is_force_closed`/`force_close_reason`). Il motivo resta visibile in sola lettura nei Dettagli.
+  </context>
+
+  <contract>
+    <backend>
+      Nessun endpoint nuovo. `WorkOrderColumnCatalog::actions()` aggiunge `force_close` (icon `lock`) e `reopen`
+      (icon `lock-open`, confirm), permesso `work-orders.update`; `WorkOrdersTableDefinition::actionsFor()` offre
+      esattamente una delle due se `Gate update` passa, secondo `is_force_closed`. `WorkOrdersAuthorization`:
+      nuove azioni `force_close`/`reopen` in `permissions.actions` (stessa regola).
+    </backend>
+    <frontend>
+      Registry `work-orders`: `generateEditRoute: false`. `WorkOrderDetailView` perde `onEdit`, guadagna
+      `onChanged`. `WorkOrderForm`/`WorkOrderFormBody` solo creazione. `updateWorkOrder` restituisce
+      `WorkOrderDetailWithPermissions`. Il form non contiene piu' `is_force_closed`/`force_close_reason`.
+      `useWorkOrderRowActions` restituisce anche `forceCloseDialog` (montato da tabella Commesse e tab del Contratto).
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/work-orders/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su un campo editabile: Salva invia il solo campo cambiato; Annulla/Esc/clic fuori non chiamano.</ac>
+    <ac id="AC-003">Ogni Attributo e' una riga editabile nel suo layout; senza permesso `attribute_values` nessuna matita.</ac>
+    <ac id="AC-004">Creazione: righe chiuse, Fatto/Ripristina, Salva valida tutto (nessun POST se invalido), uscita con conferma.</ac>
+    <ac id="AC-005">"Chiusura forzata" nel dettaglio e tra le azioni di riga: motivo obbligatorio, avviso sui task aperti,
+      PATCH `{is_force_closed: true, force_close_reason}`; su commessa chiusa forzatamente l'azione e' "Riapri".
+      Senza `update` nessuna delle due (`WorkOrderForceCloseActionTest`).</ac>
+    <ac id="AC-006">Guida in-app IT/EN `work-orders` aggiornata (modifica, chiusura forzata, creazione).</ac>
+  </acceptance>
+</spec>

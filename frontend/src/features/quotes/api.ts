@@ -1,5 +1,6 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse, ApiResponseWithPermissions } from '@/api/types'
+import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
   CreateQuotePayload,
@@ -65,10 +66,17 @@ export async function createQuote(payload: CreateQuotePayload): Promise<QuoteDet
   return data.data
 }
 
-/** Partially updates a quote (PATCH). Returns the updated resource. */
-export async function updateQuote(id: number, payload: UpdateQuotePayload): Promise<QuoteDetail> {
-  const { data } = await apiClient.patch<ApiResponse<QuoteDetail>>(`/quotes/${id}`, payload)
-  return data.data
+/**
+ * Partially updates a quote (PATCH). Returns the updated resource with the
+ * permissions re-evaluated on it: the in-place detail (spec 0197) keeps
+ * rendering from the saved record, so a lock the save introduced must show.
+ */
+export async function updateQuote(id: number, payload: UpdateQuotePayload): Promise<QuoteDetailWithPermissions> {
+  const { data } = await apiClient.patch<ApiResponseWithPermissions<QuoteDetail, ResourcePermissions>>(
+    `/quotes/${id}`,
+    payload,
+  )
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a quote. Backend responds 200 with no data (`quote_lines` cascade, AC-026). */
@@ -86,10 +94,38 @@ export interface QuoteCommissionDefaultsPayload {
   reference_date?: string
 }
 
+/**
+ * Spec 0202 D-12: the default commissions of a new row plus the Supplier
+ * commission direction of the requested product's typology (`null` = the
+ * calculation is disabled, the server creates no Supplier commission).
+ */
+export interface QuoteCommissionDefaults {
+  commissions: QuoteLineCommission[]
+  supplier_commission_direction: SupplierCommissionDirection | null
+}
+
+/**
+ * Query key of a line's system-calculated commissions, as the commissions
+ * dialog shows them beside the row's own (possibly overridden) ones. Keyed on
+ * every input the server's rules resolve against.
+ */
+export function quoteCommissionDefaultsQueryKey(payload: QuoteCommissionDefaultsPayload) {
+  return [
+    'quotes',
+    'commission-defaults',
+    payload.quote_id ?? null,
+    payload.product_id,
+    payload.line_net_amount,
+    payload.commercial_id ?? null,
+    payload.reporter_id ?? null,
+    payload.supervisor_id ?? null,
+  ] as const
+}
+
 export async function fetchQuoteCommissionDefaults(
   payload: QuoteCommissionDefaultsPayload,
-): Promise<QuoteLineCommission[]> {
-  const { data } = await apiClient.post<ApiResponse<QuoteLineCommission[]>>(
+): Promise<QuoteCommissionDefaults> {
+  const { data } = await apiClient.post<ApiResponse<QuoteCommissionDefaults>>(
     '/quotes/commission-defaults',
     payload,
   )

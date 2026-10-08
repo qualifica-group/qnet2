@@ -12,6 +12,7 @@ interface UseTableLocalFiltersArgs {
   productCategoryId?: number
   opportunityId?: number
   quoteId?: number
+  registryId?: number
 }
 
 export interface UseTableLocalFiltersResult {
@@ -32,12 +33,13 @@ export function useTableLocalFilters({
   productCategoryId,
   opportunityId,
   quoteId,
+  registryId,
 }: UseTableLocalFiltersArgs): UseTableLocalFiltersResult {
   const userId = useContext(AuthContext)?.user?.id
   const storageKey =
     userId === undefined
       ? null
-      : tableLocalFiltersKey({ userId, domain, productCategoryId, opportunityId, quoteId })
+      : tableLocalFiltersKey({ userId, domain, productCategoryId, opportunityId, quoteId, registryId })
 
   const [initial] = useState(() => readTableLocalFilters(storageKey))
 

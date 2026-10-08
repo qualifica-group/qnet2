@@ -48,6 +48,9 @@ export const opportunities = {
     title: 'Dettagli opportunità',
     subtitle: "Visualizzazione in sola lettura dell'opportunità selezionata.",
     loadError: "Impossibile caricare l'opportunità. Riprova.",
+    sections: {
+      details: 'Dettagli',
+    },
     sourceLead: 'Lead di origine',
     rewards: 'Premi',
     quotes: {
@@ -64,55 +67,29 @@ export const opportunities = {
   },
   form: {
     newOpportunity: 'Nuova opportunità',
-    header: {
-      status: 'Stato',
-      workflowStatus: 'Lavorazione',
-      expectedCloseDate: 'Chiusura prevista',
-    },
-    summary: {
-      title: 'Riepilogo opportunità',
-      description: "Ciò che stai per salvare, in sola lettura.",
-    },
     createTitle: 'Crea opportunità',
     createSubtitle: "Aggiungi una nuova opportunità commerciale.",
-    editTitle: 'Modifica opportunità',
-    editSubtitle: "Aggiorna l'opportunità selezionata.",
     sections: {
       classification: {
         title: 'Classificazione',
-        description: 'Fonte e sede operativa.',
       },
       lead: {
         title: 'Lead di origine',
-        description: "Il lead che questa opportunità converte: precompila e blocca i campi derivati.",
       },
       identity: {
         title: 'Anagrafica e contatti',
-        description: "L'anagrafica collegata e i suoi contatti dedicati.",
       },
       workflowStatus: {
         title: 'Stato di lavorazione',
-        description: "Avanza lo stato di lavorazione interno dell'opportunità.",
-      },
-      attribution: {
-        title: 'Attribuzione',
-        description: 'Provenienza e assegnazione: fonte e segnalatore.',
       },
       productLines: {
         title: 'Funzioni aziendali e categorie prodotto',
-        description: 'Collega una o più coppie funzione aziendale + categoria prodotto.',
       },
       team: {
         title: 'Team',
-        description: 'Supervisore e gestori account.',
-      },
-      planning: {
-        title: 'Pianificazione',
-        description: 'Date, valore stimato e probabilità di successo.',
       },
       generalNotes: {
         title: 'Note generali',
-        description: "Annotazioni libere sull'opportunità.",
       },
     },
     name: 'Titolo',
@@ -192,6 +169,12 @@ export const opportunities = {
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: "L'opportunità non è ancora stata creata: i dati inseriti andranno persi.",
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     created: 'Opportunità creata con successo.',
     updated: 'Opportunità aggiornata con successo.',
     deleted: 'Opportunità eliminata con successo.',

@@ -28,10 +28,15 @@ export interface RevenueLineOption {
 /** Filters the supplier picker's `registries` for-select to `is_supplier` records only. */
 const SUPPLIER_PARAMS: Record<string, string | number> = { is_supplier: 1 }
 
-/** Header strip and every row share this grid; first line only, the second spans the full width. */
+/**
+ * Header strip and every row share this grid; first line only, the second
+ * spans the full width. The min width must equal tracks + gaps (8px each) +
+ * the row's `px-2`: narrower, the grid overflows it and the header's tint
+ * stops mid-row when scrolled.
+ */
 export const COST_ROW_GRID_CLASS =
   'grid grid-cols-[minmax(200px,1.4fr)_88px_96px_56px_112px_140px_180px_90px_90px_100px_36px] gap-2'
-export const COST_ROW_MIN_WIDTH_CLASS = 'min-w-[1180px]'
+export const COST_ROW_MIN_WIDTH_CLASS = 'min-w-[1284px]'
 
 interface VatRateForSelectItem extends ForSelectItem {
   meta: { rate: string | null }
@@ -210,6 +215,8 @@ export function WorkOrderCostRow({
             type="button"
             variant="ghost"
             size="icon-sm"
+            // Centred on the 36px inputs of the `items-start` row.
+            className="mt-0.5"
             aria-label={t('workOrders.costs.editor.remove', { n })}
             onClick={onRemove}
           >

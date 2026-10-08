@@ -7,6 +7,7 @@ use App\Services\Table\CustomFilterRuleValidator;
 use App\Services\Table\RowGroupQuery;
 use App\Services\Table\RowGroupValidator;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
+use App\Tables\RegistryScopable;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
@@ -124,6 +125,11 @@ class TableRowsRequest extends FormRequest
             // other domain, mirroring `opportunityId` (AC-053: OMITTED by
             // every existing caller, so their payload stays byte-identical).
             'quoteId' => ['sometimes', 'nullable', 'integer', Rule::exists('quotes', 'id')],
+
+            // Spec 0199: scopes `opportunities`/`quotes`/`work-orders`/`tasks`
+            // to one client's records (the Anagrafica detail tabs) — a no-op
+            // key for every other domain.
+            'registryId' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
 
             // Spec 0157, D-1: tree/hierarchical row scoping (Sintetica) — a
             // domain that does not override supportsTree() 422s either key
@@ -332,6 +338,10 @@ class TableRowsRequest extends FormRequest
                 $definition->scopeToQuote($this->quoteIdInput());
             }
 
+            if ($definition instanceof RegistryScopable) {
+                $definition->scopeToRegistry($this->registryIdInput());
+            }
+
             $this->resolvedDefinition = $definition;
         }
 
@@ -369,6 +379,17 @@ class TableRowsRequest extends FormRequest
     private function quoteIdInput(): ?int
     {
         $value = $this->input('quoteId');
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    /**
+     * The raw `registryId` request input, coerced to int (spec 0199),
+     * mirroring `quoteIdInput()`.
+     */
+    private function registryIdInput(): ?int
+    {
+        $value = $this->input('registryId');
 
         return is_numeric($value) ? (int) $value : null;
     }

@@ -58,11 +58,12 @@ use Illuminate\Database\Eloquent\Builder;
  *   validates `ordered_ids` against the full set, so a list missing the
  *   deactivated rows is rejected as incomplete. False by default, so every
  *   other consumer keeps its current filtering.
- * - `registryId` (spec 0122, D-5): ADDITIVE, consumed ONLY by
- *   OpportunityService::forSelect and WorkOrderService::forSelect (the
- *   segnatempo form's cascading client -> opportunity/commessa filter) —
- *   narrows to the records of ONE client, the latter via
- *   `quote.opportunity.registry_id`. Null by default (no filter), so every
+ * - `registryId` (spec 0122, D-5; spec 0199): ADDITIVE, consumed ONLY by
+ *   OpportunityService::forSelect, WorkOrderService::forSelect (the
+ *   segnatempo form's cascading client -> opportunity/commessa filter) and
+ *   QuoteForSelectService (the Anagrafica detail's Commesse tab) —
+ *   narrows to the records of ONE client, the latter two via
+ *   `opportunity.registry_id`/`quote.opportunity.registry_id`. Null by default (no filter), so every
  *   other consumer is unaffected (AC-026).
  * - `productUsage` (spec 0142, D-4): ADDITIVE, consumed ONLY by
  *   ProductService::forSelect (the Offerta line picker narrowed to the

@@ -109,8 +109,11 @@ export function ContractProgramDialog({ open, onOpenChange, contractId, onCreate
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent size="lg">
-        <DialogHeader>
+      {/* Flex column with a scrolling body: with many offer lines the form
+          would otherwise grow past the viewport. The popups of the selects
+          portal into the content node, so the inner scroller never clips them. */}
+      <DialogContent size="lg" className="flex max-h-[85vh] flex-col gap-0 p-0">
+        <DialogHeader className="shrink-0 rounded-t-lg border-b bg-surface p-4">
           <DialogTitle>{t('contracts.actions.program')}</DialogTitle>
           <DialogDescription>{t('contracts.actions.programDialog.description')}</DialogDescription>
         </DialogHeader>
@@ -118,7 +121,7 @@ export function ContractProgramDialog({ open, onOpenChange, contractId, onCreate
         <Form {...form}>
           <form
             id="contract-program-form"
-            className="flex flex-col gap-4"
+            className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4"
             onSubmit={(event) => void form.handleSubmit(onSubmit)(event)}
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -253,7 +256,7 @@ export function ContractProgramDialog({ open, onOpenChange, contractId, onCreate
           </form>
         </Form>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 rounded-b-lg border-t bg-surface p-4">
           <Button type="button" variant="outline" className="bg-card" onClick={() => handleOpenChange(false)}>
             {t('common.cancel')}
           </Button>

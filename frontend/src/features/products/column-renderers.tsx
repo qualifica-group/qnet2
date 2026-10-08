@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- renderer registry module: cells are AG Grid render functions, not route/page components */
+import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { Info } from 'lucide-react'
 import i18n from '@/i18n'
@@ -56,13 +57,12 @@ function CategoryCell({ value }: ICellRendererParams) {
 
 /**
  * Renders the `product_typology` column (spec 0099, AC-033): the derived
- * typology name, em dash when unset. Plain text like `category` — unlike
- * `product_type` right next to it, which is an enum badge (D-1).
+ * typology as its coloured badge (spec 0204 D-5), em dash when unset.
  */
 function ProductTypologyCell({ value }: ICellRendererParams) {
   const typology = value as ProductTypologySummary | null
   return typology ? (
-    <span>{typology.name}</span>
+    <ProductTypologyBadge name={typology.name} color={typology.color} />
   ) : (
     <span className="text-muted-foreground">—</span>
   )

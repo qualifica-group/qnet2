@@ -24,6 +24,7 @@ class CategoryTabPreferencesResource extends JsonResource
         return [
             'favorite_category_ids' => array_values(array_map('intval', $this->favorite_category_ids)),
             'show_only_favorites' => (bool) $this->show_only_favorites,
+            'is_default' => ! $this->exists,
         ];
     }
 }

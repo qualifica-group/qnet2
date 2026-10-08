@@ -41,6 +41,8 @@ export default function ModuleDetailPage({ domain }: ModuleDetailPageProps) {
   }
 
   const { DetailScreen, DetailPageActions } = entry
+  // No `:id/edit` route to navigate to: the detail edits in place (spec 0195).
+  const hasEditRoute = entry.generateEditRoute !== false
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -54,7 +56,7 @@ export default function ModuleDetailPage({ domain }: ModuleDetailPageProps) {
               </Link>
             </Button>
             {DetailPageActions ? <DetailPageActions id={entityId} /> : null}
-            {!entry.detailOwnsEditAction && (
+            {!entry.detailOwnsEditAction && hasEditRoute && (
               <Can permission={`${domain}.update`}>
                 <Button asChild>
                   <Link to={`${entry.basePath}/${entityId}/edit`}>
@@ -71,7 +73,7 @@ export default function ModuleDetailPage({ domain }: ModuleDetailPageProps) {
       <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
         <DetailScreen
           id={entityId}
-          onEdit={() => void navigate(`${entry.basePath}/${entityId}/edit`)}
+          onEdit={hasEditRoute ? () => void navigate(`${entry.basePath}/${entityId}/edit`) : undefined}
         />
       </div>
     </div>

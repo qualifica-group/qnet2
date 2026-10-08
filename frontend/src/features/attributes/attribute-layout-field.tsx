@@ -11,6 +11,8 @@ interface AttributeLayoutFieldProps<TFieldValues extends AttributeLayoutFormShap
   attribute: EffectiveAttribute
   disabled: boolean
   readOnly: boolean
+  /** Kept for assistive tech only: the host row already shows the attribute's name (an in-place detail row). */
+  hideLabel?: boolean
 }
 
 /**
@@ -27,6 +29,7 @@ export function AttributeLayoutField<TFieldValues extends AttributeLayoutFormSha
   attribute,
   disabled,
   readOnly,
+  hideLabel = false,
 }: AttributeLayoutFieldProps<TFieldValues>) {
   const name = `attribute_values.${attribute.code}` as FieldPath<TFieldValues>
   const descriptor = toCustomFieldDescriptor(attribute)
@@ -37,7 +40,9 @@ export function AttributeLayoutField<TFieldValues extends AttributeLayoutFormSha
       name={name}
       render={({ field }) => (
         <FormItem>
-          <FormLabel required={attribute.is_required}>{attribute.name}</FormLabel>
+          <FormLabel required={attribute.is_required} className={hideLabel ? 'sr-only' : undefined}>
+            {attribute.name}
+          </FormLabel>
           <AttributeControlBridge
             descriptor={descriptor}
             value={field.value as CustomFieldValue}

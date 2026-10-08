@@ -1,11 +1,12 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { QuoteFormBody } from '@/features/quotes/quote-form-body'
+import { openRow, rowValue } from '@/features/quotes/quote-test-helpers'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { OpportunityForSelectItem } from '@/features/opportunities/for-select-api'
 import type { ResourcePermissions } from '@/features/authorization/types'
@@ -14,7 +15,9 @@ import type { ResourcePermissions } from '@/features/authorization/types'
  * Directive 2026-07-29: Commerciale, Segnalatore and Supervisore are inherited
  * from the picked Opportunita' when creating an Offerta, straight from its
  * for-select `meta` (no extra fetch). A PREFILL, not a lock — the three fields
- * stay editable, and spec 0065 D-3 keeps them a snapshot afterwards.
+ * stay editable, and spec 0065 D-3 keeps them a snapshot afterwards. The rows
+ * are closed (spec 0197): each opens on its pencil, and a closed one names the
+ * inherited person straight from that `meta`.
  * Split out of `quote-form-body.test.tsx` (engineering.md §6): this suite
  * stubs the select, that one exercises the real one.
  */
@@ -30,10 +33,10 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
-// `QuoteLayoutSection` (spec 0070) resolves its create-mode default straight
-// off `useForSelect`, independent of the `AsyncPaginatedSelect` stub below —
-// mocked here so it never hits the real network in this suite, which is
-// scoped to the roles inheritance, not the layout field.
+// The create form resolves its default layout (spec 0070) and names its
+// closed rows straight off `fetchForSelect`, independent of the
+// `AsyncPaginatedSelect` stub below — mocked here so it never hits the real
+// network in this suite, which is scoped to the roles inheritance.
 vi.mock('@/features/for-select/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
     '@/features/for-select/api',
@@ -174,28 +177,40 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
+/** Opens the closed Opportunita' row and picks (or clears) through its stubbed select. */
+function pickOpportunity(choice: number | 'clear') {
+  if (screen.queryByTestId('select-Opportunity') === null) {
+    openRow('Opportunity')
+  }
+  const name = choice === 'clear' ? 'clear Opportunity' : `select Opportunity ${choice}`
+  fireEvent.click(screen.getByRole('button', { name }))
+}
+
 describe('QuoteFormBody — role inheritance from the picked Opportunity', () => {
-  it('fills commercial/reporter/supervisor from the opportunity meta', async () => {
+  it('fills commercial/reporter/supervisor from the opportunity meta, named on their closed rows', async () => {
     renderCreateForm()
 
-    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITH_ROLES.id}` }).click()
+    pickOpportunity(OPPORTUNITY_WITH_ROLES.id)
 
-    await waitFor(() => expect(screen.getByTestId('value-Commercial')).toHaveTextContent('71'))
-    expect(screen.getByTestId('value-Reporter')).toHaveTextContent('81')
-    expect(screen.getByTestId('value-Supervisor')).toHaveTextContent('61')
+    await waitFor(() => expect(rowValue('Commercial')).toContain('Sara Conti'))
+    expect(rowValue('Reporter')).toContain('Elio Fabbri')
+    expect(rowValue('Supervisor')).toContain('Ivo Bianchi')
+
+    openRow('Commercial')
+    expect(screen.getByTestId('value-Commercial')).toHaveTextContent('71')
   })
 
   it('leaves the three empty for an opportunity with no roles, and re-derives them on every pick', async () => {
     renderCreateForm()
 
-    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITH_ROLES.id}` }).click()
-    await waitFor(() => expect(screen.getByTestId('value-Commercial')).toHaveTextContent('71'))
+    pickOpportunity(OPPORTUNITY_WITH_ROLES.id)
+    await waitFor(() => expect(rowValue('Commercial')).toContain('Sara Conti'))
 
-    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITHOUT_ROLES.id}` }).click()
+    pickOpportunity(OPPORTUNITY_WITHOUT_ROLES.id)
 
-    await waitFor(() => expect(screen.getByTestId('value-Commercial')).toHaveTextContent(''))
-    expect(screen.getByTestId('value-Reporter')).toHaveTextContent('')
-    expect(screen.getByTestId('value-Supervisor')).toHaveTextContent('')
+    await waitFor(() => expect(rowValue('Commercial')).not.toContain('Sara Conti'))
+    expect(rowValue('Reporter')).not.toContain('Elio Fabbri')
+    expect(rowValue('Supervisor')).not.toContain('Ivo Bianchi')
   })
 
   // User directive 2026-08-31 (supersedes 2026-08-06): the Supervisore is no
@@ -204,6 +219,8 @@ describe('QuoteFormBody — role inheritance from the picked Opportunity', () =>
   it('leaves the Supervisor picker unlocked and unscoped before any opportunity is picked', () => {
     renderCreateForm()
 
+    openRow('Supervisor')
+
     expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-disabled', 'false')
     expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-params', 'null')
   })
@@ -211,7 +228,8 @@ describe('QuoteFormBody — role inheritance from the picked Opportunity', () =>
   it('keeps the Supervisor picker unscoped after an opportunity is picked', async () => {
     renderCreateForm()
 
-    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITH_ROLES.id}` }).click()
+    pickOpportunity(OPPORTUNITY_WITH_ROLES.id)
+    openRow('Supervisor')
 
     await waitFor(() => expect(screen.getByTestId('value-Supervisor')).toHaveTextContent('61'))
     expect(screen.getByTestId('select-Supervisor')).toHaveAttribute('data-disabled', 'false')
@@ -221,14 +239,14 @@ describe('QuoteFormBody — role inheritance from the picked Opportunity', () =>
   it('clears the three when the opportunity itself is cleared', async () => {
     renderCreateForm()
 
-    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITH_ROLES.id}` }).click()
-    await waitFor(() => expect(screen.getByTestId('value-Supervisor')).toHaveTextContent('61'))
+    pickOpportunity(OPPORTUNITY_WITH_ROLES.id)
+    await waitFor(() => expect(rowValue('Supervisor')).toContain('Ivo Bianchi'))
 
-    screen.getByRole('button', { name: 'clear Opportunity' }).click()
+    pickOpportunity('clear')
 
-    await waitFor(() => expect(screen.getByTestId('value-Supervisor')).toHaveTextContent(''))
-    expect(screen.getByTestId('value-Commercial')).toHaveTextContent('')
-    expect(screen.getByTestId('value-Reporter')).toHaveTextContent('')
+    await waitFor(() => expect(rowValue('Supervisor')).not.toContain('Ivo Bianchi'))
+    expect(rowValue('Commercial')).not.toContain('Sara Conti')
+    expect(rowValue('Reporter')).not.toContain('Elio Fabbri')
   })
 
   // Regression (segnalazione utente 2026-08-31): creating an Offerta showed an
@@ -239,24 +257,25 @@ describe('QuoteFormBody — role inheritance from the picked Opportunity', () =>
   it('prefills the team from the opportunity, preserving positions and padding to the default card count', async () => {
     renderCreateForm()
 
-    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITH_MANAGERS.id}` }).click()
+    pickOpportunity(OPPORTUNITY_WITH_MANAGERS.id)
+    await waitFor(() => expect(rowValue('Account managers')).toContain('Rita Neri'))
+    expect(rowValue('Account managers')).toContain('Ugo Verdi')
+
+    openRow('Account managers')
 
     // position 1 -> index 0, position 3 -> index 2, index 1 stays an empty
     // slot, and the array is padded out to DEFAULT_MANAGER_SLOTS (4).
-    await waitFor(() =>
-      expect(screen.getByTestId('manager-slots-value')).toHaveTextContent('[21,null,22,null]'),
-    )
+    expect(screen.getByTestId('manager-slots-value')).toHaveTextContent('[21,null,22,null]')
   })
 
   it('empties the team when the picked opportunity has no Gestori Account', async () => {
     renderCreateForm()
 
-    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITH_MANAGERS.id}` }).click()
-    await waitFor(() =>
-      expect(screen.getByTestId('manager-slots-value')).toHaveTextContent('[21,null,22,null]'),
-    )
+    pickOpportunity(OPPORTUNITY_WITH_MANAGERS.id)
+    await waitFor(() => expect(rowValue('Account managers')).toContain('Rita Neri'))
 
-    screen.getByRole('button', { name: `select Opportunity ${OPPORTUNITY_WITHOUT_ROLES.id}` }).click()
+    pickOpportunity(OPPORTUNITY_WITHOUT_ROLES.id)
+    openRow('Account managers')
 
     await waitFor(() =>
       expect(screen.getByTestId('manager-slots-value')).toHaveTextContent('[null,null,null,null]'),

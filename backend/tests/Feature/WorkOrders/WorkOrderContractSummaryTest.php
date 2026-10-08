@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\Company;
+use App\Models\CompanySite;
 use App\Models\Contract;
+use App\Models\OperationalSite;
 use App\Models\Quote;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -52,4 +55,37 @@ it('exposes a null contract while the linked quote has none', function () {
     $this->getJson("/api/work-orders/{$workOrder->id}")
         ->assertOk()
         ->assertJsonPath('data.contract', null);
+});
+
+it('exposes the company, company site and operational site of the linked quote', function () {
+    $company = Company::factory()->create();
+    $companySite = CompanySite::factory()->create(['company_id' => $company->id]);
+    $operationalSite = OperationalSite::factory()->withAddress()->create();
+    $quote = Quote::factory()->create([
+        'company_id' => $company->id,
+        'company_site_id' => $companySite->id,
+        'operational_site_id' => $operationalSite->id,
+    ]);
+    Contract::factory()->create(['quote_id' => $quote->id]);
+    $workOrder = WorkOrder::factory()->create(['quote_id' => $quote->id]);
+    Sanctum::actingAs(contractSummaryActor());
+
+    $response = $this->getJson("/api/work-orders/{$workOrder->id}")->assertOk();
+
+    expect($response->json('data.company'))->toBe(['id' => $company->id, 'name' => $company->denomination])
+        ->and($response->json('data.company_site'))->toBe(['id' => $companySite->id, 'name' => $companySite->name])
+        ->and($response->json('data.operational_site.id'))->toBe($operationalSite->id)
+        ->and($response->json('data.operational_site.label'))->not->toBe('');
+});
+
+it('exposes null company and sites when the linked quote has none', function () {
+    $quote = Quote::factory()->create(['company_id' => null, 'company_site_id' => null, 'operational_site_id' => null]);
+    $workOrder = WorkOrder::factory()->create(['quote_id' => $quote->id]);
+    Sanctum::actingAs(contractSummaryActor());
+
+    $this->getJson("/api/work-orders/{$workOrder->id}")
+        ->assertOk()
+        ->assertJsonPath('data.company', null)
+        ->assertJsonPath('data.company_site', null)
+        ->assertJsonPath('data.operational_site', null);
 });

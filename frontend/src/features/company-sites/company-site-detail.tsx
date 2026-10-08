@@ -74,6 +74,7 @@ export function CompanySiteDetailView({
     data: site,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(['company-sites', 'detail', companySiteId], () =>
     fetchCompanySite(companySiteId),
@@ -82,6 +83,7 @@ export function CompanySiteDetailView({
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('companySites.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

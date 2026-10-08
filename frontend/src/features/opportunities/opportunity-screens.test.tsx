@@ -67,8 +67,11 @@ vi.mock('@/components/page-header', () => ({
 }))
 
 vi.mock('@/features/opportunities/opportunity-form', () => ({
-  OpportunityForm: ({ mode }: { mode: { type: string; fromLead?: { leadId: number } } }) => (
-    <p>form ready, lead {mode.fromLead ? mode.fromLead.leadId : 'none'}</p>
+  OpportunityForm: ({ mode }: { mode: { type: string; fromLead?: { leadId: number }; registryId?: number } }) => (
+    <>
+      <p>form ready, lead {mode.fromLead ? mode.fromLead.leadId : 'none'}</p>
+      <p>registry {mode.registryId ?? 'none'}</p>
+    </>
   ),
   OpportunityFormSkeleton: () => <p>loading</p>,
 }))
@@ -133,6 +136,23 @@ describe('OpportunityFormScreen create adapter (spec 0045)', () => {
 
     expect(await screen.findByText('form ready, lead none')).toBeInTheDocument()
     expect(fetchOpportunityDefaultsMock).not.toHaveBeenCalled()
+  })
+
+  // Spec 0199: "New opportunity" from the anagrafica detail's tab.
+  it('opens the create on the registry_id it is given', async () => {
+    renderScreen({ type: 'create', params: { registry_id: '30' } })
+
+    expect(await screen.findByText('registry 30')).toBeInTheDocument()
+    expect(fetchOpportunityDefaultsMock).not.toHaveBeenCalled()
+  })
+
+  it("ignores registry_id when converting a lead: the lead's own anagrafica wins", async () => {
+    fetchOpportunityDefaultsMock.mockResolvedValue(defaults(7))
+
+    renderScreen({ type: 'create', params: { lead_id: 7, registry_id: 99 } })
+
+    expect(await screen.findByText('form ready, lead 7')).toBeInTheDocument()
+    expect(screen.getByText('registry none')).toBeInTheDocument()
   })
 
   it('AC-013: the /opportunities/new?lead_id=7 deep-link still prefills, end to end (regression)', async () => {

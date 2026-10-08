@@ -155,6 +155,14 @@ export const tasks = {
     subtasksEmpty: 'This task has no sub-task yet.',
     created_at: 'Created at',
     updated_at: 'Updated at',
+    recurrenceRule: 'Rule',
+    recurrenceCard: {
+      offHint: 'This task does not repeat. Turn on a recurrence to generate its future occurrences automatically.',
+      endsNever: 'No end date',
+      endsOn: 'Until {{date}}',
+      endsAfter_one: '{{count}} occurrence',
+      endsAfter_other: '{{count}} occurrences',
+    },
     sections: {
       identity: 'Details',
       people: 'People',
@@ -173,26 +181,20 @@ export const tasks = {
       deleteSuccess: 'Sub-task deleted.',
       deleteError: 'Could not delete the sub-task. Please try again.',
       reorderError: 'Could not reorder the sub-tasks. Please try again.',
+      doneOf_one: 'of {{count}} done',
+      doneOf_other: 'of {{count}} done',
+      overallProgress: 'Overall sub-task progress',
+      emptyHint: 'Break the work into smaller steps, each with its own status, assignees and progress.',
     },
   },
   form: {
     createTitle: 'Create task',
     createSubtitle: 'Add a new task.',
-    editTitle: 'Edit task',
-    editSubtitle: 'Update the selected task.',
     newTask: 'New task',
     title: 'Title',
     titlePlaceholder: 'What needs to be done?',
     descriptionPlaceholder: 'Add details, context or instructions…',
-    header: {
-      status: 'Status',
-      endDate: 'Due',
-    },
     summary: {
-      title: 'Summary',
-      description: 'A preview of what will be saved.',
-      assigneesCount_one: '{{count}} assignee',
-      assigneesCount_other: '{{count}} assignees',
       recurrenceOff: 'Not recurring',
     },
     titleRequired: 'The title is required.',
@@ -282,40 +284,13 @@ export const tasks = {
       parentLocked: 'Set from the parent task this sub-task is created under.',
     },
     sections: {
-      identity: {
-        title: 'Task',
-        description: 'What the task is and where it sits in the hierarchy.',
-      },
       classification: {
         title: 'Classification',
-        description: 'Status, type and the attributes governing the task.',
-      },
-      registry: {
-        title: 'Account and contact',
-        description: 'Who the task is about.',
-      },
-      people: {
-        title: 'People',
-        description: 'Who requested it, who works on it and who follows it.',
-      },
-      planning: {
-        title: 'Scheduling',
-        description: 'Dates, times and the estimated effort.',
-      },
-      links: {
-        title: 'Linked records',
-        description: 'The opportunity or work order this task belongs to.',
-      },
-      closure: {
-        title: 'Closure',
-        description: 'Whether closing the task requires a written feedback.',
       },
       recurrence: {
         title: 'Recurrence',
-        description: 'When on, automatically generates the future occurrences of this task.',
       },
       subtasks: {
-        title: 'Sub-tasks',
         description: 'Create one or more child tasks right along with this one (optional).',
       },
     },
@@ -342,6 +317,16 @@ export const tasks = {
       },
       interval: 'Repeat every',
       intervalHint: 'Number of days, weeks, months or years between one occurrence and the next.',
+      intervalUnit: {
+        day_one: 'day',
+        day_other: 'days',
+        week_one: 'week',
+        week_other: 'weeks',
+        month_one: 'month',
+        month_other: 'months',
+        year_one: 'year',
+        year_other: 'years',
+      },
       intervalInvalid: 'Enter a whole number greater than or equal to 1.',
       weekdays: 'Days of the week',
       weekdaysRequired: 'Select at least one day of the week.',
@@ -356,14 +341,14 @@ export const tasks = {
       },
       monthMode: 'Day type',
       monthModeOption: {
-        fixed: 'Fixed day of month',
-        ordinal: 'Ordinal weekday',
+        fixed: 'Fixed date',
+        ordinal: 'Day of the week',
       },
       monthDay: 'Day of the month',
       monthDayInvalid: 'Enter a day between 1 and 31.',
       ordinal: 'Occurrence',
       ordinalInvalid: 'Choose an occurrence between 1 and 5.',
-      ordinalWeekday: 'Day of the week',
+      ordinalWeekday: 'Day',
       ordinalWeekdayInvalid: 'Choose a day of the week.',
       yearMonth: 'Month',
       yearMonthInvalid: 'Choose a month.',
@@ -373,7 +358,7 @@ export const tasks = {
       ends: 'Ends',
       endsOption: {
         on_date: 'On a date',
-        after_count: 'After a number of occurrences',
+        after_count: 'After N times',
         never: 'Never',
       },
       endsOn: 'Recurrence end date',
@@ -381,6 +366,10 @@ export const tasks = {
       endsOnAfterEndDate: "The recurrence end date must be after the task's due date.",
       occurrenceCount: 'Number of occurrences',
       occurrenceCountInvalid: 'Enter a whole number of occurrences, at least 1.',
+      occurrenceUnit_one: 'occurrence',
+      occurrenceUnit_other: 'occurrences',
+      preview: 'Rule preview',
+      previewIncomplete: 'Fill in the fields to see the rule.',
     },
     attachments: {
       title: 'Attachments',
@@ -393,6 +382,12 @@ export const tasks = {
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The task has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     created: 'Task created.',
     updated: 'Task updated.',
     deleted: 'Task deleted.',
@@ -407,7 +402,7 @@ export const tasks = {
    * sbagliata") split every action re-asserts server-side.
    */
   actions: {
-    complete: { label: 'Complete' },
+    complete: { label: 'Complete', done: 'Completed' },
     uncomplete: {
       label: 'Reopen',
       confirmDescription: 'The task moves back to "In progress".',
@@ -456,6 +451,7 @@ export const tasks = {
       timeEntryTitle: 'Time entry',
       timeEntryDescription: 'Log the time spent to complete the task.',
       trackTime: 'Track time',
+      forAllAssignees: 'Log the time entry for all assignees',
       confirm: 'Complete',
       saving: 'Saving…',
       success: 'Task completed.',

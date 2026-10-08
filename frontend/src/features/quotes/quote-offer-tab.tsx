@@ -2,9 +2,8 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { useWatch, type Control } from 'react-hook-form'
-import { Lock, LockOpen, TrendingUp } from 'lucide-react'
+import { Lock, LockOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { FormSection } from '@/components/form-section'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { MetaField } from '@/features/authorization/MetaField'
 import { fetchOpportunity, opportunityDetailQueryKey } from '@/features/opportunities/api'
@@ -115,73 +114,67 @@ export function QuoteOfferTab({
   }
 
   return (
-    <FormSection
-      icon={TrendingUp}
-      title={t('quotes.form.sections.offer.title')}
-      description={t('quotes.form.sections.offer.description')}
+    <MetaField
+      control={control}
+      name="offer_lines"
+      metaKey="offer_lines"
+      label={t('quotes.form.offerTab.fieldLabel')}
     >
-      <MetaField
-        control={control}
-        name="offer_lines"
-        metaKey="offer_lines"
-        label={t('quotes.form.offerTab.fieldLabel')}
-      >
-        {({ field, disabled }) => (
-          <div className="flex flex-col gap-2">
-            <QuoteLinesField
-              value={field.value}
-              onChange={field.onChange}
-              variant="revenue"
+      {({ field, disabled }) => (
+        <div className="flex flex-col gap-2">
+          <QuoteLinesField
+            value={field.value}
+            onChange={field.onChange}
+            variant="revenue"
+            disabled={disabled}
+            categoryIds={categoryIds}
+            canAddRow={!singleCategoryMode || field.value.length === 0}
+            errors={errors}
+            knownProducts={knownProducts}
+            knownVatRates={knownVatRates}
+            vatRatePercentFor={vatRatePercentFor}
+            rememberVatRatePercent={rememberVatRatePercent}
+            rememberProductTypology={rememberProductTypology}
+            rememberProductName={rememberProductName}
+            commissionContext={{ quoteId, commercialId, reporterId, supervisorId }}
+            allocatedCostNetByOfferLineKey={allocatedCostNetMap}
+          />
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              {opportunityId === null
+                ? t('quotes.form.offerTab.hintNoOpportunity')
+                : singleCategoryMode
+                  ? t('quotes.form.offerTab.hintSingleCategory')
+                  : unlocked
+                    ? t('quotes.form.offerTab.hintUnlocked')
+                    : lockedWithoutScope
+                      ? t('quotes.form.offerTab.hintNoCategories')
+                      : t('quotes.form.offerTab.hintScoped')}
+            </p>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               disabled={disabled}
-              categoryIds={categoryIds}
-              canAddRow={!singleCategoryMode || field.value.length === 0}
-              errors={errors}
-              knownProducts={knownProducts}
-              knownVatRates={knownVatRates}
-              vatRatePercentFor={vatRatePercentFor}
-              rememberVatRatePercent={rememberVatRatePercent}
-              rememberProductTypology={rememberProductTypology}
-              rememberProductName={rememberProductName}
-              commissionContext={{ quoteId, commercialId, reporterId, supervisorId }}
-              allocatedCostNetByOfferLineKey={allocatedCostNetMap}
-            />
-
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground">
-                {opportunityId === null
-                  ? t('quotes.form.offerTab.hintNoOpportunity')
-                  : singleCategoryMode
-                    ? t('quotes.form.offerTab.hintSingleCategory')
-                    : unlocked
-                      ? t('quotes.form.offerTab.hintUnlocked')
-                      : lockedWithoutScope
-                        ? t('quotes.form.offerTab.hintNoCategories')
-                        : t('quotes.form.offerTab.hintScoped')}
-              </p>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={disabled}
-                onClick={unlocked ? () => setUnlocked(false) : requestUnlock}
-              >
-                {unlocked ? (
-                  <>
-                    <Lock aria-hidden="true" className="size-3.5" />
-                    {t('quotes.form.offerTab.relock')}
-                  </>
-                ) : (
-                  <>
-                    <LockOpen aria-hidden="true" className="size-3.5" />
-                    {t('quotes.form.offerTab.unlock')}
-                  </>
-                )}
-              </Button>
-            </div>
+              onClick={unlocked ? () => setUnlocked(false) : requestUnlock}
+            >
+              {unlocked ? (
+                <>
+                  <Lock aria-hidden="true" className="size-3.5" />
+                  {t('quotes.form.offerTab.relock')}
+                </>
+              ) : (
+                <>
+                  <LockOpen aria-hidden="true" className="size-3.5" />
+                  {t('quotes.form.offerTab.unlock')}
+                </>
+              )}
+            </Button>
           </div>
-        )}
-      </MetaField>
-    </FormSection>
+        </div>
+      )}
+    </MetaField>
   )
 }

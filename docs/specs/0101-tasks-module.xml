@@ -427,7 +427,7 @@
             estimated_minutes, is_blocked,
             requires_closure_feedback, closure_feedback,
             completion_percentage: int,          derivato dallo stato (D-6)
-            subtasks: [{id, title, task_status:{id,name,color,icon}, completion_percentage, assignees:[{id,name}]}],
+            subtasks: [{id, title, task_status:{id,name,color,icon,system_key,group,completion_percentage}, task_type:{id,name,color,icon}|null, completion_percentage, assignees:[{id,name}]}],
             created_at, updated_at
           }, permissions }
       </response>
@@ -592,7 +592,7 @@
     <criterion id="AC-082">Il picker del Task padre non offre il Task stesso.</criterion>
     <criterion id="AC-083">Assegnatari e Osservatori usano il multi-select utenti esistente e inviano array piatti di id; lo stesso utente puo' essere in entrambi.</criterion>
     <criterion id="AC-084">Il form mostra la percentuale come valore DERIVATO in sola lettura, che si aggiorna scegliendo un altro stato, e non e' mai inviata al server.</criterion>
-    <criterion id="AC-085">La sezione Sotto-task nel dettaglio elenca i figli, apre il loro dettaglio e permette di crearne uno nuovo con il padre precompilato e bloccato; le azioni rispettano i permessi.</criterion>
+    <criterion id="AC-085">La sezione Sotto-task nel dettaglio elenca i figli, apre il loro dettaglio in una modale sopra il padre, qualunque sia la preferenza di apertura dell'utente (decisione utente 2026-10-06), e permette di crearne uno nuovo con il padre precompilato e bloccato; le azioni rispettano i permessi.</criterion>
     <criterion id="AC-086">Il flag bloccato/contestato e' visibile nella tabella, nel dettaglio e nel form, ed e' distinto dallo Stato.</criterion>
     <criterion id="AC-087">I form dei 5 configuratori usano `ColorTokenPicker` e `IconPicker` esistenti, non nuovi componenti.</criterion>
     <criterion id="AC-088">Il form Task e il dettaglio restano leggibili a 375px senza scrollbar orizzontale.</criterion>

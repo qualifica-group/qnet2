@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -12,24 +12,22 @@ import { parseEntityId } from '@/routes/entity-id'
 import NotFoundPage from '@/pages/not-found-page'
 
 /**
- * Dedicated read-only page of a single registry (spec 0022, replaces the view
- * Sheet). Fetches the fresh, re-authorized detail on mount — same query key as
- * before — and renders the unchanged presentational `RegistryDetailView`. The
- * record card owns the single "Edit" affordance (the record kit's
- * `detailOwnsEditAction` convention, Opportunità), gated by the `permissions`
- * block of THIS response, not by a static ability: the backend remains the
- * authority.
+ * Dedicated page of a single registry (spec 0022, replaces the view Sheet).
+ * Fetches the fresh, re-authorized detail on mount and renders
+ * `RegistryDetailView`, which edits its fields in place (spec 0200) under the
+ * `permissions` block of THIS response, not a static ability: the backend
+ * remains the authority. There is no edit page.
  */
 export default function RegistryDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams()
-  const navigate = useNavigate()
   const registryId = parseEntityId(id)
 
   const {
     data: registry,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(
     registryDetailQueryKey(registryId),
@@ -62,6 +60,7 @@ export default function RegistryDetailPage() {
       <div className="flex flex-1 flex-col overflow-hidden rounded-lg border">
         {isError ? (
           <DetailError
+            error={error}
             message={t('registries.detail.loadError')}
             retryLabel={t('common.retry')}
             onRetry={() => refetch()}
@@ -69,10 +68,7 @@ export default function RegistryDetailPage() {
         ) : isLoading || !registry ? (
           <DetailLoading />
         ) : (
-          <RegistryDetailView
-            registry={registry}
-            onEdit={() => void navigate(`/registries/${registryId}/edit`)}
-          />
+          <RegistryDetailView registry={registry} />
         )}
       </div>
     </div>

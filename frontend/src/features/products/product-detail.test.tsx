@@ -49,7 +49,7 @@ function product(overrides: Partial<ProductDetailWithPermissions> = {}): Product
     unit_of_measure_id: 1,
     unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
     product_typology_id: 1,
-    product_typology: { id: 1, name: 'Ente' },
+    product_typology: { id: 1, name: 'Ente', color: 'violet' },
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
       fields: {},
@@ -61,6 +61,18 @@ function product(overrides: Partial<ProductDetailWithPermissions> = {}): Product
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
+})
+
+describe('ProductDetailView — typology badge (spec 0204 AC-005)', () => {
+  it('shows the typology as a badge in its colour, in the header and in the classification', () => {
+    render(<ProductDetailView product={product()} />)
+
+    const badges = screen.getAllByText('Ente')
+    expect(badges).toHaveLength(2)
+    for (const badge of badges) {
+      expect(badge).toHaveClass('bg-violet-100')
+    }
+  })
 })
 
 describe('ProductDetailView — VAT rate + Supplier', () => {

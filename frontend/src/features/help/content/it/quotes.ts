@@ -10,14 +10,17 @@ const guide: HelpGuide = {
       title: "Creare un'offerta",
       blocks: [
         {
+          type: 'paragraph',
+          text: "Il modulo di creazione ha lo stesso aspetto del dettaglio dell'offerta: le stesse sezioni e righe, **chiuse**. Apri una riga con la matita, compila il campo e premi **Fatto** per tenerlo (o **Ripristina** per riportarlo com'era). Il **Codice** è già proposto.",
+        },
+        {
           type: 'steps',
           items: [
             "Apri **Offerte** e clicca **Nuova offerta** (oppure parti dalla scheda dell'opportunità).",
-            'Compila i dati principali (vedi tabella).',
-            "Nella scheda **Offerta** aggiungi le righe dei prodotti venduti.",
-            'Nella scheda **Costi** aggiungi le righe di costo.',
-            'Nella scheda **Note e pagamenti** indica il metodo di pagamento e le note interne.',
-            'Clicca **Salva**.',
+            "Nei **Dati offerta** scegli l'**Opportunità**: Commerciale, Segnalatore, Supervisore, Gestori account e Sede operativa vengono precompilati dall'opportunità (puoi cambiarli).",
+            'Compila le altre righe che ti servono (vedi tabella).',
+            'In fondo, nella scheda **Offerta** aggiungi le righe dei prodotti venduti e nella scheda **Costi** le righe di costo: le griglie sono già aperte e il riepilogo si aggiorna mentre scrivi.',
+            'Clicca **Salva** (in alto o in fondo): QNet controlla tutti i campi e crea l\'offerta; gli errori compaiono sotto le righe da correggere.',
           ],
         },
         {
@@ -26,15 +29,19 @@ const guide: HelpGuide = {
           rows: [
             [
               'Dati offerta',
-              '**Codice**, **Titolo**, **Opportunità**, **Commerciale**, **Segnalatore**',
-              'Lascia vuoto il codice per generarlo in automatico.',
+              '**Codice**, **Titolo**, **Opportunità**',
+              "L'opportunità non si cambia dopo la creazione.",
             ],
+            ['Anagrafica e contatti', '**Commerciale**, **Segnalatore** (con i suoi **Buoni**)', "Precompilati dall'opportunità."],
             ['Team', '**Supervisore**, **Gestori account**', "Sincronizzati con l'opportunità."],
             ['Società e sedi', '**Società**, **Società sede**, **Sede operativa**', 'Scegli prima la società.'],
-            ['Layout documento', '**Layout**', 'Il modello usato per il PDF.'],
-            ['Stato', '**Stato**, **Nota**', 'Vedi sotto.'],
-            ['Note e pagamenti', '**Metodo di pagamento**, **Note interne**', 'Le note interne non sono visibili al cliente.'],
+            ['Documento e pagamento', '**Layout**, **Metodo di pagamento**', 'Il layout predefinito è già proposto.'],
+            ['Note interne', '**Note interne**', 'Non sono visibili al cliente.'],
           ],
+        },
+        {
+          type: 'note',
+          text: "Le **Informazioni aggiuntive** compaiono appena una riga offerta ha un prodotto che le prevede. Uscendo senza salvare (Annulla, chiusura del pannello, un link) ti viene chiesta conferma.",
         },
         {
           type: 'note',
@@ -43,6 +50,59 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: "Il **Titolo** è facoltativo: se lo lasci vuoto QNet usa il codice dell'offerta seguito dai prodotti delle sue righe di ricavo (per esempio QUO-0042 - ISO 9001 + SOA) e lo aggiorna quando cambi le righe. Se scrivi un titolo tuo resta quello; svuota il campo per tornare al titolo automatico.",
+        },
+      ],
+    },
+    {
+      id: 'editing-a-quote',
+      title: "Modificare un'offerta",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Non esiste una pagina di modifica separata: l'offerta si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga) e le righe **Offerta** e **Costi**.",
+        },
+        {
+          type: 'steps',
+          items: [
+            "Apri l'offerta dall'elenco.",
+            'Passa col mouse sul campo da cambiare e premi la **matita** (o fai clic sul valore).',
+            'Modifica il valore nel controllo che compare.',
+            "Premi **Salva** (o Invio nei campi di testo) per salvare solo quel campo; **Annulla** (o Esc, o un clic fuori dal campo aperto) per chiuderlo lasciandolo com'era, senza salvare.",
+          ],
+        },
+        {
+          type: 'tip',
+          text: "Le **Note interne** stanno nel riquadro giallo in cima al dettaglio, come le Note generali in Gestione Richieste: se sono vuote il riquadro invita a scriverle; con la matita (o un clic sul testo) le scrivi direttamente nel riquadro. Subito sotto, in un riquadro uguale ma in sola lettura, trovi le **Note generali dell'opportunità**.",
+        },
+        {
+          type: 'note',
+          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Codice, Opportunità). Anagrafica, Referente, Fonte, Funzioni aziendali e Note generali vengono dall'opportunità e restano in sola lettura.",
+        },
+        {
+          type: 'list',
+          items: [
+            "Le righe **Offerta** e **Costi** hanno una matita ciascuna: si apre la griglia di modifica e il riepilogo sotto mostra i totali di ciò che stai scrivendo. Se i nuovi prodotti portano altre Informazioni aggiuntive, compaiono sotto la griglia: compilale nello stesso salvataggio (quelle obbligatorie servono per salvare).",
+            "I **Buoni** si modificano dalla riga **Segnalatore**. Cambiando Commerciale, Segnalatore o Supervisore QNet aggiorna da sé le commissioni delle righe.",
+            "Cambiando la **Società** la **Società sede** viene svuotata nello stesso salvataggio.",
+          ],
+        },
+      ],
+    },
+    {
+      id: 'list-editing',
+      title: "Modifica rapida dall'elenco",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Un clic su una cella modificabile (Titolo, Stato, Commerciale, Segnalatore, Supervisore, Gestori account, Società, Società sede, Sede operativa) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+        },
+        {
+          type: 'note',
+          text: "Lo **Stato** offre solo gli stati del workflow dell'offerta e chiede la **nota** quando lo stato scelto la richiede. Cambiando la **Società** la Società sede si svuota; la Società sede si sceglie tra le sedi della società della riga. Cambiando un ruolo le commissioni delle righe si ricalcolano come dal dettaglio; un Titolo vuoto torna al titolo automatico.",
+        },
+        {
+          type: 'paragraph',
+          text: "Togliendo o aggiungendo persone nei **Gestori account** gli altri restano nella loro posizione. Restano in sola lettura Codice, Opportunità, Ricavo/Costo/Margine netto, Creato il, Prossimo richiamo e Avviso.",
         },
       ],
     },
@@ -68,7 +128,7 @@ const guide: HelpGuide = {
             'Nella scheda **Offerta** scegli solo prodotti **Vendibile** (prezzo proposto: prezzo di vendita); nella scheda **Costi** solo prodotti **Utilizzabile come costo** (prezzo proposto: costo).',
             'Scelto il prodotto, QNet precompila unità, prezzo e IVA: puoi modificarli.',
             '**Descrizione aggiuntiva** aggiunge un testo alla riga, stampabile nel preventivo.',
-            'Le **Commissioni** di ogni riga si possono aprire e modificare solo per quella riga.',
+            "Le **Commissioni** di ogni riga si possono aprire e modificare solo per quella riga. Il popup mostra in alto imponibile della riga, costi imputati, base di calcolo e totale commissioni; per ogni ruolo un'etichetta indica l'origine della commissione (**Regola: Prodotto**, **Regola: Categoria** o **Regola personale** se viene da una regola del Configuratore, **Modifica manuale** se è stata cambiata a mano; passando sopra l'etichetta compare la spiegazione). In modifica, ogni ruolo mostra anche il **Calcolo di sistema** (quanto prevede il Configuratore Commissioni): se hai cambiato il valore a mano puoi tenerlo oppure tornare al calcolo con **Applica calcolo di sistema**.",
             'Ogni riga di costo ha un **Prodotto associato**: scegli "Nessuno (costo generico)" oppure una riga del tab Prodotti, per imputare quel costo a quella vendita. Eliminando la riga prodotto associata, il costo torna automaticamente "Nessuno".',
             'Al massimo 200 righe per scheda.',
           ],
@@ -79,7 +139,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Il riepilogo mostra, in quest\'ordine, **Ricavi attesi**, **Costi attesi**, il **Riepilogo Commissioni** e il **Margine atteso** (ricavi netti meno costi netti meno commissioni), oltre al **Riepilogo per Tipologia Prodotto**. Le commissioni a percentuale si calcolano sul margine della riga prodotto (ricavo netto meno i costi imputati a quella riga, mai sotto zero): il **Margine per prodotto** mostra ricavo, costo imputato, commissioni e margine di ogni riga prodotto, più una riga "Costi generici" per i costi non associati. Questo blocco è visibile solo a chi può vedere le commissioni.',
+          text: 'Il riepilogo mostra, in quest\'ordine, **Ricavi attesi**, **Costi attesi**, il **Riepilogo Commissioni** e il **Margine atteso** (somma dei margini delle righe meno i costi generici: una riga con commissione Fornitore **ricevuta** ha come ricavo la sola commissione, le altre sono imponibile meno costi e commissioni pagate; i **Ricavi attesi** non cambiano), oltre al **Riepilogo per Tipologia Prodotto**. Le commissioni a percentuale si calcolano sul margine della riga prodotto (ricavo netto meno i costi imputati a quella riga, mai sotto zero): il **Margine per prodotto** mostra ricavo, costo imputato, commissioni e margine di ogni riga prodotto (sulle righe con commissione ricevuta compare "ricavo = commissione ricevuta"), più una riga "Costi generici" per i costi non associati. Il blocco si apre con **Mostra dati avanzati**, sotto le card del riepilogo, ed è visibile solo a chi può vedere le commissioni.',
         },
         {
           type: 'warning',
@@ -98,9 +158,9 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri l\'offerta in modifica.',
-            'Nella sezione **Stato** scegli il nuovo stato.',
-            'Se lo stato è segnato **Nota richiesta**, scrivi la **Nota** (viene registrata tra le note dell\'opportunità).',
+            "Nel dettaglio dell'offerta premi la matita della riga **Stato** (nei Dati offerta).",
+            'Scegli il nuovo stato.',
+            'Se lo stato è segnato **Nota richiesta**, scrivi la **Nota** che compare sotto (viene registrata tra le note dell\'opportunità).',
             'Clicca **Salva**.',
           ],
         },

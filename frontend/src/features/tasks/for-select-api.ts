@@ -12,6 +12,9 @@ export const TASK_CATEGORIES_FOR_SELECT_RESOURCE = 'task-categories'
 export const TASK_PRIORITIES_FOR_SELECT_RESOURCE = 'task-priorities'
 export const TASK_IMPORTANCES_FOR_SELECT_RESOURCE = 'task-importances'
 
+/** Resource segment of the work orders for-select endpoint (`GET /api/work-orders/for-select`), read by the task's Commessa field. */
+export const WORK_ORDERS_FOR_SELECT_RESOURCE = 'work-orders'
+
 /**
  * The presentation bag `GET /api/task-statuses/for-select` carries on each
  * option, mirroring `TaskStatusForSelectResource::forSelectItem()` key for key

@@ -19,6 +19,7 @@ use App\Services\TablePreferenceService;
 use App\Services\TableService;
 use App\Support\Cache\AggregateCache;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
+use App\Tables\RegistryScopable;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
@@ -74,6 +75,7 @@ class TableController extends BaseApiController
             $this->scopeToProductCategory($definition, $request->productCategoryId());
             $this->scopeToOpportunity($definition, $request->opportunityId());
             $this->scopeToQuote($definition, $request->quoteId());
+            $this->scopeToRegistry($definition, $request->registryId());
 
             return $this->ok($this->resolvedConfig($definition, $actor));
         } catch (Throwable $exception) {
@@ -230,6 +232,8 @@ class TableController extends BaseApiController
             $this->scopeToOpportunity($definition, $opportunityId === null ? null : (int) $opportunityId);
             $quoteId = $payload['quoteId'] ?? null;
             $this->scopeToQuote($definition, $quoteId === null ? null : (int) $quoteId);
+            $registryId = $payload['registryId'] ?? null;
+            $this->scopeToRegistry($definition, $registryId === null ? null : (int) $registryId);
             $this->authorizeTreeParent($definition, $actor, $payload['treeParentId'] ?? null);
 
             $result = $this->service->rows($definition, $actor, $payload);
@@ -305,6 +309,7 @@ class TableController extends BaseApiController
             $this->scopeToProductCategory($definition, $payload['productCategoryId']);
             $this->scopeToOpportunity($definition, $payload['opportunityId']);
             $this->scopeToQuote($definition, $payload['quoteId']);
+            $this->scopeToRegistry($definition, $payload['registryId']);
 
             // Per actor always: grid visibility rules are evaluated per user (spec
             // 0178, D-5). The column id goes into the hash too: an `attr.*` id is
@@ -427,6 +432,19 @@ class TableController extends BaseApiController
     {
         if ($definition instanceof QuoteScopedTableDefinition) {
             $definition->scopeToQuote($quoteId);
+        }
+    }
+
+    /**
+     * Spec 0199: narrows a `RegistryScopable` definition (`opportunities`,
+     * `quotes`, `work-orders`, `tasks`) to one client's records. A no-op for
+     * every other domain, and never called from the persistence endpoints,
+     * mirroring `scopeToQuote()`.
+     */
+    private function scopeToRegistry(TableDefinition $definition, ?int $registryId): void
+    {
+        if ($definition instanceof RegistryScopable) {
+            $definition->scopeToRegistry($registryId);
         }
     }
 

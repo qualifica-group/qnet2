@@ -65,15 +65,15 @@ describe('quotes document generation i18n (spec 0070)', () => {
     expect(itLocale.actions.generatePdf).toBeTruthy()
   })
 
-  it('translates the Layout field, its search placeholder and its form section', () => {
+  // Spec 0197: the Layout is a row of the record's "Documento e pagamento"
+  // section, no longer a form section of its own.
+  it('translates the Layout field, its search placeholder and its record section', () => {
     expect(en.quotes.form.layout).toBeTruthy()
     expect(itLocale.quotes.form.layout).toBeTruthy()
     expect(en.quotes.form.layoutSearch).toBeTruthy()
     expect(itLocale.quotes.form.layoutSearch).toBeTruthy()
-    expect(en.quotes.form.sections.layout.title).toBeTruthy()
-    expect(itLocale.quotes.form.sections.layout.title).toBeTruthy()
-    expect(en.quotes.form.sections.layout.description).toBeTruthy()
-    expect(itLocale.quotes.form.sections.layout.description).toBeTruthy()
+    expect(en.quotes.detail.sections.document).toBeTruthy()
+    expect(itLocale.quotes.detail.sections.document).toBeTruthy()
   })
 
   it('translates the detail Layout field and the document-generation messages', () => {
@@ -90,9 +90,6 @@ describe('quotes document generation i18n (spec 0070)', () => {
   })
 })
 
-// Directive 2026-07-30: the Note tab became "Note e pagamenti" and hosts the
-// payment method picker, so its field/search/detail labels must exist in both
-// locales and the tab label must no longer be the bare "Note"/"Notes".
 // Spec 0083 (AC-050/AC-051): the quote's own operational status select and
 // its conditional transition note must exist in both locales.
 describe('quotes workflow status i18n (spec 0083)', () => {
@@ -136,11 +133,27 @@ describe('quotes payment method i18n', () => {
     expect(itLocale.quotes.detail.paymentMethod).toBeTruthy()
   })
 
-  it('renames the notes tab and section to cover payments in both locales', () => {
-    expect(itLocale.quotes.form.tabs.notes).toBe('Note e pagamenti')
-    expect(itLocale.quotes.form.sections.notes.title).toBe('Note e pagamenti')
-    expect(en.quotes.form.tabs.notes).toBe('Notes and payments')
-    expect(en.quotes.form.sections.notes.title).toBe('Notes and payments')
+})
+
+// Spec 0197: the in-place detail and the create replica (leave confirmation,
+// the buoni counted under a closed Segnalatore row, the Attributes new
+// products bring into the offer rows' editor).
+describe('quotes in-place record i18n (spec 0197)', () => {
+  it('translates the create leave confirmation', () => {
+    for (const locale of [en, itLocale]) {
+      expect(locale.quotes.form.leaveConfirm.title).toBeTruthy()
+      expect(locale.quotes.form.leaveConfirm.description).toBeTruthy()
+      expect(locale.quotes.form.leaveConfirm.confirm).toBeTruthy()
+      expect(locale.quotes.form.leaveConfirm.cancel).toBeTruthy()
+    }
+  })
+
+  it('translates the reward count and the new-attributes block', () => {
+    for (const locale of [en, itLocale]) {
+      expect(locale.quotes.detail.rewardsCount_one).toBeTruthy()
+      expect(locale.quotes.detail.rewardsCount_other).toBeTruthy()
+      expect(locale.quotes.detail.newAttributes).toBeTruthy()
+    }
   })
 })
 

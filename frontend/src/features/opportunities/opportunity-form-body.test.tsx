@@ -1,140 +1,67 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { OpportunityForm } from '@/features/opportunities/opportunity-form'
-import type { ResourceMeta } from '@/features/authorization/types'
-import type { OpportunityDetailWithPermissions } from '@/features/opportunities/types'
+import type { FieldPermission, ResourceMeta } from '@/features/authorization/types'
+import {
+  FULL_PERMISSIONS,
+  ROW,
+  SELECT_IDS,
+  formTestWrapper,
+  openRow,
+  queryPencil,
+  resolveForSelectLabels,
+} from '@/features/opportunities/opportunity-form-test-helpers'
 
 /**
  * AC-071 (every field of the contract renders), AC-074 (field permissions:
- * hidden vs disabled). Spec 0171: the title is a form input again
- * (superseding spec 0057 D-5), blank in create and prefilled in edit.
+ * hidden vs not editable). Spec 0171: the title is a form input again
+ * (superseding spec 0057 D-5), blank in create.
+ *
+ * Spec 0198: the create form is a replica of the detail, its rows CLOSED — a
+ * row's control exists only once its pencil is pressed. The edit form is gone
+ * (the detail edits in place, covered by `opportunity-detail.test.tsx`).
  *
  * The `?lead_id=N` deep-link create-from-lead mode (AC-075), the in-form
- * "Lead" select (AC-086/087/088, spec 0044 supervisor prefill AC-025/034) and
- * the anagrafica pick (referent scoping, inherited roles and team) are split
- * into their own files for size (engineering.md §6): see
- * `opportunity-form-from-lead.test.tsx`, `opportunity-lead-selection.test.tsx`
- * and `opportunity-registry-role-inheritance.test.tsx`.
+ * "Lead" select (AC-086/087), the anagrafica pick (referent scoping, inherited
+ * roles and team) and the draft-row behavior (Done/Revert/invalid save) are
+ * split into their own files for size (engineering.md §6).
  */
 
 const createOpportunityMock = vi.fn()
-const updateOpportunityMock = vi.fn()
 
-/**
- * The row's category picker reads the category TREE (user directive
- * 2026-08-03) and mounts its own quick-create affordance; this suite is about
- * the surrounding form, so it stands in for the picker with the shared double.
- * The row's own two-step pick (root category, spec 0132) is exercised against
- * these same doubles in `opportunity-form-body-product-lines.test.tsx`, split
- * out for size (engineering.md §6) — this file only asserts the row RENDERS.
- */
 vi.mock('@/features/product-lines/product-category-tree-select', async () =>
   await import('@/features/product-lines/product-category-tree-select-stub'))
 
-/** The row's FIRST step (spec 0132), same double style as the category picker above. */
-vi.mock('@/features/product-lines/product-category-root-select', () => ({
-  ProductCategoryRootSelect: ({
-    value,
-    onChange,
-    disabled,
-    triggerLabel,
-  }: {
-    value: number | null
-    onChange: (rootCategoryId: number) => void
-    disabled?: boolean
-    triggerLabel: string
-  }) => (
-    <div data-testid={`select-${triggerLabel}`}>
-      <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
-      <span data-testid={`disabled-${triggerLabel}`}>{String(Boolean(disabled))}</span>
-      {(SELECT_IDS[triggerLabel] ?? [1]).map((id) => (
-        <button key={id} type="button" onClick={() => onChange(id)}>
-          {`select ${triggerLabel} ${id}`}
-        </button>
-      ))}
-    </div>
-  ),
+vi.mock('@/features/product-lines/product-category-root-select', async () => ({
+  ProductCategoryRootSelect: (await import('@/features/opportunities/opportunity-form-test-helpers'))
+    .ProductCategoryRootSelectDouble,
+}))
+
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/opportunities/opportunity-form-test-helpers'))
+    .AsyncPaginatedSelectDouble,
 }))
 
 vi.mock('@/features/opportunities/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/opportunities/api')>(
     '@/features/opportunities/api',
   )
-  return {
-    ...actual,
-    createOpportunity: (...args: unknown[]) => createOpportunityMock(...args),
-    updateOpportunity: (...args: unknown[]) => updateOpportunityMock(...args),
-  }
+  return { ...actual, createOpportunity: (...args: unknown[]) => createOpportunityMock(...args) }
 })
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
-
-const FULL_PERMISSIONS = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
-}
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-/** Spec 0043 D-3: the create form preselects this resolved "Nuova" status id. */
-const fetchSystemStatusIdMock = vi.fn<() => Promise<number | null>>()
-vi.mock('@/features/status-reorder/api', () => ({
-  fetchSystemStatusId: () => fetchSystemStatusIdMock(),
-}))
-
-const TEST_REGISTRY_WITH_DEFAULTS = 10
-const TEST_REGISTRY_WITHOUT_DEFAULTS = 20
-const TEST_BUSINESS_FUNCTION = 40
-const TEST_PRODUCT_CATEGORY = 500
-const TEST_ROOT_CATEGORY = 30
-
-function editOpportunity(): OpportunityDetailWithPermissions {
-  return {
-    id: 1,
-    name: 'Enterprise deal',
-    registry_id: TEST_REGISTRY_WITH_DEFAULTS,
-    registry: { id: TEST_REGISTRY_WITH_DEFAULTS, name: 'Acme S.p.A.' },
-    referent_id: null,
-    referent: null,
-    commercial_id: null,
-    commercial: null,
-    reporter_id: null,
-    reporter: null,
-    supervisor_id: null,
-    supervisor: null,
-    source_id: null,
-    source: null,
-    operational_site_id: null,
-    operational_site: null,
-    status: { source: 'default', distinct_count: 0, entries: [] },
-    product_lines: [
-      {
-        id: 1,
-        business_function: { id: TEST_BUSINESS_FUNCTION, name: 'Sales' },
-        product_category: { id: TEST_PRODUCT_CATEGORY, name: 'Consulting' },
-      },
-    ],
-    lead_id: null,
-    lead: null,
-    managers: [],
-    start_date: null,
-    expected_close_date: null,
-    estimated_value: null,
-    success_probability: null,
-    locked_fields: [],
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z',
-    permissions: FULL_PERMISSIONS,
-  }
-}
+const fetchForSelectMock = vi.fn()
+vi.mock('@/features/for-select/api', async () => {
+  const actual = await vi.importActual<typeof import('@/features/for-select/api')>('@/features/for-select/api')
+  return { ...actual, fetchForSelect: (...args: unknown[]) => fetchForSelectMock(...args) }
+})
 
 function labelFor(text: string): HTMLElement {
   return screen.getByText(
@@ -142,73 +69,14 @@ function labelFor(text: string): HTMLElement {
   )
 }
 
-/** Fixed selection ids exposed per field (by accessible trigger label), so BR-4 side effects are exercisable without a real dropdown. */
-const SELECT_IDS: Record<string, number[]> = {
-  Registry: [TEST_REGISTRY_WITH_DEFAULTS, TEST_REGISTRY_WITHOUT_DEFAULTS],
-  'Parent category 1': [TEST_ROOT_CATEGORY],
-  'Product category 1': [TEST_PRODUCT_CATEGORY],
+function renderCreateForm() {
+  return render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+    wrapper: formTestWrapper(),
+  })
 }
 
-/**
- * Stubs every single-select field, keyed by its accessible trigger label
- * (mirrors `campaign-project-link.test.tsx`): exposes the current value,
- * disabled state and the `params` this instance received (BR-4 scoping), plus
- * a "select" affordance per fixed id so onChange side effects are exercisable.
- */
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({
-    value,
-    onChange,
-    disabled,
-    params,
-    labels,
-  }: {
-    value: number | null
-    onChange: (value: number | null) => void
-    disabled?: boolean
-    params?: Record<string, string | number>
-    labels: { triggerLabel: string }
-  }) => (
-    <div data-testid={`select-${labels.triggerLabel}`}>
-      <span data-testid={`value-${labels.triggerLabel}`}>{value ?? ''}</span>
-      <span data-testid={`disabled-${labels.triggerLabel}`}>{String(Boolean(disabled))}</span>
-      <span data-testid={`params-${labels.triggerLabel}`}>{JSON.stringify(params ?? null)}</span>
-      {(SELECT_IDS[labels.triggerLabel] ?? [1]).map((id) => (
-        <button key={id} type="button" onClick={() => onChange(id)}>
-          {`select ${labels.triggerLabel} ${id}`}
-        </button>
-      ))}
-      <button type="button" onClick={() => onChange(null)}>{`clear ${labels.triggerLabel}`}</button>
-    </div>
-  ),
-}))
-
-/**
- * Controls the one-shot `meta` fetch behind the registry prefill (BR-4/A-5)
- * and the product-lines draft picker's label resolution (amendment rev.3):
- * both go through the generic `fetchForSelect`, mocked here per resource+id.
- */
-const fetchForSelectMock = vi.fn()
-vi.mock('@/features/for-select/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
-    '@/features/for-select/api',
-  )
-  return {
-    ...actual,
-    fetchForSelect: (...args: unknown[]) => fetchForSelectMock(...args),
-  }
-})
-
-const EMPTY_PAGE = { items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }
-
-/** The products-of-interest picker opens the shared confirm dialog, so its provider is required. */
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-    </QueryClientProvider>
-  )
+function permissionsWith(fields: Record<string, FieldPermission>): ResourceMeta {
+  return { fields: [], permissions: { ...FULL_PERMISSIONS, fields } }
 }
 
 beforeAll(async () => {
@@ -216,117 +84,85 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  for (const key of Object.keys(SELECT_IDS)) {
+    delete SELECT_IDS[key]
+  }
   createOpportunityMock.mockReset()
-  updateOpportunityMock.mockReset()
   fetchResourceMetaMock.mockReset()
   fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_PERMISSIONS })
-
-  fetchSystemStatusIdMock.mockReset()
-  fetchSystemStatusIdMock.mockResolvedValue(null)
-
   fetchForSelectMock.mockReset()
-  fetchForSelectMock.mockImplementation(async (resource: string, params: { ids?: number[] }) => {
-    if (resource === 'registries' && params?.ids?.includes(TEST_REGISTRY_WITH_DEFAULTS)) {
-      return {
-        ...EMPTY_PAGE,
-        items: [
-          {
-            id: TEST_REGISTRY_WITH_DEFAULTS,
-            label: 'Acme S.p.A.',
-            meta: {
-              commercial: { id: 71, name: 'Sara Conti' },
-              reporter: { id: 81, name: 'Elio Fabbri' },
-              supervisor: { id: 61, name: 'Ivo Bianchi' },
-              // A-5: account managers inherited into manager_slots (gap-aware by position).
-              managers: [
-                { id: 91, name: 'Gina Manager', position: 1 },
-                { id: 93, name: 'Turi Manager', position: 3 },
-              ],
-            },
-          },
-        ],
-      }
-    }
-    if (resource === 'registries' && params?.ids?.includes(TEST_REGISTRY_WITHOUT_DEFAULTS)) {
-      return {
-        ...EMPTY_PAGE,
-        items: [
-          {
-            id: TEST_REGISTRY_WITHOUT_DEFAULTS,
-            label: 'Beta Srl',
-            meta: { commercial: null, reporter: null, supervisor: null, managers: [] },
-          },
-        ],
-      }
-    }
-    return EMPTY_PAGE
-  })
+  fetchForSelectMock.mockImplementation(async (resource: string, params: { ids?: number[] }) =>
+    resolveForSelectLabels(resource, params),
+  )
 })
 
 describe('OpportunityFormBody — fields render (AC-071)', () => {
-  it('renders every relational select, and a blank title input (spec 0171)', async () => {
-    render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  // REQUIREMENT CHANGED (spec 0198): the controls no longer render up front —
+  // every row is closed (value or placeholder + pencil); the control of a row
+  // appears only once its pencil is pressed.
+  it('renders every field as a closed row, each opening on its own control (spec 0171, spec 0198)', async () => {
+    renderCreateForm()
 
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('')
+    // The originating Lead is the one open control: not a row, not a form field.
+    await waitFor(() => expect(screen.getByTestId('select-Lead')).toBeInTheDocument())
+    for (const testId of [
+      'select-Registry',
+      'select-Contact',
+      'select-Sales rep',
+      'select-Reporter',
+      'select-Source',
+      'select-Supervisor',
+      'select-Parent category 1',
+    ]) {
+      expect(screen.queryByTestId(testId)).not.toBeInTheDocument()
+    }
+    expect(screen.queryByRole('textbox', { name: 'Title' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add account manager' })).not.toBeInTheDocument()
     // Spec 0082: the status is COMPUTED, never a form field — and since the
-    // 2026-08-05 directive it is not repeated in the form body at all: the
-    // identity bar carries it, merged the way the table merges it.
+    // 2026-08-05 directive it is not repeated in the form body at all.
     expect(screen.queryByTestId('select-Opportunity Status')).not.toBeInTheDocument()
     expect(screen.queryByText('No status')).not.toBeInTheDocument()
-    expect(screen.getByTestId('select-Contact')).toBeInTheDocument()
-    expect(screen.getByTestId('select-Sales rep')).toBeInTheDocument()
-    expect(screen.getByTestId('select-Reporter')).toBeInTheDocument()
-    expect(screen.getByTestId('select-Source')).toBeInTheDocument()
-    // User directive 2026-08-05: Sede operativa and Regione are hidden here —
-    // they are Gestione Richieste' business. The VALUES survive untouched
-    // (covered in `opportunity-lead-selection.test.tsx`), only the pickers
-    // are gone.
-    expect(screen.queryByTestId('select-Operational site')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('select-Region')).not.toBeInTheDocument()
-    expect(screen.getByTestId('select-Supervisor')).toBeInTheDocument()
+
+    openRow(ROW.title)
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('')
+
+    openRow(ROW.registry)
+    expect(screen.getByTestId('select-Registry')).toBeInTheDocument()
+    // The previous row closed on its own: one editor at a time.
+    expect(screen.queryByRole('textbox', { name: 'Title' })).not.toBeInTheDocument()
+
+    // The referent has no pencil until an anagrafica is chosen (see the registry suite).
+    for (const [row, testId] of [
+      [ROW.commercial, 'select-Sales rep'],
+      [ROW.reporter, 'select-Reporter'],
+      [ROW.source, 'select-Source'],
+      [ROW.supervisor, 'select-Supervisor'],
+    ] as const) {
+      openRow(row)
+      expect(screen.getByTestId(testId)).toBeInTheDocument()
+    }
+
+    openRow(ROW.managers)
     expect(screen.getByRole('button', { name: 'Add account manager' })).toBeInTheDocument()
-    // User directive 2026-07-29: the create form opens on ONE product-line row
-    // (it used to render none until "Add" was clicked).
+
+    // User directive 2026-07-29: the create form opens on ONE product-line row.
+    openRow(ROW.productLines)
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeInTheDocument()
     expect(screen.getByTestId('select-Parent category 1')).toBeInTheDocument()
     expect(screen.queryByTestId('select-Parent category 2')).not.toBeInTheDocument()
+
+    // User directive 2026-08-05: Sede operativa and Regione are hidden — no row at all.
+    expect(screen.queryByTestId('select-Operational site')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('select-Region')).not.toBeInTheDocument()
+    expect(queryPencil('Operational site')).not.toBeInTheDocument()
   })
 
-  it('prefills the title with the current one in edit mode (spec 0171)', async () => {
-    render(
-      <OpportunityForm
-        mode={{ type: 'edit', opportunity: editOpportunity() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  /** Directive 2026-07-21: supervisor is never required (it derives from the linked Lead's Operatore, which may be empty). */
+  it('never marks supervisor required', async () => {
+    renderCreateForm()
 
-    expect(await screen.findByRole('textbox', { name: 'Title' })).toHaveValue('Enterprise deal')
-  })
-
-  /** Directive 2026-07-21: supervisor is never required, in either mode (it derives from the linked Lead's Operatore, which may be empty). */
-  it('never marks supervisor required, in create or edit mode', async () => {
-    const create = render(
-      <OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    await waitFor(() => expect(labelFor('Supervisor')).toBeInTheDocument())
-    expect(labelFor('Supervisor')).not.toHaveTextContent('*')
-    create.unmount()
-
-    render(
-      <OpportunityForm
-        mode={{ type: 'edit', opportunity: editOpportunity() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    await waitFor(() => expect(queryPencil(ROW.supervisor)).toBeInTheDocument())
+    openRow(ROW.supervisor)
 
     expect(labelFor('Supervisor')).toHaveTextContent('Supervisor')
     expect(labelFor('Supervisor')).not.toHaveTextContent('*')
@@ -335,54 +171,34 @@ describe('OpportunityFormBody — fields render (AC-071)', () => {
 
 describe('OpportunityFormBody — field permissions (AC-074)', () => {
   it('does not render a field marked hidden (visible: false)', async () => {
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: {
-        ...FULL_PERMISSIONS,
-        fields: {
-          supervisor_id: {
-            visible: false,
-            hidden: true,
-            editable: false,
-            readonly: false,
-            required: false,
-            disabled: false,
-          },
-        },
-      },
-    })
+    fetchResourceMetaMock.mockResolvedValue(
+      permissionsWith({
+        supervisor_id: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
+      }),
+    )
 
-    render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    renderCreateForm()
 
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-    expect(screen.queryByTestId('select-Supervisor')).not.toBeInTheDocument()
+    await waitFor(() => expect(queryPencil(ROW.title)).toBeInTheDocument())
+    expect(queryPencil(ROW.supervisor)).not.toBeInTheDocument()
+    expect(screen.queryByText(ROW.supervisor)).not.toBeInTheDocument()
+    // REQUIREMENT CHANGED (spec 0198 D-3): the anagrafica's cascade writes the supervisor, so with it hidden the row does not open.
+    expect(queryPencil(ROW.registry)).not.toBeInTheDocument()
   })
 
-  it('renders a non-editable field disabled rather than hiding it', async () => {
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: {
-        ...FULL_PERMISSIONS,
-        fields: {
-          source_id: {
-            visible: true,
-            hidden: false,
-            editable: false,
-            readonly: true,
-            required: false,
-            disabled: false,
-          },
-        },
-      },
-    })
+  // REQUIREMENT CHANGED (spec 0198): a non-editable field used to render a
+  // disabled control; its row now simply has no pencil (nothing to open).
+  it('renders a non-editable field as a plain row with no pencil, rather than hiding it', async () => {
+    fetchResourceMetaMock.mockResolvedValue(
+      permissionsWith({
+        source_id: { visible: true, hidden: false, editable: false, readonly: true, required: false, disabled: false },
+      }),
+    )
 
-    render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    renderCreateForm()
 
-    const source = await screen.findByTestId('disabled-Source')
-    expect(source).toHaveTextContent('true')
+    await waitFor(() => expect(queryPencil(ROW.registry)).toBeInTheDocument())
+    expect(screen.getByText(ROW.source)).toBeInTheDocument()
+    expect(queryPencil(ROW.source)).not.toBeInTheDocument()
   })
 })

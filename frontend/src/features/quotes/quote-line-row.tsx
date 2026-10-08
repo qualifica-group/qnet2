@@ -306,6 +306,7 @@ export function QuoteLineRow({
             type="button"
             variant="ghost"
             size="icon-sm"
+            className="mt-0.5"
             aria-label={t('quotes.form.commissions.action', { n: index + 1 })}
             disabled={row.product_id === null}
             onClick={() => setCommissionsOpen(true)}
@@ -333,6 +334,8 @@ export function QuoteLineRow({
         type="button"
         variant="ghost"
         size="icon-sm"
+        // Centred on the 36px inputs of the `items-start` row.
+        className="mt-0.5"
         aria-label={t('quotes.form.lineRemove', { n: index + 1 })}
         disabled={disabled}
         onClick={onRemove}

@@ -5,10 +5,12 @@
  * and the model are `WorkOrder`/`work-orders` (spec §context).
  */
 
+import { workOrderContractData } from './en-work-order-contract-data'
 import { workOrderCosts } from './en-work-order-costs'
 
 export const workOrders = {
   costs: workOrderCosts,
+  contractData: workOrderContractData,
   title: 'Work Orders',
   subtitle: 'Browse, filter and manage the work orders linked to your offers.',
   forbidden: "You don't have permission to view work orders.",
@@ -17,6 +19,7 @@ export const workOrders = {
     title: 'Title',
     contract_number: 'Contract no.',
     quote: 'Linked offer',
+    registry: 'Registry',
     type: 'Work order type',
     callback_date: 'Callback date',
     start_date: 'Start date',
@@ -38,9 +41,13 @@ export const workOrders = {
     contractNumber: 'Contract no.',
     registry: 'Client registry',
     contract: 'Contract',
+    company: 'Company',
+    companySite: 'Site',
+    operationalSite: 'Operational site',
     forceCloseReason: 'Force close reason',
     description: 'Description',
     internalNotes: 'Work order notes',
+    internalNotesPlaceholder: 'Write a note about this work order…',
     taskTemplate: 'Task template',
     lines: 'Product lines',
     additionalInformation: 'Additional information',
@@ -48,12 +55,29 @@ export const workOrders = {
     updated_at: 'Updated at',
     sections: {
       identity: 'Details',
-      contract: 'Contract and product lines',
+      contract: 'Contract',
       team: 'Supervisors and participants',
+      company: 'Company and sites',
+      closure: 'Closure',
     },
     tasks: {
       title: 'Tasks',
       countLabel: '{{count}} tasks',
+    },
+  },
+  /** "Chiusura forzata" as an action of the detail and the grid (user directive 2026-10-06), and its inverse. */
+  actions: {
+    forceClose: {
+      title: 'Force close the work order',
+      description: 'The work order is closed, stating the reason. You can reopen it later.',
+      submit: 'Close work order',
+      success: 'Work order closed.',
+    },
+    reopen: {
+      title: 'Reopen the work order?',
+      description: 'The forced closure is undone and its reason cleared. Tasks the forced closure closed stay closed.',
+      confirm: 'Reopen',
+      success: 'Work order reopened.',
     },
   },
   /**
@@ -62,10 +86,8 @@ export const workOrders = {
    * itself, `bulk.*` the massive-actions bar and its per-action dialogs.
    */
   taskBoard: {
-    title: 'Task board',
+    title: 'Tasks',
     headerMenuLabel: 'More actions',
-    countLabel_one: '{{count}} task',
-    countLabel_other: '{{count}} task',
     loadError: 'Unable to load the task board. Please try again.',
     viewToggle: {
       list: 'List',
@@ -231,9 +253,8 @@ export const workOrders = {
   },
   form: {
     createTitle: 'Create work order',
+    newWorkOrder: 'New work order',
     createSubtitle: 'Add a new work order.',
-    editTitle: 'Edit work order',
-    editSubtitle: 'Update the selected work order.',
     code: 'Work order no.',
     codePlaceholder: 'Auto-generated when left empty',
     title: 'Title',
@@ -267,11 +288,16 @@ export const workOrders = {
     taskTemplateClear: 'Clear selected task template',
     isForceClosed: 'Force closed',
     forceCloseReason: 'Force close reason',
-    description: 'Description',
-    internalNotes: 'Work order notes',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
+    /** Spec 0195 D-9 applied to Commesse: leaving a work order being created always asks first. */
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The work order has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     created: 'Work order created successfully.',
     updated: 'Work order updated successfully.',
     deleted: 'Work order deleted successfully.',
@@ -293,35 +319,11 @@ export const workOrders = {
     deleteForbidden: 'You cannot delete this work order.',
     deleteConflict: 'Cannot delete: the work order is used elsewhere.',
     sections: {
-      identity: {
-        title: 'Details',
-        description: 'Number, title, type and callback date.',
-      },
       offer: {
         title: 'Offer and product lines',
-        description: 'The linked offer and its product lines assigned to this work order.',
-      },
-      team: {
-        title: 'Supervisors and participants',
-        description: 'Start date, the users accountable for this work order and its team.',
-      },
-      closure: {
-        title: 'Force closure',
-        description: 'Force the work order closed, stating the reason.',
-      },
-      notes: {
-        title: 'Description and notes',
-        description: 'Free-form description and internal notes for the work order.',
-      },
-      dynamicFields: {
-        title: 'Additional information',
-        empty: 'No additional fields for the selected product lines.',
       },
     },
     hints: {
-      codeLocked: 'Work order number cannot be changed after creation.',
-      quoteLocked: 'Linked offer cannot be changed after creation.',
-      taskTemplateLocked: 'Task template cannot be changed after creation.',
       taskTemplateHelp: 'Tasks from the template will be created and assigned to the supervisors.',
     },
     quoteLines: {

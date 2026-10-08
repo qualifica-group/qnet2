@@ -61,6 +61,8 @@ trait ValidatesEmployment
             'employment.is_manager' => ['sometimes', 'boolean'],
             // Spec 0129 D-1: the wildcard flag, a plain scalar like is_manager.
             'employment.covers_all_product_categories' => ['sometimes', 'boolean'],
+            // Spec 0194 D-3: absent = untouched, so no default here.
+            'employment.is_assignable' => ['sometimes', 'boolean'],
             'employment.job_description' => ['nullable', 'string', 'max:255'],
             // Spec 0166 (D-2/D-8): a user may report to several managers, so
             // the single `reports_to_id` becomes a tri-state array, same shape
@@ -166,6 +168,7 @@ trait ValidatesEmployment
         return new EmploymentData(
             isManager: (bool) $this->input('employment.is_manager', false),
             coversAllProductCategories: $this->boolean('employment.covers_all_product_categories'),
+            isAssignable: $this->has('employment.is_assignable') ? $this->boolean('employment.is_assignable') : null,
             jobDescription: $this->input('employment.job_description'),
             reportsToIdsProvided: $this->has('employment.reports_to_ids'),
             reportsToIds: $this->submittedIds('employment.reports_to_ids'),

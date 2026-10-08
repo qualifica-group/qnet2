@@ -4,14 +4,15 @@ namespace App\Tables;
 
 use App\Models\Opportunity;
 use App\Models\User;
-use App\Services\Opportunities\OpportunityProductInterestWriter;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\RequestManagement\RequestManagementScope;
 use App\Tables\Opportunities\OpportunityAdvancedFilterCatalog;
+use App\Tables\Opportunities\OpportunityCellWriter;
 use App\Tables\Opportunities\OpportunityColumnCatalog;
 use App\Tables\Opportunities\OpportunityRelationColumns;
 use App\Tables\Opportunities\OpportunityStatusColumn;
 use App\Tables\Shared\OperationalSiteColumn;
+use App\Tables\Shared\ProductLinePairsColumn;
 use App\Tables\Shared\ProductsOfInterestColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -54,30 +55,24 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
     public function __construct(
         private readonly OperationalSiteColumn $operationalSiteColumn,
         private readonly OpportunityRelationColumns $relationColumns,
-        private readonly OpportunityProductInterestWriter $productInterestWriter,
+        private readonly OpportunityCellWriter $cellWriter,
+        private readonly ProductLinePairsColumn $productLinePairs,
         private readonly OpportunityStatusResolver $statusResolver,
     ) {}
 
     /**
-     * `products_of_interest` (user directive 2026-07-23) is a to-many
-     * collection, not a column: the generic mass-assignment default would
-     * fail, and a bare `sync()` would break the invariant that every selected
-     * product's category is covered by a product line. It writes through the
-     * SAME OpportunityProductInterestWriter both other channels use (the CRUD
-     * service and the work panel), so the cross-category rule can never
-     * diverge between them. Every other editable column keeps the default.
+     * Spec 0206, D-2: every editable column — `products_of_interest` and the
+     * scalars included — writes through OpportunityCellWriter (the form's own
+     * UpdateOpportunityRequest + OpportunityService), so the title writer,
+     * the product coverage rule and the lead lock apply in the grid too.
      */
     public function updateCell(Model $row, string $columnId, mixed $value): Model
     {
-        if ($columnId !== ProductsOfInterestColumn::COLUMN_ID) {
-            return parent::updateCell($row, $columnId, $value);
-        }
-
         /** @var Opportunity $row */
-        /** @var array<int, int> $value */
-        $this->productInterestWriter->sync($row, $value);
+        /** @var User $actor */
+        $actor = Auth::user();
 
-        return $row->fresh() ?? $row;
+        return $this->cellWriter->write($row, $columnId, $value, $actor);
     }
 
     public function domain(): string
@@ -233,7 +228,8 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             'source' => $this->summarize($row->source),
             'operational_site' => $this->operationalSiteColumn->summarize($row->operationalSite),
             OpportunityStatusColumn::COLUMN_ID => $this->statusResolver->resolve($row),
-            'product_category' => $this->summarizeNames($row->productLines->pluck('productCategory')),
+            // Spec 0206, D-9: the pairs the `product_lines` editor edits.
+            'product_category' => $this->productLinePairs->project($row),
             'business_function' => $this->summarizeNames($row->productLines->pluck('businessFunction')),
             ...ProductsOfInterestColumn::project($row),
             'estimated_value' => $row->estimated_value,

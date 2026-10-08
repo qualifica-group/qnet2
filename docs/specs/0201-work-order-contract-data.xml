@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0201-work-order-contract-data" status="implemented" owner="nicola" date="2026-10-07">
+
+  <goal>
+    Nel dettaglio commessa un tab "Dati contrattuali" (accanto a Task e Costi) che, per ogni riga
+    prodotto della commessa, mostra e SPIEGA i calcoli economici (imponibile, commissione Fornitore,
+    ricavo effettivo, netto commissioni, totali Consulenze/Ente/Ricavi) e gestisce per riga lo stato di
+    pagamento, l'accordo sui pagamenti e gli insoluti.
+  </goal>
+
+  <context>
+    Riferimento legacy (`/Users/Repository/qnet`, `manageorder/{id}`, blocco "Dati contrattuali
+    commessa"): `App\Livewire\Orders\Manageorder::calcolaDatiContrattuali()` +
+    `App\Traits\CalcolaProvvigioneTrait::calcolaProvvigione()`. Per servizio: Importo = q.ta' x prezzo;
+    folder 1 (Consulenza) ricavo = importo; folder 2 (Ente) ricavo = SOLO la provvigione dell'ente
+    (regola per fornitore+servizio, fallback categoria; % sul prezzo unitario; bug legacy: il "costo
+    fisso" e' trattato come percentuale). Totali Consulenze/Ente/Ricavi. Stato pagamento (10 valori,
+    `Manageorder::$stato_pagamenti`), Accordo sui pagamenti, Insoluti stanno su `orderisos` = PER
+    COMMESSA (il legacy li ripete sotto ogni servizio). Stati 1,2,3,6 notificano responsabili e
+    partecipanti (`StatoPagamentoOk`). "Documento" = pallino scadenzario proforma (`Proforma`/`Schedule`).
+
+    Decisioni utente 2026-10-07, vincolanti:
+    D-1 — Per riga si vedono ENTRAMBI: "ricavo effettivo" alla legacy (tipologia Ente = commissione
+          Fornitore della riga; altre tipologie = imponibile riga) E "netto commissioni" alla spec 0145
+          (imponibile − tutte le commissioni della riga). Ogni importo ha la formula leggibile.
+    D-2 — Catalogo stati di pagamento CONFIGURABILE (tabella + modulo impostazioni, stesso pattern di
+          `reward-statuses`), con flag "si puo' consegnare". Seed con i 10 valori legacy.
+    D-3 — Per riga: stato di pagamento, accordo sui pagamenti (testo), insoluti (si'/no).
+    D-4 — Notifica quando lo stato di una riga passa a uno con "si puo' consegnare": supervisori e
+          partecipanti della commessa.
+    D-5 — Migrazione dal legacy: stato/accordo/insoluti di `orderisos` copiati su TUTTE le righe della
+          commessa migrata.
+    D-6 — Posizione: tab di `WorkOrderDetailWorkTabs` (`work-order-detail-work-tabs.tsx`). Aggiornato
+          dall'utente 2026-10-07: "Dati contrattuali" e' il PRIMO tab e quello aperto di default
+          (ordine Dati contrattuali, Task, Costi).
+
+    Decisioni proposte in fase di piano, da validare con l'approvazione:
+    D-7 — Fonte dei calcoli = dati gia' persistiti dell'offerta, nessun ricalcolo: imponibile =
+          `quote_lines.net_amount`; commissioni = `quote_line_commissions.calculated_amount`
+          (Fornitore = `recipient_role = SUPPLIER`). Il bug "costo fisso" del legacy NON si replica
+          (`CommissionCalculator`: FIXED_AMOUNT = valore).
+    D-8 — "Ente" = tipologia prodotto con `product_typologies.code = 'institution'` (lo stesso codice
+          usato da `ProductService::DEFAULT_PRODUCT_TYPOLOGY_CODE`); ogni altra tipologia (o nessuna)
+          conta come Consulenza nel totale. Riga Ente SENZA commissione Fornitore: ricavo effettivo 0,00
+          e avviso "commissione Fornitore mancante" (come il legacy, che dava 0).
+    D-9 — Formula della commissione percentuale: base mostrata = margine riga della spec 0145 D-1
+          (imponibile − costi COST imputati alla riga, minimo 0), ricalcolata solo per la spiegazione;
+          l'importo resta quello persistito. Se differiscono (offerta non risalvata dopo 0145 D-5) la
+          riga mostra l'avviso "importo calcolato su una base precedente".
+    D-10 — Permessi nuovi: `work-orders.viewContractData` (tab e importi) e
+          `work-orders.managePayments` (modifica dei dati di pagamento); flag frontend
+          `view_contract_data` / `manage_payments` in `WorkOrdersAuthorization`. Le commissioni
+          (Fornitore, altre, netto commissioni) si vedono solo se l'attore vede `commissions` e
+          `commission_value` dell'offerta (stessa regola di `QuoteResource::summarizeTotals`),
+          altrimenti arrivano `null` e la UI mostra solo imponibile e pagamento.
+    D-11 — Dati di pagamento in tabella propria `work_order_line_payments` (una riga per riga
+          commessa, creata al primo salvataggio), NON colonne sul pivot `quote_line_work_order`: serve
+          audit (`LogsModelActivity`, il legacy logga il cambio stato). Quando una riga esce dalla
+          commessa (`WorkOrderLineWriter::writeSubmitted`) il suo record di pagamento si cancella.
+    D-12 — Modifica inline per riga (riga chiusa -> matita -> campi -> Fatto/Ripristina, stesso
+          comportamento delle righe del dettaglio), salvataggio della singola riga. Consentita anche su
+          commessa completata o chiusa forzatamente (come i costi, spec 0190 D-7).
+    D-13 — Notifica (D-4) solo sulla TRANSIZIONE da stato non consegnabile (o vuoto) a consegnabile,
+          una notifica per utente anche se la stessa richiesta tocca piu' righe; mai all'attore stesso;
+          canali `database` + `mail` come `RecordAssignmentNotification`. Nessuna notifica in
+          migrazione.
+    D-14 — Migrazione D-5 = NUOVA sorgente `work-order-line-payments` (idempotente, upsert), perche'
+          `WorkOrdersSource` salta le commesse gia' migrate (`existsByOldId`). Stato legacy -> stato
+          nuovo via `work_order_payment_statuses.old_id` (seed: `old_id` = chiave legacy 1..10).
+          Richiede che l'API legacy `work-orders` (repo `/Users/Repository/qnet`,
+          `Api/V2/WorkOrderMigrationController`) esponga `stato_pagamento`, `accordo_pagamento`,
+          `insoluti` di `orderisos`: modifica FUORI da questo repo, va autorizzata a parte.
+
+    D-15 — (utente 2026-10-07, modifica in corso d'opera) I totali NON sono fissi Consulenze/Ente: uno
+          per ogni tipologia prodotto configurata, come il riepilogo per tipologia dell'offerta (spec 0099,
+          `QuoteTypologySummaryCalculator`). Una tipologia aggiunta in anagrafica compare da sola.
+
+
+    CONFLITTI SEGNALATI:
+    C-1 — Spec 0145 D-3 sottrae la commissione Fornitore dal margine come un costo; il legacy la tratta
+          come il ricavo dell'Ente. D-1 le mostra entrambe e non tocca il margine dell'offerta.
+    C-2 — Il catalogo attributi legacy (`AttributeMigrationController`) espone gia' `stato_pagamento`,
+          `accordo_pagamento`, `insoluti` come ATTRIBUTI di commessa. Se sono stati configurati come
+          attributi in qnet-2, dopo questa feature diventano doppioni a livello commessa: da rimuovere
+          dalla configurazione attributi (decisione utente, nessuna azione automatica qui).
+
+    Fatti verificati nel repo (grounding 2026-10-07):
+    - `App\Models\WorkOrder` (`quote()`, `quoteLines()` BelongsToMany `quote_line_work_order` con
+      UNIQUE `quote_line_id`, `supervisors()`, `participants()`, `costs()`), `LogsModelActivity`.
+    - `App\Models\QuoteLine` (`net_amount`, `quantity`, `unit_price`, `product()`, `commissions()`,
+      `allocatedCostLines()`), `App\Models\QuoteLineCommission` (`recipient_role`, `commission_type`,
+      `value`, `calculated_amount`), `App\Enums\CommissionRecipientRole::Supplier`,
+      `App\Enums\CommissionType` (PERCENTAGE|FIXED_AMOUNT).
+    - `App\Models\Product` (`product_typology_id`), `App\Models\ProductTypology` (`code`).
+    - `App\Services\WorkOrders\WorkOrderLineWriter`, `WorkOrderCostOverviewBuilder` (somme in centesimi).
+    - `App\Authorization\WorkOrdersAuthorization` (`actions()`, `actionPermissions()`),
+      `App\Policies\WorkOrderPolicy`, rotte `routes/api/work-order-costs.php` (pattern annidato).
+    - Pattern lookup configurabile: `RewardStatus` (model, `RewardStatusService`, `RewardStatusPolicy`,
+      `RewardStatusesAuthorization`, `RewardStatusesTableDefinition` + catalogs, controller,
+      for-select, reorder, `routes/api/lookups.php`; FE `features/reward-statuses/`), seeder reference
+      come `ProductTypologySeeder`.
+    - Notifiche: `App\Notifications\RecordAssignmentNotification` (`NotificationData`,
+      `RecordLinkResolver`, `DetailsTable`).
+    - Migrazione: `App\Migrations\Sources\WorkOrdersSource` (`AbstractMigrationSource`,
+      `resolveOldId`).
+    - Frontend: `features/work-orders/work-order-detail-work-tabs.tsx` (`WorkOrderDetailWorkTabs`),
+      `features/work-order-costs/` (sezione a tab, `formatQuoteAmount`), `components/ui`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Tabella `work_order_payment_statuses` (name, description, color, sort_order, is_active, allows_delivery, old_id) + model, factory, seeder reference con i 10 stati legacy.</item>
+      <item>Modulo impostazioni "Stati pagamento commessa" (`work-order-payment-statuses`): CRUD, for-select, reorder, TableDefinition, permessi `work-order-payment-statuses.*`, voce di menu, guida in-app IT/EN.</item>
+      <item>Tabella `work_order_line_payments` (work_order_id, quote_line_id UNIQUE, work_order_payment_status_id nullable, payment_agreement text nullable, has_unpaid bool default false) + model con audit.</item>
+      <item>`GET /api/work-orders/{workOrder}/contract-data` e `PATCH /api/work-orders/{workOrder}/contract-data/lines/{quoteLine}`.</item>
+      <item>Permessi `work-orders.viewContractData` / `work-orders.managePayments` + flag `view_contract_data` / `manage_payments`.</item>
+      <item>Cancellazione del record di pagamento quando la riga esce dalla commessa.</item>
+      <item>Notifica "si puo' consegnare" a supervisori/partecipanti.</item>
+      <item>Sorgente di migrazione `work-order-line-payments`.</item>
+      <item>Tab "Dati contrattuali" nel dettaglio commessa: tabella righe con formule, totali, modifica inline dei dati di pagamento.</item>
+      <item>i18n IT/EN, guida in-app `work-orders` IT/EN (nuova sezione), manuale Claude Docs.</item>
+      <item>Test Pest (endpoint, authz, calcoli, notifica, migrazione) e Vitest (tab, formule, editor, schema).</item>
+    </in>
+    <out>
+      <item>"Documento" del legacy (scadenzario proforma): qnet-2 non ha proforma/scadenzario.</item>
+      <item>Modifica del margine/commissioni dell'offerta (spec 0145 invariata) e qualsiasi ricalcolo persistito.</item>
+      <item>Regole provvigione per fornitore del legacy (`ServiceCommission`): si usano le commissioni gia' sull'offerta.</item>
+      <item>Rimozione degli eventuali attributi `stato_pagamento`/`accordo_pagamento`/`insoluti` (C-2).</item>
+      <item>Colonne/filtri sullo stato di pagamento nella griglia commesse.</item>
+      <item>Modifica dell'API legacy nel repo `/Users/Repository/qnet` senza autorizzazione separata (D-14).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    Importi: stringhe decimali a 2 cifre ("1500.00"), come il resto delle API offerta/commessa.
+
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/contract-data">
+      <request>nessun parametro</request>
+      <response status="200">
+        { "success": true, "message": "...", "data": {
+          "lines": [ {
+            "quote_line_id": int,
+            "product": { "id": int, "code": string, "name": string },
+            "typology": { "id": int, "code": string, "name": string } | null,
+            "is_institution": bool,
+            "quantity": "2.00", "unit_price": "500.00", "net_amount": "1000.00",
+            "supplier_commission": {
+              "commission_type": "PERCENTAGE" | "FIXED_AMOUNT",
+              "value": "15.0000",
+              "base_amount": "1000.00" | null,
+              "amount": "150.00",
+              "is_stale": bool
+            } | null,
+            "commissions_amount": "200.00" | null,
+            "net_of_commissions": "800.00" | null,
+            "effective_revenue": "150.00",
+            "warnings": [ "missing_supplier_commission" | "stale_commission_base" ],
+            "payment": {
+              "status": { "id": int, "name": string, "color": string, "allows_delivery": bool } | null,
+              "payment_agreement": string | null,
+              "has_unpaid": bool
+            }
+          } ],
+          "totals": {
+            "net_amount": "...", "effective_revenue": "...",
+            "commissions_amount": "..." | null, "net_of_commissions": "..." | null,
+            "typologies": [ { "id": int, "name": string, "net_amount": "...", "effective_revenue": "..." } ]
+          },
+          "commissions_visible": bool
+        } }
+        Regole: `effective_revenue` = `supplier_commission.amount` (0.00 se null) se `is_institution`,
+        altrimenti `net_amount` (D-1/D-8). `base_amount` valorizzato solo per PERCENTAGE (D-9).
+        `commissions_visible = false` => `supplier_commission`, `commissions_amount`,
+        `net_of_commissions` e i due totali corrispondenti sono `null`; `effective_revenue` delle righe
+        Ente resta visibile (e' il ricavo, non il dettaglio commissione). Ordine righe = `sort_order`.
+        `totals.typologies` (D-15): UNA voce per OGNI `product_typologies` configurata, ordinate per
+        `name` poi `id`, zero-filled (stesso criterio di `QuoteTypologySummaryCalculator::totals()`),
+        con imponibile e ricavo effettivo delle righe della commessa di quella tipologia. Sostituisce i
+        vecchi `consultancy_revenue`/`institution_revenue` (rimossi).
+        For-select stati (allineata al codice): `{ id, label, name, color, allows_delivery }`.
+      </response>
+      <errors>403 senza `work-orders.viewContractData` o commessa fuori visibilita' (`WorkOrderPolicy::view`); 404 commessa inesistente.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/work-orders/{workOrder}/contract-data/lines/{quoteLine}">
+      <request>
+        { "work_order_payment_status_id"?: int | null, "payment_agreement"?: string | null (max 2000),
+          "has_unpaid"?: bool }  — solo le chiavi inviate cambiano.
+      </request>
+      <response status="200">{ "success": true, "message": "...", "data": { la singola riga, shape identica a `lines[]` } }</response>
+      <errors>
+        403 senza `work-orders.managePayments`; 404 se `quoteLine` non appartiene alla commessa;
+        422 stato inesistente o non attivo (uno gia' assegnato e poi disattivato resta salvabile invariato).
+      </errors>
+    </endpoint>
+
+    <endpoint method="CRUD" path="/api/work-order-payment-statuses">
+      <request>Identico a `/api/reward-statuses` (index via TableDefinition, show, store, update, destroy, `for-select`, `reorder`) con in piu' `allows_delivery: bool`.</request>
+      <response status="200">Resource: { id, name, description, color, sort_order, is_active, allows_delivery }</response>
+      <errors>403 senza `work-order-payment-statuses.*`; 422 validazione; 409/422 eliminazione di uno stato in uso (stesso comportamento di reward-statuses).</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato una commessa con una riga Consulenza (net 1000) e una Ente (net 2000, commissione Fornitore PERCENTAGE 10% = 200), quando chiamo GET contract-data, allora `effective_revenue` = 1000.00 e 200.00, `totals.effective_revenue` = 1200.00 e `totals.typologies` contiene TUTTE le tipologie configurate (ordinate per nome, zero-filled): Consulenza net 1000.00 / ricavo 1000.00, Ente net 2000.00 / ricavo 200.00, una terza tipologia senza righe 0.00 / 0.00.</criterion>
+    <criterion id="AC-002">Una riga con commissioni (Fornitore 200 + Commerciale 50) ha `commissions_amount` = 250.00 e `net_of_commissions` = net − 250.</criterion>
+    <criterion id="AC-003">Riga Ente senza commissione Fornitore: `effective_revenue` 0.00 e warning `missing_supplier_commission`.</criterion>
+    <criterion id="AC-004">Commissione FIXED_AMOUNT 300: `amount` 300.00, `base_amount` null (nessun bug legacy del costo fisso).</criterion>
+    <criterion id="AC-005">Commissione PERCENTAGE con importo persistito diverso da base(0145 D-1) x valore: `is_stale` true e warning `stale_commission_base`.</criterion>
+    <criterion id="AC-006">Attore senza visibilita' su `commissions`/`commission_value` dell'offerta: campi commissione e relativi totali `null`, `commissions_visible` false.</criterion>
+    <criterion id="AC-007">GET senza `viewContractData` -> 403; commessa fuori visibilita' -> 403; il flag `view_contract_data` del dettaglio riflette il permesso.</criterion>
+    <criterion id="AC-008">PATCH di una riga salva stato/accordo/insoluti, crea il record al primo salvataggio, logga l'attivita' e restituisce la riga aggiornata.</criterion>
+    <criterion id="AC-009">PATCH senza `managePayments` -> 403; riga di un'altra commessa -> 404; stato inesistente o non attivo -> 422.</criterion>
+    <criterion id="AC-010">Passaggio da stato non consegnabile a `allows_delivery` notifica supervisori e partecipanti (escluso l'attore, una volta per utente); passaggio tra due stati consegnabili o verso non consegnabile non notifica.</criterion>
+    <criterion id="AC-011">Rimuovendo una riga dalla commessa (PATCH work-order `quote_line_ids`), il suo record di pagamento viene cancellato.</criterion>
+    <criterion id="AC-012">Il seeder reference crea i 10 stati legacy con `old_id` 1..10 e `allows_delivery` true solo per 1,2,3,6; ri-eseguito non duplica.</criterion>
+    <criterion id="AC-013">CRUD/for-select/reorder di `work-order-payment-statuses` con authz 403 e validazione 422 come reward-statuses; for-select restituisce solo attivi.</criterion>
+    <criterion id="AC-014">Sorgente `work-order-line-payments`: per una commessa legacy migrata copia stato (via old_id), accordo e insoluti su tutte le sue righe; ri-eseguita aggiorna senza duplicare; commessa non migrata -> riga fallita con messaggio; nessuna notifica.</criterion>
+    <criterion id="AC-015">FE: con `view_contract_data` il dettaglio mostra il tab "Dati contrattuali" accanto a Task e Costi; senza, il tab non c'e'.</criterion>
+    <criterion id="AC-016">FE: ogni riga mostra la formula leggibile (es. "Ente: 10% di 2.000,00 = 200,00", "Consulenza: imponibile 1.000,00") e i totali per OGNI tipologia ricevuta in `totals.typologies` (nessuna tipologia cablata nel FE) piu' Totale Ricavi; con `commissions_visible` false le colonne commissione non appaiono.</criterion>
+    <criterion id="AC-017">FE: con `manage_payments` la riga si apre in modifica (stato da for-select con pallino colore, accordo, insoluti), Fatto invia PATCH e aggiorna la tabella; Ripristina annulla; senza permesso nessuna matita.</criterion>
+    <criterion id="AC-018">FE: warning visibili (icona + testo, non solo colore); a 375px nessuno scroll orizzontale di pagina (tabella in contenitore scrollabile).</criterion>
+    <criterion id="AC-019">Guida in-app `work-orders` IT/EN con sezione `contract-data` e nuova guida `work-order-payment-statuses`; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Authz server-side su ogni endpoint (Policy + permessi via `permissions:sync`).</item>
+    <item>Calcoli SOLO server-side (in centesimi interi, come `WorkOrderCostOverviewBuilder`); il frontend formatta e non ricalcola.</item>
+    <item>Nessun N+1: eager load di product.productTypology, commissions, allocatedCostLines, payment.status.</item>
+    <item>Identificatori in inglese; etichette UI via i18n IT/EN. File &lt;= 300 righe.</item>
+    <item>Nessuna migrazione modificata: solo nuove migrazioni reversibili.</item>
+  </constraints>
+
+  <tasks>
+    <task id="T-01" lane="backend" depends="">Lookup `work_order_payment_statuses`: migrazione, model, factory, seeder reference (in `DatabaseSeeder` via seeder reference, AC-012), policy, authorization, service, requests, resources, controller, for-select, reorder, TableDefinition + catalogs, rotte in `lookups.php`, permessi. AC-012, AC-013.</task>
+    <task id="T-02" lane="backend" depends="T-01">`work_order_line_payments` + `WorkOrderLinePayment` (audit), relazioni su WorkOrder/QuoteLine, cancellazione in `WorkOrderLineWriter`. AC-011.</task>
+    <task id="T-03" lane="backend" depends="T-02">`WorkOrderContractDataBuilder` (calcoli D-1/D-7/D-8/D-9, visibilita' commissioni D-10), controller GET/PATCH, request, rotte `routes/api/work-order-contract-data.php`, permessi + flag in `WorkOrdersAuthorization`. AC-001..AC-009.</task>
+    <task id="T-04" lane="backend" depends="T-03">Notifica `WorkOrderLineDeliverableNotification` + dispatch sulla transizione. AC-010.</task>
+    <task id="T-05" lane="backend" depends="T-02">Sorgente migrazione `work-order-line-payments` (dipende dall'API legacy, D-14). AC-014.</task>
+    <task id="T-06" lane="frontend" depends="contratto congelato">Modulo `features/work-order-payment-statuses/` (clone di reward-statuses + `allows_delivery`), route, menu, i18n, permessi i18n, guida IT/EN. AC-013 (FE), AC-019.</task>
+    <task id="T-07" lane="frontend" depends="contratto congelato">`features/work-order-contract-data/`: api, types, schema, hook, tab con tabella+formule+totali, editor inline riga; terzo tab in `work-order-detail-work-tabs.tsx`; i18n; guida `work-orders` sezione `contract-data`. AC-015..AC-019.</task>
+    <task id="T-08" lane="verifier" depends="T-01..T-07">Pest mirati + Vitest + ESLint + Pint + `tsc -b --force`; verifica browser `/work-orders/89` desktop/375px light/dark.</task>
+  </tasks>
+
+  <risks>
+    <r id="R-1">Commissioni persistite "vecchie" (0145 D-5): mitigato da `is_stale` + avviso, nessun ricalcolo.</r>
+    <r id="R-2">D-14 dipende da una modifica nel repo legacy: senza, T-05 non e' eseguibile end-to-end (testabile con client API fake).</r>
+    <r id="R-3">Disco della macchina quasi pieno (ENOSPC durante il piano): test e build falliranno finche' non si libera spazio.</r>
+  </risks>
+
+</spec>

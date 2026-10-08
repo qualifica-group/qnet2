@@ -5,6 +5,7 @@ namespace Database\Seeders\Concerns;
 use App\Enums\AttributeContext;
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
+use App\Models\ProductCategory;
 
 /**
  * Withdraws catalogue attributes from the categories an earlier revision of a
@@ -58,6 +59,26 @@ trait RetiresAttributes
     }
 
     /**
+     * Withdraws $codes from ONE category only, for a code its catalogue drops
+     * while another category's keeps it: the global retirement above would
+     * take it off both.
+     *
+     * @param  list<string>  $codes
+     */
+    protected function retireCategoryAttributeCodes(ProductCategory $category, array $codes, AttributeContext $context): void
+    {
+        $retired = Attribute::query()->whereIn('code', $codes)->pluck('code', 'id');
+
+        if ($retired->isEmpty()) {
+            return;
+        }
+
+        $category->attributes()->wherePivot('context', $context->value)->detach($retired->keys()->all());
+
+        $this->stripFromLayouts($retired->values()->all(), $context, $category);
+    }
+
+    /**
      * Rewrites the blob of every layout still placing one of $codes, pruning
      * the rows and sections left empty. Written straight onto the model rather
      * than through AttributeLayoutService::upsert(): that path validates the
@@ -67,10 +88,11 @@ trait RetiresAttributes
      *
      * @param  list<string>  $codes
      */
-    protected function stripFromLayouts(array $codes, ?AttributeContext $context = null): void
+    protected function stripFromLayouts(array $codes, ?AttributeContext $context = null, ?ProductCategory $category = null): void
     {
         AttributeLayout::query()
             ->when($context !== null, fn ($query) => $query->where('context', $context->value))
+            ->when($category !== null, fn ($query) => $query->where('product_category_id', $category->id))
             ->each(function (AttributeLayout $row) use ($codes): void {
                 $sections = $this->withoutCodes($row->layout['sections'] ?? [], $codes);
 

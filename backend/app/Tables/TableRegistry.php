@@ -5,6 +5,7 @@ namespace App\Tables;
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\RequestManagement\RequestModule;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
+use App\Tables\Registries\RegistryScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
 use Illuminate\Contracts\Container\Container;
@@ -39,6 +40,26 @@ class TableRegistry
      */
     private const string WORK_ORDERS_DOMAIN = 'work-orders';
 
+    /**
+     * Domains wrapped in `RegistryScopedTableDefinition` (spec 0199), each
+     * with the fully-qualified column holding the client. `quotes` and
+     * `work-orders` are not listed: their own scoped decorators implement
+     * `RegistryScopable` (the client is reachable only through joins).
+     */
+    private const array REGISTRY_SCOPE_COLUMNS = [
+        'opportunities' => 'opportunities.registry_id',
+        'tasks' => 'tasks.registry_id',
+        'commission-configurations' => 'commission_configurations.recipient_id',
+    ];
+
+    /**
+     * The morph type column of the REGISTRY_SCOPE_COLUMNS entries that are
+     * polymorphic (spec 0204): the Configuratore commissioni's recipient.
+     */
+    private const array REGISTRY_SCOPE_MORPH_TYPE_COLUMNS = [
+        'commission-configurations' => 'commission_configurations.recipient_type',
+    ];
+
     public function __construct(private readonly Container $container) {}
 
     /**
@@ -48,7 +69,9 @@ class TableRegistry
      * (spec 0064/0084) for `request-management`/`enrollee-management` (spec
      * 0130), THEN in `OpportunityScopedTableDefinition` (spec 0067) for
      * `quotes`, THEN in `QuoteScopedTableDefinition` (spec 0095) for
-     * `work-orders` — one line each here, zero per-module code.
+     * `work-orders`, THEN in `RegistryScopedTableDefinition` (spec 0199) for
+     * `opportunities`/`tasks`/`commission-configurations` (spec 0204) — one
+     * line each here, zero per-module code.
      *
      * @throws ModelNotFoundException when the domain is not registered.
      */
@@ -57,8 +80,9 @@ class TableRegistry
         $definition = $this->wrapIfCustomFieldable($domain, $this->resolveRaw($domain));
         $definition = $this->wrapIfRequestManagementScoped($domain, $definition);
         $definition = $this->wrapIfOpportunityScoped($domain, $definition);
+        $definition = $this->wrapIfQuoteScoped($domain, $definition);
 
-        return $this->wrapIfQuoteScoped($domain, $definition);
+        return $this->wrapIfRegistryScoped($domain, $definition);
     }
 
     /**
@@ -154,6 +178,29 @@ class TableRegistry
         /** @var OpportunityScopedTableDefinition $wrapped */
         $wrapped = $this->container->make(OpportunityScopedTableDefinition::class, [
             'inner' => $definition,
+        ]);
+
+        return $wrapped;
+    }
+
+    /**
+     * Wrap in `RegistryScopedTableDefinition` (spec 0199) for the domains
+     * listed in `REGISTRY_SCOPE_COLUMNS` only — every other domain is
+     * returned unchanged.
+     */
+    private function wrapIfRegistryScoped(string $domain, TableDefinition $definition): TableDefinition
+    {
+        $column = self::REGISTRY_SCOPE_COLUMNS[$domain] ?? null;
+
+        if ($column === null) {
+            return $definition;
+        }
+
+        /** @var RegistryScopedTableDefinition $wrapped */
+        $wrapped = $this->container->make(RegistryScopedTableDefinition::class, [
+            'inner' => $definition,
+            'registryColumn' => $column,
+            'morphTypeColumn' => self::REGISTRY_SCOPE_MORPH_TYPE_COLUMNS[$domain] ?? null,
         ]);
 
         return $wrapped;

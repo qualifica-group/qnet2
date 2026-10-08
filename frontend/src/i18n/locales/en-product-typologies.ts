@@ -17,7 +17,10 @@ export const productTypologies = {
   columns: {
     name: 'Name',
     code: 'Code',
+    color: 'Color',
     description: 'Description',
+    supplier_commission_enabled: 'Supplier commission',
+    supplier_commission_direction: 'Commission direction',
     created_at: 'Created at',
     updated_at: 'Updated at',
   },
@@ -25,6 +28,7 @@ export const productTypologies = {
     title: 'Product typology detail',
     subtitle: 'Read-only view of the selected product typology.',
     loadError: 'Unable to load the product typology. Please retry.',
+    color: 'Color',
     description: 'Description',
     created_at: 'Created at',
     updated_at: 'Updated at',
@@ -37,6 +41,7 @@ export const productTypologies = {
     editSubtitle: 'Update the selected product typology.',
     name: 'Name',
     code: 'Code',
+    color: 'Color',
     description: 'Description',
     save: 'Save',
     saving: 'Saving…',
@@ -50,20 +55,36 @@ export const productTypologies = {
     codeMax: 'Code may contain at most 64 characters.',
     codeInvalid:
       'Code must start with a lowercase letter and contain only lowercase letters, digits and underscores.',
+    colorRequired: 'The color is required.',
+    colorMax: 'The color can be at most 32 characters.',
     descriptionMax: 'Description may contain at most 500 characters.',
+    supplierCommissionEnabled: "Supplier commission calculation",
+    supplierCommissionDirection: "Direction",
+    supplierCommissionDirectionPlaceholder: "Select the direction",
+    supplierCommissionDirectionRequired: "The direction is required when the Supplier commission is enabled.",
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the product typology. Please retry.',
     deleteForbidden: 'You cannot delete this product typology.',
     deleteInUse:
       'This product typology cannot be deleted because it is linked to one or more products.',
     sections: {
+      commission: {
+        title: "Supplier commission",
+        description: "Whether and how the Supplier commission is calculated.",
+      },
       identity: {
         title: 'Details',
         description: 'Name, code and description.',
       },
     },
     hints: {
+      supplierCommissionDirection:
+        "Received: the commission is the line revenue, the taxable amount goes to the supplier. Paid: it is a cost towards the supplier.",
       codeLocked: 'The code cannot be changed after creation.',
     },
+  },
+  supplierCommissionDirection: {
+    RECEIVED: "Received",
+    PAID: "Paid",
   },
 }

@@ -1,7 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
@@ -34,12 +33,14 @@ export function TaskTemplateDetailScreen({ id, onEdit }: ModuleDetailScreenProps
     data: taskTemplate,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(detailQueryKey(id), () => fetchTaskTemplate(id))
 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('taskTemplates.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}
@@ -88,17 +89,18 @@ function TaskTemplateEditScreen({ taskTemplateId, onSuccess, onCancel }: TaskTem
     data: taskTemplate,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(detailQueryKey(taskTemplateId), () => fetchTaskTemplate(taskTemplateId))
 
   if (isError) {
     return (
-      <div className="flex flex-col items-start gap-3 p-4">
-        <p className="text-sm text-destructive">{t('taskTemplates.detail.loadError')}</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          {t('common.retry')}
-        </Button>
-      </div>
+      <DetailError
+        error={error}
+        message={t('taskTemplates.detail.loadError')}
+        retryLabel={t('common.retry')}
+        onRetry={() => refetch()}
+      />
     )
   }
 

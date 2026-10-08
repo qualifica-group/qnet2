@@ -95,7 +95,6 @@ export function useTaskStatusCellIntercept({ onMutated }: UseTaskStatusCellInter
           }
         }}
         task={state.task}
-        forAllAssignees
         onCompleted={() => {
           setState({ kind: 'idle' })
           onMutated()

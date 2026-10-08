@@ -1,5 +1,14 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import {
+  SUPPLIER_COMMISSION_DIRECTIONS,
+  type SupplierCommissionDirection,
+} from '@/features/product-typologies/types'
+
+interface DirectionFields {
+  supplier_commission_enabled: boolean
+  supplier_commission_direction: SupplierCommissionDirection | null
+}
 
 /**
  * Zod schema for the product typology create/edit form, built as a factory so
@@ -17,6 +26,8 @@ const NAME_MAX_LENGTH = 191
 const CODE_MAX_LENGTH = 64
 /** Backend `code` shape: snake_case identifier (spec engineering.md §1.2). */
 const CODE_PATTERN = /^[a-z][a-z0-9_]*$/
+/** Backend `color` column limit (string(32)). */
+const COLOR_MAX_LENGTH = 32
 /** Backend `description` column limit (`max:500`). */
 const DESCRIPTION_MAX_LENGTH = 500
 
@@ -36,17 +47,34 @@ function baseFields(t: TFunction) {
       .string()
       .max(DESCRIPTION_MAX_LENGTH, t('productTypologies.form.descriptionMax'))
       .nullable(),
+    color: z
+      .string()
+      .min(1, t('productTypologies.form.colorRequired'))
+      .max(COLOR_MAX_LENGTH, t('productTypologies.form.colorMax')),
+    supplier_commission_enabled: z.boolean(),
+    supplier_commission_direction: z.enum(SUPPLIER_COMMISSION_DIRECTIONS).nullable(),
   }
+}
+
+/** Direction is mandatory when the Supplier commission is enabled (spec 0202 D-7). */
+function requireDirectionWhenEnabled<T extends z.ZodType<DirectionFields>>(schema: T, t: TFunction) {
+  return schema.refine(
+    (values) => !values.supplier_commission_enabled || values.supplier_commission_direction !== null,
+    {
+      message: t('productTypologies.form.supplierCommissionDirectionRequired'),
+      path: ['supplier_commission_direction'],
+    },
+  )
 }
 
 /** Create schema. */
 export function buildCreateProductTypologySchema(t: TFunction) {
-  return z.object(baseFields(t))
+  return requireDirectionWhenEnabled(z.object(baseFields(t)), t)
 }
 
 /** Edit schema (same shape; partial PATCH is computed by the caller). */
 export function buildUpdateProductTypologySchema(t: TFunction) {
-  return z.object(baseFields(t))
+  return requireDirectionWhenEnabled(z.object(baseFields(t)), t)
 }
 
 export type CreateProductTypologyFormValues = z.infer<

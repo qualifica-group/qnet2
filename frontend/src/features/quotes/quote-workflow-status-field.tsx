@@ -61,25 +61,31 @@ function SelectedStatus({ status }: { status: QuoteWorkflowStatusRef }) {
   )
 }
 
+type QuoteWorkflowStatusControlsProps<TFieldValues extends QuoteWorkflowStatusFormShape> = Omit<
+  QuoteWorkflowStatusFieldProps<TFieldValues>,
+  'className'
+>
+
 /**
- * Operational status of the quote (spec 0083): a plain `Select` over the set
- * the backend already resolved, never a remote for-select — offering a row
- * outside that set would only earn a 422 (AC-021).
+ * The status select and, when demanded, its transition note — without a
+ * section around them: the Offerta detail edits them in place on its "Stato"
+ * row (spec 0197), the section wrapper below is for the forms that stack them.
  *
- * The transition note appears only when it is actually demanded: the target
- * row differs from the one the quote holds AND carries `requires_note`
- * (AC-023). An unchanged status demands nothing (AC-026), so re-saving a quote
- * already parked on such a row never asks again. The field is mirrored by the
- * `superRefine` in `buildUpdateQuoteSchema`, which is what blocks the submit —
- * this component only decides visibility.
+ * A plain `Select` over the set the backend already resolved, never a remote
+ * for-select — offering a row outside that set would only earn a 422
+ * (AC-021). The transition note appears only when it is actually demanded:
+ * the target row differs from the one the quote holds AND carries
+ * `requires_note` (AC-023). An unchanged status demands nothing (AC-026), so
+ * re-saving a quote already parked on such a row never asks again. The field
+ * is mirrored by the `superRefine` in `buildUpdateQuoteSchema`, which is what
+ * blocks the submit — this component only decides visibility.
  */
-export function QuoteWorkflowStatusField<TFieldValues extends QuoteWorkflowStatusFormShape>({
+export function QuoteWorkflowStatusControls<TFieldValues extends QuoteWorkflowStatusFormShape>({
   control,
   statuses,
   originalStatusId,
   selectedStatusId,
-  className,
-}: QuoteWorkflowStatusFieldProps<TFieldValues>) {
+}: QuoteWorkflowStatusControlsProps<TFieldValues>) {
   const { t } = useTranslation()
   // The shape guarantees both keys on every accepted form, but TS cannot
   // narrow a literal to `Path<TFieldValues>` through the generic.
@@ -95,12 +101,7 @@ export function QuoteWorkflowStatusField<TFieldValues extends QuoteWorkflowStatu
     selected !== null && selected.requires_note && selected.id !== originalStatusId
 
   return (
-    <FormSection
-      icon={Workflow}
-      title={t('quotes.form.sections.workflowStatus.title')}
-      description={t('quotes.form.sections.workflowStatus.description')}
-      className={className}
-    >
+    <>
       <MetaField
         control={control}
         name={statusField}
@@ -159,6 +160,34 @@ export function QuoteWorkflowStatusField<TFieldValues extends QuoteWorkflowStatu
           )}
         </MetaField>
       ) : null}
+    </>
+  )
+}
+
+/**
+ * Operational status of the quote (spec 0083) as a titled form section: the
+ * Gestione Richieste work panel stacks it among its other sections (user
+ * directive 2026-08-07: the same components the Offerta uses). Nothing is
+ * rendered while the set is unknown.
+ */
+export function QuoteWorkflowStatusField<TFieldValues extends QuoteWorkflowStatusFormShape>({
+  className,
+  ...controls
+}: QuoteWorkflowStatusFieldProps<TFieldValues>) {
+  const { t } = useTranslation()
+
+  if (!controls.statuses || controls.statuses.length === 0) {
+    return null
+  }
+
+  return (
+    <FormSection
+      icon={Workflow}
+      title={t('quotes.form.sections.workflowStatus.title')}
+      description={t('quotes.form.sections.workflowStatus.description')}
+      className={className}
+    >
+      <QuoteWorkflowStatusControls {...controls} />
     </FormSection>
   )
 }

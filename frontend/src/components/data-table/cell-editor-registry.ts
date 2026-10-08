@@ -121,13 +121,17 @@ export const CELL_EDITOR_REGISTRY: Partial<Record<CellEditorKind, CellEditorSpec
   // User directive 2026-07-23: a to-many `/for-select` picker — the in-grid
   // twin of the form's multi-select field, scope lock and warning included.
   // Same `relation` metadata as the single-value editor: `resource` names the
-  // endpoint, `scope` the row column narrowing it (an array of ids here).
+  // endpoint, `scope` the row column narrowing it (an array of ids here),
+  // `exclude` the row columns whose people are not offered; avatars for the
+  // people resource, as the form's picker shows them.
   multiselect: {
     cellEditor: MultiSelectCellEditor as ComponentType<CustomCellEditorProps>,
     cellEditorParams: (column) => ({
       resource: column.relation?.resource ?? '',
+      showAvatar: column.relation?.resource === USERS_FOR_SELECT_RESOURCE,
       scope: column.relation?.scope,
       lockScope: column.relation?.lockScope ?? false,
+      exclude: column.relation?.exclude,
     }),
     cellEditorPopup: true,
   },

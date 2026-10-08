@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MERGE main -> feature/amministrazione — RISOLTO, NON COMMITTATO (2026-10-08)
+
+- 16 file in conflitto risolti tenendo entrambi i lati. Integrazioni semantiche:
+  - `useWorkOrderRowActions` (ora `.tsx`, main): proforma "€" (spec 0193) + chiusura forzata/riapertura + `openCreateWith`.
+    Icone unite in `ROW_ACTION_ICONS` = `WORK_ORDER_ACTION_ICONS` (lock, `use-work-order-closure`) + `PROFORMA_ACTION_ICONS`
+    (euro, rinominato da `WORK_ORDER_ACTION_ICONS` in `proforma-row-action.ts`). I consumer usano `iconMap` dell'hook.
+  - Tab Commesse dell'anagrafica (spec 0199): `RegistryRelatedGrid` inoltra `resolveActionState`; montato `WorkOrderProformaDialog`.
+  - `DetailError` richiede `error` (main, 404/403 controllati): passato in financial-accounts, invoices, proforma-requests.
+  - `WorkOrdersTableDefinition::baseQuery` eager-load `quote.opportunity.registry` + EXISTS proforma.
+  - Test rollback: `QuoteWorkflowMigrationTest` 143 step, `SupplierCommissionDirectionTest` 7 step (solo conteggio migrazioni).
+  - HELP_GUIDE_KEYS = 60; guida work-orders IT/EN con sezioni `contract-data` + `proforma-request`.
+- PRE-ESISTENTI su feature/amministrazione (NON dal merge, da sistemare): `01b6877e` ha perso `layout`/`layout_id` in
+  `frontend/src/features/invoices/types.ts` (tsc rosso + `invoice-editor-dialog.test.tsx`), e `InvoiceLayoutSelectionTest`
+  AC-001 fallisce per `residual_mode` obbligatorio in `InvoiceCollectionRequest`.
+
 ## SPEC 0197 MODULO SCADENZE (Contabilita' > Attiva) — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-08)
 
 - Spec `docs/specs/0197-invoice-installments-module.xml` (approvata, D-1..D-8). Vista trasversale di `invoice_installments`:
@@ -194,6 +209,884 @@
 - Ambiente locale: il php.ini di Laragon non ha pdo_sqlite/sqlite3/zip e il runner parallelo vuole memory_limit ~2G.
 - Aperto: manuale Claude Docs (sezione Contabilita' > Gestione Conti) NON aggiornato: il connettore non ha accesso al documento.
   Guide in-app IT/EN `financial-accounts` fatte. Nell'elenco la modifica passa dal dettaglio (azioni riga: view/delete/activity), come UoM.
+## STATI CONSULENZA: NOTA OBBLIGATORIA SUGLI ESITI NEGATIVI — VERDE, NON COMMITTATO (2026-10-08)
+
+- `WorkflowStatusCatalogue::SECTIONS` accetta ora una chiave opzionale `requires_note` per stato (default false,
+  letta in `statusesFor()`). CONSULENZA: `Persa` (riga di sistema closed_lost), `Annullata`, `Non pertinente` =
+  nota obbligatoria; `Irreperibile` e `Numero inesistente` no (decisione utente 2026-10-08). Altre liste invariate.
+- Test: `tests/Feature/Seeding/QualificaConsultingStatusNotesTest.php`.
+- Attenzione: `QualificaWorkflowSeeder` salta i workflow gia' esistenti, quindi su un DB gia' seminato il flag va
+  impostato a mano dal configuratore stati (o con un seed su DB pulito).
+
+## GRIGLIA COMMESSE: COLONNA ANAGRAFICA — VERDE, COMMITTATO (2026-10-08)
+
+- Nuova colonna `registry` ("Anagrafica"/"Registry") nella griglia `work-orders`, dopo `quote`: `{id, name}` derivato
+  da `quote.opportunity.registry` (stessa catena di `WorkOrderResource::summarizeRegistry` e della griglia Contratti).
+  Sola lettura (il form non la edita), `set` filter sul nome, sortable, distinct values scoped. Nessuna voce "(Vuoti)":
+  `work_orders.quote_id`/`quotes.opportunity_id`/`opportunities.registry_id` sono tutti NOT NULL.
+- Backend: nuova `Tables/WorkOrders/WorkOrderRegistryColumn` (filtro/sort/distinct) delegata da
+  `WorkOrderDerivedColumns`; eager load `quote.opportunity.registry` in `WorkOrdersTableDefinition::baseQuery()`.
+  `WorkOrderDerivedColumns` (320) e `WorkOrdersTableDefinition` (318) oltre il soft limit 300.
+- Frontend: renderer `RelationCell` + icona `Building2`; i18n `workOrders.columns.registry`; guida in-app IT/EN
+  sezione `list-editing`. Spec 0093 aggiornata (delta 2026-10-08).
+- Manuale Claude Docs: NON aggiornato (documento non condiviso con la sessione) — sezione Commesse > elenco da allineare.
+
+## GRIGLIE OFFERTE/COMMESSE/ANAGRAFICHE/OPPORTUNITA': OGNI COLONNA EDITABILE IN CELLA CON LE REGOLE DEL FORM — VERDE, COMMITTATO (2026-10-07)
+
+- Spec `docs/specs/0206-main-modules-grid-inline-editing.xml` (decisioni utente: cambio Anagrafica opportunita' in
+  cella = azzera Referente + riempie solo i ruoli VUOTI; "Chiusura forzata" commessa resta azione di riga).
+- Regola: cella editabile sse il form la edita come campo singolo. Scrittura = STESSA FormRequest di update + STESSO
+  service: nuovo `Services/Table/FormRequestCellValidator` (costruisce la FormRequest con payload JSON della sola
+  cella, attore, riga come parametro di rotta, `validateResolved()`), writer per dominio `WorkOrderCellWriter`,
+  `RegistryCellWriter`, `QuoteCellWriter`, `OpportunityCellWriter` chiamati da `updateCell()` (Offerte via trait
+  `Tables/Quotes/Concerns/WritesQuoteCells`: `QuotesTableDefinition` e' a 499 righe, va splittata alla prossima modifica).
+- Gestori (`managers` -> `manager_slots`): cella multiselect di persone; `ManagerPositions::slotsFor/slotsFromIds/
+  positionsOf` conservano le posizioni di chi resta, i nuovi nel primo slot libero.
+- `RelationValueScopeChecker` + `referents`, `companies`, `company-sites`. `CellValueValidator::typeRules` usa
+  l'`editor` scalare se dichiarato (registries `is_supplier` editor boolean, `agreement_status`/`size_class` editor
+  enum con `enumKey`), cosi' `type`/filtri restano invariati.
+- Offerte: stato = editor `select` notable (catalogo condiviso `Tables/Shared/QuoteWorkflowStatusOptions`, usato
+  anche da Gestione Richieste) + `quote_workflow_status_options` per riga (eager load offerLines.product.category,
+  opportunity.productLines/customFieldValueRow); cambio Societa' azzera la Sede societa'; sede scoped su `company`.
+- Opportunita': `name` ora editabile (RETTIFICA 0171, passa da OpportunityNameWriter); `product_category` = coppie
+  (`Tables/Shared/ProductLinePairsColumn`, estratto da RequestRowMapper) con editor `product_lines`; FE renderer
+  condiviso `features/product-lines/product-categories-cell.tsx`. Tolte le `rules` di catalogo duplicate del form.
+- Export: una lista di riepiloghi in una colonna non-tags esce come nomi separati da `; ` (prima JSON).
+- Test: 4 nuovi `*GridInlineEditTest` (27 test); RETTIFICA requisito in `OpportunityTableTest` (AC-105) e
+  `opportunities/column-renderers.test.tsx` (product_category a coppie). Backend completo 9457/9459 (1 skipped;
+  1 fallimento intermittente preesistente `DemoOpportunitySeederTest` multi-line, verde 3/3 isolato), Vitest
+  7012/7012, `tsc -b --force` 0, ESLint pulito, Pint ok. Guide in-app IT/EN (sezione `list-editing`) dei 4 moduli.
+- Manuale Claude Docs NON aggiornato (doc non accessibile): sezioni Opportunita', Offerte, Commesse, Anagrafiche ->
+  "Modifica rapida dall'elenco".
+- Da verificare a mano nel browser (non fatto): editor nelle quattro griglie. Nota preesistente: le date in riga
+  arrivano ISO (Carbon), l'editor `date` le mostra vuote all'apertura (stesso comportamento gia' nei Task).
+
+## APL TIROCINIO: MODULO OFFERTA RIVISTO (SOGGETTO OSPITANTE, VIA REGISTRI/DECRETO/NUMERO PRATICA) — VERDE, NON COMMITTATO (2026-10-07)
+
+- Direttiva utente 2026-10-07 su "Tirocinio" (`AplInternshipAttributeCatalogue`): Tutor scartato; il tirocinante e'
+  l'anagrafica cliente collegata all'offerta (nessun campo); nuovo `host_registry` "Soggetto ospitante" (relation ->
+  `registries`, come `user_registry` dell'orientamento); tolti `registers_status`, `decree_status`, `practice_number`.
+- Modulo: "Testata" (`reporting_id`, `decree_id`) / "Dati tirocinio" (`internship_type`, `vacancy_code`,
+  `inail_position_number`, `liability_policy_number`, `insurance_company` — tutti `text` — + date) / "Soggetto
+  ospitante" (`host_registry`).
+- Installazioni gia' seminate: `AplPracticeCatalogue::RETIRED_ATTRIBUTES` -> `QualificaQuoteLayoutSeeder` Step 1 li
+  stacca SOLO da Tirocinio (`RetiresAttributes::retireCategoryAttributeCodes`, nuovo; `decree_status` resta su
+  apprendistato/orientamento) e li toglie dal suo layout; il vecchio modulo (anche grigio) e' riconosciuto via
+  `PREVIOUS_FORMS` e ricomposto. Righe attributo e valori salvati restano.
+- Test: Tirocinio aggiornati + nuovo upgrade test (white/grey); apprendistato aggiornato; il test "grigio -> bianco"
+  dell'orientamento ora usa l'apprendistato. Pest Products+Seeding+ProductCategories+Migration 653/653, Pint ok.
+- Aperto: "Tipologia tirocinio" e' testo libero (nessuna lista valori fornita); il tipo di un attributo gia' seminato
+  non viene riallineato dal seeder (`firstOrCreate` su `code`), quindi convertirlo a enum dopo il deploy richiede un
+  passo esplicito. Manuale Claude Docs non accessibile.
+
+## ANAGRAFICHE: TAB "COMMISSIONI CONFIGURATE" SU OGNI ANAGRAFICA — VERDE, NON COMMITTATO (2026-10-07)
+
+- Richiesta utente: la tab deve comparire a prescindere da `is_supplier` ("tutte le anagrafiche sono potenzialmente
+  con commissioni"). Spec 0204 D-2/AC-002 emendate.
+- `registry-related-records.tsx`: rimossi `supplierOnly` e la prop `isSupplier` (gate solo su
+  `commission-configurations.viewAny`); `registry-detail.tsx` non passa piu' `is_supplier`. Back-end invariato (lo scope
+  `registryId` e il destinatario `registry` del ruolo SUPPLIER non richiedono il flag fornitore).
+- Test `registry-related-records.test.tsx` aggiornati al nuovo requisito. Guide in-app IT/EN `registries` e
+  `commission-configurations` aggiornate.
+- Verificato: Vitest registries/help/commission-configurations 263/263, `tsc -b --force` 0, ESLint pulito.
+
+## RIGHE PRODOTTO DI CONTRATTI, COMMESSE, GESTIONE RICHIESTE (STESSE REGOLE OFFERTE) — VERDE, COMMITTATO (2026-10-07)
+
+- Regola comune: min-width del wrapper = tracce + 8px*gap + 16px (`px-2`), icone `icon-sm` con `mt-0.5` sulle righe
+  `items-start` con input h-9, dialog con lista lunga = flex-col + `max-h-[85vh]` + corpo `min-h-0 flex-1 overflow-y-auto`.
+- Commesse: `work-order-costs/work-order-cost-row.tsx` `COST_ROW_MIN_WIDTH_CLASS` 1180 -> 1284, cestino `mt-0.5`.
+- Contratti: `contract-program-lines-table.tsx` min-w 560 -> 598; `contract-program-dialog.tsx` ora con altezza massima,
+  header/footer fissi e corpo scorrevole (prima, con molte righe, usciva dallo schermo). Righe del dettaglio contratto
+  gia' corrette via `QuoteLinesReadOnlyList` condiviso.
+- Gestione Richieste: `offer-lines-dialog.tsx` stesso fix di scroll del popup commissioni; righe del pannello gia'
+  corrette via `QuoteLinesField` condiviso.
+- Verificato: tabella "Dati contrattuali" della commessa e' una `<table>` reale, gia' corretta (nessuna modifica).
+- Screenshot Playwright di contratto 20, commessa 32 (Costi effettivi), richiesta 44, scrollati a destra: ok.
+  Vitest completo 7012/7012, `tsc -b --force` 0, ESLint pulito. Manuale: nessun impatto (solo layout).
+
+## OFFERTE: RIGHE PRODOTTO, DATI AVANZATI, POPUP COMMISSIONI — VERDE, COMMITTATO (2026-10-07)
+
+- Header righe spezzato allo scroll: i `min-w-[...]` erano piu' stretti della somma colonne+gap+`px-2` -> la griglia
+  sforava il wrapper e la tinta dell'header si fermava. Ricalcolati in `quote-line-grid.ts` (1180/1136/1304/776/732) e
+  `quote-lines-read-only.tsx` (1138/1306). Regola: min-w = tracce + 8px*gap + 16px. Se cambi una colonna, ricalcola.
+- Icona commissioni disallineata: riga read-only `items-center`; riga in modifica bottoni `icon-sm` con `mt-0.5`
+  (centrati sugli input h-9).
+- "Margine per prodotto" spostato DENTRO `QuoteSummary` (nuove prop `productMargins`, `showProductMargins`), chiuso di
+  default dietro il toggle "Mostra dati avanzati" (aria-expanded). Card ora `bg-card` (sta su `bg-surface`).
+  `QuoteLiveSummary` e `PersistedLinesSummary` passano i dati; niente piu' `QuoteProductMargins` standalone.
+- Popup commissioni: `DialogContent` flex-col (era grid: la riga `auto` cresceva oltre `max-h` e il contenuto usciva);
+  corpo `min-h-0 flex-1 overflow-y-auto`. STESSO DIFETTO NON CORRETTO in `request-management/offer-lines-dialog.tsx`.
+- Popup commissioni (solo modificabile): per ogni ruolo "Calcolo di sistema" da `POST /quotes/commission-defaults`
+  (nuovo `quoteCommissionDefaultsQueryKey`), componente `quote-commission-system-default.tsx`; "Applica calcolo di
+  sistema" sostituisce l'override mantenendo `id` e nota. Read-only: non mostrato (l'endpoint esige update+commissions
+  editable).
+- Popup commissioni RIFATTO (richiesta utente "come i migliori CRM"): logica in `use-quote-commissions-draft.ts`
+  (bozza, query destinatari/default, patch/add/applySystemDefault/remove, canSave, totali); riga ruolo in
+  `quote-commission-role-row.tsx` (icona ruolo, destinatario, badge origine, SegmentedControl %/EUR, valore con suffisso,
+  importo, cestino; nota apribile con "Aggiungi nota"; in sola lettura valori in chiaro, non controlli disabilitati);
+  `quote-commissions-dialog.tsx` = guscio size "lg" con striscia KPI (imponibile riga, costi imputati, base, totale).
+  Nomi accessibili invariati (Recipient/Value/Calculated amount/Remove commission/...). Verificato con screenshot
+  Playwright 1440 e 390 px (token Sanctum temporaneo creato e poi eliminato).
+- Badge origine: `quote-commission-origin-badge.tsx` -> "Regola: Prodotto"/"Regola: Categoria" (prefisso solo per questi due),
+  "Regola personale" e "Modifica manuale" invariati (AC-017); tooltip `originHints.*`, focusabile da tastiera. Test dedicato.
+- i18n popup: `quotes.form.commissions.{base.*,columns.*,typeShort.*,addNote,originRule,originHints.*}` (IT/EN).
+- i18n: `quotes.form.summary.{showAdvanced,hideAdvanced}`, `quotes.form.commissions.systemDefault.*` (IT/EN).
+- Test: RETTIFICA requisito in `quote-summary.test.tsx`/`quote-detail.test.tsx` (blocco chiuso di default);
+  3 nuovi test in `quote-commissions-dialog.test.tsx`. Vitest completo 7010/7010, `tsc -b --force` 0, ESLint pulito
+  sui file toccati (errore preesistente in `quotes/column-renderers.tsx`).
+- Guide in-app IT/EN (quotes) aggiornate. Manuale Claude Docs NON aggiornato (doc non accessibile): sezione Offerte
+  -> riepilogo/Margine per prodotto e Commissioni di riga.
+
+## NOTE GENERALI/INTERNE NELLO STILE DI GESTIONE RICHIESTE (Opportunita', Commesse, Offerte) — VERDE, NON COMMITTATO (2026-10-07)
+
+- Richiesta utente: note generali/interne di Opportunita', Commesse e Offerte con lo stesso stile di Gestione Richieste.
+- Nuovo `components/record-form/notes-callout-row.tsx` (`NotesCalloutRow`): callout ambra sempre presente se il campo
+  e' modificabile (vuoto -> placeholder), testo dentro il callout, editor inline (matita/clic) aperto DENTRO il callout
+  con textarea senza bordo. Read-only + vuoto -> niente. Sostituisce le tre righe duplicate
+  (`OpportunityGeneralNotesRow`, `WorkOrderInternalNotesRow`, `QuoteInternalNotesRow`, ora wrapper sottili).
+- `layout.ts`: nuove costanti `GENERAL_NOTES_TEXT_CLASS`, `GENERAL_NOTES_TEXTAREA_CLASS` (riusate anche dai due file
+  note di Gestione Richieste e da `GeneralNotesCallout`). `WorkOrderTextAreaField` ha prop `className` opzionale.
+- Offerta: "Note generali dell'opportunita'" (ereditate, read-only) tolte dalla sezione Contesto -> `GeneralNotesCallout`
+  a piena larghezza sotto le Note interne.
+- i18n nuove: `quotes.form.internalNotesPlaceholder`, `workOrders.detail.internalNotesPlaceholder` (IT/EN).
+- Test: nuovo `notes-callout-row.test.tsx`; RETTIFICA requisito in `opportunity-detail-sections.test.tsx` (vuoto +
+  modificabile ora mostra il callout); `quote-create-payment.test.tsx` query per ruolo textbox (il nome ora e' anche
+  della regione). Vitest completo 7007/7007, `tsc -b --force` 0, ESLint pulito.
+- Guide in-app IT/EN: tip nelle sezioni "Modificare ..." di opportunities/work-orders/quotes.
+- Manuale Claude Docs: NON aggiornato (doc non accessibile dalla sessione) -> sezioni Opportunita'/Commesse/Offerte
+  "Modificare ...".
+
+## ERRORE CONTROLLATO 404/403 SU TUTTI I DETTAGLI/EDIT RECORD — VERDE, COMMITTATO 4cf92317 (2026-10-07)
+
+- Richiesta utente (es. `/work-orders/10` inesistente mostrava "errore + Riprova"). `DetailError` ora richiede
+  `error: unknown`: 404/403 -> `RecordUnavailable` (nessun Riprova, testi `common.recordUnavailable.*`), altro ->
+  messaggio (`role="alert"`) + Riprova. Il typecheck obbliga ogni chiamante a passare `error`.
+- Esteso a tutte le schermate dettaglio + edit loader dei moduli (blocchi errore inline duplicati sostituiti da
+  `DetailError`), pagine prodotto/referente/anagrafica/import lead (`useLeadImportDetail` espone `error`),
+  `RequestWorkPanelScreen` (chiavi `requestManagement.workPanel.unavailable.*` rimosse, ora in `common`).
+- Task: il 403 con contatti (`TaskAccessDenied`, spec 0155 D-7) resta prioritario; il 404 passa da `DetailError`.
+- Test nuovo `components/detail/detail-error.test.tsx`; FAQ guida `general` IT/EN.
+- Verifica: `tsc -b --force` 0; ESLint pulito sui file toccati; Vitest completo 6979/6987, gli 8 falliti sono in
+  `product-typology-schema/form-payload` (campo `color` in lavorazione da altra sessione, file non toccati).
+- Aperto (non implementato, fuori scope): backend logga + alert Teams sui 403 da policy (`handleControllerException`);
+  per le Commesse il 403 da scoping membership e' un caso quotidiano -> valutare 403 con contatti (Responsabili) come Task.
+- Manuale Claude Docs: da aggiornare FAQ/Domande frequenti (record non trovato / accesso negato).
+
+## COMPLETA TASK — SEGNATEMPO PER TUTTI GLI ASSEGNATARI A SCELTA (spec 0205) — VERDE, COMMITTATO (2026-10-07)
+
+- RETTIFICA spec 0155 D-6 (allineamento a q-net). BE: `for_all_assignees` omesso -> true (`CompleteTaskData`
+  default true); false esplicito -> solo l'attore. Bulk invariato (sempre true).
+- FE: `TaskCompleteDialog` ha il campo form `for_all_assignees` (casella, default spuntata, visibile solo se si
+  registra un segnatempo) e lo invia sempre. Prop `forAllAssignees` rimossa da dialog e chiamanti (dettaglio, lista,
+  cella stato, kanban, pannello sottotask). i18n `tasks.actions.completeDialog.forAllAssignees`; guida `tasks` IT/EN.
+- Test cambiati per requisito cambiato: `TaskCompleteForAllAssigneesTest` (default true, false esplicito),
+  `task-complete-dialog.test.tsx` (casella), `task-subtasks-section.test.tsx` (mock senza prop).
+- `QualificaSampleTaskSeeder::complete()` passa `forAllAssignees: false` (un segnatempo per task, come prima).
+- Verifica: Pest suite completa 9429/9430 (1 skip); Pint ok; Vitest tasks+help 604/604; `tsc -b --force` 0;
+  ESLint pulito sui file toccati.
+- Manuale Claude Docs: NON aggiornato (doc non condiviso con la sessione) — sezione Task > Completamento/Segnatempo.
+- Al commit ESCLUDERE i file di altre sessioni (contract-data FE, seeder showcase commissioni).
+
+## COMMISSIONE FORNITORE PER TIPOLOGIA (spec 0202) + REGOLE PROVVIGIONI LEGACY (spec 0203) — VERDE, COMMITTATO 48d2bff0 + legacy qnet 06f523fa (2026-10-07)
+
+- Spec 0202 (decisioni utente): impostazione sulla TIPOLOGIA prodotto, mai piu' sul codice `institution`:
+  `product_typologies.supplier_commission_enabled` + `supplier_commission_direction` (enum
+  `App\Enums\SupplierCommissionDirection` RECEIVED|PAID). Snapshot congelato `quote_lines.supplier_commission_direction`
+  scritto SOLO da `QuoteLineWriter` alla creazione della riga REVENUE o al cambio prodotto (duplicator copia).
+  Calcolo NO = nessuna commissione Fornitore. Margine (server `QuoteTotalsCalculator`, FE `commission-calculator.ts`):
+  RECEIVED s−c−p, PAID n−c−p−s, null n−c−p; ricavi/IVA/documenti invariati. `POST /api/quotes/commission-defaults`
+  risponde `{commissions, supplier_commission_direction}`. Contract data: `lines[].supplier_commission_direction`
+  (non piu' `is_institution`). D-14: anche il tab Costi usa il ricavo effettivo, regola unica in
+  `App\Services\WorkOrders\LineEffectiveRevenue`. Migrazione: institution -> RECEIVED, altre -> PAID, nuove tipologie
+  spente; `ProductTypology::factory()->supplierCommission()` nei test che vogliono la commissione Fornitore.
+- Spec 0203: repo legacy `qnet` nuovo `Api/V2/CommissionConfigurationMigrationController` +
+  `GET api/v2/migration/commission-configurations` (sola lettura, 615 regole: 595 commercial/contact, 19
+  supplier/company, 1 senza ruolo; `type` = tipo destinatario, `tipology` = ruolo). qnet-2: sorgenti
+  `commission-configurations` (via `CommissionConfigurationService`, `old_id` nuovo su `commission_configurations`) e
+  `product-suppliers` (imposta `products.supplier_id` solo se vuoto), fase subito dopo `registries`. Stima: 30 regole
+  falliranno comunque (29 senza destinatario + 1 senza ruolo); le altre importabili solo con anagrafiche/referenti
+  migrati. Nel dev DB nessuna anagrafica migrata: import non provato end-to-end.
+- Verifica (verifier): Pest suite completa 9418/9419 (1 skip); Pint ok; Vitest 6970/6971 (timeout sotto carico
+  `attribute-form-table-editor`, verde da solo); `tsc -b --force` 0; ESLint 1 errore preesistente
+  `quotes/column-renderers.tsx:11`; HTTP reale + endpoint legacy reale; screenshot `v3-*`. Dopo D-14: Pest WorkOrders
+  227/227, Vitest help+work-order-costs 131.
+- Aperto: `margin_net` persistito delle offerte esistenti si aggiorna solo al prossimo salvataggio (0145 D-5);
+  canali Gestione Richieste/Lead senza test dedicato sullo snapshot (passano dal writer condiviso); percentuali
+  legacy ora applicate al margine riga, non al prezzo.
+- Al commit: due repo (qnet-2 e qnet legacy); in qnet-2 ESCLUDERE i file di altre sessioni (registries,
+  commission-configurations FE, `RegistryScopedTableDefinition`, `TableRegistry`).
+- Seguito (NON COMMITTATO): `DemoCommissionShowcaseSeeder` (+ `DemoCatalog/DemoCommissionShowcaseCatalogue`) in
+  `DemoDataSeeder` dopo `DemoContractSeeder`: 6 commesse "Demo commissioni - ..." (dev DB: id 11-16) con un caso
+  ciascuna (PAID, RECEIVED %, RECEIVED fissa, fornitore mancante, tipologia `demo_training` senza calcolo, mista con
+  costi e stati pagamento). Regole scope PRODUCT solo sui prodotti showcase. Test Seeding 142/142, Pint ok.
+
+## ANAGRAFICA — TAB "COMMISSIONI CONFIGURATE" (spec 0204) — VERDE, COMMITTATO (2026-10-07)
+
+- Richiesta utente: "aggiungere un tab commissioni configurate (collegamento tramite commissioni configuratore) su
+  anagrafica". Scelte utente: perimetro = regole con destinatario QUESTA anagrafica (`recipient_type='registry'`,
+  `recipient_id`), niente referenti/prodotti forniti; tab SOLO su anagrafiche fornitore (`is_supplier`) + Nuovo.
+- Backend: `commission-configurations` aggiunto a `TableRegistry::REGISTRY_SCOPE_COLUMNS`
+  (`commission_configurations.recipient_id`) + nuova `REGISTRY_SCOPE_MORPH_TYPE_COLUMNS` (`recipient_type`);
+  `RegistryScopedTableDefinition` ha il param opzionale `morphTypeColumn` (where = alias morph di `Registry`). Chiavi
+  `registryId`/`registry_id` della 0199 invariate. Test: `tests/Feature/Tables/RegistryCommissionConfigurationScopeTest.php` (6).
+- Frontend: azioni di riga del Configuratore estratte in `use-commission-configuration-row-actions.tsx`
+  (`CommissionConfigurationsTable` ci si appoggia); tab `commission-configurations` (`supplierOnly`, icona Percent) in
+  `RegistryRelatedRecords` (nuova prop `isSupplier`, passata da `registry-detail.tsx`); `RegistryCommissionConfigurationsPanel`.
+  Create param `registry_id` (`COMMISSION_CREATE_REGISTRY_PARAM`) -> `CommissionConfigurationFormMode` create
+  `supplierRegistryId` -> defaults SUPPLIER/RECIPIENT/registry (`createDefaults`); label del destinatario via
+  `useForSelectLabels`. i18n `registries.detail.related.commissionConfigurations`. Guide IT/EN: `registries#configured-commissions`
+  (nuova) + tip in `commission-configurations#create-configuration`.
+- Test aggiornati (solo setup, nessuna asserzione cambiata): mock `./api` con `COMMISSION_CONFIGURATIONS_DOMAIN`,
+  mock pannelli con il nuovo export, prop `isSupplier={false}` nei casi esistenti. Nuovi casi: tab fornitore/permessi,
+  pannello (5 casi della describe.each), preset form/screen/body.
+- Verifica: Pest Tables+Table+Exports+CommissionConfigurations+Registries 513 verdi; Pint ok; Vitest registries+
+  commission-configurations+help+i18n 54 file / 444; `tsc -b --force` 0; ESLint pulito. Browser NON verificato
+  (backend dev non attivo, Playwright non installato).
+- Manuale Claude Docs: da aggiornare (Anagrafiche > dettaglio fornitore, tab Commissioni configurate; Configuratore
+  Commissioni > creazione dal fornitore).
+- Commit con i soli file di questa feature (esclusi quelli delle spec 0202 e 0203-legacy-commission-rules-migration,
+  altra sessione). Spec rinumerata 0204 per collisione con la 0203 creata in parallelo.
+
+## COMMESSA — TAB "DATI CONTRATTUALI" + STATI PAGAMENTO PER RIGA (spec 0201) — VERDE, COMMITTATO 1e512ce4 (2026-10-07)
+
+- Richiesta utente: nel dettaglio commessa gli stati di pagamento per ogni prodotto e una sezione che spiega i calcoli
+  per riga (riferimento legacy `qnet` `manageorder/{id}` "Dati contrattuali commessa", `Manageorder::calcolaDatiContrattuali`).
+- Decisioni utente: ricavo per riga visibile in DUE letture (legacy: tipologia `institution` = commissione Fornitore,
+  altre = imponibile; spec 0145: netto commissioni); catalogo stati CONFIGURABILE con flag `allows_delivery`; per riga
+  stato + accordo + insoluti; notifica "si puo' consegnare"; migrazione dal legacy; terzo tab dopo Task/Costi;
+  D-15 totali PER TIPOLOGIA flessibili (tutte le `product_typologies`, zero-filled, come `QuoteTypologySummaryCalculator`).
+- Backend: lookup `work_order_payment_statuses` (`WorkOrderPaymentStatus`, `WorkOrderPaymentStatusService`, CRUD +
+  for-select `{id,label,name,color,allows_delivery}` + reorder, TableDefinition `work-order-payment-statuses`, seeder
+  `WorkOrderPaymentStatusSeeder` in DatabaseSeeder e QualificaProductionDataSeeder, 10 stati legacy `old_id` 1..10);
+  `work_order_line_payments` (`WorkOrderLinePayment`, audit, UNIQUE quote_line_id, status FK restrictOnDelete),
+  cancellato da `WorkOrderLineWriter` quando la riga esce; `GET /api/work-orders/{id}/contract-data` e
+  `PATCH .../contract-data/lines/{quoteLine}` (`WorkOrderContractDataBuilder`, `WorkOrderLinePaymentWriter`,
+  `routes/api/work-order-contract-data.php`); permessi `work-orders.viewContractData`/`managePayments`, flag
+  `view_contract_data`/`manage_payments`; `WorkOrderLineDeliverableNotification` (+ `AssignmentTargetEnum::WorkOrder`,
+  `RecordLinkResolver`); sorgente migrazione `work-order-line-payments` (fase 11 `MigrationOrder`). Commissioni
+  nascoste con la regola di `QuoteResource::summarizeTotals`. Piu' commissioni Fornitore: amount = somma, type/value
+  della prima per id.
+- Frontend: `features/work-order-contract-data/` (tab, tabella con formule sotto la riga, card totali per tipologia,
+  editor inline pagamento), `features/work-order-payment-statuses/` (modulo impostazioni, route
+  `/work-order-payment-statuses`, nodo nav in `config/navigation/configuration.php`), i18n `{it,en}-work-order-contract-data.ts`
+  e `{it,en}-work-order-payment-statuses.ts`, guide in-app `work-orders#contract-data` + nuova `work-order-payment-statuses`.
+- Verifica (verifier indipendente): Pest 883/883 aree feature (suite completa backend 9366/9368: il fallimento era
+  `RegistryTableTest` delle modifiche registries di un'altra sessione, ora verde 12/12); Pint ok; Vitest 72 file / 588;
+  `tsc -b --force` 0; ESLint 0; HTTP reale su commessa 1 (GET/PATCH/404/422/for-select) poi ripristinato; screenshot
+  1280/375 light/dark, nessuno scroll orizzontale.
+- Aperto: (1) API legacy `work-orders` (repo `/Users/Repository/qnet`) deve esporre `stato_pagamento`,
+  `accordo_pagamento`, `insoluti` di `orderisos` — NON autorizzato, sorgente testata solo con client fake;
+  (2) C-2: eventuali attributi commessa `stato_pagamento`/`accordo_pagamento`/`insoluti` diventano doppioni;
+  (3) manuale Claude Docs: accesso negato -> aggiornare a mano (dettaglio Commessa tab "Dati contrattuali", nuovo modulo
+  "Stati pagamento commessa"); (4) la regola "ricavo = commissione Fornitore" resta legata al codice tipologia
+  `institution`; (5) nel dev DB la commessa 89 non esiste.
+- Seguito (utente): tab "Dati contrattuali" PRIMO e aperto di default (ordine Dati contrattuali, Task, Costi) in
+  `work-order-detail-work-tabs.tsx`; 2 test del file aggiornati (requisito cambiato), guide `work-orders` IT/EN.
+- PROVATI E ANNULLATI su richiesta utente ("torna a quando ti ho chiesto di spostare dati contrattuali con il tab", da
+  rivedere con calma): flag tipologia `revenue_from_supplier_commission`, commissioni di tutti i ruoli per riga + card
+  per ruolo, riepilogo stile offerta (costi/margine), seeder `DemoSupplierCommissionSeeder`. Codice e spec riportati
+  allo stato D-15 + tab primo; non riproporli senza nuova richiesta. Residuo NON ripristinabile nel DB dev: le
+  commissioni delle offerte demo sono state rigenerate (Commerciale/Segnalatore/Supervisore/Fornitore) e puntano a
+  regole "Demo commissione ..." ora SUSPENDED (le non referenziate eliminate); prodotti tutti `institution`, nessun
+  `supplier_id`, anagrafica fornitore demo eliminata. Per un DB pulito serve un reseed (solo su conferma utente).
+- Verifica dopo il ripristino: Pest WorkOrders+WorkOrderPaymentStatuses+source+ProductTypologies+Authorization 368/368;
+  Vitest contract-data/payment-statuses/work-orders/product-typologies/help/i18n/routes 77 file / 628, quotes 354/354;
+  `tsc -b --force` 0; ESLint 0; nessun residuo di identificatori annullati (grep).
+- Al commit: ESCLUDERE i file registries non di questa feature (altra sessione).
+
+## ANAGRAFICHE — TABELLA: COLONNE COMMERCIALE / SUPERVISORE / SEGNALATORE / OPERATORI — VERDE, COMMITTATO (2026-10-07)
+
+- Richiesta utente: "aggiungere nella tabella anagrafiche le colonne commerciali, supervisori, segnalatori e operatori".
+  Decisione utente: "Operatori" = TUTTI i gestori account (`managers`, pivot `registry_user`, in ordine di position),
+  non il solo GA2.
+- Backend: nuovo `Tables/Registries/RegistryRelationColumns` (filtro set whereHas per nome, sort subquery correlata,
+  distinct + "(Vuoti)") per `source`/`commercial`/`supervisor`/`reporter` + `managers` (non ordinabile), come
+  `OpportunityRelationColumns`. `RegistriesTableDefinition` delega (logica `source` spostata li', 323 -> 273 righe),
+  eager load `commercial`, `supervisor.avatar`, `reporter`, `managers.avatar`; righe: `commercial`/`reporter`
+  `{id,name}|null`, `supervisor` `{id,name,avatar_url}|null`, `managers` array. Catalogo: 4 colonne prima di
+  `created_at` + filtri. Spec 0020 (contratto columns/rows) aggiornata.
+- Frontend: `registryColumnRenderers` -> `RelationCell` (commercial Briefcase, reporter UserRound), `UserCell`,
+  `UserStackCell`. Label `registries.columns.{commercial,supervisor,reporter,managers}` IT/EN ("Operatori"/"Operators").
+- Test: `RegistryTableTest` colonne 8 -> 12 (REQUIREMENT CHANGED); nuovo `RegistryTableTeamColumnsTest` (7);
+  `column-renderers.test.tsx` +3 casi. Guida in-app `registries` IT/EN (passo in "Cercare un'anagrafica").
+- Manuale Claude Docs: NON aggiornato (doc non accessibile dalla sessione) -> sezione Anagrafiche > tabella/ricerca.
+
+## TEAM — EDITOR GESTORI ACCOUNT COME COMMESSE (ANAGRAFICHE/OPPORTUNITA'/OFFERTE) — VERDE, COMMITTATO (2026-10-07)
+
+- Richiesta utente: "modificando il team lo spazio e' davvero poco, fallo come in commesse".
+- Causa: `ManagerSlotsField` senza `labels` usa il badge numerico compatto (numero + picker + 3 pulsanti su una riga,
+  picker schiacciato nella colonna valore del dettaglio). Commesse passa sempre le etichette -> layout "named"
+  (etichetta su riga propria, picker a tutta larghezza).
+- Fix: nuovo `managerSlotLabels(t, labels)` in `features/shared/manager-position-label.ts` (mappa COMPLETA 1..
+  `MAX_MANAGER_SLOTS`, override di categoria sopra il default "Gestore account n"). Usato da `RegistryManagersField`,
+  `OpportunityManagersField` (rimosso `toSlotLabels` locale), `QuoteManagersField` (non usa piu' `toManagerSlotLabels`,
+  che resta per Gestione richieste). `ManagerSlotsField` invariato (solo commenti): Gestione richieste mantiene il badge.
+- Test: `opportunity-relation-fields.test.tsx` aggiornato (requisito cambiato: ora inoltra sempre la mappa completa);
+  nuovo `manager-position-label.test.ts`. Manuale: nessun impatto.
+- Nota: `help-guide-keys.test.ts` (55 -> 56) e gli errori `tsc` in `work-order-payment-statuses/` sono del lavoro
+  parallelo spec 0201, non di questa modifica.
+
+## ANAGRAFICA — CREAZIONE: CAMPI RAPIDI CONTATTI/INDIRIZZO RIPRISTINATI (2026-10-07)
+
+- Richiesta utente: "in creazione anagrafica prima c'erano precompilati i contatti e indirizzi, voglio che siano
+  comunque precompilati per essere modificati". Annulla la scelta di 0155abca ("in creazione niente piu' campi rapidi").
+- `PersonalDataChildCards` (`personal-data-record-cards.tsx`): nuove prop opzionali `createMode` +
+  `requiredCreateTypes`, passate a `ContactsManager`/`AddressesManager` (quick field email/telefono/PEC/fax + form
+  indirizzo inline). `registry-form-body.tsx` le passa con `REQUIRED_CREATE_CONTACT_TYPES = ['phone']` (asterisco sul
+  Telefono). Il dettaglio resta invariato (niente createMode).
+- REQUIREMENT CHANGED (di nuovo) nei test: `registry-form-required-phone` ripristina il test del quick field
+  Telefono obbligatorio (+ indirizzo visibile), `-custom-fields` digita nel campo Telefono; rimossi
+  `ContactsManagerStub`/`STUB_PHONE` e l'`eslint-disable` ormai inutile dalle fixture.
+- Guida in-app IT/EN `registries`: creazione con campi gia' pronti, passi del flusso nuovo cliente aggiornati.
+- SEGUITO (utente: "aggiungi sempre in anagrafica, aggiungi indirizzo per aggiungere piu indirizzi"):
+  `AddressesManager` nuova prop opt-in `multipleOnCreate` (con `createMode`): form inline + lista + "Aggiungi
+  indirizzo" (dialog). Stato `inlineKey` = `_key` dell'indirizzo posseduto dal form inline, cosi' un indirizzo aggiunto
+  dal dialog non ci "salta" dentro; il principale resta unico (`normalizePrimary`), svuotato l'inline passa al primo
+  degli altri. `PersonalDataChildCards` la attiva con `createMode` (solo anagrafica; referenti/utenti invariati).
+  Test: 3 nuovi in `addresses-manager.test.tsx` + "Add address" visibile in `registry-form-required-phone`. Guide
+  IT/EN aggiornate. `addresses-manager.tsx` 405 righe (sopra soft limit 300, era gia' 368): split candidato = estrarre
+  lista+dialog in `addresses-list.tsx`.
+- Manuale Claude Docs: sezione Anagrafiche > creazione da allineare.
+
+## ANAGRAFICA — DETTAGLIO EDITABILE IN PLACE (CAMPI FLESSIBILI COMPRESI) + CREAZIONE COME IL DETTAGLIO (spec 0200) — VERDE, COMMITTATO b9d9f79b + SEGUITO (2026-10-06)
+
+- SEGUITO (dopo b9d9f79b), richiesta utente "/registries/new allineato a come e' stato fatto l'edit":
+  - Creazione: Dati anagrafici come riga chiusa (`RegistryIdentityRecordSection` unica per dettaglio e creazione, prop
+    `identity` = card o bozza; `PersonalDataIdentityRows` accetta `PersonalDataIdentity`). Stato in
+    `use-registry-draft-inline-edit.ts` (snapshot della scheda per Ripristina, Fatto bloccato se scheda incompleta,
+    `cardSignal`); `useRegistryFormSubmit` ha `onRefused(section)` e il body riapre la riga della scheda.
+  - Contatti/Indirizzi: `PersonalDataChildCards` (presentazionale, buffer del chiamante, `persistence` opzionale) in
+    `personal-data-record-cards.tsx`; `PersonalDataRecordCards` ci si appoggia. In creazione niente piu' campi rapidi
+    (telefono obbligatorio solo al Salva). `registry-form-page.tsx`: pulsante Indietro come il dettaglio.
+  - Comuni: `CityPickerField.onChange(id, city)` + `PersonalDataIndividualFields.onCityPicked` + stato `cities` in
+    `PersonalDataCardForm`: la bozza porta `birth_city`/`residence_city` (etichetta) per le righe chiuse.
+  - BUG (utente: "da azienda a persona fisica mi ritorna errore"): toast "expected array, received null" = Tag
+    (`registries.tags`, relazione many) salvato `null` => OGNI salvataggio inline falliva. Fix generico in
+    `build-custom-fields-schema.ts`: relazione many e enum multiselect `.nullable()`. Test schema + regressione nel
+    dettaglio; backend `RegistryCardTypeSwitchTest` (PATCH azienda -> persona fisica ok, nome rinominato). Sul record
+    demo 171 il salvataggio si ferma ora solo per la Partita IVA demo non valida (messaggio nell'editor).
+  - REQUIREMENT CHANGED nei test: campo rapido Telefono rimosso (`registry-form-required-phone`), scheda chiusa
+    (`-metadata`, `-duplicate-warning`, `-custom-fields`); stub `ContactsManagerStub` + `fillCardNames` nelle fixture.
+  - Verifica: Vitest completo 905 file / 6862 verdi; `tsc -b --force` 0; ESLint pulito sui file toccati (1 warning
+    preesistente in `table-field-control.test.tsx`); Pest Registries 101 verdi, Pint ok. Browser: `/registries/new`
+    desktop e 375px senza scroll orizzontale, Milano visibile nella riga chiusa; `/registries/171` errore riprodotto e
+    sparito.
+
+- Richiesta utente: "prendi anagrafica e fai le stesse modifiche di commesse ... soprattutto per i campi flessibili.
+  Anche per creazione ... come fatto in task". Solo frontend: la PATCH `/registries/{id}` gia' restituiva
+  `permissions` (ora `updateRegistry` li espone, `RegistryDetailWithPermissions`).
+- Dettaglio (`RegistryDetailView`: niente `onEdit`, nuovo `onChanged`; `ResourcePermissionsProvider` attorno):
+  `useRegistryInlineEdit` su `useRegistryForm` edit (`values` + `keepDirtyValues`, reset dopo PATCH). Submit estratto in
+  `use-registry-form-submit.ts` (`useRegistryFormSubmit`; in edit la scheda anagrafica si valida SOLO se e' nel PATCH:
+  un'anagrafica storica incompleta non blocca gli altri campi). Sezioni condivise dettaglio/creazione:
+  `registry-record-identity.tsx` (Dati anagrafici = UNA riga `REGISTRY_CARD_FIELD` che apre `PersonalDataCardForm`,
+  matita da `personal_data.type`; in creazione sempre aperta), `-record-relations.tsx` (Relazioni, Team con slot vuoti
+  visibili, Referenti a tutta larghezza), `-record-business.tsx` (Fornitore qualificato solo se fornitore). Campi in
+  `registry-relation-fields.tsx` / `-business-fields.tsx`. Valori in `registry-record.ts` (`persistedRegistryValues`).
+- Campi flessibili: NUOVO generico `features/custom-fields/custom-field-record-sections.tsx`
+  (`CustomFieldRecordSections`: gruppi come il form, riga = `RecordInlineField` field `custom_fields.<raw>` metaKey
+  `custom.<raw>`, editor = `CustomFieldItem` ora esportato da `CustomFieldsSection.tsx`) + `custom-field-value-display.tsx`
+  (relazione via `useForSelectLabels`, enum label, Si/No, tabella read-only). Ordinamento/gruppi estratti in
+  `custom-fields-grouping.ts`. Riusabile da ogni modulo con campi personalizzati.
+- Contatti/Indirizzi: `personal-data-read-only-cards.tsx` RINOMINATO `personal-data-record-cards.tsx`
+  (`PersonalDataRecordCards`, `git mv` => rename in staging) con prop `editing` (persistenza immediata dei manager,
+  invalida il dettaglio). `referent-detail.tsx` aggiornato solo nell'import (resta read-only).
+- Creazione: `registry-form-body.tsx` (replica del dettaglio, side = avviso duplicati + Contatti/Indirizzi con campi
+  rapidi, telefono obbligatorio) + `registry-form-header.tsx` (monogramma + nome live, `RegistryStatsStrip` condiviso) +
+  `registry-create-sections.tsx` + `use-registry-draft-values.ts`. `RegistryForm` solo creazione (niente `mode`, meta via
+  `useResourceMeta`); `guarded-registry-form.tsx` (`useFormLeaveGuard`) usato da `RegistryFormScreen` e `RegistryFormPage`.
+  Rotta `registries/:id/edit` rimossa; registry `generateEditRoute: false`. Quick-create (`module-entries.tsx`) senza `mode`.
+- Rimossi: `registry-form-details-tab`, `-form-summary`, `-form-team-section`, `registry-detail-team`,
+  `use-registry-form-meta`, `RegistryDetailStats` (-> `RegistryStatsStrip`); PlannedField "Codici ATECO". i18n orfane
+  rimosse: `form.editTitle/editSubtitle`, `form.groups.*`, `form.atecoCodes*`, `detail.summary.*`,
+  `form.sections.*.description`; nuove `form.leaveConfirm.*`.
+- REQUIREMENT CHANGED dichiarati nei test: `registry-detail.test` (niente Edit), `registry-form-metadata.test` (riscritto:
+  righe chiuse, casi edit spostati), `registry-form-custom-fields.test` (riga chiusa + Fatto), pagine form/detail (niente
+  edit). Nuovi: `registry-detail-inline-edit.test.tsx` (11), fixture `registry-test-fixtures.tsx`.
+- Verifica: Vitest completo 904 file / 6857 verdi; `tsc -b --force` 0; ESLint pulito sui file toccati. Browser reale
+  (Playwright, `/registries/1`, `/registries/new`): desktop light/dark e 375px senza scroll orizzontale, nessun errore
+  runtime; editor Gruppo IVA e Dati anagrafici aperti in place.
+- Guida in-app IT/EN `registries`: nuova `editing-a-registry`, `registry-record` e `new-client-flow` riscritte.
+- Da fare / fuori scope: manuale Claude Docs (doc NON accessibile da questa sessione: "not shared") — sezione
+  Anagrafiche: modifica in place (campi personalizzati, scheda anagrafica, contatti/indirizzi), creazione a righe
+  chiuse. Su mobile Contatti/Indirizzi (telefono obbligatorio) stanno sotto il Salva del corpo, come nei RecordBody degli
+  altri moduli. Chiavi i18n orfane preesistenti `registries.detail.title/subtitle/details`, `form.managersPlaceholder`,
+  `form.managersRemove`.
+
+## ANAGRAFICA — TAB RECORD COLLEGATI (Opportunita'/Offerte/Commesse/Task) + "NUOVO" PRECOMPILATO (spec 0199) — VERDE, COMMITTATO (2026-10-06)
+
+- Richiesta utente: "in anagrafica tabelle di appoggio per commesse, opportunita', offerte e attivita' associate
+  all'anagrafica ... tab sotto con le tabelle filtrate per il cliente". Scelte utente: attivita' = modulo Task;
+  ogni tab ha anche "Nuovo" precompilato.
+- Backend: scope di righe `registry` (come `opportunityId` 0067 / `quoteId` 0095). Chiave `registryId` su
+  rows/values/export, query `registry_id` su columns. Interfaccia `App\Tables\RegistryScopable`; nuovo decoratore
+  `Tables\Registries\RegistryScopedTableDefinition` (opportunities -> `opportunities.registry_id`, tasks ->
+  `tasks.registry_id`, esterno in `TableRegistry::REGISTRY_SCOPE_COLUMNS`); `OpportunityScopedTableDefinition`
+  (quotes, via opportunita' del cliente) e `QuoteScopedTableDefinition` (work-orders, via offerta -> opportunita')
+  implementano anche `RegistryScopable` (un secondo wrapper li nasconderebbe agli `instanceof`). Controlli sempre
+  con `instanceof RegistryScopable`. `GET /quotes/for-select?registry_id=` (solo pagina, non l'hydration `ids`).
+  Test: `tests/Feature/Tables/RegistryRowScopeTest.php` (29).
+- Frontend framework: `TableRowScope.registryId` propagato come `quoteId` (table-view, controller, grid-state,
+  slots, ssrm-datasource, data-table, column-def-builder, column-filters, export). Chiave filtri locali: segmento
+  anagrafica aggiunto SOLO se presente (chiavi esistenti invariate).
+- UI: `registry-related-records.tsx` (card a tab sotto `RecordBody`, tab gated da `<modulo>.viewAny`, contatore
+  dopo il primo caricamento, griglia montata solo nella tab attiva), `registry-related-panels.tsx` (un pannello per
+  modulo sul SUO hook azioni, sheet forzato), `registry-related-grid.tsx` (Nuovo + `TableView rowScope`).
+  Tab Task: override di visita `assignment` = `visible` (con viewAll/viewSite) o `all`, invece di "assegnati a me".
+- Estratti: `useOpportunityRowActions` (da `OpportunitiesTable`, secondo call site), `opportunities/action-icons.ts`,
+  `tasks/action-icons.ts` (`TASK_ACTION_ICONS`), `tasks/task-form-defaults.ts` (`use-task-form.ts` superava 500).
+  `useWorkOrderRowActions` espone `openCreateWith`.
+- Create param `registry_id`: Opportunita' -> `OpportunityCreateFormMode.registryId` (default + ruoli ereditati
+  una volta, `useOpportunityRegistryPreset`; ignorato con `lead_id`); Offerte -> `QUOTE_CREATE_REGISTRY_PARAM`
+  restringe il selettore Opportunita' (ignorato con `opportunity_id`); Commesse -> `registryId` fino a
+  `WorkOrderQuoteField` (selettore Offerta ristretto); Task -> `TaskFormMode.registryId`.
+- CONFLITTO SEGNALATO: spec 0093 D-13 diceva "nessuna creazione commessa dalla lista"; ora la tab Commesse
+  dell'anagrafica offre "Nuova commessa" (scelta utente esplicita), la pagina elenco resta senza.
+- Verifica: Vitest completo 903 file / 6853 verdi (+ test registries dopo override Task: 90); `tsc -b --force` 0;
+  ESLint sui file toccati 0; Pest completo 9326 passati / 1 skipped; Pint pulito. Non verificato nel browser reale.
+- Manuale: guida in-app IT/EN `registries` nuova sezione `related-records`. Manuale Claude Docs NON accessibile
+  (doc non condiviso con la sessione) -> da aggiornare la sezione Anagrafiche.
+- Fuori scope segnalato: errore ESLint preesistente `registry-form-metadata.test.tsx:271` (`_omit`);
+  HANDOFF.md ~430 KB, va archiviato in `docs/handoff-archive/`.
+
+## OFFERTE: DOPPIO "CREA OFFERTA" SU /quotes/new — VERDE, COMMITTATO (2026-10-06)
+
+- Causa: dalla spec 0197 il form offerta disegna la propria banda identita' (titolo "Crea offerta" + Annulla/Salva),
+  ma `moduleScreen` di `quotes` non era `formOwnsHeader`, quindi `ModuleFormPage` (e lo Sheet modale) aggiungevano
+  il proprio titolo/sottotitolo sopra. Fix: `formOwnsHeader: true` in `quote-screens.tsx` (+1 test in
+  `quote-screens.test.tsx`). Vitest quotes+modules 414 pass, ESLint ok, `tsc -b --force` pulito. Manuale: nessun impatto.
+- Stesso difetto chiuso su `work-orders` (spec 0196, /work-orders/new): `formOwnsHeader: true` in
+  `work-order-screens.tsx` + nuovo `work-order-screens.test.tsx`. Vitest work-orders+modules 288 pass, ESLint ok.
+  COMMITTATO. Al momento del fix `tsc -b --force` era rosso solo per lavori in corso altrui (`personal-data`,
+  `registries`), nessun errore in work-orders.
+
+## ANAGRAFICHE: "TAG" COME CAMPO PERSONALIZZATO — VERDE, NON COMMITTATO (2026-10-06)
+
+- Richiesta utente: select con i tag in anagrafica, come campo personalizzato (non colonna nativa). Nessun codice
+  di prodotto nuovo: il tipo `relation` con `cardinality: many` verso `tags` (for-select `GET /tags/for-select`)
+  esisteva gia'; il form anagrafica lo rende in "Altri campi" con `AsyncPaginatedMultiSelect` (chip).
+- `QualificaTemplateSeeder`: nuova voce TEMPLATES `registries` -> `tags` / "Tag" / `relation`
+  (`TAGS_RELATION_TARGET` = `{entity_type: tags, cardinality: many, for_select_resource: tags}`). Valore salvato
+  in `custom_fields.tags` come array di id; id inesistente -> 422 `custom_fields.tags`.
+- Test: `QualificaTemplateSeederTest` (+1), nuovo `tests/Feature/Registries/RegistryTagsCustomFieldTest.php` (2).
+  Pest Registries + CustomFields + suite che usano i seeder Qualifica: 264 pass. Pint ok. Guida in-app
+  registries IT/EN (riga "Altri campi"): Vitest help 108 pass, ESLint ok, `tsc -b --force` pulito.
+- Da fare: eseguire `php artisan db:seed --class=QualificaTemplateSeeder` su locale/staging/prod per creare il campo.
+  Il dettaglio anagrafica (sola lettura) NON mostra i campi personalizzati: il Tag si vede nel form di modifica e
+  come colonna della griglia. Tag delle anagrafiche legacy non migrati (gia' fuori scope della migrazione).
+  Manuale Claude Docs non accessibile da questa sessione: aggiungere "Tag" tra i campi della scheda anagrafica.
+
+## OPPORTUNITA' — DETTAGLIO EDITABILE IN PLACE + CREAZIONE COME IL DETTAGLIO (spec 0198) — VERDE, COMMITTATO (2026-10-06)
+
+- Richiesta utente: stesse modifiche delle Commesse (spec 0196) sulle Opportunita', creazione come nei Task. Solo
+  frontend: la PATCH `/opportunities/{id}` gia' restituiva `permissions` (ora `updateOpportunity` li espone).
+  L'Opportunita' NON ha campi flessibili (Attributi passati all'Offerta con la spec 0084).
+- Dettaglio (`OpportunityDetailView`: niente `onEdit`, nuovo `onChanged`): `useOpportunityInlineEdit` su
+  `useOpportunityForm` edit (`values` + `keepDirtyValues`, reset dopo PATCH, `clearSubmitErrors`). Sezioni condivise
+  dettaglio/creazione: `opportunity-record-details.tsx` (Note generali callout, Dettagli: titolo + pianificazione),
+  `-record-client.tsx` (Anagrafica con cascata e avviso "opportunita' aperta" nell'editor, Referente solo con
+  anagrafica, Commerciale, Segnalatore con i buoni, Lead in sola lettura), `-record-classification.tsx` (Fonte, Righe,
+  Prodotti di interesse; Team: Supervisore + G.A. in una riga). Tipi/hook in `opportunity-record.ts`
+  (`useCascadeEditable`: editor non apribile se la cascata scrive un campo non editabile). Campi in
+  `opportunity-fields.tsx`, `-relation-fields.tsx`, `-registry-field.tsx` (senza `forceDisabled`), `-reporter-field.tsx`.
+  BR-2: `registry_id`/`source_id` in `locked_fields` = nessuna matita. Premi: `RewardChipsSection` resta sola lettura.
+- Creazione: `opportunity-form-body.tsx` + `-form-header.tsx` (KPI condivisi `OpportunityStatsStrip`) +
+  `-create-sections.tsx` (Lead di origine sempre aperto in testa) + `use-opportunity-draft-values.ts` (etichette via
+  `useForSelectLabels`/albero categorie). `GuardedOpportunityForm` in `opportunity-screens.tsx` (`useFormLeaveGuard`);
+  registry `generateEditRoute: false`. Default in `opportunity-form-defaults.ts`.
+- Condiviso: `useOutsidePointerDismiss` ignora i pointerdown dentro `[role="alertdialog"]` (conferma "Sostituire i
+  ruoli?" dell'anagrafica). `useRegistryRoleInheritance`: memoria dei ruoli ereditati in `WeakMap` per form (il picker
+  vive solo a riga aperta). Riusa `components/record-form/first-error-message.ts` (spec 0197 Offerte).
+- Rimossi: `opportunity-{attribution,client,team,general-notes,title,planning,product-lines,lead}-section`,
+  `-form-summary`, `use-opportunity-selected-items`, `use-opportunity-form-meta`, `OpportunityFormSkeleton`; stato lead
+  senza `operationalSite`/`managers`; `OpportunityFromLeadContext.managerRefs`. i18n orfane rimosse
+  (`form.header/summary/editTitle/editSubtitle`, `sections.attribution/planning`, `sections.*.description`); nuove
+  `detail.sections.details`, `form.leaveConfirm.*`.
+- REQUIREMENT CHANGED dichiarati nei test (righe chiuse, matita invece di disabilitato, niente modo edit). Nuovi:
+  `opportunity-detail-inline-edit` (7), `-create-rows` (6), `-screens-leave-guard` (2), `-fields` (5),
+  `-relation-fields` (4). Verifica: Vitest completo 900 file / 6817 verdi; `tsc -b --force` 0; ESLint 0 errori.
+- Guida in-app IT/EN `opportunities`: nuova `editing-an-opportunity`, `create-an-opportunity` riscritta.
+- Da fare / fuori scope: manuale Claude Docs (sezione Opportunita': modifica in place, creazione a righe chiuse).
+  Chiavi i18n orfane preesistenti `form.sections.workflowStatus`, `form.workflowStatus*`, `form.operationalSite*`.
+  Non verificato nel browser reale.
+
+## ORIENTAMENTO SPECIALISTICO — CAMPO "ANAGRAFICA UTENTE" (seed produzione) — VERDE, COMMITTATO (2026-10-06)
+
+- Richiesta utente: "per productionSeeder, per Orientamento inserire un campo flessibile in offerta Anagrafica Utente
+  che e' un collegamento ad anagrafica".
+- `AplOrientationAttributeCatalogue::ATTRIBUTES`: nuovo `user_registry` ("Anagrafica Utente"), `relation` →
+  `{entity_type: registries, cardinality: one, for_select_resource: registries}` (stesso schema di `teaching_tutor`).
+  Prima riga della sezione "Testata" (da sola), descrizione sezione aggiornata. Il docblock non dice piu' che "Utente"
+  e' l'anagrafica dell'opportunita'.
+- Installazioni gia' seedate: `PREVIOUS_SECTIONS` (form del 2026-10-05) + `AplPracticeCatalogue::PREVIOUS_FORMS` +
+  `QualificaQuoteLayoutSeeder::isPreviousOwnForm()` riconoscono il blob vecchio byte per byte e lo ricompongono; un
+  layout ritoccato a mano resta intatto. `DATA_SECTION`/`PATH_SECTION` private condivise tra form attuale e precedente.
+- Test: `QualificaAplOrientationCatalogueTest` (16 campi, relation_target, layout, ricomposizione). Verdi: Products
+  198, Seeding 139. Pint pulito. Nessun impatto FE (relation generico su `/registries/for-select`).
+- Manuale: guide in-app nessun impatto (non descrivono i campi Orientamento); manuale Claude Docs non accessibile
+  dalla sessione → verificare se descrive i campi offerta dell'Orientamento specialistico.
+
+## OFFERTE — DETTAGLIO EDITABILE IN PLACE + CREAZIONE COME IL DETTAGLIO (spec 0197) — VERDE, COMMITTATO (2026-10-06)
+
+- Richiesta utente: "prendi offerte e fai le stesse modifiche di commesse ... soprattutto per i campi flessibili.
+  Anche per creazione ... come fatto in task". Solo frontend: la PATCH `/quotes/{id}` gia' restituiva `permissions`
+  e gia' risincronizza provvigioni (cambio Commerciale/Segnalatore/Supervisore) e buoni (cambio Segnalatore).
+- Dettaglio (`QuoteDetailView`, niente `onEdit`, nuovo `onChanged`): `useQuoteInlineEdit` su `useQuoteForm` edit
+  (`values` + `keepDirtyValues`, reset dopo PATCH, `clearServerError`). Sezioni: `quote-record-identity.tsx` (Note
+  interne callout; "Dati offerta" = Codice, Titolo, Stato con nota di transizione via `QuoteWorkflowStatusControls`,
+  Opportunita'), Contesto read-only in `quote-detail-sections.tsx`, `quote-record-people.tsx` (Anagrafica e contatti
+  con Segnalatore+buoni; Team = Supervisore + G.A. in una riga), `quote-record-company.tsx` (Societa'/sedi con
+  cascata sede; Documento e pagamento), `quote-attributes-section.tsx` (un Attributo = una riga, layout
+  `attribute_view_layout`; `QuoteNewAttributesFields`). Banda righe `quote-detail-lines.tsx`: Righe offerta / Righe
+  costo = due `RecordInlineField` block; aperta una, il riepilogo diventa `QuoteLinesLiveSummary`.
+  `useQuoteFormContext(ids, persisted)` non chiama form-context finche' i prodotti sono quelli salvati.
+- Creazione: `quote-form-body.tsx` (replica: `quote-form-header.tsx` con KPI live via `useQuoteLiveTotals`,
+  `quote-create-sections.tsx` a righe chiuse con nomi da `useQuoteDraftLabels`, `quote-create-lines.tsx` con griglie
+  APERTE + riepilogo live + pallino errori), `useQuoteCreateDefaults` (eredita' ruoli/sede/G.A. dall'Opportunita',
+  Opportunita' forzata da params, prodotti seminati, layout predefinito), `useFormLeaveGuard`; registry
+  `generateEditRoute: false`; `QuoteForm` solo create (`QuoteCreateFormMode`, `RecordFormSkeleton`).
+- Estratti: `quote-form-defaults.ts`, `use-quote-line-caches.ts` (da `use-quote-form.ts`), `use-quote-live-totals.ts`
+  (da `quote-summary.tsx`), `QuoteStatsStrip`, campi `quote-identity-fields.tsx`/`quote-relation-fields.tsx`,
+  `quote-field-strings.ts`, `quote-lines-editors.tsx`; `components/record-form/first-error-message.ts` condiviso
+  (rimossa la copia identica in `use-work-order-inline-edit.ts`). `QuoteOfferTab`/`QuoteCostsTab` senza FormSection.
+- Rimossi: `quote-team-section`(+test), `quote-sites-section`, `quote-layout-section`, `quote-notes-tab`,
+  `quote-detail-attributes`; chiavi `form.editTitle/editSubtitle`, `form.sections.{layout,notes,costs}`, le
+  `description` di identity/team/sites, `form.tabs.notes`. Nuove: `form.leaveConfirm.*`, `detail.rewardsCount_*`,
+  `detail.newAttributes`. `QuoteWorkflowStatusField`/`QuoteDynamicFieldsSection` restano (Gestione Richieste).
+- REQUIREMENT CHANGED nei test: `quote-form-body.test` (creazione a righe chiuse; i casi edit spostati nel nuovo
+  `quote-detail-inline-edit.test`, 11), `quote-form-opportunity-{roles,params}`, `-seeded-products`,
+  `quote-sites-section.test` (aprono le righe), `quote-layout-section.test`->`quote-create-layout.test`,
+  `quote-notes-tab.test`->`quote-create-payment.test`, `quotes-i18n.test`, `quote-screens.test` (nessun form edit),
+  `quote-detail.test` (wrapper con `ConfirmContext`). Helper `quote-test-helpers.ts`.
+- Verifica: Vitest Offerte+Gestione Richieste+Contratti+Commesse+moduli verdi; suite completa 6777 verdi, 20 rossi
+  tutti in `opportunities/*` + `product-lines-wiring-parity` (refactor Opportunita' spec 0198 in corso in un'altra
+  sessione, file loro). `tsc -b --force`: 0 errori fuori da `opportunities/*`. ESLint pulito sui file toccati.
+  NON verificato nel browser reale (Playwright non installato nel progetto).
+- Guida in-app IT/EN `quotes`: nuova sezione `editing-a-quote`, `create-a-quote` e `change-the-quote-status` riscritte.
+- Da fare: verifica browser (desktop light/dark, 375px) di `/quotes/:id` e `/quotes/new`; manuale Claude Docs
+  (sezione Offerte: modifica in place, campi flessibili, stato, righe, creazione) — il connettore c'era ma il doc
+  non e' condiviso con la sessione (accesso negato).
+
+## COMMESSE — DETTAGLIO EDITABILE IN PLACE + CREAZIONE COME IL DETTAGLIO + CHIUSURA FORZATA COME AZIONE (spec 0196) — VERDE, COMMITTATO (2026-10-06)
+
+- Richiesta utente: stesse modifiche dei Task (spec 0195) sulle Commesse, "soprattutto per i campi flessibili";
+  poi "chiusura forzata la voglio come un action, non come un campo, stessa action sulla tabella commesse".
+- Condiviso (estratto dai Task, nessun cambio di comportamento): `components/record-form/record-inline-field.tsx`
+  (`RecordInlineField` + tipo `InlineEdit`, prop nuove `metaKey`/`className`), `components/record-form/
+  use-draft-inline-edit.ts` (`useDraftInlineEdit<T>`), `hooks/use-outside-pointer-dismiss.ts`; i18n
+  `common.inlineEdit.*` (rimosso `tasks.detail.inlineEdit.*`). Blocco `common` spostato in `{it,en}-common.ts`
+  (en.ts era a 499 righe). `AttributeLayoutView.renderField` (opzionale, default riga read-only) e
+  `AttributeLayoutField.hideLabel`.
+- Commesse FE: `useWorkOrderForm` edit = `values` + `keepDirtyValues`, `editDefaults` seminati, reset dopo PATCH,
+  `clearServerError`; `useWorkOrderFormContext(ids, persisted)` non chiama form-context finche' le righe sono quelle
+  salvate. `useWorkOrderInlineEdit` (toast se l'errore non e' nell'editor aperto; le righe portano con se'
+  `attribute_values`). Dettaglio: `work-order-record-identity.tsx` (Note interne come callout, Dati), `-record-team.tsx`,
+  `work-order-detail-sections.tsx` (Contratto con Righe in place + `WorkOrderNewAttributesFields`, Societa'),
+  `work-order-attributes-section.tsx` (un Attributo = una riga). Campi in `work-order-identity-fields.tsx` e
+  `-relation-fields.tsx`. Creazione: `work-order-form-body.tsx` + `-form-header.tsx` + `-create-sections.tsx`
+  (etichette via `useForSelectLabels`), `useFormLeaveGuard`; registry `generateEditRoute: false`.
+  `updateWorkOrder` ora restituisce i `permissions`. Rimossi: `work-order-{team,closure,notes,dynamic-fields}-section`,
+  `work-order-detail-{team,attributes}` e i loro test; chiavi i18n orfane `form.editTitle/editSubtitle`,
+  `form.sections.*` (resta `offer.title`), `form.hints.*Locked`, `form.description/internalNotes`.
+- Chiusura forzata = azione: BE `WorkOrderColumnCatalog` (`force_close` lock / `reopen` lock-open confirm,
+  `work-orders.update`), `actionsFor` (una sola delle due, Gate update + stato), `WorkOrdersAuthorization`
+  `permissions.actions.force_close/reopen`. FE `use-work-order-closure.ts` (PATCH esistente, invalida board + task),
+  `work-order-force-close-dialog.tsx` (motivo obbligatorio, avviso task aperti letto dal record se dalla griglia),
+  `work-order-closure-actions.tsx` (header, `destructive`/`outline bg-card`), `use-work-order-row-actions.tsx`
+  (rinominato da .ts, espone `forceCloseDialog`, montato da `WorkOrdersTable` e `ContractWorkOrdersSection`, con
+  `iconMap`). Form/schema/payload senza `is_force_closed`/`force_close_reason`.
+- REQUIREMENT CHANGED dichiarati: `WorkOrderQuoteScopeTest` AC-052 (`['view','force_close']`), `work-order-detail.test`
+  (nessun Edit), `work-order-form-body.test` (riscritto: creazione a righe chiuse), payload/schema/hook test (niente
+  chiusura nel form). Nuovi: `WorkOrderForceCloseActionTest` (5), `api.test.ts`, `work-order-detail-inline-edit.test`
+  (12), `work-order-attributes-section.test` (6), `use-work-order-row-actions.test` (2), casi edit in
+  `use-work-order-form.test`.
+- Verifica: Pest completo 9293 verdi (1 skipped); Pint ok; Vitest completo 898 file / 6808 verdi; `tsc -b --force` 0;
+  ESLint pulito sui file toccati. Browser reale (Playwright, `/work-orders/95`, `/work-orders/new`, `/work-orders`):
+  desktop light/dark e 375px senza scroll orizzontale, nessun errore runtime. NB: dopo il rename `.ts`->`.tsx` il
+  dev server Vite serviva un 404 finche' non sono stati toccati gli importatori (non serve riavviare).
+- Guida in-app IT/EN `work-orders`: sezioni `editing-a-work-order`, `force-close`, `creating-a-work-order`.
+- Da fare / fuori scope: manuale Claude Docs (sezione Commesse: modifica in place, campi flessibili, chiusura forzata
+  come azione + Riapri, creazione). Chiavi orfane preesistenti `workOrders.detail.tasks.*`. Il titolo della pagina
+  di creazione ripete "Crea commessa" come nei Task.
+
+## COMMESSA: TASK E COSTI IN UNA CARD A TAB (TASK DI DEFAULT) — VERDE, NON COMMITTATO (2026-10-06)
+
+- Richiesta utente: nel dettaglio commessa Costi e Task stanno nello stesso punto, come tab da alternare, con icona
+  sul tab Task, Task aperto di default. Solo frontend, nessun contratto API toccato.
+- Nuovo `features/work-orders/work-order-detail-work-tabs.tsx` (`WorkOrderDetailWorkTabs`): una `RecordCard` con
+  strip `Tabs` (Task `ListChecks` | Costi `Euro`), gate invariati (`tasks.viewAny`, `view_costs`), nessun tab = niente
+  card. `WorkOrderDetailView` monta solo questo al posto delle due card.
+- `WorkOrderTaskBoard` non ha piu' card/header: nuova prop obbligatoria `actionsContainer: HTMLElement | null`, il
+  bottone "Nuovo task" e il menu "..." vanno via `createPortal` nello slot a destra della strip (spariscono col tab
+  Costi). Rimosso il badge conteggio dell'header (i KPI mostrano gia' i totali) e le chiavi `taskBoard.countLabel_*`;
+  `workOrders.taskBoard.title` ora vale "Task"/"Tasks" (etichetta del tab). `WorkOrderCostsSection` non ha piu'
+  card/header (il titolo e' il tab), resta `p-4` + sotto-tab Confronto/Costi effettivi.
+- Tab Radix con smontaggio dei contenuti inattivi: passando a Costi e tornando, filtri/selezione del board si
+  azzerano (la vista Lista/Board resta, e' persistita).
+- REQUIREMENT CHANGED dichiarato nei test: `work-order-detail.test.tsx` (blocco Costi seleziona prima il tab Costi),
+  `work-order-costs-section.test.tsx` (rimossa l'asserzione sull'heading "Costs"), `work-order-task-board.test.tsx`
+  (passa `actionsContainer`). Nuovo `work-order-detail-work-tabs.test.tsx` (default Task, switch, gate, portal).
+- Guida in-app IT/EN `work-orders` (sezione `costs`) aggiornata. Manuale Claude Docs: accesso negato -> aggiornare a
+  mano la parte Commesse/Costi (Task e Costi nella stessa card a tab, Task di default).
+- Verifica: Vitest work-orders/work-order-costs/help 45 file / 358 verdi; `tsc -b --force` 0; ESLint 0; screenshot
+  reali `/work-orders/95` desktop light/dark e 375px, nessuno scroll orizzontale.
+
+## TASK: RIGHE SOTTO-TASK COLORATE PER TIPO (stile q-net) — VERDE, NON COMMITTATO (2026-10-06)
+
+- Contratto (spec 0101 data_contract + 0155): `subtasks[]` aggiunge `task_type` (badgeRef nullable) e `task_status`
+  diventa `statusRef()` (con `group`). Eager load `taskType` in `TaskService::subtaskEagerLoad` e
+  `TaskSubtaskReorderService`. Test Pest nuovo in `TaskSubtaskPermissionsTest`; Pest Tasks 634 verdi (anche N+1).
+- Frontend: `TaskSubtask.task_status: TaskStatusRef`, `task_type: TaskLookupRef | null`. Riga tinta per tipo via
+  `tintClassFor` (nuovo campo `tint` in `BADGE_COLOR_TOKENS`) passato a `SortableList.itemClassName` (nuova prop);
+  tile del tipo (`badgeColorClass` + `DynamicIcon`, role img = nome tipo).
+- Check di completamento = stesso disegno della cella Titolo: classi estratte in `task-complete-icon-styles.ts`
+  (usate da `TaskTitleCell` e `TaskSubtaskRow`). Completato = `group closed_positive` (REQUIREMENT CHANGED in
+  `task-subtask-progress.test.ts`: prima 100%), icona piena; se `uncomplete` e' permesso l'icona piena e' "Riapri".
+- Riferimento visivo: `/Users/Repository/q-net` (`task-type-meta.ts`, `getSoftPanelStyle`): non esiste una cartella
+  "qtask" in Repository, assunto q-net.
+- Verifica: Vitest 113 file / 868 verdi (tasks, ui, custom-fields, help); tsc -b 0; ESLint/Pint puliti; screenshot
+  light/dark/375px. Manuale Claude Docs: stesso paragrafo del pannello Sotto-task da aggiornare (accesso negato).
+
+## TASK: EDITOR RICORRENZA RIFATTO (RESTYLE, SOLO FE) — VERDE, NON COMMITTATO (2026-10-06)
+
+- Richiesta utente: l'editor aperto della Ricorrenza (dettaglio task, `TaskRecurrenceFields`) era "bruttissimo":
+  descrizioni lunghe in corpo grande, griglia 2 colonne disallineata, checkbox giorni disordinate.
+- Nuovo layout: switch "Ricorrenza attiva" (hint in tooltip `MetaField hint`), poi pannello `bg-card` a bande:
+  Frequenza (Select, invariata) + "Ripeti ogni [n] <unita'>" (`tasks.form.recurrence.intervalUnit.*`, `custom` = giorni);
+  giorni settimanali = cerchi `role="checkbox"` con iniziale (`weekdayInitial`) e aria-label giorno intero;
+  mensile/annuale in `task-recurrence-day-fields.tsx` (Tipo di giorno = segmentato Data fissa / Giorno della settimana);
+  Fine in `task-recurrence-end-fields.tsx` (segmentato Mai / A una data / Dopo N volte, ordine `END_MODE_ORDER`);
+  "Solo giorni lavorativi" compatto; in fondo `RecurrencePreview` (aria-live) = `formatTaskRecurrenceRule` sulla bozza.
+- `recurrencePreviewRule` (`task-recurrence-preview.ts`): null finche' manca un campo. `formatTaskRecurrenceRule` ora
+  accetta `TaskRecurrenceRule = Omit<TaskRecurrenceDetail, 'id'>` (compatibile con i chiamanti esistenti).
+- Nuovo `components/ui/segmented-control.tsx` (radiogroup, roving tabindex, frecce): estratto da
+  `task-board-segmented-field.tsx`, che ora lo riusa (stesso aspetto).
+- Costanti/utility condivise in `task-recurrence-field-props.ts` (`RECURRENCE_META_KEY`, `numberInputProps`, `intervalUnitKey`).
+- i18n IT/EN: nuove `intervalUnit.*`, `occurrenceUnit_*`, `preview`, `previewIncomplete`; accorciate
+  `monthModeOption.*`, `endsOption.after_count`, `ordinalWeekday`. Guida in-app `tasks` IT/EN aggiornata.
+- REQUIREMENT CHANGED (redesign richiesto): `task-form-recurrence-section.test.tsx` usa `radio` per Fine e Tipo di giorno
+  (prima `combobox`); aggiunto test anteprima. Nuovi test: `task-recurrence-preview.test.ts`, `segmented-control.test.tsx`.
+- Verifica: `tsc -b --force` pulito, ESLint pulito, Vitest tasks/help/i18n/work-orders/components-ui 146 file / 1192 test verdi.
+  Manuale Claude Docs: da aggiornare la sezione Task > Ricorrenza (etichette Fine/Tipo di giorno, anteprima).
+
+## TASK: SOTTO-TASK E RICORRENZA NEL DETTAGLIO (RESTYLE) + SOTTO-TASK IN MODALE — VERDE, COMMITTATO (2026-10-06)
+
+- Ricorrenza: `TaskRecurrenceSummary` (nuovo, `task-recurrence-summary.tsx`) = valore letto della riga in place.
+  Spento: riquadro tratteggiato + hint. Acceso: velo `bg-primary/5`, eyebrow frequenza, frase
+  `formatTaskRecurrenceRule` (invariata, la stessa del badge header), striscia giorni per `weekly`
+  (`weekdayInitial` nuovo in `task-recurrence-format.ts`, Intl narrow), chip fine + "Solo giorni lavorativi".
+- `TaskInlineField` ha `layout?: 'row' | 'block'` (default `row`): `block` = valore a tutta larghezza, label sr-only;
+  usato solo dalla ricorrenza (niente piu' `RecordFieldList` in quella sezione). Label/pencil "Regola" invariati.
+- Sotto-task: riga estratta in `task-subtask-row.tsx` (cerchio iniziale = Completa / spunta verde = Riapri, stessi
+  aria-label; titolo barrato a 100%; assegnatari via `UserAvatarStack`; cestino visibile su hover/focus/touch).
+  `task-subtask-progress.ts` (`isSubtaskDone`, `subtaskProgress`) alimenta la banda "N di M completati" + barra
+  `overallProgress` (media arrotondata). Empty state tratteggiato con `subtaskPanel.emptyHint`.
+- REQUIREMENT CHANGED (utente 2026-10-06): dal dettaglio task un sotto-task si apre SEMPRE in modale sopra il padre
+  (`TaskDetailScreen` usa l'opener `forceMode: OPEN_MODE_MODAL` anche per `openView`; rimosso l'opener a
+  preferenza). AC-085 della spec 0101 aggiornato; test `task-screens.test.tsx` aggiornato e dichiarato.
+- i18n nuove: `tasks.detail.recurrenceCard.*`, `tasks.detail.subtaskPanel.{doneOf_*,overallProgress,emptyHint}`.
+  Guida in-app IT/EN `tasks` (sezione `subtasks-and-recurrence`) aggiornata.
+- Verifica: Vitest tasks/help/modules/i18n 107 file / 832 test verdi; `tsc -b --force` 0; ESLint 0. Screenshot
+  Playwright light/dark/375px e clic reale sul sotto-task (Sheet aperta, URL del padre invariato).
+- Da fare: manuale Claude Docs non accessibile in sessione (accesso negato) -> aggiornare a mano la sezione
+  "Sotto-task, ricorrenza e modelli". Fuori scope segnalato: in dark il % rosso di `CompletionBar` ha contrasto basso.
+
+## "INFORMAZIONI AGGIUNTIVE" COL LAYOUT NEI DETTAGLI (OFFERTA/COMMESSA/PRODOTTO) — VERDE, COMMITTATO (2026-10-06)
+
+- I dettagli Offerta, Commessa e Prodotto ora mostrano gli attributi divisi nelle sezioni del layout configurato
+  (spec 0062): nuovo `features/attributes/attribute-layout-view.tsx` (`AttributeLayoutView`). Stile = quello delle
+  sezioni record sopra (`RecordField` etichetta/valore, hairline), ogni sezione con banda di intestazione
+  (`bg-muted/50`, `highlighted` -> `bg-primary/10`, icona `Rows3`, titolo + descrizione), sezioni affiancate su 2
+  colonne a `@2xl`; sezione con `columns >= 2` = larghezza piena e campi su 2 colonne (`width: full` attraversa).
+  Niente collapse nel dettaglio (decisione utente: stile legacy QNet "info", sezioni sempre aperte).
+- Condivisi: `attribute-layout-sections.ts` (`resolveLayoutSections`: ordine + "Altre informazioni", usato anche da
+  `AttributeLayoutRenderer` del form), `attribute-value-display.tsx` (`AttributeValueDisplay`, formattazione per
+  tipo + tabella; sostituisce le copie in quote/work-order detail).
+- Contratto (additivo): `QuoteResource.attribute_view_layout` = `QuoteAttributeResolver::layout(View)` (fallback sul
+  layout `all`); `attribute_layout` resta Edit per il form. Commessa usa gia' View, Prodotto gia' View.
+  Prodotto: solo attributi valorizzati (regola AC-014 invariata), sezione unica "Attributi" a piena larghezza.
+- Test: `attribute-layout-view.test.tsx` (7), casi in `quote-detail.test.tsx`, `work-order-detail.test.tsx`,
+  `QuoteAttributeValuesTest` (+2). Guida in-app Prodotti IT/EN aggiornata (scheda: attributi per sezioni).
+- Manuale Claude Docs: NON accessibile dal connettore (access denied) -> da aggiornare a mano la voce scheda
+  Prodotto/Offerta ("valori degli attributi divisi nelle sezioni della categoria").
+- Verifiche: Pest Quotes+WorkOrders+Products 735/735, Pint ok; Vitest attributes/products/quotes/work-orders 745/745,
+  help 108/108, ESLint ok, `tsc -b --force` ok.
+
+## COMMESSE: "SOCIETA' E SEDI" NEL DETTAGLIO — VERDE, COMMITTATO (2026-10-06)
+
+- Dettaglio commessa: nuova sezione "Societa' e sedi" / "Company and sites" (dopo "Contratto e righe prodotto"),
+  stessi tre campi e link del dettaglio Contratto: Societa' (`/companies/{id}`), Sede (`/company-sites/{id}`),
+  Sede operativa (`/operational-sites/{id}`, label = indirizzo). `DetailEmpty` se null.
+- Contratto API (additivo): `WorkOrderResource` espone `company {id,name=denomination}`, `company_site {id,name}`,
+  `operational_site {id,label}` (`OperationalSiteLabel::summarize`), proiettati LIVE da `quote` come fa
+  `ContractResource` (il contratto non ha colonne proprie). `WorkOrderService::DETAIL_RELATIONS` + `quote.company`,
+  `quote.companySite`, `quote.operationalSite.addresses.city`. FE: campi opzionali in `WorkOrderDetail` (come `registry`),
+  chiavi i18n `workOrders.detail.{company,companySite,operationalSite}` + `sections.company`.
+- Test: 2 casi in `WorkOrderContractSummaryTest`, 2 in `work-order-detail.test.tsx`.
+- Dato reale commessa 95: contratto 100, offerta senza Societa'/Sede (vuote), Sede operativa id 25.
+- Manuale: guida in-app Commesse ancora "in fase di sviluppo" -> nessun impatto.
+- Verifiche: Pest WorkOrders+Contracts 321/321, Pint ok; Vitest work-orders 225/225, ESLint ok, `tsc -b --force` ok.
+
+## TASK — PERMESSI CAMPO DEL DETTAGLIO IN PLACE (spec 0195 D-6a/b/c) — VERDE, NON COMMITTATO (2026-10-06)
+
+- Audit (sonda Pest, poi rimossa): la matrice per ruolo arrivava gia' al dettaglio, ma (1) l'osservatore con
+  `tasks.update` riceveva 6 campi editabili + `change_status` e la PATCH dava 403; (2) su task congelato tutti i 27
+  campi erano editabili e la PATCH dava 422; (3) la cascata anagrafica falliva se referente/opportunita'/lead erano
+  bloccati; (4) i campi nascosti restavano in header/KPI/righe di sola lettura.
+- Backend: `TasksAuthorization::actorMayWrite()` su un task ESISTENTE (`exists`) = `$actor->can('update', $task)`
+  (Policy); il ceiling aggiunge `TaskWriteLock::isStructurallyLocked()` (nuovo, pubblico, riusato da
+  `assertStructuralWriteAllowed`) -> solo `OPERATIVE_KEYS` editabili. `new Task` della griglia e create invariati.
+  `EnforcesFieldPermissions::fieldNotEditableMessage()` (hook nuovo, default 'field not editable');
+  `UpdateTaskRequest` lo sovrascrive col messaggio frozen e salta il controllo campi se la Policy rifiuta (403).
+  `TaskWriteLock::STRUCTURAL_WRITE_MESSAGE` ora public.
+- Frontend: header/KPI/data completamento/feedback chiusura filtrati per `field(x).visible`; nuovo
+  `task-inline-cascade.ts` (`useTaskCascadeEditable`) passato come `canEdit` a anagrafica/commessa/opportunita'/padre.
+- Test: nuovo `TaskDetailFieldPermissionsTest` (6), `task-inline-cascade.test.ts` (6),
+  `task-detail-field-permissions.test.tsx` (5). REQUIREMENT CHANGED dichiarato in `TaskMetaTest` AC-054 (fixture:
+  l'attore e' il creatore, altrimenti la Policy da' 403 prima del 422 di matrice).
+- Verifica: pest completo 9283 (1 fallito -> AC-054 corretto e rieseguito verde); vitest 888 file / 6746 test verdi
+  (1 errore non gestito "window is not defined" da `request-work-panel-transfer.test.tsx`, verde isolato 2/2,
+  preesistente); `tsc -b --force` 0; eslint pulito sui file toccati; pint ok. Guida in-app tasks IT/EN aggiornata.
+- Clic fuori (spec 0195 D-2a, NON COMMITTATO): `use-outside-pointer-dismiss.ts` (pointerdown su `document` +
+  `onPointerDownCapture` della riga: le pressioni in portal del campo bubblano nell'albero React e contano come
+  "dentro"); `TaskInlineEdit.dismiss` = `cancel` nel dettaglio, `save` ("Fatto") nella bozza di creazione; inattivo
+  durante `isSaving`. Test: hook (3), dettaglio (1), bozza (1). Guida IT/EN aggiornata. Vitest tasks/help/modules
+  83 file / 632 test verdi, tsc 0, eslint pulito.
+- Da fare: manuale Claude Docs (doc non condiviso con la sessione), sezione Task "Modificare un task" (matite e
+  permessi, campi nascosti, cascate, clic fuori = annulla; in creazione clic fuori = Fatto).
+  Non verificato a occhio nel browser. Fuori scope: l'API restituisce i valori dei campi nascosti (UI-only).
+
+## TASK — DETTAGLIO EDITABILE IN PLACE + CREAZIONE COL LAYOUT DEL DETTAGLIO (spec 0195) — VERDE, NON COMMITTATO (2026-10-06)
+
+- Niente piu' pagina edit: registry `generateEditRoute: false` (nuovo flag `ModuleRegistryEntry`, default true) =>
+  nessuna rotta `tasks/:id/edit`, `ModuleDetailPage`/`useModuleOpener` non passano `onEdit`. `TaskFormScreen` senza
+  ramo edit (ritorna null), `TaskEditScreen` rimosso, header del dettaglio senza "Modifica".
+- Dettaglio (`task-detail.tsx`, layout invariato) = righe `TaskInlineField` (matita / clic sul valore -> editor del
+  campo + Salva/Annulla, Esc annulla, Invio salva negli input). Un editor alla volta. Stato `useTaskInlineEdit`
+  (sopra `useTaskForm` edit): Salva = `handleSubmit` -> PATCH diff (`buildUpdatePayload`) col solo campo cambiato +
+  cascate (anagrafica -> referente/opportunita'/lead). Sezioni in `task-detail-sections.tsx` (Dati, Classificazione,
+  Persone, Pianificazione) e `task-detail-link-sections.tsx` (Record collegati, Chiusura, Ricorrenza). Sola lettura:
+  creatore, data completamento, feedback chiusura, bloccato. Stato editabile solo con `canAction('change_status')`,
+  referente solo con anagrafica.
+- `useTaskForm`: `values` + `resetOptions.keepDirtyValues` in edit (riallinea il form al task in cache dopo azioni di
+  dominio senza perdere il campo aperto), `form.reset(editDefaults(saved))` dopo il PATCH, `statusMeta` ri-inizializzato
+  quando cambia lo stato persistito, nuovo `clearServerError`, export `TaskFormState`.
+- Nuovo `ModuleDetailScreenProps.onChanged` (cablato da `useModuleOpener` sul suo `onSaved`): il pannello modale
+  aggiorna griglia/board a ogni salvataggio inline senza chiudersi.
+- Creazione/duplica (`TaskFormBody`, solo `TaskCreateFormMode`) = REPLICA del dettaglio: RecordCanvas, card con
+  `TaskFormHeader` (monogramma + titolo live + Annulla/Salva) e `TaskStatsStrip` live, righe CHIUSE di default
+  (`task-create-sections.tsx` + `task-create-link-sections.tsx`, display in `task-create-displays.tsx` via
+  `useForSelectLabels`, stessa cache dei picker) che si aprono col controllo del campo; stato `useTaskDraftEdit`
+  ("Fatto" = tiene + `trigger` del campo, "Ripristina" = reset allo snapshot dell'apertura). Salva valida tutto,
+  errori mostrati sotto le righe chiuse (`TaskInlineField` legge `getFieldState`). Card laterale con tab Allegati,
+  Sotto-task come `RecordSection`. Rimossi `task-form-summary.tsx` e i wrapper `Task*Section`.
+- Popup di uscita dalla creazione (sempre): `useFormLeaveGuard` (features/modules) = Annulla + `useSheetCloseGuard`
+  (X/overlay/Esc del pannello, `SheetCloseGuardContext` in `useModuleOpener`) + `NavigationLeaveBlocker`
+  (`useBlocker`, montato solo sotto data router: i test con MemoryRouter non lo hanno) + `beforeunload`;
+  `allowLeave()` prima di `onSuccess`. Cablato in `TaskFormScreen`.
+- Editor inline (NON COMMITTATO, dopo b388f49d): riga aperta = pannello evidenziato (`EDITING_ROW_CLASS`: bordo/alone
+  `ring`, velo `bg-muted/40`, etichetta in evidenza), Annulla/Salva `size="xs"` affiancati senza a capo, nessun
+  testo di scorciatoie (richiesta utente). `MetaFieldRowContext` (features/authorization): il `MetaField` del campo
+  della riga nasconde la propria etichetta (sr-only) e mette l'hint accanto al controllo; i sotto-campi (ricorrenza,
+  fase, notifiche) restano etichettati. Titolo con input di misura standard.
+- FIX (NON COMMITTATO): `updateTask` ora restituisce `TaskDetailWithPermissions` (`withPermissions`, il backend
+  risponde `okWithPermissions`): il salvataggio inline scriveva in cache un task senza `permissions` e il dettaglio
+  crashava ("Cannot read properties of undefined (reading 'actions')"). Test in `api.test.ts`.
+- Regola generale persone (NON COMMITTATO): `components/user-avatar-stack.tsx` (`UserAvatarStack`, max 5 avatar +
+  chip "+N" con hover card dei restanti) estratto da `UserStackCell` (griglia) e usato da `TaskPeopleList` oltre
+  3 persone (fino a 3 resta la lista con i nomi). Candidati da valutare: chip Responsabili nella scheda utente.
+- FIX stack avatar (NON COMMITTATO): gli avatar si fondevano uno sull'altro (Assegnatari/Osservatori del dettaglio e
+  celle multi-utente della griglia). `AvatarGroup` mette il ring solo sui figli DIRETTI `[data-slot=avatar]`, ma lo
+  stack avvolge ogni avatar nel trigger della hover card -> nessun separatore. Ora `STACK_SEPARATOR_CLASS`
+  (`relative rounded-full ring-2 ring-card`) sul trigger: `relative` serve perche' l'avatar e' posizionato e
+  altrimenti dipinge sopra il ring del trigger precedente; `ring-card` anche sul chip "+N" (entrambi gli host stanno
+  su `--card`). Verificato nel browser (Playwright headless). Utente: nessun altro campo del dettaglio da rendere
+  editabile (creatore, bloccato, data completamento, feedback chiusura restano sola lettura).
+- FIX editor griglia Assegnatari/Osservatori (NON COMMITTATO): `MultiSelectCellEditor` mostrava "Questa riga non ha
+  ancora un ambito" su ogni colonna SENZA `relation.scope` (bloccava come "scope vuoto"). Ora il blocco/sblocco
+  d'ambito vale solo se la colonna dichiara `scope`; altrimenti catalogo completo, nessun footer. Vale anche per gli
+  attributi multi-relazione di request-management. + avatar per `users` (`showAvatar` dal registry) + nuovo contratto
+  `relation.exclude` (id colonne riga da non offrire; emesso da `ResolvesColumnConfig` solo se dichiarato):
+  watchers dei Task = `['creator','requester','assignees']` (come il picker del dettaglio, opzione gia' scelta resta
+  visibile). Helper `resolveExcludedIds` in `multi-select-scope.ts`. Test: `TaskTableTest` + editor/registry.
+- Data fine "come in commesse" (NON COMMITTATO): `components/due-date-chip.tsx` (`DueDateChip`, chip rosso + triangolo
+  scaduto / tinta + calendario oggi, con proprio `TooltipProvider`) estratto dalle due copie (board commessa,
+  `TaskKanbanDueChip`). Regola `taskEndDateState` (`task-due-state.ts`): non chiuso && end_date < oggi = scaduto,
+  == oggi = oggi; `TaskEndDate`/`TaskEndDateCell` (`task-end-date.tsx`) in griglia (`end_date`), riga Pianificazione e
+  riquadro "Data fine" del dettaglio (`TaskStatsStrip.statusGroup` opzionale; la creazione non lo passa).
+- Toggle Completa nella cella Titolo (NON COMMITTATO): `TaskTitleCell` = icona `CheckCircle2` prima del titolo:
+  completato (`group closed_positive`) = verde piena (`fill-success text-card`); riga con azione `complete` = bottone
+  (cursor-pointer, hover verde + fill tenue + scale, active press, motion-safe) che apre il dialogo Completa via
+  `TaskCompleteRowContext` (provider in `TasksTable`, valore `completeRow` di `useTaskDomainRowActions`); altrimenti
+  icona sbiadita. Listener NATIVI (click/dblclick/Enter-Spazio con stopPropagation): con `singleClickEdit` AG Grid
+  aprirebbe l'editor del titolo prima del onClick React. Vista Sintetica: `buildTreeDataGridOptions` ora usa il
+  renderer della colonna sostituita come `innerRenderer` della colonna di gruppo.
+- Verifica: vitest completo 6767/6768 (l'unico rosso, `task-screens.test.tsx` subtask modal, passa isolato: flaky
+  sotto carico); tasks+work-orders+components 1208 verdi; Pest Tasks 633, Table 289, RequestManagement 838, Leads 156;
+  tsc -b 0; eslint/pint puliti. Verificato in browser (Playwright headless): editor Assegnatari con 27 utenti+avatar,
+  chip rossi, clic icona -> dialogo Completa senza editor, icona piena sui completati. Guida in-app IT/EN aggiornata
+  (`list-editing-and-bulk`). Manuale Claude Docs: da aggiornare stessa sezione.
+- ATTENZIONE RHF: `resetOptions` di `useForm` si fonde in OGNI `reset` -> in edit `keepDirtyValues: true` serve solo
+  al re-sync `values`; ogni reset che deve scartare passa `keepDirtyValues: false` (test di regressione in
+  `task-detail-inline-edit.test.tsx`: un annullo non finisce nel PATCH successivo).
+- i18n: + `tasks.detail.inlineEdit.{edit,save,cancel,apply,revert}`, `tasks.detail.recurrenceRule`,
+  `tasks.form.leaveConfirm.*`; rimosse le chiavi orfane (anche `form.header.*`, `form.sections.subtasks.title`)
+  (`form.summary.*` tranne `recurrenceOff`, `form.header.status`, `form.editTitle/editSubtitle`, titoli/descrizioni
+  delle sezioni del vecchio form). Guida in-app `tasks` IT/EN: nuova sezione `editing-a-task`, tabella creazione.
+- Test cambiati per requisito (dichiarati nei file): chiusura sempre visibile, regola ricorrenza x2, change_status =
+  nessuna matita, blocco ricorrenza verificato in creazione; casi edit migrati in `task-detail-editors.test.tsx`;
+  nuovi `task-detail-inline-edit.test.tsx`, helper `task-detail-test-helpers.tsx`, test rotte tasks in
+  `module-routes.test.tsx`.
+- Verifica: `tsc -b --force` 0; eslint pulito sui file toccati (2 errori preesistenti in `quotes/column-renderers.tsx`
+  e `registry-form-metadata.test.tsx`, non toccati); vitest completo 885 file / 6732 test verdi. NON verificato a
+  occhio nel browser.
+- Da fare: manuale Claude Docs (doc non accessibile da questa sessione) — sezioni Task: modifica dal dettaglio,
+  creazione. Chiavi i18n orfane preesistenti: `tasks.detail.status`, `detail.minutesValue`, `form.completionDate`,
+  `form.closureFeedback*`. HANDOFF ~400 KB: va archiviato.
+
+## UTENTE "ASSEGNABILE" (spec 0194) — VERDE, COMMITTATO (2026-10-05)
+
+- Colonna `employment_profiles.is_assignable` (default true, migrazione `2026_10_05_100000_...`; rollback
+  `QuoteWorkflowMigrationTest` ora `--step 126`). API `employment.is_assignable`, field permission propria (chiavi
+  `employment.*` da 14 a 15). Scrittura tri-state: chiave assente = invariata (`EmploymentData::$isAssignable` ?bool,
+  NON come `is_manager`).
+- Enforcement (D-1, solo assegnazione operatori): `LeadOperatorDistributor::operatorIdsBySite` (pool Sede di
+  `AssignmentCandidates`), `OperatorCompetence::configuredProfiles` (solo assegnabili), `UserService::forSelect` ramo
+  `operational_site_id`, `RequestAttributionWriter::isSwitchedOff` (offerta senza Sede). Task/commesse/team invariati.
+- Seed (D-4/D-5): `OperatorRoster::FUNCTION_WIDE_COMPETENCE` (Gervasio, Distico, Crispo, Ascione -> funzione APL,
+  categoria null, assegnabili); righe con categorie -> assegnabili; righe senza -> spente + riga `UNASSIGNABLE_FUNCTION`
+  "Formazione" (match case-insensitive: in DB e' "FORMAZIONE") categoria null. `TestUsersSeeder`: profilo spento.
+  `QualificaStaffSeeder`: profilo spento creato solo se manca (resta create-only sui profili esistenti).
+- FE: switch in `user-form-assignment-section.tsx`, blocker `'disabled'` in `summarizeAssignment`, i18n IT/EN, guida
+  `users` IT/EN. Factory `EmploymentProfileFactory::notAssignable()`.
+- Verifica: `composer test` 9276 pass/1 skip; vitest completo 6719 pass (fe teammate) + users/help 222 rieseguiti;
+  `tsc -b --force` 0; pint/eslint puliti. Test cambiati per requisito: chiavi employment 14->15 (FieldCatalogue,
+  Meta, UserCompetenceScope), step migrazione, seeder APL/Baldi, ReportsTo (profilo gia' creato), fixture FE.
+- Da fare: in ambiente eseguire `php artisan migrate` e `db:seed --class=QualificaOperatorSeeder`,
+  `TestUsersSeeder`, `QualificaStaffSeeder`. Manuale Claude Docs non condiviso con la sessione: aggiornare Utenti >
+  Configurazione assegnazione (nuova impostazione Assegnabile, tre condizioni).
+
+## SCHEDE CATEGORIA: DEFAULT DALLA COMPETENZA (spec 0193) — VERDE, NON COMMITTATO (2026-10-05)
+
+- Gestione Richieste + Gestione Iscritti: senza riga in `user_category_tab_preferences`, la GET
+  `/api/{module}/category-tab-preferences` propone come preferite le categorie dello strip coperte dalla competenza
+  dell'utente, con `show_only_favorites=true`; nuovo campo `is_default` (true = nessuna riga salvata). La GET non
+  scrive mai; il primo PUT crea la riga e da li' vale solo la scelta dell'utente (D-1, default non dinamico).
+  Jolly (`covers_all_product_categories`), senza competenza o competenza fuori strip: `[]`, false (D-2).
+- Backend: `OperatorCompetence::coveredCategoryIdsFor(int $userId, array $categoryIds): array` (solo il profilo
+  dell'utente, riusa `CompetenceProfile::covers()`; `profileOf()` condiviso con `configuredProfiles()`; [] per
+  jolly/senza profilo); Action `App\RequestManagement\ResolveDefaultCategoryTabPreference::handle(User, RequestModule)`
+  (strip da `RequestCategoryTabsResolver` ∩ competenza, crescente); `CategoryTabPreferencesController::preferenceOf`
+  la usa solo se `! exists`; `CategoryTabPreferencesResource` espone `is_default = ! exists`.
+- Frontend: `CategoryTabPreferences.is_default` + `CategoryTabPreferencesPayload` (il PUT invia solo i due campi);
+  `useCategoryTabPreferences` (ottimistico con `is_default:false`); prop `favoritesAreDefault` table → tabs → picker;
+  avviso i18n `requestManagement.categoryTabs.favoritesDefaultHint` (IT/EN). Guide in-app `request-management` IT/EN
+  aggiornate; `enrollee-management` non documenta lo strip (non toccata).
+- Verifica (verifier): `composer test` 9266 pass/1 skip; vitest 6714 pass; `tsc -b --force` 0; pint/eslint puliti.
+- DA FARE: manuale Claude Docs (accesso negato a questa sessione: aggiornarlo a mano, sezione schede/preferite di
+  Gestione Richieste e Iscritti). Secondo passo: stesso default per Statistiche richieste (/request-statistics,
+  strip per ramo reportable, chiavi stringa) — spec separata.
+
 ## FIX RIGHE OFFERTA AL CAMBIO LINEA DI PRODOTTO (Gestione Richieste) — VERDE, NON COMMITTATO (2026-10-05)
 
 - Bug: in creazione (`/request-management/new`) e in lavorazione, sostituendo la linea di prodotto la riga d'offerta
@@ -218,10 +1111,26 @@
 - Nota: vale anche per il pannello se arriva `product_lines` senza `offer_lines` (es. attore senza scrittura sulle righe
   offerta): le righe scoperte vengono eliminate lo stesso, come effetto della classificazione.
 
-## APL MANUALE + "APL OLD" DALLA MIGRAZIONE — VERDE, COMMITTATO (2026-10-05)
+## APL MANUALE + "APL OLD" DALLA MIGRAZIONE — VERDE, COMMITTATO e5236a2c + FIX NON COMMITTATO (2026-10-05)
+
+- FIX (non committato, richiesta utente: "APL old" compariva in "Categoria padre" di /request-management/new, che per
+  spec 0132 D-1 elenca TUTTE le radici): "APL old" NON e' piu' radice, sta sotto Consulenza come le categorie di
+  FORMAZIONE OLD (scelta utente fra "sotto Consulenza" e "radice nascosta nel select"; D-1 resta valida, nessun cambio
+  FE). `ProductCategoriesSource`: tolta la forzatura a radice, il gemello va sotto il suo padre legacy;
+  `QualificaLegacyImportSeeder`: tolta l'esclusione dal nesting. `LegacyAplBranch::LEGACY_ROOT` -> `LEGACY_BRANCH`,
+  il nodo e' trovato per nome + old_id in qualunque posizione (`legacyBranchTop()`, `isWithin()`).
+- FORMAZIONE OLD non selezionabile (decisione utente 2026-10-05): `CategoryBusinessFunctionLinker::closeRedirected(
+  $createdIds)` (Step 2 di `afterImport`, accanto a `closeLegacyBranch`) -> ogni categoria CREATA nella run la cui
+  funzione EFFETTIVA e' una sostitutiva di `REDIRECTED_FUNCTIONS` (FORMAZIONE OLD, APL OLD) nasce `is_selectable=false`;
+  adottate e altre funzioni invariate. Prodotti senza sostituto sotto "APL old": restano li' (decisione utente).
+  Test: `ProductCategoriesSourceImportTest` FORMAZIONE OLD (+3 asserzioni, nuova riga "Bandi" su altra funzione) e
+  adozione. Suite completa 9266 passed / 1 skipped. Sul DB locale le categorie gia' importate (es. "ALFA FORMAZIONE")
+  NON cambiano: vale dal prossimo import pulito.
+- DB locale `qnet2`: "APL old" (id 77) e' ancora RADICE dall'import di prima; il re-seed non lo sposta (lo snapshot
+  `$staticRootIds` lo tratta come radice gia' esistente) -> serve un update una tantum di `parent_id` su Consulenza.
 
 - Decisioni utente (AskUserQuestion 2026-10-05): il ramo APL legacy NON e' piu' adottato da quello manuale; diventa
-  la categoria radice "APL old" + funzione aziendale "APL OLD" (come FORMAZIONE OLD); APL manuale = regole IDENTICHE
+  la categoria "APL old" + funzione aziendale "APL OLD" (come FORMAZIONE OLD); APL manuale = regole IDENTICHE
   a Formazione (contratti compresi); TUTTI i prodotti del ramo legacy sulle nuove categorie; nessuna conversione
   dei DB gia' importati ("come fa con Formazione": vale a ogni import).
 - Nuovo `app/Migrations/Support/LegacyAplBranch.php`: `manualNodeNamed()` (nodo del ramo manuale "APL" con quel nome,
@@ -230,22 +1139,20 @@
   privati -> Tirocinio, Orientamento Specialistico -> Orientamento specialistico), `productCategoryFor()`.
 - `ProductCategoriesSource::processRow`: un record legacy con nome di un nodo del ramo APL manuale non viene adottato,
   viene creato come "<nome> old" (solo se collide: "APL old", "Orientamento Specialistico old"; gli altri tengono il
-  nome); il gemello della radice nasce radice (no parent, no relink). Warning "Legacy twin ..." nel report.
+  nome). Warning "Legacy twin ..." nel report.
 - `ProductsSource`: categoria risolta -> `LegacyAplBranch::productCategoryFor` (nodo del ramo "APL old" -> categoria
-  manuale; senza sostituto resta sul nodo legacy con warning "no manual replacement"). DA CHIEDERE all'utente: i figli
-  legacy di APL oltre ai tre noti (l'albero legacy non e' leggibile: qnet.test risponde "authentication required").
+  manuale; senza sostituto resta sul nodo legacy con warning "no manual replacement", deciso cosi' dall'utente).
 - "APL old" NON selezionabile (richiesta utente successiva, stesso giorno): `ProductCategoriesSource::afterImport`
   = Step 1 `relinkDetached()` + Step 2 `LegacyAplBranch::closeLegacyBranch($createdIds)` -> radice e TUTTO il ramo
   `is_selectable=false`, solo sui nodi creati in QUELLA run (una riapertura a mano sopravvive al re-import).
   Nota: per FORMAZIONE OLD il codice non forza nulla, `is_selectable` arriva dal legacy.
-- `CategoryBusinessFunctionLinker::REDIRECTED_FUNCTIONS` + `'APL' => 'APL OLD'`. `QualificaLegacyImportSeeder::
-  nestImportedCategories` esclude "APL old" (resta radice, non va sotto Consulenza).
+- `CategoryBusinessFunctionLinker::REDIRECTED_FUNCTIONS` + `'APL' => 'APL OLD'`.
 - Seed: categorie rinominate `Apprendistato` / `Tirocinio` / `Orientamento specialistico` (costanti CATEGORY dei tre
   cataloghi APL, `CATALOG`, `REPORTABLE_CATEGORIES`, `SINGLE_OFFER_CATEGORIES` -> anche il prodotto seedato si chiama
   "Orientamento specialistico"). `CatalogRootRules::TRAINING_RULES` condivise da Formazione e APL (single, una offerta,
   `generates_contract=false`, riga semplificata, etichette G.A. Tutor/Operatore/Partner commerciale/Segnalatore).
 - Test: nuovo `Migration/LegacyAplBranchImportTest.php` (3), `ProductsSourceImportTest` (+1), `QualificaLegacyImportSeederTest`
-  end-to-end riscritto (Formazione adottata, APL old radice su APL OLD, prodotti sulle nuove categorie, mappa legata al
+  end-to-end riscritto (Formazione adottata, APL old sotto Consulenza su APL OLD, prodotti sulle nuove categorie, mappa legata al
   catalogo reale), `QualificaCatalogRootRulesTest` (+1 APL = Formazione). Requisito cambiato: i test generici di adozione
   usavano "APL" come esempio -> ora "Consulenza"/"Presa Appuntamenti"; liste nomi aggiornate in 6 test seed.
   Suite completa 9254 passed / 1 skipped, Pint pulito.

@@ -28,7 +28,7 @@ class ProductTypologyForSelectResource extends ForSelectResource
             'id' => $this->id,
             'label' => $this->name,
             'subtitle' => null,
-            'meta' => ['code' => $this->code],
+            'meta' => ['code' => $this->code, 'color' => $this->color],
         ];
     }
 }

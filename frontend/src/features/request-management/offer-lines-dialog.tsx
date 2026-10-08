@@ -74,9 +74,11 @@ function OfferLinesDialog({ target, onClose }: OfferLinesDialogProps) {
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       {/* No `overflow` on the content itself: `AsyncPaginatedSelect` portals
           its menu INTO this node, and any overflow but `visible` would clip
-          the menu at the dialog's edge. The scroller is the inner wrapper. */}
-      <DialogContent size="xl" className="max-h-[85vh] gap-0 p-0">
-        <DialogHeader className="rounded-t-lg border-b bg-surface p-4">
+          the menu at the dialog's edge. The scroller is the inner wrapper,
+          and the content is a flex column: an `auto` grid row would grow past
+          `max-h` and the rows would spill out of the popup. */}
+      <DialogContent size="xl" className="flex max-h-[85vh] flex-col gap-0 p-0">
+        <DialogHeader className="shrink-0 rounded-t-lg border-b bg-surface p-4">
           <DialogTitle>{t('requestManagement.offerLines.dialogTitle')}</DialogTitle>
           <DialogDescription>
             {panel?.name ?? t('requestManagement.offerLines.dialogDescription')}
@@ -132,7 +134,7 @@ function OfferLinesDialogForm({ panel, target, onClose }: OfferLinesDialogFormPr
       {/* `display: contents`: the native form only scopes the submit boundary,
           it must not become an extra box between the header and the footer. */}
       <form onSubmit={onSubmit} className="contents" noValidate>
-        <div className="grid gap-3 overflow-y-auto p-4">
+        <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-4">
           <RequestOfferLinesField
             control={form.control}
             knownLines={panel.offer_lines}
@@ -152,7 +154,7 @@ function OfferLinesDialogForm({ panel, target, onClose }: OfferLinesDialogFormPr
           )}
         </div>
 
-        <DialogFooter className="rounded-b-lg border-t bg-surface p-4">
+        <DialogFooter className="shrink-0 rounded-b-lg border-t bg-surface p-4">
           <Button type="button" variant="outline" size="sm" className="bg-card" onClick={onClose}>
             {t('common.cancel')}
           </Button>

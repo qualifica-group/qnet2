@@ -145,6 +145,12 @@ class DemoDataSeeder extends Seeder
         // QuoteService, so it depends on DemoQuoteSeeder; placed after every
         // seeder that reads the Offerte in their initial open status.
         $this->call(DemoContractSeeder::class);
+        // Commission showcase: NEW commesse (one per commission case) built
+        // through the real services, so it depends on the products, registries,
+        // referents and users above plus WorkOrderPaymentStatusSeeder (clean
+        // seed) and must run after DemoQuoteSeeder, whose Quote wipe it survives
+        // by being recreated here.
+        $this->call(DemoCommissionShowcaseSeeder::class);
         // The Task classification vocabulary (tipologia, categoria, priorita',
         // importanza, stati): REFERENCE data, not fixtures — hence no `Demo`
         // prefix and no copy of it here. Without this step the four pure

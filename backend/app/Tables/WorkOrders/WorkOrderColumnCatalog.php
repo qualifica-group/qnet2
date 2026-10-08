@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tables\WorkOrders;
 
+use App\Enums\WorkOrderType;
+
 /**
  * Declarative column/filter/action catalogue for the `work-orders` domain
  * (spec 0093). Extracted out of WorkOrdersTableDefinition (file-size split,
@@ -19,7 +21,13 @@ namespace App\Tables\WorkOrders;
  * from the root tasks (spec 0149, resolved by WorkOrderStatusResolver):
  * `status` is `sortable: false` (no single sort key for a derived state) and
  * `set`-filterable over its 4 values; `completion_percentage` is sortable
- * but not filterable (D-10).
+ * but not filterable (D-10). `registry` (the Anagrafica) is DERIVED through
+ * `quote.opportunity.registry` and `set`-filtered by name.
+ *
+ * Spec 0206: `title`/`type`/`callback_date`/`start_date`/`supervisors` are
+ * inline-editable and write through WorkOrderCellWriter (the form's own
+ * UpdateWorkOrderRequest + WorkOrderService). `is_force_closed` stays a row
+ * action (it needs a reason, D-7); every other column is read-only.
  */
 final class WorkOrderColumnCatalog
 {
@@ -48,6 +56,8 @@ final class WorkOrderColumnCatalog
                 'filterable' => true,
                 'filterType' => 'text',
                 'searchable' => true,
+                'editable' => true,
+                'nullable' => false,
             ],
             [
                 // `quotes.code`, derived through the `quote` relation (D-2).
@@ -73,6 +83,17 @@ final class WorkOrderColumnCatalog
                 'hasFilterValues' => false,
             ],
             [
+                // The client, `{id, name}` through `quote.opportunity.registry`
+                // (WorkOrderRegistryColumn). Read-only: it follows the quote.
+                'id' => 'registry',
+                'label' => 'workOrders.columns.registry',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
+            [
                 'id' => 'type',
                 'label' => 'workOrders.columns.type',
                 'type' => 'badge',
@@ -80,6 +101,10 @@ final class WorkOrderColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'set',
+                // Spec 0206: options feed the cell validator and the rich select.
+                'options' => WorkOrderType::values(),
+                'editable' => true,
+                'nullable' => false,
             ],
             [
                 'id' => 'callback_date',
@@ -89,6 +114,8 @@ final class WorkOrderColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'date',
+                'editable' => true,
+                'nullable' => true,
             ],
             [
                 'id' => 'is_force_closed',
@@ -147,6 +174,8 @@ final class WorkOrderColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'date',
+                'editable' => true,
+                'nullable' => false,
             ],
             [
                 // Responsabili (spec 0096, D-7): a to-many over the
@@ -160,6 +189,10 @@ final class WorkOrderColumnCatalog
                 'sortable' => false,
                 'filterable' => true,
                 'filterType' => 'set',
+                'editable' => true,
+                'editor' => 'multiselect',
+                'relation' => ['resource' => 'users'],
+                'editableField' => 'supervisor_ids',
             ],
         ];
     }
@@ -174,6 +207,7 @@ final class WorkOrderColumnCatalog
             ['columnId' => 'title', 'type' => 'text'],
             ['columnId' => 'contract_number', 'type' => 'text'],
             ['columnId' => 'quote', 'type' => 'text'],
+            ['columnId' => 'registry', 'type' => 'set'],
             ['columnId' => 'type', 'type' => 'set'],
             ['columnId' => 'callback_date', 'type' => 'date'],
             ['columnId' => 'is_force_closed', 'type' => 'set'],
@@ -225,6 +259,26 @@ final class WorkOrderColumnCatalog
                 'type' => 'action',
                 'confirm' => false,
                 'permission' => 'work-orders.viewActivity',
+            ],
+            // "Chiusura forzata" as an action, not a field (user directive
+            // 2026-10-06): the client opens a reason dialog and PATCHes
+            // is_force_closed/force_close_reason. `reopen` is its inverse.
+            // Offered per row by WorkOrdersTableDefinition::actionsFor().
+            [
+                'key' => 'force_close',
+                'label' => 'actions.forceClose',
+                'icon' => 'lock',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'work-orders.update',
+            ],
+            [
+                'key' => 'reopen',
+                'label' => 'actions.reopen',
+                'icon' => 'lock-open',
+                'type' => 'action',
+                'confirm' => true,
+                'permission' => 'work-orders.update',
             ],
         ];
     }

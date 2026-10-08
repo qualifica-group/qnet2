@@ -1,5 +1,8 @@
 <?php
 
+use App\Enums\CommissionRecipientRole;
+use App\Enums\CommissionType;
+use App\Enums\SupplierCommissionDirection;
 use App\Models\Product;
 use App\Models\Quote;
 use App\Models\QuoteLine;
@@ -245,6 +248,25 @@ it('AC-009: comparison rows, unattributed cost and totals are computed per spec'
         ->assertJsonPath('data.comparison.totals.actual_margin_net', '1029.50');
 
     expect($this->getJson("/api/work-orders/{$workOrder->id}/costs")->json('data.comparison.totals.actual_cost_net'))->toBe('470.50');
+});
+
+it('spec 0202 D-8: a RECEIVED line earns only its supplier commission in the comparison, other lines their net', function () {
+    $workOrder = WorkOrder::factory()->create();
+    $received = contractDataLine($workOrder, 'institution', 2000, SupplierCommissionDirection::Received);
+    $paid = contractDataLine($workOrder, 'consultancy', 1000, SupplierCommissionDirection::Paid);
+    contractDataCommission($received, CommissionRecipientRole::Supplier, CommissionType::Percentage, 10, 200);
+    contractDataCommission($received, CommissionRecipientRole::Commercial, CommissionType::Percentage, 5, 100);
+    contractDataCommission($paid, CommissionRecipientRole::Supplier, CommissionType::Percentage, 10, 100);
+    QuoteLine::factory()->cost()->create(['quote_id' => $workOrder->quote_id, 'offer_line_id' => $received->id, 'net_amount' => 50, 'total_amount' => 50]);
+    Sanctum::actingAs(workOrderCostsUserWith(['viewCosts']));
+
+    $rows = collect($this->getJson("/api/work-orders/{$workOrder->id}/costs")->assertOk()->json('data.comparison.rows'))->keyBy('quote_line_id');
+
+    expect($rows[$received->id]['revenue_net'])->toBe('200.00')
+        ->and($rows[$paid->id]['revenue_net'])->toBe('1000.00');
+    $this->getJson("/api/work-orders/{$workOrder->id}/costs")
+        ->assertJsonPath('data.comparison.totals.revenue_net', '1200.00')
+        ->assertJsonPath('data.comparison.totals.budget_margin_net', '1150.00');
 });
 
 it('AC-010: the work order detail exposes view_costs / manage_costs in permissions.actions', function () {

@@ -269,11 +269,32 @@ describe('resolveCellEditorSpec', () => {
       expect(spec?.cellEditorPopup).toBe(true)
       expect(spec?.cellEditorParams?.(column)).toEqual({
         resource: 'products',
+        // REQUIREMENT CHANGED (user directive 2026-10-06): the params now also
+        // carry `showAvatar` (people resource only) and `exclude`.
+        showAvatar: false,
         scope: { category_ids: 'product_category_ids' },
         // Spec 0075, D-4: absent on the column ⇒ the unlock stays available.
         // Generic default: the products-of-interest column itself declares
         // `lockScope` on BOTH domains since the user directive 2026-08-05.
         lockScope: false,
+        exclude: undefined,
+      })
+    })
+
+    // User directive 2026-10-06: a people column (a Task's watchers) shows
+    // avatars and forwards the row columns its picker leaves out.
+    it('forwards avatars and `exclude` for a people multiselect column', () => {
+      const column = stubColumn({
+        id: 'watchers',
+        type: 'text',
+        relation: { resource: 'users', exclude: ['creator', 'requester', 'assignees'] },
+      })
+
+      expect(resolveCellEditorSpec('multiselect')?.cellEditorParams?.(column)).toMatchObject({
+        resource: 'users',
+        showAvatar: true,
+        scope: undefined,
+        exclude: ['creator', 'requester', 'assignees'],
       })
     })
 

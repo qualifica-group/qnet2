@@ -42,7 +42,7 @@ function renderBoard() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <WorkOrderTaskBoard workOrderId={20} />
+      <WorkOrderTaskBoard workOrderId={20} actionsContainer={document.body} />
     </QueryClientProvider>,
   )
 }

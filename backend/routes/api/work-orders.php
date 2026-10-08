@@ -64,3 +64,7 @@ require __DIR__.'/work-order-emails.php';
 
 // Commessa costs (spec 0190): same file-size-split reasoning as above.
 require __DIR__.'/work-order-costs.php';
+
+// Commessa contract data and line payments (spec 0201): same file-size-split
+// reasoning as above.
+require __DIR__.'/work-order-contract-data.php';

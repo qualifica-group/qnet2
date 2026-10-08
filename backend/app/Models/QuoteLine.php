@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\QuoteLineType;
+use App\Enums\SupplierCommissionDirection;
 use App\Models\Abstracts\BaseModel;
 use Database\Factories\QuoteLineFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * One revenue or cost row against a Quote (spec 0065, D-11): revenue and cost
@@ -28,6 +30,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * OpportunityProductLine): it is written exclusively by the quote service's
  * full-replace (D-8), never directly by a client.
  *
+ * `supplier_commission_direction` (spec 0202, D-3/D-7) is frozen the same
+ * way, from the product's typology, when a REVENUE row is created or its
+ * product changes: RECEIVED|PAID, NULL = no Supplier commission (always NULL
+ * on a COST row).
+ *
  * `offer_line_id` (spec 0144, D-2): a self-reference to the REVENUE row (of
  * the SAME quote) a COST row is imputed to — NULL means a generic cost.
  * `nullOnDelete` (D-3): deleting the referenced product line, from any
@@ -43,6 +50,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'unit_price',
     'vat_rate_id',
     'unit_of_measure_id',
+    'supplier_commission_direction',
     'additional_description',
     'net_amount',
     'vat_amount',
@@ -69,6 +77,7 @@ class QuoteLine extends BaseModel
             'total_amount' => 'decimal:2',
             'sort_order' => 'int',
             'offer_line_id' => 'int',
+            'supplier_commission_direction' => SupplierCommissionDirection::class,
         ];
     }
 
@@ -100,6 +109,15 @@ class QuoteLine extends BaseModel
     public function commissions(): HasMany
     {
         return $this->hasMany(QuoteLineCommission::class);
+    }
+
+    /**
+     * The payment data of this line once programmed into a commessa (spec
+     * 0201): at most one, `quote_line_id` is unique.
+     */
+    public function payment(): HasOne
+    {
+        return $this->hasOne(WorkOrderLinePayment::class);
     }
 
     /**

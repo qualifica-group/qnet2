@@ -156,6 +156,14 @@ export const tasks = {
     subtasksEmpty: 'Questo task non ha ancora sotto-task.',
     created_at: 'Creato il',
     updated_at: 'Aggiornato il',
+    recurrenceRule: 'Regola',
+    recurrenceCard: {
+      offHint: 'Il task non si ripete. Attiva una ricorrenza per generarne in automatico le occorrenze future.',
+      endsNever: 'Nessuna data di fine',
+      endsOn: 'Fino al {{date}}',
+      endsAfter_one: '{{count}} occorrenza',
+      endsAfter_other: '{{count}} occorrenze',
+    },
     sections: {
       identity: 'Dati',
       people: 'Persone',
@@ -174,26 +182,20 @@ export const tasks = {
       deleteSuccess: 'Sotto-task eliminato.',
       deleteError: 'Impossibile eliminare il sotto-task. Riprova.',
       reorderError: 'Impossibile riordinare i sotto-task. Riprova.',
+      doneOf_one: 'di {{count}} completato',
+      doneOf_other: 'di {{count}} completati',
+      overallProgress: 'Avanzamento complessivo dei sotto-task',
+      emptyHint: 'Suddividi il lavoro in passi più piccoli, ciascuno con stato, assegnatari e avanzamento propri.',
     },
   },
   form: {
     createTitle: 'Nuovo task',
     createSubtitle: 'Crea un nuovo task.',
-    editTitle: 'Modifica task',
-    editSubtitle: 'Aggiorna il task selezionato.',
     newTask: 'Nuovo task',
     title: 'Titolo',
     titlePlaceholder: 'Che cosa bisogna fare?',
     descriptionPlaceholder: 'Aggiungi dettagli, contesto o istruzioni…',
-    header: {
-      status: 'Stato',
-      endDate: 'Scadenza',
-    },
     summary: {
-      title: 'Riepilogo',
-      description: 'Anteprima di ciò che verrà salvato.',
-      assigneesCount_one: '{{count}} assegnatario',
-      assigneesCount_other: '{{count}} assegnatari',
       recurrenceOff: 'Non ricorrente',
     },
     titleRequired: 'Il titolo è obbligatorio.',
@@ -289,40 +291,13 @@ export const tasks = {
       parentLocked: 'Impostato dal task padre da cui stai creando questo sotto-task.',
     },
     sections: {
-      identity: {
-        title: 'Task',
-        description: 'Che cosa è il task e dove si colloca nella gerarchia.',
-      },
       classification: {
         title: 'Classificazione',
-        description: 'Stato, tipologia e gli attributi che governano il task.',
-      },
-      registry: {
-        title: 'Anagrafica e referente',
-        description: 'A chi si riferisce il task.',
-      },
-      people: {
-        title: 'Persone',
-        description: 'Chi lo ha richiesto, chi ci lavora e chi lo segue.',
-      },
-      planning: {
-        title: 'Pianificazione',
-        description: 'Date, orari e impegno stimato.',
-      },
-      links: {
-        title: 'Record collegati',
-        description: "L'opportunità o la commessa a cui appartiene il task.",
-      },
-      closure: {
-        title: 'Chiusura',
-        description: 'Se chiudere il task richiede un feedback scritto.',
       },
       recurrence: {
         title: 'Ricorrenza',
-        description: 'Se attiva, genera automaticamente le occorrenze future di questo task.',
       },
       subtasks: {
-        title: 'Sotto-task',
         description: 'Crea subito una o più attività figlie insieme a questo task (facoltativo).',
       },
     },
@@ -349,6 +324,16 @@ export const tasks = {
       },
       interval: 'Ripeti ogni',
       intervalHint: "Numero di giorni, settimane, mesi o anni fra un'occorrenza e la successiva.",
+      intervalUnit: {
+        day_one: 'giorno',
+        day_other: 'giorni',
+        week_one: 'settimana',
+        week_other: 'settimane',
+        month_one: 'mese',
+        month_other: 'mesi',
+        year_one: 'anno',
+        year_other: 'anni',
+      },
       intervalInvalid: 'Inserisci un numero intero maggiore o uguale a 1.',
       weekdays: 'Giorni della settimana',
       weekdaysRequired: 'Seleziona almeno un giorno della settimana.',
@@ -363,14 +348,14 @@ export const tasks = {
       },
       monthMode: 'Tipo di giorno',
       monthModeOption: {
-        fixed: 'Giorno fisso del mese',
-        ordinal: 'Giorno della settimana ordinale',
+        fixed: 'Data fissa',
+        ordinal: 'Giorno della settimana',
       },
       monthDay: 'Giorno del mese',
       monthDayInvalid: 'Inserisci un giorno fra 1 e 31.',
       ordinal: 'Occorrenza',
       ordinalInvalid: "Scegli un'occorrenza tra 1 e 5.",
-      ordinalWeekday: 'Giorno della settimana',
+      ordinalWeekday: 'Giorno',
       ordinalWeekdayInvalid: 'Scegli un giorno della settimana.',
       yearMonth: 'Mese',
       yearMonthInvalid: 'Scegli un mese.',
@@ -380,7 +365,7 @@ export const tasks = {
       ends: 'Fine',
       endsOption: {
         on_date: 'A una data',
-        after_count: 'Dopo un numero di occorrenze',
+        after_count: 'Dopo N volte',
         never: 'Mai',
       },
       endsOn: 'Data di fine ricorrenza',
@@ -388,6 +373,10 @@ export const tasks = {
       endsOnAfterEndDate: 'La data di fine ricorrenza deve essere successiva alla data di fine del task.',
       occurrenceCount: 'Numero di occorrenze',
       occurrenceCountInvalid: 'Inserisci un numero intero di occorrenze, almeno 1.',
+      occurrenceUnit_one: 'occorrenza',
+      occurrenceUnit_other: 'occorrenze',
+      preview: 'Anteprima della regola',
+      previewIncomplete: 'Completa i campi per vedere la regola.',
     },
     attachments: {
       title: 'Allegati',
@@ -400,6 +389,12 @@ export const tasks = {
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il task non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     created: 'Task creato.',
     updated: 'Task aggiornato.',
     deleted: 'Task eliminato.',
@@ -414,7 +409,7 @@ export const tasks = {
    * sbagliata") che ogni azione ri-asserisce lato server.
    */
   actions: {
-    complete: { label: 'Completa' },
+    complete: { label: 'Completa', done: 'Completato' },
     uncomplete: {
       label: 'Riapri',
       confirmDescription: 'Il task torna in stato "In corso".',
@@ -463,6 +458,7 @@ export const tasks = {
       timeEntryTitle: 'Segnatempo',
       timeEntryDescription: 'Registra il tempo dedicato per completare il task.',
       trackTime: 'Registra il tempo',
+      forAllAssignees: 'Registra il segnatempo per tutti gli assegnatari',
       confirm: 'Completa',
       saving: 'Salvataggio…',
       success: 'Task completato.',

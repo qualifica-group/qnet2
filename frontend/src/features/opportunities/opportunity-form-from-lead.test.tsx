@@ -1,21 +1,29 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { OpportunityForm } from '@/features/opportunities/opportunity-form'
 import type { ResourceMeta } from '@/features/authorization/types'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
+import {
+  FULL_PERMISSIONS,
+  ROW,
+  SELECT_IDS,
+  formTestWrapper,
+  openRow,
+  queryPencil,
+  resolveForSelectLabels,
+} from '@/features/opportunities/opportunity-form-test-helpers'
 
 /**
  * AC-075 (spec 0040 MT-6): the `?lead_id=N` deep-link create-from-lead mode —
- * locked fields precompiled + forceDisabled, origin banner shown, free fields
- * stay editable, the derived product-line row seeds already editable/removable.
- * Split out of `opportunity-form-body.test.tsx` for file size (engineering.md
- * §6) — every other field's own behavior is covered there; the in-form "Lead"
- * select (AC-086/087/088, spec 0044 AC-025/034 supervisor prefill) is covered
- * separately in `opportunity-lead-selection.test.tsx`.
+ * locked fields precompiled, origin banner shown, free fields stay editable,
+ * the derived product-line row seeds already editable/removable. Split out of
+ * `opportunity-form-body.test.tsx` for file size (engineering.md §6); the
+ * in-form "Lead" select (AC-086/087) is covered in
+ * `opportunity-lead-selection.test.tsx`.
+ *
+ * Spec 0198: the locked fields (BR-2) have NO pencil on their closed row
+ * instead of a disabled control.
  */
 
 /**
@@ -67,100 +75,56 @@ vi.mock('@/features/product-categories/api', async () => {
   }
 })
 
-/** The row's FIRST step (spec 0132): stood in for the same reason as the category picker above. */
-vi.mock('@/features/product-lines/product-category-root-select', () => ({
-  ProductCategoryRootSelect: ({
-    value,
-    disabled,
-    triggerLabel,
-  }: {
-    value: number | null
-    disabled?: boolean
-    triggerLabel: string
-  }) => (
-    <div data-testid={`select-${triggerLabel}`}>
-      <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
-      <span data-testid={`disabled-${triggerLabel}`}>{String(Boolean(disabled))}</span>
-    </div>
-  ),
+vi.mock('@/features/product-lines/product-category-root-select', async () => ({
+  ProductCategoryRootSelect: (await import('@/features/opportunities/opportunity-form-test-helpers'))
+    .ProductCategoryRootSelectDouble,
+}))
+
+// Closed rows link their related records (`RecordLink`): the open-mode
+// preference and the abilities are stubbed rather than dragging an AuthProvider
+// in; every ability is granted, so the links render.
+vi.mock('@/features/modules/use-module-open-mode', () => ({
+  useModuleOpenMode: () => 'modal',
+}))
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
-
-const FULL_PERMISSIONS = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
-}
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-/** Spec 0043 D-3: the create form preselects this resolved "Nuova" status id. */
-const fetchSystemStatusIdMock = vi.fn<() => Promise<number | null>>()
-vi.mock('@/features/status-reorder/api', () => ({
-  fetchSystemStatusId: () => fetchSystemStatusIdMock(),
-}))
-
-/** Stubs every single-select field, keyed by its accessible trigger label (mirrors `opportunity-form-body.test.tsx`). */
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({
-    value,
-    disabled,
-    labels,
-  }: {
-    value: number | null
-    disabled?: boolean
-    labels: { triggerLabel: string }
-  }) => (
-    <div data-testid={`select-${labels.triggerLabel}`}>
-      <span data-testid={`value-${labels.triggerLabel}`}>{value ?? ''}</span>
-      <span data-testid={`disabled-${labels.triggerLabel}`}>{String(Boolean(disabled))}</span>
-    </div>
-  ),
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/opportunities/opportunity-form-test-helpers'))
+    .AsyncPaginatedSelectDouble,
 }))
 
 const fetchForSelectMock = vi.fn()
 vi.mock('@/features/for-select/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
-    '@/features/for-select/api',
-  )
-  return {
-    ...actual,
-    fetchForSelect: (...args: unknown[]) => fetchForSelectMock(...args),
-  }
+  const actual = await vi.importActual<typeof import('@/features/for-select/api')>('@/features/for-select/api')
+  return { ...actual, fetchForSelect: (...args: unknown[]) => fetchForSelectMock(...args) }
 })
-
-const EMPTY_PAGE = { items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }
-
-/** The products-of-interest picker opens the shared confirm dialog, so its provider is required. */
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-    </QueryClientProvider>
-  )
-}
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
 beforeEach(() => {
+  for (const key of Object.keys(SELECT_IDS)) {
+    delete SELECT_IDS[key]
+  }
   fetchResourceMetaMock.mockReset()
   fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_PERMISSIONS })
-
-  fetchSystemStatusIdMock.mockReset()
-  fetchSystemStatusIdMock.mockResolvedValue(null)
-
   fetchForSelectMock.mockReset()
-  fetchForSelectMock.mockResolvedValue(EMPTY_PAGE)
+  fetchForSelectMock.mockImplementation(async (resource: string, params: { ids?: number[] }) =>
+    resolveForSelectLabels(resource, params),
+  )
 })
 
-/** AC-075: create-from-lead mode (spec 0040 MT-6) — locked fields precompiled + forceDisabled, banner shown, free fields stay editable. */
+/** AC-075: create-from-lead mode (spec 0040 MT-6) — locked fields precompiled, banner shown, free fields stay editable. */
 describe('OpportunityFormBody — create from lead (BR-1/BR-2, AC-075)', () => {
   it('shows the origin banner, locks the derived fields precompiled, and seeds the editable product-line row', async () => {
     render(
@@ -193,32 +157,38 @@ describe('OpportunityFormBody — create from lead (BR-1/BR-2, AC-075)', () => {
             // Directive 2026-07-21: no Operator on this fixture's lead — the
             // first "Gestore Account" slot stays empty (not under test here).
             managerSlots: [],
-            managerRefs: [],
           },
         }}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
       />,
-      { wrapper: wrapper() },
+      { wrapper: formTestWrapper() },
     )
 
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
+    await waitFor(() => expect(queryPencil(ROW.title)).toBeInTheDocument())
     // AC-051: the origin banner sources its name from the registry, not the referent.
     expect(screen.getByRole('status')).toHaveTextContent('Acme S.p.A.')
 
-    expect(screen.getByTestId('value-Registry')).toHaveTextContent('30')
-    expect(screen.getByTestId('disabled-Registry')).toHaveTextContent('true')
+    // REQUIREMENT CHANGED (spec 0198 D-4, BR-2): the locked fields show what
+    // the lead handed down on a closed row with NO pencil — no longer a
+    // precompiled disabled control.
+    expect(screen.getByRole('link', { name: /Acme S\.p\.A\./ })).toBeInTheDocument()
+    expect(queryPencil(ROW.registry)).not.toBeInTheDocument()
+    expect(await screen.findByText('Web')).toBeInTheDocument()
+    expect(queryPencil(ROW.source)).not.toBeInTheDocument()
+
     // AC-051: referent_id is no longer derived/locked by the lead — free and
-    // editable, gated only by the registry now being chosen.
+    // editable, gated only by the registry now being chosen (it is).
+    openRow(ROW.referent)
     expect(screen.getByTestId('value-Contact')).toHaveTextContent('')
     expect(screen.getByTestId('disabled-Contact')).toHaveTextContent('false')
-    expect(screen.getByTestId('value-Source')).toHaveTextContent('20')
-    expect(screen.getByTestId('disabled-Source')).toHaveTextContent('true')
 
-    // Spec 0132: the seeded row is editable/removable — never disabled. Only
+    // Spec 0132: the seeded row is editable/removable — never locked. Only
     // `product_category_id` is known from the lead's derived line; the root
-    // is resolved from the cached tree at render time (own suite: `use-product-lines-field.ts`),
-    // so the category select only unlocks once that fetch settles.
+    // is resolved from the cached tree at render time, so the category select
+    // only unlocks once that fetch settles. The closed row names its path.
+    expect(await screen.findByText('Sales root > Consulting')).toBeInTheDocument()
+    openRow(ROW.productLines)
     expect(screen.getByTestId('value-Product category 1')).toHaveTextContent('50')
     await waitFor(() => expect(screen.getByTestId('disabled-Product category 1')).toHaveTextContent('false'))
     expect(screen.getByTestId('disabled-Parent category 1')).toHaveTextContent('false')
@@ -227,11 +197,14 @@ describe('OpportunityFormBody — create from lead (BR-1/BR-2, AC-075)', () => {
 
   it('renders no banner and no locked field for a plain manual create', async () => {
     render(<OpportunityForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
+      wrapper: formTestWrapper(),
     })
 
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
+    await waitFor(() => expect(queryPencil(ROW.title)).toBeInTheDocument())
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(queryPencil(ROW.registry)).toBeInTheDocument()
+    expect(queryPencil(ROW.source)).toBeInTheDocument()
+    openRow(ROW.registry)
     expect(screen.getByTestId('disabled-Registry')).toHaveTextContent('false')
   })
 })

@@ -13,12 +13,21 @@ const VALID_PAYLOAD = {
   name: 'Kilogram',
   code: 'kilogram',
   description: null,
+  color: 'blue',
+  supplier_commission_enabled: false,
+  supplier_commission_direction: null,
 }
 
 describe('buildCreateProductTypologySchema (spec 0099)', () => {
   it('accepts a valid payload', () => {
     const schema = buildCreateProductTypologySchema(i18n.t)
     expect(schema.safeParse(VALID_PAYLOAD).success).toBe(true)
+  })
+
+  it('requires a color (spec 0204 D-3)', () => {
+    const schema = buildCreateProductTypologySchema(i18n.t)
+    expect(schema.safeParse({ ...VALID_PAYLOAD, color: '' }).success).toBe(false)
+    expect(schema.safeParse({ ...VALID_PAYLOAD, color: undefined }).success).toBe(false)
   })
 
   it('rejects an empty name', () => {
@@ -68,5 +77,36 @@ describe('buildUpdateProductTypologySchema', () => {
   it('has the same shape as the create schema', () => {
     const schema = buildUpdateProductTypologySchema(i18n.t)
     expect(schema.safeParse(VALID_PAYLOAD).success).toBe(true)
+  })
+})
+
+describe('supplier commission direction (spec 0202 D-7)', () => {
+  it('rejects an enabled commission without direction', () => {
+    const schema = buildCreateProductTypologySchema(i18n.t)
+    const result = schema.safeParse({ ...VALID_PAYLOAD, supplier_commission_enabled: true })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0].path).toEqual(['supplier_commission_direction'])
+  })
+
+  it.each(['RECEIVED', 'PAID'])('accepts an enabled commission with direction %s', (direction) => {
+    const schema = buildUpdateProductTypologySchema(i18n.t)
+    expect(
+      schema.safeParse({
+        ...VALID_PAYLOAD,
+        supplier_commission_enabled: true,
+        supplier_commission_direction: direction,
+      }).success,
+    ).toBe(true)
+  })
+
+  it('rejects a direction outside the enum', () => {
+    const schema = buildCreateProductTypologySchema(i18n.t)
+    expect(
+      schema.safeParse({
+        ...VALID_PAYLOAD,
+        supplier_commission_enabled: true,
+        supplier_commission_direction: 'OTHER',
+      }).success,
+    ).toBe(false)
   })
 })

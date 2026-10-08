@@ -3,11 +3,10 @@ import { useWatch } from 'react-hook-form'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowRightLeft, ListChecks } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { recordUnavailableReason } from '@/lib/record-unavailable-reason'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Form } from '@/components/ui/form'
-import { RecordUnavailable } from '@/components/detail/record-unavailable'
+import { DetailError } from '@/components/detail/detail-panel'
 import { FormSection } from '@/components/form-section'
 import {
   MAIN_COLUMN_CLASS,
@@ -130,28 +129,15 @@ export function RequestWorkPanelScreen({ id, onSaved }: RequestWorkPanelScreenPr
     requestManagementKeys.panel(module.key, id),
     () => fetchRequestWorkPanel(module.apiBasePath, id),
   )
-  const unavailableReason = isError ? recordUnavailableReason(error) : null
-
-  if (unavailableReason) {
-    return (
-      <RecordUnavailable
-        reason={unavailableReason}
-        title={t(`requestManagement.workPanel.unavailable.${unavailableReason}.title`)}
-        description={t(`requestManagement.workPanel.unavailable.${unavailableReason}.description`)}
-      />
-    )
-  }
 
   if (isError) {
     return (
-      <div className="flex flex-col items-start gap-3 p-4">
-        <p className="text-sm text-destructive" role="alert">
-          {t('requestManagement.workPanel.loadError', { defaultValue: 'Could not load the record.' })}
-        </p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          {t('common.retry')}
-        </Button>
-      </div>
+      <DetailError
+        error={error}
+        message={t('requestManagement.workPanel.loadError')}
+        retryLabel={t('common.retry')}
+        onRetry={() => refetch()}
+      />
     )
   }
 

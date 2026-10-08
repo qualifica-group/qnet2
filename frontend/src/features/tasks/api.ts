@@ -58,9 +58,12 @@ export async function createTask(payload: CreateTaskPayload): Promise<TaskDetail
  * `is_blocked` are never keys of `UpdateTaskPayload` (D-6/D-10): the backend
  * rejects their mere presence with 422 regardless of role.
  */
-export async function updateTask(id: number, payload: UpdateTaskPayload): Promise<TaskDetail> {
-  const { data } = await apiClient.patch<ApiResponse<TaskDetail>>(`/tasks/${id}`, payload)
-  return data.data
+export async function updateTask(id: number, payload: UpdateTaskPayload): Promise<TaskDetailWithPermissions> {
+  const { data } = await apiClient.patch<ApiResponseWithPermissions<TaskDetail, ResourcePermissions>>(
+    `/tasks/${id}`,
+    payload,
+  )
+  return withPermissions(data)
 }
 
 /** Deletes a task. 204 with no body; 409 when it still has sub-tasks (D-8a). */

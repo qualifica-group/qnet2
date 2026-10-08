@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next'
 import { Handshake } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Progress } from '@/components/ui/progress'
 import { formatDecimal } from '@/features/products/column-renderers'
 import { probabilityToneClass } from '@/features/opportunities/column-renderers'
@@ -18,17 +17,13 @@ import { formatDate } from '@/lib/formatting/date-display'
 
 interface OpportunityDetailHeaderProps {
   opportunity: OpportunityDetailData
-  /** Opens the module's existing edit surface; absent = no edit affordance. */
-  onEdit?: () => void
 }
 
 /**
- * Identity band: monogram, name, registry subtitle, pipeline/working-status
- * badges, edit action.
+ * Identity band: monogram, name, registry subtitle and the computed status
+ * badge. No edit action: the fields edit in place (spec 0198).
  */
-export function OpportunityDetailHeader({ opportunity, onEdit }: OpportunityDetailHeaderProps) {
-  const canEdit = opportunity.permissions.resource.update
-
+export function OpportunityDetailHeader({ opportunity }: OpportunityDetailHeaderProps) {
   return (
     <RecordCardHeader
       media={
@@ -41,52 +36,69 @@ export function OpportunityDetailHeader({ opportunity, onEdit }: OpportunityDeta
       title={opportunity.name}
       subtitle={opportunity.registry?.name}
       badges={<OpportunityStatusBadge summary={opportunity.status} />}
-      actions={
-        canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null
-      }
     />
   )
 }
 
-interface OpportunityDetailStatsProps {
-  opportunity: OpportunityDetailData
+interface OpportunityStatsStripProps {
+  estimatedValue: string | number | null
+  successProbability: number | null
+  startDate: string | null
+  expectedCloseDate: string | null
 }
 
-/** KPI strip: estimated value, success probability (with its tone bar), start date and expected close date. */
-export function OpportunityDetailStats({ opportunity }: OpportunityDetailStatsProps) {
+/**
+ * KPI strip: estimated value, success probability (with its tone bar), start
+ * date and expected close date — shared by the detail (persisted values) and
+ * the create form (the draft, live).
+ */
+export function OpportunityStatsStrip({
+  estimatedValue,
+  successProbability,
+  startDate,
+  expectedCloseDate,
+}: OpportunityStatsStripProps) {
   const { t } = useTranslation()
-  const estimatedValue = formatDecimal(opportunity.estimated_value)
-  const startDate = formatDate(opportunity.start_date)
-  const expectedCloseDate = formatDate(opportunity.expected_close_date)
-  const probability = opportunity.success_probability
+  const formattedValue = formatDecimal(estimatedValue)
+  const formattedStart = formatDate(startDate)
+  const formattedClose = formatDate(expectedCloseDate)
 
   return (
     <RecordStatStrip>
-      <RecordStat label={t('opportunities.form.estimatedValue')} value={estimatedValue || <DetailEmpty />} />
+      <RecordStat label={t('opportunities.form.estimatedValue')} value={formattedValue || <DetailEmpty />} />
       <RecordStat
         label={t('opportunities.form.successProbability')}
         value={
-          probability !== null ? (
+          successProbability !== null ? (
             <span className="flex items-center gap-2">
               <Progress
-                value={probability}
+                value={successProbability}
                 size="xs"
                 aria-hidden="true"
                 className="w-16 shrink-0"
-                indicatorClassName={probabilityToneClass(probability)}
+                indicatorClassName={probabilityToneClass(successProbability)}
               />
-              <span className="tabular-nums">{probability}%</span>
+              <span className="tabular-nums">{successProbability}%</span>
             </span>
           ) : (
             <DetailEmpty />
           )
         }
       />
-      <RecordStat label={t('opportunities.form.startDate')} value={startDate || <DetailEmpty />} />
-      <RecordStat
-        label={t('opportunities.form.expectedCloseDate')}
-        value={expectedCloseDate || <DetailEmpty />}
-      />
+      <RecordStat label={t('opportunities.form.startDate')} value={formattedStart || <DetailEmpty />} />
+      <RecordStat label={t('opportunities.form.expectedCloseDate')} value={formattedClose || <DetailEmpty />} />
     </RecordStatStrip>
+  )
+}
+
+/** The detail's KPI strip, on the persisted opportunity. */
+export function OpportunityDetailStats({ opportunity }: { opportunity: OpportunityDetailData }) {
+  return (
+    <OpportunityStatsStrip
+      estimatedValue={opportunity.estimated_value}
+      successProbability={opportunity.success_probability}
+      startDate={opportunity.start_date}
+      expectedCloseDate={opportunity.expected_close_date}
+    />
   )
 }

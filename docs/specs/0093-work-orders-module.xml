@@ -300,6 +300,7 @@
           title (text, sortable, filterable text, searchable)         -> "Titolo"
           contract_number (text, sortable, filterable text, searchable, derivata da quote.code) -> "Contratto n."
           quote (text, sortable, filterable text, derivata da quote.title) -> "Offerta collegata"
+          registry ({id,name}|null, sortable, filterable set sul nome, sola lettura, derivata da quote.opportunity.registry; delta 2026-10-08) -> "Anagrafica"
           type (badge, sortable, filterable set: processing|project)  -> "Tipo commessa"
           callback_date (date, sortable, filterable date)             -> "Data richiamo"
           is_force_closed (badge, sortable, filterable set: true|false) -> "Chiusura forzata"

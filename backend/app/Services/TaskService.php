@@ -449,7 +449,7 @@ class TaskService
         return [
             'subtasks' => static function (HasMany $subtasks) use ($actor): void {
                 TaskActionAvailability::withOpenSubtasksCount(
-                    TaskVisibilityScope::scopeToActor($subtasks->getQuery(), $actor)->with(['taskStatus', 'assignees', 'completionSubtasks.taskStatus']),
+                    TaskVisibilityScope::scopeToActor($subtasks->getQuery(), $actor)->with(['taskStatus', 'taskType', 'assignees', 'completionSubtasks.taskStatus']),
                 );
             },
         ];

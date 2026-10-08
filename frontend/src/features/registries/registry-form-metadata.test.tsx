@@ -1,32 +1,30 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
-import axios, { AxiosError } from 'axios'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { RegistryForm } from '@/features/registries/registry-form'
-import type { RegistryDetailWithPermissions } from '@/features/registries/types'
 import type { ResourceMeta } from '@/features/authorization/types'
 import type { EnumOption } from '@/features/config/types'
-import type { PersonalDataCard } from '@/features/personal-data/types'
+import {
+  EDITABLE,
+  fillCardNames,
+  pencilOf,
+  permissionsFor,
+  registryWrapper,
+} from '@/features/registries/registry-test-fixtures'
 
 /**
- * Acceptance criteria AC-020/AC-021/AC-022 (spec 0020): the metadata-driven
- * behaviour of the registry form (hidden field absent, readonly field not
- * editable, required field marked, server 422 mapped inline) plus the
- * `is_qualified_supplier` conditional visibility (`form.watch('is_supplier')`).
- * The payload-shaping behaviour itself is covered by
- * `registry-form-payload.test.ts`.
+ * The anagrafica create form (spec 0200 D-5): a replica of the detail whose
+ * rows start CLOSED and open one at a time ("Done"/"Revert"), driven by the
+ * create-context metadata (spec 0004: hidden field absent, required field
+ * marked). The edit-mode cases of this suite moved to
+ * `registry-detail-inline-edit.test.tsx` — REQUIREMENT CHANGED: there is no
+ * edit form any more.
  */
 
 const createRegistryMock = vi.fn()
-const updateRegistryMock = vi.fn()
-
-vi.mock('@/features/registries/api', () => ({
+vi.mock('@/features/registries/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/registries/api')>()),
   createRegistry: (...args: unknown[]) => createRegistryMock(...args),
-  updateRegistry: (...args: unknown[]) => updateRegistryMock(...args),
-  registryDetailQueryKey: (id: number | null) => ['registries', 'detail', id] as const,
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -42,15 +40,8 @@ const enums: Record<string, EnumOption[]> = {
     { value: 'company', label: 'Company', color: null, icon: null, is_default: false, hidden_on_form: false },
   ],
   contact_type: [],
-  agreement_status: [
-    { value: 'negotiating', label: 'Negotiating', color: null, icon: null, is_default: true, hidden_on_form: false },
-    { value: 'rejected', label: 'Rejected', color: null, icon: null, is_default: false, hidden_on_form: false },
-    { value: 'agreed', label: 'Agreed', color: null, icon: null, is_default: false, hidden_on_form: false },
-  ],
-  size_class: [
-    { value: 'micro', label: 'Micro', color: null, icon: null, is_default: false, hidden_on_form: false },
-    { value: 'small', label: 'Small', color: null, icon: null, is_default: false, hidden_on_form: false },
-  ],
+  agreement_status: [],
+  size_class: [],
 }
 
 vi.mock('@/features/config/use-config', () => ({
@@ -58,27 +49,8 @@ vi.mock('@/features/config/use-config', () => ({
   useEnumOptions: (key: string) => enums[key] ?? [],
 }))
 
-/** Stubs every single-select field, keyed by its accessible trigger label. */
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({
-    value,
-    labels,
-  }: {
-    value: number | null
-    labels: { triggerLabel: string }
-  }) => <div data-testid={`select-${labels.triggerLabel}`}>{value ?? ''}</div>,
-}))
-
-/** Stubs every multiselect field, keyed by its accessible trigger label. */
-vi.mock('@/components/ui/async-paginated-multi-select', () => ({
-  AsyncPaginatedMultiSelect: ({
-    value,
-    labels,
-  }: {
-    value: number[]
-    labels: { triggerLabel: string }
-  }) => <div data-testid={`multiselect-${labels.triggerLabel}`}>{value.join(',')}</div>,
-}))
+vi.mock('@/components/ui/async-paginated-select', () => ({ AsyncPaginatedSelect: () => null }))
+vi.mock('@/components/ui/async-paginated-multi-select', () => ({ AsyncPaginatedMultiSelect: () => null }))
 
 /** The `<label>` element whose text starts with `text` (exact-match helper). */
 function labelFor(text: string): HTMLElement {
@@ -87,91 +59,13 @@ function labelFor(text: string): HTMLElement {
   )
 }
 
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-    </QueryClientProvider>
-  )
+function sectionNamed(title: string): HTMLElement {
+  return screen.getByText(title).closest('section') as HTMLElement
 }
 
-function card(overrides: Partial<PersonalDataCard> = {}): PersonalDataCard {
-  return {
-    id: 99,
-    type: 'individual',
-    first_name: 'Ada',
-    last_name: 'Lovelace',
-    company_name: null,
-    full_name: 'Ada Lovelace',
-    ceo: null,
-    tax_code: null,
-    vat_number: null,
-    sdi_code: null,
-    birth_date: null,
-    birth_city_id: null,
-    residence_city_id: null,
-    gender: 'female',
-    personable_type: 'registry',
-    personable_id: 7,
-    contacts: [],
-    addresses: [],
-    created_at: null,
-    ...overrides,
-  }
+function renderCreate() {
+  render(<RegistryForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: registryWrapper().wrapper })
 }
-
-function registry(
-  overrides: Partial<RegistryDetailWithPermissions> = {},
-): RegistryDetailWithPermissions {
-  return {
-    id: 7,
-    name: 'Ada Lovelace',
-    source_id: null,
-    source: null,
-    sector_ids: [],
-    sectors: [],
-    referent_ids: [],
-    referents: [],
-    manager_ids: [],
-    managers: [],
-    manager_slots: [],
-    supervisor_id: null,
-    supervisor: null,
-    commercial_id: null,
-    commercial: null,
-    reporter_id: null,
-    reporter: null,
-    vat_group: null,
-    is_supplier: false,
-    is_qualified_supplier: false,
-    agreement_status: null,
-    agreement_notes: null,
-    size_class: null,
-    employee_count: null,
-    personal_data: card(),
-    created_at: '2026-01-01T00:00:00Z',
-    permissions: {
-      resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-      fields: {},
-      actions: {},
-    },
-    ...overrides,
-  }
-}
-
-/** Full field-permission map (visible/editable) for every registry-specific field. */
-const ALL_VISIBLE_EDITABLE = Object.fromEntries(
-  [
-    'source_id', 'sector_ids', 'referent_ids', 'manager_ids',
-    'supervisor_id', 'commercial_id', 'reporter_id', 'vat_group',
-    'is_supplier', 'is_qualified_supplier', 'agreement_status',
-    'agreement_notes', 'size_class', 'employee_count',
-  ].map((key) => [
-    key,
-    { visible: true, hidden: false, editable: true, readonly: false, required: false, disabled: false },
-  ]),
-)
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -179,207 +73,112 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createRegistryMock.mockReset()
-  updateRegistryMock.mockReset()
   fetchResourceMetaMock.mockReset()
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
 })
 
-describe('RegistryForm — metadata-driven authorization (spec 0004)', () => {
-  it('hides a hidden field and marks a required field from create-context metadata', async () => {
+describe('RegistryForm — metadata-driven create rows (spec 0004, spec 0200)', () => {
+  it('hides a hidden field and marks a required field once its row opens', async () => {
     fetchResourceMetaMock.mockResolvedValue({
       fields: [],
-      permissions: {
-        resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-        fields: {
-          ...ALL_VISIBLE_EDITABLE,
-          source_id: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
-          vat_group: { visible: true, hidden: false, editable: true, readonly: false, required: true, disabled: false },
-        },
-        actions: {},
-      },
+      permissions: permissionsFor({
+        source_id: { ...EDITABLE, visible: false, hidden: true, editable: false },
+        vat_group: { ...EDITABLE, required: true },
+      }),
     })
+    renderCreate()
 
-    render(
-      <RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    await waitFor(() => expect(pencilOf('VAT group')).toBeInTheDocument())
+    expect(screen.queryByText('Source')).not.toBeInTheDocument()
 
-    await waitFor(() => expect(screen.getByLabelText(/^VAT group/)).toBeInTheDocument())
-    expect(screen.queryByTestId('select-Source')).not.toBeInTheDocument()
+    fireEvent.click(pencilOf('VAT group'))
     expect(labelFor('VAT group').textContent).toContain('*')
   })
 
-  it('renders a readonly/non-editable field disabled in edit mode', () => {
-    render(
-      <RegistryForm
-        mode={{
-          type: 'edit',
-          registry: registry({
-            permissions: {
-              resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-              fields: {
-                ...ALL_VISIBLE_EDITABLE,
-                vat_group: { visible: true, hidden: false, editable: false, readonly: true, required: false, disabled: false },
-              },
-              actions: {},
-            },
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('starts every row closed and keeps a value on Done', async () => {
+    renderCreate()
 
-    const vatGroup = screen.getByLabelText(/^VAT group/)
-    expect(vatGroup).toBeDisabled()
-    expect(vatGroup).toHaveAttribute('readonly')
+    await waitFor(() => expect(pencilOf('Employee count')).toBeInTheDocument())
+    expect(screen.queryByLabelText(/^Employee count/)).not.toBeInTheDocument()
+
+    fireEvent.click(pencilOf('Employee count'))
+    fireEvent.change(screen.getByLabelText(/^Employee count/), { target: { value: '42' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+
+    expect(screen.queryByLabelText(/^Employee count/)).not.toBeInTheDocument()
+    const section = sectionNamed('Business details')
+    expect(within(section).getByText('42')).toBeInTheDocument()
   })
 
-  it('seeds permissions from the loaded detail and surfaces a 422 field error inline', async () => {
-    updateRegistryMock.mockRejectedValue(
-      new AxiosError(
-        'Unprocessable',
-        '422',
-        undefined,
-        undefined,
-        {
-          status: 422,
-          data: { success: false, message: 'Validation failed', errors: { vat_group: ['field not editable'] } },
-        } as never,
-      ),
-    )
-    vi.spyOn(axios, 'isAxiosError').mockReturnValue(true)
+  it('puts the value back on Revert', async () => {
+    renderCreate()
 
-    render(
-      <RegistryForm mode={{ type: 'edit', registry: registry({ permissions: { resource: { view: true, create: true, update: true, delete: true, export: true, import: true }, fields: ALL_VISIBLE_EDITABLE, actions: {} } }) }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    await waitFor(() => expect(pencilOf('VAT group')).toBeInTheDocument())
+    fireEvent.click(pencilOf('VAT group'))
+    fireEvent.change(screen.getByLabelText(/^VAT group/), { target: { value: 'G-1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Revert' }))
 
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(screen.getByText('field not editable')).toBeInTheDocument())
-    expect(updateRegistryMock).toHaveBeenCalledTimes(1)
-
-    vi.restoreAllMocks()
+    expect(screen.queryByText('G-1')).not.toBeInTheDocument()
   })
 
-  it('seeds the detail cache with the permissions envelope after a successful edit', async () => {
-    // `updateRegistry` resolves with a bare RegistryDetail (no `permissions`),
-    // exactly like the real API client. The cache the detail page reads must
-    // still carry `permissions`, or its `registry.permissions.resource` access
-    // crashes on the next render.
-    const { permissions: _omit, ...bareSaved } = registry({ name: 'Renamed S.p.A.' })
-    updateRegistryMock.mockResolvedValue(bareSaved)
+  // REQUIREMENT CHANGED (user 2026-10-06, "allineato a come e' stato fatto l'edit"):
+  // the anagraphic card is a closed row like on the detail, no longer open.
+  it('opens the anagraphic card as a closed row that names the anagrafica on Done', async () => {
+    renderCreate()
 
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    render(
-      <QueryClientProvider client={client}>
-        <ConfirmDialogProvider>
-          <RegistryForm
-            mode={{
-              type: 'edit',
-              registry: registry({
-                permissions: {
-                  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-                  fields: ALL_VISIBLE_EDITABLE,
-                  actions: {},
-                },
-              }),
-            }}
-            onSuccess={vi.fn()}
-            onCancel={vi.fn()}
-          />
-        </ConfirmDialogProvider>
-      </QueryClientProvider>,
-    )
+    await fillCardNames('Ada', 'Lovelace')
 
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateRegistryMock).toHaveBeenCalledTimes(1))
-
-    const cached = client.getQueryData<RegistryDetailWithPermissions>(['registries', 'detail', 7])
-    expect(cached?.permissions.resource.update).toBe(true)
-    expect(cached?.name).toBe('Renamed S.p.A.')
-  })
-})
-
-describe('RegistryForm — is_qualified_supplier conditional visibility (AC-021)', () => {
-  const fullPermissions = {
-    resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-    fields: ALL_VISIBLE_EDITABLE,
-    actions: {},
-  }
-
-  it('hides the qualified-supplier toggle while is_supplier is off', () => {
-    render(
-      <RegistryForm
-        mode={{ type: 'edit', registry: registry({ permissions: fullPermissions, is_supplier: false }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.queryByLabelText('Qualified supplier')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/^First name/)).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument()
+    const identity = screen.getAllByText('Personal details')[0].closest('section') as HTMLElement
+    expect(within(identity).getByText('Lovelace')).toBeInTheDocument()
   })
 
-  it('shows the qualified-supplier toggle once is_supplier is on', () => {
-    render(
-      <RegistryForm
-        mode={{ type: 'edit', registry: registry({ permissions: fullPermissions, is_supplier: true }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('keeps the card row open on Done while it is incomplete, and puts it back on Revert', async () => {
+    renderCreate()
 
-    expect(screen.getByLabelText('Qualified supplier')).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Personal details' }))
+    fireEvent.change(await screen.findByLabelText(/^First name/), { target: { value: 'Ada' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(screen.getByLabelText(/^First name/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Revert' }))
+    expect(screen.queryByLabelText(/^First name/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Ada')).not.toBeInTheDocument()
   })
 
-  it('reveals/hides the toggle live when the supplier switch is flipped', () => {
-    render(
-      <RegistryForm
-        mode={{ type: 'edit', registry: registry({ permissions: fullPermissions, is_supplier: false }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('reveals "Qualified supplier" only once the draft is a supplier', async () => {
+    renderCreate()
 
-    expect(screen.queryByLabelText('Qualified supplier')).not.toBeInTheDocument()
+    await waitFor(() => expect(pencilOf('Supplier')).toBeInTheDocument())
+    expect(screen.queryByText('Qualified supplier')).not.toBeInTheDocument()
 
+    fireEvent.click(pencilOf('Supplier'))
     fireEvent.click(screen.getByLabelText('Supplier'))
-    expect(screen.getByLabelText('Qualified supplier')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
 
-    fireEvent.click(screen.getByLabelText('Supplier'))
-    expect(screen.queryByLabelText('Qualified supplier')).not.toBeInTheDocument()
+    expect(pencilOf('Qualified supplier')).toBeInTheDocument()
+  })
+
+  it('refuses the save without a POST while the card is incomplete, opening its row', async () => {
+    renderCreate()
+
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Save' }).length).toBeGreaterThan(0))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+
+    expect(await screen.findByLabelText(/^First name/)).toBeInTheDocument()
+    expect(createRegistryMock).not.toHaveBeenCalled()
   })
 })
 
 /**
  * User directive 2026-09-11: the Supervisore and the G.A. slots live in their
- * OWN "Team" block, like the Opportunità and Offerta forms — not inside
- * "Relazioni" with the fonte and i settori. Commerciale and Segnalatore stay
- * behind: they are referenti, not users, so they are not part of that team.
+ * OWN "Team" block, like the Opportunità and Offerta records. Commerciale and
+ * Segnalatore stay in "Relations": they are referenti, not users.
  */
-describe('RegistryForm — Team block (user directive 2026-09-11)', () => {
-  function sectionNamed(title: string): HTMLElement {
-    return screen.getByText(title).closest('section') as HTMLElement
-  }
-
+describe('RegistryForm — Team and Relations blocks (user directive 2026-09-11)', () => {
   it('gathers the supervisor and the G.A. slots in the Team block', async () => {
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: {
-        resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-        fields: ALL_VISIBLE_EDITABLE,
-        actions: {},
-      },
-    })
-
-    render(<RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    renderCreate()
 
     await waitFor(() => expect(screen.getByText('Team')).toBeInTheDocument())
     const team = sectionNamed('Team')
@@ -387,62 +186,8 @@ describe('RegistryForm — Team block (user directive 2026-09-11)', () => {
     expect(within(team).getByText('Account managers')).toBeInTheDocument()
   })
 
-  it('groups the Relations block instead of stacking one column of pickers', async () => {
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: {
-        resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-        fields: ALL_VISIBLE_EDITABLE,
-        actions: {},
-      },
-    })
-
-    render(<RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByText('Relations')).toBeInTheDocument())
-    const relations = sectionNamed('Relations')
-    expect(within(relations).getByText('Origin & classification')).toBeInTheDocument()
-    expect(within(relations).getByText('Reference people')).toBeInTheDocument()
-  })
-
-  it('shows the reserved ATECO slot as a note, with nothing focusable in it', async () => {
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: {
-        resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-        fields: ALL_VISIBLE_EDITABLE,
-        actions: {},
-      },
-    })
-
-    render(<RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByText('ATECO codes')).toBeInTheDocument())
-    // It used to be a disabled `<Select>`: a trigger you could tab to and get
-    // nothing from. A planned field must not look — or tab — like a control.
-    const planned = screen.getByText('ATECO codes').closest('div') as HTMLElement
-    expect(within(planned).getByText('Coming soon')).toBeInTheDocument()
-    expect(within(planned).queryByRole('combobox')).not.toBeInTheDocument()
-    expect(within(planned).queryByRole('button')).not.toBeInTheDocument()
-  })
-
   it('leaves the referent-backed roles in Relations, where they belong', async () => {
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: {
-        resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-        fields: ALL_VISIBLE_EDITABLE,
-        actions: {},
-      },
-    })
-
-    render(<RegistryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    renderCreate()
 
     await waitFor(() => expect(screen.getByText('Relations')).toBeInTheDocument())
     const relations = sectionNamed('Relations')

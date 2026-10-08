@@ -318,7 +318,7 @@ class ProductService
         $page = $window->items;
 
         $items = $this->appendHydratedIds($page, $query);
-        $items->load(['category:id,name', 'vatRate:id,name,rate', 'unitOfMeasure:id,name,symbol', 'productTypology:id,name']);
+        $items->load(['category:id,name', 'vatRate:id,name,rate', 'unitOfMeasure:id,name,symbol', 'productTypology:id,name,color']);
 
         return $window->withItems($items);
     }

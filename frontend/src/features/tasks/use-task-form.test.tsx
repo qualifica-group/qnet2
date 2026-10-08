@@ -293,6 +293,19 @@ describe('useTaskForm — work order prefill on create (spec 0133)', () => {
   })
 })
 
+/** Spec 0199: "New task" from the anagrafica detail's Task tab seeds the anagrafica, still editable. */
+describe('useTaskForm — anagrafica prefill on create (spec 0199)', () => {
+  it('seeds registry_id from the create mode', () => {
+    const { result } = renderHook(
+      () => useTaskForm({ mode: { type: 'create', registryId: 12 }, onSuccess: () => undefined }),
+      { wrapper: wrapper() },
+    )
+
+    expect(result.current.form.getValues('registry_id')).toBe(12)
+    expect(result.current.form.getValues('referent_id')).toBeNull()
+  })
+})
+
 describe('useTaskForm — sub-task prefill (AC-085)', () => {
   it('seeds parent_task_id from the create mode', () => {
     const { result } = renderHook(

@@ -90,6 +90,10 @@ class CreateExportRequest extends FormRequest
             // Spec 0095, D-8: scopes a `work-orders` export to one Quote's
             // own Commesse — a no-op key for every other domain.
             'quoteId' => ['sometimes', 'nullable', 'integer', Rule::exists('quotes', 'id')],
+
+            // Spec 0199: scopes an `opportunities`/`quotes`/`work-orders`/`tasks`
+            // export to one client's records — a no-op key for every other domain.
+            'registryId' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
         ];
     }
 

@@ -115,6 +115,8 @@ export interface QuoteSummary {
 export interface QuoteTypologyTotal {
   id: number
   name: string
+  /** Badge colour token (spec 0204 D-4). */
+  color: string
   /** decimal(15,2) as a string, like every other amount in the summary block. */
   net: string
 }
@@ -220,6 +222,11 @@ export interface QuoteDetail {
   applicable_attributes: ApplicableAttributeSummary[]
   /** Layout multi-categoria (spec 0062); `null` -> rendering flat. */
   attribute_layout: LayoutBlob | null
+  /**
+   * Lo stesso layout risolto per il DETTAGLIO (FormMode::View, fallback sul
+   * layout condiviso). Opzionale per le fixture esistenti; assente = flat.
+   */
+  attribute_view_layout?: LayoutBlob | null
   offer_lines: QuoteLine[]
   cost_lines: QuoteLine[]
   summary: QuoteSummary
@@ -315,6 +322,12 @@ export type UpdateQuotePayload = Partial<Omit<CreateQuotePayload, 'opportunity_i
 export type QuoteFormMode =
   | { type: 'create'; params?: ModuleCreateParams }
   | { type: 'edit'; quote: QuoteDetailWithPermissions }
+
+/**
+ * The only mode the create form renders (spec 0197): a persisted quote is
+ * edited in place on its detail, which drives `useQuoteForm` in `edit` mode.
+ */
+export type QuoteCreateFormMode = Extract<QuoteFormMode, { type: 'create' }>
 
 /** A single labeled choice of an enum-type Attribute (spec 0049). */
 export interface AttributeOptionRef {

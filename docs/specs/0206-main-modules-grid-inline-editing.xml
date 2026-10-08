@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0206-main-modules-grid-inline-editing" status="done" owner="utente" date="2026-10-07">
+
+  <goal>
+    Nelle tabelle principali di Offerte, Commesse, Anagrafiche e Opportunita' ogni colonna che il form modifica come
+    campo singolo diventa editabile in cella, come nei Task, "seguendo sempre le regole del form": la scrittura passa
+    dalla STESSA FormRequest di update del modulo (regole, controlli incrociati, permessi per campo) e dallo STESSO
+    service di dominio (effetti collaterali, notifiche, audit).
+  </goal>
+
+  <context>
+    - Motore generico 0053/0054: PATCH /api/tables/{domain}/rows/{row} -> TableCellUpdateService -> CellValueValidator
+      -> TableDefinition::updateCell(). Precedente Task: TaskCellWriter -> TaskService::update (0156 D-8).
+    - Il PATCH di dominio e' parziale per tutti e quattro (0196-0200): ogni regola e' `sometimes`, i DTO
+      `Update*Data::fromValidated()` distinguono "assente" da "null". Le FormRequest espongono `toData()`
+      (Registry anche `toProfile()`).
+    - I controlli incrociati vivono solo nelle FormRequest (sede societa' della societa', buoni/segnalatore, blocco
+      anagrafica/fonte da lead, slot gestori, insieme stati del workflow): il canale cella oggi non li esegue.
+  </context>
+
+  <decisions>
+    D-1 Una cella e' editabile in griglia se e solo se il form la modifica come campo singolo. Restano in sola lettura
+        i codici, i valori calcolati/aggregati, le date di sistema, i campi immutabili dopo la creazione e quelli che
+        il form non modifica come campo singolo (nome Anagrafica = scheda anagrafica; sede operativa Opportunita',
+        nascosta dal form 0056/0198).
+    D-2 (contratto backend) Nuovo `App\Services\Table\FormRequestCellValidator`: costruisce la FormRequest di update
+        del dominio con il solo payload della cella (JSON), l'attore come utente e la riga come parametro di rotta,
+        ed esegue `validateResolved()`. Ogni dominio ha un `*CellWriter` che passa da li' e chiama il service con
+        `$request->toData()`: nessuna regola del form duplicata nel catalogo.
+    D-3 Gestori (`managers` -> `manager_slots`): la cella resta un multiselect di persone; il writer converte la lista
+        negli slot posizionali conservando la posizione di chi resta, mettendo i nuovi nei primi slot liberi
+        (`ManagerPositions::slotsFromIds`). Le regole slot (massimo, duplicati, D-6 Offerte) sono quelle del form.
+    D-4 (utente) Opportunita', cambio Anagrafica in cella: il Referente si azzera e i ruoli VUOTI (Commerciale,
+        Segnalatore, Supervisore, G.A.) si riempiono con quelli della nuova anagrafica; i ruoli valorizzati restano.
+        Un ruolo che l'attore non puo' modificare non viene ereditato.
+    D-5 Offerte, cambio Societa' in cella: come nel form la Sede societa' si azzera.
+    D-6 Offerte, Stato: editor `select` con le opzioni del catalogo stati (colore, `requires_note`), ristrette per riga
+        da `quote_workflow_status_options`; la nota di transizione viaggia come in Gestione Richieste (`notable`).
+    D-7 (utente) Commesse, "Chiusa forzatamente" resta azione di riga (richiede motivo), non cella.
+    D-8 Titolo Opportunita' e Offerta: editabili, scritti dai rispettivi NameWriter/TitleWriter tramite il service
+        (vuoto = titolo automatico). RETTIFICA 0171 ("solo dal form"): il motivo era non scavalcare il writer, che
+        ora e' lo stesso.
+    D-9 Opportunita', categorie prodotto: editor `product_lines` (come Gestione Richieste); la cella porta le coppie
+        funzione/categoria; Funzione aziendale resta derivata. Le colonne gia' editabili (valore, probabilita', date,
+        prodotti di interesse) passano anch'esse dal form (es. probabilita' intera).
+    D-10 RelationValueScopeChecker riconosce `referents`, `companies`, `company-sites` (stesso `forSelect` dei picker).
+  </decisions>
+
+  <columns>
+    Offerte: title, quote_workflow_status, commercial, reporter, supervisor, managers, company, company_site
+      (scope company_id), operational_site. Sola lettura: code, opportunity, revenue_net, cost_net, margin_net,
+      created_at, next_callback_at, alert.
+    Commesse: title, type, callback_date, start_date, supervisors. Sola lettura: code, contract_number, quote, status,
+      completion_percentage, created_at, updated_at, is_force_closed (D-7).
+    Anagrafiche: source, is_supplier, agreement_status, size_class, commercial, reporter, supervisor, managers.
+      Sola lettura: name, primary_contact, created_at.
+    Opportunita': name, registry, referent (scope registry_id), commercial, supervisor, managers, source,
+      product_category, products_of_interest, estimated_value, success_probability, start_date, expected_close_date.
+      Sola lettura: operational_site, status, business_function, created_at.
+  </columns>
+
+  <acceptance>
+    <ac id="AC-001">Ogni colonna elencata come editabile si salva in cella per un attore con update + permesso campo; 403 senza.</ac>
+    <ac id="AC-002">Le regole del form valgono in cella: titolo commessa oltre 191 caratteri, sede societa' di altra societa',
+      enum non valido -> 422 col messaggio del form.</ac>
+    <ac id="AC-003">Gestori: togliere/aggiungere in cella conserva la posizione degli altri.</ac>
+    <ac id="AC-004">Cambio anagrafica opportunita': referente azzerato, ruoli vuoti ereditati, ruoli valorizzati invariati.</ac>
+    <ac id="AC-005">Effetti del service invariati rispetto al form (es. provvigioni risincronizzate al cambio ruolo offerta).</ac>
+    <ac id="AC-006">Guide in-app IT/EN dei quattro moduli aggiornate.</ac>
+  </acceptance>
+</spec>

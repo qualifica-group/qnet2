@@ -70,13 +70,28 @@ describe('opportunityColumnRenderers.status (spec 0082)', () => {
 })
 
 describe('opportunityColumnRenderers aggregated name columns', () => {
-  it.each(['product_category', 'business_function'])('renders the %s comma-joined names', (columnId) => {
-    renderCell(columnId, 'Cloud, On-Prem')
+  it('renders the business_function comma-joined names', () => {
+    renderCell('business_function', 'Vendite, Servizi')
+    expect(screen.getByText('Vendite, Servizi')).toBeInTheDocument()
+  })
+
+  it('renders an em dash for business_function when empty', () => {
+    renderCell('business_function', '')
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+
+  // Requirement changed by spec 0206 D-9: product_category carries the pairs
+  // its inline editor edits (was a comma-joined string).
+  it('renders the product_category names out of the editable pairs', () => {
+    renderCell('product_category', [
+      { business_function_id: 1, business_function_name: 'Vendite', product_category_id: 7, product_category_name: 'Cloud', root_category_id: 7, root_category_name: 'Cloud' },
+      { business_function_id: 1, business_function_name: 'Vendite', product_category_id: 9, product_category_name: 'On-Prem', root_category_id: 9, root_category_name: 'On-Prem' },
+    ])
     expect(screen.getByText('Cloud, On-Prem')).toBeInTheDocument()
   })
 
-  it.each(['product_category', 'business_function'])('renders an em dash for %s when empty', (columnId) => {
-    renderCell(columnId, '')
+  it('renders an em dash for product_category without pairs', () => {
+    renderCell('product_category', [])
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 })

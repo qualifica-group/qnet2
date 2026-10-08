@@ -30,6 +30,7 @@ export function FieldChangeRequestDetailScreen({ id }: ModuleDetailScreenProps) 
     data: request,
     isLoading,
     isError,
+    error,
     refetch,
   } = useEntityDetail(fieldChangeRequestKeys.detail(id), () => fetchFieldChangeRequest(id))
   const [current, setCurrent] = useState<FieldChangeRequestResource | null>(null)
@@ -37,6 +38,7 @@ export function FieldChangeRequestDetailScreen({ id }: ModuleDetailScreenProps) 
   if (isError) {
     return (
       <DetailError
+        error={error}
         message={t('fieldChangeRequests.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}

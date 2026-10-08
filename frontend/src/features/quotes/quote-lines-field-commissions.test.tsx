@@ -109,7 +109,7 @@ describe('QuoteLinesField commission defaults', () => {
   it('follows a changed quote role onto the commissions already on the line', async () => {
     const replacement = { type: 'referent' as const, id: 77, name: 'Sara' }
     vi.mocked(fetchQuoteCommissionRecipients).mockResolvedValue({ ...RECIPIENTS, COMMERCIAL: replacement })
-    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue([])
+    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue({ commissions: [], supplier_commission_direction: null })
     const onChange = renderField()
 
     await act(async () => onChange.rerenderWithCommercial(77))
@@ -127,7 +127,7 @@ describe('QuoteLinesField commission defaults', () => {
 
   it('drops a commission whose role lost its holder on the quote', async () => {
     vi.mocked(fetchQuoteCommissionRecipients).mockResolvedValue({ ...RECIPIENTS, COMMERCIAL: null })
-    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue([])
+    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue({ commissions: [], supplier_commission_direction: null })
     const onChange = renderField()
 
     await act(async () => onChange.rerenderWithCommercial(null))
@@ -148,7 +148,7 @@ describe('QuoteLinesField commission defaults', () => {
 
   it('loads defaults and replaces snapshots after confirmed product change', async () => {
     confirm.mockResolvedValue(true)
-    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue([{
+    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue({ supplier_commission_direction: 'RECEIVED', commissions: [{
       recipient_role: 'COMMERCIAL',
       recipient_type: 'referent',
       recipient_id: 4,
@@ -159,7 +159,7 @@ describe('QuoteLinesField commission defaults', () => {
       internal_note: 'Default',
       origin: 'PRODUCT',
       commission_configuration_id: 3,
-    }])
+    }] })
     const onChange = renderField()
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'pick new product' })))
     await waitFor(() => expect(fetchQuoteCommissionDefaults).toHaveBeenCalledWith(expect.objectContaining({
@@ -172,6 +172,7 @@ describe('QuoteLinesField commission defaults', () => {
         product_id: 20,
         unit_price: 50,
         commissions: [expect.objectContaining({ value: 8 })],
+        supplier_commission_direction: 'RECEIVED',
       }),
     ])
   })

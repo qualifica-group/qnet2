@@ -14,6 +14,7 @@
  */
 
 import type { CommissionRole, CommissionType } from '@/features/commission-configurations/types'
+import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
 
 export type QuoteCommissionOrigin =
   | 'PRODUCT'
@@ -153,6 +154,12 @@ export interface QuoteLine {
   total_amount: string
   sort_order: number
   commissions?: QuoteLineCommission[]
+  /**
+   * Spec 0202 (D-7/D-12): Supplier commission direction frozen when the REVENUE
+   * row was created; `null` = calculation disabled (no Supplier commission).
+   * Optional for fixture compatibility: a missing key reads the same as `null`.
+   */
+  supplier_commission_direction?: SupplierCommissionDirection | null
   /**
    * Spec 0144 (D-2): the id of the REVENUE row this COST row is imputed to,
    * `null` for a generic cost; always `null` on a REVENUE row. Optional for

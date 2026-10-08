@@ -218,6 +218,17 @@ describe('createSsrmDatasource', () => {
     expect(fetchRowsMock.mock.calls[0][1]).not.toHaveProperty('opportunityId')
   })
 
+  // Spec 0199: the anagrafica detail's related-records tabs scope the rows the same way.
+  it('includes registryId in the payload when given, omits it otherwise', async () => {
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
+
+    await createSsrmDatasource('tasks', { registryId: 5 }).getRows(stubParams({}))
+    await createSsrmDatasource('tasks').getRows(stubParams({}))
+
+    expect(fetchRowsMock.mock.calls[0][1]).toEqual(expect.objectContaining({ registryId: 5 }))
+    expect(fetchRowsMock.mock.calls[1][1]).not.toHaveProperty('registryId')
+  })
+
   // Spec 0157 D-1: server-side tree data (Task's "Sintetica" view).
   it('sends tree:true with no treeParentId at the root (empty groupKeys)', async () => {
     fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)

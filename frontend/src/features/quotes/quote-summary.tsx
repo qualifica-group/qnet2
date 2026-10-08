@@ -1,29 +1,26 @@
 /* eslint-disable react-refresh/only-export-components -- small formatting/mapping helpers (`formatQuoteAmount`/`totalsFromPersistedSummary`) shared by the row editor and the read-only detail view, colocated with the summary component they feed */
-import { useMemo } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWatch, type Control } from 'react-hook-form'
-import { HandCoins, Shapes, TrendingDown, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
+import type { Control } from 'react-hook-form'
+import { ChevronDown, HandCoins, Shapes, TrendingDown, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
 import i18n from '@/i18n'
 import { cn } from '@/lib/utils'
-import {
-  computeQuoteTotals,
-  EMPTY_QUOTE_TOTALS_SUMMARY,
-  round2,
-  type QuoteAmountAggregate,
-  type QuoteLineForTotals,
-  type QuoteTotalsSummary,
-} from '@/features/quotes/quote-totals'
+import { Button } from '@/components/ui/button'
+import { round2, type QuoteAmountAggregate, type QuoteTotalsSummary } from '@/features/quotes/quote-totals'
 import {
   computeProductMargins,
   costLinesFromFormCostLines,
   productLinesFromFormOfferLines,
+  type ProductMarginsSummary,
 } from '@/features/quotes/quote-product-margins-calc'
 import { QuoteProductMargins } from '@/features/quotes/quote-product-margins'
 import { useResourcePermissions } from '@/features/authorization/permissions'
-import type { QuoteFormValues, QuoteLineFormValues } from '@/features/quotes/quote-schema'
+import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteSummary as QuoteSummaryData, QuoteTypologyTotal } from '@/features/quotes/types'
-import type { ForSelectItem } from '@/features/for-select/types'
-import { calculateCommissionTotals, sumCommissionTotals, type CommissionTotals } from './commission-calculator'
+import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
+import type { ProductTypologyForSelectItem } from '@/features/product-typologies/for-select-api'
+import { useQuoteLiveTotals } from '@/features/quotes/use-quote-live-totals'
+import type { CommissionTotals } from './commission-calculator'
 
 /**
  * Formats a plain, already-numeric amount using the active UI locale (mirrors
@@ -36,24 +33,6 @@ export function formatQuoteAmount(value: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value)
-}
-
-/**
- * Maps a row's nullable form values onto `quote-totals.ts`'s input shape,
- * defaulting an untouched field to 0 (mirrors the server's own handling of an
- * empty tab, AC-042). `vatRatePercentFor` resolves the row's own
- * `vat_rate_id` to a percentage from the shared cache seeded by
- * `use-quote-form.ts` (the picker itself never exposes one).
- */
-function toLineForTotals(
-  row: QuoteLineFormValues,
-  vatRatePercentFor: (vatRateId: number) => number | null,
-): QuoteLineForTotals {
-  return {
-    quantity: row.quantity ?? 0,
-    unitPrice: row.unit_price ?? 0,
-    vatRatePercent: row.vat_rate_id !== null ? vatRatePercentFor(row.vat_rate_id) : null,
-  }
 }
 
 /** Maps the persisted `QuoteSummary` (decimal strings, D-9) onto the numeric shape the presentational component renders. */
@@ -112,6 +91,7 @@ function QuoteAmountBlock({ icon: Icon, title, aggregate, netLabel, vatLabel, gr
 export interface QuoteTypologyBucket {
   id: number
   name: string
+  color: string
   net: number
 }
 
@@ -125,6 +105,7 @@ export function typologyBucketsFromPersistedSummary(
   return (summary.product_typologies ?? []).map((entry: QuoteTypologyTotal) => ({
     id: entry.id,
     name: entry.name,
+    color: entry.color,
     net: Number(entry.net),
   }))
 }
@@ -151,11 +132,13 @@ function QuoteTypologyBlock({ buckets }: { buckets: QuoteTypologyBucket[] }) {
           {t('quotes.form.summary.noProductTypologies')}
         </p>
       ) : (
-        <dl className="grid max-h-32 gap-1 overflow-y-auto text-xs">
+        <dl className="grid max-h-32 grid-cols-[minmax(0,1fr)] gap-1 overflow-y-auto text-xs">
           {buckets.map((bucket) => (
             <div key={bucket.id} className="flex items-center justify-between gap-2">
-              <dt className="min-w-0 truncate text-muted-foreground">{bucket.name}</dt>
-              <dd className="font-medium tabular-nums">{formatQuoteAmount(bucket.net)}</dd>
+              <dt className="min-w-0">
+                <ProductTypologyBadge name={bucket.name} color={bucket.color} className="max-w-full justify-start truncate" />
+              </dt>
+              <dd className="shrink-0 font-medium tabular-nums">{formatQuoteAmount(bucket.net)}</dd>
             </div>
           ))}
         </dl>
@@ -168,13 +151,19 @@ interface QuoteSummaryProps {
   totals: QuoteTotalsSummary
   commissionTotals?: CommissionTotals
   typologyBuckets?: QuoteTypologyBucket[]
+  /** The "Margine per prodotto" breakdown, revealed by the "advanced data" toggle under the cards. */
+  productMargins?: ProductMarginsSummary
+  /** The `commissions` field permission: denied, the breakdown and its toggle are hidden (user decision 2026-09-22). */
+  showProductMargins?: boolean
 }
 
 /**
  * Presentational economic summary (D-5, spec 0145 D-8): Ricavi Attesi / Costi
  * Attesi / Riepilogo Commissioni / Margine Atteso / Riepilogo per Tipologia,
  * IN THIS ORDER — the margin sits right after the commissions it nets out
- * (D-3), never clamped to zero (AC-043). Pure render — every number is
+ * (D-3), never clamped to zero (AC-043). The "Margine per prodotto" table is
+ * advanced data: collapsed under a toggle so the cards stay the headline
+ * (user directive 2026-10-07). Pure render — every number is
  * precomputed by the caller (`QuoteLiveSummary` for the live form preview,
  * `totalsFromPersistedSummary` for the read-only detail).
  */
@@ -182,9 +171,14 @@ export function QuoteSummary({
   totals,
   commissionTotals = { commercial: 0, reporter: 0, supervisor: 0, supplier: 0 },
   typologyBuckets = EMPTY_TYPOLOGY_BUCKETS,
+  productMargins,
+  showProductMargins = true,
 }: QuoteSummaryProps) {
   const { t } = useTranslation()
+  const advancedId = useId()
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const marginNegative = totals.margin.net < 0
+  const hasAdvanced = productMargins !== undefined && showProductMargins && productMargins.rows.length > 0
 
   return (
     <div className="rounded-lg border bg-surface p-3">
@@ -236,6 +230,27 @@ export function QuoteSummary({
         </div>
         <QuoteTypologyBlock buckets={typologyBuckets} />
       </div>
+      {hasAdvanced ? (
+        <div className="mt-3 flex flex-col gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-expanded={advancedOpen}
+            aria-controls={advancedId}
+            onClick={() => setAdvancedOpen((open) => !open)}
+            className="h-7 self-start bg-card text-xs"
+          >
+            <ChevronDown aria-hidden="true" className={cn('size-3.5 transition-transform', advancedOpen && 'rotate-180')} />
+            {t(advancedOpen ? 'quotes.form.summary.hideAdvanced' : 'quotes.form.summary.showAdvanced')}
+          </Button>
+          {advancedOpen ? (
+            <div id={advancedId}>
+              <QuoteProductMargins rows={productMargins.rows} genericCostNet={productMargins.genericCostNet} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -254,7 +269,7 @@ interface QuoteLiveSummaryProps {
    * own (frontend.md §6), so the preview itself still costs zero requests per
    * keystroke (AC-060). Empty renders the block's own empty state.
    */
-  typologyOptions?: ForSelectItem[]
+  typologyOptions?: ProductTypologyForSelectItem[]
   /**
    * Spec 0144: resolves a picked product's name for the "Margine per
    * prodotto" block — the row itself carries only `product_id` (D-5-like).
@@ -263,17 +278,16 @@ interface QuoteLiveSummaryProps {
 }
 
 /** Hoisted: an inline `[]` default would be a new reference on every render. */
-const NO_TYPOLOGY_OPTIONS: ForSelectItem[] = []
+const NO_TYPOLOGY_OPTIONS: ProductTypologyForSelectItem[] = []
 /** Hoisted: an inline function default would be a new reference on every render. */
 const NO_PRODUCT_NAME = (): string | null => null
 
 /**
- * Live client-side preview (AC-071): recomputes on every `offer_lines`/
- * `cost_lines` keystroke via `useWatch`, zero network calls —
- * `computeQuoteTotals`/`EMPTY_QUOTE_TOTALS_SUMMARY` from `quote-totals.ts`
- * (D-9) are the only math involved, byte-for-byte the server's own rounding
- * rule (D-12). Mounted as a sibling of the form's `<Tabs>`, never inside a
- * `TabsContent`, so it stays visible regardless of the active tab (AC-070).
+ * Live client-side preview (AC-071): the totals of `useQuoteLiveTotals`,
+ * recomputed on every keystroke with zero network calls, plus the
+ * per-typology and per-product breakdowns of the same rows. Mounted as a
+ * sibling of the rows' `<Tabs>`, never inside a `TabsContent`, so it stays
+ * visible regardless of the active tab (AC-070).
  */
 export function QuoteLiveSummary({
   control,
@@ -282,33 +296,8 @@ export function QuoteLiveSummary({
   typologyOptions = NO_TYPOLOGY_OPTIONS,
   productNameFor = NO_PRODUCT_NAME,
 }: QuoteLiveSummaryProps) {
-  const offerLines = useWatch({ control, name: 'offer_lines' })
-  const costLines = useWatch({ control, name: 'cost_lines' })
+  const { offerLines, costLines, commissionTotals, totals } = useQuoteLiveTotals(control, vatRatePercentFor)
   const { field: fieldPermission } = useResourcePermissions()
-
-  // Spec 0145 D-1/D-9: the base of a PERCENTAGE commission is this row's own
-  // net minus whatever cost the SAME `cost_lines` imputes to it — the one
-  // base rule reused by the summary here, the dialog and the per-product
-  // margins block below.
-  const commissionTotals = useMemo(
-    () => calculateCommissionTotals(offerLines, costLines),
-    [offerLines, costLines],
-  )
-
-  // Spec 0145 D-3/D-8: the live margin nets out the SAME live commission
-  // preview above — `computeQuoteTotals` itself stays commission-agnostic
-  // (D-5's original revenue - cost), the subtraction happens here so the
-  // detail path (already net from the server, D-4) never double-subtracts.
-  const totals = useMemo(() => {
-    if (offerLines.length === 0 && costLines.length === 0) {
-      return EMPTY_QUOTE_TOTALS_SUMMARY
-    }
-    const base = computeQuoteTotals(
-      offerLines.map((row) => toLineForTotals(row, vatRatePercentFor)),
-      costLines.map((row) => toLineForTotals(row, vatRatePercentFor)),
-    )
-    return { ...base, margin: { net: round2(base.margin.net - sumCommissionTotals(commissionTotals)) } }
-  }, [offerLines, costLines, vatRatePercentFor, commissionTotals])
 
   // Spec 0099, D-6: the SAME arithmetic the buckets' server-side counterpart
   // uses — each revenue row's already-rounded net (`quote-totals.ts`), summed
@@ -331,6 +320,7 @@ export function QuoteLiveSummary({
     return typologyOptions.map((option) => ({
       id: option.id,
       name: option.label,
+      color: option.meta.color,
       net: round2(netByTypologyId.get(option.id) ?? 0),
     }))
   }, [offerLines, productTypologyIdFor, typologyOptions])
@@ -347,17 +337,12 @@ export function QuoteLiveSummary({
   )
 
   return (
-    <div className="flex flex-col gap-3">
-      <QuoteSummary
-        totals={totals}
-        commissionTotals={commissionTotals}
-        typologyBuckets={typologyBuckets}
-      />
-      <QuoteProductMargins
-        rows={productMargins.rows}
-        genericCostNet={productMargins.genericCostNet}
-        showCommissions={fieldPermission('commissions').visible}
-      />
-    </div>
+    <QuoteSummary
+      totals={totals}
+      commissionTotals={commissionTotals}
+      typologyBuckets={typologyBuckets}
+      productMargins={productMargins}
+      showProductMargins={fieldPermission('commissions').visible}
+    />
   )
 }

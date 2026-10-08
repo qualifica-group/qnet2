@@ -52,7 +52,7 @@ final class TaskSubtaskReorderService
 
         // Step 4: answer with the visible children only, preloaded for the resource.
         return TaskActionAvailability::withOpenSubtasksCount(
-            $this->visibleSubtasks($parent, $actor)->getQuery()->with(['taskStatus', 'assignees', 'completionSubtasks.taskStatus']),
+            $this->visibleSubtasks($parent, $actor)->getQuery()->with(['taskStatus', 'taskType', 'assignees', 'completionSubtasks.taskStatus']),
         )->get();
     }
 

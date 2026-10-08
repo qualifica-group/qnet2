@@ -24,8 +24,16 @@ describe('tableLocalFiltersKey', () => {
       tableLocalFiltersKey({ userId: 1, domain: 'leads', productCategoryId: 3 }),
       tableLocalFiltersKey({ userId: 1, domain: 'leads', opportunityId: 3 }),
       tableLocalFiltersKey({ userId: 1, domain: 'leads', quoteId: 3 }),
+      tableLocalFiltersKey({ userId: 1, domain: 'leads', registryId: 3 }),
     ])
-    expect(keys.size).toBe(6)
+    expect(keys.size).toBe(7)
+  })
+
+  // Spec 0199: the Anagrafica segment is appended only when set, so every key
+  // written before it existed (and every unscoped table) still reads back.
+  it('keeps the pre-existing key shape when no anagrafica scope is set', () => {
+    expect(tableLocalFiltersKey({ userId: 1, domain: 'quotes', quoteId: 4 })).toBe('table-filters:1:quotes:::4')
+    expect(tableLocalFiltersKey({ userId: 1, domain: 'quotes', registryId: 4 })).toBe('table-filters:1:quotes::::4')
   })
 })
 
