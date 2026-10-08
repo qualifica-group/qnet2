@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Catalogo e-Campus — codice in testa, FORM per corso, TESI/ASSISTENZA unici — VERDE, NON COMMITTATO (2026-10-08)
+
+- Direttiva utente: nomi corso `[CODICE] <corso>` (es. `[LM-56] Scienze dell'Economia 1°ANNO`); fee per corso
+  = 1°/2°/(3°)ANNO + `FORM` 1500; via `TESI` e `ASSISTENZA E TUTORAGGIO` per corso, al loro posto 2 prodotti
+  unici su "Corsi E-Campus" (`ECampusCourseCatalogue::SINGLE_PRODUCTS`: TESI 300, ASSISTENZA E TUTORAGGIO 500).
+  Flag offerta "Corso Form" (`form_course`) mantenuto.
+- `ECampusCourseCatalogue`: chiavi corso col codice in testa, `RETIRED_FEES` = PROGETTO FORM, ASSISTENZA E
+  TUTORAGGIO, TESI. Nuova `QualificaCatalog/ECampusProducts::realign()` (chiamata da `CatalogProducts` PRIMA
+  dell'upsert): rinomina i prodotti col codice in coda (id/riferimenti conservati; nome nuovo gia' preso = skip +
+  log) e cancella le fee ritirate non referenziate (referenziate = tenute + log). Ritiro spostato qui da
+  `CatalogProducts` (ora 255 righe).
+- Prodotti e-Campus: 92 (15x4 + 10x3 + 2); `TOTAL_SEEDED_PRODUCTS` 418 -> 395.
+- Test: `QualificaECampusCatalogueTest` (+ rename legacy), `QualificaCatalogSeederTest`; `tests/Feature/Products`
+  201/201 verdi, Pint pulito. Manuale: nessun impatto (dati di catalogo, nessun cambio UI/flusso).
+
 ## Unicita' CF / P.IVA / telefono — varchi chiusi + confronto incrociato — VERDE, COMMITTATO (2026-10-08)
 
 - Direttiva utente: "cliente gia' inserito -> alert P.IVA gia' inserita; controllare i dati univoci". Spec 0037

@@ -8,8 +8,6 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\VatRate;
 use App\Services\ProductService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Every product the Qualifica catalogue seeds. Split out of
@@ -29,7 +27,8 @@ use Illuminate\Support\Facades\Log;
  *     named after the category itself, filed directly on it;
  *   - the e-Campus degrees (ECampusCourseCatalogue): one product per fee of
  *     the degree level, "<course> <fee>", on "Corsi E-Campus", at the fee,
- *     described by the course's subject area.
+ *     described by the course's subject area, plus the services sold once
+ *     for the whole branch (ECampusCourseCatalogue::SINGLE_PRODUCTS).
  *
  * NO ATTRIBUTE VALUE IS WRITTEN (user directive 2026-09-08). The duration and
  * the delivery mode used to be seeded here, onto the product; they moved to
@@ -43,9 +42,9 @@ use Illuminate\Support\Facades\Log;
  * already-seeded product is left untouched so a manual edit survives a re-run.
  * The one exception is a self-funded course an earlier revision filed on the
  * "Autofinanziato" node itself, before the per-region split: it is MOVED onto
- * its region, never duplicated there — see moveOffContainer(). The other is
- * an e-Campus fee the catalogue no longer sells: its products are DELETED,
- * unless something already points at them — see retireECampusFees().
+ * its region, never duplicated there — see moveOffContainer(). The others
+ * are the e-Campus products an earlier revision seeded, renamed or withdrawn
+ * by ECampusProducts before the current ones are filed.
  */
 final class CatalogProducts
 {
@@ -72,20 +71,10 @@ final class CatalogProducts
         'Orientamento specialistico',
     ];
 
-    /**
-     * Every column holding a product reference that restricts its delete:
-     * table => column.
-     *
-     * @var array<string, string>
-     */
-    private const array PRODUCT_REFERENCES = [
-        'quote_lines' => 'product_id',
-        'opportunity_product' => 'product_id',
-        'lead_product' => 'product_id',
-        'commission_configurations' => 'product_id',
-    ];
-
-    public function __construct(private readonly ProductService $products) {}
+    public function __construct(
+        private readonly ProductService $products,
+        private readonly ECampusProducts $eCampusProducts,
+    ) {}
 
     public function seed(): void
     {
@@ -95,49 +84,12 @@ final class CatalogProducts
         $this->seedSelfFundedCourses();
         // Step 3: the categories selling a single offer of their own.
         $this->seedSingleOfferProducts();
-        // Step 4: the e-Campus degrees, one product per fee of their level.
+        // Step 4: the e-Campus products of an earlier revision, renamed or withdrawn.
+        $this->eCampusProducts->realign($this->category(ECampusCourseCatalogue::CATEGORY));
+        // Step 5: the e-Campus degrees, one product per fee of their level.
         $this->seedECampusCourses();
-        // Step 5: the e-Campus fees no longer sold as a product.
-        $this->retireECampusFees();
-    }
-
-    /**
-     * Deletes the product of every retired fee of every e-Campus course. A
-     * product already referenced — an offer line, a product of interest, a
-     * commission rule — stays: deleting it would break that record, so it is
-     * logged for an operator to handle instead.
-     */
-    private function retireECampusFees(): void
-    {
-        $names = [];
-
-        foreach (ECampusCourseCatalogue::DEGREES as $degree) {
-            foreach (array_keys($degree['courses']) as $course) {
-                foreach (ECampusCourseCatalogue::RETIRED_FEES as $fee) {
-                    $names[] = sprintf('%s %s', $course, $fee);
-                }
-            }
-        }
-
-        Product::query()
-            ->where('category_id', $this->category(ECampusCourseCatalogue::CATEGORY)->id)
-            ->whereIn('name', $names)
-            ->each(function (Product $product): void {
-                $this->isReferenced($product)
-                    ? Log::warning('Retired e-Campus product kept: it is still referenced.', ['product_id' => $product->id, 'name' => $product->name])
-                    : $this->products->delete($product);
-            });
-    }
-
-    private function isReferenced(Product $product): bool
-    {
-        foreach (self::PRODUCT_REFERENCES as $table => $column) {
-            if (DB::table($table)->where($column, $product->id)->exists()) {
-                return true;
-            }
-        }
-
-        return false;
+        // Step 6: the e-Campus services sold once for the whole branch.
+        $this->seedECampusSingleProducts();
     }
 
     private function seedECampusCourses(): void
@@ -150,6 +102,15 @@ final class CatalogProducts
                     $this->seedProduct($category, sprintf('%s %s', $course, $fee), $price, description: $area);
                 }
             }
+        }
+    }
+
+    private function seedECampusSingleProducts(): void
+    {
+        $category = $this->category(ECampusCourseCatalogue::CATEGORY);
+
+        foreach (ECampusCourseCatalogue::SINGLE_PRODUCTS as $name => $price) {
+            $this->seedProduct($category, $name, $price);
         }
     }
 

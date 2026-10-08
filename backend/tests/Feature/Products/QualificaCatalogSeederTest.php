@@ -31,10 +31,10 @@ uses(RefreshDatabase::class);
 /**
  * Every product the catalogue seeds: the GOL and DIL courses, the self-funded
  * ones, one per CatalogProducts::SINGLE_OFFER_CATEGORIES and, since the user
- * directive 2026-10-01, the 115 e-Campus degree fees ("PROGETTO FORM" no
- * longer a product since 2026-10-02).
+ * directive 2026-10-01, the 90 e-Campus degree fees plus the 2 services
+ * sold once for the whole branch (user directive 2026-10-08).
  */
-const TOTAL_SEEDED_PRODUCTS = 418;
+const TOTAL_SEEDED_PRODUCTS = 395;
 
 /**
  * One scenario instead of one test per property: the catalogue seeder costs
@@ -299,7 +299,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
 
     // Outside the GOL regions: the DIL courses, the self-funded ones, the
     // one product of each single-offer category, plus one product per fee of
-    // each e-Campus course (user directive 2026-10-01).
+    // each e-Campus course (user directive 2026-10-01) and the e-Campus
+    // services sold once (user directive 2026-10-08).
     $eCampusProducts = array_sum(array_map(
         static fn (array $degree): int => count($degree['fees']) * count($degree['courses']),
         ECampusCourseCatalogue::DEGREES,
@@ -309,7 +310,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         ->toBe(array_sum($expectedPerRegion) + count(DilCourseCatalogue::COURSES['DIL - Lombardia'])
             + array_sum(array_map(count(...), SelfFundedCourseCatalogue::COURSES))
             + count(CatalogProducts::SINGLE_OFFER_CATEGORIES)
-            + $eCampusProducts);
+            + $eCampusProducts
+            + count(ECampusCourseCatalogue::SINGLE_PRODUCTS));
 });
 
 it('promotes "APL" out of "Consulenza" on an installation seeded while it hung there', function (): void {

@@ -20,6 +20,7 @@ use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 // The e-Campus degree catalogue: "Corsi E-Campus" under Formazione, every
 // product of each course filed on it directly (user directive 2026-10-02),
@@ -96,80 +97,107 @@ it('seeds every e-Campus degree fee directly on "Corsi E-Campus", idempotently',
         ->and(ProductCategory::query()->whereNotNull('simplified_offer_line_override')->pluck('name')->all())
         ->toBe([ECampusCourseCatalogue::CATEGORY]);
 
-    // 15 bachelor courses x 5 fees + 10 master courses x 4 fees, each named
-    // before the sheet's colon and priced at its fee; "PROGETTO FORM" is the
-    // offer's "Corso Form" flag, not a product (user directive 2026-10-02).
-    expect($products)->toHaveCount(115)
+    // 15 bachelor courses x 4 fees + 10 master courses x 3 fees, each named
+    // code first and priced at its fee, plus the thesis and the tutoring sold
+    // once for the whole branch (user directive 2026-10-08).
+    expect($products)->toHaveCount(92)
         ->and($products->every(fn (Product $product): bool => $product->product_type === ProductType::Service
             && (float) $product->cost === 0.0
             && $product->vat_rate_id === null))->toBeTrue()
-        ->and(array_slice(eCampusProductsOf($branch), 0, 5))->toBe([
-            'Ingegneria Civile e Ambientale [L-7] ASSISTENZA E TUTORAGGIO' => 500.0,
-            'Ingegneria Civile e Ambientale [L-7] 1°ANNO' => 2856.0,
-            'Ingegneria Civile e Ambientale [L-7] 2°ANNO' => 2856.0,
-            'Ingegneria Civile e Ambientale [L-7] 3°ANNO' => 2856.0,
-            'Ingegneria Civile e Ambientale [L-7] TESI' => 300.0,
+        ->and(array_slice(eCampusProductsOf($branch), 0, 4))->toBe([
+            '[L-7] Ingegneria Civile e Ambientale 1°ANNO' => 2856.0,
+            '[L-7] Ingegneria Civile e Ambientale 2°ANNO' => 2856.0,
+            '[L-7] Ingegneria Civile e Ambientale 3°ANNO' => 2856.0,
+            '[L-7] Ingegneria Civile e Ambientale FORM' => 1500.0,
         ])
-        ->and(array_slice(eCampusProductsOf($branch), -4))->toBe([
-            'Scienze dell\'Economia [LM-56] ASSISTENZA E TUTORAGGIO' => 500.0,
-            'Scienze dell\'Economia [LM-56] 1°ANNO' => 3056.0,
-            'Scienze dell\'Economia [LM-56] 2°ANNO' => 3056.0,
-            'Scienze dell\'Economia [LM-56] TESI' => 300.0,
+        ->and(array_slice(eCampusProductsOf($branch), -5))->toBe([
+            '[LM-56] Scienze dell\'Economia 1°ANNO' => 3056.0,
+            '[LM-56] Scienze dell\'Economia 2°ANNO' => 3056.0,
+            '[LM-56] Scienze dell\'Economia FORM' => 1500.0,
+            'TESI' => 300.0,
+            'ASSISTENZA E TUTORAGGIO' => 500.0,
         ]);
 });
 
 it('folds the retired degree and area nodes onto "Corsi E-Campus" with their products and lines', function (): void {
     ['branch' => $branch, 'degree' => $degree, 'areas' => [$area]] = retiredECampusTree(['Ingegneria - Corsi di Laurea Triennali']);
-    $product = Product::factory()->create(['name' => 'Ingegneria Civile e Ambientale [L-7] TESI', 'category_id' => $area->id]);
+    $product = Product::factory()->create(['name' => 'Ingegneria Civile e Ambientale [L-7] 1°ANNO', 'category_id' => $area->id]);
     $line = OpportunityProductLine::factory()->create(['product_category_id' => $area->id]);
 
     test()->seed(QualificaCatalogSeeder::class);
 
     // The old nodes are gone, what they held now sits on the branch: the
-    // product is moved, never duplicated, and the offer line follows it.
+    // product is moved and renamed, never duplicated, and the offer line follows it.
     expect(ProductCategory::query()->whereKey([$degree->id, $area->id])->exists())->toBeFalse()
         ->and($branch->fresh()->is_selectable)->toBeTrue()
-        ->and($product->fresh()->category_id)->toBe($branch->id)
-        ->and(Product::query()->where('name', $product->name)->count())->toBe(1)
+        ->and($product->fresh()->only(['category_id', 'name']))->toBe(['category_id' => $branch->id, 'name' => '[L-7] Ingegneria Civile e Ambientale 1°ANNO'])
+        ->and(Product::query()->where('name', '[L-7] Ingegneria Civile e Ambientale 1°ANNO')->count())->toBe(1)
         ->and($line->fresh()->product_category_id)->toBe($branch->id)
-        ->and(Product::query()->where('category_id', $branch->id)->count())->toBe(115);
+        ->and(Product::query()->where('category_id', $branch->id)->count())->toBe(92);
 });
 
-it('describes every e-Campus product with its subject area, filling only an empty description', function (): void {
+it('describes every e-Campus course product with its subject area, filling only an empty description', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
     $branch = ProductCategory::query()->where('name', ECampusCourseCatalogue::CATEGORY)->sole();
     $descriptions = Product::query()->where('category_id', $branch->id)->pluck('description', 'name');
+    $singleProducts = array_keys(ECampusCourseCatalogue::SINGLE_PRODUCTS);
 
-    // The sheet's grouping, e.g. a communication course filed under law.
-    expect($descriptions->unique()->sort()->values()->all())
+    // The sheet's grouping, e.g. a communication course filed under law; the
+    // services sold for the whole branch belong to no area.
+    expect($descriptions->except($singleProducts)->unique()->sort()->values()->all())
         ->toBe(['Economia', 'Giurisprudenza', 'Ingegneria', 'Letteratura', 'Psicologia'])
-        ->and($descriptions['Scienze della Comunicazione [L-20] TESI'])->toBe('Giurisprudenza')
-        ->and($descriptions['Scienze dell\'Economia [LM-56] 1°ANNO'])->toBe('Economia');
+        ->and($descriptions->only($singleProducts)->filter()->all())->toBe([])
+        ->and($descriptions['[L-20] Scienze della Comunicazione FORM'])->toBe('Giurisprudenza')
+        ->and($descriptions['[LM-56] Scienze dell\'Economia 1°ANNO'])->toBe('Economia');
 
     // An earlier revision seeded no description; an operator wrote one.
-    Product::query()->where('name', 'Economia [L-33] TESI')->update(['description' => null]);
-    Product::query()->where('name', 'Psicologia [LM-51] TESI')->update(['description' => 'Testo manuale']);
+    Product::query()->where('name', '[L-33] Economia 2°ANNO')->update(['description' => null]);
+    Product::query()->where('name', '[LM-51] Psicologia 2°ANNO')->update(['description' => 'Testo manuale']);
 
     test()->seed(QualificaCatalogSeeder::class);
 
-    expect(Product::query()->where('name', 'Economia [L-33] TESI')->value('description'))->toBe('Economia')
-        ->and(Product::query()->where('name', 'Psicologia [LM-51] TESI')->value('description'))->toBe('Testo manuale');
+    expect(Product::query()->where('name', '[L-33] Economia 2°ANNO')->value('description'))->toBe('Economia')
+        ->and(Product::query()->where('name', '[LM-51] Psicologia 2°ANNO')->value('description'))->toBe('Testo manuale');
 });
 
-it('withdraws the retired "PROGETTO FORM" products, keeping the one already referenced', function (): void {
+it('renames the trailing-code e-Campus products, keeping their id and records', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
-    // An earlier revision's products, one already picked on an opportunity.
+    // An earlier revision's names: one picked on an opportunity, one whose
+    // new name an operator already created by hand.
     $branch = ProductCategory::query()->where('name', ECampusCourseCatalogue::CATEGORY)->sole();
-    $unused = Product::factory()->create(['name' => 'Economia [L-33] PROGETTO FORM', 'category_id' => $branch->id]);
-    $picked = Product::factory()->create(['name' => 'Psicologia [LM-51] PROGETTO FORM', 'category_id' => $branch->id]);
+    Product::query()->where('category_id', $branch->id)->whereIn('name', ['[L-33] Economia 1°ANNO', '[LM-51] Psicologia FORM'])->delete();
+    $picked = Product::factory()->create(['name' => 'Economia [L-33] 1°ANNO', 'category_id' => $branch->id]);
+    Opportunity::factory()->create()->productsOfInterest()->attach($picked->id);
+    Product::factory()->create(['name' => '[LM-51] Psicologia 2°ANNO', 'category_id' => $branch->id]);
+    $clashing = Product::factory()->create(['name' => 'Psicologia [LM-51] 2°ANNO', 'category_id' => $branch->id]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect($picked->fresh()->name)->toBe('[L-33] Economia 1°ANNO')
+        ->and(DB::table('opportunity_product')->where('product_id', $picked->id)->exists())->toBeTrue()
+        ->and(Product::query()->where('name', '[L-33] Economia 1°ANNO')->count())->toBe(1)
+        ->and($clashing->fresh()->name)->toBe('Psicologia [LM-51] 2°ANNO')
+        ->and(Product::query()->where('name', '[LM-51] Psicologia FORM')->count())->toBe(1);
+});
+
+it('withdraws the retired per-course fees, keeping the one already referenced', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    // Earlier revisions' products, old and new names, one already picked on
+    // an opportunity.
+    $branch = ProductCategory::query()->where('name', ECampusCourseCatalogue::CATEGORY)->sole();
+    $unused = collect(['Economia [L-33] PROGETTO FORM', 'Economia [L-33] TESI', '[L-33] Economia ASSISTENZA E TUTORAGGIO'])
+        ->map(fn (string $name): Product => Product::factory()->create(['name' => $name, 'category_id' => $branch->id]));
+    $picked = Product::factory()->create(['name' => 'Psicologia [LM-51] TESI', 'category_id' => $branch->id]);
     Opportunity::factory()->create()->productsOfInterest()->attach($picked->id);
 
     test()->seed(QualificaCatalogSeeder::class);
 
-    expect(Product::query()->whereKey($unused->id)->exists())->toBeFalse()
-        ->and(Product::query()->whereKey($picked->id)->exists())->toBeTrue()
+    expect(Product::query()->whereKey($unused->pluck('id'))->exists())->toBeFalse()
+        ->and($picked->fresh()->name)->toBe('[LM-51] Psicologia TESI')
+        ->and(Product::query()->where('category_id', $branch->id)->whereIn('name', array_keys(ECampusCourseCatalogue::SINGLE_PRODUCTS))->count())->toBe(2)
         ->and(Attribute::query()->where('code', 'form_course')->value('type'))->toBe('boolean');
 });
 

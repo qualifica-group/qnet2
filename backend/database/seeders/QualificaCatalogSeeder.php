@@ -55,7 +55,7 @@ use Illuminate\Database\Seeder;
  *     courses under their own region, the self-funded ones under their own
  *     "Autofinanziato - <Regione>" with their price and VAT rate, and the one
  *     product each single-offer category sells ("Autoimpiego", "Yisu" and
- *     "Orientamento specialistico"), plus the e-Campus degree fees on the
+ *     "Orientamento specialistico"), plus the e-Campus products on the
  *     "Corsi E-Campus" leaf (ECampusCourseCatalogue). No other product is seeded;
  *   - the ROOT-OWNED rules of the three roots (how many
  *     product lines a card carries, how many offers an opportunity may hold),
