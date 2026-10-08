@@ -49,6 +49,8 @@ final readonly class UpdateRegistryData
         public bool $sizeClassSubmitted = false,
         public ?int $employeeCount = null,
         public bool $employeeCountSubmitted = false,
+        public ?string $generalNotes = null,
+        public bool $generalNotesSubmitted = false,
     ) {}
 
     /**
@@ -86,6 +88,8 @@ final readonly class UpdateRegistryData
             sizeClassSubmitted: array_key_exists('size_class', $data),
             employeeCount: array_key_exists('employee_count', $data) && $data['employee_count'] !== null ? (int) $data['employee_count'] : null,
             employeeCountSubmitted: array_key_exists('employee_count', $data),
+            generalNotes: array_key_exists('general_notes', $data) ? $data['general_notes'] : null,
+            generalNotesSubmitted: array_key_exists('general_notes', $data),
         );
     }
 
@@ -157,6 +161,10 @@ final readonly class UpdateRegistryData
 
         if ($this->employeeCountSubmitted) {
             $attributes['employee_count'] = $this->employeeCount;
+        }
+
+        if ($this->generalNotesSubmitted) {
+            $attributes['general_notes'] = $this->generalNotes;
         }
 
         return $attributes;

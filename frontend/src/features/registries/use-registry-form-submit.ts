@@ -48,6 +48,7 @@ const SERVER_ERROR_FIELDS = [
   'agreement_notes',
   'size_class',
   'employee_count',
+  'general_notes',
 ] as const
 
 /** Domain key of the module statistics (mirrors `REGISTRIES_DOMAIN` in `registries-table.tsx`). */

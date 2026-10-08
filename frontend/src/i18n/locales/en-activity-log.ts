@@ -131,6 +131,7 @@ export const activityLog = {
     is_qualified_supplier: 'Qualified supplier',
     agreement_status: 'Convention status',
     agreement_notes: 'Convention notes',
+    general_notes: 'General notes',
     size_class: 'Size class',
     supervisor_id: 'Supervisor',
     commercial_id: 'Commercial',

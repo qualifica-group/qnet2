@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0207 — Note generali sull'anagrafica — VERDE, COMMITTATO (2026-10-08)
+
+- Colonna `registries.general_notes` (text nullable, max 5000), migrazione `2026_10_11_100000_add_general_notes_to_registries_table`.
+  Model fillable, Store/UpdateRegistryRequest, Create/UpdateRegistryData (`generalNotes` ultimo parametro, default null:
+  `RegistriesSource` invariato), RegistryResource, RegistriesAuthorization (`FieldDefinition('general_notes','textarea')`
+  dopo `employee_count`, editabile con update/create).
+- FE: `features/registries/registry-general-notes.tsx` (`RegistryGeneralNotesRow` su `NotesCalloutRow`, callout ambra di
+  Gestione richieste) in cima alla colonna destra del dettaglio (avvolto in `<Form {...editor.form}>`) e della creazione
+  (dopo l'avviso duplicati). Schema/defaults/payload/diff/SERVER_ERROR_FIELDS, i18n `registries.form.generalNotes*`,
+  activity log, guida in-app `registries` IT/EN.
+- Test rollback bumpati: `QuoteWorkflowMigrationTest` 144 step, `SupplierCommissionDirectionTest` 8 step.
+- Verde: Pest 9698/9699 (1 skipped), Vitest 7147/7147, `tsc -b --force` pulito, ESLint e Pint puliti.
+- Manuale Claude Docs: NON aggiornato (doc non accessibile dalla sessione) — sezione Anagrafiche > scheda/modifica.
+
 ## MERGE main -> feature/amministrazione — VERDE, COMMITTATO e8153ecf + fix test non committato (2026-10-08)
 
 - 16 file in conflitto risolti tenendo entrambi i lati. Integrazioni semantiche:

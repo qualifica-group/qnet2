@@ -37,6 +37,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'is_qualified_supplier',
     'agreement_status',
     'agreement_notes',
+    'general_notes',
     'size_class',
     'supervisor_id',
     'commercial_id',

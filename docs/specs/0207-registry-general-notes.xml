@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0207-registry-general-notes" status="approved" owner="nicola" date="2026-10-08">
+
+  <goal>
+    L'anagrafica ha le sue "Note generali", in alto a destra nel dettaglio e nel form di creazione, con la stessa
+    grafica delle note generali di Gestione richieste (callout ambra).
+  </goal>
+
+  <context>
+    Verificato 2026-10-08:
+    - `registries` aveva solo `agreement_notes` (Note convenzione, sezione Dati commerciali): nessuna nota generale.
+    - Il callout di Gestione richieste e' condiviso: `components/record-form/notes-callout-row.tsx`
+      (`NotesCalloutRow`, costanti `GENERAL_NOTES_*` di `layout.ts`), gia' usato da Opportunita', Offerte, Commesse.
+    - Il dettaglio anagrafica edita in place (spec 0200, `useRegistryInlineEdit`, PATCH a diff).
+
+    Decisione utente 2026-10-08: note generali sull'anagrafica, in alto a destra, grafica delle note generali di
+    Gestione richieste.
+    D-1 — Nuova colonna `registries.general_notes` text nullable (max 5000, come le altre note).
+    D-2 — Posizione: prima card della colonna destra (`RecordBody side`); in creazione subito dopo l'avviso duplicati.
+    D-3 — Permesso di campo `general_notes` (FieldDefinition `textarea`): editabile con `registries.update`
+          (o `create` in creazione), sola lettura altrimenti. Nota vuota e non editabile = callout assente.
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: migrazione, model fillable, Store/UpdateRegistryRequest, Create/UpdateRegistryData, RegistryResource, RegistriesAuthorization.</item>
+      <item>Frontend: tipi, schema Zod, payload create/diff, `RegistryGeneralNotesRow` nel dettaglio e nella creazione, i18n, etichetta activity log.</item>
+      <item>Guide in-app IT/EN `registries`.</item>
+    </in>
+    <out>
+      <item>Import dal gestionale legacy (`RegistriesSource`): nessuna colonna sorgente nota.</item>
+      <item>Colonna note generali nella griglia Anagrafiche.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST|PATCH" path="/api/registries[/{id}]">
+      <request>`general_notes`: string|null, max 5000 (PATCH: `sometimes`).</request>
+      <response>`data.general_notes`: string|null; `permissions.fields.general_notes`.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/meta/registries">
+      <response>Campo `general_notes` type `textarea`, dopo `employee_count`.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <ac id="AC-001">La creazione salva `general_notes` e il dettaglio le restituisce.</ac>
+    <ac id="AC-002">PATCH con solo `general_notes` le scrive (null le cancella) senza toccare gli altri campi.</ac>
+    <ac id="AC-003">Oltre 5000 caratteri: 422 su `general_notes`.</ac>
+    <ac id="AC-004">Senza `registries.update`: 403 sul PATCH, permesso di campo in sola lettura.</ac>
+    <ac id="AC-005">Il dettaglio mostra le note nel callout in cima alla colonna destra; vuote ed editabili mostra il
+      placeholder; vuote e non editabili nessun callout; la modifica in place invia solo `general_notes`.</ac>
+  </acceptance_criteria>
+
+  <tests>
+    <item>`backend/tests/Feature/Registries/RegistryGeneralNotesTest.php` (AC-001..004).</item>
+    <item>`frontend/src/features/registries/registry-general-notes.test.tsx` (AC-005), `registry-form-payload.test.ts`.</item>
+  </tests>
+</spec>

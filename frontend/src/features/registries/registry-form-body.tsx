@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useWatch } from 'react-hook-form'
 import { Form } from '@/components/ui/form'
 import { RecordBody } from '@/components/detail/record-body'
 import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
@@ -16,6 +17,7 @@ import {
 } from '@/features/personal-data/use-reveal-blocked-section'
 import { RegistryCreateSections } from '@/features/registries/registry-create-sections'
 import { RegistryFormHeader } from '@/features/registries/registry-form-header'
+import { RegistryGeneralNotesRow } from '@/features/registries/registry-general-notes'
 import { REGISTRY_CARD_FIELD } from '@/features/registries/registry-record'
 import { useRegistryDraftInlineEdit } from '@/features/registries/use-registry-draft-inline-edit'
 import { useRegistryForm } from '@/features/registries/use-registry-form'
@@ -51,8 +53,8 @@ interface RegistryFormBodyProps {
  * the phone one required. There is
  * no edit form: the detail edits a persisted anagrafica in place.
  *
- * The duplicate warning heads the side column. It refuses nothing: the save
- * goes through either way.
+ * The duplicate warning heads the side column, the general notes (spec 0207)
+ * follow it. The warning refuses nothing: the save goes through either way.
  */
 export function RegistryFormBody({ onSuccess, onCancel }: RegistryFormBodyProps) {
   const { t } = useTranslation()
@@ -79,10 +81,12 @@ export function RegistryFormBody({ onSuccess, onCancel }: RegistryFormBodyProps)
   useRevealBlockedSection(submit.revalidateSignal, submit.blockedSection, containerRef)
   const { matches: duplicateMatches } = useIdentityDuplicateCheck({ enabled: true, profileDraft })
   const { isSubmitting } = form.formState
+  const generalNotes = useWatch({ control: form.control, name: 'general_notes' })
 
   const side = (
     <>
       <IdentityDuplicateWarning matches={duplicateMatches} />
+      <RegistryGeneralNotesRow notes={generalNotes || null} control={form.control} inline={inline} />
       <PersonalDataChildCards
         draft={profileDraft}
         contactsTitle={t('registries.form.sections.contacts.title')}

@@ -23,6 +23,9 @@ const MAX_MANAGERS = MAX_MANAGER_SLOTS
 /** Backend `agreement_notes` column limit (`max:5000`). */
 const AGREEMENT_NOTES_MAX_LENGTH = 5000
 
+/** Backend `general_notes` column limit (`max:5000`). */
+const GENERAL_NOTES_MAX_LENGTH = 5000
+
 /** Backend `vat_group` column limit (`max:191`). */
 const VAT_GROUP_MAX_LENGTH = 191
 
@@ -59,6 +62,8 @@ function baseFields(t: TFunction) {
     agreement_notes: z.string().max(AGREEMENT_NOTES_MAX_LENGTH, t('registries.form.agreementNotesMax')),
     size_class: sizeClassSchema.nullable(),
     employee_count: z.number().int().nonnegative(t('registries.form.employeeCountInvalid')).nullable(),
+    // Empty string = "no notes", mapped to `null` at the payload boundary.
+    general_notes: z.string().max(GENERAL_NOTES_MAX_LENGTH, t('registries.form.generalNotesMax')),
   }
 }
 

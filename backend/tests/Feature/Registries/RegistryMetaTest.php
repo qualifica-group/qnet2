@@ -48,6 +48,7 @@ it('200: field catalogue matches the frozen contract (14 registry + 13 personal_
         'supervisor_id', 'commercial_id', 'reporter_id',
         'vat_group', 'is_supplier', 'is_qualified_supplier',
         'agreement_status', 'agreement_notes', 'size_class', 'employee_count',
+        'general_notes',
         'personal_data.type', 'personal_data.first_name',
         'personal_data.last_name', 'personal_data.company_name', 'personal_data.tax_code',
         'personal_data.vat_number', 'personal_data.sdi_code', 'personal_data.birth_date',
@@ -65,6 +66,7 @@ it('200: field catalogue matches the frozen contract (14 registry + 13 personal_
         ->and($fields['is_qualified_supplier']['type'])->toBe('boolean')
         ->and($fields['employee_count']['type'])->toBe('number')
         ->and($fields['agreement_notes']['type'])->toBe('text')
+        ->and($fields['general_notes']['type'])->toBe('textarea')
         ->and($fields['personal_data.type']['mandatory'])->toBeTrue()
         ->and($fields['personal_data.first_name']['group'])->toBe('personal_data');
 

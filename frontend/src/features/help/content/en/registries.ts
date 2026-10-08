@@ -59,6 +59,7 @@ const guide: HelpGuide = {
             ['Relations', 'Source, Business sectors, Commercial referent and Reporter.'],
             ['Team', 'Supervisor and Account managers, in order of importance from the top; reorder them with Move up and Move down.'],
             ['Business data', 'VAT group, Supplier, Qualified supplier (suppliers only), Agreement status (In negotiation, Rejected or Agreed), Size class, Employee count and Agreement notes.'],
+            ['General notes', 'The yellow box at the top of the right-hand column, the same as in Request management: free text (up to 5000 characters) with what whoever opens the registry should read first.'],
             ['Contacts', 'Email, Phone (required), PEC and Fax; with Add contact you enter more and set the Primary contact.'],
             ['Addresses', 'One or more addresses, each with a Site type: Registered office, Delivery, Billing or Operational site.'],
             ['Referents', "The client's contact people, full width below the other sections."],
@@ -95,6 +96,10 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'A field without a pencil is not editable by you: your role permissions make it read-only.',
+        },
+        {
+          type: 'note',
+          text: "The **General notes** are written inside their box at the top of the right-hand column: click the text (or the pencil), type and press **Save**. If the registry has no notes and you cannot edit them, the box does not appear.",
         },
       ],
     },

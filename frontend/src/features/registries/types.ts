@@ -78,6 +78,7 @@ export interface RegistryDetail {
   is_qualified_supplier: boolean
   agreement_status: AgreementStatus | null
   agreement_notes: string | null
+  general_notes: string | null
   size_class: SizeClass | null
   employee_count: number | null
   /**
@@ -119,6 +120,7 @@ export interface CreateRegistryPayload {
   is_qualified_supplier?: boolean
   agreement_status?: AgreementStatus | null
   agreement_notes?: string | null
+  general_notes?: string | null
   size_class?: SizeClass | null
   employee_count?: number | null
   personal_data: PersonalDataPayload
@@ -146,6 +148,7 @@ export interface UpdateRegistryPayload {
   is_qualified_supplier?: boolean
   agreement_status?: AgreementStatus | null
   agreement_notes?: string | null
+  general_notes?: string | null
   size_class?: SizeClass | null
   employee_count?: number | null
   personal_data?: PersonalDataPayload

@@ -51,6 +51,7 @@ class RegistriesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('agreement_notes', 'text'),
             new FieldDefinition('size_class', 'select'),
             new FieldDefinition('employee_count', 'number'),
+            new FieldDefinition('general_notes', 'textarea'),
             new FieldDefinition('personal_data.type', 'select', 'personal_data', mandatory: true),
             new FieldDefinition('personal_data.first_name', 'text', 'personal_data', mandatory: true),
             new FieldDefinition('personal_data.last_name', 'text', 'personal_data', mandatory: true),
@@ -97,6 +98,7 @@ class RegistriesAuthorization extends AbstractResourceAuthorization
             'agreement_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'size_class' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'employee_count' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'general_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ], $this->personalDataFieldPermissions($mayWrite));
     }
 

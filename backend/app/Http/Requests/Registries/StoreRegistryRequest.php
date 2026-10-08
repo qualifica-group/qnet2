@@ -99,6 +99,7 @@ class StoreRegistryRequest extends FormRequest
             'is_qualified_supplier' => ['sometimes', 'boolean'],
             'agreement_status' => ['nullable', Rule::enum(AgreementStatusEnum::class)],
             'agreement_notes' => ['nullable', 'string', 'max:5000'],
+            'general_notes' => ['nullable', 'string', 'max:5000'],
             'size_class' => ['nullable', Rule::enum(SizeClassEnum::class)],
             'employee_count' => ['nullable', 'integer', 'min:0'],
         ], $this->managerSlotsRules(), $this->profileRules());

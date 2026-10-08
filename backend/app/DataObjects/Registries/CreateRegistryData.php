@@ -39,6 +39,7 @@ final readonly class CreateRegistryData
         public ?string $agreementNotes,
         public ?string $sizeClass,
         public ?int $employeeCount,
+        public ?string $generalNotes = null,
     ) {}
 
     /**
@@ -65,6 +66,7 @@ final readonly class CreateRegistryData
             agreementNotes: $data['agreement_notes'] ?? null,
             sizeClass: $data['size_class'] ?? null,
             employeeCount: isset($data['employee_count']) ? (int) $data['employee_count'] : null,
+            generalNotes: $data['general_notes'] ?? null,
         );
     }
 
@@ -105,6 +107,7 @@ final readonly class CreateRegistryData
             'commercial_id' => $this->commercialId,
             'reporter_id' => $this->reporterId,
             'employee_count' => $this->employeeCount,
+            'general_notes' => $this->generalNotes,
         ];
     }
 }

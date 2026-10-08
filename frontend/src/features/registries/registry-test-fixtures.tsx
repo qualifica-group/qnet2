@@ -101,6 +101,7 @@ export function registryFixture(overrides: Partial<RegistryDetailWithPermissions
     is_qualified_supplier: false,
     agreement_status: null,
     agreement_notes: null,
+    general_notes: null,
     size_class: null,
     employee_count: null,
     personal_data: registryCard(),

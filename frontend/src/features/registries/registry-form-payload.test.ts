@@ -73,6 +73,7 @@ function original(
     is_qualified_supplier: false,
     agreement_status: 'negotiating',
     agreement_notes: 'Some notes',
+    general_notes: 'General note',
     size_class: 'small',
     employee_count: 12,
     personal_data: card(),
@@ -99,6 +100,7 @@ const formValues: RegistryFormValues = {
   is_qualified_supplier: false,
   agreement_status: 'negotiating',
   agreement_notes: 'Some notes',
+  general_notes: 'General note',
   size_class: 'small',
   employee_count: 12,
   custom_fields: {},
@@ -122,6 +124,11 @@ describe('buildCreatePayload', () => {
     )
     expect(payload.vat_group).toBeNull()
     expect(payload.agreement_notes).toBeNull()
+  })
+
+  it('carries general_notes, an empty string mapped to null (spec 0207)', () => {
+    expect(buildCreatePayload(formValues, individualDraft()).general_notes).toBe('General note')
+    expect(buildCreatePayload({ ...formValues, general_notes: '' }, individualDraft()).general_notes).toBeNull()
   })
 
   it('forces is_qualified_supplier to false when is_supplier is false, regardless of stale state', () => {
@@ -154,6 +161,15 @@ describe('buildUpdatePayload', () => {
       individualDraft(),
     )
     expect(payload).toEqual({ vat_group: 'Group B' })
+  })
+
+  it('sends only general_notes when they alone changed, null once emptied (spec 0207)', () => {
+    expect(buildUpdatePayload({ ...formValues, general_notes: 'Edited' }, original(), individualDraft())).toEqual({
+      general_notes: 'Edited',
+    })
+    expect(buildUpdatePayload({ ...formValues, general_notes: '' }, original(), individualDraft())).toEqual({
+      general_notes: null,
+    })
   })
 
   it('sends supervisor_id: null when the relation is cleared', () => {

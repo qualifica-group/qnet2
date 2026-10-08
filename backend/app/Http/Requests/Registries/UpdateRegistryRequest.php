@@ -81,6 +81,7 @@ class UpdateRegistryRequest extends FormRequest
             'is_qualified_supplier' => ['sometimes', 'boolean'],
             'agreement_status' => ['sometimes', 'nullable', Rule::enum(AgreementStatusEnum::class)],
             'agreement_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'general_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'size_class' => ['sometimes', 'nullable', Rule::enum(SizeClassEnum::class)],
             'employee_count' => ['sometimes', 'nullable', 'integer', 'min:0'],
         ], $this->managerSlotsRules(), $this->profileRules());

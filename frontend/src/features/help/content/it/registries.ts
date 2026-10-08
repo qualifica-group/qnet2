@@ -59,6 +59,7 @@ const guide: HelpGuide = {
             ['Relazioni', 'Fonte, Settori merceologici, Commerciale e Segnalatore.'],
             ['Team', 'Supervisore e Gestori account, in ordine di importanza dal primo in alto; riordinali con Sposta su e Sposta giù.'],
             ['Dati commerciali', 'Gruppo IVA, Fornitore, Fornitore qualificato (solo per i fornitori), Stato convenzione (In trattativa, Respinta o Concordata), Classe dimensionale, Numero dipendenti e Note convenzione.'],
+            ['Note generali', "Il riquadro giallo in cima alla colonna di destra, lo stesso di Gestione richieste: un testo libero (fino a 5000 caratteri) con ciò che chi apre l'anagrafica deve leggere per primo."],
             ['Contatti', 'Email, Telefono (obbligatorio), PEC e Fax; con Aggiungi contatto ne inserisci altri e indichi il Contatto principale.'],
             ['Indirizzi', 'Uno o più indirizzi, ciascuno con un Tipo sede: Sede legale, Consegna, Fatturazione o Sede operativa.'],
             ['Referenti', 'Le persone di contatto del cliente, a tutta larghezza sotto le altre sezioni.'],
@@ -95,6 +96,10 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura.',
+        },
+        {
+          type: 'note',
+          text: "Le **Note generali** si scrivono dentro il loro riquadro in cima alla colonna di destra: fai clic sul testo (o sulla matita), scrivi e premi **Salva**. Se l'anagrafica non ha note e non puoi modificarle, il riquadro non compare.",
         },
       ],
     },

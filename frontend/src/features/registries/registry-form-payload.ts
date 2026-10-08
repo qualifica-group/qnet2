@@ -47,6 +47,7 @@ export function buildCreatePayload(
     agreement_notes: values.agreement_notes || null,
     size_class: values.size_class,
     employee_count: values.employee_count,
+    general_notes: values.general_notes || null,
     personal_data: omitNonEditableFields(draftToPayload(profileDraft), fieldPermission),
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
   }
@@ -105,6 +106,10 @@ export function buildUpdatePayload(
   }
   if (values.employee_count !== original.employee_count) {
     payload.employee_count = values.employee_count
+  }
+  const generalNotes = values.general_notes || null
+  if (generalNotes !== original.general_notes) {
+    payload.general_notes = generalNotes
   }
 
   if (!sameIdSet(values.sector_ids, original.sector_ids)) {

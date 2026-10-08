@@ -36,6 +36,7 @@ export function editDefaults(
     agreement_notes: registry.agreement_notes ?? '',
     size_class: registry.size_class,
     employee_count: registry.employee_count,
+    general_notes: registry.general_notes ?? '',
     custom_fields: customFields,
   }
 }
@@ -56,6 +57,7 @@ function createDefaults(customFields: Record<string, CustomFieldValue>): Registr
     agreement_notes: '',
     size_class: null,
     employee_count: null,
+    general_notes: '',
     custom_fields: customFields,
   }
 }

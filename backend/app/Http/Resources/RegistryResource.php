@@ -48,6 +48,7 @@ class RegistryResource extends JsonResource
             'is_qualified_supplier' => $this->is_qualified_supplier,
             'agreement_status' => $this->agreement_status,
             'agreement_notes' => $this->agreement_notes,
+            'general_notes' => $this->general_notes,
             'size_class' => $this->size_class,
             'employee_count' => $this->employee_count,
             // The nested personal-data tree, or null — always present as a

@@ -16,6 +16,7 @@ import { PersonalDataRecordCards } from '@/features/personal-data/personal-data-
 import { REGISTRY_ATTACHABLE_ALIAS, registryDetailQueryKey } from '@/features/registries/api'
 import { RegistryDetailHeader, RegistryStatsStrip } from '@/features/registries/registry-detail-header'
 import { RegistryDetailSections } from '@/features/registries/registry-detail-sections'
+import { RegistryGeneralNotesRow } from '@/features/registries/registry-general-notes'
 import { RegistryRelatedRecords } from '@/features/registries/registry-related-records'
 import { useRegistryInlineEdit } from '@/features/registries/use-registry-inline-edit'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -62,9 +63,9 @@ function useCollaborationTabs(registry: RegistryDetailWithPermissions): RecordCo
 /**
  * Detail of a single anagrafica, rendered as an enterprise-CRM record — the
  * same kit the Opportunita' record uses (user directive 2026-09-11): identity
- * + KPI + sections on the left, "how to reach them" (contacts, addresses) and
- * the documents/activity tabs on the right, the client's related records in
- * tabs below (spec 0199), a metadata footer.
+ * + KPI + sections on the left, the general notes (spec 0207), "how to reach
+ * them" (contacts, addresses) and the documents/activity tabs on the right,
+ * the client's related records in tabs below (spec 0199), a metadata footer.
  *
  * There is no edit page (spec 0200): the sections' fields — custom fields
  * included — edit IN PLACE, one at a time (`RecordInlineField`, driven by
@@ -104,6 +105,14 @@ function RegistryDetailContent({ registry, onChanged }: RegistryDetailViewProps)
       <RecordBody
         side={
           <>
+            {/* Spec 0207: the general notes head the side column, edited in place inside their callout. */}
+            <Form {...editor.form}>
+              <RegistryGeneralNotesRow
+                notes={registry.general_notes}
+                control={editor.form.control}
+                inline={editor.inline}
+              />
+            </Form>
             <PersonalDataRecordCards
               card={registry.personal_data}
               contactsTitle={t('registries.form.sections.contacts.title')}
