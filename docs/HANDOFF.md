@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## MERGE main -> feature/amministrazione — RISOLTO, NON COMMITTATO (2026-10-08)
+## MERGE main -> feature/amministrazione — VERDE, COMMITTATO e8153ecf + fix test non committato (2026-10-08)
 
 - 16 file in conflitto risolti tenendo entrambi i lati. Integrazioni semantiche:
   - `useWorkOrderRowActions` (ora `.tsx`, main): proforma "€" (spec 0193) + chiusura forzata/riapertura + `openCreateWith`.
@@ -14,9 +14,11 @@
   - `WorkOrdersTableDefinition::baseQuery` eager-load `quote.opportunity.registry` + EXISTS proforma.
   - Test rollback: `QuoteWorkflowMigrationTest` 143 step, `SupplierCommissionDirectionTest` 7 step (solo conteggio migrazioni).
   - HELP_GUIDE_KEYS = 60; guida work-orders IT/EN con sezioni `contract-data` + `proforma-request`.
-- PRE-ESISTENTI su feature/amministrazione (NON dal merge, da sistemare): `01b6877e` ha perso `layout`/`layout_id` in
-  `frontend/src/features/invoices/types.ts` (tsc rosso + `invoice-editor-dialog.test.tsx`), e `InvoiceLayoutSelectionTest`
-  AC-001 fallisce per `residual_mode` obbligatorio in `InvoiceCollectionRequest`.
+- Merge committato `e8153ecf`. Riparata anche una regressione del merge precedente: `01b6877e` aveva perso il layout di stampa
+  fatture di `4d71a636` (spec 0196) in `invoices/types.ts`, `invoice-schema.ts`, `invoice-editor-source.ts`,
+  `invoice-editor-header-section.tsx`, `{it,en}-invoices.ts`: ripristinato (incluso in `e8153ecf`). `InvoiceLayoutSelectionTest`
+  AC-001: l'incasso parziale di setup ora passa `residual_mode` (obbligatorio da spec 0196 D-5), NON COMMITTATO.
+- Verde: Pest 9692/9693 (1 skipped), Vitest 7141/7141, `tsc -b --force` EXIT 0.
 
 ## SPEC 0197 MODULO SCADENZE (Contabilita' > Attiva) — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-08)
 
