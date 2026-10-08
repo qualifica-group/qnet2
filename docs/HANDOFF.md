@@ -3,6 +3,34 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FATTURE: LABEL "INTESTATARIO" -> "CLIENTE" — VERDE, NON COMMITTATO (2026-10-08)
+
+- Solo i18n: `it-invoices`/`it-invoice-editor` `customer` = 'Cliente' (+ `selectCustomer`, `customerRequired`);
+  EN 'Bill to' -> 'Customer'. Guida in-app IT `invoices.ts` aggiornata. Test editor ora cercano il combobox `/Customer/`.
+- Manuale Claude Docs NON aggiornato (doc non condiviso con la sessione): sezione Fatture, campo "Intestatario" -> "Cliente".
+
+## SPEC 0198 INCASSO MULTIPLO SCADENZE — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-08)
+
+- Spec `docs/specs/0198-installments-bulk-collection.xml` (D-1..D-10). Raggruppando per Cliente le scadenze da incassare
+  sono selezionabili (stesso cliente), azione "Incassa selezionate" nel menu Azioni, modale con importi vuoti per riga,
+  data incasso unica, footer Totale incassato / Totale selezionato. Riga vuota/0 non inviata; importo > scadenza = errore.
+- BE: `POST /api/invoice-installments/collections` {collected_at, items[{installment_id, collected_amount}]} ->
+  {collected_count, residual_count}. `InvoiceBulkCollectionRequest` (invoices.collect, max 100), `InvoiceBulkCollectionController`,
+  `Services/Invoices/InvoiceBulkCollector` (transazione unica, lock fatture in ordine id, Gate collect per fattura,
+  422 `items` clienti diversi / `items.N.installment_id` gia' incassata / `items.N.collected_amount` oltre importo; ogni riga
+  passa da `InvoiceCollectionService::record` con residual_mode new_installment e residual_due_date = due_date originale).
+  Riga SSRM invoice-installments: nuovo campo `customer_id`.
+- FE generico: `TableView` prop `onRowGroupColumnsChange(ids)`; `useBulkActionsSlot.clearSelection` ora fa anche
+  `gridApi.deselectAll()`. FE modulo: `installment-bulk-collection.ts` (puro), `use-installment-bulk-collection(-form).ts`,
+  `installment-bulk-collection-dialog.tsx`, api `bulkCollectInstallments`, i18n `invoiceInstallments.bulkCollection.*`,
+  guida in-app sezione `bulk-collection` IT/EN. Test tabella: aggiunto mock `useAbilities` (nuova dipendenza del componente).
+- Verificato: Pest Invoices 63, InvoiceInstallments 49, Table 289, Tables 7 (tutti verdi); Vitest 694/694 (help, invoices,
+  invoice-installments, table, i18n); ESLint ok; Pint ok; tsc -b --force EXIT=0 (npx va in segfault: usare
+  `node node_modules/typescript/bin/tsc -b --force`).
+- NON verificato nel browser (estensione Chrome non connessa): provare checkbox con raggruppamento SSRM per Cliente,
+  attivazione/disattivazione al cambio raggruppamento, refresh dopo il salvataggio.
+- Manuale Claude Docs: aggiungere "Incasso multiplo" in Contabilita' > Attiva > Scadenze.
+
 ## FIX MERGE 2ba2bb5a/a1ba1cef — LAYOUT FATTURA (spec 0196 layout) PERSO NEL FE — VERDE, NON COMMITTATO (2026-10-08)
 
 - I merge su feature/amministrazione avevano scartato parte di `4d71a636` (per-invoice print layout): ripristinati

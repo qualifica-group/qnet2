@@ -10,12 +10,15 @@ import { AdvancedFilterPanel, ADVANCED_FILTER_PANEL_ANIMATION } from '@/features
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { INLINE_ACTION_LIMIT, LABELED_ACTIONS_COLUMN_WIDTH } from '@/features/table/row-actions'
 import { RowGroupingBar } from '@/features/table/row-grouping-bar'
+import { useRowGroupColumns } from '@/features/table/use-row-group-columns'
 import { ActiveFilterChips } from '@/features/table/custom-filters/active-filter-chips'
 import { buildTableViewSlots } from '@/features/table/table-view-slots'
 import { useTableViewController, type TableViewHandle } from '@/features/table/use-table-view-controller'
 import type { TableViewProps } from '@/features/table/table-view-props'
 
 export type { TableViewHandle } from '@/features/table/use-table-view-controller'
+
+const GROUP_KEY_SEPARATOR = ','
 
 /**
  * Generic, domain-driven table. Given a `domain`, it loads the backend config,
@@ -52,6 +55,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       importSlot,
       isRowSelectable,
       getBulkActions,
+      onRowGroupColumnsChange,
       disableBuiltinDelete,
       masterDetail,
       detailCellRenderer,
@@ -106,6 +110,13 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     useEffect(() => {
       onFilterModelChange?.(filterModel)
     }, [filterModel, onFilterModelChange])
+
+    // Keyed on the joined ids: the hook hands out a fresh array on every render while grouped.
+    const { groupedIds } = useRowGroupColumns(view.gridApi, config?.row_grouping?.max_depth ?? 0)
+    const groupedKey = groupedIds.join(GROUP_KEY_SEPARATOR)
+    useEffect(() => {
+      onRowGroupColumnsChange?.(groupedKey === '' ? [] : groupedKey.split(GROUP_KEY_SEPARATOR))
+    }, [groupedKey, onRowGroupColumnsChange])
 
     let content: ReactNode
     if (isPending) {

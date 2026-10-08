@@ -3,9 +3,12 @@ import { CalendarClock, Eye, HandCoins, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { INVOICE_INSTALLMENTS_DOMAIN } from '@/features/invoice-installments/api'
 import { installmentColumnRenderers } from '@/features/invoice-installments/column-renderers'
+import { InstallmentBulkCollectionDialog } from '@/features/invoice-installments/installment-bulk-collection-dialog'
+import { isBulkCollectable } from '@/features/invoice-installments/installment-bulk-collection'
 import { InstallmentEditDialog } from '@/features/invoice-installments/installment-edit-dialog'
 import { InstallmentQuickFilterToolbar } from '@/features/invoice-installments/installment-quick-filter-toolbar'
 import { InstallmentTotalsFooter } from '@/features/invoice-installments/installment-totals-footer'
+import { useInstallmentBulkCollection } from '@/features/invoice-installments/use-installment-bulk-collection'
 import { useInstallmentQuickFilter } from '@/features/invoice-installments/use-installment-quick-filter'
 import { useInstallmentRowActions } from '@/features/invoice-installments/use-installment-row-actions'
 import { InvoiceClearCollectionDialog } from '@/features/invoices/invoice-clear-collection-dialog'
@@ -25,7 +28,8 @@ const INSTALLMENT_ACTION_ICONS: ActionIconMap = {
 /**
  * Thin Scadenze adapter over the generic table: the quick filter writes into
  * the grid filter model, totals come from `meta.aggregates`, row grouping is
- * driven by the table config. Every write re-authorizes server-side.
+ * driven by the table config; grouped by customer, the selected installments
+ * can be collected at once (spec 0198). Every write re-authorizes server-side.
  */
 export function InvoiceInstallmentsTable() {
   const tableRef = useRef<TableViewHandle>(null)
@@ -33,6 +37,7 @@ export function InvoiceInstallmentsTable() {
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
   const actions = useInstallmentRowActions(refreshGrid)
   const { collection } = actions
+  const bulkCollection = useInstallmentBulkCollection(tableRef, refreshGrid)
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -47,6 +52,9 @@ export function InvoiceInstallmentsTable() {
         forcedFilterModel={quickFilter.forcedFilterModel}
         onFilterModelChange={quickFilter.onFilterModelChange}
         onAction={actions.handleAction}
+        isRowSelectable={isBulkCollectable}
+        getBulkActions={bulkCollection.getBulkActions}
+        onRowGroupColumnsChange={bulkCollection.onRowGroupColumnsChange}
         renderFooter={(aggregates) => <InstallmentTotalsFooter aggregates={aggregates} />}
       />
 
@@ -57,6 +65,11 @@ export function InvoiceInstallmentsTable() {
         installments={actions.documentInstallments}
         onClose={collection.closeCollect}
         onSaved={refreshGrid}
+      />
+      <InstallmentBulkCollectionDialog
+        targets={bulkCollection.targets}
+        onClose={bulkCollection.close}
+        onSaved={bulkCollection.onSaved}
       />
       <InvoiceClearCollectionDialog
         target={collection.clearTarget}

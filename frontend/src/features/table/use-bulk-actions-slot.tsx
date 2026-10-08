@@ -111,7 +111,13 @@ export function useBulkActionsSlot({
     }
   }, [runBulkDelete, selectedIds])
 
-  const clearSelection = useCallback(() => setSelection(EMPTY_SELECTION), [])
+  // The grid keeps its own node selection: without deselecting it, the checkboxes would stay ticked.
+  const clearSelection = useCallback(() => {
+    if (gridApi && !gridApi.isDestroyed()) {
+      gridApi.deselectAll()
+    }
+    setSelection(EMPTY_SELECTION)
+  }, [gridApi])
 
   // The domain's extra actions first, then the built-in destructive delete.
   const items = useMemo<BulkAction[]>(() => {

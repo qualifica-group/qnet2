@@ -12,6 +12,11 @@ const refreshMock = vi.fn()
 const getInstallmentMock = vi.fn<(id: number) => Promise<InstallmentDetail>>()
 const getInvoiceMock = vi.fn<(id: number) => Promise<unknown>>()
 const clearMock = vi.fn<(id: number) => Promise<Invoice>>()
+const canMock = vi.fn<(permission: string) => boolean>()
+
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: (permission: string) => canMock(permission), hasRole: () => false, roles: [], isLoading: false }),
+}))
 
 vi.mock('@/components/page-header', () => ({ PageHeader: () => <div /> }))
 vi.mock('@/features/invoice-installments/api', async (importOriginal) => ({
@@ -47,11 +52,21 @@ vi.mock('@/features/table/table-view', () => ({
       forcedFilterModel?: Record<string, unknown>
       onAction?: (action: TableActionDefinition, row: TableRow) => void
       renderFooter?: (aggregates: Record<string, number> | undefined) => ReactNode
+      getBulkActions?: unknown
+      onRowGroupColumnsChange?: (columnIds: string[]) => void
     }
-  >(function TableViewStub({ domain, forcedFilterModel, onAction, renderFooter }, ref) {
+  >(function TableViewStub({ domain, forcedFilterModel, onAction, renderFooter, getBulkActions, onRowGroupColumnsChange }, ref) {
     useImperativeHandle(ref, () => ({ refresh: refreshMock, setFilterModel: () => {}, clearSelection: () => {} }))
     return (
-      <div role="region" aria-label={`table-${domain}`} data-forced={JSON.stringify(forcedFilterModel)}>
+      <div
+        role="region"
+        aria-label={`table-${domain}`}
+        data-forced={JSON.stringify(forcedFilterModel)}
+        data-bulk={String(getBulkActions !== undefined)}
+      >
+        <button type="button" onClick={() => onRowGroupColumnsChange?.(['customer'])}>
+          group-customer
+        </button>
         {['view_invoice', 'edit', 'record_collection', 'clear_collection'].map((key) => (
           <button key={key} type="button" onClick={() => onAction?.(action(key), ROW)}>
             {key}
@@ -124,6 +139,7 @@ beforeEach(() => {
   getInstallmentMock.mockReset().mockResolvedValue(stubDetail())
   getInvoiceMock.mockReset().mockResolvedValue({ id: 3, installments: [OPEN, COLLECTED] })
   clearMock.mockReset().mockResolvedValue({} as Invoice)
+  canMock.mockReset().mockReturnValue(true)
 })
 
 describe('InvoiceInstallmentsTable (spec 0197 AC-018, AC-020)', () => {
@@ -171,5 +187,29 @@ describe('InvoiceInstallmentsTable (spec 0197 AC-018, AC-020)', () => {
 
     await waitFor(() => expect(clearMock).toHaveBeenCalledWith(21))
     await waitFor(() => expect(refreshMock).toHaveBeenCalled())
+  })
+})
+
+describe('InvoiceInstallmentsTable bulk collection (spec 0198 AC-009)', () => {
+  it('turns the selection on only while grouped by customer', async () => {
+    renderTable()
+    const region = screen.getByRole('region', { name: 'table-invoice-installments' })
+    expect(region).toHaveAttribute('data-bulk', 'false')
+
+    fireEvent.click(screen.getByRole('button', { name: 'group-customer' }))
+
+    await waitFor(() => expect(region).toHaveAttribute('data-bulk', 'true'))
+  })
+
+  it('keeps the selection off without invoices.collect', async () => {
+    canMock.mockReturnValue(false)
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'group-customer' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('region', { name: 'table-invoice-installments' })).toHaveAttribute('data-bulk', 'false'),
+    )
+    expect(canMock).toHaveBeenCalledWith('invoices.collect')
   })
 })

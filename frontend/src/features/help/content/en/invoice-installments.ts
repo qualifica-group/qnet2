@@ -115,6 +115,39 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'bulk-collection',
+      title: 'Bulk collection',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'To record a customer’s payments on several installments at once use the **bulk collection**. It is available only while the list is **grouped by Customer**.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'In **Group by** tick **Customer**: selection checkboxes appear next to the installments not yet collected.',
+            'Expand the customer and tick the paid installments. They must all belong to **the same customer**.',
+            'Open **Actions** in the toolbar and choose **Collect selected**.',
+            'In the dialog set the **Collection date** (one for every row, today by default) and enter the **collected amount** of each installment. At the bottom you see the **Total collected** next to the **Total selected**.',
+            'Press **Save**.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'The amount fields start **empty**: a row left empty or at 0 is **not collected**.',
+            'The amount cannot **exceed** the installment: the field shows an error and **Save** stays disabled.',
+            'With an amount **lower** than the installment, the installment closes at that amount and a **residual installment** is created with the difference and the **same due date** as the original one (if that date has passed, the residual is overdue right away).',
+            'Saving is **all or nothing**: if a row is not valid (for example the installment was collected meanwhile) nothing is recorded and the row is flagged.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'To undo one of these collections use **Clear collection** on the single installment: the schedule goes back to what it was and the residual installment is removed.',
+        },
+      ],
+    },
+    {
       id: 'export',
       title: 'Export',
       blocks: [
@@ -134,7 +167,7 @@ const guide: HelpGuide = {
           rows: [
             ['See the list and the **Due dates** menu', 'View due dates'],
             ['**Edit due date**', 'Edit due dates (and the permission on the single field)'],
-            ['**Record / Clear collection**', 'Record collections'],
+            ['**Record / Clear collection**, **Bulk collection**', 'Record collections'],
             ['**Open invoice**', 'View active invoices'],
             ['**Export**', 'Export due dates'],
           ],

@@ -62,7 +62,7 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
         return InvoiceInstallment::query()
             ->select('invoice_installments.*')
             ->selectRaw('invoices.number as invoice_number, invoices.year as invoice_year, invoices.document_date as invoice_document_date')
-            ->selectRaw('registries.name as customer_name, companies.denomination as company_name, company_sites.name as company_site_name')
+            ->selectRaw('invoices.customer_registry_id as customer_id, registries.name as customer_name, companies.denomination as company_name, company_sites.name as company_site_name')
             ->selectRaw('work_orders.code as work_order_code, work_orders.title as work_order_title')
             ->selectRaw(InstallmentSql::operationalSiteLabel().' as operational_site_label')
             ->join('invoices', 'invoices.id', '=', 'invoice_installments.invoice_id')
@@ -170,6 +170,7 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             'days_overdue' => $daysOverdue,
             'status' => $row->status()->value,
             'overdue' => $daysOverdue > 0 ? 'yes' : 'no',
+            'customer_id' => (int) $row->getAttribute('customer_id'),
             'customer' => $row->getAttribute('customer_name'),
             'work_order' => $workOrder === null ? null : $workOrder.' - '.$row->getAttribute('work_order_title'),
             'company' => $row->getAttribute('company_name'),

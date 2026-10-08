@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Invoices\InvoiceBulkCollectionController;
 use App\Http\Controllers\Invoices\InvoiceCollectionController;
 use App\Http\Controllers\Invoices\InvoiceController;
 use App\Http\Controllers\Invoices\InvoiceInstallmentController;
@@ -36,5 +37,7 @@ Route::delete('invoices/{invoice}', [InvoiceController::class, 'destroy']);
 Route::get('invoice-installments/{installment}', [InvoiceInstallmentController::class, 'show']);
 Route::patch('invoice-installments/{installment}', [InvoiceInstallmentController::class, 'update']);
 
+// spec 0198: several installments of one customer collected at once.
+Route::post('invoice-installments/collections', InvoiceBulkCollectionController::class);
 Route::put('invoice-installments/{installment}/collection', [InvoiceCollectionController::class, 'store']);
 Route::delete('invoice-installments/{installment}/collection', [InvoiceCollectionController::class, 'destroy']);

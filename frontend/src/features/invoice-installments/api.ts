@@ -1,6 +1,11 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
-import type { InstallmentDetail, InstallmentUpdatePayload } from '@/features/invoice-installments/types'
+import type {
+  BulkCollectionPayload,
+  BulkCollectionResult,
+  InstallmentDetail,
+  InstallmentUpdatePayload,
+} from '@/features/invoice-installments/types'
 
 /** Table/module domain key (SSRM domain, permission prefix and query-key root). */
 export const INVOICE_INSTALLMENTS_DOMAIN = 'invoice-installments'
@@ -26,5 +31,11 @@ export async function updateInstallment(
     `/invoice-installments/${id}`,
     payload,
   )
+  return data.data
+}
+
+/** Collects several installments of one customer at once (spec 0198): all or nothing. */
+export async function bulkCollectInstallments(payload: BulkCollectionPayload): Promise<BulkCollectionResult> {
+  const { data } = await apiClient.post<ApiResponse<BulkCollectionResult>>('/invoice-installments/collections', payload)
   return data.data
 }

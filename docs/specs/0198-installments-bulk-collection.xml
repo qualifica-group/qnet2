@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0198-installments-bulk-collection" status="approved" owner="utente" date="2026-10-08">
+
+  <goal>
+    Incasso multiplo dallo scadenziario (Contabilita' > Attiva > Scadenze): raggruppando per Cliente l'utente
+    seleziona piu' scadenze dello stesso cliente, scrive per ognuna l'importo incassato e salva in un colpo solo.
+    Un importo minore della scadenza genera una scadenza residua con la data di scadenza originale.
+  </goal>
+
+  <context>
+    Estende la spec 0197 (modulo Scadenze) e riusa l'incasso della 0196. Branch feature/amministrazione.
+
+    Nomi verificati 2026-10-08:
+    - InvoiceCollectionService::record(installment, payload{collected_amount, collected_at, residual_mode?, residual_due_date?}):
+      lock della fattura, 409 se gia' incassata, parziale con residual_mode new_installment -> rata chiusa a
+      amount = collected_amount, nuova rata residua sequence + 1 (rate successive shiftate), snapshot per l'annullo (0196 D-12).
+    - Policy InvoicePolicy::collect (permesso invoices.collect).
+    - Riga SSRM invoice-installments (InvoiceInstallmentsTableDefinition::mapRow): id, invoice_id, status, customer, amount, ...
+      Raggruppamento: groupableColumns 'customer' => invoices.customer_registry_id.
+    - FE: TableView getBulkActions (abilita le checkbox) + isRowSelectable; RowGroupingBar/useRowGroupColumns;
+      useBulkActionsSlot.clearSelection; dialog incasso singolo features/invoices/invoice-collection-dialog.tsx.
+
+    Decisioni utente 2026-10-08:
+    - D-1 Le checkbox compaiono solo quando la tabella e' raggruppata per Cliente (a qualsiasi livello).
+      Selezionabili solo le scadenze da incassare (status unpaid) e solo con il permesso invoices.collect.
+    - D-2 Tutte le scadenze selezionate devono essere dello stesso cliente (FE: azione disabilitata; BE: 422 su items).
+    - D-3 Nella modale il campo importo parte vuoto. Una riga vuota o a 0 non viene incassata (non viene inviata).
+    - D-4 Importo maggiore di 0 e mai superiore all'importo della scadenza (FE: errore sul campo, Salva disabilitato;
+      BE: 422 su items.N.collected_amount).
+    - D-5 Una sola Data incasso (collected_at) per tutta la modale, default oggi.
+    - D-6 Importo parziale: si registra con residual_mode new_installment e residual_due_date = due_date della scadenza
+      di partenza (ogni residuo ha la data della propria scadenza). Il residuo puo' risultare subito scaduto.
+    - D-7 Tutto o niente: un'unica transazione; un errore su una riga annulla l'intero salvataggio.
+    - D-8 Footer della modale: Totale incassato (somma degli importi scritti) e Totale selezionato (somma delle scadenze).
+    - D-9 L'annullamento resta per singola scadenza (DELETE collection esistente, con ripristino 0196 D-7).
+    - D-10 La riga SSRM espone customer_id (invoices.customer_registry_id) per il controllo D-2 lato FE.
+  </context>
+
+  <scope>
+    <in>
+      <item>Endpoint POST /api/invoice-installments/collections (FormRequest, controller, servizio InvoiceBulkCollector).</item>
+      <item>customer_id nella riga SSRM invoice-installments.</item>
+      <item>TableView: prop onRowGroupColumnsChange (generica, opt-in); clearSelection deseleziona anche la griglia.</item>
+      <item>Scadenze: azione massiva "Incassa selezionate", modale con importi per riga, data incasso unica e totali nel footer.</item>
+      <item>Guida in-app invoice-installments IT/EN.</item>
+    </in>
+    <out>
+      <item>Annullamento massivo degli incassi.</item>
+      <item>Scelta "spalma" del residuo nell'incasso multiplo.</item>
+      <item>Selezione oltre la pagina caricata (select all limitato alla pagina corrente, come gli altri domini).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data }. -->
+    <endpoint method="POST" path="/api/invoice-installments/collections">
+      <request>
+        {
+          collected_at: date, required,
+          items: array, required, min:1, max:100,
+          items.*.installment_id: integer, required, distinct, exists:invoice_installments,id,
+          items.*.collected_amount: number, required, gt:0
+        }
+      </request>
+      <response status="200">
+        data: { collected_count: int, residual_count: int }
+        (residual_count = numero di scadenze residue create).
+      </response>
+      <errors>
+        403 senza invoices.collect.
+        422 items: "The installments must belong to the same customer."
+        422 items.N.installment_id: "This installment is already collected."
+        422 items.N.collected_amount: "The collected amount cannot exceed the installment amount."
+        422 validazione standard su collected_at / items.
+      </errors>
+    </endpoint>
+
+    <resource name="invoice-installments row (SSRM)">+ customer_id: int.</resource>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato FT A rata 1000 scadenza 2026-10-31 e FT B rata 500 scadenza 2026-11-30 dello stesso cliente, quando si incassano 600 e 500 con data D, allora FT A ha rata 1 = 600 incassata il D e rata 2 = 400 da incassare con scadenza 2026-10-31; FT B rata 1 = 500 incassata; response collected_count 2, residual_count 1.</criterion>
+    <criterion id="AC-002">Dato una rata seguita da altre rate della stessa fattura, quando si incassa parzialmente, allora il residuo prende sequence + 1 e le rate successive scalano di uno.</criterion>
+    <criterion id="AC-003">Dato due rate della stessa fattura selezionate entrambe con importo parziale, allora ognuna ha il proprio residuo con la propria scadenza e le sequence restano uniche e contigue.</criterion>
+    <criterion id="AC-004">Dato un importo maggiore della scadenza su una riga, allora 422 su items.N.collected_amount e nessuna scadenza cambia.</criterion>
+    <criterion id="AC-005">Dato una scadenza gia' incassata tra le righe, allora 422 su items.N.installment_id e nessuna scadenza cambia.</criterion>
+    <criterion id="AC-006">Dato scadenze di clienti diversi, allora 422 su items e nessuna scadenza cambia.</criterion>
+    <criterion id="AC-007">Dato un utente senza invoices.collect, allora 403.</criterion>
+    <criterion id="AC-008">Dato un incasso parziale registrato in blocco, quando si annulla l'incasso della scadenza, allora il piano torna quello precedente (residuo eliminato).</criterion>
+    <criterion id="AC-009">FE: senza raggruppamento per Cliente non ci sono checkbox; raggruppando per Cliente sono selezionabili solo le scadenze da incassare.</criterion>
+    <criterion id="AC-010">FE: modale con campi vuoti; il footer somma gli importi scritti; un importo oltre la scadenza mostra l'errore e disabilita Salva; righe vuote/0 non inviate; senza alcun importo Salva disabilitato.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza, nessuna migrazione.</item>
+    <item>Il servizio riusa InvoiceCollectionService::record per ogni riga (stessa logica di residuo e snapshot).</item>
+  </constraints>
+</spec>
