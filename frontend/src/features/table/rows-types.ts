@@ -100,6 +100,41 @@ export interface TableRowsPayload {
    * every domain.
    */
   kanbanGroup?: { by: 'status'; key: number } | { by: 'due'; key: string }
+  /**
+   * Server-side row grouping (spec 0197 D-4): ids of the grouped columns,
+   * outermost first. Sent only for a domain whose config advertises
+   * `row_grouping.enabled`, and only when the user grouped at least one
+   * column; omitted ⇒ today's flat behavior.
+   */
+  rowGroupCols?: string[]
+  /**
+   * Keys of the already-expanded parent groups (one per level above the
+   * requested one). Shorter than `rowGroupCols` ⇒ group level; same length ⇒
+   * leaf rows. `__null__` stands for a missing value.
+   */
+  groupKeys?: string[]
+}
+
+/**
+ * One group item of a grouped rows response (spec 0197 data_contract): `key`
+ * is what the next request sends back in `groupKeys`, `label` what the user
+ * reads, `aggregates` the aggfunc columns' totals for the group.
+ */
+export interface TableGroupItem {
+  group: true
+  column: string
+  key: string
+  /** Null for the missing-value group (key `__null__`): the grid shows its own localized label. */
+  label: string | null
+  child_count: number
+  aggregates: Record<string, string | number>
+}
+
+/** Row-grouping config advertised by GET /tables/{domain}/columns (spec 0197). */
+export interface TableRowGroupingConfig {
+  enabled: boolean
+  max_depth: number
+  columns: string[]
 }
 
 /**

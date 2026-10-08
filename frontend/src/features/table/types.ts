@@ -7,6 +7,7 @@
  * whatever schema the backend returns for a given domain.
  */
 import type { TableFieldConfig } from '@/features/custom-fields/types'
+import type { TableRowGroupingConfig } from '@/features/table/rows-types'
 import type {
   AdvancedFilterDescriptor,
   AdvancedFilterValues,
@@ -214,6 +215,10 @@ export interface TableColumn {
    * backend-supplied `badges[].label`.
    */
   enumKey?: string
+  /** Whether the column can be dragged into the row group panel (spec 0197); absent behaves as `false`. */
+  groupable?: boolean
+  /** Aggregate function applied to the column's group rows (spec 0197), e.g. `sum`; absent ⇒ none. */
+  aggFunc?: 'sum' | null
 }
 
 /**
@@ -314,6 +319,8 @@ export interface TableConfig {
    * absent) when none.
    */
   appliedAdvancedFilters?: AdvancedFilterValues | null
+  /** Opt-in server-side row grouping (spec 0197); absent ⇒ the domain has no grouping and nothing changes. */
+  row_grouping?: TableRowGroupingConfig
 }
 
 /**

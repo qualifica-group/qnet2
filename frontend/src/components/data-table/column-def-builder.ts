@@ -10,7 +10,11 @@ import {
   type CellRenderer,
 } from '@/components/data-table/column-defaults'
 import { ACTIONS_COLUMN_ID } from '@/components/data-table/data-table-overlays'
-import type { TableColumn } from '@/features/table/types'
+import {
+  guardGroupRowRenderer,
+  resolveGroupingColumnProps,
+} from '@/components/data-table/row-grouping-grid-options'
+import type { TableColumn, TableRowGroupingConfig } from '@/features/table/types'
 
 /** Default minimum width for data columns without an explicit backend width. */
 export const DEFAULT_MIN_WIDTH = 120
@@ -57,6 +61,8 @@ export interface BuildColDefsParams {
    * ⇒ today's behavior, unchanged for every domain not in tree mode.
    */
   treeGroupColumnId?: string
+  /** Opt-in server-side row grouping (spec 0197); absent or disabled ⇒ columns are built exactly as before. */
+  rowGrouping?: TableRowGroupingConfig
   t: TFunction
 }
 
@@ -79,6 +85,7 @@ export function buildColDefs({
   actionsColumnWidth,
   masterDetail,
   treeGroupColumnId,
+  rowGrouping,
   t,
 }: BuildColDefsParams): ColDef[] {
   const mapped: ColDef[] = columns.map((column) => {
@@ -125,12 +132,15 @@ export function buildColDefs({
       filter,
       filterParams,
       cellRenderer: renderer
-        ? (params: ICellRendererParams) => renderer(params)
+        ? rowGrouping?.enabled
+          ? guardGroupRowRenderer(column, renderer)
+          : (params: ICellRendererParams) => renderer(params)
         : undefined,
       valueFormatter: valueFormatter
         ? (params) => valueFormatter(params.value)
         : undefined,
       ...resolveEditableColumnProps(column),
+      ...resolveGroupingColumnProps(column, rowGrouping),
     }
   })
 

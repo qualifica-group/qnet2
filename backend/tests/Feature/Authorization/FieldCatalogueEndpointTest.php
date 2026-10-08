@@ -76,6 +76,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         'proforma-requests',
         // spec 0194 `invoices` (InvoicesAuthorization: the active invoicing header fields).
         'invoices',
+        // spec 0197 `invoice-installments` (InvoiceInstallmentsAuthorization: due date/payment method code editable,
+        // amounts and collection state visible-readonly).
+        'invoice-installments',
         // spec 0185 `request-statistics` (RequestStatisticsAuthorization: a view-only module, no
         // field — registered only so its permission is assignable from the Role form).
         'request-statistics',

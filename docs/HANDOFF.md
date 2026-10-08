@@ -3,6 +3,33 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SPEC 0197 MODULO SCADENZE (Contabilita' > Attiva) — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-08)
+
+- Spec `docs/specs/0197-invoice-installments-module.xml` (approvata, D-1..D-8). Vista trasversale di `invoice_installments`:
+  NESSUNA tabella nuova, niente create/delete di rate (nascono solo dalla fattura). Edit solo due_date/payment_method_code
+  (409 "Collected installments cannot be edited." se c'e' incasso; due_date >= invoice.document_date). Incasso/annullo =
+  endpoint esistenti `invoice-installments/{id}/collection` (authz invoices.collect).
+- Migrazione `2026_10_10_100000_add_residual_amount_to_invoice_installments_table`: colonna VIRTUAL `residual_amount` +
+  indice (residual_amount, due_date). status/overdue in SQL = CASE identico a InstallmentStatus (non da residual).
+- Framework tabellare: row grouping SSRM OPT-IN. Backend `TableDefinition::supportsRowGroups/groupableColumns/groupAggregates`
+  (default nel trait `ResolvesRowGroups`, passthrough in `DelegatesUnaugmentedTableMethods`), `Services/Table/RowGroupQuery`
+  + `RowGroupValidator`; payload rows `rowGroupCols` + `groupKeys` (max 3, `__null__` = valore assente, 422 senza opt-in o con
+  tree/kanban). Item di gruppo `{group,column,key,label,child_count,aggregates}`. Config columns: `row_grouping` + `groupable`/`aggFunc`
+  solo per domini opt-in. FE: `features/table/row-grouping.ts`, `components/data-table/row-grouping-grid-options.ts`,
+  `buildSideBar(rowGroupingEnabled)` in data-table-overlays.
+- Modulo: domain `invoice-installments` (`InvoiceInstallmentsTableDefinition` + `Tables/InvoiceInstallments/*`), Policy
+  `InvoiceInstallmentPolicy` (viewAny, view, update, export), `InvoiceInstallmentsAuthorization` (campi gated amount,
+  collected_amount, collected_at, residual_amount), GET/PATCH `/api/invoice-installments/{id}` (`InvoiceInstallmentController`,
+  `UpdateInvoiceInstallmentRequest`, `InvoiceInstallmentUpdater`, `InvoiceInstallmentResource`). Sedi via join quotes
+  (company_site, operational_site). LogsModelActivity su InvoiceInstallment (solo due_date, payment_method_code, collected_*).
+  Nav `invoice-installments` sotto accounting-receivable. FE `pages/invoice-installments-page.tsx`, `features/invoice-installments/`,
+  i18n `invoiceInstallments.*`, guida in-app IT/EN `invoice-installments`.
+- Verifier: Pest 9477/9481 (3 soffice ambientali, 1 skip), Pint ok, Vitest full 5 flaky sotto carico (verdi isolati: request-dashboard-tabs,
+  4 chart skeleton), tsc -b --force ok, ESLint ok. `composer test` non parte con questo Composer: usare `php artisan test --parallel`.
+- Da fare: split file vicini al limite (data-table.tsx 487, router.tsx 488, AbstractTableDefinition 466, TableDefinition 465,
+  TableRowsRequest 375); test FE di assenza azioni incasso senza collect; select payment_method_code (oggi input testo).
+  Manuale Claude Docs NON accessibile: aggiungere sezione "Contabilita' > Attiva > Scadenze".
+
 ## SPEC 0196 RIMODULAZIONE RATE + INCASSO PARZIALE — BRANCH feature/amministrazione (2026-10-07)
 
 - Spec `docs/specs/0196-invoice-installment-rebalancing.xml` (approvata, D-1..D-15).

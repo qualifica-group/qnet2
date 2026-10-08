@@ -7,6 +7,7 @@ use App\DataObjects\Table\RowsResult;
 use App\Models\User;
 use App\Services\Table\CustomFilterRuleApplier;
 use App\Services\Table\FilterApplier;
+use App\Services\Table\RowGroupQuery;
 use App\Services\Table\TableQueryBuilder;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
@@ -49,12 +50,13 @@ class TableService
         private readonly TableQueryBuilder $queryBuilder,
         private readonly FilterApplier $filterApplier,
         private readonly CustomFilterRuleApplier $customFilterRuleApplier,
+        private readonly RowGroupQuery $rowGroups,
     ) {}
 
     /**
      * Execute the SSRM query and return the rows + total for the envelope.
      *
-     * @param  array{startRow: int, endRow: int, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null, tree?: bool, treeParentId?: int|null, kanbanGroup?: array{by: string, key: int|string}|null}  $payload
+     * @param  array{startRow: int, endRow: int, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, search?: string|null, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null, tree?: bool, treeParentId?: int|null, kanbanGroup?: array{by: string, key: int|string}|null, rowGroupCols?: array<int, string>, groupKeys?: array<int, string>}  $payload
      */
     public function rows(TableDefinition $definition, User $actor, array $payload): RowsResult
     {
@@ -100,6 +102,22 @@ class TableService
 
         if (is_array($kanbanGroup)) {
             $definition->applyKanbanGroupScope($query, $kanbanGroup);
+        }
+
+        // Spec 0197, D-4: server-side row grouping, AFTER every filter/search
+        // above. The parent group keys narrow the query; while a grouped
+        // column is still unopened the answer is a page of groups, otherwise
+        // the leaf rows below. TableRowsRequest has already 422'd a domain
+        // without the opt-in and any non-allow-listed column or extra key.
+        $rowGroupCols = $payload['rowGroupCols'] ?? [];
+
+        if ($rowGroupCols !== []) {
+            $groupKeys = $payload['groupKeys'] ?? [];
+            $this->rowGroups->applyKeys($definition, $actor, $query, $rowGroupCols, $groupKeys);
+
+            if (count($groupKeys) < count($rowGroupCols)) {
+                return $this->rowGroups->groupLevel($definition, $actor, $query, $payload, $offset, $limit);
+            }
         }
 
         // Spec 0178, D-1: on a later page the client already holds the total of

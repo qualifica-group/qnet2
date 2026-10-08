@@ -434,4 +434,32 @@ interface TableDefinition
      * @param  array{by: string, key: int|string}  $kanbanGroup
      */
     public function applyKanbanGroupScope(Builder $query, array $kanbanGroup): void;
+
+    /**
+     * Whether this domain supports server-side row grouping (spec 0197, D-4)
+     * -- the opt-in `TableRowsRequest` checks before accepting `rowGroupCols`
+     * (422 otherwise). Default (AbstractTableDefinition): false.
+     */
+    public function supportsRowGroups(): bool;
+
+    /**
+     * The columns the actor may group by, from an allow-list of SQL fragments
+     * declared by the definition (never request input): `colId => {key: SQL
+     * expression identifying the group, labels: SQL expressions whose
+     * non-empty values joined by " - " form the group label}`. A NULL key is
+     * the "no value" group, exposed as `RowGroupQuery::NULL_KEY`. Columns the
+     * actor may not see must be left out.
+     *
+     * @return array<string, array{key: string, labels: array<int, string>}>
+     */
+    public function groupableColumns(User $actor): array;
+
+    /**
+     * Per-group aggregates for the actor: `colId => {func: sum, expression:
+     * SQL expression}`. Only `sum` is supported. Columns the actor may not
+     * see must be left out.
+     *
+     * @return array<string, array{func: string, expression: string}>
+     */
+    public function groupAggregates(User $actor): array;
 }

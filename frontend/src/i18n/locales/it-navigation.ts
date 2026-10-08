@@ -29,6 +29,7 @@ export const navigation = {
   accountingReceivable: 'Attiva',
   proformaRequests: 'Richieste Proforma',
   invoices: 'Fatture Attive',
+  invoiceInstallments: 'Scadenze',
   productTypologies: 'Tipologie Prodotto',
   paymentMethods: 'Modalità di Pagamento',
   tags: 'Tag',

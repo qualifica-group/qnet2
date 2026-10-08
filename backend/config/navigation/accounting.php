@@ -40,6 +40,14 @@ return [
                     'route' => '/invoices',
                     'permission' => 'invoices.view',
                 ],
+                // spec 0197: installments of the active invoices.
+                [
+                    'key' => 'invoice-installments',
+                    'label' => 'navigation.invoiceInstallments',
+                    'icon' => 'calendar-clock',
+                    'route' => '/invoice-installments',
+                    'permission' => 'invoice-installments.view',
+                ],
             ],
         ],
     ],

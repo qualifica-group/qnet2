@@ -199,4 +199,29 @@ trait DelegatesUnaugmentedTableMethods
     {
         $this->inner->applyKanbanGroupScope($query, $kanbanGroup);
     }
+
+    /**
+     * Row grouping (spec 0197, D-4) is a `$inner` domain concern, not a
+     * custom-field one, so these are pure passthrough.
+     */
+    public function supportsRowGroups(): bool
+    {
+        return $this->inner->supportsRowGroups();
+    }
+
+    /**
+     * @return array<string, array{key: string, labels: array<int, string>}>
+     */
+    public function groupableColumns(User $actor): array
+    {
+        return $this->inner->groupableColumns($actor);
+    }
+
+    /**
+     * @return array<string, array{func: string, expression: string}>
+     */
+    public function groupAggregates(User $actor): array
+    {
+        return $this->inner->groupAggregates($actor);
+    }
 }

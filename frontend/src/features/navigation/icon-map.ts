@@ -3,6 +3,7 @@ import {
   Award,
   BookUser,
   Briefcase,
+  CalendarClock,
   Building2,
   Circle,
   ClipboardList,
@@ -106,6 +107,8 @@ const iconMap: Record<string, LucideIcon> = {
   // Spec 0189: "Gestione Conti" under Contabilita'.
   landmark: Landmark,
   'receipt-euro': ReceiptEuro,
+  // Spec 0197: "Scadenze" under Contabilita' > Attiva.
+  'calendar-clock': CalendarClock,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

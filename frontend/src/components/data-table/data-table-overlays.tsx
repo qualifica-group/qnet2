@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- grid-config module: SIDE_BAR/ACTIONS_COLUMN_ID are plain constants shared with data-table.tsx, not routable components */
+/* eslint-disable react-refresh/only-export-components -- grid-config module: ACTIONS_COLUMN_ID is a plain constant shared with data-table.tsx, not routable components */
 /**
  * Overlay/placeholder pieces of the AG Grid wrapper (`data-table.tsx`), split
  * out to keep that file within the engineering size limits (`.claude/rules/
@@ -19,26 +19,29 @@ export const ACTIONS_COLUMN_ID = '__actions'
  * so the grid keeps its full width by default.
  *
  * Only the columns panel is exposed: the filters panel would duplicate the
- * per-header filter menus, and row-group/pivot/aggregation are meaningless under
- * the SSRM setup here, so their sections are suppressed rather than shown empty.
+ * per-header filter menus. Row-group is meaningless under the plain SSRM setup,
+ * so its section is suppressed unless the domain opts into server-side row
+ * grouping (spec 0197); values/pivot stay suppressed either way.
  */
-export const SIDE_BAR: SideBarDef = {
-  toolPanels: [
-    {
-      id: 'columns',
-      labelDefault: 'Columns',
-      labelKey: 'columns',
-      iconKey: 'columns',
-      toolPanel: 'agColumnsToolPanel',
-      toolPanelParams: {
-        suppressRowGroups: true,
-        suppressValues: true,
-        suppressPivots: true,
-        suppressPivotMode: true,
+export function buildSideBar(rowGroupingEnabled: boolean): SideBarDef {
+  return {
+    toolPanels: [
+      {
+        id: 'columns',
+        labelDefault: 'Columns',
+        labelKey: 'columns',
+        iconKey: 'columns',
+        toolPanel: 'agColumnsToolPanel',
+        toolPanelParams: {
+          suppressRowGroups: !rowGroupingEnabled,
+          suppressValues: true,
+          suppressPivots: true,
+          suppressPivotMode: true,
+        },
       },
-    },
-  ],
-  defaultToolPanel: undefined,
+    ],
+    defaultToolPanel: undefined,
+  }
 }
 
 /**

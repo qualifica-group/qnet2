@@ -1,0 +1,80 @@
+/**
+ * Dominio Scadenze fatture attive (spec 0197): vista trasversale delle rate,
+ * filtro rapido, raggruppamento, totali e dialog di modifica rata. File
+ * affiancato per rispettare i limiti dimensionali (`engineering.md` §6).
+ */
+
+export const invoiceInstallments = {
+  title: 'Scadenze',
+  subtitle: 'Tutte le rate delle fatture attive: filtra, raggruppa, incassa e sposta le scadenze.',
+  forbidden: 'Non hai il permesso di visualizzare le scadenze.',
+  quickFilter: {
+    label: 'Filtro rapido scadenze',
+    open: 'Aperte',
+    overdue: 'Scadute',
+    all: 'Tutte',
+  },
+  columns: {
+    invoice_number_label: 'Fattura',
+    invoice_document_date: 'Data documento',
+    sequence: 'Rata',
+    due_date: 'Scadenza',
+    due_month: 'Mese scadenza',
+    days_overdue: 'Giorni di ritardo',
+    status: 'Stato',
+    overdue: 'Scaduta',
+    customer: 'Cliente',
+    work_order: 'Commessa',
+    company: 'Società',
+    company_site: 'Sede aziendale',
+    operational_site: 'Sede operativa',
+    payment_method_code: 'Modalità',
+    amount: 'Importo',
+    collected_amount: 'Incassato',
+    residual_amount: 'Residuo',
+    collected_at: 'Incassato il',
+  },
+  overdue: {
+    yes: 'Scaduta',
+    no: 'No',
+  },
+  footer: {
+    label: 'Totali del filtro corrente',
+    amount: 'Importo',
+    collected_amount: 'Incassato',
+    residual_amount: 'Residuo',
+  },
+  actions: {
+    view_invoice: 'Apri fattura',
+    edit: 'Modifica scadenza',
+    record_collection: 'Registra incasso',
+    clear_collection: 'Annulla incasso',
+  },
+  lookupError: 'Impossibile caricare la scadenza. Riprova.',
+  edit: {
+    title: 'Modifica scadenza',
+    description: 'Cambia data e modalità della rata. L’importo si cambia rimodulando la fattura.',
+    summary: {
+      invoice: 'Fattura / rata',
+      customer: 'Cliente',
+      amount: 'Importo',
+      residual: 'Residuo',
+    },
+    dueDate: 'Data scadenza',
+    paymentMethodCode: 'Codice modalità',
+    paymentMethodCodeHint: 'Codice di una modalità di pagamento esistente; vuoto per nessuna.',
+    readOnlyHint: 'Non hai i permessi per modificare questa scadenza.',
+    save: 'Salva',
+    saving: 'Salvataggio…',
+    cancel: 'Annulla',
+    saved: 'Scadenza aggiornata.',
+    loadError: 'Impossibile caricare la scadenza. Riprova.',
+    genericError: 'Impossibile salvare la scadenza. Riprova.',
+    collectedConflict: 'La scadenza ha un incasso: annulla prima l’incasso, poi modificala.',
+    errors: {
+      dueDateRequired: 'La data di scadenza è obbligatoria.',
+      dueDateInvalid: 'Inserisci una data valida.',
+      paymentMethodCodeMax: 'Il codice può contenere al massimo 32 caratteri.',
+    },
+  },
+}

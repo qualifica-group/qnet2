@@ -206,9 +206,10 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // 0194's five migrations `2026_10_07_100000_add_installment_config_to_payment_methods_table`
     // (126th) through `2026_10_07_100400_create_invoice_installments_table` (130th), and spec
     // 0195's `2026_10_08_100000_add_purpose_to_outbound_emails_table` (131st), and spec 0196's
-    // `2026_10_09_100000_add_redistribution_snapshot_to_invoice_installments_table` (132nd).
+    // `2026_10_09_100000_add_redistribution_snapshot_to_invoice_installments_table` (132nd), and spec 0197's
+    // `2026_10_10_100000_add_residual_amount_to_invoice_installments_table` (133rd).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 132]);
+    Artisan::call('migrate:rollback', ['--step' => 133]);
     // `2026_10_02_120000_add_old_id_to_operational_records_tables` (1st),
     // the legacy anchors of registries/opportunities/quotes/work orders, and
     // spec 0190's `2026_10_02_130000_create_work_order_costs_table` (2nd),

@@ -28,6 +28,7 @@ export const navigation = {
   accountingReceivable: 'Receivables',
   proformaRequests: 'Proforma requests',
   invoices: 'Active invoices',
+  invoiceInstallments: 'Due dates',
   productTypologies: 'Product Typologies',
   paymentMethods: 'Payment Methods',
   tags: 'Tags',

@@ -5,6 +5,12 @@ import type {
 import { fetchTableRows } from '@/features/table/api'
 import type { FilterRules, SsrmSortModelItem, TableRow, TableRowsAggregates } from '@/features/table/types'
 import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
+import {
+  isGroupItem,
+  resolveGroupSortModel,
+  toGroupRow,
+  type RowGroupingOptions,
+} from '@/features/table/row-grouping'
 
 /** Page size fallback when the grid does not provide an explicit block range. */
 const DEFAULT_BLOCK_SIZE = 25
@@ -70,6 +76,8 @@ export interface SsrmDatasourceOptions {
   onAggregates?: (aggregates: TableRowsAggregates | undefined) => void
   /** Server-side tree data (spec 0157 D-1); a no-op for every domain but `tasks`. */
   treeData?: boolean
+  /** Server-side row grouping (spec 0197); a no-op (flat rows) when omitted, i.e. for every domain without it. */
+  rowGrouping?: RowGroupingOptions
 }
 
 /**
@@ -98,6 +106,7 @@ export function createSsrmDatasource(
     quoteId,
     onAggregates,
     treeData,
+    rowGrouping,
   } = options
 
   // Spec 0178 D-1: the block-0 total, valid only for the signature it was
@@ -115,10 +124,24 @@ export function createSsrmDatasource(
       const startRow = request.startRow ?? 0
       const endRow = request.endRow ?? startRow + DEFAULT_BLOCK_SIZE
 
-      const sortModel: SsrmSortModelItem[] = request.sortModel.map((item) => ({
+      // Spec 0197: the grouped columns, capped at the configured depth (the grid
+      // enforces it too, this is the last line of defence against a 422).
+      const rowGroupCols = rowGrouping
+        ? request.rowGroupCols.map((column) => column.id).slice(0, rowGrouping.maxDepth)
+        : []
+      const grouped = rowGroupCols.length > 0
+      const groupKeys = grouped ? request.groupKeys.map(String) : []
+      // Only the root level's aggregates are the footer's grand totals.
+      const reportsAggregates = !grouped || groupKeys.length === 0
+
+      const plainSortModel: SsrmSortModelItem[] = request.sortModel.map((item) => ({
         colId: item.colId,
         sort: item.sort,
       }))
+      const sortModel =
+        grouped && rowGrouping
+          ? resolveGroupSortModel(plainSortModel, rowGroupCols, groupKeys.length, rowGrouping.aggColumnIds)
+          : plainSortModel
 
       // filterModel can be a plain map, an advanced model, or null — normalize to
       // the simple object the backend contract validates against.
@@ -157,6 +180,8 @@ export function createSsrmDatasource(
         quoteId,
         tree: treeData ?? false,
         treeParentId,
+        rowGroupCols,
+        groupKeys,
       })
       // Block 0 always recounts server-side; later blocks reuse the memo only
       // when it was counted under the same signature.
@@ -174,6 +199,7 @@ export function createSsrmDatasource(
           ...(productCategoryId != null ? { productCategoryId } : {}),
           ...(opportunityId != null ? { opportunityId } : {}),
           ...(quoteId != null ? { quoteId } : {}),
+          ...(grouped ? { rowGroupCols, groupKeys } : {}),
           ...(treeData ? { tree: true } : {}),
           ...(treeParentId != null ? { treeParentId } : {}),
           ...(knownTotal !== undefined ? { knownTotal } : {}),
@@ -183,10 +209,14 @@ export function createSsrmDatasource(
         // `meta`; keep the footer's last aggregates instead of clearing them.
         if (knownTotal === undefined) {
           memo = { signature, total: response.pagination.total }
-          onAggregates?.(response.meta?.aggregates)
+          if (reportsAggregates) {
+            onAggregates?.(response.meta?.aggregates)
+          }
         }
         params.success({
-          rowData: response.items,
+          rowData: grouped
+            ? response.items.map((item) => (isGroupItem(item) ? toGroupRow(item) : item))
+            : response.items,
           rowCount: response.pagination.total,
         })
       } catch {
