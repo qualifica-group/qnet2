@@ -45,12 +45,15 @@ class InvoiceController extends BaseApiController
     {
         try {
             $actor = $request->user();
+            $payload = $request->payload();
 
-            if (! $actor->can('invoices.create') && ! $actor->can('invoices.update')) {
+            if (isset($payload['invoice_id'])) {
+                $this->authorize('update', Invoice::query()->findOrFail($payload['invoice_id']));
+            } elseif (! $actor->can('invoices.create') && ! $actor->can('invoices.update')) {
                 throw new AuthorizationException;
             }
 
-            return $this->ok($this->service->previewInstallments($request->payload()));
+            return $this->ok($this->service->previewInstallments($payload));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -85,7 +88,7 @@ class InvoiceController extends BaseApiController
     }
 
     /**
-     * PUT /api/invoices/{invoice} (409 once an installment has collections)
+     * PUT /api/invoices/{invoice} (rebalances the open installments once some are collected)
      */
     public function update(InvoiceWriteRequest $request, Invoice $invoice): JsonResponse
     {

@@ -44,11 +44,11 @@ export interface EditorSource {
   customer: NamedRef | null
   paymentMethod: NamedRef | null
   financialAccount: BankAccountRef | null
-  /** Saved print layout (edit); null in create and for "Predefinito". */
-  layout: NamedRef | null
   context: EditorContext
   /** "12/2026" when editing. */
   numberLabel: string | null
+  /** The edited document has collected installments: date, payment method and customer are read-only (spec 0196, D-1). */
+  hasCollections: boolean
 }
 
 const NO_AVAILABLE_LINES: AvailableInvoiceLine[] = []
@@ -66,7 +66,6 @@ export function sourceFromDraft(draft: InvoiceDraft): EditorSource {
       customer_registry_id: defaults.customer?.id ?? NO_ID,
       payment_method_id: defaults.payment_method?.id ?? NO_ID,
       financial_account_id: defaults.financial_account?.id ?? null,
-      layout_id: defaults.layout?.id ?? null,
       notes: defaults.notes,
       internal_note: null,
       tag: null,
@@ -79,7 +78,6 @@ export function sourceFromDraft(draft: InvoiceDraft): EditorSource {
     customer: defaults.customer,
     paymentMethod: defaults.payment_method,
     financialAccount: defaults.financial_account,
-    layout: defaults.layout,
     context: {
       workOrderCode: draft.work_order.code,
       quoteCode: draft.quote.code,
@@ -87,6 +85,7 @@ export function sourceFromDraft(draft: InvoiceDraft): EditorSource {
       note: draft.proforma_request.note,
     },
     numberLabel: null,
+    hasCollections: false,
   }
 }
 
@@ -98,7 +97,6 @@ export function sourceFromInvoice(invoice: Invoice): EditorSource {
       customer_registry_id: invoice.customer.id,
       payment_method_id: invoice.payment_method.id,
       financial_account_id: invoice.financial_account?.id ?? null,
-      layout_id: invoice.layout?.id ?? null,
       notes: invoice.notes,
       internal_note: invoice.internal_note,
       tag: invoice.tag,
@@ -118,7 +116,6 @@ export function sourceFromInvoice(invoice: Invoice): EditorSource {
     customer: { id: invoice.customer.id, name: invoice.customer.name },
     paymentMethod: invoice.payment_method,
     financialAccount: invoice.financial_account,
-    layout: invoice.layout,
     context: {
       workOrderCode: invoice.work_order?.code ?? null,
       quoteCode: invoice.quote?.code ?? null,
@@ -126,6 +123,7 @@ export function sourceFromInvoice(invoice: Invoice): EditorSource {
       note: null,
     },
     numberLabel: invoice.number_label,
+    hasCollections: invoice.has_collections,
   }
 }
 

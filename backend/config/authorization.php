@@ -14,6 +14,7 @@ use App\Authorization\DocumentLayoutsAuthorization;
 use App\Authorization\EmailTemplatesAuthorization;
 use App\Authorization\EnrolleeManagementAuthorization;
 use App\Authorization\FinancialAccountsAuthorization;
+use App\Authorization\InvoiceInstallmentsAuthorization;
 use App\Authorization\InvoicesAuthorization;
 use App\Authorization\LeadsAuthorization;
 use App\Authorization\OperationalSitesAuthorization;
@@ -124,6 +125,8 @@ return [
         'proforma-requests' => ProformaRequestsAuthorization::class,
         // spec 0194: fatturazione attiva (proforma e fatture).
         'invoices' => InvoicesAuthorization::class,
+        // spec 0197: le scadenze (rate) delle fatture attive.
+        'invoice-installments' => InvoiceInstallmentsAuthorization::class,
         'product-typologies' => ProductTypologiesAuthorization::class,
         // spec 0101: il modulo Task e i suoi cinque configuratori.
         'tasks' => TasksAuthorization::class,

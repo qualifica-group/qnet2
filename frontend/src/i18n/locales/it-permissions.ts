@@ -121,6 +121,7 @@ export const permissions = {
     'financial-accounts': 'Gestione Conti',
     'proforma-requests': 'Richieste Proforma',
     invoices: 'Fatture Attive',
+    'invoice-installments': 'Scadenze',
     'product-typologies': 'Tipologie Prodotto',
     // Modulo Task e i suoi cinque configuratori (spec 0101).
     tasks: 'Task',

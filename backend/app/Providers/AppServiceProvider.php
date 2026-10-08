@@ -31,6 +31,7 @@ use App\Models\EmploymentProfile;
 use App\Models\FieldChangeRequest;
 use App\Models\FinancialAccount;
 use App\Models\Invoice;
+use App\Models\InvoiceInstallment;
 use App\Models\Lead;
 use App\Models\Note;
 use App\Models\OperationalSite;
@@ -197,6 +198,7 @@ class AppServiceProvider extends ServiceProvider
             'financial_account' => FinancialAccount::class,
             'proforma_request' => ProformaRequest::class,
             'invoice' => Invoice::class,
+            'invoice_installment' => InvoiceInstallment::class,
             'product_typology' => ProductTypology::class,
             'source' => Source::class,
             'sector' => Sector::class,

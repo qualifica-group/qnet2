@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react'
 import type { GridApi, GridReadyEvent } from 'ag-grid-community'
 import { useAbilities } from '@/features/auth/use-abilities'
+import { resolveRowGrouping } from '@/features/table/row-grouping'
 import { createSsrmDatasource, type SsrmDatasource } from '@/features/table/ssrm-datasource'
 import { useTableToolbarState, type TableToolbarState } from '@/features/table/use-table-toolbar-state'
 import { useTableLocalFilters } from '@/features/table/use-table-local-filters'
@@ -234,6 +235,10 @@ export function useTableViewGridState(
   // One datasource instance per domain; stable across re-renders. The current
   // search term and applied advanced filters are read lazily via getters, so
   // typing/toggling never rebuilds it (the grid is purge-reloaded instead).
+  const rowGrouping = useMemo(
+    () => resolveRowGrouping(config?.row_grouping, config?.columns ?? []),
+    [config?.row_grouping, config?.columns],
+  )
   const datasource = useMemo(
     () =>
       createSsrmDatasource(domain, {
@@ -245,6 +250,7 @@ export function useTableViewGridState(
         quoteId,
         onAggregates: setAggregates,
         treeData,
+        rowGrouping,
       }),
     [
       domain,
@@ -255,6 +261,7 @@ export function useTableViewGridState(
       opportunityId,
       quoteId,
       treeData,
+      rowGrouping,
     ],
   )
   useEffect(() => {

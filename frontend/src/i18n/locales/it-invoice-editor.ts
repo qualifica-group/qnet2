@@ -108,7 +108,6 @@ export const invoiceEditor = {
     saved: 'Documento aggiornato.',
     genericError: 'Si è verificato un errore. Riprova.',
     conflictInvoiced: 'Questa richiesta proforma è già stata fatturata.',
-    conflictCollected: 'Il documento ha rate incassate e non può essere modificato.',
     totalNotPositive: 'Il totale del documento deve essere maggiore di zero.',
   },
   errors: {

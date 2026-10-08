@@ -1,0 +1,80 @@
+/**
+ * Due dates of active invoices (spec 0197): cross-invoice installment view,
+ * quick filter, grouping, totals and the installment edit dialog. Split out to
+ * stay within the size limits (`engineering.md` §6).
+ */
+
+export const invoiceInstallments = {
+  title: 'Due dates',
+  subtitle: 'Every installment of the active invoices: filter, group, collect and move due dates.',
+  forbidden: 'You do not have permission to view due dates.',
+  quickFilter: {
+    label: 'Due dates quick filter',
+    open: 'Open',
+    overdue: 'Overdue',
+    all: 'All',
+  },
+  columns: {
+    invoice_number_label: 'Invoice',
+    invoice_document_date: 'Document date',
+    sequence: 'Installment',
+    due_date: 'Due date',
+    due_month: 'Due month',
+    days_overdue: 'Days overdue',
+    status: 'Status',
+    overdue: 'Overdue',
+    customer: 'Customer',
+    work_order: 'Work order',
+    company: 'Company',
+    company_site: 'Company site',
+    operational_site: 'Operational site',
+    payment_method_code: 'Method',
+    amount: 'Amount',
+    collected_amount: 'Collected',
+    residual_amount: 'Residual',
+    collected_at: 'Collected on',
+  },
+  overdue: {
+    yes: 'Overdue',
+    no: 'No',
+  },
+  footer: {
+    label: 'Totals of the current filter',
+    amount: 'Amount',
+    collected_amount: 'Collected',
+    residual_amount: 'Residual',
+  },
+  actions: {
+    view_invoice: 'Open invoice',
+    edit: 'Edit due date',
+    record_collection: 'Record collection',
+    clear_collection: 'Clear collection',
+  },
+  lookupError: 'Unable to load the installment. Please try again.',
+  edit: {
+    title: 'Edit due date',
+    description: 'Change the date and the method of the installment. The amount changes by rebalancing the invoice.',
+    summary: {
+      invoice: 'Invoice / installment',
+      customer: 'Customer',
+      amount: 'Amount',
+      residual: 'Residual',
+    },
+    dueDate: 'Due date',
+    paymentMethodCode: 'Method code',
+    paymentMethodCodeHint: 'Code of an existing payment method; leave empty for none.',
+    readOnlyHint: 'You do not have permission to edit this installment.',
+    save: 'Save',
+    saving: 'Saving…',
+    cancel: 'Cancel',
+    saved: 'Due date updated.',
+    loadError: 'Unable to load the installment. Please try again.',
+    genericError: 'Unable to save the installment. Please try again.',
+    collectedConflict: 'The installment has a collection: clear the collection first, then edit it.',
+    errors: {
+      dueDateRequired: 'The due date is required.',
+      dueDateInvalid: 'Enter a valid date.',
+      paymentMethodCodeMax: 'The code can be at most 32 characters.',
+    },
+  },
+}

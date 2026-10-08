@@ -10,6 +10,7 @@ use App\Tables\Concerns\HandlesBlankSetFilter;
 use App\Tables\Concerns\InjectsDefaultIdColumn;
 use App\Tables\Concerns\ResolvesColumnConfig;
 use App\Tables\Concerns\ResolvesEditableColumns;
+use App\Tables\Concerns\ResolvesRowGroups;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
@@ -33,6 +34,7 @@ abstract class AbstractTableDefinition implements TableDefinition
     use InjectsDefaultIdColumn;
     use ResolvesColumnConfig;
     use ResolvesEditableColumns;
+    use ResolvesRowGroups;
 
     public function resource(): string
     {
@@ -68,7 +70,7 @@ abstract class AbstractTableDefinition implements TableDefinition
         $layout = $this->defaultColumnLayout();
         $editableIds = $this->editableColumnIds($actor);
 
-        return [
+        return $this->withRowGrouping([
             'resource' => $this->resource(),
             'columns' => array_map(
                 fn (array $column): array => $this->resolveColumn($column, $actor, $layout, $editableIds),
@@ -88,7 +90,7 @@ abstract class AbstractTableDefinition implements TableDefinition
             // exactly like `filterState`/`filtersCustomized`.
             'advancedFilters' => $this->resolveAdvancedFilters(),
             'appliedAdvancedFilters' => null,
-        ];
+        ], $actor);
     }
 
     /**

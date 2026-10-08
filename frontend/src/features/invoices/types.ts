@@ -78,8 +78,6 @@ export interface Invoice {
   customer: { id: number; name: string; vat_number: string | null }
   payment_method: NamedRef
   financial_account: BankAccountRef | null
-  /** Print layout saved on the document; null = the active default of the module. */
-  layout: NamedRef | null
   proforma_request: { id: number; kind: ProformaRequestKind } | null
   work_order: { id: number; code: string; title: string | null } | null
   quote: { id: number; code: string } | null
@@ -125,8 +123,6 @@ export interface InvoiceWritePayload {
   customer_registry_id: number
   payment_method_id: number
   financial_account_id: number | null
-  /** Null = "Predefinito" (resolved at print time). */
-  layout_id: number | null
   notes: string | null
   internal_note: string | null
   tag: InvoiceTag | null
@@ -140,13 +136,18 @@ export interface InvoiceDetailsPayload {
   tag: InvoiceTag | null
   deviation: number | null
   internal_note: string | null
-  layout_id: number | null
 }
 
 /** PUT `/invoice-installments/{id}/collection` body. */
+export const RESIDUAL_MODES = ['spread', 'new_installment'] as const
+export type ResidualMode = (typeof RESIDUAL_MODES)[number]
+
+/** `residual_*` travel only on a partial collection (spec 0196, D-5). */
 export interface InvoiceCollectionPayload {
   collected_amount: number
   collected_at: string
+  residual_mode?: ResidualMode
+  residual_due_date?: string
 }
 
 /** A work-order line still available to be copied into the document. */
@@ -174,7 +175,6 @@ export interface InvoiceDraft {
     customer: NamedRef | null
     payment_method: NamedRef | null
     financial_account: BankAccountRef | null
-    layout: NamedRef | null
     notes: string | null
   }
   available_lines: AvailableInvoiceLine[]
@@ -188,6 +188,8 @@ export interface InstallmentPreviewPayload {
   net_amount: number
   vat_amount: number
   total_amount: number
+  /** Edited document: lets the server return the rebalanced plan when it has collections (spec 0196, D-15). */
+  invoice_id?: number | null
 }
 
 export interface InstallmentPreviewRow {
@@ -195,6 +197,9 @@ export interface InstallmentPreviewRow {
   due_date: string
   amount: string
   payment_method_code: string | null
+  collected_amount: string | null
+  /** True on a collected installment: it stays as it is in the rebalanced plan. */
+  locked: boolean
 }
 
 export interface MonthlySummaryMonth {

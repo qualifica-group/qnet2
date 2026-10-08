@@ -28,15 +28,16 @@ import {
 import { setupAgGrid } from '@/components/data-table/ag-grid-setup'
 import {
   ACTIONS_COLUMN_ID,
-  SIDE_BAR,
+  buildSideBar,
   SkeletonLoadingCell,
   TableEmptyOverlay,
 } from '@/components/data-table/data-table-overlays'
 import { buildDataTableTheme } from '@/components/data-table/data-table-theme'
+import { buildRowGroupingGridOptions, resolveRowId } from '@/components/data-table/row-grouping-grid-options'
 import { buildTreeDataGridOptions } from '@/components/data-table/tree-data-grid-options'
 import { syncCacheBlockToPageSize } from '@/components/data-table/pagination-block-size'
 import { buildRowSelectionOptions } from '@/components/data-table/row-selection'
-import type { TableColumn, TableRow, TableRowId } from '@/features/table/types'
+import type { TableColumn, TableRow, TableRowGroupingConfig, TableRowId } from '@/features/table/types'
 import { MAX_COLUMN_WIDTH } from '@/features/table/use-table-preferences'
 import { useTableCellEdit } from '@/features/table/use-table-cell-edit'
 import { useUiScale } from '@/features/appearance/ui-scale-context'
@@ -186,6 +187,8 @@ interface DataTableProps {
    * domain but `tasks` leaves this `false`/omitted and sees no change.
    */
   treeData?: boolean
+  /** Opt-in server-side row grouping (spec 0197): row group panel, groupable/aggregated columns. Absent or disabled ⇒ no change. */
+  rowGrouping?: TableRowGroupingConfig
 }
 
 /**
@@ -222,6 +225,7 @@ export function DataTable({
   detailRowAutoHeight,
   interceptCellCommit,
   treeData,
+  rowGrouping,
 }: DataTableProps) {
   const { t, i18n } = useTranslation()
 
@@ -263,6 +267,7 @@ export function DataTable({
         actionsColumnWidth,
         masterDetail,
         treeGroupColumnId,
+        rowGrouping,
         t,
       }),
     [
@@ -278,6 +283,7 @@ export function DataTable({
       actionsColumnWidth,
       masterDetail,
       treeGroupColumnId,
+      rowGrouping,
       t,
     ],
   )
@@ -323,10 +329,7 @@ export function DataTable({
 
   // Required by SSRM for stable row identity across block reloads, and by the
   // selection feature to track selected rows by id rather than row index.
-  const getRowId = useCallback(
-    (params: GetRowIdParams<TableRow>) => String(params.data.id),
-    [],
-  )
+  const getRowId = useCallback((params: GetRowIdParams<TableRow>) => resolveRowId(params), [])
 
   // SSRM stores a header "select all" as a selection-state flag rather than
   // individually-toggled nodes, so `getSelectedRows()` returns empty on that
@@ -371,7 +374,7 @@ export function DataTable({
     () => ({
       rowModelType: 'serverSide',
       serverSideDatasource: datasource,
-      sideBar: SIDE_BAR,
+      sideBar: buildSideBar(rowGrouping?.enabled === true),
       // Universal custom field columns (spec 0021) use a dotted id
       // (`custom.<key>`) as a FLAT row key, not a nested path. AG Grid's default
       // dot-notation would otherwise read `field: 'custom.<key>'` as
@@ -440,6 +443,7 @@ export function DataTable({
         : undefined,
       detailRowAutoHeight,
       ...buildTreeDataGridOptions(treeData, treeGroupColumnId, columns, t),
+      ...buildRowGroupingGridOptions(rowGrouping, t),
     }),
     [
       datasource,
@@ -453,6 +457,7 @@ export function DataTable({
       treeData,
       treeGroupColumnId,
       columns,
+      rowGrouping,
       t,
     ],
   )

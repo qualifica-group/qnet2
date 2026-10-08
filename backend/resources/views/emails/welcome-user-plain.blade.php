@@ -10,7 +10,7 @@
 {{ __('Your temporary password will be communicated to you by the administrator. On first access you will be asked to choose a new one.') }}
 @endif
 
-{{ $isInvite ? __('Set your password') : __('Sign in') }}: {{ $url }}
+{{ $isInvite ? __('Set your password') : __('Sign in') }}: {!! $url !!}
 @if ($isInvite)
 
 {{ __('This link will expire in :count hours.', ['count' => $expireHours]) }}

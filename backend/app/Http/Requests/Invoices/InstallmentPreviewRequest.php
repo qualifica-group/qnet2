@@ -22,6 +22,7 @@ class InstallmentPreviewRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'invoice_id' => ['nullable', 'integer', Rule::exists('invoices', 'id')],
             'document_date' => ['required', 'date'],
             'payment_method_id' => ['required', 'integer', Rule::exists('payment_methods', 'id')],
             'net_amount' => ['required', 'numeric', 'between:-9999999999999,9999999999999'],

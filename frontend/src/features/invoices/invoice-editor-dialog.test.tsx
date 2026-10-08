@@ -88,7 +88,7 @@ beforeAll(async () => {
 beforeEach(() => {
   getDraftMock.mockReset().mockResolvedValue(DRAFT)
   previewMock.mockReset().mockResolvedValue([
-    { sequence: 1, due_date: '2026-11-05', amount: '305.61', payment_method_code: null },
+    { sequence: 1, due_date: '2026-11-05', amount: '305.61', payment_method_code: null, collected_amount: null, locked: false },
   ])
   createMock.mockReset()
 })

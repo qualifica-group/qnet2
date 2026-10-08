@@ -108,7 +108,6 @@ export const invoiceEditor = {
     saved: 'Document updated.',
     genericError: 'Something went wrong. Try again.',
     conflictInvoiced: 'This proforma request has already been invoiced.',
-    conflictCollected: 'The document has collected installments and cannot be edited.',
     totalNotPositive: 'The document total must be greater than zero.',
   },
   errors: {

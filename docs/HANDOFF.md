@@ -3,20 +3,68 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## SPEC 0196 LAYOUT DI STAMPA PER FATTURA — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-06)
+## SPEC 0197 MODULO SCADENZE (Contabilita' > Attiva) — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-08)
 
-- Spec `docs/specs/0196-invoice-layout-selection.xml` (approvata, opzione B dell'utente). `invoices.layout_id`
-  (nullable, restrictOnDelete). `InvoiceDocumentLayoutResolver`: layout salvato (anche se disattivato) > default attivo;
-  query `layout_id` di GET pdf / import allegato resta override. `DocumentLayout::activeDefaultFor(module)` condiviso con
-  QuoteDocumentLayoutResolver. `InvoicePdfRenderer::render(Invoice, User, ?override)`.
-- Validazione layout_id (modulo invoices, attivo) in InvoiceWriteRequest e InvoiceDetailsRequest (PATCH: chiave assente =
-  invariato, null = predefinito). InvoiceResource.layout {id,name}|null; draft defaults.layout null. Eliminazione layout usato
-  da fatture -> 422 errors.invoices (document_layouts.layout_in_use_invoices).
-- FE: `InvoiceLayoutField` (for-select document-layouts module invoices, vuoto = "Predefinito") in Testata della modale e nel
-  dialog Dettagli; dettaglio mostra il layout. Guida invoices IT/EN aggiornata.
-- Test: InvoiceLayoutSelectionTest (AC-001..004), invoice-editor-dialog.test.tsx (+layout_id null, requisito cambiato),
-  QuoteWorkflowMigrationTest rollback 132. Verifica: Pest mirato 570/570, Vitest 452/452, tsc -b, ESLint, Pint puliti.
-- Aperto: manuale Claude Docs (campo "Layout di stampa" in Testata/Dettagli).
+- Spec `docs/specs/0197-invoice-installments-module.xml` (approvata, D-1..D-8). Vista trasversale di `invoice_installments`:
+  NESSUNA tabella nuova, niente create/delete di rate (nascono solo dalla fattura). Edit solo due_date/payment_method_code
+  (409 "Collected installments cannot be edited." se c'e' incasso; due_date >= invoice.document_date). Incasso/annullo =
+  endpoint esistenti `invoice-installments/{id}/collection` (authz invoices.collect).
+- Migrazione `2026_10_10_100000_add_residual_amount_to_invoice_installments_table`: colonna VIRTUAL `residual_amount` +
+  indice (residual_amount, due_date). status/overdue in SQL = CASE identico a InstallmentStatus (non da residual).
+- Framework tabellare: row grouping SSRM OPT-IN. Backend `TableDefinition::supportsRowGroups/groupableColumns/groupAggregates`
+  (default nel trait `ResolvesRowGroups`, passthrough in `DelegatesUnaugmentedTableMethods`), `Services/Table/RowGroupQuery`
+  + `RowGroupValidator`; payload rows `rowGroupCols` + `groupKeys` (max 3, `__null__` = valore assente, 422 senza opt-in o con
+  tree/kanban). Item di gruppo `{group,column,key,label,child_count,aggregates}`. Config columns: `row_grouping` + `groupable`/`aggFunc`
+  solo per domini opt-in. FE: `features/table/row-grouping.ts`, `components/data-table/row-grouping-grid-options.ts`,
+  `buildSideBar(rowGroupingEnabled)` in data-table-overlays.
+- Modulo: domain `invoice-installments` (`InvoiceInstallmentsTableDefinition` + `Tables/InvoiceInstallments/*`), Policy
+  `InvoiceInstallmentPolicy` (viewAny, view, update, export), `InvoiceInstallmentsAuthorization` (campi gated amount,
+  collected_amount, collected_at, residual_amount), GET/PATCH `/api/invoice-installments/{id}` (`InvoiceInstallmentController`,
+  `UpdateInvoiceInstallmentRequest`, `InvoiceInstallmentUpdater`, `InvoiceInstallmentResource`). Sedi via join quotes
+  (company_site, operational_site). LogsModelActivity su InvoiceInstallment (solo due_date, payment_method_code, collected_*).
+  Nav `invoice-installments` sotto accounting-receivable. FE `pages/invoice-installments-page.tsx`, `features/invoice-installments/`,
+  i18n `invoiceInstallments.*`, guida in-app IT/EN `invoice-installments`.
+- Verifier: Pest 9477/9481 (3 soffice ambientali, 1 skip), Pint ok, Vitest full 5 flaky sotto carico (verdi isolati: request-dashboard-tabs,
+  4 chart skeleton), tsc -b --force ok, ESLint ok. `composer test` non parte con questo Composer: usare `php artisan test --parallel`.
+- Da fare: split file vicini al limite (data-table.tsx 487, router.tsx 488, AbstractTableDefinition 466, TableDefinition 465,
+  TableRowsRequest 375); test FE di assenza azioni incasso senza collect; select payment_method_code (oggi input testo).
+  Manuale Claude Docs NON accessibile: aggiungere sezione "Contabilita' > Attiva > Scadenze".
+
+## SPEC 0196 RIMODULAZIONE RATE + INCASSO PARZIALE — BRANCH feature/amministrazione (2026-10-07)
+
+- Spec `docs/specs/0196-invoice-installment-rebalancing.xml` (approvata, D-1..D-15).
+- Rimodulazione: PUT /api/invoices/{id} con incassi NON e' piu' 409. document_date/payment_method_id/customer_registry_id
+  bloccati (422 per campo); rate incassate intatte, partially_paid chiusa a collected_amount, residuo in parti uguali
+  sulle rate aperte (vat_allocation ignorata); totale minore dell'incassato -> 422 `lines`; uguale -> rate aperte eliminate;
+  nessuna rata aperta e residuo maggiore di 0 -> nuova rata ultima due_date + 30. Azzera tutti i `redistribution_snapshot`.
+- Incasso: `InvoiceCollectionService::record/clear` (record/clear USCITI da InvoiceService). PUT collection su rata gia'
+  incassata -> 409. Parziale: `residual_mode` spread|new_installment (enum ResidualMode), `residual_due_date` per
+  new_installment; la rata si chiude a collected_amount. Snapshot json `redistribution_snapshot` sulla rata incassata
+  ({installments:[{id,sequence,amount}], created_installment_id}). DELETE: ripristino esatto; 409 "Clear the later
+  collections first." se una rata spalmata/creata e' incassata dopo; senza snapshot azzera solo l'incasso.
+- Servizi: `InstallmentRebalancer` (puro, centesimi, RESIDUAL_INSTALLMENT_DAYS=30), `InvoiceScheduleRebalancer`,
+  `InvoiceCollectionService`. Preview: `invoice_id` opzionale, righe con `collected_amount` + `locked`.
+- FE: dialog incasso con scelta residuo (`invoice-collection-residual*.ts(x)`), "Registra incasso" (default + HandCoins)
+  solo su rate aperte, "Annulla incasso" (outline + Undo2) con AlertDialog di conferma (`invoice-clear-collection-dialog.tsx`);
+  editor con campi bloccati e preview con invoice_id. Guide in-app invoices IT/EN aggiornate.
+- `DemoInvoiceSeeder` ora registra gli incassi via InvoiceCollectionService (parziale = spread).
+- Manuale Claude Docs (KwvSrXafsGqT9qzZULxJhh) NON accessibile da questa sessione: da aggiornare a mano le sezioni
+  Fatture > Modifica documento (rimodulazione con incassi) e Fatture > Incassi (incasso parziale, conferma annullamento).
+- Ambiente: il PHP Laragon in bash non ha pdo_sqlite/zip attive; i test girano con PHPRC su un php.ini temporaneo.
+  QuoteDocumentPdfTest fallisce in locale per assenza di LibreOffice (ambientale).
+
+## FIX LINK MAIL TESTUALI — VERDE, NON COMMITTATO (2026-10-07)
+
+- `emails/reset-password-plain` e `emails/welcome-user-plain` stampavano `{{ $url }}` → `&amp;email=` nel corpo testo:
+  il parametro `email` si perdeva e la pagina reset/set-password mostrava subito "link non valido". Ora `{!! $url !!}`
+  (testo puro, URL costruito server-side). Test: `tests/Feature/Mail/PlainTextEmailLinkTest.php`.
+- Dati demo fatture: `DemoPaymentMethodSeeder` + 9 forme rateali (codici `riba_30_60`, `riba_30_60_90`, `riba_30_60_90_eom`,
+  `bank_transfer_30_120_eom_10`, `bank_transfer_60_90_120`, `bank_transfer_30_60_90_vat_first|vat_last`,
+  `vat_upfront_30_60_90`, `direct_debit_12_monthly`). Nuovo `DemoInvoiceSeeder` (dopo DemoWorkOrderSeeder in DemoDataSeeder):
+  1 proforma request + documento per commessa via `InvoiceService`, date relative a oggi, incassi misti; `DemoDataSeeder`
+  ora cancella le Invoice prima delle WorkOrder (restrict su registry/company). Seeder eseguiti sul DB locale; il re-run
+  completo di DemoDataSeeder NON e' stato provato.
+- Locale: `backend/.env` MAIL_MAILER=log (nessun SMTP catcher su 1025); i link reset finiscono in `storage/logs/laravel.log`.
 
 ## SPEC 0195 PDF + EMAIL/SOLLECITO FATTURE — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-06)
 

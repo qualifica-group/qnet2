@@ -27,6 +27,10 @@ export const table = {
   cellUpdateError: 'Impossibile salvare la modifica.',
   emptyConfig: 'Nessuna colonna disponibile per questa tabella.',
   noRows: 'Nessun record da mostrare.',
+  grouping: {
+    groupColumn: 'Raggruppamento',
+    unassigned: 'Non assegnata',
+  },
   resetLayout: 'Ripristina layout',
   layoutReset: 'Layout della tabella ripristinato ai valori predefiniti.',
   layoutError: 'Impossibile aggiornare il layout della tabella.',

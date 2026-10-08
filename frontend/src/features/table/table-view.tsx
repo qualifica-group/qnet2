@@ -159,6 +159,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           detailRowAutoHeight={detailRowAutoHeight}
           interceptCellCommit={interceptCellCommit}
           treeData={treeData}
+          rowGrouping={config.row_grouping}
         />
       )
     }

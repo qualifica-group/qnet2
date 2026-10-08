@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0196-invoice-installment-rebalancing" status="approved" owner="utente" date="2026-10-07">
+
+  <goal>
+    Rendere il piano rate delle fatture coerente con gli incassi reali.
+    - Rimodulazione: l'importo di una fattura si puo' cambiare anche con incassi presenti. Le rate
+      incassate restano, quelle aperte vengono ricalcolate sul residuo.
+    - Incasso parziale: quando il cliente paga meno della rata, l'utente sceglie se spalmare il residuo
+      sulle rate successive o generare una rata a parte con data modificabile.
+    - Annullamento: annullare un incasso che ha ridistribuito il residuo ripristina esattamente il piano precedente.
+  </goal>
+
+  <context>
+    Estende la spec 0194 (fatturazione attiva) e la 0195 (PDF/email/sollecito). Branch feature/amministrazione.
+
+    Nomi verificati 2026-10-07:
+    - Tabella `invoice_installments` (id, invoice_id, sequence unique per invoice, due_date, amount decimal(15,2),
+      payment_method_code, collected_amount, collected_at). Model InvoiceInstallment, status() derivato:
+      unpaid (collected null/0) | partially_paid | paid (enum InstallmentStatus).
+    - InvoiceService (286 righe): create/update/updateDetails/delete/recordCollection/clearCollection/previewInstallments;
+      update() oggi fa abort(409) con incassi (assertNoCollections) e ricalcola tutto via InvoiceInstallmentPlanner
+      -> InstallmentScheduleCalculator (centesimi interi, resto sull'ultima rata, vat_allocation).
+    - Rotte routes/api/invoices.php: PUT invoices/{invoice}, POST invoices/installment-preview,
+      PUT|DELETE invoice-installments/{installment}/collection (InvoiceCollectionController, ability `collect`).
+    - InvoiceCollectionRequest: collected_amount required numeric gt:0 max:amount, collected_at required date.
+      Oggi un PUT su rata gia' incassata sovrascrive l'incasso.
+    - InvoiceResource: installments[] {id, sequence, due_date, amount, payment_method_code, collected_amount,
+      collected_at, status}, has_collections, collected_amount, residual_amount, payment_status.
+    - Invoice usa LogsModelActivity; InvoiceInstallment no.
+    - FE features/invoices: invoice-collection-dialog.tsx + use-invoice-collection-form.ts (buildInvoiceCollectionSchema
+      in invoice-schema.ts), invoice-installments-table.tsx (onRecord/onClear), use-invoice-collection-actions.ts,
+      editor: invoice-editor-dialog/form/header-section/installments.tsx, use-invoice-editor-preview.ts, api.ts, types.ts.
+      i18n: i18n/locales/{it,en}-invoices.ts. Guida: features/help/content/{it,en}/invoices.ts (sezioni collections, actions).
+    - PDF, sollecito e payment_status leggono invoice_installments: si allineano senza modifiche.
+
+    Decisioni utente 2026-10-07:
+    - D-1 Con incassi presenti si modificano righe, note, nota interna, tag e conto bancario. document_date,
+      payment_method_id, customer_registry_id (e company_id, gia' oggi) sono bloccati: un valore diverso -> 422 sul campo.
+    - D-2 Nuovo totale minore del totale incassato -> 422 su `lines`. Nuovo totale uguale all'incassato -> le rate
+      aperte vengono eliminate, la fattura risulta pagata.
+    - D-3 Residuo = nuovo totale - incassato, ripartito in parti uguali (centesimi interi, resto sull'ultima)
+      sulle rate non incassate, che mantengono la propria due_date. vat_allocation ignorata quando ci sono incassi.
+    - D-4 In rimodulazione una rata parzialmente incassata viene chiusa: amount = collected_amount.
+    - D-5 Incasso parziale (collected_amount minore di amount): la rata si chiude a amount = collected_amount; il residuo
+      va (a) `spread` in parti uguali sulle rate successive (sequence maggiore) non incassate, oppure
+      (b) `new_installment` in una nuova rata. Senza rate successive non incassate (b) e' obbligatoria.
+      Non esiste piu' "lascia il residuo sulla rata".
+    - D-6 Nuova rata residua: data proposta = due_date della rata + 30 giorni (modificabile), sequence = rata + 1,
+      le successive vengono rinumerate (+1).
+    - D-7 Annullamento di un incasso che ha ridistribuito: ripristino esatto del piano precedente (importi,
+      sequence; la rata residua creata viene eliminata).
+    - D-8 La fattura nell'app e' un documento gestionale: modifica dell'importo consentita anche con incassi.
+    - D-9 Rimodulazione con residuo maggiore di 0 e nessuna rata aperta: nuova rata con il residuo, due_date = ultima
+      due_date + 30 giorni, sequence = max + 1.
+    - D-10 Annullamento quando nel frattempo e' successo altro:
+      - se una rata toccata dalla ridistribuzione (spalmata o creata) e' stata incassata dopo -> 409
+        "annulla prima gli incassi successivi" (ordine inverso);
+      - se dopo c'e' stata una rimodulazione -> il ripristino non e' piu' possibile: si annulla solo l'incasso,
+        le rate restano come sono.
+
+    Decisioni tecniche proposte (da validare con la spec):
+    - D-11 (approvata con la spec 2026-10-07) Su una rata gia' incassata il PUT collection risponde
+      409: per correggere si annulla (DELETE, con ripristino D-7) e si registra di nuovo. Il dialog di incasso
+      si apre solo sulle rate non incassate.
+    - D-12 Snapshot del ripristino: nuova colonna json nullable `redistribution_snapshot` su invoice_installments,
+      scritta sulla rata incassata parzialmente. Contiene il piano prima della ridistribuzione
+      ([{id, sequence, amount}] delle rate toccate, inclusa quella incassata) e `created_installment_id` (solo in caso b).
+      La rimodulazione (PUT invoices) azzera tutti gli snapshot della fattura (D-10).
+    - D-13 La rinumerazione rispetta l'unique (invoice_id, sequence) aggiornando in due passi dentro la transazione
+      (offset temporaneo), con lock della fattura (lockForUpdate) su incasso, annullamento e rimodulazione.
+    - D-14 La logica nuova esce da InvoiceService (gia' vicino a 300 righe):
+      - `InstallmentRebalancer` (puro, centesimi): ripartizione in parti uguali, rimodulazione (D-2/D-3/D-4/D-9);
+      - `InvoiceCollectionService`: record/clear con snapshot e ripristino (sposta recordCollection/clearCollection).
+      Costante RESIDUAL_INSTALLMENT_DAYS = 30.
+    - D-15 Anteprima rate in modifica: POST invoices/installment-preview accetta `invoice_id` opzionale; se la fattura
+      ha incassi restituisce il piano rimodulato (rate chiuse + aperte ricalcolate) senza salvare.
+  </context>
+
+  <scope>
+    <in>
+      <item>Rimodulazione via PUT /api/invoices/{invoice} con incassi presenti (D-1..D-4, D-9), azzeramento snapshot.</item>
+      <item>Incasso parziale con residual_mode spread | new_installment (D-5, D-6) e snapshot (D-12).</item>
+      <item>Annullamento incasso con ripristino esatto o semplice, e blocco 409 (D-7, D-10).</item>
+      <item>409 su nuovo incasso di una rata gia' incassata (D-11).</item>
+      <item>Anteprima del piano rimodulato nell'editor (D-15), campi bloccati in UI quando ci sono incassi.</item>
+      <item>Dialog di incasso: scelta del residuo, data della nuova rata (default +30, modificabile), opzione spread disabilitata senza rate successive.</item>
+      <item>Migrazione nuova colonna `redistribution_snapshot` (reversibile).</item>
+      <item>Guide in-app invoices IT+EN (sezioni collections, actions) e segnalazione/aggiornamento manuale Claude Docs (Fatture / Incassi).</item>
+    </in>
+    <out>
+      <item>Note di credito e qualunque invio allo SDI.</item>
+      <item>Modifica manuale delle date o degli importi delle singole rate (fuori dalla data della rata residua).</item>
+      <item>Incassi multipli sulla stessa rata (una rata ha un solo incasso; il parziale chiude la rata).</item>
+      <item>Migrazione dei dati esistenti con rate gia' `partially_paid`: restano leggibili, vengono chiuse alla prossima rimodulazione (D-4).</item>
+      <item>Cambio di data documento / metodo di pagamento / cliente su fattura con incassi.</item>
+      <item>Storico completo delle versioni del piano rate (si conserva solo lo snapshot dell'ultima ridistribuzione per rata).</item>
+      <item>Modifiche a PDF, email, sollecito, tabella SSRM `invoices`.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data }. data = InvoiceResource dove non indicato. -->
+
+    <endpoint method="PUT" path="/api/invoices/{invoice}">
+      <request>
+        InvoiceWritePayload invariato (spec 0194).
+        Con incassi presenti: document_date, payment_method_id, customer_registry_id, company_id devono coincidere con i valori salvati.
+      </request>
+      <response status="200">InvoiceResource. Rate: incassate invariate; parzialmente incassate con amount = collected_amount;
+        aperte ricalcolate (D-3) o eliminate (D-2) o nuova rata (D-9). redistribution_snapshot azzerati.</response>
+      <errors>
+        403 senza invoices.update.
+        422 document_date | payment_method_id | customer_registry_id: "This field cannot be changed once installments have been collected."
+        422 lines: "The document total cannot be lower than the amount already collected."
+        (il 409 "has collected installments and cannot be modified" viene rimosso; resta sul DELETE fattura)
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/invoices/installment-preview">
+      <request>
+        Body attuale { document_date, payment_method_id, net_amount, vat_amount, total_amount } + invoice_id?: int (nullable, exists:invoices).
+      </request>
+      <response status="200">
+        array di { sequence: int, due_date: "YYYY-MM-DD", amount: "0.00", payment_method_code: string|null,
+        collected_amount: "0.00"|null, locked: bool }.
+        Senza invoice_id o con fattura senza incassi: calcolo attuale, collected_amount null e locked false.
+        Con invoice_id e incassi: piano rimodulato (D-2/D-3/D-4/D-9), locked true sulle rate incassate.
+      </response>
+      <errors>
+        403 senza invoices.create/update; con invoice_id serve update su quella fattura.
+        422 total_amount: totale minore dell'incassato (stesso messaggio del PUT, sul campo total_amount).
+      </errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/invoice-installments/{installment}/collection">
+      <request>
+        {
+          collected_amount: number, required, gt:0, max:installment.amount,
+          collected_at: date, required,
+          residual_mode: "spread" | "new_installment", required se collected_amount minore di amount, altrimenti ignorato,
+          residual_due_date: date, required se residual_mode = new_installment, after_or_equal:invoice.document_date
+        }
+      </request>
+      <response status="200">InvoiceResource aggiornata.</response>
+      <errors>
+        403 senza invoices.collect.
+        409 rata gia' incassata: "This installment is already collected: clear the collection first."
+        422 residual_mode: "There are no later open installments to spread the residual on." (spread senza rate successive aperte)
+        422 residual_mode / residual_due_date: campi mancanti.
+      </errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/invoice-installments/{installment}/collection">
+      <request>nessun body</request>
+      <response status="200">
+        InvoiceResource. Con snapshot valido: piano ripristinato (importi e sequence), rata residua eliminata,
+        incasso azzerato, snapshot azzerato. Senza snapshot: solo collected_amount/collected_at azzerati.
+      </response>
+      <errors>
+        403 senza invoices.collect.
+        409 una rata toccata dalla ridistribuzione e' stata incassata dopo: "Clear the later collections first."
+      </errors>
+    </endpoint>
+
+    <resource name="InvoiceResource.installments[]">Invariata (nessun campo nuovo; lo snapshot non viene esposto).</resource>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Esempio base: fattura 1200 con rate 400/400/400 a 30/60/90 gg. -->
+    <criterion id="AC-001">Dato 1200 con rata 1 incassata 400, quando il PUT porta il totale a 1000, allora le rate sono 400 (incassata) / 300 / 300 con le due_date originali.</criterion>
+    <criterion id="AC-002">Dato 1200 con rata 1 incassata 400, quando il PUT porta il totale a 1300, allora le rate aperte sono 450 / 450.</criterion>
+    <criterion id="AC-003">Dato il residuo non divisibile (es. 1000.01 - 400 su 2 rate), allora le rate sono 300.00 / 300.01 e la somma delle rate e' uguale al totale.</criterion>
+    <criterion id="AC-004">Dato 1200 con rata 1 incassata 400, quando il PUT porta il totale a 300, allora 422 su `lines` e nessuna riga/rata cambia.</criterion>
+    <criterion id="AC-005">Dato 1200 con rata 1 incassata 400, quando il PUT porta il totale a 400, allora le rate aperte sono eliminate e payment_status = paid.</criterion>
+    <criterion id="AC-006">Dato tutte le rate incassate (1200), quando il PUT porta il totale a 1300, allora esiste una nuova rata da 100 con due_date = ultima due_date + 30 giorni e sequence 4.</criterion>
+    <criterion id="AC-007">Data una rata partially_paid (legacy, 200 su 400), quando il PUT rimodula, allora quella rata ha amount 200 e i 200 confluiscono nel residuo ripartito sulle rate aperte.</criterion>
+    <criterion id="AC-008">Dati incassi presenti, quando il PUT cambia document_date, payment_method_id o customer_registry_id, allora 422 sul campo e nulla cambia.</criterion>
+    <criterion id="AC-009">Dato un metodo con vat_allocation diversa da split e incassi presenti, quando si rimodula, allora il residuo e' ripartito in parti uguali (vat_allocation ignorata).</criterion>
+    <criterion id="AC-010">Dato 1200, quando si incassano 200 sulla rata 1 con residual_mode=spread, allora le rate sono 200 (paid) / 500 / 500.</criterion>
+    <criterion id="AC-011">Dato 1200, quando si incassano 200 sulla rata 1 con residual_mode=new_installment e residual_due_date D, allora le rate sono 1: 200 paid / 2: 200 con due_date D / 3: 400 / 4: 400.</criterion>
+    <criterion id="AC-012">Dato un incasso parziale sull'ultima rata, quando residual_mode=spread, allora 422 su residual_mode; con new_installment la nuova rata viene creata.</criterion>
+    <criterion id="AC-013">Dato un incasso parziale senza residual_mode, allora 422; con new_installment senza residual_due_date, allora 422.</criterion>
+    <criterion id="AC-014">Dato un incasso pieno (collected_amount = amount), allora nessuna ridistribuzione e nessuno snapshot.</criterion>
+    <criterion id="AC-015">Data una rata gia' incassata, quando si fa PUT collection, allora 409 e l'incasso esistente non cambia.</criterion>
+    <criterion id="AC-016">Dato AC-010, quando si fa DELETE collection sulla rata 1, allora il piano torna 400/400/400 non incassato.</criterion>
+    <criterion id="AC-017">Dato AC-011, quando si fa DELETE collection sulla rata 1, allora la rata residua e' eliminata e il piano torna 1: 400 / 2: 400 / 3: 400 con le sequence originali.</criterion>
+    <criterion id="AC-018">Dato AC-010 e poi la rata 2 incassata, quando si fa DELETE collection sulla rata 1, allora 409 e nulla cambia; annullando prima la rata 2 e poi la rata 1, il piano torna 400/400/400.</criterion>
+    <criterion id="AC-019">Dato AC-010 e poi una rimodulazione, quando si fa DELETE collection sulla rata 1, allora si azzera solo l'incasso e gli importi restano quelli rimodulati.</criterion>
+    <criterion id="AC-020">Utente senza invoices.collect -> 403 su PUT/DELETE collection; senza invoices.update -> 403 su PUT invoice e su preview con invoice_id.</criterion>
+    <criterion id="AC-021">Preview con invoice_id di una fattura con incassi restituisce il piano rimodulato (locked true sulle incassate) e non scrive nulla sul DB.</criterion>
+    <criterion id="AC-022">(FE) Nel dialog di incasso, con importo minore della rata compare la scelta del residuo; "spalma" e' disabilitata senza rate successive aperte; la data della nuova rata vale di default due_date + 30 ed e' modificabile; il payload inviato rispetta il contratto.</criterion>
+    <criterion id="AC-023">(FE) Il pulsante "Registra incasso" non compare sulle rate gia' incassate; un 409 sull'annullamento mostra il messaggio "annulla prima gli incassi successivi".</criterion>
+    <criterion id="AC-024">(FE) Nell'editor di una fattura con incassi, data documento, metodo di pagamento e cliente sono in sola lettura e l'anteprima rate invia invoice_id e mostra le rate incassate come bloccate.</criterion>
+    <criterion id="AC-025">Le guide in-app invoices IT ed EN descrivono rimodulazione, incasso parziale e annullamento con gli stessi id di sezione; il parity test resta verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Calcoli in centesimi interi (come InstallmentScheduleCalculator), mai float.
+    - Authz server-side: InvoicePolicy update / collect, invariata.
+    - Tutte le scritture del piano rate in transazione con lockForUpdate sulla fattura; nessuno stato parziale in caso di errore.
+    - Migrazione nuova (mai modificare 2026_10_07_100400), reversibile.
+    - InvoiceService resta sotto 300 righe: logica nuova in InstallmentRebalancer e InvoiceCollectionService.
+    - Envelope { success, message }; errori senza nomi di classi interne.
+    - FE: RHF + Zod, TanStack Query (invalidazione dettaglio fattura e tabella), stringhe in i18n IT/EN, nessun any.
+    - Test: Pest (Unit per InstallmentRebalancer, Feature per gli endpoint), Vitest per dialog ed editor; tsc -b --force pulito.
+  </constraints>
+
+</spec>

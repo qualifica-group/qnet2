@@ -4,6 +4,8 @@ namespace App\Http\Requests\Table;
 
 use App\Services\Table\AdvancedFilterApplier;
 use App\Services\Table\CustomFilterRuleValidator;
+use App\Services\Table\RowGroupQuery;
+use App\Services\Table\RowGroupValidator;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
@@ -141,6 +143,14 @@ class TableRowsRequest extends FormRequest
             'kanbanGroup' => ['sometimes', 'nullable', 'array'],
             'kanbanGroup.by' => ['required_with:kanbanGroup', 'string', Rule::in(self::KANBAN_GROUP_BY)],
             'kanbanGroup.key' => ['required_with:kanbanGroup'],
+
+            // Spec 0197, D-4: server-side row grouping. Shape only here; the
+            // domain opt-in, the actor's groupable columns and the key count
+            // are checked in withValidator() (RowGroupValidator).
+            'rowGroupCols' => ['sometimes', 'nullable', 'array', 'max:'.RowGroupQuery::MAX_DEPTH],
+            'rowGroupCols.*' => ['string', 'distinct'],
+            'groupKeys' => ['sometimes', 'nullable', 'array', 'max:'.RowGroupQuery::MAX_DEPTH],
+            'groupKeys.*' => ['string', 'max:'.RowGroupQuery::KEY_MAX_LENGTH],
         ];
     }
 
@@ -220,6 +230,18 @@ class TableRowsRequest extends FormRequest
                 foreach ($this->kanbanGroupErrors($kanbanGroup, $treeRequested) as $errorKey => $message) {
                     $validator->errors()->add($errorKey, $message);
                 }
+            }
+
+            $rowGroupErrors = app(RowGroupValidator::class)->errors(
+                $this->definition(),
+                $this->user(),
+                array_values(array_filter((array) $this->input('rowGroupCols'), 'is_string')),
+                array_values(array_filter((array) $this->input('groupKeys'), 'is_string')),
+                $treeRequested || is_array($kanbanGroup),
+            );
+
+            foreach ($rowGroupErrors as $errorKey => $message) {
+                $validator->errors()->add($errorKey, $message);
             }
         });
     }

@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0197-invoice-installments-module" status="approved" owner="utente" date="2026-10-07">
+
+  <goal>
+    Nuovo modulo "Scadenze" in Contabilita' > Attiva: vista trasversale di tutte le rate delle fatture attive
+    (invoice_installments), filtrabile, ordinabile, esportabile e RAGGRUPPABILE lato server per cliente, commessa,
+    sede aziendale e sede operativa, con totali per gruppo. Su ogni scadenza si fa cio' che si fa oggi nella tabella
+    scadenze del dettaglio fattura (registra/annulla incasso), piu' la modifica di data scadenza e codice modalita'.
+  </goal>
+
+  <context>
+    <!-- Nomi reali verificati nel repo il 2026-10-07 -->
+    <item>Fonte unica: tabella `invoice_installments` (spec 0194 D-13, 0196): id, invoice_id, sequence, due_date (index),
+      amount, payment_method_code, collected_amount, collected_at, redistribution_snapshot. Model `App\Models\InvoiceInstallment`,
+      stato DERIVATO `status()` -> enum `App\Enums\InstallmentStatus` (unpaid|partially_paid|paid).</item>
+    <item>Incasso gia' esistente e RIUSATO invariato: PUT/DELETE /api/invoice-installments/{installment}/collection
+      (`InvoiceCollectionController`, `InvoiceCollectionService::record/clear`, authz `invoices.collect`).</item>
+    <item>Cliente/commessa: `invoices.customer_registry_id` (registries.name), `invoices.work_order_id` (work_orders.code,title),
+      `invoices.company_id` (companies.denomination). Sedi: NON sulla fattura; `invoices.quote_id` (sempre valorizzato in
+      emissione da `InvoiceService`) -> `quotes.company_site_id` (company_sites.name) e `quotes.operational_site_id`
+      (operational_sites.alias). Entrambi nullable.</item>
+    <item>`InstallmentRebalancer`/`InvoiceScheduleRebalancer` (0196) preservano due_date e payment_method_code delle rate
+      aperte: modificarli dalla nuova pagina non confligge con la rimodulazione.</item>
+    <item>Framework tabellare generico: `config/tables.php` -> `TableRegistry`; `TableController` (columns/rows/values/bulk-delete),
+      `TableRowsRequest`, `TableService::rows()`, `TableQueryBuilder`; export `POST exports/{domain}` -> `ExportService` ->
+      `GenerateExportJob` (csv/xlsx), ability `{domain}.export`. Risposta rows: `{items, export_link, pagination{total,offset,limit,total_pages}, meta{aggregates}}`.
+      Nessun supporto row grouping oggi (FE `suppressRowGroups: true` in `data-table-overlays.tsx`; datasource
+      `features/table/ssrm-datasource.ts` usa `groupKeys` solo per tree data).</item>
+    <item>Permessi `{resource}.{ability}` via Policy `abilities()` + `permissions:sync`; permessi di campo via
+      `AbstractResourceAuthorization` registrata in `config/authorization.php` (esempio `InvoicesAuthorization`);
+      visibilita' colonna per campo: pattern `COLUMN_FIELDS` + `fieldVisible()` di `CommissionConfigurationsTableDefinition`.</item>
+    <item>Navigazione backend-driven: `config/navigation/accounting.php`, gruppo `accounting-receivable` ("Attiva").
+      Pagina FE di riferimento: `pages/invoices-page.tsx` + `features/invoices/invoices-table.tsx` (TableView, toolbar,
+      forcedFilterModel, InvoiceTotalsFooter, InvoiceDetailSheet).</item>
+    <item>Decisioni utente 2026-10-07: (1) solo vista rate fatture, niente scadenze manuali; (2) sede = entrambe
+      (aziendale + operativa); (3) row grouping SSRM vero con totali; (4) default solo scadenze aperte.</item>
+  </context>
+
+  <decisions>
+    <decision id="D-1">Nessuna nuova tabella di dominio: il modulo e' una TableDefinition `invoice-installments` su
+      invoice_installments. Create/delete di singole rate NON esposti: le rate nascono/spariscono solo dalla fattura
+      (emissione, rimodulazione 0196, eliminazione fattura). Il brief "create/edit/delete" si riduce a edit + incasso.</decision>
+    <decision id="D-2">Colonna generata VIRTUAL `residual_amount` = amount - COALESCE(collected_amount, 0) su
+      invoice_installments (MySQL + SQLite supportano VIRTUAL in ADD COLUMN) + indice composito (residual_amount, due_date):
+      filtro "aperte" (residual_amount &gt; 0), sort e aggregati senza ricalcolo in PHP. Lo stato resta derivato (0194 D-13
+      intatto): `status` in SQL = CASE su collected_amount/amount, identico a `InstallmentStatus`.</decision>
+    <decision id="D-3">Sedi lette via JOIN su quotes (left join invoices.quote_id); nessuno snapshot sulla fattura.
+      Rate senza preventivo/sede -> gruppo "Non assegnata" (chiave sentinella `__null__`).</decision>
+    <decision id="D-4">Row grouping = estensione OPT-IN del framework (`supportsRowGroups()` + `groupableColumns()`), stesso
+      pattern di tree/kanban: senza opt-in la richiesta con rowGroupCols e' 422. Colonne raggruppabili SOLO da allow-list
+      della definizione (mai input grezzo in GROUP BY/ORDER BY). Max 3 livelli. Solo questo dominio la abilita ora.</decision>
+    <decision id="D-5">"Scaduta" = rata aperta con due_date &lt; oggi (timezone app). Colonna derivata `days_overdue`
+      (0 se non scaduta) e badge; filtro rapido toolbar Aperte (default) / Scadute / Tutte via forcedFilterModel su `status`
+      e `overdue`.</decision>
+    <decision id="D-6">Modifica rata: solo `due_date` e `payment_method_code`; vietata se la rata ha un incasso
+      (collected_amount &gt; 0) -> 409. due_date &gt;= invoice.document_date. L'importo si cambia solo rimodulando la fattura.</decision>
+    <decision id="D-7">Audit: `InvoiceInstallment` adotta `LogsModelActivity` (log su due_date/payment_method_code/collected_*).</decision>
+    <decision id="D-8">Export: righe foglia piatte con filtri/sort/search correnti; il raggruppamento NON si riflette
+      nell'export (le colonne di gruppo sono comunque colonne esportabili). Colonne nascoste da permesso di campo escluse.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione: colonna virtual `residual_amount` + indice (residual_amount, due_date) su invoice_installments.</item>
+      <item>Framework: protocollo row grouping SSRM opt-in (backend TableRowsRequest/TableService/TableDefinition; frontend
+        DataTable/ssrm-datasource/side bar/row group panel) con aggregati per gruppo.</item>
+      <item>Policy `InvoiceInstallmentPolicy` (resource `invoice-installments`: viewAny, view, update, export) + permessi sincronizzati.</item>
+      <item>`InvoiceInstallmentsAuthorization` (permessi di campo) registrata in config/authorization.php.</item>
+      <item>`InvoiceInstallmentsTableDefinition` (+ ColumnCatalog/DerivedQuery) registrata in config/tables.php.</item>
+      <item>GET show + PATCH update rata (Controller, FormRequest, DTO, Service, Resource).</item>
+      <item>Voce di menu "Scadenze" in Contabilita' &gt; Attiva; route FE `/invoice-installments`; pagina con toolbar filtro
+        rapido, row group panel, footer totali, sheet dettaglio fattura (riuso), dialog modifica rata, dialog incasso/annulla (riuso).</item>
+      <item>i18n IT/EN; guida in-app `invoice-installments` IT/EN + HELP_GUIDE_KEYS; manuale Claude Docs (connettore disponibile).</item>
+    </in>
+    <out>
+      <item>Scadenze manuali / non legate a fattura; creazione o eliminazione di singole rate.</item>
+      <item>Modifica importo rata (solo via rimodulazione fattura, 0196).</item>
+      <item>Scadenze passive (fornitori), solleciti massivi dalla nuova pagina, invio email.</item>
+      <item>Export raggruppato/subtotali in xlsx; pivot; raggruppamento su domini diversi da invoice-installments.</item>
+      <item>Modifiche a InvoiceCollectionService, InstallmentRebalancer, tabella scadenze del dettaglio fattura.</item>
+      <item>Snapshot delle sedi sulla fattura.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data }. Tutte le route sotto auth:sanctum. -->
+
+    <endpoint method="GET" path="/api/tables/invoice-installments/columns">
+      <response status="200">
+        Config standard del framework + `row_grouping`:
+        { "row_grouping": { "enabled": true, "max_depth": 3,
+            "columns": ["customer","work_order","company_site","operational_site","company","payment_method_code","due_month"] } }
+        Colonne (id | type | sortable | filterable[filterType] | groupable | aggFunc):
+        invoice_number_label text s f[text] - | invoice_document_date date s f[date] | sequence number s - |
+        due_date date s f[date] | due_month text - f[set] groupable (YYYY-MM) | days_overdue number s f[number] |
+        status badge s f[set: unpaid,partially_paid,paid] | overdue badge - f[set: yes,no] |
+        customer text s f[set] groupable | work_order text s f[set] groupable (label "CODE - title") |
+        company text s f[set] groupable | company_site text s f[set] groupable | operational_site text s f[set] groupable |
+        payment_method_code text s f[set] groupable |
+        amount number s f[number] aggFunc sum | collected_amount number s f[number] aggFunc sum |
+        residual_amount number s f[number] aggFunc sum | collected_at date s f[date].
+        Colonne con campo non visibile per l'attore (permessi di campo amount/collected_amount/collected_at/residual_amount):
+        assenti da config, mapRow, distinct values, export, groupable e aggregati.
+      </response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/{domain}/rows">
+      <request>
+        Payload esistente + (solo se la definizione supportsRowGroups):
+        rowGroupCols: string[] (0..max_depth, ogni id in groupableColumns, distinti)
+        groupKeys: string[] (length &lt; rowGroupCols.length -> livello gruppo; = length -> righe foglia; &gt; -> 422).
+        Ogni groupKey: chiave restituita dal livello precedente, `__null__` = valore assente. Max 191 char.
+        Senza rowGroupCols: comportamento invariato. rowGroupCols su dominio senza opt-in -> 422 `rowGroupCols`.
+        rowGroupCols insieme a tree o kanbanGroup -> 422.
+      </request>
+      <response status="200">
+        Livello gruppo (filtri/search/advanced applicati, poi WHERE sui groupKeys dei livelli superiori, GROUP BY sul livello corrente):
+        { "items": [ { "group": true, "column": "customer", "key": "42", "label": "ACME Spa", "child_count": 7,
+                       "aggregates": { "amount": "1200.00", "collected_amount": "200.00", "residual_amount": "1000.00" } } ],
+          "pagination": {...total = numero di gruppi...}, "meta": { "aggregates": {...totali del livello...} } }
+        Ordinamento gruppi: per label asc di default; sortModel sulla colonna di gruppo o su una colonna aggFunc ordina i gruppi.
+        `key` = id stringa per colonne FK (customer/work_order/company/company_site/operational_site), valore grezzo per
+        payment_method_code/due_month. Livello foglia: shape righe standard (item del TableRowResource), WHERE su tutti i groupKeys.
+      </response>
+      <errors>403 senza invoice-installments.view; 422 rowGroupCols/groupKeys non validi.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/invoice-installments/{installment}">
+      <response status="200">
+        data: { id, sequence, due_date (Y-m-d), amount, payment_method_code, collected_amount, collected_at, status,
+          residual_amount, is_overdue: bool, days_overdue: int,
+          invoice: { id, number_label, document_date, total_amount, customer: {id,name}, work_order: {id,code,title}|null,
+                     company_site: {id,name}|null, operational_site: {id,alias}|null },
+          field_permissions: { due_date:{visible,editable,required}, payment_method_code:{...}, amount:{...},
+                               collected_amount:{...}, collected_at:{...} },
+          abilities: { update: bool, collect: bool, view_invoice: bool } }
+        Campi non visibili per permesso di campo: omessi.
+      </response>
+      <errors>403 senza invoice-installments.view; 404 inesistente.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/invoice-installments/{installment}">
+      <request>{ due_date?: "Y-m-d" (date, &gt;= invoice.document_date), payment_method_code?: string|null (max 32,
+        exists payment_methods.payment_method_code) }. Almeno un campo. Campi non editabili per permesso di campo -> 403.</request>
+      <response status="200">data: stessa shape del GET; message "Installment updated."</response>
+      <errors>403 senza invoice-installments.update o campo non editabile; 409 "Collected installments cannot be edited."
+        se collected_amount &gt; 0; 422 validazione.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/exports/invoice-installments">
+      <request>Contratto export esistente (format csv|xlsx, columns, stato griglia). rowGroupCols/groupKeys ignorati.</request>
+      <errors>403 senza invoice-installments.export.</errors>
+    </endpoint>
+
+    <permissions>
+      invoice-installments.viewAny, .view, .update, .export (nuovi, via InvoiceInstallmentPolicy::abilities()).
+      Incasso: invoices.collect (esistente). Azione "Apri fattura": invoices.view.
+      Row actions (actionsFor): view_invoice, edit (update + nessun incasso), record_collection (collect + aperta),
+      clear_collection (collect + incassata/parziale).
+    </permissions>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con invoice-installments.view, quando apre /invoice-installments, allora vede le rate di tutte le fatture con le colonne del contratto e, di default, solo quelle aperte (unpaid/partially_paid).</criterion>
+    <criterion id="AC-002">Dato un utente senza invoice-installments.view, le chiamate columns/rows/show restituiscono 403 e la voce "Scadenze" non compare nel menu.</criterion>
+    <criterion id="AC-003">residual_amount e status SQL coincidono con InstallmentStatus/model per rate unpaid, partially_paid, paid (incluso collected &gt; amount).</criterion>
+    <criterion id="AC-004">Filtri e ordinamento su ogni colonna dichiarata sortable/filterable funzionano lato server; un colId fuori allow-list -> 422.</criterion>
+    <criterion id="AC-005">rows con rowGroupCols=[customer] e groupKeys=[] restituisce un item per cliente con child_count e aggregati corretti; total = numero clienti.</criterion>
+    <criterion id="AC-006">rowGroupCols=[customer, work_order], groupKeys=["42"] restituisce le commesse del solo cliente 42; groupKeys=["42","7"] restituisce le righe foglia corrispondenti.</criterion>
+    <criterion id="AC-007">Rate senza sede (quote senza company_site) finiscono nel gruppo key `__null__` e groupKeys=["__null__"] le restituisce.</criterion>
+    <criterion id="AC-008">I filtri attivi (es. solo aperte, scadute) si applicano anche ai gruppi e ai loro aggregati.</criterion>
+    <criterion id="AC-009">rowGroupCols su un dominio senza opt-in, colonna non groupable, &gt; 3 livelli, groupKeys piu' lunghi di rowGroupCols, o combinati con tree/kanban -> 422.</criterion>
+    <criterion id="AC-010">Domini esistenti (es. invoices, tasks tree): rows senza rowGroupCols invariato (suite esistente verde).</criterion>
+    <criterion id="AC-011">PATCH con invoice-installments.update modifica due_date/payment_method_code di una rata aperta e scrive activity log.</criterion>
+    <criterion id="AC-012">PATCH su rata con incasso -> 409; due_date &lt; document_date o codice inesistente -> 422; senza update -> 403; campo non editabile per permesso di campo -> 403.</criterion>
+    <criterion id="AC-013">Dopo PATCH di due_date, una successiva rimodulazione della fattura (0196) preserva la nuova due_date sulle rate aperte.</criterion>
+    <criterion id="AC-014">Un ruolo con amount/collected_amount non visibili non riceve quelle colonne in config, rows, show, aggregati, export, e non puo' usarle in sort/filter/group (422).</criterion>
+    <criterion id="AC-015">Export csv/xlsx con invoice-installments.export produce le righe filtrate; senza permesso -> 403.</criterion>
+    <criterion id="AC-016">days_overdue/overdue: rata aperta con due_date ieri -> overdue yes, days_overdue 1; rata saldata scaduta -> overdue no, 0.</criterion>
+    <criterion id="AC-017">FE: datasource traduce rowGroupCols/groupKeys di AG Grid nel payload e mappa gli item di gruppo in righe gruppo con conteggio e aggregati; senza row_grouping in config il comportamento e il side bar restano invariati (Vitest).</criterion>
+    <criterion id="AC-018">FE: toolbar filtro rapido Aperte/Scadute/Tutte imposta il forcedFilterModel atteso; default Aperte (Vitest).</criterion>
+    <criterion id="AC-019">FE: dialog modifica rata (RHF + Zod) invia PATCH, rispetta field_permissions (campi readonly/nascosti), mostra errori 409/422 e invalida la griglia (Vitest).</criterion>
+    <criterion id="AC-020">FE: azioni riga record/clear collection riusano i dialog esistenti degli incassi e sono visibili solo con abilities.collect; "Apri fattura" apre InvoiceDetailSheet (Vitest).</criterion>
+    <criterion id="AC-021">Guida in-app invoice-installments IT/EN presente con stessi id di sezione; help-content-parity.test.ts verde.</criterion>
+    <criterion id="AC-022">Gate: Pest mirato + suite tables/invoices verdi, Pint, ESLint, Vitest, `npx tsc -b --force` puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (ag-grid-enterprise gia' presente e licenziato dal progetto per SSRM).</item>
+    <item>GROUP BY / ORDER BY / WHERE di gruppo costruiti SOLO da espressioni dichiarate in groupableColumns(); nessun raw da input.</item>
+    <item>Authz server-side su ogni endpoint (Policy + permessi di campo); nessun throttle (decisione 2026-07-15).</item>
+    <item>Niente N+1: leaf rows con JOIN/eager loading; group query singola per livello.</item>
+    <item>File entro 300/500 righe: la logica di grouping va in una classe dedicata (es. App\Services\Table\RowGroupQuery), non dentro TableService.</item>
+    <item>UI compatta (ui-design.md §2), superfici da token, responsive 375/768/1024.</item>
+    <item>Identificatori in inglese; stringhe UI via i18next.</item>
+  </constraints>
+
+</spec>

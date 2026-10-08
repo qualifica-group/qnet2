@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { InvoiceClearCollectionDialog } from '@/features/invoices/invoice-clear-collection-dialog'
 import { InvoiceCollectionDialog } from '@/features/invoices/invoice-collection-dialog'
 import { InvoiceInstallmentsTable } from '@/features/invoices/invoice-installments-table'
 import { InvoiceLinesTable } from '@/features/invoices/invoice-lines-table'
@@ -29,13 +30,20 @@ export function InvoiceDocumentSections({ invoice, onChanged }: InvoiceDocumentS
           canCollect={invoice.permissions.actions.collect === true}
           busyInstallmentId={actions.busyInstallmentId}
           onRecord={actions.openCollect}
-          onClear={actions.clear}
+          onClear={actions.requestClear}
         />
       </section>
       <InvoiceCollectionDialog
         installment={actions.collectTarget}
+        installments={invoice.installments}
         onClose={actions.closeCollect}
         onSaved={onChanged}
+      />
+      <InvoiceClearCollectionDialog
+        target={actions.clearTarget}
+        isPending={actions.isClearing}
+        onClose={actions.closeClear}
+        onConfirm={actions.confirmClear}
       />
     </div>
   )

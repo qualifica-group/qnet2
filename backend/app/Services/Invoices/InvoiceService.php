@@ -9,7 +9,6 @@ use App\Enums\InvoiceType;
 use App\Enums\ProformaRequestStatus;
 use App\Models\FinancialAccount;
 use App\Models\Invoice;
-use App\Models\InvoiceInstallment;
 use App\Models\PaymentMethod;
 use App\Models\ProformaRequest;
 use App\Models\User;
@@ -50,6 +49,7 @@ class InvoiceService
         private readonly InvoiceAmountCalculator $amounts,
         private readonly InvoiceInstallmentPlanner $planner,
         private readonly InvoiceNumberAllocator $numbers,
+        private readonly InvoiceScheduleRebalancer $schedule,
     ) {}
 
     /**
@@ -88,25 +88,36 @@ class InvoiceService
     }
 
     /**
-     * Full edit: lines replaced and schedule recomputed; number and company are fixed.
+     * Full edit: lines replaced and schedule recomputed; number and company are
+     * fixed. With collections the schedule is rebalanced instead (spec 0196).
      *
      * @param  array<string, mixed>  $data  validated InvoiceWritePayload
      */
     public function update(Invoice $invoice, array $data): Invoice
     {
         return DB::transaction(function () use ($invoice, $data): Invoice {
-            // Step 1: lock the row and refuse an edit once money was collected
+            // Step 1: lock the row and refuse a change of the issuing company
             $locked = Invoice::query()->whereKey($invoice->getKey())->lockForUpdate()->firstOrFail();
-            $this->assertNoCollections($locked, 'This invoice has collected installments and cannot be modified.');
 
             if ((int) $data['company_id'] !== $locked->company_id) {
                 throw ValidationException::withMessages(['company_id' => ['The issuing company cannot be changed.']]);
             }
 
-            // Step 2: validate and compute, then replace header, lines and schedule
-            $prepared = $this->prepare($data, $locked->work_order_id);
+            // Step 2: validate and compute; with collections plan the rebalancing first
+            $collected = $this->schedule->hasCollections($locked);
+            $collected && $this->schedule->assertFrozenFields($locked, $data);
+            $prepared = $this->prepare($data, $locked->work_order_id, ! $collected);
+            $plan = $collected ? $this->schedule->plan($locked, $prepared['header']['total_amount']) : null;
+
+            // Step 3: replace header, lines and schedule
             $locked->update($prepared['header']);
-            $this->writeChildren($locked, $prepared);
+
+            if ($plan === null) {
+                $this->writeChildren($locked, $prepared);
+            } else {
+                $this->writeLines($locked, $prepared);
+                $this->schedule->apply($locked, $plan);
+            }
 
             return $this->detail($locked);
         });
@@ -150,28 +161,21 @@ class InvoiceService
         });
     }
 
-    public function recordCollection(InvoiceInstallment $installment, string $amount, string $collectedAt): Invoice
-    {
-        $installment->update(['collected_amount' => $this->amounts->normalize($amount), 'collected_at' => $collectedAt]);
-
-        return $this->detail($installment->invoice);
-    }
-
-    public function clearCollection(InvoiceInstallment $installment): Invoice
-    {
-        $installment->update(['collected_amount' => null, 'collected_at' => null]);
-
-        return $this->detail($installment->invoice);
-    }
-
     /**
-     * Schedule shown by the modal before saving.
+     * Schedule shown by the modal before saving; the rebalanced plan when the
+     * edited invoice already has collections (spec 0196, D-15).
      *
      * @param  array<string, mixed>  $data  validated preview payload
-     * @return array<int, array{sequence: int, due_date: string, amount: string, payment_method_code: string|null}>
+     * @return array<int, array{sequence: int, due_date: string, amount: string, payment_method_code: string|null, collected_amount: string|null, locked: bool}>
      */
     public function previewInstallments(array $data): array
     {
+        $invoice = isset($data['invoice_id']) ? Invoice::query()->find($data['invoice_id']) : null;
+
+        if ($invoice !== null && $this->schedule->hasCollections($invoice)) {
+            return $this->schedule->preview($invoice, $this->amounts->normalize($data['total_amount']));
+        }
+
         $schedule = $this->planner->plan(
             CarbonImmutable::parse($data['document_date']),
             PaymentMethod::query()->findOrFail($data['payment_method_id']),
@@ -180,7 +184,7 @@ class InvoiceService
             $this->amounts->normalize($data['total_amount']),
         );
 
-        return array_map(fn (array $row): array => ['due_date' => $row['due_date']->toDateString()] + $row, $schedule);
+        return $this->schedule->previewRows($schedule);
     }
 
     public function detail(Invoice $invoice): Invoice
@@ -194,7 +198,7 @@ class InvoiceService
      * @param  array<string, mixed>  $data
      * @return array{header: array<string, mixed>, lines: array<int, array<string, mixed>>, installments: array<int, array<string, mixed>>}
      */
-    private function prepare(array $data, ?int $workOrderId): array
+    private function prepare(array $data, ?int $workOrderId, bool $withSchedule = true): array
     {
         $this->assertBankBelongsToCompany($data);
         $this->assertLinesBelongToWorkOrder($data['lines'], $workOrderId);
@@ -205,13 +209,13 @@ class InvoiceService
             throw ValidationException::withMessages(['lines' => ['The document total must be greater than zero.']]);
         }
 
-        $installments = $this->planner->plan(
+        $installments = $withSchedule ? $this->planner->plan(
             CarbonImmutable::parse($data['document_date']),
             PaymentMethod::query()->findOrFail($data['payment_method_id']),
             $computed['net'],
             $computed['vat'],
             $computed['total'],
-        );
+        ) : [];
 
         $header = Arr::only($data, ['document_date', 'company_id', 'customer_registry_id', 'payment_method_id', ...self::OPTIONAL_HEADER_KEYS])
             + ['layout_id' => $data['layout_id'] ?? null, 'net_amount' => $computed['net'], 'vat_amount' => $computed['vat'], 'total_amount' => $computed['total']];
@@ -224,10 +228,18 @@ class InvoiceService
      */
     private function writeChildren(Invoice $invoice, array $prepared): void
     {
-        $invoice->lines()->delete();
+        $this->writeLines($invoice, $prepared);
         $invoice->installments()->delete();
-        $invoice->lines()->createMany($prepared['lines']);
         $invoice->installments()->createMany($prepared['installments']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $prepared
+     */
+    private function writeLines(Invoice $invoice, array $prepared): void
+    {
+        $invoice->lines()->delete();
+        $invoice->lines()->createMany($prepared['lines']);
     }
 
     /**

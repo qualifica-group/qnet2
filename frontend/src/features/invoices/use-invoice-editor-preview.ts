@@ -11,6 +11,8 @@ interface PreviewInputs {
   documentDate: string
   paymentMethodId: number
   totals: InvoiceTotalsCents
+  /** Edited document with collections: the server answers with the rebalanced plan (spec 0196, D-15). */
+  invoiceId: number | null
 }
 
 /**
@@ -18,7 +20,7 @@ interface PreviewInputs {
  * burst of edits costs one request; idle until date, payment and a positive
  * total are present (the server rejects anything else with a 422).
  */
-export function useInvoiceEditorPreview({ documentDate, paymentMethodId, totals }: PreviewInputs) {
+export function useInvoiceEditorPreview({ documentDate, paymentMethodId, totals, invoiceId }: PreviewInputs) {
   const payload = useMemo((): InstallmentPreviewPayload | null => {
     const paymentMethod = idToSelectValue(paymentMethodId)
     if (documentDate === '' || paymentMethod === null || totals.total <= 0) {
@@ -30,8 +32,9 @@ export function useInvoiceEditorPreview({ documentDate, paymentMethodId, totals 
       net_amount: fromCents(totals.net),
       vat_amount: fromCents(totals.vat),
       total_amount: fromCents(totals.total),
+      ...(invoiceId === null ? {} : { invoice_id: invoiceId }),
     }
-  }, [documentDate, paymentMethodId, totals.net, totals.vat, totals.total])
+  }, [documentDate, paymentMethodId, totals.net, totals.vat, totals.total, invoiceId])
 
   const key = useDebouncedValue(JSON.stringify(payload), PREVIEW_DEBOUNCE_MS)
   const debounced = useMemo(() => JSON.parse(key) as InstallmentPreviewPayload | null, [key])

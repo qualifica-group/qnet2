@@ -27,6 +27,10 @@ export const table = {
   cellUpdateError: 'Unable to save the change.',
   emptyConfig: 'No columns are available for this table.',
   noRows: 'No records to show.',
+  grouping: {
+    groupColumn: 'Group',
+    unassigned: 'Unassigned',
+  },
   resetLayout: 'Reset layout',
   layoutReset: 'Table layout reset to default.',
   layoutError: 'Unable to update the table layout.',

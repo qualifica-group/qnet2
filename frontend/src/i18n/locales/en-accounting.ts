@@ -5,6 +5,7 @@
 
 import { financialAccounts } from './en-financial-accounts'
 import { invoiceEditor } from './en-invoice-editor'
+import { invoiceInstallments } from './en-invoice-installments'
 import { invoices } from './en-invoices'
 import { paymentMethods } from './en-payment-methods'
 import { proformaRequests } from './en-proforma-requests'
@@ -14,5 +15,6 @@ export const accounting = {
   proformaRequests,
   paymentMethods,
   invoices,
+  invoiceInstallments,
   invoiceEditor,
 }
