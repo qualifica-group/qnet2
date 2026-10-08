@@ -29,6 +29,7 @@ export interface ProformaRequest {
   note: string
   work_order: { id: number; code: string; title: string | null }
   company: NamedRef | null
+  customer: NamedRef | null
   supplier: NamedRef | null
   payment_method: NamedRef | null
   assigned_to: NamedRef

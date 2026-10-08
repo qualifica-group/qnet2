@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## RICHIESTE PROFORMA: COLONNA "CLIENTE" — VERDE, NON COMMITTATO (2026-10-08)
+
+- Nuovo campo `customer` ({id,name} | null) = `workOrder.quote.opportunity.registry` (stesso cliente di default
+  dell'emissione per le Consulenze). Display-only, non ordinabile/filtrabile. Catalogo colonne (dopo `company`),
+  `ProformaRequestsTableDefinition` (eager load + mapRow), `ProformaRequestService::RESOURCE_RELATIONS`, `ProformaRequestResource`.
+- FE: `types.ts`, `column-renderers.tsx` (RelationCell), dettaglio, i18n IT 'Cliente' / EN 'Customer', guide in-app IT+EN.
+- Test: nuovo caso in `ProformaRequestTablesTest.php`. Manuale Claude Docs NON aggiornato (doc non condiviso):
+  sezione Richieste Proforma, aggiungere colonna "Cliente".
+
 ## FATTURE: LABEL "INTESTATARIO" -> "CLIENTE" — VERDE, NON COMMITTATO (2026-10-08)
 
 - Solo i18n: `it-invoices`/`it-invoice-editor` `customer` = 'Cliente' (+ `selectCustomer`, `customerRequired`);

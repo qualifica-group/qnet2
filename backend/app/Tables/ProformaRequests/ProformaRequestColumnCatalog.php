@@ -44,6 +44,14 @@ final class ProformaRequestColumnCatalog
                 'filterable' => false,
             ],
             [
+                'id' => 'customer',
+                'label' => 'proformaRequests.columns.customer',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => false,
+            ],
+            [
                 'id' => 'kind',
                 'label' => 'proformaRequests.columns.kind',
                 'type' => 'badge',
