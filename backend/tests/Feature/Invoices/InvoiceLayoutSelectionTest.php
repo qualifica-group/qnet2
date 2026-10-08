@@ -55,7 +55,7 @@ it('AC-001: POST/PUT save an active invoices layout, refuse quotes/inactive ones
 
     $other = selectionLayout('B');
     $installmentId = $this->getJson($url)->assertOk()->json('data.installments.0.id');
-    $this->putJson("/api/invoice-installments/{$installmentId}/collection", ['collected_amount' => '1.00', 'collected_at' => '2026-04-01'])->assertOk();
+    $this->putJson("/api/invoice-installments/{$installmentId}/collection", ['collected_amount' => '1.00', 'collected_at' => '2026-04-01', 'residual_mode' => 'spread'])->assertOk();
     $this->patchJson("{$url}/details", ['layout_id' => $other->id])->assertOk()->assertJsonPath('data.layout.id', $other->id);
     $this->patchJson("{$url}/details", ['tag' => 'final'])->assertOk()->assertJsonPath('data.layout.id', $other->id);
     $this->patchJson("{$url}/details", ['layout_id' => null])->assertOk()->assertJsonPath('data.layout', null);

@@ -114,6 +114,8 @@ export const invoices = {
     header: 'Testata',
     notes: 'Note',
     internalNote: 'Note interne',
+    layout: 'Layout di stampa',
+    layoutDefault: 'Predefinito',
     externalReference: 'Fattura esterna',
     createdBy: 'Emesso da',
     linesColumns: {

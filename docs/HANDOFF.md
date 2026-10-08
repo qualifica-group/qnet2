@@ -3,6 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX MERGE 2ba2bb5a/a1ba1cef — LAYOUT FATTURA (spec 0196 layout) PERSO NEL FE — VERDE, NON COMMITTATO (2026-10-08)
+
+- I merge su feature/amministrazione avevano scartato parte di `4d71a636` (per-invoice print layout): ripristinati
+  `types.ts` (Invoice.layout, layout_id nei payload, InvoiceDraft.defaults.layout), `invoice-schema.ts` (layout_id in write
+  e details), `invoice-editor-source.ts` (layout/layout_id), `invoice-editor-header-section.tsx` (`InvoiceLayoutField`),
+  i18n `invoices.*.layout/layoutDefault` IT/EN. Backend era integro.
+- `QuoteWorkflowMigrationTest`: rollback `--step` 134 (mancava `add_layout_id_to_invoices_table`).
+- `InvoiceLayoutSelectionTest`: l'incasso parziale ora passa `residual_mode: spread` (requisito 0196 ribilanciamento).
+- Permessi `invoice-installments.{view,viewAny,update,export}` creati nel DB locale con `permissions:sync` +
+  `roles:create-super-admin` (da rilanciare in ogni ambiente dopo il deploy). Altri ruoli: nessun permesso invoices*.
+- Verificato: tsc -b EXIT=0, Vitest invoices/help/i18n 327/327, Pest Invoices+InvoiceInstallments+DocumentLayouts+migrazioni 236/236.
+- Nota ambiente: php Herd bloccato da Device Guard; usare `C:/laragon-6/bin/php/php-8.4.19/php.exe`.
+
 ## SPEC 0197 MODULO SCADENZE (Contabilita' > Attiva) — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-08)
 
 - Spec `docs/specs/0197-invoice-installments-module.xml` (approvata, D-1..D-8). Vista trasversale di `invoice_installments`:

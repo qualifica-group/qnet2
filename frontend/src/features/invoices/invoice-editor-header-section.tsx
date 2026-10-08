@@ -8,6 +8,7 @@ import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-a
 import { PAYMENT_METHODS_FOR_SELECT_RESOURCE } from '@/features/payment-methods/for-select-api'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { InvoiceEditorBankField } from '@/features/invoices/invoice-editor-bank-field'
+import { InvoiceLayoutField } from '@/features/invoices/invoice-layout-field'
 import { InvoiceEditorRelationField } from '@/features/invoices/invoice-editor-relation-field'
 import type { EditorSource } from '@/features/invoices/invoice-editor-source'
 import type { InvoiceWriteFormValues } from '@/features/invoices/invoice-schema'
@@ -93,6 +94,7 @@ export function InvoiceEditorHeaderSection({ form, source, companyId, companyLoc
           bankAccounts={source.bankAccounts}
           selected={source.financialAccount}
         />
+        <InvoiceLayoutField control={control} selected={source.layout} />
         <FormField
           control={control}
           name="tag"
