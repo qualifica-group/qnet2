@@ -46,7 +46,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "**Force closing** stays a row action (it asks for a reason), not a cell. Work order no., Contract no., Linked offer, Status, Completion, Created at and Updated at stay read-only.",
+          text: "**Force closing** stays a row action (it asks for a reason), not a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. Work order no., Contract no., Linked offer, Registry, Status, Completion, Created at and Updated at stay read-only.",
         },
       ],
     },

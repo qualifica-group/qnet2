@@ -2,8 +2,10 @@
 
 use App\Enums\WorkOrderType;
 use App\Models\ExportRun;
+use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\QuoteLine;
+use App\Models\Registry;
 use App\Models\WorkOrder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -15,14 +17,14 @@ uses(RefreshDatabase::class);
 // columns config — AC-040
 // ---------------------------------------------------------------------------
 
-it('GET /api/tables/work-orders/columns declares the 13 columns, status non-sortable + set filter (AC-040, spec 0149 AC-011)', function () {
+it('GET /api/tables/work-orders/columns declares the columns, status non-sortable + set filter (AC-040, spec 0149 AC-011)', function () {
     $actor = workOrderUserWith(['viewAny']);
     Sanctum::actingAs($actor);
 
     $data = $this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data');
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors']);
+    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'registry', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['status']['sortable'])->toBeFalse()
@@ -35,6 +37,8 @@ it('GET /api/tables/work-orders/columns declares the 13 columns, status non-sort
         ->and($columns['is_force_closed']['filterType'])->toBe('set')
         ->and($columns['contract_number']['filterType'])->toBe('text')
         ->and($columns['quote']['filterType'])->toBe('text')
+        ->and($columns['registry']['filterType'])->toBe('set')
+        ->and($columns['registry']['editable'] ?? false)->toBeFalse()
         ->and($data['searchable'])->toEqualCanonicalizing(['code', 'title', 'contract_number']);
 });
 
@@ -119,6 +123,71 @@ it('rows expose `quote` as quotes.title (AC-041)', function () {
     $row = collect($response->json('items'))->firstWhere('title', 'Row');
 
     expect($row['quote'])->toBe('Offerta di riferimento');
+});
+
+// ---------------------------------------------------------------------------
+// registry (Anagrafica) derived from quote.opportunity.registry
+// ---------------------------------------------------------------------------
+
+function workOrderForRegistry(string $registryName, string $title): WorkOrder
+{
+    $registry = Registry::factory()->create(['name' => $registryName]);
+    $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
+    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+
+    return WorkOrder::factory()->create(['quote_id' => $quote->id, 'title' => $title]);
+}
+
+it('rows expose `registry` as the {id, name} of quote.opportunity.registry', function () {
+    $actor = workOrderUserWith(['viewAny', 'view']);
+    $workOrder = workOrderForRegistry('Acme S.p.A.', 'Row');
+    Sanctum::actingAs($actor);
+
+    $row = collect($this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 25])->assertOk()->json('items'))
+        ->firstWhere('title', 'Row');
+
+    expect($row['registry'])->toBe(['id' => $workOrder->quote->opportunity->registry_id, 'name' => 'Acme S.p.A.']);
+});
+
+it('filters by registry name with a set filter', function () {
+    $actor = workOrderUserWith(['viewAny', 'view']);
+    workOrderForRegistry('Acme S.p.A.', 'Matching');
+    workOrderForRegistry('Beta S.r.l.', 'Other');
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/work-orders/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => ['registry' => ['filterType' => 'set', 'values' => ['Acme S.p.A.']]],
+    ])->assertOk();
+
+    expect(collect($response->json('items'))->pluck('title')->all())->toBe(['Matching']);
+});
+
+it('sorts by registry name', function () {
+    $actor = workOrderUserWith(['viewAny', 'view']);
+    workOrderForRegistry('Zeta', 'Z');
+    workOrderForRegistry('Alfa', 'A');
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/work-orders/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'sortModel' => [['colId' => 'registry', 'sort' => 'desc']],
+    ])->assertOk();
+
+    expect(collect($response->json('items'))->pluck('registry.name')->all())->toBe(['Zeta', 'Alfa']);
+});
+
+it('distinct-values for `registry` lists only the registries reached by a work order', function () {
+    $actor = workOrderUserWith(['viewAny']);
+    workOrderForRegistry('Beta S.r.l.', 'Second');
+    workOrderForRegistry('Acme S.p.A.', 'First');
+    Registry::factory()->create(['name' => 'Unrelated S.r.l.']);
+    Sanctum::actingAs($actor);
+
+    $values = $this->postJson('/api/tables/work-orders/values', ['columnId' => 'registry', 'limit' => 25])
+        ->assertOk()->json('data.values');
+
+    expect($values)->toBe(['Acme S.p.A.', 'Beta S.r.l.']);
 });
 
 // ---------------------------------------------------------------------------

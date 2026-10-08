@@ -19,6 +19,7 @@ export const workOrders = {
     title: 'Titolo',
     contract_number: 'Contratto n.',
     quote: 'Offerta collegata',
+    registry: 'Anagrafica',
     type: 'Tipo commessa',
     callback_date: 'Data richiamo',
     start_date: 'Data inizio',

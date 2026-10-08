@@ -21,7 +21,8 @@ use App\Enums\WorkOrderType;
  * from the root tasks (spec 0149, resolved by WorkOrderStatusResolver):
  * `status` is `sortable: false` (no single sort key for a derived state) and
  * `set`-filterable over its 4 values; `completion_percentage` is sortable
- * but not filterable (D-10).
+ * but not filterable (D-10). `registry` (the Anagrafica) is DERIVED through
+ * `quote.opportunity.registry` and `set`-filtered by name.
  *
  * Spec 0206: `title`/`type`/`callback_date`/`start_date`/`supervisors` are
  * inline-editable and write through WorkOrderCellWriter (the form's own
@@ -80,6 +81,17 @@ final class WorkOrderColumnCatalog
                 'filterable' => true,
                 'filterType' => 'text',
                 'hasFilterValues' => false,
+            ],
+            [
+                // The client, `{id, name}` through `quote.opportunity.registry`
+                // (WorkOrderRegistryColumn). Read-only: it follows the quote.
+                'id' => 'registry',
+                'label' => 'workOrders.columns.registry',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
             ],
             [
                 'id' => 'type',
@@ -195,6 +207,7 @@ final class WorkOrderColumnCatalog
             ['columnId' => 'title', 'type' => 'text'],
             ['columnId' => 'contract_number', 'type' => 'text'],
             ['columnId' => 'quote', 'type' => 'text'],
+            ['columnId' => 'registry', 'type' => 'set'],
             ['columnId' => 'type', 'type' => 'set'],
             ['columnId' => 'callback_date', 'type' => 'date'],
             ['columnId' => 'is_force_closed', 'type' => 'set'],

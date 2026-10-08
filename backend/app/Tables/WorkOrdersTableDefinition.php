@@ -6,6 +6,7 @@ namespace App\Tables;
 
 use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderType;
+use App\Models\Registry;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
@@ -27,7 +28,8 @@ use Illuminate\Support\Facades\Gate;
  * generic engine. `contract_number`/`quote` are DERIVED through the `quote`
  * relation (D-2: `quotes.code`/`quotes.title`, never copied), `supervisors`
  * is a to-many derived through the `work_order_supervisor` pivot (spec 0096,
- * D-7) and `status`/`completion_percentage` are COMPUTED from the root tasks
+ * D-7), `registry` is the client reached through `quote.opportunity` and
+ * `status`/`completion_percentage` are COMPUTED from the root tasks
  * (spec 0149) by WorkOrderStatusResolver — the `status` filter through
  * WorkOrderDerivedColumns (file-size split, engineering.md §6), the
  * completion sort directly — so badge, filter and sort can never disagree.
@@ -94,10 +96,11 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // WorkOrderVisibilityScope::isVisibleTo() answers actionsFor()'s
         // per-row Gate calls in memory instead of querying (user
         // directive 2026-09-02).
+        // `quote.opportunity.registry` feeds the Anagrafica column.
         // The root-task aggregates feed `status`/`completion_percentage`
         // (spec 0149, D-8) without one query per row.
         return WorkOrderVisibilityScope::scopeToActor(
-            $this->statusResolver->withProgress(WorkOrder::query()->with(['quote', 'supervisors.avatar', 'participants'])),
+            $this->statusResolver->withProgress(WorkOrder::query()->with(['quote.opportunity.registry', 'supervisors.avatar', 'participants'])),
             Auth::user(),
         );
     }
@@ -193,6 +196,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'title' => $row->title,
             'contract_number' => $row->quote?->code,
             'quote' => $row->quote?->title,
+            'registry' => $this->registrySummary($row->quote?->opportunity?->registry),
             'type' => $row->type?->value,
             'start_date' => $row->start_date,
             'supervisors' => $row->supervisors->map(fn (User $user): array => $this->userSummary($user))->all(),
@@ -203,6 +207,14 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'created_at' => $row->created_at,
             'updated_at' => $row->updated_at,
         ];
+    }
+
+    /**
+     * @return array{id: int, name: string}|null
+     */
+    private function registrySummary(?Registry $registry): ?array
+    {
+        return $registry === null ? null : ['id' => $registry->id, 'name' => $registry->name];
     }
 
     /**

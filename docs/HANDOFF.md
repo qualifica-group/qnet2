@@ -12,6 +12,19 @@
 - Attenzione: `QualificaWorkflowSeeder` salta i workflow gia' esistenti, quindi su un DB gia' seminato il flag va
   impostato a mano dal configuratore stati (o con un seed su DB pulito).
 
+## GRIGLIA COMMESSE: COLONNA ANAGRAFICA — VERDE, COMMITTATO (2026-10-08)
+
+- Nuova colonna `registry` ("Anagrafica"/"Registry") nella griglia `work-orders`, dopo `quote`: `{id, name}` derivato
+  da `quote.opportunity.registry` (stessa catena di `WorkOrderResource::summarizeRegistry` e della griglia Contratti).
+  Sola lettura (il form non la edita), `set` filter sul nome, sortable, distinct values scoped. Nessuna voce "(Vuoti)":
+  `work_orders.quote_id`/`quotes.opportunity_id`/`opportunities.registry_id` sono tutti NOT NULL.
+- Backend: nuova `Tables/WorkOrders/WorkOrderRegistryColumn` (filtro/sort/distinct) delegata da
+  `WorkOrderDerivedColumns`; eager load `quote.opportunity.registry` in `WorkOrdersTableDefinition::baseQuery()`.
+  `WorkOrderDerivedColumns` (320) e `WorkOrdersTableDefinition` (318) oltre il soft limit 300.
+- Frontend: renderer `RelationCell` + icona `Building2`; i18n `workOrders.columns.registry`; guida in-app IT/EN
+  sezione `list-editing`. Spec 0093 aggiornata (delta 2026-10-08).
+- Manuale Claude Docs: NON aggiornato (documento non condiviso con la sessione) — sezione Commesse > elenco da allineare.
+
 ## GRIGLIE OFFERTE/COMMESSE/ANAGRAFICHE/OPPORTUNITA': OGNI COLONNA EDITABILE IN CELLA CON LE REGOLE DEL FORM — VERDE, COMMITTATO (2026-10-07)
 
 - Spec `docs/specs/0206-main-modules-grid-inline-editing.xml` (decisioni utente: cambio Anagrafica opportunita' in

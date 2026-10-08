@@ -25,7 +25,9 @@ use Illuminate\Support\Facades\DB;
  * column, D-10) and `supervisors` (spec 0096 D-7, the Responsabili reached
  * through the `work_order_supervisor` pivot — a to-many rendered as an avatar
  * stack, not sortable, `set`-filtered via whereHas, exactly like
- * QuoteRelationColumns' own `managers`).
+ * QuoteRelationColumns' own `managers`). `registry` (the Anagrafica,
+ * reached through `quote.opportunity`) is delegated to
+ * WorkOrderRegistryColumn.
  *
  * Every column id reaching this class comes from the definition's own static
  * catalogue (WorkOrderColumnCatalog) — never client input.
@@ -64,6 +66,7 @@ final class WorkOrderDerivedColumns
     public function __construct(
         private readonly WorkOrderStatusResolver $statusResolver,
         private readonly FilterApplier $filterApplier,
+        private readonly WorkOrderRegistryColumn $registryColumn,
     ) {}
 
     /**
@@ -87,6 +90,12 @@ final class WorkOrderDerivedColumns
 
         if ($columnId === self::SUPERVISORS_COLUMN) {
             $this->applySupervisorsFilter($query, $this->setFilterValues($filter), $this->matchesBlankEntry($filter));
+
+            return true;
+        }
+
+        if ($columnId === WorkOrderRegistryColumn::COLUMN) {
+            $this->registryColumn->applyFilter($query, $filter);
 
             return true;
         }
@@ -148,6 +157,12 @@ final class WorkOrderDerivedColumns
      */
     public function applySort(Builder $query, string $columnId, string $direction): bool
     {
+        if ($columnId === WorkOrderRegistryColumn::COLUMN) {
+            $this->registryColumn->applySort($query, $direction);
+
+            return true;
+        }
+
         $quoteColumn = self::QUOTE_SCALAR_COLUMNS[$columnId] ?? null;
 
         if ($quoteColumn === null) {
@@ -174,7 +189,7 @@ final class WorkOrderDerivedColumns
      * contract). `contract_number`/`quote` declare `hasFilterValues: false`
      * (WorkOrderColumnCatalog), so this is never reached for them.
      *
-     * @return array<int, string>|null
+     * @return array<int, string|null>|null
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
@@ -187,6 +202,7 @@ final class WorkOrderDerivedColumns
                 $search,
                 fn (): bool => (clone $query)->whereDoesntHave(self::SUPERVISORS_RELATION)->exists(),
             ),
+            WorkOrderRegistryColumn::COLUMN => $this->registryColumn->distinctValues($search, $query, $limit),
             default => null,
         };
     }

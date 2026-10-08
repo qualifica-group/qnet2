@@ -10,7 +10,7 @@ import { workOrderColumnRenderers } from '@/features/work-orders/column-renderer
  * (`work_order_type`/`work_order_status`, confirmed by the backend) and are
  * therefore covered by the generic `BadgeCell` fallback, not by this map —
  * this suite only locks down the entries `workOrderColumnRenderers` DOES
- * own: `code`, `is_force_closed` (a plain boolean with no backend `enumKey`/
+ * own: `code`, `registry`, `is_force_closed` (a plain boolean with no backend `enumKey`/
  * `badges`) and the date columns.
  */
 
@@ -31,6 +31,18 @@ describe('workOrderColumnRenderers.code', () => {
   it('renders the code as a badge', () => {
     renderCell('code', 'COM-0003')
     expect(screen.getByText('COM-0003')).toBeInTheDocument()
+  })
+})
+
+describe('workOrderColumnRenderers.registry', () => {
+  it('renders the registry name', () => {
+    renderCell('registry', { id: 7, name: 'Acme S.p.A.' })
+    expect(screen.getByText('Acme S.p.A.')).toBeInTheDocument()
+  })
+
+  it('renders an em dash when unset', () => {
+    renderCell('registry', null)
+    expect(screen.getByText('—')).toBeInTheDocument()
   })
 })
 

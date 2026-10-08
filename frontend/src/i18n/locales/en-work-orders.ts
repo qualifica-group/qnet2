@@ -19,6 +19,7 @@ export const workOrders = {
     title: 'Title',
     contract_number: 'Contract no.',
     quote: 'Linked offer',
+    registry: 'Registry',
     type: 'Work order type',
     callback_date: 'Callback date',
     start_date: 'Start date',

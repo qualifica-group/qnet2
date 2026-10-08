@@ -46,7 +46,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "La **Chiusura forzata** resta un'azione di riga (chiede il motivo), non una cella. Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Stato, Completamento, Creata il e Aggiornata il.",
+          text: "La **Chiusura forzata** resta un'azione di riga (chiede il motivo), non una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Stato, Completamento, Creata il e Aggiornata il.",
         },
       ],
     },
