@@ -30,6 +30,12 @@ export const table = {
   grouping: {
     groupColumn: 'Group',
     unassigned: 'Unassigned',
+    groupBy: 'Group by',
+    none: 'No grouping',
+    activeLevels: 'Grouping levels',
+    maxLevels: 'Up to {{count}} levels, in selection order',
+    removeLevel: 'Remove {{label}} from grouping',
+    clear: 'Clear grouping',
   },
   resetLayout: 'Reset layout',
   layoutReset: 'Table layout reset to default.',

@@ -30,6 +30,12 @@ export const table = {
   grouping: {
     groupColumn: 'Raggruppamento',
     unassigned: 'Non assegnata',
+    groupBy: 'Raggruppa per',
+    none: 'Nessun raggruppamento',
+    activeLevels: 'Livelli di raggruppamento',
+    maxLevels: 'Fino a {{count}} livelli, in ordine di selezione',
+    removeLevel: 'Rimuovi {{label}} dal raggruppamento',
+    clear: 'Rimuovi raggruppamento',
   },
   resetLayout: 'Ripristina layout',
   layoutReset: 'Layout della tabella ripristinato ai valori predefiniti.',

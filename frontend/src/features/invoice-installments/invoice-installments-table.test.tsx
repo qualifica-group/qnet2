@@ -127,14 +127,14 @@ beforeEach(() => {
 })
 
 describe('InvoiceInstallmentsTable (spec 0197 AC-018, AC-020)', () => {
-  it('mounts the installments domain forced to the open filter and renders the footer totals', () => {
+  it('mounts the installments domain forced to the not-collected filter and renders the footer totals', () => {
     renderTable()
 
     const region = screen.getByRole('region', { name: 'table-invoice-installments' })
     expect(JSON.parse(region.getAttribute('data-forced') ?? '{}')).toEqual({
-      status: { filterType: 'set', values: ['unpaid', 'partially_paid'] },
+      status: { filterType: 'set', values: ['unpaid'] },
     })
-    expect(screen.getByRole('tab', { name: 'Open', selected: true })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Not collected', selected: true })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Totals of the current filter' })).toHaveTextContent('Residual')
   })
 

@@ -126,7 +126,7 @@ it('AC-008: active filters apply to the groups and to their aggregates', functio
     installmentOf($invoice, ['amount' => '25.00', 'due_date' => Carbon::today()->subDays(9)->toDateString(), 'collected_amount' => '25.00']);
     installmentOf(installmentInvoice(Registry::factory()->create(['name' => 'Beta'])), ['amount' => '7.00', 'due_date' => Carbon::today()->addDay()->toDateString()]);
 
-    $open = groupRows(['rowGroupCols' => ['customer'], 'filterModel' => ['status' => ['filterType' => 'set', 'values' => ['unpaid', 'partially_paid']]]]);
+    $open = groupRows(['rowGroupCols' => ['customer'], 'filterModel' => ['status' => ['filterType' => 'set', 'values' => ['unpaid']]]]);
     $overdue = groupRows(['rowGroupCols' => ['customer'], 'filterModel' => ['overdue' => ['filterType' => 'set', 'values' => ['yes']]]]);
 
     expect($open['items'][0])->toMatchArray(['label' => 'Acme', 'child_count' => 2])

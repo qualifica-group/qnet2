@@ -25,15 +25,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Sopra l’elenco il **filtro rapido** sceglie quali rate vedere: **Aperte** (predefinito: da incassare o parzialmente incassate), **Scadute** (aperte con scadenza passata) oppure **Tutte**. Il filtro rapido agisce sulle colonne **Stato** e **Scaduta**: se le cambi a mano dai filtri di colonna, nessuna scheda risulta selezionata.',
+          text: 'Sopra l’elenco il **filtro rapido** sceglie quali rate vedere: **Da incassare** (predefinito: rate non ancora incassate), **In scadenza** (da incassare con scadenza non ancora passata), **Scadute** (da incassare con scadenza passata), **Incassate** oppure **Tutte**. Il filtro rapido agisce sulle colonne **Stato** e **Scaduta**: se le cambi a mano dai filtri di colonna, nessuna scheda risulta selezionata.',
         },
         {
           type: 'table',
           headers: ['Colonna', 'Significato'],
           rows: [
-            ['**Stato**', 'Da incassare, Parzialmente incassata, Incassata.'],
+            ['**Stato**', 'Da incassare, Incassata. Un incasso parziale chiude la rata all’importo incassato e sposta il residuo su un’altra rata.'],
             ['**Scaduta / Giorni di ritardo**', 'Una rata aperta con scadenza prima di oggi è scaduta; i giorni di ritardo contano dalla scadenza.'],
-            ['**Importo / Incassato / Residuo**', 'Importo della rata, quanto già incassato e quanto resta.'],
+            ['**Importo / Importo incassato / Residuo**', 'Importo della rata, quanto già incassato e quanto resta.'],
           ],
         },
         {
@@ -49,9 +49,9 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Trascina l’intestazione di una colonna (**Cliente**, **Commessa**, **Società**, **Sede aziendale**, **Sede operativa**, **Modalità** o **Mese scadenza**) nella barra dei gruppi sopra la tabella, oppure usa il pannello **Colonne** a destra.',
+            'Apri **Raggruppa per** sopra la tabella e spunta una o più colonne (**Cliente**, **Commessa**, **Società**, **Sede aziendale**, **Sede operativa**, **Codice modalità** o **Mese scadenza**): l’ordine in cui le spunti è l’ordine dei livelli.',
             'Ogni gruppo mostra il numero di rate e i totali di **Importo**, **Incassato** e **Residuo**: espandilo per vedere i livelli successivi o le rate.',
-            'Puoi raggruppare fino a **3 livelli**; per tornare all’elenco piatto rimuovi le colonne dalla barra.',
+            'Puoi raggruppare fino a **3 livelli**; togli un livello con la **x** del suo chip o usa **Rimuovi raggruppamento** per tornare all’elenco piatto.',
           ],
         },
         {
@@ -92,7 +92,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'Una rata con un **incasso** (anche parziale) non è modificabile: il salvataggio viene rifiutato. Annulla prima l’incasso, poi modifica la scadenza.',
+          text: 'Una rata con un **incasso** non è modificabile: il salvataggio viene rifiutato. Annulla prima l’incasso, poi modifica la scadenza.',
         },
         {
           type: 'paragraph',
@@ -106,7 +106,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Le azioni **Registra incasso** (sulle rate aperte) e **Annulla incasso** (su quelle incassate o parzialmente incassate) sono le stesse del dettaglio fattura, con le stesse regole: per un incasso parziale scegli se **spalmare il residuo** sulle rate successive o creare **una nuova scadenza** per il residuo; l’annullamento chiede conferma e ripristina il piano precedente.',
+          text: 'Le azioni **Registra incasso** (sulle rate aperte) e **Annulla incasso** (su quelle incassate) sono le stesse del dettaglio fattura, con le stesse regole: per un incasso parziale scegli se **spalmare il residuo** sulle rate successive o creare **una nuova scadenza** per il residuo; l’annullamento chiede conferma e ripristina il piano precedente.',
         },
         {
           type: 'paragraph',

@@ -10,7 +10,7 @@ interface InstallmentQuickFilterToolbarProps {
   onChange: (filter: InstallmentQuickFilter) => void
 }
 
-/** Aperte / Scadute / Tutte tabs; they write into the grid filter model. */
+/** Da incassare / In scadenza / Scadute / Incassate / Tutte tabs; they write into the grid filter model. */
 export function InstallmentQuickFilterToolbar({ value, onChange }: InstallmentQuickFilterToolbarProps) {
   const { t } = useTranslation()
 

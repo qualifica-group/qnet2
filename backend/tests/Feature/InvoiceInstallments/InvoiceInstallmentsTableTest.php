@@ -44,7 +44,7 @@ it('AC-001: exposes the contract columns with their sort/filter flags and the ro
         ->and($columns['residual_amount']['aggFunc'])->toBe('sum')
         ->and($columns['customer']['aggFunc'])->toBeNull()
         ->and($columns['status']['filterType'])->toBe('set')
-        ->and($columns['status']['options'])->toBe(['unpaid', 'partially_paid', 'paid'])
+        ->and($columns['status']['options'])->toBe(['unpaid', 'paid'])
         ->and($columns['overdue']['sortable'])->toBeFalse()
         ->and($columns['due_month']['sortable'])->toBeFalse()
         ->and($columns['days_overdue']['filterType'])->toBe('number')
@@ -106,7 +106,9 @@ it('AC-004: sorts and filters server side on every declared column and rejects a
         ->and($ids(['sortModel' => [['colId' => 'amount', 'sort' => 'desc']]]))->toBe([$a->id, $c->id, $b->id])
         ->and($ids(['sortModel' => [['colId' => 'status', 'sort' => 'desc']]]))->toBe([$b->id, $c->id, $a->id])
         ->and($ids(['sortModel' => [['colId' => 'customer', 'sort' => 'asc'], ['colId' => 'due_date', 'sort' => 'desc']]]))->toBe([$a->id, $c->id, $b->id])
-        ->and($ids(['filterModel' => ['status' => ['filterType' => 'set', 'values' => ['paid', 'partially_paid']]]]))->toEqualCanonicalizing([$b->id, $c->id])
+        ->and($ids(['filterModel' => ['status' => ['filterType' => 'set', 'values' => ['paid']]]]))->toEqualCanonicalizing([$b->id, $c->id])
+        ->and($ids(['filterModel' => ['status' => ['filterType' => 'set', 'values' => ['unpaid']]]]))->toBe([$a->id])
+        ->and($ids(['filterModel' => ['status' => ['filterType' => 'set', 'values' => ['partially_paid']]]]))->toHaveCount(3)
         ->and($ids(['filterModel' => ['customer' => ['filterType' => 'set', 'values' => ['Acme']]]]))->toBe([$a->id])
         ->and($ids(['filterModel' => ['amount' => ['filterType' => 'number', 'type' => 'greaterThan', 'filter' => 150]]]))->toEqualCanonicalizing([$a->id, $c->id])
         ->and($ids(['filterModel' => ['due_date' => ['filterType' => 'date', 'type' => 'inRange', 'dateFrom' => '2026-04-15', 'dateTo' => '2026-05-15']]]))->toBe([$a->id])
@@ -117,30 +119,30 @@ it('AC-004: sorts and filters server side on every declared column and rejects a
     $this->postJson('/api/tables/invoice-installments/rows', ['startRow' => 0, 'endRow' => 10, 'filterModel' => ['invoice_id' => ['filterType' => 'number', 'type' => 'equals', 'filter' => 1]]])->assertUnprocessable();
 });
 
-it('AC-016: overdue and days_overdue follow the derived status', function () {
+it('AC-016: overdue and days_overdue follow the derived status (any collection closes the installment)', function () {
     viewer();
     $invoice = installmentInvoice();
     $late = installmentOf($invoice, ['due_date' => Carbon::today()->subDay()->toDateString(), 'amount' => '10.00']);
     $settled = installmentOf($invoice, ['due_date' => Carbon::today()->subDays(5)->toDateString(), 'amount' => '10.00', 'collected_amount' => '10.00']);
     $future = installmentOf($invoice, ['due_date' => Carbon::today()->addDay()->toDateString(), 'amount' => '10.00']);
-    $partialLate = installmentOf($invoice, ['due_date' => Carbon::today()->subDays(3)->toDateString(), 'amount' => '10.00', 'collected_amount' => '4.00']);
+    $collectedLate = installmentOf($invoice, ['due_date' => Carbon::today()->subDays(3)->toDateString(), 'amount' => '10.00', 'collected_amount' => '4.00']);
 
     $rows = collect(installmentRows()['items'])->keyBy('id');
 
     expect($rows[$late->id])->toMatchArray(['overdue' => 'yes', 'days_overdue' => 1])
         ->and($rows[$settled->id])->toMatchArray(['overdue' => 'no', 'days_overdue' => 0])
         ->and($rows[$future->id])->toMatchArray(['overdue' => 'no', 'days_overdue' => 0])
-        ->and($rows[$partialLate->id])->toMatchArray(['overdue' => 'yes', 'days_overdue' => 3]);
+        ->and($rows[$collectedLate->id])->toMatchArray(['overdue' => 'no', 'days_overdue' => 0]);
 
     $ids = static fn (array $filter): array => array_column(installmentRows(['filterModel' => $filter])['items'], 'id');
 
-    expect($ids(['overdue' => ['filterType' => 'set', 'values' => ['yes']]]))->toEqualCanonicalizing([$late->id, $partialLate->id])
-        ->and($ids(['overdue' => ['filterType' => 'set', 'values' => ['no']]]))->toEqualCanonicalizing([$settled->id, $future->id])
-        ->and($ids(['days_overdue' => ['filterType' => 'number', 'type' => 'greaterThanOrEqual', 'filter' => 3]]))->toBe([$partialLate->id])
-        ->and($ids(['days_overdue' => ['filterType' => 'number', 'type' => 'equals', 'filter' => 0]]))->toEqualCanonicalizing([$settled->id, $future->id]);
+    expect($ids(['overdue' => ['filterType' => 'set', 'values' => ['yes']]]))->toBe([$late->id])
+        ->and($ids(['overdue' => ['filterType' => 'set', 'values' => ['no']]]))->toEqualCanonicalizing([$settled->id, $future->id, $collectedLate->id])
+        ->and($ids(['days_overdue' => ['filterType' => 'number', 'type' => 'greaterThanOrEqual', 'filter' => 1]]))->toBe([$late->id])
+        ->and($ids(['days_overdue' => ['filterType' => 'number', 'type' => 'equals', 'filter' => 0]]))->toEqualCanonicalizing([$settled->id, $future->id, $collectedLate->id]);
 
     $sorted = array_column(installmentRows(['sortModel' => [['colId' => 'days_overdue', 'sort' => 'desc']]])['items'], 'id');
-    expect(array_slice($sorted, 0, 2))->toBe([$partialLate->id, $late->id]);
+    expect(array_slice($sorted, 0, 1))->toBe([$late->id]);
 });
 
 it('returns the footer aggregates over the whole filtered set and the distinct values of the set columns', function () {
@@ -156,7 +158,7 @@ it('returns the footer aggregates over the whole filtered set and the distinct v
     expect($values)->toContain('Acme');
 
     $status = $this->postJson('/api/tables/invoice-installments/values', ['columnId' => 'status', 'filterModel' => []])->assertOk()->json('data.values');
-    expect($status)->toBe(['unpaid', 'partially_paid', 'paid']);
+    expect($status)->toBe(['unpaid', 'paid']);
 });
 
 it('AC-014: a role that cannot see the amounts never receives them in config, rows, aggregates, groups or export, and cannot sort, filter or group on them', function () {

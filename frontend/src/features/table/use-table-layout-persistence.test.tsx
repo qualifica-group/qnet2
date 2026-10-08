@@ -33,6 +33,14 @@ const NO_FILTERS: Record<string, unknown> = {}
 const gridApi = {
   getColumnState: () => COLUMN_STATE,
   getFilterModel: () => FILTER_MODEL,
+  isDestroyed: () => false,
+} as unknown as GridApi
+
+// What AG Grid hands back once a grid is gone: every call returns undefined.
+const destroyedGridApi = {
+  getColumnState: () => undefined,
+  getFilterModel: () => undefined,
+  isDestroyed: () => true,
 } as unknown as GridApi
 
 function wrapper() {
@@ -42,13 +50,13 @@ function wrapper() {
   )
 }
 
-function renderPersistence() {
+function renderPersistence(api: GridApi = gridApi) {
   return renderHook(
     () =>
       useTableLayoutPersistence({
         domain: 'users',
         scope: { productCategoryId: 12 },
-        gridApi,
+        gridApi: api,
         knownColumnIds: KNOWN_COLUMN_IDS,
         initialFilterModel: NO_FILTERS,
         configCustomized: false,
@@ -140,5 +148,68 @@ describe('useTableLayoutPersistence', () => {
 
     await waitFor(() => expect(savePreferencesMock).toHaveBeenCalledTimes(1))
     expect(savePreferencesMock).toHaveBeenCalledWith('users', EXPECTED_COLUMNS, 12)
+  })
+
+  it('ignores a filter change read off a destroyed grid, keeping the filter model an object', () => {
+    const { result } = renderPersistence(destroyedGridApi)
+
+    act(() => {
+      result.current.handleFilterChanged()
+    })
+    window.dispatchEvent(new Event('pagehide'))
+
+    expect(result.current.filterModel).toEqual(NO_FILTERS)
+    expect(saveFiltersMock).not.toHaveBeenCalled()
+  })
+
+  it('keeps the live filter model when a config refresh (its own save echo) changes the initial model', () => {
+    const forced = { status: { filterType: 'set', values: ['unpaid'] } }
+    const { result, rerender } = renderHook(
+      ({ initialFilterModel }) =>
+        useTableLayoutPersistence({
+          domain: 'users',
+          scope: { productCategoryId: 12 },
+          gridApi,
+          knownColumnIds: KNOWN_COLUMN_IDS,
+          initialFilterModel,
+          configCustomized: false,
+          configFiltersCustomized: false,
+          refetchConfig: () => Promise.resolve(),
+        }),
+      { wrapper: wrapper(), initialProps: { initialFilterModel: NO_FILTERS } },
+    )
+
+    act(() => {
+      result.current.handleFilterChanged()
+    })
+    rerender({ initialFilterModel: forced })
+
+    expect(result.current.filterModel).toEqual(FILTER_MODEL)
+  })
+
+  it('resyncs the filter model to the initial one when a new grid mounts', () => {
+    const forced = { status: { filterType: 'set', values: ['unpaid'] } }
+    const remounted = { ...gridApi } as unknown as GridApi
+    const { result, rerender } = renderHook(
+      ({ api, initialFilterModel }) =>
+        useTableLayoutPersistence({
+          domain: 'users',
+          scope: { productCategoryId: 12 },
+          gridApi: api,
+          knownColumnIds: KNOWN_COLUMN_IDS,
+          initialFilterModel,
+          configCustomized: false,
+          configFiltersCustomized: false,
+          refetchConfig: () => Promise.resolve(),
+        }),
+      { wrapper: wrapper(), initialProps: { api: gridApi, initialFilterModel: NO_FILTERS } },
+    )
+
+    act(() => {
+      result.current.handleFilterChanged()
+    })
+    rerender({ api: remounted, initialFilterModel: forced })
+
+    expect(result.current.filterModel).toEqual(forced)
   })
 })

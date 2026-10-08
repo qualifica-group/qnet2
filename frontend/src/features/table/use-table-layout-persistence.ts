@@ -87,14 +87,16 @@ export function useTableLayoutPersistence({
 
   // The grid's live column filterModel (spec 0158 D-5): tracked as state, not
   // just read lazily off the grid API, so the active-filter chip row re-renders
-  // whenever a column filter changes. Reset when `initialFilterModel` changes
-  // identity (a fresh config load) via the "adjust state during render"
-  // pattern (react.dev), not an effect — an effect's `setState` would cause an
-  // extra cascading render (react-hooks/set-state-in-effect).
+  // whenever a column filter changes. Resynced to `initialFilterModel` only
+  // when a new grid mounts (a new `gridApi`): that is the model the grid
+  // starts from. A config refresh alone (e.g. the echo of our own filter save)
+  // must not reset it, or forced filters would overwrite the live model while
+  // the grid keeps showing the user's choice. "Adjust state during render"
+  // pattern (react.dev), not an effect (react-hooks/set-state-in-effect).
   const [filterModel, setFilterModel] = useState<Record<string, unknown>>(initialFilterModel)
-  const [seenInitialFilterModel, setSeenInitialFilterModel] = useState(initialFilterModel)
-  if (initialFilterModel !== seenInitialFilterModel) {
-    setSeenInitialFilterModel(initialFilterModel)
+  const [seenGridApi, setSeenGridApi] = useState(gridApi)
+  if (gridApi !== seenGridApi) {
+    setSeenGridApi(gridApi)
     setFilterModel(initialFilterModel)
   }
 
@@ -149,7 +151,10 @@ export function useTableLayoutPersistence({
   }, [initialFilterModel])
 
   const handleFilterChanged = useCallback(() => {
-    if (!gridApi) {
+    // A reset remounts the grid: the new one can fire filterChanged (forced
+    // filters) before onGridReady swaps in its api, so this still holds the
+    // destroyed one, whose getFilterModel() returns undefined.
+    if (!gridApi || gridApi.isDestroyed()) {
       return
     }
     const model = gridApi.getFilterModel()

@@ -104,7 +104,7 @@ it('AC-002: renders invoice_lines and installments plus the invoice variables', 
         ->and($text)->toContain('residual 100,00')
         ->and($text)->toContain('Consulting day')
         ->and($text)->toContain('30/09/2026')
-        ->and($text)->toContain(__('document_layouts.installment_status.partially_paid'))
+        ->and($text)->toContain(__('document_layouts.installment_status.paid'))
         ->and($text)->not->toMatch('/\{[a-z_]+\.[a-z_]+\}/');
 });
 

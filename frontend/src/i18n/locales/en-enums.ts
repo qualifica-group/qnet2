@@ -56,6 +56,15 @@ export const enums = {
     unread: 'Unread',
     read: 'Read',
   },
+  // Installment status and derived overdue flag (spec 0197 D-9): single source for cells, column filters and the invoice detail.
+  installment_status: {
+    unpaid: 'Not collected',
+    paid: 'Collected',
+  },
+  installment_overdue: {
+    yes: 'Yes',
+    no: 'No',
+  },
   // User employment profile (spec 0015).
   relationship_type: {
     employee: 'Employee',

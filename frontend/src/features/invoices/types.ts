@@ -19,7 +19,7 @@ export type InvoiceTag = (typeof INVOICE_TAGS)[number]
 export const INVOICE_PAYMENT_STATUSES = ['paid', 'not_due', 'overdue', 'seriously_overdue'] as const
 export type InvoicePaymentStatus = (typeof INVOICE_PAYMENT_STATUSES)[number]
 
-export const INSTALLMENT_STATUSES = ['unpaid', 'partially_paid', 'paid'] as const
+export const INSTALLMENT_STATUSES = ['unpaid', 'paid'] as const
 export type InstallmentStatus = (typeof INSTALLMENT_STATUSES)[number]
 
 /** Row actions the SSRM rows may carry. */

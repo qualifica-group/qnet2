@@ -33,7 +33,9 @@ export function buildRowGroupingGridOptions(
   }
 
   return {
-    rowGroupPanelShow: 'always',
+    // The RowGroupingBar picker replaces the drag-a-header-here panel, which
+    // users read as "drag a row" and found unusable.
+    rowGroupPanelShow: 'never',
     groupDefaultExpanded: 0,
     suppressAggFuncInHeader: true,
     onColumnRowGroupChanged: (event) => capRowGroupDepth(event.api, rowGrouping.max_depth),

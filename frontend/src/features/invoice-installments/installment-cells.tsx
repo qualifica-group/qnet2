@@ -12,7 +12,7 @@ function isInstallmentStatus(value: unknown): value is InstallmentStatus {
   return typeof value === 'string' && (INSTALLMENT_STATUSES as readonly string[]).includes(value)
 }
 
-/** Derived installment status (unpaid / partially paid / paid) as the shared badge. */
+/** Derived installment status (unpaid / paid) as the shared badge. */
 export function InstallmentStatusCell({ value }: ICellRendererParams) {
   return isInstallmentStatus(value) ? (
     <div className={CELL_WRAPPER}>
@@ -23,16 +23,17 @@ export function InstallmentStatusCell({ value }: ICellRendererParams) {
   )
 }
 
-/** "Scaduta" badge for an open installment past its due date; nothing otherwise. */
+/** Derived overdue flag as a Yes / No badge (labels shared with the Set Filter checklist). */
 export function OverdueCell({ value }: ICellRendererParams) {
   const { t } = useTranslation()
-  if (value !== OVERDUE_YES && value !== true) {
-    return <EmptyCell />
-  }
+  const isOverdue = value === OVERDUE_YES || value === true
   return (
     <div className={CELL_WRAPPER}>
-      <Badge variant="secondary" className={cn(BADGE_BASE, BADGE_COLOR_CLASSES.red)}>
-        {t('invoiceInstallments.overdue.yes')}
+      <Badge
+        variant="secondary"
+        className={cn(BADGE_BASE, isOverdue ? BADGE_COLOR_CLASSES.red : BADGE_COLOR_CLASSES.slate)}
+      >
+        {t(`enums.installment_overdue.${isOverdue ? 'yes' : 'no'}`)}
       </Badge>
     </div>
   )

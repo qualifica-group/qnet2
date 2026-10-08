@@ -9,6 +9,7 @@ import { TableToolbar } from '@/features/table/table-toolbar'
 import { AdvancedFilterPanel, ADVANCED_FILTER_PANEL_ANIMATION } from '@/features/table/advanced-filters/advanced-filter-panel'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { INLINE_ACTION_LIMIT, LABELED_ACTIONS_COLUMN_WIDTH } from '@/features/table/row-actions'
+import { RowGroupingBar } from '@/features/table/row-grouping-bar'
 import { ActiveFilterChips } from '@/features/table/custom-filters/active-filter-chips'
 import { buildTableViewSlots } from '@/features/table/table-view-slots'
 import { useTableViewController, type TableViewHandle } from '@/features/table/use-table-view-controller'
@@ -221,6 +222,10 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
             />
 
             <ActiveFilterChips chips={view.filterChips.chips} onClearAll={view.filterChips.onClearAll} />
+
+            {config?.row_grouping?.enabled ? (
+              <RowGroupingBar gridApi={view.gridApi} columns={config.columns} rowGrouping={config.row_grouping} />
+            ) : null}
 
             {view.advancedFilterDescriptors.length > 0 ? (
               <Collapsible open={view.toolbar.advancedFiltersOpen}>

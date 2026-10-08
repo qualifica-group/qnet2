@@ -40,32 +40,20 @@ final class InstallmentSql
         return 'COALESCE('.self::COLLECTED.', 0) <= 0';
     }
 
-    /** Some collection, below the amount. */
-    public static function partiallyPaid(): string
-    {
-        return self::COLLECTED.' > 0 AND '.self::COLLECTED.' < '.self::AMOUNT;
-    }
-
-    /** Collected up to or beyond the amount. */
+    /** Any collection recorded: it closes the installment. */
     public static function paid(): string
     {
-        return self::COLLECTED.' > 0 AND '.self::COLLECTED.' >= '.self::AMOUNT;
+        return self::COLLECTED.' > 0';
     }
 
-    /** Unpaid or partially paid. */
-    public static function open(): string
-    {
-        return '('.self::unpaid().' OR '.self::COLLECTED.' < '.self::AMOUNT.')';
-    }
-
-    /** Open and due before the bound date (one binding). */
+    /** Unpaid and due before the bound date (one binding). */
     public static function overdue(): string
     {
-        return '('.self::open().' AND '.self::DUE_DATE.' < ?)';
+        return '('.self::unpaid().' AND '.self::DUE_DATE.' < ?)';
     }
 
     /**
-     * Whole days an open installment is past due, 0 otherwise.
+     * Whole days an unpaid installment is past due, 0 otherwise.
      *
      * @return array{0: string, 1: int} expression and the number of bindings (all the same date)
      */
@@ -78,10 +66,10 @@ final class InstallmentSql
         return ['CASE WHEN '.self::overdue().' THEN '.$difference.' ELSE 0 END', 2];
     }
 
-    /** Sort key of the derived status: unpaid, partially paid, paid. */
+    /** Sort key of the derived status: unpaid, paid. */
     public static function statusRank(): string
     {
-        return 'CASE WHEN '.self::unpaid().' THEN 0 WHEN '.self::paid().' THEN 2 ELSE 1 END';
+        return 'CASE WHEN '.self::unpaid().' THEN 0 ELSE 1 END';
     }
 
     /** "YYYY-MM" of the due date. */

@@ -1,7 +1,7 @@
 import type { InstallmentStatus, NamedRef } from '@/features/invoices/types'
 
-/** Quick filter of the toolbar (spec 0197 D-5): open (default), overdue, or every installment. */
-export const INSTALLMENT_QUICK_FILTERS = ['open', 'overdue', 'all'] as const
+/** Quick filter of the toolbar (spec 0197 D-9): not collected (default), due, overdue, collected, or every installment. */
+export const INSTALLMENT_QUICK_FILTERS = ['unpaid', 'due', 'overdue', 'paid', 'all'] as const
 export type InstallmentQuickFilter = (typeof INSTALLMENT_QUICK_FILTERS)[number]
 
 /** Per-field permission block of the show endpoint (`field_permissions`). */

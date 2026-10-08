@@ -128,6 +128,19 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
     }
 
     /**
+     * Frontend `enums.*` keys (spec 0197 D-9): cells, Set Filter checklists and
+     * the invoice detail read the same labels.
+     */
+    protected function enumKeyFor(string $columnId, User $actor): ?string
+    {
+        return match ($columnId) {
+            'status' => 'installment_status',
+            'overdue' => 'installment_overdue',
+            default => null,
+        };
+    }
+
+    /**
      * @return array<int, array<string, mixed>>|null
      */
     protected function badgesFor(string $columnId, User $actor): ?array

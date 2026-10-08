@@ -29,6 +29,20 @@
 - Da fare: split file vicini al limite (data-table.tsx 487, router.tsx 488, AbstractTableDefinition 466, TableDefinition 465,
   TableRowsRequest 375); test FE di assenza azioni incasso senza collect; select payment_method_code (oggi input testo).
   Manuale Claude Docs NON accessibile: aggiungere sezione "Contabilita' > Attiva > Scadenze".
+- Fix post-0197 (NON COMMITTATI, 2026-10-08), tutti nel framework tabellare FE:
+  - `useTableLayoutPersistence`: `handleFilterChanged` ignora un gridApi distrutto (crash "Azzera tutto" con filtri forzati);
+    lo stato `filterModel` si risincronizza a `initialFilterModel` SOLO al cambio di gridApi (nuova griglia), non a ogni
+    refresh config: prima l'eco del salvataggio filtri ri-applicava i `forcedFilterModel` e la toolbar Aperte/Scadute/Tutte
+    tornava sempre su Aperte (stesso difetto latente su anno/mese della toolbar Fatture).
+  - Row grouping: pannello AG Grid "Trascina qui" disattivato (`rowGroupPanelShow: 'never'`), sostituito da
+    `features/table/row-grouping-bar.tsx` ("Raggruppa per" + chip per livello) con `use-row-group-columns.ts`
+    (useSyncExternalStore su `columnRowGroupChanged`). Guida in-app grouping IT/EN aggiornata.
+- Spec 0197 D-9 (NON COMMITTATO, 2026-10-08): stato `partially_paid` RIMOSSO (InstallmentStatus = unpaid|paid; collected_amount > 0
+  = paid; InstallmentSql::partiallyPaid/open eliminati, overdue = unpaid + due_date < oggi). Etichette uniche FE in
+  `enums.installment_status` / `enums.installment_overdue` (Si'/No), lette da celle, set filter (backend `enumKeyFor` in
+  InvoiceInstallmentsTableDefinition) e dettaglio fattura; backend Label 'Not collected'/'Collected' (it.json Da incassare/Incassata).
+  Filtri rapidi: unpaid (default) | due | overdue | paid | all. Colonne: Data fattura, N. rata, Codice modalita', Importo incassato,
+  Data incasso (anche tabella rate del dettaglio fattura). Verde: Pest 9478/9482 (3 soffice), Vitest 6838/6838, tsc, ESLint, Pint.
 
 ## SPEC 0196 RIMODULAZIONE RATE + INCASSO PARZIALE — BRANCH feature/amministrazione (2026-10-07)
 

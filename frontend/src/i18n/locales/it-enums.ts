@@ -55,6 +55,15 @@ export const enums = {
     unread: 'Non letta',
     read: 'Letta',
   },
+  // Stato rata e scadenza derivata (spec 0197 D-9): unica fonte per celle, filtri colonna e dettaglio fattura.
+  installment_status: {
+    unpaid: 'Da incassare',
+    paid: 'Incassata',
+  },
+  installment_overdue: {
+    yes: 'Sì',
+    no: 'No',
+  },
   // Profilo di impiego utente (spec 0015).
   relationship_type: {
     employee: 'Dipendente',

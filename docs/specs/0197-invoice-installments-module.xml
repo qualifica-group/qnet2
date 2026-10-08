@@ -57,6 +57,14 @@
     <decision id="D-7">Audit: `InvoiceInstallment` adotta `LogsModelActivity` (log su due_date/payment_method_code/collected_*).</decision>
     <decision id="D-8">Export: righe foglia piatte con filtri/sort/search correnti; il raggruppamento NON si riflette
       nell'export (le colonne di gruppo sono comunque colonne esportabili). Colonne nascoste da permesso di campo escluse.</decision>
+    <decision id="D-9" date="2026-10-08">Revisione utente. (a) Stato `partially_paid` RIMOSSO da InstallmentStatus: dalla 0196 un incasso
+      parziale chiude la rata a collected_amount, quindi nessun flusso lo produce (0 righe in DB). Rata con collected_amount &gt; 0 =
+      `paid`, altrimenti `unpaid`; valori API invariati. Etichette uniche: unpaid = "Da incassare" / "Not collected",
+      paid = "Incassata" / "Collected", identiche in filtro colonna, celle e dettaglio fattura. (b) Filtri rapidi:
+      Da incassare (default, status=unpaid) | In scadenza (unpaid + overdue=no) | Scadute (unpaid + overdue=yes) |
+      Incassate (status=paid) | Tutte. (c) Etichette colonne: invoice_document_date "Data fattura", sequence "N. rata",
+      payment_method_code "Codice modalita'", collected_amount "Importo incassato", collected_at "Data incasso", valori
+      colonna overdue "Si'"/"No"; stesse etichette nella tabella scadenze del dettaglio fattura.</decision>
   </decisions>
 
   <scope>

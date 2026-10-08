@@ -25,15 +25,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **quick filter** above the list chooses which installments to see: **Open** (default: unpaid or partially paid), **Overdue** (open with a past due date) or **All**. It acts on the **Status** and **Overdue** columns: if you change them by hand from the column filters, no tab is selected.',
+          text: 'The **quick filter** above the list chooses which installments to see: **Not collected** (default: installments not yet collected), **Due** (not collected, due date not yet passed), **Overdue** (not collected, past due date), **Collected** or **All**. It acts on the **Status** and **Overdue** columns: if you change them by hand from the column filters, no tab is selected.',
         },
         {
           type: 'table',
           headers: ['Column', 'Meaning'],
           rows: [
-            ['**Status**', 'Unpaid, Partially paid, Paid.'],
+            ['**Status**', 'Not collected, Collected. A partial collection closes the installment at the collected amount and moves the residual to another installment.'],
             ['**Overdue / Days overdue**', 'An open installment with a due date before today is overdue; days overdue count from the due date.'],
-            ['**Amount / Collected / Residual**', 'Installment amount, what has been collected and what is left.'],
+            ['**Amount / Collected amount / Residual**', 'Installment amount, what has been collected and what is left.'],
           ],
         },
         {
@@ -49,9 +49,9 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Drag a column header (**Customer**, **Work order**, **Company**, **Company site**, **Operational site**, **Method** or **Due month**) into the group bar above the table, or use the **Columns** panel on the right.',
+            'Open **Group by** above the table and tick one or more columns (**Customer**, **Work order**, **Company**, **Company site**, **Operational site**, **Method code** or **Due month**): the order you tick them in is the order of the levels.',
             'Each group shows the number of installments and the totals of **Amount**, **Collected** and **Residual**: expand it to see the next levels or the installments.',
-            'You can group up to **3 levels**; to go back to the flat list remove the columns from the bar.',
+            'You can group up to **3 levels**; remove a level with the **x** on its chip, or use **Clear grouping** to go back to the flat list.',
           ],
         },
         {
@@ -92,7 +92,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'An installment with a **collection** (even partial) cannot be edited: saving is refused. Clear the collection first, then edit the due date.',
+          text: 'An installment with a **collection** cannot be edited: saving is refused. Clear the collection first, then edit the due date.',
         },
         {
           type: 'paragraph',
@@ -106,7 +106,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Record collection** (on open installments) and **Clear collection** (on collected or partially collected ones) actions are the same as in the invoice detail, with the same rules: for a partial collection choose whether to **spread the residual** over the next installments or create **a new due date** for the residual; clearing asks for confirmation and restores the previous schedule.',
+          text: 'The **Record collection** (on open installments) and **Clear collection** (on collected ones) actions are the same as in the invoice detail, with the same rules: for a partial collection choose whether to **spread the residual** over the next installments or create **a new due date** for the residual; clearing asks for confirmation and restores the previous schedule.',
         },
         {
           type: 'paragraph',

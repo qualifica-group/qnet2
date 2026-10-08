@@ -34,7 +34,7 @@ describe('row grouping grid options (spec 0197)', () => {
 
   it('shows the group panel and counts children from the group row', () => {
     const options = buildRowGroupingGridOptions(CONFIG, t)
-    expect(options.rowGroupPanelShow).toBe('always')
+    expect(options.rowGroupPanelShow).toBe('never')
     expect(options.getChildCount?.({ __child_count: 7 } as unknown as TableRow)).toBe(7)
   })
 

@@ -69,13 +69,7 @@ class InvoiceInstallment extends BaseModel
     {
         $collected = (string) ($this->collected_amount ?? '0');
 
-        if (bccomp($collected, '0', 2) <= 0) {
-            return InstallmentStatus::Unpaid;
-        }
-
-        return bccomp($collected, (string) $this->amount, 2) >= 0
-            ? InstallmentStatus::Paid
-            : InstallmentStatus::PartiallyPaid;
+        return bccomp($collected, '0', 2) > 0 ? InstallmentStatus::Paid : InstallmentStatus::Unpaid;
     }
 
     /** Amount still to collect; negative when more than the amount was collected. */

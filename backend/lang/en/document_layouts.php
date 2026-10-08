@@ -183,9 +183,8 @@ return [
     ],
 
     'installment_status' => [
-        'unpaid' => 'Unpaid',
-        'partially_paid' => 'Partially paid',
-        'paid' => 'Paid',
+        'unpaid' => 'Not collected',
+        'paid' => 'Collected',
     ],
 
 ];

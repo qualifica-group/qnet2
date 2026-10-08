@@ -177,7 +177,6 @@ final class InstallmentDerivedQuery
     {
         $conditions = [
             InstallmentStatus::Unpaid->value => InstallmentSql::unpaid(),
-            InstallmentStatus::PartiallyPaid->value => InstallmentSql::partiallyPaid(),
             InstallmentStatus::Paid->value => InstallmentSql::paid(),
         ];
         $selected = array_values(array_intersect(array_keys($conditions), self::stringValues($filter)));

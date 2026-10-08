@@ -6,19 +6,16 @@ use App\Enums\Attributes\Label;
 use App\Enums\Concerns\HasMeta;
 
 /**
- * Collection state of an invoice installment, derived from collected_amount (spec 0194, D-13).
+ * Collection state of an invoice installment, derived from collected_amount (spec 0194, D-13; spec 0197 D-9: a collection closes the installment, no partial state).
  */
 enum InstallmentStatus: string
 {
     use HasMeta;
 
-    #[Label('Unpaid')]
+    #[Label('Not collected')]
     case Unpaid = 'unpaid';
 
-    #[Label('Partially paid')]
-    case PartiallyPaid = 'partially_paid';
-
-    #[Label('Paid')]
+    #[Label('Collected')]
     case Paid = 'paid';
 
     /**

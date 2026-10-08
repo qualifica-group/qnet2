@@ -29,7 +29,6 @@ const TAG_COLORS: Record<InvoiceTag, string> = {
 
 const INSTALLMENT_COLORS: Record<InstallmentStatus, string> = {
   unpaid: BADGE_COLOR_CLASSES.slate,
-  partially_paid: BADGE_COLOR_CLASSES.amber,
   paid: BADGE_COLOR_CLASSES.green,
 }
 
@@ -66,7 +65,7 @@ export function InstallmentStatusBadge({ status }: { status: InstallmentStatus }
   const { t } = useTranslation()
   return (
     <Badge variant="secondary" className={cn(BADGE_BASE, INSTALLMENT_COLORS[status])}>
-      {t(`invoices.detail.installmentStatus.${status}`)}
+      {t(`enums.installment_status.${status}`)}
     </Badge>
   )
 }
