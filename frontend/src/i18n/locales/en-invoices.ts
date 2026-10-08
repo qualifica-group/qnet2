@@ -45,7 +45,7 @@ export const invoices = {
     type: 'Type',
     external_number: 'Invoice number',
     external_date: 'Invoice date',
-    customer: 'Bill to',
+    customer: 'Customer',
     company: 'Company',
     payment_method: 'Payment',
     work_order_code: 'Work order no.',

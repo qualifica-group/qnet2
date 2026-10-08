@@ -31,6 +31,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Colonna', 'Significato'],
           rows: [
+            ['**Cliente**', 'Il cliente della commessa (l\'anagrafica dell\'opportunità da cui nasce l\'offerta).'],
             ['**Tipo**', 'Consulenza oppure Ente.'],
             ['**Fornitore**', 'Il fornitore dell\'Ente a cui si riferisce la richiesta (vuoto per le Consulenze).'],
             ['**Modalità di pagamento**', 'Quella dell\'offerta al momento dell\'invio: se l\'offerta cambia dopo, la richiesta resta com\'era.'],

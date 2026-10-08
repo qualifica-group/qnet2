@@ -68,6 +68,9 @@ export function ProformaRequestDetailView({ proformaRequest: request, onEdit }: 
                 <RecordField label={t('proformaRequests.columns.company')}>
                   {request.company ? request.company.name : <DetailEmpty />}
                 </RecordField>
+                <RecordField label={t('proformaRequests.columns.customer')}>
+                  {request.customer ? request.customer.name : <DetailEmpty />}
+                </RecordField>
                 <RecordField label={t('proformaRequests.columns.status')}>
                   {t(`proformaRequests.statuses.${request.status}`)}
                 </RecordField>

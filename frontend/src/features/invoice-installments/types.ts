@@ -51,3 +51,20 @@ export interface InstallmentUpdatePayload {
   due_date?: string
   payment_method_code?: string | null
 }
+
+/** One row of POST `/invoice-installments/collections` (spec 0198). */
+export interface BulkCollectionItem {
+  installment_id: number
+  collected_amount: number
+}
+
+export interface BulkCollectionPayload {
+  collected_at: string
+  items: BulkCollectionItem[]
+}
+
+/** `data` of POST `/invoice-installments/collections`. */
+export interface BulkCollectionResult {
+  collected_count: number
+  residual_count: number
+}

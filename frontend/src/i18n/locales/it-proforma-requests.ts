@@ -14,6 +14,7 @@ export const proformaRequests = {
     work_order_code: 'Commessa n.',
     work_order_title: 'Titolo commessa',
     company: 'Società',
+    customer: 'Cliente',
     kind: 'Tipo',
     supplier: 'Fornitore',
     payment_method: 'Modalità di pagamento',

@@ -115,6 +115,39 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'bulk-collection',
+      title: 'Incasso multiplo',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Per registrare in un colpo solo i pagamenti di un cliente su più scadenze usa l’**incasso multiplo**. È disponibile solo quando l’elenco è **raggruppato per Cliente**.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Da **Raggruppa per** spunta **Cliente**: accanto alle scadenze da incassare compaiono le caselle di selezione.',
+            'Espandi il cliente e spunta le scadenze pagate. Devono essere tutte **dello stesso cliente**.',
+            'Apri **Azioni** nella barra strumenti e scegli **Incassa selezionate**.',
+            'Nella finestra imposta la **Data incasso** (una sola per tutte le righe, di default oggi) e scrivi per ogni scadenza l’**importo incassato**. In fondo vedi il **Totale incassato** accanto al **Totale selezionato**.',
+            'Premi **Salva**.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'I campi importo partono **vuoti**: una riga lasciata vuota o a 0 **non viene incassata**.',
+            'L’importo non può **superare** quello della scadenza: il campo va in errore e **Salva** resta disabilitato.',
+            'Se scrivi un importo **minore** della scadenza, la scadenza si chiude a quell’importo e nasce una **scadenza residua** con la differenza e la **stessa data di scadenza** di quella di partenza (se la data è già passata, il residuo risulta subito scaduto).',
+            'Il salvataggio è **tutto o niente**: se una riga non è valida (ad esempio la scadenza è stata incassata nel frattempo) non viene registrato nulla e la riga viene segnalata.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Per annullare uno di questi incassi usa **Annulla incasso** sulla singola scadenza: il piano rate torna com’era e la scadenza residua viene eliminata.',
+        },
+      ],
+    },
+    {
       id: 'export',
       title: 'Esportazione',
       blocks: [
@@ -134,7 +167,7 @@ const guide: HelpGuide = {
           rows: [
             ['Vedere l’elenco e il menu **Scadenze**', 'Visualizzazione scadenze'],
             ['**Modifica scadenza**', 'Modifica scadenze (e permesso sul singolo campo)'],
-            ['**Registra / Annulla incasso**', 'Registra incassi'],
+            ['**Registra / Annulla incasso**, **Incasso multiplo**', 'Registra incassi'],
             ['**Apri fattura**', 'Visualizzazione fatture attive'],
             ['**Esporta**', 'Esportazione scadenze'],
           ],

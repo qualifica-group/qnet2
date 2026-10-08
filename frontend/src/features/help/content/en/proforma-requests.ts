@@ -31,6 +31,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Column', 'Meaning'],
           rows: [
+            ['**Customer**', 'The work order customer (the registry of the opportunity the quote comes from).'],
             ['**Type**', 'Consultancy or Institution.'],
             ['**Supplier**', 'The institution supplier the request refers to (empty for Consultancy).'],
             ['**Payment method**', 'The quote\'s one at sending time: if the quote changes later, the request stays as it was.'],

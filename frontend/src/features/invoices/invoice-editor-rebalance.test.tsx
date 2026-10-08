@@ -106,7 +106,7 @@ describe('InvoiceEditorDialog with collections (spec 0196 AC-024)', () => {
     renderEditor()
 
     expect(await screen.findByLabelText(/Document date/)).toBeDisabled()
-    expect(screen.getByRole('combobox', { name: /Bill to/ })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: /Customer/ })).toBeDisabled()
     expect(screen.getByRole('combobox', { name: /Payment/ })).toBeDisabled()
     expect(screen.getByText(/cannot be changed/)).toBeInTheDocument()
 
@@ -122,7 +122,7 @@ describe('InvoiceEditorDialog with collections (spec 0196 AC-024)', () => {
     renderEditor()
 
     expect(await screen.findByLabelText(/Document date/)).toBeEnabled()
-    expect(screen.getByRole('combobox', { name: /Bill to/ })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: /Customer/ })).toBeEnabled()
 
     await waitFor(() => expect(previewMock).toHaveBeenCalled())
     expect(previewMock.mock.calls[0][0]).not.toHaveProperty('invoice_id')

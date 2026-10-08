@@ -47,8 +47,10 @@ class ProformaRequestsTableDefinition extends AbstractTableDefinition
     {
         return ProformaRequest::query()->with([
             'workOrder:id,code,title,quote_id',
-            'workOrder.quote:id,company_id',
+            'workOrder.quote:id,company_id,opportunity_id',
             'workOrder.quote.company:id,denomination',
+            'workOrder.quote.opportunity:id,registry_id',
+            'workOrder.quote.opportunity.registry:id,name',
             'supplier:id,name',
             'paymentMethod:id,name',
             'assignee:id,name',
@@ -106,12 +108,14 @@ class ProformaRequestsTableDefinition extends AbstractTableDefinition
     {
         /** @var ProformaRequest $row */
         $company = $row->workOrder->quote?->company;
+        $customer = $row->workOrder->quote?->opportunity?->registry;
 
         return [
             'id' => $row->id,
             'work_order_code' => $row->workOrder->code,
             'work_order_title' => $row->workOrder->title,
             'company' => $company === null ? null : ['id' => $company->id, 'name' => $company->denomination],
+            'customer' => $customer === null ? null : ['id' => $customer->id, 'name' => $customer->name],
             'kind' => $row->kind->value,
             'supplier' => $row->supplier === null ? null : ['id' => $row->supplier->id, 'name' => $row->supplier->name],
             'payment_method' => $row->paymentMethod === null ? null : ['id' => $row->paymentMethod->id, 'name' => $row->paymentMethod->name],

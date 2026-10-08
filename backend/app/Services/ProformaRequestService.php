@@ -26,8 +26,10 @@ class ProformaRequestService
     /** Relations the ProformaRequestResource reads. */
     private const array RESOURCE_RELATIONS = [
         'workOrder:id,code,title,quote_id',
-        'workOrder.quote:id,company_id',
+        'workOrder.quote:id,company_id,opportunity_id',
         'workOrder.quote.company:id,denomination',
+        'workOrder.quote.opportunity:id,registry_id',
+        'workOrder.quote.opportunity.registry:id,name',
         'supplier:id,name',
         'paymentMethod:id,name',
         'assignee:id,name',

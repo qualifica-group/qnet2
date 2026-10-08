@@ -34,6 +34,56 @@
   AC-001: l'incasso parziale di setup ora passa `residual_mode` (obbligatorio da spec 0196 D-5), NON COMMITTATO.
 - Verde: Pest 9692/9693 (1 skipped), Vitest 7141/7141, `tsc -b --force` EXIT 0.
 
+## RICHIESTE PROFORMA: COLONNA "CLIENTE" — VERDE, NON COMMITTATO (2026-10-08)
+
+- Nuovo campo `customer` ({id,name} | null) = `workOrder.quote.opportunity.registry` (stesso cliente di default
+  dell'emissione per le Consulenze). Display-only, non ordinabile/filtrabile. Catalogo colonne (dopo `company`),
+  `ProformaRequestsTableDefinition` (eager load + mapRow), `ProformaRequestService::RESOURCE_RELATIONS`, `ProformaRequestResource`.
+- FE: `types.ts`, `column-renderers.tsx` (RelationCell), dettaglio, i18n IT 'Cliente' / EN 'Customer', guide in-app IT+EN.
+- Test: nuovo caso in `ProformaRequestTablesTest.php`. Manuale Claude Docs NON aggiornato (doc non condiviso):
+  sezione Richieste Proforma, aggiungere colonna "Cliente".
+
+## FATTURE: LABEL "INTESTATARIO" -> "CLIENTE" — VERDE, NON COMMITTATO (2026-10-08)
+
+- Solo i18n: `it-invoices`/`it-invoice-editor` `customer` = 'Cliente' (+ `selectCustomer`, `customerRequired`);
+  EN 'Bill to' -> 'Customer'. Guida in-app IT `invoices.ts` aggiornata. Test editor ora cercano il combobox `/Customer/`.
+- Manuale Claude Docs NON aggiornato (doc non condiviso con la sessione): sezione Fatture, campo "Intestatario" -> "Cliente".
+
+## SPEC 0198 INCASSO MULTIPLO SCADENZE — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-08)
+
+- Spec `docs/specs/0198-installments-bulk-collection.xml` (D-1..D-10). Raggruppando per Cliente le scadenze da incassare
+  sono selezionabili (stesso cliente), azione "Incassa selezionate" nel menu Azioni, modale con importi vuoti per riga,
+  data incasso unica, footer Totale incassato / Totale selezionato. Riga vuota/0 non inviata; importo > scadenza = errore.
+- BE: `POST /api/invoice-installments/collections` {collected_at, items[{installment_id, collected_amount}]} ->
+  {collected_count, residual_count}. `InvoiceBulkCollectionRequest` (invoices.collect, max 100), `InvoiceBulkCollectionController`,
+  `Services/Invoices/InvoiceBulkCollector` (transazione unica, lock fatture in ordine id, Gate collect per fattura,
+  422 `items` clienti diversi / `items.N.installment_id` gia' incassata / `items.N.collected_amount` oltre importo; ogni riga
+  passa da `InvoiceCollectionService::record` con residual_mode new_installment e residual_due_date = due_date originale).
+  Riga SSRM invoice-installments: nuovo campo `customer_id`.
+- FE generico: `TableView` prop `onRowGroupColumnsChange(ids)`; `useBulkActionsSlot.clearSelection` ora fa anche
+  `gridApi.deselectAll()`. FE modulo: `installment-bulk-collection.ts` (puro), `use-installment-bulk-collection(-form).ts`,
+  `installment-bulk-collection-dialog.tsx`, api `bulkCollectInstallments`, i18n `invoiceInstallments.bulkCollection.*`,
+  guida in-app sezione `bulk-collection` IT/EN. Test tabella: aggiunto mock `useAbilities` (nuova dipendenza del componente).
+- Verificato: Pest Invoices 63, InvoiceInstallments 49, Table 289, Tables 7 (tutti verdi); Vitest 694/694 (help, invoices,
+  invoice-installments, table, i18n); ESLint ok; Pint ok; tsc -b --force EXIT=0 (npx va in segfault: usare
+  `node node_modules/typescript/bin/tsc -b --force`).
+- NON verificato nel browser (estensione Chrome non connessa): provare checkbox con raggruppamento SSRM per Cliente,
+  attivazione/disattivazione al cambio raggruppamento, refresh dopo il salvataggio.
+- Manuale Claude Docs: aggiungere "Incasso multiplo" in Contabilita' > Attiva > Scadenze.
+
+## FIX MERGE 2ba2bb5a/a1ba1cef — LAYOUT FATTURA (spec 0196 layout) PERSO NEL FE — VERDE, NON COMMITTATO (2026-10-08)
+
+- I merge su feature/amministrazione avevano scartato parte di `4d71a636` (per-invoice print layout): ripristinati
+  `types.ts` (Invoice.layout, layout_id nei payload, InvoiceDraft.defaults.layout), `invoice-schema.ts` (layout_id in write
+  e details), `invoice-editor-source.ts` (layout/layout_id), `invoice-editor-header-section.tsx` (`InvoiceLayoutField`),
+  i18n `invoices.*.layout/layoutDefault` IT/EN. Backend era integro.
+- `QuoteWorkflowMigrationTest`: rollback `--step` 134 (mancava `add_layout_id_to_invoices_table`).
+- `InvoiceLayoutSelectionTest`: l'incasso parziale ora passa `residual_mode: spread` (requisito 0196 ribilanciamento).
+- Permessi `invoice-installments.{view,viewAny,update,export}` creati nel DB locale con `permissions:sync` +
+  `roles:create-super-admin` (da rilanciare in ogni ambiente dopo il deploy). Altri ruoli: nessun permesso invoices*.
+- Verificato: tsc -b EXIT=0, Vitest invoices/help/i18n 327/327, Pest Invoices+InvoiceInstallments+DocumentLayouts+migrazioni 236/236.
+- Nota ambiente: php Herd bloccato da Device Guard; usare `C:/laragon-6/bin/php/php-8.4.19/php.exe`.
+
 ## SPEC 0197 MODULO SCADENZE (Contabilita' > Attiva) — VERDE, NON COMMITTATO, BRANCH feature/amministrazione (2026-10-08)
 
 - Spec `docs/specs/0197-invoice-installments-module.xml` (approvata, D-1..D-8). Vista trasversale di `invoice_installments`:

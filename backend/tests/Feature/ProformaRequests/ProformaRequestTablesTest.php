@@ -58,3 +58,17 @@ it('AC-006: proforma-requests rows carry the contract columns and filter by stat
     $this->deleteJson("/api/proforma-requests/{$pending->id}")->assertNoContent();
     expect(ProformaRequest::query()->count())->toBe(1);
 });
+
+it('exposes the work order customer (the quote opportunity registry) on the grid row and on the resource', function () {
+    Sanctum::actingAs(proformaUserWith(['viewAny', 'view']));
+    $request = ProformaRequest::factory()->create();
+    $customer = $request->workOrder->quote->opportunity->registry;
+    $expected = ['id' => $customer->id, 'name' => $customer->name];
+
+    $rows = $this->postJson('/api/tables/proforma-requests/rows', ['startRow' => 0, 'endRow' => 25])->assertOk()->json('items');
+    $columnIds = collect($this->getJson('/api/tables/proforma-requests/columns')->assertOk()->json('data.columns'))->pluck('id');
+
+    expect($rows[0]['customer'])->toBe($expected)
+        ->and($columnIds)->toContain('customer');
+    $this->getJson("/api/proforma-requests/{$request->id}")->assertOk()->assertJsonPath('data.customer', $expected);
+});

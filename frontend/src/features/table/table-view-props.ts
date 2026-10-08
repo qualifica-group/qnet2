@@ -89,6 +89,12 @@ export interface TableViewProps extends RowActionsOptions {
    * this is supplied.
    */
   getBulkActions?: (selection: TableSelection) => BulkAction[]
+  /**
+   * Fired with the grouped column ids (outermost first) whenever the row
+   * grouping changes (spec 0198: the installments adapter turns its bulk
+   * collection on only while grouped by customer). Omitted, nothing changes.
+   */
+  onRowGroupColumnsChange?: (columnIds: string[]) => void
   /** Suppresses the generic built-in "delete selected" bulk action (spec 0156 D-6); see `useBulkActionsSlot`. */
   disableBuiltinDelete?: boolean
   /**

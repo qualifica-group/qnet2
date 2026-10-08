@@ -8,6 +8,7 @@ import { ProformaKindCell, ProformaStatusBadgeCell } from '@/features/proforma-r
 export const proformaRequestColumnRenderers: TableRendererMap = {
   work_order_code: (params) => <CodeBadgeCell {...params} />,
   company: (params) => <RelationCell {...params} />,
+  customer: (params) => <RelationCell {...params} />,
   supplier: (params) => <RelationCell {...params} />,
   payment_method: (params) => <RelationCell {...params} />,
   kind: (params) => <ProformaKindCell {...params} />,
