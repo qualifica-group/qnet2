@@ -43,7 +43,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'la **Classificazione** (stato, funzione aziendale, categoria prodotto) viene dal progetto ed è in sola lettura;',
+            'la **Classificazione** (stato, linee prodotto) viene dal progetto ed è in sola lettura;',
             'i livelli geografici del progetto vengono ereditati e bloccati;',
             '**Partner** e **Sede** vengono precompilati (la sede resta modificabile);',
             'sotto il budget compare il **Budget residuo del progetto**.',

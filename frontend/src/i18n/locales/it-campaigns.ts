@@ -57,7 +57,7 @@ export const campaigns = {
       },
       classification: {
         title: 'Classificazione',
-        description: 'Stato, funzione aziendale e categoria prodotto.',
+        description: 'Stato e linee prodotto.',
         descriptionLinked:
           'Sola lettura: ereditati dal progetto collegato. Scollega il progetto per impostarli tu stesso.',
       },

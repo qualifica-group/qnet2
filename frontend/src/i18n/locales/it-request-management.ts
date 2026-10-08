@@ -289,7 +289,7 @@ export const requestManagement = {
     },
     productLines: {
       title: 'Linee di prodotto',
-      description: 'Funzione aziendale e categoria prodotto della richiesta.',
+      description: 'Linee prodotto della richiesta.',
       fieldLabel: 'Linee di prodotto',
       hint: 'Le categorie scelte qui filtrano i prodotti di interesse e determinano i campi specifici della richiesta al salvataggio.',
     },

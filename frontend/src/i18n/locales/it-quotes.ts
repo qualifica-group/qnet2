@@ -47,7 +47,7 @@ export const quotes = {
     registry: 'Anagrafica',
     referent: 'Referente',
     source: 'Fonte',
-    productLines: 'Funzioni aziendali e categorie prodotto',
+    productLines: 'Linee prodotto',
     opportunityGeneralNotes: "Note generali dell'opportunità",
     commercial: 'Commerciale',
     reporter: 'Segnalatore',

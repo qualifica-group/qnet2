@@ -83,7 +83,7 @@ export const opportunities = {
         title: 'Working status',
       },
       productLines: {
-        title: 'Business functions and product categories',
+        title: 'Product lines',
       },
       team: {
         title: 'Team',

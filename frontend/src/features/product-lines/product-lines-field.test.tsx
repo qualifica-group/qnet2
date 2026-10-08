@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useForm, useWatch } from 'react-hook-form'
@@ -21,6 +22,12 @@ const CATEGORY_A2 = 22
 const CONTAINER_B = 201
 const LEAF_B = 202
 const DEAD_BRANCH_B = 203
+const ROOT_C = 300
+const GROUP_C1 = 301
+const LEAF_C1 = 302
+const GROUP_C2 = 303
+const LEAF_C2 = 304
+const DIRECT_LEAF_C = 305
 
 /**
  * `vi.hoisted` because the `vi.mock` factory below is hoisted above this
@@ -69,6 +76,24 @@ const { CATEGORY_TREE } = vi.hoisted(() => {
           node({ id: 203, name: 'Dead branch', parent_id: 200, is_selectable: false }),
         ],
       }),
+      // Intermediate filter (user directive 2026-10-08): two grouping
+      // children (Consulenza › ISO style) and a direct leaf, never a filter.
+      node({
+        id: 300,
+        name: 'Root C',
+        is_selectable: false,
+        children: [
+          node({
+            id: 301,
+            name: 'Group C1',
+            parent_id: 300,
+            is_selectable: false,
+            children: [node({ id: 302, name: 'Leaf C1', parent_id: 301 })],
+          }),
+          node({ id: 303, name: 'Group C2', parent_id: 300, children: [node({ id: 304, name: 'Leaf C2', parent_id: 303 })] }),
+          node({ id: 305, name: 'Direct leaf C', parent_id: 300 }),
+        ],
+      }),
     ],
   }
 })
@@ -82,6 +107,15 @@ vi.mock('@/features/product-categories/use-product-category-tree', () => ({
   }),
 }))
 
+/**
+ * The category quick-create needs the auth context and has its own suites: out
+ * of the way here, now that the select double renders its `action` slot (the
+ * intermediate filter's remove button lives there).
+ */
+vi.mock('@/components/form/use-quick-create-action', () => ({
+  useQuickCreateAction: () => ({ renderAction: () => null }),
+}))
+
 /** Exposes the options it was handed (id + disabled flag), so scoping/pruning is asserted on the real builder's output. */
 vi.mock('@/components/ui/searchable-select', () => ({
   SearchableSelect: ({
@@ -90,14 +124,17 @@ vi.mock('@/components/ui/searchable-select', () => ({
     options,
     disabled,
     labels,
+    action,
   }: {
     value: number | null
     onChange: (value: number) => void
     options: { id: number; name: string; disabled?: boolean; depth: number }[]
     disabled?: boolean
     labels: { triggerLabel?: string }
+    action?: ReactNode
   }) => (
     <div data-testid={`select-${labels.triggerLabel}`}>
+      {action}
       <span data-testid={`value-${labels.triggerLabel}`}>{value ?? ''}</span>
       <span data-testid={`disabled-${labels.triggerLabel}`}>{String(Boolean(disabled))}</span>
       <span data-testid={`options-${labels.triggerLabel}`}>
@@ -235,5 +272,88 @@ describe('ProductLinesField (spec 0132)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
 
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  })
+})
+
+describe('ProductLinesField — intermediate filter (user directive 2026-10-08)', () => {
+  const addFilter = (row: number) => screen.queryByRole('button', { name: `Add intermediate filter, row ${row}` })
+
+  it('offers "Filter" only once a root with a grouping child is chosen', () => {
+    renderHarness({
+      defaultValue: [
+        { root_category_id: null, product_category_id: null },
+        { root_category_id: ROOT_A, product_category_id: CATEGORY_A1 },
+        { root_category_id: ROOT_C, product_category_id: null },
+      ],
+    })
+
+    expect(addFilter(1)).not.toBeInTheDocument()
+    expect(addFilter(2)).not.toBeInTheDocument()
+    expect(addFilter(3)).toBeInTheDocument()
+    expect(screen.queryByTestId('select-Intermediate filter 3')).not.toBeInTheDocument()
+  })
+
+  it('lists the root\'s grouping children and narrows the category to the picked one', async () => {
+    renderHarness({ defaultValue: [{ root_category_id: ROOT_C, product_category_id: null }] })
+
+    fireEvent.click(addFilter(1)!)
+    expect(screen.getByTestId('options-Intermediate filter 1')).toHaveTextContent(`${GROUP_C1},${GROUP_C2}`)
+    expect(screen.getByTestId('options-Intermediate filter 1')).not.toHaveTextContent(String(DIRECT_LEAF_C))
+    // Added but still empty: the category keeps listing the whole root.
+    expect(screen.getByTestId('options-Product category 1')).toHaveTextContent(String(DIRECT_LEAF_C))
+
+    fireEvent.click(screen.getByRole('button', { name: `select Intermediate filter 1 ${GROUP_C1}` }))
+
+    await waitFor(() => expect(screen.getByTestId('options-Product category 1')).toHaveTextContent(String(LEAF_C1)))
+    expect(screen.getByTestId('options-Product category 1')).not.toHaveTextContent(String(LEAF_C2))
+    expect(screen.getByTestId('options-Product category 1')).not.toHaveTextContent(String(DIRECT_LEAF_C))
+  })
+
+  it('resets a category outside the picked filter, keeping the root derived on load', async () => {
+    renderHarness({ defaultValue: [{ root_category_id: null, product_category_id: LEAF_C2 }] })
+
+    fireEvent.click(addFilter(1)!)
+    fireEvent.click(screen.getByRole('button', { name: `select Intermediate filter 1 ${GROUP_C1}` }))
+
+    await waitFor(() => expect(screen.getByTestId('value-Product category 1')).toBeEmptyDOMElement())
+    expect(screen.getByTestId('value-Parent category 1')).toHaveTextContent(String(ROOT_C))
+  })
+
+  it('keeps a category inside the picked filter, and removing the filter keeps it too', async () => {
+    renderHarness({ defaultValue: [{ root_category_id: null, product_category_id: LEAF_C2 }] })
+
+    fireEvent.click(addFilter(1)!)
+    fireEvent.click(screen.getByRole('button', { name: `select Intermediate filter 1 ${GROUP_C2}` }))
+    expect(screen.getByTestId('value-Product category 1')).toHaveTextContent(String(LEAF_C2))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove intermediate filter, row 1' }))
+
+    await waitFor(() => expect(screen.queryByTestId('select-Intermediate filter 1')).not.toBeInTheDocument())
+    expect(screen.getByTestId('value-Product category 1')).toHaveTextContent(String(LEAF_C2))
+    expect(screen.getByTestId('options-Product category 1')).toHaveTextContent(String(DIRECT_LEAF_C))
+  })
+
+  it('drops the filter when the row\'s root changes', async () => {
+    renderHarness({ defaultValue: [{ root_category_id: ROOT_C, product_category_id: null }] })
+
+    fireEvent.click(addFilter(1)!)
+    fireEvent.click(screen.getByRole('button', { name: `select Parent category 1 ${ROOT_A}` }))
+
+    await waitFor(() => expect(screen.queryByTestId('select-Intermediate filter 1')).not.toBeInTheDocument())
+  })
+
+  it('moves a filter with its row when an earlier row is removed', async () => {
+    renderHarness({
+      defaultValue: [
+        { root_category_id: ROOT_A, product_category_id: CATEGORY_A1 },
+        { root_category_id: ROOT_C, product_category_id: null },
+      ],
+    })
+
+    fireEvent.click(addFilter(2)!)
+    fireEvent.click(screen.getByRole('button', { name: `select Intermediate filter 2 ${GROUP_C1}` }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Remove product line' })[0])
+
+    await waitFor(() => expect(screen.getByTestId('value-Intermediate filter 1')).toHaveTextContent(String(GROUP_C1)))
   })
 })

@@ -43,7 +43,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'the **Classification** (status, business function, product category) comes from the project and is read-only;',
+            'the **Classification** (status, product lines) comes from the project and is read-only;',
             "the project's geographic levels are inherited and locked;",
             '**Partner** and **Site** are prefilled (the site stays editable);',
             "the **Project remaining budget** is shown under the budget.",

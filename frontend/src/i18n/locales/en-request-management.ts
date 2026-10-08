@@ -286,7 +286,7 @@ export const requestManagement = {
     },
     productLines: {
       title: 'Product lines',
-      description: "The request's business function and product category.",
+      description: "The request's product lines.",
       fieldLabel: 'Product lines',
       hint: 'The categories chosen here scope the products of interest and, once saved, the request-specific fields.',
     },

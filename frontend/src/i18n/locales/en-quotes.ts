@@ -47,7 +47,7 @@ export const quotes = {
     registry: 'Registry',
     referent: 'Referent',
     source: 'Source',
-    productLines: 'Business functions and product categories',
+    productLines: 'Product lines',
     opportunityGeneralNotes: 'Opportunity general notes',
     commercial: 'Commercial',
     reporter: 'Reporter',

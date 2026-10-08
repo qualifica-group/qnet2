@@ -277,3 +277,51 @@ describe('ProductLinesCellEditor (spec 0132 AC-020)', () => {
     ])
   })
 })
+
+describe('ProductLinesCellEditor — intermediate filter (user directive 2026-10-08)', () => {
+  it('narrows the category step to the picked filter and still commits only the category', async () => {
+    const onValueChange = vi.fn()
+    renderEditor([], onValueChange)
+
+    fireEvent.click(await screen.findByRole('option', { name: 'Multi root' }))
+    // The path reads root, then the step being picked now.
+    expect(screen.getByRole('navigation', { name: 'Selection path' })).toHaveTextContent('Multi root')
+    expect(screen.getByRole('navigation', { name: 'Selection path' })).toHaveTextContent('Product category')
+    fireEvent.click(screen.getByRole('button', { name: 'Filter' }))
+
+    // Only the grouping child is a filter, the direct leaf is not.
+    expect(screen.getByRole('option', { name: 'Container' })).toBeEnabled()
+    expect(screen.queryByRole('option', { name: 'Luce' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('option', { name: 'Container' }))
+
+    expect(await screen.findByRole('option', { name: 'Gas' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Luce' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('option', { name: 'Gas' }))
+
+    expect(onValueChange).toHaveBeenCalledWith([
+      { root_category_id: 6, root_category_name: 'Multi root', product_category_id: 9, product_category_name: 'Gas' },
+    ])
+  })
+
+  it('removing the filter lists the whole root again', async () => {
+    renderEditor([], vi.fn())
+
+    fireEvent.click(await screen.findByRole('option', { name: 'Multi root' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Filter' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Container' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove the Container filter' }))
+
+    expect(await screen.findByRole('option', { name: 'Luce' })).toBeInTheDocument()
+  })
+
+  it('offers no filter for a root without grouping children', async () => {
+    renderEditor([], vi.fn())
+
+    fireEvent.click(await screen.findByRole('option', { name: 'Single root' }))
+
+    expect(await screen.findByRole('option', { name: 'Luce singola' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Filter' })).not.toBeInTheDocument()
+  })
+})

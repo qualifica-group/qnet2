@@ -57,7 +57,7 @@ export const campaigns = {
       },
       classification: {
         title: 'Classification',
-        description: 'Status, business function and product category.',
+        description: 'Status and product lines.',
         descriptionLinked:
           'Read-only: inherited from the linked project. Unlink the project to set your own.',
       },

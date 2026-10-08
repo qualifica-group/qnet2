@@ -50,7 +50,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Clicca la cella **Categoria prodotto** per cambiarla senza aprire la richiesta: scegli la categoria genitore, poi la categoria prodotto. Se la categoria presente è gestita a riga singola (ad esempio Formazione), quella che scegli la sostituisce; altrimenti viene aggiunta alle altre, e le categorie a riga singola non sono selezionabili (vale anche per la seconda riga del form). Con la **X** rimuovi una categoria. Le righe dell'offerta con un prodotto di una categoria tolta vengono eliminate al salvataggio: un avviso le elenca prima.",
+          text: "Clicca la cella **Categoria prodotto** per cambiarla senza aprire la richiesta: scegli la categoria genitore, poi la categoria prodotto (con **Filtro** puoi prima restringere l'elenco a un gruppo intermedio, ad esempio Consulenza › ISO). Se la categoria presente è gestita a riga singola (ad esempio Formazione), quella che scegli la sostituisce; altrimenti viene aggiunta alle altre, e le categorie a riga singola non sono selezionabili (vale anche per la seconda riga del form). Con la **X** rimuovi una categoria. Le righe dell'offerta con un prodotto di una categoria tolta vengono eliminate al salvataggio: un avviso le elenca prima.",
         },
       ],
     },
@@ -64,7 +64,7 @@ const guide: HelpGuide = {
             'Premi **Nuova richiesta**.',
             'Scrivi nelle **Note generali** cosa ha chiesto il cliente, con le sue parole.',
             "Se serve, indica il **Prossimo richiamo** (l'ora è facoltativa).",
-            'In **Linee di prodotto** aggiungi almeno una riga: categoria genitore, poi categoria prodotto.',
+            'In **Linee di prodotto** aggiungi almeno una riga: categoria genitore, poi categoria prodotto. Se la categoria genitore ha dei gruppi (ad esempio Consulenza › ISO), con **Filtro** scegli il gruppo e la categoria prodotto elenca solo le sue sottocategorie; il filtro non viene salvato, solo la categoria prodotto.',
             "Compila le righe dell'offerta: prodotto, quantità, prezzo unitario e IVA.",
             "In **Anagrafica cliente** scegli un'**Anagrafica esistente** oppure inserisci un nuovo cliente.",
             'In **Attribuzione** scegli la **Fonte** (obbligatoria) e, se serve, **Segnalatore** e **Sede operativa**.',

@@ -17,7 +17,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Category setting', 'Where it applies'],
           rows: [
-            ['Parent category (position in the tree)', 'Decides what the category inherits. On product lines of projects, campaigns, opportunities and leads you first choose the Parent category (a root) and then one of its descendants.'],
+            ['Parent category (position in the tree)', 'Decides what the category inherits. On product lines of projects, campaigns, opportunities and leads you first choose the Parent category (a root) and then one of its descendants; with the optional Filter you narrow the choice to a direct child that groups other categories (e.g. Consulting › ISO › ISO 9001).'],
             ['Business function', 'Derived automatically on product lines; used for user competencies and lead/request assignment. The product shows it read-only.'],
             ['Product Attributes', 'Extra fields on the Product card.'],
             ['Offer Attributes', "Fields in the Offer's Additional information, and columns in the per-category cards of Request Management."],

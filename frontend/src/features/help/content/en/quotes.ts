@@ -72,7 +72,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "A field without a pencil is not editable by you: your role's permissions make it read-only, or it is chosen at creation only (Code, Opportunity). Registry, Referent, Source, Business functions and General notes come from the opportunity and stay read-only.",
+          text: "A field without a pencil is not editable by you: your role's permissions make it read-only, or it is chosen at creation only (Code, Opportunity). Registry, Referent, Source, Product lines and General notes come from the opportunity and stay read-only.",
         },
         {
           type: 'list',

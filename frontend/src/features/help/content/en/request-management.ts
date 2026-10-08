@@ -50,7 +50,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Click the **Product category** cell to change it without opening the request: pick the parent category, then the product category. If the current category is managed as a single row (for example Formazione), the one you pick replaces it; otherwise it is added to the others, and single-row categories cannot be picked (the same holds for the second row of the form). The **X** removes a category. Offer rows whose product belongs to a removed category are deleted on save: a warning lists them first.',
+          text: 'Click the **Product category** cell to change it without opening the request: pick the parent category, then the product category (with **Filter** you can first narrow the list to an intermediate group, for example Consulting › ISO). If the current category is managed as a single row (for example Formazione), the one you pick replaces it; otherwise it is added to the others, and single-row categories cannot be picked (the same holds for the second row of the form). The **X** removes a category. Offer rows whose product belongs to a removed category are deleted on save: a warning lists them first.',
         },
       ],
     },
@@ -64,7 +64,7 @@ const guide: HelpGuide = {
             'Press **New request**.',
             'In **General notes** write what the client asked for, in their own words.',
             'If needed, set the **Next callback** (the time is optional).',
-            'In **Product lines** add at least one row: parent category, then product category.',
+            'In **Product lines** add at least one row: parent category, then product category. When the parent category has groups (for example Consulting › ISO), **Filter** lets you pick the group and the product category then lists only its subcategories; the filter is not saved, only the product category.',
             "Fill in the quote's rows: product, quantity, unit price and VAT.",
             'In **Client details** pick an **Existing registry** or enter a new client.',
             'In **Attribution** pick the **Source** (required) and, if needed, **Reporter** and **Operational site**.',

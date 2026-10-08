@@ -76,7 +76,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Codice, Opportunità). Anagrafica, Referente, Fonte, Funzioni aziendali e Note generali vengono dall'opportunità e restano in sola lettura.",
+          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Codice, Opportunità). Anagrafica, Referente, Fonte, Linee prodotto e Note generali vengono dall'opportunità e restano in sola lettura.",
         },
         {
           type: 'list',

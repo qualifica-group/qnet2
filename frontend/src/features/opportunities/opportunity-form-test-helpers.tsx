@@ -162,7 +162,7 @@ export const ROW = {
   commercial: 'Sales rep',
   reporter: 'Reporter',
   source: 'Source',
-  productLines: 'Business functions and product categories',
+  productLines: 'Product lines',
   productsOfInterest: 'Products of interest',
   supervisor: 'Supervisor',
   managers: 'Account managers',

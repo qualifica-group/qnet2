@@ -128,7 +128,11 @@ export const table = {
     remove: 'Rimuovi {{name}}',
     back: 'Torna alle categorie genitore',
     rootCategoryStep: 'Passo 1: scegli la categoria genitore.',
-    categoryStep: 'Passo 2: scegli una categoria prodotto di {{name}}.',
+    /** Passo corrente in coda al percorso dell'editor (radice › filtro › passo). */
+    categoryStep: 'Categoria prodotto',
+    filterStep: 'Gruppo intermedio',
+    path: 'Percorso della scelta',
+    clearFilter: 'Rimuovi il filtro {{name}}',
     singleModeReached:
       'Questa categoria prodotto è gestita a riga singola: la categoria che scegli sostituisce quella presente.',
     categorySearch: 'Cerca categorie prodotto…',

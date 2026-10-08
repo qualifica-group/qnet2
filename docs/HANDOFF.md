@@ -3,6 +3,30 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Linee prodotto — filtro intermedio facoltativo + rinomina etichetta — VERDE, NON COMMITTATO (2026-10-08)
+
+- Direttiva utente: tra Categoria genitore e Categoria prodotto l'OPERATORE puo' aggiungere, riga per riga, un
+  filtro intermedio (es. Consulenza › ISO › ISO 9001). Solo frontend, contratto API invariato: si salva sempre e
+  solo `product_category_id`; il filtro e' stato UI e NON entra nei valori del form/schemi Zod.
+- `category-tree-scope.ts::filterCategoriesUnderRoot` (figli diretti della radice con categorie selezionabili sotto,
+  container inclusi). `useProductLinesField`: stato locale `rowFilters` posizionale, legato alla radice (cambio radice
+  o reset esterno lo invalidano), `filterFor/canFilterRow/categoryScopeFor/addRowFilter/setRowFilterCategory/
+  removeRowFilter`; scegliere un filtro azzera la categoria se fuori dal sottoalbero. Nuovo
+  `product-category-filter-select.tsx` (X di rimozione nello slot `action`, come il quick-create).
+- Grafica (richiesta utente "come i migliori CRM"): riga = percorso a cascata `madre › [+ Filtro] › categoria` con
+  chevron; "+ Filtro" chip tratteggiato h-9 come "Aggiungi riga". Layout via container query (`@container` sul campo,
+  `@xl:flex-row`): sotto ~36rem i passi si impilano, chevron nascosti, numero/cestino allineati in alto.
+  Editor griglia: `product-line-cell-path.tsx` (breadcrumb `nav` "Percorso della scelta": radice › chip filtro
+  rimovibile o "+ Filtro" tratteggiato › passo corrente); chiavi `categoryStep/filterStep` ora etichette brevi, `path`.
+- Editor inline griglia: flusso a passi estratto in `use-product-line-cell-picker.ts` (step `filter_category`
+  opzionale, pulsante "Filtro" e X per toglierlo); editor sceso da 367 a 311 righe (ancora >300 soft, header doc).
+- Etichetta "Funzioni aziendali e categorie prodotto" → "Linee prodotto" (opportunita', offerte), descrizioni
+  richieste/campagne; competenze utente invariate (la funzione si sceglie ancora). i18n `productLines.filter*`,
+  `table.productLinesEditor.filterStep/clearFilter`. Guide in-app IT/EN: opportunities, quotes, campaigns,
+  request-management, product-categories.
+- Test: 11 nuovi (field, cell editor, tree-scope); suite FE completa 947 file / 7165 test verde, tsc -b e eslint puliti.
+- Da valutare: titolo Gestione Richieste resta "Linee di prodotto" (vs "Linee prodotto" altrove).
+
 ## Anagrafiche — tab Tutte / Persone fisiche / Aziende sulla griglia — NON COMMITTATO (2026-10-08)
 
 - Nuova colonna derivata `registry_type` (badge, `enumKey` `personal_data_type`, set filter, ordinabile, read-only) da
