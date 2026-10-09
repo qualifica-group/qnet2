@@ -71,6 +71,7 @@ export const navigation = {
   configuration: 'Configuration',
   administration: 'Administration',
   systemHealth: 'System health',
+  apiIntegrations: 'API & integrations',
   settings: 'Settings',
   toggleSidebar: 'Toggle sidebar',
 }

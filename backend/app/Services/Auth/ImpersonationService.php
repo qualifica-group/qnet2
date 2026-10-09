@@ -37,6 +37,7 @@ class ImpersonationService
     public function start(User $actor, User $target): LoginResult
     {
         // Step 1: invariants, repeated unconditionally (see class docblock).
+        $this->assertNotThroughApiClient($actor);
         $this->assertNotNesting($actor);
         $this->assertNotSelf($actor, $target);
         $this->assertTargetActive($target);
@@ -50,6 +51,16 @@ class ImpersonationService
         $this->log('impersonation.started', $actor, $target);
 
         return new LoginResult(user: $target, token: $issued->plainTextToken);
+    }
+
+    /**
+     * Impersonation tokens carry no API client binding, so an API client token
+     * must never mint one (spec 0210): it would escape the client's rate limit
+     * and validity rules.
+     */
+    private function assertNotThroughApiClient(User $user): void
+    {
+        abort_if($user->currentApiClientId() !== null, 403, __('Impersonation is not available through an API client.'));
     }
 
     /**
@@ -67,6 +78,8 @@ class ImpersonationService
      */
     public function stop(User $current): LoginResult
     {
+        $this->assertNotThroughApiClient($current);
+
         $currentToken = $this->accessTokenOf($current);
 
         if ($currentToken === null || $currentToken->impersonated_by === null) {

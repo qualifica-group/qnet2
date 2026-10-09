@@ -22,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class AuthController extends BaseApiController
 {
@@ -142,12 +143,16 @@ class AuthController extends BaseApiController
      */
     public function refresh(Request $request): JsonResponse
     {
-        $token = $this->authService->refresh($request->user());
+        try {
+            $token = $this->authService->refresh($request->user());
 
-        return $this->ok([
-            'token' => $token,
-            'token_type' => 'Bearer',
-        ], 'Token refreshed.');
+            return $this->ok([
+                'token' => $token,
+                'token_type' => 'Bearer',
+            ], 'Token refreshed.');
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__);
+        }
     }
 
     /**

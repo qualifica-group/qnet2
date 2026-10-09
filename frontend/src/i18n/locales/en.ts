@@ -74,6 +74,8 @@ import { moduleStats, statsPanel } from './en-stats'
 import { impersonation } from './en-impersonation'
 import { permissions, permissionExplorer } from './en-permissions'
 import { help } from './en-help'
+import { apiIntegrations } from './en-api-integrations'
+import { apiClients } from './en-api-clients'
 import {
   usersAssignment,
   usersColumnsEmployment,
@@ -473,6 +475,8 @@ export const en = {
   documentLayouts,
   dashboard,
   help,
+  apiIntegrations,
+  apiClients,
 }
 
 export type TranslationResources = typeof en

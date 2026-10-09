@@ -50,12 +50,12 @@ class UsersStatsDefinition extends AbstractStatsDefinition
             $this->stat('total', $total, icon: 'users'),
             $this->stat(
                 key: 'active',
-                value: User::query()->where('is_active', true)->count(),
+                value: User::query()->excludingServiceAccounts()->where('is_active', true)->count(),
                 icon: 'user-check',
             ),
             $this->stat(
                 key: 'inactive',
-                value: User::query()->where('is_active', false)->count(),
+                value: User::query()->excludingServiceAccounts()->where('is_active', false)->count(),
                 icon: 'user-x',
             ),
             // `employment_profiles.user_id` is unique, so the flagged profiles
@@ -125,7 +125,12 @@ class UsersStatsDefinition extends AbstractStatsDefinition
     private function roleAssignments(): Builder
     {
         return DB::table($this->rolePivotTable())
-            ->where($this->rolePivotTable().'.model_type', (new User)->getMorphClass());
+            ->where($this->rolePivotTable().'.model_type', (new User)->getMorphClass())
+            // The technical users of the API clients (spec 0210) are not people.
+            ->whereNotIn(
+                $this->rolePivotTable().'.model_id',
+                DB::table((new User)->getTable())->where('is_service_account', true)->select('id'),
+            );
     }
 
     private function rolePivotTable(): string

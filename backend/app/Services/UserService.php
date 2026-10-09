@@ -261,6 +261,7 @@ class UserService
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
         $base = User::query()
+            ->excludingServiceAccounts()
             ->select(['id', 'name', 'email'])
             ->with(['avatar', 'employment.operationalSites.addresses.city']);
 

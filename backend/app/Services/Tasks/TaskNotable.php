@@ -92,6 +92,7 @@ final class TaskNotable implements NotableEntity
         $viewSiteExists = $siteIds !== [] && $this->permissionExists(TaskVisibilityScope::VIEW_SITE_PERMISSION);
 
         return User::query()
+            ->excludingServiceAccounts()
             ->where('is_active', true)
             ->where(function (Builder $query) use ($memberIds, $siteIds, $viewExists, $viewAllExists, $viewSiteExists): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))

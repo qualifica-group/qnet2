@@ -1,5 +1,6 @@
 <?php
 
+use App\Tables\ApiClientsTableDefinition;
 use App\Tables\AttributesTableDefinition;
 use App\Tables\BusinessFunctionsTableDefinition;
 use App\Tables\CampaignsTableDefinition;
@@ -79,6 +80,7 @@ return [
 
     'definitions' => [
         'users' => UsersTableDefinition::class,
+        'api-clients' => ApiClientsTableDefinition::class,
         'roles' => RolesTableDefinition::class,
         'business-functions' => BusinessFunctionsTableDefinition::class,
         'companies' => CompaniesTableDefinition::class,

@@ -229,12 +229,14 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_10_10_100000_add_residual_amount_to_invoice_installments_table` (143rd),
     // and spec 0207's `2026_10_11_100000_add_general_notes_to_registries_table` (144th),
     // and spec 0208's `2026_10_12_100000_add_is_active_to_product_categories_table` (145th),
-    // and spec 0211's `2026_10_09_100000_add_fulltext_name_index_to_referents_table`
-    // (146th, interleaved by filename),
-    // and spec 0212's `2026_10_15_100000_add_is_active_to_sectors_table` (147th),
-    // and spec 0213's `2026_10_15_110000_add_code_to_sectors_table` (148th).
+    // and spec 0209's `2026_10_13_100000_create_api_clients_table` (146th),
+    // and spec 0210's `2026_10_14_*` users.is_service_account (147th)
+    // and personal_access_tokens.api_client_id (148th),
+    // plus `2026_10_09_100000_add_fulltext_name_index_to_referents_table` (149th by count),
+    // and spec 0212's `2026_10_15_100000_add_is_active_to_sectors_table` (150th),
+    // and spec 0213's `2026_10_15_110000_add_code_to_sectors_table` (151st).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 148]);
+    Artisan::call('migrate:rollback', ['--step' => 151]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

@@ -53,9 +53,10 @@ class RoleResource extends JsonResource
      */
     private function memberIds(): array
     {
+        // The technical users of the API clients (spec 0210) are not listed.
         $ids = $this->relationLoaded('users')
-            ? $this->users->pluck('id')
-            : $this->users()->pluck('users.id');
+            ? $this->users->reject->isServiceAccount()->pluck('id')
+            : $this->users()->excludingServiceAccounts()->pluck('users.id');
 
         return $ids->map(static fn ($id): int => (int) $id)->values()->all();
     }

@@ -23,6 +23,7 @@ import {
   MapPin,
   Megaphone,
   Package,
+  Plug,
   Percent,
   Puzzle,
   Ruler,
@@ -109,6 +110,8 @@ const iconMap: Record<string, LucideIcon> = {
   'receipt-euro': ReceiptEuro,
   // Spec 0197: "Scadenze" under Contabilita' > Attiva.
   'calendar-clock': CalendarClock,
+  // Spec 0209: "API e integrazioni" under Amministrazione.
+  plug: Plug,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

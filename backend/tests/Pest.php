@@ -52,6 +52,8 @@ require_once __DIR__.'/Helpers/TableFieldHelpers.php';
 require_once __DIR__.'/Helpers/FinancialAccountHelpers.php';
 require_once __DIR__.'/Helpers/InvoiceHelpers.php';
 require_once __DIR__.'/Helpers/InvoiceInstallmentHelpers.php';
+require_once __DIR__.'/Helpers/ApiClientAdminHelpers.php';
+require_once __DIR__.'/Helpers/ApiDocsHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

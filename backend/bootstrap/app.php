@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\LimitStatementDuration;
 use App\Http\Middleware\RecordActorWrite;
 use App\Http\Middleware\SetLocale;
+use App\Http\Middleware\ThrottleApiClientRequests;
 use App\Support\Database\StatementTimeout;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
@@ -13,6 +14,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -21,6 +23,13 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function (): void {
+            // Spec 0209: routes/api.php is at its line budget, so the API
+            // clients admin and client-login register from a dedicated file.
+            Route::middleware(['api', 'auth:sanctum'])
+                ->prefix('api')
+                ->group(base_path('routes/api/api-clients.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Fail-closed hard gate for the "Migrazioni" section (spec 0013).
@@ -54,6 +63,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // payload throws from the route middleware stack, before any
         // controller runs.
         $middleware->api(prepend: [SetLocale::class]);
+
+        // Spec 0210, AC-008: per-client rate limit, only for requests made with
+        // a token bound to an API client.
+        $middleware->api(append: [ThrottleApiClientRequests::class]);
 
         // Per-session DB statement time limit for web/API requests only.
         $middleware->api(append: [LimitStatementDuration::class]);

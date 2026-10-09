@@ -74,6 +74,8 @@ import {
   usersFormEmploymentSections,
 } from './it-users-employment'
 import { help } from './it-help'
+import { apiIntegrations } from './it-api-integrations'
+import { apiClients } from './it-api-clients'
 
 export const it: TranslationResources = {
   common,
@@ -459,4 +461,6 @@ export const it: TranslationResources = {
   documentLayouts,
   dashboard,
   help,
+  apiIntegrations,
+  apiClients,
 }

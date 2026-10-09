@@ -164,11 +164,12 @@ class RoleAssignmentGuard
     }
 
     /**
-     * Number of users currently holding the privileged super-admin role.
+     * Number of human users currently holding the privileged super-admin role
+     * (the technical users of the API clients do not count: spec 0210).
      */
     public function superAdminCount(): int
     {
-        return User::role(self::PRIVILEGED_ROLE)->count();
+        return User::role(self::PRIVILEGED_ROLE)->excludingServiceAccounts()->count();
     }
 
     private function actorIsSuperAdmin(User $actor): bool

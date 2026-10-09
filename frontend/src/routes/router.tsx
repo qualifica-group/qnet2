@@ -82,6 +82,9 @@ const LeadImportHistoryPage = lazyRoute(() => import('@/pages/lead-import-histor
 const LeadImportDetailPage = lazyRoute(() => import('@/pages/lead-import-detail-page'))
 const MigrationsPage = lazyRoute(() => import('@/features/migrations/migrations-page'))
 const SystemHealthPage = lazyRoute(() => import('@/features/system-health/system-health-page'))
+const ApiIntegrationsPage = lazyRoute(
+  () => import('@/features/api-integrations/api-integrations-page'),
+)
 const SettingsPage = lazyRoute(() => import('@/pages/settings-page'))
 const FieldChangeRequestsPage = lazyRoute(() => import('@/pages/field-change-requests-page'))
 const NotFoundPage = lazyRoute(() => import('@/pages/not-found-page'))
@@ -475,6 +478,10 @@ export const router = createBrowserRouter([
                 element: <SystemHealthPage />,
               },
             ],
+          },
+          {
+            path: 'admin/api-integrations',
+            element: <ApiIntegrationsPage />,
           },
           {
             path: 'settings',

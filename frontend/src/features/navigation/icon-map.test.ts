@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Circle, CreditCard, Files, LayoutTemplate, Shapes } from 'lucide-react'
+import { Circle, CreditCard, Files, LayoutTemplate, Plug, Shapes } from 'lucide-react'
 import { resolveIcon } from '@/features/navigation/icon-map'
 
 /**
@@ -45,5 +45,13 @@ describe('resolveIcon — product-typologies and task-templates navigation icons
   it('resolves "layout-template" to the LayoutTemplate component, not the Circle fallback', () => {
     expect(resolveIcon('layout-template')).toBe(LayoutTemplate)
     expect(resolveIcon('layout-template')).not.toBe(Circle)
+  })
+})
+
+/** Spec 0209: `config/navigation/administration.php` declares `'icon' => 'plug'` for "API e integrazioni". */
+describe('resolveIcon — api-integrations navigation icon (spec 0209)', () => {
+  it('resolves "plug" to the Plug component, not the Circle fallback', () => {
+    expect(resolveIcon('plug')).toBe(Plug)
+    expect(resolveIcon('plug')).not.toBe(Circle)
   })
 })

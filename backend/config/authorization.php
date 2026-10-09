@@ -1,5 +1,6 @@
 <?php
 
+use App\Authorization\ApiClientsAuthorization;
 use App\Authorization\AttributesAuthorization;
 use App\Authorization\BusinessFunctionsAuthorization;
 use App\Authorization\CampaignsAuthorization;
@@ -116,6 +117,7 @@ return [
         'enrollee-management' => EnrolleeManagementAuthorization::class,
         // Spec 0185: "Statistiche Gestione Richieste" — a view-only module.
         'request-statistics' => RequestStatisticsAuthorization::class,
+        'api-clients' => ApiClientsAuthorization::class,
         'reward-types' => RewardTypesAuthorization::class,
         'reward-statuses' => RewardStatusesAuthorization::class,
         'rewarded-referents' => RewardedReferentsAuthorization::class,

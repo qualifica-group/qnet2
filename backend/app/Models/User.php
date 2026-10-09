@@ -16,12 +16,14 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\PersonalAccessToken;
 use Spatie\Activitylog\Traits\CausesActivity;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -47,6 +49,51 @@ class User extends Authenticatable implements HasLocalePreference
         return $this->morphOne(Attachment::class, 'attachable')
             ->where('collection', self::AVATAR_COLLECTION)
             ->latestOfMany();
+    }
+
+    /**
+     * Exclude the technical users of the external API clients (spec 0210).
+     */
+    #[Scope]
+    protected function excludingServiceAccounts(Builder $query): void
+    {
+        $query->where($query->qualifyColumn('is_service_account'), false);
+    }
+
+    /**
+     * The technical users of the API clients are not addressable through the
+     * users routes (spec 0210): route binding answers 404 for them.
+     */
+    public function resolveRouteBinding($value, $field = null): ?Model
+    {
+        return $this->newQuery()
+            ->excludingServiceAccounts()
+            ->where($field ?? $this->getRouteKeyName(), $value)
+            ->first();
+    }
+
+    /**
+     * Id of the API client the current token is bound to (spec 0210), null for
+     * the app tokens and for non-token authentication. Single source of the
+     * rule: only a persisted token counts, so the mock that Sanctum::actingAs()
+     * installs (not persisted) never resolves a client nor costs a query.
+     */
+    public function currentApiClientId(): ?int
+    {
+        $token = $this->currentAccessToken();
+
+        if (! $token instanceof PersonalAccessToken || ! $token->exists) {
+            return null;
+        }
+
+        $id = (int) $token->getAttribute('api_client_id');
+
+        return $id > 0 ? $id : null;
+    }
+
+    public function isServiceAccount(): bool
+    {
+        return (bool) $this->is_service_account;
     }
 
     /**
@@ -137,6 +184,9 @@ class User extends Authenticatable implements HasLocalePreference
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            // Spec 0210 — technical user of an API client. Guarded (not in
+            // $fillable): written only by ApiClientService.
+            'is_service_account' => 'boolean',
             // Spec 0177 — first-access flag. Guarded (not in $fillable): written
             // only via forceFill() by the onboarding/password services.
             'must_set_password' => 'boolean',

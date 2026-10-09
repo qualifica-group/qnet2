@@ -85,6 +85,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   migrations: 'migrations:nav.label',
   admin: 'navigation.administration',
   'system-health': 'navigation.systemHealth',
+  'api-integrations': 'navigation.apiIntegrations',
   settings: 'navigation.settings',
   login: 'auth.signInTitle',
   'forgot-password': 'auth.forgotPasswordTitle',

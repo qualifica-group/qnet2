@@ -48,6 +48,7 @@ class LeadOperatorDistributor
         }
 
         $memberships = User::query()
+            ->excludingServiceAccounts()
             ->join('employment_profiles', 'employment_profiles.user_id', '=', 'users.id')
             ->join(
                 'employment_profile_operational_site as memberships',

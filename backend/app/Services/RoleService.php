@@ -190,7 +190,12 @@ class RoleService
      */
     private function syncUsers(User $actor, Role $role, array $userIds): void
     {
-        $authorizedIds = $this->guard->authorizedUserIdsForRole($actor, $role, $userIds);
+        // The technical users are invisible to the member list, so the submitted
+        // ids never carry them: keep them or the sync would strip their role.
+        $authorizedIds = [
+            ...$this->guard->authorizedUserIdsForRole($actor, $role, $userIds),
+            ...$role->users()->where('is_service_account', true)->pluck('users.id')->map(static fn ($id): int => (int) $id)->all(),
+        ];
 
         $this->guard->guardLastSuperAdminMembershipShrink($role, $authorizedIds);
 

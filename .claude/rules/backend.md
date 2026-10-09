@@ -17,7 +17,7 @@
 - Usa `Route::resource` / route model binding per il CRUD: niente file di route gonfio di GET/POST manuali.
 - **Mai restituire un model Eloquent raw**: sempre via API **Resource**. Il giorno che aggiungi un campo `password`/`api_secret` e dimentichi di nasconderlo è un incidente, non un errore.
 - Rispetta l'**envelope di risposta** del progetto (`{ success, message, ... }`). Gli errori non espongono mai nomi di classi/model interni.
-- **Rate limiting** (`throttle:...`) SOLO sugli endpoint di credenziali auth (login, forgot/reset password, cambio password): sono i bersagli di brute-force. NON applicarlo agli altri endpoint (CRUD/browse autenticati, SSRM, import/export) — decisione utente 2026-07-15, "Too Many Attempts" bloccava l'uso normale. Non reintrodurre `throttle` altrove senza richiesta esplicita.
+- **Rate limiting** (`throttle:...`) SOLO sugli endpoint di credenziali auth (login, forgot/reset password, cambio password): sono i bersagli di brute-force. NON applicarlo agli altri endpoint (CRUD/browse autenticati, SSRM, import/export) — decisione utente 2026-07-15, "Too Many Attempts" bloccava l'uso normale. Non reintrodurre `throttle` altrove senza richiesta esplicita. **Unica eccezione:** le richieste fatte con un token di un client API (chiave del client o login da client, cioè token con `api_client_id`) passano dal limiter per client `api-client` (`ThrottleApiClientRequests`, limite in `api_clients.rate_limit_per_minute`, default `config('external-api.rate_limit.default')`) — decisioni utente 2026-10-09, spec 0210. Le chiamate dell'app (token senza `api_client_id`) restano senza throttle; `auth/client-login` ha `throttle:6,1` come gli altri endpoint di credenziali.
 
 ## 3. Eloquent / Database
 

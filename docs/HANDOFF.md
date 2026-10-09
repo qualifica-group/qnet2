@@ -70,6 +70,40 @@
 - Rossi pre-esistenti NON di questa modifica: `RegistryTableTest` "bounded query count" (10 query, +1
   `select * from api_clients` dal lavoro 0209/0210); `tsc -b` rosso solo su test `features/sectors` (`is_active`).
 
+## Client API su /api diretto (spec 0210, sostituisce 0209) — VERDE, COMMITTATO (2026-10-09)
+
+- Decisioni utente F-1..F-4 in `docs/specs/0210-api-clients-direct-access.xml`. Il layer `/api/v1/external` (0209,
+  ora `superseded`) e gli scope sono ELIMINATI. Da fuori si usano le stesse `/api/...` di QNet solo come client:
+  - chiave del client = token Sanctum dell'utente tecnico del client (`users.is_service_account`, ruolo
+    super-admin, nome "API · <client>"), con `personal_access_tokens.api_client_id` = client;
+  - `POST /api/auth/client-login` (Bearer chiave + email/password) emette un token dell'UTENTE con
+    `api_client_id` e scadenza `external-api.user_tokens.ttl_minutes` (24 h): l'utente agisce con i suoi permessi.
+- Validità token: `ApiClientTokenValidity` (R-1 chiave: client attivo/non scaduto, ignora i 30 gg globali;
+  R-2 login da client: expires_at, utente e client attivi; R-3 token dell'app invariati). Regola unica per
+  leggere il client dal token: `User::currentApiClientId()` (solo token persistiti; il mock di
+  `Sanctum::actingAs` non risolve nessun client). Wiring in `ApiClientsServiceProvider`.
+- Rate limit `api-client` (`ThrottleApiClientRequests`) SOLO sui token con `api_client_id`; `client-login` ha
+  `throttle:6,1`. Refresh conserva `api_client_id`/scadenza (403 sulla chiave); impersonation 403 per i token di
+  client. Activity log: causer = utente attore + `properties.api_client_id`.
+- Utenti tecnici esclusi da: login app e client-login, forgot/reset/set-password, tabella e for-select utenti,
+  route binding `{user}` (404), utenti online, Notable (4), UsersStats, membri ruolo (il sync li preserva),
+  `LeadOperatorDistributor`, conteggio ultimo super-admin.
+- Doc: Scramble su `/api` meno `external-api.docs.excluded_prefixes` (475 operation); `ApiDocsServiceProvider`
+  (`ignoreDefaultRoutes`, bearer, `ApiEnvelopeReturnTypeExtension` che inferisce `ok/created/okWithPermissions`);
+  cache 30 gg con chiave = firma sorgenti. **Deploy: lanciare `php artisan api-docs:warm`** (generazione a freddo
+  da 20 s a oltre 3 min sotto carico). Postman `qnet-api.postman_collection.json` con `api_key`/`user_token`.
+- Frontend `/admin/api-integrations`: client senza scope, utente tecnico nel dettaglio, doc con ricerca e tag
+  collassati, sezione Autenticazione con le due modalità. Guide in-app riscritte (9 sezioni IT/EN).
+- Config ancora chiamata `config/external-api.php` (prefix `api`, rate_limit, docs, service_users,
+  user_tokens); namespace dei servizi `App\Services\ApiClients` e `App\Services\ApiDocs`.
+- Verifica: verifier AC-001..014 PASS; backend 9857/9866 con 5 rossi non nostri (2 preesistenti noti PDF/seeder,
+  `SectorTest` di un'altra sessione), più i 2 test sul numero di query corretti e rieseguiti (428/428); Vitest
+  7240/7240, ESLint, Pint, `tsc -b --force` puliti.
+- Aperti: manuale Claude Docs non accessibile al connettore (sezione "API e integrazioni" da scrivere);
+  limite L-1 (il token dell'app copiato si può usare da fuori: serve passare la SPA ai cookie, progetto a parte);
+  `UsersTableDefinition` (496) e `router.tsx` (498) vicini al limite di 500; contatori `--step` dei test di
+  rollback (149/13) includono la migrazione referents dell'altra sessione: non vanno aumentati di nuovo.
+
 ## Stati "Orientamento specialistico" (settore APL) — VERDE, COMMITTATO (2026-10-09)
 
 - Direttiva utente (foglio "6. APL_Orientamento specialistico"): 13 stati APL anteposti ai 6 esistenti in

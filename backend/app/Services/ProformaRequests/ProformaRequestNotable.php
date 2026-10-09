@@ -46,6 +46,7 @@ final class ProformaRequestNotable implements NotableEntity
             ->exists();
 
         return User::query()
+            ->excludingServiceAccounts()
             ->where('is_active', true)
             ->where(function (Builder $query) use ($permissionExists): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))

@@ -56,5 +56,13 @@ return [
             'permission' => null,
             'role' => 'super-admin',
         ],
+        [
+            // API clients and integrator documentation (spec 0209).
+            'key' => 'api-integrations',
+            'label' => 'navigation.apiIntegrations',
+            'icon' => 'plug',
+            'route' => '/admin/api-integrations',
+            'permission' => 'api-clients.view',
+        ],
     ],
 ];
