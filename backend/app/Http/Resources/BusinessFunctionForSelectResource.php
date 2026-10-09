@@ -24,6 +24,8 @@ class BusinessFunctionForSelectResource extends ForSelectResource
         return [
             'id' => $this->id,
             'label' => $this->name,
+            // Spec 0208, D-4: the form proposes the function's manager.
+            'manager' => $this->manager === null ? null : ['id' => $this->manager->id, 'name' => $this->manager->name],
         ];
     }
 }

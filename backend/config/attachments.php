@@ -7,6 +7,8 @@ use App\Models\DocumentLayout;
 use App\Models\Note;
 use App\Models\Opportunity;
 use App\Models\OutboundEmail;
+use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestLine;
 use App\Models\Registry;
 use App\Models\Task;
 use App\Models\TaskTemplate;
@@ -146,6 +148,10 @@ return [
         // AttachmentService/HasAttachments resolve the owner through this
         // same allowlist internally.
         'outbound_email' => OutboundEmail::class,
+        // Purchase request and line documents (spec 0208, D-15): aliases
+        // already in the global morph map (AppServiceProvider).
+        'purchase_request' => PurchaseRequest::class,
+        'purchase_request_line' => PurchaseRequestLine::class,
     ],
 
 ];

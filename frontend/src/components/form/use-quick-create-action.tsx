@@ -7,6 +7,7 @@ import {
   useQuickCreateDepth,
 } from '@/components/form/quick-create-depth-context'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
+import type { QuickCreatePresets } from '@/features/quick-create/types'
 
 interface QuickCreateAction {
   /** Refs created so far for this field, kept selected until the invalidated options page catches up (AC-006). */
@@ -35,7 +36,7 @@ interface QuickCreateAction {
  * and the handful of call sites whose relation picker isn't a plain RHF field
  * (custom `onChange` side effects, non-RHF value/onChange props, ...).
  */
-export function useQuickCreateAction(resource: string): QuickCreateAction {
+export function useQuickCreateAction(resource: string, presets?: QuickCreatePresets): QuickCreateAction {
   const depth = useQuickCreateDepth()
   const { quickCreated, handleCreated } = useQuickCreated(resource)
 
@@ -48,6 +49,7 @@ export function useQuickCreateAction(resource: string): QuickCreateAction {
         <QuickCreateButton
           resource={resource}
           disabled={disabled}
+          presets={presets}
           onCreated={(ref) => {
             handleCreated(ref)
             onCreated(ref)

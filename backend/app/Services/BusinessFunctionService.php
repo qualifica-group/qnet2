@@ -127,7 +127,7 @@ class BusinessFunctionService
      */
     public function forSelect(ForSelectQuery $query, ?int $excludeDescendantsOf = null): ForSelectResult
     {
-        $base = BusinessFunction::query()->select(['id', 'name']);
+        $base = BusinessFunction::query()->select(['id', 'name', 'manager_id'])->with('manager:id,name');
 
         if ($excludeDescendantsOf !== null) {
             $excludedIds = array_merge([$excludeDescendantsOf], $this->hierarchy->descendantIds($excludeDescendantsOf));
@@ -180,7 +180,8 @@ class BusinessFunctionService
 
         /** @var Collection<int, BusinessFunction> $hydrated */
         $hydrated = BusinessFunction::query()
-            ->select(['id', 'name'])
+            ->select(['id', 'name', 'manager_id'])
+            ->with('manager:id,name')
             ->whereIn('id', $missingIds)
             ->orderBy('name')
             ->orderBy('id')

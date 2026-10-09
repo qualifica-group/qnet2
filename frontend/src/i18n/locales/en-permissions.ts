@@ -66,6 +66,11 @@ export const permissions = {
     sendEmail: 'Send email',
     revealCardNumber: 'Reveal card number',
     collect: 'Record collections',
+    // Spec 0208: purchase requests (RDA).
+    fulfill: 'Fulfil lines (order, receive)',
+    manageStatuses: 'Manage any line status',
+    deleteLine: 'Delete lines',
+    close: 'Close',
     // Spec 0201 D-10: work order Contract data tab and per-line payment management.
     viewContractData: 'View contract data',
     managePayments: 'Manage payments',
@@ -121,6 +126,7 @@ export const permissions = {
     'units-of-measure': 'Units of Measure',
     'financial-accounts': 'Financial accounts',
     'proforma-requests': 'Proforma requests',
+    'purchase-requests': 'Purchase requests (RDA)',
     invoices: 'Active invoices',
     'invoice-installments': 'Due dates',
     'product-typologies': 'Product Typologies',

@@ -45,6 +45,7 @@ import {
   ChartColumn,
   Landmark,
   ReceiptEuro,
+  ShoppingCart,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -109,6 +110,8 @@ const iconMap: Record<string, LucideIcon> = {
   'receipt-euro': ReceiptEuro,
   // Spec 0197: "Scadenze" under Contabilita' > Attiva.
   'calendar-clock': CalendarClock,
+  // Spec 0208: "RDA" under Acquisti.
+  'shopping-cart': ShoppingCart,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

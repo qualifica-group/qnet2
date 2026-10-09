@@ -45,6 +45,8 @@ use App\Models\ProductCategory;
 use App\Models\ProductTypology;
 use App\Models\ProformaRequest;
 use App\Models\Project;
+use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestLine;
 use App\Models\Quote;
 use App\Models\QuoteLineCommission;
 use App\Models\QuoteWorkflow;
@@ -199,6 +201,8 @@ class AppServiceProvider extends ServiceProvider
             'unit_of_measure' => UnitOfMeasure::class,
             'financial_account' => FinancialAccount::class,
             'proforma_request' => ProformaRequest::class,
+            'purchase_request' => PurchaseRequest::class,
+            'purchase_request_line' => PurchaseRequestLine::class,
             'invoice' => Invoice::class,
             'invoice_installment' => InvoiceInstallment::class,
             'product_typology' => ProductTypology::class,

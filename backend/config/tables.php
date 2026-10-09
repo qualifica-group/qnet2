@@ -29,6 +29,8 @@ use App\Tables\ProductsTableDefinition;
 use App\Tables\ProductTypologiesTableDefinition;
 use App\Tables\ProformaRequestsTableDefinition;
 use App\Tables\ProjectsTableDefinition;
+use App\Tables\PurchaseRequestLinesTableDefinition;
+use App\Tables\PurchaseRequestsTableDefinition;
 use App\Tables\QuotesTableDefinition;
 use App\Tables\QuoteWorkflowsTableDefinition;
 use App\Tables\ReferentsTableDefinition;
@@ -126,6 +128,9 @@ return [
         'units-of-measure' => UnitsOfMeasureTableDefinition::class,
         'financial-accounts' => FinancialAccountsTableDefinition::class,
         'proforma-requests' => ProformaRequestsTableDefinition::class,
+        // spec 0208: purchase requests (RDA) and their line management grid.
+        'purchase-requests' => PurchaseRequestsTableDefinition::class,
+        'purchase-request-lines' => PurchaseRequestLinesTableDefinition::class,
         // spec 0194: active invoicing (proforma and invoices).
         'invoices' => InvoicesTableDefinition::class,
         // spec 0197: installments of the active invoices, groupable.

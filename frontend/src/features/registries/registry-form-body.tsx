@@ -41,6 +41,7 @@ const CREATE_MODE = { type: 'create' } as const
 interface RegistryFormBodyProps {
   onSuccess: (registry: RegistryDetail) => void
   onCancel: () => void
+  isSupplierPreset?: boolean
 }
 
 /**
@@ -56,12 +57,12 @@ interface RegistryFormBodyProps {
  * The duplicate warning heads the side column, the general notes (spec 0207)
  * follow it. The warning refuses nothing: the save goes through either way.
  */
-export function RegistryFormBody({ onSuccess, onCancel }: RegistryFormBodyProps) {
+export function RegistryFormBody({ onSuccess, onCancel, isSupplierPreset = false }: RegistryFormBodyProps) {
   const { t } = useTranslation()
   // The form's own scroll scope: what a refused save reveals, never another owner form's blocks.
   const containerRef = useRef<HTMLDivElement>(null)
   const [profileDraft, setProfileDraft] = useState<PersonalDataDraft>(emptyPersonalDataDraft)
-  const { form, customFieldErrorPaths } = useRegistryForm({ mode: CREATE_MODE })
+  const { form, customFieldErrorPaths } = useRegistryForm({ mode: CREATE_MODE, isSupplierPreset })
   const { inline, cardSignal } = useRegistryDraftInlineEdit(form, profileDraft, setProfileDraft)
   const submit = useRegistryFormSubmit({
     form,

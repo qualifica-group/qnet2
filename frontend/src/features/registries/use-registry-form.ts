@@ -41,7 +41,10 @@ export function editDefaults(
   }
 }
 
-function createDefaults(customFields: Record<string, CustomFieldValue>): RegistryFormValues {
+function createDefaults(
+  customFields: Record<string, CustomFieldValue>,
+  isSupplierPreset: boolean,
+): RegistryFormValues {
   return {
     source_id: null,
     sector_ids: [],
@@ -51,7 +54,7 @@ function createDefaults(customFields: Record<string, CustomFieldValue>): Registr
     commercial_id: null,
     reporter_id: null,
     vat_group: '',
-    is_supplier: false,
+    is_supplier: isSupplierPreset,
     is_qualified_supplier: false,
     agreement_status: null,
     agreement_notes: '',
@@ -83,6 +86,8 @@ export function usePersonalDataFieldPermission(): (key: string) => PersonalDataF
 
 interface UseRegistryFormArgs {
   mode: RegistryFormMode
+  /** Create mode only: the new anagrafica starts flagged as a supplier. */
+  isSupplierPreset?: boolean
 }
 
 /**
@@ -97,7 +102,7 @@ interface UseRegistryFormArgs {
  * preserves the row still being edited. Every explicit `reset` that means to
  * DROP an edit passes `keepDirtyValues: false`.
  */
-export function useRegistryForm({ mode }: UseRegistryFormArgs) {
+export function useRegistryForm({ mode, isSupplierPreset = false }: UseRegistryFormArgs) {
   const { t } = useTranslation()
   const isEdit = mode.type === 'edit'
   const customFields = useCustomFieldsForm(
@@ -117,8 +122,8 @@ export function useRegistryForm({ mode }: UseRegistryFormArgs) {
     () =>
       mode.type === 'edit'
         ? editDefaults(mode.registry, customFields.defaultValues)
-        : createDefaults(customFields.defaultValues),
-    [mode, customFields.defaultValues],
+        : createDefaults(customFields.defaultValues, isSupplierPreset),
+    [mode, customFields.defaultValues, isSupplierPreset],
   )
 
   const form = useForm<RegistryFormValues>({

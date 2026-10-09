@@ -11,6 +11,8 @@ interface RegistryFormProps {
   onSuccess: (registry: RegistryDetail) => void
   /** Called when the user cancels the form. */
   onCancel: () => void
+  /** Starts the new anagrafica flagged as a supplier (quick-create from a supplier picker). */
+  isSupplierPreset?: boolean
 }
 
 /**

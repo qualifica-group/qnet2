@@ -26,6 +26,7 @@ use App\Authorization\ProductsAuthorization;
 use App\Authorization\ProductTypologiesAuthorization;
 use App\Authorization\ProformaRequestsAuthorization;
 use App\Authorization\ProjectsAuthorization;
+use App\Authorization\PurchaseRequestsAuthorization;
 use App\Authorization\QuotesAuthorization;
 use App\Authorization\QuoteWorkflowsAuthorization;
 use App\Authorization\ReferentsAuthorization;
@@ -125,6 +126,8 @@ return [
         'financial-accounts' => FinancialAccountsAuthorization::class,
         // spec 0193: richieste proforma alla Contabilita'.
         'proforma-requests' => ProformaRequestsAuthorization::class,
+        // spec 0208: richieste di acquisto (RDA).
+        'purchase-requests' => PurchaseRequestsAuthorization::class,
         // spec 0194: fatturazione attiva (proforma e fatture).
         'invoices' => InvoicesAuthorization::class,
         // spec 0197: le scadenze (rate) delle fatture attive.

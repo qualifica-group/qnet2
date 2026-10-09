@@ -11,6 +11,14 @@ export interface QuickCreateFormProps {
   /** Called with the ref of the record just created: {id, name}, already projected by the adapter. */
   onSuccess: (ref: RelationFieldRef) => void
   onCancel: () => void
+  /** Initial values the calling field imposes on the create form (e.g. a supplier picker). */
+  presets?: QuickCreatePresets
+}
+
+/** Initial values a relation field can impose on a module's quick-create form. */
+export interface QuickCreatePresets {
+  /** Registries: the new record starts flagged as a supplier (spec 0208 D-14). */
+  is_supplier?: boolean
 }
 
 /** A resource's quick-create wiring, resolved by `resolveQuickCreate`. */

@@ -38,6 +38,7 @@ require_once __DIR__.'/Helpers/RequestManagementHelpers.php';
 require_once __DIR__.'/Helpers/CampaignHelpers.php';
 require_once __DIR__.'/Helpers/RegistryHelpers.php';
 require_once __DIR__.'/Helpers/ProformaRequestHelpers.php';
+require_once __DIR__.'/Helpers/PurchaseRequestHelpers.php';
 require_once __DIR__.'/Helpers/RewardedReferentHelpers.php';
 require_once __DIR__.'/Helpers/OpportunityHelpers.php';
 require_once __DIR__.'/Helpers/LeadHelpers.php';

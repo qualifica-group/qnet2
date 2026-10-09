@@ -25,6 +25,7 @@ use App\Models\ProductCategory;
 use App\Models\ProductTypology;
 use App\Models\ProformaRequest;
 use App\Models\Project;
+use App\Models\PurchaseRequest;
 use App\Models\Quote;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
@@ -261,6 +262,10 @@ return [
         // spec 0193: richieste proforma.
         'proforma-requests' => [
             'model' => ProformaRequest::class,
+        ],
+        // spec 0208: richieste di acquisto (RDA).
+        'purchase-requests' => [
+            'model' => PurchaseRequest::class,
         ],
         // spec 0194: fatture attive.
         'invoices' => [

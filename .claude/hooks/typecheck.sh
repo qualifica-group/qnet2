@@ -30,6 +30,9 @@ else
   TSC="npx --no-install tsc"
 fi
 
+# Il progetto e' grande: con l'heap di default Node va in segfault (exit 139,
+# output vuoto) e il gate lo scambierebbe per errori di tipo.
+export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=8192"
 OUT="$(cd "$FE" && $TSC -b --force --pretty false 2>&1)"
 STATUS=$?
 

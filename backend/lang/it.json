@@ -140,5 +140,17 @@
     "Split": "Proporzionale su tutte le rate",
     "On first installment": "Tutta sulla prima rata",
     "On last installment": "Tutta sull'ultima rata",
-    "First installment is VAT only": "Prima rata solo IVA"
+    "First installment is VAT only": "Prima rata solo IVA",
+    "Purchase request to review": "Richiesta di acquisto da esaminare",
+    ":actor sent you the purchase request \":subject\" for review.": ":actor ti ha inviato la richiesta di acquisto \":subject\" da esaminare.",
+    "Purchase request sent to :name": "RDA inviata a :name",
+    "This purchase request is closed and can no longer be changed.": "Questa richiesta di acquisto è chiusa e non può più essere modificata.",
+    "This purchase request is already closed.": "Questa richiesta di acquisto è già chiusa.",
+    "This purchase request has ordered or received lines and cannot be deleted.": "Questa richiesta di acquisto ha righe ordinate o ricevute e non può essere eliminata.",
+    "The function manager has no email address.": "Il responsabile di funzione non ha un indirizzo email.",
+    "A reason is required to close a purchase request with open lines.": "Serve una motivazione per chiudere una richiesta di acquisto con righe ancora aperte.",
+    "The line does not belong to this purchase request.": "La riga non appartiene a questa richiesta di acquisto.",
+    "The line is no longer pending approval and cannot be modified.": "La riga non è più da approvare e non può essere modificata.",
+    "Only pending or rejected lines can be deleted.": "Si possono eliminare solo righe da approvare o rifiutate.",
+    "This status change is not allowed for the line.": "Questo cambio di stato non è consentito per la riga."
 }

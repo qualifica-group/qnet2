@@ -11,6 +11,7 @@ import { CAMPAIGNS_FOR_SELECT_RESOURCE } from '@/features/campaigns/for-select-a
 import { TAGS_FOR_SELECT_RESOURCE } from '@/features/tags/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
+import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
 
 /**
  * Quick-create entries for the modules whose create form takes plain
@@ -135,8 +136,9 @@ const registries: QuickCreateEntry = {
   form: lazy(async () => {
     const { RegistryForm } = await import('@/features/registries/registry-form')
     return {
-      default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
+      default: ({ onSuccess, onCancel, presets }: QuickCreateFormProps) => (
         <RegistryForm
+          isSupplierPreset={presets?.is_supplier}
           onSuccess={(registry) => onSuccess({ id: registry.id, name: registry.name })}
           onCancel={onCancel}
         />
@@ -217,6 +219,24 @@ const companies: QuickCreateEntry = {
   }),
 }
 
+const products: QuickCreateEntry = {
+  titleKey: 'products.form.createTitle',
+  descriptionKey: 'products.form.createSubtitle',
+  permission: 'products.create',
+  form: lazy(async () => {
+    const { ProductForm } = await import('@/features/products/product-form')
+    return {
+      default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
+        <ProductForm
+          mode={{ type: 'create' }}
+          onSuccess={(product) => onSuccess({ id: product.id, name: product.name })}
+          onCancel={onCancel}
+        />
+      ),
+    }
+  }),
+}
+
 /** resource -> entry, for the modules covered by this file. */
 export const moduleEntries: Record<string, QuickCreateEntry> = {
   [SOURCES_FOR_SELECT_RESOURCE]: sources,
@@ -230,4 +250,5 @@ export const moduleEntries: Record<string, QuickCreateEntry> = {
   [TAGS_FOR_SELECT_RESOURCE]: tags,
   [USERS_FOR_SELECT_RESOURCE]: users,
   [COMPANIES_FOR_SELECT_RESOURCE]: companies,
+  [PRODUCTS_FOR_SELECT_RESOURCE]: products,
 }

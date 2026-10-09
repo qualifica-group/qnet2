@@ -3,6 +3,41 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0208 — Modulo RDA (Richieste di Acquisto) — VERDE, NON COMMITTATO (2026-10-09)
+
+- Spec `docs/specs/0208-purchase-requests.xml` (approvata, D-1..D-17, AC-001..AC-022). Nomi inglesi: risorsa/dominio
+  `purchase-requests` / `purchase-request-lines`, tabelle `purchase_requests`, `purchase_request_lines`,
+  `purchase_request_line_status_logs` (migrazioni `2026_10_12_1000*`). Enum `PurchaseRequestStatus` (open|closed),
+  `PurchaseRequestLineStatus` (pending_approval, approved, ordered, received, rejected, on_hold; matrice in
+  `allowedTransitions`), `PurchaseRequestPriority`, `PurchaseRequestCapability` (approve|fulfill|manage).
+- Iter: approva/rifiuta SOLO il Responsabile di funzione assegnato (`function_manager_id`); evasione con
+  `purchase-requests.fulfill`; `purchase-requests.manageStatuses` = qualsiasi stato. Terminali per auto-chiusura:
+  received, on_hold, rejected (D-7). Permessi `purchase-requests.{view,viewAll,create,update,delete,deleteLine,fulfill,
+  manageStatuses,close,export,viewActivity}`. Visibilita' senza viewAll: richiedente/responsabile/autore.
+- BE: `Services/PurchaseRequests/*` (Service, AmountCalculator, CapabilityResolver con `effectiveCapabilities`,
+  LineStatusService, ClosureService, Notifier, VisibilityScope), `routes/api/purchase-requests.php`,
+  TableDefinition `purchase-requests` + `purchase-request-lines` (`app/Tables/PurchaseRequests/*`; colonne derivate:
+  filtri testo/set e `/values` via `PurchaseRequestDerivedQuery::distinctRelated` — senza, il menu filtro va in 500),
+  notifica `PurchaseRequestSubmittedNotification`, menu `config/navigation/purchasing.php`, alias attachments
+  `purchase_request`/`purchase_request_line`, `BusinessFunctionForSelectResource.manager`, `DemoPurchaseRequestSeeder`.
+  Righe: `abilities.{update,delete,transitions,capabilities}` sia nel Resource sia nelle righe SSRM.
+- FE `features/purchase-requests`: form create/edit (righe con "Cambia stato della riga", "Scorpora IVA" nelle azioni,
+  ODA segnaposto "—"), lista RDA con master/detail (`purchase-request-detail-panel.tsx`), Gestione righe con cambio
+  stato massivo, modale stile QNet (`line-status-dialog.tsx` + `line-status-summary-table.tsx` + `line-status-options.tsx`;
+  stato attuale preselezionato su riga singola). Il form si rimonta su `updated_at|status|stati righe`.
+  Quick-create prodotto + `presets` (is_supplier) su quick-create registry. Guide in-app `purchase-requests`,
+  `purchase-request-lines` (HELP_GUIDE_KEYS = 62). Test rollback: conteggi step aggiornati dall'agente backend.
+- Hook `typecheck.sh`: `NODE_OPTIONS=--max-old-space-size=8192` (con heap di default tsc va in segfault 139 e il gate
+  segnalava falsi errori a output vuoto).
+- Menu: sezione `purchasing` PRIMA di `accounting` (test FinancialAccountSchemaTest: accounting subito prima di
+  administration). `FieldCatalogueEndpointTest`: aggiunta risorsa `purchase-requests` all'elenco atteso.
+- Verde: suite completa Pest 9775/9779 -> i 3 rossi sistemati (menu, catalogo campi) o instabili in parallelo
+  (`DemoOpportunitySeederTest` verde da solo); rieseguiti 88/88 + navigazione 277/277. Vitest 7203/7207: i 4 rossi
+  (grafici lazy + request-dashboard-tabs) verdi da soli 31/31, instabili sotto carico. `tsc -b --force`, ESLint, Pint puliti.
+- Aperto: conteggi sulle tab per stato (non nel contratto; `meta.aggregates` e' calcolato sul set filtrato);
+  verifica visiva a 375px; manuale Claude Docs (sezione Acquisti > RDA / Gestione righe, permessi) NON aggiornato;
+  HANDOFF.md ~515 KB, va archiviato in `docs/handoff-archive/`.
+
 ## Spec 0207 — Note generali sull'anagrafica — VERDE, COMMITTATO (2026-10-08)
 
 - Colonna `registries.general_notes` (text nullable, max 5000), migrazione `2026_10_11_100000_add_general_notes_to_registries_table`.

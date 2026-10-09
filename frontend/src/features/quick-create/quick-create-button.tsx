@@ -13,6 +13,7 @@ import {
 import { Can } from '@/features/auth/can'
 import { resolveQuickCreate } from '@/features/quick-create/quick-create-registry'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
+import type { QuickCreatePresets } from '@/features/quick-create/types'
 
 interface QuickCreateButtonProps {
   /** Resource segment of the for-select endpoint this button creates into, e.g. `sources`. */
@@ -20,6 +21,8 @@ interface QuickCreateButtonProps {
   /** Called with the newly created record's `{id, name}` ref right before the dialog closes. */
   onCreated: (ref: RelationFieldRef) => void
   disabled?: boolean
+  /** Initial values imposed on the create form, forwarded to the module's form. */
+  presets?: QuickCreatePresets
 }
 
 /**
@@ -34,6 +37,7 @@ export function QuickCreateButton({
   resource,
   onCreated,
   disabled = false,
+  presets,
 }: QuickCreateButtonProps): ReactElement | null {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -76,7 +80,7 @@ export function QuickCreateButton({
           */}
           <div className="max-h-[75vh] overflow-y-auto" onSubmit={(event) => event.stopPropagation()}>
             <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-              <FormComponent onSuccess={handleSuccess} onCancel={() => setOpen(false)} />
+              <FormComponent presets={presets} onSuccess={handleSuccess} onCancel={() => setOpen(false)} />
             </Suspense>
           </div>
         </DialogContent>

@@ -42,6 +42,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   'units-of-measure': 'navigation.unitsOfMeasure',
   'financial-accounts': 'navigation.financialAccounts',
   'proforma-requests': 'navigation.proformaRequests',
+  'purchase-requests': 'navigation.purchaseRequests',
+  'purchase-request-lines': 'navigation.purchaseRequestLines',
   invoices: 'navigation.invoices',
   'invoice-installments': 'navigation.invoiceInstallments',
   'product-typologies': 'navigation.productTypologies',

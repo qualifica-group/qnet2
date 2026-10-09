@@ -340,6 +340,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // (file-size split, engineering.md §6) and required INSIDE this auth group.
     require __DIR__.'/api/referents.php';
     require __DIR__.'/api/accounting.php'; // Accounting: financial accounts, proforma requests, invoices
+    require __DIR__.'/api/purchase-requests.php'; // Purchase requests (RDA, spec 0208)
 
     require __DIR__.'/api/rewards.php'; // Reward inline status edit (spec 0060 §4, file-size split engineering.md §6)
 

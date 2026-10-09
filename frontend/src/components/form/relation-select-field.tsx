@@ -5,6 +5,7 @@ import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import type { ForSelectItem } from '@/features/for-select/types'
+import type { QuickCreatePresets } from '@/features/quick-create/types'
 
 /** A hydrated `{id, name}` relation projection — the shape every module's single-relation ref shares. */
 export interface RelationFieldRef {
@@ -84,6 +85,8 @@ interface RelationSelectFieldProps<
   isItemDisabled?: (item: ForSelectItem) => boolean
   /** Custom trigger/option content, forwarded verbatim to `AsyncPaginatedSelect.renderItem`. */
   renderItem?: (item: ForSelectItem) => ReactNode
+  /** Initial values the "+" quick-create form starts with (e.g. a supplier-only registry picker). */
+  quickCreatePresets?: QuickCreatePresets
 }
 
 /** Renders a `{id, name}` relation ref as the `ForSelectItem` shape `AsyncPaginatedSelect` hydrates from. */
@@ -133,8 +136,9 @@ export function RelationSelectField<
   showAvatar = false,
   isItemDisabled,
   renderItem,
+  quickCreatePresets,
 }: RelationSelectFieldProps<TFieldValues, TName>) {
-  const { quickCreated, renderAction } = useQuickCreateAction(resource)
+  const { quickCreated, renderAction } = useQuickCreateAction(resource, quickCreatePresets)
 
   return (
     <MetaField

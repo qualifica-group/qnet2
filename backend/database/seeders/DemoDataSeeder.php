@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Opportunity;
+use App\Models\PurchaseRequest;
 use App\Models\Quote;
 use App\Models\WorkOrder;
 use Database\Seeders\Concerns\SeedsWithoutMail;
@@ -46,6 +47,7 @@ class DemoDataSeeder extends Seeder
         // below (same pre-clear pattern as DemoProjectSeeder with campaigns).
         // Invoices go first: they restrict their customer registry and company.
         Invoice::query()->delete();
+        PurchaseRequest::query()->delete();
         WorkOrder::query()->delete();
         Quote::query()->delete();
         Opportunity::query()->delete();
@@ -69,6 +71,8 @@ class DemoDataSeeder extends Seeder
         // so it runs after DemoCompanySeeder.
         $this->call(DemoFinancialAccountSeeder::class);
         $this->call(DemoBusinessFunctionSeeder::class);
+        // Purchase requests (spec 0208): need companies, sites, functions, users.
+        $this->call(DemoPurchaseRequestSeeder::class);
         // The demo category tree with its attributes (both contexts) and form
         // sections: depends on DemoBusinessFunctionSeeder for the branch
         // function, and everything downstream that classifies a record

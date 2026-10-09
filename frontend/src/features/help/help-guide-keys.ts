@@ -49,6 +49,8 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'units-of-measure',
   'financial-accounts',
   'proforma-requests',
+  'purchase-requests',
+  'purchase-request-lines',
   'invoices',
   'invoice-installments',
   'product-typologies',

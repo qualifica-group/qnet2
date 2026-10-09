@@ -19,6 +19,7 @@ import { attributes, productCategories, products } from './it-products'
 import { customFields } from './it-custom-fields'
 import { sectors } from './it-sectors'
 import { accounting } from './it-accounting'
+import { purchaseRequestLines, purchaseRequests } from './it-purchase-requests'
 import { sources } from './it-sources'
 import { vatRates } from './it-vat-rates'
 import { unitsOfMeasure } from './it-units-of-measure'
@@ -409,6 +410,8 @@ export const it: TranslationResources = {
   vatRates,
   unitsOfMeasure,
   ...accounting,
+  purchaseRequests,
+  purchaseRequestLines,
   productTypologies,
   tags,
   projects: { ...projects, stats: moduleStats.projects },

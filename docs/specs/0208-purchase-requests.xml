@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0208-purchase-requests" status="approved" owner="utente" date="2026-10-09">
+
+  <goal>
+    Nuovo modulo "RDA - Richieste di Acquisto": qualsiasi utente abilitato compila una richiesta
+    (testata + righe + footer + documenti), il Responsabile di Funzione assegnato approva o rifiuta
+    le singole righe, chi ha il permesso di evasione le porta a Ordinato/Ricevuto/Stand by; la RDA
+    si chiude da sola quando tutte le righe sono in stato terminale o viene chiusa a mano (chiusura
+    forzata). Elenco RDA ed elenco "Gestione righe" su AG Grid SSRM con filtri, ordinamento ed
+    export lato server.
+  </goal>
+
+  <context>
+    Brief utente: prompt_temp.md + sorgenti legacy QNet (Livewire App\Livewire\Rda\*, model Rda,
+    RdaDetail, RdaDetailLog, RdaDocument, dump `rda`, `rda_detail`, `rda_detail_logs`,
+    `rda_document`). Branch: feature/amministrazione. Modulo di riferimento per la pipeline completa:
+    FinancialAccounts (spec 0189) / ProformaRequests (spec 0193); righe inline nel payload di
+    scrittura come InvoiceWriteRequest (`lines.*`).
+
+    Mappatura campi legacy -> entita' qnet2 (verificata 2026-10-09):
+    - Societa' Aziendale (legacy societa_aziendali) -> Company (`companies`: denomination, vat_number).
+    - Societa' / Sede (legacy company_profiles) -> CompanySite (`company_sites`: name, company_id).
+    - Sede Operativa (legacy sedi_operative) -> OperationalSite (`operational_sites`).
+    - Funzione Aziendale (legacy gruppi_di_lavoro) -> BusinessFunction (`business_functions`,
+      manager_id -> users via manager()).
+    - Cliente / Fornitore (legacy companies) -> Registry (`registries`, flag is_supplier,
+      is_qualified_supplier). Quick-create Registry gia' esistente (features/quick-create,
+      module-entries.tsx `registries`).
+    - Commessa (legacy orders) -> WorkOrder (`work_orders`: code, title).
+    - Prodotto -> Product (`products`: name, price, vat_rate_id, unit_of_measure_id, supplier_id).
+      NON esiste oggi una voce quick-create per i prodotti: va aggiunta.
+    - U.m. (legacy costanti UNITS) -> UnitOfMeasure (`units_of_measure`).
+    - Aliquota IVA (legacy rates) -> VatRate (`vat_rates`: name, rate decimal).
+    - Documenti (legacy rda_document) -> Attachment polimorfico (`attachments`, config/attachments.php
+      `attachable_types`, AttachmentController GET/POST/DELETE /api/attachments).
+    - Ruoli legacy Admin/CFO/Ufficio Acquisti NON esistono: in qnet2 l'autorizzazione e' solo a
+      permessi spatie + Policy + ResourceAuthorization (FieldDefinition / FieldPermission, matrice
+      campi per ruolo spec 0006).
+    - Modulo ODA (ordini fornitore) NON esiste in qnet2.
+    - Notifiche: Notification Laravel canale `database` (GenericNotification) + mail
+      (es. RecordAssignmentNotification::toMail).
+    - Tabelle SSRM: TableDefinition registrata in config/tables.php, endpoint generici
+      /api/tables/{domain}/columns|rows|values, export generico (spec 0014).
+    - Menu: config/navigation/*.php; guide in-app features/help (HELP_GUIDE_KEYS = 60 oggi).
+
+    Decisioni utente 2026-10-09:
+    - D-1 Iter "Approva il Responsabile": approva/rifiuta una riga Da approvare SOLO il Responsabile
+      di Funzione assegnato alla RDA (function_manager_id = utente) oppure chi ha il permesso
+      `purchase-requests.manageStatuses` (sostituisce l'Admin legacy, nessun vincolo di transizione).
+      L'evasione (Approvato -> Ordinato/Stand by, Ordinato -> Ricevuto/Stand by) spetta a chi ha
+      `purchase-requests.fulfill`.
+    - D-2 In questa consegna: chiusura automatica + chiusura forzata, pagina "Gestione righe" con
+      cambio stato massivo, notifiche al Responsabile di Funzione + pulsante "Invia al responsabile".
+      Migrazione dati QNet FUORI scope.
+    - D-3 Colonna ODA: segnaposto in sola lettura (`oda_reference` nullable, sempre "—" finche'
+      non esiste il modulo ODA). Nessuna logica ODA.
+    - D-4 Responsabile di Funzione: scelta la Funzione Aziendale il form propone
+      business_functions.manager_id; resta modificabile su qualsiasi utente attivo.
+
+    Decisioni tecniche proposte (D-5..D-16, da validare con la spec):
+    - D-5 Nomi inglesi (engineering.md §1.2): risorsa/dominio `purchase-requests` e
+      `purchase-request-lines`; tabelle `purchase_requests`, `purchase_request_lines`,
+      `purchase_request_line_status_logs`; FK vere con indici. Label UI "RDA" via i18n.
+    - D-6 Stati riga come enum stringa PurchaseRequestLineStatus: pending_approval (Da approvare,
+      default), approved, ordered, received, rejected, on_hold (Stand by). Stato testata enum
+      PurchaseRequestStatus: open | closed. Priorita' enum PurchaseRequestPriority: low, medium,
+      high, urgent, critical.
+    - D-7 Stati terminali per la chiusura automatica: received, on_hold E rejected. (Il legacy
+      considerava terminali solo Ricevuto/Stand by: una riga Rifiutata impediva per sempre la
+      chiusura automatica. DA CONFERMARE.)
+    - D-8 Matrice transizioni (fonte unica: PurchaseRequestLineStatus::allowedTransitions):
+      approvatore (responsabile assegnato): pending_approval -> approved | rejected;
+      fulfill: approved -> ordered | on_hold, ordered -> received | on_hold;
+      manageStatuses: qualsiasi -> qualsiasi diverso dal corrente.
+      Un utente che ha piu' capacita' ottiene l'unione. Su RDA chiusa: nessuna transizione (409).
+    - D-9 Ogni cambio stato scrive una riga di log (from, to, reason, user, bulk_group_id uuid se
+      massivo) e, se approvazione/rifiuto, valorizza approved_by/approved_at sulla riga. Il cambio
+      stato NON passa dal form: endpoint dedicato (singolo o massivo), poi tentativo di chiusura
+      automatica sulla/e RDA toccate.
+    - D-10 Modifica contenuto: testata e footer modificabili finche' la RDA e' aperta. Una riga e'
+      modificabile (prodotto, descrizione, motivazione, U.m., quantita', prezzo, aliquota) SOLO in
+      stato pending_approval; le altre sono in sola lettura nel form e il server ignora/rifiuta
+      (422 `lines.N`) modifiche ai loro valori. Nuove righe nascono sempre pending_approval.
+    - D-11 Eliminazione riga (pulsante cestino): permesso `purchase-requests.deleteLine` e solo
+      righe pending_approval o rejected. Eliminazione RDA: permesso `purchase-requests.delete`,
+      vietata (409) se almeno una riga e' ordered o received; elimina righe, log e allegati.
+    - D-12 Importi calcolati SEMPRE lato server (il client li mostra in anteprima):
+      taxable = round(qty * unit_price, 2); vat = round(taxable * rate / 100, 2);
+      total = taxable + vat; testata = somme delle righe. Scorporo IVA = pura funzione client:
+      unit_price = round(unit_price / (1 + rate/100), 2); richiede un'aliquota > 0.
+    - D-13 Prodotto: product_id nullable + description obbligatoria. Selezionando un prodotto il
+      form propone description = nome, U.m., prezzo e aliquota del prodotto (modificabili). Senza
+      prodotto si scrive la descrizione libera. "+" accanto al select = quick-create prodotto.
+    - D-14 Fornitore: select su registries con is_supplier = true (non solo qualificati, per
+      permettere la creazione al volo); "+" = quick-create Registry con is_supplier preimpostato.
+    - D-15 Documenti: alias `purchase_request` e `purchase_request_line` in attachable_types. Gli
+      allegati richiedono record salvato: in creazione i file scelti restano in coda nel form e
+      vengono caricati subito dopo il salvataggio riuscito (righe abbinate per `position`).
+    - D-16 Visibilita' per riga (scope PurchaseRequestVisibilityScope): con
+      `purchase-requests.viewAll` tutte; altrimenti solo RDA con requester_id, function_manager_id
+      o created_by = utente. Vale per elenco RDA, Gestione righe, dettaglio, export.
+
+    Revisione utente 2026-10-09 (D-17, modale cambio stato sul modello QNet):
+    - D-17 Ogni riga espone `abilities.capabilities` = capacita' dell'attore su quella riga
+      (approve = Responsabile di funzione assegnato, fulfill = permesso evasione, manage = gestione
+      stati; [] su RDA chiusa), sia in PurchaseRequestResource sia nelle righe SSRM
+      `purchase-request-lines`. Solo informativo per la UI ("Stai operando come"): l'autorizzazione
+      resta lato server (D-8). La modale mostra: titolo con numero righe, "RDA #id - oggetto" se tutte
+      della stessa RDA, tabella righe selezionate (#, descrizione, Q.ta + U.m., totale, stato
+      attuale), badge "Stai operando come" (unione delle capacita' comuni), stati come pulsanti con
+      icona (stato attuale preselezionato e non confermabile se riga singola), nota "solo stati
+      raggiungibili da tutte le righe" e "motivazione applicata a tutte le N righe" in massivo,
+      pulsante "Conferma su N righe".
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazioni `purchase_requests`, `purchase_request_lines`, `purchase_request_line_status_logs` (reversibili, indici su FK e colonne filtrate).</item>
+      <item>Model PurchaseRequest, PurchaseRequestLine, PurchaseRequestLineStatusLog (LogsModelActivity su testata e righe), enum D-6, factory, Demo seeder `DemoPurchaseRequestSeeder` in DemoDataSeeder.</item>
+      <item>Permessi `purchase-requests.{view,viewAll,create,update,delete,deleteLine,fulfill,manageStatuses,close,export,viewActivity}`; PurchaseRequestPolicy; PurchaseRequestsAuthorization (FieldDefinition per testata/footer) in config/authorization.php; catalogo permessi assegnabili.</item>
+      <item>Service: PurchaseRequestService (create/update con sync righe, delete), PurchaseRequestLineStatusService (transizioni singole e massive + log + auto-chiusura), PurchaseRequestClosureService (chiusura forzata), PurchaseRequestAmountCalculator, PurchaseRequestNotifier.</item>
+      <item>FormRequest, DTO, Resource, controller, rotte routes/api/purchase-requests.php.</item>
+      <item>TableDefinition `purchase-requests` (elenco RDA, con conteggi righe per stato) e `purchase-request-lines` (Gestione righe), ColumnCatalog, filtri/ordinamento da allow-list, export generico, tab per stato.</item>
+      <item>Notifiche: creazione RDA -> Responsabile di Funzione (database + mail, se diverso dall'autore); pulsante "Invia al responsabile" -> stessa notifica su richiesta.</item>
+      <item>Attachments: alias D-15; activity log; morph map.</item>
+      <item>Menu: nuova sezione "Acquisti" (config/navigation/purchasing.php) con voci "RDA" e "Gestione righe RDA".</item>
+      <item>FE features/purchase-requests: elenco, pagina create/edit (testata, righe tabellari, footer, documenti, totali), modale cambio stato (singolo/massivo), storico riga, chiusura, eliminazione; pagina Gestione righe con selezione multipla; quick-create prodotto; i18n IT/EN; guide in-app IT/EN `purchase-requests` e `purchase-request-lines` (HELP_GUIDE_KEYS 60 -> 62).</item>
+    </in>
+    <out>
+      <item>Migrazione/import dei dati RDA esistenti da QNet.</item>
+      <item>Modulo ODA e qualsiasi generazione/collegamento ODA (colonna solo segnaposto, D-3).</item>
+      <item>Email cablata all'Ufficio Acquisti (uppcg@...) del legacy; notifiche su cambio stato riga.</item>
+      <item>Note Controller (`note_controller`) e pannello "Note riservate" del legacy (resta il registro attivita' standard).</item>
+      <item>Flag storici flag_* del legacy (sostituiti dal log transizioni).</item>
+      <item>Campi acquistato/quantita' acquistate (purchased, quantities_purchased, ttotal_purchased).</item>
+      <item>Upload del manuale operativo PDF del legacy (sostituito dalle guide in-app).</item>
+      <item>Riapertura di una RDA chiusa.</item>
+      <item>Editing inline in griglia (le celle SSRM sono in sola lettura).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data }. Date ISO Y-m-d, importi stringa decimale
+         a 2 cifre ("123.40"), quantita' stringa a 3 cifre ("1.000"). -->
+
+    <model name="purchase_requests">
+      id; subject string(255) req; requested_at date req; priority enum req;
+      requester_id FK users req; function_manager_id FK users req; customer_id FK registries null;
+      supplier_id FK registries null; work_order_id FK work_orders null; company_id FK companies req;
+      company_site_id FK company_sites req; operational_site_id FK operational_sites req;
+      business_function_id FK business_functions req; created_by FK users (non fillable);
+      notes text null; delivery_terms text null; procurement_plan text null;
+      technical_requirements text null; special_conditions text null;
+      taxable_total, vat_total, grand_total decimal(14,2) default 0 (non fillable);
+      status enum open|closed default open; closed_by FK users null; closed_at datetime null;
+      close_reason text null; timestamps.
+    </model>
+    <model name="purchase_request_lines">
+      id; purchase_request_id FK cascade; position unsigned int; product_id FK products null;
+      description string(500) req; reason text null; unit_of_measure_id FK null;
+      quantity decimal(12,3) req; unit_price decimal(14,2) req; vat_rate_id FK vat_rates null;
+      taxable_amount, vat_amount, total_amount decimal(14,2); status enum default pending_approval;
+      approved_by FK users null; approved_at datetime null; oda_reference string(50) null (D-3);
+      timestamps.
+    </model>
+    <model name="purchase_request_line_status_logs">
+      id; purchase_request_line_id FK cascade; user_id FK users; from_status enum null;
+      to_status enum; reason text null; bulk_group_id uuid null (indice); created_at.
+    </model>
+
+    <type name="PurchaseRequestLine">
+      { id:int, position:int, product:{id,name}|null, description:string, reason:string|null,
+        unit_of_measure:{id,name,symbol}|null, quantity:string, unit_price:string,
+        vat_rate:{id,name,rate:string}|null, taxable_amount:string, vat_amount:string,
+        total_amount:string, status:LineStatus, approved_by:{id,name}|null, approved_at:string|null,
+        oda_reference:string|null,
+        abilities:{ update:bool, delete:bool, transitions:LineStatus[],
+                    capabilities:('approve'|'fulfill'|'manage')[] } }
+    </type>
+    <type name="PurchaseRequest">
+      { id:int, subject, requested_at, priority, requester:{id,name}, function_manager:{id,name},
+        customer:{id,name}|null, supplier:{id,name}|null, work_order:{id,code,title}|null,
+        company:{id,name}, company_site:{id,name}, operational_site:{id,name},
+        business_function:{id,name}, created_by:{id,name}, notes, delivery_terms, procurement_plan,
+        technical_requirements, special_conditions, taxable_total, vat_total, grand_total,
+        status:'open'|'closed', closed_by:{id,name}|null, closed_at, close_reason,
+        line_status_counts:{ [LineStatus]: int }, lines:PurchaseRequestLine[],
+        created_at, updated_at,
+        abilities:{ update, delete, close, notify_manager, view_activity:bool },
+        field_permissions:{ [field]: { visible, editable, required } } }
+    </type>
+
+    <endpoint method="GET" path="/api/purchase-requests/{purchaseRequest}">
+      <response status="200">data: PurchaseRequest</response>
+      <errors>403 senza view o fuori visibilita' D-16; 404 inesistente.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-requests">
+      <request>
+        { subject, requested_at, priority, requester_id, function_manager_id, customer_id?,
+          supplier_id?, work_order_id?, company_id, company_site_id, operational_site_id,
+          business_function_id, notes?, delivery_terms?, procurement_plan?,
+          technical_requirements?, special_conditions?,
+          lines: [ { product_id?, description, reason?, unit_of_measure_id?, quantity,
+                     unit_price, vat_rate_id? } ] (min 1, max 200) }
+        Regole: quantity gt:0; unit_price gte:0; company_site_id deve appartenere a company_id;
+        supplier_id deve avere is_supplier = true; campi footer max 5000.
+        Campi non scrivibili per FieldPermission -> ignorati/422 come negli altri moduli.
+      </request>
+      <response status="201">data: PurchaseRequest (created_by = utente, righe pending_approval, totali calcolati D-12)</response>
+      <errors>403 senza create; 422 validazione (chiavi `lines`, `lines.N.campo`, `company_site_id`, `supplier_id`).</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/purchase-requests/{purchaseRequest}">
+      <request>
+        Stessa shape del POST; `lines.*.id` presente = riga esistente, assente = nuova.
+        Righe esistenti omesse = eliminazione (soggetta a D-11). Righe non pending_approval:
+        i valori devono restare invariati (D-10).
+      </request>
+      <response status="200">data: PurchaseRequest</response>
+      <errors>403 senza update/fuori visibilita'; 409 RDA chiusa; 422 `lines.N` riga non modificabile o
+        non eliminabile, `lines.N.id` riga di un'altra RDA.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/purchase-requests/{purchaseRequest}">
+      <response status="200">{ success:true, message }</response>
+      <errors>403 senza delete; 409 righe ordered/received presenti.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-request-lines/status">
+      <request>{ line_ids:int[] (1..200, stessa o diverse RDA), to_status:LineStatus, reason?:string(max 2000) }</request>
+      <response status="200">data: { updated_count:int, closed_purchase_request_ids:int[] }</response>
+      <errors>403 nessuna capacita' D-8 su almeno una riga (nessuna riga modificata, tutto-o-niente);
+        409 riga di RDA chiusa; 422 `line_ids.N` transizione non consentita dallo stato corrente.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/purchase-request-lines/{line}/status-logs">
+      <response status="200">data: [ { id, user:{id,name}, from_status|null, to_status, reason|null, is_bulk:bool, created_at } ] (piu' recente prima)</response>
+      <errors>403 fuori visibilita'.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/purchase-requests/{purchaseRequest}/closure">
+      <response status="200">data: { can_close:bool, is_forced:bool, non_terminal_count:int, line_status_counts:{...} }</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-requests/{purchaseRequest}/close">
+      <request>{ reason?:string(max 2000) } — obbligatoria se is_forced</request>
+      <response status="200">data: PurchaseRequest (status closed, closed_by, closed_at)</response>
+      <errors>403 senza close; 409 gia' chiusa; 422 `reason` mancante su chiusura forzata.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-requests/{purchaseRequest}/notify-manager">
+      <response status="200">{ success:true, message:"RDA inviata a {nome}" }</response>
+      <errors>403 senza update/visibilita'; 422 responsabile senza email.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/business-functions/for-select">
+      <!-- ESISTENTE (BusinessFunctionForSelectController). Modifica ADDITIVA: ogni item espone
+           anche manager:{id,name}|null (eager load manager), usato da D-4. Nessun altro campo cambia.
+           Societa'/Sede: /api/company-sites/for-select?company_id=N esiste gia' (CompanySiteForSelectRequest). -->
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/purchase-requests/rows">
+      <response status="200">
+        Righe: id, subject, requested_at, priority, requester, function_manager, customer, supplier,
+        work_order, company, company_site, operational_site, business_function, created_by,
+        taxable_total, vat_total, grand_total, status, line_status_counts, abilities.
+        Tab per stato (parametro `line_status`): RDA con almeno una riga in quello stato.
+        Testo cercabile: subject, P.IVA fornitore. Export generico.
+      </response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/purchase-request-lines/rows">
+      <response status="200">
+        Righe: id, purchase_request_id, purchase_request_subject, priority, requester,
+        function_manager, requested_at, description, unit_of_measure, quantity, unit_price,
+        taxable_amount, vat_amount, total_amount, status, approved_by, approved_at, oda_reference,
+        abilities.transitions. Tab per stato (filtro `status`). Selezione multipla -> endpoint status.
+      </response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con create, quando invia POST valido con 2 righe, allora 201, created_by = utente, righe pending_approval, totali riga e testata calcolati come D-12 anche se il client invia importi diversi.</criterion>
+    <criterion id="AC-002">Dato un POST senza righe, o con quantity 0, o company_site di un'altra company, o supplier senza is_supplier, allora 422 sulla chiave corrispondente e nessun record creato.</criterion>
+    <criterion id="AC-003">Dato un utente senza viewAll, quando chiama la griglia RDA, il dettaglio e l'export, allora vede solo RDA dove e' richiedente, responsabile o autore; il GET di una RDA altrui da' 403.</criterion>
+    <criterion id="AC-004">Dato il Responsabile di Funzione assegnato, quando porta una riga pending_approval ad approved, allora 200, log scritto (from/to/user/reason), approved_by/approved_at valorizzati; lo stesso utente NON responsabile di quella RDA riceve 403.</criterion>
+    <criterion id="AC-005">Dato un utente con fulfill, quando tenta pending_approval -> ordered, allora 422 `line_ids.0`; approved -> ordered e ordered -> received danno 200.</criterion>
+    <criterion id="AC-006">Dato un utente con manageStatuses, quando imposta qualsiasi stato diverso dal corrente, allora 200.</criterion>
+    <criterion id="AC-007">Dato un cambio massivo su 3 righe di cui una non consentita, allora 422 e nessuna delle 3 righe cambia; con tutte consentite i 3 log condividono lo stesso bulk_group_id.</criterion>
+    <criterion id="AC-008">Quando l'ultima riga non terminale passa a uno stato terminale (D-7), allora la RDA diventa closed con closed_by = utente e l'id compare in closed_purchase_request_ids.</criterion>
+    <criterion id="AC-009">Dato un utente con close e righe non terminali, POST close senza reason da' 422; con reason da' 200 closed. Su RDA chiusa: PUT, cambio stato e close danno 409.</criterion>
+    <criterion id="AC-010">Dato un PUT che modifica la quantita' di una riga approved, allora 422 `lines.N`; modifiche alle righe pending_approval e alla testata vengono salvate.</criterion>
+    <criterion id="AC-011">Dato un PUT che omette una riga: senza deleteLine 403/422 `lines`; con deleteLine riga pending_approval o rejected eliminata, riga ordered non eliminabile (422).</criterion>
+    <criterion id="AC-012">DELETE su RDA con una riga received da' 409; senza righe bloccanti elimina RDA, righe, log e allegati; senza delete da' 403.</criterion>
+    <criterion id="AC-013">Alla creazione il Responsabile di Funzione (se diverso dall'autore) riceve una notifica database + mail; notify-manager la reinvia; responsabile senza email -> 422.</criterion>
+    <criterion id="AC-014">Le griglie `purchase-requests` e `purchase-request-lines` rispettano filtri/ordinamento da allow-list (una colonna non in catalogo e' ignorata, mai interpolata), tab per stato e export.</criterion>
+    <criterion id="AC-015">FieldPermission: un ruolo con company_id in sola lettura non puo' cambiarlo (valore invariato) e il form lo mostra disabilitato.</criterion>
+    <criterion id="AC-016">FE schema/calcoli (Vitest node): anteprima importi riga e totali, scorporo IVA (122.00 con 22% -> 100.00; senza aliquota -> errore), payload create/update con lines.*.id.</criterion>
+    <criterion id="AC-017">FE form (Vitest jsdom): scelta Funzione propone il suo responsabile; scelta prodotto propone descrizione/U.m./prezzo/aliquota; righe non pending in sola lettura; cestino visibile solo con abilities.delete; Stato e ODA in sola lettura.</criterion>
+    <criterion id="AC-018">FE modale cambio stato: mostra solo l'intersezione di abilities.transitions delle righe selezionate; nessuna transizione comune -> messaggio e conferma disabilitata.</criterion>
+    <criterion id="AC-019">Quick-create prodotto disponibile dal select Prodotto con permesso products.create; il prodotto creato viene selezionato nella riga.</criterion>
+    <criterion id="AC-021">Le righe del dettaglio RDA e della griglia Gestione righe espongono abilities.capabilities coerenti con D-17 (responsabile -> ['approve'], fulfill -> ['fulfill'], manageStatuses -> ['manage'], RDA chiusa -> []).</criterion>
+    <criterion id="AC-022">FE modale: con 2 righe mostra la tabella delle righe selezionate con stato attuale, "Stai operando come", la nota sugli stati comuni e il pulsante "Conferma su 2 righe"; con 1 riga lo stato attuale e' preselezionato e la conferma e' disabilitata finche' non se ne sceglie un altro.</criterion>
+    <criterion id="AC-020">Guide in-app IT/EN `purchase-requests` e `purchase-request-lines` presenti, parity test verde, HELP_GUIDE_KEYS = 62.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (composer/npm).</item>
+    <item>Layering Controller -> FormRequest -> Service -> DTO -> Resource -> Policy; authz server-side su ogni endpoint, incluse le TableDefinition (viewAny + scope D-16).</item>
+    <item>Filtri/ordinamenti SSRM solo da allow-list del ColumnCatalog; niente whereRaw con input.</item>
+    <item>Transizioni: unica fonte di verita' lato server (enum), il FE usa solo abilities.transitions.</item>
+    <item>Cambio stato massivo e sync righe in transazione; lock delle righe coinvolte (lockForUpdate) per evitare doppie transizioni concorrenti.</item>
+    <item>Allegati: regole mimes + extensions come AttachmentController esistente.</item>
+    <item>File entro 300/500 righe; UI compatta (ui-design.md); i18n IT/EN; manuale Claude Docs da segnalare se non accessibile.</item>
+    <item>Suite in parallelo: helper di test condivisi in tests/Helpers/PurchaseRequestHelpers.php.</item>
+  </constraints>
+
+</spec>

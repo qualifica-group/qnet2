@@ -138,6 +138,12 @@ final class PermissionCatalogueBuilder
                 continue;
             }
 
+            // Two menu entries gated by the same resource (spec 0208: RDA and
+            // its line management page) are ONE module of the catalogue.
+            if (in_array($resource, array_column($resources, 'resource'), true)) {
+                continue;
+            }
+
             $resources[] = [
                 'resource' => $resource,
                 'label_key' => $child['label'],

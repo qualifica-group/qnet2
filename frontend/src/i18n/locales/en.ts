@@ -24,6 +24,7 @@ import { attributes, productCategories, products } from './en-products'
 import { customFields } from './en-custom-fields'
 import { sectors } from './en-sectors'
 import { accounting } from './en-accounting'
+import { purchaseRequestLines, purchaseRequests } from './en-purchase-requests'
 import { sources } from './en-sources'
 import { vatRates } from './en-vat-rates'
 import { unitsOfMeasure } from './en-units-of-measure'
@@ -423,6 +424,8 @@ export const en = {
   vatRates,
   unitsOfMeasure,
   ...accounting,
+  purchaseRequests,
+  purchaseRequestLines,
   productTypologies,
   tags,
   projects: { ...projects, stats: moduleStats.projects },

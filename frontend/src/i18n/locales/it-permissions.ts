@@ -69,6 +69,11 @@ export const permissions = {
     sendEmail: 'Inviare email',
     revealCardNumber: 'Rivelare numero carta',
     collect: 'Registra incassi',
+    // Spec 0208: richieste di acquisto (RDA).
+    fulfill: 'Evadere le righe (ordinare, ricevere)',
+    manageStatuses: 'Gestire qualsiasi stato riga',
+    deleteLine: 'Eliminare le righe',
+    close: 'Chiudere',
     // Spec 0201 D-10: tab Dati contrattuali della commessa e gestione dei pagamenti per riga.
     viewContractData: 'Vedere i dati contrattuali',
     managePayments: 'Gestire i pagamenti',
@@ -124,6 +129,7 @@ export const permissions = {
     'units-of-measure': 'Unita di Misura',
     'financial-accounts': 'Gestione Conti',
     'proforma-requests': 'Richieste Proforma',
+    'purchase-requests': 'Richieste di acquisto (RDA)',
     invoices: 'Fatture Attive',
     'invoice-installments': 'Scadenze',
     'product-typologies': 'Tipologie Prodotto',
