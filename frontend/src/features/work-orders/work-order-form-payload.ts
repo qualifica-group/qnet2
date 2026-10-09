@@ -1,6 +1,6 @@
 import { isEqualCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import { seedAttributeValues } from '@/features/attributes/attribute-values'
-import { managerSlotsFromRefs, sameIdSet, sameManagerSlots } from '@/lib/utils'
+import { blankToNull, managerSlotsFromRefs, sameIdSet, sameManagerSlots } from '@/lib/utils'
 import type {
   CreateWorkOrderPayload,
   UpdateWorkOrderPayload,
@@ -20,7 +20,8 @@ export function buildCreatePayload(values: WorkOrderFormValues): CreateWorkOrder
   return {
     ...(code ? { code } : {}),
     quote_id: values.quote_id as number,
-    title: values.title,
+    // Spec 0215 D-2: a blank title travels as `null` (the server derives it).
+    title: blankToNull(values.title),
     type: values.type,
     start_date: values.start_date,
     supervisor_ids: values.supervisor_ids,
@@ -57,8 +58,10 @@ export function buildUpdatePayload(
 ): UpdateWorkOrderPayload {
   const payload: UpdateWorkOrderPayload = {}
 
-  if (values.title !== original.title) {
-    payload.title = values.title
+  // Spec 0215 D-2: a cleared title goes back to the automatic one (`null`).
+  const title = blankToNull(values.title)
+  if (title !== original.title) {
+    payload.title = title
   }
   if (values.type !== original.type) {
     payload.type = values.type

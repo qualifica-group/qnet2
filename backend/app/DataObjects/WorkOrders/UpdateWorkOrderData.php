@@ -31,6 +31,7 @@ final readonly class UpdateWorkOrderData
      */
     public function __construct(
         public ?string $title = null,
+        public bool $titleSubmitted = false,
         public ?WorkOrderType $type = null,
         public ?string $startDate = null,
         public ?string $callbackDate = null,
@@ -59,7 +60,8 @@ final readonly class UpdateWorkOrderData
     public static function fromValidated(array $data): self
     {
         return new self(
-            title: array_key_exists('title', $data) ? (string) $data['title'] : null,
+            title: self::normalizeTitle($data['title'] ?? null),
+            titleSubmitted: array_key_exists('title', $data),
             type: array_key_exists('type', $data) ? WorkOrderType::from((string) $data['type']) : null,
             startDate: array_key_exists('start_date', $data) ? (string) $data['start_date'] : null,
             callbackDate: array_key_exists('callback_date', $data) ? $data['callback_date'] : null,
@@ -93,18 +95,14 @@ final readonly class UpdateWorkOrderData
     {
         $attributes = [];
 
-        if ($this->title !== null) {
-            $attributes['title'] = $this->title;
-        }
-
         if ($this->type !== null) {
             $attributes['type'] = $this->type;
         }
 
         // start_date is a NOT NULL column validated `sometimes|required`
         // (spec 0096 D-6): a null here can only mean "key absent", never
-        // "submitted as null", so no *Submitted flag is needed — same
-        // reasoning as `title` above.
+        // "submitted as null", so no *Submitted flag is needed. `title` is
+        // written by WorkOrderTitleWriter instead (spec 0215).
         if ($this->startDate !== null) {
             $attributes['start_date'] = $this->startDate;
         }
@@ -132,6 +130,12 @@ final readonly class UpdateWorkOrderData
         return $attributes;
     }
 
+    /** `title` was in the payload, even as null (= back to automatic). */
+    public function hasTitle(): bool
+    {
+        return $this->titleSubmitted;
+    }
+
     public function hasQuoteLineIds(): bool
     {
         return $this->quoteLineIds !== null;
@@ -145,6 +149,13 @@ final readonly class UpdateWorkOrderData
     public function hasParticipantSlots(): bool
     {
         return $this->participantSlots !== null;
+    }
+
+    private static function normalizeTitle(mixed $title): ?string
+    {
+        $title = $title === null ? null : trim((string) $title);
+
+        return $title === '' ? null : $title;
     }
 
     /**

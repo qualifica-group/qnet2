@@ -57,7 +57,8 @@ final class WorkOrderColumnCatalog
                 'filterType' => 'text',
                 'searchable' => true,
                 'editable' => true,
-                'nullable' => false,
+                // Spec 0215: a cleared title goes back to the automatic one.
+                'nullable' => true,
             ],
             [
                 // `quotes.code`, derived through the `quote` relation (D-2).

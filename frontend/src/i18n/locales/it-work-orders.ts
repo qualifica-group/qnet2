@@ -303,7 +303,9 @@ export const workOrders = {
     deleted: 'Commessa eliminata con successo.',
     codeRequired: 'Il numero commessa è obbligatorio.',
     codeMax: 'Il numero commessa può contenere al massimo 32 caratteri.',
-    titleRequired: 'Il titolo è obbligatorio.',
+    titlePlaceholder: 'Automatico: codice e prodotti della commessa',
+    titleHint:
+      'Proposto come codice della commessa seguito dai prodotti delle sue righe (es. COM-0042 - ISO 9001 + SOA). Se lo modifichi resta il tuo; svuota il campo per tornare al titolo automatico.',
     startDateRequired: 'La data di inizio è obbligatoria.',
     supervisorsRequired: 'Indica almeno un responsabile.',
     participantsMax: 'Puoi assegnare al massimo 12 partecipanti.',

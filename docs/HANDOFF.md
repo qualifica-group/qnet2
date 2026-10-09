@@ -3,6 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CONTRATTI — PROGRAMMA MULTI-COMMESSA + TITOLO AUTOMATICO COMMESSA (spec 0215, 2026-10-09) — VERDE, NON COMMITTATO
+
+- Richiesta utente: nel "Programma" del contratto creare piu' commesse in una sessione (gruppi di righe), salvataggio
+  unico; titolo commessa automatico come le offerte o manuale; "come i migliori CRM". Decisioni D-1..D-12 nella spec.
+- Backend: `POST /api/contracts/{contract}/work-orders/batch` (`ContractWorkOrderBatchController`,
+  `GenerateContractWorkOrdersBatchRequest`, `App\Services\Contracts\ContractProgramBatch`, MAX_GROUPS=50): una
+  transazione, tutto o niente; errori 422 su `groups.{i}.<campo>` (anche conflitti riga dal WorkOrderLineWriter);
+  risposta `data: WorkOrderResource[]` senza `permissions`. Gate: policy `program` AND `mayProgram` (403).
+  Endpoint singolo invariato salvo `title` nullable (D-10 revised).
+- Titolo commessa: migrazione `2026_10_15_120000_add_title_is_manual_to_work_orders_table` (esistenti = manuali),
+  `RevenueProductTitleBuilder::forWorkOrder`, `WorkOrderTitleWriter` (write/recalculate) in `WorkOrderService`
+  create/update (ricalcolo quando cambiano `quote_line_ids`); `title` nullable in Store/Update/Generate, non piu'
+  mandatory in `WorkOrdersAuthorization`, cella griglia svuotabile; `WorkOrderResource.title_is_manual`;
+  `titles:recalculate` include le commesse. Dopo il deploy: `php artisan migrate` (nessun ricalcolo necessario).
+- Frontend: dialog a due pannelli (`contract-program-*.tsx`, logica pura `contract-program-groups.ts`, hook
+  `use-contract-program-groups.ts`/`use-contract-program-dialog.ts`, mapping 422 `contract-program-errors.ts`);
+  `createContractWorkOrdersBatch`; rimossi `contract-program-lines-table.tsx` e `createContractWorkOrder`.
+  Data inizio dei Valori comuni = oggi (locale, `todayIsoDate` di work-order-costs-schema), modificabile.
+  Form commessa: titolo facoltativo (placeholder/hint), vuoto -> `null`. Guide in-app contracts/work-orders IT+EN.
+- Verifica (verifier indipendente + lead): Pest batch 8 + titolo 6 verdi; suite BE 9910/9917 (6 rossi NON di questa
+  modifica: soffice assente x3, `SectorTest` fillable non aggiornato dopo spec 0213, `QualificaProductionDataSeederTest`
+  395 vs 418); Vitest contracts 132/132, help 115/115, suite intera verde a timeout 60s (a 5s ~47 timeout di carico in
+  moduli non toccati); `tsc -b --force` 0; ESLint/Pint puliti; Playwright 375/1280 senza overflow (fix `min-w-0`
+  sulla lista "Righe del gruppo", pannello righe `self-start`).
+- Aperti: (1) `GenerateContractWorkOrdersBatchRequest::authorize()` true -> payload invalido senza permesso da' 422
+  invece di 403 (come il request singolo preesistente); (2) manca test di componente sul placeholder titolo del form
+  commessa; (3) test del dialog lenti (6-8s) a rischio timeout sotto carico; (4) da sistemare a parte i 3 rossi
+  `SectorTest`/`QualificaProductionDataSeederTest`; (5) HANDOFF ~530 KB, oltre il limite di 50 KB: archiviare;
+  (6) manuale Claude Docs NON aggiornato (doc non condiviso con la sessione) -> Contratti > Programma, Commesse > Titolo.
+
 ## TASK — PERMESSO "VISUALIZZA TEAM" `tasks.viewTeam` (spec 0214, 2026-10-09) — VERDE, NON COMMITTATO
 
 - Decisioni utente: un task e' "del team" se ALMENO UN ASSEGNATARIO e' sottoposto dell'attore a qualsiasi profondita'

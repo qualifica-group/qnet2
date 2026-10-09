@@ -44,7 +44,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
         return [
             new FieldDefinition('code', 'text'),
             new FieldDefinition('quote_id', 'select'),
-            new FieldDefinition('title', 'text', mandatory: true),
+            new FieldDefinition('title', 'text'),
             new FieldDefinition('type', 'select', mandatory: true),
             new FieldDefinition('start_date', 'date', mandatory: true),
             new FieldDefinition('supervisor_ids', 'multiselect', mandatory: true),
@@ -86,7 +86,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
         return [
             'code' => $mayWriteOnlyAtCreate ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'quote_id' => $mayWriteOnlyAtCreate ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(required: true),
-            'title' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(required: true),
+            'title' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'type' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(required: true),
             // Spec 0096, D-6: required, but plainly editable after create —
             // no create-only ceiling like code/quote_id.

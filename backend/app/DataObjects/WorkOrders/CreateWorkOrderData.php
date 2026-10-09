@@ -42,7 +42,7 @@ final readonly class CreateWorkOrderData
     public function __construct(
         public ?string $code,
         public int $quoteId,
-        public string $title,
+        public ?string $title,
         public WorkOrderType $type,
         public string $startDate,
         public ?string $callbackDate,
@@ -69,7 +69,7 @@ final readonly class CreateWorkOrderData
         return new self(
             code: ($code === null || $code === '') ? null : $code,
             quoteId: (int) $data['quote_id'],
-            title: (string) $data['title'],
+            title: self::normalizeTitle($data['title'] ?? null),
             type: WorkOrderType::from((string) $data['type']),
             startDate: (string) $data['start_date'],
             callbackDate: array_key_exists('callback_date', $data) ? $data['callback_date'] : null,
@@ -116,7 +116,7 @@ final readonly class CreateWorkOrderData
      */
     public static function forContractGeneration(
         int $quoteId,
-        string $title,
+        ?string $title,
         WorkOrderType $type,
         string $startDate,
         array $supervisorIds,
@@ -127,7 +127,7 @@ final readonly class CreateWorkOrderData
         return new self(
             code: null,
             quoteId: $quoteId,
-            title: $title,
+            title: self::normalizeTitle($title),
             type: $type,
             startDate: $startDate,
             callbackDate: null,
@@ -150,7 +150,8 @@ final readonly class CreateWorkOrderData
     {
         return [
             'quote_id' => $this->quoteId,
-            'title' => $this->title,
+            // NOT NULL column: the placeholder is replaced by WorkOrderTitleWriter in the same transaction.
+            'title' => '',
             'type' => $this->type,
             'start_date' => $this->startDate,
             'callback_date' => $this->callbackDate,
@@ -160,6 +161,14 @@ final readonly class CreateWorkOrderData
             'force_close_reason' => $this->forceCloseReason,
             'task_template_id' => $this->taskTemplateId,
         ];
+    }
+
+    /** A blank title means "automatic" (spec 0215, D-2), same as null. */
+    private static function normalizeTitle(mixed $title): ?string
+    {
+        $title = $title === null ? null : trim((string) $title);
+
+        return $title === '' ? null : $title;
     }
 
     /**

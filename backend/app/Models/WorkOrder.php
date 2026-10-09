@@ -34,6 +34,9 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * `App\Services\WorkOrders\WorkOrderAttributeValueWriter::apply()` after
  * per-`code` validation, never by mass assignment.
  *
+ * `title_is_manual` (spec 0215) is DELIBERATELY absent from #[Fillable]:
+ * written only by `WorkOrderTitleWriter` via forceFill, like `Quote`.
+ *
  * Spec 0134 adds the two collaborative concerns: `HasNotes` (the thread,
  * registered as the `work-orders` host in config/notes.php via
  * WorkOrderNotable) and `HasAttachments` (the documents, alias `work_order`
@@ -71,6 +74,7 @@ class WorkOrder extends BaseModel
             'type' => WorkOrderType::class,
             'start_date' => 'date:Y-m-d',
             'callback_date' => 'date:Y-m-d',
+            'title_is_manual' => 'boolean',
             'is_force_closed' => 'boolean',
             'attribute_values' => 'array',
         ];

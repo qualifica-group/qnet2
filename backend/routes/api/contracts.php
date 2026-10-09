@@ -6,6 +6,7 @@ use App\Http\Controllers\Contracts\ContractReactivationController;
 use App\Http\Controllers\Contracts\ContractStatusChangeController;
 use App\Http\Controllers\Contracts\ContractTerminationController;
 use App\Http\Controllers\Contracts\ContractValidationController;
+use App\Http\Controllers\Contracts\ContractWorkOrderBatchController;
 use App\Http\Controllers\Contracts\ContractWorkOrderController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,3 +47,6 @@ Route::post('contracts/{contract}/change-status', ContractStatusChangeController
 // own docblock.
 Route::get('contracts/{contract}/programmable-lines', ContractProgrammableLinesController::class);
 Route::post('contracts/{contract}/work-orders', ContractWorkOrderController::class);
+
+// Spec 0215: several commesse in one all-or-nothing request (one group each).
+Route::post('contracts/{contract}/work-orders/batch', ContractWorkOrderBatchController::class);

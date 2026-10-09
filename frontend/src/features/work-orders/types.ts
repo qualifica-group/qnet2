@@ -130,6 +130,8 @@ export interface WorkOrderDetail {
   /** `COM-0001`, unique, immutable after create (D-1). */
   code: string
   title: string
+  /** Spec 0215 D-2: false = automatic `<code> - <products>` title, recomputed when the lines change. */
+  title_is_manual: boolean
   type: WorkOrderType
   status: WorkOrderStatus
   /** Spec 0149 D-5: mean completion of the non-cancelled root tasks, 0..100, computed server-side. */
@@ -198,7 +200,8 @@ export interface WorkOrderDetailWithPermissions extends WorkOrderDetail {
 export interface CreateWorkOrderPayload {
   code?: string | null
   quote_id: number
-  title: string
+  /** `null`/absent = automatic title (spec 0215 D-2). */
+  title: string | null
   type: WorkOrderType
   start_date: string
   supervisor_ids: number[]

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   changeContractStatus,
+  createContractWorkOrdersBatch,
   reactivateContract,
   terminateContract,
   updateContract,
@@ -67,5 +68,27 @@ describe('contracts api — every write returns the refreshed permissions', () =
     const result = await updateContract(1, { comments: 'nota' })
 
     expect(result.permissions).toEqual(PERMISSIONS)
+  })
+})
+
+describe('createContractWorkOrdersBatch (spec 0215)', () => {
+  it('posts the groups to the batch endpoint and returns the created work orders in order', async () => {
+    const created = [{ id: 1 }, { id: 2 }]
+    postMock.mockResolvedValue({ data: { success: true, message: 'Created', data: created } })
+    const groups = [
+      {
+        title: null,
+        type: 'processing' as const,
+        start_date: '2026-03-01',
+        supervisor_ids: [21],
+        task_template_id: null,
+        quote_line_ids: [10],
+      },
+    ]
+
+    const result = await createContractWorkOrdersBatch(7, { groups })
+
+    expect(postMock).toHaveBeenCalledWith('/contracts/7/work-orders/batch', { groups })
+    expect(result).toEqual(created)
   })
 })

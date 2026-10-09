@@ -32,7 +32,8 @@ it('200: field catalogue is in the frozen data_contract order, status is absent 
         ->and($keys)->not->toContain('status');
 
     $fields = collect($response->json('data.fields'))->keyBy('key');
-    expect($fields['title']['mandatory'])->toBeTrue()
+    // Spec 0215: an empty title is the automatic one, so it is no longer mandatory.
+    expect($fields['title']['mandatory'])->toBeFalse()
         ->and($fields['type']['mandatory'])->toBeTrue()
         // Spec 0096, D-6: NOT NULL columns, hence mandatory — but plainly
         // editable after create, unlike code/quote_id.
@@ -95,7 +96,7 @@ it('a restrictive DB row on the non-mandatory `description` field makes it reado
     $this->assertDatabaseHas('work_orders', ['id' => $target->id, 'description' => 'Original']);
 });
 
-it('a restrictive DB row on the mandatory `title` field is ignored (mandatory bypass), write succeeds (AC-052)', function () {
+it('a restrictive DB row on the mandatory `type` field is ignored (mandatory bypass), write succeeds (AC-052)', function () {
     // `viewAll` lifts the membership scoping (user directive 2026-09-02):
     // this test is about the field-permission matrix, not about who may see
     // a commessa.
@@ -103,11 +104,11 @@ it('a restrictive DB row on the mandatory `title` field is ignored (mandatory by
         Permission::findOrCreate("work-orders.{$ability}");
     }
 
-    $role = Role::create(['name' => 'work-order-title-locked']);
+    $role = Role::create(['name' => 'work-order-type-locked']);
     $role->givePermissionTo(['work-orders.view', 'work-orders.update', 'work-orders.viewAll']);
     $role->fieldPermissions()->create([
         'resource' => 'work-orders',
-        'field' => 'title',
+        'field' => 'type',
         'visible' => true,
         'editable' => false,
         'required' => false,
@@ -116,16 +117,16 @@ it('a restrictive DB row on the mandatory `title` field is ignored (mandatory by
     $actor = User::factory()->create();
     $actor->assignRole($role);
 
-    $target = WorkOrder::factory()->create(['title' => 'Original']);
+    $target = WorkOrder::factory()->create(['type' => 'processing']);
     Sanctum::actingAs($actor);
 
     $this->getJson("/api/work-orders/{$target->id}")
         ->assertOk()
-        ->assertJsonPath('permissions.fields.title.editable', true);
+        ->assertJsonPath('permissions.fields.type.editable', true);
 
-    $this->patchJson("/api/work-orders/{$target->id}", ['title' => 'Changed'])
+    $this->patchJson("/api/work-orders/{$target->id}", ['type' => 'project'])
         ->assertOk()
-        ->assertJsonPath('data.title', 'Changed');
+        ->assertJsonPath('data.type', 'project');
 });
 
 it('permissions.actions maps delete/export/import to the resource permissions', function () {

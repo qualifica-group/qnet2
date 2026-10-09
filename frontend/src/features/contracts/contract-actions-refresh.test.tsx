@@ -38,7 +38,7 @@ vi.mock('@/features/contracts/api', () => ({
   terminateContract: vi.fn(),
   reactivateContract: vi.fn(),
   fetchContractProgrammableLines: vi.fn(),
-  createContractWorkOrder: vi.fn(),
+  createContractWorkOrdersBatch: vi.fn(),
 }))
 
 // The Commesse tab mounts the real `TableView`; stubbed the same way every

@@ -23,7 +23,7 @@ interface ContractActionsBarProps {
   contract: ContractDetailWithPermissions
   onChanged: (contract: ContractDetailWithPermissions) => void
   /** Fired after "Programma" generates a Commessa (AC-062): the caller refreshes the Commesse tab. */
-  onWorkOrderCreated: (workOrder: WorkOrderDetail) => void
+  onWorkOrderCreated: (workOrders: WorkOrderDetail[]) => void
 }
 
 /**

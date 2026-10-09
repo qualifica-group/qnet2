@@ -49,6 +49,7 @@ class WorkOrderResource extends JsonResource
             'id' => $this->id,
             'code' => $this->code,
             'title' => $this->title,
+            'title_is_manual' => $this->title_is_manual,
             'type' => $this->type?->value,
             'status' => [
                 'value' => $progress->status->value,

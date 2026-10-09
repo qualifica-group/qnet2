@@ -46,10 +46,22 @@ export function WorkOrderCodeField({ control }: FieldProps) {
 export function WorkOrderTitleField({ control }: FieldProps) {
   const { t } = useTranslation()
   return (
-    <MetaField control={control} name="title" metaKey="title" label={t('workOrders.form.title')}>
+    <MetaField
+      control={control}
+      name="title"
+      metaKey="title"
+      label={t('workOrders.form.title')}
+      hint={t('workOrders.form.titleHint')}
+    >
       {({ field, disabled, readOnly }) => (
         <FormControl>
-          <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
+          <Input
+            autoComplete="off"
+            placeholder={t('workOrders.form.titlePlaceholder')}
+            disabled={disabled}
+            readOnly={readOnly}
+            {...field}
+          />
         </FormControl>
       )}
     </MetaField>

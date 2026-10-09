@@ -8,8 +8,10 @@ use App\Enums\QuoteLineType;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\QuoteLine;
+use App\Models\WorkOrder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The automatic title of an Opportunity and of an Offerta (spec 0171, D-7):
@@ -45,6 +47,19 @@ final class RevenueProductTitleBuilder
     public function forQuote(Quote $quote): string
     {
         return $this->compose($quote->code, $this->quoteRevenueProductNames($quote));
+    }
+
+    /** Spec 0215: the commessa's own lines, linked through `quote_line_work_order`. */
+    public function forWorkOrder(WorkOrder $workOrder): string
+    {
+        $names = $this->revenueProductNames(
+            fn (Builder $query) => $query->whereIn(
+                'quote_lines.id',
+                DB::table('quote_line_work_order')->where('work_order_id', $workOrder->id)->select('quote_line_id'),
+            ),
+        );
+
+        return $this->compose($workOrder->code, $names);
     }
 
     /**

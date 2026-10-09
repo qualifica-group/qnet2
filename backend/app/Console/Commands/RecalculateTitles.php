@@ -6,8 +6,10 @@ namespace App\Console\Commands;
 
 use App\Models\Opportunity;
 use App\Models\Quote;
+use App\Models\WorkOrder;
 use App\Services\Opportunities\OpportunityNameWriter;
 use App\Services\Quotes\QuoteTitleWriter;
+use App\Services\WorkOrders\WorkOrderTitleWriter;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -22,11 +24,11 @@ class RecalculateTitles extends Command
 {
     protected $signature = 'titles:recalculate';
 
-    protected $description = 'Re-derive the automatic titles of opportunities and offers (<code> - <products>)';
+    protected $description = 'Re-derive the automatic titles of opportunities, offers and work orders (<code> - <products>)';
 
     private const int CHUNK_SIZE = 200;
 
-    public function handle(OpportunityNameWriter $nameWriter, QuoteTitleWriter $titleWriter): int
+    public function handle(OpportunityNameWriter $nameWriter, QuoteTitleWriter $titleWriter, WorkOrderTitleWriter $workOrderTitleWriter): int
     {
         // Step 1: opportunities.
         $opportunities = 0;
@@ -42,7 +44,14 @@ class RecalculateTitles extends Command
             $quotes += $rows->count();
         });
 
-        $this->info("Recalculated {$opportunities} opportunity titles and {$quotes} offer titles.");
+        // Step 3 (spec 0215): work orders.
+        $workOrders = 0;
+        WorkOrder::query()->where('title_is_manual', false)->chunkById(self::CHUNK_SIZE, function (Collection $rows) use ($workOrderTitleWriter, &$workOrders): void {
+            $rows->each(fn (WorkOrder $workOrder) => $workOrderTitleWriter->recalculate($workOrder));
+            $workOrders += $rows->count();
+        });
+
+        $this->info("Recalculated {$opportunities} opportunity titles, {$quotes} offer titles and {$workOrders} work order titles.");
 
         return self::SUCCESS;
     }

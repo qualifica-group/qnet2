@@ -50,7 +50,7 @@ class ContractWorkOrderController extends BaseApiController
 
             $data = CreateWorkOrderData::forContractGeneration(
                 quoteId: $contract->quote_id,
-                title: (string) $request->validated('title'),
+                title: $request->validated('title'),
                 type: WorkOrderType::from((string) $request->validated('type')),
                 startDate: (string) $request->validated('start_date'),
                 supervisorIds: (array) $request->validated('supervisor_ids'),

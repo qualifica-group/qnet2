@@ -162,22 +162,22 @@ export interface ContractProgrammableLine {
 }
 
 /**
- * Payload for POST /contracts/{id}/work-orders (spec 0095 D-6/D-11, spec 0096
- * D-5): generates ONE work order from the selected offer lines. `quote_id` is
- * never a key here — the server resolves it from the contract (constraint) —
- * and neither are the Partecipanti nor gli attributi dinamici, compilati
- * dopo dal form della commessa (decisione utente 2026-09-04).
+ * One group of `POST /contracts/{id}/work-orders/batch` (spec 0215): becomes
+ * ONE work order. `quote_id` is never a key — the server resolves it from
+ * the contract — and neither are the Partecipanti nor the dynamic
+ * attributes, filled in later from the work order's own form. A `null`
+ * title means the automatic `<code> - <products>` one (D-2).
  */
-export interface CreateContractWorkOrderPayload {
-  title: string
+export interface ContractProgramGroupPayload {
+  title: string | null
   type: WorkOrderType
   /** `Y-m-d`. */
   start_date: string
   /** "Responsabili": at least one. */
   supervisor_ids: number[]
-  quote_line_ids: number[]
   /** Spec 0124 D-9: the optional Modello di Task to generate this commessa's tasks from. */
-  task_template_id?: number | null
+  task_template_id: number | null
+  quote_line_ids: number[]
 }
 
 /**

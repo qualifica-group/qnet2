@@ -87,6 +87,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'automatic-title',
+      title: 'Titolo automatico',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Il **Titolo** della commessa è facoltativo. Se lo lasci vuoto, la commessa prende il titolo automatico **codice - prodotti delle sue righe** (es. COM-0042 - ISO 9001 + SOA), che segue le righe quando cambiano.',
+        },
+        {
+          type: 'note',
+          text: 'Se scrivi un titolo tuo, resta il tuo e non viene più ricalcolato. Per tornare all\'automatico **svuota il campo** e salva. Le commesse già esistenti mantengono il titolo che hanno. Lo stesso vale per il dialogo **Programma** del contratto.',
+        },
+      ],
+    },
+    {
       id: 'costs',
       title: 'Costi',
       blocks: [

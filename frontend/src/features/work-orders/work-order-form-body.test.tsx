@@ -129,8 +129,7 @@ describe('WorkOrderFormBody — a replica of the detail', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: label('workOrders.form.save') })[0])
 
-    expect(await screen.findByText(label('workOrders.form.titleRequired'))).toBeInTheDocument()
-    expect(screen.getByText(label('workOrders.form.quoteRequired'))).toBeInTheDocument()
+    expect(await screen.findByText(label('workOrders.form.quoteRequired'))).toBeInTheDocument()
     expect(createWorkOrder).not.toHaveBeenCalled()
   })
 

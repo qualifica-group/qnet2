@@ -87,6 +87,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'automatic-title',
+      title: 'Automatic title',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'The work order **Title** is optional. If you leave it empty, the work order gets the automatic **code - products of its lines** title (e.g. COM-0042 - ISO 9001 + SOA), which follows the lines when they change.',
+        },
+        {
+          type: 'note',
+          text: 'If you write your own title, it stays yours and is no longer recalculated. To go back to the automatic one, **clear the field** and save. Existing work orders keep the title they have. The same applies to the contract **Program** window.',
+        },
+      ],
+    },
+    {
       id: 'costs',
       title: 'Costs',
       blocks: [

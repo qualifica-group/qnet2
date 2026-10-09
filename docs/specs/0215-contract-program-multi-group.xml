@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0215-contract-program-multi-group" status="approved" owner="utente" date="2026-10-09">
+
+  <goal>
+    Nel dettaglio contratto, il pulsante "Programma" permette di creare IN UNA SOLA SESSIONE piu' commesse: l'utente
+    raggruppa le righe di ricavo dell'offerta (es. 3 righe -> commessa 1, 2 righe -> commessa 2), compila i dati di
+    ogni gruppo e salva tutto con un unico "Crea N commesse". Il titolo di ogni commessa e' automatico
+    ("COM-0001 - Prodotto A + Prodotto B") come nelle offerte, oppure scritto dall'utente.
+  </goal>
+
+  <context>
+    Stato attuale (verificato):
+    - Dialog `frontend/src/features/contracts/contract-program-dialog.tsx` (spec 0095/0096/0124): UN gruppo per
+      salvataggio; campi `title` (obbligatorio), `type` (processing|project), `start_date`, `supervisor_ids` (>=1),
+      `task_template_id` (facoltativo), `quote_line_ids` (>=1). Tabella righe `contract-program-lines-table.tsx`;
+      schema `contract-program-schema.ts`; righe da `useContractProgrammableLines` (GET programmable-lines).
+      Aperto da `contract-actions-bar.tsx` (`onCreated` -> `contract-detail.tsx` rinfresca il tab Commesse).
+    - Backend: `GET /api/contracts/{contract}/programmable-lines` (`ContractProgrammableLinesController`,
+      `ProgrammableQuoteLineResource`) e `POST /api/contracts/{contract}/work-orders` (`ContractWorkOrderController`,
+      `GenerateContractWorkOrderRequest`, `CreateWorkOrderData::forContractGeneration`). Gate doppio:
+      policy `program` (`contracts.program`) AND `ContractActionAvailability::mayProgram()`.
+    - `WorkOrderService::create()` = una transazione: codice `COM-NNNN` con lock, `WorkOrderLineWriter::writeSubmitted`
+      (righe del preventivo, solo REVENUE, non gia' programmate: 422 su `quote_line_ids`), responsabili, Modello di
+      Task. `WorkOrderService::update()` riscrive le righe solo se `quote_line_ids` e' inviato.
+    - Titolo automatico offerte (spec 0171 rev.2): `RevenueProductTitleBuilder::compose(code, names)` +
+      `QuoteTitleWriter` (write/recalculate) + `quotes.title_is_manual`; comando `titles:recalculate`
+      (`RecalculateTitles`). Lato FE `QuoteTitleField`: campo facoltativo, vuoto = automatico, placeholder esplicativo.
+    - `work_orders.title` VARCHAR(191) NOT NULL indicizzato; nessun flag manuale oggi. `title` e' required in
+      `StoreWorkOrderRequest`/`UpdateWorkOrderRequest`, FieldDefinition `title` mandatory in
+      `WorkOrdersAuthorization`, required in `work-order-schema.ts`.
+    - Guide in-app: `frontend/src/features/help/content/{it,en}/contracts.ts` e `work-orders.ts`.
+
+    Decisioni utente (2026-10-09):
+    - D-1 Salvataggio TUTTO O NIENTE: una sola transazione; un gruppo in errore annulla tutti; l'errore e' mostrato
+      sul gruppo/campo giusto.
+    - D-2 Titolo commessa COME LE OFFERTE: vuoto = automatico `<codice> - <prodotti delle righe della commessa>`,
+      ricalcolato quando cambiano le righe della commessa finche' l'utente non scrive un titolo suo
+      (`work_orders.title_is_manual`). Vale anche per il form commessa e la cella della griglia Commesse.
+    - D-3 Funzioni avanzate: "Valori comuni" (+ "Applica a tutti i gruppi"), "Una commessa per ogni riga",
+      "Raggruppa per categoria", "Duplica gruppo".
+    - D-4 Layout a due pannelli: righe dell'offerta a sinistra (badge del gruppo assegnato), gruppi a destra.
+
+    Decisioni proposte (da confermare con l'approvazione della spec):
+    - D-5 Le commesse ESISTENTI diventano `title_is_manual = true` (il loro titolo e' stato scritto a mano):
+      nessun titolo visibile cambia con il deploy. Solo le nuove commesse senza titolo nascono automatiche.
+    - D-6 Una riga appartiene al massimo a UN gruppo nel dialog (stessa regola del backend: una riga, una commessa).
+      Selezionare una riga gia' in un gruppo e premere "Aggiungi a gruppo X" la SPOSTA.
+    - D-7 Il gruppo nuovo eredita i "Valori comuni" al momento della creazione; modificare i valori comuni dopo NON
+      tocca i gruppi gia' creati, salvo "Applica a tutti i gruppi" (sovrascrive tipo, data, responsabili, modello
+      task di tutti i gruppi; mai titolo e righe).
+    - D-8 "Raggruppa per categoria" usa la categoria del prodotto; righe senza categoria finiscono in un gruppo
+      unico "Senza categoria". Agisce sulle righe selezionate (o su tutte le libere se nessuna e' selezionata).
+      Stessa regola per "Una commessa per ogni riga".
+    - D-9 Massimo 50 gruppi per salvataggio (`ContractProgramBatch::MAX_GROUPS`): limite di sicurezza, un'offerta
+      reale ne ha molti meno.
+    - D-10 Il vecchio `POST /api/contracts/{contract}/work-orders` resta (API pubblica, spec 0210) e diventa un
+      batch da un gruppo sullo stesso servizio; il dialog usa solo il nuovo endpoint batch.
+      [revised 2026-10-09] L'endpoint singolo resta su WorkOrderService::create() (accetta `attribute_values` e
+      restituisce `permissions`, che il batch non ha): cambia solo `title` nullable. Nessuna logica duplicata.
+    - D-12 (richiesta utente 2026-10-09) "Data inizio" dei Valori comuni precompilata a oggi (data locale),
+      modificabile; i nuovi gruppi la ereditano.
+    - D-11 Lo stato del dialog NON viene salvato in bozza: chiudendo con gruppi compilati si chiede conferma
+      ("Hai N commesse non salvate, uscire?").
+  </context>
+
+  <scope>
+    <in>
+      <item>BE: migrazione `work_orders.title_is_manual` (bool, default false; righe esistenti = true, D-5).</item>
+      <item>BE: `RevenueProductTitleBuilder::forWorkOrder()` + `WorkOrderTitleWriter` (write/recalculate), usato da
+        `WorkOrderService::create()` e `update()` (ricalcolo dopo la riscrittura righe).</item>
+      <item>BE: `title` facoltativo/nullable in Store/UpdateWorkOrderRequest e nel generate singolo; FieldDefinition
+        `title` non piu' mandatory; `WorkOrderResource` + `title_is_manual`.</item>
+      <item>BE: nuovo `POST /api/contracts/{contract}/work-orders/batch` (FormRequest, action transazionale, errori
+        rimappati su `groups.{i}.*`); endpoint singolo con `title` nullable (D-10 revised).</item>
+      <item>BE: `titles:recalculate` estende il ricalcolo alle commesse automatiche.</item>
+      <item>FE: nuovo dialog Programma a due pannelli con gruppi, valori comuni, azioni rapide, conferma uscita,
+        CTA "Crea N commesse", errori per gruppo.</item>
+      <item>FE: titolo commessa facoltativo nel form commessa e nella griglia (vuoto = automatico), placeholder.</item>
+      <item>Test Pest + Vitest; i18n IT/EN; guide in-app `contracts` e `work-orders` IT/EN; HANDOFF.</item>
+    </in>
+    <out>
+      <item>Bozze persistenti del programma (salvataggio parziale lato server): D-11.</item>
+      <item>Partecipanti e "Informazioni aggiuntive" nel dialog: restano nel form commessa (decisione 2026-09-04).</item>
+      <item>Programmare righe di COSTO o dividere una riga tra piu' commesse (quantita' parziali).</item>
+      <item>Drag and drop delle righe tra gruppi (si usano selezione + "Aggiungi a gruppo").</item>
+      <item>Ricalcolo dei titoli automatici quando si rinomina un prodotto (come offerte: solo via comando).</item>
+      <item>Modifiche al flusso Gestione Richieste, Opportunita', Offerte.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/contracts/{contract}/work-orders/batch">
+      <request>
+        {
+          "groups": [                                  // array, min 1, max 50 (D-9)
+            {
+              "title": "string|null",                  // nullable, max 191; null/"" = automatico (D-2)
+              "type": "processing|project",            // required
+              "start_date": "YYYY-MM-DD",              // required, date
+              "supervisor_ids": [1, 2],                // required, min 1, users.id esistenti
+              "task_template_id": 3,                   // nullable, task_templates attivo
+              "quote_line_ids": [10, 11, 12]           // required, min 1, integer
+            }
+          ]
+        }
+        Regola di richiesta: nessun `quote_line_id` puo' comparire in due gruppi (422 su
+        `groups.{i}.quote_line_ids`, i = secondo gruppo che lo ripete). Appartenenza al preventivo del contratto,
+        solo REVENUE e "non gia' programmata" restano lato servizio (WorkOrderLineWriter), rimappate su
+        `groups.{i}.quote_line_ids`.
+      </request>
+      <response status="201">
+        { "success": true, "message": "Created",
+          "data": [ WorkOrderResource, ... ] }        // stesso ordine dei gruppi inviati; WorkOrderResource ha
+                                                      // anche `title_is_manual: boolean`
+      </response>
+      <errors>
+        403 senza `contracts.program` o contratto non programmabile (mayProgram false) -> nessuna commessa creata.
+        404 contratto inesistente.
+        422 validazione: chiavi `groups`, `groups.{i}.title|type|start_date|supervisor_ids|task_template_id|
+            quote_line_ids` (anche per i conflitti di riga rilevati dal servizio) -> nessuna commessa creata (D-1).
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/contracts/{contract}/work-orders">
+      <request>Invariato salvo `title`: ora nullable (null = automatico).</request>
+      <response status="201">Invariata (WorkOrderResource + permissions), con `title_is_manual`.</response>
+    </endpoint>
+
+    <endpoint method="POST|PATCH" path="/api/work-orders[/{workOrder}]">
+      <request>`title`: POST nullable|string|max:191; PATCH sometimes|nullable|string|max:191. null o uguale al
+        titolo automatico = automatico; altro valore = manuale (stessa regola di QuoteTitleWriter).</request>
+      <response status="200|201">WorkOrderResource + `title_is_manual: boolean`.</response>
+    </endpoint>
+
+    <frontend_types>
+      `ContractProgramGroupPayload` { title: string | null; type: WorkOrderType; start_date: string;
+        supervisor_ids: number[]; task_template_id: number | null; quote_line_ids: number[] }
+      `createContractWorkOrdersBatch(contractId, { groups }) : Promise&lt;WorkOrderDetail[]&gt;` in
+        `features/contracts/api.ts`. `WorkOrderDetail.title_is_manual: boolean`.
+    </frontend_types>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Backend (Pest) -->
+    <criterion id="AC-001">Dato un contratto programmabile con 5 righe di ricavo libere, quando POST batch con 2 gruppi
+      (righe 1-3 e 4-5), allora 201, due commesse con codici consecutivi, ciascuna collegata SOLO alle sue righe,
+      responsabili/tipo/data/modello del proprio gruppo; `data` nello stesso ordine dei gruppi.</criterion>
+    <criterion id="AC-002">Gruppo con `title` null: titolo = "COM-NNNN - Prodotto A + Prodotto B" (nomi distinti delle
+      sue righe, ordine riga), `title_is_manual = false`. Gruppo con titolo scritto: salvato com'e', manuale.</criterion>
+    <criterion id="AC-003">Batch in cui il secondo gruppo contiene una riga gia' programmata in un'altra commessa:
+      422 con errore su `groups.1.quote_line_ids`; nessuna commessa creata, contatore codici invariato nel DB.</criterion>
+    <criterion id="AC-004">Batch con la stessa riga in due gruppi: 422 su `groups.1.quote_line_ids`, nulla creato.</criterion>
+    <criterion id="AC-005">Batch con riga di un altro preventivo o riga di COSTO: 422 su `groups.{i}.quote_line_ids`,
+      nulla creato.</criterion>
+    <criterion id="AC-006">Validazione campi: `groups` vuoto, 51 gruppi, `supervisor_ids` vuoto, `type` non valido,
+      `start_date` mancante, titolo di 192 caratteri -> 422 sulla chiave `groups.{i}.campo` corretta.</criterion>
+    <criterion id="AC-007">Utente senza `contracts.program` -> 403; contratto non in stato programmabile -> 403;
+      in entrambi i casi nessuna commessa creata.</criterion>
+    <criterion id="AC-008">Il Modello di Task di un gruppo genera i task solo sulla commessa di quel gruppo; un errore
+      di generazione annulla l'intero batch.</criterion>
+    <criterion id="AC-009">Commessa automatica: PATCH che cambia `quote_line_ids` ricalcola il titolo; commessa manuale:
+      titolo invariato. PATCH `title: null` riporta all'automatico; PATCH con il titolo uguale all'automatico resta
+      automatico.</criterion>
+    <criterion id="AC-010">POST /api/work-orders senza `title` -> 201 con titolo automatico; endpoint singolo di
+      contratto senza `title` -> 201 automatico (retrocompatibile con chi invia il titolo).</criterion>
+    <criterion id="AC-011">Migrazione: le commesse esistenti hanno `title_is_manual = true`, titoli invariati;
+      `down()` rimuove la colonna.</criterion>
+    <criterion id="AC-012">`titles:recalculate` ricalcola anche le commesse automatiche e non tocca le manuali.</criterion>
+
+    <!-- Frontend (Vitest) -->
+    <criterion id="AC-020">Dialog: selezionando 3 righe e premendo "Nuovo gruppo" compare il Gruppo 1 con le 3 righe;
+      le righe mostrano il badge "G1" e non sono piu' tra le libere; il pulsante finale dice "Crea 1 commessa".</criterion>
+    <criterion id="AC-021">Selezionate altre 2 righe, "Aggiungi a gruppo" -> Gruppo 1 le aggiunge; "Nuovo gruppo" ne crea
+      un Gruppo 2. Una riga gia' in un gruppo spostata in un altro lascia il primo (D-6). Rimuovere una riga dal
+      gruppo la rende libera; eliminare un gruppo libera tutte le sue righe.</criterion>
+    <criterion id="AC-022">"Una commessa per ogni riga" su 3 righe selezionate crea 3 gruppi da una riga ciascuno;
+      "Raggruppa per categoria" crea un gruppo per categoria (+ "Senza categoria") (D-8).</criterion>
+    <criterion id="AC-023">"Valori comuni": un gruppo nuovo nasce con tipo/data/responsabili/modello dei valori comuni;
+      "Applica a tutti i gruppi" sovrascrive quei 4 campi in tutti i gruppi e non tocca titoli e righe (D-7).
+      "Duplica gruppo" crea un gruppo con gli stessi 4 campi + titolo vuoto e nessuna riga.</criterion>
+    <criterion id="AC-024">Titolo vuoto: il placeholder mostra l'anteprima automatica "Automatico: COM-… - A + B" con i
+      prodotti del gruppo; il payload invia `title: null`.</criterion>
+    <criterion id="AC-025">Salva: un solo POST batch con tutti i gruppi in ordine; successo -> toast "Create N commesse",
+      dialog chiuso, tab Commesse rinfrescato. Errore 422 `groups.1.start_date` -> il Gruppo 2 si espande e mostra
+      l'errore sul campo, con indicatore di errore sull'intestazione del gruppo; nessun gruppo perso.</criterion>
+    <criterion id="AC-026">Validazione client prima dell'invio: gruppo senza righe/responsabili/data -> errore sul
+      gruppo, nessuna richiesta. Nessun gruppo -> pulsante finale disabilitato.</criterion>
+    <criterion id="AC-027">Chiusura con gruppi presenti chiede conferma; "Annulla" mantiene i gruppi.</criterion>
+    <criterion id="AC-028">Righe gia' programmate restano visibili, non selezionabili, con il codice commessa.</criterion>
+    <criterion id="AC-029">Form commessa: campo Titolo non obbligatorio; vuoto in creazione = automatico (placeholder),
+      svuotato in modifica = torna automatico (payload `title: null`).</criterion>
+    <criterion id="AC-030">Layout: a 375px i pannelli si impilano (righe sopra, gruppi sotto) senza scrollbar
+      orizzontale della pagina; a >=1024px stanno affiancati; tutte le azioni sono raggiungibili da tastiera
+      (verifica manuale + screenshot Playwright).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: shadcn/ui esistenti (Dialog size="xl", Checkbox, Badge, Collapsible, Select,
+      AsyncPaginated*), RHF + Zod (`useFieldArray` per i gruppi), TanStack Query, sonner, i18next.</item>
+    <item>Authz server-side identica allo stato attuale (policy `program` AND `mayProgram`), sul batch e sul singolo.</item>
+    <item>Riuso obbligatorio di `WorkOrderService::create()` e `WorkOrderLineWriter`: niente logica di numerazione o
+      appartenenza riga duplicata. La transazione del batch avvolge le create (transazioni annidate = savepoint).</item>
+    <item>Titolo automatico tramite l'UNICO `RevenueProductTitleBuilder` (stesso formato di offerte/opportunita').</item>
+    <item>Envelope `{ success, message, data }`; errori senza nomi di classi interne.</item>
+    <item>Nessun throttle sui nuovi endpoint (backend.md §2).</item>
+    <item>File &lt;= 300 righe (500 hard): il dialog si divide in componenti (pannello righe, lista gruppi, card gruppo,
+      valori comuni) e la logica dei gruppi va in un hook puro testabile (`use-contract-program-groups.ts`).</item>
+    <item>UI compatta (text-xs nelle tabelle/chip), superfici da token (dialog bg-background, pannelli bg-surface,
+      card gruppo bg-card), badge gruppo non solo colore (testo "G1").</item>
+    <item>Manuale: guide in-app IT/EN `contracts` (Programma) e `work-orders` (titolo automatico); manuale Claude Docs
+      se il connettore e' disponibile, altrimenti segnalare le sezioni.</item>
+  </constraints>
+
+</spec>

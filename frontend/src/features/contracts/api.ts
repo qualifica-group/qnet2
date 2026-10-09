@@ -6,13 +6,13 @@ import type {
   ContractDetail,
   ContractDetailWithPermissions,
   ContractProgrammableLine,
-  CreateContractWorkOrderPayload,
+  ContractProgramGroupPayload,
   ReactivateContractPayload,
   TerminateContractPayload,
   UpdateContractPayload,
   ValidateContractPayload,
 } from '@/features/contracts/types'
-import type { WorkOrderDetail, WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
+import type { WorkOrderDetail } from '@/features/work-orders/types'
 
 /** Table/stats domain key of this module, shared by the table adapter. */
 export const CONTRACTS_DOMAIN = 'contracts'
@@ -130,17 +130,17 @@ export async function fetchContractProgrammableLines(
 }
 
 /**
- * "Programma": generates ONE work order from the selected offer lines
- * (spec 0095 D-6). Returns the same `WorkOrderDetailWithPermissions` shape
- * `POST /api/work-orders` returns (AC-035): no second Commessa shape.
+ * "Programma" (spec 0215): generates one work order per group, ALL in one
+ * transaction (all-or-nothing, D-1). The result keeps the groups' order. A
+ * 422 carries `groups.{i}.{field}` keys, mapped back onto the form.
  */
-export async function createContractWorkOrder(
+export async function createContractWorkOrdersBatch(
   contractId: number,
-  payload: CreateContractWorkOrderPayload,
-): Promise<WorkOrderDetailWithPermissions> {
-  const { data } = await apiClient.post<ApiResponseWithPermissions<WorkOrderDetail, ResourcePermissions>>(
-    `/contracts/${contractId}/work-orders`,
+  payload: { groups: ContractProgramGroupPayload[] },
+): Promise<WorkOrderDetail[]> {
+  const { data } = await apiClient.post<ApiResponse<WorkOrderDetail[]>>(
+    `/contracts/${contractId}/work-orders/batch`,
     payload,
   )
-  return { ...data.data, permissions: data.permissions }
+  return data.data
 }
