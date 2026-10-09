@@ -99,6 +99,7 @@ export const personalData = {
     quickPhone: 'Phone',
     quickPec: 'PEC',
     quickFax: 'Fax',
+    quickWebsite: 'Website',
   },
   addresses: {
     title: 'Addresses',

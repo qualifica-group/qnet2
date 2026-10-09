@@ -51,7 +51,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "To create a card press **New registry**: the form looks like the detail, with the same sections and **closed rows**. Click a row (or its pencil) to open it, then **Done** to keep the value or **Revert** to put it back as it was. In the **Personal details** first choose the Type, Individual or Company (fields change accordingly): on Done the name appears at the top of the card. Contacts and Addresses are in the right-hand column, with their fields ready to fill: Email, Phone (required), PEC and Fax, plus **Add contact** for more, and one address with its Site type, plus **Add address** for further sites. **Save** checks everything and creates the registry; leaving without saving asks for confirmation.",
+          text: "To create a card press **New registry**: the form looks like the detail, with the same sections and **closed rows**. Click a row (or its pencil) to open it, then **Done** to keep the value or **Revert** to put it back as it was. In the **Personal details** first choose the Type, Individual or Company (fields change accordingly): on Done the name appears at the top of the card. Contacts and Addresses are in the right-hand column, with their fields ready to fill: Email, Phone (required), PEC, Fax and Website, plus **Add contact** for more, and one address with its Site type, plus **Add address** for further sites. **Save** checks everything and creates the registry; leaving without saving asks for confirmation.",
         },
         {
           type: 'table',
@@ -62,7 +62,7 @@ const guide: HelpGuide = {
             ['Team', 'Supervisor and Account managers, in order of importance from the top; reorder them with Move up and Move down.'],
             ['Business data', 'VAT group, Supplier, Qualified supplier (suppliers only), Agreement status (In negotiation, Rejected or Agreed), Size class, Employee count and Agreement notes.'],
             ['General notes', 'The yellow box at the top of the right-hand column, the same as in Request management: free text (up to 5000 characters) with what whoever opens the registry should read first.'],
-            ['Contacts', 'Email, Phone (required), PEC and Fax; with Add contact you enter more and set the Primary contact.'],
+            ['Contacts', 'Email, Phone (required), PEC, Fax and Website; with Add contact you enter more and set the Primary contact.'],
             ['Addresses', 'One or more addresses, each with a Site type: Registered office, Delivery, Billing or Operational site.'],
             ['Referents', "The client's contact people, full width below the other sections."],
             ['Other fields', 'The registry custom fields, including Tag: pick one or more tags from the list managed in the Tags module. They also appear on the detail, grouped as in the form.'],

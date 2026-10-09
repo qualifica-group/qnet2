@@ -184,12 +184,13 @@ describe('ContactsManager (createMode)', () => {
     await i18n.changeLanguage('en')
   })
 
-  it('renders a quick field for email, phone, pec and fax', () => {
+  it('renders a quick field for email, phone, pec, fax and website', () => {
     renderWithConfirm(<ContactsManager value={[]} onChange={() => {}} createMode />)
     expect(screen.getByLabelText('Email')).toBeInTheDocument()
     expect(screen.getByLabelText('Phone')).toBeInTheDocument()
     expect(screen.getByLabelText('PEC')).toBeInTheDocument()
     expect(screen.getByLabelText('Fax')).toBeInTheDocument()
+    expect(screen.getByLabelText('Website')).toBeInTheDocument()
   })
 
   it('creates a draft when typing into an empty quick field', () => {
@@ -241,6 +242,16 @@ describe('ContactsManager (createMode)', () => {
 
     expect(email).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a valid email address.')
+  })
+
+  it('shows an accessible error for an invalid quick website', () => {
+    renderWithConfirm(<ControlledContacts />)
+    const website = screen.getByLabelText('Website')
+
+    fireEvent.change(website, { target: { value: 'not a url' } })
+
+    expect(website).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a valid URL.')
   })
 
   it('still allows adding an extra contact via the dialog, excluded from the quick fields', () => {

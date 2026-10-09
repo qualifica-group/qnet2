@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CONTATTI — CAMPO RAPIDO "SITO WEB" NELLA CREAZIONE (2026-10-09) — VERDE, COMMITTATO
+
+- `QUICK_CONTACT_TYPES` (`features/personal-data/quick-contacts.ts`) ora include `website` dopo `fax`: il campo
+  rapido compare in TUTTE le creazioni che usano `ContactsManager` in `createMode` (anagrafica, referente, cliente
+  in Gestione richieste). Etichetta `personalData.contacts.quickWebsite` (IT "Sito web", EN "Website"); validazione
+  URL gia' esistente in `buildContactSchema` (rispecchia `ContactTypeEnum::Website` -> `url`, schema obbligatorio).
+- Test: `contacts-manager.test.tsx` (label Website + errore URL non valido). Guida in-app `registries` IT/EN aggiornata.
+- Manuale Claude Docs: NON aggiornato (doc non condiviso con la sessione) -> Anagrafiche > Nuova anagrafica > Contatti.
+- Aperti: limitarlo alle sole anagrafiche? auto-prefisso `https://` al blur? (da decidere con l'utente).
+
 ## Settori — flag "Attivo" (spec 0212) — VERDE, COMMITTATO (2026-10-09)
 
 - Decisioni utente: un settore non attivo disattiva in modo EFFETTIVO tutto il ramo (flag dei figli mai riscritto);

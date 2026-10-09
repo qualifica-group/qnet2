@@ -51,7 +51,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Per creare una scheda premi **Nuova anagrafica**: il modulo ha lo stesso aspetto del dettaglio, con le stesse sezioni e **righe chiuse**. Fai clic sulla riga (o sulla matita) per aprirla, poi **Fatto** per tenere il valore o **Ripristina** per riportarlo com'era. Nei **Dati anagrafici** scegli prima il Tipo, Persona fisica o Azienda (i campi cambiano di conseguenza): con Fatto il nome compare in testa alla scheda. Contatti e Indirizzi sono nella colonna di destra, con i campi già pronti da compilare: Email, Telefono (obbligatorio), PEC e Fax, più **Aggiungi contatto** per altri recapiti, e un indirizzo con il suo Tipo sede, più **Aggiungi indirizzo** per le altre sedi. **Salva** controlla tutto e crea l'anagrafica; se esci senza salvare ti viene chiesta conferma.",
+          text: "Per creare una scheda premi **Nuova anagrafica**: il modulo ha lo stesso aspetto del dettaglio, con le stesse sezioni e **righe chiuse**. Fai clic sulla riga (o sulla matita) per aprirla, poi **Fatto** per tenere il valore o **Ripristina** per riportarlo com'era. Nei **Dati anagrafici** scegli prima il Tipo, Persona fisica o Azienda (i campi cambiano di conseguenza): con Fatto il nome compare in testa alla scheda. Contatti e Indirizzi sono nella colonna di destra, con i campi già pronti da compilare: Email, Telefono (obbligatorio), PEC, Fax e Sito web, più **Aggiungi contatto** per altri recapiti, e un indirizzo con il suo Tipo sede, più **Aggiungi indirizzo** per le altre sedi. **Salva** controlla tutto e crea l'anagrafica; se esci senza salvare ti viene chiesta conferma.",
         },
         {
           type: 'table',
@@ -62,7 +62,7 @@ const guide: HelpGuide = {
             ['Team', 'Supervisore e Gestori account, in ordine di importanza dal primo in alto; riordinali con Sposta su e Sposta giù.'],
             ['Dati commerciali', 'Gruppo IVA, Fornitore, Fornitore qualificato (solo per i fornitori), Stato convenzione (In trattativa, Respinta o Concordata), Classe dimensionale, Numero dipendenti e Note convenzione.'],
             ['Note generali', "Il riquadro giallo in cima alla colonna di destra, lo stesso di Gestione richieste: un testo libero (fino a 5000 caratteri) con ciò che chi apre l'anagrafica deve leggere per primo."],
-            ['Contatti', 'Email, Telefono (obbligatorio), PEC e Fax; con Aggiungi contatto ne inserisci altri e indichi il Contatto principale.'],
+            ['Contatti', 'Email, Telefono (obbligatorio), PEC, Fax e Sito web; con Aggiungi contatto ne inserisci altri e indichi il Contatto principale.'],
             ['Indirizzi', 'Uno o più indirizzi, ciascuno con un Tipo sede: Sede legale, Consegna, Fatturazione o Sede operativa.'],
             ['Referenti', 'Le persone di contatto del cliente, a tutta larghezza sotto le altre sezioni.'],
             ['Altri campi', "I campi personalizzati delle anagrafiche, tra cui Tag: scegli uno o più tag dall'elenco gestito nel modulo Tag. Compaiono anche nel dettaglio, raggruppati come nel modulo."],
