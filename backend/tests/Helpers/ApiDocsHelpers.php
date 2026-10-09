@@ -16,7 +16,7 @@ if (! function_exists('generatedApiDocument')) {
     {
         static $document = null;
 
-        return $document ??= app(OpenApiDocumentProvider::class)->document();
+        return $document ??= app(OpenApiDocumentProvider::class)->generate();
     }
 }
 

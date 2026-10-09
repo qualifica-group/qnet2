@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  filterOperationGroups,
+  cleanSummary,
+  filterOperations,
   parseOpenApiOperations,
   resolveSchema,
-  schemaTypeLabel,
+  type ApiMethod,
 } from '@/features/api-integrations/openapi-operations'
 import type { JsonObject, OpenApiDocument } from '@/features/api-integrations/openapi-types'
 
@@ -14,7 +15,8 @@ const document: OpenApiDocument = {
     '/leads': {
       get: {
         tags: ['Leads'],
-        summary: 'List leads',
+        operationId: 'lead.index',
+        summary: 'GET /api/leads — list the leads',
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer' } },
           { $ref: '#/components/parameters/PerPage' },
@@ -62,33 +64,40 @@ const document: OpenApiDocument = {
   },
 }
 
-describe('parseOpenApiOperations', () => {
-  const groups = parseOpenApiOperations(document)
+const ids = (operations: { method: string; path: string }[]) =>
+  operations.map((op) => `${op.method} ${op.path}`)
 
-  it('groups operations by tag in document order', () => {
-    expect(groups.map((group) => group.tag)).toEqual(['Leads', 'Lookups'])
-    expect(groups[0].operations.map((op) => `${op.method} ${op.path}`)).toEqual([
-      'GET /leads',
-      'POST /leads',
-      'GET /leads/{lead}',
-    ])
+describe('parseOpenApiOperations', () => {
+  const operations = parseOpenApiOperations(document)
+
+  it('flattens the operations sorted by path, then by method', () => {
+    expect(ids(operations)).toEqual(['GET /leads', 'POST /leads', 'GET /leads/{lead}', 'GET /sources'])
+  })
+
+  it('uses the operationId as id, falling back to method:path', () => {
+    expect(operations[0].id).toBe('lead.index')
+    expect(operations[1].id).toBe('POST:/leads')
   })
 
   it('resolves component parameters and merges path-level ones', () => {
-    const list = groups[0].operations[0]
-    expect(list.parameters).toEqual([
-      { name: 'page', location: 'query', required: false, type: 'integer', description: null },
-      { name: 'per_page', location: 'query', required: false, type: 'integer', description: null },
+    expect(operations[0].parameters).toEqual([
+      { name: 'page', location: 'query', required: false, schema: { type: 'integer' }, description: null },
+      { name: 'per_page', location: 'query', required: false, schema: { type: 'integer' }, description: null },
     ])
-    expect(groups[0].operations[2].parameters[0]).toMatchObject({ name: 'lead', location: 'path', required: true })
+    expect(operations[2].parameters[0]).toMatchObject({ name: 'lead', location: 'path', required: true })
   })
 
   it('resolves the request body and the first 2xx response schema', () => {
-    const [list, create] = groups[0].operations
+    const [list, create] = operations
     expect(create.requestSchema).toMatchObject({ required: ['registry_id'] })
     expect(list.responseStatus).toBe('200')
     expect(create.responseStatus).toBe('201')
     expect(list.requestSchema).toBeNull()
+  })
+
+  it('cleans the generated summary lead-in', () => {
+    expect(operations[0].summary).toBe('list the leads')
+    expect(operations[1].summary).toBe('Create lead')
   })
 
   it('returns an empty list for a document without paths', () => {
@@ -96,30 +105,37 @@ describe('parseOpenApiOperations', () => {
   })
 })
 
-describe('filterOperationGroups', () => {
-  const groups = parseOpenApiOperations(document)
+describe('cleanSummary', () => {
+  it('drops the method and path lead-in and collapses whitespace', () => {
+    expect(cleanSummary('POST /api/leads — create a\nnew lead')).toBe('create a new lead')
+    expect(cleanSummary('GET /api/activity-log/{resource}/{id}')).toBeNull()
+    expect(cleanSummary(undefined)).toBeNull()
+    expect(cleanSummary('Plain sentence')).toBe('Plain sentence')
+  })
+})
 
-  it('keeps everything for a blank query', () => {
-    expect(filterOperationGroups(groups, '  ')).toBe(groups)
+describe('filterOperations', () => {
+  const operations = parseOpenApiOperations(document)
+  const none = new Set<ApiMethod>()
+
+  it('keeps everything for a blank query and no method', () => {
+    expect(filterOperations(operations, { query: '  ', methods: none })).toHaveLength(4)
   })
 
-  it('matches the path, case-insensitively, and drops empty groups', () => {
-    const result = filterOperationGroups(groups, 'SOURCES')
-    expect(result.map((group) => group.tag)).toEqual(['Lookups'])
+  it('matches the path, case-insensitively', () => {
+    expect(ids(filterOperations(operations, { query: 'SOURCES', methods: none }))).toEqual(['GET /sources'])
   })
 
-  it('matches the summary and keeps only the matching operations', () => {
-    const result = filterOperationGroups(groups, 'create lead')
-    expect(result).toHaveLength(1)
-    expect(result[0].operations.map((op) => `${op.method} ${op.path}`)).toEqual(['POST /leads'])
+  it('matches the summary, the tag and the operation id', () => {
+    expect(ids(filterOperations(operations, { query: 'create lead', methods: none }))).toEqual(['POST /leads'])
+    expect(filterOperations(operations, { query: 'lookups', methods: none })).toHaveLength(1)
+    expect(ids(filterOperations(operations, { query: 'lead.index', methods: none }))).toEqual(['GET /leads'])
   })
 
-  it('matches the tag', () => {
-    expect(filterOperationGroups(groups, 'lookups')[0].operations).toHaveLength(1)
-  })
-
-  it('returns no group when nothing matches', () => {
-    expect(filterOperationGroups(groups, 'zzz')).toEqual([])
+  it('combines the text query with the method chips', () => {
+    const post = new Set<ApiMethod>(['POST'])
+    expect(ids(filterOperations(operations, { query: 'leads', methods: post }))).toEqual(['POST /leads'])
+    expect(filterOperations(operations, { query: 'sources', methods: post })).toEqual([])
   })
 })
 
@@ -134,15 +150,5 @@ describe('resolveSchema', () => {
     expect(resolveSchema({ $ref: '#/components/schemas/Missing' }, {})).toEqual({
       $ref: '#/components/schemas/Missing',
     })
-  })
-})
-
-describe('schemaTypeLabel', () => {
-  it('describes scalars, nullable unions, arrays and anyOf', () => {
-    expect(schemaTypeLabel({ type: 'string', format: 'date-time' })).toBe('string (date-time)')
-    expect(schemaTypeLabel({ type: ['integer', 'null'] })).toBe('integer|null')
-    expect(schemaTypeLabel({ type: 'array', items: { type: 'integer' } })).toBe('array<integer>')
-    expect(schemaTypeLabel({ anyOf: [{ type: 'string' }, { type: 'integer' }] })).toBe('string | integer')
-    expect(schemaTypeLabel(undefined)).toBe('any')
   })
 })

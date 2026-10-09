@@ -6,16 +6,15 @@ import {
   deleteApiClient,
   downloadApiDoc,
   fetchApiClient,
-  fetchOpenApiDocument,
   rotateApiClientKey,
   updateApiClient,
 } from '@/features/api-integrations/api'
 import { apiIntegrationsKeys } from '@/features/api-integrations/query-keys'
-import type { OpenApiDocument } from '@/features/api-integrations/openapi-types'
 import type {
   ApiClient,
   ApiClientPayload,
   ApiClientWithKey,
+  ApiDocDownloadResult,
   ApiDocKind,
 } from '@/features/api-integrations/types'
 
@@ -68,13 +67,6 @@ export function useDeleteApiClient() {
   })
 }
 
-export function useOpenApiDocument() {
-  return useQuery<OpenApiDocument, ApiError>({
-    queryKey: apiIntegrationsKeys.openApi(),
-    queryFn: fetchOpenApiDocument,
-  })
-}
-
 export function useApiDocDownload() {
-  return useMutation<void, ApiError, ApiDocKind>({ mutationFn: (kind) => downloadApiDoc(kind) })
+  return useMutation<ApiDocDownloadResult, ApiError, ApiDocKind>({ mutationFn: (kind) => downloadApiDoc(kind) })
 }

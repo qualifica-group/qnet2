@@ -2,6 +2,7 @@
 
 namespace App\Services\ApiDocs;
 
+use App\Jobs\GenerateApiDocsJob;
 use Dedoc\Scramble\Generator;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Cache;
@@ -36,15 +37,52 @@ class OpenApiDocumentProvider
     ];
 
     /**
+     * The document for the current signature, or null when it is not cached.
+     * Never generates: a cold generation takes tens of seconds, far beyond the
+     * PHP request time limit.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function cached(): ?array
+    {
+        return Cache::get($this->cacheKey());
+    }
+
+    /**
+     * Runs the (slow) Scramble generation and stores the result under the current
+     * signature. Called by the warm command and GenerateApiDocsJob, never in-request.
+     *
      * @return array<string, mixed>
      */
-    public function document(): array
+    public function generate(): array
     {
-        return Cache::remember(
-            self::CACHE_KEY_PREFIX.$this->signature(),
-            (int) config('external-api.docs.cache_ttl'),
-            fn (): array => app(Generator::class)(),
-        );
+        $document = app(Generator::class)();
+
+        Cache::put($this->cacheKey(), $document, (int) config('external-api.docs.cache_ttl'));
+
+        return $document;
+    }
+
+    /**
+     * Starts the generation outside the request cycle. With a real queue the job
+     * goes to the worker; with the sync driver (local dev) it would run inline and
+     * hit the request time limit, so it is deferred until after the response is
+     * sent: a motivated exception to "slow work goes to the queue".
+     */
+    public function ensureGenerating(): void
+    {
+        if (config('queue.default') === 'sync') {
+            dispatch(new GenerateApiDocsJob)->afterResponse();
+
+            return;
+        }
+
+        GenerateApiDocsJob::dispatch();
+    }
+
+    private function cacheKey(): string
+    {
+        return self::CACHE_KEY_PREFIX.$this->signature();
     }
 
     /**

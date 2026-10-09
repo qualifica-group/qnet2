@@ -1,3 +1,4 @@
+import { isJsonObject } from '@/features/api-integrations/openapi-types'
 import type {
   JsonObject,
   JsonValue,
@@ -6,7 +7,11 @@ import type {
   OpenApiParameter,
 } from '@/features/api-integrations/openapi-types'
 
-const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const
+/** Display order of the methods (also the order of the filter chips). */
+export const API_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
+
+export type ApiMethod = (typeof API_METHODS)[number]
+
 const SCHEMA_REF_PREFIX = '#/components/schemas/'
 const PARAMETER_REF_PREFIX = '#/components/parameters/'
 const JSON_MEDIA_TYPE = 'application/json'
@@ -17,13 +22,14 @@ export interface ParsedParameter {
   name: string
   location: string
   required: boolean
-  type: string
+  schema: JsonValue | null
   description: string | null
 }
 
 export interface ParsedOperation {
+  /** The OpenAPI `operationId` (also the deep-link hash), `method:path` when absent. */
   id: string
-  method: string
+  method: ApiMethod
   path: string
   tag: string
   summary: string | null
@@ -32,15 +38,6 @@ export interface ParsedOperation {
   requestSchema: JsonValue | null
   responseStatus: string | null
   responseSchema: JsonValue | null
-}
-
-export interface OperationGroup {
-  tag: string
-  operations: ParsedOperation[]
-}
-
-function isObject(value: JsonValue | undefined): value is JsonObject {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /**
@@ -56,7 +53,7 @@ export function resolveSchema(
   if (Array.isArray(node)) {
     return node.map((item) => resolveSchema(item, schemas, stack))
   }
-  if (!isObject(node)) {
+  if (!isJsonObject(node)) {
     return node
   }
   const ref = node.$ref
@@ -74,28 +71,6 @@ export function resolveSchema(
   return Object.fromEntries(
     Object.entries(node).map(([key, value]) => [key, resolveSchema(value, schemas, stack)]),
   )
-}
-
-/** Short human type of a resolved schema: `string`, `integer|null`, `array<object>`, `a | b`. */
-export function schemaTypeLabel(schema: JsonValue | undefined): string {
-  if (!isObject(schema)) {
-    return 'any'
-  }
-  const type = schema.type
-  if (Array.isArray(type)) {
-    return type.join('|')
-  }
-  if (type === 'array') {
-    return `array<${schemaTypeLabel(schema.items)}>`
-  }
-  if (typeof type === 'string') {
-    return typeof schema.format === 'string' ? `${type} (${schema.format})` : type
-  }
-  const union = schema.anyOf ?? schema.oneOf
-  if (Array.isArray(union)) {
-    return union.map((member) => schemaTypeLabel(member)).join(' | ')
-  }
-  return isObject(schema.properties) ? 'object' : 'any'
 }
 
 function resolveParameter(
@@ -125,7 +100,7 @@ function parseParameters(
       name: parameter.name,
       location,
       required: parameter.required === true || location === 'path',
-      type: schemaTypeLabel(parameter.schema ? resolveSchema(parameter.schema, schemas) : undefined),
+      schema: parameter.schema ? resolveSchema(parameter.schema, schemas) : null,
       description: parameter.description ?? null,
     })
   }
@@ -148,61 +123,80 @@ function pickSuccessResponse(
   return { status, schema: schema ? resolveSchema(schema, schemas) : null }
 }
 
+/** Drops the generated `GET /api/path — ` lead-in of a summary, keeping only the human sentence. */
+export function cleanSummary(summary: string | undefined): string | null {
+  const text = (summary ?? '')
+    .replace(/^(GET|POST|PUT|PATCH|DELETE)\s+\S+\s*(\u2014\s*)?/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text === '' ? null : text
+}
+
+function methodRank(method: ApiMethod): number {
+  return API_METHODS.indexOf(method)
+}
+
 /**
- * Flattens an OpenAPI document into operations grouped by their first tag
- * (groups and operations keep document order). Everything shown in the
- * documentation tab comes from here: no operation list is hard-coded.
+ * Flattens an OpenAPI document into its operations, sorted by path and then
+ * by method. Everything shown in the documentation tab comes from here: no
+ * operation list is hard-coded.
  */
-export function parseOpenApiOperations(document: OpenApiDocument): OperationGroup[] {
+export function parseOpenApiOperations(document: OpenApiDocument): ParsedOperation[] {
   const schemas = document.components?.schemas ?? {}
-  const groups = new Map<string, ParsedOperation[]>()
+  const operations: ParsedOperation[] = []
 
   for (const [path, item] of Object.entries(document.paths ?? {})) {
     const shared = Array.isArray(item.parameters) ? item.parameters : []
-    for (const method of HTTP_METHODS) {
-      const operation = item[method]
+    for (const method of API_METHODS) {
+      const operation = item[method.toLowerCase()]
       if (!operation || Array.isArray(operation)) {
         continue
       }
-      const tag = operation.tags?.[0] ?? DEFAULT_TAG
       const requestSchema = jsonSchemaOf(operation.requestBody?.content)
       const response = pickSuccessResponse(operation, schemas)
-      const parsed: ParsedOperation = {
-        id: `${method}:${path}`,
-        method: method.toUpperCase(),
+      operations.push({
+        id: operation.operationId ?? `${method}:${path}`,
+        method,
         path,
-        tag,
-        summary: operation.summary ?? null,
-        description: operation.description ?? null,
+        tag: operation.tags?.[0] ?? DEFAULT_TAG,
+        summary: cleanSummary(operation.summary),
+        description: operation.description?.trim() || null,
         parameters: parseParameters(shared, operation.parameters ?? [], document, schemas),
         requestSchema: requestSchema ? resolveSchema(requestSchema, schemas) : null,
         responseStatus: response.status,
         responseSchema: response.schema,
-      }
-      groups.set(tag, [...(groups.get(tag) ?? []), parsed])
+      })
     }
   }
 
-  return [...groups.entries()].map(([tag, operations]) => ({ tag, operations }))
+  return operations.sort(
+    (a, b) => a.path.localeCompare(b.path) || methodRank(a.method) - methodRank(b.method),
+  )
 }
 
-/**
- * Keeps the operations whose path, summary or tag contains `query`
- * (case-insensitive); groups left empty are dropped. A blank query keeps all.
- */
-export function filterOperationGroups(groups: OperationGroup[], query: string): OperationGroup[] {
+export interface OperationFilters {
+  query: string
+  methods: ReadonlySet<ApiMethod>
+}
+
+/** Case-insensitive match on path, summary, tag or operation id; a blank query matches all. */
+export function matchesQuery(operation: ParsedOperation, query: string): boolean {
   const needle = query.trim().toLowerCase()
-  if (needle === '') {
-    return groups
-  }
-  return groups
-    .map((group) => ({
-      tag: group.tag,
-      operations: group.operations.filter((operation) =>
-        [operation.path, operation.summary ?? '', operation.tag].some((field) =>
-          field.toLowerCase().includes(needle),
-        ),
-      ),
-    }))
-    .filter((group) => group.operations.length > 0)
+  return (
+    needle === '' ||
+    [operation.path, operation.summary ?? '', operation.tag, operation.id].some((field) =>
+      field.toLowerCase().includes(needle),
+    )
+  )
+}
+
+/** Applies the text query and the method chips (an empty method set means "all methods"). */
+export function filterOperations(
+  operations: ParsedOperation[],
+  { query, methods }: OperationFilters,
+): ParsedOperation[] {
+  return operations.filter(
+    (operation) =>
+      (methods.size === 0 || methods.has(operation.method)) && matchesQuery(operation, query),
+  )
 }

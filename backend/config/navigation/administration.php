@@ -1,8 +1,8 @@
 <?php
 
-// "Amministrazione": system-level access control, the dynamic-field
-// catalogue and data migration (who-can-do-what plus admin-only tooling,
-// kept apart from the reference-data configuration above). The section
+// "Amministrazione": system-level access control and the dynamic-field
+// catalogue (who-can-do-what plus admin-only tooling, kept apart from the
+// reference-data configuration above). The section
 // is dropped automatically when the actor can see none of its children.
 return [
     'key' => 'administration',
@@ -36,33 +36,6 @@ return [
             'icon' => 'puzzle',
             'route' => '/custom-fields',
             'permission' => 'custom-fields.view',
-        ],
-        [
-            'key' => 'migrations',
-            // Namespaced i18n key: `migrations` strings live in their own
-            // i18next namespace (see frontend i18n/index.ts).
-            'label' => 'migrations:nav.label',
-            'icon' => 'database-zap',
-            'route' => '/migrations',
-            'permission' => null,
-            'role' => 'super-admin',
-        ],
-        [
-            // System health (spec 0187): live subsystem status + online users.
-            'key' => 'system-health',
-            'label' => 'navigation.systemHealth',
-            'icon' => 'activity',
-            'route' => '/admin/system-health',
-            'permission' => null,
-            'role' => 'super-admin',
-        ],
-        [
-            // API clients and integrator documentation (spec 0209).
-            'key' => 'api-integrations',
-            'label' => 'navigation.apiIntegrations',
-            'icon' => 'plug',
-            'route' => '/admin/api-integrations',
-            'permission' => 'api-clients.view',
         ],
     ],
 ];

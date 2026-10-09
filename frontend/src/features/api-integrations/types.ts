@@ -42,3 +42,6 @@ export interface ApiClientPayload {
 }
 
 export type ApiDocKind = 'openapi' | 'postman'
+
+/** 'generating': the server has no cached document yet (HTTP 202), nothing was saved. */
+export type ApiDocDownloadResult = 'saved' | 'generating'

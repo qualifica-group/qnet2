@@ -1,6 +1,6 @@
 /**
  * System Health (spec 0187): live status of critical subsystems plus the
- * people currently online, shown on `/admin/system-health` (super-admin only).
+ * people currently online, shown on `/dev/system-health` (super-admin only).
  * Mirrors `GET /api/system-health` exactly (frozen data_contract).
  */
 

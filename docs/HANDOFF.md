@@ -70,6 +70,33 @@
 - Rossi pre-esistenti NON di questa modifica: `RegistryTableTest` "bounded query count" (10 query, +1
   `select * from api_clients` dal lavoro 0209/0210); `tsc -b` rosso solo su test `features/sectors` (`is_active`).
 
+## Sezione "Develop" + reference API + docs asincrone (follow-up spec 0210) — VERDE, COMMITTATO (2026-10-09)
+
+- Direttive utente: Migrazioni, Stato sistema e API e integrazioni escono da Amministrazione e vanno nella
+  nuova sezione di menu **Develop** (`config/navigation/develop.php`, label "Develop" IT/EN); la documentazione
+  API diventa una pagina a parte. Una pagina pubblica fuori da QNet è stata scartata dall'utente.
+- Rotte frontend (`src/routes/dev-routes.tsx`): `/dev/migrations`, `/dev/system-health` (super-admin),
+  `/dev/api-clients`, `/dev/api-docs` (`api-clients.view`). I vecchi `/migrations/*`, `/admin/system-health`
+  e `/admin/api-integrations` fanno redirect conservando search e hash (`RedirectKeepingLocation`).
+  `router.tsx` 498 → 472 righe.
+- Bug "la pagina si blocca": la generazione Scramble avveniva dentro la richiesta (oltre i 30 s di fpm). Ora
+  `ApiDocsController` legge solo `OpenApiDocumentProvider::cached()`; se la cache è vuota risponde 202
+  `{data:{status:"generating"}}` con `Retry-After: 5` e `ensureGenerating()` lancia `GenerateApiDocsJob`
+  (ShouldBeUnique + `Cache::lock`; con coda sync va afterResponse con `set_time_limit(0)`). Il frontend fa
+  polling (tetto di 5 min, poi "Riprova"). `api-docs:warm` resta lo step di deploy.
+- Reference ridisegnata (stile Stripe/Scalar, compatta): sidebar con i moduli raggruppati come il menu
+  (`buildApiModules`), ricerca con "/" e filtri per metodo, pagina Introduzione (due modalità, errori, rate
+  limit), righe con metodo colorato da token, dettaglio con tabella dei campi (`flattenSchemaFields`), esempi
+  cURL/JS (`buildExampleFromSchema`) e copia link `#<operationId>`.
+- `PermissionCatalogueBuilder::resourcesFromItems()`: le voci di menu con lo stesso prefisso di permesso
+  (api-integrations e api-docs) formano un solo modulo, prima contato due volte.
+- Verifica (verifier): backend 9882/9889 con 4 rossi non legati a queste modifiche (3 PDF/LibreOffice, 2 seeder
+  418/395 contati in modo diverso, `SectorTest` rimasto indietro rispetto alle spec 0212/0213 di un'altra
+  sessione); Vitest 7292/7292, ESLint, Pint e `tsc -b --force` puliti; docs 200 in 0,05 s con la cache calda.
+- Da controllare a occhio: contrasto dei badge dei metodi in light/dark (calibrati con color-mix, non misurati).
+  Manuale Claude Docs: Migrazioni e Stato sistema passano ad "Develop ›", nuova pagina "Documentazione API"
+  (connettore non accessibile, va aggiornato a mano).
+
 ## Client API su /api diretto (spec 0210, sostituisce 0209) — VERDE, COMMITTATO (2026-10-09)
 
 - Decisioni utente F-1..F-4 in `docs/specs/0210-api-clients-direct-access.xml`. Il layer `/api/v1/external` (0209,

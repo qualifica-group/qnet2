@@ -73,6 +73,8 @@ export const navigation = {
   administration: 'Amministrazione',
   systemHealth: 'Stato del sistema',
   apiIntegrations: 'API e integrazioni',
+  apiDocs: 'Documentazione API',
+  develop: 'Develop',
   settings: 'Impostazioni',
   toggleSidebar: 'Apri/chiudi sidebar',
 }

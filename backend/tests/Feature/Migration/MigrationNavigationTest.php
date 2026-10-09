@@ -33,14 +33,14 @@ it('exposes the "Migrazioni" item to a super-admin via GET /api/navigation, hidd
     $superAdmin->assignRole('super-admin');
 
     Sanctum::actingAs($superAdmin);
-    $adminSection = collect($this->getJson('/api/navigation')->json('data'))->firstWhere('key', 'administration');
+    $adminSection = collect($this->getJson('/api/navigation')->json('data'))->firstWhere('key', 'develop');
     $migrationsItem = collect(data_get($adminSection, 'children', []))->firstWhere('key', 'migrations');
     expect($migrationsItem)->not->toBeNull()
-        ->and($migrationsItem['route'])->toBe('/migrations');
+        ->and($migrationsItem['route'])->toBe('/dev/migrations');
 
     $ordinary = User::factory()->create();
     Sanctum::actingAs($ordinary);
-    $adminSection = collect($this->getJson('/api/navigation')->json('data'))->firstWhere('key', 'administration');
+    $adminSection = collect($this->getJson('/api/navigation')->json('data'))->firstWhere('key', 'develop');
     $hidden = collect(data_get($adminSection, 'children', []))->firstWhere('key', 'migrations');
     expect($hidden)->toBeNull();
 });

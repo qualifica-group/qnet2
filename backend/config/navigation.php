@@ -54,6 +54,7 @@ return [
         require __DIR__.'/navigation/configuration.php',
         require __DIR__.'/navigation/accounting.php',
         require __DIR__.'/navigation/administration.php',
+        require __DIR__.'/navigation/develop.php',
     ],
 
 ];

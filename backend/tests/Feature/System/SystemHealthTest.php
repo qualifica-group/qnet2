@@ -216,13 +216,13 @@ it('heartbeat rejects anonymous callers with 401', function () {
 // AC-011
 it('shows the system-health navigation item only to super-admins', function () {
     $find = fn () => collect(data_get(
-        collect($this->getJson('/api/navigation')->json('data'))->firstWhere('key', 'administration'),
+        collect($this->getJson('/api/navigation')->json('data'))->firstWhere('key', 'develop'),
         'children',
         [],
     ))->firstWhere('key', 'system-health');
 
     Sanctum::actingAs(healthSuperAdmin());
-    expect($find()['route'])->toBe('/admin/system-health');
+    expect($find()['route'])->toBe('/dev/system-health');
 
     Sanctum::actingAs(User::factory()->create());
     expect($find())->toBeNull();

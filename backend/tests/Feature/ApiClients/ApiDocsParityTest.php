@@ -106,12 +106,13 @@ it('picks up a route added at runtime without any cache intervention', function 
     $provider = app(OpenApiDocumentProvider::class);
     $before = $provider->signature();
 
-    expect(documentedOperations($provider->document()))->not->toContain('GET /api/docs-parity-fixture');
+    expect(documentedOperations($provider->cached()))->not->toContain('GET /api/docs-parity-fixture');
 
     Route::get('api/docs-parity-fixture', fn () => response()->json(['ok' => true]));
 
     expect($provider->signature())->not->toBe($before)
-        ->and(documentedOperations($provider->document()))->toContain('GET /api/docs-parity-fixture');
+        ->and($provider->cached())->toBeNull()
+        ->and(documentedOperations($provider->generate()))->toContain('GET /api/docs-parity-fixture');
 });
 
 it('warms the document cache so the provider serves it without regenerating', function () {
@@ -122,5 +123,5 @@ it('warms the document cache so the provider serves it without regenerating', fu
 
     app()->bind(Generator::class, fn () => throw new LogicException('document regenerated'));
 
-    expect(app(OpenApiDocumentProvider::class)->document())->toBe(Cache::get($key));
+    expect(app(OpenApiDocumentProvider::class)->cached())->toBe(Cache::get($key));
 });

@@ -7,9 +7,10 @@ use Illuminate\Console\Command;
 
 /**
  * Deploy step: run `php artisan api-docs:warm` after every release. Cold
- * generation of the OpenAPI document takes tens of seconds, which would hit the
- * PHP or proxy timeout if the first admin request had to do it. The document is
- * stored under the same key and signature OpenApiDocumentProvider reads.
+ * generation of the OpenAPI document takes tens of seconds, so without
+ * this step the first Documentation request answers 202 and triggers a background
+ * generation instead. The document is stored under the same key and signature
+ * OpenApiDocumentProvider reads.
  */
 class WarmApiDocs extends Command
 {
@@ -21,7 +22,7 @@ class WarmApiDocs extends Command
     {
         $started = microtime(true);
 
-        $operations = collect($documents->document()['paths'] ?? [])->sum(fn (array $path): int => count($path));
+        $operations = collect($documents->generate()['paths'] ?? [])->sum(fn (array $path): int => count($path));
 
         $this->info(sprintf('API documentation ready: %d operations in %.1fs.', $operations, microtime(true) - $started));
 

@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The page is under **Administration › API & integrations**. An **API client** represents an external system (for example an ERP or a website) that uses the **same APIs as QNet** with its own **key**. With the key alone the system acts as the client\'s **technical user**, with super-admin permissions; with the key it can also sign in a QNet user and act with that user\'s permissions. All the APIs are listed in the **Documentation** tab.',
+          text: 'The page is under **Administration › API & integrations**. An **API client** represents an external system (for example an ERP or a website) that uses the **same APIs as QNet** with its own **key**. With the key alone the system acts as the client\'s **technical user**, with super-admin permissions; with the key it can also sign in a QNet user and act with that user\'s permissions. All the APIs are listed in the **API documentation** page of the **Develop** section (link at the top right).',
         },
         {
           type: 'note',
@@ -27,7 +27,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open the **API clients** tab and click **New client**.',
+            'Click **New client**.',
             'Enter a **name** that identifies the external system and, if you like, a description.',
             'If needed set the **rate limit** and the key **expiry**, then click **Create client**.',
           ],
@@ -125,7 +125,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Documentation** tab lists the QNet API operations, grouped by tag (collapsed by default), with method, address, parameters and request and response structure. Use the **Search** field to filter by path, summary or tag. At the top is the **authentication** section with examples for both modes. The APIs are the ones used by QNet and may change with updates: the documentation updates itself.',
+          text: 'The **API documentation** page (**Develop** section, also reachable from the link at the top of this page) is a reference of the QNet APIs. On the left are the **search** (the **/** shortcut focuses it), the **method** filters (GET, POST, PUT, PATCH, DELETE) and the **modules** grouped like the QNet menu, each with its endpoint count. **Introduction** explains authentication with cURL and JavaScript examples for both modes, the common errors and the request limit. Choosing a module shows its endpoints: opening one gives the description, the table of parameters, body and response, and on the right a ready-made example to copy. **Copy link** produces an address that opens that endpoint directly. The APIs are the ones used by QNet and may change with updates: the documentation updates itself.',
         },
         {
           type: 'list',
@@ -143,7 +143,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Download the Postman collection from the **Documentation** tab.',
+            'Download the Postman collection from the **API documentation** page.',
             'In Postman choose **Import** and select the downloaded file.',
             'Open the collection variables and enter the client key in **api_key**; **base_url** is already filled in.',
             'To act as a user, send the user login request: it stores the token in the **user_token** variable by itself.',

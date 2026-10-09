@@ -1,6 +1,7 @@
 import {
   Activity,
   Award,
+  BookOpen,
   BookUser,
   Briefcase,
   CalendarClock,
@@ -112,6 +113,8 @@ const iconMap: Record<string, LucideIcon> = {
   'calendar-clock': CalendarClock,
   // Spec 0209: "API e integrazioni" under Amministrazione.
   plug: Plug,
+  // "Documentazione API" under Develop.
+  'book-open': BookOpen,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

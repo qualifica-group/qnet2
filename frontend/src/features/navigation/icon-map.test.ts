@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Circle, CreditCard, Files, LayoutTemplate, Plug, Shapes } from 'lucide-react'
+import { BookOpen, Circle, CreditCard, Files, LayoutTemplate, Plug, Shapes } from 'lucide-react'
 import { resolveIcon } from '@/features/navigation/icon-map'
 
 /**
@@ -53,5 +53,12 @@ describe('resolveIcon — api-integrations navigation icon (spec 0209)', () => {
   it('resolves "plug" to the Plug component, not the Circle fallback', () => {
     expect(resolveIcon('plug')).toBe(Plug)
     expect(resolveIcon('plug')).not.toBe(Circle)
+  })
+})
+
+describe('resolveIcon — api-docs navigation icon', () => {
+  it('resolves "book-open" to the BookOpen component, not the Circle fallback', () => {
+    expect(resolveIcon('book-open')).toBe(BookOpen)
+    expect(resolveIcon('book-open')).not.toBe(Circle)
   })
 })

@@ -115,10 +115,10 @@ describe('SystemHealthPage', () => {
 describe('system-health route access (AC-013)', () => {
   function renderRoute() {
     render(
-      <MemoryRouter initialEntries={['/admin/system-health']}>
+      <MemoryRouter initialEntries={['/dev/system-health']}>
         <Routes>
           <Route element={<MigrationRouteGuard />}>
-            <Route path="/admin/system-health" element={<SystemHealthPage />} />
+            <Route path="/dev/system-health" element={<SystemHealthPage />} />
           </Route>
           <Route path="/dashboard" element={<div>Dashboard page</div>} />
         </Routes>

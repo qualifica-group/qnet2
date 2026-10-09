@@ -12,11 +12,14 @@ use Throwable;
 
 /**
  * Integrator-facing documentation of the /api endpoints (specs 0209, 0210). Both
- * payloads are delivered as files, so they are NOT wrapped in the envelope.
+ * payloads are delivered as files, so they are NOT wrapped in the envelope;
+ * only the 202 "still generating" answer is.
  */
 class ApiDocsController extends BaseApiController
 {
     use AuthorizesRequests;
+
+    private const int RETRY_AFTER_SECONDS = 5;
 
     private const string POSTMAN_FILENAME = 'qnet-api.postman_collection.json';
 
@@ -30,7 +33,9 @@ class ApiDocsController extends BaseApiController
         try {
             $this->authorize('viewAny', ApiClient::class);
 
-            return response()->json($this->documents->document());
+            $document = $this->documents->cached();
+
+            return $document === null ? $this->preparing() : response()->json($document);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -41,11 +46,31 @@ class ApiDocsController extends BaseApiController
         try {
             $this->authorize('viewAny', ApiClient::class);
 
+            $document = $this->documents->cached();
+
+            if ($document === null) {
+                return $this->preparing();
+            }
+
             return response()
-                ->json($this->postman->build($this->documents->document()))
+                ->json($this->postman->build($document))
                 ->header('Content-Disposition', 'attachment; filename="'.self::POSTMAN_FILENAME.'"');
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
+    }
+
+    /**
+     * 202 while the document is generated in the background; the client retries.
+     */
+    private function preparing(): JsonResponse
+    {
+        $this->documents->ensureGenerating();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('The documentation is being prepared, try again in a few seconds.'),
+            'data' => ['status' => 'generating'],
+        ], 202)->header('Retry-After', (string) self::RETRY_AFTER_SECONDS);
     }
 }
