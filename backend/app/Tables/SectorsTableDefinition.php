@@ -111,6 +111,7 @@ class SectorsTableDefinition extends AbstractTableDefinition
             'id' => $row->id,
             'name' => $row->name,
             'parent' => $this->parentSummary($row->parent),
+            'is_active' => (bool) $row->is_active,
             'created_at' => $row->created_at,
         ];
     }

@@ -22,8 +22,11 @@ const guide: HelpGuide = {
           rows: [
             ['**Nome**', 'Il nome del settore.'],
             ['**Settore padre**', 'Facoltativo: collega il settore a un settore padre per creare una gerarchia.'],
+            ['**Attivo**', 'Attivo di default. Spegnilo per non proporre più il settore nei campi di scelta.'],
           ],
         },
+        { type: 'note', text: 'Un settore **non attivo**, con tutti i suoi sotto-settori, sparisce dal campo **Settori** delle **Anagrafiche** e non si può collegare a una nuova anagrafica. Le anagrafiche che lo hanno già lo conservano e si possono salvare senza toglierlo. Nell’elenco dei settori resta visibile: la colonna **Attivo** permette di filtrarlo.' },
+        { type: 'tip', text: 'Se un sotto-settore risulta attivo ma il suo padre non lo è, il modulo te lo segnala sotto l’interruttore **Attivo**: il sotto-settore resta nascosto finché il padre è non attivo.' },
       ],
     },
     {

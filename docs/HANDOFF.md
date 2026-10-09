@@ -3,6 +3,24 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Settori — flag "Attivo" (spec 0212) — VERDE, COMMITTATO (2026-10-09)
+
+- Decisioni utente: un settore non attivo disattiva in modo EFFETTIVO tutto il ramo (flag dei figli mai riscritto);
+  il server rifiuta un NUOVO collegamento, i settori gia' collegati all'anagrafica restano validi (esenti).
+- Backend: migrazione `2026_10_15_100000_add_is_active_to_sectors_table` (default true). Autorita' unica
+  `App\Services\Sectors\SectorActivity` (una query, memo per istanza). `SectorService::forSelect` esclude sempre gli
+  effettivamente non attivi (anche dal total), `ids[]` li idrata; nessun `include_inactive` (nessun consumatore).
+  `/sectors/tree` completo con `is_active` per nodo (parent picker strutturale vede tutto). Regola
+  `App\Rules\ActiveSector($exemptIds)` SOSTITUISCE `Rule::exists('sectors','id')` su `sector_ids.*` di
+  Store/UpdateRegistryRequest (update esenta i settori gia' collegati). Griglia: colonna/filtro boolean `is_active`.
+- Frontend: switch "Attivo" nel form settore con avviso "Non attivo perche' lo e' «padre»" (`findInactiveAncestor`
+  in `features/sectors/flatten-tree.ts`), badge "Non attivo" nel dettaglio, `BooleanBadgeCell` in griglia, guida
+  in-app `sectors` IT/EN.
+- Test: `tests/Feature/Sectors/SectorActiveTest.php` (11), contatori rollback a 150 / 14. FE: `flatten-tree.test.ts`
+  + 3 casi in `sector-form.test.tsx`.
+- Da fare: manuale Claude Docs, sezione Settori (doc non accessibile da questa sessione). Fallimento NON legato:
+  `RegistryTableTest` "bounded query count" (10 query, soglia <10) dopo la spec 0211 sulla griglia anagrafiche.
+
 ## ANAGRAFICHE — RICERCA RAPIDA SU P.IVA, TELEFONI E REFERENTI (spec 0211) — VERDE, COMMITTATO (2026-10-09)
 
 - Decisioni utente: referenti cercati per nome E telefono; semantica "inizio parola" FULLTEXT (come 0179); tutti

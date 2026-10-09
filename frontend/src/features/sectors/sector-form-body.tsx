@@ -1,15 +1,21 @@
 import { useMemo } from 'react'
+import { useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { ListTree } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Form, FormControl } from '@/components/ui/form'
+import { Form, FormControl, FormDescription } from '@/components/ui/form'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { Switch } from '@/components/ui/switch'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { useSectorTree } from '@/features/sectors/use-sector-tree'
-import { collectSubtreeIds, flattenSectorTree } from '@/features/sectors/flatten-tree'
+import {
+  collectSubtreeIds,
+  findInactiveAncestor,
+  flattenSectorTree,
+} from '@/features/sectors/flatten-tree'
 import { useSectorForm } from '@/features/sectors/use-sector-form'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
 import type { SectorDetail, SectorFormMode } from '@/features/sectors/types'
@@ -24,7 +30,7 @@ interface SectorFormBodyProps {
 const ROOT_PARENT_VALUE = 0
 
 /**
- * The sector create/edit form UI: `name` and `parent_id`, wrapped in
+ * The sector create/edit form UI: `name`, `parent_id` and `is_active`, wrapped in
  * `MetaField` (spec 0004). All non-render logic lives in `useSectorForm`.
  * `<CustomFieldsSection>` (spec 0021) mounts the resource's admin-defined
  * custom fields with zero sectors-specific rendering/validation logic.
@@ -44,7 +50,18 @@ export function SectorFormBody({ mode, onSuccess, onCancel }: SectorFormBodyProp
     ]
   }, [treeQuery.data, mode, t])
 
-  const identityVisible = fieldPermission('name').visible || fieldPermission('parent_id').visible
+  // Spec 0212: an inactive ancestor deactivates the whole branch whatever the
+  // own switch says, so the form names the ancestor responsible.
+  const parentId = useWatch({ control: form.control, name: 'parent_id' })
+  const inactiveAncestor = useMemo(
+    () => findInactiveAncestor(treeQuery.data ?? [], parentId),
+    [treeQuery.data, parentId],
+  )
+
+  const identityVisible =
+    fieldPermission('name').visible ||
+    fieldPermission('parent_id').visible ||
+    fieldPermission('is_active').visible
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
@@ -99,6 +116,34 @@ export function SectorFormBody({ mode, onSuccess, onCancel }: SectorFormBodyProp
                         error: t('sectors.form.parentError'),
                         retry: t('common.retry'),
                       }}
+                    />
+                  </FormControl>
+                )}
+              </MetaField>
+
+              <MetaField
+                control={form.control}
+                name="is_active"
+                metaKey="is_active"
+                label={t('sectors.form.isActive')}
+                layout="inline"
+                description={
+                  <>
+                    <FormDescription>{t('sectors.form.isActiveHint')}</FormDescription>
+                    {inactiveAncestor !== null ? (
+                      <p className="text-xs font-medium text-muted-foreground" role="status">
+                        {t('sectors.form.isActiveInheritedNotice', { sector: inactiveAncestor.name })}
+                      </p>
+                    ) : null}
+                  </>
+                }
+              >
+                {({ field, disabled }) => (
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={disabled}
                     />
                   </FormControl>
                 )}

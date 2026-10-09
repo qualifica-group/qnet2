@@ -15,6 +15,8 @@ export interface SectorTreeNode {
   id: number
   name: string
   parent_id: number | null
+  /** The node's OWN flag (spec 0212); an inactive ancestor deactivates the whole branch. */
+  is_active: boolean
   children: SectorTreeNode[]
 }
 
@@ -27,6 +29,7 @@ export interface SectorDetail {
   name: string
   parent_id: number | null
   parent: { id: number; name: string } | null
+  is_active: boolean
   created_at: string
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
@@ -45,6 +48,7 @@ export interface SectorDetailWithPermissions extends SectorDetail {
 export interface CreateSectorPayload {
   name: string
   parent_id?: number | null
+  is_active?: boolean
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
 }

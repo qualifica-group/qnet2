@@ -22,8 +22,11 @@ const guide: HelpGuide = {
           rows: [
             ['**Name**', 'The name of the sector.'],
             ['**Parent sector**', 'Optional: links the sector to a parent sector to build a hierarchy.'],
+            ['**Active**', 'On by default. Turn it off to stop offering the sector in selection fields.'],
           ],
         },
+        { type: 'note', text: 'An **inactive** sector, with all its sub-sectors, disappears from the **Sectors** field of **Registries** and cannot be linked to a new registry. Registries that already have it keep it and can be saved without removing it. It stays visible in the sectors list: the **Active** column lets you filter it.' },
+        { type: 'tip', text: 'If a sub-sector is active but its parent is not, the form tells you under the **Active** switch: the sub-sector stays hidden while the parent is inactive.' },
       ],
     },
     {

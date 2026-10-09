@@ -88,6 +88,8 @@ final class SectorHierarchy
                 'id' => $sector->id,
                 'name' => $sector->name,
                 'parent_id' => $sector->parent_id,
+                // Spec 0212 D-5: the OWN flag; the tree stays complete.
+                'is_active' => (bool) $sector->is_active,
                 'children' => $this->buildNodes($byParent, $sector->id),
             ];
         }

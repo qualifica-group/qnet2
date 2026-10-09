@@ -37,6 +37,8 @@ class StoreSectorRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:191'],
             'parent_id' => ['nullable', 'integer', 'exists:sectors,id'],
+            // Spec 0212: omitted = true (active).
+            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 

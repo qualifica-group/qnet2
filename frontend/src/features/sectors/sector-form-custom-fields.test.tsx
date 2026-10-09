@@ -79,6 +79,7 @@ function sector(overrides: Partial<SectorDetailWithPermissions> = {}): SectorDet
     name: 'Applications',
     parent_id: null,
     parent: null,
+    is_active: true,
     created_at: '2026-01-01T00:00:00Z',
     permissions: permissionsWithNotes(),
     ...overrides,

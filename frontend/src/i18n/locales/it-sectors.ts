@@ -10,12 +10,16 @@ export const sectors = {
   columns: {
     name: 'Nome',
     parent: 'Padre',
+    is_active: 'Attivo',
     created_at: 'Creato il',
   },
   detail: {
     title: 'Dettagli settore',
     subtitle: 'Vista di sola lettura del settore selezionato.',
     loadError: 'Impossibile caricare il settore. Riprova.',
+  },
+  badges: {
+    notActive: 'Non attivo',
   },
   form: {
     newSector: 'Nuovo settore',
@@ -33,6 +37,10 @@ export const sectors = {
     parentNoMatch: 'Nessun risultato.',
     parentError: 'Impossibile caricare i settori.',
     noParent: 'Nessun padre (settore radice)',
+    isActive: 'Attivo',
+    isActiveHint:
+      'Un settore non attivo, con tutti i suoi sotto-settori, non compare più nei campi di scelta. I collegamenti esistenti restano validi.',
+    isActiveInheritedNotice: 'Non attivo perché lo è «{{sector}}»',
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',
@@ -46,7 +54,7 @@ export const sectors = {
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome e padre del settore.',
+        description: 'Nome, padre e stato del settore.',
       },
     },
   },

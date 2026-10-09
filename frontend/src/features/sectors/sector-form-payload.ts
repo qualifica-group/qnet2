@@ -6,12 +6,13 @@ import type {
 import type { SectorFormValues } from '@/features/sectors/use-sector-form'
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
 
-/** Builds the create payload: `name` + `parent_id` (null = root sector). */
+/** Builds the create payload: `name` + `parent_id` (null = root sector) + `is_active`. */
 export function buildCreatePayload(values: SectorFormValues): CreateSectorPayload {
   const customFields = buildCustomFieldsCreate(values.custom_fields)
   return {
     name: values.name,
     parent_id: values.parent_id,
+    is_active: values.is_active,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
   }
 }
@@ -31,6 +32,9 @@ export function buildUpdatePayload(
   }
   if (values.parent_id !== original.parent_id) {
     payload.parent_id = values.parent_id
+  }
+  if (values.is_active !== original.is_active) {
+    payload.is_active = values.is_active
   }
 
   const customFields = buildCustomFieldsUpdate(values.custom_fields, original.custom_fields ?? {})

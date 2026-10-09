@@ -37,6 +37,7 @@ class UpdateSectorRequest extends FormRequest
         return [
             'name' => ['sometimes', 'required', 'string', 'max:191'],
             'parent_id' => ['sometimes', 'nullable', 'integer', 'exists:sectors,id'],
+            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 

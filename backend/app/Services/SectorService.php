@@ -7,6 +7,7 @@ use App\DataObjects\Sectors\UpdateSectorData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Sector;
+use App\Services\Sectors\SectorActivity;
 use App\Services\Sectors\SectorHierarchy;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +21,10 @@ use Illuminate\Support\Facades\DB;
  */
 class SectorService
 {
-    public function __construct(private readonly SectorHierarchy $hierarchy) {}
+    public function __construct(
+        private readonly SectorHierarchy $hierarchy,
+        private readonly SectorActivity $activity,
+    ) {}
 
     public function create(CreateSectorData $data): Sector
     {
@@ -29,6 +33,7 @@ class SectorService
             $sector = Sector::create([
                 'name' => $data->name,
                 'parent_id' => $data->parentId,
+                'is_active' => $data->isActive,
             ]);
 
             return $sector->fresh(['parent']);
@@ -78,10 +83,14 @@ class SectorService
     /**
      * Minimal, searchable, paginated sector list for the for-select
      * standard (ADR 0011, spec 0020), mirroring SourceService::forSelect.
+     * The effectively inactive sectors (spec 0212 D-1) are never offered and
+     * never counted; `ids[]` still hydrates them (D-2).
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
-        $base = Sector::query()->select(['id', 'name']);
+        $base = Sector::query()
+            ->select(['id', 'name'])
+            ->whereNotIn('id', $this->activity->inactiveSectorIds());
 
         if ($query->hasSearch()) {
             $base->where('name', 'like', '%'.$query->search.'%');

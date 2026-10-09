@@ -33,6 +33,7 @@ class SectorsAuthorization extends AbstractResourceAuthorization
         return [
             new FieldDefinition('name', 'text', mandatory: true),
             new FieldDefinition('parent_id', 'select'),
+            new FieldDefinition('is_active', 'boolean'),
         ];
     }
 
@@ -54,6 +55,7 @@ class SectorsAuthorization extends AbstractResourceAuthorization
         return [
             'name' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'parent_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

@@ -10,12 +10,16 @@ export const sectors = {
   columns: {
     name: 'Name',
     parent: 'Parent',
+    is_active: 'Active',
     created_at: 'Created at',
   },
   detail: {
     title: 'Sector details',
     subtitle: 'Read-only view of the selected sector.',
     loadError: 'Unable to load the sector. Please try again.',
+  },
+  badges: {
+    notActive: 'Not active',
   },
   form: {
     newSector: 'New sector',
@@ -33,6 +37,10 @@ export const sectors = {
     parentNoMatch: 'No matches found.',
     parentError: 'Unable to load sectors.',
     noParent: 'No parent (root sector)',
+    isActive: 'Active',
+    isActiveHint:
+      'An inactive sector, with all its sub-sectors, no longer appears in selection fields. Existing links stay valid.',
+    isActiveInheritedNotice: 'Not active because "{{sector}}" is not',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
@@ -46,7 +54,7 @@ export const sectors = {
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name and parent of the sector.',
+        description: 'Name, parent and status of the sector.',
       },
     },
   },

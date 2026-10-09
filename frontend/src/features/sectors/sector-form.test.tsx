@@ -49,16 +49,18 @@ const TREE: SectorTreeNode[] = [
     id: 1,
     name: 'Root A',
     parent_id: null,
+    is_active: true,
     children: [
       {
         id: 2,
         name: 'Child A1',
         parent_id: 1,
-        children: [{ id: 3, name: 'Grandchild A1a', parent_id: 2, children: [] }],
+        is_active: true,
+        children: [{ id: 3, name: 'Grandchild A1a', parent_id: 2, is_active: true, children: [] }],
       },
     ],
   },
-  { id: 4, name: 'Root B', parent_id: null, children: [] },
+  { id: 4, name: 'Root B', parent_id: null, is_active: true, children: [] },
 ]
 
 function wrapper() {
@@ -76,6 +78,7 @@ function sector(
     name: 'Child A1',
     parent_id: 1,
     parent: { id: 1, name: 'Root A' },
+    is_active: true,
     created_at: '2026-01-01T00:00:00Z',
     permissions: FULL_ACCESS_PERMISSIONS,
     ...overrides,
@@ -154,6 +157,7 @@ describe('SectorForm — create/edit (AC-017)', () => {
     expect(createSectorMock).toHaveBeenCalledWith({
       name: 'New Sector',
       parent_id: null,
+      is_active: true,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalled())
   })
@@ -198,5 +202,42 @@ describe('SectorForm — parent picker anti-cycle exclusion (AC-018)', () => {
     const [id, payload] = updateSectorMock.mock.calls[0]
     expect(id).toBe(2)
     expect(payload).toEqual({ name: 'Renamed' })
+  })
+})
+
+describe('SectorForm — active flag (spec 0212 AC-006)', () => {
+  it('defaults the Active switch to on in create mode', async () => {
+    render(
+      <SectorForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    expect(await screen.findByRole('switch', { name: /Active/ })).toBeChecked()
+  })
+
+  it('names the inactive ancestor that deactivates the branch', async () => {
+    fetchSectorTreeMock.mockResolvedValue([{ ...TREE[0], is_active: false }, TREE[1]])
+
+    render(
+      <SectorForm mode={{ type: 'edit', sector: sector() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    expect(await screen.findByText('Not active because "Root A" is not')).toBeInTheDocument()
+  })
+
+  it('submits only is_active when the switch is turned off', async () => {
+    updateSectorMock.mockResolvedValue(sector({ is_active: false }))
+
+    render(
+      <SectorForm mode={{ type: 'edit', sector: sector() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    fireEvent.click(screen.getByRole('switch', { name: /Active/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(updateSectorMock).toHaveBeenCalledTimes(1))
+    expect(updateSectorMock.mock.calls[0][1]).toEqual({ is_active: false })
   })
 })

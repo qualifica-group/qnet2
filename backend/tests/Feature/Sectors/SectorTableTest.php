@@ -47,7 +47,7 @@ it('returns the 4 columns in order with the declared flags, 403 without viewAny'
         ->and($data['searchable'])->toBe(['name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'parent', 'created_at']);
+    expect($ids)->toBe(['id', 'name', 'parent', 'is_active', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['parent']['filterType'])->toBe('set')

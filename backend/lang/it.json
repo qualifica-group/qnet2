@@ -56,6 +56,8 @@
     "This product category is not selectable.": "Questa categoria prodotto non è selezionabile.",
     "This product category is not active.": "Questa categoria prodotto non è attiva.",
     "This product belongs to an inactive category.": "Questo prodotto appartiene a una categoria non attiva.",
+    "The selected sector is invalid.": "Il settore selezionato non è valido.",
+    "This sector is not active.": "Questo settore non è attivo.",
     "An unexpected error occurred.": "Si è verificato un errore imprevisto.",
     "Resource not found.": "Risorsa non trovata.",
     "This action is unauthorized.": "Non hai i permessi per questa azione.",

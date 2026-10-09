@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * a standalone lookup used to classify Anagrafiche in the future (no such
  * relation exists yet — see spec 0018 scope).
  */
-#[Fillable(['name', 'parent_id'])]
+#[Fillable(['name', 'parent_id', 'is_active'])]
 class Sector extends BaseModel
 {
     /** @use HasFactory<SectorFactory> */
@@ -32,6 +32,10 @@ class Sector extends BaseModel
             // set by property assignment post-create. Also the remap key for the
             // self-referential `parent_id` (child → parent via old_id).
             'old_id' => 'integer',
+            // Spec 0212 — this node's OWN flag, never rewritten on children:
+            // the EFFECTIVE activity (an inactive ancestor deactivates the
+            // whole subtree, D-1) is resolved at read time by SectorActivity.
+            'is_active' => 'boolean',
         ];
     }
 

@@ -11,6 +11,7 @@ function original(overrides: Partial<SectorDetail> = {}): SectorDetail {
     name: 'Applications',
     parent_id: 1,
     parent: { id: 1, name: 'Enterprise Architecture' },
+    is_active: true,
     created_at: '2026-01-01T00:00:00Z',
     ...overrides,
   }
@@ -18,24 +19,25 @@ function original(overrides: Partial<SectorDetail> = {}): SectorDetail {
 
 describe('buildCreatePayload', () => {
   it('builds the create payload with a root parent_id (null)', () => {
-    const values: SectorFormValues = { name: 'Applications', parent_id: null, custom_fields: {} }
+    const values: SectorFormValues = { name: 'Applications', parent_id: null, is_active: true, custom_fields: {} }
 
     expect(buildCreatePayload(values)).toEqual({
       name: 'Applications',
       parent_id: null,
+      is_active: true,
     })
   })
 
   it('builds the create payload with a selected parent', () => {
-    const values: SectorFormValues = { name: 'Applications', parent_id: 1, custom_fields: {} }
+    const values: SectorFormValues = { name: 'Applications', parent_id: 1, is_active: true, custom_fields: {} }
 
-    expect(buildCreatePayload(values)).toEqual({ name: 'Applications', parent_id: 1 })
+    expect(buildCreatePayload(values)).toEqual({ name: 'Applications', parent_id: 1, is_active: true })
   })
 })
 
 describe('buildUpdatePayload', () => {
   it('omits every field when nothing changed', () => {
-    const values: SectorFormValues = { name: 'Applications', parent_id: 1, custom_fields: {} }
+    const values: SectorFormValues = { name: 'Applications', parent_id: 1, is_active: true, custom_fields: {} }
 
     expect(buildUpdatePayload(values, original())).toEqual({})
   })
@@ -44,6 +46,7 @@ describe('buildUpdatePayload', () => {
     const values: SectorFormValues = {
       name: 'Business Applications',
       parent_id: 1,
+      is_active: true,
       custom_fields: {},
     }
 
@@ -51,7 +54,7 @@ describe('buildUpdatePayload', () => {
   })
 
   it('includes only the changed parent_id, including a move to root (null)', () => {
-    const values: SectorFormValues = { name: 'Applications', parent_id: null, custom_fields: {} }
+    const values: SectorFormValues = { name: 'Applications', parent_id: null, is_active: true, custom_fields: {} }
 
     expect(buildUpdatePayload(values, original())).toEqual({ parent_id: null })
   })
@@ -60,6 +63,7 @@ describe('buildUpdatePayload', () => {
     const values: SectorFormValues = {
       name: 'Business Applications',
       parent_id: 2,
+      is_active: true,
       custom_fields: {},
     }
 
@@ -67,5 +71,11 @@ describe('buildUpdatePayload', () => {
       name: 'Business Applications',
       parent_id: 2,
     })
+  })
+
+  it('includes only the changed is_active (spec 0212)', () => {
+    const values: SectorFormValues = { name: 'Applications', parent_id: 1, is_active: false, custom_fields: {} }
+
+    expect(buildUpdatePayload(values, original())).toEqual({ is_active: false })
   })
 })

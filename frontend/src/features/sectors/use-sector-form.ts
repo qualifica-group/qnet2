@@ -18,7 +18,7 @@ import type { SectorDetail, SectorFormMode } from '@/features/sectors/types'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
 
 /** Server-side field names mapped onto the form for 422 handling. */
-const SERVER_ERROR_FIELDS = ['name', 'parent_id'] as const
+const SERVER_ERROR_FIELDS = ['name', 'parent_id', 'is_active'] as const
 
 export type SectorFormValues = CreateSectorFormValues
 
@@ -62,10 +62,16 @@ export function useSectorForm({ mode, onSuccess }: UseSectorFormArgs) {
       return {
         name: mode.sector.name,
         parent_id: mode.sector.parent_id,
+        is_active: mode.sector.is_active,
         custom_fields: customFields.defaultValues,
       }
     }
-    return { name: '', parent_id: mode.parentId, custom_fields: customFields.defaultValues }
+    return {
+      name: '',
+      parent_id: mode.parentId,
+      is_active: true,
+      custom_fields: customFields.defaultValues,
+    }
   }, [mode, customFields.defaultValues])
 
   const form = useForm<SectorFormValues>({

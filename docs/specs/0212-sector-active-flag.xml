@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0212-sector-active-flag" status="approved" owner="nicola" date="2026-10-09">
+
+  <goal>
+    Ogni settore ha l'impostazione "Attivo / Non attivo". Un settore non attivo, con tutto il suo ramo, sparisce
+    dai select di inserimento e modifica e non e' piu' collegabile come nuovo valore. Lo storico resta valido.
+  </goal>
+
+  <context>
+    Verificato sul codice reale 2026-10-09. Precedente di forma: spec 0208 (categorie prodotto, `is_active`).
+
+    Canali di scelta di un settore:
+    - for-select `GET /api/sectors/for-select` (`SectorService::forSelect`, idratazione `ids[]`). Unico
+      consumatore: multiselect "Settori" dell'Anagrafica (`RegistrySectorsField`). Nessun filtro di griglia lo usa.
+    - albero `GET /api/sectors/tree` (`SectorHierarchy::tree`): solo il parent picker del form settore
+      (consumatore STRUTTURALE, deve vedere tutto).
+    Validazione esistente: `sector_ids.*` di Store/UpdateRegistryRequest con `Rule::exists('sectors','id')`.
+
+    Decisioni utente 2026-10-09:
+    D-1 Ramo — un settore non attivo rende non attivo in modo EFFETTIVO tutto il suo sottoalbero; il flag dei figli
+        non viene riscritto, e' risolto in lettura.
+    D-2 Storico — i settori gia' collegati a un'anagrafica restano validi e visibili; si blocca solo un NUOVO
+        collegamento (esenti gli id gia' persistiti sull'anagrafica in aggiornamento).
+
+    Decisioni di progetto:
+    D-3 Una sola autorita': `App\Services\Sectors\SectorActivity` (una query sugli id + memo per istanza).
+    D-4 For-select: filtro attivo sempre (nessun consumatore deve vedere i non attivi: niente `include_inactive`).
+    D-5 Albero completo con `is_active` proprio per nodo; il parent picker elenca tutti i settori.
+    D-6 Nuova regola `App\Rules\ActiveSector($exemptIds)` che SOSTITUISCE `Rule::exists('sectors','id')`.
+    D-7 Griglia Settori: colonna `is_active` = valore PROPRIO, ordinabile e filtrabile.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione `sectors.is_active` BOOLEAN NOT NULL DEFAULT true, after `parent_id`, reversibile.</item>
+      <item>Model, Store/UpdateSectorRequest, Create/UpdateSectorData, SectorService, SectorResource, SectorsAuthorization, SectorHierarchy::tree.</item>
+      <item>`SectorActivity`, filtro for-select, `ActiveSector` su `sector_ids.*` delle anagrafiche.</item>
+      <item>Griglia: colonna + filtro `is_active`.</item>
+      <item>FE: tipi, schema, payload, switch "Attivo" con avviso di ereditarieta', badge nel dettaglio, cella griglia, i18n IT/EN, guida in-app IT/EN.</item>
+    </in>
+    <out>
+      <item>Nessun blocco su cancellazione o spostamento dei settori; nessuna migrazione dati (default true).</item>
+      <item>Migrazione dati esterna (`SectorsSource`, `RegistriesSource`): invariata.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <db>`sectors.is_active` BOOLEAN NOT NULL DEFAULT true, `after('parent_id')`. Nessun indice (tabella piccola).</db>
+    <endpoint method="POST|PUT|PATCH" path="/api/sectors[/{sector}]">
+      <request>`is_active`: `sometimes|boolean`. Create senza il campo -> true.</request>
+      <response status="200|201">`SectorResource` guadagna `"is_active": bool` (valore proprio).</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/sectors/tree">
+      <response status="200">Ogni nodo guadagna `"is_active": bool`. Nessun filtro.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/sectors/for-select">
+      <response status="200">Shape invariata; items e total escludono i settori effettivamente non attivi; `ids[]` idrata comunque.</response>
+    </endpoint>
+    <validation>
+      `sector_ids.*` di POST/PATCH /api/registries: settore inesistente -> "The selected sector is invalid."; settore
+      effettivamente non attivo e non gia' collegato -> 422 "This sector is not active." (it: "Questo settore non è attivo.").
+    </validation>
+    <table_grid>Colonna `is_active` (`type: boolean`, ordinabile, `filterType: boolean`) + voce in `filters()`.</table_grid>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">POST /api/sectors senza `is_active` crea il settore attivo; PATCH `is_active=false` persiste e lascia invariato il flag dei figli.</criterion>
+    <criterion id="AC-002">GET /api/sectors/{id} e /tree espongono `is_active`; l'albero include i non attivi e i loro figli.</criterion>
+    <criterion id="AC-003">/sectors/for-select esclude da items e total un settore non attivo e i suoi discendenti; con `ids[]` lo idrata.</criterion>
+    <criterion id="AC-004">POST /api/registries con un settore effettivamente non attivo -> 422 su `sector_ids.0`; PATCH che rimanda un settore gia' collegato e poi disattivato -> 200; PATCH che aggiunge un altro settore non attivo -> 422.</criterion>
+    <criterion id="AC-005">La griglia Settori espone la colonna `is_active`, filtrabile.</criterion>
+    <criterion id="AC-006">(FE) Il form settore mostra lo switch "Attivo", attivo di default in creazione; sotto un padre non attivo mostra l'avviso; il payload di modifica invia `is_active` solo se cambiato.</criterion>
+    <criterion id="AC-007">(FE) Guida in-app `sectors` IT/EN aggiornata; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; authz invariata (SectorPolicy), campo governato da `SectorsAuthorization`.</item>
+    <item>Test di rollback (`QuoteWorkflowMigrationTest`, `SupplierCommissionDirectionTest`): solo il conteggio degli step sale di 1.</item>
+    <item>Manuale Claude Docs: sezione Settori.</item>
+  </constraints>
+
+</spec>

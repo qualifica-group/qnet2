@@ -19,6 +19,7 @@ final readonly class UpdateSectorData
         public ?string $name = null,
         public ?int $parentId = null,
         public bool $parentIdSubmitted = false,
+        public ?bool $isActive = null,
     ) {}
 
     /**
@@ -32,6 +33,7 @@ final readonly class UpdateSectorData
             name: array_key_exists('name', $data) ? (string) $data['name'] : null,
             parentId: array_key_exists('parent_id', $data) && $data['parent_id'] !== null ? (int) $data['parent_id'] : null,
             parentIdSubmitted: array_key_exists('parent_id', $data),
+            isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
         );
     }
 
@@ -56,6 +58,12 @@ final readonly class UpdateSectorData
 
         if ($this->parentIdSubmitted) {
             $attributes['parent_id'] = $this->parentId;
+        }
+
+        // Spec 0212: the node's OWN flag, written verbatim; the effective
+        // value is resolved at read time (SectorActivity).
+        if ($this->isActive !== null) {
+            $attributes['is_active'] = $this->isActive;
         }
 
         return $attributes;

@@ -23,6 +23,7 @@ function baseFields(t: TFunction) {
       .min(1, t('sectors.form.nameRequired'))
       .max(NAME_MAX_LENGTH, t('sectors.form.nameMax')),
     parent_id: z.number().nullable(),
+    is_active: z.boolean(),
   }
 }
 
