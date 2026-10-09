@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Popup selettore prodotto piu' largo (riga offerta) — VERDE, COMMITTATO (2026-10-09)
+
+- Richiesta utente: in `/request-management/{id}` (riga offerta) le opzioni del select prodotto erano troncate
+  alla larghezza della colonna. `AsyncPaginatedSelect` ha un nuovo prop opzionale `contentClassName` (merge
+  `cn()` sul popup; default invariato = larghezza trigger). `QuoteProductSelect` passa
+  `PRODUCT_POPUP_WIDTH_CLASS` = `w-[min(36rem, available-width)] min-w-(trigger-width)`: vale per tutti i
+  picker prodotto (offerte ricavi/costi, richieste, fatture, costi commessa).
+- Test: nuovo `features/quotes/quote-product-select.test.tsx`; suite quotes/request-management/invoices/
+  work-order-costs + async-paginated-select 943+ verdi, `tsc -b --force` pulito, ESLint pulito.
+  Manuale: nessun impatto (solo larghezza del menu a tendina).
+
 ## Catalogo e-Campus — codice in testa, FORM per corso, TESI/ASSISTENZA unici — VERDE, NON COMMITTATO (2026-10-08)
 
 - Direttiva utente: nomi corso `[CODICE] <corso>` (es. `[LM-56] Scienze dell'Economia 1°ANNO`); fee per corso

@@ -16,6 +16,14 @@ import type { QuoteLineCategoryRef, QuoteLineUnitOfMeasureRef } from '@/features
  * own single consumer. This is what lets a quote line precompile
  * `unit_price`/`vat_rate_id` and show the unit on pick (AC-074).
  */
+/**
+ * Product labels (code + course name) outgrow the row's product column, so the
+ * popup takes a wider fixed width — never narrower than the trigger, never
+ * past the viewport edge.
+ */
+const PRODUCT_POPUP_WIDTH_CLASS =
+  'w-[min(36rem,var(--radix-popover-content-available-width))] min-w-(--radix-popover-trigger-width)'
+
 export interface QuoteProductForSelectMeta {
   code: string
   price: string | null
@@ -100,6 +108,7 @@ export function QuoteProductSelect({
       aria-describedby={ariaDescribedBy}
       aria-invalid={ariaInvalid}
       params={params}
+      contentClassName={PRODUCT_POPUP_WIDTH_CLASS}
       labels={{
         placeholder: t('quotes.form.lineProductPlaceholder'),
         searchPlaceholder: t('quotes.form.lineProductSearch'),
