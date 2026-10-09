@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0208 — Modulo RDA (Richieste di Acquisto) — VERDE, NON COMMITTATO (2026-10-09)
+## Spec 0208 — Modulo RDA (Richieste di Acquisto) — VERDE, COMMITTATO b794c960 (2026-10-09)
 
 - Spec `docs/specs/0208-purchase-requests.xml` (approvata, D-1..D-17, AC-001..AC-022). Nomi inglesi: risorsa/dominio
   `purchase-requests` / `purchase-request-lines`, tabelle `purchase_requests`, `purchase_request_lines`,

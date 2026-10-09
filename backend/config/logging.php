@@ -65,6 +65,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Target of MAIL_MAILER=log when MAIL_LOG_CHANNEL=mail (local development):
+        // the rendered emails go to their own file instead of laravel.log.
+        'mail' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/mail.log'),
+            'level' => 'debug',
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
