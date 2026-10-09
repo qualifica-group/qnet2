@@ -35,11 +35,53 @@ final class TimeEntrySubordinateResolver
      */
     public function descendantIds(int $managerId): array
     {
-        $byManagerId = $this->activeReportsByManagerId();
+        return $this->walk($this->edges(activeOnly: true)->groupBy('manager_id'), 'subordinate_id', [$managerId], [$managerId => true]);
+    }
 
+    public function isDescendantOf(int $userId, int $managerId): bool
+    {
+        return in_array($userId, $this->descendantIds($managerId), true);
+    }
+
+    /**
+     * Spec 0214 D-4: the same walk as descendantIds() over EVERY user,
+     * deactivated ones included, and through deactivated intermediate
+     * managers too. Used by the Task team visibility tier; the segnatempo
+     * keep the active-only variant above.
+     *
+     * @return list<int>
+     */
+    public function allDescendantIds(int $managerId): array
+    {
+        return $this->walk($this->edges(activeOnly: false)->groupBy('manager_id'), 'subordinate_id', [$managerId], [$managerId => true]);
+    }
+
+    /**
+     * Spec 0214 D-9: every user id standing above ANY of $userIds, at any
+     * level, deactivated included. A start id is returned only when it is
+     * itself above another start id (or through a data cycle).
+     *
+     * @param  list<int>  $userIds
+     * @return list<int>
+     */
+    public function allAncestorIds(array $userIds): array
+    {
+        return $this->walk($this->edges(activeOnly: false)->groupBy('subordinate_id'), 'manager_id', $userIds, []);
+    }
+
+    /**
+     * BFS over an adjacency map, returning each reachable id once. The
+     * `visited` set breaks any cycle in the data after one pass per user.
+     *
+     * @param  Collection<int|string, Collection<int, object{manager_id: int, subordinate_id: int}>>  $adjacency
+     * @param  list<int>  $startIds
+     * @param  array<int, true>  $visited
+     * @return list<int>
+     */
+    private function walk(Collection $adjacency, string $column, array $startIds, array $visited): array
+    {
         $ids = [];
-        $visited = [$managerId => true];
-        $queue = $this->subordinateIds($byManagerId, $managerId);
+        $queue = $this->neighbourIds($adjacency, $column, $startIds);
 
         while ($queue !== []) {
             $currentId = array_shift($queue);
@@ -51,41 +93,43 @@ final class TimeEntrySubordinateResolver
             $visited[$currentId] = true;
             $ids[] = $currentId;
 
-            array_push($queue, ...$this->subordinateIds($byManagerId, $currentId));
+            array_push($queue, ...$this->neighbourIds($adjacency, $column, [$currentId]));
         }
 
         return $ids;
     }
 
-    public function isDescendantOf(int $userId, int $managerId): bool
-    {
-        return in_array($userId, $this->descendantIds($managerId), true);
-    }
-
     /**
      * One projection query joining the `employment_profile_manager` pivot to
-     * `employment_profiles`/`users`: manager user_id => direct reports' rows
-     * — active users only (D-10), a subordinate profile counted once per
-     * manager it lists (D-7).
+     * `employment_profiles` (and `users` for the active-only variant, D-10):
+     * one row per manager/subordinate edge, a subordinate profile counted
+     * once per manager it lists (D-7).
      *
-     * @return Collection<int|string, Collection<int, object{manager_id: int, subordinate_id: int}>>
+     * @return Collection<int, object{manager_id: int, subordinate_id: int}>
      */
-    private function activeReportsByManagerId(): Collection
+    private function edges(bool $activeOnly): Collection
     {
         return DB::table('employment_profile_manager')
             ->join('employment_profiles', 'employment_profiles.id', '=', 'employment_profile_manager.employment_profile_id')
-            ->join('users', 'users.id', '=', 'employment_profiles.user_id')
-            ->where('users.is_active', true)
-            ->get(['employment_profile_manager.user_id as manager_id', 'employment_profiles.user_id as subordinate_id'])
-            ->groupBy('manager_id');
+            ->when($activeOnly, fn ($query) => $query
+                ->join('users', 'users.id', '=', 'employment_profiles.user_id')
+                ->where('users.is_active', true))
+            ->get(['employment_profile_manager.user_id as manager_id', 'employment_profiles.user_id as subordinate_id']);
     }
 
     /**
-     * @param  Collection<int|string, Collection<int, object{manager_id: int, subordinate_id: int}>>  $byManagerId
+     * @param  Collection<int|string, Collection<int, object{manager_id: int, subordinate_id: int}>>  $adjacency
+     * @param  list<int>  $fromIds
      * @return list<int>
      */
-    private function subordinateIds(Collection $byManagerId, int $managerId): array
+    private function neighbourIds(Collection $adjacency, string $column, array $fromIds): array
     {
-        return $byManagerId->get($managerId, collect())->pluck('subordinate_id')->map(intval(...))->all();
+        $ids = [];
+
+        foreach ($fromIds as $fromId) {
+            array_push($ids, ...$adjacency->get($fromId, collect())->pluck($column)->map(intval(...))->all());
+        }
+
+        return $ids;
     }
 }

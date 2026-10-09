@@ -19,12 +19,13 @@ const guide: HelpGuide = {
           rows: [
             ['Nessuno (predefinito)', 'Solo i tuoi task: quelli che hai creato o richiesto, o di cui sei assegnatario o osservatore.'],
             ['**Visualizza per sede**', 'I tuoi task e quelli in cui almeno un assegnatario lavora in una delle tue sedi (fisica o remota).'],
+            ['**Visualizza team**', 'I tuoi task e quelli in cui almeno un assegnatario è un tuo sottoposto, anche indiretto (fino in fondo alla catena dei responsabili), compresi i colleghi disattivati.'],
             ['**Visualizza tutti**', 'Tutti i task.'],
           ],
         },
         {
           type: 'note',
-          text: 'Vedere un task della tua sede non ti permette di modificarlo: per farlo devi averci un ruolo (creatore, richiedente, assegnatario) o il permesso **Gestisci tutto**.',
+          text: 'Vedere un task della tua sede o del tuo team non ti permette di modificarlo: per farlo devi averci un ruolo (creatore, richiedente, assegnatario) o il permesso **Gestisci tutto**.',
         },
         {
           type: 'tip',
@@ -52,7 +53,7 @@ const guide: HelpGuide = {
             ['Scadenza', 'Oggi, Scadute, Questa settimana o Questo mese, sulla data fine (o sulla data inizio se manca).'],
             [
               'Assegnazione',
-              'Scegli **uno o più** valori insieme (preimpostato: Assegnati a te): assegnati a te, richiesti da te, assegnati da te (sei richiedente ma non assegnatario), creati da te (li hai creati ma non sei né il richiedente, né un assegnatario, né un osservatore) oppure osservati da te. **Tutti** mostra ogni task in cui hai un qualsiasi ruolo (richiedente, assegnatario, osservatore o creatore), anche se hai il permesso Visualizza tutti. Se hai il permesso Visualizza tutti o Visualizza sede trovi anche **Tutti i visibili**, che mostra ogni task che puoi vedere, compresi quelli dei colleghi.',
+              'Scegli **uno o più** valori insieme (preimpostato: Assegnati a te): assegnati a te, richiesti da te, assegnati da te (sei richiedente ma non assegnatario), creati da te (li hai creati ma non sei né il richiedente, né un assegnatario, né un osservatore) oppure osservati da te. **Tutti** mostra ogni task in cui hai un qualsiasi ruolo (richiedente, assegnatario, osservatore o creatore), anche se hai il permesso Visualizza tutti. Se hai il permesso Visualizza tutti, Visualizza per sede o Visualizza team trovi anche **Tutti i visibili**, che mostra ogni task che puoi vedere, compresi quelli dei colleghi.',
             ],
             ['Anagrafica', 'Uno o più record di Anagrafica a cui è collegato il task.'],
             ['Commessa', 'Una o più Commesse a cui è collegato il task.'],
@@ -170,7 +171,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Un **Task privato** è visibile solo al creatore, al richiedente, agli assegnatari e agli osservatori: chi ha il permesso Visualizza tutti o Visualizza per sede non lo vede (il super-amministratore resta l\'unica eccezione).',
+          text: 'Un **Task privato** è visibile solo al creatore, al richiedente, agli assegnatari e agli osservatori: chi ha il permesso Visualizza tutti, Visualizza per sede o Visualizza team non lo vede (il super-amministratore resta l\'unica eccezione).',
         },
         {
           type: 'note',

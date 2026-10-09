@@ -100,6 +100,16 @@ class TaskPolicy extends BasePolicy
     }
 
     /**
+     * Spec 0214: the team visibility tier — besides their own Tasks, the
+     * actor sees the Tasks assigned to their sottoposti at any depth
+     * (TaskVisibilityScope). Read-only widening, like `viewSite`.
+     */
+    public function viewTeam(User $user): bool
+    {
+        return $user->can($this->permission('viewTeam'));
+    }
+
+    /**
      * "Gestore" (D-2): resource-level, mirroring `viewAll` — a pure
      * permission check, no model in play. The admin-as-assignee deroga is a
      * record-level nuance that only matters once `TaskRecordRoles::isManager()`
@@ -161,7 +171,7 @@ class TaskPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewSite', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'];
+        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewTeam', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'];
     }
 
     private function isInScope(User $user, Model $model): bool

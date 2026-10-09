@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## TASK — PERMESSO "VISUALIZZA TEAM" `tasks.viewTeam` (spec 0214, 2026-10-09) — VERDE, NON COMMITTATO
+
+- Decisioni utente: un task e' "del team" se ALMENO UN ASSEGNATARIO e' sottoposto dell'attore a qualsiasi profondita'
+  (`employment_profile_manager`); privati esclusi (solo membership); sottoposti e intermedi DISATTIVATI inclusi;
+  permesso concesso a tutti i ruoli Qualifica col blocco OWN_TASKS (NON in `OWN_TASKS_DENIED_ABILITIES`). Sola lettura.
+- Backend: `TaskPolicy::viewTeam` + `abilities()`; `TaskVisibilityScope::VIEW_TEAM_PERMISSION`, tier team in UNIONE
+  con membership/viewSite (assorbito da viewAll), catena memoizzata per istanza User (`WeakMap`, 1 query/richiesta);
+  `TimeEntrySubordinateResolver::allDescendantIds()`/`allAncestorIds()` (tutti gli utenti, BFS condivisa con
+  `descendantIds()` che resta solo-attivi per i segnatempo); `TaskAdvancedFilterCatalog` ("Tutti i visibili");
+  `TaskNotable` (responsabili menzionabili, solo task non privati). `TaskPermissionsTest` 16 -> 17 permessi.
+- Frontend: `canSeeBeyondRoles` in `registry-related-panels.tsx`; etichetta `viewTeam` IT/EN; guida in-app `tasks` IT/EN.
+- Test: `tests/Feature/Tasks/TaskTeamVisibilityTest.php` (AC-001..AC-013, 14/14); vitest 7295/7295; tsc/eslint/pint puliti.
+  Suite backend completa: 6 fallimenti NON legati (QualificaProductionDataSeederTest conteggio Product 395/418,
+  `SectorTest` fillable senza code/is_active dopo spec 0212/0213, `QuoteDocumentPdfTest` senza LibreOffice).
+- Dopo il deploy: `php artisan permissions:sync` + rieseguire `QualificaRoleSeeder`.
+- Aperti: filtro Assegnazione "Del mio team"? gap preesistente in `TaskNotable` (privati menzionano viewAll/viewSite);
+  resolver da spostare fuori da `TimeEntries`; `SectorTest` da riallineare; memo `WeakMap` stale solo se la stessa
+  istanza User sopravvive a un cambio di gerarchia (oggi nessun caso reale).
+
 ## CONTATTI — CAMPO RAPIDO "SITO WEB" NELLA CREAZIONE (2026-10-09) — VERDE, COMMITTATO
 
 - `QUICK_CONTACT_TYPES` (`features/personal-data/quick-contacts.ts`) ora include `website` dopo `fax`: il campo

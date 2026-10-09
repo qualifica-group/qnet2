@@ -154,10 +154,16 @@ describe('Task panel assignment (spec 0199)', () => {
     expect(capturedOverride).toEqual({ assignment: ['visible'] })
   })
 
-  it('falls back to every role for an actor without viewAll/viewSite', () => {
-    canMock.mockImplementation((permission) => permission !== 'tasks.viewAll' && permission !== 'tasks.viewSite')
+  it('falls back to every role for an actor without viewAll/viewSite/viewTeam', () => {
+    canMock.mockImplementation((permission) => !['tasks.viewAll', 'tasks.viewSite', 'tasks.viewTeam'].includes(permission))
     renderPanel(RegistryTasksPanel)
     expect(capturedOverride).toEqual({ assignment: ['all'] })
+  })
+
+  it('starts on every visible task for an actor with only viewTeam (spec 0214)', () => {
+    canMock.mockImplementation((permission) => permission === 'tasks.viewTeam')
+    renderPanel(RegistryTasksPanel)
+    expect(capturedOverride).toEqual({ assignment: ['visible'] })
   })
 
   it('leaves the other modules on their own defaults', () => {

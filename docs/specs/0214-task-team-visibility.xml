@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0214-task-team-visibility" status="implemented" owner="utente" date="2026-10-09">
+
+  <goal>
+    Un responsabile vede, oltre ai propri task, i task assegnati ai suoi sottoposti lungo TUTTA la catena
+    gerarchica (diretti, i loro sottoposti, e cosi' via fino in fondo alla piramide), tramite un nuovo
+    permesso di sola lettura "Visualizza team".
+  </goal>
+
+  <context>
+    - Regola unica di visibilita': `App\Services\Tasks\TaskVisibilityScope` (spec 0101 D-9), forma query
+      `scopeToActor()` + forma record `isVisibleTo()`, che devono concordare. Livelli esistenti: membership
+      (creatore/richiedente/assegnatario/osservatore), `tasks.viewSite` (spec 0148), `tasks.viewAll`;
+      super-admin bypassa tutto. `is_private` (spec 0154 D-2) restringe i livelli larghi alla sola membership.
+    - Gerarchia: `EmploymentProfile::reportsTo()` (pivot `employment_profile_manager`, piu' responsabili per
+      dipendente, spec 0166). Catena ricorsiva gia' implementata in
+      `App\Services\TimeEntries\TimeEntrySubordinateResolver::descendantIds()` (BFS con `visited`, una sola
+      query di proiezione) ma limitata agli utenti ATTIVI (spec 0122 D-10), usata dai segnatempo.
+    - Permessi del modulo: `TaskPolicy::abilities()` (scoperti da `permissions:sync`); etichette azioni in
+      `frontend/src/i18n/locales/{it,en}-permissions.ts`.
+    - Ruoli Qualifica: blocco `OperatorRoleCatalogue::OWN_TASKS` in `EVERY_ROLE_BLOCKS` concede tutte le
+      abilita' `tasks.*` tranne `OWN_TASKS_DENIED_ABILITIES` (`viewAll`, `viewSite`, `manageAll`).
+    - Consumatori che oggi testano viewAll/viewSite fuori da TaskVisibilityScope:
+      `TaskAdvancedFilterCatalog::assignmentFilter()` (opzione "Tutti i visibili"),
+      `TaskNotable::mentionableUsersQuery()` (menzionabili nelle note),
+      `frontend/src/features/registries/registry-related-panels.tsx` (`canSeeBeyondRoles`).
+    - Precedente diretto: spec 0148 (`tasks.viewSite`), stessa forma, stessi consumatori.
+  </context>
+
+  <decisions>
+    D-1  (utente) Nuovo permesso `tasks.viewTeam`, etichetta "Visualizza team" / "View team".
+    D-2  (utente) Un task e' "del team" quando ALMENO UN ASSEGNATARIO e' un sottoposto dell'attore, diretto o
+         indiretto, a qualsiasi profondita'. Richiedente/creatore/osservatore sottoposti NON bastano.
+    D-3  (utente) I task PRIVATI restano esclusi dal livello team (come viewAll/viewSite): li vede solo la
+         membership.
+    D-4  (utente) Contano ANCHE i sottoposti disattivati, e la catena passa anche attraverso un responsabile
+         intermedio disattivato. I segnatempo restano invariati (solo attivi): la variante "tutti gli utenti"
+         e' un metodo nuovo del resolver, il comportamento attuale non cambia.
+    D-5  (utente) Default: il permesso va a TUTTI i ruoli Qualifica che hanno i task (blocco OWN_TASKS),
+         quindi NON entra in `OWN_TASKS_DENIED_ABILITIES`. Chi non ha sottoposti non vede nulla in piu'.
+    D-6  Il livello team e' in UNIONE con membership e viewSite, mai in sostituzione; con viewAll e' assorbito.
+    D-7  Solo lettura: modifica/eliminazione restano alla matrice ruolo-sul-record (`TaskAbilityResolver`) e a
+         `tasks.manageAll`, come viewSite (spec 0148 D-5). Richiede comunque `tasks.view` (il livello restringe
+         la visibilita', non concede la risorsa).
+    D-8  L'attore non e' sottoposto di se stesso; un ciclo nei dati (A riporta a B, B riporta ad A) non
+         produce loop: ognuno vede i task dell'altro, una volta.
+    D-9  Parita' lettura/menzione: nelle note di un task NON privato sono menzionabili i titolari attivi di
+         `tasks.view` + `tasks.viewTeam` che stanno sopra (a qualsiasi livello) almeno un assegnatario.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>`TaskPolicy`: abilita' `viewTeam` (metodo + voce in `abilities()`).</item>
+      <item>`TimeEntrySubordinateResolver`: metodi per discendenti e antenati su TUTTI gli utenti (D-4),
+            senza toccare `descendantIds()`/`isDescendantOf()` esistenti.</item>
+      <item>`TaskVisibilityScope`: costante `VIEW_TEAM_PERMISSION` + livello team in `scopeToActor()` e
+            `isVisibleTo()` (in memoria sugli assegnatari gia' caricati), esclusione dei privati.</item>
+      <item>`TaskAdvancedFilterCatalog`: "Tutti i visibili" offerto anche a chi ha `viewTeam`.</item>
+      <item>`TaskNotable::mentionableUsersQuery()`: ramo `viewTeam` (D-9).</item>
+      <item>Frontend: `canSeeBeyondRoles` in `registry-related-panels.tsx` include `tasks.viewTeam`;
+            etichetta `viewTeam` in `it-permissions.ts`/`en-permissions.ts`.</item>
+      <item>Guida in-app `tasks` IT+EN: riga "Visualizza team" nella tabella "Chi vede un task" + nota privati.</item>
+    </in>
+    <out>
+      <item>Nuova opzione del filtro Assegnazione tipo "Del mio team" (si puo' chiedere dopo).</item>
+      <item>Modifica dei task dei sottoposti (resta alla matrice esistente).</item>
+      <item>Cambi ai segnatempo/team pulse e alla regola "solo attivi" delle ore.</item>
+      <item>Spostamento del resolver fuori dal namespace TimeEntries (segnalato, non fatto).</item>
+      <item>Esclusione dei privati nei rami viewAll/viewSite di `TaskNotable` (gap esistente: segnalato, non fatto).</item>
+      <item>Visibilita' gerarchica su altri moduli (commesse, richieste, opportunita').</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    Nessun endpoint nuovo, nessuna shape modificata. Contratto = nome permesso `tasks.viewTeam`
+    (ability `viewTeam` della resource `tasks`), esposto al frontend dal canale abilities gia' esistente
+    (`can('tasks.viewTeam')`). Tutti i consumatori di TaskVisibilityScope (griglia SSRM, export, show,
+    statistiche, kanban, albero, for-select, board commessa, note) ereditano il livello senza modifiche.
+    Errori invariati: task non visibile = 403 sul dettaglio, assente dalla griglia.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato A con `tasks.view`+`tasks.viewTeam` e B che riporta ad A, quando B e' assegnatario di un task non privato a cui A non partecipa, allora A lo vede in griglia e apre il dettaglio (200).</criterion>
+    <criterion id="AC-002">Dato A &lt;- B &lt;- C (C riporta a B, B ad A), quando C e' assegnatario di un task, allora A lo vede (catena a qualsiasi profondita').</criterion>
+    <criterion id="AC-003">Dato A senza `tasks.viewTeam`, quando B (sottoposto) e' assegnatario, allora il task e' assente dalla griglia e il dettaglio risponde 403.</criterion>
+    <criterion id="AC-004">Dato un task privato assegnato a B, quando A (con viewTeam, non membro) lo cerca, allora e' assente/403; se A e' osservatore lo vede.</criterion>
+    <criterion id="AC-005">Dato un task in cui B e' SOLO richiedente/creatore/osservatore (nessun assegnatario sottoposto), allora A non lo vede tramite il livello team.</criterion>
+    <criterion id="AC-006">Dato B disattivato (o un intermedio disattivato in A &lt;- B &lt;- C), quando B (o C) e' assegnatario, allora A vede il task; i segnatempo (TimeEntrySubordinateResolver::descendantIds) continuano a escludere gli inattivi.</criterion>
+    <criterion id="AC-007">Dato A con viewTeam che vede il task di un sottoposto, quando tenta update/delete senza ruolo sul record ne' `manageAll`, allora 403.</criterion>
+    <criterion id="AC-008">Dati dati ciclici (A riporta a B e B ad A), quando si calcola la visibilita', allora nessun loop e A vede i task di B.</criterion>
+    <criterion id="AC-009">Forma query e forma record concordano: per ogni task del fixture `isVisibleTo()` == presenza in `scopeToActor()`, con relazioni caricate e non.</criterion>
+    <criterion id="AC-010">La griglia task di un attore con viewTeam esegue la risoluzione della catena al piu' una volta per richiesta (nessun N+1 per riga).</criterion>
+    <criterion id="AC-011">Il filtro Assegnazione offre "Tutti i visibili" a chi ha solo `viewTeam`; non lo offre a chi non ha nessuno dei tre livelli.</criterion>
+    <criterion id="AC-012">Nelle note di un task non privato, A (attivo, view+viewTeam, sopra un assegnatario) e' menzionabile; su un task privato non lo e' (salvo membership).</criterion>
+    <criterion id="AC-013">Dopo `permissions:sync` + `QualificaRoleSeeder`, ogni ruolo con blocco OWN_TASKS ha `tasks.viewTeam`.</criterion>
+    <criterion id="AC-014">(FE) Con solo `tasks.viewTeam` il pannello task dell'anagrafica parte su "Tutti i visibili"; l'etichetta permesso e' "Visualizza team"/"View team".</criterion>
+    <criterion id="AC-015">(FE) Guida `tasks` IT/EN aggiornata con gli stessi id di sezione; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza, nessuna migrazione (il permesso nasce da `permissions:sync`).
+    - Authz server-side: il livello vive SOLO in TaskVisibilityScope; nessun controllo gerarchico duplicato altrove.
+    - `TaskVisibilityScope` resta statico e `TaskPolicy` costruibile senza argomenti (`permissions:sync`).
+    - Risoluzione catena memoizzata per richiesta/attore (AC-010); lazy loading vietato fuori produzione.
+    - Test Pest in `backend/tests/Feature/Tasks/TaskTeamVisibilityTest.php`, helper condivisi in `tests/Helpers/`.
+    - Dopo il deploy: `php artisan permissions:sync` e riesecuzione di `QualificaRoleSeeder` sui ruoli.
+    - Manuale Claude Docs: sezione Task > "Chi vede un task" da aggiornare (§4-bis).
+  </constraints>
+
+</spec>
