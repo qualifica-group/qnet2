@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Stati "Orientamento specialistico" (settore APL) — VERDE, COMMITTATO (2026-10-09)
+
+- Direttiva utente (foglio "6. APL_Orientamento specialistico"): 13 stati APL anteposti ai 6 esistenti in
+  `AplOrientationWorkflowStatusCatalogue::STATUSES` (nessuno rimosso). Pesca = NEGATIVE (non positivo come
+  da foglio, correzione utente); "Da convocare" (grafia esistente) spostato dopo "Doppione già associato" e
+  riclassificato VALIDATED (decisione utente). Righe pinned risultanti: open = "Da Richiamare", closed_won =
+  "Fine pratica", closed_lost = "Associato NO _ Altro Ente" ("Perso" diventa custom).
+- Decisione utente: SOLO seed da zero. Il seeder salta i workflow esistenti, quindi un DB gia' seminato non
+  riceve i nuovi stati (nessun riallineamento additivo implementato).
+- Test aggiornato (requisito cambiato): `QualificaAplOrientationCatalogueTest` + suite Products/QuoteWorkflows/
+  Seeding verdi, tranne 2 fallimenti PREESISTENTI in `QualificaProductionDataSeederTest` (conteggio prodotti
+  395 vs 418, verificato identico senza questa modifica). Pint pulito.
+- Aperto: la nota del foglio "Da convocare = Invio Prese in carico nei report" NON e' implementata
+  (report non toccati). Manuale Claude Docs non accessibile dalla sessione: sezione stati Orientamento da aggiornare.
+
 ## Popup selettore prodotto piu' largo (riga offerta) — VERDE, COMMITTATO (2026-10-09)
 
 - Richiesta utente: in `/request-management/{id}` (riga offerta) le opzioni del select prodotto erano troncate
