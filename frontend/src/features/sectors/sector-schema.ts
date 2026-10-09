@@ -16,8 +16,12 @@ import {
 /** Backend `name` column limit (`max:191`). */
 const NAME_MAX_LENGTH = 191
 
+/** Backend `code` column limit (`max:20`). */
+const CODE_MAX_LENGTH = 20
+
 function baseFields(t: TFunction) {
   return {
+    code: z.string().max(CODE_MAX_LENGTH, t('sectors.form.codeMax')),
     name: z
       .string()
       .min(1, t('sectors.form.nameRequired'))

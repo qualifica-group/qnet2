@@ -98,6 +98,7 @@ const FULL_ACCESS = {
 function sector(): SectorDetailWithPermissions {
   return {
     id: 7,
+    code: null,
     name: 'Applications',
     parent_id: null,
     parent: null,

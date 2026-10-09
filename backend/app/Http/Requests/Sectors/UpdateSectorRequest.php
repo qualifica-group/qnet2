@@ -8,6 +8,7 @@ use App\Models\Sector;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates the payload for PUT/PATCH /api/sectors/{sector}
@@ -35,6 +36,7 @@ class UpdateSectorRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'code' => ['sometimes', 'nullable', 'string', 'max:20', Rule::unique('sectors', 'code')->ignore($this->route('sector'))],
             'name' => ['sometimes', 'required', 'string', 'max:191'],
             'parent_id' => ['sometimes', 'nullable', 'integer', 'exists:sectors,id'],
             'is_active' => ['sometimes', 'boolean'],

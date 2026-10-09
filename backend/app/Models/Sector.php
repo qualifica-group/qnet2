@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * a standalone lookup used to classify Anagrafiche in the future (no such
  * relation exists yet — see spec 0018 scope).
  */
-#[Fillable(['name', 'parent_id', 'is_active'])]
+#[Fillable(['code', 'name', 'parent_id', 'is_active'])]
 class Sector extends BaseModel
 {
     /** @use HasFactory<SectorFactory> */

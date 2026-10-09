@@ -76,6 +76,7 @@ function wrapper() {
 function sector(overrides: Partial<SectorDetailWithPermissions> = {}): SectorDetailWithPermissions {
   return {
     id: 4,
+    code: null,
     name: 'Applications',
     parent_id: null,
     parent: null,

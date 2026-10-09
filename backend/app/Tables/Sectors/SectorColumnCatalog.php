@@ -22,6 +22,17 @@ final class SectorColumnCatalog
     {
         return [
             [
+                // Spec 0213: verbatim code (01, 07a, NA), a real column.
+                'id' => 'code',
+                'label' => 'sectors.columns.code',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'text',
+                'searchable' => true,
+            ],
+            [
                 'id' => 'name',
                 'label' => 'sectors.columns.name',
                 'type' => 'text',
@@ -75,6 +86,7 @@ final class SectorColumnCatalog
     public static function filters(): array
     {
         return [
+            ['columnId' => 'code', 'type' => 'text'],
             ['columnId' => 'name', 'type' => 'text'],
             ['columnId' => 'parent', 'type' => 'set'],
             ['columnId' => 'is_active', 'type' => 'boolean'],

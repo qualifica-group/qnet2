@@ -8,6 +8,7 @@ export const sectors = {
   subtitle: 'Browse, filter and manage your sectors.',
   forbidden: "You don't have permission to view sectors.",
   columns: {
+    code: 'Code',
     name: 'Name',
     parent: 'Parent',
     is_active: 'Active',
@@ -27,6 +28,9 @@ export const sectors = {
     createSubtitle: 'Add a new sector.',
     editTitle: 'Edit sector',
     editSubtitle: 'Update the selected sector.',
+    code: 'Code',
+    codePlaceholder: 'E.g. 01, 07a, NA',
+    codeMax: 'Code must be at most 20 characters.',
     name: 'Name',
     nameRequired: 'Name is required.',
     nameMax: 'Name must be at most 191 characters.',
@@ -54,7 +58,7 @@ export const sectors = {
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name, parent and status of the sector.',
+        description: 'Code, name, parent and status of the sector.',
       },
     },
   },

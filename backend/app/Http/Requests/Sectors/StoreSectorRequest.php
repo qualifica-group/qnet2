@@ -7,6 +7,7 @@ use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates the payload for POST /api/sectors (spec 0018).
@@ -35,6 +36,8 @@ class StoreSectorRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // Spec 0213: kept verbatim (01, 07a, NA), unique when present.
+            'code' => ['nullable', 'string', 'max:20', Rule::unique('sectors', 'code')],
             'name' => ['required', 'string', 'max:191'],
             'parent_id' => ['nullable', 'integer', 'exists:sectors,id'],
             // Spec 0212: omitted = true (active).

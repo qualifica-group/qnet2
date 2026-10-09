@@ -8,6 +8,7 @@ export const sectors = {
   subtitle: 'Sfoglia, filtra e gestisci i settori.',
   forbidden: 'Non hai i permessi per visualizzare i settori.',
   columns: {
+    code: 'Codice',
     name: 'Nome',
     parent: 'Padre',
     is_active: 'Attivo',
@@ -27,6 +28,9 @@ export const sectors = {
     createSubtitle: 'Aggiungi un nuovo settore.',
     editTitle: 'Modifica settore',
     editSubtitle: 'Aggiorna il settore selezionato.',
+    code: 'Codice',
+    codePlaceholder: 'Es. 01, 07a, NA',
+    codeMax: 'Il codice deve avere al massimo 20 caratteri.',
     name: 'Nome',
     nameRequired: 'Il nome è obbligatorio.',
     nameMax: 'Il nome deve avere al massimo 191 caratteri.',
@@ -54,7 +58,7 @@ export const sectors = {
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome, padre e stato del settore.',
+        description: 'Codice, nome, padre e stato del settore.',
       },
     },
   },

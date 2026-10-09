@@ -109,6 +109,7 @@ class SectorsTableDefinition extends AbstractTableDefinition
         /** @var Sector $row */
         return [
             'id' => $row->id,
+            'code' => $row->code,
             'name' => $row->name,
             'parent' => $this->parentSummary($row->parent),
             'is_active' => (bool) $row->is_active,

@@ -44,10 +44,10 @@ it('returns the 4 columns in order with the declared flags, 403 without viewAny'
 
     expect($data['resource'])->toBe('sectors')
         ->and($data['defaultSort'])->toBe([['columnId' => 'created_at', 'direction' => 'desc']])
-        ->and($data['searchable'])->toBe(['name']);
+        ->and($data['searchable'])->toBe(['code', 'name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'parent', 'is_active', 'created_at']);
+    expect($ids)->toBe(['id', 'code', 'name', 'parent', 'is_active', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['parent']['filterType'])->toBe('set')

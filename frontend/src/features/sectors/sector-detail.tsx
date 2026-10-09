@@ -20,8 +20,8 @@ interface SectorDetailViewProps {
  * Read-only detail of a single sector, rendered as an enterprise-CRM record
  * (Opportunita' reference layout): the identity card on the left, the
  * activity card on the right, a metadata footer. A sector has no field
- * beyond its name, its parent (the header subtitle) and its active flag (a
- * header badge when off), so the record card carries no `RecordSection`.
+ * beyond its name, its parent (the header subtitle), its code and its active
+ * flag (header badges), so the record card carries no `RecordSection`.
  */
 export function SectorDetailView({ sector, onEdit }: SectorDetailViewProps) {
   const { t } = useTranslation()
@@ -50,11 +50,20 @@ export function SectorDetailView({ sector, onEdit }: SectorDetailViewProps) {
             title={sector.name}
             subtitle={sector.parent?.name}
             badges={
-              !sector.is_active ? (
-                <Badge variant="outline">
-                  <Power aria-hidden="true" />
-                  {t('sectors.badges.notActive')}
-                </Badge>
+              sector.code !== null || !sector.is_active ? (
+                <>
+                  {sector.code !== null ? (
+                    <Badge variant="secondary">
+                      {t('sectors.columns.code')} {sector.code}
+                    </Badge>
+                  ) : null}
+                  {!sector.is_active ? (
+                    <Badge variant="outline">
+                      <Power aria-hidden="true" />
+                      {t('sectors.badges.notActive')}
+                    </Badge>
+                  ) : null}
+                </>
               ) : null
             }
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}

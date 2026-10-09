@@ -31,6 +31,7 @@ class SectorService
         return DB::transaction(function () use ($data): Sector {
             /** @var Sector $sector */
             $sector = Sector::create([
+                'code' => $data->code,
                 'name' => $data->name,
                 'parent_id' => $data->parentId,
                 'is_active' => $data->isActive,
@@ -93,7 +94,11 @@ class SectorService
             ->whereNotIn('id', $this->activity->inactiveSectorIds());
 
         if ($query->hasSearch()) {
-            $base->where('name', 'like', '%'.$query->search.'%');
+            // Spec 0213: the code is searchable, the label stays the name.
+            $base->where(static function ($match) use ($query): void {
+                $match->where('name', 'like', '%'.$query->search.'%')
+                    ->orWhere('code', 'like', '%'.$query->search.'%');
+            });
         }
 
         $total = (clone $base)->count();

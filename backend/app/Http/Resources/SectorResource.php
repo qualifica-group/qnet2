@@ -18,6 +18,7 @@ class SectorResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'code' => $this->code,
             'name' => $this->name,
             'parent_id' => $this->parent_id,
             // Spec 0212: this node's OWN flag; the effective value (an inactive

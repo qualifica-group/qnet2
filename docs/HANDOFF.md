@@ -13,6 +13,22 @@
 - Manuale Claude Docs: NON aggiornato (doc non condiviso con la sessione) -> Anagrafiche > Nuova anagrafica > Contatti.
 - Aperti: limitarlo alle sole anagrafiche? auto-prefisso `https://` al blur? (da decidere con l'utente).
 
+## Settori — Codice + catalogo EA + legacy non attivi (spec 0213) — VERDE, COMMITTATO (2026-10-09)
+
+- Decisioni utente: `sectors.code` campo separato, salvato verbatim (01, 07a, NA), nei select solo il nome;
+  ogni giro di `QualificaLegacyImportSeeder` disattiva TUTTI i settori con `old_id` (anche riattivati a mano).
+- Backend: migrazione `2026_10_15_110000_add_code_to_sectors_table` (VARCHAR 20 NULL UNIQUE). `code` in
+  Store/UpdateSectorRequest (unique, update ignora se stesso), DTO (`codeSubmitted`), Resource, Authorization,
+  griglia (colonna + quick-search), for-select cerca su nome O codice (label = nome).
+- Seed: `QualificaCatalog\SectorCatalogue` (44 settori EA) + `QualificaSectorSeeder` (idempotente sul codice,
+  non riscrive rinomine/disattivazioni), step dopo `QualificaTaskTaxonomySeeder` in `QualificaProductionDataSeeder`.
+  `QualificaLegacyImportSeeder::deactivateLegacySectors()` (step 6, update per-model per l'activity log).
+  `SectorsSource` (sezione Migrazioni) invariata.
+- Frontend: campo "Codice" nel form, badge codice nel dettaglio, guida in-app IT/EN.
+- Test: `SectorCodeTest`, `SectorSeedingTest`; contatori rollback 151 / 15 (working tree). Rossi preesistenti:
+  `QualificaProductionDataSeederTest` (418 vs 395 prodotti).
+- Da fare: manuale Claude Docs, sezione Settori (Codice).
+
 ## Settori — flag "Attivo" (spec 0212) — VERDE, COMMITTATO (2026-10-09)
 
 - Decisioni utente: un settore non attivo disattiva in modo EFFETTIVO tutto il ramo (flag dei figli mai riscritto);

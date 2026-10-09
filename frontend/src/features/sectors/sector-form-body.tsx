@@ -30,7 +30,7 @@ interface SectorFormBodyProps {
 const ROOT_PARENT_VALUE = 0
 
 /**
- * The sector create/edit form UI: `name`, `parent_id` and `is_active`, wrapped in
+ * The sector create/edit form UI: `code`, `name`, `parent_id` and `is_active`, wrapped in
  * `MetaField` (spec 0004). All non-render logic lives in `useSectorForm`.
  * `<CustomFieldsSection>` (spec 0021) mounts the resource's admin-defined
  * custom fields with zero sectors-specific rendering/validation logic.
@@ -59,6 +59,7 @@ export function SectorFormBody({ mode, onSuccess, onCancel }: SectorFormBodyProp
   )
 
   const identityVisible =
+    fieldPermission('code').visible ||
     fieldPermission('name').visible ||
     fieldPermission('parent_id').visible ||
     fieldPermission('is_active').visible
@@ -77,6 +78,25 @@ export function SectorFormBody({ mode, onSuccess, onCancel }: SectorFormBodyProp
               title={t('sectors.form.sections.identity.title')}
               description={t('sectors.form.sections.identity.description')}
             >
+              <MetaField
+                control={form.control}
+                name="code"
+                metaKey="code"
+                label={t('sectors.form.code')}
+              >
+                {({ field, disabled, readOnly }) => (
+                  <FormControl>
+                    <Input
+                      autoComplete="off"
+                      placeholder={t('sectors.form.codePlaceholder')}
+                      disabled={disabled}
+                      readOnly={readOnly}
+                      {...field}
+                    />
+                  </FormControl>
+                )}
+              </MetaField>
+
               <MetaField
                 control={form.control}
                 name="name"

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0213-sector-code-and-ea-catalogue" status="approved" owner="nicola" date="2026-10-09">
+
+  <goal>
+    Il settore ha un campo "Codice" oltre al nome. Il seed di produzione carica i 44 settori EA attivi, con il codice
+    esattamente come nella lista del cliente (01, 07a, NA); i settori importati dal legacy sono tutti non attivi.
+  </goal>
+
+  <context>
+    Verificato sul codice reale 2026-10-09. Segue la spec 0212 (flag `is_active`).
+
+    Decisioni utente 2026-10-09:
+    D-1 Codice = campo separato, salvato verbatim (stringa: zeri iniziali e suffissi conservati). Nei select si
+        vede solo il nome; il codice sta in form, dettaglio, griglia ed e' ricercabile.
+    D-2 Legacy — ogni esecuzione di `QualificaLegacyImportSeeder` disattiva TUTTI i settori con `old_id`, anche
+        quelli importati in giri precedenti o riattivati a mano.
+    D-3 Catalogo — i 44 settori EA della lista del cliente, attivi, in un nuovo step del seed di produzione.
+
+    Decisioni di progetto:
+    D-4 `sectors.code` VARCHAR(20) NULL UNIQUE (i legacy non hanno codice; due settori non condividono un codice).
+    D-5 Nuovo `QualificaSectorSeeder` + `QualificaCatalog\SectorCatalogue` (`QualificaCatalogSeeder` e' a 499
+        righe). Idempotente sul `code`: un codice gia' presente non viene riscritto (rinomina o disattivazione
+        manuale sopravvivono a un nuovo giro).
+    D-6 La disattivazione legacy e' solo nel seeder: la sorgente `SectorsSource` (sezione Migrazioni) e' invariata.
+  </context>
+
+  <data_contract>
+    <db>`sectors.code` VARCHAR(20) NULL, UNIQUE, after `old_id`.</db>
+    <endpoint method="POST|PUT|PATCH" path="/api/sectors[/{sector}]">
+      <request>`code`: `nullable|string|max:20|unique` (in update `sometimes`, ignora il settore stesso).</request>
+      <response status="200|201">`SectorResource` guadagna `"code": string|null`.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/sectors/for-select">
+      <response status="200">Shape invariata (label = nome); `search` cerca su nome O codice.</response>
+    </endpoint>
+    <table_grid>Colonna `code` (text, ordinabile, filtrabile, nella quick-search) prima di `name`.</table_grid>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">POST /api/sectors con `code` "07a" lo salva verbatim; un `code` gia' usato -> 422; PATCH che rimanda il proprio codice -> 200.</criterion>
+    <criterion id="AC-002">/sectors/for-select?search=07a trova il settore per codice; la label resta il nome.</criterion>
+    <criterion id="AC-003">La griglia Settori espone la colonna `code` ed e' ricercabile per codice.</criterion>
+    <criterion id="AC-004">`QualificaSectorSeeder` crea 44 settori attivi con i codici della lista (01, 07a, NA...); un secondo giro non duplica e non sovrascrive una rinomina.</criterion>
+    <criterion id="AC-005">`QualificaLegacyImportSeeder` lascia non attivi tutti i settori con `old_id`, anche uno riattivato prima del giro; i settori del catalogo restano attivi.</criterion>
+    <criterion id="AC-006">(FE) Il form settore ha il campo "Codice"; il payload di modifica lo invia solo se cambiato; guida in-app IT/EN aggiornata.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Test di rollback: conteggio degli step +1.</item>
+    <item>Manuale Claude Docs: sezione Settori (campo Codice).</item>
+  </constraints>
+
+</spec>

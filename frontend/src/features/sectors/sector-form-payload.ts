@@ -6,10 +6,17 @@ import type {
 import type { SectorFormValues } from '@/features/sectors/use-sector-form'
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
 
-/** Builds the create payload: `name` + `parent_id` (null = root sector) + `is_active`. */
+/** A blank code input means "no code" (null), never an empty string. */
+function codeValue(code: string): string | null {
+  const trimmed = code.trim()
+  return trimmed === '' ? null : trimmed
+}
+
+/** Builds the create payload: `code` + `name` + `parent_id` (null = root sector) + `is_active`. */
 export function buildCreatePayload(values: SectorFormValues): CreateSectorPayload {
   const customFields = buildCustomFieldsCreate(values.custom_fields)
   return {
+    code: codeValue(values.code),
     name: values.name,
     parent_id: values.parent_id,
     is_active: values.is_active,
@@ -27,6 +34,9 @@ export function buildUpdatePayload(
 ): UpdateSectorPayload {
   const payload: UpdateSectorPayload = {}
 
+  if (codeValue(values.code) !== original.code) {
+    payload.code = codeValue(values.code)
+  }
   if (values.name !== original.name) {
     payload.name = values.name
   }

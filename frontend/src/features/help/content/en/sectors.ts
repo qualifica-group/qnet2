@@ -20,6 +20,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Field', 'What to enter'],
           rows: [
+            ['**Code**', 'Optional: the sector code, exactly as you use it (e.g. 01, 07a, NA). Two sectors cannot share a code. You can search by code.'],
             ['**Name**', 'The name of the sector.'],
             ['**Parent sector**', 'Optional: links the sector to a parent sector to build a hierarchy.'],
             ['**Active**', 'On by default. Turn it off to stop offering the sector in selection fields.'],

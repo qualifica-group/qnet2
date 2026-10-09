@@ -26,6 +26,8 @@ export interface SectorTreeNode {
  */
 export interface SectorDetail {
   id: number
+  /** Verbatim code (01, 07a, NA), spec 0213; null when none. */
+  code: string | null
   name: string
   parent_id: number | null
   parent: { id: number; name: string } | null
@@ -46,6 +48,7 @@ export interface SectorDetailWithPermissions extends SectorDetail {
 
 /** Payload for POST /sectors (create). */
 export interface CreateSectorPayload {
+  code?: string | null
   name: string
   parent_id?: number | null
   is_active?: boolean

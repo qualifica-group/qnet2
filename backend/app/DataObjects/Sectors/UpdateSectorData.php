@@ -20,6 +20,9 @@ final readonly class UpdateSectorData
         public ?int $parentId = null,
         public bool $parentIdSubmitted = false,
         public ?bool $isActive = null,
+        /** Spec 0213: nullable VALUE (clearing the code), hence the submitted flag. */
+        public ?string $code = null,
+        public bool $codeSubmitted = false,
     ) {}
 
     /**
@@ -34,6 +37,8 @@ final readonly class UpdateSectorData
             parentId: array_key_exists('parent_id', $data) && $data['parent_id'] !== null ? (int) $data['parent_id'] : null,
             parentIdSubmitted: array_key_exists('parent_id', $data),
             isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
+            code: isset($data['code']) ? (string) $data['code'] : null,
+            codeSubmitted: array_key_exists('code', $data),
         );
     }
 
@@ -54,6 +59,10 @@ final readonly class UpdateSectorData
 
         if ($this->name !== null) {
             $attributes['name'] = $this->name;
+        }
+
+        if ($this->codeSubmitted) {
+            $attributes['code'] = $this->code;
         }
 
         if ($this->parentIdSubmitted) {

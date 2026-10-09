@@ -75,6 +75,7 @@ function sector(
 ): SectorDetailWithPermissions {
   return {
     id: 2,
+    code: null,
     name: 'Child A1',
     parent_id: 1,
     parent: { id: 1, name: 'Root A' },
@@ -155,6 +156,7 @@ describe('SectorForm — create/edit (AC-017)', () => {
 
     await waitFor(() => expect(createSectorMock).toHaveBeenCalledTimes(1))
     expect(createSectorMock).toHaveBeenCalledWith({
+      code: null,
       name: 'New Sector',
       parent_id: null,
       is_active: true,

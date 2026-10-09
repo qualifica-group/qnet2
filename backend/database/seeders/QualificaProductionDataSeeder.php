@@ -36,6 +36,10 @@ use Illuminate\Database\Seeder;
  *                                    on it; it sits next to step 2 because it
  *                                    is the same kind of row, not because the
  *                                    order matters.
+ *      QualificaSectorSeeder       — the 44 EA sectors, active, with their
+ *                                    code (spec 0213). Same kind of row, same
+ *                                    reasoning; step 5 deactivates only the
+ *                                    legacy sectors (`old_id`), never these.
  *   4. TestUsersSeeder             — the named super-admin account.
  *      ProductTypologySeeder       — the two product typologies ("Ente",
  *                                    "Consulenza") the imported products
@@ -103,6 +107,7 @@ class QualificaProductionDataSeeder extends Seeder
         // needs only exists after step 4.
         $this->callWith(QualificaCatalogSeeder::class, ['askForLegacyImport' => false]);
         $this->call(QualificaTaskTaxonomySeeder::class);
+        $this->call(QualificaSectorSeeder::class);
         $this->call(TestUsersSeeder::class);
         $this->call(ProductTypologySeeder::class);
         $this->call(WorkOrderPaymentStatusSeeder::class);
