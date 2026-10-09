@@ -32,6 +32,7 @@ const guide: HelpGuide = {
           items: [
             'Apri Anagrafiche › Anagrafiche.',
             "Scrivi nel campo Cerca… in alto nella tabella: l'elenco si aggiorna mentre scrivi.",
+            "La ricerca trova il nome o la ragione sociale (anche una parte interna), la partita IVA o il codice fiscale, un numero di telefono dell'anagrafica (principale o no, con o senza spazi) e il nome o il telefono di un referente collegato. Per partita IVA, codice fiscale, telefoni e referenti scrivi l'inizio della parola o del numero, almeno 3 caratteri: per esempio \"ros\" trova il referente Rossi, \"02 6885\" trova 02 6885 7892.",
             'Usa le schede sopra la tabella per separare le anagrafiche: Tutte, Persone fisiche o Aziende. La colonna Tipo mostra a quale gruppo appartiene ogni riga.',
             'Per restringere la ricerca usa i filtri sulle colonne, per esempio Fonte, Fornitore o Stato convenzione.',
             "Le colonne Commerciale, Supervisore, Segnalatore e Operatori mostrano il team dell'anagrafica: Operatori riporta i Gestori account nel loro ordine. Puoi filtrarle per nome e ordinarle, tranne Operatori che si filtra soltanto.",

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Tables\Registries\RegistryCellWriter;
 use App\Tables\Registries\RegistryColumnCatalog;
 use App\Tables\Registries\RegistryRelationColumns;
+use App\Tables\Registries\RegistrySearch;
 use App\Tables\Shared\PersonalDataTypeColumn;
 use App\Tables\Shared\PrimaryContactColumn;
 use Illuminate\Database\Eloquent\Builder;
@@ -46,6 +47,7 @@ class RegistriesTableDefinition extends AbstractTableDefinition
         private readonly RegistryRelationColumns $relationColumns,
         private readonly RegistryCellWriter $cellWriter,
         private readonly PersonalDataTypeColumn $typeColumn,
+        private readonly RegistrySearch $search,
     ) {}
 
     /**
@@ -237,6 +239,20 @@ class RegistriesTableDefinition extends AbstractTableDefinition
         }
 
         return $allowed;
+    }
+
+    /**
+     * Spec 0211: the quick-search on `name` also matches the card (VAT
+     * number), the phones and the linked referents through one extra OR
+     * branch; `name` itself keeps the engine's LIKE (nothing covered).
+     *
+     * @param  Builder<Registry>  $query
+     * @param  array<int, string>  $columnIds
+     * @return array<int, string>
+     */
+    public function applyGroupedSearch(Builder $query, array $columnIds, string $term): array
+    {
+        return $this->search->apply($query, $columnIds, $term);
     }
 
     /**

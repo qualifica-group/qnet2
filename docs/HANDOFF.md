@@ -3,6 +3,29 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ANAGRAFICHE — RICERCA RAPIDA SU P.IVA, TELEFONI E REFERENTI (spec 0211) — VERDE, COMMITTATO (2026-10-09)
+
+- Decisioni utente: referenti cercati per nome E telefono; semantica "inizio parola" FULLTEXT (come 0179); tutti
+  i telefoni della scheda (non solo il principale). `name` resta "contiene" (LIKE), nessun `searchMinLength`.
+- `App\Tables\Shared\WordPrefixMatcher` (words/whereWordsStart estratti da `RequestClientSearch`, che li usa
+  senza cambiare comportamento; `RequestClientSearch::MIN_WORD_LENGTH` resta, alias del matcher).
+- `App\Tables\Registries\RegistrySearch` via `RegistriesTableDefinition::applyGroupedSearch()`: ramo extra
+  `registries.id IN (...)`, NON copre `name` (ritorna `[]`). Passi: scheda (indice `personal_data_search_fulltext`,
+  quindi anche codice fiscale), telefoni scheda e referenti su `contacts.normalized_value LIKE '<cifre>%'` (indice
+  `(type, normalized_value)`; FULLTEXT su `value` scartava "02" e non trovava numeri senza spazi), nome referente
+  (nuovo FULLTEXT `referents_name_fulltext`), referenti -> anagrafiche via `referent_registry`. Tetto
+  `config('table-search.registry_match_cap')` = 5000 per passo. Il passo telefono parte solo se il termine, tolti
+  spazi e `( ) . -`, e' `+?` + almeno 3 cifre.
+- Migrazione `2026_10_09_100000_add_fulltext_name_index_to_referents_table` (no-op SQLite), applicata al DB locale
+  qnet2; `QuoteWorkflowMigrationTest` rollback 148 -> 149 (requisito: nuova migrazione).
+- Test: `tests/Feature/Registries/RegistryQuickSearchTest.php` (12, AC-001..AC-007). Verificato a mano su MySQL
+  locale (P.IVA, prefisso, telefono con/senza spazi, nome/cognome referente, telefono referente; dati rimossi).
+- Guide in-app `registries` IT/EN aggiornate (passo in "Cercare un'anagrafica"). Manuale Claude Docs NON aggiornato
+  (accesso negato): sezione Anagrafiche > ricerca.
+- Limite noto: numeri salvati con "+39" non trovati digitando senza prefisso.
+- Rossi pre-esistenti NON di questa modifica: `RegistryTableTest` "bounded query count" (10 query, +1
+  `select * from api_clients` dal lavoro 0209/0210); `tsc -b` rosso solo su test `features/sectors` (`is_active`).
+
 ## Stati "Orientamento specialistico" (settore APL) — VERDE, COMMITTATO (2026-10-09)
 
 - Direttiva utente (foglio "6. APL_Orientamento specialistico"): 13 stati APL anteposti ai 6 esistenti in

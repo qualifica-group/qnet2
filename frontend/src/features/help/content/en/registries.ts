@@ -32,6 +32,7 @@ const guide: HelpGuide = {
           items: [
             'Open Registries › Registries.',
             'Type in the Search… field at the top of the table: the list updates as you type.',
+            'The search finds the name or company name (even a part inside it), the VAT number or tax code, a phone number of the registry (primary or not, with or without spaces) and the name or phone of a linked referent. For VAT number, tax code, phones and referents type the start of the word or number, at least 3 characters: for example "ros" finds the referent Rossi, "02 6885" finds 02 6885 7892.',
             'Use the tabs above the table to split the registries: All, Individuals or Companies. The Type column shows which group each row belongs to.',
             'To narrow the search use the column filters, for example Source, Supplier or Agreement status.',
             "The Commercial, Supervisor, Reporter and Operators columns show the registry's team: Operators lists the Account managers in their order. You can filter them by name and sort them, except Operators, which can only be filtered.",
