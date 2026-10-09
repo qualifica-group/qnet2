@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Client registry, Contract, Company and sites come from the offer; Status and Completion are computed from the tasks.',
+          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Client registry, Contract, Contract expiry, Company and sites come from the offer (the expiry is edited on the contract); Status and Completion are computed from the tasks.',
         },
         {
           type: 'note',
@@ -46,7 +46,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "**Force closing** stays a row action (it asks for a reason), not a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. Work order no., Contract no., Linked offer, Registry, Status, Completion, Created at and Updated at stay read-only.",
+          text: "**Force closing** stays a row action (it asks for a reason), not a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). Work order no., Contract no., Linked offer, Registry, Contract expiry, Status, Completion, Created at and Updated at stay read-only.",
         },
       ],
     },

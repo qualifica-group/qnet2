@@ -47,12 +47,14 @@ export interface WorkOrderQuoteRef {
 /**
  * `WorkOrderResource.contract` projection: the Contratto born from the linked
  * quote (`code`/`title` are the quote's own, as on the Contract detail),
- * `null` while the quote has not been won.
+ * `null` while the quote has not been won. `expiry_date` (`Y-m-d`) is the
+ * contract's own, read-only on the commessa.
  */
 export interface WorkOrderContractRef {
   id: number
   code: string
   title: string
+  expiry_date: string | null
 }
 
 /**

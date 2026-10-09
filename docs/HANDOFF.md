@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMMESSE — SCADENZA CONTRATTO IN SOLA LETTURA (dettaglio + colonna griglia, 2026-10-09) — VERDE, NON COMMITTATO
+
+- Richiesta utente: nel dettaglio commessa e come colonna della tabella Commesse mostrare la data di scadenza del
+  contratto, sola lettura; in tabella filtrabile e ordinabile. Nessuna spec dedicata (modifica piccola), nessuna migrazione.
+- Backend: colonna derivata `contract_expiry_date` (`contracts.expiry_date` via `quote.contract`, 1:1) in
+  `WorkOrderColumnCatalog` (type/filterType `date`, sortable, `hasFilterValues: false`, non editabile) + filtro;
+  nuova `App\Tables\WorkOrders\WorkOrderContractExpiryColumn` (filtro `whereHas` delegato a FilterApplier, sort con
+  subquery correlata) collegata da `WorkOrderDerivedColumns`; `baseQuery` eager-load `quote.contract`; `mapRow` la
+  espone. `WorkOrderResource.contract` ora `{id, code, title, expiry_date (Y-m-d|null)}`. Vale anche per la scheda
+  Commesse del contratto (stesso dominio `work-orders`).
+- Frontend: `WorkOrderContractRef.expiry_date`; renderer `DateCell` per `contract_expiry_date`; riga "Scadenza
+  contratto" nella sezione Contratto del dettaglio (`work-order-detail-sections.tsx`); i18n IT/EN
+  (`columns.contract_expiry_date`, `detail.contractExpiryDate`); guida in-app work-orders IT/EN.
+- Test: `WorkOrderTableTest` (+4: riga, sort asc/desc, filtro inRange, PATCH cella rifiutato 422; lista id colonne
+  aggiornata = requisito cambiato), `WorkOrderContractSummaryTest` (shape con `expiry_date`). Pest WorkOrders 249,
+  Contracts 130, Table 289, Tables 42 verdi; Vitest work-orders+help 355/355; `tsc -b --force` 0; ESLint/Pint puliti.
+- Manuale Claude Docs NON aggiornato (doc non condiviso con la sessione) -> Commesse > Dettaglio (sezione Contratto) e
+  Commesse > Elenco (colonna Scadenza contratto).
+
 ## CONTRATTI — PROGRAMMA MULTI-COMMESSA + TITOLO AUTOMATICO COMMESSA (spec 0215, 2026-10-09) — VERDE, NON COMMITTATO
 
 - Richiesta utente: nel "Programma" del contratto creare piu' commesse in una sessione (gruppi di righe), salvataggio

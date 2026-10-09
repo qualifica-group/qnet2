@@ -23,6 +23,8 @@ use App\Enums\WorkOrderType;
  * `set`-filterable over its 4 values; `completion_percentage` is sortable
  * but not filterable (D-10). `registry` (the Anagrafica) is DERIVED through
  * `quote.opportunity.registry` and `set`-filtered by name.
+ * `contract_expiry_date` is DERIVED through `quote.contract` (the Contratto's
+ * own `expiry_date`): read-only, `date`-filterable and sortable.
  *
  * Spec 0206: `title`/`type`/`callback_date`/`start_date`/`supervisors` are
  * inline-editable and write through WorkOrderCellWriter (the form's own
@@ -81,6 +83,18 @@ final class WorkOrderColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'text',
+                'hasFilterValues' => false,
+            ],
+            [
+                // `contracts.expiry_date`, derived through `quote.contract`;
+                // edited on the contract only (WorkOrderContractExpiryColumn).
+                'id' => 'contract_expiry_date',
+                'label' => 'workOrders.columns.contract_expiry_date',
+                'type' => 'date',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'date',
                 'hasFilterValues' => false,
             ],
             [
@@ -208,6 +222,7 @@ final class WorkOrderColumnCatalog
             ['columnId' => 'title', 'type' => 'text'],
             ['columnId' => 'contract_number', 'type' => 'text'],
             ['columnId' => 'quote', 'type' => 'text'],
+            ['columnId' => 'contract_expiry_date', 'type' => 'date'],
             ['columnId' => 'registry', 'type' => 'set'],
             ['columnId' => 'type', 'type' => 'set'],
             ['columnId' => 'callback_date', 'type' => 'date'],

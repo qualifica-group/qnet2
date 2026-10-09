@@ -12,6 +12,7 @@ import { WorkOrderAttributesSection } from '@/features/work-orders/work-order-at
 import { WorkOrderContractDataPanel } from '@/features/work-orders/work-order-detail-contract-data-panel'
 import { WorkOrderIdentitySection, WorkOrderInternalNotesRow } from '@/features/work-orders/work-order-record-identity'
 import { WorkOrderTeamSection } from '@/features/work-orders/work-order-record-team'
+import { formatDate } from '@/lib/formatting/date-display'
 import type { WorkOrderDetailEditor } from '@/features/work-orders/use-work-order-inline-edit'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
@@ -41,8 +42,8 @@ interface DetailSectionProps {
 }
 
 /**
- * Contratto: the client and the contract are reached through the offer
- * (read-only, server-derived). The contract data have their own full-width
+ * Contratto: the client, the contract and its expiry date are reached through
+ * the offer (read-only, server-derived; the expiry is edited on the contract). The contract data have their own full-width
  * section right after (`WorkOrderContractDataPanel`).
  */
 function WorkOrderContractSection({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
@@ -68,6 +69,9 @@ function WorkOrderContractSection({ workOrder }: { workOrder: WorkOrderDetailWit
           ) : (
             <DetailEmpty />
           )}
+        </RecordField>
+        <RecordField label={t('workOrders.detail.contractExpiryDate')}>
+          {formatDate(workOrder.contract?.expiry_date) || <DetailEmpty />}
         </RecordField>
       </RecordFieldList>
     </RecordSection>

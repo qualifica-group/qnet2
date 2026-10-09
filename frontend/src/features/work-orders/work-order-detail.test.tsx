@@ -106,7 +106,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     internal_notes: 'Nota interna',
     contract_number: 'QUO-0004',
     quote: { id: 4, code: 'QUO-0004', title: 'Fornitura annuale' },
-    contract: { id: 9, code: 'QUO-0004', title: 'Fornitura annuale' },
+    contract: { id: 9, code: 'QUO-0004', title: 'Fornitura annuale', expiry_date: '2027-03-31' },
     task_template: null,
     quote_lines: [
       { id: 11, sort_order: 2, product: { id: 2, code: 'PRD-0002', name: 'Installazione' } },
@@ -350,6 +350,24 @@ describe('WorkOrderDetailView — related records', () => {
 
     expect(screen.getByText('Client registry')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Acme S.p.A.' })).toHaveAttribute('href', '/registries/7')
+  })
+
+  it('shows the contract expiry date read-only, in the Contract section', () => {
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
+
+    expect(screen.getByText('Contract expiry').closest('div')).toHaveTextContent(formatDate('2027-03-31'))
+    expect(screen.queryByRole('button', { name: /contract expiry/i })).not.toBeInTheDocument()
+  })
+
+  it('shows the empty placeholder for the contract expiry when the contract has none', () => {
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({ contract: { id: 9, code: 'QUO-0004', title: 'Fornitura annuale', expiry_date: null } })}
+      />,
+    )
+
+    expect(screen.getByText('Contract expiry')).toBeInTheDocument()
+    expect(screen.queryByText(formatDate('2027-03-31'))).not.toBeInTheDocument()
   })
 
   it('shows the empty placeholder when the commessa has no client registry', () => {

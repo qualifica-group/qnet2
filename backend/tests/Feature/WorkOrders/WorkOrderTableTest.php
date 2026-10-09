@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\WorkOrderType;
+use App\Models\Contract;
 use App\Models\ExportRun;
 use App\Models\Opportunity;
 use App\Models\Quote;
@@ -24,7 +25,7 @@ it('GET /api/tables/work-orders/columns declares the columns, status non-sortabl
     $data = $this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data');
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'registry', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors']);
+    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'contract_expiry_date', 'registry', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['status']['sortable'])->toBeFalse()
@@ -39,6 +40,11 @@ it('GET /api/tables/work-orders/columns declares the columns, status non-sortabl
         ->and($columns['quote']['filterType'])->toBe('text')
         ->and($columns['registry']['filterType'])->toBe('set')
         ->and($columns['registry']['editable'] ?? false)->toBeFalse()
+        ->and($columns['contract_expiry_date']['type'])->toBe('date')
+        ->and($columns['contract_expiry_date']['filterType'])->toBe('date')
+        ->and($columns['contract_expiry_date']['sortable'])->toBeTrue()
+        ->and($columns['contract_expiry_date']['hasFilterValues'])->toBeFalse()
+        ->and($columns['contract_expiry_date']['editable'] ?? false)->toBeFalse()
         ->and($data['searchable'])->toEqualCanonicalizing(['code', 'title', 'contract_number']);
 });
 
@@ -123,6 +129,74 @@ it('rows expose `quote` as quotes.title (AC-041)', function () {
     $row = collect($response->json('items'))->firstWhere('title', 'Row');
 
     expect($row['quote'])->toBe('Offerta di riferimento');
+});
+
+// ---------------------------------------------------------------------------
+// contract_expiry_date derived from quote.contract.expiry_date
+// ---------------------------------------------------------------------------
+
+function workOrderWithContractExpiry(?string $expiryDate, string $title): WorkOrder
+{
+    $quote = Quote::factory()->create();
+    Contract::factory()->create(['quote_id' => $quote->id, 'expiry_date' => $expiryDate]);
+
+    return WorkOrder::factory()->create(['quote_id' => $quote->id, 'title' => $title]);
+}
+
+it('rows expose `contract_expiry_date` as the contract expiry date, null without a contract', function () {
+    $actor = workOrderUserWith(['viewAny', 'view']);
+    workOrderWithContractExpiry('2027-03-31', 'With contract');
+    WorkOrder::factory()->create(['title' => 'Without contract']);
+    Sanctum::actingAs($actor);
+
+    $items = collect($this->postJson('/api/tables/work-orders/rows', ['startRow' => 0, 'endRow' => 25])->assertOk()->json('items'));
+
+    expect(substr((string) $items->firstWhere('title', 'With contract')['contract_expiry_date'], 0, 10))->toBe('2027-03-31')
+        ->and($items->firstWhere('title', 'Without contract')['contract_expiry_date'])->toBeNull();
+});
+
+it('sorts by contract_expiry_date using contracts.expiry_date', function () {
+    $actor = workOrderUserWith(['viewAny', 'view']);
+    workOrderWithContractExpiry('2027-06-30', 'Later');
+    workOrderWithContractExpiry('2026-12-31', 'Earlier');
+    Sanctum::actingAs($actor);
+
+    $titles = fn (string $sort): array => collect($this->postJson('/api/tables/work-orders/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'sortModel' => [['colId' => 'contract_expiry_date', 'sort' => $sort]],
+    ])->assertOk()->json('items'))->pluck('title')->all();
+
+    expect($titles('asc'))->toBe(['Earlier', 'Later'])
+        ->and($titles('desc'))->toBe(['Later', 'Earlier']);
+});
+
+it('filters by contract_expiry_date with a date range on contracts.expiry_date', function () {
+    $actor = workOrderUserWith(['viewAny', 'view']);
+    workOrderWithContractExpiry('2027-01-15', 'Inside');
+    workOrderWithContractExpiry('2028-01-15', 'Outside');
+    WorkOrder::factory()->create(['title' => 'Without contract']);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/work-orders/rows', [
+        'startRow' => 0, 'endRow' => 25,
+        'filterModel' => ['contract_expiry_date' => [
+            'filterType' => 'date', 'type' => 'inRange', 'dateFrom' => '2027-01-01', 'dateTo' => '2027-12-31',
+        ]],
+    ])->assertOk();
+
+    expect(collect($response->json('items'))->pluck('title')->all())->toBe(['Inside']);
+});
+
+it('rejects an inline edit of the read-only contract_expiry_date', function () {
+    $actor = workOrderUserWith(['viewAny', 'view', 'update']);
+    $workOrder = workOrderWithContractExpiry('2027-01-15', 'Read only');
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/tables/work-orders/rows/{$workOrder->id}", [
+        'column' => 'contract_expiry_date', 'value' => '2030-01-01',
+    ])->assertStatus(422);
+
+    expect(Contract::query()->where('quote_id', $workOrder->quote_id)->value('expiry_date')?->toDateString())->toBe('2027-01-15');
 });
 
 // ---------------------------------------------------------------------------

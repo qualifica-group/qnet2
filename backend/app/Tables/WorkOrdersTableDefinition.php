@@ -102,10 +102,11 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // WorkOrderVisibilityScope::isVisibleTo() answers actionsFor()'s
         // per-row Gate calls in memory instead of querying (user
         // directive 2026-09-02).
-        // `quote.opportunity.registry` feeds the Anagrafica column.
+        // `quote.opportunity.registry` feeds the Anagrafica column,
+        // `quote.contract` the contract expiry date.
         // The root-task aggregates feed `status`/`completion_percentage`
         // (spec 0149, D-8) without one query per row.
-        $query = $this->statusResolver->withProgress(WorkOrder::query()->with(['quote.opportunity.registry', 'supervisors.avatar', 'participants']));
+        $query = $this->statusResolver->withProgress(WorkOrder::query()->with(['quote.opportunity.registry', 'quote.contract', 'supervisors.avatar', 'participants']));
 
         // Spec 0193, D-11: the proforma state is two EXISTS subqueries, never
         // a query per row, and only computed for actors who may raise requests.
@@ -230,6 +231,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'title' => $row->title,
             'contract_number' => $row->quote?->code,
             'quote' => $row->quote?->title,
+            'contract_expiry_date' => $row->quote?->contract?->expiry_date,
             'registry' => $this->registrySummary($row->quote?->opportunity?->registry),
             'type' => $row->type?->value,
             'start_date' => $row->start_date,
