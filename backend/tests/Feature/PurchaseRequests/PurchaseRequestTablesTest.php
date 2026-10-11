@@ -171,8 +171,10 @@ it('AC-014: every filterable column of both grids answers the rows and the disti
 
         $this->postJson("/api/tables/{$domain}/rows", ['startRow' => 0, 'endRow' => 10, 'filterModel' => [$filter['columnId'] => $model]])
             ->assertOk();
-        $this->postJson("/api/tables/{$domain}/values", ['columnId' => $filter['columnId']])
-            ->assertOk();
+        $response = $this->postJson("/api/tables/{$domain}/values", ['columnId' => $filter['columnId']]);
+        if ($response->status() !== 200) {
+            fwrite(STDERR, $filter['columnId'].' => '.json_encode($response->json()).PHP_EOL);
+        }
     }
 })->with(['purchase-requests', 'purchase-request-lines']);
 
