@@ -37,6 +37,8 @@ export interface CommissionRelationRef {
 
 export interface CommissionConfigurationDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   recipient_role: CommissionRole
   application_scope: CommissionScope

@@ -45,6 +45,7 @@ export function WorkOrderPaymentStatusDetailView({ workOrderPaymentStatus, onEdi
           <RecordCardHeader
             media={<DetailMonogram name={workOrderPaymentStatus.name} icon={<Flag />} className="size-10 text-base [&>svg]:size-5" />}
             title={workOrderPaymentStatus.name}
+            legacyId={workOrderPaymentStatus.old_id}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
         }

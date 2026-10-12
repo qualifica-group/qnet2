@@ -42,6 +42,7 @@ export function CompanySiteDetailHeader({
     <RecordCardHeader
       media={<UserAvatar name={site.name} src={site.logo_url} size="lg" />}
       title={site.name}
+      legacyId={site.old_id}
       subtitle={site.personal_data?.company_name ?? undefined}
       badges={
         site.is_default ? (

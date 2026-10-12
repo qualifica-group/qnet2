@@ -25,7 +25,7 @@ it('GET /api/tables/work-orders/columns declares the columns, status non-sortabl
     $data = $this->getJson('/api/tables/work-orders/columns')->assertOk()->json('data');
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'old_id', 'code', 'title', 'contract_number', 'quote', 'contract_expiry_date', 'registry', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors']);
+    expect($ids)->toBe(['id', 'code', 'title', 'contract_number', 'quote', 'contract_expiry_date', 'registry', 'type', 'callback_date', 'is_force_closed', 'status', 'completion_percentage', 'created_at', 'updated_at', 'start_date', 'supervisors']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['status']['sortable'])->toBeFalse()

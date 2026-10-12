@@ -138,6 +138,8 @@ export const permissions = {
     'vat-rates': 'VAT',
     // Spec 0158: permission-only module, cross-cutting every table (custom filters/saved views).
     'table-filter-views': 'Saved filters',
+    // Permission-only: see the legacy old id on grids and record details (`legacy-ids.view`).
+    'legacy-ids': 'Legacy IDs',
   },
   areas: {
     // Trailing area of the tree: permission-only modules that are assignable

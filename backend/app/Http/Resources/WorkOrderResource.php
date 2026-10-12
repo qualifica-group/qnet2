@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Authorization\LegacyIdVisibility;
 use App\Enums\FormMode;
 use App\Models\QuoteLine;
 use App\Models\User;
@@ -47,6 +48,7 @@ class WorkOrderResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id),
             'code' => $this->code,
             'title' => $this->title,
             'title_is_manual' => $this->title_is_manual,

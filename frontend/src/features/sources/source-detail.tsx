@@ -37,6 +37,7 @@ export function SourceDetailView({ source, onEdit }: SourceDetailViewProps) {
           <RecordCardHeader
             media={<DetailMonogram name={source.name} icon={<Database />} />}
             title={source.name}
+            legacyId={source.old_id}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
         }

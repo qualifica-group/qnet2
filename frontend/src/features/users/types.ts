@@ -125,6 +125,8 @@ export interface EmploymentProductLineInput {
  */
 export interface UserDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   email: string
   locale: UserLocale

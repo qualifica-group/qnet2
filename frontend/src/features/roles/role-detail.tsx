@@ -76,6 +76,7 @@ export function RoleDetailView({ roleId, onEdit }: RoleDetailProps) {
           <RecordCardHeader
             media={<DetailMonogram name={role.name} icon={<ShieldCheck />} />}
             title={role.name}
+            legacyId={role.old_id}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
         }

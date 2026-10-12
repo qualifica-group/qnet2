@@ -108,6 +108,7 @@ export function ProductCategoryDetailView({ category, onEdit }: ProductCategoryD
                 />
               }
               title={category.name}
+              legacyId={category.old_id}
               subtitle={category.parent?.name}
               badges={
                 <>

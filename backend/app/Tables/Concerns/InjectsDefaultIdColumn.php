@@ -2,7 +2,9 @@
 
 namespace App\Tables\Concerns;
 
+use App\Authorization\LegacyIdVisibility;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -10,11 +12,12 @@ use Illuminate\Support\Facades\Schema;
  * its own, so the primary key is uniformly surfaceable across the grid, its
  * column-visibility preferences and the sort/filter whitelists — with no
  * per-domain declaration. When the model's table carries the legacy `old_id`
- * (the external-migration anchor), a hidden `old_id` column follows it.
+ * (the external-migration anchor) and the authenticated actor may see it
+ * (LegacyIdVisibility), a hidden `old_id` column follows it.
  *
  * Both columns are hidden by default (ADR-0004 visibility): the row payload
  * already carries `id` (every mapRow returns it) and `old_id` (TableService
- * attaches it when the row has one), so the frontend can toggle them on
+ * attaches it for the same actors), so the frontend can toggle them on
  * demand. A definition that needs different semantics (e.g. the roles table,
  * which keeps `id` non-filterable) declares its own column, which wins — this
  * is a default, not a mandate. The raw `columns()` catalogue (used by
@@ -37,8 +40,13 @@ trait InjectsDefaultIdColumn
     /**
      * The declared columns with the default hidden `id` column prepended as the
      * FIRST column (unless the definition declares its own `id`), followed by
-     * the default hidden `old_id` column when the model's table has one and the
-     * definition does not declare it.
+     * the default hidden `old_id` column when the model's table has one, the
+     * definition does not declare it and the actor may see it.
+     *
+     * The actor is the authenticated user: every caller runs inside a table
+     * request, and resolving it here keeps `old_id` out of the config, the
+     * sort whitelist and the layout defaults alike for an actor without
+     * `legacy-ids.view`.
      *
      * `id` is the leftmost column (once the user toggles it visible), matching
      * the tables that already declare their own `id` first (users, roles,
@@ -55,7 +63,9 @@ trait InjectsDefaultIdColumn
             array_unshift($columns, $this->defaultIdColumn());
         }
 
-        if (! in_array(self::LEGACY_ID_COLUMN, $declaredIds, true) && $this->hasLegacyIdColumn()) {
+        if (! in_array(self::LEGACY_ID_COLUMN, $declaredIds, true)
+            && LegacyIdVisibility::allows(Auth::user())
+            && $this->hasLegacyIdColumn()) {
             $idPosition = (int) array_search('id', array_column($columns, 'id'), true);
             array_splice($columns, $idPosition + 1, 0, [$this->defaultLegacyIdColumn()]);
         }

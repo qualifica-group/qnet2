@@ -52,6 +52,7 @@ export function AttributeDetailView({ attribute, onEdit }: AttributeDetailViewPr
           <RecordCardHeader
             media={<DetailMonogram name={attribute.name} icon={<SlidersHorizontal />} />}
             title={attribute.name}
+            legacyId={attribute.old_id}
             subtitle={attribute.code}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />

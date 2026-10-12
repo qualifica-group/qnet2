@@ -34,6 +34,7 @@ export function ReferentTypeDetailView({ referentType, onEdit }: ReferentTypeDet
           <RecordCardHeader
             media={<DetailMonogram name={referentType.name} icon={<Tag />} />}
             title={referentType.name}
+            legacyId={referentType.old_id}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
         }

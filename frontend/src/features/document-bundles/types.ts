@@ -14,6 +14,8 @@ import type { ResourcePermissions } from '@/features/authorization/types'
  */
 export interface DocumentBundle {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   description: string | null
   is_active: boolean

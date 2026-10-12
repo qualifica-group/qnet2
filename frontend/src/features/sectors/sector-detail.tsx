@@ -42,6 +42,7 @@ export function SectorDetailView({ sector, onEdit }: SectorDetailViewProps) {
               />
             }
             title={sector.name}
+            legacyId={sector.old_id}
             subtitle={sector.parent?.name}
             badges={
               sector.code !== null || !sector.is_active ? (

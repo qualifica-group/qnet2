@@ -53,7 +53,7 @@ it('exposes the 6 declared columns with the contracted flags, 403 without viewAn
         ->and($data['defaultPagination']['limit'])->toBe(25);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'old_id', 'name', 'description', 'items_count', 'is_active', 'created_at', 'updated_at']);
+    expect($ids)->toBe(['id', 'name', 'description', 'items_count', 'is_active', 'created_at', 'updated_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['name']['sortable'])->toBeTrue()

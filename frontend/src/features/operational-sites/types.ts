@@ -25,6 +25,8 @@ export interface GeoReference {
  */
 export interface OperationalSiteDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   /** The site's own free-text label (legacy `comune` when migrated). */
   alias: string | null
   line1: string

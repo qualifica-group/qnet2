@@ -31,7 +31,7 @@ it('returns the 12 columns in order with the declared flags, 403 without viewAny
     // `unit_of_measure` and the pre-existing `product_type` enum column, which
     // this module deliberately leaves in place (D-1).
     // Spec 0142: `usages` (the Offerta usages) right after `product_type`.
-    expect($ids)->toBe(['id', 'old_id', 'code', 'name', 'description', 'cost', 'price', 'category', 'unit_of_measure', 'product_typology', 'product_type', 'usages', 'created_at']);
+    expect($ids)->toBe(['id', 'code', 'name', 'description', 'cost', 'price', 'category', 'unit_of_measure', 'product_typology', 'product_type', 'usages', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['id']['sortable'])->toBeTrue()

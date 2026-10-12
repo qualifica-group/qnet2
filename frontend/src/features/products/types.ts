@@ -61,6 +61,8 @@ export interface ProductTypologySummary {
  */
 export interface ProductDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   /** Manual, unique, immutable-after-create code (spec 0065, `string(32)`); server-generated when omitted at create. */
   code: string
   name: string

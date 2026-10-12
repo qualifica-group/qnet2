@@ -36,6 +36,7 @@ export function TagDetailView({ tag, onEdit }: TagDetailViewProps) {
               <DetailMonogram name={tag.name} icon={<TagIcon />} className="size-10 text-base [&>svg]:size-5" />
             }
             title={tag.name}
+            legacyId={tag.old_id}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
         }

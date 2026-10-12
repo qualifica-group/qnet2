@@ -91,9 +91,8 @@ it('shows exactly the requested columns, in the requested order, and hides the r
         'source',
         'manager_ga1',
     ])->and($columns->where('visible', false)->pluck('id')->all())->toBe([
-        // The engine's own hidden row-id and legacy-id columns (InjectsDefaultIdColumn).
+        // The engine's own hidden row-id column (AbstractTableDefinition).
         'id',
-        'old_id',
         'pending_change_requests',
         'operational_site',
         'is_transferred',

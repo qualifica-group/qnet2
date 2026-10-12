@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Authorization\LegacyIdVisibility;
 use App\Models\Address;
 use App\Models\OperationalSite;
 use Illuminate\Http\Request;
@@ -28,6 +29,7 @@ class OperationalSiteResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id),
             'alias' => $this->alias,
             'line1' => $address?->line1,
             'postal_code' => $address?->postal_code,

@@ -14,6 +14,8 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
  */
 export interface TagDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   created_at: string
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */

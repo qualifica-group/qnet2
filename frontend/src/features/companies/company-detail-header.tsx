@@ -31,6 +31,7 @@ export function CompanyDetailHeader({ company, onEdit }: CompanyDetailHeaderProp
         />
       }
       title={company.denomination}
+      legacyId={company.old_id}
       subtitle={locationSummary(company.address)}
       actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />

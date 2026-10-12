@@ -46,6 +46,7 @@ export function BusinessFunctionDetailView({ businessFunction, onEdit }: Busines
           <RecordCardHeader
             media={<DetailMonogram name={businessFunction.name} icon={<Network />} />}
             title={businessFunction.name}
+            legacyId={businessFunction.old_id}
             badges={<Badge variant="secondary">{typeLabel(t, businessFunction.type)}</Badge>}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />

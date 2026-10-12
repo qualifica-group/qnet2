@@ -56,6 +56,8 @@ export interface TaskTemplateItem {
 /** Full template detail, as returned by GET/POST/PUT/PATCH /task-templates(/{id}). */
 export interface TaskTemplateDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   description: string | null
   is_active: boolean

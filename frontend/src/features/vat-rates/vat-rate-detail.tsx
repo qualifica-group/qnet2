@@ -48,6 +48,7 @@ export function VatRateDetailView({ vatRate, onEdit }: VatRateDetailViewProps) {
               />
             }
             title={vatRate.name}
+            legacyId={vatRate.old_id}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
         }

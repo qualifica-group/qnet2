@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Authorization\LegacyIdVisibility;
 use App\Models\Contact;
 use App\Models\PersonalData;
 use App\Models\Registry;
@@ -23,6 +24,7 @@ class RegistryResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id),
             'name' => $this->name,
             'source_id' => $this->source_id,
             'source' => $this->toRef($this->source),

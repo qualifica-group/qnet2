@@ -55,6 +55,7 @@ export function DocumentBundleDetailView({ documentBundle, onEdit }: DocumentBun
           <RecordCardHeader
             media={<DetailMonogram name={documentBundle.name} icon={<FolderArchive />} />}
             title={documentBundle.name}
+            legacyId={documentBundle.old_id}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
         }

@@ -27,6 +27,7 @@ export function ReferentDetailHeader({ referent }: { referent: ReferentDetailWit
     <RecordCardHeader
       media={<DetailMonogram name={referent.name} className="size-10 text-base" />}
       title={referent.name}
+      legacyId={referent.old_id}
       subtitle={referent.referent_type?.name}
       badges={
         <Badge variant="secondary" className="gap-1.5">

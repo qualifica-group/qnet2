@@ -94,6 +94,7 @@ export function CommissionConfigurationDetailView({
           <RecordCardHeader
             media={<DetailMonogram name={title} icon={<CircleDollarSign />} />}
             title={title}
+            legacyId={configuration.old_id}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
         }

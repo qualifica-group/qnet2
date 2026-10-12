@@ -57,7 +57,7 @@ it('returns the 7 columns in order with the declared flags, 403 without viewAny'
     $ids = collect($data['columns'])->pluck('id')->all();
     // Spec 0090, D-3: `user` is APPENDED after `created_at` (not inserted
     // earlier), so already-saved column layouts keep the same order.
-    expect($ids)->toBe(['id', 'old_id', 'name', 'referent_type', 'contact_scope', 'primary_contact', 'created_at', 'user']);
+    expect($ids)->toBe(['id', 'name', 'referent_type', 'contact_scope', 'primary_contact', 'created_at', 'user']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['name']['filterType'])->toBe('text')

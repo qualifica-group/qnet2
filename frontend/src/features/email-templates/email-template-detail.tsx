@@ -50,6 +50,7 @@ export function EmailTemplateDetailView({ emailTemplate, onEdit }: EmailTemplate
           <RecordCardHeader
             media={<DetailMonogram name={emailTemplate.name} icon={<Mail />} />}
             title={emailTemplate.name}
+            legacyId={emailTemplate.old_id}
             subtitle={emailTemplate.subject}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />

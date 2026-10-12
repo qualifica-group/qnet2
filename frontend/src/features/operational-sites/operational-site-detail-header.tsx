@@ -43,6 +43,7 @@ export function OperationalSiteDetailHeader({
         />
       }
       title={title}
+      legacyId={operationalSite.old_id}
       actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )

@@ -119,6 +119,8 @@ export interface EffectiveBusinessFunction {
  */
 export interface ProductCategoryDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   parent_id: number | null
   parent: { id: number; name: string } | null

@@ -46,6 +46,7 @@ const guide: HelpGuide = {
         },
         { type: 'paragraph', text: 'Le altre azioni stanno sotto **Configurazione avanzata**, nel riquadro **Azioni aggiuntive**: ad esempio **Esporta**, **Importa**, **Visualizza attività** e **Impersona**. Alcuni moduli hanno azioni proprie, come **Valida**, **Cambia stato** o **Visualizza tutti**.' },
         { type: 'paragraph', text: 'Nell\'area **Trasversali** trovi anche **Filtri salvati**, con il permesso **Pubblica filtri condivisi**: senza, un utente può salvare solo viste e filtri personalizzati privati, mai condivisi con i colleghi, su qualunque modulo con elenco.' },
+        { type: 'paragraph', text: 'Sempre in **Trasversali** c’è **ID legacy**, con il permesso **Visualizza**: mostra l’id del vecchio gestionale, come colonna **ID legacy** negli elenchi e come badge **OLD ID #123** accanto al titolo delle schede. Senza il permesso l’id non compare da nessuna parte; il super-admin lo vede sempre.' },
         { type: 'list', items: ['**Cerca moduli o permessi…** filtra l’albero.', '**Seleziona area** attiva tutti i permessi di un’area.', '**Seleziona tutti** attiva tutti i permessi di un modulo.', '**Seleziona tutti i permessi** attiva l’intero catalogo.', 'Accanto a ogni area e modulo un contatore indica i permessi scelti sul totale.'] },
       ],
     },

@@ -49,6 +49,7 @@ export function PaymentMethodDetailView({ paymentMethod, onEdit }: PaymentMethod
           <RecordCardHeader
             media={<DetailMonogram name={paymentMethod.name} icon={<CreditCard />} />}
             title={paymentMethod.name}
+            legacyId={paymentMethod.old_id}
             subtitle={paymentMethod.code}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />

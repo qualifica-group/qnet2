@@ -176,6 +176,9 @@ return [
         // Spec 0158: `table-filter-views.publish` gates `visibility: shared`
         // on a saved filter view — a real permission with no form of its own.
         'table-filter-views',
+        // `legacy-ids.view` (LegacyIdPolicy): see the legacy `old_id` on grids
+        // and record details — cross-cutting, no form of its own.
+        'legacy-ids',
     ],
 
 ];

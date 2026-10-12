@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Authorization\LegacyIdVisibility;
 use App\Enums\ColorPresetEnum;
 use App\Enums\DateFormatEnum;
 use App\Enums\TimeFormatEnum;
@@ -47,6 +48,7 @@ class UserResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id),
             'name' => $this->name,
             'email' => $this->email,
             'locale' => $this->locale,

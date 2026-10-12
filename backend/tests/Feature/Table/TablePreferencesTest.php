@@ -38,7 +38,7 @@ it('exposes order and width on every column in the default config', function () 
     // Default order follows declaration order.
     $ids = collect(columnsConfig($this))->pluck('id')->all();
     expect($ids)->toBe([
-        'id', 'old_id', 'avatar_url', 'name', 'email', 'roles', 'locale', 'is_active', 'created_at',
+        'id', 'avatar_url', 'name', 'email', 'roles', 'locale', 'is_active', 'created_at',
         'user_type', 'primary_address', 'country', 'region', 'province', 'city', 'primary_contact',
         // spec 0015 — the 9 employment-derived columns.
         'business_function', 'company', 'operational_site', 'relationship_type',
@@ -94,16 +94,16 @@ it('persists only the deviations from the default (sparse delta)', function () {
     $user = userWithUserAbilities(['viewAny']);
     Sanctum::actingAs($user);
 
-    // Default order is id=1, old_id=2, avatar_url=3, name=4, email=5, roles=6,
-    // locale=7, is_active=8, created_at=9. Only orders that deviate from the default are persisted.
+    // Default order is id=1, avatar_url=2, name=3, email=4, roles=5, locale=6,
+    // is_active=7, created_at=8. Only orders that deviate from the default are persisted.
     $this->postJson('/api/tables/users/preferences', [
         'columns' => [
             ['id' => 'email', 'visible' => false, 'order' => 1],
-            ['id' => 'name', 'width' => 400, 'order' => 4], // order 4 == default → not stored
+            ['id' => 'name', 'width' => 400, 'order' => 3], // order 3 == default → not stored
             ['id' => 'id', 'order' => 2],
-            ['id' => 'roles', 'order' => 6],
-            ['id' => 'locale', 'order' => 7],
-            ['id' => 'created_at', 'order' => 9],
+            ['id' => 'roles', 'order' => 5],
+            ['id' => 'locale', 'order' => 6],
+            ['id' => 'created_at', 'order' => 8],
         ],
     ])->assertOk();
 

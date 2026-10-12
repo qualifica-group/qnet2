@@ -29,6 +29,8 @@ export interface CompanySiteBank {
  */
 export interface CompanySiteDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   notes: string | null
   is_default: boolean

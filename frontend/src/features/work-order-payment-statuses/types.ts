@@ -14,6 +14,8 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 /** Single status returned by GET/POST/PATCH /work-order-payment-statuses (envelope `data`). */
 export interface WorkOrderPaymentStatusDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   description: string | null
   /** Palette token (e.g. "blue"), always set. */

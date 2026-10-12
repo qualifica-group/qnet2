@@ -33,6 +33,8 @@ export interface ReferentUserRef {
  */
 export interface ReferentDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   referent_type_id: number | null
   /** Hydrates the "Referent type" single-select control. */

@@ -6,26 +6,32 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
 /**
- * The default hidden `old_id` column (InjectsDefaultIdColumn): injected right
- * after `id` on every table whose model table carries the legacy id, absent
- * elsewhere, and backed by the row payload (TableService).
+ * The legacy `old_id`, visible only to super-admin or to a role holding
+ * `legacy-ids.view` (LegacyIdVisibility): the default hidden grid column
+ * (InjectsDefaultIdColumn), the grid rows (TableService) and the record
+ * Resources, plus its place in the Role form catalogue.
+ *
+ * @param  array<int, string>  $abilities  `<domain>.<ability>` permissions to grant
  */
-function legacyIdActorFor(string $domain): User
+function legacyIdActor(array $abilities, bool $seesLegacyIds = true): User
 {
-    Permission::findOrCreate("{$domain}.viewAny");
-
     $user = User::factory()->create();
-    $user->givePermissionTo("{$domain}.viewAny");
+
+    foreach ([...$abilities, ...($seesLegacyIds ? ['legacy-ids.view'] : [])] as $permission) {
+        Permission::findOrCreate($permission);
+        $user->givePermissionTo($permission);
+    }
 
     return $user;
 }
 
 it('injects a hidden sortable old_id column right after id when the table has a legacy id', function () {
-    Sanctum::actingAs(legacyIdActorFor('tags'));
+    Sanctum::actingAs(legacyIdActor(['tags.viewAny']));
 
     $columns = collect($this->getJson('/api/tables/tags/columns')->assertOk()->json('data.columns'));
 
@@ -41,7 +47,7 @@ it('injects a hidden sortable old_id column right after id when the table has a 
 });
 
 it('places old_id after a table-declared id column', function () {
-    Sanctum::actingAs(userWithUserAbilities(['viewAny']));
+    Sanctum::actingAs(legacyIdActor(['users.viewAny']));
 
     $ids = collect($this->getJson('/api/tables/users/columns')->assertOk()->json('data.columns'))->pluck('id');
     $idPosition = $ids->search('id');
@@ -51,7 +57,7 @@ it('places old_id after a table-declared id column', function () {
 });
 
 it('does not inject old_id on a table without a legacy id', function () {
-    Sanctum::actingAs(legacyIdActorFor('reward-types'));
+    Sanctum::actingAs(legacyIdActor(['reward-types.viewAny']));
 
     $ids = collect($this->getJson('/api/tables/reward-types/columns')->assertOk()->json('data.columns'))->pluck('id');
 
@@ -59,7 +65,7 @@ it('does not inject old_id on a table without a legacy id', function () {
 });
 
 it('returns old_id in the rows and sorts by it', function () {
-    Sanctum::actingAs(legacyIdActorFor('tags'));
+    Sanctum::actingAs(legacyIdActor(['tags.viewAny']));
 
     Tag::factory()->create(['old_id' => 20]);
     Tag::factory()->create(['old_id' => 30]);
@@ -75,7 +81,7 @@ it('returns old_id in the rows and sorts by it', function () {
 });
 
 it('leaves the row payload without old_id on a table without a legacy id', function () {
-    Sanctum::actingAs(legacyIdActorFor('reward-types'));
+    Sanctum::actingAs(legacyIdActor(['reward-types.viewAny']));
 
     RewardType::factory()->create();
 
@@ -84,4 +90,51 @@ it('leaves the row payload without old_id on a table without a legacy id', funct
 
     expect($rows)->not->toBeEmpty()
         ->and($rows[0])->not->toHaveKey('old_id');
+});
+
+it('hides the old_id column and row value from an actor without legacy-ids.view', function () {
+    Sanctum::actingAs(legacyIdActor(['tags.viewAny'], seesLegacyIds: false));
+
+    Tag::factory()->create(['old_id' => 42]);
+
+    $ids = collect($this->getJson('/api/tables/tags/columns')->assertOk()->json('data.columns'))->pluck('id');
+    $rows = $this->postJson('/api/tables/tags/rows', ['startRow' => 0, 'endRow' => 25])->assertOk()->json('items');
+
+    expect($ids)->toContain('id')->not->toContain('old_id')
+        ->and($rows[0])->not->toHaveKey('old_id');
+});
+
+it('shows old_id to a super-admin without the explicit permission', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole(Role::findOrCreate('super-admin'));
+    Sanctum::actingAs($admin);
+
+    $target = Tag::factory()->create(['old_id' => 7]);
+
+    $ids = collect($this->getJson('/api/tables/tags/columns')->assertOk()->json('data.columns'))->pluck('id');
+
+    expect($ids)->toContain('old_id');
+    $this->getJson("/api/tags/{$target->id}")->assertOk()->assertJsonPath('data.old_id', 7);
+});
+
+it('exposes old_id on the record detail only to an actor who may see it', function () {
+    $target = Tag::factory()->create(['old_id' => 123]);
+
+    Sanctum::actingAs(legacyIdActor(['tags.view']));
+    $this->getJson("/api/tags/{$target->id}")->assertOk()->assertJsonPath('data.old_id', 123);
+
+    Sanctum::actingAs(legacyIdActor(['tags.view'], seesLegacyIds: false));
+    expect($this->getJson("/api/tags/{$target->id}")->assertOk()->json('data'))->not->toHaveKey('old_id');
+});
+
+it('offers legacy-ids.view in the shared area of the Role form catalogue', function () {
+    $this->artisan('permissions:sync');
+    Sanctum::actingAs(legacyIdActor(['roles.viewAny'], seesLegacyIds: false));
+
+    $shared = collect($this->getJson('/api/authorization/permission-catalogue')->assertOk()->json('data.areas'))
+        ->firstWhere('key', 'shared');
+    $module = collect($shared['resources'])->firstWhere('resource', 'legacy-ids');
+
+    expect($module)->not->toBeNull()
+        ->and(collect($module['permissions'])->pluck('name')->all())->toBe(['legacy-ids.view']);
 });

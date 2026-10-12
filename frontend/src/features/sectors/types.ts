@@ -26,6 +26,8 @@ export interface SectorTreeNode {
  */
 export interface SectorDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   /** Verbatim code (01, 07a, NA), spec 0213; null when none. */
   code: string | null
   name: string

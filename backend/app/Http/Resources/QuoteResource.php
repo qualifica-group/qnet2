@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Authorization\LegacyIdVisibility;
 use App\Enums\FormMode;
 use App\Http\Resources\Concerns\SummarizesProductLines;
 use App\Http\Resources\Concerns\SummarizesRewards;
@@ -128,6 +129,7 @@ class QuoteResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id),
             'code' => $this->code,
             'title' => $this->title,
             // Spec 0171 rev.2: true when the title was typed by the user.

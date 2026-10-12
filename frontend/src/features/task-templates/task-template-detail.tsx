@@ -97,6 +97,7 @@ export function TaskTemplateDetailView({ taskTemplate, onEdit }: TaskTemplateDet
           <RecordCardHeader
             media={<DetailMonogram name={taskTemplate.name} icon={<ListChecks />} />}
             title={taskTemplate.name}
+            legacyId={taskTemplate.old_id}
             subtitle={t('taskTemplates.detail.itemsCount', { count: taskTemplate.items_count })}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />

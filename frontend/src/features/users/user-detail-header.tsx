@@ -31,6 +31,7 @@ export function UserDetailHeader({ user, canUpdate = false }: UserDetailHeaderPr
     <RecordCardHeader
       media={<UserAvatar name={user.name} src={user.avatar_url} size="lg" />}
       title={user.name}
+      legacyId={user.old_id}
       subtitle={user.email}
       badges={
         <>

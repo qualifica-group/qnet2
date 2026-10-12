@@ -129,6 +129,8 @@ export interface WorkOrderFormContext {
  */
 export interface WorkOrderDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   /** `COM-0001`, unique, immutable after create (D-1). */
   code: string
   title: string

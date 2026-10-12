@@ -141,6 +141,8 @@ export const permissions = {
     'vat-rates': 'IVA',
     // Spec 0158: modulo permission-only, trasversale a tutte le tabelle (filtri personalizzati/viste salvate).
     'table-filter-views': 'Filtri salvati',
+    // Permission-only: vedere l'old id (ID legacy) in griglie e schede (`legacy-ids.view`).
+    'legacy-ids': 'ID legacy',
   },
   areas: {
     // Area finale dell'albero: moduli permission-only assegnabili ma senza

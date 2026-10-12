@@ -33,6 +33,7 @@ export function ProductDetailHeader({ product }: { product: ProductDetailWithPer
     <RecordCardHeader
       media={<DetailMonogram name={product.name} icon={<Package />} className="size-10 text-base [&>svg]:size-5" />}
       title={product.name}
+      legacyId={product.old_id}
       subtitle={product.category?.name}
       badges={
         <>

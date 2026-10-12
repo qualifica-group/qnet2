@@ -113,6 +113,8 @@ export interface OpportunityRewardInput {
  */
 export interface OpportunityDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   registry_id: number
   registry: OpportunityRelationRef | null

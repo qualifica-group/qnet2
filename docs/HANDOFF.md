@@ -3,21 +3,32 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## COLONNA `old_id` IN TUTTE LE GRIGLIE (2026-10-12) — VERDE, COMMITTATO
+## OLD ID: COLONNA NELLE GRIGLIE + BADGE NELLE SCHEDE, DIETRO PERMESSO (2026-10-12) — VERDE, COMMITTATO
 
-- Richiesta utente: in ogni tabella, oltre all'id, anche l'old_id. Decisioni utente: solo dove la tabella DB ha gia'
-  `old_id` (31 griglie su 57, nessuna migrazione); nascosta di default come l'id.
-- `InjectsDefaultIdColumn::columnsWithDefaultId()` inietta `old_id` (label `table.columns.old_id`, number, sortable,
-  non filtrabile, `visible:false`) subito DOPO la colonna `id` (iniettata o dichiarata), se `Schema::hasColumn` sul
-  table di `modelClass()` (memo statico per connessione+tabella) e il catalogo non la dichiara gia'.
-- `TableService::mapRowWithMeta` aggiunge `old_id` al payload riga quando il model lo ha tra gli attributi (`??=`, un
-  mapRow che lo espone gia' vince). Export invariato (usa `columns()` grezzo).
-- Effetto noto: l'ordine di default delle colonne dopo `id` scala di 1 (layout salvati: al piu' piccoli riordini a
-  parita' di order, come per l'id iniettato).
-- i18n `table.columns.old_id` = "ID legacy" / "Legacy ID"; guida `general` IT/EN e manuale Claude Docs (riga Colonne).
-- Test: nuovo `tests/Feature/Table/TableLegacyIdColumnTest.php`; aggiornati (requisito cambiato) 20 test con l'elenco
-  esatto delle colonne + `TablePreferencesTest` (order di default). Suite Pest: tutto verde tranne 3
-  `QuoteDocumentPdfTest` (LibreOffice assente sulla macchina, non correlati). Vitest help+i18n 310, ESLint, `tsc -b` ok.
+- Richieste utente: in ogni tabella, oltre all'id, anche l'old_id (committato in 39ffecc6); poi nel dettaglio un badge
+  evidenziato "OLD ID #123" accanto al titolo; visibile solo a super-admin o a chi ha il permesso.
+- Decisioni utente: solo dove la tabella DB ha gia' `old_id` (31 griglie su 57, 25 schede; nessuna migrazione);
+  colonna nascosta di default come l'id; badge formato `OLD ID #123`.
+- Permesso `legacy-ids.view`: `LegacyIdPolicy` (solo catalogo, abilities ['view'], come TableFilterViewPolicy) +
+  `config('authorization.permission_only_resources')` -> area "Trasversali" del form ruoli. Controllo unico
+  `App\Authorization\LegacyIdVisibility::allows(?User)` (super-admin via Gate::before). Applicato ANCHE alla colonna
+  delle griglie (scelta coerente: altrimenti il permesso non proteggerebbe nulla).
+- Griglie: `InjectsDefaultIdColumn::columnsWithDefaultId()` inietta `old_id` dopo `id` se il table ha la colonna
+  (`Schema::hasColumn`, memo statico) e `LegacyIdVisibility::allows(Auth::user())`; `TableService::mapRowWithMeta`
+  lo mette nel payload riga solo per `$actor` autorizzato. Export invariato.
+- Schede: 25 Resource con `'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id)`
+  (CompanySiteResource: `coreFields(Request $request)`). FE: `RecordCardHeader` prop `legacyId` ->
+  `components/detail/legacy-id-badge.tsx` (Badge outline minimal, testo `text-[11px]` muted — richiesta utente "piu' minimal"; i18n `common.legacyIdBadge`); `old_id?: number | null` sui
+  25 tipo `*Detail`. Nessun `can()` lato FE: l'assenza del campo nasconde il badge.
+- i18n: `table.columns.old_id`, `common.legacyIdBadge`, `permissions.resources.legacy-ids`. Guide `general` e
+  `roles` IT/EN + manuale Claude Docs aggiornati.
+- Test: `tests/Feature/Table/TableLegacyIdColumnTest.php` (9: colonna, righe, sort, negativo senza permesso,
+  super-admin, Resource dettaglio, catalogo ruoli); i 21 test "elenco colonne" tornati com'erano (attori senza
+  permesso); `PermissionCatalogueEndpointTest` AC-006 aggiornato (area shared + legacy-ids). FE
+  `legacy-id-badge.test.tsx`. Pest: verde tranne 3 `QuoteDocumentPdfTest` (LibreOffice assente). Vitest 979 file /
+  7391 test, ESLint, `tsc -b` puliti sui miei file (errori `time-entries` = lavoro in corso di un'altra sessione).
+- Prossimo passo: commit su ordine esplicito; ricordare all'utente di assegnare "ID legacy > Visualizza" ai ruoli
+  (dopo `php artisan permissions:sync` in deploy).
 
 ## PROVINCE COME DESTINAZIONE DEI CAMPI RELAZIONE (spec 0225, 2026-10-12) — VERDE, COMMITTATO
 

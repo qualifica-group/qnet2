@@ -63,6 +63,7 @@ export function WorkOrderDetailHeader({ workOrder, onChanged }: WorkOrderDetailH
         <DetailMonogram name={workOrder.title} icon={<Hammer />} className="size-10 text-base [&>svg]:size-5" />
       }
       title={workOrder.title}
+      legacyId={workOrder.old_id}
       subtitle={workOrder.code}
       badges={
         <>

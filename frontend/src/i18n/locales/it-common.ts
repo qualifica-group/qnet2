@@ -42,6 +42,8 @@ export const common = {
     collapse: 'Comprimi pannello laterale',
     expand: 'Espandi pannello laterale',
   },
+  /** Badge next to a record title: its legacy id, shown only to who may see it (`legacy-ids.view`). */
+  legacyIdBadge: 'OLD ID #{{id}}',
   /** In-place editing of a record's rows (spec 0195): the pencil, and the open row's confirm/cancel. */
   inlineEdit: {
     edit: 'Modifica {{field}}',

@@ -36,6 +36,8 @@ export interface CompanyAddress {
  */
 export interface CompanyDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   denomination: string
   vat_number: string | null
   address: CompanyAddress | null
