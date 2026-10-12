@@ -272,15 +272,13 @@ export const en = {
     },
     detail: {
       title: 'Role details',
-      subtitle: 'Read-only view of the selected role.',
+      subtitle: 'Details of the selected role.',
       loadError: 'Unable to load the role. Please try again.',
     },
     form: {
       newRole: 'New role',
       createTitle: 'Create role',
       createSubtitle: 'Add a new role and choose its permissions.',
-      editTitle: 'Edit role',
-      editSubtitle: 'Update the selected role and its permissions.',
       name: 'Name',
       permissions: 'Permissions',
       selectAll: 'Select all',
@@ -306,13 +304,16 @@ export const en = {
       sections: {
         details: {
           title: 'Role details',
-          description: 'Role name and the users it is assigned to.',
         },
         permissions: {
           title: 'Permissions',
-          description:
-            'Grouped by domain. Advanced permissions live in the dedicated configuration.',
         },
+      },
+      leaveConfirm: {
+        title: 'Leave without saving?',
+        description: 'The role has not been created yet: the data you entered will be lost.',
+        confirm: 'Leave without saving',
+        cancel: 'Keep editing',
       },
       advanced: 'Advanced configuration',
       advancedActions: 'Additional actions',

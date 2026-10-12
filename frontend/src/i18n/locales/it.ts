@@ -263,15 +263,13 @@ export const it: TranslationResources = {
     },
     detail: {
       title: 'Dettaglio ruolo',
-      subtitle: 'Visualizzazione in sola lettura del ruolo selezionato.',
+      subtitle: 'Dettagli del ruolo selezionato.',
       loadError: 'Impossibile caricare il ruolo. Riprova.',
     },
     form: {
       newRole: 'Nuovo ruolo',
       createTitle: 'Crea ruolo',
       createSubtitle: 'Aggiungi un nuovo ruolo e scegli i suoi permessi.',
-      editTitle: 'Modifica ruolo',
-      editSubtitle: 'Aggiorna il ruolo selezionato e i suoi permessi.',
       name: 'Nome',
       permissions: 'Permessi',
       selectAll: 'Seleziona tutti',
@@ -297,13 +295,16 @@ export const it: TranslationResources = {
       sections: {
         details: {
           title: 'Dettagli ruolo',
-          description: 'Nome del ruolo e utenti a cui è assegnato.',
         },
         permissions: {
           title: 'Permessi',
-          description:
-            'Raggruppati per dominio. I permessi avanzati sono nella configurazione dedicata.',
         },
+      },
+      leaveConfirm: {
+        title: 'Uscire senza salvare?',
+        description: 'Il ruolo non è ancora stato creato: i dati inseriti andranno persi.',
+        confirm: 'Esci senza salvare',
+        cancel: 'Continua a compilare',
       },
       advanced: 'Configurazione avanzata',
       advancedActions: 'Azioni aggiuntive',

@@ -13,10 +13,10 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'create-edit-role',
-      title: 'Creating or editing a role',
+      id: 'create-role',
+      title: 'Creating a role',
       blocks: [
-        { type: 'steps', items: ['Open **Administration › Roles**.', 'Click **New role**, or open a role with **View** and press **Edit**.', 'In **Role details** type the **Name**. If you want, pick the users right away in **Members**.', 'In the **Permissions** section, choose what the role can do.', 'Click **Save**.'] },
+        { type: 'steps', items: ['Open **Administration › Roles**.', 'Click **New role**: the new role\'s record opens, with the same sections as a saved role.', 'In **Role details** the **Name** and **Members** rows are closed: press the pencil (or the value), fill it in and press **Done**; **Revert** puts the row back as it was.', 'The **Permissions** section is already open: choose what the role can do. If the module has custom fields, they appear in a separate section (**Other fields**).', 'Click **Save**. If you leave before, QNet asks you to confirm: the role has not been created yet.'] },
         {
           type: 'table',
           headers: ['Field', 'What to enter'],
@@ -26,6 +26,15 @@ const guide: HelpGuide = {
             ['**Permissions**', 'The allowed actions, module by module.'],
           ],
         },
+      ],
+    },
+    {
+      id: 'editing-a-role',
+      title: 'Editing a role',
+      blocks: [
+        { type: 'paragraph', text: 'A role\'s record has no edit form: every row is edited in place. Press the pencil on **Name** or **Members**, change the value and press **Save**; **Cancel** or Esc leave the row as it was. Each save sends only the row you changed.' },
+        { type: 'paragraph', text: '**Permissions** is a single full-width row: the pencil opens the same explorer used when creating (actions and field permissions). Press **Save** to save the permissions, **Cancel** to discard the changes.' },
+        { type: 'note', text: 'If the role cannot be edited (like **super-admin**) or you lack the edit permission, the rows have no pencil and stay read-only.' },
       ],
     },
     {

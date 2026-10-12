@@ -11,15 +11,15 @@ import type { CustomFieldDescriptor } from '@/features/custom-fields/types'
 /**
  * Spec 0021: the roles module wires the universal custom-fields renderer
  * (mirrors `company-form-custom-fields.test.tsx`) — mounting
- * `<CustomFieldsSection>` is the only roles-specific integration.
+ * `<CustomFieldRecordSections>` is the only roles-specific integration (rows
+ * closed until clicked, spec 0230). The detail's in-place edit of a custom field
+ * lives in `role-detail-inline-edit.test.tsx`.
  */
 
 const createRoleMock = vi.fn()
-const updateRoleMock = vi.fn()
 
 vi.mock('@/features/roles/api', () => ({
   createRole: (...args: unknown[]) => createRoleMock(...args),
-  updateRole: (...args: unknown[]) => updateRoleMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
@@ -79,6 +79,9 @@ function permissionsWithNotes(): ResourcePermissions {
   }
 }
 
+const findPencilOf = (field: string) =>
+  screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field }) })
+
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
@@ -104,18 +107,15 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createRoleMock.mockReset()
-  updateRoleMock.mockReset()
   fetchResourceMetaMock.mockReset()
   fetchResourceMetaMock.mockResolvedValue({ fields: [NOTES_FIELD], permissions: permissionsWithNotes() })
 })
 
 describe('RoleForm — custom fields (spec 0021)', () => {
   it('renders the resource custom field control in create mode', async () => {
-    render(
-      <RoleForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    render(<RoleForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    fireEvent.click(await findPencilOf('Notes'))
     expect(await screen.findByRole('textbox', { name: 'Notes' })).toBeInTheDocument()
   })
 
@@ -123,36 +123,20 @@ describe('RoleForm — custom fields (spec 0021)', () => {
     createRoleMock.mockResolvedValue(role())
     const onSuccess = vi.fn()
 
-    render(
-      <RoleForm
-        mode={{ type: 'create' }}
-        onSuccess={onSuccess}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    render(<RoleForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'Editor' } })
+    fireEvent.click(await findPencilOf('Name'))
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Editor' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.apply') }))
+    fireEvent.click(await findPencilOf('Notes'))
     fireEvent.change(await screen.findByRole('textbox', { name: 'Notes' }), {
       target: { value: 'Key role' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.apply') }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(createRoleMock).toHaveBeenCalledTimes(1))
     const payload = createRoleMock.mock.calls[0][0]
     expect(payload.custom_fields).toEqual({ notes: 'Key role' })
-  })
-
-  it('seeds the custom field value from the loaded role detail in edit mode', async () => {
-    render(
-      <RoleForm
-        mode={{ type: 'edit', role: role({ custom_fields: { notes: 'Existing note' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(await screen.findByRole('textbox', { name: 'Notes' })).toHaveValue('Existing note')
   })
 })

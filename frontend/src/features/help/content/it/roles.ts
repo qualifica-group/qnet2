@@ -13,10 +13,10 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'create-edit-role',
-      title: 'Creare o modificare un ruolo',
+      id: 'create-role',
+      title: 'Creare un ruolo',
       blocks: [
-        { type: 'steps', items: ['Apri **Amministrazione › Ruoli**.', 'Fai clic su **Nuovo ruolo**, oppure apri un ruolo con **Visualizza** e premi **Modifica**.', 'In **Dettagli ruolo** scrivi il **Nome**. Se vuoi, scegli subito gli utenti in **Membri**.', 'Nella sezione **Permessi** scegli cosa può fare il ruolo.', 'Fai clic su **Salva**.'] },
+        { type: 'steps', items: ['Apri **Amministrazione › Ruoli**.', 'Fai clic su **Nuovo ruolo**: si apre la scheda del nuovo ruolo, con le stesse sezioni di un ruolo già salvato.', 'In **Dettagli ruolo** le righe **Nome** e **Membri** sono chiuse: premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com\'era.', 'La sezione **Permessi** è già aperta: scegli cosa può fare il ruolo. Se il modulo ha campi personalizzati, compaiono in una sezione a parte (**Altri campi**).', 'Fai clic su **Salva**. Se esci prima, QNet chiede di confermare: il ruolo non è ancora stato creato.'] },
         {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],
@@ -26,6 +26,15 @@ const guide: HelpGuide = {
             ['**Permessi**', 'Le azioni consentite, modulo per modulo.'],
           ],
         },
+      ],
+    },
+    {
+      id: 'editing-a-role',
+      title: 'Modificare un ruolo',
+      blocks: [
+        { type: 'paragraph', text: 'La scheda di un ruolo non ha un modulo di modifica: ogni riga si modifica sul posto. Premi la matita su **Nome** o **Membri**, cambia il valore e premi **Salva**; **Annulla** o Esc lasciano la riga com\'era. Ogni salvataggio invia solo la riga che hai cambiato.' },
+        { type: 'paragraph', text: '**Permessi** è un\'unica riga a tutta larghezza: la matita apre lo stesso esploratore della creazione (azioni e permessi sui campi). Premi **Salva** per salvare i permessi, **Annulla** per scartare le modifiche.' },
+        { type: 'note', text: 'Se il ruolo non è modificabile (come **super-admin**) o non hai il permesso di modifica, le righe non hanno la matita e restano in sola lettura.' },
       ],
     },
     {

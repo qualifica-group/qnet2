@@ -8,6 +8,11 @@ import type {
   UpdateRolePayload,
 } from '@/features/roles/types'
 
+/** Cache key of a role's detail, shared by the fetch and the in-place save that seeds it. */
+export function roleDetailQueryKey(id: number) {
+  return ['roles', 'detail', id] as const
+}
+
 /**
  * Fetches a single role detail together with the actor's authorization
  * metadata for it (the envelope's top-level `permissions` sibling of `data`,
@@ -32,16 +37,19 @@ export async function createRole(
   return data.data
 }
 
-/** Partially updates a role (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a role (PATCH). Returns the updated resource with the
+ * actor's authorization metadata, so the in-place detail can replace its
+ * cached copy without a second request.
+ */
 export async function updateRole(
   id: number,
   payload: UpdateRolePayload,
-): Promise<RoleDetail> {
-  const { data } = await apiClient.patch<ApiResponse<RoleDetail>>(
-    `/roles/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<RoleDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<RoleDetail, ResourcePermissions>
+  >(`/roles/${id}`, payload)
+  return { ...data.data, authorization: data.permissions }
 }
 
 /** Deletes a role. Backend responds 204 with no body. */

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0230-role-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Il Ruolo riceve le stesse modifiche dei moduli gia' migrati (spec 0195-0200, 0216-0222, 0226, 0227): niente
+    pagina di modifica, il dettaglio si edita sul posto riga per riga; la creazione e' una replica del dettaglio.
+    Onda 2 del piano "nessuna pagina di modifica" (utente 2026-10-12).
+  </goal>
+
+  <context>
+    - D-1: regole 0195 D-2/D-3/D-6/D-8 con `RecordInlineField`, `useDraftInlineEdit`, `useFormLeaveGuard`; nessuna
+      modifica backend (PATCH /api/roles/{id} parziale esistente; la risposta porta gia' `permissions`, quindi
+      `updateRole` restituisce `RoleDetailWithPermissions` e popola la cache del dettaglio).
+    - D-2: sezione "Dettagli ruolo": Nome e Membri, una riga ciascuno; il salvataggio invia il solo campo cambiato
+      (`buildUpdatePayload` e' un diff: una riga chiusa non differisce mai dal ruolo salvato). Salvare una riga
+      invariata la chiude senza chiamate. I membri sono mostrati per nome (`useForSelectLabels`).
+    - D-3: "Permessi" e' UNA riga a tutta larghezza (`layout="block"`, chiave `permissions`, il permesso di campo che
+      gia' governa l'esploratore): la matita apre lo stesso esploratore della creazione (azioni + matrice permessi
+      campo, spec 0076/0006), Salva invia `permissions` e/o `field_permissions` cambiati. Chiusa mostra le azioni
+      concesse raggruppate per Area > Modulo, come prima. Il ruolo protetto (super-admin) non ha matita sulla riga:
+      lo decide il metadato `permissions`/`name` del backend, come prima disabilitava il campo.
+    - D-4: i campi personalizzati (spec 0021) sono righe del dettaglio via `CustomFieldRecordSections`, sezioni a
+      parte come nei moduli gia' migrati.
+    - D-5: creazione = replica del dettaglio: banda d'identita' con nome live e Annulla/Salva, "Dettagli ruolo" a
+      righe chiuse (Fatto/Ripristina), esploratore permessi APERTO (e' un editor, non un campo), campi
+      personalizzati a righe chiuse, azioni ripetute in fondo, conferma di uscita. Il quick-create dei ruoli usa lo
+      stesso `RoleForm`.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica.</backend>
+    <frontend>
+      Registry `roles`: `generateEditRoute: false`, `formOwnsHeader: true`; `RoleDetailView` riceve `role` (il
+      fetch passa a `RoleDetailScreen`) e `onChanged`, perde `onEdit`; `RoleForm` solo creazione (senza `mode`);
+      nuovi `roleDetailQueryKey`, `useRoleInlineEdit`, `useRoleFormState` (stato condiviso create/inline),
+      `PermissionsEditor` (ex `PermissionsSection` senza cornice `FormSection`), `RoleNameField`/`RoleUsersField`,
+      `RoleIdentityRecordSection`/`RolePermissionsRecordSection`, `RoleMembers`/`RolePermissionsOverview`.
+      Rimossi `useRoleFormMeta`, i18n `roles.form.editTitle/editSubtitle` e le descrizioni di sezione; aggiunto
+      `roles.form.leaveConfirm`.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/roles/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su Nome/Membri: Salva invia il solo campo; Annulla/Esc non chiamano.</ac>
+    <ac id="AC-003">Matita su Permessi: Salva invia solo `permissions` e/o `field_permissions`; la matrice parte dai
+      valori salvati.</ac>
+    <ac id="AC-004">Senza permesso di modifica, o su un campo non modificabile, nessuna matita.</ac>
+    <ac id="AC-005">Creazione: Dettagli a righe chiuse, esploratore aperto, Salva crea tutto, uscita con conferma.</ac>
+    <ac id="AC-006">Guida in-app IT/EN `roles` aggiornata (sezioni `create-role`, `editing-a-role`).</ac>
+  </acceptance>
+</spec>

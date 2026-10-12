@@ -63,7 +63,6 @@ const roles: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <RoleForm
-          mode={{ type: 'create' }}
           onSuccess={(role) => onSuccess({ id: role.id, name: role.name })}
           onCancel={onCancel}
         />
