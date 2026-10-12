@@ -69,6 +69,8 @@ export const permissions = {
     sendEmail: 'Inviare email',
     revealCardNumber: 'Rivelare numero carta',
     collect: 'Registra incassi',
+    // Spec 0211: fatture passive.
+    pay: 'Registra pagamenti',
     // Spec 0208: richieste di acquisto (RDA).
     fulfill: 'Evadere le righe (ordinare, ricevere)',
     manageStatuses: 'Gestire qualsiasi stato riga',
@@ -138,6 +140,8 @@ export const permissions = {
     'cost-types': 'Tipi di costo',
     invoices: 'Fatture Attive',
     'invoice-installments': 'Scadenze',
+    'purchase-invoices': 'Fatture Passive',
+    'purchase-invoice-installments': 'Scadenze Passive',
     'product-typologies': 'Tipologie Prodotto',
     // Modulo Task e i suoi cinque configuratori (spec 0101).
     tasks: 'Task',

@@ -85,6 +85,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         'cost-types',
         // spec 0210 `purchase-orders` (PurchaseOrdersAuthorization: the ODA header fields).
         'purchase-orders',
+        // spec 0211 `purchase-invoice-installments` (PurchaseInvoiceInstallmentsAuthorization: due date/payment
+        // method code editable, amounts, payment state and account visible-readonly).
+        'purchase-invoice-installments',
         // spec 0185 `request-statistics` (RequestStatisticsAuthorization: a view-only module, no
         // field — registered only so its permission is assignable from the Role form).
         'request-statistics',

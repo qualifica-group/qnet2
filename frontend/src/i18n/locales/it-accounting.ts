@@ -9,6 +9,7 @@ import { invoiceInstallments } from './it-invoice-installments'
 import { invoices } from './it-invoices'
 import { paymentMethods } from './it-payment-methods'
 import { proformaRequests } from './it-proforma-requests'
+import { purchaseInvoiceInstallments } from './it-purchase-invoice-installments'
 
 export const accounting = {
   financialAccounts,
@@ -16,5 +17,6 @@ export const accounting = {
   paymentMethods,
   invoices,
   invoiceInstallments,
+  purchaseInvoiceInstallments,
   invoiceEditor,
 }

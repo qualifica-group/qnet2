@@ -166,6 +166,10 @@ class PurchaseOrderService
             $locked = $this->lock($order);
             $this->assertEditable($locked);
 
+            if ($locked->purchaseInvoices()->exists()) {
+                abort(409, 'This purchase order is linked to a purchase invoice.');
+            }
+
             $lines = $locked->lines()->lockForUpdate()->get();
             $this->linker->unlink($lines, $actor);
 

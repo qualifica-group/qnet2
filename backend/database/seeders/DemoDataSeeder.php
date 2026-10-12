@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Opportunity;
+use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\Quote;
@@ -47,7 +48,9 @@ class DemoDataSeeder extends Seeder
         // chance to clear their own rows. All four tables are re-seeded
         // below (same pre-clear pattern as DemoProjectSeeder with campaigns).
         // Invoices go first: they restrict their customer registry and company.
+        // Payable documents likewise, and they restrict the purchase orders they bill.
         Invoice::query()->delete();
+        PurchaseInvoice::query()->delete();
         PurchaseOrder::query()->delete();
         PurchaseRequest::query()->delete();
         WorkOrder::query()->delete();
@@ -142,6 +145,10 @@ class DemoDataSeeder extends Seeder
         // One proforma request + document per work order (spec 0194): needs the
         // work orders, the installment payment methods and the bank accounts.
         $this->call(DemoInvoiceSeeder::class);
+        // Payable documents and their installments (spec 0211): bill the demo purchase
+        // orders, so they run after DemoPurchaseOrderSeeder, and need the payment
+        // methods and financial accounts seeded above.
+        $this->call(DemoPurchaseInvoiceSeeder::class);
         // Plans a callback on some of the requests through the module's own
         // write path. Spec 0086 (D-1) made the Offerta that path's subject, so
         // this now depends on DemoQuoteSeeder and must run AFTER it.

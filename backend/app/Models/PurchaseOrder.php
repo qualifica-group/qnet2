@@ -147,6 +147,16 @@ class PurchaseOrder extends BaseModel
     }
 
     /**
+     * Payable documents billing this order (spec 0211, D-2).
+     *
+     * @return BelongsToMany<PurchaseInvoice, $this>
+     */
+    public function purchaseInvoices(): BelongsToMany
+    {
+        return $this->belongsToMany(PurchaseInvoice::class, 'purchase_invoice_purchase_order')->withTimestamps();
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function createdBy(): BelongsTo

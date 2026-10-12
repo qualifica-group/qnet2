@@ -11,13 +11,13 @@ use Illuminate\Support\Facades\Schema;
  */
 uses(DatabaseMigrations::class);
 
-it('rolls back the six purchase order tables and re-applies them with the seeded cost types', function () {
+it('rolls back the six purchase order tables (and the payable ones built on them) and re-applies them with the seeded cost types', function () {
     $tables = [
         'cost_types', 'purchase_order_number_sequences', 'purchase_orders', 'purchase_order_lines',
         'purchase_order_sector', 'purchase_order_merge_logs',
     ];
 
-    expect(Artisan::call('migrate:rollback', ['--step' => 6]))->toBe(0);
+    expect(Artisan::call('migrate:rollback', ['--step' => 9]))->toBe(0);
 
     foreach ($tables as $table) {
         expect(Schema::hasTable($table))->toBeFalse($table);

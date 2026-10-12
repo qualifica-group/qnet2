@@ -61,6 +61,15 @@ export const enums = {
     unpaid: 'Not collected',
     paid: 'Collected',
   },
+  // Payable installment status (spec 0211 D-4) and passive document type.
+  purchase_installment_status: {
+    unpaid: 'Unpaid',
+    paid: 'Paid',
+  },
+  purchase_invoice_type: {
+    proforma: 'Proforma',
+    invoice: 'Invoice',
+  },
   installment_overdue: {
     yes: 'Yes',
     no: 'No',

@@ -27,6 +27,7 @@ use App\Authorization\ProductsAuthorization;
 use App\Authorization\ProductTypologiesAuthorization;
 use App\Authorization\ProformaRequestsAuthorization;
 use App\Authorization\ProjectsAuthorization;
+use App\Authorization\PurchaseInvoiceInstallmentsAuthorization;
 use App\Authorization\PurchaseOrdersAuthorization;
 use App\Authorization\PurchaseRequestsAuthorization;
 use App\Authorization\QuotesAuthorization;
@@ -134,6 +135,8 @@ return [
         'purchase-requests' => PurchaseRequestsAuthorization::class,
         // spec 0210: ordini di acquisto (ODA).
         'purchase-orders' => PurchaseOrdersAuthorization::class,
+        // spec 0211: le scadenze passive (rate dei documenti passivi).
+        'purchase-invoice-installments' => PurchaseInvoiceInstallmentsAuthorization::class,
         // spec 0194: fatturazione attiva (proforma e fatture).
         'invoices' => InvoicesAuthorization::class,
         // spec 0197: le scadenze (rate) delle fatture attive.

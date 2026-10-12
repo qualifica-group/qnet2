@@ -55,6 +55,7 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'cost-types',
   'invoices',
   'invoice-installments',
+  'purchase-invoice-installments',
   'product-typologies',
   'rewarded-referents',
   'reward-types',

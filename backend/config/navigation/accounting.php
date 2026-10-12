@@ -50,5 +50,22 @@ return [
                 ],
             ],
         ],
+        // "Passiva" (spec 0211): payables; a group with no route of its own.
+        [
+            'key' => 'accounting-payable',
+            'label' => 'navigation.accountingPayable',
+            'icon' => 'wallet',
+            'route' => null,
+            'permission' => null,
+            'children' => [
+                [
+                    'key' => 'purchase-invoice-installments',
+                    'label' => 'navigation.purchaseInvoiceInstallments',
+                    'icon' => 'calendar-clock',
+                    'route' => '/purchase-invoice-installments',
+                    'permission' => 'purchase-invoice-installments.view',
+                ],
+            ],
+        ],
     ],
 ];

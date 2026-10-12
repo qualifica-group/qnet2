@@ -1,0 +1,25 @@
+<?php
+
+use App\Http\Controllers\PurchaseInvoices\PurchaseInvoiceBulkPaymentController;
+use App\Http\Controllers\PurchaseInvoices\PurchaseInvoiceInstallmentController;
+use App\Http\Controllers\PurchaseInvoices\PurchaseInvoicePaymentController;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Payable installments (spec 0211)
+|--------------------------------------------------------------------------
+|
+| Authorization (purchase-invoice-installments.* and purchase-invoices.pay via
+| their policies) is enforced server-side on every endpoint. Required from
+| routes/api/purchasing.php, i.e. INSIDE the `auth:sanctum` group. The list is
+| the generic `purchase-invoice-installments` table domain (no index route
+| here). The literal `payments` segment is declared ABOVE the bound wildcard so
+| it wins.
+*/
+
+Route::post('purchase-invoice-installments/payments', PurchaseInvoiceBulkPaymentController::class);
+Route::get('purchase-invoice-installments/{installment}', [PurchaseInvoiceInstallmentController::class, 'show']);
+Route::patch('purchase-invoice-installments/{installment}', [PurchaseInvoiceInstallmentController::class, 'update']);
+Route::put('purchase-invoice-installments/{installment}/payment', [PurchaseInvoicePaymentController::class, 'store']);
+Route::delete('purchase-invoice-installments/{installment}/payment', [PurchaseInvoicePaymentController::class, 'destroy']);

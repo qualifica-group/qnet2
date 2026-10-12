@@ -29,6 +29,8 @@ export const navigation = {
   proformaRequests: 'Proforma requests',
   invoices: 'Active invoices',
   invoiceInstallments: 'Due dates',
+  accountingPayable: 'Payable',
+  purchaseInvoiceInstallments: 'Installments',
   productTypologies: 'Product Typologies',
   paymentMethods: 'Payment Methods',
   tags: 'Tags',

@@ -48,6 +48,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'cost-types': 'navigation.costTypes',
   invoices: 'navigation.invoices',
   'invoice-installments': 'navigation.invoiceInstallments',
+  'purchase-invoice-installments': 'navigation.purchaseInvoiceInstallments',
   'product-typologies': 'navigation.productTypologies',
   'payment-methods': 'navigation.paymentMethods',
   sources: 'navigation.sources',

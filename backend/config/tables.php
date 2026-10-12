@@ -30,6 +30,7 @@ use App\Tables\ProductsTableDefinition;
 use App\Tables\ProductTypologiesTableDefinition;
 use App\Tables\ProformaRequestsTableDefinition;
 use App\Tables\ProjectsTableDefinition;
+use App\Tables\PurchaseInvoiceInstallmentsTableDefinition;
 use App\Tables\PurchaseOrdersTableDefinition;
 use App\Tables\PurchaseRequestLinesTableDefinition;
 use App\Tables\PurchaseRequestsTableDefinition;
@@ -137,6 +138,8 @@ return [
         'purchase-request-lines' => PurchaseRequestLinesTableDefinition::class,
         // spec 0210: purchase orders (ODA).
         'purchase-orders' => PurchaseOrdersTableDefinition::class,
+        // spec 0211: scadenziario passivo (rate dei documenti passivi), raggruppabile.
+        'purchase-invoice-installments' => PurchaseInvoiceInstallmentsTableDefinition::class,
         // spec 0194: active invoicing (proforma and invoices).
         'invoices' => InvoicesTableDefinition::class,
         // spec 0197: installments of the active invoices, groupable.

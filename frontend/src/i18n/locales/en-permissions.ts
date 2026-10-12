@@ -66,6 +66,8 @@ export const permissions = {
     sendEmail: 'Send email',
     revealCardNumber: 'Reveal card number',
     collect: 'Record collections',
+    // Spec 0211: passive invoices.
+    pay: 'Record payments',
     // Spec 0208: purchase requests (RDA).
     fulfill: 'Fulfil lines (order, receive)',
     manageStatuses: 'Manage any line status',
@@ -135,6 +137,8 @@ export const permissions = {
     'cost-types': 'Cost types',
     invoices: 'Active invoices',
     'invoice-installments': 'Due dates',
+    'purchase-invoices': 'Passive invoices',
+    'purchase-invoice-installments': 'Payable installments',
     'product-typologies': 'Product Typologies',
     // Task module and its five configurators (spec 0101).
     tasks: 'Tasks',

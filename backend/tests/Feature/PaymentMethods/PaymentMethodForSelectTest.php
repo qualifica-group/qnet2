@@ -27,30 +27,30 @@ it('allows actors without payment-methods.viewAny (200 — ADR 0011 amended)', f
 
 it('maps a payment method to { id, label: name, subtitle: code, meta: { payment_days } } (AC-070)', function () {
     $actor = paymentMethodUserWith(['viewAny']);
-    $target = PaymentMethod::factory()->create(['name' => 'Wire Transfer', 'code' => 'wire_transfer', 'payment_days' => 15]);
+    $target = PaymentMethod::factory()->create(['name' => 'Wire Transfer', 'code' => 'wire_transfer', 'payment_days' => 15, 'payment_method_code' => 'MP15']);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson('/api/payment-methods/for-select?search=Wire Transfer')
         ->assertOk()
         ->assertJsonStructure([
-            'items' => [['id', 'label', 'subtitle', 'meta' => ['payment_days']]],
+            'items' => [['id', 'label', 'subtitle', 'meta' => ['payment_days', 'payment_method_code']]],
             'export_link',
             'pagination' => ['total', 'offset', 'limit', 'total_pages'],
         ]);
 
     $item = collect($response->json('items'))->firstWhere('id', $target->id);
-    expect($item)->toMatchArray(['id' => $target->id, 'label' => 'Wire Transfer', 'subtitle' => 'wire_transfer', 'meta' => ['payment_days' => 15]]);
+    expect($item)->toMatchArray(['id' => $target->id, 'label' => 'Wire Transfer', 'subtitle' => 'wire_transfer', 'meta' => ['payment_days' => 15, 'payment_method_code' => 'MP15']]);
 });
 
 it('meta.payment_days is present as null when the record has no payment_days (AC-070)', function () {
     $actor = paymentMethodUserWith(['viewAny']);
-    $target = PaymentMethod::factory()->create(['name' => 'No Days', 'code' => 'no_days', 'payment_days' => null]);
+    $target = PaymentMethod::factory()->create(['name' => 'No Days', 'code' => 'no_days', 'payment_days' => null, 'payment_method_code' => null]);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson('/api/payment-methods/for-select?search=No Days')->assertOk();
     $item = collect($response->json('items'))->firstWhere('id', $target->id);
 
-    expect($item['meta'])->toBe(['payment_days' => null]);
+    expect($item['meta'])->toBe(['payment_days' => null, 'payment_method_code' => null]);
 });
 
 // ---------------------------------------------------------------------------

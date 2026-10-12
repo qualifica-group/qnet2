@@ -46,6 +46,8 @@ use App\Models\ProductCategory;
 use App\Models\ProductTypology;
 use App\Models\ProformaRequest;
 use App\Models\Project;
+use App\Models\PurchaseInvoice;
+use App\Models\PurchaseInvoiceInstallment;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
 use App\Models\PurchaseRequest;
@@ -206,6 +208,8 @@ class AppServiceProvider extends ServiceProvider
             'proforma_request' => ProformaRequest::class,
             'purchase_request' => PurchaseRequest::class,
             'purchase_request_line' => PurchaseRequestLine::class,
+            'purchase_invoice' => PurchaseInvoice::class,
+            'purchase_invoice_installment' => PurchaseInvoiceInstallment::class,
             'purchase_order' => PurchaseOrder::class,
             'purchase_order_line' => PurchaseOrderLine::class,
             'cost_type' => CostType::class,

@@ -3,6 +3,37 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0211 — Scadenze passive (fase 1) — VERDE, NON COMMITTATO (2026-10-12)
+
+- Spec `docs/specs/0211-purchase-invoice-installments.xml` (approvata, D-1..D-10, AC-001..AC-019). Decisioni utente:
+  tabella documento unica `purchase_invoices` (document_type proforma|invoice), N:N con ODA subito.
+- BE: migrazioni `2026_10_14_1000{00,10,20}` (purchase_invoices, purchase_invoice_purchase_order, purchase_invoice_installments
+  con VIRTUAL residual_amount + indice). Model PurchaseInvoice, PurchaseInvoiceInstallment (alias morph purchase_invoice,
+  purchase_invoice_installment); enum PurchaseInvoiceType, PurchaseInstallmentStatus (unpaid|paid). Servizi PARALLELI in
+  App\Services\PurchaseInvoices (Planner, Updater, PaymentService record/clear, BulkPayer); riusati invariati
+  InstallmentScheduleCalculator/InstallmentRebalancer/ResidualMode. Servizi attivi NON toccati.
+  TableDefinition `purchase-invoice-installments` (+ app/Tables/PurchaseInvoiceInstallments/*) con row grouping
+  (supplier, cost_type, work_order, company, company_site, operational_site, payment_method_code, financial_account, due_month).
+  Rotte routes/api/purchase-invoices.php (show/PATCH, PUT/DELETE `/payment`, POST `/payments` massivo).
+  Permessi: purchase-invoices.{viewAny,view,pay}, purchase-invoice-installments.{viewAny,view,update,export}.
+  Nav: gruppo `accounting-payable` "Passiva" > "Scadenze". Pagamento registra financial_account_id (stessa societa'
+  del documento o null, altrimenti 422). ODA collegato non eliminabile (409 in PurchaseOrderService::delete).
+  payment-methods/for-select espone ora meta.payment_method_code. DemoPurchaseInvoiceSeeder in DemoDataSeeder dopo
+  DemoInvoiceSeeder (servono i metodi di pagamento). Rollback step bumpati: PurchaseOrderMigration 9,
+  SupplierCommissionDirection 21, QuoteWorkflowMigration 157.
+- FE: features/purchase-invoice-installments/* (tabella, quick filter Da pagare/In scadenza/Scadute/Pagate/Tutte,
+  footer totali, dialog modifica con select modalita', pagamento con conto + residuo, annulla, pagamento massivo
+  `bulk_pay` raggruppando per fornitore). Route in routes/purchasing-routes.tsx. HELP_GUIDE_KEYS = 65 (guida
+  purchase-invoice-installments IT/EN, nota "registrazione documenti in fase di sviluppo"). Ritocchi framework:
+  table-view.tsx (posizione actionsColumnWidthFor), use-bulk-actions-slot.tsx (span title solo su voci disabilitate).
+- Verde (verifier): Pest seriale completo 9924/10003 con 21 failure solo ambiente (PDF soffice / ZipArchive),
+  PurchaseInvoiceInstallments 58/58; Pint; Vitest 7376/7382 (6 timeout da carico, verdi isolati); tsc -b --force; ESLint
+  (1 errore preesistente in features/quotes/column-renderers.tsx, fuori scope).
+- Aperto: fase 2 = form/CRUD/PDF documenti passivi e conversione proforma->fattura; export xlsx coperto solo con queue
+  finta; manca test esplicito "ODA non collegato eliminabile"; refactor base comune servizi pagamento attivo/passivo;
+  bulk payment: select conto non filtrato per societa' (422 lato server); `pest.sh --parallel` non funziona (worker senza
+  php.ini); manuale Claude Docs: nuova sezione Contabilita' > Passiva > Scadenze.
+
 ## Spec 0209 — Fornitore sulle righe RDA + righe compatte — VERDE, COMMITTATO 8473e971 (2026-10-12)
 
 - Spec `docs/specs/0209-purchase-request-line-suppliers.xml` (approvata, D-1..D-11, AC-001..AC-018). Modifica 0208.

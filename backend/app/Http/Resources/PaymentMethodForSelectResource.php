@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
  * /api/payment-methods/for-select, spec 0068).
  *
  * `label` = name, `subtitle` = code (always present, `code` is required and
- * unique), `meta.payment_days` lets a consumer form pre-fill an expected
+ * unique), `meta.payment_method_code` is the fiscal code the installments edit validates, `meta.payment_days` lets a consumer form pre-fill an expected
  * due date without a second lookup.
  *
  * @mixin PaymentMethod
@@ -27,7 +27,7 @@ class PaymentMethodForSelectResource extends ForSelectResource
             'id' => $this->id,
             'label' => $this->name,
             'subtitle' => $this->code,
-            'meta' => ['payment_days' => $this->payment_days],
+            'meta' => ['payment_days' => $this->payment_days, 'payment_method_code' => $this->payment_method_code],
         ];
     }
 }

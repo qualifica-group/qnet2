@@ -60,6 +60,15 @@ export const enums = {
     unpaid: 'Da incassare',
     paid: 'Incassata',
   },
+  // Stato rata passiva (spec 0211 D-4) e tipo documento passivo.
+  purchase_installment_status: {
+    unpaid: 'Da pagare',
+    paid: 'Pagata',
+  },
+  purchase_invoice_type: {
+    proforma: 'Proforma',
+    invoice: 'Fattura',
+  },
   installment_overdue: {
     yes: 'Sì',
     no: 'No',

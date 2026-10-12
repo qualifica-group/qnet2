@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0211-purchase-invoice-installments" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Modulo "Scadenze" in Contabilita' &gt; Passiva: scadenziario passivo (rate da pagare ai fornitori) con le stesse
+    feature delle scadenze attive (0196/0197/0198): lista SSRM filtrabile/ordinabile/esportabile e raggruppabile con
+    totali, modifica data/modalita' della rata, pagamento totale o parziale con residuo, annulla pagamento, pagamento
+    massivo per fornitore. Fase 1: introduce il documento passivo minimo (fattura/proforma passiva) collegato N:N agli
+    ODA, senza ancora il suo form (fase 2).
+  </goal>
+
+  <context>
+    <!-- Nomi reali verificati nel repo il 2026-10-12 -->
+    <item>Modulo attivo di riferimento: `invoice_installments` + `App\Tables\InvoiceInstallmentsTableDefinition`
+      (+ `App\Tables\InvoiceInstallments\{InstallmentColumnCatalog,InstallmentSql,InstallmentDerivedQuery}`),
+      `InvoiceInstallmentController/Policy/Resource`, `InvoiceInstallmentsAuthorization`, servizi
+      `App\Services\Invoices\{InvoiceCollectionService,InvoiceBulkCollector,InvoiceInstallmentUpdater}`; FE
+      `features/invoice-installments/*` + dialog incasso in `features/invoices/*`.</item>
+    <item>Classi PURE riusabili senza modifiche: `InstallmentScheduleCalculator` (piano da PaymentMethod, centesimi),
+      `InstallmentRebalancer` (ridistribuzione in centesimi). Enum `ResidualMode` (spread|new_installment) riusato.</item>
+    <item>Row grouping SSRM opt-in del framework (0197 D-4): `supportsRowGroups()`/`groupableColumns()`,
+      `App\Services\Table\RowGroupQuery` (MAX_DEPTH 3, chiave `__null__`), `ResolvesRowGroups`; FE `row-grouping-bar.tsx`,
+      `use-row-group-columns.ts`, `use-bulk-actions-slot`.</item>
+    <item>ODA (0210): tabella `purchase_orders` (supplier_id, company_id, company_site_id, operational_site_id nullable,
+      work_order_id nullable, payment_method_id nullable, number/year, `PurchaseOrder::code()` = "n/anno").
+      `PurchaseOrderService::delete`. Tipi di costo: tabella `cost_types`.</item>
+    <item>Conti finanziari (0189): `financial_accounts` (type, name, company_id nullable).</item>
+    <item>Navigazione: `config/navigation/accounting.php`, oggi solo gruppo `accounting-receivable`. Rotte acquisti
+      incluse da `routes/api/purchasing.php`.</item>
+    <item>Decisioni utente 2026-10-12: (1) tabella documento unica `purchase_invoices` con tipo proforma/fattura;
+      (2) collegamento N:N con gli ODA subito; (3) stesse feature delle scadenze attive.</item>
+  </context>
+
+  <decisions>
+    <decision id="D-1">Documento passivo minimo `purchase_invoices` con `document_type` (proforma|invoice, enum PHP
+      `PurchaseInvoiceType`). Nessun form/endpoint CRUD in fase 1: i documenti nascono solo dal demo seeder e, in fase 2,
+      dal modulo Fatture/Proforma passive. Il modello espone gia' il servizio di generazione rate (D-3) che la fase 2 usera'.</decision>
+    <decision id="D-2">N:N ODA: pivot `purchase_invoice_purchase_order` (unique coppia). Un ODA puo' stare su piu'
+      documenti (fatturazione parziale), un documento puo' coprire piu' ODA. Nessun vincolo "stesso fornitore" a DB:
+      lo impone la fase 2 in validazione. Un ODA collegato a un documento passivo non e' eliminabile:
+      `PurchaseOrderService::delete` -> 409 "This purchase order is linked to a purchase invoice." (FK restrictOnDelete
+      come difesa in profondita').</decision>
+    <decision id="D-3">Piano rate: `PurchaseInvoiceInstallmentPlanner` usa `InstallmentScheduleCalculator` sul
+      payment_method del documento (stessa logica attiva: n. rate, giorni, fine mese, allocazione IVA). Copia
+      `payment_method_code` sulla rata come nelle attive.</decision>
+    <decision id="D-4">Rata passiva = mirror di invoice_installments con lessico pagamento: `paid_amount`, `paid_at`,
+      colonna VIRTUAL `residual_amount` = amount - COALESCE(paid_amount,0) + indice (residual_amount, due_date),
+      `redistribution_snapshot` json. Stato DERIVATO (enum `PurchaseInstallmentStatus`: unpaid "Da pagare"/"Unpaid",
+      paid "Pagata"/"Paid"): paid_amount &gt; 0 -&gt; paid. Scaduta = unpaid e due_date &lt; oggi.</decision>
+    <decision id="D-5">Miglioria rispetto alle attive: il pagamento registra il conto di uscita `financial_account_id`
+      (nullable) sulla rata; default proposto dal FE = `purchase_invoices.financial_account_id`. Il conto deve essere
+      della stessa societa' del documento o senza societa', altrimenti 422.</decision>
+    <decision id="D-6">Pagamento parziale, annullo e ridistribuzione: stesse regole di 0196 (chiude la rata a paid_amount;
+      residual_mode spread|new_installment, nuova rata default due_date + 30 gg; annullo da snapshot, 409 se una rata
+      toccata e' stata pagata dopo; rinumerazione in due passi per l'unique (purchase_invoice_id, sequence)). Tutto in
+      transazione con lockForUpdate sul documento. Implementazione PARALLELA in `App\Services\PurchaseInvoices\*`:
+      i servizi attivi NON si modificano (blast radius); l'estrazione di una base comune e' un follow-up segnalato.</decision>
+    <decision id="D-7">Modifica rata: solo due_date (&gt;= document_date) e payment_method_code (select, exists), solo se
+      non pagata (409 "Paid installments cannot be edited."). Niente create/delete di singole rate.</decision>
+    <decision id="D-8">Pagamento massivo come 0198: checkbox solo con griglia raggruppata per Fornitore, solo rate non
+      pagate, un solo fornitore, una data e un conto per tutto il dialog, max 100, tutto-o-niente; un parziale crea una
+      rata residua con la stessa due_date.</decision>
+    <decision id="D-9">Niente email/sollecito (non ha senso verso il fornitore). Niente azione "Apri documento" in fase 1
+      (non esiste ancora il dettaglio): la colonna ODA collegati ne da' il contesto.</decision>
+    <decision id="D-10">Permessi: risorsa `purchase-invoices` (Policy con viewAny, view, pay; in fase 2 si aggiungono
+      create/update/delete) e risorsa `purchase-invoice-installments` (viewAny, view, update, export).</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni: purchase_invoices, purchase_invoice_purchase_order, purchase_invoice_installments (con virtual
+        residual_amount + indice).</item>
+      <item>Model PurchaseInvoice, PurchaseInvoiceInstallment (LogsModelActivity, morph alias purchase_invoice,
+        purchase_invoice_installment), enum PurchaseInvoiceType, PurchaseInstallmentStatus, factory; relazione
+        PurchaseOrder::purchaseInvoices().</item>
+      <item>Policy PurchaseInvoicePolicy, PurchaseInvoiceInstallmentPolicy; PurchaseInvoiceInstallmentsAuthorization
+        (permessi di campo) in config/authorization.php; permissions:sync.</item>
+      <item>TableDefinition `purchase-invoice-installments` (+ catalogo colonne/SQL/derived) con row grouping, totali, export.</item>
+      <item>Endpoint show/update rata, pagamento singolo PUT/DELETE, pagamento massivo; servizi Planner, Updater,
+        PaymentService, BulkPayer.</item>
+      <item>Guard eliminazione ODA collegato (D-2).</item>
+      <item>Navigazione: gruppo `accounting-payable` "Passiva" + voce "Scadenze"; route FE /purchase-invoice-installments.</item>
+      <item>FE feature `purchase-invoice-installments`: tabella, quick filter, footer totali, dialog modifica, pagamento,
+        annulla, pagamento massivo; i18n IT/EN; guida in-app IT/EN + HELP_GUIDE_KEYS.</item>
+      <item>DemoPurchaseInvoiceSeeder (in DemoDataSeeder dopo DemoPurchaseOrderSeeder): documenti su ODA esistenti
+        (alcuni con 2 ODA dello stesso fornitore), rate dal planner, alcune pagate/parziali via PaymentService.</item>
+    </in>
+    <out>
+      <item>Form/CRUD/PDF/righe dei documenti passivi, conversione proforma -&gt; fattura (fase 2).</item>
+      <item>Modifiche ai servizi/FE delle scadenze attive (refactor comune = follow-up).</item>
+      <item>Email/solleciti, riconciliazione bancaria, movimenti sui conti finanziari.</item>
+      <item>Export raggruppato/subtotali.</item>
+    </out>
+  </scope>
+
+  <data_model>
+    purchase_invoices: id; document_type string(16) default 'invoice' index; company_id FK companies restrict;
+      supplier_id FK registries restrict; document_number string(30) nullable; document_date date index;
+      payment_method_id FK payment_methods restrict; financial_account_id FK financial_accounts nullable nullOnDelete;
+      cost_type_id FK cost_types nullable nullOnDelete; company_site_id FK company_sites nullable nullOnDelete;
+      operational_site_id FK operational_sites nullable nullOnDelete; work_order_id FK work_orders nullable nullOnDelete;
+      net_amount, vat_amount, total_amount decimal(15,2); notes text nullable; created_by FK users restrict; timestamps.
+      Indici: (supplier_id, document_number), (document_type, document_date).
+    purchase_invoice_purchase_order: id; purchase_invoice_id FK cascadeOnDelete; purchase_order_id FK restrictOnDelete;
+      timestamps; unique(purchase_invoice_id, purchase_order_id); index purchase_order_id.
+    purchase_invoice_installments: id; purchase_invoice_id FK cascadeOnDelete; sequence unsignedSmallInteger;
+      due_date date index; amount decimal(15,2); payment_method_code string(32) nullable; paid_amount decimal(15,2)
+      nullable; paid_at date nullable; financial_account_id FK financial_accounts nullable nullOnDelete;
+      redistribution_snapshot json nullable; residual_amount VIRTUAL decimal(15,2); timestamps;
+      unique(purchase_invoice_id, sequence); index (residual_amount, due_date).
+  </data_model>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data }. Tutte le route sotto auth:sanctum, file routes/api/purchase-invoices.php
+         incluso da routes/api/purchasing.php. Nessun throttle. -->
+
+    <endpoint method="GET" path="/api/tables/purchase-invoice-installments/columns">
+      <response status="200">
+        Config standard + row_grouping { enabled: true, max_depth: 3, columns: [supplier, cost_type, work_order, company,
+        company_site, operational_site, payment_method_code, financial_account, due_month] }.
+        Colonne (id | type | sortable | filter | groupable | aggFunc):
+        document_type badge s f[set: proforma,invoice] | document_number text s f[text] | document_date date s f[date] |
+        purchase_orders text - f[text] (codici ODA "n/anno" separati da ", ") | sequence number s - |
+        due_date date s f[date] | due_month text - f[set] g (YYYY-MM, nascosta di default) | days_overdue number s f[number] |
+        status badge s f[set: unpaid,paid] | overdue badge - f[set: yes,no] |
+        supplier text s f[set] g | cost_type text s f[set] g | work_order text s f[set] g ("CODE - title") |
+        company text s f[set] g | company_site text s f[set] g | operational_site text s f[set] g |
+        payment_method_code text s f[set] g | amount number s f[number] sum | paid_amount number s f[number] sum |
+        residual_amount number s f[number] sum | paid_at date s f[date] | financial_account text s f[set] g.
+        Ordinamento default: due_date asc, document_date asc, sequence asc. Colonne con campo non visibile
+        (amount, paid_amount, paid_at, residual_amount, financial_account) assenti ovunque (config, rows, values,
+        group, aggregati, export) -> 422 se usate in sort/filter/group.
+      </response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/purchase-invoice-installments/rows">
+      <request>Protocollo framework invariato (incluso rowGroupCols/groupKeys di 0197).</request>
+      <response status="200">
+        Riga foglia: { id, purchase_invoice_id, supplier_id, document_type, document_number, document_date, purchase_orders,
+        sequence, due_date, due_month, days_overdue, status, overdue, supplier, cost_type, work_order, company, company_site,
+        operational_site, payment_method_code, amount, paid_amount, residual_amount, paid_at, financial_account, actions[] }.
+        Row actions (actionsFor): edit (update + non pagata), record_payment (purchase-invoices.pay + non pagata),
+        clear_payment (purchase-invoices.pay + pagata). Livelli gruppo e meta.aggregates come 0197.
+      </response>
+      <errors>403 senza purchase-invoice-installments.view; 422 come 0197.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/purchase-invoice-installments/{installment}">
+      <response status="200">
+        data: { id, sequence, due_date, amount, payment_method_code, paid_amount, paid_at, status, residual_amount,
+          is_overdue: bool, days_overdue: int, financial_account: {id,name}|null,
+          purchase_invoice: { id, document_type, document_number, document_date, total_amount, supplier: {id,name},
+            company: {id,name}, financial_account: {id,name}|null, purchase_orders: [{id,code}],
+            installments: [{ id, sequence, due_date, amount, paid_amount, status }] },
+          field_permissions: { due_date, payment_method_code, amount, paid_amount, paid_at, residual_amount,
+            financial_account: {visible,editable,required} },
+          abilities: { update: bool, pay: bool } }
+        Campi non visibili per permesso di campo: omessi.
+      </response>
+      <errors>403 senza purchase-invoice-installments.view; 404.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/purchase-invoice-installments/{installment}">
+      <request>{ due_date?: "Y-m-d" (&gt;= document_date), payment_method_code?: string|null (max 32, exists
+        payment_methods.payment_method_code) }. Almeno un campo; campo non editabile per permesso -> 403.</request>
+      <response status="200">data: shape del GET; message "Installment updated."</response>
+      <errors>403; 409 "Paid installments cannot be edited."; 422.</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/purchase-invoice-installments/{installment}/payment">
+      <request>{ paid_amount: number gt:0 max:installment.amount, paid_at: date, financial_account_id?: int|null
+        (exists, company del documento o null), residual_mode: spread|new_installment (required se parziale),
+        residual_due_date: date (required se new_installment, &gt;= document_date) }</request>
+      <response status="200">data: shape del GET della rata pagata (ricaricata); message "Payment recorded."</response>
+      <errors>403 senza purchase-invoices.pay; 409 "This installment is already paid: clear the payment first.";
+        422 residual_mode "There are no later open installments to spread the residual on."; 422 financial_account_id
+        "The account must belong to the document company."</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/purchase-invoice-installments/{installment}/payment">
+      <response status="200">data: shape del GET della rata; message "Payment cleared." Ripristino da snapshot come 0196
+        (azzera anche financial_account_id).</response>
+      <errors>403; 409 "Clear the later payments first."</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-invoice-installments/payments">
+      <request>{ paid_at: date, financial_account_id?: int|null, items: [{ installment_id: int distinct exists,
+        paid_amount: number gt:0 }] min 1 max 100 }</request>
+      <response status="200">data: { paid_count: int, residual_count: int }</response>
+      <errors>403 senza purchase-invoices.pay (anche per singolo documento); 422 items "The installments must belong to
+        the same supplier."; 422 items.N.installment_id "This installment is already paid."; 422 items.N.paid_amount
+        "The paid amount cannot exceed the installment amount."; 422 financial_account_id (societa' diversa da uno dei
+        documenti).</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/exports/purchase-invoice-installments">
+      <errors>403 senza purchase-invoice-installments.export.</errors>
+    </endpoint>
+
+    <navigation>
+      config/navigation/accounting.php: nuovo gruppo { key: accounting-payable, label: navigation.accountingPayable
+      ("Passiva"/"Payable"), icon: wallet } con figlio { key: purchase-invoice-installments, label:
+      navigation.purchaseInvoiceInstallments ("Scadenze"/"Installments"), icon: calendar-clock, route:
+      /purchase-invoice-installments, permission: purchase-invoice-installments.view }.
+    </navigation>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Migrazioni up/down reversibili su SQLite; residual_amount virtuale corretto per rate non pagate, parziali e pagate.</criterion>
+    <criterion id="AC-002">Planner: documento con metodo a 3 rate genera 3 rate la cui somma = total_amount, payment_method_code copiato.</criterion>
+    <criterion id="AC-003">Con purchase-invoice-installments.view columns/rows rispondono con le colonne del contratto; senza -> 403 e voce di menu assente.</criterion>
+    <criterion id="AC-004">Filtri/sort su ogni colonna dichiarata funzionano lato server (incluso purchase_orders text, status, overdue, financial_account); colId fuori allow-list -> 422.</criterion>
+    <criterion id="AC-005">Row grouping per supplier e per supplier+cost_type con child_count/aggregati corretti; valori assenti nel gruppo `__null__`; filtri applicati ai gruppi.</criterion>
+    <criterion id="AC-006">PATCH modifica due_date/payment_method_code di una rata non pagata e scrive activity log; 409 su pagata; 422 su due_date &lt; document_date; 403 senza update o campo non editabile.</criterion>
+    <criterion id="AC-007">PUT payment totale: rata paid con paid_at e financial_account_id; parziale spread ridistribuisce il residuo sulle successive aperte; new_installment crea rata sequence+1 e rinumera.</criterion>
+    <criterion id="AC-008">DELETE payment ripristina il piano dallo snapshot; 409 se una rata toccata e' stata pagata dopo; 409 pagando una rata gia' pagata.</criterion>
+    <criterion id="AC-009">financial_account_id di un'altra societa' -> 422 (singolo e massivo); senza purchase-invoices.pay -> 403.</criterion>
+    <criterion id="AC-010">Pagamento massivo: due fornitori -> 422 items; rata gia' pagata o importo eccedente -> 422 con indice; successo restituisce paid_count/residual_count, tutto-o-niente.</criterion>
+    <criterion id="AC-011">Ruolo con amount/paid_amount non visibili: colonne assenti da config, rows, show, aggregati, export; uso in sort/filter/group -> 422.</criterion>
+    <criterion id="AC-012">Export csv/xlsx con permesso produce le righe filtrate; senza -> 403.</criterion>
+    <criterion id="AC-013">Eliminazione di un ODA collegato a un documento passivo -> 409; ODA non collegato invariato.</criterion>
+    <criterion id="AC-014">FE: quick filter Da pagare (default) / In scadenza / Scadute / Pagate / Tutte imposta il forcedFilterModel atteso (Vitest).</criterion>
+    <criterion id="AC-015">FE: dialog modifica rata (RHF+Zod, select modalita') invia PATCH, rispetta field_permissions, mostra 409/422 (Vitest).</criterion>
+    <criterion id="AC-016">FE: dialog pagamento con conto di uscita (default dal documento), gestione parziale spread/new_installment, annulla pagamento; azioni visibili solo con le abilities della riga (Vitest).</criterion>
+    <criterion id="AC-017">FE: pagamento massivo abilitato solo con raggruppamento per Fornitore, righe non pagate, un fornitore; invia il payload del contratto (Vitest).</criterion>
+    <criterion id="AC-018">i18n IT/EN in parita'; guida in-app purchase-invoice-installments IT/EN con stessi id di sezione; help-content-parity verde.</criterion>
+    <criterion id="AC-019">Gate: Pest mirato + suite tables/invoices/purchase verdi, Pint, ESLint, Vitest, `npx tsc -b --force` puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Nessuna modifica ai servizi/componenti delle scadenze attive.</item>
+    <item>GROUP BY/ORDER BY/WHERE solo da espressioni dichiarate (allow-list); SQL MySQL + SQLite.</item>
+    <item>Authz server-side su ogni endpoint (Policy + permessi di campo); lock pessimistico sul documento nei pagamenti.</item>
+    <item>File entro 300/500 righe; identificatori in inglese; stringhe UI via i18next; UI compatta e responsive.</item>
+  </constraints>
+
+</spec>

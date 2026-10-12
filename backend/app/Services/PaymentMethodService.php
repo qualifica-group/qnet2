@@ -92,7 +92,7 @@ class PaymentMethodService
      */
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
-        $base = PaymentMethod::query()->select(['id', 'name', 'code', 'payment_days'])->where('is_active', true);
+        $base = PaymentMethod::query()->select(['id', 'name', 'code', 'payment_days', 'payment_method_code'])->where('is_active', true);
 
         if ($query->hasSearch()) {
             $base->where('name', 'like', '%'.$query->search.'%');
@@ -143,7 +143,7 @@ class PaymentMethodService
 
         /** @var Collection<int, PaymentMethod> $hydrated */
         $hydrated = PaymentMethod::query()
-            ->select(['id', 'name', 'code', 'payment_days'])
+            ->select(['id', 'name', 'code', 'payment_days', 'payment_method_code'])
             ->whereIn('id', $missingIds)
             ->orderBy('sort_order')
             ->orderBy('name')

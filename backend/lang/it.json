@@ -162,5 +162,19 @@
     "The line is already linked to a purchase order.": "La riga è già collegata a un ordine di acquisto.",
     "The line is no longer available.": "La riga non è più disponibile.",
     "The line already belongs to this purchase order.": "La riga appartiene già a questo ordine di acquisto.",
-    "The line belongs to a purchase order of another supplier or company.": "La riga appartiene a un ordine di acquisto di un altro fornitore o di un'altra società."
+    "The line belongs to a purchase order of another supplier or company.": "La riga appartiene a un ordine di acquisto di un altro fornitore o di un'altra società.",
+    "To pay": "Da pagare",
+    "Installment updated.": "Rata aggiornata.",
+    "Paid installments cannot be edited.": "Le rate pagate non possono essere modificate.",
+    "Payment recorded.": "Pagamento registrato.",
+    "Payment cleared.": "Pagamento annullato.",
+    "This installment is already paid: clear the payment first.": "Questa rata è già pagata: annulla prima il pagamento.",
+    "Clear the later payments first.": "Annulla prima i pagamenti successivi.",
+    "There are no later open installments to spread the residual on.": "Non ci sono rate successive aperte su cui ripartire il residuo.",
+    "The account must belong to the document company.": "Il conto deve appartenere alla società del documento.",
+    "The installments must belong to the same supplier.": "Le rate devono appartenere allo stesso fornitore.",
+    "This installment is already paid.": "Questa rata è già pagata.",
+    "The paid amount cannot exceed the installment amount.": "L'importo pagato non può superare l'importo della rata.",
+    "The residual mode is required for a partial payment.": "La modalità del residuo è obbligatoria per un pagamento parziale.",
+    "This purchase order is linked to a purchase invoice.": "Questo ordine di acquisto è collegato a una fattura passiva."
 }
