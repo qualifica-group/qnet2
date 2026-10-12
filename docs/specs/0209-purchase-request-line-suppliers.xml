@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0209-purchase-request-line-suppliers" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Il fornitore di una RDA passa dalla testata alle singole righe, cosi' una sola RDA (es. "PC
+    assemblato": unita' centrale, monitor, periferiche) raccoglie righe di fornitori diversi.
+    Il fornitore e' facoltativo in richiesta, obbligatorio per portare la riga in "Ordinato";
+    da Ordinato in poi e' congelato. Le righe del form RDA diventano compatte (una fascia su
+    desktop) con azioni solo-icona.
+  </goal>
+
+  <context>
+    Modifica la spec 0208 (`docs/specs/0208-purchase-requests.xml`, committata b794c960).
+    Decisioni utente 2026-10-12:
+    - D-1 `supplier_id` sulla riga (registries con is_supplier = true, stessa regola di 0208 D-14);
+      facoltativo alla creazione/modifica della riga.
+    - D-2 Obbligatorio per la transizione verso `ordered` (qualsiasi capability, anche Manage).
+      Se manca, la modale di cambio stato lo chiede PER RIGA (un select per ogni riga senza
+      fornitore); le righe che lo hanno gia' lo mostrano in sola lettura.
+    - D-3 Freeze: il fornitore e' modificabile (a) sulle righe `pending_approval` da chi puo'
+      modificare la RDA (come il resto della riga), (b) sulle righe `approved` da chi ha la
+      capability Fulfill o Manage. In ogni altro stato e' in sola lettura. Regola unica esposta
+      come `abilities.update_supplier` della riga (Resource e righe SSRM).
+    - D-4 Sulle righe approvate il fornitore si cambia sia dal form RDA (solo quel campo e' attivo,
+      il resto della riga resta bloccato) sia dalla nuova azione massiva "Assegna fornitore" in
+      Gestione righe (un fornitore per tutte le righe selezionate, tutto-o-niente).
+    - D-5 Testata: il campo Fornitore viene rimosso. Migrazione dati: il `supplier_id` di testata
+      viene copiato su tutte le righe della stessa RDA, poi la colonna di testata viene eliminata
+      (con le eventuali righe `role_field_permissions` del campo `supplier_id` di `purchase-requests`).
+    - D-6 Lista RDA: la colonna "Fornitore" diventa "Fornitori" = fornitori distinti delle righe;
+      filtro testo e ricerca rapida per P.IVA cercano sui fornitori delle righe.
+    - D-7 Gestione righe: nuova colonna "Fornitore" con filtro testo e valori distinti.
+    - D-8 Scelta di un prodotto con `supplier_id`: la riga propone quel fornitore (modificabile),
+      come gia' fa per descrizione/U.m./prezzo/IVA (0208 D-13).
+    - D-9 Riga del form compatta: su lg+ una fascia tabellare con intestazione unica in cima
+      (Prodotto, Descrizione, Fornitore, U.m., Qta, Prezzo, IVA, Totale, Stato, ODA, azioni);
+      imponibile e IVA della riga in tooltip sul Totale; sotto lg schede impilate.
+      Campi bassi (h-7, text-xs). Etichette dei campi conservate come aria-label.
+    - D-10 Motivazione (`reason`) dietro un'icona che apre un popover con la textarea; l'icona
+      e' evidenziata quando la motivazione e' valorizzata; in sola lettura sulle righe bloccate.
+    - D-11 Azioni della riga SOLO icona (niente testo), ciascuna con tooltip e aria-label:
+      Motivazione, Cambia stato, Scorpora IVA, Documenti, Elimina.
+
+    Nomi reali verificati 2026-10-12:
+    - BE: model `PurchaseRequest` (fillable con supplier_id, relazione `supplier()`),
+      `PurchaseRequestLine` (LogsModelActivity, HasAttachments), `Product::supplier()`;
+      `PurchaseRequestService` (RESOURCE_RELATIONS, `lineContent`, `contentChanged`,
+      `updateLine`), `PurchaseRequestLineStatusService::change/assertAllowed`,
+      `PurchaseRequestCapabilityResolver` (`capabilities`, `effectiveCapabilities`, `transitions`),
+      `PurchaseRequestWriteRequest`, `PurchaseRequestLineStatusRequest` (MAX_LINES 200),
+      `PurchaseRequestData` (header keys), `PurchaseRequestsAuthorization::fields()`,
+      `PurchaseRequestResource::lineArray`, `PurchaseRequestsTableDefinition`
+      (`supplier:id,name`, quick search `supplier.personalData.vat_number`),
+      `PurchaseRequestColumnCatalog` (TEXT_RELATIONS/SORT_RELATIONS `supplier`, SUPPLIER_VAT_COLUMN),
+      `PurchaseRequestLineColumnCatalog`, `PurchaseRequestLinesTableDefinition::mapRow`,
+      `PurchaseRequestDerivedQuery::distinctRelated`, `routes/api/purchase-requests.php`,
+      `DemoPurchaseRequestSeeder`, `tests/Helpers/PurchaseRequestHelpers.php`.
+    - FE `features/purchase-requests`: `purchase-request-line-row.tsx`, `purchase-request-line-inputs.tsx`,
+      `purchase-request-lines-section.tsx`, `purchase-request-header-fields.tsx` (SUPPLIER_PARAMS /
+      SUPPLIER_PRESETS), `purchase-request-schema.ts`, `purchase-request-payload.ts`,
+      `purchase-request-refs.ts`, `purchase-request-fields.tsx`, `purchase-request-permissions.ts`,
+      `use-line-product-defaults.ts`, `line-status-dialog.tsx`, `line-status-summary-table.tsx`,
+      `line-status-transitions.ts` (`LineTarget`, `toLineTarget`), `purchase-request-lines-table.tsx`,
+      `column-renderers.tsx`, `types.ts`, `api.ts`; `features/products` (`ProductDetail.supplier`);
+      `components/ui/popover.tsx`, `components/ui/tooltip.tsx`.
+    - Guide in-app `features/help/content/{it,en}/purchase-requests.ts` e `purchase-request-lines.ts`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione: `purchase_request_lines.supplier_id` (FK registries nullOnDelete, indice), copia dal supplier di testata, drop `purchase_requests.supplier_id`, pulizia `role_field_permissions` del campo; down reversibile (ricrea la colonna di testata e la valorizza col fornitore della riga di posizione minima con fornitore).</item>
+      <item>BE riga: fillable + relazione `supplier()`; payload di scrittura `lines.*.supplier_id`; regola D-3 nel Service (approved: cambia solo supplier_id e solo con Fulfill/Manage).</item>
+      <item>BE testata: rimozione di `supplier_id` da WriteRequest, Data, Authorization::fields, Resource (`supplier` di testata eliminato), model.</item>
+      <item>BE cambio stato: payload `suppliers` per riga e obbligo fornitore verso `ordered` (D-2).</item>
+      <item>BE nuovo endpoint massivo `POST /api/purchase-request-lines/supplier` (D-4).</item>
+      <item>BE `abilities.update_supplier` e `supplier` sulla riga (Resource e SSRM righe).</item>
+      <item>BE liste: colonna `suppliers` sulla lista RDA (D-6) e `supplier` su Gestione righe (D-7), filtri e /values.</item>
+      <item>Seeder demo e helper di test allineati (fornitore sulle righe).</item>
+      <item>FE form: riga compatta (D-9), fornitore per riga con "+" quick-create (preset is_supplier), proposta da prodotto (D-8), popover motivazione (D-10), azioni solo icona (D-11), rimozione Fornitore dalla testata.</item>
+      <item>FE modale cambio stato: select fornitore per riga quando il nuovo stato e' `ordered` (D-2).</item>
+      <item>FE Gestione righe: colonna Fornitore, azione massiva "Assegna fornitore" con modale.</item>
+      <item>FE lista RDA: renderer della colonna `suppliers` (nomi separati da virgola).</item>
+      <item>i18n IT/EN; guide in-app `purchase-requests` e `purchase-request-lines` IT/EN (stessi id di sezione).</item>
+      <item>Rimozione del file tracciato per errore `frontend/src/features/purchase-requests/line-status-dialog.head.tmp`.</item>
+    </in>
+    <out>
+      <item>Modulo ODA e generazione ODA per fornitore (resta il segnaposto "—").</item>
+      <item>Prezzi/listini per fornitore o validazione prodotto-fornitore (il fornitore del prodotto e' solo una proposta).</item>
+      <item>Notifiche al fornitore o al richiedente al cambio fornitore.</item>
+      <item>Conteggi sulle tab di stato e altri punti aperti di 0208.</item>
+      <item>Modifiche a Product, Registry, quick-create Registry (riuso invariato).</item>
+      <item>Aggiornamento del manuale Claude Docs (solo segnalazione: connettore non disponibile).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope { success, message, data } invariato. NamedRef = {id:int, name:string}. -->
+
+    <model name="purchase_request_lines">
+      + supplier_id FK registries null (nullOnDelete, indice). Fillable.
+    </model>
+    <model name="purchase_requests">
+      - supplier_id (rimossa). Relazione `supplier()` rimossa; nuova `lineSuppliers` non richiesta:
+      la lista usa whereHas('lines.supplier').
+    </model>
+
+    <type name="PurchaseRequestLine (Resource, delta su 0208)">
+      + supplier: NamedRef|null
+      abilities + update_supplier: bool
+        = RDA aperta AND ( (status = pending_approval AND abilities.update della RDA)
+                        OR (status = approved AND capability fulfill|manage) )
+    </type>
+    <type name="PurchaseRequest (Resource, delta su 0208)">
+      - supplier (rimosso dalla testata). field_permissions senza `supplier_id`.
+    </type>
+
+    <endpoint method="POST|PUT" path="/api/purchase-requests[/{purchaseRequest}]">
+      <request>
+        Delta su 0208: rimosso `supplier_id` di testata (se inviato e' ignorato: non e' tra le chiavi validate).
+        + lines.*.supplier_id: int|null, exists registries where is_supplier = true.
+        Riga esistente pending_approval: supplier_id modificabile come il resto.
+        Riga esistente approved: e' ammesso il cambio del SOLO supplier_id se l'attore ha
+        capability fulfill|manage; ogni altro cambio di contenuto resta 422 come in 0208.
+        Altri stati: supplier_id invariato, altrimenti 422.
+      </request>
+      <response status="200|201">PurchaseRequest (Resource) con lines[].supplier e lines[].abilities.update_supplier.</response>
+      <errors>
+        422 `lines.N.supplier_id` (non fornitore / inesistente);
+        422 `lines.N` "The line is no longer pending approval and cannot be modified." (contenuto
+        cambiato su riga non pending, o supplier cambiato su approved senza fulfill|manage, o
+        supplier cambiato in altri stati). 403/409 invariati.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-request-lines/status">
+      <request>
+        Delta su 0208: + suppliers?: array of { line_id:int (in line_ids, distinct), supplier_id:int
+        (registries is_supplier) }, max = MAX_LINES. Ammesso solo con to_status = ordered
+        (altrimenti 422 `suppliers`). Il supplier fornito sovrascrive quello della riga.
+        Verso ordered ogni riga deve avere un fornitore (esistente o fornito).
+      </request>
+      <response status="200">{ updated_count:int, closed_purchase_request_ids:int[] } (invariato)</response>
+      <errors>
+        422 `line_ids.N` "A supplier is required to mark the line as ordered." (tutto-o-niente,
+        nessuna riga scritta); 422 `suppliers`, `suppliers.N.line_id`, `suppliers.N.supplier_id`;
+        403/409/422 transizione invariati (controllati prima del fornitore).
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-request-lines/supplier">
+      <request>
+        { line_ids:int[] (1..200, distinct, exists), supplier_id:int (registries is_supplier) }
+        FormRequest `PurchaseRequestLineSupplierRequest`; logica `PurchaseRequestLineSupplierService`.
+        Tutto-o-niente con lock come il cambio stato.
+      </request>
+      <response status="200">{ updated_count:int }</response>
+      <errors>
+        403 se l'attore non ha alcuna capability ne' update sulla RDA di una riga (o riga fuori
+        visibilita'); 409 RDA chiusa; 422 `line_ids.N` "The supplier of this line can no longer
+        be changed." se `update_supplier` e' falso per quella riga; 422 `supplier_id`.
+      </errors>
+    </endpoint>
+
+    <table domain="purchase-requests">
+      Colonna `supplier` sostituita da `suppliers`: valore NamedRef[] (distinti, ordinati per nome),
+      filtro text (whereHas lines.supplier name like), non ordinabile, /values = nomi distinti dei
+      fornitori delle righe. Colonna nascosta `supplier_vat_number` invariata nell'id, ricerca su
+      lines.supplier.personalData.vat_number.
+    </table>
+    <table domain="purchase-request-lines">
+      + colonna `supplier`: NamedRef|null, filtro text (TEXT_RELATIONS `supplier` => ['supplier','name']),
+      ordinabile per nome, /values via distinctRelated. Riga + abilities.update_supplier.
+    </table>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Migrazione: data una RDA con supplier di testata S e 3 righe, dopo migrate le 3 righe hanno supplier_id = S e `purchase_requests` non ha piu' la colonna; righe role_field_permissions del campo supplier_id rimosse; rollback ricrea la colonna con S.</criterion>
+    <criterion id="AC-002">POST con righe di 3 fornitori diversi crea la RDA; il Resource restituisce lines[].supplier per ognuna e nessun `supplier` di testata.</criterion>
+    <criterion id="AC-003">POST con lines.1.supplier_id di una registry non fornitore: 422 su `lines.1.supplier_id`, nessun record.</criterion>
+    <criterion id="AC-004">PUT su riga approved che cambia solo supplier_id: con fulfill 200 e fornitore aggiornato; senza fulfill/manage 422 `lines.N`; se cambia anche la quantita' 422 anche con fulfill.</criterion>
+    <criterion id="AC-005">PUT su riga ordered che cambia supplier_id: 422 `lines.N` anche con fulfill/manage.</criterion>
+    <criterion id="AC-006">abilities.update_supplier: true su pending (con update), true su approved con fulfill, false su approved senza fulfill/manage, false su ordered/received/rejected/on_hold, false su RDA chiusa; identico nel Resource e nelle righe SSRM.</criterion>
+    <criterion id="AC-007">Cambio stato verso ordered di 2 righe, una senza fornitore e senza `suppliers`: 422 `line_ids.N` della riga senza fornitore, nessuna riga cambiata.</criterion>
+    <criterion id="AC-008">Cambio stato verso ordered con `suppliers` per la riga mancante: 200, entrambe ordered, fornitore salvato; `suppliers` con to_status diverso da ordered: 422 `suppliers`; line_id non in line_ids: 422.</criterion>
+    <criterion id="AC-009">POST /purchase-request-lines/supplier su 2 righe approved con fulfill: 200, updated_count 2; se una e' ordered: 422 `line_ids.N` e nessuna aggiornata; senza capability: 403; RDA chiusa: 409; supplier non fornitore: 422 `supplier_id`.</criterion>
+    <criterion id="AC-010">Lista RDA: colonna `suppliers` con i fornitori distinti delle righe; filtro testo "Rossi" restituisce le RDA con almeno una riga di Rossi; ricerca rapida per P.IVA di un fornitore di riga trova la RDA; /values di `suppliers` risponde 200.</criterion>
+    <criterion id="AC-011">Gestione righe: colonna `supplier` valorizzata, filtro testo e /values 200, ordinamento per fornitore.</criterion>
+    <criterion id="AC-012">FE form (Vitest): la testata non mostra Fornitore; ogni riga ha il select Fornitore; scegliere un prodotto con fornitore propone quel fornitore; il payload invia lines[].supplier_id e nessun supplier_id di testata.</criterion>
+    <criterion id="AC-013">FE form: su riga approved con abilities.update_supplier il solo select Fornitore e' abilitato, il resto disabilitato; senza update_supplier tutto disabilitato.</criterion>
+    <criterion id="AC-014">FE riga: le azioni sono pulsanti solo icona con nome accessibile (Motivazione, Cambia stato, Scorpora IVA, Documenti, Elimina N) e nessun testo visibile; il pulsante Motivazione apre un popover con la textarea legata a lines.N.reason; il Totale espone imponibile e IVA in tooltip.</criterion>
+    <criterion id="AC-015">FE modale cambio stato: scelto "Ordinato", le righe senza fornitore mostrano un select per riga, quelle con fornitore lo mostrano in testo; la conferma resta disabilitata finche' manca un fornitore; la chiamata invia `suppliers` solo per le righe compilate nella modale; per altri stati nessun select e nessun `suppliers`.</criterion>
+    <criterion id="AC-016">FE Gestione righe: azione massiva "Assegna fornitore" apre la modale; se una riga selezionata ha update_supplier false mostra il messaggio e la conferma e' disabilitata; conferma invia line_ids + supplier_id e aggiorna la griglia.</criterion>
+    <criterion id="AC-017">Guide in-app IT/EN aggiornate (fornitore sulle righe, obbligo in Ordinato, Assegna fornitore, azioni a icona) e `help-content-parity.test.ts` verde.</criterion>
+    <criterion id="AC-018">Gate: Pest PurchaseRequests + navigazione/catalogo campi verdi, Vitest purchase-requests + help verdi, Pint, ESLint, `tsc -b --force` puliti; file `line-status-dialog.head.tmp` rimosso.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Authz server-side su ogni endpoint (capability resolver + policy +
+    visibilita' 0208 D-16); la regola D-3 vive in un solo punto BE (resolver) e il FE legge solo
+    `abilities.update_supplier`. Tutto-o-niente con lockForUpdate come 0208. Nessun throttle.
+    Migrazione nuova (mai modificare quelle di 0208), reversibile. File entro 300/500 righe:
+    la riga del form va divisa (riga desktop / scheda mobile / azioni / popover motivazione) se
+    supera 300. Identificatori in inglese; stringhe UI via i18next. UI compatta (ui-design.md §2),
+    pulsanti mai dello stesso colore del fondo. Manuale Claude Docs: segnalare le sezioni da aggiornare.
+  </constraints>
+
+</spec>

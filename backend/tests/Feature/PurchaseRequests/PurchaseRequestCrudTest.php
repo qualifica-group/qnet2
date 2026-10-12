@@ -42,7 +42,7 @@ it('AC-001: creates a request with two pending lines and computes every amount s
         ->assertJsonPath('data.line_status_counts.approved', 0)
         ->assertJsonPath('data.abilities.update', false)
         ->assertJsonStructure(['permissions', 'data' => [
-            'id', 'subject', 'requested_at', 'priority', 'requester', 'function_manager', 'customer', 'supplier',
+            'id', 'subject', 'requested_at', 'priority', 'requester', 'function_manager', 'customer',
             'work_order', 'company', 'company_site', 'operational_site', 'business_function', 'created_by',
             'notes', 'delivery_terms', 'procurement_plan', 'technical_requirements', 'special_conditions',
             'closed_by', 'closed_at', 'close_reason', 'lines', 'created_at', 'updated_at',
@@ -63,7 +63,7 @@ it('AC-001: forbids creating without the create permission', function () {
     expect(PurchaseRequest::query()->count())->toBe(0);
 });
 
-it('AC-002: rejects a request without lines, with zero quantity, a foreign company site or a non supplier', function (string $key, callable $mutate) {
+it('AC-002: rejects a request without lines, with zero quantity or a foreign company site', function (string $key, callable $mutate) {
     Sanctum::actingAs(purchaseRequestUserWith(['create']));
     $payload = $mutate(purchaseRequestPayload());
 
@@ -85,21 +85,15 @@ it('AC-002: rejects a request without lines, with zero quantity, a foreign compa
         return $p;
     }],
     'site of another company' => ['company_site_id', fn (array $p) => [...$p, 'company_site_id' => purchaseRequestPayload()['company_site_id']]],
-    'supplier without the flag' => ['supplier_id', fn (array $p) => [...$p, 'supplier_id' => supplierRegistry(false)->id]],
     'inactive manager' => ['function_manager_id', fn (array $p) => [...$p, 'function_manager_id' => User::factory()->create(['is_active' => false])->id]],
     'footer too long' => ['notes', fn (array $p) => [...$p, 'notes' => str_repeat('a', 5001)]],
 ]);
 
-it('accepts an active supplier and stores the footer fields', function () {
+it('stores the footer fields', function () {
     Sanctum::actingAs(purchaseRequestUserWith(['create']));
-    $supplier = supplierRegistry();
 
-    $this->postJson('/api/purchase-requests', purchaseRequestPayload([
-        'supplier_id' => $supplier->id,
-        'delivery_terms' => 'Within 30 days',
-    ]))
+    $this->postJson('/api/purchase-requests', purchaseRequestPayload(['delivery_terms' => 'Within 30 days']))
         ->assertCreated()
-        ->assertJsonPath('data.supplier.id', $supplier->id)
         ->assertJsonPath('data.delivery_terms', 'Within 30 days');
 });
 

@@ -12,6 +12,7 @@ use App\Models\PurchaseRequestLine;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\VatRate;
+use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -85,8 +86,9 @@ if (! function_exists('purchaseRequestWithLines')) {
      *
      * @param  array<int, PurchaseRequestLineStatus>  $statuses
      * @param  array<string, mixed>  $attributes  request attributes
+     * @param  array<string, mixed>  $lineAttributes  attributes of every line
      */
-    function purchaseRequestWithLines(array $statuses = [PurchaseRequestLineStatus::PendingApproval], array $attributes = []): PurchaseRequest
+    function purchaseRequestWithLines(array $statuses = [PurchaseRequestLineStatus::PendingApproval], array $attributes = [], array $lineAttributes = []): PurchaseRequest
     {
         $request = PurchaseRequest::factory()->create($attributes);
 
@@ -95,7 +97,7 @@ if (! function_exists('purchaseRequestWithLines')) {
                 'purchase_request_id' => $request->id,
                 'position' => $index + 1,
                 'status' => $status,
-            ]);
+            ] + $lineAttributes);
         }
 
         return $request->fresh('lines');
@@ -106,6 +108,19 @@ if (! function_exists('supplierRegistry')) {
     function supplierRegistry(bool $isSupplier = true): Registry
     {
         return Registry::factory()->create(['is_supplier' => $isSupplier]);
+    }
+}
+
+if (! function_exists('changeStatus')) {
+    /**
+     * POST the mass line status change.
+     *
+     * @param  array<int, int>  $lineIds
+     * @param  array<string, mixed>  $extra
+     */
+    function changeStatus(object $test, array $lineIds, string $to, array $extra = []): TestResponse
+    {
+        return $test->postJson('/api/purchase-request-lines/status', ['line_ids' => $lineIds, 'to_status' => $to] + $extra);
     }
 }
 
@@ -133,6 +148,7 @@ if (! function_exists('purchaseRequestUpdatePayload')) {
         $payload['lines'] = $request->lines->map(fn (PurchaseRequestLine $line): array => [
             'id' => $line->id,
             'description' => $line->description,
+            'supplier_id' => $line->supplier_id,
             'quantity' => $line->quantity,
             'unit_price' => $line->unit_price,
         ])->all();

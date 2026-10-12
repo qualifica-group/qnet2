@@ -18,10 +18,6 @@ import {
 import type { RequestRefs } from '@/features/purchase-requests/purchase-request-refs'
 import type { PurchaseRequestFormValues } from '@/features/purchase-requests/purchase-request-schema'
 
-/** Supplier picker filter: only registries flagged `is_supplier` (D-14). */
-const SUPPLIER_PARAMS = { is_supplier: 1 } as const
-const SUPPLIER_PRESETS = { is_supplier: true } as const
-
 /** The business-functions for-select item carries the function's manager (spec 0208 D-4). */
 interface BusinessFunctionItem extends ForSelectItem {
   manager?: { id: number; name: string } | null
@@ -35,7 +31,7 @@ interface PurchaseRequestHeaderFieldsProps {
   createdByName: string
 }
 
-/** Header of the RDA: subject, dates, people, organization and commercial relations. */
+/** Header of the RDA: subject, dates, people, organization and customer (the supplier lives on the lines). */
 export function PurchaseRequestHeaderFields({
   control,
   setValue,
@@ -112,14 +108,6 @@ export function PurchaseRequestHeaderFields({
         name="customer_id"
         resource={REGISTRIES_FOR_SELECT_RESOURCE}
         selected={refs.customer_id}
-      />
-      <PurchaseRelationField
-        control={control}
-        name="supplier_id"
-        resource={REGISTRIES_FOR_SELECT_RESOURCE}
-        selected={refs.supplier_id}
-        params={SUPPLIER_PARAMS}
-        quickCreatePresets={SUPPLIER_PRESETS}
       />
       <PurchaseRelationField
         control={control}

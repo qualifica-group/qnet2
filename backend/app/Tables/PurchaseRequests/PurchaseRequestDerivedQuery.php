@@ -123,6 +123,32 @@ final class PurchaseRequestDerivedQuery
     }
 
     /**
+     * Distinct names of the suppliers of the lines of the requests in `$query`
+     * (`/values` of the RDA list `suppliers` column; the line relation is a
+     * HasMany, which distinctRelated() does not walk).
+     *
+     * @param  Builder<Model>  $query
+     * @return array<int, string>
+     */
+    public static function distinctLineSuppliers(Builder $query, ?string $search, int $limit): array
+    {
+        $requestIds = (clone $query)->reorder()->setEagerLoads([])->select('purchase_requests.id')->toBase();
+        $supplierIds = DB::table('purchase_request_lines')->whereIn('purchase_request_id', $requestIds)->whereNotNull('supplier_id')->select('supplier_id');
+
+        return DB::table('registries')
+            ->whereIn('id', $supplierIds)
+            ->when($search !== null && $search !== '', static function ($registries) use ($search): void {
+                $registries->where('name', 'like', '%'.app(FilterApplier::class)->escapeLike($search).'%');
+            })
+            ->distinct()
+            ->orderBy('name')
+            ->limit($limit)
+            ->pluck('name')
+            ->map(static fn (mixed $value): string => (string) $value)
+            ->all();
+    }
+
+    /**
      * Value-list filter on a related column; a `null` in the list also keeps
      * the rows without the relation.
      *

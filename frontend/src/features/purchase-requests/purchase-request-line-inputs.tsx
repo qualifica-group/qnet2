@@ -2,7 +2,7 @@ import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
@@ -28,21 +28,19 @@ function toNumber(raw: string): number {
 }
 
 interface LineTextFieldProps extends LineFieldBase {
-  name: 'description' | 'reason'
   label: string
 }
 
-/** Free-text input of a line (description or reason). */
-export function LineTextField({ control, index, disabled, name, label }: LineTextFieldProps) {
+/** Description of a line; the label is the accessible name only (the column header names it on desktop). */
+export function LineTextField({ control, index, disabled, label }: LineTextFieldProps) {
   return (
     <FormField
       control={control}
-      name={`lines.${index}.${name}`}
+      name={`lines.${index}.description`}
       render={({ field }) => (
         <FormItem className="gap-1">
-          <FormLabel className="text-xs">{label}</FormLabel>
           <FormControl>
-            <Input className="h-8 text-xs" disabled={disabled} {...field} />
+            <Input className="h-7 text-xs" aria-label={label} placeholder={label} disabled={disabled} {...field} />
           </FormControl>
           <FormMessage className="text-xs" />
         </FormItem>
@@ -54,22 +52,25 @@ export function LineTextField({ control, index, disabled, name, label }: LineTex
 interface LineNumberFieldProps extends LineFieldBase {
   name: 'quantity' | 'unit_price'
   label: string
+  /** Short hint shown in the empty box (the phone card has no column header). */
+  placeholder: string
 }
 
 /** Numeric input of a line (quantity or unit price); NaN stands for an empty box. */
-export function LineNumberField({ control, index, disabled, name, label }: LineNumberFieldProps) {
+export function LineNumberField({ control, index, disabled, name, label, placeholder }: LineNumberFieldProps) {
   return (
     <FormField
       control={control}
       name={`lines.${index}.${name}`}
       render={({ field }) => (
         <FormItem className="gap-1">
-          <FormLabel className="text-xs">{label}</FormLabel>
           <FormControl>
             <Input
               type="number"
               step="any"
-              className="h-8 text-right text-xs"
+              className="h-7 text-right text-xs"
+              aria-label={label}
+              placeholder={placeholder}
               disabled={disabled}
               {...field}
               value={Number.isNaN(field.value) ? '' : field.value}
@@ -87,6 +88,9 @@ interface LineSelectLabels {
   placeholder: string
   triggerLabel: string
 }
+
+/** Compact trigger of the line pickers (one-band row, spec 0209 D-9). */
+const COMPACT_SELECT = 'h-7 min-h-7 px-2 text-xs'
 
 function useSelectLabels({ placeholder, triggerLabel }: LineSelectLabels) {
   const { t } = useTranslation()
@@ -118,7 +122,6 @@ export function LineProductSelect({ control, index, disabled, label, onProductPi
       name={`lines.${index}.product_id`}
       render={({ field }) => (
         <FormItem className="gap-1">
-          <FormLabel className="text-xs">{label}</FormLabel>
           <FormControl>
             <AsyncPaginatedSelect
               resource={PRODUCTS_FOR_SELECT_RESOURCE}
@@ -128,6 +131,7 @@ export function LineProductSelect({ control, index, disabled, label, onProductPi
               onItemChange={(item) => {
                 if (item) onProductPicked(item.id)
               }}
+              className={COMPACT_SELECT}
               disabled={disabled}
               labels={labels}
               action={renderAction((ref) => {
@@ -156,12 +160,12 @@ export function LineUnitSelect({ control, index, disabled, label }: LineUnitSele
       name={`lines.${index}.unit_of_measure_id`}
       render={({ field }) => (
         <FormItem className="gap-1">
-          <FormLabel className="text-xs">{label}</FormLabel>
           <FormControl>
             <AsyncPaginatedSelect
               resource={UNITS_OF_MEASURE_FOR_SELECT_RESOURCE}
               value={field.value}
               onChange={field.onChange}
+              className={COMPACT_SELECT}
               disabled={disabled}
               labels={labels}
             />
@@ -188,7 +192,6 @@ export function LineVatSelect({ control, index, disabled, label, onRateChange }:
       name={`lines.${index}.vat_rate_id`}
       render={({ field }) => (
         <FormItem className="gap-1">
-          <FormLabel className="text-xs">{label}</FormLabel>
           <FormControl>
             <AsyncPaginatedSelect
               resource={VAT_RATES_FOR_SELECT_RESOURCE}
@@ -198,6 +201,7 @@ export function LineVatSelect({ control, index, disabled, label, onRateChange }:
                 const rate = (item as VatRateItem | null)?.meta?.rate
                 onRateChange(item && rate != null ? Number(rate) : null)
               }}
+              className={COMPACT_SELECT}
               disabled={disabled}
               labels={labels}
             />

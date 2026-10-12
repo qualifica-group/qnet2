@@ -22,6 +22,7 @@ use App\Models\CompanySite;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\ContractStatus;
+use App\Models\CostType;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
 use App\Models\DocumentBundle;
@@ -45,6 +46,8 @@ use App\Models\ProductCategory;
 use App\Models\ProductTypology;
 use App\Models\ProformaRequest;
 use App\Models\Project;
+use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderLine;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
 use App\Models\Quote;
@@ -203,6 +206,9 @@ class AppServiceProvider extends ServiceProvider
             'proforma_request' => ProformaRequest::class,
             'purchase_request' => PurchaseRequest::class,
             'purchase_request_line' => PurchaseRequestLine::class,
+            'purchase_order' => PurchaseOrder::class,
+            'purchase_order_line' => PurchaseOrderLine::class,
+            'cost_type' => CostType::class,
             'invoice' => Invoice::class,
             'invoice_installment' => InvoiceInstallment::class,
             'product_typology' => ProductTypology::class,

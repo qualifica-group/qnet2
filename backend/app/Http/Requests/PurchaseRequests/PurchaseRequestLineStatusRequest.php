@@ -32,7 +32,21 @@ class PurchaseRequestLineStatusRequest extends FormRequest
             'line_ids.*' => ['required', 'integer', 'distinct', Rule::exists('purchase_request_lines', 'id')],
             'to_status' => ['required', Rule::enum(PurchaseRequestLineStatus::class)],
             'reason' => ['nullable', 'string', 'max:'.self::REASON_MAX_LENGTH],
+            // Supplied for the lines that miss one when ordering (spec 0209, D-2).
+            'suppliers' => ['nullable', 'array', 'max:'.self::MAX_LINES, 'prohibited_unless:to_status,'.PurchaseRequestLineStatus::Ordered->value],
+            'suppliers.*.line_id' => ['required', 'integer', 'distinct', Rule::in(array_filter((array) $this->input('line_ids'), 'is_scalar'))],
+            'suppliers.*.supplier_id' => ['required', 'integer', Rule::exists('registries', 'id')->where('is_supplier', true)],
         ];
+    }
+
+    /**
+     * @return array<int, int> line id => supplier id
+     */
+    public function suppliers(): array
+    {
+        return collect($this->validated('suppliers') ?? [])
+            ->mapWithKeys(fn (array $entry): array => [(int) $entry['line_id'] => (int) $entry['supplier_id']])
+            ->all();
     }
 
     /**

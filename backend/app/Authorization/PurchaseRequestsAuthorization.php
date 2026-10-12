@@ -45,7 +45,6 @@ class PurchaseRequestsAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('requester_id', 'select'),
             new FieldDefinition('function_manager_id', 'select'),
             new FieldDefinition('customer_id', 'select'),
-            new FieldDefinition('supplier_id', 'select'),
             new FieldDefinition('work_order_id', 'select'),
             new FieldDefinition('company_id', 'select'),
             new FieldDefinition('company_site_id', 'select'),

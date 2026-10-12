@@ -71,6 +71,10 @@ export const permissions = {
     manageStatuses: 'Manage any line status',
     deleteLine: 'Delete lines',
     close: 'Close',
+    // Spec 0210: purchase orders (ODA).
+    approve: 'Approve',
+    merge: 'Merge',
+    send: 'Send to supplier',
     // Spec 0201 D-10: work order Contract data tab and per-line payment management.
     viewContractData: 'View contract data',
     managePayments: 'Manage payments',
@@ -127,6 +131,8 @@ export const permissions = {
     'financial-accounts': 'Financial accounts',
     'proforma-requests': 'Proforma requests',
     'purchase-requests': 'Purchase requests (RDA)',
+    'purchase-orders': 'Purchase orders (ODA)',
+    'cost-types': 'Cost types',
     invoices: 'Active invoices',
     'invoice-installments': 'Due dates',
     'product-typologies': 'Product Typologies',

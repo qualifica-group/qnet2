@@ -26,6 +26,7 @@ export function newLineValues(overrides: Partial<PurchaseRequestLineFormValues> 
     status: PENDING_STATUS,
     locked: false,
     can_delete: true,
+    can_update_supplier: true,
     transitions: [],
     vat_rate_percent: null,
     pending_files: [],
@@ -36,6 +37,8 @@ export function newLineValues(overrides: Partial<PurchaseRequestLineFormValues> 
     quantity: DEFAULT_QUANTITY,
     unit_price: 0,
     vat_rate_id: null,
+    supplier_id: null,
+    supplier_ref: null,
     ...overrides,
   }
 }
@@ -48,7 +51,6 @@ export function emptyFormValues(requesterId: number | null, now: Date = new Date
     requester_id: requesterId,
     function_manager_id: null,
     customer_id: null,
-    supplier_id: null,
     work_order_id: null,
     company_id: null,
     company_site_id: null,
@@ -65,12 +67,14 @@ export function emptyFormValues(requesterId: number | null, now: Date = new Date
 }
 
 /** Only a `pending_approval` line the actor may update stays editable (D-10); a closed RDA locks everything. */
-function lineToFormValues(line: PurchaseRequestLine, isClosed: boolean): PurchaseRequestLineFormValues {
+function lineToFormValues(line: PurchaseRequestLine, isClosed: boolean, canUpdateRequest: boolean): PurchaseRequestLineFormValues {
   return {
     id: line.id,
     status: line.status,
     locked: isClosed || line.status !== PENDING_STATUS || !line.abilities.update,
     can_delete: line.abilities.delete && !isClosed,
+    // The PUT needs the RDA `update` policy: whoever only fulfils changes the supplier from the lines management page
+    can_update_supplier: line.abilities.update_supplier && canUpdateRequest && !isClosed,
     transitions: isClosed ? [] : line.abilities.transitions,
     vat_rate_percent: line.vat_rate ? Number(line.vat_rate.rate) : null,
     pending_files: [],
@@ -81,6 +85,8 @@ function lineToFormValues(line: PurchaseRequestLine, isClosed: boolean): Purchas
     quantity: Number(line.quantity),
     unit_price: Number(line.unit_price),
     vat_rate_id: line.vat_rate?.id ?? null,
+    supplier_id: line.supplier?.id ?? null,
+    supplier_ref: line.supplier,
   }
 }
 
@@ -93,7 +99,6 @@ export function toFormValues(request: PurchaseRequest): PurchaseRequestFormValue
     requester_id: request.requester.id,
     function_manager_id: request.function_manager.id,
     customer_id: request.customer?.id ?? null,
-    supplier_id: request.supplier?.id ?? null,
     work_order_id: request.work_order?.id ?? null,
     company_id: request.company.id,
     company_site_id: request.company_site.id,
@@ -105,7 +110,7 @@ export function toFormValues(request: PurchaseRequest): PurchaseRequestFormValue
     technical_requirements: request.technical_requirements ?? '',
     special_conditions: request.special_conditions ?? '',
     pending_files: [],
-    lines: request.lines.map((line) => lineToFormValues(line, isClosed)),
+    lines: request.lines.map((line) => lineToFormValues(line, isClosed, request.abilities.update)),
   }
 }
 
@@ -123,6 +128,7 @@ function toLinePayload(line: PurchaseRequestLineFormValues): PurchaseRequestLine
     quantity: line.quantity,
     unit_price: line.unit_price,
     vat_rate_id: line.vat_rate_id,
+    supplier_id: line.supplier_id,
   }
 }
 
@@ -151,7 +157,6 @@ export function buildPayload(values: PurchaseRequestFormValues): PurchaseRequest
     requester_id,
     function_manager_id,
     customer_id: values.customer_id,
-    supplier_id: values.supplier_id,
     work_order_id: values.work_order_id,
     company_id,
     company_site_id,

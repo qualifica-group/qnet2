@@ -17,6 +17,7 @@ const FOR_SELECT_ITEMS: Record<string, unknown[]> = {
   companies: [{ id: 1, label: 'Qualifica Srl' }],
   'company-sites': [{ id: 2, label: 'Napoli' }],
   'operational-sites': [{ id: 3, label: 'Sede Napoli' }],
+  registries: [{ id: 12, label: 'Rossi Srl' }],
 }
 
 const forSelectMock = vi.fn(async (resource: string) => ({
@@ -90,6 +91,7 @@ describe('PurchaseRequestForm submit (AC-016, D-15)', () => {
     await pick(/Company site/, /Napoli/)
     await pick(/Operational site/, /Sede Napoli/)
     fireEvent.change(screen.getByLabelText('Description 1'), { target: { value: 'Cables' } })
+    await pick(/^Supplier 1$/, /Rossi Srl/)
     fireEvent.change(screen.getByLabelText('Unit price 1'), { target: { value: '12.5' } })
 
     const header = new File(['a'], 'quote.pdf', { type: 'application/pdf' })
@@ -125,9 +127,11 @@ describe('PurchaseRequestForm submit (AC-016, D-15)', () => {
           quantity: 1,
           unit_price: 12.5,
           vat_rate_id: null,
+          supplier_id: 12,
         },
       ],
     })
+    expect(payload).not.toHaveProperty('supplier_id')
     expect(payload?.lines[0]).not.toHaveProperty('id')
 
     await waitFor(() => expect(uploadMock).toHaveBeenCalledTimes(2))

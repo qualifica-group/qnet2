@@ -4,6 +4,8 @@ import {
   LINE_STATUSES,
   type LineCapability,
   type LineStatus,
+  type LineSupplierAssignment,
+  type NamedRef,
   type PurchaseRequestLine,
 } from '@/features/purchase-requests/types'
 
@@ -19,6 +21,10 @@ export interface LineTarget {
   quantity: number
   unitSymbol: string | null
   totalAmount: number
+  /** Current supplier of the line; ordering needs one (spec 0209 D-2). */
+  supplier: NamedRef | null
+  /** `abilities.update_supplier`: whether the supplier can still be assigned or changed (D-3). */
+  canUpdateSupplier: boolean
   purchaseRequestId: number | null
   purchaseRequestSubject: string | null
 }
@@ -44,9 +50,17 @@ function readText(value: unknown): string | null {
   return typeof value === 'string' ? value : null
 }
 
-/** Reads the grid row of the lines table (`abilities.transitions`/`capabilities`, spec 0208 contract). */
+function readNamedRef(value: unknown): NamedRef | null {
+  const ref = value as { id?: unknown; name?: unknown } | null | undefined
+  return typeof ref?.id === 'number' && typeof ref.name === 'string' ? { id: ref.id, name: ref.name } : null
+}
+
+/** Reads the grid row of the lines table (`abilities.transitions`/`capabilities`/`update_supplier`, specs 0208 and 0209). */
 export function toLineTarget(row: TableRow): LineTarget {
-  const abilities = row.abilities as { transitions?: unknown; capabilities?: unknown } | null | undefined
+  const abilities = row.abilities as
+    | { transitions?: unknown; capabilities?: unknown; update_supplier?: unknown }
+    | null
+    | undefined
   const requestId = row.purchase_request_id == null ? null : Number(row.purchase_request_id)
   return {
     id: Number(row.id),
@@ -57,6 +71,8 @@ export function toLineTarget(row: TableRow): LineTarget {
     quantity: Number(row.quantity) || 0,
     unitSymbol: readSymbol(row.unit_of_measure),
     totalAmount: Number(row.total_amount) || 0,
+    supplier: readNamedRef(row.supplier),
+    canUpdateSupplier: abilities?.update_supplier === true,
     purchaseRequestId: requestId !== null && Number.isFinite(requestId) ? requestId : null,
     purchaseRequestSubject: readText(row.purchase_request_subject),
   }
@@ -77,6 +93,8 @@ export function lineToTarget(
     quantity: Number(line.quantity),
     unitSymbol: line.unit_of_measure?.symbol ?? line.unit_of_measure?.name ?? null,
     totalAmount: Number(line.total_amount),
+    supplier: line.supplier,
+    canUpdateSupplier: line.abilities.update_supplier,
     purchaseRequestId: request.id,
     purchaseRequestSubject: request.subject,
   }
@@ -124,4 +142,23 @@ export function sharedRequest(targets: readonly LineTarget[]): { id: number; sub
   return targets.every((target) => target.purchaseRequestId === first.purchaseRequestId)
     ? { id: first.purchaseRequestId, subject: first.purchaseRequestSubject ?? '' }
     : null
+}
+
+/** Status that needs a supplier on every line (spec 0209 D-2). */
+export const SUPPLIER_REQUIRED_STATUS: LineStatus = 'ordered'
+
+/** Suppliers picked in the dialog, by line id; only lines without a supplier need one. */
+export type PickedSuppliers = Readonly<Record<number, NamedRef>>
+
+/** True while some selected line has neither its own supplier nor one picked in the dialog. */
+export function hasMissingSupplier(targets: readonly LineTarget[], picked: PickedSuppliers): boolean {
+  return targets.some((target) => target.supplier === null && picked[target.id] === undefined)
+}
+
+/** The `suppliers` payload: only the lines that had none and got one in the dialog. */
+export function pickedAssignments(targets: readonly LineTarget[], picked: PickedSuppliers): LineSupplierAssignment[] {
+  return targets.flatMap((target) => {
+    const supplier = target.supplier === null ? picked[target.id] : undefined
+    return supplier ? [{ line_id: target.id, supplier_id: supplier.id }] : []
+  })
 }

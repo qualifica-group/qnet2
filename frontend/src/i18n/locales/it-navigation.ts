@@ -71,6 +71,8 @@ export const navigation = {
   purchasing: 'Acquisti',
   purchaseRequests: 'RDA',
   purchaseRequestLines: 'Gestione righe RDA',
+  purchaseOrders: 'ODA',
+  costTypes: 'Tipi di costo',
   management: 'Gestione',
   configuration: 'Configurazione',
   administration: 'Amministrazione',

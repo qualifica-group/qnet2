@@ -28,7 +28,7 @@ const guide: HelpGuide = {
           items: [
             'Press **New RDA** and fill in the header: **Subject**, **Request date**, **Priority**, **Requester** and the organization fields (**Company**, **Company site**, **Operational site**, **Business function**).',
             'Choosing the **Business function** proposes its **Function manager** automatically: you can change it to any active user. **Company site** only lists the sites of the chosen company.',
-            'Optional: **Customer**, **Supplier** (supplier registries only) and **Work order**. The **+** next to a field creates a new supplier, customer or product on the spot.',
+            'Optional: **Customer** and **Work order**. The **Supplier** is no longer in the header but on each line. The **+** next to a field creates a new supplier, customer or product on the spot.',
             'Add the lines (at least one) and the documents if needed, then press **Save**.',
           ],
         },
@@ -44,7 +44,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Each line can have a catalog **Product** or just a free **Description**. Picking a product proposes its description, **Unit**, **Unit price** and **VAT rate**: they stay editable. Write the purchase **Reason** under the description.',
+          text: 'Each line can have a catalog **Product** or just a free **Description**. Picking a product proposes its description, **Unit**, **Unit price** and **VAT rate**: they stay editable. Each line can have a **Supplier** (supplier registries only), so one RDA can gather lines from different suppliers. On desktop each line is a single band under one shared header; on small screens lines become cards. Line actions are **icon-only**: hover to read their name.',
         },
         {
           type: 'table',
@@ -52,10 +52,13 @@ const guide: HelpGuide = {
           rows: [
             ['**Taxable / VAT / Total**', 'Computed by the system (quantity × price, then VAT) and read-only. The RDA total is the sum of its lines.'],
             ['**Extract VAT**', 'If you only know the final price including VAT, enter it and press Extract VAT: the price is brought back to the taxable amount with the line VAT rate (122.00 at 22% becomes 100.00). It needs a VAT rate above zero.'],
-            ['**Status**', 'To approve, Approved, Ordered, Received, Rejected or On hold. It is not edited like a field: use the **Change line status** button.'],
+            ['**Supplier**', 'Optional when you create the line, but **required to move it to Ordered**: if missing, the status dialog asks for it line by line. It can be edited while the line is To approve (by whoever can edit the RDA) and Approved (by whoever has the fulfilment permission, even with the rest of the line locked); from **Ordered** on it is locked. Picking a product that has a supplier proposes it.'],
+            ['**Total**', 'Hover (or focus with the keyboard) the total to see the line taxable amount and VAT.'],
+            ['**Reason**', 'The speech-bubble icon opens a small panel with the reason text; it is highlighted when a reason is written and read-only on locked lines.'],
+            ['**Status**', 'To approve, Approved, Ordered, Received, Rejected or On hold. It is not edited like a field: use the **Change line status** icon.'],
             ['**ODA**', 'Read-only placeholder: for now it always shows a dash.'],
             ['**Line documents**', 'Attachments of the single line.'],
-            ['**Change line status**', 'Shown on a saved line only when you can change its status: the assigned function manager approves or rejects lines To approve, whoever has the fulfilment permission moves Approved lines to Ordered or On hold and Ordered lines to Received or On hold. Pick the new status and an optional reason.'],
+            ['**Change line status**', 'Shown on a saved line only when you can change its status: the assigned function manager approves or rejects lines To approve, whoever has the fulfilment permission moves Approved lines to Ordered or On hold and Ordered lines to Received or On hold. Pick the new status and an optional reason. Choosing **Ordered** adds a **Supplier** column to the dialog: lines that already have one show it, lines without one get a picker, and the confirm button stays disabled until none is missing.'],
             ['**Trash**', 'Deletes the line, if your role allows it and it is To approve or Rejected.'],
           ],
         },

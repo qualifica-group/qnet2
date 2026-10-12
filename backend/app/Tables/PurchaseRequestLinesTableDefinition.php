@@ -59,6 +59,7 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
             'purchaseRequest:id,subject,priority,requested_at,requester_id,function_manager_id,created_by,status',
             'purchaseRequest.requester:id,name',
             'purchaseRequest.functionManager:id,name',
+            'supplier:id,name',
             'unitOfMeasure:id,name,symbol',
             'approvedBy:id,name',
         ]);
@@ -127,6 +128,7 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
             'requested_at' => $request->requested_at->toDateString(),
             'position' => $row->position,
             'description' => $row->description,
+            'supplier' => $row->supplier === null ? null : ['id' => $row->supplier->id, 'name' => $row->supplier->name],
             'unit_of_measure' => $row->unitOfMeasure === null ? null : ['id' => $row->unitOfMeasure->id, 'name' => $row->unitOfMeasure->name, 'symbol' => $row->unitOfMeasure->symbol],
             'quantity' => $row->quantity,
             'unit_price' => $row->unit_price,
@@ -138,6 +140,7 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
             'approved_at' => $row->approved_at,
             'oda_reference' => $row->oda_reference,
             'abilities' => [
+                'update_supplier' => $this->capabilities->canUpdateSupplier($actor, $request, $row, ! $request->isClosed() && Gate::forUser($actor)->allows('update', $request)),
                 'transitions' => array_map(
                     static fn (PurchaseRequestLineStatus $status): string => $status->value,
                     $this->capabilities->transitions($actor, $request, $row),
@@ -185,6 +188,12 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
+        if ($columnId === Catalog::SUPPLIER_COLUMN) {
+            Derived::orderByRelated($query, 'registries', 'purchase_request_lines.supplier_id', 'name', $direction);
+
+            return true;
+        }
+
         if (! isset(Catalog::PARENT_SORTS[$columnId])) {
             return false;
         }

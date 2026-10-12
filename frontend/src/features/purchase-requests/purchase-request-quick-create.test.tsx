@@ -118,7 +118,7 @@ describe('quick-create supplier (D-14)', () => {
     renderForm()
     const registryPlusButtons = screen.getAllByRole('button', { name: 'Create registry' })
 
-    // customer first, supplier second: only the supplier picker presets the flag
+    // header customer first, line supplier second: only the supplier picker presets the flag
     fireEvent.click(registryPlusButtons[1]!)
 
     expect(await screen.findByText('registry-form supplier preset: true')).toBeInTheDocument()

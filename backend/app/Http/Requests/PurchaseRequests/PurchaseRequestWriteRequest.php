@@ -48,7 +48,6 @@ class PurchaseRequestWriteRequest extends FormRequest
                 fn ($users) => $users->where('is_active', true)->orWhere('id', $this->authorizationModel()?->getAttribute('function_manager_id')),
             )],
             'customer_id' => ['nullable', 'integer', Rule::exists('registries', 'id')],
-            'supplier_id' => ['nullable', 'integer', Rule::exists('registries', 'id')->where('is_supplier', true)],
             'work_order_id' => ['nullable', 'integer', Rule::exists('work_orders', 'id')],
             'company_id' => ['required', 'integer', Rule::exists('companies', 'id')],
             'company_site_id' => [
@@ -66,6 +65,7 @@ class PurchaseRequestWriteRequest extends FormRequest
             'lines.*.id' => ['nullable', 'integer'],
             'lines.*.product_id' => ['nullable', 'integer', Rule::exists('products', 'id')],
             'lines.*.description' => ['required', 'string', 'max:500'],
+            'lines.*.supplier_id' => ['nullable', 'integer', Rule::exists('registries', 'id')->where('is_supplier', true)],
             'lines.*.reason' => ['nullable', 'string', 'max:'.self::TEXT_MAX_LENGTH],
             'lines.*.unit_of_measure_id' => ['nullable', 'integer', Rule::exists('units_of_measure', 'id')],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0', 'max:999999999'],

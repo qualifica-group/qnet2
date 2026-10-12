@@ -152,5 +152,9 @@
     "The line does not belong to this purchase request.": "La riga non appartiene a questa richiesta di acquisto.",
     "The line is no longer pending approval and cannot be modified.": "La riga non è più da approvare e non può essere modificata.",
     "Only pending or rejected lines can be deleted.": "Si possono eliminare solo righe da approvare o rifiutate.",
-    "This status change is not allowed for the line.": "Questo cambio di stato non è consentito per la riga."
+    "This status change is not allowed for the line.": "Questo cambio di stato non è consentito per la riga.",
+    "This purchase order can no longer be changed.": "Questo ordine di acquisto non può più essere modificato.",
+    "This status change is not allowed for the order.": "Questo cambio di stato non è consentito per l'ordine.",
+    "The line does not belong to this purchase order.": "La riga non appartiene a questo ordine di acquisto.",
+    "Purchase order deleted": "ODA eliminata"
 }

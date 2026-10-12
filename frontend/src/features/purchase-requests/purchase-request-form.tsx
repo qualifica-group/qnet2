@@ -45,7 +45,6 @@ export function PurchaseRequestForm({ request, currentUser, onSaved, onCancel, o
     onSaved,
   })
   const readOnly = request !== undefined && (request.status === 'closed' || !request.abilities.update)
-
   return (
     <Form {...form}>
       <form id={FORM_ID} noValidate onSubmit={submit} className="flex flex-col gap-4">

@@ -25,5 +25,19 @@ return [
             'route' => '/purchase-request-lines',
             'permission' => 'purchase-requests.view',
         ],
+        [
+            'key' => 'purchase-orders',
+            'label' => 'navigation.purchaseOrders',
+            'icon' => 'file-text',
+            'route' => '/purchase-orders',
+            'permission' => 'purchase-orders.view',
+        ],
+        [
+            'key' => 'cost-types',
+            'label' => 'navigation.costTypes',
+            'icon' => 'tags',
+            'route' => '/cost-types',
+            'permission' => 'cost-types.view',
+        ],
     ],
 ];

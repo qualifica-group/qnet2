@@ -9,7 +9,6 @@ export const REQUEST_FIELD_KEYS = [
   'requester_id',
   'function_manager_id',
   'customer_id',
-  'supplier_id',
   'work_order_id',
   'company_id',
   'company_site_id',

@@ -8,6 +8,7 @@ use App\Authorization\CompaniesAuthorization;
 use App\Authorization\CompanySitesAuthorization;
 use App\Authorization\ContractsAuthorization;
 use App\Authorization\ContractStatusesAuthorization;
+use App\Authorization\CostTypesAuthorization;
 use App\Authorization\CustomFieldsAuthorization;
 use App\Authorization\DocumentBundlesAuthorization;
 use App\Authorization\DocumentLayoutsAuthorization;
@@ -26,6 +27,7 @@ use App\Authorization\ProductsAuthorization;
 use App\Authorization\ProductTypologiesAuthorization;
 use App\Authorization\ProformaRequestsAuthorization;
 use App\Authorization\ProjectsAuthorization;
+use App\Authorization\PurchaseOrdersAuthorization;
 use App\Authorization\PurchaseRequestsAuthorization;
 use App\Authorization\QuotesAuthorization;
 use App\Authorization\QuoteWorkflowsAuthorization;
@@ -122,12 +124,16 @@ return [
         'rewarded-referents' => RewardedReferentsAuthorization::class,
         'vat-rates' => VatRatesAuthorization::class,
         'units-of-measure' => UnitsOfMeasureAuthorization::class,
+        // spec 0210: tipi di costo (righe ODA).
+        'cost-types' => CostTypesAuthorization::class,
         // spec 0189: conti finanziari (conto corrente, carta, cassa).
         'financial-accounts' => FinancialAccountsAuthorization::class,
         // spec 0193: richieste proforma alla Contabilita'.
         'proforma-requests' => ProformaRequestsAuthorization::class,
         // spec 0208: richieste di acquisto (RDA).
         'purchase-requests' => PurchaseRequestsAuthorization::class,
+        // spec 0210: ordini di acquisto (ODA).
+        'purchase-orders' => PurchaseOrdersAuthorization::class,
         // spec 0194: fatturazione attiva (proforma e fatture).
         'invoices' => InvoicesAuthorization::class,
         // spec 0197: le scadenze (rate) delle fatture attive.

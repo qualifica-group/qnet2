@@ -18,7 +18,10 @@ final class PurchaseRequestLineColumnCatalog
         'requester' => ['purchaseRequest.requester', 'name'],
         'function_manager' => ['purchaseRequest.functionManager', 'name'],
         'approved_by' => ['approvedBy', 'name'],
+        'supplier' => ['supplier', 'name'],
     ];
+
+    public const string SUPPLIER_COLUMN = 'supplier';
 
     /** Parent columns sortable through a subquery on purchase_requests: id => column. */
     public const array PARENT_SORTS = [
@@ -43,6 +46,7 @@ final class PurchaseRequestLineColumnCatalog
             $column('requested_at', 'date', sortable: true),
             $column('position', 'number', visible: false, sortable: true),
             $column('description', 'text', sortable: true, filter: 'text', searchable: true),
+            $column('supplier', 'text', sortable: true, filter: 'text'),
             $column('unit_of_measure', 'text'),
             $column('quantity', 'number', sortable: true, filter: 'number'),
             $column('unit_price', 'number', sortable: true, filter: 'number'),

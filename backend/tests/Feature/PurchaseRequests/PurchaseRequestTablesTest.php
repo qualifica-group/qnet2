@@ -83,7 +83,7 @@ it('AC-014: the RDA grid carries the contract columns and the status tab keeps r
     expect($rows)->toHaveCount(1)
         ->and($rows[0]['id'])->toBe($withApproved->id)
         ->and(array_keys($rows[0]))->toContain(
-            'subject', 'requested_at', 'priority', 'requester', 'function_manager', 'customer', 'supplier', 'work_order',
+            'subject', 'requested_at', 'priority', 'requester', 'function_manager', 'customer', 'suppliers', 'work_order',
             'company', 'company_site', 'operational_site', 'business_function', 'created_by', 'taxable_total',
             'vat_total', 'grand_total', 'status', 'line_status_counts', 'abilities', 'actions',
         )
@@ -118,11 +118,11 @@ it('AC-014: filters, search and sort run from the allow-list; unknown columns ar
     expect($alpha->fresh())->not->toBeNull();
 });
 
-it('AC-014: the quick search also matches the supplier VAT number', function () {
+it('AC-010: the quick search also matches the VAT number of a line supplier', function () {
     Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll']));
     $supplier = supplierRegistry();
     $supplier->personalData()->create(['type' => 'company', 'company_name' => 'Forniture Spa', 'vat_number' => '01234567890']);
-    $withSupplier = purchaseRequestWithLines([LineStatus::Approved], ['supplier_id' => $supplier->id]);
+    $withSupplier = purchaseRequestWithLines([LineStatus::Approved], [], ['supplier_id' => $supplier->id]);
     purchaseRequestWithLines();
 
     expect(collect(requestRows($this, ['search' => '0123456']))->pluck('id')->all())->toBe([$withSupplier->id]);

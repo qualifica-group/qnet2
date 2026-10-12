@@ -21,11 +21,15 @@ import { LineStatusSummaryTable } from '@/features/purchase-requests/line-status
 import {
   commonCapabilities,
   dialogOptions,
+  hasMissingSupplier,
+  pickedAssignments,
   sharedRequest,
+  SUPPLIER_REQUIRED_STATUS,
   type LineTarget,
+  type PickedSuppliers,
 } from '@/features/purchase-requests/line-status-transitions'
 import { serverMessage } from '@/features/purchase-requests/purchase-request-server-errors'
-import type { LineStatus, LineStatusChangeResult } from '@/features/purchase-requests/types'
+import type { LineStatus, LineStatusChangeResult, NamedRef } from '@/features/purchase-requests/types'
 
 const REASON_MAX = 2000
 const STATUS_LABEL_ID = 'purchase-line-status-target'
@@ -39,6 +43,11 @@ interface LineStatusDialogProps {
   targets: readonly LineTarget[]
   onOpenChange: (open: boolean) => void
   onChanged: (result: LineStatusChangeResult) => void
+}
+
+function withSuppliers(targets: readonly LineTarget[], picked: PickedSuppliers) {
+  const suppliers = pickedAssignments(targets, picked)
+  return suppliers.length > 0 ? { suppliers } : {}
 }
 
 function Note({ children }: { children: string }) {
@@ -60,13 +69,26 @@ export function LineStatusDialog({ targets, onOpenChange, onChanged }: LineStatu
   const queryClient = useQueryClient()
   const [choice, setChoice] = useState<LineStatus | null>(null)
   const [reason, setReason] = useState('')
+  const [picked, setPicked] = useState<Record<number, NamedRef>>({})
   const { options, current } = dialogOptions(targets)
   const selected = choice !== null && options.includes(choice) ? choice : current
-  const canConfirm = selected !== null && selected !== current
+  const needsSupplier = selected === SUPPLIER_REQUIRED_STATUS
+  const canConfirm = selected !== null && selected !== current && !(needsSupplier && hasMissingSupplier(targets, picked))
   const count = targets.length
   const isBulk = count > 1
   const request = sharedRequest(targets)
   const capabilities = commonCapabilities(targets)
+
+  const pickSupplier = (lineId: number, supplier: NamedRef | null) =>
+    setPicked((current) => {
+      const next = { ...current }
+      if (supplier) {
+        next[lineId] = supplier
+      } else {
+        delete next[lineId]
+      }
+      return next
+    })
 
   const mutation = useMutation({
     mutationFn: (toStatus: LineStatus) =>
@@ -74,6 +96,8 @@ export function LineStatusDialog({ targets, onOpenChange, onChanged }: LineStatu
         line_ids: targets.map((target) => target.id),
         to_status: toStatus,
         reason: reason.trim() === '' ? undefined : reason.trim(),
+        // Suppliers travel only with the move to ordered, for the lines that had none (spec 0209 D-2)
+        ...(toStatus === SUPPLIER_REQUIRED_STATUS ? withSuppliers(targets, picked) : {}),
       }),
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: purchaseRequestKeys.all })
@@ -105,7 +129,11 @@ export function LineStatusDialog({ targets, onOpenChange, onChanged }: LineStatu
         <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto">
           <div className="flex flex-col gap-1.5">
             <p className="text-xs font-medium">{t('purchaseRequests.statusDialog.selectedLines')}</p>
-            <LineStatusSummaryTable targets={targets} />
+            <LineStatusSummaryTable
+              targets={targets}
+              supplierColumn={needsSupplier ? { picked, onPick: pickSupplier } : undefined}
+            />
+            {needsSupplier ? <Note>{t('purchaseRequests.statusDialog.supplierRequiredNote')}</Note> : null}
           </div>
           {capabilities.length > 0 ? (
             <div className="flex flex-wrap items-center gap-1.5 text-xs">

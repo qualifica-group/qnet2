@@ -10,7 +10,8 @@ use App\Enums\PurchaseRequestStatus;
  * Declarative column/filter/action catalogue for the `purchase-requests` domain
  * (spec 0208). Pure data. `line_status` is a hidden filter-only column: the
  * status tabs send it, and it needs a catalogue entry to reach the server.
- * `supplier_vat_number` is a hidden, search-only column.
+ * `supplier_vat_number` is a hidden, search-only column (it searches the
+ * suppliers of the lines).
  */
 final class PurchaseRequestColumnCatalog
 {
@@ -19,7 +20,7 @@ final class PurchaseRequestColumnCatalog
         'requester' => ['requester', 'name'],
         'function_manager' => ['functionManager', 'name'],
         'customer' => ['customer', 'name'],
-        'supplier' => ['supplier', 'name'],
+        'suppliers' => ['lines.supplier', 'name'],
         'work_order' => ['workOrder', 'code'],
         'company' => ['company', 'denomination'],
         'business_function' => ['businessFunction', 'name'],
@@ -30,11 +31,13 @@ final class PurchaseRequestColumnCatalog
     public const array SORT_RELATIONS = [
         'requester' => ['users', 'purchase_requests.requester_id', 'name'],
         'function_manager' => ['users', 'purchase_requests.function_manager_id', 'name'],
-        'supplier' => ['registries', 'purchase_requests.supplier_id', 'name'],
         'customer' => ['registries', 'purchase_requests.customer_id', 'name'],
     ];
 
     public const string LINE_STATUS_COLUMN = 'line_status';
+
+    /** Distinct suppliers of the request's lines (spec 0209, D-6). */
+    public const string SUPPLIERS_COLUMN = 'suppliers';
 
     public const string SUPPLIER_VAT_COLUMN = 'supplier_vat_number';
 
@@ -52,7 +55,7 @@ final class PurchaseRequestColumnCatalog
         ];
 
         foreach (array_keys(self::TEXT_RELATIONS) as $id) {
-            $columns[] = self::column($id, 'text', visible: in_array($id, ['requester', 'function_manager', 'supplier'], true), sortable: isset(self::SORT_RELATIONS[$id]), filter: 'text');
+            $columns[] = self::column($id, 'text', visible: in_array($id, ['requester', 'function_manager', self::SUPPLIERS_COLUMN], true), sortable: isset(self::SORT_RELATIONS[$id]), filter: 'text');
         }
 
         return [

@@ -5,15 +5,9 @@ use App\Models\PurchaseRequestLine;
 use App\Models\PurchaseRequestLineStatusLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
-
-function changeStatus(object $test, array $lineIds, string $to, array $extra = []): TestResponse
-{
-    return $test->postJson('/api/purchase-request-lines/status', ['line_ids' => $lineIds, 'to_status' => $to] + $extra);
-}
 
 // ---------------------------------------------------------------------------
 // AC-004 — the assigned function manager approves
@@ -73,7 +67,7 @@ it('AC-004: the manager can reject but cannot order', function () {
 
 it('AC-005: fulfill cannot skip approval, but orders an approved line and receives an ordered one', function () {
     Sanctum::actingAs(purchaseRequestUserWith(['fulfill']));
-    $request = purchaseRequestWithLines([LineStatus::PendingApproval, LineStatus::Approved]);
+    $request = purchaseRequestWithLines([LineStatus::PendingApproval, LineStatus::Approved], [], ['supplier_id' => supplierRegistry()->id]);
     [$pending, $approved] = [$request->lines[0], $request->lines[1]];
 
     changeStatus($this, [$pending->id], 'ordered')->assertUnprocessable()->assertJsonValidationErrors('line_ids.0');
@@ -141,8 +135,9 @@ it('AC-007: a mass change with one line not allowed changes none of them', funct
 
 it('AC-007: a mass change across requests shares one bulk group and logs every line', function () {
     Sanctum::actingAs(purchaseRequestUserWith(['fulfill']));
-    $first = purchaseRequestWithLines([LineStatus::Approved, LineStatus::Approved]);
-    $second = purchaseRequestWithLines([LineStatus::Approved]);
+    $withSupplier = ['supplier_id' => supplierRegistry()->id];
+    $first = purchaseRequestWithLines([LineStatus::Approved, LineStatus::Approved], [], $withSupplier);
+    $second = purchaseRequestWithLines([LineStatus::Approved], [], $withSupplier);
     $ids = [...$first->lines->pluck('id')->all(), $second->lines->first()->id];
 
     changeStatus($this, $ids, 'ordered')
@@ -231,7 +226,7 @@ it('lists the status history of a line, most recent first, to who can view the r
     changeStatus($this, [$line->id], 'approved', ['reason' => 'ok'])->assertOk();
 
     Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'fulfill']));
-    changeStatus($this, [$line->id], 'ordered')->assertOk();
+    changeStatus($this, [$line->id], 'ordered', ['suppliers' => [['line_id' => $line->id, 'supplier_id' => supplierRegistry()->id]]])->assertOk();
 
     $this->getJson("/api/purchase-request-lines/{$line->id}/status-logs")
         ->assertOk()

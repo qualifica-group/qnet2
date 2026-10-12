@@ -68,4 +68,30 @@ class PurchaseRequestCapabilityResolver
 
         return $line->status->allowedTransitions($this->capabilities($actor, $request));
     }
+
+    /**
+     * Whether the supplier of the line may change (spec 0209, D-3): pending lines
+     * follow the request edit right, approved ones need fulfill or manage, every
+     * other state (and a closed request) is frozen. The single home of the rule.
+     */
+    public function canUpdateSupplier(User $actor, PurchaseRequest $request, PurchaseRequestLine $line, bool $canUpdateRequest): bool
+    {
+        if ($request->isClosed()) {
+            return false;
+        }
+
+        return match ($line->status) {
+            PurchaseRequestLineStatus::PendingApproval => $canUpdateRequest,
+            PurchaseRequestLineStatus::Approved => $this->hasAny($actor, $request, [PurchaseRequestCapability::Fulfill, PurchaseRequestCapability::Manage]),
+            default => false,
+        };
+    }
+
+    /**
+     * @param  array<int, PurchaseRequestCapability>  $wanted
+     */
+    private function hasAny(User $actor, PurchaseRequest $request, array $wanted): bool
+    {
+        return array_filter($this->capabilities($actor, $request), static fn (PurchaseRequestCapability $capability): bool => in_array($capability, $wanted, true)) !== [];
+    }
 }

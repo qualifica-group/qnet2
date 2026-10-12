@@ -3,10 +3,12 @@ import type { Control, FieldArrayWithId, UseFormSetValue } from 'react-hook-form
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { LineStatusDialog } from '@/features/purchase-requests/line-status-dialog'
 import { lineToTarget, type LineTarget } from '@/features/purchase-requests/line-status-transitions'
 import { previewTotals } from '@/features/purchase-requests/purchase-request-amounts'
 import { PurchaseRequestLineRow } from '@/features/purchase-requests/purchase-request-line-row'
+import { PurchaseRequestLinesHeader } from '@/features/purchase-requests/purchase-request-lines-header'
 import type {
   PurchaseRequestFormValues,
   PurchaseRequestLineFormValues,
@@ -33,7 +35,7 @@ interface PurchaseRequestLinesSectionProps {
 }
 
 /**
- * The RDA lines as a list of compact rows, with the add action, the live
+ * The RDA lines as a header plus compact rows, with the add action, the live
  * totals and the per-line status change (approval / fulfilment, D-8). After a
  * change the detail query refetches and the page remounts the form.
  */
@@ -67,27 +69,34 @@ export function PurchaseRequestLinesSection({
           {error}
         </p>
       ) : null}
-      <ul className="flex flex-col gap-2">
-        {fields.map((field, index) => {
-          const line = lines[index]
-          return line ? (
-            <PurchaseRequestLineRow
-              key={field.id}
-              index={index}
-              control={control}
-              setValue={setValue}
-              line={line}
-              onRemove={() => onRemove(index)}
-              onChangeStatus={() => {
-                const saved = request?.lines.find((candidate) => candidate.id === line.id)
-                if (request && saved) {
-                  setTargets([lineToTarget(saved, request, line.transitions)])
-                }
-              }}
-            />
-          ) : null
-        })}
-      </ul>
+      <TooltipProvider>
+        <div className="overflow-x-auto">
+          <div className="flex flex-col gap-1.5 lg:min-w-[62rem]">
+            <PurchaseRequestLinesHeader />
+            <ul className="flex flex-col gap-1.5">
+              {fields.map((field, index) => {
+                const line = lines[index]
+                return line ? (
+                  <PurchaseRequestLineRow
+                    key={field.id}
+                    index={index}
+                    control={control}
+                    setValue={setValue}
+                    line={line}
+                    onRemove={() => onRemove(index)}
+                    onChangeStatus={() => {
+                      const saved = request?.lines.find((candidate) => candidate.id === line.id)
+                      if (request && saved) {
+                        setTargets([lineToTarget(saved, request, line.transitions)])
+                      }
+                    }}
+                  />
+                ) : null
+              })}
+            </ul>
+          </div>
+        </div>
+      </TooltipProvider>
       <PurchaseRequestTotals totals={previewTotals(lines)} />
       <LineStatusDialog
         key={targets.map((target) => target.id).join(',')}

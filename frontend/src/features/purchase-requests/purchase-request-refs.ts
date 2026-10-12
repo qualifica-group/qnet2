@@ -8,7 +8,6 @@ const EMPTY_REFS: RequestRefs = {
   requester_id: null,
   function_manager_id: null,
   customer_id: null,
-  supplier_id: null,
   work_order_id: null,
   company_id: null,
   company_site_id: null,
@@ -28,7 +27,6 @@ export function requestRefs(request: PurchaseRequest | undefined): RequestRefs {
     requester_id: request.requester,
     function_manager_id: request.function_manager,
     customer_id: request.customer,
-    supplier_id: request.supplier,
     work_order_id: request.work_order
       ? { id: request.work_order.id, name: [request.work_order.code, request.work_order.title].filter(Boolean).join(' - ') }
       : null,

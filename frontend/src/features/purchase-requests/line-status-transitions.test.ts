@@ -19,6 +19,8 @@ function target(overrides: Partial<LineTarget> & Pick<LineTarget, 'id'>): LineTa
     quantity: 0,
     unitSymbol: null,
     totalAmount: 0,
+    supplier: null,
+    canUpdateSupplier: true,
     purchaseRequestId: 5,
     purchaseRequestSubject: 'Laptops',
     ...overrides,
@@ -71,9 +73,10 @@ describe('toLineTarget', () => {
       quantity: '3.00',
       unit_of_measure: { symbol: 'pc', name: 'Piece' },
       total_amount: '120.50',
+      supplier: { id: 12, name: 'Rossi Srl' },
       status: 'approved',
       actions: [],
-      abilities: { transitions: ['ordered', 'bogus', 5], capabilities: ['fulfill', 'root'] },
+      abilities: { transitions: ['ordered', 'bogus', 5], capabilities: ['fulfill', 'root'], update_supplier: true },
     } as unknown as TableRow
     expect(toLineTarget(row)).toEqual({
       id: 7,
@@ -84,6 +87,8 @@ describe('toLineTarget', () => {
       quantity: 3,
       unitSymbol: 'pc',
       totalAmount: 120.5,
+      supplier: { id: 12, name: 'Rossi Srl' },
+      canUpdateSupplier: true,
       purchaseRequestId: 5,
       purchaseRequestSubject: 'Laptops',
     })
@@ -95,6 +100,8 @@ describe('toLineTarget', () => {
       status: null,
       transitions: [],
       capabilities: [],
+      supplier: null,
+      canUpdateSupplier: false,
       purchaseRequestId: null,
     })
   })

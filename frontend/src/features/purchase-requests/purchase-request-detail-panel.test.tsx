@@ -9,8 +9,8 @@ import { makeLine, makeRequest } from '@/features/purchase-requests/purchase-req
 
 const request = makeRequest({
   lines: [
-    makeLine({ id: 31, description: 'Toner', abilities: { update: true, delete: true, transitions: ['approved', 'rejected'], capabilities: [] } }),
-    makeLine({ id: 32, position: 2, description: 'Paper', status: 'ordered', abilities: { update: false, delete: false, transitions: [], capabilities: [] } }),
+    makeLine({ id: 31, description: 'Toner', abilities: { update: true, delete: true, transitions: ['approved', 'rejected'], capabilities: [], update_supplier: false } }),
+    makeLine({ id: 32, position: 2, description: 'Paper', status: 'ordered', abilities: { update: false, delete: false, transitions: [], capabilities: [], update_supplier: false } }),
   ],
 })
 

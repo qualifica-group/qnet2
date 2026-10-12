@@ -56,6 +56,8 @@ export interface PurchaseRequestLineAbilities {
   delete: boolean
   transitions: LineStatus[]
   capabilities: LineCapability[]
+  /** Server rule for the supplier freeze (spec 0209 D-3); the client never derives it. */
+  update_supplier: boolean
 }
 
 export interface PurchaseRequestLine {
@@ -68,6 +70,7 @@ export interface PurchaseRequestLine {
   quantity: string
   unit_price: string
   vat_rate: VatRateRef | null
+  supplier: NamedRef | null
   taxable_amount: string
   vat_amount: string
   total_amount: string
@@ -102,7 +105,6 @@ export interface PurchaseRequest {
   requester: NamedRef
   function_manager: NamedRef
   customer: NamedRef | null
-  supplier: NamedRef | null
   work_order: WorkOrderRef | null
   company: NamedRef
   company_site: NamedRef
@@ -139,6 +141,7 @@ export interface PurchaseRequestLinePayload {
   quantity: number
   unit_price: number
   vat_rate_id: number | null
+  supplier_id: number | null
 }
 
 export interface PurchaseRequestPayload {
@@ -148,7 +151,6 @@ export interface PurchaseRequestPayload {
   requester_id: number
   function_manager_id: number
   customer_id: number | null
-  supplier_id: number | null
   work_order_id: number | null
   company_id: number
   company_site_id: number
@@ -162,10 +164,26 @@ export interface PurchaseRequestPayload {
   lines: PurchaseRequestLinePayload[]
 }
 
+/** Supplier given in the status dialog for a line without one; only valid with `to_status = ordered` (spec 0209 D-2). */
+export interface LineSupplierAssignment {
+  line_id: number
+  supplier_id: number
+}
+
 export interface LineStatusChangePayload {
   line_ids: number[]
   to_status: LineStatus
   reason?: string
+  suppliers?: LineSupplierAssignment[]
+}
+
+export interface LineSupplierPayload {
+  line_ids: number[]
+  supplier_id: number
+}
+
+export interface LineSupplierResult {
+  updated_count: number
 }
 
 export interface LineStatusChangeResult {

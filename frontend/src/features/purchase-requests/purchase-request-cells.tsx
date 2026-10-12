@@ -76,3 +76,25 @@ export function WorkOrderCell({ value }: ICellRendererParams) {
     </span>
   )
 }
+
+interface SupplierRef {
+  name?: unknown
+}
+
+/** Distinct suppliers of an RDA's lines (spec 0209 D-6): names joined by comma, truncated with the full list as tooltip. */
+export function SuppliersCell({ value }: ICellRendererParams) {
+  const names = (Array.isArray(value) ? (value as SupplierRef[]) : [])
+    .map((supplier) => supplier.name)
+    .filter((name): name is string => typeof name === 'string' && name !== '')
+  if (names.length === 0) {
+    return <EmptyCell align="left" />
+  }
+  const joined = names.join(', ')
+  return (
+    <div className="flex h-full items-center overflow-hidden px-2">
+      <span className="truncate" title={joined}>
+        {joined}
+      </span>
+    </div>
+  )
+}

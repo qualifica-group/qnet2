@@ -66,6 +66,7 @@ describe('purchase request payload (AC-016)', () => {
         quantity: 2,
         unit_price: 100,
         vat_rate_id: 1,
+        supplier_id: null,
       },
       {
         product_id: null,
@@ -75,9 +76,21 @@ describe('purchase request payload (AC-016)', () => {
         quantity: 4,
         unit_price: 9.9,
         vat_rate_id: null,
+        supplier_id: null,
       },
     ])
     expect(payload.lines[1]).not.toHaveProperty('id')
+  })
+
+  it('sends the supplier of each line and none on the header (spec 0209 AC-012)', () => {
+    const request = makeRequest({ lines: [makeLine({ supplier: { id: 12, name: 'Rossi Srl' } })] })
+    const values = toFormValues(request)
+    values.lines.push(newLineValues({ description: 'Mouse', supplier_id: 13, supplier_ref: { id: 13, name: 'Bianchi' } }))
+
+    const payload = buildPayload(values)
+
+    expect(payload.lines.map((line) => line.supplier_id)).toEqual([12, 13])
+    expect(payload).not.toHaveProperty('supplier_id')
   })
 
   it('never sends totals, statuses or client-only helpers', () => {

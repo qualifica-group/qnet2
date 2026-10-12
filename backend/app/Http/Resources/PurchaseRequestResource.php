@@ -45,7 +45,6 @@ class PurchaseRequestResource extends JsonResource
             'requester' => $this->userSummary($this->requester),
             'function_manager' => $this->userSummary($this->functionManager),
             'customer' => $this->registrySummary($this->customer),
-            'supplier' => $this->registrySummary($this->supplier),
             'work_order' => $this->workOrder === null ? null : ['id' => $this->workOrder->id, 'code' => $this->workOrder->code, 'title' => $this->workOrder->title],
             'company' => ['id' => $this->company->id, 'name' => $this->company->denomination],
             'company_site' => ['id' => $this->companySite->id, 'name' => $this->companySite->name],
@@ -92,6 +91,7 @@ class PurchaseRequestResource extends JsonResource
             'position' => $line->position,
             'product' => $line->product === null ? null : ['id' => $line->product->id, 'name' => $line->product->name],
             'description' => $line->description,
+            'supplier' => $this->registrySummary($line->supplier),
             'reason' => $line->reason,
             'unit_of_measure' => $line->unitOfMeasure === null ? null : [
                 'id' => $line->unitOfMeasure->id,
@@ -114,6 +114,7 @@ class PurchaseRequestResource extends JsonResource
             'oda_reference' => $line->oda_reference,
             'abilities' => [
                 'update' => $canUpdateRequest && $line->status === PurchaseRequestLineStatus::PendingApproval,
+                'update_supplier' => app(PurchaseRequestCapabilityResolver::class)->canUpdateSupplier($actor, $this->resource, $line, $canUpdateRequest),
                 'delete' => $open && $actor->can('purchase-requests.deleteLine')
                     && in_array($line->status, [PurchaseRequestLineStatus::PendingApproval, PurchaseRequestLineStatus::Rejected], true),
                 'transitions' => array_map(

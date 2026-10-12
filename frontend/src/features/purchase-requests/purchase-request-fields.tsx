@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { MetaField } from '@/features/authorization/MetaField'
 import type { ForSelectItem } from '@/features/for-select/types'
-import type { QuickCreatePresets } from '@/features/quick-create/types'
 import type { PurchaseRequestFormValues } from '@/features/purchase-requests/purchase-request-schema'
 import { PRIORITIES } from '@/features/purchase-requests/types'
 
@@ -17,7 +16,6 @@ export type RelationFieldName =
   | 'requester_id'
   | 'function_manager_id'
   | 'customer_id'
-  | 'supplier_id'
   | 'work_order_id'
   | 'company_id'
   | 'company_site_id'
@@ -100,7 +98,6 @@ interface RelationFieldProps {
   required?: boolean
   params?: Record<string, string | number>
   forceDisabled?: boolean
-  quickCreatePresets?: QuickCreatePresets
   onValueChange?: (next: number | null) => void
   onItemChange?: (item: ForSelectItem | null) => void
 }

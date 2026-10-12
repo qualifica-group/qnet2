@@ -30,6 +30,8 @@ class RegistryForSelectResource extends ForSelectResource
             'id' => $this->id,
             'label' => $this->name,
             'meta' => [
+                // Spec 0210 D-15: the purchase order form warns on a non-qualified supplier.
+                'is_qualified_supplier' => (bool) $this->is_qualified_supplier,
                 'commercial' => $this->commercial !== null
                     ? ['id' => $this->commercial->id, 'name' => $this->commercial->name]
                     : null,

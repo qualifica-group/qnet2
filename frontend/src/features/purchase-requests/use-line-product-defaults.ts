@@ -11,8 +11,9 @@ const WRITE_OPTIONS = { shouldDirty: true, shouldValidate: true } as const
 
 /**
  * Proposes a line's values from the picked (or just quick-created) product
- * (spec 0208 D-13): description = name, U.m., price and VAT rate. They stay
- * editable; a product without price keeps the typed one.
+ * (spec 0208 D-13, 0209 D-8): description = name, U.m., price, VAT rate and,
+ * when the product has one, its supplier. They stay editable; a product
+ * without price or supplier keeps what is already typed.
  */
 export function useLineProductDefaults(index: number, setValue: UseFormSetValue<PurchaseRequestFormValues>) {
   const { t } = useTranslation()
@@ -33,6 +34,10 @@ export function useLineProductDefaults(index: number, setValue: UseFormSetValue<
         }
         setValue(`lines.${index}.vat_rate_id`, product.vat_rate_id, WRITE_OPTIONS)
         setValue(`lines.${index}.vat_rate_percent`, product.vat_rate ? Number(product.vat_rate.rate) : null)
+        if (product.supplier_id != null && product.supplier) {
+          setValue(`lines.${index}.supplier_id`, product.supplier_id, WRITE_OPTIONS)
+          setValue(`lines.${index}.supplier_ref`, { id: product.supplier.id, name: product.supplier.name }, WRITE_OPTIONS)
+        }
       } catch {
         toast.error(t('purchaseRequests.lines.productLoadError'))
       }

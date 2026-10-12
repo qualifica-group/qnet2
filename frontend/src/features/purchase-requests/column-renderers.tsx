@@ -6,6 +6,7 @@ import {
   LineStatusCountsCell,
   PriorityCell,
   RequestStatusCell,
+  SuppliersCell,
   WorkOrderCell,
 } from '@/features/purchase-requests/purchase-request-cells'
 
@@ -16,7 +17,7 @@ export const purchaseRequestColumnRenderers: TableRendererMap = {
   function_manager: (params) => <UserCell {...params} />,
   created_by: (params) => <UserCell {...params} />,
   customer: (params) => <RelationCell {...params} />,
-  supplier: (params) => <RelationCell {...params} />,
+  suppliers: (params) => <SuppliersCell {...params} />,
   work_order: (params) => <WorkOrderCell {...params} />,
   company: (params) => <RelationCell {...params} />,
   company_site: (params) => <RelationCell {...params} />,
@@ -33,5 +34,6 @@ export const purchaseRequestLineColumnRenderers: TableRendererMap = {
   function_manager: (params) => <UserCell {...params} />,
   approved_by: (params) => <UserCell {...params} />,
   unit_of_measure: (params) => <RelationCell {...params} />,
+  supplier: (params) => <RelationCell {...params} />,
   status: (params) => <LineStatusCell {...params} />,
 }

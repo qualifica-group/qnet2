@@ -32,6 +32,8 @@ function buildLineSchema(t: TFunction) {
     status: z.enum(LINE_STATUSES),
     locked: z.boolean(),
     can_delete: z.boolean(),
+    /** Server verdict on the supplier freeze (`abilities.update_supplier`); the supplier stays editable on a locked line when true. */
+    can_update_supplier: z.boolean(),
     /** Statuses the server lets the actor move this line to (`abilities.transitions`). */
     transitions: z.array(z.enum(LINE_STATUSES)),
     vat_rate_percent: z.number().nullable(),
@@ -53,6 +55,9 @@ function buildLineSchema(t: TFunction) {
       .min(0, t('purchaseRequests.errors.unitPriceNegative'))
       .max(UNIT_PRICE_LIMIT, t('purchaseRequests.errors.unitPriceMax')),
     vat_rate_id: z.number().int().nullable(),
+    supplier_id: z.number().int().nullable(),
+    /** Label of the selected supplier so the picker shows it without a lookup; never sent. */
+    supplier_ref: z.object({ id: z.number().int(), name: z.string() }).nullable(),
   })
 }
 
@@ -69,7 +74,6 @@ export function buildPurchaseRequestSchema(t: TFunction) {
     requester_id: requiredId(t('purchaseRequests.errors.requesterRequired')),
     function_manager_id: requiredId(t('purchaseRequests.errors.functionManagerRequired')),
     customer_id: z.number().int().nullable(),
-    supplier_id: z.number().int().nullable(),
     work_order_id: z.number().int().nullable(),
     company_id: requiredId(t('purchaseRequests.errors.companyRequired')),
     company_site_id: requiredId(t('purchaseRequests.errors.companySiteRequired')),

@@ -51,6 +51,8 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'proforma-requests',
   'purchase-requests',
   'purchase-request-lines',
+  'purchase-orders',
+  'cost-types',
   'invoices',
   'invoice-installments',
   'product-typologies',

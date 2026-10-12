@@ -28,7 +28,6 @@ class PurchaseRequestService
         'requester:id,name',
         'functionManager:id,name',
         'customer:id,name',
-        'supplier:id,name',
         'workOrder:id,code,title',
         'company:id,denomination',
         'companySite:id,name',
@@ -37,6 +36,7 @@ class PurchaseRequestService
         'createdBy:id,name',
         'closedBy:id,name',
         'lines.product:id,name',
+        'lines.supplier:id,name',
         'lines.unitOfMeasure:id,name,symbol',
         'lines.vatRate:id,name,rate',
         'lines.approvedBy:id,name',
@@ -51,6 +51,7 @@ class PurchaseRequestService
     public function __construct(
         private readonly PurchaseRequestAmountCalculator $amounts,
         private readonly PurchaseRequestNotifier $notifier,
+        private readonly PurchaseRequestCapabilityResolver $capabilities,
     ) {}
 
     public function create(PurchaseRequestData $data, User $actor): PurchaseRequest
@@ -88,7 +89,7 @@ class PurchaseRequestService
             // Step 2: check the line payload against the stored lines before writing anything
             $existing = $locked->lines()->lockForUpdate()->get()->keyBy('id');
             $rates = $this->vatRates($data->lines);
-            $this->assertLinesAreValid($existing, $data->lines, $rates);
+            $this->assertLinesAreValid($locked, $actor, $existing, $data->lines);
             $removed = $this->removedLines($existing, $data->lines);
             $this->assertRemovalAllowed($removed, $actor);
 
@@ -164,7 +165,8 @@ class PurchaseRequestService
             return;
         }
 
-        $stored->fill(['position' => $position])->save();
+        // An approved line may also take a new supplier (already authorized by assertLinesAreValid).
+        $stored->fill(['position' => $position] + ($stored->status === PurchaseRequestLineStatus::Approved ? ['supplier_id' => $line['supplier_id']] : []))->save();
     }
 
     /**
@@ -179,6 +181,7 @@ class PurchaseRequestService
             'position' => $position,
             'product_id' => $line['product_id'],
             'description' => $line['description'],
+            'supplier_id' => $line['supplier_id'],
             'reason' => $this->blankToNull($line['reason']),
             'unit_of_measure_id' => $line['unit_of_measure_id'],
             'quantity' => $amounts['quantity'],
@@ -210,13 +213,13 @@ class PurchaseRequestService
 
     /**
      * Existing lines must belong to this request (D-10) and, unless pending,
-     * keep their values.
+     * keep their values; the supplier alone may change where the actor may
+     * update it (spec 0209, D-3).
      *
      * @param  Collection<int, PurchaseRequestLine>  $existing  keyed by id
      * @param  array<int, array<string, mixed>>  $lines
-     * @param  array<int, string>  $rates
      */
-    private function assertLinesAreValid(Collection $existing, array $lines, array $rates): void
+    private function assertLinesAreValid(PurchaseRequest $request, User $actor, Collection $existing, array $lines): void
     {
         $errors = [];
         $seen = [];
@@ -236,7 +239,9 @@ class PurchaseRequestService
 
             $seen[] = $line['id'];
 
-            if ($stored->status !== PurchaseRequestLineStatus::PendingApproval && $this->contentChanged($stored, $line)) {
+            if ($stored->status !== PurchaseRequestLineStatus::PendingApproval
+                && ($this->contentChanged($stored, $line)
+                    || ($this->supplierChanged($stored, $line) && ! $this->capabilities->canUpdateSupplier($actor, $request, $stored, true)))) {
                 $errors["lines.{$index}"] = ['The line is no longer pending approval and cannot be modified.'];
             }
         }
@@ -253,7 +258,7 @@ class PurchaseRequestService
     {
         $submitted = $this->lineContent($line, $stored->position);
 
-        foreach (array_diff(array_keys($submitted), ['position']) as $key) {
+        foreach (array_diff(array_keys($submitted), ['position', 'supplier_id']) as $key) {
             $current = $stored->getAttribute($key);
 
             if ($key === 'reason') {
@@ -266,6 +271,14 @@ class PurchaseRequestService
         }
 
         return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $line
+     */
+    private function supplierChanged(PurchaseRequestLine $stored, array $line): bool
+    {
+        return (string) $line['supplier_id'] !== (string) $stored->supplier_id;
     }
 
     /**

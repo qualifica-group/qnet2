@@ -14,14 +14,14 @@ final readonly class PurchaseRequestData
     /** Header and footer columns a client may write. */
     public const array HEADER_KEYS = [
         'subject', 'requested_at', 'priority', 'requester_id', 'function_manager_id', 'customer_id',
-        'supplier_id', 'work_order_id', 'company_id', 'company_site_id', 'operational_site_id',
+        'work_order_id', 'company_id', 'company_site_id', 'operational_site_id',
         'business_function_id', 'notes', 'delivery_terms', 'procurement_plan',
         'technical_requirements', 'special_conditions',
     ];
 
     /** Editable content of a line (D-10); `id` only identifies an existing one. */
     public const array LINE_KEYS = [
-        'product_id', 'description', 'reason', 'unit_of_measure_id', 'quantity', 'unit_price', 'vat_rate_id',
+        'product_id', 'description', 'supplier_id', 'reason', 'unit_of_measure_id', 'quantity', 'unit_price', 'vat_rate_id',
     ];
 
     /**

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\PurchaseRequests\PurchaseRequestController;
 use App\Http\Controllers\PurchaseRequests\PurchaseRequestLineStatusController;
+use App\Http\Controllers\PurchaseRequests\PurchaseRequestLineSupplierController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -25,4 +26,5 @@ Route::post('purchase-requests/{purchaseRequest}/close', [PurchaseRequestControl
 Route::post('purchase-requests/{purchaseRequest}/notify-manager', [PurchaseRequestController::class, 'notifyManager']);
 
 Route::post('purchase-request-lines/status', [PurchaseRequestLineStatusController::class, 'change']);
+Route::post('purchase-request-lines/supplier', [PurchaseRequestLineSupplierController::class, 'assign']);
 Route::get('purchase-request-lines/{purchaseRequestLine}/status-logs', [PurchaseRequestLineStatusController::class, 'logs']);

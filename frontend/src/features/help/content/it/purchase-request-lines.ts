@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Le celle sono in sola lettura: per modificare il contenuto di una riga apri la sua RDA con l’azione **Apri**.',
+          text: 'Le celle sono in sola lettura: per modificare il contenuto di una riga apri la sua RDA con l’azione **Apri**. La colonna **Fornitore** mostra il fornitore della riga e si può filtrare e ordinare.',
         },
       ],
     },
@@ -48,6 +48,7 @@ const guide: HelpGuide = {
             'Per una riga usa l’azione **Cambia stato** sulla riga; per più righe selezionale con le caselle (anche di RDA diverse) e scegli **Cambia stato** dal menu **Azioni**.',
             'La finestra riepiloga le **Righe selezionate** (numero, descrizione, quantità con unità di misura, totale e stato attuale) e, sotto **Stai operando come**, i tuoi ruoli su di esse: Responsabile di funzione, Evasione o Gestione stati.',
             'Scegli il **Nuovo stato** con i pulsanti: sono proposti solo gli stati consentiti **a tutte** le righe selezionate. Se non ce ne sono in comune lo vedi in un messaggio e non puoi confermare. Con una sola riga lo stato attuale è già selezionato e il pulsante di conferma si abilita solo scegliendone un altro.',
+            'Se scegli **Ordinato**, ogni riga deve avere un **Fornitore**: quelle che ne hanno già uno lo mostrano, per le altre scegli il fornitore nella colonna **Fornitore** (la conferma resta disabilitata finché ne manca uno).',
             'Scrivi una **motivazione** (facoltativa; con più righe vale per tutte) e conferma con **Conferma** (o **Conferma su N righe**).',
           ],
         },
@@ -58,6 +59,23 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'Quando l’ultima riga non finale di una RDA passa a uno stato finale (Ricevuto, Stand by o Rifiutato) la RDA si chiude da sola e ricevi un avviso.',
+        },
+      ],
+    },
+    {
+      id: 'assign-supplier',
+      title: 'Assegnare il fornitore',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Seleziona le righe con le caselle (anche di RDA diverse) e scegli **Assegna fornitore** dal menu **Azioni**.',
+            'La finestra elenca le righe selezionate; scegli il **Fornitore** (il **+** ne crea uno nuovo) e conferma con **Assegna a N righe**.',
+          ],
+        },
+        {
+          type: 'warning',
+          text: 'Il fornitore si può cambiare solo sulle righe Da approvare (se puoi modificare la RDA) e Approvate (se hai il permesso di evasione): da **Ordinato** in poi è bloccato. Se anche una sola riga non è modificabile la finestra lo segnala e non si può confermare; l’assegnazione è **tutto o niente**.',
         },
       ],
     },

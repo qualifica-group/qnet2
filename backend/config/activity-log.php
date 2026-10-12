@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\Contract;
 use App\Models\ContractStatus;
+use App\Models\CostType;
 use App\Models\CustomFieldDefinition;
 use App\Models\DocumentBundle;
 use App\Models\DocumentLayout;
@@ -25,6 +26,7 @@ use App\Models\ProductCategory;
 use App\Models\ProductTypology;
 use App\Models\ProformaRequest;
 use App\Models\Project;
+use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\Quote;
 use App\Models\QuoteWorkflow;
@@ -266,6 +268,13 @@ return [
         // spec 0208: richieste di acquisto (RDA).
         'purchase-requests' => [
             'model' => PurchaseRequest::class,
+        ],
+        // spec 0210: ordini di acquisto (ODA) e tipi di costo.
+        'purchase-orders' => [
+            'model' => PurchaseOrder::class,
+        ],
+        'cost-types' => [
+            'model' => CostType::class,
         ],
         // spec 0194: fatture attive.
         'invoices' => [

@@ -37,6 +37,7 @@ class PurchaseRequestLineStatusController extends BaseApiController
                 $request->lineIds(),
                 $request->toStatus(),
                 $request->reason(),
+                $request->suppliers(),
             ));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);

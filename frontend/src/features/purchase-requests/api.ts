@@ -4,6 +4,8 @@ import type {
   LineStatusChangePayload,
   LineStatusChangeResult,
   LineStatusLog,
+  LineSupplierPayload,
+  LineSupplierResult,
   PurchaseRequest,
   PurchaseRequestClosure,
   PurchaseRequestPayload,
@@ -44,6 +46,15 @@ export async function deletePurchaseRequest(id: number): Promise<void> {
 export async function changeLinesStatus(payload: LineStatusChangePayload): Promise<LineStatusChangeResult> {
   const { data } = await apiClient.post<ApiResponse<LineStatusChangeResult>>(
     '/purchase-request-lines/status',
+    payload,
+  )
+  return data.data
+}
+
+/** Bulk "Assign supplier" (spec 0209 D-4): one supplier for every line, all-or-nothing server-side. */
+export async function assignLinesSupplier(payload: LineSupplierPayload): Promise<LineSupplierResult> {
+  const { data } = await apiClient.post<ApiResponse<LineSupplierResult>>(
+    '/purchase-request-lines/supplier',
     payload,
   )
   return data.data

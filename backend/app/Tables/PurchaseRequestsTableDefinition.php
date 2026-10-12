@@ -53,14 +53,14 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
             'requester:id,name',
             'functionManager:id,name',
             'customer:id,name',
-            'supplier:id,name',
             'workOrder:id,code,title',
             'company:id,denomination',
             'companySite:id,name',
             'operationalSite.addresses.city',
             'businessFunction:id,name',
             'createdBy:id,name',
-            'lines:id,purchase_request_id,status',
+            'lines:id,purchase_request_id,status,supplier_id',
+            'lines.supplier:id,name',
         ]);
 
         return PurchaseRequestVisibilityScope::scopeToActor($query, Auth::user());
@@ -124,7 +124,7 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
             'requester' => $this->summary($row->requester),
             'function_manager' => $this->summary($row->functionManager),
             'customer' => $this->summary($row->customer),
-            'supplier' => $this->summary($row->supplier),
+            'suppliers' => $this->lineSuppliers($row),
             'work_order' => $row->workOrder === null ? null : ['id' => $row->workOrder->id, 'code' => $row->workOrder->code, 'title' => $row->workOrder->title],
             'company' => ['id' => $row->company->id, 'name' => $row->company->denomination],
             'company_site' => $this->summary($row->companySite),
@@ -218,7 +218,7 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Quick search over the supplier's VAT number (the other searchable column is real).
+     * Quick search over the VAT number of the line suppliers (the other searchable column is real).
      *
      * @param  Builder<PurchaseRequest>  $query
      */
@@ -228,7 +228,7 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
             return false;
         }
 
-        $query->orWhereHas('supplier.personalData', static fn (Builder $card) => $card->where('vat_number', 'like', $pattern));
+        $query->orWhereHas('lines.supplier.personalData', static fn (Builder $card) => $card->where('vat_number', 'like', $pattern));
 
         return true;
     }
@@ -244,9 +244,22 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
             $columnId === Catalog::LINE_STATUS_COLUMN => PurchaseRequestLineStatus::values(),
             $columnId === 'status' => PurchaseRequestStatus::values(),
             $columnId === 'priority' => PurchaseRequestPriority::values(),
+            $columnId === Catalog::SUPPLIERS_COLUMN => Derived::distinctLineSuppliers($query, $search, $limit),
             isset(Catalog::TEXT_RELATIONS[$columnId]) => Derived::distinctRelated($query, Catalog::TEXT_RELATIONS[$columnId], $search, $limit),
             default => null,
         };
+    }
+
+    /**
+     * Distinct suppliers of the lines, by name (needs `lines.supplier` loaded).
+     *
+     * @return array<int, array{id: int, name: string}>
+     */
+    private function lineSuppliers(PurchaseRequest $row): array
+    {
+        return $row->lines->pluck('supplier')->filter()->unique('id')->sortBy('name')
+            ->map(fn (object $supplier): array => ['id' => $supplier->id, 'name' => $supplier->name])
+            ->values()->all();
     }
 
     /**

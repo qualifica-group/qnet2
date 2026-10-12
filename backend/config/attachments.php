@@ -7,6 +7,7 @@ use App\Models\DocumentLayout;
 use App\Models\Note;
 use App\Models\Opportunity;
 use App\Models\OutboundEmail;
+use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
 use App\Models\Registry;
@@ -152,6 +153,8 @@ return [
         // already in the global morph map (AppServiceProvider).
         'purchase_request' => PurchaseRequest::class,
         'purchase_request_line' => PurchaseRequestLine::class,
+        // Purchase order documents (spec 0210, D-14): alias in the global morph map.
+        'purchase_order' => PurchaseOrder::class,
     ],
 
 ];

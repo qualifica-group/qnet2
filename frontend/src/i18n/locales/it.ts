@@ -20,9 +20,12 @@ import { customFields } from './it-custom-fields'
 import { sectors } from './it-sectors'
 import { accounting } from './it-accounting'
 import { purchaseRequestLines, purchaseRequests } from './it-purchase-requests'
+import { purchaseOrders } from './it-purchase-orders'
+import { purchaseOrderForm } from './it-purchase-order-form'
 import { sources } from './it-sources'
 import { vatRates } from './it-vat-rates'
 import { unitsOfMeasure } from './it-units-of-measure'
+import { costTypes } from './it-cost-types'
 import { productTypologies } from './it-product-typologies'
 import { tags } from './it-tags'
 import { pipelineStatuses } from './it-pipeline-statuses'
@@ -409,9 +412,12 @@ export const it: TranslationResources = {
   sources,
   vatRates,
   unitsOfMeasure,
+  costTypes,
   ...accounting,
   purchaseRequests,
   purchaseRequestLines,
+  purchaseOrders,
+  purchaseOrderForm,
   productTypologies,
   tags,
   projects: { ...projects, stats: moduleStats.projects },

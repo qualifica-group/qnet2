@@ -44,8 +44,9 @@ class MetaController extends BaseApiController
 
             // Fail-closed: the standard `{resource}.viewAny` permission (the
             // same one BasePolicy::viewAny checks), mirroring
-            // TableController::authorizeViewAny.
-            $this->authorizeViewAny($actor->can("{$resource}.viewAny"));
+            // TableController::authorizeViewAny. Resources without a viewAny
+            // permission (RDA, ODA: browsing is gated by `view`) fall back to it.
+            $this->authorizeViewAny($actor->can("{$resource}.viewAny") || $actor->can("{$resource}.view"));
 
             $fields = $this->fieldDescriptors($authorization);
 

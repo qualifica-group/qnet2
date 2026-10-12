@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0210-purchase-orders" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Nuovo modulo ODA (Ordini di Acquisto) nella sezione Acquisti: l'ODA e' solo un ordine al
+    fornitore, NON si trasforma piu' in fattura (la fattura passiva, che potra' raccogliere piu'
+    ODA con un unico scadenziario passivo, e' un modulo futuro). Righe su Prodotti con Tipo costo
+    per riga (nuovo modulo configurabile), generazione da righe RDA, unificazione ODA, copie
+    mensili, stampa PDF e invio al fornitore.
+  </goal>
+
+  <context>
+    Brief utente: prompt_temp.md + sorgenti legacy QNet (Livewire GeneraProformaFornitori,
+    ElencoProformaFornitori(Table), dump `proformfora_heads`, `proformforas`,
+    `proformfora_head_documents|orders|rda_details|settore_ea`). Branch feature/amministrazione.
+    Modulo di riferimento per la pipeline: RDA (spec 0208/0209, `PurchaseRequest*`), fatture attive
+    (spec 0194/0195: numerazione, PDF, email).
+
+    Mappatura legacy -> qnet2 (verificata 2026-10-12):
+    - Fornitore (customer_id legacy) -> Registry is_supplier (`registries`, `is_qualified_supplier`).
+      `GET /api/registries/for-select?is_supplier=1` esiste (RegistryForSelectRequest).
+    - Cliente (supplier_id legacy) -> Registry. Commessa -> WorkOrder (`work-orders/for-select`).
+      Contratto (quotation_id legacy = offerta) -> Quote (`quotes/for-select`).
+      Opportunita' -> Opportunity (`opportunities/for-select`).
+    - Societa' -> Company; Societa'/Sede (legacy company_profiles) -> CompanySite
+      (`company-sites/for-select?company_id=N`); Sede operativa -> OperationalSite. Come RDA 0208.
+    - Pagamento -> PaymentMethod (`payment-methods/for-select`). Aliquota -> VatRate. U.m. -> UnitOfMeasure.
+    - Codice/descrizione riga (legacy Services) -> Product (`products/for-select`, meta.cost,
+      meta.vat_rate_id, meta.unit_of_measure). Mastro/conto/sottoconto: aboliti.
+    - Tag EA -> Sector (`sectors/for-select`, pivot sul modello di `sector_registry`) + specifica.
+    - Documenti -> Attachment polimorfico (config/attachments.php `attachable_types`).
+    - Numerazione -> come InvoiceNumberSequence / InvoiceNumberAllocator (contatore per company+anno).
+    - PDF -> DocumentLayout (`DocumentLayoutModule` oggi: quotes, invoices), resolver sul modello di
+      InvoiceDocumentLayoutResolver + InvoicePdfRenderer; rendering in Services/DocumentLayouts/Rendering.
+    - Email -> OutboundEmail con EmailOwner (`config('outbound_emails.owners')`, InvoiceEmailOwner,
+      InvoiceEmailAttachmentImporter), `EmailTemplateModule` (work_orders, invoices), rotte sul
+      modello di routes/api/invoice-emails.php; FE features/outbound-emails.
+    - RDA: `purchase_request_lines.oda_reference` string(50) (segnaposto 0208 D-3),
+      `supplier_id` per riga (0209), `PurchaseRequestLineStatusService::change` (approved -> ordered
+      richiede fornitore, 0209 D-2), capability fulfill.
+    - Config lookup di riferimento per Tipi di costo: modulo units-of-measure (BE
+      UnitOfMeasureController/ForSelect, UnitsOfMeasureAuthorization; FE features/units-of-measure).
+    - Menu config/navigation/purchasing.php; tabelle config/tables.php; authz config/authorization.php;
+      guide features/help (HELP_GUIDE_KEYS = 62 oggi).
+
+    Decisioni utente 2026-10-12:
+    - D-1 Solo ODA. Nessuna conversione in fattura, nessun budget/consuntivo/freeze/ripristino,
+      nessuno scadenziario: il metodo di pagamento e' indicativo.
+    - D-2 Campi rimossi rispetto al legacy: Tipo documento (ODA/FTP), Estrema urgenza, Data rif.
+      scadenza, Stato fattura, pulsante Seleziona RDA, Fase (tag), Rif. RDA numero/data, N. fattura
+      e data fattura, mastro/conto/sottoconto. Note spese: fuori scope (modulo inesistente).
+    - D-3 Tipo costo SULLA RIGA, obbligatorio. Nuova tabella configurabile `cost_types` con valori
+      iniziali Collaboratori, Fitti, Utenze, Altro.
+    - D-4 Stati: i 7 legacy (D-9). "Inviato al fornitore" solo dopo "Approvato".
+    - D-5 "Genera ODA da RDA" da Gestione righe RDA: righe approvate raggruppate per fornitore, una
+      ODA per gruppo; la riga ODA referenzia la riga RDA e la colonna ODA della RDA si valorizza.
+    - D-6 Funzioni legacy portate: PDF + email al fornitore, avviso fornitore non qualificato
+      (Abbandona/Forza), Unifica ODA con storico, N copie mensili in creazione.
+    - D-7 Esclusi: migrazione dati legacy, collegamento ai costi reali della commessa (WorkOrderCost).
+
+    Decisioni tecniche proposte (D-8..D-20, da validare con la spec):
+    - D-8 Nomi inglesi: risorsa `purchase-orders`, `cost-types`; tabelle `purchase_orders`,
+      `purchase_order_lines`, `purchase_order_sector`, `purchase_order_merge_logs`,
+      `purchase_order_number_sequences`, `cost_types`. Label UI "ODA" / "Tipi di costo" via i18n.
+    - D-9 Enum PurchaseOrderStatus: draft (Bozza, default), in_validation, approved,
+      sent_to_supplier, partially_fulfilled, fulfilled, cancelled. Matrice unica
+      `allowedTransitions`:
+        draft -> in_validation | approved | cancelled
+        in_validation -> draft | approved | cancelled
+        approved -> in_validation | sent_to_supplier | cancelled
+        sent_to_supplier -> partially_fulfilled | fulfilled | cancelled
+        partially_fulfilled -> sent_to_supplier | fulfilled
+        fulfilled -> partially_fulfilled
+        cancelled -> draft
+      Passare ad `approved` richiede `purchase-orders.approve`; ogni altra transizione
+      `purchase-orders.changeStatus`. Le transizioni esposte in `abilities.transitions` sono gia'
+      filtrate per permesso.
+    - D-10 Modificabilita': testata e righe modificabili, ODA eliminabile, unificabile (come
+      destinazione o sorgente) SOLO in draft o in_validation; altrimenti 409. Stato mai dal form:
+      endpoint dedicato.
+    - D-11 Numerazione automatica alla creazione: contatore per (company_id, anno di order_date)
+      in `purchase_order_number_sequences` con lockForUpdate; codice esposto `code` = "{number}/{year}".
+      Il numero non cambia se si modificano data o societa' (come le fatture: assegnato una volta).
+    - D-12 Importi calcolati SEMPRE lato server, stesse formule di 0208 D-12 (riga: taxable =
+      round(qty*price,2), vat = round(taxable*rate/100,2), total; testata = somme). Scorporo IVA
+      client come RDA.
+    - D-13 Riga: product_id nullable + description obbligatoria. Scegliendo un prodotto il form
+      propone descrizione = nome, U.m., prezzo = `cost` del prodotto (prezzo d'acquisto), aliquota;
+      tutto modificabile. Commessa (work_order_id) per riga, proposta dalla commessa di testata.
+    - D-14 Testata: supplier_id obbligatorio (is_supplier), company_id + company_site_id
+      (appartenente alla company) obbligatori, operational_site_id facoltativo, order_date,
+      description obbligatori; payment_method_id, general_notes, is_internal_user ("Fruitore
+      interno"), customer_id, work_order_id, quote_id ("Contratto/Offerta"), opportunity_id,
+      sector_ids[] + sector_notes ("Specifica") facoltativi. Allegati come RDA 0208 D-15
+      (alias `purchase_order`, coda in creazione).
+    - D-15 Fornitore non qualificato: solo avviso UI (modale Abbandona = svuota il campo / Forza =
+      prosegue), nessun blocco server. `registries/for-select` espone in modo additivo
+      `meta.is_qualified_supplier`; il Resource espone `supplier.is_qualified_supplier`; nel form
+      resta un avviso rosso sotto il campo. In modifica la modale non si apre.
+    - D-16 Copie mensili: solo in creazione, `copies` 1..12 (default 1). Crea N ODA indipendenti in
+      transazione, order_date + i mesi (i = 0..N-1, fine mese conservato da Carbon addMonthsNoOverflow),
+      ciascuna col proprio numero, stesso `copy_group_id` (uuid). Allegati in coda caricati solo
+      sulla prima. Risposta: la prima ODA + `meta.created_ids`.
+    - D-17 Genera ODA da RDA: `POST /api/purchase-request-lines/purchase-orders`. Ammesso solo se
+      TUTTE le righe sono approved, hanno fornitore, non sono gia' collegate e l'attore puo' portarle
+      in ordered (capability fulfill o manage) e ha `purchase-orders.create`; tutto-o-niente.
+      Raggruppa per (supplier_id, company_id, company_site_id, operational_site_id della RDA): una
+      ODA draft per gruppo, testata dalla RDA (societa', sede, sede operativa, cliente, commessa),
+      description = "Da RDA #id[, #id...]", righe copiate (prodotto, descrizione, U.m., qty, prezzo,
+      IVA, commessa della RDA) con il `cost_type_id` scelto nella modale. Le righe RDA passano a
+      ordered tramite PurchaseRequestLineStatusService (log con lo stesso bulk_group_id, auto-chiusura
+      RDA invariata) e `oda_reference` = code dell'ODA. Gli allegati RDA NON vengono copiati
+      (restano consultabili dalla RDA).
+    - D-18 Scollegamento RDA: eliminando una riga ODA collegata (dal form o eliminando l'ODA) la
+      riga RDA torna approved (log "ODA eliminata", nessun controllo di capability: e' un effetto
+      del permesso sull'ODA) e `oda_reference` = null. Annullare l'ODA NON scollega.
+      Nel form la riga collegata mostra il badge "RDA #id"; descrizione/qty/prezzo restano modificabili.
+    - D-19 Unifica ODA: dal form di una ODA salvata (draft/in_validation), modale con le ODA dello
+      stesso fornitore E della stessa societa' in draft/in_validation (esclusa la corrente) con le
+      loro righe; si selezionano righe o intere ODA. L'operazione e' IMMEDIATA lato server (non
+      attende il salvataggio del form): le righe vengono SPOSTATE (stesso id, nuovo
+      purchase_order_id, posizioni in coda), totali ricalcolati su entrambe, ODA sorgente rimasta
+      vuota eliminata (action `deleted`), altrimenti `partial`. Per ogni sorgente un log con
+      snapshot JSON (testata + righe prima dello spostamento). Settori EA e allegati della sorgente
+      NON vengono spostati; se la sorgente viene eliminata i suoi allegati vengono eliminati con
+      essa. Righe collegate a RDA: il collegamento segue la riga e `oda_reference` si aggiorna al
+      code della destinazione. Il form, se ha modifiche non salvate, chiede di salvare prima.
+    - D-20 Permessi `purchase-orders.{view,create,update,delete,changeStatus,approve,merge,send,
+      export,viewActivity}` e `cost-types.{view,create,update,delete}`. Visibilita': chi ha view vede
+      tutte le ODA (nessuno scope per utente, come le fatture). PDF richiede view; email richiede send.
+      FieldPermission sui campi di testata (PurchaseOrdersAuthorization).
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazioni (reversibili, FK + indici): `cost_types` (con i 4 valori iniziali inseriti dalla migrazione, sono dati di riferimento), `purchase_order_number_sequences`, `purchase_orders`, `purchase_order_lines`, `purchase_order_sector`, `purchase_order_merge_logs`.</item>
+      <item>Model CostType, PurchaseOrder, PurchaseOrderLine, PurchaseOrderMergeLog, PurchaseOrderNumberSequence (LogsModelActivity su CostType, testata e righe; HasAttachments su PurchaseOrder); enum PurchaseOrderStatus, PurchaseOrderMergeAction; factory; `DemoPurchaseOrderSeeder` in DemoDataSeeder (dopo DemoPurchaseRequestSeeder).</item>
+      <item>Modulo Tipi di costo: CRUD + for-select + TableDefinition `cost-types` + CostTypesAuthorization + policy; eliminazione bloccata (409) se usato da righe ODA.</item>
+      <item>ODA: PurchaseOrdersAuthorization, PurchaseOrderPolicy, FormRequest, DTO, Resource, controller, routes/api/purchase-orders.php; service PurchaseOrderService (create con copie, update con sync righe, delete), PurchaseOrderNumberAllocator, PurchaseOrderAmountCalculator, PurchaseOrderStatusService, PurchaseOrderMergeService, PurchaseOrderFromRequestLinesService, PurchaseRequestLineLinker (D-17/D-18).</item>
+      <item>TableDefinition `purchase-orders` + ColumnCatalog (filtri/sort da allow-list, tab per stato, export generico, aggregati totali).</item>
+      <item>PDF: case `purchase_orders` in DocumentLayoutModule, variabili ODA nel catalogo, PurchaseOrderDocumentLayoutResolver, PurchaseOrderPdfRenderer, `GET /api/purchase-orders/{id}/pdf`.</item>
+      <item>Email: case `purchase_orders` in EmailTemplateModule, PurchaseOrderEmailOwner + PurchaseOrderEmailAttachmentImporter, alias `purchase_order` in outbound_emails.owners, rotte emails sul modello invoice-emails (senza reminder).</item>
+      <item>RDA: endpoint Genera ODA (D-17); scollegamento (D-18); `registries/for-select` meta.is_qualified_supplier (additivo).</item>
+      <item>Menu purchasing: voci "ODA" (/purchase-orders) e "Tipi di costo" (/cost-types).</item>
+      <item>FE features/purchase-orders: elenco con tab stato + pannello righe, pagina create/edit/view (testata, righe compatte come RDA 0209, totali, allegati, copie in creazione), modale cambio stato, modale fornitore non qualificato, modale Unifica + storico unificazioni, pulsanti Stampa PDF e Invia al fornitore (compose outbound-emails), eliminazione.</item>
+      <item>FE features/cost-types (CRUD sul modello units-of-measure); FE purchase-requests: azione massiva "Genera ODA" in Gestione righe + modale, colonna ODA come link all'ODA.</item>
+      <item>i18n IT/EN; guide in-app `purchase-orders` e `cost-types` IT/EN (HELP_GUIDE_KEYS 62 -> 64); aggiornamento guide `purchase-request-lines` (Genera ODA); manuale Claude Docs (sezione Acquisti) se il connettore e' disponibile.</item>
+    </in>
+    <out>
+      <item>Fattura passiva, scadenziario passivo, pagamenti, budget/consuntivo/scostamento.</item>
+      <item>Migrazione/import delle ODA legacy (proformfora_*).</item>
+      <item>Note spese (expense reports) e integrazione con i costi reali della commessa (WorkOrderCost).</item>
+      <item>Copia degli allegati RDA nell'ODA.</item>
+      <item>Evasione per riga / quantita' ricevute (lo stato evaso e' solo di testata).</item>
+      <item>Invio automatico dell'email al cambio stato o cambio stato automatico all'invio email.</item>
+      <item>Workflow di approvazione multilivello o notifiche al cambio stato.</item>
+      <item>Editing inline nella griglia ODA (celle in sola lettura).</item>
+      <item>Riapertura di una RDA chiusa per effetto dello scollegamento D-18 (la riga torna approved, la RDA chiusa resta chiusa).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope { success, message, data }. Date ISO Y-m-d; importi stringa a 2 decimali;
+         quantita' stringa a 3 decimali. NamedRef = {id:int, name:string}. -->
+
+    <model name="cost_types">
+      id; name string(100) unique req; description string(500) null; sort_order uint default 0;
+      is_active bool default true; timestamps. Valori iniziali: Collaboratori, Fitti, Utenze, Altro.
+    </model>
+    <model name="purchase_order_number_sequences">
+      id; company_id FK companies cascade; year smallint; last_number uint; unique(company_id, year).
+    </model>
+    <model name="purchase_orders">
+      id; number uint; year smallint (non fillable, D-11); unique(company_id, year, number);
+      supplier_id FK registries restrict req; company_id FK companies req; company_site_id FK req;
+      operational_site_id FK null; order_date date req; description string(255) req;
+      general_notes text null; payment_method_id FK null; is_internal_user bool default false;
+      customer_id FK registries null; work_order_id FK null; quote_id FK null; opportunity_id FK null;
+      sector_notes string(500) null; status enum default draft (indice);
+      taxable_total, vat_total, grand_total decimal(14,2) default 0 (non fillable);
+      copy_group_id uuid null (indice); created_by FK users (non fillable); timestamps.
+      Indici: supplier_id, order_date, status.
+    </model>
+    <model name="purchase_order_lines">
+      id; purchase_order_id FK cascade; position uint; product_id FK null; description string(500) req;
+      cost_type_id FK cost_types restrict req; unit_of_measure_id FK null; quantity decimal(12,3);
+      unit_price decimal(14,2); vat_rate_id FK null; taxable_amount, vat_amount, total_amount
+      decimal(14,2) (non fillable); work_order_id FK null;
+      purchase_request_line_id FK purchase_request_lines null, UNIQUE, nullOnDelete (non fillable:
+      scritto solo da D-17); timestamps.
+    </model>
+    <model name="purchase_order_sector">id; purchase_order_id FK cascade; sector_id FK cascade; unique.</model>
+    <model name="purchase_order_merge_logs">
+      id; destination_purchase_order_id FK cascade; source_purchase_order_id FK null nullOnDelete;
+      source_code string(20); source_snapshot json; moved_line_ids json; source_action enum
+      deleted|partial; performed_by FK users; created_at.
+    </model>
+
+    <type name="PurchaseOrderLine">
+      { id, position, product:{id,name}|null, description, cost_type:NamedRef,
+        unit_of_measure:{id,name,symbol}|null, quantity, unit_price, vat_rate:{id,name,rate}|null,
+        taxable_amount, vat_amount, total_amount, work_order:{id,code,title}|null,
+        purchase_request_line:{id, purchase_request_id:int}|null }
+    </type>
+    <type name="PurchaseOrder">
+      { id, number:int, year:int, code:string, status:PurchaseOrderStatus,
+        supplier:{id,name,email:string|null,is_qualified_supplier:bool}, company:NamedRef,
+        company_site:NamedRef, operational_site:NamedRef|null, order_date, description,
+        general_notes, payment_method:NamedRef|null, is_internal_user:bool, customer:NamedRef|null,
+        work_order:{id,code,title}|null, quote:{id,name}|null, opportunity:{id,name}|null,
+        sectors:NamedRef[], sector_notes, taxable_total, vat_total, grand_total,
+        copy_group_id:string|null, created_by:NamedRef, lines:PurchaseOrderLine[],
+        merge_logs_count:int, created_at, updated_at,
+        abilities:{ update, delete, merge, send, view_activity:bool, transitions:PurchaseOrderStatus[] },
+        field_permissions:{ [field]: { visible, editable, required } } }
+    </type>
+
+    <endpoint method="GET" path="/api/purchase-orders/{purchaseOrder}">
+      <response status="200">data: PurchaseOrder</response>
+      <errors>403 senza view; 404.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-orders">
+      <request>
+        { supplier_id, company_id, company_site_id, operational_site_id?, order_date, description,
+          general_notes?(max 5000), payment_method_id?, is_internal_user?, customer_id?,
+          work_order_id?, quote_id?, opportunity_id?, sector_ids?:int[], sector_notes?(max 500),
+          copies?:int(1..12, default 1),
+          lines:[ { product_id?, description(max 500), cost_type_id, unit_of_measure_id?, quantity(gt:0),
+                    unit_price(gte:0), vat_rate_id?, work_order_id? } ] (min 1, max 200) }
+        supplier_id deve avere is_supplier; company_site_id della company; cost_type attivo.
+      </request>
+      <response status="201">data: PurchaseOrder (la prima se copies > 1, status draft, number assegnato);
+        meta: { created_ids:int[] }</response>
+      <errors>403 senza create; 422 (chiavi `lines`, `lines.N.campo`, `supplier_id`, `company_site_id`, `copies`).</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/purchase-orders/{purchaseOrder}">
+      <request>Stessa shape del POST senza `copies`; `lines.*.id` = riga esistente; righe omesse = eliminate
+        (con scollegamento D-18).</request>
+      <response status="200">data: PurchaseOrder</response>
+      <errors>403 senza update; 409 stato non modificabile (D-10); 422 `lines.N.id` riga di un'altra ODA.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/purchase-orders/{purchaseOrder}">
+      <response status="200">{ success:true, message }</response>
+      <errors>403 senza delete; 409 stato non draft/in_validation.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-orders/{purchaseOrder}/status">
+      <request>{ to_status:PurchaseOrderStatus }</request>
+      <response status="200">data: PurchaseOrder</response>
+      <errors>403 permesso mancante (D-9); 422 `to_status` transizione non ammessa.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/purchase-orders/{purchaseOrder}/merge-candidates">
+      <response status="200">data: [ { id, code, order_date, description, status, grand_total,
+        lines:[ { id, description, quantity, unit_price, taxable_amount, total_amount } ] } ]</response>
+      <errors>403 senza merge; 409 ODA corrente non unificabile.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-orders/{purchaseOrder}/merge">
+      <request>{ line_ids:int[] (1..200, distinct) }</request>
+      <response status="200">data: PurchaseOrder (destinazione aggiornata); meta: { deleted_purchase_order_ids:int[] }</response>
+      <errors>403 senza merge; 409 destinazione o sorgente non draft/in_validation;
+        422 `line_ids.N` riga di ODA con fornitore/societa' diversi o della stessa ODA. Tutto-o-niente.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/purchase-orders/{purchaseOrder}/merge-logs">
+      <response status="200">data: [ { id, source_purchase_order_id|null, source_code, source_action,
+        source_description, source_order_date, source_grand_total, moved_lines:[{description, quantity,
+        unit_price, taxable_amount, total_amount}], performed_by:NamedRef, created_at } ] (recenti prima)</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/purchase-orders/{purchaseOrder}/pdf">
+      <response status="200">application/pdf, filename "ODA-{number}-{year}.pdf"</response>
+      <errors>403 senza view; 422 nessun layout attivo per il modulo purchase_orders.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT|DELETE" path="/api/purchase-orders/{purchaseOrder}/emails[...]">
+      <!-- Stessa famiglia di rotte di routes/api/invoice-emails.php (compose-context,
+           render-template, index/store/show/update/destroy/send, attachments store/import/destroy/
+           download), SENZA reminder. Destinatario di default: email del fornitore. store accetta
+           attach_pdf:bool come le fatture. Permesso send (scrittura) / view (lettura). -->
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-request-lines/purchase-orders">
+      <request>{ line_ids:int[] (1..200, distinct), cost_type_id:int, payment_method_id?:int, order_date?:date (default oggi) }</request>
+      <response status="201">data: { purchase_orders:[ { id, code, supplier:NamedRef, lines_count:int } ],
+        closed_purchase_request_ids:int[] }</response>
+      <errors>403 senza purchase-orders.create o senza capability fulfill|manage su una riga;
+        409 riga di RDA chiusa; 422 `line_ids.N` (non approved, senza fornitore, gia' collegata). Tutto-o-niente.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/registries/for-select">
+      <!-- ESISTENTE. Modifica additiva: meta.is_qualified_supplier:bool. -->
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT|DELETE" path="/api/cost-types[/{costType}] , /api/cost-types/for-select">
+      <request>{ name(max 100, unique), description?(max 500), sort_order?, is_active? }</request>
+      <response status="200|201">data: { id, name, description, sort_order, is_active, created_at, updated_at, abilities:{update,delete} };
+        for-select: [ { id, label } ] solo attivi, ordinati per sort_order, name.</response>
+      <errors>403 permessi cost-types.*; 409 delete se usato da righe ODA; 422.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/purchase-orders/rows">
+      <response status="200">
+        Righe: id, code, number, year, order_date, status, supplier, supplier_vat_number, company,
+        company_site, operational_site, description, payment_method, customer, work_order, quote,
+        opportunity, sectors, is_internal_user, taxable_total, vat_total, grand_total, lines_count,
+        created_by, created_at, abilities(update, delete, transitions). Tab per stato (`status`).
+        Ricerca rapida: code, description, fornitore (nome, P.IVA). meta.aggregates: somme imponibile,
+        IVA, totale sul set filtrato. Export generico.
+      </response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/cost-types/rows">
+      <response status="200">Righe: id, name, description, sort_order, is_active, lines_count, abilities.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con create, quando invia POST valido con 2 righe, allora 201, status draft, number = ultimo+1 per (company, anno), code "{n}/{anno}", created_by = utente, importi riga/testata calcolati come D-12 anche se il client invia importi diversi.</criterion>
+    <criterion id="AC-002">POST senza righe, riga senza cost_type_id, quantity 0, supplier senza is_supplier, company_site di un'altra company: 422 sulla chiave corrispondente, nessun record creato.</criterion>
+    <criterion id="AC-003">Due creazioni per la stessa company e anno ottengono numeri consecutivi; una company diversa o un anno diverso riparte da 1.</criterion>
+    <criterion id="AC-004">POST con copies = 3 e order_date 2026-01-31: 3 ODA con date 2026-01-31, 2026-02-28, 2026-03-31, numeri distinti, stesso copy_group_id, meta.created_ids di 3 elementi; copies 13 -> 422.</criterion>
+    <criterion id="AC-005">PUT su ODA draft aggiorna testata, modifica/aggiunge/elimina righe; PUT o DELETE su ODA approved -> 409; senza update -> 403.</criterion>
+    <criterion id="AC-006">Cambio stato: draft -> sent_to_supplier 422; approved -> sent_to_supplier 200; draft -> approved senza approve 403, con approve 200; abilities.transitions contiene solo le transizioni ammesse dalla matrice E dai permessi.</criterion>
+    <criterion id="AC-007">Genera ODA: 3 righe RDA approved con 2 fornitori -> 201 con 2 ODA draft, righe copiate col cost_type scelto, righe RDA ordered con log (stesso bulk_group_id) e oda_reference = code; ODA della commessa/societa' della RDA.</criterion>
+    <criterion id="AC-008">Genera ODA con una riga pending_approval, o senza fornitore, o gia' collegata, o attore senza fulfill: 422/403 e nessuna ODA creata, nessuna riga RDA cambiata.</criterion>
+    <criterion id="AC-009">Eliminando una riga ODA collegata (PUT) o l'intera ODA, la riga RDA torna approved con log e oda_reference null.</criterion>
+    <criterion id="AC-010">Unifica: spostando tutte le righe di una sorgente, la sorgente e' eliminata, log action deleted con snapshot; spostandone una parte, log partial e totali ricalcolati su sorgente e destinazione; le righe mantengono l'id; una riga collegata a RDA aggiorna oda_reference al code della destinazione.</criterion>
+    <criterion id="AC-011">Unifica con riga di fornitore o societa' diversi -> 422; sorgente o destinazione approved -> 409; senza merge -> 403; nessuna riga spostata in caso di errore.</criterion>
+    <criterion id="AC-012">merge-candidates restituisce solo ODA dello stesso fornitore e societa', draft/in_validation, esclusa la corrente; merge-logs restituisce lo storico piu' recente prima.</criterion>
+    <criterion id="AC-013">PDF: con un layout attivo del modulo purchase_orders -> 200 application/pdf con il code nel filename; senza layout -> 422; senza view -> 403.</criterion>
+    <criterion id="AC-014">Email: compose-context propone come destinatario l'email del fornitore; store con attach_pdf = true allega il PDF; senza send -> 403.</criterion>
+    <criterion id="AC-015">Griglia purchase-orders: filtri/ordinamento solo da allow-list (colonna sconosciuta ignorata), tab per stato, ricerca per P.IVA fornitore, aggregati sul set filtrato, export; senza view -> 403.</criterion>
+    <criterion id="AC-016">Tipi di costo: CRUD con permessi, nome duplicato 422, delete di un tipo usato -> 409; for-select esclude gli inattivi; la migrazione crea Collaboratori, Fitti, Utenze, Altro.</criterion>
+    <criterion id="AC-017">FieldPermission: un ruolo con payment_method_id in sola lettura non lo cambia (valore invariato) e il form lo mostra disabilitato.</criterion>
+    <criterion id="AC-018">registries/for-select espone meta.is_qualified_supplier senza cambiare gli altri campi.</criterion>
+    <criterion id="AC-019">FE schema/payload/calcoli (Vitest node): anteprima importi, scorporo IVA, payload create (con copies) e update (lines.*.id), mappatura errori server.</criterion>
+    <criterion id="AC-020">FE form (Vitest jsdom): scelta prodotto propone descrizione/U.m./costo/aliquota; scelta fornitore non qualificato apre la modale (Abbandona svuota, Forza mantiene e mostra l'avviso); campo Copie solo in creazione; ODA non draft/in_validation in sola lettura; riga collegata mostra badge RDA.</criterion>
+    <criterion id="AC-021">FE modale stato: mostra solo abilities.transitions; FE modale Unifica: seleziona righe singole o intera ODA, conferma disabilitata senza selezione, chiede di salvare se il form ha modifiche non salvate.</criterion>
+    <criterion id="AC-022">FE Gestione righe RDA: "Genera ODA" abilitata solo con righe selezionate tutte approved con fornitore; la modale richiede il Tipo costo; a successo mostra i link alle ODA create; la colonna ODA e' un link all'ODA.</criterion>
+    <criterion id="AC-023">Guide in-app IT/EN `purchase-orders` e `cost-types` presenti, `purchase-request-lines` aggiornata, parity test verde, HELP_GUIDE_KEYS = 64; menu Acquisti con ODA e Tipi di costo.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (composer/npm).</item>
+    <item>Layering Controller -> FormRequest -> Service -> DTO -> Resource -> Policy; authz server-side su ogni endpoint e TableDefinition.</item>
+    <item>Filtri/ordinamenti SSRM solo da allow-list; niente whereRaw con input.</item>
+    <item>Numerazione, copie, unifica, genera-da-RDA, sync righe e scollegamento in transazione con lockForUpdate su contatore, ODA e righe RDA coinvolte.</item>
+    <item>Stati: unica fonte di verita' l'enum lato server; il FE usa solo abilities.transitions.</item>
+    <item>Riuso: Rendering DocumentLayout, OutboundEmailService/EmailOwner, AttachmentController, quick-create Registry/Product, componenti RDA 0209 dove possibile (righe compatte); nessuna modifica di comportamento a RDA oltre D-17/D-18.</item>
+    <item>Allegati: mimes + extensions come AttachmentController.</item>
+    <item>File 300/500 righe; UI compatta (ui-design.md); i18n IT/EN; helper di test condivisi in tests/Helpers/PurchaseOrderHelpers.php.</item>
+  </constraints>
+
+</spec>

@@ -12,6 +12,15 @@ vi.mock('@/features/purchase-requests/api', async (importOriginal) => ({
   changeLinesStatus: (payload: LineStatusChangePayload) => changeMock(payload),
 }))
 
+vi.mock('@/features/for-select/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/for-select/api')>()),
+  fetchForSelect: vi.fn(async () => ({
+    items: [{ id: 12, label: 'Rossi Srl' }],
+    export_link: null,
+    pagination: { total: 1, offset: 0, limit: 25, total_pages: 1 },
+  })),
+}))
+
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() } }))
 
 function target(overrides: Partial<LineTarget> & Pick<LineTarget, 'id'>): LineTarget {
@@ -23,6 +32,8 @@ function target(overrides: Partial<LineTarget> & Pick<LineTarget, 'id'>): LineTa
     quantity: 2,
     unitSymbol: 'pc',
     totalAmount: 1234.5,
+    supplier: null,
+    canUpdateSupplier: true,
     purchaseRequestId: 5,
     purchaseRequestSubject: 'Laptops',
     ...overrides,
@@ -124,3 +135,60 @@ describe('LineStatusDialog (AC-018, AC-022)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
+
+describe('LineStatusDialog supplier for ordered (spec 0209 AC-015)', () => {
+  const orderable = { status: 'approved' as const, transitions: ['ordered' as const, 'on_hold' as const] }
+
+  it('asks a supplier per line without one, shows the others as text, and confirms only when none is missing', async () => {
+    renderDialog([
+      target({ id: 1, ...orderable, supplier: { id: 7, name: 'Bianchi Spa' } }),
+      target({ id: 2, ...orderable }),
+    ])
+
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('radio', { name: 'Ordered' }))
+
+    expect(screen.getByRole('cell', { name: 'Bianchi Spa' })).toBeInTheDocument()
+    expect(screen.getAllByRole('combobox')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Confirm on 2 lines' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Supplier 2' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Rossi Srl' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Confirm on 2 lines' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm on 2 lines' }))
+
+    await waitFor(() =>
+      expect(changeMock).toHaveBeenCalledWith({
+        line_ids: [1, 2],
+        to_status: 'ordered',
+        suppliers: [{ line_id: 2, supplier_id: 12 }],
+      }),
+    )
+  })
+
+  it('confirms at once and sends no suppliers when every line already has one', async () => {
+    renderDialog([
+      target({ id: 1, ...orderable, supplier: { id: 7, name: 'Bianchi Spa' } }),
+      target({ id: 2, ...orderable, supplier: { id: 8, name: 'Verdi Srl' } }),
+    ])
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Ordered' }))
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm on 2 lines' }))
+
+    await waitFor(() => expect(changeMock).toHaveBeenCalledTimes(1))
+    expect(changeMock.mock.calls[0]?.[0]).not.toHaveProperty('suppliers')
+  })
+
+  it('shows no supplier select and sends no suppliers for another status', async () => {
+    renderDialog([target({ id: 1, ...orderable }), target({ id: 2, ...orderable })])
+
+    fireEvent.click(screen.getByRole('radio', { name: 'On hold' }))
+
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm on 2 lines' }))
+    await waitFor(() => expect(changeMock).toHaveBeenCalledTimes(1))
+    expect(changeMock.mock.calls[0]?.[0]).toEqual({ line_ids: [1, 2], to_status: 'on_hold' })
+  })
+})
+

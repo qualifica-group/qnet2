@@ -70,6 +70,8 @@ export const navigation = {
   purchasing: 'Purchasing',
   purchaseRequests: 'RDA',
   purchaseRequestLines: 'RDA line management',
+  purchaseOrders: 'ODA',
+  costTypes: 'Cost types',
   management: 'Management',
   configuration: 'Configuration',
   administration: 'Administration',

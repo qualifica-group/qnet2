@@ -232,7 +232,7 @@ class RegistryService
     private function forSelectBaseQuery(): Builder
     {
         return Registry::query()
-            ->select(['id', 'name', 'commercial_id', 'reporter_id', 'supervisor_id'])
+            ->select(['id', 'name', 'is_qualified_supplier', 'commercial_id', 'reporter_id', 'supervisor_id'])
             ->with(['commercial:id,name', 'reporter:id,name', 'supervisor:id,name', 'managers:id,name']);
     }
 

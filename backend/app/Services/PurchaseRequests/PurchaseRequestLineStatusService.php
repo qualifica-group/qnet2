@@ -30,30 +30,39 @@ class PurchaseRequestLineStatusService
     public function __construct(
         private readonly PurchaseRequestCapabilityResolver $capabilities,
         private readonly PurchaseRequestClosureService $closure,
+        private readonly PurchaseRequestLineLocker $locker,
     ) {}
 
     /**
      * @param  array<int, int>  $lineIds  in request order (the 422 keys follow it)
+     * @param  array<int, int>  $suppliers  line id => supplier id, only with `ordered` (spec 0209, D-2)
      * @return array{updated_count: int, closed_purchase_request_ids: array<int, int>}
      */
-    public function change(User $actor, array $lineIds, PurchaseRequestLineStatus $to, ?string $reason): array
+    public function change(User $actor, array $lineIds, PurchaseRequestLineStatus $to, ?string $reason, array $suppliers = []): array
     {
-        return DB::transaction(function () use ($actor, $lineIds, $to, $reason): array {
+        return DB::transaction(function () use ($actor, $lineIds, $to, $reason, $suppliers): array {
             // Step 1: lock the lines and their requests
-            $lines = $this->lockLines($lineIds);
-            $requests = $this->lockRequests($lines);
+            $lines = $this->locker->lines($lineIds);
+            $requests = $this->locker->requests($lines);
 
             // Step 2: refuse the whole change if any line is out of reach (403), closed (409) or not allowed (422)
             $this->assertAllowed($actor, $lineIds, $lines, $requests, $to);
 
-            // Step 3: apply and log, one group id per mass change
+            // Step 3: ordering needs a supplier on every line (existing or supplied)
+            $this->assertSuppliersPresent($lineIds, $lines, $to, $suppliers);
+
+            // Step 4: apply and log, one group id per mass change
             $groupId = count($lineIds) > 1 ? (string) Str::uuid() : null;
 
             foreach ($lines as $line) {
+                if (isset($suppliers[$line->id])) {
+                    $line->supplier_id = $suppliers[$line->id];
+                }
+
                 $this->apply($line, $actor, $to, $reason, $groupId);
             }
 
-            // Step 4: close the requests that have nothing left to work on
+            // Step 5: close the requests that have nothing left to work on
             $closed = $requests->filter(fn (PurchaseRequest $request): bool => $this->closure->closeIfComplete($request, $actor));
 
             return [
@@ -65,25 +74,26 @@ class PurchaseRequestLineStatusService
 
     /**
      * @param  array<int, int>  $lineIds
-     * @return Collection<int, PurchaseRequestLine> keyed by id
-     */
-    private function lockLines(array $lineIds): Collection
-    {
-        return PurchaseRequestLine::query()->whereIn('id', $lineIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-    }
-
-    /**
      * @param  Collection<int, PurchaseRequestLine>  $lines
-     * @return Collection<int, PurchaseRequest> keyed by id
+     * @param  array<int, int>  $suppliers
      */
-    private function lockRequests(Collection $lines): Collection
+    private function assertSuppliersPresent(array $lineIds, Collection $lines, PurchaseRequestLineStatus $to, array $suppliers): void
     {
-        return PurchaseRequest::query()
-            ->whereIn('id', $lines->pluck('purchase_request_id')->unique())
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get()
-            ->keyBy('id');
+        if ($to !== PurchaseRequestLineStatus::Ordered) {
+            return;
+        }
+
+        $errors = [];
+
+        foreach ($lineIds as $index => $id) {
+            if ($lines->get($id)->supplier_id === null && ! isset($suppliers[$id])) {
+                $errors["line_ids.{$index}"] = ['A supplier is required to mark the line as ordered.'];
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     /**

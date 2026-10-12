@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { DocumentsDialog } from '@/features/attachments/documents-dialog'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
@@ -119,12 +120,17 @@ export function LineDocumentsButton({ control, index, lineId, pendingCount }: Li
 
   return (
     <>
-      <Button type="button" variant="outline" size="icon-xs" className="relative bg-card" aria-label={label} onClick={() => setOpen(true)}>
-        <Paperclip />
-        {pendingCount > 0 ? (
-          <Badge className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-1 text-[9px]">{pendingCount}</Badge>
-        ) : null}
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button type="button" variant="outline" size="icon-xs" className="relative bg-card" aria-label={label} onClick={() => setOpen(true)}>
+            <Paperclip />
+            {pendingCount > 0 ? (
+              <Badge className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-1 text-[9px]">{pendingCount}</Badge>
+            ) : null}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
       {lineId !== undefined ? (
         <DocumentsDialog resource={PURCHASE_REQUEST_LINE_ATTACHABLE} id={open ? lineId : null} onOpenChange={setOpen} />
       ) : (

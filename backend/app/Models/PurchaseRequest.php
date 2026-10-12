@@ -21,7 +21,7 @@ use Spatie\Activitylog\LogOptions;
  */
 #[Fillable([
     'subject', 'requested_at', 'priority', 'requester_id', 'function_manager_id', 'customer_id',
-    'supplier_id', 'work_order_id', 'company_id', 'company_site_id', 'operational_site_id',
+    'work_order_id', 'company_id', 'company_site_id', 'operational_site_id',
     'business_function_id', 'notes', 'delivery_terms', 'procurement_plan',
     'technical_requirements', 'special_conditions',
 ])]
@@ -122,14 +122,6 @@ class PurchaseRequest extends BaseModel
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Registry::class, 'customer_id');
-    }
-
-    /**
-     * @return BelongsTo<Registry, $this>
-     */
-    public function supplier(): BelongsTo
-    {
-        return $this->belongsTo(Registry::class, 'supplier_id');
     }
 
     /**

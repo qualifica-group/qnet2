@@ -74,6 +74,10 @@ export const permissions = {
     manageStatuses: 'Gestire qualsiasi stato riga',
     deleteLine: 'Eliminare le righe',
     close: 'Chiudere',
+    // Spec 0210: ordini di acquisto (ODA).
+    approve: 'Approvare',
+    merge: 'Unificare',
+    send: 'Inviare al fornitore',
     // Spec 0201 D-10: tab Dati contrattuali della commessa e gestione dei pagamenti per riga.
     viewContractData: 'Vedere i dati contrattuali',
     managePayments: 'Gestire i pagamenti',
@@ -130,6 +134,8 @@ export const permissions = {
     'financial-accounts': 'Gestione Conti',
     'proforma-requests': 'Richieste Proforma',
     'purchase-requests': 'Richieste di acquisto (RDA)',
+    'purchase-orders': 'Ordini di acquisto (ODA)',
+    'cost-types': 'Tipi di costo',
     invoices: 'Fatture Attive',
     'invoice-installments': 'Scadenze',
     'product-typologies': 'Tipologie Prodotto',

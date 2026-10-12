@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Opportunity;
+use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\Quote;
 use App\Models\WorkOrder;
@@ -47,6 +48,7 @@ class DemoDataSeeder extends Seeder
         // below (same pre-clear pattern as DemoProjectSeeder with campaigns).
         // Invoices go first: they restrict their customer registry and company.
         Invoice::query()->delete();
+        PurchaseOrder::query()->delete();
         PurchaseRequest::query()->delete();
         WorkOrder::query()->delete();
         Quote::query()->delete();
@@ -88,6 +90,9 @@ class DemoDataSeeder extends Seeder
         // Depends on sources/sectors/referents (lookups, seeded above) and
         // users (internal managers, seeded above) — must run after all of them.
         $this->call(DemoRegistrySeeder::class);
+        // Purchase orders (spec 0210): need companies, users and the supplier
+        // registries just seeded (hence after DemoRegistrySeeder, not right after the RDA).
+        $this->call(DemoPurchaseOrderSeeder::class);
         $this->call(DemoPipelineStatusSeeder::class);
         // Depends on pipeline-statuses/registries/sources/business-functions/
         // product-categories/referents (lookups, all seeded above) and

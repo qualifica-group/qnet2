@@ -11,13 +11,14 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Line of a purchase request (spec 0208). Only the editable content is
  * fillable: amounts (D-12), status and approval (D-9) are written by services.
  */
 #[Fillable([
-    'position', 'product_id', 'description', 'reason', 'unit_of_measure_id',
+    'position', 'product_id', 'description', 'supplier_id', 'reason', 'unit_of_measure_id',
     'quantity', 'unit_price', 'vat_rate_id',
 ])]
 class PurchaseRequestLine extends BaseModel
@@ -59,6 +60,14 @@ class PurchaseRequestLine extends BaseModel
     }
 
     /**
+     * @return BelongsTo<Registry, $this>
+     */
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Registry::class, 'supplier_id');
+    }
+
+    /**
      * @return BelongsTo<UnitOfMeasure, $this>
      */
     public function unitOfMeasure(): BelongsTo
@@ -80,6 +89,16 @@ class PurchaseRequestLine extends BaseModel
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /**
+     * The purchase order line generated from this request line, if any (spec 0210, D-17).
+     *
+     * @return HasOne<PurchaseOrderLine, $this>
+     */
+    public function purchaseOrderLine(): HasOne
+    {
+        return $this->hasOne(PurchaseOrderLine::class);
     }
 
     /**

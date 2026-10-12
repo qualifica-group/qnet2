@@ -3,6 +3,71 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0209 — Fornitore sulle righe RDA + righe compatte — VERDE, NON COMMITTATO (2026-10-12)
+
+- Spec `docs/specs/0209-purchase-request-line-suppliers.xml` (approvata, D-1..D-11, AC-001..AC-018). Modifica 0208.
+- Dati: `purchase_request_lines.supplier_id` (FK registries nullOnDelete); `purchase_requests.supplier_id` ELIMINATA.
+  Migrazione `2026_10_12_110000_move_supplier_to_purchase_request_lines` (copia testata -> righe, pulizia
+  `role_field_permissions`; `Schema::withoutForeignKeyConstraints` perche' su SQLite il drop ricostruisce la tabella e
+  cancellerebbe le righe in cascata). Applicata al DB dev.
+- Regola unica D-3: `PurchaseRequestCapabilityResolver::canUpdateSupplier` = RDA aperta AND (pending + update RDA OR
+  approved + fulfill|manage); esposta come `lines[].abilities.update_supplier` (Resource + righe SSRM). Da `ordered` in
+  poi il fornitore e' congelato. Verso `ordered` il fornitore e' obbligatorio: `POST /purchase-request-lines/status`
+  accetta `suppliers: [{line_id, supplier_id}]` (solo con to_status=ordered), 422 `line_ids.N`.
+- Nuovo `POST /api/purchase-request-lines/supplier` {line_ids, supplier_id} -> {updated_count}
+  (`PurchaseRequestLineSupplierController/Request/Service`, lock condivisi in `PurchaseRequestLineLocker`).
+- Liste: RDA colonna `suppliers` (NamedRef[], filtro text + /values, non ordinabile, ricerca P.IVA sulle righe);
+  Gestione righe colonna `supplier` (filtro, sort, /values) + azione massiva "Assegna fornitore" (`line-supplier-dialog.tsx`).
+- FE: PUT invia `lines[].supplier_id` per OGNI riga (PUT completa). Select fornitore di riga attivo solo con
+  `abilities.update` della RDA AND `update_supplier` (chi ha solo evasione usa Gestione righe). Riga compatta
+  (`purchase-request-line-row.tsx`, `-lines-header.tsx`, `-line-layout.ts`, `-line-actions.tsx` azioni solo icona +
+  popover motivazione, `-supplier.tsx` SupplierPicker). i18n `purchaseRequests.columns.suppliers`,
+  `purchaseRequestLines.columns.supplier`, `supplierDialog.*`. Guide in-app IT/EN aggiornate (sezione `assign-supplier`).
+- Verde: Pest suite completa in parallelo 9810/9816 -> sistemati i 2 test di rollback a step (148 e 12 step: chi
+  aggiunge una migrazione li aggiorna), i 3 rossi residui sono `QuoteDocumentPdfTest` (LibreOffice assente in locale).
+  Per il parallelo serve `PHPRC` verso un php.ini con pdo_sqlite/sqlite3/zip e memory_limit=2G (i `-d` non arrivano ai worker). Vitest purchase-requests/help 193/193 (suite completa
+  7220 con 2-3 flaky diversi per run, verdi da soli); ESLint, Pint, `tsc -b --force` puliti. Rimosso
+  `line-status-dialog.head.tmp`.
+- Ambiente: php CLI Laragon senza pdo_sqlite/zip -> Pest con `-d extension=pdo_sqlite -d extension=sqlite3 -d extension=zip`.
+- Aperto: `PurchaseRequestService.php` 330 righe (soft limit); manca test della griglia Gestione righe (azione massiva);
+  verifica visiva desktop/375px; manuale Claude Docs (RDA righe/testata, cambio stato Ordinato, Gestione righe) da aggiornare.
+
+## Spec 0210 — Modulo ODA (Ordini di Acquisto) — CHECKPOINT A VERDE, NON COMMITTATO (2026-10-12)
+
+- ATTENZIONE: il working tree contiene anche le modifiche NON committate della spec 0209 (stessi file RDA).
+
+- Spec `docs/specs/0210-purchase-orders.xml` (approvata, D-1..D-20, AC-001..AC-023). Build in 3 checkpoint:
+  A (fatto) = MT-1..4, MT-7..10; B = MT-5 (Genera ODA da RDA, Unifica + storico), MT-11 (FE stato/unifica/PDF/email
+  azioni), MT-12 (FE Genera ODA in Gestione righe RDA); C = MT-6 (PDF + email BE), MT-13 (guide complete), MT-14 (gate).
+- BE: migrazioni `2026_10_13_1000*` (cost_types con 4 valori seed, purchase_order_number_sequences, purchase_orders,
+  purchase_order_lines, purchase_order_sector, purchase_order_merge_logs); status/source_action sono string (enum PHP
+  PurchaseOrderStatus con allowedTransitions/isEditable, PurchaseOrderMergeAction). Model CostType, PurchaseOrder
+  (code() = n/anno), PurchaseOrderLine, PurchaseOrderMergeLog, PurchaseOrderNumberSequence; alias morph purchase_order,
+  purchase_order_line, cost_type. Services/PurchaseOrders: PurchaseOrderService (create con copie, createOne(header,
+  lines[purchase_request_line_id], sectorIds, actor, copyGroupId) per MT-5, update, delete, assertEditable),
+  PurchaseOrderNumberAllocator, PurchaseOrderAmountCalculator (refreshTotals), PurchaseOrderStatusService
+  (change, transitionsFor), PurchaseRequestLineLinker::unlink (link() da aggiungere in MT-5). Rotte
+  routes/api/purchasing.php -> purchase-requests.php, cost-types.php, purchase-orders.php (api.php a 500 righe).
+  TableDefinition purchase-orders (app/Tables/PurchaseOrders*) e cost-types. Menu purchasing: purchase-orders, cost-types.
+  MetaController: fallback `{resource}.view` se manca viewAny (sblocca /meta/purchase-orders e /meta/purchase-requests).
+  registries/for-select: meta.is_qualified_supplier. DemoPurchaseOrderSeeder dopo DemoRegistrySeeder.
+  Test rollback bumpati: QuoteWorkflowMigrationTest 154 step, SupplierCommissionDirectionTest 18 step;
+  FieldCatalogueEndpointTest +cost-types, +purchase-orders.
+- FE: features/cost-types (modello units-of-measure), features/purchase-orders (lista con tab stato + pannello righe,
+  form create/edit/view, modale fornitore non qualificato, copie). Punto di estensione azioni MT-11:
+  PurchaseOrderFormActions in purchase-order-form-actions.tsx. Rotte acquisti in routes/purchasing-routes.tsx
+  (router.tsx sotto 500). HELP_GUIDE_KEYS = 64 (guida purchase-orders marcata in sviluppo). i18n purchaseOrders,
+  purchaseOrderForm, costTypes.
+- Verde (verifier): Pest 9906/9911 (3 QuoteDocumentPdfTest = soffice mancante; 1 flaky QualificaECampusCatalogueTest
+  verde da solo), Vitest 7300 (4 test skeleton dei grafici lazy rossi anche da soli, file non toccati; resto timeout da
+  carico verdi al rerun), tsc -b --force e Pint puliti. Dopo lo split rotte: Pest acquisti 197/197, Vitest routes 12/12.
+- Fix post-checkpoint: `/api/tables/purchase-orders/columns` dava 500 ("isEditable() on null": la TableDefinition passa
+  un'istanza non salvata senza status) -> `PurchaseOrdersAuthorization::isLocked` tollera status null; test di
+  regressione in PurchaseOrdersTableTest. Verificati su MySQL dev: columns/rows/values (13 colonne)/show/meta 200.
+- Aperto: azione griglia `pdf` esposta ma inerte fino a MT-6/MT-11; DemoDataSeeder non verificabile su sqlite
+  (locations:add MySQL-only); ambiente locale: php nel PATH senza sqlite/zip -> usare `$TEMP/pest.sh` / `$TEMP/pestp.sh`;
+  manuale Claude Docs da aggiornare a fine modulo (sezione Acquisti: ODA, Tipi di costo, Genera ODA).
+
 ## Spec 0208 — Modulo RDA (Richieste di Acquisto) — VERDE, COMMITTATO b794c960 (2026-10-09)
 
 - Spec `docs/specs/0208-purchase-requests.xml` (approvata, D-1..D-17, AC-001..AC-022). Nomi inglesi: risorsa/dominio

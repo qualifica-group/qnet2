@@ -258,12 +258,12 @@ it('AC-002: the backfill maps institution to RECEIVED, the others to PAID, copie
 });
 
 it('AC-002: the migrations are reversible', function () {
-    // 11 steps: the two of spec 0202, then spec 0204's color migration and the
+    // 18 steps: the two of spec 0202, then spec 0204's color migration and the
     // ones stacked on top (spec 0195's outbound email purpose, spec 0196's
     // invoice layout and installment redistribution snapshot, spec 0197's
     // installment residual amount, spec 0207's registry general notes, spec 0208's
-    // three purchase request tables).
-    expect(Artisan::call('migrate:rollback', ['--step' => 11]))->toBe(0);
+    // three purchase request tables, spec 0209's line supplier move, spec 0210's six purchase order tables).
+    expect(Artisan::call('migrate:rollback', ['--step' => 18]))->toBe(0);
     expect(Schema::hasColumn('quote_lines', 'supplier_commission_direction'))->toBeFalse()
         ->and(Schema::hasColumn('product_typologies', 'supplier_commission_enabled'))->toBeFalse();
 });

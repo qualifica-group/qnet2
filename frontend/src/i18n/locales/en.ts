@@ -25,9 +25,12 @@ import { customFields } from './en-custom-fields'
 import { sectors } from './en-sectors'
 import { accounting } from './en-accounting'
 import { purchaseRequestLines, purchaseRequests } from './en-purchase-requests'
+import { purchaseOrders } from './en-purchase-orders'
+import { purchaseOrderForm } from './en-purchase-order-form'
 import { sources } from './en-sources'
 import { vatRates } from './en-vat-rates'
 import { unitsOfMeasure } from './en-units-of-measure'
+import { costTypes } from './en-cost-types'
 import { productTypologies } from './en-product-typologies'
 import { tags } from './en-tags'
 import { pipelineStatuses } from './en-pipeline-statuses'
@@ -423,9 +426,12 @@ export const en = {
   sources,
   vatRates,
   unitsOfMeasure,
+  costTypes,
   ...accounting,
   purchaseRequests,
   purchaseRequestLines,
+  purchaseOrders,
+  purchaseOrderForm,
   productTypologies,
   tags,
   projects: { ...projects, stats: moduleStats.projects },

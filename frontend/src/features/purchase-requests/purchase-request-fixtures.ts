@@ -16,6 +16,7 @@ export function makeLine(overrides: Partial<PurchaseRequestLine> = {}): Purchase
     quantity: '2.000',
     unit_price: '100.00',
     vat_rate: { id: 1, name: 'IVA 22%', rate: '22.00' },
+    supplier: null,
     taxable_amount: '200.00',
     vat_amount: '44.00',
     total_amount: '244.00',
@@ -23,7 +24,7 @@ export function makeLine(overrides: Partial<PurchaseRequestLine> = {}): Purchase
     approved_by: null,
     approved_at: null,
     oda_reference: null,
-    abilities: { update: true, delete: true, transitions: ['approved', 'rejected'] satisfies LineStatus[], capabilities: ['approve'] },
+    abilities: { update: true, delete: true, transitions: ['approved', 'rejected'] satisfies LineStatus[], capabilities: ['approve'], update_supplier: true },
     ...overrides,
   }
 }
@@ -38,7 +39,6 @@ export function makeRequest(overrides: Partial<PurchaseRequest> = {}): PurchaseR
     requester: { id: 3, name: 'Mario Rossi' },
     function_manager: { id: 4, name: 'Anna Verdi' },
     customer: null,
-    supplier: null,
     work_order: null,
     company: { id: 1, name: 'Qualifica Srl' },
     company_site: { id: 2, name: 'Napoli' },

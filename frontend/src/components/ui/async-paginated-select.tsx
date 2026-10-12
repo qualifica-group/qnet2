@@ -389,7 +389,7 @@ export function AsyncPaginatedSelect({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={4}
-          className="z-50 w-(--radix-popover-trigger-width) rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none"
+          className="z-50 w-(--radix-popover-trigger-width) min-w-60 max-w-[calc(100vw-2rem)] rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none"
           onOpenAutoFocus={(event) => {
             // Keep focus on the search input rather than the first option.
             event.preventDefault()

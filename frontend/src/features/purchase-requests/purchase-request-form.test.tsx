@@ -136,14 +136,14 @@ describe('PurchaseRequestForm lines (AC-017)', () => {
           position: 2,
           description: 'Ordered line',
           status: 'ordered',
-          abilities: { update: false, delete: false, transitions: ['received'], capabilities: [] },
+          abilities: { update: false, delete: false, transitions: ['received'], capabilities: [], update_supplier: false },
         }),
         makeLine({
           id: 13,
           position: 3,
           description: 'Rejected line',
           status: 'rejected',
-          abilities: { update: false, delete: true, transitions: [], capabilities: [] },
+          abilities: { update: false, delete: true, transitions: [], capabilities: [], update_supplier: false },
         }),
       ],
     })
@@ -163,8 +163,8 @@ describe('PurchaseRequestForm lines (AC-017)', () => {
     renderForm(
       makeRequest({
         lines: [
-          makeLine({ id: 21, abilities: { update: true, delete: true, transitions: ['approved', 'rejected'], capabilities: [] } }),
-          makeLine({ id: 22, position: 2, abilities: { update: true, delete: true, transitions: [], capabilities: [] } }),
+          makeLine({ id: 21, abilities: { update: true, delete: true, transitions: ['approved', 'rejected'], capabilities: [], update_supplier: false } }),
+          makeLine({ id: 22, position: 2, abilities: { update: true, delete: true, transitions: [], capabilities: [], update_supplier: false } }),
         ],
       }),
     )
@@ -179,12 +179,13 @@ describe('PurchaseRequestForm lines (AC-017)', () => {
     expect(within(dialog).getByText('Rejected')).toBeInTheDocument()
   })
 
-  it('shows the line status and the ODA placeholder as plain read-only text', () => {
+  it('shows the line status and the ODA placeholder (column header above the rows) as plain read-only text', () => {
     renderForm(makeRequest({ lines: [makeLine({ status: 'approved' })] }))
 
     const line = screen.getByRole('listitem', { name: 'Line 1' })
     expect(within(line).getByText('Approved')).toBeInTheDocument()
-    expect(within(line).getByText('ODA').nextElementSibling).toHaveTextContent('—')
+    expect(screen.getByText('ODA')).toBeInTheDocument()
+    expect(within(line).getByText('—')).toBeInTheDocument()
     expect(within(line).queryByRole('textbox', { name: /Status/ })).not.toBeInTheDocument()
   })
 

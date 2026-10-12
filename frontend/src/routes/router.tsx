@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazyRoute } from '@/routes/lazy-route'
 import { ProtectedRoute } from '@/routes/protected-route'
+import { PURCHASING_ROUTES } from '@/routes/purchasing-routes'
 import { AppLayout } from '@/layouts/app-layout'
 import { MigrationRouteGuard } from '@/features/migrations/migration-route-guard'
 import { buildModuleRoutes } from '@/features/modules/module-routes'
@@ -37,9 +38,6 @@ const VatRatesPage = lazyRoute(() => import('@/pages/vat-rates-page'))
 const UnitsOfMeasurePage = lazyRoute(() => import('@/pages/units-of-measure-page'))
 const FinancialAccountsPage = lazyRoute(() => import('@/pages/financial-accounts-page'))
 const ProformaRequestsPage = lazyRoute(() => import('@/pages/proforma-requests-page'))
-const PurchaseRequestsPage = lazyRoute(() => import('@/pages/purchase-requests-page'))
-const PurchaseRequestFormPage = lazyRoute(() => import('@/pages/purchase-request-form-page'))
-const PurchaseRequestLinesPage = lazyRoute(() => import('@/pages/purchase-request-lines-page'))
 const InvoicesPage = lazyRoute(() => import('@/pages/invoices-page'))
 const InvoiceInstallmentsPage = lazyRoute(() => import('@/pages/invoice-installments-page'))
 const ProductTypologiesPage = lazyRoute(() => import('@/pages/product-typologies-page'))
@@ -232,22 +230,7 @@ export const router = createBrowserRouter([
             path: 'proforma-requests',
             element: <ProformaRequestsPage />,
           },
-          {
-            path: 'purchase-requests',
-            element: <PurchaseRequestsPage />,
-          },
-          {
-            path: 'purchase-requests/new',
-            element: <PurchaseRequestFormPage />,
-          },
-          {
-            path: 'purchase-requests/:id',
-            element: <PurchaseRequestFormPage />,
-          },
-          {
-            path: 'purchase-request-lines',
-            element: <PurchaseRequestLinesPage />,
-          },
+          ...PURCHASING_ROUTES,
           {
             path: 'invoices',
             element: <InvoicesPage />,

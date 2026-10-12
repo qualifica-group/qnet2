@@ -28,7 +28,7 @@ const guide: HelpGuide = {
           items: [
             'Premi **Nuova RDA** e compila la testata: **Oggetto**, **Data richiesta**, **Priorità**, **Richiedente** e i campi organizzativi (**Società aziendale**, **Società / Sede**, **Sede operativa**, **Funzione aziendale**).',
             'Scegliendo la **Funzione aziendale** il **Responsabile di funzione** viene proposto in automatico: puoi cambiarlo con qualsiasi utente attivo. **Società / Sede** mostra solo le sedi della società scelta.',
-            'Facoltativi: **Cliente**, **Fornitore** (solo anagrafiche fornitore) e **Commessa**. Il pulsante **+** accanto a un campo crea al volo un nuovo fornitore, cliente o prodotto.',
+            'Facoltativi: **Cliente** e **Commessa**. Il **Fornitore** non è più nella testata ma sulle singole righe. Il pulsante **+** accanto a un campo crea al volo un nuovo fornitore, cliente o prodotto.',
             'Aggiungi le righe (almeno una) e, se serve, i documenti, poi premi **Salva**.',
           ],
         },
@@ -44,7 +44,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Ogni riga può avere un **Prodotto** del catalogo oppure solo una **Descrizione** libera. Scegliendo un prodotto il form propone descrizione, **U.m.**, **Prezzo** e **Aliquota IVA** del prodotto: restano modificabili. Sotto la descrizione scrivi la **Motivazione** dell’acquisto.',
+          text: 'Ogni riga può avere un **Prodotto** del catalogo oppure solo una **Descrizione** libera. Scegliendo un prodotto il form propone descrizione, **U.m.**, **Prezzo** e **Aliquota IVA** del prodotto: restano modificabili. Ogni riga può avere un **Fornitore** (solo anagrafiche fornitore), così una stessa RDA può raccogliere righe di fornitori diversi. Sul desktop ogni riga è una sola fascia sotto un’unica intestazione; su schermi piccoli le righe diventano schede. Le azioni della riga sono **solo icone**: passa il mouse per leggerne il nome.',
         },
         {
           type: 'table',
@@ -52,10 +52,13 @@ const guide: HelpGuide = {
           rows: [
             ['**Imponibile / IVA / Totale**', 'Calcolati dal sistema (quantità × prezzo, poi IVA) e in sola lettura. Il totale della RDA è la somma delle righe.'],
             ['**Scorpora IVA**', 'Se conosci solo il prezzo finale IVA inclusa, inseriscilo e premi Scorpora IVA: il prezzo viene riportato all’imponibile con l’aliquota della riga (122,00 al 22% diventa 100,00). Serve un’aliquota maggiore di zero.'],
-            ['**Stato**', 'Da approvare, Approvato, Ordinato, Ricevuto, Rifiutato o Stand by. Non si modifica come un campo: si usa il pulsante **Cambia stato della riga**.'],
+            ['**Fornitore**', 'Facoltativo quando crei la riga, ma **obbligatorio per portarla a Ordinato**: se manca, la finestra di cambio stato te lo chiede riga per riga. Si modifica finché la riga è Da approvare (da chi può modificare la RDA) e Approvata (da chi ha il permesso di evasione, anche con il resto della riga bloccato); da **Ordinato** in poi è bloccato. Scegliendo un prodotto che ha un fornitore, questo viene proposto.'],
+            ['**Totale**', 'Passa il mouse (o seleziona con la tastiera) sul totale per vedere imponibile e IVA della riga.'],
+            ['**Motivazione**', 'L’icona con il fumetto apre una finestrella con il testo della motivazione; è evidenziata quando la motivazione è scritta e in sola lettura sulle righe bloccate.'],
+            ['**Stato**', 'Da approvare, Approvato, Ordinato, Ricevuto, Rifiutato o Stand by. Non si modifica come un campo: si usa l’icona **Cambia stato della riga**.'],
             ['**ODA**', 'Segnaposto in sola lettura: per ora mostra sempre un trattino.'],
             ['**Documenti della riga**', 'Allegati della singola riga.'],
-            ['**Cambia stato della riga**', 'Compare su una riga salvata solo se puoi cambiarne lo stato: il Responsabile di funzione assegnato approva o rifiuta le righe Da approvare, chi ha il permesso di evasione porta le righe Approvate a Ordinato o Stand by e quelle Ordinate a Ricevuto o Stand by. Si sceglie il nuovo stato e una motivazione facoltativa.'],
+            ['**Cambia stato della riga**', 'Compare su una riga salvata solo se puoi cambiarne lo stato: il Responsabile di funzione assegnato approva o rifiuta le righe Da approvare, chi ha il permesso di evasione porta le righe Approvate a Ordinato o Stand by e quelle Ordinate a Ricevuto o Stand by. Si sceglie il nuovo stato e una motivazione facoltativa. Scegliendo **Ordinato** la finestra mostra una colonna **Fornitore**: le righe che ne hanno già uno lo mostrano, quelle senza hanno un elenco da compilare, e la conferma resta disabilitata finché ne manca uno.'],
             ['**Cestino**', 'Elimina la riga, se il tuo ruolo lo consente e se è Da approvare o Rifiutata.'],
           ],
         },
