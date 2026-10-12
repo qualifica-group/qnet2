@@ -119,6 +119,7 @@ function opportunityFixture(): OpportunityDetailWithPermissions {
 const EMPTY_VALUES: QuoteFormValues = {
   code: 'QUO-0001',
   title: '',
+  quote_date: '2026-03-15',
   opportunity_id: 55,
   quote_workflow_status_id: null,
   note: null,

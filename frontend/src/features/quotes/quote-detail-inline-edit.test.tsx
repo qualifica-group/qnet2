@@ -79,6 +79,7 @@ function quote(overrides: Partial<QuoteDetailWithPermissions> = {}): QuoteDetail
     id: 9,
     code: 'QUO-0009',
     title: 'Fornitura annuale',
+    quote_date: '2026-03-15',
     opportunity_id: 55,
     opportunity: { id: 55, name: 'OPP_55' },
     quote_workflow_status_id: 1,

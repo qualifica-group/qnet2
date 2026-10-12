@@ -52,6 +52,24 @@
       G-11 anagrafica: `is_private=1` -> scheda persona fisica (nome/cognome separati dal legacy con la sua stessa
       regola `separaNomeCognome`), altrimenti azienda; P.IVA segnaposto (`0`,`1`,`.`, solo zeri) scartata, prefisso
       `IT` rimosso; sede legale = indirizzo primario `legal_seat`, `company_addresses` = indirizzi aggiuntivi.
+    - Emendamento 2026-10-12 bis (verifica campi offerte, decisioni utente): G-8 partiva da un dato sbagliato
+      (`quotationequipments` e' vuota; le 85 righe erano `quotationemployees`). I costi veri sono
+      `quotationexpensereports`: 8.027 righe su 1.604 offerte esportate (~9,64 M EUR).
+      G-13 costi offerta: ogni `quotationexpensereports` diventa una riga COSTO (prodotto `old_source=expense_reports`,
+      `old_id=expensereport_id`; quantita', prezzo, IVA `rate`, `note` -> descrizione aggiuntiva). Imputata alla riga
+      ricavo dell'offerta con lo stesso `service_id` (la prima per id legacy; `offer_line_id`); riga ricavo assente o
+      scartata -> costo generico con warning. Prodotto non migrato o non utilizzabile come costo -> riga scartata con
+      warning. Il fornitore NON si scrive (sta gia' sul prodotto): se il `supplier_id` legacy differisce dal fornitore
+      del prodotto (o il prodotto non ne ha) -> warning. `quotationemployees` (80 righe, costo orario per livello)
+      resta fuori: nessun prodotto di costo corrispondente. Le righe costo non hanno `old_id` (l'unicita' di
+      `quote_lines.old_id` e' sullo spazio id di `quotationservices`). Sul DB legacy nessuna riga ricavo con costi
+      imputati ha provvigioni a percentuale: la base a margine (spec 0145) non cambia importi importati.
+      G-14 date: `quote_date` (datequotation) -> `quotes.quote_date` (spec 0228); prossimo richiamo =
+      `opportunities.recall_date` dell'opportunita' padre -> `quotes.next_callback_at` (00:00), come il travaso
+      2026-09-04 (ogni offerta eredita quello della propria opportunita'), scritto senza log ne' promemoria.
+      G-15 cliente: l'offerta non puo' avere un cliente diverso dall'opportunita'. Il legacy espone
+      `registry_id` (quotations.customer_id); se differisce dall'anagrafica dell'opportunita' -> warning, l'offerta
+      resta sotto l'opportunita' (253 offerte sul DB legacy).
   </context>
 
   <scope>
@@ -67,7 +85,7 @@
     <out>
       <item>Note (activity_log legacy), documenti/allegati, valori campi flessibili (`pre_info_*`, `orderisos`),
         fasi/task delle commesse, storico fasi opportunita', tag e ATECO delle anagrafiche, referenti "responsabile"
-        testuali delle anagrafiche, richieste GOL senza cliente (G-1), costi legacy delle offerte.</item>
+        testuali delle anagrafiche, richieste GOL senza cliente (G-1), costi orari delle offerte (`quotationemployees`, G-13).</item>
     </out>
   </scope>
 
@@ -113,6 +131,11 @@
         reporter_referent_id:?int (signaler_id), supervisor_user_id:?int, manager_user_ids:int[] (assigned_to,
         assigned2_to), company_site_id:?int (business_unit -> company_profiles), operational_site_id:?int (sede_id),
         payment_method_id:?int (payment_id),
+        registry_id:?int (customer_id, G-15), callback_date:?date (opportunities.recall_date, G-14),
+        cost_lines: [{ id:int (quotationexpensereports.id), product_id:?int (expensereport_id; 0 -> null),
+          description:?string (note), quantity:?number, unit_price:?number (price), vat_rate_id:?int (rate),
+          supplier_id:?int (companies.id), offer_line_id:?int (min quotationservices.id della stessa offerta con lo
+          stesso service_id) }] (G-13),
         lines: [{ id:int (quotationservices.id), product_id:?int (service_id; 0 -> null), description:?string,
           quantity:?number, unit_price:?number (price), vat_rate_id:?int (rate),
           commissions: [{ role:("commercial"|"reporter"|"supervisor"|"supplier"),
@@ -146,5 +169,9 @@
     <ac id="AC-007">Commessa: codice G-5, righe G-10, supervisori/partecipanti rimappati, chiusura forzata G-10,
       nessun task/stage creato.</ac>
     <ac id="AC-008">Le 4 sorgenti compaiono in `/migrations` (etichette IT/EN) e nel piano nelle fasi 7-10.</ac>
+    <ac id="AC-010">Offerta: le righe costo legacy diventano righe COSTO imputate alla riga ricavo con lo stesso
+      prodotto (G-13), totali costo e margine ricalcolati; fornitore legacy diverso da quello del prodotto -> warning.</ac>
+    <ac id="AC-011">Offerta: `quote_date` = data offerta legacy, `next_callback_at` = richiamo dell'opportunita' legacy
+      (G-14); cliente legacy diverso da quello dell'opportunita' -> warning (G-15).</ac>
   </acceptance_criteria>
 </spec>

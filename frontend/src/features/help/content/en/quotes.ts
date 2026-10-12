@@ -27,7 +27,11 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Section', 'Fields', 'Notes'],
           rows: [
-            ['Quote data', '**Code**, **Title**, **Opportunity**', 'The opportunity cannot change after creation.'],
+            [
+              'Quote data',
+              '**Code**, **Title**, **Quote date**, **Opportunity**',
+              "The quote date is proposed as today's date. The opportunity cannot change after creation.",
+            ],
             ['Registry and contacts', '**Commercial**, **Reporter** (with their **Rewards**)', 'Prefilled from the opportunity.'],
             ['Team', '**Supervisor**, **Account managers**', 'Synced with the opportunity.'],
             ['Company and sites', '**Company**, **Company site**, **Operational site**', 'Pick the company first.'],
@@ -46,6 +50,10 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: "The **Title** is optional: left blank, QNet uses the quote code followed by the products on its revenue lines (for example QUO-0042 - ISO 9001 + SOA) and updates it when the lines change. A title you type stays yours; clear the field to go back to the automatic title.",
+        },
+        {
+          type: 'note',
+          text: 'The **Quote date** is required and can also be changed from the detail. A quote created from **Request Management** or from a lead conversion takes the date of the day it is created.',
         },
       ],
     },

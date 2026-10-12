@@ -29,6 +29,7 @@ const TYPOLOGY_BY_PRODUCT: Record<number, number> = { 10: 2, 11: 2, 20: 1 }
 const BASE_VALUES: QuoteFormValues = {
   code: 'QUO-0001',
   title: 'Test quote',
+  quote_date: '2026-03-15',
   opportunity_id: 1,
   quote_workflow_status_id: null,
   note: null,

@@ -235,9 +235,10 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // plus `2026_10_09_100000_add_fulltext_name_index_to_referents_table` (149th by count),
     // and spec 0212's `2026_10_15_100000_add_is_active_to_sectors_table` (150th),
     // and spec 0213's `2026_10_15_110000_add_code_to_sectors_table` (151st),
-    // and spec 0215's `2026_10_15_120000_add_title_is_manual_to_work_orders_table` (152nd).
+    // and spec 0215's `2026_10_15_120000_add_title_is_manual_to_work_orders_table` (152nd),
+    // and spec 0228's `2026_10_16_100000_add_quote_date_to_quotes_table` (153rd).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 152]);
+    Artisan::call('migrate:rollback', ['--step' => 153]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

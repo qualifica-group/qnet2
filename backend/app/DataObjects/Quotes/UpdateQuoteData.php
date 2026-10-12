@@ -101,6 +101,10 @@ final readonly class UpdateQuoteData
         /** @var array<int, int|null>|null */
         public ?array $managerSlots = null,
         public bool $promoteManagersToOpportunity = false,
+        // Appended after the pre-existing parameters (spec 0228), same
+        // positional-compat reason. Never null once submitted (the rule refuses it).
+        public ?string $quoteDate = null,
+        public bool $quoteDateSubmitted = false,
     ) {}
 
     /**
@@ -142,6 +146,8 @@ final readonly class UpdateQuoteData
             rewards: array_key_exists('rewards', $data) ? self::normalizeRewardTypeIds($data['rewards']) : null,
             managerSlots: array_key_exists('manager_slots', $data) ? self::normalizeManagerSlots($data['manager_slots']) : null,
             promoteManagersToOpportunity: (bool) ($data['promote_managers_to_opportunity'] ?? false),
+            quoteDate: $data['quote_date'] ?? null,
+            quoteDateSubmitted: array_key_exists('quote_date', $data),
         );
     }
 
@@ -208,6 +214,10 @@ final readonly class UpdateQuoteData
     public function submittedAttributes(): array
     {
         $attributes = [];
+
+        if ($this->quoteDateSubmitted) {
+            $attributes['quote_date'] = $this->quoteDate;
+        }
 
         if ($this->commercialIdSubmitted) {
             $attributes['commercial_id'] = $this->commercialId;

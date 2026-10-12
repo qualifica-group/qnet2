@@ -53,7 +53,7 @@ export const migrationRequirements = {
   opportunities:
     'Senza la sua anagrafica importata la riga fallisce: esegui prima Anagrafiche. Referenti, utenti, fonte, categoria e sede operativa mancanti restano vuoti con un avviso. Le richieste di corso GOL senza cliente non vengono importate.',
   quotes:
-    'Senza la sua opportunità importata la riga fallisce. Una riga senza prodotto importato, ad esempio uno sconto, viene saltata con un avviso. Aliquote, modalità di pagamento, sedi, referenti, utenti e destinatari delle provvigioni mancanti restano vuoti con un avviso. Un’offerta accettata o contrattualizzata crea anche il contratto.',
+    'Senza la sua opportunità importata la riga fallisce. Una riga senza prodotto importato, ad esempio uno sconto, viene saltata con un avviso. Aliquote, modalità di pagamento, sedi, referenti, utenti e destinatari delle provvigioni mancanti restano vuoti con un avviso. Un’offerta accettata o contrattualizzata crea anche il contratto. Un costo senza prodotto di costo importato viene saltato con un avviso; un fornitore del costo diverso da quello del prodotto e un cliente diverso da quello dell’opportunità generano un avviso.',
   'work-orders':
     'Senza la sua offerta importata la riga fallisce. Una riga d’offerta già collegata a un’altra commessa viene copiata nell’offerta, con le sue provvigioni, e il totale dell’offerta cresce. Note, documenti, fasi e task non vengono importati.',
   'work-order-line-payments':

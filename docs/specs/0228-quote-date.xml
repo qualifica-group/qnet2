@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0228-quote-date" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    L'offerta ha una "Data offerta" propria: campo del form offerta precompilato con la data di oggi, modificabile
+    nel dettaglio, sempre valorizzato, importato da /migrations dalla data offerta legacy (`datequotation`).
+  </goal>
+
+  <context>
+    - Richiesta utente 2026-10-12: "per data offerta portatela, che sara' un campo sul form che sara' precompilato
+      alla data di oggi e mettilo nelle /migrations. Questo campo solo su offerta, gestione richieste puo' anche non
+      essere messo a patto che alla creazione viene inserito questo campo di default (sara' lo stesso di created at)".
+    - Oggi `quotes` non ha una data propria: il legacy `quotations.datequotation` (17.281 valori, 1.585 diversi dalla
+      data di `created_at`) andava perso. Import: spec 0189 G-14.
+    - Ogni creazione passa da `QuoteService::create()` (form Offerte, Gestione Richieste, conversione lead, import).
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione: `quotes.quote_date` date NOT NULL, indice; le offerte esistenti prendono la data di `created_at`.</item>
+      <item>`Quote` fillable + cast date; `QuotesAuthorization` campo `quote_date` (date, editabile se si puo' scrivere).</item>
+      <item>POST/PATCH /api/quotes accettano `quote_date`; `QuoteResource` lo espone; il model `Quote` mette oggi alla
+        creazione quando non e' valorizzato (Gestione Richieste e conversione lead non lo inviano).</item>
+      <item>Frontend Offerte: campo "Data offerta" nella sezione "Dati offerta" del form di creazione (precompilato a oggi)
+        e del dettaglio (modifica in place).</item>
+      <item>`QuotesSource`: `quote_date` legacy (spec 0189 G-14).</item>
+      <item>Guide in-app `quotes` e `migrations` IT/EN, manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Gestione Richieste: nessuna colonna ne' campo (decisione utente); la data nasce di default alla creazione.</item>
+      <item>Colonna/filtro nella griglia Offerte e uso nei documenti generati (.docx).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/quotes">
+      <request>... quote_date?: date Y-m-d (non nullo; assente = oggi)</request>
+      <response status="201">data.quote_date: "Y-m-d"</response>
+      <errors>422 quote_date non valido o null</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/quotes/{quote}">
+      <request>... quote_date?: date Y-m-d (non nullo)</request>
+      <response status="200">data.quote_date: "Y-m-d"</response>
+      <errors>422 quote_date non valido o null; 422 se il ruolo non puo' modificarlo (field permission)</errors>
+    </endpoint>
+    <shape name="GET /api/quotes/{quote}">data.quote_date: "Y-m-d" (sempre valorizzato)</shape>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Creare un'offerta senza `quote_date` (anche da Gestione Richieste) la salva con la data di oggi.</criterion>
+    <criterion id="AC-002">Creare o modificare un'offerta con `quote_date` la salva con quella data; null o formato non valido -> 422.</criterion>
+    <criterion id="AC-003">Dopo la migrazione ogni offerta esistente ha `quote_date` = data di `created_at`.</criterion>
+    <criterion id="AC-004">Il form di creazione offerta mostra "Data offerta" precompilata a oggi; il dettaglio la mostra e la modifica in place.</criterion>
+    <criterion id="AC-005">L'import "quotes" scrive la data offerta legacy (spec 0189 G-14).</criterion>
+  </acceptance_criteria>
+</spec>

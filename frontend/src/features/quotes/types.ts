@@ -135,6 +135,8 @@ export interface QuoteDetail {
   old_id?: number | null
   code: string
   title: string
+  /** Spec 0228: the offer's own date, `Y-m-d`, always set. */
+  quote_date: string
   opportunity_id: number
   opportunity: QuoteRelationRef
   /**
@@ -260,6 +262,8 @@ export interface CreateQuotePayload {
   code?: string | null
   /** Spec 0171 rev.2: omitted/`null` = the automatic `<code> - <products>` title. */
   title?: string | null
+  /** Spec 0228: omitted = today server-side; never `null`. */
+  quote_date?: string
   opportunity_id: number
   /** Omitted on create: the backend assigns the `open` row of the set it resolves (AC-020). */
   quote_workflow_status_id?: number | null

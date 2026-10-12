@@ -24,6 +24,7 @@ const EMPTY_STATUSES: QuoteWorkflowStatusRef[] = []
 const SERVER_ERROR_FIELDS = [
   'code',
   'title',
+  'quote_date',
   'opportunity_id',
   'quote_workflow_status_id',
   'note',

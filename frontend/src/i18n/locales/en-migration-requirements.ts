@@ -53,7 +53,7 @@ export const migrationRequirements = {
   opportunities:
     'Without its imported registry the row fails: run Registries first. Missing referents, users, source, category and operational site stay empty with a warning. GOL course requests without a customer are not imported.',
   quotes:
-    'Without its imported opportunity the row fails. A line without an imported product, for example a discount, is skipped with a warning. Missing VAT rates, payment methods, sites, referents, users and commission recipients stay empty with a warning. An accepted or contracted quote also creates the contract.',
+    'Without its imported opportunity the row fails. A line without an imported product, for example a discount, is skipped with a warning. Missing VAT rates, payment methods, sites, referents, users and commission recipients stay empty with a warning. An accepted or contracted quote also creates the contract. A cost without an imported cost product is skipped with a warning; a cost supplier other than the product one and a customer other than the opportunity one raise a warning.',
   'work-orders':
     'Without its imported quote the row fails. A quote line already linked to another work order is copied into the quote, with its commissions, and the quote total grows. Notes, documents, stages and tasks are not imported.',
   'work-order-line-payments':

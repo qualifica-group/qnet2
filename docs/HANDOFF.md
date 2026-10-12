@@ -3,6 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## OFFERTE LEGACY: COSTI, DATA OFFERTA, RICHIAMO, CLIENTE + CAMPO "DATA OFFERTA" (spec 0189 G-13/14/15, spec 0228, 2026-10-12) — VERDE, NON COMMITTATO
+
+- Verifica campi offerte (richiesta utente) -> decisioni utente: importare i costi (fornitore NON scritto, sta sul
+  prodotto: solo warning se diverso), data offerta = nuovo campo del form precompilato a oggi + /migrations, prossimo
+  richiamo = data richiamo legacy, cliente offerta diverso dall'opportunita' = warning.
+- G-8 era sbagliata: `quotationequipments` e' vuota; i costi veri sono `quotationexpensereports` (8.027 righe su
+  1.604 offerte esportate, ~9,64 M EUR). Nessuna riga ricavo con costi imputati ha provvigioni a percentuale.
+- Legacy (`/Users/Repository/qnet`, non committato): `QuoteMigrationController` emette `registry_id` (customer_id),
+  `callback_date` (opportunities.recall_date) e `cost_lines[]` {id, product_id=expensereport_id, description=note,
+  quantity, unit_price, vat_rate_id, supplier_id, offer_line_id = min quotationservices.id stesso service_id}.
+- qnet-2 `QuotesSource` + nuovo concern `MapsLegacyQuoteCostLines`: righe COSTO (prodotto `old_source=
+  CostProductCatalogue::EXPENSE_REPORTS`), imputate via `offerLineIndex` (riga ricavo scartata -> costo generico +
+  warning), nessun `old_id` sulle righe costo (unique condiviso con le righe ricavo); warning fornitore diverso / prodotto
+  senza fornitore; warning cliente diverso; `quote_date` = legacy ?? data di created_at legacy; `next_callback_at` =
+  callback 00:00 (forceFill in `finalizeLegacyRecord`). Dipendenza opzionale `cost-products`. QuotesSource 344 righe
+  (soft limit superato, sotto l'hard).
+- Spec 0228 (la 0227 e' dei task template, altra sessione): `quotes.quote_date` date NOT NULL indicizzata (migrazione
+  `2026_10_16_100000`, backfill DATE(created_at)); default oggi nel `creating` del model `Quote` (copre Gestione
+  Richieste, conversione lead, factory); fillable+cast; `QuotesAuthorization` campo `date` mandatory; POST/PATCH
+  `sometimes|date_format:Y-m-d` (null -> 422); `QuoteResource.quote_date`. Frontend: `QuoteDateField` nella sezione
+  "Dati offerta" (create precompilato con la data locale, detail in place), schema/payload/types.
+- Test aggiornati per requisito cambiato: contatori rollback `QuoteWorkflowMigrationTest` 153 e
+  `SupplierCommissionDirectionTest` 17, elenco campi `QuoteAuthorizationTest`, fixture FE con `quote_date`.
+- Verifiche: suite Pest completa 9985/9989 (falliscono solo i 3 `QuoteDocumentPdfTest`, LibreOffice assente); nuovo `QuoteDateTest` 8; Vitest quotes+RM+help+i18n
+  1211, migrations 225; ESLint, Pint, `tsc -b --force` puliti. DB locale migrato (126 offerte con data = created_at). Import "quotes" NON eseguito in locale.
+- Manuale: guide `quotes` e `migrations` IT/EN, requisiti `/migrations`; Claude Docs: paragrafo "Data offerta" dopo
+  "Titolo" e paragrafo sorgente Offerte dopo Opportunita'.
+- Fuori scope segnalati: colonna/filtro "Data offerta" nella griglia Offerte e nei documenti; `quotationemployees`
+  (80 costi orari); 498 provvigioni legacy con valore ma senza destinatario (qnet-2 richiede recipient_id).
+
 ## MODELLI DI TASK MODIFICABILI SUL POSTO + CREAZIONE COME IL DETTAGLIO (spec 0227, 2026-10-12) — VERDE, NON COMMITTATO
 
 - Richiesta utente: "committa e passa avanti" (onda 2, dopo Segnatempo). Solo frontend: PATCH /task-templates/{id}

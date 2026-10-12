@@ -95,6 +95,8 @@ export const quotes = {
     titleHint:
       "Suggested as the offer's code followed by the products on its revenue lines (e.g. QUO-0042 - ISO 9001 + SOA). Once edited it stays yours; clear the field to go back to the automatic title.",
     titleMax: 'Title must be at most 191 characters.',
+    quoteDate: 'Quote date',
+    quoteDateRequired: 'Quote date is required.',
     opportunity: 'Opportunity',
     opportunitySearch: 'Search opportunities…',
     opportunityRequired: 'Opportunity is required.',
