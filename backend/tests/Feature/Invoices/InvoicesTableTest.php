@@ -50,8 +50,8 @@ it('AC-007: exposes the contract columns, the year/month filter columns and the 
         ->and($columns['document_month']['filterType'])->toBe('set')
         ->and($columns['document_year']['filterable'])->toBeTrue()
         ->and($columns['document_year']['visible'])->toBeFalse()
-        // REQUIREMENT CHANGED (spec 0224 D-6): no "update"/"details" actions, the detail edits in place.
-        ->and(collect($data['actions'])->pluck('key')->all())->toBe(['view', 'delete', 'activity', 'pdf'])
+        ->and(collect($data['actions'])->pluck('key')->all())->toBe(['view', 'update', 'details', 'delete', 'activity', 'pdf'])
+        ->and(collect($data['actions'])->firstWhere('key', 'details')['icon'])->toBe('file-pen-line')
         ->and($data['defaultSort'])->toBe([
             ['columnId' => 'document_date', 'direction' => 'desc'],
             ['columnId' => 'number', 'direction' => 'desc'],
@@ -80,7 +80,7 @@ it('AC-007: rows carry the contract fields, the collected/residual amounts and t
             'number', 'document_date', 'external_number', 'external_date', 'customer', 'company', 'payment_method',
             'work_order_code', 'quote_code', 'net_amount', 'vat_amount', 'tag', 'deviation', 'actions',
         )
-        ->and($rows[$paid->id]['actions'])->toBe(['view', 'delete', 'activity', 'pdf'])
+        ->and($rows[$paid->id]['actions'])->toBe(['view', 'update', 'details', 'delete', 'activity', 'pdf'])
         ->and($rows[$notDue->id]['payment_status'])->toBe('not_due')
         ->and($rows[$overdue->id]['payment_status'])->toBe('overdue')
         ->and($rows[$serious->id]['payment_status'])->toBe('seriously_overdue')

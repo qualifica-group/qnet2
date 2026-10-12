@@ -18,39 +18,18 @@ const guide: HelpGuide = {
       title: 'Issue a proforma',
       blocks: [
         { type: 'paragraph', text: 'Proformas are issued from the **Proforma issue** dialog, opened with the **Issue proforma** action on the **Proforma requests** rows (see the Proforma requests guide).' },
-        { type: 'paragraph', text: 'The dialog looks like the document detail: the **Header** and **Notes** entries are closed rows, already filled with the work order data. Click a row (or its pencil) to open it: **Done** keeps the value, **Revert** puts it back as it was. The available lines and the document lines are always open.' },
         {
           type: 'table',
           headers: ['Part', 'What to do'],
           rows: [
-            ['**Header**', 'Document date, issuing company, addressee, payment method, company bank, print layout and **Quote/Final** tag.'],
-            ['**Notes**', 'Notes (printed on the document) and internal notes.'],
+            ['**Header**', 'Document date, issuing company (locked when editing), addressee, payment method, company bank, **Quote/Final** tag, notes and internal notes.'],
             ['**Available lines**', 'The work order lines not used yet: **Add** one line or **Add all**.'],
             ['**Document lines**', 'You can edit quantity, price and VAT; each line is a catalog product or a free description.'],
             ['**Due dates**', 'Preview of the installments computed from the payment method (see the Payment Methods guide).'],
             ['**Totals**', 'Taxable amount, VAT and document total.'],
           ],
         },
-        { type: 'paragraph', text: 'With **Issue** the document gets a sequential number per issuing company and year, in the **N/YYYY** format, and the source request becomes **Issued**. If you close the dialog after changing something, QNet asks before discarding it.' },
-      ],
-    },
-    {
-      id: 'edit',
-      title: 'Edit a document',
-      blocks: [
-        { type: 'paragraph', text: 'There is no edit dialog: open the document with **View** and edit the fields **in place**. Hover the row and press the pencil (or click the value), change it and press **Save**: only that field is saved. **Cancel**, **Esc** or a click outside the row close it without saving. Without the edit permission no pencil is shown.' },
-        {
-          type: 'table',
-          headers: ['Fields', 'Effect of saving'],
-          rows: [
-            ['**Bank**, **Print layout**, **Tag**, **Notes**, **Internal notes**, **External invoice**, **Deviation**', 'Save the field only: lines and due dates do not change.'],
-            ['**Document date**, **Bill to**, **Payment**, **Lines**', 'Save the whole document and recompute the due dates. While you edit the date, the payment or the lines you see a preview of the due dates that will be saved.'],
-            ['**Issuing company**', 'Not editable: it decides the numbering.'],
-          ],
-        },
-        { type: 'paragraph', text: '**External invoice**: records the **number and date** from Fatture in Cloud (the date is required with the number). The proforma becomes an **Invoice**; clearing the number turns it back into a proforma.' },
-        { type: 'paragraph', text: '**Lines**: the pencil opens the same grid as the issue dialog, with totals and the due date preview. With collections present the document is **rebalanced**: collected installments stay and the residual (new total minus collected) is split equally across the installments not collected, which keep their due date. The total cannot be lower than the amount collected; if equal, the open installments are removed. With no open installments and a higher total, a new installment is created 30 days after the last due date.' },
-        { type: 'warning', text: 'With collected installments the **document date**, **bill-to party** and **payment method** cannot be changed (no pencil).' },
+        { type: 'paragraph', text: 'With **Issue** the document gets a sequential number per issuing company and year, in the **N/YYYY** format, and the source request becomes **Issued**.' },
       ],
     },
     {
@@ -103,7 +82,9 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Action', 'What it does'],
           rows: [
-            ['**View**', 'Opens the document detail, where the fields are edited in place (see Edit a document).'],
+            ['**View**', 'Opens the document read-only.'],
+            ['**Edit**', 'Reopens the issue dialog, even with collections present (**rebalancing**): document date, customer and payment method become read-only, collected installments stay and the residual (new total minus collected) is split equally across the installments not collected, which keep their due date. The total cannot be lower than the amount collected; if equal, the open installments are removed. With no open installments and a higher total, a new installment is created 30 days after the last due date. The due date preview already shows the rebalanced plan.'],
+            ['**Details**', 'Records the **external number and date** from Fatture in Cloud: the proforma becomes an **Invoice**. Clearing them turns it back into a proforma. Tag, deviation and internal notes are here too.'],
             ['**Delete**', 'Removes the document after confirmation. Not possible if it has collections.'],
             ['**Activity**', 'Shows the change history.'],
           ],
@@ -116,7 +97,7 @@ const guide: HelpGuide = {
       title: 'Download the PDF',
       blocks: [
         { type: 'paragraph', text: 'With **Download PDF** on the row (or in the detail) QNet generates the document using the **active default Invoices layout** (see the Layouts guide).' },
-        { type: 'paragraph', text: 'The layout chosen in the document **Print layout** field (in the **Header** of the detail or of the issue dialog) is used for the PDF and for email and reminder attachments; if the field is empty (**Default**) the active default Invoices layout is used.' },
+        { type: 'paragraph', text: 'The layout chosen in the document **Print layout** field (in **Header** or **Details**) is used for the PDF and for email and reminder attachments; if the field is empty (**Default**) the active default Invoices layout is used.' },
         { type: 'warning', text: 'If there is no active default layout of the **Invoices** module, an error is shown: create one in **Configuration › Layouts**.' },
       ],
     },

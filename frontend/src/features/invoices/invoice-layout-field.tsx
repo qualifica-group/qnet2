@@ -1,6 +1,5 @@
 import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { useInvoiceFieldLabelClass } from '@/features/invoices/use-invoice-field-label-class'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { DOCUMENT_LAYOUTS_FOR_SELECT_RESOURCE } from '@/features/document-layouts/for-select-api'
@@ -24,7 +23,6 @@ export function InvoiceLayoutField<T extends LayoutFormValues>({ control, select
   const { t } = useTranslation()
   const label = t('invoiceEditor.fields.layout')
   const placeholder = t('invoiceEditor.fields.layoutPlaceholder')
-  const labelClass = useInvoiceFieldLabelClass('layout_id')
 
   return (
     <FormField
@@ -32,7 +30,7 @@ export function InvoiceLayoutField<T extends LayoutFormValues>({ control, select
       name="layout_id"
       render={({ field }) => (
         <FormItem className="gap-1">
-          <FormLabel className={labelClass}>{label}</FormLabel>
+          <FormLabel className="text-xs">{label}</FormLabel>
           <FormControl>
             <AsyncPaginatedSelect
               resource={DOCUMENT_LAYOUTS_FOR_SELECT_RESOURCE}

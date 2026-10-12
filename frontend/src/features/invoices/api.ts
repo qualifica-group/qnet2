@@ -78,7 +78,7 @@ export async function updateInvoice(
   return { ...data.data, permissions: data.permissions }
 }
 
-/** Updates the header fields that leave the schedule alone (registration, tag, layout, notes, bank). */
+/** Updates external number/date, tag, deviation and internal note (always allowed). */
 export async function updateInvoiceDetails(
   id: number,
   payload: InvoiceDetailsPayload,

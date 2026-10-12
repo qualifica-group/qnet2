@@ -3,10 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { invoiceEditor } from '@/i18n/locales/en-invoice-editor'
-import { invoices } from '@/i18n/locales/en-invoices'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { InvoiceEditorDialog } from '@/features/invoices/invoice-editor-dialog'
-import { openRow, pressRowButton, rowValue } from '@/features/quotes/quote-test-helpers'
 import type { Invoice, InvoiceDraft, InstallmentPreviewRow } from '@/features/invoices/types'
 
 const getDraftMock = vi.fn<(id: number) => Promise<InvoiceDraft>>()
@@ -73,13 +70,11 @@ const DRAFT: InvoiceDraft = {
   bank_accounts: [],
 }
 
-function renderDialog(onSaved = vi.fn(), onClose = vi.fn()) {
+function renderDialog(onSaved = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>
-        <InvoiceEditorDialog proformaRequestId={7} open onClose={onClose} onSaved={onSaved} />
-      </ConfirmDialogProvider>
+      <InvoiceEditorDialog mode="create" proformaRequestId={7} open onClose={vi.fn()} onSaved={onSaved} />
     </QueryClientProvider>,
   )
   return onSaved
@@ -87,7 +82,7 @@ function renderDialog(onSaved = vi.fn(), onClose = vi.fn()) {
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
-  i18n.addResourceBundle('en', 'translation', { invoiceEditor, invoices }, true, true)
+  i18n.addResourceBundle('en', 'translation', { invoiceEditor }, true, true)
 })
 
 beforeEach(() => {
@@ -104,12 +99,10 @@ describe('InvoiceEditorDialog create (spec 0194 AC-009)', () => {
     createMock.mockResolvedValue(issued)
     const onSaved = renderDialog()
 
-    // REQUIREMENT CHANGED (spec 0224 D-5): the draft opens on CLOSED rows, like the detail.
     expect(await screen.findByRole('heading', { name: /Work order #WO-2026-004/ })).toBeInTheDocument()
-    expect(rowValue('Issuing company')).toBe('Qualifica Srl')
-    expect(rowValue('Bill to')).toBe('Acme Spa')
-    expect(rowValue('Payment')).toBe('Bonifico 30 gg')
-    expect(screen.queryByRole('combobox', { name: /Bill to/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /Issuing company/ })).toHaveTextContent('Qualifica Srl')
+    expect(screen.getByRole('combobox', { name: /Bill to/ })).toHaveTextContent('Acme Spa')
+    expect(screen.getByRole('combobox', { name: /Payment/ })).toHaveTextContent('Bonifico 30 gg')
 
     fireEvent.click(screen.getByRole('button', { name: 'Add line: Consulting day' }))
     expect(screen.getAllByText('Added')).toHaveLength(1)
@@ -140,34 +133,5 @@ describe('InvoiceEditorDialog create (spec 0194 AC-009)', () => {
       ],
     })
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith(issued))
-  })
-
-  it('keeps a row edit in the draft on "Done" and sends it with the issue', async () => {
-    createMock.mockResolvedValue({ id: 99, number_label: '1/2026' } as Invoice)
-    renderDialog()
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Add all' }))
-    openRow('Notes')
-    fireEvent.change(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: 'Pay by the 10th' } })
-    pressRowButton('Done')
-    expect(rowValue('Notes')).toBe('Pay by the 10th')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Issue' }))
-
-    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
-    expect(createMock.mock.calls[0][1]).toMatchObject({ notes: 'Pay by the 10th' })
-  })
-
-  it('asks before dropping a changed draft', async () => {
-    const onClose = vi.fn()
-    renderDialog(vi.fn(), onClose)
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Add all' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-
-    expect(await screen.findByText('Leave without issuing?')).toBeInTheDocument()
-    expect(onClose).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Leave without issuing' }))
-    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
   })
 })

@@ -9,9 +9,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * PATCH /invoices/{invoice}/details (spec 0194, D-14): external number/date,
- * tag, deviation and internal note, plus the printed notes and the bank (spec
- * 0224 D-2): every header field that leaves the schedule alone. Authorization
- * stays in the controller.
+ * tag, deviation and internal note. Authorization stays in the controller.
  */
 class InvoiceDetailsRequest extends FormRequest
 {
@@ -31,8 +29,6 @@ class InvoiceDetailsRequest extends FormRequest
             'tag' => ['sometimes', 'nullable', Rule::enum(InvoiceTag::class)],
             'deviation' => ['sometimes', 'nullable', 'numeric', 'between:-9999999999,9999999999'],
             'internal_note' => ['sometimes', 'nullable', 'string', 'max:'.InvoiceWriteRequest::NOTES_MAX_LENGTH],
-            'notes' => ['sometimes', 'nullable', 'string', 'max:'.InvoiceWriteRequest::NOTES_MAX_LENGTH],
-            'financial_account_id' => ['sometimes', 'nullable', 'integer', Rule::exists('financial_accounts', 'id')],
             'layout_id' => ['sometimes', 'nullable', 'integer', Rule::exists('document_layouts', 'id')->where('module', DocumentLayoutModule::Invoices->value)->where('is_active', true)],
         ];
     }

@@ -6,12 +6,8 @@
 export const invoiceEditor = {
   createTitle: 'Emissione Proforma — Commessa #{{code}}',
   createDescription: 'Verifica righe, pagamento e scadenze, poi emetti il documento.',
-  leaveConfirm: {
-    title: 'Uscire senza emettere?',
-    description: 'Il documento non è ancora stato emesso: i dati inseriti andranno persi.',
-    confirm: 'Esci senza emettere',
-    cancel: 'Continua a compilare',
-  },
+  editTitle: 'Modifica documento {{number}}',
+  editDescription: 'Le righe vengono sostituite e le scadenze ricalcolate.',
   rowAction: {
     alreadyIssued: 'Documento già emesso',
   },
@@ -19,6 +15,7 @@ export const invoiceEditor = {
   loadError: 'Impossibile caricare i dati di emissione. Riprova.',
   alreadyInvoiced: 'Questa richiesta proforma è già stata fatturata.',
   sections: {
+    header: 'Testata',
     availableLines: 'Righe disponibili',
     documentLines: 'Righe documento',
     installments: 'Scadenze',
@@ -102,10 +99,13 @@ export const invoiceEditor = {
   actions: {
     issue: 'Emetti',
     issuing: 'Emissione…',
+    save: 'Salva',
+    saving: 'Salvataggio…',
     cancel: 'Annulla',
   },
   messages: {
     issued: 'Documento {{number}} emesso.',
+    saved: 'Documento aggiornato.',
     genericError: 'Si è verificato un errore. Riprova.',
     conflictInvoiced: 'Questa richiesta proforma è già stata fatturata.',
     totalNotPositive: 'Il totale del documento deve essere maggiore di zero.',

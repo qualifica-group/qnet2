@@ -41,34 +41,40 @@ export function buildInvoiceLineSchema(t: TFunction) {
   })
 }
 
-/**
- * The document form of the issue draft and of the detail's in-place rows: the
- * write header and lines (POST/PUT), plus the registration fields that only
- * travel through PATCH details (external number + date, deviation). Each
- * submit picks its own keys (`buildWritePayload`, `useInvoiceInlineEdit`).
- */
-export function buildInvoiceFormSchema(t: TFunction) {
+/** Write form (issue + edit): header, notes and 1..200 lines. */
+export function buildInvoiceWriteSchema(t: TFunction) {
+  return z.object({
+    document_date: z.string().min(1, t('invoiceEditor.errors.documentDateRequired')),
+    company_id: z.number(t('invoiceEditor.errors.companyRequired')).int(),
+    customer_registry_id: z.number(t('invoiceEditor.errors.customerRequired')).int(),
+    payment_method_id: z.number(t('invoiceEditor.errors.paymentMethodRequired')).int(),
+    financial_account_id: z.number().int().nullable(),
+    layout_id: z.number().int().nullable(),
+    notes: z.string().max(NOTES_MAX, t('invoiceEditor.errors.notesMax')).nullable(),
+    internal_note: z.string().max(NOTES_MAX, t('invoiceEditor.errors.notesMax')).nullable(),
+    tag: tagSchema,
+    lines: z
+      .array(buildInvoiceLineSchema(t))
+      .min(INVOICE_LINES_MIN, t('invoiceEditor.errors.linesRequired'))
+      .max(INVOICE_LINES_MAX, t('invoiceEditor.errors.linesMax')),
+  })
+}
+
+export type InvoiceWriteFormValues = z.infer<ReturnType<typeof buildInvoiceWriteSchema>>
+
+/** Details dialog: external number + date (required together), tag, deviation, internal note. */
+export function buildInvoiceDetailsSchema(t: TFunction) {
   return z
     .object({
-      document_date: z.string().min(1, t('invoiceEditor.errors.documentDateRequired')),
-      company_id: z.number(t('invoiceEditor.errors.companyRequired')).int(),
-      customer_registry_id: z.number(t('invoiceEditor.errors.customerRequired')).int(),
-      payment_method_id: z.number(t('invoiceEditor.errors.paymentMethodRequired')).int(),
-      financial_account_id: z.number().int().nullable(),
-      layout_id: z.number().int().nullable(),
-      notes: z.string().max(NOTES_MAX, t('invoiceEditor.errors.notesMax')).nullable(),
-      internal_note: z.string().max(NOTES_MAX, t('invoiceEditor.errors.notesMax')).nullable(),
-      tag: tagSchema,
       external_number: z
         .string()
         .max(EXTERNAL_NUMBER_MAX, t('invoices.details.errors.externalNumberMax'))
         .nullable(),
       external_date: z.string().nullable(),
+      tag: tagSchema,
+      layout_id: z.number().int().nullable(),
       deviation: z.number(t('invoices.details.errors.deviationInvalid')).nullable(),
-      lines: z
-        .array(buildInvoiceLineSchema(t))
-        .min(INVOICE_LINES_MIN, t('invoiceEditor.errors.linesRequired'))
-        .max(INVOICE_LINES_MAX, t('invoiceEditor.errors.linesMax')),
+      internal_note: z.string().max(NOTES_MAX, t('invoices.details.errors.internalNoteMax')).nullable(),
     })
     .superRefine((values, ctx) => {
       if (values.external_number && !values.external_date) {
@@ -81,7 +87,7 @@ export function buildInvoiceFormSchema(t: TFunction) {
     })
 }
 
-export type InvoiceFormValues = z.infer<ReturnType<typeof buildInvoiceFormSchema>>
+export type InvoiceDetailsFormValues = z.infer<ReturnType<typeof buildInvoiceDetailsSchema>>
 
 interface CollectionSchemaOptions {
   installmentAmount: number
