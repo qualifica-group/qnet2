@@ -296,6 +296,20 @@ it('writes the legacy managers without notifying anyone nor logging activity', f
     Notification::assertNothingSent();
 });
 
+it('adds to the opportunity only the quote managers it lacks (G-16)', function () {
+    legacyQuoteServiceProduct(10);
+    $opportunityManager = User::factory()->create(['old_id' => 51]);
+    $quoteManager = User::factory()->create(['old_id' => 52]);
+    $this->opportunity->managers()->attach($opportunityManager->id, ['position' => 1]);
+
+    runLegacyQuotesImport([legacyQuoteRecord(['manager_user_ids' => [51, 52]])], migrationsSuperAdminActor());
+
+    $quote = Quote::query()->where('old_id', 42)->sole();
+
+    expect($quote->managers()->pluck('users.id')->sort()->values()->all())->toBe([$opportunityManager->id, $quoteManager->id])
+        ->and($this->opportunity->managers()->pluck('users.id')->sort()->values()->all())->toBe([$opportunityManager->id, $quoteManager->id]);
+});
+
 it('skips an already imported quote on a second run', function () {
     legacyQuoteServiceProduct(10);
 

@@ -70,6 +70,10 @@
       G-15 cliente: l'offerta non puo' avere un cliente diverso dall'opportunita'. Il legacy espone
       `registry_id` (quotations.customer_id); se differisce dall'anagrafica dell'opportunita' -> warning, l'offerta
       resta sotto l'opportunita' (253 offerte sul DB legacy).
+      G-16 gestori offerta (decisione utente 2026-10-12): qnet-2 importa cio' che il legacy dice. L'API offerte espone
+      in `manager_user_ids` i gestori dell'OPPORTUNITA' (stessa regola di `migration/opportunities`, helper legacy
+      `LegacyOpportunityManagers`) seguiti da `quotations.assigned_to`/`assigned2_to`; distinti, max 12. Un gestore
+      dell'offerta assente sull'opportunita' viene aggiunto all'opportunita' (promozione gia' esistente in qnet-2).
   </context>
 
   <scope>
@@ -128,8 +132,9 @@
       { id:int, opportunity_id:int, title:?string, description:?string, quote_date:?date (datequotation),
         status:int (status_quotation), accepted_at:?date (accepted_data), validated_at:?date (validated_data),
         declined_at:?date, renewal_date:?date, commercial_referent_id:?int (agent_id),
-        reporter_referent_id:?int (signaler_id), supervisor_user_id:?int, manager_user_ids:int[] (assigned_to,
-        assigned2_to), company_site_id:?int (business_unit -> company_profiles), operational_site_id:?int (sede_id),
+        reporter_referent_id:?int (signaler_id), supervisor_user_id:?int, manager_user_ids:int[] (gestori
+        dell'opportunita' come in migration/opportunities, poi assigned_to, assigned2_to; distinti, max 12, G-16),
+        company_site_id:?int (business_unit -> company_profiles), operational_site_id:?int (sede_id),
         payment_method_id:?int (payment_id),
         registry_id:?int (customer_id, G-15), callback_date:?date (opportunities.recall_date, G-14),
         cost_lines: [{ id:int (quotationexpensereports.id), product_id:?int (expensereport_id; 0 -> null),
@@ -173,5 +178,7 @@
       prodotto (G-13), totali costo e margine ricalcolati; fornitore legacy diverso da quello del prodotto -> warning.</ac>
     <ac id="AC-011">Offerta: `quote_date` = data offerta legacy, `next_callback_at` = richiamo dell'opportunita' legacy
       (G-14); cliente legacy diverso da quello dell'opportunita' -> warning (G-15).</ac>
+    <ac id="AC-011b">Offerta: gestori = gestori dell'opportunita' legacy piu' quelli propri dell'offerta (G-16); un
+      gestore dell'offerta assente sull'opportunita' viene aggiunto ai Gestori Account dell'opportunita'.</ac>
   </acceptance_criteria>
 </spec>

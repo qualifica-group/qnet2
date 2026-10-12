@@ -3,6 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## GESTORI OFFERTE LEGACY = GESTORI OPPORTUNITA' + PROPRI (spec 0189 G-16, 2026-10-12) — VERDE, COMMITTATO
+
+- Decisione utente: qnet-2 importa cio' che il legacy dice; i gestori dell'offerta li decide l'API legacy.
+- Legacy (`/Users/Repository/qnet`, committato a parte): nuovo helper `App\Support\Migration\LegacyOpportunityManagers::
+  forOpportunities()` (assigned_to..assigned4_to + `responsabile_opportunities`, utenti esistenti, distinti, max 12),
+  usato da `OpportunityMigrationController` (output invariato, refactor DRY) e da `QuoteMigrationController`:
+  `manager_user_ids` = gestori dell'opportunita' + `quotations.assigned_to`/`assigned2_to`, distinti, max 12.
+- qnet-2: codice invariato (`QuotesSource` scrive i gestori con `promoteToOpportunity: true`, quindi un gestore
+  dell'offerta assente sull'opportunita' viene aggiunto all'opportunita'). Nuovo test G-16 in
+  `QuotesSourceImportTest` (21/21 verdi). Spec 0189: G-16, shape `migration/quotes`, AC-011b.
+- Da verificare: il legacy non ha test ne' Pint; verificato solo `php -l`. Controllo sui dati legacy (offerte con
+  gestori diversi da quelli dell'opportunita') non eseguito.
+
 ## OFFERTE LEGACY: COSTI, DATA OFFERTA, RICHIAMO, CLIENTE + CAMPO "DATA OFFERTA" (spec 0189 G-13/14/15, spec 0228, 2026-10-12) — VERDE, NON COMMITTATO
 
 - Verifica campi offerte (richiesta utente) -> decisioni utente: importare i costi (fornitore NON scritto, sta sul
