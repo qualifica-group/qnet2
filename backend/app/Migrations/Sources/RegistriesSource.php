@@ -6,6 +6,7 @@ use App\DataObjects\Registries\CreateRegistryData;
 use App\Enums\AgreementStatusEnum;
 use App\Enums\SizeClassEnum;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
@@ -54,6 +55,19 @@ class RegistriesSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Registries';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::optional('users'),
+            MigrationDependency::optional('referents'),
+            MigrationDependency::optional('sources'),
+            MigrationDependency::optional('sectors'),
+        ];
     }
 
     public function endpoint(): string

@@ -3,7 +3,6 @@
 use App\Enums\CommissionType;
 use App\Enums\MigrationStatus;
 use App\Enums\WorkOrderType;
-use App\Migrations\Sources\WorkOrdersSource;
 use App\Models\MigrationRun;
 use App\Models\Quote;
 use App\Models\QuoteLine;
@@ -80,9 +79,7 @@ if (! function_exists('legacyWorkOrderWarnings')) {
     }
 }
 
-// The source is detached (not in config/migrations.php): register it for the test.
 beforeEach(function () {
-    config(['migrations.definitions.work-orders' => WorkOrdersSource::class]);
     seedMigrationsConfig();
     $this->quote = Quote::factory()->create(['old_id' => 42]);
 });

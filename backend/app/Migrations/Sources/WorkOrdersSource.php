@@ -5,6 +5,7 @@ namespace App\Migrations\Sources;
 use App\DataObjects\WorkOrders\CreateWorkOrderData;
 use App\Enums\QuoteLineType;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
@@ -56,6 +57,17 @@ class WorkOrdersSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Work orders';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::required('quotes'),
+            MigrationDependency::optional('users'),
+        ];
     }
 
     public function endpoint(): string

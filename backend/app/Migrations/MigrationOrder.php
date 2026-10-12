@@ -4,6 +4,8 @@ namespace App\Migrations;
 
 /**
  * Recommended chronological order for running the migration sources (spec 0013).
+ * Each source's MigrationSource::dependencies() must sit in an earlier phase
+ * (tests/Unit/Migrations/MigrationDependenciesTest).
  *
  * To import every record AND its relational links correctly, run the sources
  * phase by phase, in order. A source in a later phase references — via `old_id`
@@ -34,18 +36,21 @@ final class MigrationOrder
         // remapped via old_id, relinked within its own run); `roles` are
         // adopted/created by name and are referenced by `users` via old_id, so
         // they anchor here too; `payment-methods` is likewise a plain lookup,
-        // referenced by its consumer modules, not referencing;
+        // referenced by its consumer modules (quotes first), not referencing;
         // `task-templates` (spec 0172, D-13) remaps its stages/items ONLY
         // within the single record being imported (no old_id of their own),
         // so it references nothing else either. `email-templates` and
         // `document-bundles` (spec 0175, D-13) are likewise plain, unlinked
         // lookups — `document-bundles` additionally copies its own files in,
         // referencing nothing outside the pair of legacy tables it reads.
+        // `business-functions` carries user ids it cannot resolve yet (users
+        // come in phase 2): `business-function-members` links them in phase 3.
         ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'roles', 'email-templates', 'document-bundles'],
 
         // Phase 2 — entities that reference the phase 1 anchors via old_id:
-        // users (companies/sites/functions/roles) and company-sites (companies).
-        ['users', 'company-sites'],
+        // users (companies/sites/roles), company-sites (companies) and
+        // referents (referent-types).
+        ['users', 'company-sites', 'referents'],
 
         // Phase 3 — associations that link phase 2 users onto phase 1 entities:
         // business-function operators (pivot) + responsible (manager_id) need
@@ -53,9 +58,10 @@ final class MigrationOrder
         ['business-function-members'],
 
         // Phase 4 — product anchors imported right before products: `attributes`
-        // are custom-field definitions and `product-categories` reference only
-        // themselves (parent_id remapped within their own run). Nothing in the
-        // earlier phases references either, so they sit here next to `products`.
+        // are custom-field definitions and `product-categories` reference
+        // themselves (parent_id remapped within their own run) and the phase 1
+        // business-functions. Nothing in the earlier phases references either,
+        // so they sit here next to `products`.
         ['attributes', 'product-categories'],
 
         // Phase 5 — products reference the phase 4 product-categories AND the
@@ -71,6 +77,28 @@ final class MigrationOrder
         // only accepts codes the category has ALREADY linked for the context,
         // so this needs the phase 5 `product-category-attributes` pivot.
         ['attribute-layouts'],
+
+        // Phases 7 and 9-11 — the legacy operational records (spec 0189), a strict
+        // parent chain, one phase per link. Registries remap users, referents,
+        // sources and sectors (phases 1-2); opportunities need their registry
+        // plus categories and operational sites; quotes need their opportunity
+        // plus products, VAT rates, payment methods and company sites; work
+        // orders need their quote and its lines.
+        ['registries'],
+
+        // Phase 8 — spec 0203: the product supplier link and the legacy
+        // commission rules. Both resolve registries via old_id (supplier /
+        // company recipient) and need referents, users, categories and products
+        // from the earlier phases; they have no dependency on each other.
+        ['product-suppliers', 'commission-configurations'],
+        ['opportunities'],
+        ['quotes'],
+        ['work-orders'],
+
+        // Phase 12 — the legacy payment data of a commessa (spec 0201): needs
+        // the migrated work orders and their lines, and the reference payment
+        // statuses seeded with their legacy `old_id`.
+        ['work-order-line-payments'],
     ];
 
     /**
@@ -81,5 +109,19 @@ final class MigrationOrder
     public static function phases(): array
     {
         return self::PHASES;
+    }
+
+    /**
+     * The 1-based phase a source belongs to, or null when it is not ordered.
+     */
+    public static function phaseOf(string $key): ?int
+    {
+        foreach (self::PHASES as $index => $keys) {
+            if (in_array($key, $keys, true)) {
+                return $index + 1;
+            }
+        }
+
+        return null;
     }
 }

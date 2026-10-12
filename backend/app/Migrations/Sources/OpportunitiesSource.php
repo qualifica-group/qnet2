@@ -4,6 +4,7 @@ namespace App\Migrations\Sources;
 
 use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
@@ -49,6 +50,21 @@ class OpportunitiesSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Opportunities';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::required('registries'),
+            MigrationDependency::optional('users'),
+            MigrationDependency::optional('referents'),
+            MigrationDependency::optional('sources'),
+            MigrationDependency::optional('product-categories'),
+            MigrationDependency::optional('operational-sites'),
+        ];
     }
 
     public function endpoint(): string

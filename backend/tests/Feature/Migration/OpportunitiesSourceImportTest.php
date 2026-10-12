@@ -1,7 +1,6 @@
 <?php
 
 use App\DataObjects\Opportunities\CreateOpportunityData;
-use App\Migrations\Sources\OpportunitiesSource;
 use App\Models\BusinessFunction;
 use App\Models\MigrationRun;
 use App\Models\OperationalSite;
@@ -19,9 +18,6 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
-
-// The source is detached (not in config/migrations.php): register it for the test.
-beforeEach(fn () => config(['migrations.definitions.opportunities' => OpportunitiesSource::class]));
 
 // ---------------------------------------------------------------------------
 // OpportunitiesSource (spec 0189) — legacy opportunities via OpportunityService::import()

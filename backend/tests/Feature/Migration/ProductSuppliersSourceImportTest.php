@@ -35,11 +35,7 @@ function legacyServiceProduct(int $legacyId, ?int $supplierId = null): Product
     return Product::factory()->create(['old_source' => 'services', 'old_id' => $legacyId, 'supplier_id' => $supplierId]);
 }
 
-// The source is detached (not in config/migrations.php): register it for the test.
-beforeEach(function () {
-    config(['migrations.definitions.product-suppliers' => ProductSuppliersSource::class]);
-    seedMigrationsConfig();
-});
+beforeEach(fn () => seedMigrationsConfig());
 
 it('AC-006: sets the supplier of a migrated product from the migrated registry', function () {
     $registry = Registry::factory()->create(['old_id' => 15269]);

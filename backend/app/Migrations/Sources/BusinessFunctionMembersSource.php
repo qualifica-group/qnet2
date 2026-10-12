@@ -3,6 +3,7 @@
 namespace App\Migrations\Sources;
 
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Models\BusinessFunction;
@@ -44,6 +45,17 @@ class BusinessFunctionMembersSource extends AbstractMigrationSource
         // operators onto an already-migrated function), so it is not mistaken
         // for the "Business functions" source in the selector.
         return 'Business functions — reconcile manager & operators';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::required('business-functions'),
+            MigrationDependency::required('users'),
+        ];
     }
 
     /**

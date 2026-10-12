@@ -4,7 +4,6 @@ use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
 use App\Enums\MigrationStatus;
 use App\Enums\WorkflowStatusGroup;
-use App\Migrations\Sources\QuotesSource;
 use App\Models\BusinessFunction;
 use App\Models\CompanySite;
 use App\Models\Contract;
@@ -116,9 +115,7 @@ if (! function_exists('legacyQuoteWarnings')) {
     }
 }
 
-// The source is detached (not in config/migrations.php): register it for the test.
 beforeEach(function () {
-    config(['migrations.definitions.quotes' => QuotesSource::class]);
     seedMigrationsConfig();
     $this->opportunity = Opportunity::factory()->create(['old_id' => 7]);
 });

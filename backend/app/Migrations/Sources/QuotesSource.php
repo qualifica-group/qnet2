@@ -5,6 +5,7 @@ namespace App\Migrations\Sources;
 use App\DataObjects\Quotes\CreateQuoteData;
 use App\DataObjects\Quotes\QuoteLineData;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
@@ -66,6 +67,24 @@ class QuotesSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Quotes';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::required('opportunities'),
+            MigrationDependency::optional('products'),
+            MigrationDependency::optional('vat-rates'),
+            MigrationDependency::optional('payment-methods'),
+            MigrationDependency::optional('company-sites'),
+            MigrationDependency::optional('operational-sites'),
+            MigrationDependency::optional('users'),
+            MigrationDependency::optional('referents'),
+            MigrationDependency::optional('registries'),
+        ];
     }
 
     public function endpoint(): string

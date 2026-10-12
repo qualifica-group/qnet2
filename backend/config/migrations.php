@@ -4,17 +4,23 @@ use App\Migrations\Sources\AttributeLayoutsSource;
 use App\Migrations\Sources\AttributesSource;
 use App\Migrations\Sources\BusinessFunctionMembersSource;
 use App\Migrations\Sources\BusinessFunctionsSource;
+use App\Migrations\Sources\CommissionConfigurationsSource;
 use App\Migrations\Sources\CompaniesSource;
 use App\Migrations\Sources\CompanySitesSource;
 use App\Migrations\Sources\CostProductsSource;
 use App\Migrations\Sources\DocumentBundlesSource;
 use App\Migrations\Sources\EmailTemplatesSource;
 use App\Migrations\Sources\OperationalSitesSource;
+use App\Migrations\Sources\OpportunitiesSource;
 use App\Migrations\Sources\PaymentMethodsSource;
 use App\Migrations\Sources\ProductCategoriesSource;
 use App\Migrations\Sources\ProductCategoryAttributesSource;
 use App\Migrations\Sources\ProductsSource;
+use App\Migrations\Sources\ProductSuppliersSource;
+use App\Migrations\Sources\QuotesSource;
+use App\Migrations\Sources\ReferentsSource;
 use App\Migrations\Sources\ReferentTypesSource;
+use App\Migrations\Sources\RegistriesSource;
 use App\Migrations\Sources\RolesSource;
 use App\Migrations\Sources\SectorsSource;
 use App\Migrations\Sources\SourcesSource;
@@ -22,6 +28,8 @@ use App\Migrations\Sources\TagsSource;
 use App\Migrations\Sources\TaskTemplatesSource;
 use App\Migrations\Sources\UsersSource;
 use App\Migrations\Sources\VatRatesSource;
+use App\Migrations\Sources\WorkOrderLinePaymentsSource;
+use App\Migrations\Sources\WorkOrdersSource;
 
 return [
 
@@ -76,6 +84,7 @@ return [
         'operational-sites' => OperationalSitesSource::class,
         'business-function-members' => BusinessFunctionMembersSource::class,
         'referent-types' => ReferentTypesSource::class,
+        'referents' => ReferentsSource::class,
         'sources' => SourcesSource::class,
         'tags' => TagsSource::class,
         'sectors' => SectorsSource::class,
@@ -92,11 +101,18 @@ return [
         // phase-1 anchors (D-13).
         'email-templates' => EmailTemplatesSource::class,
         'document-bundles' => DocumentBundlesSource::class,
-        // Detached on 2026-10-12 (user decision): the legacy operational records
-        // are too large to migrate, so referents, registries, opportunities,
-        // quotes, work-orders and the links needing them (work-order-line-payments,
-        // product-suppliers, commission-configurations) are NOT registered. Their
-        // classes stay in App\Migrations\Sources to be re-registered here.
+        // spec 0189: the legacy operational records, a strict parent chain
+        // (registry <- opportunity <- quote <- work order).
+        'registries' => RegistriesSource::class,
+        'opportunities' => OpportunitiesSource::class,
+        'quotes' => QuotesSource::class,
+        'work-orders' => WorkOrdersSource::class,
+        // spec 0201: the per-commessa payment data, copied onto every line.
+        'work-order-line-payments' => WorkOrderLinePaymentsSource::class,
+        // spec 0203: the product supplier link and the legacy commission rules,
+        // both needing the migrated registries.
+        'product-suppliers' => ProductSuppliersSource::class,
+        'commission-configurations' => CommissionConfigurationsSource::class,
     ],
 
 ];

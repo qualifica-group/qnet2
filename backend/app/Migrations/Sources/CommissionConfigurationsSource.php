@@ -8,6 +8,7 @@ use App\Enums\CommissionConfigurationStatus;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Support\ExternalApiClient;
@@ -75,6 +76,20 @@ class CommissionConfigurationsSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Commission configurations';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::required('users'),
+            MigrationDependency::required('referents'),
+            MigrationDependency::required('registries'),
+            MigrationDependency::required('products'),
+            MigrationDependency::required('product-categories'),
+        ];
     }
 
     public function endpoint(): string

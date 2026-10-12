@@ -1,3 +1,5 @@
+import { migrationRequirements } from '@/i18n/locales/it-migration-requirements'
+
 /**
  * Localized strings for the external data migrations module (spec 0013):
  * the super-admin-only preview (fase 1) page and the import (fase 2)
@@ -42,6 +44,35 @@ export const migrations = {
     'product-suppliers': 'Prodotti — collega fornitori',
     'commission-configurations': 'Configuratore commissioni',
   },
+  state: {
+    notMigrated: 'Non migrata',
+    running: 'In corso',
+    failed: 'Ultimo import fallito',
+    partial: 'Migrata con righe fallite',
+    migrated: 'Migrata',
+  },
+  overview: {
+    title: 'Stato migrazione',
+    description: 'Le sorgenti nell’ordine in cui importarle. Seleziona una sorgente per vederne il template e cosa le serve.',
+    progress: '{{migrated}} di {{total}} sorgenti migrate',
+    phase: 'Fase {{phase}}',
+    unordered: 'Senza fase',
+    migratedAt: 'Migrata il {{date}}',
+    lastRunAt: 'Ultimo import il {{date}}',
+    failedRows_one: '{{count}} riga fallita',
+    failedRows_other: '{{count}} righe fallite',
+  },
+  requirements: {
+    title: 'Cosa serve per migrare bene',
+    dependenciesTitle: 'Da importare prima',
+    none: 'Nessuna sorgente da importare prima.',
+    required: 'Obbligatoria',
+    optional: 'Consigliata',
+    legend:
+      'Obbligatoria: senza, le righe non vengono importate. Consigliata: senza, il collegamento resta vuoto con un avviso nel report.',
+    missingRequired: 'Mancano sorgenti obbligatorie: {{sources}}. Importale prima di questa.',
+  },
+  sourceRequirements: migrationRequirements,
   page: {
     sourceLabel: 'Sorgente',
     sourcePlaceholder: 'Seleziona una sorgente…',

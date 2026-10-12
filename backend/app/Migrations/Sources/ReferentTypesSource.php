@@ -14,9 +14,8 @@ use RuntimeException;
 /**
  * `referent-types` migration source (spec 0013 / 0016): a plain lookup entity
  * (id, name) created through ReferentTypeService, mirroring RolesSource's
- * simpler slice. It is a phase-1 anchor: ReferentsSource (detached, not in
- * config/migrations.php) remaps each referent's `referent_type_id` to the qnet
- * type via `old_id`. Re-import is
+ * simpler slice. It is a phase-1 anchor: ReferentsSource later remaps each
+ * referent's `referent_type_id` to the qnet type via `old_id`. Re-import is
  * idempotent (skip by old_id); the name is NOT unique, so no adoption logic.
  */
 class ReferentTypesSource extends AbstractMigrationSource

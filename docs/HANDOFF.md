@@ -3,7 +3,58 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## MIGRAZIONI LEGACY: SGANCIATI I MODULI OPERATIVI (2026-10-12) — VERDE, COMMITTATO
+## MIGRAZIONI: UTENTI GIA' PRESENTI AGGANCIATI PER EMAIL O NOME (2026-10-12) — VERDE, COMMITTATO
+
+- Problema utente: gli utenti reali sono creati da `QualificaOperatorSeeder` senza `old_id`, quindi le sorgenti
+  successive non li collegano e l'import "Utenti" falliva sull'email gia' usata.
+- Decisioni utente: (1) l'utente non riconosciuto si crea come prima; (2) quello riconosciuto riceve SOLO l'`old_id`
+  + i riferimenti di impiego vuoti (societa', sede, responsabile via `reconcileEmployment`): ruolo, password,
+  email, nome, contatti e campi custom restano di QNet (outcome `created` senza model); (3) omonimi = riga FALLITA
+  con le email trovate, mai indovinare.
+- `App\Migrations\Support\ExistingUserMatcher::match()`: email case-insensitive (se l'utente ha gia' un altro
+  `old_id` -> RuntimeException), poi nome+cognome sulla scheda `personalData` (case-insensitive) tra i soli utenti
+  con `old_id` NULL: 1 = adotta, >1 = RuntimeException, 0 = crea. Iniettato in `UsersSource`, metodo `adopt()`.
+- Test: nuovo `UsersSourceAdoptionTest` (6 casi). `RunMigrationJobTest` AC-012: l'errore di riga ora e' provocato da
+  un'email di un utente gia' collegato a un altro legacy id (prima: email gia' usata, che ora viene adottata) —
+  requisito cambiato, dichiarato. `tests/Feature/Migration` 372 verdi.
+- Manuale: testo "cosa serve" di Utenti (it/en), nota nelle guide in-app (overview), paragrafo nel manuale Claude Docs.
+
+## MIGRAZIONI: STATO PER SORGENTE + "COSA SERVE PER MIGRARE BENE" (2026-10-12) — VERDE, COMMITTATO
+
+- Richiesta utente: per ogni sorgente una descrizione di cosa serve per migrarla bene, e vedere quali sono gia'
+  migrate per capire cosa manca.
+- **Sorgenti operative RIMESSE** (chiarimento utente: "rimettili ma non metterli nel seeder legacy import
+  intendevo"): `referents`, `registries`, `opportunities`, `quotes`, `work-orders`, `work-order-line-payments`,
+  `product-suppliers`, `commission-configurations` di nuovo in `config/migrations.php` e `MigrationOrder` (30
+  sorgenti, 12 fasi), con test, guide e manuale come prima del commit `bf7b773c` (annullato nel working tree,
+  nessun revert committato). `QualificaLegacyImportSeeder::SOURCES` non le ha mai incluse: nuovo test che lo
+  blocca. Testi "cosa serve" anche per queste 8.
+- Contratto (additivo): `GET /api/migrations` -> ogni sorgente ha `phase` (1-based, `MigrationOrder::phaseOf`),
+  `last_run` (`MigrationRunResource` dell'ultima run di QUALSIASI attore, o null) e `migrated_at` (fine dell'ultima
+  run completed, o null; resta anche se una run successiva fallisce). `GET /api/migrations/{source}/columns` ->
+  `dependencies: [{source, required}]`.
+- `MigrationSource::dependencies()` (default `[]` in `AbstractMigrationSource`, value object `MigrationDependency`
+  required/optional) su tutte le 30 sorgenti. required = senza, la riga fallisce o viene saltata
+  (o il linker non fa nulla); optional = collegamento vuoto + warning. Mappa verificata sul codice da un agente
+  (file:line); `MigrationDependenciesTest` impone: dipendenza registrata e in fase precedente. Corretti 2 commenti
+  di `MigrationOrder` (business-functions -> users non risolvibile in fase 1; product-categories -> business-functions).
+- Stato lettura: `MigrationService::latestRunsBySource()` / `migratedAtBySource()`.
+- Frontend: `MigrationStatusOverview` (card "Stato migrazione", sorgenti per fase, contatore "N di M migrate",
+  clic = seleziona), `MigrationRequirementsCard` (testo per sorgente + "Da importare prima" con badge
+  Obbligatoria/Consigliata e stato, alert rosso per obbligatorie mancanti), `MigrationSourceStatus` (badge),
+  `resolveMigrationSourceState` (notMigrated/running/failed/partial/migrated). Testi per sorgente in
+  `i18n/locales/{it,en}-migration-requirements.ts` (parity test). `useMigrationSources` ripolla ogni 3s finche'
+  una sorgente e' running; invalidato all'avvio import e alla chiusura delle finestre.
+- Verifiche: backend `tests/Feature/Migration` 366 + `tests/Unit/Migrations` 30 verdi, Pint pulito; frontend
+  migrations+help 145 verdi, ESLint pulito, `tsc -b --force` pulito.
+- Manuale: guide in-app it/en sezione `status-and-requirements` (+ ripristinata `operational-records`); manuale
+  Claude Docs: due paragrafi sullo stato, ripristinati riepilogo e i due collegamenti, tolto "non vengono
+  importati". Il PDF va rigenerato.
+- Segnalati, NON corretti: `business-function-members` sovrascrive il responsabile gia' impostato; `sectors` non
+  adotta per nome (duplicati con QualificaSectorSeeder); `work-order-line-payments` riscrive sempre i dati di
+  pagamento delle righe.
+
+## MIGRAZIONI LEGACY: SGANCIATI I MODULI OPERATIVI (2026-10-12) — COMMITTATO, POI ANNULLATO (vedi voce sopra)
 
 - Decisione utente: anagrafiche, opportunita', offerte, commesse e referenti "troppo grandi per essere importati";
   restano tutte le tabelle di appoggio e i collegamenti. Tolte dal registro anche le sorgenti che dipendono da

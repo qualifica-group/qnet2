@@ -72,6 +72,16 @@ abstract class AbstractMigrationSource implements MigrationSource
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * None by default: a source that references no other source's `old_id`.
+     */
+    public function dependencies(): array
+    {
+        return [];
+    }
+
+    /**
      * The external record's own id (the value `old_id` is set to), or null
      * when the record carries none — a fatal, per-row error (never silently
      * skipped) surfaced via processRow().

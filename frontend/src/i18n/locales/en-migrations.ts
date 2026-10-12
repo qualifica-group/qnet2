@@ -1,3 +1,5 @@
+import { migrationRequirements } from '@/i18n/locales/en-migration-requirements'
+
 /**
  * Localized strings for the external data migrations module (spec 0013):
  * the super-admin-only preview (fase 1) page and the import (fase 2)
@@ -43,6 +45,35 @@ export const migrations = {
     'product-suppliers': 'Products — link suppliers',
     'commission-configurations': 'Commission configurations',
   },
+  state: {
+    notMigrated: 'Not migrated',
+    running: 'In progress',
+    failed: 'Last import failed',
+    partial: 'Migrated with failed rows',
+    migrated: 'Migrated',
+  },
+  overview: {
+    title: 'Migration status',
+    description: 'The sources in the order to import them. Select a source to see its template and what it needs.',
+    progress: '{{migrated}} of {{total}} sources migrated',
+    phase: 'Phase {{phase}}',
+    unordered: 'No phase',
+    migratedAt: 'Migrated on {{date}}',
+    lastRunAt: 'Last import on {{date}}',
+    failedRows_one: '{{count}} failed row',
+    failedRows_other: '{{count}} failed rows',
+  },
+  requirements: {
+    title: 'What it takes to migrate well',
+    dependenciesTitle: 'Import first',
+    none: 'No source to import first.',
+    required: 'Required',
+    optional: 'Recommended',
+    legend:
+      'Required: without it the rows are not imported. Recommended: without it the link stays empty with a warning in the report.',
+    missingRequired: 'Required sources missing: {{sources}}. Import them before this one.',
+  },
+  sourceRequirements: migrationRequirements,
   page: {
     sourceLabel: 'Source',
     sourcePlaceholder: 'Select a source…',

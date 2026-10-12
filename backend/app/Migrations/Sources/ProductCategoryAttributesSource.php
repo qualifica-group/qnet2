@@ -4,6 +4,7 @@ namespace App\Migrations\Sources;
 
 use App\Enums\AttributeContext;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Models\Attribute;
@@ -52,6 +53,17 @@ class ProductCategoryAttributesSource extends AbstractMigrationSource
         // already-migrated category), so it is not mistaken for the
         // "Product categories" source in the selector.
         return 'Product categories — link attributes';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::required('product-categories'),
+            MigrationDependency::required('attributes'),
+        ];
     }
 
     /**

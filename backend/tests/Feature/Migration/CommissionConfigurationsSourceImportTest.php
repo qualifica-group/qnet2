@@ -5,6 +5,7 @@ use App\Enums\CommissionConfigurationStatus;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
 use App\Enums\SupplierCommissionDirection;
+use App\Migrations\MigrationOrder;
 use App\Migrations\Sources\CommissionConfigurationsSource;
 use App\Models\BusinessFunction;
 use App\Models\CommissionConfiguration;
@@ -71,11 +72,7 @@ function migratedCommissionRuleTargets(): array
     ];
 }
 
-// The source is detached (not in config/migrations.php): register it for the test.
-beforeEach(function () {
-    config(['migrations.definitions.commission-configurations' => CommissionConfigurationsSource::class]);
-    seedMigrationsConfig();
-});
+beforeEach(fn () => seedMigrationsConfig());
 
 it('AC-002: a supplier rule on a category becomes an active percentage rule for the migrated registry', function () {
     ['registry' => $registry, 'category' => $category] = migratedCommissionRuleTargets();
@@ -167,7 +164,13 @@ it('AC-005: a re-run skips the already imported rules without duplicating', func
     expect($second->created_rows)->toBe(0)->and($second->skipped_rows)->toBe(1)->and(CommissionConfiguration::count())->toBe(1);
 });
 
-it('AC-007: the source previews its columns', function () {
+it('AC-007: the source is registered, ordered right after registries, and previews its columns', function () {
+    $phases = MigrationOrder::phases();
+    $registries = array_search(['registries'], $phases, true);
+
+    expect(config('migrations.definitions'))->toHaveKey('commission-configurations')
+        ->and($phases[$registries + 1])->toBe(['product-suppliers', 'commission-configurations']);
+
     $columns = collect(app(CommissionConfigurationsSource::class)->columns())->pluck('id')->all();
     expect($columns)->toBe(['id', 'role', 'recipient_kind', 'recipient_id', 'category_id', 'product_id', 'percentage', 'amount', 'note', 'created_at']);
 });
