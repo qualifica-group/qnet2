@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\AttributeContext;
+use App\Migrations\Sources\ProductsSource;
 use App\Models\ProductCategory;
 use App\Models\RewardType;
 use App\Models\Source;
@@ -185,6 +186,9 @@ class QualificaCatalogSeeder extends Seeder
             AplInternshipAttributeCatalogue::CATEGORY => [],
             ApprenticeshipAttributeCatalogue::CATEGORY => [],
         ],
+        // The holding place of the legacy products imported without a category
+        // (user decision 2026-10-12): a container, to reclassify them from.
+        ProductsSource::UNCATEGORIZED_CATEGORY => [],
     ];
 
     /**

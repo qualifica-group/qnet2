@@ -3,6 +3,7 @@
 use App\Enums\MigrationStatus;
 use App\Enums\ProductType;
 use App\Jobs\RunMigrationJob;
+use App\Migrations\Sources\ProductsSource;
 use App\Models\MigrationRun;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -311,4 +312,43 @@ it('files a product of the legacy "APL old" branch on the manual category replac
         ->and($run->fresh()->created_rows)->toBe(5)
         ->and(collect($run->fresh()->report)->pluck('message')->filter(fn (string $message) => str_contains($message, 'no manual replacement'))->count())
         ->toBe(1);
+});
+
+it('files a product the legacy left without a category under "No categoria", with a warning', function () {
+    seedMigrationsConfig();
+    $uncategorized = ProductCategory::factory()->create(['name' => ProductsSource::UNCATEGORIZED_CATEGORY, 'is_selectable' => false]);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/products*' => Http::response([
+            'items' => [['id' => 499, 'name' => 'Sconto a lei riservato', 'price' => -400, 'category_id' => null]],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'products']);
+    runMigrationJobFor($run);
+
+    $fresh = $run->fresh();
+    expect($fresh->created_rows)->toBe(1)
+        ->and($fresh->failed_rows)->toBe(0)
+        ->and(Product::query()->where('old_id', 499)->value('category_id'))->toBe($uncategorized->id)
+        ->and(collect($fresh->report)->pluck('message')->implode(' '))->toContain("filed under 'No categoria'");
+});
+
+it('fails a product without a category when the "No categoria" category was never seeded', function () {
+    seedMigrationsConfig();
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/products*' => Http::response([
+            'items' => [['id' => 499, 'name' => 'Sconto a lei riservato', 'category_id' => null]],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'products']);
+    runMigrationJobFor($run);
+
+    $fresh = $run->fresh();
+    expect($fresh->failed_rows)->toBe(1)
+        ->and(collect($fresh->report)->pluck('message')->implode(' '))->toContain('run QualificaCatalogSeeder first');
 });

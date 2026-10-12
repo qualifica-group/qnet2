@@ -39,7 +39,7 @@ export const migrationRequirements = {
   'attribute-layouts':
     'A layout using a field not linked to the category fails, so run “Product categories — link attributes” first. An existing layout is never overwritten.',
   products:
-    'Without its category the row fails; without VAT rates the rate stays empty with a warning. The supplier is not imported: you choose it in QNet.',
+    'A product without a category in the legacy goes under the “No categoria” category, to reclassify it from there; a category not imported yet fails the row. Without VAT rates the rate stays empty with a warning. The supplier is set by “Products — link suppliers”.',
   'cost-products':
     'Without VAT rates the rate stays empty with a warning. It creates the Costi category and its sub-categories itself, with no need for Product categories.',
   'email-templates':

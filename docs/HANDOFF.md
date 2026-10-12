@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MIGRAZIONI: PRODOTTI SENZA CATEGORIA IN "No categoria" (2026-10-12) — VERDE, COMMITTATO
+
+- Problema utente: 24 prodotti legacy falliti con `category_id is required` (sconti, prove, voci di servizio:
+  legacy id 425, 499, 505, 516, 517, 524, 527, 637, 666, 681, 726, 1354, 1413-1416, 1425-1429, 1508, 1509, 1533).
+- Decisione utente: categoria "No categoria" creata dal seeder di produzione e prodotti messi li' dall'import.
+- `ProductsSource::UNCATEGORIZED_CATEGORY = 'No categoria'`: radice (container, non selezionabile) nel `CATALOG` di
+  `QualificaCatalogSeeder` (step 2 del production seeder, prima dell'import: non viene annidata sotto
+  Consulenza). `resolveCategory()`: `category_id` vuoto -> quella categoria + warning; assente -> riga fallita
+  ("run QualificaCatalogSeeder first"); `category_id` non migrato -> riga fallita come prima.
+- Test: 2 nuovi in `ProductsSourceImportTest`. Verdi: Migration 374, Products 201, ProductCategories 320.
+  **Preesistente, NON causato da questa modifica** (fallisce anche togliendo la riga dal catalogo):
+  `QualificaProductionDataSeederTest` (2 test) si aspetta 418 prodotti e ne trova 395.
+- Manuale: testo "cosa serve" di Prodotti (it/en, corretto anche il fornitore: ora lo imposta product-suppliers),
+  nota nelle guide in-app, paragrafo nel manuale Claude Docs.
+
 ## MIGRAZIONI: UTENTI GIA' PRESENTI AGGANCIATI PER EMAIL O NOME (2026-10-12) — VERDE, COMMITTATO
 
 - Problema utente: gli utenti reali sono creati da `QualificaOperatorSeeder` senza `old_id`, quindi le sorgenti

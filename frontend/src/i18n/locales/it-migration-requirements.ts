@@ -39,7 +39,7 @@ export const migrationRequirements = {
   'attribute-layouts':
     'Un layout che usa un campo non collegato alla categoria fallisce, quindi esegui prima “Categorie prodotto — collega attributi”. Un layout già presente non viene sovrascritto.',
   products:
-    'Senza la categoria la riga fallisce; senza Aliquote IVA l’aliquota resta vuota con un avviso. Il fornitore non viene importato: lo scegli in QNet.',
+    'Un prodotto senza categoria nel legacy finisce nella categoria «No categoria», da cui riclassificarlo; una categoria non ancora importata fa fallire la riga. Senza Aliquote IVA l’aliquota resta vuota con un avviso. Il fornitore lo imposta “Prodotti — collega fornitori”.',
   'cost-products':
     'Senza Aliquote IVA l’aliquota resta vuota con un avviso. Crea da sé la categoria Costi e le sue sotto-categorie, senza bisogno di Categorie prodotto.',
   'email-templates':
