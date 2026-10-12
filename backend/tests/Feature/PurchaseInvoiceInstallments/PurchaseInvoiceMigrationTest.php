@@ -13,14 +13,20 @@ uses(DatabaseMigrations::class);
 
 it('AC-001: rolls back the three payable tables and re-applies them with the virtual residual working', function () {
     $tables = ['purchase_invoices', 'purchase_invoice_purchase_order', 'purchase_invoice_installments'];
+    // `--path`, not `--step`: a step count breaks whenever a newer migration lands.
+    $migrations = [
+        'database/migrations/2026_10_14_100000_create_purchase_invoices_table.php',
+        'database/migrations/2026_10_14_100100_create_purchase_invoice_purchase_order_table.php',
+        'database/migrations/2026_10_14_100200_create_purchase_invoice_installments_table.php',
+    ];
 
-    expect(Artisan::call('migrate:rollback', ['--step' => 3]))->toBe(0);
+    expect(Artisan::call('migrate:rollback', ['--path' => $migrations]))->toBe(0);
 
     foreach ($tables as $table) {
         expect(Schema::hasTable($table))->toBeFalse($table);
     }
 
-    expect(Artisan::call('migrate'))->toBe(0);
+    expect(Artisan::call('migrate', ['--path' => $migrations]))->toBe(0);
 
     foreach ($tables as $table) {
         expect(Schema::hasTable($table))->toBeTrue($table);

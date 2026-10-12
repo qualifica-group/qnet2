@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    private const string SEQUENCE_UNIQUE = 'purchase_invoice_installments_sequence_unique';
+
     private const string RESIDUAL_INDEX = 'purchase_invoice_installments_residual_due_index';
 
     public function up(): void
@@ -31,7 +33,7 @@ return new class extends Migration
             $table->decimal('residual_amount', 15, 2)->virtualAs('amount - COALESCE(paid_amount, 0)');
             $table->timestamps();
 
-            $table->unique(['purchase_invoice_id', 'sequence']);
+            $table->unique(['purchase_invoice_id', 'sequence'], self::SEQUENCE_UNIQUE);
             $table->index(['residual_amount', 'due_date'], self::RESIDUAL_INDEX);
         });
     }

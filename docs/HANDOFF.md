@@ -7,6 +7,9 @@
 
 - Spec `docs/specs/0211-purchase-invoice-installments.xml` (approvata, D-1..D-10, AC-001..AC-019). Decisioni utente:
   tabella documento unica `purchase_invoices` (document_type proforma|invoice), N:N con ODA subito.
+- Fix MySQL (2026-10-12): unique `(purchase_invoice_id, sequence)` nominato esplicitamente `purchase_invoice_installments_sequence_unique`
+  (il nome automatico superava i 64 caratteri di MySQL; SQLite non lo rileva). Nomi di indici/FK lunghi: sempre espliciti.
+  `PurchaseInvoiceMigrationTest` AC-001 ora fa rollback/migrate per `--path` dei 3 file, non `--step`.
 - BE: migrazioni `2026_10_14_1000{00,10,20}` (purchase_invoices, purchase_invoice_purchase_order, purchase_invoice_installments
   con VIRTUAL residual_amount + indice). Model PurchaseInvoice, PurchaseInvoiceInstallment (alias morph purchase_invoice,
   purchase_invoice_installment); enum PurchaseInvoiceType, PurchaseInstallmentStatus (unpaid|paid). Servizi PARALLELI in
