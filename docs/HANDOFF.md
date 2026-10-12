@@ -373,10 +373,13 @@
   modulo alla volta (niente team/subagent), le tabelle di impostazione dopo con un KIT CONDIVISO.
 - PIANO (fatti prima: Task 0195, Commesse 0196, Offerte 0197, Opportunità 0198, Anagrafiche 0200):
   onda 1 = Referenti (FATTO, 0216) -> Lead (FATTO, 0217) -> Prodotti (FATTO, 0218) -> Contratti (FATTO, 0219) -> Progetti (FATTO, 0220) -> Campagne (FATTO, 0221) -> Utenti (FATTO, 0222);
-  onda 2 = Gestione richieste/Iscritti (ESCLUSI, utente 2026-10-12: restano come sono), Fatture, Ore, Modelli di task, Categorie prodotto, Ruoli, Campi personalizzati;
+  onda 2 = Gestione richieste/Iscritti (ESCLUSI, utente 2026-10-12: restano come sono), Ore, Modelli di task, Categorie prodotto, Ruoli, Campi personalizzati;
   onda 3 = ~30 tabelle di impostazione (stati, tipi, priorità, importanze, tag, fonti, IVA, unità, metodi di
   pagamento, società, sedi, settori...) con un componente comune riga chiusa + matita per i campi ricorrenti
   (nome, colore, icona, attivo, ordine, descrizione). Ogni modulo: spec propria, si ferma a ogni verde.
+  ESCLUSA tutta la Contabilita' (utente 2026-10-12, "sara' modificato in un secondo momento"): Gestione conti e
+  Attiva (Richieste proforma, Fatture Attive, Scadenze). Il tentativo su Fatture (spec 0224, 7b5edbb7) e' stato
+  annullato da 8fec3019.
 - Referenti (solo frontend, PATCH già con `permissions`): dettaglio a righe `RecordInlineField` (Dati anagrafici = una
   riga, Dettagli referente: Tipo, Ambito, Utente collegato, Note; campi personalizzati con `CustomFieldRecordSections`;
   Contatti/Indirizzi in persistenza immediata). Creazione = replica a righe chiuse (Fatto/Ripristina, telefono
