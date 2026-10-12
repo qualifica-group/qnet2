@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## PROVINCE COME DESTINAZIONE DEI CAMPI RELAZIONE (spec 0225, 2026-10-12) — VERDE, COMMITTATO
+
+- Problema utente: in /migrations "Attributi" falliva la riga legacy 101 `province_id` "Provincia" (relation verso
+  `provinces`, non custom-fieldable). Decisione utente: collegarlo a una select sulle province.
+- `CustomFieldEntityRegistry::RELATION_ONLY_TARGETS` (`provinces` => Province): destinazioni valide solo per una
+  relazione, mai host di campi personalizzati. `isRelationTarget()` (usato da `ValidatesFieldTypeDefinition` e
+  `AttributesSource`), `relationTargets()`; `modelClassFor()` risolve anche queste (tutti i chiamanti sono relazioni).
+  `entities()` / `isCustomFieldable()` invariati: un campo personalizzato SULLE province resta 422.
+- Nuovi endpoint: `GET /provinces/for-select` (`routes/api/geo.php`, `ProvinceForSelectController`, solo
+  auth:sanctum, NationalScope, `ids[]` fuori filtro) e `GET /custom-fields/relation-targets` (custom-fields.viewAny).
+- Frontend: `useCustomFieldRelationTargets()` (in `use-custom-field-entities.ts`) alimenta
+  `DefinitionRelationTargetEditor` nei form attributo e campo personalizzato; i18n `customFields.entities.provinces`.
+  I mock di `use-custom-field-entities` nei 5 test dei form espongono anche il nuovo hook.
+- DB locale: import "attributes" rilanciato (run 31: 1 creato = attributo 460 province_id, 0 falliti). Nessuna
+  categoria/layout legacy usa `province_id` (verificato sull'API).
+- Test: Pest Geo 47, CustomFields 138, Attributes 54, Migration 375, RequestManagement 851, QuoteWorkflows 71+43,
+  Unit/CustomFields 112; Vitest attributes+custom-fields 176, help 115; ESLint, Pint, `tsc -b` puliti.
+- Manuale: guide in-app attributes/custom-fields (it/en) e manuale Claude Docs (due frasi sulla Relazione).
+
 ## FATTURE ATTIVE MODIFICABILI SUL POSTO + EMISSIONE COME IL DETTAGLIO (spec 0224, 2026-10-12) — VERDE, COMMITTATO
 
 - Richiesta utente: "committa e procedi a 2 e poi onda 2". Risposte: modello Task/Opportunita'/Offerte "anche in

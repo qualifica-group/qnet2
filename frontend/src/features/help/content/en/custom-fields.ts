@@ -59,7 +59,7 @@ const guide: HelpGuide = {
             ['**Table**', 'Several rows with their own columns, for example the inspection audits of a work order.'],
           ],
         },
-        { type: 'list', items: ['**Option list:** add values with **Add option**. Each option has **Value**, **Label** and, if you want, a color and icon. At least one option is required.', '**Relation:** choose the **Target module** and the **Cardinality**: **Single** links one record, **Multiple** links several.', '**Text** and numbers: you can set lengths, minimum, maximum and decimal digits.'] },
+        { type: 'list', items: ['**Option list:** add values with **Add option**. Each option has **Value**, **Label** and, if you want, a color and icon. At least one option is required.', '**Relation:** choose the **Target module** and the **Cardinality**: **Single** links one record, **Multiple** links several. You can also choose **Provinces** as the target module: the field then picks among the provinces.', '**Text** and numbers: you can set lengths, minimum, maximum and decimal digits.'] },
         { type: 'paragraph', text: 'In the **Validation** section, **Required** prevents saving with the field empty. **Unique** prevents two records of the same module from sharing the same value.' },
       ],
     },

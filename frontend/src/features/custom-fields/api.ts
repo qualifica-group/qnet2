@@ -14,9 +14,19 @@ export interface CustomFieldEntity {
   label: string
 }
 
-/** Populates the admin form's `entity_type` (and `relation_target`) pickers. */
+/** Populates the custom field form's host `entity_type` picker. */
 export async function fetchCustomFieldEntities(): Promise<CustomFieldEntity[]> {
   const { data } = await apiClient.get<ApiResponse<CustomFieldEntity[]>>('/custom-fields/entities')
+  return data.data
+}
+
+/**
+ * Populates the `relation_target` pickers (custom fields and attributes): the
+ * custom-fieldable modules plus the relation-only reference data such as
+ * provinces (spec 0225), same item shape as `fetchCustomFieldEntities`.
+ */
+export async function fetchCustomFieldRelationTargets(): Promise<CustomFieldEntity[]> {
+  const { data } = await apiClient.get<ApiResponse<CustomFieldEntity[]>>('/custom-fields/relation-targets')
   return data.data
 }
 

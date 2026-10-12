@@ -24,6 +24,11 @@ vi.mock('@/features/custom-fields/use-custom-field-entities', () => ({
     isLoading: false,
     isError: false,
   }),
+  useCustomFieldRelationTargets: () => ({
+    data: [{ entity_type: 'companies', label: 'customFields.entities.companies' }],
+    isLoading: false,
+    isError: false,
+  }),
 }))
 
 const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {

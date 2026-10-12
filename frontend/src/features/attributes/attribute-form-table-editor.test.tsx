@@ -25,6 +25,7 @@ const ENTITIES = [
 
 vi.mock('@/features/custom-fields/use-custom-field-entities', () => ({
   useCustomFieldEntities: () => ({ data: ENTITIES, isLoading: false, isError: false }),
+  useCustomFieldRelationTargets: () => ({ data: ENTITIES, isLoading: false, isError: false }),
 }))
 
 const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {

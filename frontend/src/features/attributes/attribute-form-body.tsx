@@ -15,7 +15,7 @@ import { DefinitionTableColumnsEditor } from '@/features/custom-fields/component
 import { DefinitionTypeConfigFields } from '@/features/custom-fields/components/definition-type-config-fields'
 import { DefinitionTypePicker } from '@/features/custom-fields/components/definition-type-picker'
 import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
-import { useCustomFieldEntities } from '@/features/custom-fields/use-custom-field-entities'
+import { useCustomFieldRelationTargets } from '@/features/custom-fields/use-custom-field-entities'
 import type { AttributeDetail, AttributeFormMode } from '@/features/attributes/types'
 
 interface AttributeFormBodyProps {
@@ -38,8 +38,8 @@ export function AttributeFormBody({ mode, onSuccess, onCancel }: AttributeFormBo
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
   const { form, serverError, onSubmit } = useAttributeForm({ mode, onSuccess })
-  const entitiesQuery = useCustomFieldEntities()
-  const entities = entitiesQuery.data ?? []
+  const relationTargetsQuery = useCustomFieldRelationTargets()
+  const relationTargets = relationTargetsQuery.data ?? []
 
   const type = form.watch('type')
   const optionsError = form.formState.errors.options?.message
@@ -88,7 +88,7 @@ export function AttributeFormBody({ mode, onSuccess, onCancel }: AttributeFormBo
           <DefinitionTableColumnsEditor control={form.control} type={type} />
 
           {type === 'relation' && (
-            <DefinitionRelationTargetEditor control={form.control} entities={entities} />
+            <DefinitionRelationTargetEditor control={form.control} entities={relationTargets} />
           )}
 
           <DefinitionPresentationFields control={form.control} />

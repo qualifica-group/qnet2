@@ -30,9 +30,11 @@ const ENTITIES = [
   { entity_type: 'companies', label: 'customFields.entities.companies' },
   { entity_type: 'products', label: 'customFields.entities.products' },
 ]
+const RELATION_TARGETS = [...ENTITIES, { entity_type: 'provinces', label: 'customFields.entities.provinces' }]
 
 vi.mock('@/features/custom-fields/use-custom-field-entities', () => ({
   useCustomFieldEntities: () => ({ data: ENTITIES, isLoading: false, isError: false }),
+  useCustomFieldRelationTargets: () => ({ data: RELATION_TARGETS, isLoading: false, isError: false }),
 }))
 
 const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
@@ -132,6 +134,18 @@ describe('AttributeForm — type-conditional sub-forms (spec 0017/0021)', () => 
     expect(screen.getByRole('combobox', { name: 'Cardinality' })).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Picker resource' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add option' })).not.toBeInTheDocument()
+  })
+
+  it('offers provinces as a relation target (spec 0225)', () => {
+    render(
+      <AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper: wrapper() },
+    )
+
+    selectType('Relation')
+    fireEvent.click(screen.getByRole('combobox', { name: 'Target module' }))
+
+    expect(screen.getByRole('option', { name: 'Provinces' })).toBeInTheDocument()
   })
 
   it('shows only the per-type config fields for the selected type', () => {

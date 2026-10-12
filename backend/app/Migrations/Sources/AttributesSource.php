@@ -24,8 +24,9 @@ use RuntimeException;
  * target, or an unrecognized `type` is rejected and isolated as a failed row.
  * Because the import bypasses StoreAttributeRequest, this source re-asserts the
  * two request-level invariants the AttributeService does NOT: enum option
- * `value` uniqueness and the relation_target shape (custom-fieldable
- * entity_type, one|many cardinality, non-empty for_select_resource). The
+ * `value` uniqueness and the relation_target shape (relation target
+ * entity_type — e.g. a legacy relation to `provinces`, spec 0225 — one|many
+ * cardinality, non-empty for_select_resource). The
  * category/attribute pivot (attribute_category) is NOT carried here (mirrors
  * TagsSource: the import creates only the entity itself). Re-import is
  * idempotent (skip by old_id); `code` is unique, so an attribute qnet already
@@ -353,8 +354,8 @@ class AttributesSource extends AbstractMigrationSource
         $cardinality = trim((string) ($raw['cardinality'] ?? ''));
         $forSelectResource = trim((string) ($raw['for_select_resource'] ?? ''));
 
-        if (! $this->entityRegistry->isCustomFieldable($entityType)) {
-            throw new RuntimeException("relation_target.entity_type [{$entityType}] is not a custom-fieldable entity.");
+        if (! $this->entityRegistry->isRelationTarget($entityType)) {
+            throw new RuntimeException("relation_target.entity_type [{$entityType}] is not a valid relation target.");
         }
 
         if (! in_array($cardinality, self::RELATION_CARDINALITIES, true)) {

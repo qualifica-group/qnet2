@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0225-province-relation-target" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Un attributo o un campo personalizzato di tipo relazione puo' puntare alle province: il valore si sceglie
+    da una select con ricerca sulle province. Sblocca l'import dell'attributo legacy 101 "Provincia"
+    (province_id), oggi rifiutato da /migrations.
+  </goal>
+
+  <context>
+    Oggi relation_target.entity_type deve essere "custom-fieldable" (CustomFieldEntityRegistry: dominio sia in
+    config/tables.php sia in config/authorization.php). Province e' un dato di riferimento in sola lettura
+    (nessuna Policy, nessun permesso, solo auth:sanctum, vedi GeoController / StateForSelectController).
+    La select del valore (RelationFieldControl, AttributeColumnBuilder) usa gia' GET /{for_select_resource}/for-select.
+    Decisione utente 2026-10-12: collegare l'attributo a una select sulle province (opzione 3).
+  </context>
+
+  <scope>
+    <in>
+      <item>CustomFieldEntityRegistry: elenco di destinazioni "solo relazione" (provinces => Province), isRelationTarget(), relationTargets(); modelClassFor() risolve anche queste.</item>
+      <item>ValidatesFieldTypeDefinition e AttributesSource accettano una destinazione solo-relazione.</item>
+      <item>GET /api/provinces/for-select (ADR 0011), limitato alla nazione configurata (NationalScope), ids[] fuori filtro.</item>
+      <item>GET /api/custom-fields/relation-targets: le destinazioni sceglibili nell'editor della relazione.</item>
+      <item>Frontend: l'editor della relazione (attributi e campi personalizzati) usa relation-targets; i18n it/en "Province".</item>
+      <item>Guide in-app (custom-fields, attributes) e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Le province non diventano custom-fieldable: niente campi personalizzati SULLE province, niente tabella/permessi.</item>
+      <item>Altri dati di riferimento (regioni, comuni, nazioni) come destinazione: si aggiungono alla stessa lista quando servira'.</item>
+      <item>Migrazione dei valori "Provincia" dei record legacy (i valori degli attributi non sono migrati).</item>
+      <item>Creazione rapida "+" nella select (le province non si creano).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/provinces/for-select">
+      <request>search?: string(max 255), offset?: int>=0, limit?: int 1..100, ids?: int[]</request>
+      <response status="200">
+        { items: [{ id: int, label: string (nome localizzato), subtitle?: string (regione) }], export_link, pagination: { total, offset, limit, total_pages } }
+      </response>
+      <errors>401 non autenticato, 422 parametri non validi</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/custom-fields/relation-targets">
+      <request>nessuno</request>
+      <response status="200">
+        { success, message, data: [{ entity_type: string, label: "customFields.entities.{entity_type}" }] } —
+        le entita' di GET /custom-fields/entities seguite da "provinces".
+      </response>
+      <errors>403 senza custom-fields.viewAny</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente autenticato, GET /provinces/for-select restituisce solo le province della nazione configurata, filtrabili per search, con label = nome e subtitle = regione.</criterion>
+    <criterion id="AC-002">ids[] restituisce anche una provincia fuori dalla pagina o dalla nazione, senza cambiare total.</criterion>
+    <criterion id="AC-003">GET /custom-fields/relation-targets contiene le entita' custom-fieldable piu' "provinces"; 403 senza permesso.</criterion>
+    <criterion id="AC-004">Creare un attributo e un campo personalizzato relation con entity_type "provinces" riesce; GET /custom-fields/entities NON contiene "provinces" e un campo personalizzato con entity_type "provinces" e' rifiutato (422).</criterion>
+    <criterion id="AC-005">Il valore di una relazione a provincia accetta un id esistente e rifiuta un id inesistente (422).</criterion>
+    <criterion id="AC-006">L'import "attributes" crea un record relation con entity_type "provinces" (prima: riga fallita).</criterion>
+    <criterion id="AC-007">L'editor della relazione nel form attributo mostra "Province" tra le destinazioni.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Endpoint geo senza Policy (dato di riferimento, come states/for-select), solo
+    auth:sanctum, nessun throttle. La rotta va in routes/api/geo.php. Envelope di progetto invariato.
+  </constraints>
+
+</spec>

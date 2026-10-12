@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\CustomFields;
 
 use App\Authorization\AuthorizationRegistry;
+use App\Models\Province;
 use App\Tables\TableRegistry;
 use Illuminate\Database\Eloquent\Model;
 
@@ -22,9 +23,21 @@ use Illuminate\Database\Eloquent\Model;
  * container singleton (see AppServiceProvider) so the build cost — resolving
  * every custom-fieldable TableDefinition through the container — is paid at
  * most once per request, not once per call site.
+ *
+ * A RELATION field may also point at a read-only reference model that is not
+ * custom-fieldable (spec 0225): RELATION_ONLY_TARGETS lists them. They are
+ * valid relation targets only — never a host for custom fields — and expose a
+ * `{entity_type}/for-select` endpoint like any other target.
  */
 class CustomFieldEntityRegistry
 {
+    /**
+     * @var array<string, class-string<Model>>
+     */
+    private const array RELATION_ONLY_TARGETS = [
+        'provinces' => Province::class,
+    ];
+
     /**
      * @var array<string, array{model_class: class-string<Model>, resource: string, domain: string}>|null
      */
@@ -54,17 +67,46 @@ class CustomFieldEntityRegistry
         );
     }
 
+    /**
+     * Every entity a RELATION field can point at, for the admin relation
+     * target picker (`GET /custom-fields/relation-targets`): the
+     * custom-fieldable domains followed by the relation-only reference models.
+     *
+     * @return array<int, array{entity_type: string, label: string}>
+     */
+    public function relationTargets(): array
+    {
+        return [
+            ...$this->entities(),
+            ...array_map(
+                static fn (string $entityType): array => [
+                    'entity_type' => $entityType,
+                    'label' => "customFields.entities.{$entityType}",
+                ],
+                array_keys(self::RELATION_ONLY_TARGETS),
+            ),
+        ];
+    }
+
     public function isCustomFieldable(string $entityType): bool
     {
         return array_key_exists($entityType, $this->map());
     }
 
+    public function isRelationTarget(string $entityType): bool
+    {
+        return $this->isCustomFieldable($entityType) || array_key_exists($entityType, self::RELATION_ONLY_TARGETS);
+    }
+
     /**
+     * The model behind an entity_type, relation-only targets included: every
+     * caller resolves a RELATION field's target table or label column.
+     *
      * @return class-string<Model>|null
      */
     public function modelClassFor(string $entityType): ?string
     {
-        return $this->map()[$entityType]['model_class'] ?? null;
+        return $this->map()[$entityType]['model_class'] ?? self::RELATION_ONLY_TARGETS[$entityType] ?? null;
     }
 
     public function resourceFor(string $entityType): ?string

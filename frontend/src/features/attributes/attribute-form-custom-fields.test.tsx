@@ -29,6 +29,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
 
 vi.mock('@/features/custom-fields/use-custom-field-entities', () => ({
   useCustomFieldEntities: () => ({ data: [], isLoading: false, isError: false }),
+  useCustomFieldRelationTargets: () => ({ data: [], isLoading: false, isError: false }),
 }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()

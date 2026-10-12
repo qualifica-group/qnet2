@@ -68,6 +68,7 @@ export const customFields = {
     products: 'Products',
     sources: 'Sources',
     tags: 'Tags',
+    provinces: 'Provinces',
   },
   types: {
     text: 'Text',

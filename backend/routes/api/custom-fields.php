@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CustomFields\CustomFieldController;
 use App\Http\Controllers\CustomFields\CustomFieldEntitiesController;
+use App\Http\Controllers\CustomFields\CustomFieldRelationTargetsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('custom-fields/entities', CustomFieldEntitiesController::class);
+Route::get('custom-fields/relation-targets', CustomFieldRelationTargetsController::class);
 
 Route::get('custom-fields/{customField}', [CustomFieldController::class, 'show']);
 Route::post('custom-fields', [CustomFieldController::class, 'store']);

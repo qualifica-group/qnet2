@@ -78,7 +78,7 @@ const guide: HelpGuide = {
             'Inserisci Codice e Nome.',
             'Scegli il Tipo di campo.',
             "Per un Elenco di opzioni aggiungi almeno un'opzione, con Valore ed Etichetta.",
-            'Per una Relazione scegli il modulo collegato.',
+            'Per una Relazione scegli il modulo collegato: oltre ai moduli puoi scegliere Province, per collegare una provincia.',
             'Premi Salva.',
           ],
         },

@@ -12,7 +12,10 @@ import { DefinitionTableColumnsEditor } from '@/features/custom-fields/component
 import { DefinitionTypeConfigFields } from '@/features/custom-fields/components/definition-type-config-fields'
 import { DefinitionValidationEditor } from '@/features/custom-fields/components/definition-validation-editor'
 import { useCustomFieldDefinitionForm } from '@/features/custom-fields/use-custom-field-definition-form'
-import { useCustomFieldEntities } from '@/features/custom-fields/use-custom-field-entities'
+import {
+  useCustomFieldEntities,
+  useCustomFieldRelationTargets,
+} from '@/features/custom-fields/use-custom-field-entities'
 import type { CustomFieldDefinitionDetail, CustomFieldDefinitionFormMode } from '@/features/custom-fields/types'
 
 interface CustomFieldDefinitionFormBodyProps {
@@ -39,6 +42,8 @@ export function CustomFieldDefinitionFormBody({
   const { form, serverError, onSubmit } = useCustomFieldDefinitionForm({ mode, onSuccess })
   const entitiesQuery = useCustomFieldEntities()
   const entities = entitiesQuery.data ?? []
+  const relationTargetsQuery = useCustomFieldRelationTargets()
+  const relationTargets = relationTargetsQuery.data ?? []
 
   const type = form.watch('type')
   const optionsError = form.formState.errors.options?.message
@@ -70,7 +75,7 @@ export function CustomFieldDefinitionFormBody({
           <DefinitionTableColumnsEditor control={form.control} type={type} />
 
           {type === 'relation' && (
-            <DefinitionRelationTargetEditor control={form.control} entities={entities} />
+            <DefinitionRelationTargetEditor control={form.control} entities={relationTargets} />
           )}
 
           <DefinitionValidationEditor control={form.control} type={type} />

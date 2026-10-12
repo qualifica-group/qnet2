@@ -59,7 +59,7 @@ const guide: HelpGuide = {
             ['**Tabella**', 'Più righe con colonne proprie, ad esempio le verifiche ispettive di una commessa.'],
           ],
         },
-        { type: 'list', items: ['**Elenco di opzioni:** aggiungi i valori con **Aggiungi opzione**. Ogni opzione ha **Valore**, **Etichetta** e, se vuoi, colore e icona. Serve almeno un’opzione.', '**Relazione:** scegli il **Modulo target** e la **Cardinalità**: **Singola** collega una scheda, **Multipla** più schede.', '**Testo** e numeri: puoi fissare lunghezze, minimo, massimo e cifre decimali.'] },
+        { type: 'list', items: ['**Elenco di opzioni:** aggiungi i valori con **Aggiungi opzione**. Ogni opzione ha **Valore**, **Etichetta** e, se vuoi, colore e icona. Serve almeno un’opzione.', '**Relazione:** scegli il **Modulo target** e la **Cardinalità**: **Singola** collega una scheda, **Multipla** più schede. Come modulo target puoi scegliere anche **Province**: il campo diventa una scelta tra le province.', '**Testo** e numeri: puoi fissare lunghezze, minimo, massimo e cifre decimali.'] },
         { type: 'paragraph', text: 'Nella sezione **Validazione**, **Obbligatorio** impedisce di salvare con il campo vuoto. **Univoco** impedisce che due schede dello stesso modulo abbiano lo stesso valore.' },
       ],
     },

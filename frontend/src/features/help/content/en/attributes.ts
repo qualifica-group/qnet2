@@ -78,7 +78,7 @@ const guide: HelpGuide = {
             'Enter Code and Name.',
             'Choose the field Type.',
             'For an Option list add at least one option, with a Value and a Label.',
-            'For a Relation choose the linked module.',
+            'For a Relation choose the linked module: besides the modules you can choose Provinces, to link a province.',
             'Press Save.',
           ],
         },
