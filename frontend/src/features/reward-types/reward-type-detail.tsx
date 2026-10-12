@@ -3,7 +3,6 @@ import { Gift } from 'lucide-react'
 import { DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,7 +11,6 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -42,15 +40,8 @@ export function RewardTypeDetailView({ rewardType, onEdit }: RewardTypeDetailVie
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab('reward-types', rewardType.id, t('activityLog.title'))]}
-            />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab('reward-types', rewardType.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={
               <DetailMonogram
@@ -62,22 +53,23 @@ export function RewardTypeDetailView({ rewardType, onEdit }: RewardTypeDetailVie
             title={rewardType.name}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('rewardTypes.form.sections.identity.title')} full>
-              <RecordFieldList>
-                <RecordField label={t('rewardTypes.detail.color')}>
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
-                      aria-hidden="true"
-                    />
-                    {t(`customFields.colors.${rewardType.color}`)}
-                  </span>
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('rewardTypes.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <RecordField label={t('rewardTypes.detail.color')}>
+                <span className="flex items-center gap-2">
+                  <span
+                    className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
+                    aria-hidden="true"
+                  />
+                  {t(`customFields.colors.${rewardType.color}`)}
+                </span>
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       <RecordMeta>

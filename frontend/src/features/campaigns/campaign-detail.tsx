@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import {
   CampaignDetailHeader,
@@ -39,13 +38,15 @@ export function CampaignDetailView({ campaign, onEdit }: CampaignDetailViewProps
   return (
     <RecordCanvas>
       <RecordBody
-        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <CampaignDetailHeader campaign={campaign} onEdit={onEdit} />
+            <CampaignDetailStats campaign={campaign} />
+          </>
+        }
       >
-        <RecordCard>
-          <CampaignDetailHeader campaign={campaign} onEdit={onEdit} />
-          <CampaignDetailStats campaign={campaign} />
-          <CampaignDetailSections campaign={campaign} />
-        </RecordCard>
+        <CampaignDetailSections campaign={campaign} />
       </RecordBody>
 
       {createdAt ? (

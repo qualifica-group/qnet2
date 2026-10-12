@@ -1,12 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
-import { PersonalDataRecordCards } from '@/features/personal-data/personal-data-record-cards'
+import { PersonalDataRecordSections } from '@/features/personal-data/personal-data-record-cards'
 import { ReferentDetailHeader, ReferentDetailStats } from '@/features/referents/referent-detail-header'
 import { ReferentDetailSections } from '@/features/referents/referent-detail-sections'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -21,11 +18,12 @@ interface ReferentDetailViewProps {
 /**
  * Read-only detail of a single referente, rendered as an enterprise-CRM record
  * — the same kit the Opportunità record and the anagrafica use (user directive
- * 2026-09-11): identity + KPI + sections on the left, "how to reach them"
- * (contacts, addresses) and the activity log on the right, a metadata footer.
+ * 2026-09-11): identity + KPI, then the sections and "how to reach them"
+ * (contacts, addresses) in the record card, the activity log in the side
+ * column, a metadata footer.
  *
  * Deliberately the TWIN of `RegistryDetailView`, down to the shared blocks
- * (`PersonalDataRecordCards`, `PersonalDataIdentityRows`): a referente is an
+ * (`PersonalDataRecordSections`, `PersonalDataIdentityRows`): a referente is an
  * anagraphic card with fewer own fields, and the two screens must not drift on
  * the half they have in common.
  */
@@ -39,22 +37,22 @@ export function ReferentDetailView({ referent, onEdit }: ReferentDetailViewProps
   return (
     <RecordCanvas>
       <RecordBody
-        side={
+        collaborationTabs={collaborationTabs}
+        header={
           <>
-            <PersonalDataRecordCards
-              card={referent.personal_data}
-              contactsTitle={t('referents.form.sections.contacts.title')}
-              addressesTitle={t('referents.form.sections.addresses.title')}
-            />
-            <RecordCollaborationCard tabs={collaborationTabs} />
+            <ReferentDetailHeader referent={referent} onEdit={onEdit} />
+            <ReferentDetailStats referent={referent} />
           </>
         }
       >
-        <RecordCard>
-          <ReferentDetailHeader referent={referent} onEdit={onEdit} />
-          <ReferentDetailStats referent={referent} />
-          <ReferentDetailSections referent={referent} />
-        </RecordCard>
+        <ReferentDetailSections referent={referent} />
+        <RecordSectionsGrid className="border-t">
+          <PersonalDataRecordSections
+            card={referent.personal_data}
+            contactsTitle={t('referents.form.sections.contacts.title')}
+            addressesTitle={t('referents.form.sections.addresses.title')}
+          />
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (

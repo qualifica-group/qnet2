@@ -4,15 +4,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Landmark, MapPin, Phone } from 'lucide-react'
 import { DetailEmpty, DetailError, DetailLoading } from '@/components/detail/detail-panel'
-import {
-  RecordCanvas,
-  RecordCard,
-  RecordMeta,
-  RecordSection,
-  RecordSectionsGrid,
-} from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import {
   CompanySiteDetailHeader,
   CompanySiteDetailStats,
@@ -123,50 +116,51 @@ export function CompanySiteDetailView({
   return (
     <RecordCanvas>
       <RecordBody
-        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <CompanySiteDetailHeader
+              site={site}
+              onEdit={onEdit}
+              onSetDefault={canSetDefault ? () => void handleSetDefault() : undefined}
+              isSettingDefault={settingDefault}
+            />
+            <CompanySiteDetailStats site={site} />
+          </>
+        }
       >
-        <RecordCard>
-          <CompanySiteDetailHeader
-            site={site}
-            onEdit={onEdit}
-            onSetDefault={canSetDefault ? () => void handleSetDefault() : undefined}
-            isSettingDefault={settingDefault}
-          />
-          <CompanySiteDetailStats site={site} />
+        <RecordSectionsGrid>
+          <RecordSection title={t('companySites.form.sections.contacts.title')} icon={<Phone />}>
+            {draft ? (
+              <ContactsManager
+                value={draft.contacts}
+                onChange={noopChange}
+                fieldPermission={READ_ONLY_FIELD_PERMISSION}
+                showHeader={false}
+              />
+            ) : (
+              <DetailEmpty />
+            )}
+          </RecordSection>
 
-          <RecordSectionsGrid>
-            <RecordSection title={t('companySites.form.sections.contacts.title')} icon={<Phone />}>
-              {draft ? (
-                <ContactsManager
-                  value={draft.contacts}
-                  onChange={noopChange}
-                  fieldPermission={READ_ONLY_FIELD_PERMISSION}
-                  showHeader={false}
-                />
-              ) : (
-                <DetailEmpty />
-              )}
-            </RecordSection>
+          <RecordSection title={t('companySites.form.sections.address.title')} icon={<MapPin />}>
+            {draft ? (
+              <AddressesManager
+                value={draft.addresses}
+                onChange={noopChange}
+                fieldPermission={READ_ONLY_FIELD_PERMISSION}
+                showHeader={false}
+                showSiteType
+              />
+            ) : (
+              <DetailEmpty />
+            )}
+          </RecordSection>
 
-            <RecordSection title={t('companySites.form.sections.address.title')} icon={<MapPin />}>
-              {draft ? (
-                <AddressesManager
-                  value={draft.addresses}
-                  onChange={noopChange}
-                  fieldPermission={READ_ONLY_FIELD_PERMISSION}
-                  showHeader={false}
-                  showSiteType
-                />
-              ) : (
-                <DetailEmpty />
-              )}
-            </RecordSection>
-
-            <RecordSection title={t('companySites.form.sections.banks.title')} icon={<Landmark />} full>
-              <BanksBlock banks={site.banks} />
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+          <RecordSection title={t('companySites.form.sections.banks.title')} icon={<Landmark />} full>
+            <BanksBlock banks={site.banks} />
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (

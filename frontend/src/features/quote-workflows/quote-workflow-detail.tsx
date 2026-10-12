@@ -3,7 +3,6 @@ import { Workflow } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,7 +11,6 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { Badge } from '@/components/ui/badge'
@@ -43,15 +41,8 @@ export function QuoteWorkflowDetailView({ quoteWorkflow, onEdit }: QuoteWorkflow
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab('quote-workflows', quoteWorkflow.id, t('activityLog.title'))]}
-            />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab('quote-workflows', quoteWorkflow.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={quoteWorkflow.name} icon={<Workflow />} />}
             title={quoteWorkflow.name}
@@ -62,49 +53,50 @@ export function QuoteWorkflowDetailView({ quoteWorkflow, onEdit }: QuoteWorkflow
             }
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('quoteWorkflows.detail.criteriaTitle')}>
-              {quoteWorkflow.criteria.length === 0 ? (
-                <DetailEmpty />
-              ) : (
-                <RecordFieldList>
-                  {quoteWorkflow.criteria.map((criterion) => (
-                    <RecordField
-                      key={criterion.id}
-                      label={criterion.field_source === 'custom' ? criterion.field_label : t(criterion.field_label)}
-                    >
-                      {criterion.value_label}
-                    </RecordField>
-                  ))}
-                </RecordFieldList>
-              )}
-            </RecordSection>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('quoteWorkflows.detail.criteriaTitle')}>
+            {quoteWorkflow.criteria.length === 0 ? (
+              <DetailEmpty />
+            ) : (
+              <RecordFieldList>
+                {quoteWorkflow.criteria.map((criterion) => (
+                  <RecordField
+                    key={criterion.id}
+                    label={criterion.field_source === 'custom' ? criterion.field_label : t(criterion.field_label)}
+                  >
+                    {criterion.value_label}
+                  </RecordField>
+                ))}
+              </RecordFieldList>
+            )}
+          </RecordSection>
 
-            <RecordSection title={t('quoteWorkflows.detail.statusesTitle')}>
-              {quoteWorkflow.statuses.length === 0 ? (
-                <DetailEmpty />
-              ) : (
-                <ul className="flex flex-col gap-1.5">
-                  {quoteWorkflow.statuses.map((status) => {
-                    const swatch = swatchClassFor(status.color)
-                    return (
-                      <li key={status.id} className="flex items-center gap-2 text-sm">
-                        <span
-                          className={cn('size-2.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
-                          aria-hidden="true"
-                        />
-                        <span className="flex-1 truncate">{status.name}</span>
-                        <Badge variant="secondary" className="shrink-0">
-                          {t(`quoteWorkflows.form.statuses.group.${status.group}`)}
-                        </Badge>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+          <RecordSection title={t('quoteWorkflows.detail.statusesTitle')}>
+            {quoteWorkflow.statuses.length === 0 ? (
+              <DetailEmpty />
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {quoteWorkflow.statuses.map((status) => {
+                  const swatch = swatchClassFor(status.color)
+                  return (
+                    <li key={status.id} className="flex items-center gap-2 text-sm">
+                      <span
+                        className={cn('size-2.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
+                        aria-hidden="true"
+                      />
+                      <span className="flex-1 truncate">{status.name}</span>
+                      <Badge variant="secondary" className="shrink-0">
+                        {t(`quoteWorkflows.form.statuses.group.${status.group}`)}
+                      </Badge>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (

@@ -3,7 +3,6 @@ import { Flag } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,7 +11,6 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -42,15 +40,8 @@ export function PipelineStatusDetailView({ pipelineStatus, onEdit }: PipelineSta
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab('pipeline-statuses', pipelineStatus.id, t('activityLog.title'))]}
-            />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab('pipeline-statuses', pipelineStatus.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={
               <DetailMonogram
@@ -62,32 +53,33 @@ export function PipelineStatusDetailView({ pipelineStatus, onEdit }: PipelineSta
             title={pipelineStatus.name}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('pipelineStatuses.form.sections.identity.title')} full>
-              <RecordFieldList>
-                <RecordField label={t('pipelineStatuses.detail.color')}>
-                  {pipelineStatus.color ? (
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
-                        aria-hidden="true"
-                      />
-                      {t(`customFields.colors.${pipelineStatus.color}`)}
-                    </span>
-                  ) : (
-                    <DetailEmpty />
-                  )}
-                </RecordField>
-                <RecordField label={t('pipelineStatuses.detail.sort_order')}>
-                  {pipelineStatus.sort_order}
-                </RecordField>
-                <RecordField label={t('pipelineStatuses.detail.group')}>
-                  {t(`pipelineStatuses.form.group.${pipelineStatus.group}`)}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('pipelineStatuses.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <RecordField label={t('pipelineStatuses.detail.color')}>
+                {pipelineStatus.color ? (
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
+                      aria-hidden="true"
+                    />
+                    {t(`customFields.colors.${pipelineStatus.color}`)}
+                  </span>
+                ) : (
+                  <DetailEmpty />
+                )}
+              </RecordField>
+              <RecordField label={t('pipelineStatuses.detail.sort_order')}>
+                {pipelineStatus.sort_order}
+              </RecordField>
+              <RecordField label={t('pipelineStatuses.detail.group')}>
+                {t(`pipelineStatuses.form.group.${pipelineStatus.group}`)}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (

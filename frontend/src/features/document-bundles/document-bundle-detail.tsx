@@ -4,7 +4,6 @@ import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,10 +11,7 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
@@ -53,37 +49,39 @@ export function DocumentBundleDetailView({ documentBundle, onEdit }: DocumentBun
 
   return (
     <RecordCanvas>
-      <RecordBody side={tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}>
-        <RecordCard>
+      <RecordBody
+        collaborationTabs={tabs}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={documentBundle.name} icon={<FolderArchive />} />}
             title={documentBundle.name}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('documentBundles.form.sections.identity.title')} full>
-              <RecordFieldList>
-                <RecordField label={t('documentBundles.detail.description')}>
-                  {documentBundle.description ? documentBundle.description : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('documentBundles.detail.isActive')}>
-                  {documentBundle.is_active ? t('common.yes') : t('common.no')}
-                </RecordField>
-                <RecordField label={t('documentBundles.detail.filesCount')}>
-                  {documentBundle.files_count}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-            <RecordSection title={t('documentBundles.form.sections.files.title')} full>
-              <DocumentsSection
-                resource={DOCUMENT_BUNDLE_ATTACHABLE_ALIAS}
-                id={documentBundle.id}
-                canUpload={can('attachments.create')}
-                canDelete={can('attachments.delete')}
-              />
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('documentBundles.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <RecordField label={t('documentBundles.detail.description')}>
+                {documentBundle.description ? documentBundle.description : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('documentBundles.detail.isActive')}>
+                {documentBundle.is_active ? t('common.yes') : t('common.no')}
+              </RecordField>
+              <RecordField label={t('documentBundles.detail.filesCount')}>
+                {documentBundle.files_count}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+          <RecordSection title={t('documentBundles.form.sections.files.title')} full>
+            <DocumentsSection
+              resource={DOCUMENT_BUNDLE_ATTACHABLE_ALIAS}
+              id={documentBundle.id}
+              canUpload={can('attachments.create')}
+              canDelete={can('attachments.delete')}
+            />
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       <RecordMeta>

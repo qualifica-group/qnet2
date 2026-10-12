@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { LeadDetailHeader, LeadDetailStats } from '@/features/leads/lead-detail-header'
 import { LeadDetailSections } from '@/features/leads/lead-detail-sections'
@@ -37,13 +36,15 @@ export function LeadDetailView({ lead, onEdit }: LeadDetailViewProps) {
   return (
     <RecordCanvas>
       <RecordBody
-        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <LeadDetailHeader lead={lead} onEdit={onEdit} />
+            <LeadDetailStats lead={lead} />
+          </>
+        }
       >
-        <RecordCard>
-          <LeadDetailHeader lead={lead} onEdit={onEdit} />
-          <LeadDetailStats lead={lead} />
-          <LeadDetailSections lead={lead} />
-        </RecordCard>
+        <LeadDetailSections lead={lead} />
       </RecordBody>
 
       <RecordMeta>

@@ -4,7 +4,6 @@ import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,10 +11,7 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
@@ -50,52 +46,54 @@ export function TaskTypeDetailView({ taskType, onEdit }: TaskTypeDetailViewProps
 
   return (
     <RecordCanvas>
-      <RecordBody side={tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}>
-        <RecordCard>
+      <RecordBody
+        collaborationTabs={tabs}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={taskType.name} icon={<Shapes />} />}
             title={taskType.name}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('taskTypes.form.sections.identity.title')} full>
-              <RecordFieldList>
-                <RecordField label={t('taskTypes.detail.description')}>
-                  {taskType.description ? taskType.description : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('taskTypes.detail.color')}>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('taskTypes.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <RecordField label={t('taskTypes.detail.description')}>
+                {taskType.description ? taskType.description : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('taskTypes.detail.color')}>
+                <span className="flex items-center gap-2">
+                  <span
+                    className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
+                    aria-hidden="true"
+                  />
+                  {t(`customFields.colors.${taskType.color}`)}
+                </span>
+              </RecordField>
+              <RecordField label={t('taskTypes.detail.icon')}>
+                {taskType.icon ? (
                   <span className="flex items-center gap-2">
-                    <span
-                      className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
-                      aria-hidden="true"
-                    />
-                    {t(`customFields.colors.${taskType.color}`)}
+                    <DynamicIcon name={taskType.icon} className="size-3.5 text-muted-foreground" />
+                    {taskType.icon}
                   </span>
-                </RecordField>
-                <RecordField label={t('taskTypes.detail.icon')}>
-                  {taskType.icon ? (
-                    <span className="flex items-center gap-2">
-                      <DynamicIcon name={taskType.icon} className="size-3.5 text-muted-foreground" />
-                      {taskType.icon}
-                    </span>
-                  ) : (
-                    <DetailEmpty />
-                  )}
-                </RecordField>
-                <RecordField label={t('taskTypes.detail.sort_order')}>{taskType.sort_order}</RecordField>
-                <RecordField label={t('taskTypes.detail.isActive')}>
-                  {taskType.is_active ? t('common.yes') : t('common.no')}
-                </RecordField>
-                <RecordField label={t('taskTypes.detail.isDefault')}>
-                  {taskType.is_default ? t('common.yes') : t('common.no')}
-                </RecordField>
-                <RecordField label={t('taskTypes.detail.requiresTimeEntry')}>
-                  {taskType.requires_time_entry ? t('common.yes') : t('common.no')}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+                ) : (
+                  <DetailEmpty />
+                )}
+              </RecordField>
+              <RecordField label={t('taskTypes.detail.sort_order')}>{taskType.sort_order}</RecordField>
+              <RecordField label={t('taskTypes.detail.isActive')}>
+                {taskType.is_active ? t('common.yes') : t('common.no')}
+              </RecordField>
+              <RecordField label={t('taskTypes.detail.isDefault')}>
+                {taskType.is_default ? t('common.yes') : t('common.no')}
+              </RecordField>
+              <RecordField label={t('taskTypes.detail.requiresTimeEntry')}>
+                {taskType.requires_time_entry ? t('common.yes') : t('common.no')}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       <RecordMeta>

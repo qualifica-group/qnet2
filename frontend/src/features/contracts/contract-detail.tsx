@@ -1,12 +1,9 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Paperclip } from 'lucide-react'
-import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
@@ -109,26 +106,28 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
     <ResourcePermissionsProvider permissions={contract.permissions}>
       <RecordCanvas>
         <RecordBody
-          side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+          collaborationTabs={collaborationTabs}
+          header={
+            <>
+              <ContractDetailHeader contract={contract} />
+              <ContractActionsBar
+                contract={contract}
+                onChanged={setContract}
+                onWorkOrderCreated={() => workOrdersRef.current?.refresh()}
+              />
+            </>
+          }
         >
-          <RecordCard>
-            <ContractDetailHeader contract={contract} />
-            <ContractActionsBar
-              contract={contract}
-              onChanged={setContract}
-              onWorkOrderCreated={() => workOrdersRef.current?.refresh()}
-            />
-            <ContractDetailSections contract={contract} />
+          <ContractDetailSections contract={contract} />
 
-            {/* Banda di chiusura: le sole righe di ricavo del preventivo
-                (BR-7), read-only. Nessuna strip (qui c'e' una sola collezione,
-                non due come sull'Offerta) e nessun riepilogo economico —
-                ricavi/costi/margine attesi sono usciti dalla scheda per
-                direttiva utente 2026-08-31. */}
-            <div className="min-w-0 border-t p-4">
-              <QuoteLinesReadOnlyList lines={contract.offer_lines} />
-            </div>
-          </RecordCard>
+          {/* Banda di chiusura: le sole righe di ricavo del preventivo
+              (BR-7), read-only. Nessuna strip (qui c'e' una sola collezione,
+              non due come sull'Offerta) e nessun riepilogo economico —
+              ricavi/costi/margine attesi sono usciti dalla scheda per
+              direttiva utente 2026-08-31. */}
+          <div className="min-w-0 border-t p-4">
+            <QuoteLinesReadOnlyList lines={contract.offer_lines} />
+          </div>
         </RecordBody>
 
         {/*

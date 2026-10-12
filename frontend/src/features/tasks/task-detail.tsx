@@ -1,8 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Form } from '@/components/ui/form'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordDetailsTabs } from '@/components/detail/record-collaboration-body'
-import { RecordCanvas, RecordCard, RecordMeta, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { TaskActionsBar } from '@/features/tasks/task-actions-bar'
@@ -43,9 +42,8 @@ interface TaskDetailViewProps {
  * `useTaskInlineEdit`), each save a PATCH of that field alone.
  *
  * Spec 0117/0134 D-3: note, documenti, log attivita' e segnatempo vivono
- * nella card di collaborazione: colonna laterale fissa e comprimibile quando
- * c'e' spazio, schede accanto a "Dettagli" quando lo spazio e' stretto
- * (`RecordBody collaborationTabs` + `RecordDetailsTabs`).
+ * nella colonna laterale di `RecordBody` (comprimibile quando c'e' spazio,
+ * schede accanto a "Dettagli" quando lo spazio e' stretto).
  */
 export function TaskDetailView(props: TaskDetailViewProps) {
   // The edit form reads the field permissions while it is built (`useTaskForm`),
@@ -66,38 +64,37 @@ function TaskDetailContent({ task, onOpenSubtask, onCreateSubtask, onChanged }: 
 
   return (
     <RecordCanvas>
-      <RecordBody collaborationTabs={collaborationTabs}>
-        <RecordCard>
-          <TaskDetailHeader task={task} />
+      <RecordBody
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <TaskDetailHeader task={task} />
+            <TaskActionsBar task={task} />
+            <TaskDetailStats task={task} />
+          </>
+        }
+      >
+        <RecordSectionsGrid>
+          {/* Provider only (no DOM): the inline editors share the edit form. */}
+          <Form {...editor.form}>
+            <TaskDetailIdentitySection task={task} editor={editor} />
+            <TaskDetailClassificationSection task={task} editor={editor} />
+            <TaskDetailPeopleSection task={task} editor={editor} />
+            <TaskDetailPlanningSection task={task} editor={editor} />
+            <TaskDetailLinksSection task={task} editor={editor} />
+            <TaskDetailClosureSection task={task} editor={editor} />
+            <TaskDetailRecurrenceSection task={task} editor={editor} />
+          </Form>
 
-          <TaskActionsBar task={task} />
-
-          <TaskDetailStats task={task} />
-
-          <RecordDetailsTabs>
-            <RecordSectionsGrid>
-              {/* Provider only (no DOM): the inline editors share the edit form. */}
-              <Form {...editor.form}>
-                <TaskDetailIdentitySection task={task} editor={editor} />
-                <TaskDetailClassificationSection task={task} editor={editor} />
-                <TaskDetailPeopleSection task={task} editor={editor} />
-                <TaskDetailPlanningSection task={task} editor={editor} />
-                <TaskDetailLinksSection task={task} editor={editor} />
-                <TaskDetailClosureSection task={task} editor={editor} />
-                <TaskDetailRecurrenceSection task={task} editor={editor} />
-              </Form>
-
-              <TaskSubtasksSection
-                parentTaskId={task.id}
-                subtasks={task.subtasks}
-                onOpen={onOpenSubtask}
-                onCreate={onCreateSubtask}
-                canCreateSubtask={task.permissions.actions.create_subtask}
-                canReorder={task.permissions.resource.update}
-              />
-            </RecordSectionsGrid>
-          </RecordDetailsTabs>
-        </RecordCard>
+          <TaskSubtasksSection
+            parentTaskId={task.id}
+            subtasks={task.subtasks}
+            onOpen={onOpenSubtask}
+            onCreate={onCreateSubtask}
+            canCreateSubtask={task.permissions.actions.create_subtask}
+            canReorder={task.permissions.resource.update}
+          />
+        </RecordSectionsGrid>
       </RecordBody>
 
       <RecordMeta>

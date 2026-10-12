@@ -4,7 +4,6 @@ import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -14,10 +13,7 @@ import {
   RecordStat,
   RecordStatStrip,
 } from '@/components/detail/record-panel'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
@@ -100,117 +96,118 @@ export function ProductCategoryDetailView({ category, onEdit }: ProductCategoryD
   return (
     <RecordCanvas>
       <RecordBody
-        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
-      >
-        <RecordCard>
-          <RecordCardHeader
-            media={
-              <DetailMonogram
-                name={category.name}
-                icon={<FolderTree />}
-                className="size-10 text-base [&>svg]:size-5"
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <RecordCardHeader
+              media={
+                <DetailMonogram
+                  name={category.name}
+                  icon={<FolderTree />}
+                  className="size-10 text-base [&>svg]:size-5"
+                />
+              }
+              title={category.name}
+              subtitle={category.parent?.name}
+              badges={
+                <>
+                  {category.parent === null ? (
+                    <Badge variant="outline">{t('productCategories.badges.root')}</Badge>
+                  ) : null}
+                  {/* A pure container is not otherwise visible without
+                      scrolling down to the rules, and it changes where the
+                      category may be used at all. */}
+                  {!category.is_selectable ? (
+                    <Badge variant="outline">
+                      <EyeOff aria-hidden="true" />
+                      {t('productCategories.badges.notSelectable')}
+                    </Badge>
+                  ) : null}
+                  {!category.is_active ? (
+                    <Badge variant="outline">
+                      <Power aria-hidden="true" />
+                      {t('productCategories.badges.notActive')}
+                    </Badge>
+                  ) : null}
+                  {category.effective_is_reportable ? (
+                    <Badge variant="outline">
+                      <ChartNoAxesColumn aria-hidden="true" />
+                      {t('productCategories.badges.reportable')}
+                    </Badge>
+                  ) : null}
+                </>
+              }
+              actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+            />
+
+            <RecordStatStrip className={STAT_STRIP_CLASS}>
+              <RecordStat
+                label={t('productCategories.form.businessFunction')}
+                icon={<Briefcase aria-hidden="true" />}
+                value={effectiveBusinessFunction?.name ?? <DetailEmpty />}
+                hint={
+                  effectiveBusinessFunction?.inherited && effectiveBusinessFunction.source_category
+                    ? t('productCategories.detail.businessFunctionInherited', {
+                        category: effectiveBusinessFunction.source_category.name,
+                      })
+                    : undefined
+                }
               />
-            }
-            title={category.name}
-            subtitle={category.parent?.name}
-            badges={
-              <>
-                {category.parent === null ? (
-                  <Badge variant="outline">{t('productCategories.badges.root')}</Badge>
-                ) : null}
-                {/* A pure container is not otherwise visible without
-                    scrolling down to the rules, and it changes where the
-                    category may be used at all. */}
-                {!category.is_selectable ? (
-                  <Badge variant="outline">
-                    <EyeOff aria-hidden="true" />
-                    {t('productCategories.badges.notSelectable')}
-                  </Badge>
-                ) : null}
-                {!category.is_active ? (
-                  <Badge variant="outline">
-                    <Power aria-hidden="true" />
-                    {t('productCategories.badges.notActive')}
-                  </Badge>
-                ) : null}
-                {category.effective_is_reportable ? (
-                  <Badge variant="outline">
-                    <ChartNoAxesColumn aria-hidden="true" />
-                    {t('productCategories.badges.reportable')}
-                  </Badge>
-                ) : null}
-              </>
-            }
-            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
-          />
+              <RecordStat
+                label={t('productCategories.form.attributes')}
+                icon={<ListChecks aria-hidden="true" />}
+                value={category.attributes.length}
+                hint={
+                  inheritedAttributesCount > 0
+                    ? t('productCategories.detail.inheritedCount', { count: inheritedAttributesCount })
+                    : undefined
+                }
+              />
+              <RecordStat
+                label={t('productCategories.form.sections.managerLabels.title')}
+                icon={<Users aria-hidden="true" />}
+                value={resolvedManagerLabels.length}
+              />
+            </RecordStatStrip>
+          </>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('productCategories.form.sections.identity.title')} icon={<FolderTree />}>
+            <RecordFieldList>
+              <RecordField label={t('productCategories.form.parent')}>
+                {category.parent?.name ?? t('productCategories.badges.root')}
+              </RecordField>
+              <RecordField label={t('productCategories.form.description')}>
+                {category.description ?? <DetailEmpty />}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
 
-          <RecordStatStrip className={STAT_STRIP_CLASS}>
-            <RecordStat
-              label={t('productCategories.form.businessFunction')}
-              icon={<Briefcase aria-hidden="true" />}
-              value={effectiveBusinessFunction?.name ?? <DetailEmpty />}
-              hint={
-                effectiveBusinessFunction?.inherited && effectiveBusinessFunction.source_category
-                  ? t('productCategories.detail.businessFunctionInherited', {
-                      category: effectiveBusinessFunction.source_category.name,
-                    })
-                  : undefined
-              }
-            />
-            <RecordStat
-              label={t('productCategories.form.attributes')}
-              icon={<ListChecks aria-hidden="true" />}
-              value={category.attributes.length}
-              hint={
-                inheritedAttributesCount > 0
-                  ? t('productCategories.detail.inheritedCount', { count: inheritedAttributesCount })
-                  : undefined
-              }
-            />
-            <RecordStat
-              label={t('productCategories.form.sections.managerLabels.title')}
-              icon={<Users aria-hidden="true" />}
-              value={resolvedManagerLabels.length}
-            />
-          </RecordStatStrip>
-
-          <RecordSectionsGrid>
-            <RecordSection title={t('productCategories.form.sections.identity.title')} icon={<FolderTree />}>
+          {resolvedManagerLabels.length > 0 && (
+            <RecordSection title={t('productCategories.form.sections.managerLabels.title')} icon={<Users />}>
               <RecordFieldList>
-                <RecordField label={t('productCategories.form.parent')}>
-                  {category.parent?.name ?? t('productCategories.badges.root')}
-                </RecordField>
-                <RecordField label={t('productCategories.form.description')}>
-                  {category.description ?? <DetailEmpty />}
-                </RecordField>
+                {resolvedManagerLabels.map(({ position, label, inherited }) => (
+                  <RecordField
+                    key={position}
+                    label={t('productCategories.form.managerLabelLevel', { n: position })}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>{label}</span>
+                      {inherited && (
+                        <Badge variant="outline" className="text-xs">
+                          {t('productCategories.detail.managerLabelInherited')}
+                        </Badge>
+                      )}
+                    </div>
+                  </RecordField>
+                ))}
               </RecordFieldList>
             </RecordSection>
+          )}
 
-            {resolvedManagerLabels.length > 0 && (
-              <RecordSection title={t('productCategories.form.sections.managerLabels.title')} icon={<Users />}>
-                <RecordFieldList>
-                  {resolvedManagerLabels.map(({ position, label, inherited }) => (
-                    <RecordField
-                      key={position}
-                      label={t('productCategories.form.managerLabelLevel', { n: position })}
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span>{label}</span>
-                        {inherited && (
-                          <Badge variant="outline" className="text-xs">
-                            {t('productCategories.detail.managerLabelInherited')}
-                          </Badge>
-                        )}
-                      </div>
-                    </RecordField>
-                  ))}
-                </RecordFieldList>
-              </RecordSection>
-            )}
-
-            <ProductCategoryDetailRules category={category} />
-          </RecordSectionsGrid>
-        </RecordCard>
+          <ProductCategoryDetailRules category={category} />
+        </RecordSectionsGrid>
 
         <CategoryAttributesContextSection
           title={t('productCategories.form.sections.productAttributes.title')}

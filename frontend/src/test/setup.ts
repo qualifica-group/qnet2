@@ -1,4 +1,4 @@
-import { afterEach } from 'vitest'
+import { afterEach, beforeEach } from 'vitest'
 
 // Node 24+ exposes a global Web Storage `localStorage`, backed by
 // `--localstorage-file`. When that flag has no valid path (this sandbox),
@@ -80,6 +80,15 @@ if (typeof window !== 'undefined') {
       }
     }
   }
+
+  // Record details start with their side column collapsed (user directive
+  // 2026-10-12), which keeps the collaboration tabs unmounted. The module
+  // tests check what each detail puts IN those tabs, so they run with the
+  // column open; the collapsed default is covered by the kit's own tests,
+  // which clear the storage first.
+  beforeEach(() => {
+    window.localStorage.setItem('record.side.collapsed', 'false')
+  })
 
   // Unmount React trees and reset jsdom between tests.
   afterEach(() => {

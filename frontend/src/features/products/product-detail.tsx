@@ -6,7 +6,6 @@ import { RecordBody } from '@/components/detail/record-body'
 import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -16,10 +15,7 @@ import {
   RecordStat,
   RecordStatStrip,
 } from '@/components/detail/record-panel'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -73,149 +69,150 @@ export function ProductDetailView({ product, onEdit }: ProductDetailViewProps) {
   return (
     <RecordCanvas>
       <RecordBody
-        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
-      >
-        <RecordCard>
-          <RecordCardHeader
-            media={
-              <DetailMonogram
-                name={product.name}
-                icon={<Package />}
-                className="size-10 text-base [&>svg]:size-5"
-              />
-            }
-            title={product.name}
-            subtitle={product.category?.name}
-            badges={
-              <>
-                <Badge variant="outline">
-                  <Hash aria-hidden="true" />
-                  {product.code}
-                </Badge>
-                <Badge variant="secondary">{productTypeLabel}</Badge>
-                {product.product_typology ? (
-                  <ProductTypologyBadge name={product.product_typology.name} color={product.product_typology.color} />
-                ) : null}
-              </>
-            }
-            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
-          />
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <RecordCardHeader
+              media={
+                <DetailMonogram
+                  name={product.name}
+                  icon={<Package />}
+                  className="size-10 text-base [&>svg]:size-5"
+                />
+              }
+              title={product.name}
+              subtitle={product.category?.name}
+              badges={
+                <>
+                  <Badge variant="outline">
+                    <Hash aria-hidden="true" />
+                    {product.code}
+                  </Badge>
+                  <Badge variant="secondary">{productTypeLabel}</Badge>
+                  {product.product_typology ? (
+                    <ProductTypologyBadge name={product.product_typology.name} color={product.product_typology.color} />
+                  ) : null}
+                </>
+              }
+              actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+            />
 
-          {statCount > 0 ? (
-            <RecordStatStrip className={STAT_STRIP_CLASS[statCount]}>
-              {pricing.price ? (
-                <RecordStat
-                  label={t('products.columns.price')}
-                  icon={<TrendingUp aria-hidden="true" />}
-                  value={formatDecimal(product.price) || <DetailEmpty />}
-                />
+            {statCount > 0 ? (
+              <RecordStatStrip className={STAT_STRIP_CLASS[statCount]}>
+                {pricing.price ? (
+                  <RecordStat
+                    label={t('products.columns.price')}
+                    icon={<TrendingUp aria-hidden="true" />}
+                    value={formatDecimal(product.price) || <DetailEmpty />}
+                  />
+                ) : null}
+                {pricing.cost ? (
+                  <RecordStat
+                    label={t('products.columns.cost')}
+                    icon={<TrendingDown aria-hidden="true" />}
+                    value={formatDecimal(product.cost) || <DetailEmpty />}
+                  />
+                ) : null}
+                {pricing.margin ? (
+                  <RecordStat
+                    label={t('products.margin')}
+                    icon={<Wallet aria-hidden="true" />}
+                    value={
+                      margin ? (
+                        <span className={cn(margin.amount < 0 && 'text-destructive')}>
+                          {formatDecimal(margin.amount)}
+                        </span>
+                      ) : (
+                        <DetailEmpty />
+                      )
+                    }
+                    hint={
+                      margin && margin.percent !== null
+                        ? t('products.marginPercent', { percent: formatDecimal(margin.percent) })
+                        : undefined
+                    }
+                  />
+                ) : null}
+              </RecordStatStrip>
+            ) : null}
+          </>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('products.form.sections.identity.title')} icon={<Package />}>
+            <RecordFieldList>
+              <RecordField label={t('products.form.code')}>{product.code}</RecordField>
+              <RecordField label={t('products.columns.product_type')}>
+                <Badge variant="secondary">{productTypeLabel}</Badge>
+              </RecordField>
+              <RecordField label={t('products.columns.usages')}>
+                {product.usages && product.usages.length > 0 ? (
+                  <span className="flex flex-wrap gap-1">
+                    {product.usages.map((usage) => (
+                      <Badge key={usage} variant="outline">
+                        {enumLabelOf('product_usage', usage)}
+                      </Badge>
+                    ))}
+                  </span>
+                ) : (
+                  <DetailEmpty />
+                )}
+              </RecordField>
+              <RecordField label={t('products.columns.description')}>
+                {product.description ?? <DetailEmpty />}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+
+          <RecordSection title={t('products.form.sections.classification.title')} icon={<FolderTree />}>
+            <RecordFieldList>
+              <RecordField label={t('products.columns.category')}>
+                {product.category?.name ?? <DetailEmpty />}
+              </RecordField>
+              {product.business_function ? (
+                <RecordField label={t('products.columns.business_function')}>
+                  {product.business_function.name}
+                </RecordField>
               ) : null}
-              {pricing.cost ? (
-                <RecordStat
-                  label={t('products.columns.cost')}
-                  icon={<TrendingDown aria-hidden="true" />}
-                  value={formatDecimal(product.cost) || <DetailEmpty />}
-                />
+              {product.product_typology ? (
+                <RecordField label={t('products.form.productTypology')}>
+                  <ProductTypologyBadge name={product.product_typology.name} color={product.product_typology.color} />
+                </RecordField>
               ) : null}
-              {pricing.margin ? (
-                <RecordStat
-                  label={t('products.margin')}
-                  icon={<Wallet aria-hidden="true" />}
-                  value={
-                    margin ? (
-                      <span className={cn(margin.amount < 0 && 'text-destructive')}>
-                        {formatDecimal(margin.amount)}
-                      </span>
-                    ) : (
-                      <DetailEmpty />
-                    )
-                  }
-                  hint={
-                    margin && margin.percent !== null
-                      ? t('products.marginPercent', { percent: formatDecimal(margin.percent) })
-                      : undefined
-                  }
-                />
+              {product.unit_of_measure ? (
+                <RecordField label={t('products.form.unitOfMeasure')}>
+                  {product.unit_of_measure.name}
+                </RecordField>
               ) : null}
-            </RecordStatStrip>
+            </RecordFieldList>
+          </RecordSection>
+
+          {/* Absent as a whole when neither is assigned: an empty
+              "Prezzi e fornitura" card would read as data we failed to
+              load rather than as data nobody filled in. */}
+          {product.vat_rate || product.supplier ? (
+            <RecordSection title={t('products.form.sections.pricing.title')} icon={<Wallet />} full>
+              <RecordFieldList>
+                {product.vat_rate ? (
+                  <RecordField label={t('products.form.vatRate')}>{product.vat_rate.name}</RecordField>
+                ) : null}
+                {product.supplier ? (
+                  <RecordField label={t('products.form.supplier')}>
+                    <RecordLink domain="registries" id={product.supplier.id}>
+                      {product.supplier.name}
+                    </RecordLink>
+                  </RecordField>
+                ) : null}
+              </RecordFieldList>
+            </RecordSection>
           ) : null}
 
-          <RecordSectionsGrid>
-            <RecordSection title={t('products.form.sections.identity.title')} icon={<Package />}>
-              <RecordFieldList>
-                <RecordField label={t('products.form.code')}>{product.code}</RecordField>
-                <RecordField label={t('products.columns.product_type')}>
-                  <Badge variant="secondary">{productTypeLabel}</Badge>
-                </RecordField>
-                <RecordField label={t('products.columns.usages')}>
-                  {product.usages && product.usages.length > 0 ? (
-                    <span className="flex flex-wrap gap-1">
-                      {product.usages.map((usage) => (
-                        <Badge key={usage} variant="outline">
-                          {enumLabelOf('product_usage', usage)}
-                        </Badge>
-                      ))}
-                    </span>
-                  ) : (
-                    <DetailEmpty />
-                  )}
-                </RecordField>
-                <RecordField label={t('products.columns.description')}>
-                  {product.description ?? <DetailEmpty />}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-
-            <RecordSection title={t('products.form.sections.classification.title')} icon={<FolderTree />}>
-              <RecordFieldList>
-                <RecordField label={t('products.columns.category')}>
-                  {product.category?.name ?? <DetailEmpty />}
-                </RecordField>
-                {product.business_function ? (
-                  <RecordField label={t('products.columns.business_function')}>
-                    {product.business_function.name}
-                  </RecordField>
-                ) : null}
-                {product.product_typology ? (
-                  <RecordField label={t('products.form.productTypology')}>
-                    <ProductTypologyBadge name={product.product_typology.name} color={product.product_typology.color} />
-                  </RecordField>
-                ) : null}
-                {product.unit_of_measure ? (
-                  <RecordField label={t('products.form.unitOfMeasure')}>
-                    {product.unit_of_measure.name}
-                  </RecordField>
-                ) : null}
-              </RecordFieldList>
-            </RecordSection>
-
-            {/* Absent as a whole when neither is assigned: an empty
-                "Prezzi e fornitura" card would read as data we failed to
-                load rather than as data nobody filled in. */}
-            {product.vat_rate || product.supplier ? (
-              <RecordSection title={t('products.form.sections.pricing.title')} icon={<Wallet />} full>
-                <RecordFieldList>
-                  {product.vat_rate ? (
-                    <RecordField label={t('products.form.vatRate')}>{product.vat_rate.name}</RecordField>
-                  ) : null}
-                  {product.supplier ? (
-                    <RecordField label={t('products.form.supplier')}>
-                      <RecordLink domain="registries" id={product.supplier.id}>
-                        {product.supplier.name}
-                      </RecordLink>
-                    </RecordField>
-                  ) : null}
-                </RecordFieldList>
-              </RecordSection>
-            ) : null}
-
-            <ProductAttributeValuesSection
-              layout={product.attribute_layout ?? null}
-              attributes={product.applicable_attributes ?? []}
-              values={product.attribute_values ?? {}}
-            />
-          </RecordSectionsGrid>
-        </RecordCard>
+          <ProductAttributeValuesSection
+            layout={product.attribute_layout ?? null}
+            attributes={product.applicable_attributes ?? []}
+            values={product.attribute_values ?? {}}
+          />
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (

@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileText } from 'lucide-react'
 import {
@@ -13,6 +13,7 @@ import {
   type RecordCollaborationTab,
 } from '@/components/detail/record-collaboration-card'
 import { RecordCollaborationRail } from '@/components/detail/record-collaboration-rail'
+import { RecordCard } from '@/components/detail/record-panel'
 import { useRecordSideCollapsed, useRecordSideLayout } from '@/components/detail/use-record-side-layout'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
@@ -24,20 +25,16 @@ const DETAILS_TAB = 'details'
 const TRACK_TRANSITION_CLASS = 'transition-[grid-template-columns] duration-300 ease-in-out motion-reduce:transition-none'
 const FADE_TRANSITION_CLASS = 'transition-[opacity,visibility] duration-300 ease-in-out motion-reduce:transition-none'
 
-/** The layer (card or rail) not currently shown: out of flow, invisible, not clickable. */
+/** The rail fades in as it mounts; sticky so it follows the scroll of a long record. */
+const RAIL_ENTER_CLASS = 'sticky top-0 animate-in fade-in-0 duration-300 motion-reduce:animate-none'
+
+/** The card once collapsed: out of flow, invisible, not clickable. */
 const HIDDEN_LAYER_CLASS = 'pointer-events-none invisible absolute top-0 left-0 opacity-0'
 
-interface InlineTabsState {
-  tabs: RecordCollaborationTab[]
-  value: string
-  onValueChange: (value: string) => void
-}
-
-/** Set only in the narrow layout: `RecordDetailsTabs` then renders the shared strip. */
-const InlineTabsContext = createContext<InlineTabsState | null>(null)
-
 interface RecordCollaborationBodyProps {
-  children: ReactNode
+  header: ReactNode
+  /** The record's sections; none for a header-only record. */
+  children?: ReactNode
   /** Non-empty, already filtered by the caller's authorization gates. */
   tabs: RecordCollaborationTab[]
 }
@@ -49,44 +46,55 @@ interface RecordCollaborationBodyProps {
  *   icon rail whose icons open each tab in a floating panel (remembered per
  *   browser);
  * - narrow (tablet, phone, modal Sheet): no side column — its tabs join the
- *   record's own strip ("Dettagli | Note | ..."), placed by `RecordDetailsTabs`
- *   under the identity band and KPIs, instead of stacking below the record.
+ *   record card's own strip ("Dettagli | Note | ...") under the header,
+ *   instead of stacking below the record.
  */
-export function RecordCollaborationBody({ children, tabs }: RecordCollaborationBodyProps) {
+export function RecordCollaborationBody({ header, children, tabs }: RecordCollaborationBodyProps) {
   const bodyRef = useRef<HTMLDivElement>(null)
   const layout = useRecordSideLayout(bodyRef)
   const { collapsed, setCollapsed } = useRecordSideCollapsed()
   const [sideTab, setSideTab] = useState(tabs[0].value)
-  const [inlineTab, setInlineTab] = useState(DETAILS_TAB)
+  const hasSections = children !== undefined && children !== null && children !== false
+  const firstInlineTab = hasSections ? DETAILS_TAB : tabs[0].value
+  const [inlineTab, setInlineTab] = useState(firstInlineTab)
   // A tab can disappear (permissions refetched): fall back instead of showing an empty card.
   const hasTab = (value: string) => tabs.some((tab) => tab.value === value)
   const activeSideTab = hasTab(sideTab) ? sideTab : tabs[0].value
-  const activeInlineTab = hasTab(inlineTab) ? inlineTab : DETAILS_TAB
+  const activeInlineTab = hasTab(inlineTab) || (hasSections && inlineTab === DETAILS_TAB) ? inlineTab : firstInlineTab
   const isInline = layout === 'tabs'
 
   return (
-    <InlineTabsContext value={isInline ? { tabs, value: activeInlineTab, onValueChange: setInlineTab } : null}>
-      <div
-        ref={bodyRef}
-        className={cn(
-          RECORD_BODY_GRID_CLASS,
-          !isInline && TRACK_TRANSITION_CLASS,
-          !isInline && (collapsed ? RECORD_RAIL_COLUMNS_CLASS : RECORD_SIDE_COLUMNS_CLASS),
-        )}
-      >
-        <div className={RECORD_COLUMN_CLASS}>{children}</div>
-        {isInline ? null : (
-          <RecordCollaborationSide
-            tabs={tabs}
-            collapsed={collapsed}
-            value={activeSideTab}
-            onValueChange={setSideTab}
-            onCollapse={() => setCollapsed(true)}
-            onExpand={() => setCollapsed(false)}
-          />
-        )}
+    <div
+      ref={bodyRef}
+      className={cn(
+        RECORD_BODY_GRID_CLASS,
+        !isInline && TRACK_TRANSITION_CLASS,
+        !isInline && (collapsed ? RECORD_RAIL_COLUMNS_CLASS : RECORD_SIDE_COLUMNS_CLASS),
+      )}
+    >
+      <div className={RECORD_COLUMN_CLASS}>
+        <RecordCard>
+          {header}
+          {isInline ? (
+            <RecordInlineTabs tabs={tabs} value={activeInlineTab} onValueChange={setInlineTab}>
+              {hasSections ? children : null}
+            </RecordInlineTabs>
+          ) : (
+            children
+          )}
+        </RecordCard>
       </div>
-    </InlineTabsContext>
+      {isInline ? null : (
+        <RecordCollaborationSide
+          tabs={tabs}
+          collapsed={collapsed}
+          value={activeSideTab}
+          onValueChange={setSideTab}
+          onCollapse={() => setCollapsed(true)}
+          onExpand={() => setCollapsed(false)}
+        />
+      )}
+    </div>
   )
 }
 
@@ -100,12 +108,12 @@ interface RecordCollaborationSideProps {
 }
 
 /**
- * The side column cell. Card and rail are both laid in it so they can
- * cross-fade while the track animates; the hidden one is `inert`. On collapse
- * the card keeps the width it had (frozen), so it fades out clipped instead of
- * reflowing on every frame of the shrinking track. Once faded out it unmounts,
- * so its tabs are not mounted twice while the rail's floating panels are in use
- * (with reduced motion it simply stays mounted, hidden).
+ * The side column cell. While the track animates, the card fades (out on
+ * collapse, keeping the width it had so it is clipped instead of reflowing on
+ * every frame; `inert` once hidden) and the rail, mounted only while
+ * collapsed, fades in. Once faded out the card unmounts, so its tabs are not
+ * mounted twice while the rail's floating panels are in use (with reduced
+ * motion it simply stays mounted, hidden).
  */
 function RecordCollaborationSide({
   tabs,
@@ -151,35 +159,39 @@ function RecordCollaborationSide({
           <RecordCollaborationCard tabs={tabs} value={value} onValueChange={onValueChange} onCollapse={collapse} />
         ) : null}
       </div>
-      <div className={cn('sticky top-0', FADE_TRANSITION_CLASS, !collapsed && HIDDEN_LAYER_CLASS)} inert={!collapsed}>
-        <RecordCollaborationRail tabs={tabs} onExpand={expand} />
-      </div>
+      {collapsed ? (
+        <div className={RAIL_ENTER_CLASS}>
+          <RecordCollaborationRail tabs={tabs} onExpand={expand} />
+        </div>
+      ) : null}
     </div>
   )
 }
 
-/**
- * Wraps the record's sections inside its card. In the wide layout it renders
- * them as they are; in the narrow one they become the first tab ("Dettagli")
- * of a strip that also carries the collaboration tabs.
- */
-export function RecordDetailsTabs({ children }: { children: ReactNode }) {
-  const { t } = useTranslation()
-  const inline = useContext(InlineTabsContext)
+interface RecordInlineTabsProps {
+  tabs: RecordCollaborationTab[]
+  value: string
+  onValueChange: (value: string) => void
+  /** The sections; `null` = no "Dettagli" tab. */
+  children: ReactNode
+}
 
-  if (!inline) {
-    return children
-  }
+/** Narrow layout: the sections become the first tab ("Dettagli") of a strip that also carries the collaboration tabs. */
+function RecordInlineTabs({ tabs, value, onValueChange, children }: RecordInlineTabsProps) {
+  const { t } = useTranslation()
+  const hasSections = children !== null
 
   return (
-    <Tabs value={inline.value} onValueChange={inline.onValueChange} className="gap-0">
+    <Tabs value={value} onValueChange={onValueChange} className="gap-0">
       <div className="border-b px-4 py-3">
         <TabsList>
-          <TabsTrigger value={DETAILS_TAB} className={RECORD_TAB_TRIGGER_CLASS}>
-            <FileText className="size-3.5" aria-hidden="true" />
-            {t('common.recordSide.details')}
-          </TabsTrigger>
-          {inline.tabs.map((tab) => (
+          {hasSections ? (
+            <TabsTrigger value={DETAILS_TAB} className={RECORD_TAB_TRIGGER_CLASS}>
+              <FileText className="size-3.5" aria-hidden="true" />
+              {t('common.recordSide.details')}
+            </TabsTrigger>
+          ) : null}
+          {tabs.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value} className={RECORD_TAB_TRIGGER_CLASS}>
               {tab.icon}
               {tab.label}
@@ -187,8 +199,8 @@ export function RecordDetailsTabs({ children }: { children: ReactNode }) {
           ))}
         </TabsList>
       </div>
-      <TabsContent value={DETAILS_TAB}>{children}</TabsContent>
-      {inline.tabs.map((tab) => (
+      {hasSections ? <TabsContent value={DETAILS_TAB}>{children}</TabsContent> : null}
+      {tabs.map((tab) => (
         <TabsContent key={tab.value} value={tab.value} className="min-w-0 p-4">
           {tab.content}
         </TabsContent>

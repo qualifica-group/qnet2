@@ -3,7 +3,6 @@ import { ListChecks } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,7 +11,6 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -94,88 +92,82 @@ export function TaskTemplateDetailView({ taskTemplate, onEdit }: TaskTemplateDet
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab('task-templates', taskTemplate.id, t('activityLog.title'))]}
-            />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab('task-templates', taskTemplate.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={taskTemplate.name} icon={<ListChecks />} />}
             title={taskTemplate.name}
             subtitle={t('taskTemplates.detail.itemsCount', { count: taskTemplate.items_count })}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('taskTemplates.form.sections.identity.title')}>
-              <RecordFieldList>
-                <RecordField label={t('taskTemplates.detail.description')}>
-                  {taskTemplate.description ? (
-                    <RichTextContent html={taskTemplate.description} />
-                  ) : (
-                    <DetailEmpty />
-                  )}
-                </RecordField>
-                <RecordField label={t('taskTemplates.detail.isActive')}>
-                  {taskTemplate.is_active ? t('common.yes') : t('common.no')}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('taskTemplates.form.sections.identity.title')}>
+            <RecordFieldList>
+              <RecordField label={t('taskTemplates.detail.description')}>
+                {taskTemplate.description ? (
+                  <RichTextContent html={taskTemplate.description} />
+                ) : (
+                  <DetailEmpty />
+                )}
+              </RecordField>
+              <RecordField label={t('taskTemplates.detail.isActive')}>
+                {taskTemplate.is_active ? t('common.yes') : t('common.no')}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
 
-            <RecordSection title={t('taskTemplates.detail.items.title')} icon={<ListChecks />} full>
-              {taskTemplate.items.length === 0 ? (
-                <DetailEmpty />
-              ) : (
-                <div className="flex flex-col gap-4">
-                  {groupItemsByStage(taskTemplate).map((group) => (
-                    <div key={group.stage?.id ?? 'no-stage'} className="flex flex-col gap-2">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        {group.stage?.name ?? t('taskTemplates.form.stages.noStage')}
-                      </p>
-                      <ul className="flex flex-col gap-3">
-                        {group.entries.map(({ item, depth }) => (
-                          <li
-                            key={item.id}
-                            className={cn('rounded-lg border bg-card p-3', ITEM_INDENT_CLASS[depth])}
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-sm font-medium text-foreground">{item.title}</p>
-                              {item.task_status ? (
-                                <WorkflowStatusBadge name={item.task_status.name} color={item.task_status.color} />
-                              ) : null}
-                            </div>
-                            {item.description ? (
-                              <RichTextContent html={item.description} className="mt-1 text-xs text-muted-foreground" />
+          <RecordSection title={t('taskTemplates.detail.items.title')} icon={<ListChecks />} full>
+            {taskTemplate.items.length === 0 ? (
+              <DetailEmpty />
+            ) : (
+              <div className="flex flex-col gap-4">
+                {groupItemsByStage(taskTemplate).map((group) => (
+                  <div key={group.stage?.id ?? 'no-stage'} className="flex flex-col gap-2">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {group.stage?.name ?? t('taskTemplates.form.stages.noStage')}
+                    </p>
+                    <ul className="flex flex-col gap-3">
+                      {group.entries.map(({ item, depth }) => (
+                        <li
+                          key={item.id}
+                          className={cn('rounded-lg border bg-card p-3', ITEM_INDENT_CLASS[depth])}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm font-medium text-foreground">{item.title}</p>
+                            {item.task_status ? (
+                              <WorkflowStatusBadge name={item.task_status.name} color={item.task_status.color} />
                             ) : null}
-                            <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                              <span>{t('taskTemplates.detail.items.dueOffsetDays', { count: item.due_offset_days })}</span>
-                              {item.estimated_minutes !== null ? (
-                                <span>
-                                  {t('taskTemplates.detail.items.estimatedMinutes', { value: item.estimated_minutes })}
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="mt-2">
-                              <DocumentsSection
-                                resource={TASK_TEMPLATE_ITEM_ATTACHABLE_ALIAS}
-                                id={item.id}
-                                canUpload={false}
-                                canDelete={false}
-                              />
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+                          </div>
+                          {item.description ? (
+                            <RichTextContent html={item.description} className="mt-1 text-xs text-muted-foreground" />
+                          ) : null}
+                          <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                            <span>{t('taskTemplates.detail.items.dueOffsetDays', { count: item.due_offset_days })}</span>
+                            {item.estimated_minutes !== null ? (
+                              <span>
+                                {t('taskTemplates.detail.items.estimatedMinutes', { value: item.estimated_minutes })}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="mt-2">
+                            <DocumentsSection
+                              resource={TASK_TEMPLATE_ITEM_ATTACHABLE_ALIAS}
+                              id={item.id}
+                              canUpload={false}
+                              canDelete={false}
+                            />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt || updatedAt ? (

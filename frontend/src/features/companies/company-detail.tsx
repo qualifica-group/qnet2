@@ -3,7 +3,6 @@ import { Hash, MapPin } from 'lucide-react'
 import { DetailEmpty, DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordField,
   RecordFieldList,
   RecordMeta,
@@ -11,7 +10,6 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
@@ -71,18 +69,19 @@ export function CompanyDetailView({ companyId, onEdit }: CompanyDetailProps) {
   return (
     <RecordCanvas>
       <RecordBody
-        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <CompanyDetailHeader company={company} onEdit={onEdit} />
+            <CompanyDetailStats company={company} />
+          </>
+        }
       >
-        <RecordCard>
-          <CompanyDetailHeader company={company} onEdit={onEdit} />
-          <CompanyDetailStats company={company} />
-
-          <RecordSectionsGrid>
-            <RecordSection title={t('companies.form.sections.address.title')} icon={<MapPin />} full>
-              <AddressFields address={company.address} />
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+        <RecordSectionsGrid>
+          <RecordSection title={t('companies.form.sections.address.title')} icon={<MapPin />} full>
+            <AddressFields address={company.address} />
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (

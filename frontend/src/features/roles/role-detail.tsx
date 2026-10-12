@@ -6,16 +6,12 @@ import { DetailEmpty, DetailError, DetailLoading, DetailMonogram } from '@/compo
 import { RecordBody } from '@/components/detail/record-body'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordMeta,
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -74,55 +70,57 @@ export function RoleDetailView({ roleId, onEdit }: RoleDetailProps) {
 
   return (
     <RecordCanvas>
-      <RecordBody side={tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}>
-        <RecordCard>
+      <RecordBody
+        collaborationTabs={tabs}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={role.name} icon={<ShieldCheck />} />}
             title={role.name}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection
-              title={t('roles.form.permissions')}
-              icon={<KeyRound />}
-              action={role.permissions.length > 0 ? <Badge variant="secondary">{role.permissions.length}</Badge> : null}
-              full
-            >
-              {role.permissions.length === 0 ? (
-                <DetailEmpty />
-              ) : catalogueQuery.isPending ? (
-                <div className="flex flex-col gap-2" aria-hidden="true">
-                  <Skeleton className="h-6 w-full" />
-                  <Skeleton className="h-6 w-full" />
-                </div>
-              ) : catalogueQuery.isError ? (
-                <p className="text-sm text-destructive" role="alert">
-                  {t('authorization.loadError')}
-                </p>
-              ) : (
-                <div className="flex flex-col gap-4">
-                  {grantedAreas.map(({ area, resources }) => (
-                    <div key={area.key} className="flex flex-col gap-2">
-                      <span className="text-xs font-semibold text-muted-foreground">{t(area.label_key)}</span>
-                      {resources.map(({ resource, granted }) => (
-                        <div key={resource.resource} className="flex flex-col gap-1.5">
-                          <span className="text-xs font-medium text-muted-foreground">{t(resource.label_key)}</span>
-                          <div className="flex flex-wrap gap-1">
-                            {granted.map((permission) => (
-                              <Badge key={permission.name} variant="secondary">
-                                {abilityLabel(permission.name, i18n)}
-                              </Badge>
-                            ))}
-                          </div>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection
+            title={t('roles.form.permissions')}
+            icon={<KeyRound />}
+            action={role.permissions.length > 0 ? <Badge variant="secondary">{role.permissions.length}</Badge> : null}
+            full
+          >
+            {role.permissions.length === 0 ? (
+              <DetailEmpty />
+            ) : catalogueQuery.isPending ? (
+              <div className="flex flex-col gap-2" aria-hidden="true">
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-6 w-full" />
+              </div>
+            ) : catalogueQuery.isError ? (
+              <p className="text-sm text-destructive" role="alert">
+                {t('authorization.loadError')}
+              </p>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {grantedAreas.map(({ area, resources }) => (
+                  <div key={area.key} className="flex flex-col gap-2">
+                    <span className="text-xs font-semibold text-muted-foreground">{t(area.label_key)}</span>
+                    {resources.map(({ resource, granted }) => (
+                      <div key={resource.resource} className="flex flex-col gap-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">{t(resource.label_key)}</span>
+                        <div className="flex flex-wrap gap-1">
+                          {granted.map((permission) => (
+                            <Badge key={permission.name} variant="secondary">
+                              {abilityLabel(permission.name, i18n)}
+                            </Badge>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (

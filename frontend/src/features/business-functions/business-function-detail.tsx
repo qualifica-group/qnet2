@@ -6,14 +6,12 @@ import { Badge } from '@/components/ui/badge'
 import { DetailEmpty, DetailMonogram, DetailPerson } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordMeta,
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -43,81 +41,75 @@ export function BusinessFunctionDetailView({ businessFunction, onEdit }: Busines
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab('business-functions', businessFunction.id, t('activityLog.title'))]}
-            />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab('business-functions', businessFunction.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={businessFunction.name} icon={<Network />} />}
             title={businessFunction.name}
             badges={<Badge variant="secondary">{typeLabel(t, businessFunction.type)}</Badge>}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            {businessFunction.parent ? (
-              <RecordSection title={t('businessFunctions.detail.parent')} icon={<GitBranch />}>
-                <span className="text-sm text-foreground">{businessFunction.parent.name}</span>
-              </RecordSection>
-            ) : null}
-
-            <RecordSection title={t('businessFunctions.detail.manager')} icon={<UserCog />}>
-              {businessFunction.manager ? (
-                <DetailPerson name={businessFunction.manager.name} avatarUrl={businessFunction.manager.avatar_url} />
-              ) : (
-                <DetailEmpty />
-              )}
+        }
+      >
+        <RecordSectionsGrid>
+          {businessFunction.parent ? (
+            <RecordSection title={t('businessFunctions.detail.parent')} icon={<GitBranch />}>
+              <span className="text-sm text-foreground">{businessFunction.parent.name}</span>
             </RecordSection>
+          ) : null}
 
-            <RecordSection
-              title={t('businessFunctions.detail.users')}
-              icon={<Users />}
-              action={
-                businessFunction.users.length > 0 ? (
-                  <Badge variant="secondary">{businessFunction.users.length}</Badge>
-                ) : null
-              }
-            >
-              {businessFunction.users.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  {businessFunction.users.map((user) => (
-                    <DetailPerson key={user.id} name={user.name} avatarUrl={user.avatar_url} />
-                  ))}
-                </div>
-              ) : (
-                <DetailEmpty />
-              )}
-            </RecordSection>
+          <RecordSection title={t('businessFunctions.detail.manager')} icon={<UserCog />}>
+            {businessFunction.manager ? (
+              <DetailPerson name={businessFunction.manager.name} avatarUrl={businessFunction.manager.avatar_url} />
+            ) : (
+              <DetailEmpty />
+            )}
+          </RecordSection>
 
-            <RecordSection
-              title={t('businessFunctions.detail.operationalSites')}
-              icon={<MapPin />}
-              action={
-                businessFunction.operational_sites.length > 0 ? (
-                  <Badge variant="secondary">{businessFunction.operational_sites.length}</Badge>
-                ) : null
-              }
-            >
-              {businessFunction.operational_sites.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {businessFunction.operational_sites.map((site) => (
-                    <Badge key={site.id} variant="outline" className="max-w-full">
-                      <RecordLink domain="operational-sites" id={site.id}>
-                        {site.label}
-                      </RecordLink>
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <DetailEmpty />
-              )}
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+          <RecordSection
+            title={t('businessFunctions.detail.users')}
+            icon={<Users />}
+            action={
+              businessFunction.users.length > 0 ? (
+                <Badge variant="secondary">{businessFunction.users.length}</Badge>
+              ) : null
+            }
+          >
+            {businessFunction.users.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {businessFunction.users.map((user) => (
+                  <DetailPerson key={user.id} name={user.name} avatarUrl={user.avatar_url} />
+                ))}
+              </div>
+            ) : (
+              <DetailEmpty />
+            )}
+          </RecordSection>
+
+          <RecordSection
+            title={t('businessFunctions.detail.operationalSites')}
+            icon={<MapPin />}
+            action={
+              businessFunction.operational_sites.length > 0 ? (
+                <Badge variant="secondary">{businessFunction.operational_sites.length}</Badge>
+              ) : null
+            }
+          >
+            {businessFunction.operational_sites.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {businessFunction.operational_sites.map((site) => (
+                  <Badge key={site.id} variant="outline" className="max-w-full">
+                    <RecordLink domain="operational-sites" id={site.id}>
+                      {site.label}
+                    </RecordLink>
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <DetailEmpty />
+            )}
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (

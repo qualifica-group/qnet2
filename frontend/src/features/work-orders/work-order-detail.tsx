@@ -1,12 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import { MessagesSquare, Paperclip } from 'lucide-react'
 import { Form } from '@/components/ui/form'
-import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
@@ -125,16 +122,18 @@ function WorkOrderDetailContent({ workOrder, onChanged }: WorkOrderDetailViewPro
   return (
     <RecordCanvas>
       <RecordBody
-        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <WorkOrderDetailHeader workOrder={workOrder} onChanged={onChanged} />
+            <WorkOrderDetailStats workOrder={workOrder} />
+          </>
+        }
       >
-        <RecordCard>
-          <WorkOrderDetailHeader workOrder={workOrder} onChanged={onChanged} />
-          <WorkOrderDetailStats workOrder={workOrder} />
-          {/* Provider only (no DOM): the inline editors share the edit form. */}
-          <Form {...editor.form}>
-            <WorkOrderDetailSections workOrder={workOrder} editor={editor} />
-          </Form>
-        </RecordCard>
+        {/* Provider only (no DOM): the inline editors share the edit form. */}
+        <Form {...editor.form}>
+          <WorkOrderDetailSections workOrder={workOrder} editor={editor} />
+        </Form>
       </RecordBody>
 
       <WorkOrderDetailWorkTabs workOrder={workOrder} />

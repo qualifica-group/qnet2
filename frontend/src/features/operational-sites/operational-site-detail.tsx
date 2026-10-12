@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next'
 import { Building2, Hash, MapPinned, Power } from 'lucide-react'
 import {
   RecordCanvas,
-  RecordCard,
   RecordField,
   RecordFieldList,
   RecordMeta,
@@ -10,7 +9,6 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import {
@@ -49,36 +47,37 @@ export function OperationalSiteDetailView({
   return (
     <RecordCanvas>
       <RecordBody
-        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <OperationalSiteDetailHeader operationalSite={operationalSite} onEdit={onEdit} />
+            <OperationalSiteDetailStats operationalSite={operationalSite} />
+          </>
+        }
       >
-        <RecordCard>
-          <OperationalSiteDetailHeader operationalSite={operationalSite} onEdit={onEdit} />
-          <OperationalSiteDetailStats operationalSite={operationalSite} />
-
-          <RecordSectionsGrid>
-            <RecordSection
-              title={t('operationalSites.form.sections.address.title')}
-              icon={<MapPinned />}
-            >
-              <RecordFieldList>
-                {/* Only when an alias headlines the card: without one the
-                    street IS the title, and repeating it here would say the
-                    same thing twice (the decision the previous card made). */}
-                {operationalSite.alias ? (
-                  <RecordField label={t('operationalSites.detail.line1')} icon={<Building2 />}>
-                    {operationalSite.line1}
-                  </RecordField>
-                ) : null}
-                <RecordField label={t('operationalSites.detail.postal_code')} icon={<Hash />}>
-                  {operationalSite.postal_code || <DetailEmpty />}
+        <RecordSectionsGrid>
+          <RecordSection
+            title={t('operationalSites.form.sections.address.title')}
+            icon={<MapPinned />}
+          >
+            <RecordFieldList>
+              {/* Only when an alias headlines the card: without one the
+                  street IS the title, and repeating it here would say the
+                  same thing twice (the decision the previous card made). */}
+              {operationalSite.alias ? (
+                <RecordField label={t('operationalSites.detail.line1')} icon={<Building2 />}>
+                  {operationalSite.line1}
                 </RecordField>
-                <RecordField label={t('operationalSites.detail.is_active')} icon={<Power />}>
-                  {operationalSite.is_active ? t('common.yes') : t('common.no')}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+              ) : null}
+              <RecordField label={t('operationalSites.detail.postal_code')} icon={<Hash />}>
+                {operationalSite.postal_code || <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('operationalSites.detail.is_active')} icon={<Power />}>
+                {operationalSite.is_active ? t('common.yes') : t('common.no')}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (

@@ -3,7 +3,6 @@ import { Percent } from 'lucide-react'
 import { DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,7 +11,6 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -39,15 +37,8 @@ export function VatRateDetailView({ vatRate, onEdit }: VatRateDetailViewProps) {
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab('vat-rates', vatRate.id, t('activityLog.title'))]}
-            />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab('vat-rates', vatRate.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={
               <DetailMonogram
@@ -59,14 +50,15 @@ export function VatRateDetailView({ vatRate, onEdit }: VatRateDetailViewProps) {
             title={vatRate.name}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('vatRates.detail.details')} full>
-              <RecordFieldList>
-                <RecordField label={t('vatRates.columns.rate')}>{formatRate(vatRate.rate)}%</RecordField>
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('vatRates.detail.details')} full>
+            <RecordFieldList>
+              <RecordField label={t('vatRates.columns.rate')}>{formatRate(vatRate.rate)}%</RecordField>
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (

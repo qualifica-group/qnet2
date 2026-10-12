@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { RecordCard, RecordSection } from '@/components/detail/record-panel'
+import { RecordSection } from '@/components/detail/record-panel'
 import { Badge } from '@/components/ui/badge'
 import { FIELD_TYPE_ICONS } from '@/features/custom-fields/field-type-icons'
 import type {
@@ -39,9 +39,8 @@ interface CategoryAttributesContextSectionProps {
  * flat list. Renders nothing when the context has neither (zero-code for a
  * category with no product, or no quote, attributes assigned).
  *
- * Its own card on the detail canvas (the record kit, not the sheet kit): it
- * sits next to the layout preview, which already renders section cards of its
- * own, so the two must carry the same chrome.
+ * A band of the record card, like the layout preview next to it: the detail
+ * has ONE record card (`RecordBody`), so the two carry the same chrome.
  */
 export function CategoryAttributesContextSection({
   title,
@@ -56,47 +55,45 @@ export function CategoryAttributesContextSection({
   }
 
   return (
-    <RecordCard>
-      <div className="p-4">
-        <RecordSection title={title}>
-          <p className="text-xs text-muted-foreground">{description}</p>
+    <div className="border-t p-4">
+      <RecordSection title={title}>
+        <p className="text-xs text-muted-foreground">{description}</p>
 
-          {own.length > 0 && (
+        {own.length > 0 && (
+          <ul className="flex flex-col gap-1.5">
+            {own.map((attribute) => (
+              <li key={attribute.attribute_id} className="flex items-center gap-2 text-sm">
+                <AttributeTypeBadge attribute={attribute} />
+                <span className="text-foreground">{attribute.name}</span>
+                {attribute.is_required && (
+                  <Badge variant="outline" className="text-xs">
+                    {t('productCategories.form.isRequired')}
+                  </Badge>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {inherited.length > 0 && (
+          <div className={own.length > 0 ? 'flex flex-col gap-1.5 border-t pt-3' : 'flex flex-col gap-1.5'}>
+            <p className="text-xs font-medium text-muted-foreground">
+              {t('productCategories.form.inheritedAttributes')}
+            </p>
             <ul className="flex flex-col gap-1.5">
-              {own.map((attribute) => (
-                <li key={attribute.attribute_id} className="flex items-center gap-2 text-sm">
+              {inherited.map((attribute) => (
+                <li
+                  key={attribute.attribute_id}
+                  className="flex items-center gap-2 text-sm text-muted-foreground"
+                >
                   <AttributeTypeBadge attribute={attribute} />
-                  <span className="text-foreground">{attribute.name}</span>
-                  {attribute.is_required && (
-                    <Badge variant="outline" className="text-xs">
-                      {t('productCategories.form.isRequired')}
-                    </Badge>
-                  )}
+                  <span>{attribute.name}</span>
                 </li>
               ))}
             </ul>
-          )}
-
-          {inherited.length > 0 && (
-            <div className={own.length > 0 ? 'flex flex-col gap-1.5 border-t pt-3' : 'flex flex-col gap-1.5'}>
-              <p className="text-xs font-medium text-muted-foreground">
-                {t('productCategories.form.inheritedAttributes')}
-              </p>
-              <ul className="flex flex-col gap-1.5">
-                {inherited.map((attribute) => (
-                  <li
-                    key={attribute.attribute_id}
-                    className="flex items-center gap-2 text-sm text-muted-foreground"
-                  >
-                    <AttributeTypeBadge attribute={attribute} />
-                    <span>{attribute.name}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </RecordSection>
-      </div>
-    </RecordCard>
+          </div>
+        )}
+      </RecordSection>
+    </div>
   )
 }

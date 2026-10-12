@@ -4,7 +4,6 @@ import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,10 +11,7 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -48,33 +44,35 @@ export function DocumentLayoutDetailView({ documentLayout, onEdit }: DocumentLay
 
   return (
     <RecordCanvas>
-      <RecordBody side={tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}>
-        <RecordCard>
+      <RecordBody
+        collaborationTabs={tabs}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={documentLayout.name} icon={<FileText />} />}
             title={documentLayout.name}
             subtitle={documentLayout.code}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('documentLayouts.form.sections.identity.title')} full>
-              <RecordFieldList>
-                <RecordField label={t('documentLayouts.detail.description')}>
-                  {documentLayout.description ? documentLayout.description : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('documentLayouts.detail.module')}>
-                  {documentLayout.module_label}
-                </RecordField>
-                <RecordField label={t('documentLayouts.detail.isActive')}>
-                  {documentLayout.is_active ? t('common.yes') : t('common.no')}
-                </RecordField>
-                <RecordField label={t('documentLayouts.detail.isDefault')}>
-                  {documentLayout.is_default ? t('common.yes') : t('common.no')}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('documentLayouts.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <RecordField label={t('documentLayouts.detail.description')}>
+                {documentLayout.description ? documentLayout.description : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('documentLayouts.detail.module')}>
+                {documentLayout.module_label}
+              </RecordField>
+              <RecordField label={t('documentLayouts.detail.isActive')}>
+                {documentLayout.is_active ? t('common.yes') : t('common.no')}
+              </RecordField>
+              <RecordField label={t('documentLayouts.detail.isDefault')}>
+                {documentLayout.is_default ? t('common.yes') : t('common.no')}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       <RecordMeta>

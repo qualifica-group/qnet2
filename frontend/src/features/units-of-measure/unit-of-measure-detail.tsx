@@ -3,7 +3,6 @@ import { Ruler } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,7 +11,6 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -40,32 +38,26 @@ export function UnitOfMeasureDetailView({ unitOfMeasure, onEdit }: UnitOfMeasure
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab('units-of-measure', unitOfMeasure.id, t('activityLog.title'))]}
-            />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab('units-of-measure', unitOfMeasure.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={unitOfMeasure.name} icon={<Ruler />} />}
             title={unitOfMeasure.name}
             subtitle={unitOfMeasure.code}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('unitsOfMeasure.form.sections.identity.title')} full>
-              <RecordFieldList>
-                <RecordField label={t('unitsOfMeasure.detail.symbol')}>{unitOfMeasure.symbol}</RecordField>
-                <RecordField label={t('unitsOfMeasure.detail.description')}>
-                  {unitOfMeasure.description ? unitOfMeasure.description : <DetailEmpty />}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('unitsOfMeasure.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <RecordField label={t('unitsOfMeasure.detail.symbol')}>{unitOfMeasure.symbol}</RecordField>
+              <RecordField label={t('unitsOfMeasure.detail.description')}>
+                {unitOfMeasure.description ? unitOfMeasure.description : <DetailEmpty />}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt || updatedAt ? (

@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { ProjectDetailHeader, ProjectDetailStats } from '@/features/projects/project-detail-header'
 import { ProjectDetailSections } from '@/features/projects/project-detail-sections'
@@ -32,13 +31,15 @@ export function ProjectDetailView({ project, onEdit }: ProjectDetailViewProps) {
   return (
     <RecordCanvas>
       <RecordBody
-        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <ProjectDetailHeader project={project} onEdit={onEdit} />
+            <ProjectDetailStats project={project} />
+          </>
+        }
       >
-        <RecordCard>
-          <ProjectDetailHeader project={project} onEdit={onEdit} />
-          <ProjectDetailStats project={project} />
-          <ProjectDetailSections project={project} />
-        </RecordCard>
+        <ProjectDetailSections project={project} />
       </RecordBody>
 
       {createdAt ? (

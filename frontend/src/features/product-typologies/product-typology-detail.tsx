@@ -3,7 +3,6 @@ import { Shapes } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,7 +11,6 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
@@ -42,15 +40,8 @@ export function ProductTypologyDetailView({ productTypology, onEdit }: ProductTy
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab('product-typologies', productTypology.id, t('activityLog.title'))]}
-            />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab('product-typologies', productTypology.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={
               <DetailMonogram
@@ -63,33 +54,34 @@ export function ProductTypologyDetailView({ productTypology, onEdit }: ProductTy
             subtitle={productTypology.code}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('productTypologies.form.sections.identity.title')} full>
-              <RecordFieldList>
-                <RecordField label={t('productTypologies.detail.color')}>
-                  <ProductTypologyBadge name={productTypology.name} color={productTypology.color} />
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('productTypologies.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <RecordField label={t('productTypologies.detail.color')}>
+                <ProductTypologyBadge name={productTypology.name} color={productTypology.color} />
+              </RecordField>
+              <RecordField label={t('productTypologies.detail.description')}>
+                {productTypology.description ? productTypology.description : <DetailEmpty />}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+          <RecordSection title={t('productTypologies.form.sections.commission.title')} full>
+            <RecordFieldList>
+              <RecordField label={t('productTypologies.form.supplierCommissionEnabled')}>
+                {productTypology.supplier_commission_enabled ? t('common.yes') : t('common.no')}
+              </RecordField>
+              {productTypology.supplier_commission_direction ? (
+                <RecordField label={t('productTypologies.form.supplierCommissionDirection')}>
+                  {t(
+                    `productTypologies.supplierCommissionDirection.${productTypology.supplier_commission_direction}`,
+                  )}
                 </RecordField>
-                <RecordField label={t('productTypologies.detail.description')}>
-                  {productTypology.description ? productTypology.description : <DetailEmpty />}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-            <RecordSection title={t('productTypologies.form.sections.commission.title')} full>
-              <RecordFieldList>
-                <RecordField label={t('productTypologies.form.supplierCommissionEnabled')}>
-                  {productTypology.supplier_commission_enabled ? t('common.yes') : t('common.no')}
-                </RecordField>
-                {productTypology.supplier_commission_direction ? (
-                  <RecordField label={t('productTypologies.form.supplierCommissionDirection')}>
-                    {t(
-                      `productTypologies.supplierCommissionDirection.${productTypology.supplier_commission_direction}`,
-                    )}
-                  </RecordField>
-                ) : null}
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+              ) : null}
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       <RecordMeta>

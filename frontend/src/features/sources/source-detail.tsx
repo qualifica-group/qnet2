@@ -2,11 +2,8 @@ import { useTranslation } from 'react-i18next'
 import { Database } from 'lucide-react'
 import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCanvas, RecordCard, RecordCardHeader, RecordMeta } from '@/components/detail/record-panel'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import { RecordCanvas, RecordCardHeader, RecordMeta } from '@/components/detail/record-panel'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -34,15 +31,16 @@ export function SourceDetailView({ source, onEdit }: SourceDetailViewProps) {
 
   return (
     <RecordCanvas>
-      <RecordBody side={tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}>
-        <RecordCard>
+      <RecordBody
+        collaborationTabs={tabs}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={source.name} icon={<Database />} />}
             title={source.name}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-        </RecordCard>
-      </RecordBody>
+        }
+      />
 
       {createdAt ? (
         <RecordMeta>

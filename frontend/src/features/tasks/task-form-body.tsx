@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Paperclip } from 'lucide-react'
 import { Form } from '@/components/ui/form'
-import { RecordBody } from '@/components/detail/record-body'
+import { RecordFormBody } from '@/components/record-form/record-form-body'
 import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
@@ -69,7 +69,7 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
           boundary, it must not become an extra box around the canvas. */}
       <form id={TASK_FORM_ID} onSubmit={form.handleSubmit(onSubmit)} className="contents" noValidate>
         <RecordCanvas>
-          <RecordBody side={<RecordCollaborationCard tabs={[attachmentsTab]} />}>
+          <RecordFormBody side={<RecordCollaborationCard tabs={[attachmentsTab]} />}>
             <RecordCard>
               <TaskFormHeader
                 control={form.control}
@@ -96,7 +96,7 @@ export function TaskFormBody({ mode, onSuccess, onCancel }: TaskFormBodyProps) {
               submittingLabel={t('tasks.form.saving')}
               cancel={{ label: t('tasks.form.cancel'), onCancel }}
             />
-          </RecordBody>
+          </RecordFormBody>
         </RecordCanvas>
       </form>
     </Form>

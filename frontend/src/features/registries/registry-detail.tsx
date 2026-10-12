@@ -2,17 +2,14 @@ import { useTranslation } from 'react-i18next'
 import { Paperclip } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Form } from '@/components/ui/form'
-import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
-import { PersonalDataRecordCards } from '@/features/personal-data/personal-data-record-cards'
+import { PersonalDataRecordSections } from '@/features/personal-data/personal-data-record-cards'
 import { REGISTRY_ATTACHABLE_ALIAS, registryDetailQueryKey } from '@/features/registries/api'
 import { RegistryDetailHeader, RegistryStatsStrip } from '@/features/registries/registry-detail-header'
 import { RegistryDetailSections } from '@/features/registries/registry-detail-sections'
@@ -62,15 +59,15 @@ function useCollaborationTabs(registry: RegistryDetailWithPermissions): RecordCo
 
 /**
  * Detail of a single anagrafica, rendered as an enterprise-CRM record — the
- * same kit the Opportunita' record uses (user directive 2026-09-11): identity
- * + KPI + sections on the left, the general notes (spec 0207), "how to reach
- * them" (contacts, addresses) and the documents/activity tabs on the right,
- * the client's related records in tabs below (spec 0199), a metadata footer.
+ * same `RecordBody` every detail uses: identity + KPI, then the general notes
+ * (spec 0207), the sections and "how to reach them" (contacts, addresses) in
+ * the record card; the documents/activity tabs in the side column; the
+ * client's related records in tabs below (spec 0199), a metadata footer.
  *
  * There is no edit page (spec 0200): the sections' fields — custom fields
  * included — edit IN PLACE, one at a time (`RecordInlineField`, driven by
  * `useRegistryInlineEdit`), each save a PATCH of that field alone; contacts
- * and addresses are managed in place by their own cards.
+ * and addresses are managed in place by their own sections.
  *
  * Container-query driven (`RecordCanvas`), so the same tree renders correctly
  * on the dedicated `/registries/:id` page and inside the modal Sheet the
@@ -103,40 +100,40 @@ function RegistryDetailContent({ registry, onChanged }: RegistryDetailViewProps)
   return (
     <RecordCanvas>
       <RecordBody
-        side={
+        collaborationTabs={collaborationTabs}
+        header={
           <>
-            {/* Spec 0207: the general notes head the side column, edited in place inside their callout. */}
-            <Form {...editor.form}>
-              <RegistryGeneralNotesRow
-                notes={registry.general_notes}
-                control={editor.form.control}
-                inline={editor.inline}
-              />
-            </Form>
-            <PersonalDataRecordCards
-              card={registry.personal_data}
-              contactsTitle={t('registries.form.sections.contacts.title')}
-              addressesTitle={t('registries.form.sections.addresses.title')}
-              showSiteType
-              editing={{ fieldPermission: editor.card.fieldPermission, onChanged: handleCardChanged }}
+            <RegistryDetailHeader registry={registry} />
+            <RegistryStatsStrip
+              referents={registry.referents.length}
+              managers={registry.managers.length}
+              sectors={registry.sectors.length}
+              employees={registry.employee_count}
             />
-            <RecordCollaborationCard tabs={collaborationTabs} />
           </>
         }
       >
-        <RecordCard>
-          <RegistryDetailHeader registry={registry} />
-          <RegistryStatsStrip
-            referents={registry.referents.length}
-            managers={registry.managers.length}
-            sectors={registry.sectors.length}
-            employees={registry.employee_count}
+        {/* Provider only (no DOM): the inline editors share the edit form. */}
+        <Form {...editor.form}>
+          {/* Spec 0207: the general notes head the record's sections, edited in place inside their callout. */}
+          <div className="px-4 pt-4">
+            <RegistryGeneralNotesRow
+              notes={registry.general_notes}
+              control={editor.form.control}
+              inline={editor.inline}
+            />
+          </div>
+          <RegistryDetailSections registry={registry} editor={editor} />
+        </Form>
+        <RecordSectionsGrid className="border-t">
+          <PersonalDataRecordSections
+            card={registry.personal_data}
+            contactsTitle={t('registries.form.sections.contacts.title')}
+            addressesTitle={t('registries.form.sections.addresses.title')}
+            showSiteType
+            editing={{ fieldPermission: editor.card.fieldPermission, onChanged: handleCardChanged }}
           />
-          {/* Provider only (no DOM): the inline editors share the edit form. */}
-          <Form {...editor.form}>
-            <RegistryDetailSections registry={registry} editor={editor} />
-          </Form>
-        </RecordCard>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {/* Spec 0199: the client's Opportunita'/Offerte/Commesse/Task, full width below the record. */}

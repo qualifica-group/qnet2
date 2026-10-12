@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
 import { Form } from '@/components/ui/form'
-import { RecordBody } from '@/components/detail/record-body'
+import { RecordFormBody } from '@/components/record-form/record-form-body'
 import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { IdentityDuplicateWarning } from '@/features/identity-duplicates/identity-duplicate-warning'
@@ -109,7 +109,7 @@ export function RegistryFormBody({ onSuccess, onCancel }: RegistryFormBodyProps)
             boundary, it must not become an extra box around the canvas. */}
         <form id={REGISTRY_FORM_ID} onSubmit={form.handleSubmit(submit.onSubmit)} className="contents" noValidate>
           <RecordCanvas>
-            <RecordBody side={side}>
+            <RecordFormBody side={side}>
               <RecordCard>
                 <RegistryFormHeader
                   control={form.control}
@@ -140,7 +140,7 @@ export function RegistryFormBody({ onSuccess, onCancel }: RegistryFormBodyProps)
                 submittingLabel={t('registries.form.saving')}
                 cancel={{ label: t('registries.form.cancel'), onCancel }}
               />
-            </RecordBody>
+            </RecordFormBody>
           </RecordCanvas>
         </form>
       </Form>

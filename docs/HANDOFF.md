@@ -24,6 +24,34 @@
   `tsc -b --force` 0; Pint/ESLint puliti.
 - Segnalato, non fatto: il manuale cita "Nuovo task › Da modello…" e "Converti in modello", assenti nel codice.
 
+## DETTAGLIO RECORD — UN SOLO LAYOUT PER TUTTI I DETTAGLI (`RecordBody header + collaborationTabs`, 2026-10-12) — VERDE, NON COMMITTATO
+
+- Richiesta utente: estendere a TUTTI i dettagli quanto fatto su Task, con una gestione semplice e univoca ("non
+  inventarti che ogni pagina ha un componente principale diverso"). Base: commit d971cf77 (solo Task).
+- API unica (`components/detail/record-body.tsx`):
+  `<RecordBody header={<Intestazione/Azioni/KPI/>} collaborationTabs={tabs}>{sezioni}</RecordBody>`.
+  `RecordBody` crea da se' l'UNICA `RecordCard` del record e la colonna laterale (7:4, comprimibile, chiusa di
+  default, pannello volante dalla barra icone; schede "Dettagli | ..." sotto l'header quando stretto). Niente piu'
+  `side=`, `RecordCollaborationCard` a mano, ne' `RecordDetailsTabs`. `children` facoltativo (dettagli con solo
+  header: Settori, Tag, Fonti, Tipi referente -> da stretto nessuna scheda "Dettagli" vuota).
+- Migrati: tutti i ~50 dettagli (codemod su AST TypeScript per i 39 regolari + a mano Task, Categorie prodotto,
+  Settori, Tag, Fonti, Tipi referente, Anagrafiche, Referenti, Fatture). Fatture: la scheda Email non e' piu'
+  annidata nella card ma nella colonna laterale.
+- Decisione utente 2026-10-12: Anagrafiche/Referenti -> Contatti/Indirizzi e Note generali entrano nella card
+  principale (Note generali in cima, Contatti/Indirizzi in fondo come sezioni, `PersonalDataRecordSections` =
+  `PersonalDataChildCards asSections`). La colonna laterale e' SOLO collaborazione per tutti. I form di creazione
+  restano con le card a destra. Categorie prodotto: attributi per contesto + anteprima layout ora bande della card.
+- Form di creazione: layout separato `components/record-form/record-form-body.tsx` (`RecordFormBody side`),
+  usato da task/registry/opportunity/quote/work-order form body. Non toccati nel comportamento.
+- Barra icone montata SOLO a colonna chiusa (prima restava nascosta e duplicava le etichette nel DOM).
+- Test: `src/test/setup.ts` apre la colonna prima di ogni test (`record.side.collapsed=false`): i test di modulo
+  verificano il CONTENUTO delle schede; il default chiuso e' coperto dai test del kit (che svuotano lo storage).
+  Nuovi test kit: dettaglio senza schede, dettaglio solo-header; `record-form-body.test.tsx`.
+  Vitest completo 7340/7340; `tsc -b --force` 0; ESLint pulito sui 63 file toccati.
+- Guide in-app IT/EN: general (disposizione della scheda), registries (Note generali e Contatti/Indirizzi nella
+  card). Manuale Claude Docs: paragrafo generale aggiornato, paragrafo Task rimosso (ora vale per tutti).
+- Da valutare: `RegistryRelatedRecords` (card a schede sotto il record, spec 0199) resta FUORI da `RecordBody`.
+
 ## DETTAGLIO RECORD — COLONNA LATERALE FISSA, COMPRIMIBILE, SCHEDE SU SCHERMI STRETTI (2026-10-12) — VERDE (mirato), NON COMMITTATO
 
 - Richiesta utente: in `/tasks/:id` la colonna destra era troppo larga e su schermi piccoli la card principale diventava

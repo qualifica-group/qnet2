@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
@@ -68,13 +67,15 @@ export function UserDetailView({ userId, onEdit }: UserDetailProps) {
   return (
     <RecordCanvas>
       <RecordBody
-        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <UserDetailHeader user={user} onEdit={onEdit} canUpdate={user.permissions.resource.update} />
+            <UserDetailStats user={user} assignment={assignment} />
+          </>
+        }
       >
-        <RecordCard>
-          <UserDetailHeader user={user} onEdit={onEdit} canUpdate={user.permissions.resource.update} />
-          <UserDetailStats user={user} assignment={assignment} />
-          <UserDetailSections user={user} assignment={assignment} />
-        </RecordCard>
+        <UserDetailSections user={user} assignment={assignment} />
       </RecordBody>
 
       {createdAt ? (

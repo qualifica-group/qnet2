@@ -4,7 +4,6 @@ import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,10 +11,7 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
@@ -50,47 +46,49 @@ export function AttributeDetailView({ attribute, onEdit }: AttributeDetailViewPr
 
   return (
     <RecordCanvas>
-      <RecordBody side={tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}>
-        <RecordCard>
+      <RecordBody
+        collaborationTabs={tabs}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={attribute.name} icon={<SlidersHorizontal />} />}
             title={attribute.name}
             subtitle={attribute.code}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('attributes.detail.details')}>
-              <RecordFieldList>
-                <RecordField label={t('attributes.columns.type')}>
-                  <Badge variant="secondary" className="gap-1">
-                    <TypeIcon className="size-3.5" aria-hidden="true" />
-                    {t(`customFields.types.${attribute.type}`)}
-                  </Badge>
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('attributes.detail.details')}>
+            <RecordFieldList>
+              <RecordField label={t('attributes.columns.type')}>
+                <Badge variant="secondary" className="gap-1">
+                  <TypeIcon className="size-3.5" aria-hidden="true" />
+                  {t(`customFields.types.${attribute.type}`)}
+                </Badge>
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
 
-            {attribute.type === 'enum' && (
-              <RecordSection title={t('attributes.detail.options')} full>
-                {sortedOptions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t('attributes.form.optionsEmpty')}</p>
-                ) : (
-                  <ul className="flex flex-col gap-1.5">
-                    {sortedOptions.map((option) => (
-                      <li key={option.id} className="flex items-center gap-2 text-sm">
-                        <DynamicIcon name={option.icon} className="size-3.5 text-muted-foreground" />
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {option.value}
-                        </Badge>
-                        <span className="text-foreground">{option.label}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </RecordSection>
-            )}
-          </RecordSectionsGrid>
-        </RecordCard>
+          {attribute.type === 'enum' && (
+            <RecordSection title={t('attributes.detail.options')} full>
+              {sortedOptions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t('attributes.form.optionsEmpty')}</p>
+              ) : (
+                <ul className="flex flex-col gap-1.5">
+                  {sortedOptions.map((option) => (
+                    <li key={option.id} className="flex items-center gap-2 text-sm">
+                      <DynamicIcon name={option.icon} className="size-3.5 text-muted-foreground" />
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {option.value}
+                      </Badge>
+                      <span className="text-foreground">{option.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </RecordSection>
+          )}
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (

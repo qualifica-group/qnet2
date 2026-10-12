@@ -2,9 +2,8 @@ import { useTranslation } from 'react-i18next'
 import { ListTree, Power } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { DetailMonogram } from '@/components/detail/detail-panel'
-import { RecordCanvas, RecordCard, RecordCardHeader, RecordMeta } from '@/components/detail/record-panel'
+import { RecordCanvas, RecordCardHeader, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -32,13 +31,8 @@ export function SectorDetailView({ sector, onEdit }: SectorDetailViewProps) {
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard tabs={[activityLogTab('sectors', sector.id, t('activityLog.title'))]} />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab('sectors', sector.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={
               <DetailMonogram
@@ -68,8 +62,8 @@ export function SectorDetailView({ sector, onEdit }: SectorDetailViewProps) {
             }
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-        </RecordCard>
-      </RecordBody>
+        }
+      />
 
       {createdAt ? (
         <RecordMeta>

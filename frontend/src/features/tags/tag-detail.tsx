@@ -1,9 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { Tag as TagIcon } from 'lucide-react'
 import { DetailMonogram } from '@/components/detail/detail-panel'
-import { RecordCanvas, RecordCard, RecordCardHeader, RecordMeta } from '@/components/detail/record-panel'
+import { RecordCanvas, RecordCardHeader, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -30,13 +29,8 @@ export function TagDetailView({ tag, onEdit }: TagDetailViewProps) {
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard tabs={[activityLogTab('tags', tag.id, t('activityLog.title'))]} />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab('tags', tag.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={
               <DetailMonogram name={tag.name} icon={<TagIcon />} className="size-10 text-base [&>svg]:size-5" />
@@ -44,8 +38,8 @@ export function TagDetailView({ tag, onEdit }: TagDetailViewProps) {
             title={tag.name}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-        </RecordCard>
-      </RecordBody>
+        }
+      />
 
       {createdAt ? (
         <RecordMeta>

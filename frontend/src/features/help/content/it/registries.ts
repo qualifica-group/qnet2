@@ -61,7 +61,7 @@ const guide: HelpGuide = {
             ['Relazioni', 'Fonte, Settori merceologici, Commerciale e Segnalatore.'],
             ['Team', 'Supervisore e Gestori account, in ordine di importanza dal primo in alto; riordinali con Sposta su e Sposta giù.'],
             ['Dati commerciali', 'Gruppo IVA, Fornitore, Fornitore qualificato (solo per i fornitori), Stato convenzione (In trattativa, Respinta o Concordata), Classe dimensionale, Numero dipendenti e Note convenzione.'],
-            ['Note generali', "Il riquadro giallo in cima alla colonna di destra, lo stesso di Gestione richieste: un testo libero (fino a 5000 caratteri) con ciò che chi apre l'anagrafica deve leggere per primo."],
+            ['Note generali', "Il riquadro giallo, lo stesso di Gestione richieste (nel dettaglio in cima ai dati dell'anagrafica, nella creazione in cima alla colonna di destra): un testo libero (fino a 5000 caratteri) con ciò che chi apre l'anagrafica deve leggere per primo."],
             ['Contatti', 'Email, Telefono (obbligatorio), PEC, Fax e Sito web; con Aggiungi contatto ne inserisci altri e indichi il Contatto principale.'],
             ['Indirizzi', 'Uno o più indirizzi, ciascuno con un Tipo sede: Sede legale, Consegna, Fatturazione o Sede operativa.'],
             ['Referenti', 'Le persone di contatto del cliente, a tutta larghezza sotto le altre sezioni.'],
@@ -93,7 +93,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "I **Dati anagrafici** (tipo, nome o ragione sociale, codice fiscale, partita IVA…) si modificano insieme: la matita apre l'intera scheda e Salva aggiorna anche il nome dell'anagrafica. **Contatti** e **Indirizzi**, nella colonna di destra, si aggiungono, modificano ed eliminano lì stesso e si salvano subito.",
+          text: "I **Dati anagrafici** (tipo, nome o ragione sociale, codice fiscale, partita IVA…) si modificano insieme: la matita apre l'intera scheda e Salva aggiorna anche il nome dell'anagrafica. **Contatti** e **Indirizzi**, in fondo ai dati della scheda, si aggiungono, modificano ed eliminano lì stesso e si salvano subito.",
         },
         {
           type: 'note',
@@ -101,7 +101,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Le **Note generali** si scrivono dentro il loro riquadro in cima alla colonna di destra: fai clic sul testo (o sulla matita), scrivi e premi **Salva**. Se l'anagrafica non ha note e non puoi modificarle, il riquadro non compare.",
+          text: "Le **Note generali** si scrivono dentro il loro riquadro in cima ai dati dell'anagrafica: fai clic sul testo (o sulla matita), scrivi e premi **Salva**. Se l'anagrafica non ha note e non puoi modificarle, il riquadro non compare.",
         },
       ],
     },

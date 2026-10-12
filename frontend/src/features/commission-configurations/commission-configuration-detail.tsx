@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge'
 import { DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -14,7 +13,6 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { RecordLink } from '@/components/detail/record-link'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
@@ -91,116 +89,110 @@ export function CommissionConfigurationDetailView({
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab('commission-configurations', configuration.id, t('activityLog.title'))]}
-            />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab('commission-configurations', configuration.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={title} icon={<CircleDollarSign />} />}
             title={title}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            {scopeSectionVisible ? (
-              <RecordSection title={t('commissionConfigurations.detail.scope')} icon={<Settings2 />}>
-                <RecordFieldList>
-                  {visible('recipient_role') ? (
-                    <RecordField label={t('commissionConfigurations.form.recipient_role')}>
-                      {option('recipient_role', configuration.recipient_role)}
-                    </RecordField>
-                  ) : null}
-                  {visible('application_scope') ? (
-                    <RecordField label={t('commissionConfigurations.form.application_scope')}>
-                      {option('application_scope', configuration.application_scope)}
-                    </RecordField>
-                  ) : null}
-                  {scopeRelationField && visible(scopeRelationField) ? (
-                    <RecordField
-                      label={
-                        configuration.application_scope === 'PRODUCT'
-                          ? t('commissionConfigurations.form.product_id')
-                          : t('commissionConfigurations.form.product_category_id')
-                      }
-                    >
-                      {configuration.product ? (
-                        <RecordLink domain="products" id={configuration.product.id}>
-                          {configuration.product.name}
-                        </RecordLink>
-                      ) : (
-                        (configuration.product_category?.name ?? '–')
-                      )}
-                    </RecordField>
-                  ) : null}
-                  {visible('recipient_id') ? (
-                    <RecordField label={t('commissionConfigurations.form.recipient_id')}>
-                      {configuration.recipient && recipientDomain ? (
-                        <RecordLink domain={recipientDomain} id={configuration.recipient.id}>
-                          {configuration.recipient.name}
-                        </RecordLink>
-                      ) : (
-                        (configuration.recipient?.name ?? '–')
-                      )}
-                    </RecordField>
-                  ) : null}
-                </RecordFieldList>
-              </RecordSection>
-            ) : null}
+        }
+      >
+        <RecordSectionsGrid>
+          {scopeSectionVisible ? (
+            <RecordSection title={t('commissionConfigurations.detail.scope')} icon={<Settings2 />}>
+              <RecordFieldList>
+                {visible('recipient_role') ? (
+                  <RecordField label={t('commissionConfigurations.form.recipient_role')}>
+                    {option('recipient_role', configuration.recipient_role)}
+                  </RecordField>
+                ) : null}
+                {visible('application_scope') ? (
+                  <RecordField label={t('commissionConfigurations.form.application_scope')}>
+                    {option('application_scope', configuration.application_scope)}
+                  </RecordField>
+                ) : null}
+                {scopeRelationField && visible(scopeRelationField) ? (
+                  <RecordField
+                    label={
+                      configuration.application_scope === 'PRODUCT'
+                        ? t('commissionConfigurations.form.product_id')
+                        : t('commissionConfigurations.form.product_category_id')
+                    }
+                  >
+                    {configuration.product ? (
+                      <RecordLink domain="products" id={configuration.product.id}>
+                        {configuration.product.name}
+                      </RecordLink>
+                    ) : (
+                      (configuration.product_category?.name ?? '–')
+                    )}
+                  </RecordField>
+                ) : null}
+                {visible('recipient_id') ? (
+                  <RecordField label={t('commissionConfigurations.form.recipient_id')}>
+                    {configuration.recipient && recipientDomain ? (
+                      <RecordLink domain={recipientDomain} id={configuration.recipient.id}>
+                        {configuration.recipient.name}
+                      </RecordLink>
+                    ) : (
+                      (configuration.recipient?.name ?? '–')
+                    )}
+                  </RecordField>
+                ) : null}
+              </RecordFieldList>
+            </RecordSection>
+          ) : null}
 
-            {calculationSectionVisible ? (
-              <RecordSection title={t('commissionConfigurations.detail.calculation')} icon={<CircleDollarSign />}>
-                <RecordFieldList>
-                  {visible('commission_type') ? (
-                    <RecordField label={t('commissionConfigurations.form.commission_type')}>
-                      {option('commission_type', configuration.commission_type)}
-                    </RecordField>
-                  ) : null}
-                  {visible('value') ? (
-                    <RecordField label={t('commissionConfigurations.form.value')}>{formattedValue}</RecordField>
-                  ) : null}
-                  {visible('priority') ? (
-                    <RecordField label={t('commissionConfigurations.form.priority')}>
-                      {configuration.priority}
-                    </RecordField>
-                  ) : null}
-                  {visible('status') ? (
-                    <RecordField label={t('commissionConfigurations.form.status')}>
-                      <Badge variant={configuration.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                        {option('status', configuration.status)}
-                      </Badge>
-                    </RecordField>
-                  ) : null}
-                </RecordFieldList>
-              </RecordSection>
-            ) : null}
+          {calculationSectionVisible ? (
+            <RecordSection title={t('commissionConfigurations.detail.calculation')} icon={<CircleDollarSign />}>
+              <RecordFieldList>
+                {visible('commission_type') ? (
+                  <RecordField label={t('commissionConfigurations.form.commission_type')}>
+                    {option('commission_type', configuration.commission_type)}
+                  </RecordField>
+                ) : null}
+                {visible('value') ? (
+                  <RecordField label={t('commissionConfigurations.form.value')}>{formattedValue}</RecordField>
+                ) : null}
+                {visible('priority') ? (
+                  <RecordField label={t('commissionConfigurations.form.priority')}>
+                    {configuration.priority}
+                  </RecordField>
+                ) : null}
+                {visible('status') ? (
+                  <RecordField label={t('commissionConfigurations.form.status')}>
+                    <Badge variant={configuration.status === 'ACTIVE' ? 'default' : 'secondary'}>
+                      {option('status', configuration.status)}
+                    </Badge>
+                  </RecordField>
+                ) : null}
+              </RecordFieldList>
+            </RecordSection>
+          ) : null}
 
-            {validitySectionVisible ? (
-              <RecordSection title={t('commissionConfigurations.detail.validity')} icon={<CalendarRange />}>
-                <RecordFieldList>
-                  {visible('valid_from') ? (
-                    <RecordField label={t('commissionConfigurations.form.valid_from')}>
-                      {formatDate(configuration.valid_from) || EMPTY_DATE}
-                    </RecordField>
-                  ) : null}
-                  {visible('valid_until') ? (
-                    <RecordField label={t('commissionConfigurations.form.valid_until')}>
-                      {formatDate(configuration.valid_until) || EMPTY_DATE}
-                    </RecordField>
-                  ) : null}
-                  {visible('internal_note') ? (
-                    <RecordField label={t('commissionConfigurations.form.internal_note')}>
-                      {configuration.internal_note ?? '–'}
-                    </RecordField>
-                  ) : null}
-                </RecordFieldList>
-              </RecordSection>
-            ) : null}
-          </RecordSectionsGrid>
-        </RecordCard>
+          {validitySectionVisible ? (
+            <RecordSection title={t('commissionConfigurations.detail.validity')} icon={<CalendarRange />}>
+              <RecordFieldList>
+                {visible('valid_from') ? (
+                  <RecordField label={t('commissionConfigurations.form.valid_from')}>
+                    {formatDate(configuration.valid_from) || EMPTY_DATE}
+                  </RecordField>
+                ) : null}
+                {visible('valid_until') ? (
+                  <RecordField label={t('commissionConfigurations.form.valid_until')}>
+                    {formatDate(configuration.valid_until) || EMPTY_DATE}
+                  </RecordField>
+                ) : null}
+                {visible('internal_note') ? (
+                  <RecordField label={t('commissionConfigurations.form.internal_note')}>
+                    {configuration.internal_note ?? '–'}
+                  </RecordField>
+                ) : null}
+              </RecordFieldList>
+            </RecordSection>
+          ) : null}
+        </RecordSectionsGrid>
       </RecordBody>
 
       {visible('updated_at') ? (

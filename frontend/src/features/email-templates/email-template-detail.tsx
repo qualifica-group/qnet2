@@ -4,7 +4,6 @@ import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,10 +11,7 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { RichTextContent } from '@/components/rich-text/rich-text-content'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
@@ -48,34 +44,36 @@ export function EmailTemplateDetailView({ emailTemplate, onEdit }: EmailTemplate
 
   return (
     <RecordCanvas>
-      <RecordBody side={tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}>
-        <RecordCard>
+      <RecordBody
+        collaborationTabs={tabs}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={emailTemplate.name} icon={<Mail />} />}
             title={emailTemplate.name}
             subtitle={emailTemplate.subject}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('emailTemplates.form.sections.identity.title')} full>
-              <RecordFieldList>
-                <RecordField label={t('emailTemplates.detail.module')}>
-                  {t(`emailTemplates.modules.${emailTemplate.module}`)}
-                </RecordField>
-                <RecordField label={t('emailTemplates.detail.subject')}>{emailTemplate.subject}</RecordField>
-                <RecordField label={t('emailTemplates.detail.description')}>
-                  {emailTemplate.description ? emailTemplate.description : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('emailTemplates.detail.isActive')}>
-                  {emailTemplate.is_active ? t('common.yes') : t('common.no')}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-            <RecordSection title={t('emailTemplates.detail.body')} full>
-              <RichTextContent html={emailTemplate.body} />
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('emailTemplates.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <RecordField label={t('emailTemplates.detail.module')}>
+                {t(`emailTemplates.modules.${emailTemplate.module}`)}
+              </RecordField>
+              <RecordField label={t('emailTemplates.detail.subject')}>{emailTemplate.subject}</RecordField>
+              <RecordField label={t('emailTemplates.detail.description')}>
+                {emailTemplate.description ? emailTemplate.description : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('emailTemplates.detail.isActive')}>
+                {emailTemplate.is_active ? t('common.yes') : t('common.no')}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+          <RecordSection title={t('emailTemplates.detail.body')} full>
+            <RichTextContent html={emailTemplate.body} />
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       <RecordMeta>

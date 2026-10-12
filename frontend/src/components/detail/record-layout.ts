@@ -13,9 +13,8 @@
 export const RECORD_BODY_GRID_CLASS = 'grid grid-cols-1 items-start gap-4'
 
 /**
- * Added only when a side column is actually laid out: with nothing to put in
- * it the record keeps the full width instead of leaving a third of the canvas
- * empty.
+ * Create forms (`RecordFormBody`): added only when a side column is actually
+ * laid out; with nothing to put in it the form keeps the full width.
  */
 export const RECORD_BODY_WITH_SIDE_CLASS = '@5xl:grid-cols-[minmax(0,7fr)_minmax(0,4fr)]'
 

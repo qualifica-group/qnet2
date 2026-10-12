@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordDetailsTabs } from '@/components/detail/record-collaboration-body'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import i18n from '@/i18n'
 
@@ -13,16 +14,11 @@ const TABS = [
 const NARROW_BODY_WIDTH = 600
 const WIDE_BODY_WIDTH = 1400
 
-function renderBody() {
+function renderBody(tabs: RecordCollaborationTab[] = TABS, sections: ReactNode = <p>record sections</p>) {
   return render(
     <TooltipProvider>
-      <RecordBody collaborationTabs={TABS}>
-        <div>
-          <p>identity band</p>
-          <RecordDetailsTabs>
-            <p>record sections</p>
-          </RecordDetailsTabs>
-        </div>
+      <RecordBody collaborationTabs={tabs} header={<p>identity band</p>}>
+        {sections}
       </RecordBody>
     </TooltipProvider>,
   )
@@ -152,15 +148,24 @@ describe('RecordBody with collaboration tabs — narrow', () => {
   })
 })
 
-describe('RecordDetailsTabs', () => {
-  it('renders its sections as they are outside a collaboration body', () => {
-    render(
-      <RecordDetailsTabs>
-        <p>record sections</p>
-      </RecordDetailsTabs>,
-    )
+describe('RecordBody without sections or tabs', () => {
+  it('keeps a header-only record on its collaboration tabs when narrow, with no empty "Dettagli" tab', () => {
+    mockBodyWidth(NARROW_BODY_WIDTH)
+    renderBody(TABS, null)
 
+    expect(screen.queryByRole('tab', { name: i18n.t('common.recordSide.details') })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Notes' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('notes body')).toBeInTheDocument()
+    expect(screen.getByText('identity band')).toBeInTheDocument()
+  })
+
+  it('lays out the record card alone, with no side column, when there is no tab', () => {
+    mockBodyWidth(WIDE_BODY_WIDTH)
+    renderBody([])
+
+    expect(screen.getByText('identity band')).toBeInTheDocument()
     expect(screen.getByText('record sections')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: i18n.t('common.recordSide.expand') })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
   })
 })

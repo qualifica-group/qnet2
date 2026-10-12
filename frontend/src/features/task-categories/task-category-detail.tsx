@@ -4,7 +4,6 @@ import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,10 +11,7 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
@@ -50,51 +46,53 @@ export function TaskCategoryDetailView({ taskCategory, onEdit }: TaskCategoryDet
 
   return (
     <RecordCanvas>
-      <RecordBody side={tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}>
-        <RecordCard>
+      <RecordBody
+        collaborationTabs={tabs}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={taskCategory.name} icon={<Tags />} />}
             title={taskCategory.name}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('taskCategories.form.sections.identity.title')} full>
-              <RecordFieldList>
-                <RecordField label={t('taskCategories.detail.description')}>
-                  {taskCategory.description ? taskCategory.description : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('taskCategories.detail.color')}>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('taskCategories.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <RecordField label={t('taskCategories.detail.description')}>
+                {taskCategory.description ? taskCategory.description : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('taskCategories.detail.color')}>
+                <span className="flex items-center gap-2">
+                  <span
+                    className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
+                    aria-hidden="true"
+                  />
+                  {t(`customFields.colors.${taskCategory.color}`)}
+                </span>
+              </RecordField>
+              <RecordField label={t('taskCategories.detail.icon')}>
+                {taskCategory.icon ? (
                   <span className="flex items-center gap-2">
-                    <span
-                      className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
-                      aria-hidden="true"
-                    />
-                    {t(`customFields.colors.${taskCategory.color}`)}
+                    <DynamicIcon name={taskCategory.icon} className="size-3.5 text-muted-foreground" />
+                    {taskCategory.icon}
                   </span>
-                </RecordField>
-                <RecordField label={t('taskCategories.detail.icon')}>
-                  {taskCategory.icon ? (
-                    <span className="flex items-center gap-2">
-                      <DynamicIcon name={taskCategory.icon} className="size-3.5 text-muted-foreground" />
-                      {taskCategory.icon}
-                    </span>
-                  ) : (
-                    <DetailEmpty />
-                  )}
-                </RecordField>
-                <RecordField label={t('taskCategories.detail.sort_order')}>
-                  {taskCategory.sort_order}
-                </RecordField>
-                <RecordField label={t('taskCategories.detail.isActive')}>
-                  {taskCategory.is_active ? t('common.yes') : t('common.no')}
-                </RecordField>
-                <RecordField label={t('taskCategories.detail.parent')}>
-                  {taskCategory.parent ? taskCategory.parent.name : <DetailEmpty />}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+                ) : (
+                  <DetailEmpty />
+                )}
+              </RecordField>
+              <RecordField label={t('taskCategories.detail.sort_order')}>
+                {taskCategory.sort_order}
+              </RecordField>
+              <RecordField label={t('taskCategories.detail.isActive')}>
+                {taskCategory.is_active ? t('common.yes') : t('common.no')}
+              </RecordField>
+              <RecordField label={t('taskCategories.detail.parent')}>
+                {taskCategory.parent ? taskCategory.parent.name : <DetailEmpty />}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       <RecordMeta>
