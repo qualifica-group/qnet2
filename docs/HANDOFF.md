@@ -65,6 +65,25 @@
 - PDF del manuale NON rigenerato: lo store di Claude Docs rifiuta l'export lato file (non writer del documento).
   Va esportato dall'interfaccia del documento (Esporta -> PDF).
 
+## MIGRAZIONI: REGOLE COMMISSIONE SENZA DESTINATARIO = REGOLE DI RUOLO (2026-10-12) — VERDE, COMMITTATO (QNet 2; legacy no)
+
+- Dopo spec 0223 l'import commissioni falliva su 30 righe "no recipient"/"no role". Analisi sul DB legacy locale:
+  21 regole commerciali (4, 34-40, 74-78, 147-153, 436) hanno un `archive_id` di contatti CANCELLATI (l'API li
+  emetteva come null): non sono regole "per tutti". Davvero senza destinatario solo 12, 619, 623, 624, 626-629.
+- Decisioni utente: la pulizia sta nel LEGACY, non nella logica d'import (niente euristiche in QNet 2).
+  - Legacy `/Users/Repository/qnet`, `CommissionConfigurationMigrationController::applyMigratableScope()` (in SQL,
+    total/paginazione coerenti): ruolo noto + valore; destinatario esistente oppure nessuno (`archive_id` null/0);
+    delle regole senza destinatario solo la piu' recente per ruolo + categoria/servizio. API locale: 615 -> 591
+    righe, restano 12, 619, 626, 627, 628, 629. **Modifica NON committata nel repo legacy** (che ha gia' altro in
+    stage di altri); va portata anche sul legacy di produzione.
+  - QNet 2 `CommissionConfigurationsSource`: `recipient_id` vuoto -> regola di RUOLO (recipient null), nome senza
+    destinatario; destinatario presente ma senza tipo -> riga fallita.
+- Test: `CommissionConfigurationsSourceImportTest` (+2 casi, dataset "no recipient" -> "recipient without kind",
+  requisito cambiato). Migration 377, CommissionConfigurations 40 verdi.
+- Manuale: testo "cosa serve" di Configuratore commissioni (it/en); manuale Claude Docs: nessun impatto (non
+  dettaglia l'import commissioni).
+- Prodotti senza categoria: invariato ("No categoria" di QNet 2), decisione utente.
+
 ## CONFIGURATORE COMMISSIONI: REGOLA DI CATEGORIA VALE PER IL RAMO (spec 0223, 2026-10-12) — VERDE, COMMITTATO
 
 - Motivo: import `commission-configurations` 501 falliti su 615, di cui 471 su categorie madre non selezionabili

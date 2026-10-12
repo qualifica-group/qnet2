@@ -144,7 +144,7 @@ it('AC-004: unimportable rules fail with a readable message and create nothing',
         ->and($run->report[0]['message'])->toContain($message);
 })->with([
     'no role' => [['role' => null, 'recipient_kind' => 'user', 'recipient_id' => 1], 'no commission role'],
-    'no recipient' => [['recipient_id' => null], 'no recipient'],
+    'recipient without kind' => [['recipient_kind' => null], 'no recipient kind'],
     'recipient not migrated' => [['recipient_id' => 999999], 'Recipient not migrated'],
     'kind not allowed for the role' => [['role' => 'supplier', 'recipient_kind' => 'contact', 'recipient_id' => 888], 'not allowed for the SUPPLIER role'],
     'category not migrated' => [['category_id' => 12345], 'Category not migrated'],
@@ -162,6 +162,30 @@ it('spec 0223 AC-009: a rule on a container category is imported, it covers the 
     expect($run->created_rows)->toBe(1)
         ->and($run->failed_rows)->toBe(0)
         ->and(CommissionConfiguration::sole()->product_category_id)->toBe($container->id);
+});
+
+it('imports a rule without recipient as an active role-wide rule (user decision 2026-10-12)', function () {
+    ['category' => $category] = migratedCommissionRuleTargets();
+
+    $run = runLegacyCommissionRulesImport([legacyCommissionRule(['role' => 'commercial', 'recipient_kind' => 'contact', 'recipient_id' => null])]);
+
+    $rule = CommissionConfiguration::sole();
+    expect($run->created_rows)->toBe(1)
+        ->and($rule->recipient_type)->toBeNull()
+        ->and($rule->recipient_id)->toBeNull()
+        ->and($rule->status)->toBe(CommissionConfigurationStatus::Active)
+        ->and($rule->product_category_id)->toBe($category->id)
+        ->and($rule->name)->toBe('Legacy - '.CommissionRecipientRole::Commercial->label().' - Formazione');
+});
+
+it('imports a supplier rule without recipient as a role-wide supplier rule', function () {
+    migratedCommissionRuleTargets();
+
+    $run = runLegacyCommissionRulesImport([legacyCommissionRule(['id' => 619, 'recipient_id' => null, 'percentage' => 50])]);
+
+    expect($run->created_rows)->toBe(1)
+        ->and(CommissionConfiguration::sole()->recipient_role)->toBe(CommissionRecipientRole::Supplier)
+        ->and(CommissionConfiguration::sole()->recipient_type)->toBeNull();
 });
 
 it('AC-005: a re-run skips the already imported rules without duplicating', function () {

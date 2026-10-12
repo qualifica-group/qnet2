@@ -32,8 +32,11 @@ use RuntimeException;
  * (the legacy id spaces overlap, R-2): company -> Registry, contact ->
  * Referent, user -> User, each via `old_id`. A rule the Configuratore could not
  * hold is a FAILED row with a readable message, never an invented rule: no
- * role, no/unmigrated recipient, a recipient kind the role does not admit, an
- * unmigrated category/product, no amount. A container category is fine: its
+ * role, an unmigrated recipient, a recipient kind the role does not admit, an
+ * unmigrated category/product, no amount. A rule with NO recipient is a
+ * role-wide rule (user decision 2026-10-12); the legacy migration API already
+ * lists only the most recent one per role and target, and drops the rules
+ * whose recipient was deleted. A container category is fine: its
  * rule covers the whole branch (spec 0223). Written without activity log: a
  * migration notifies and audits nobody (as spec 0189).
  */
@@ -172,8 +175,8 @@ class CommissionConfigurationsSource extends AbstractMigrationSource
             applicationScope: $destination['scope'],
             productCategoryId: $destination['scope'] === CommissionApplicationScope::ProductCategory ? $destination['model']->id : null,
             productId: $destination['scope'] === CommissionApplicationScope::Product ? $destination['model']->id : null,
-            recipientId: $recipient->id,
-            recipientType: $recipient->getMorphClass(),
+            recipientId: $recipient?->id,
+            recipientType: $recipient?->getMorphClass(),
             commissionType: $type,
             value: $value,
             priority: self::DEFAULT_PRIORITY,
@@ -196,12 +199,20 @@ class CommissionConfigurationsSource extends AbstractMigrationSource
         return $role ?? throw new RuntimeException('The legacy rule has no commission role; it cannot be migrated.');
     }
 
-    private function resolveRecipient(CommissionRecipientRole $role, mixed $kind, mixed $legacyId): Model
+    /**
+     * The remapped recipient, or null for a legacy rule without one: a
+     * role-wide rule (user decision 2026-10-12).
+     */
+    private function resolveRecipient(CommissionRecipientRole $role, mixed $kind, mixed $legacyId): ?Model
     {
+        if ($legacyId === null || $legacyId === '') {
+            return null;
+        }
+
         $modelClass = is_string($kind) ? (self::RECIPIENT_MODELS[$kind] ?? null) : null;
 
-        if ($modelClass === null || $legacyId === null || $legacyId === '') {
-            throw new RuntimeException('The legacy rule has no recipient; it cannot be migrated.');
+        if ($modelClass === null) {
+            throw new RuntimeException('The legacy rule has a recipient but no recipient kind; it cannot be migrated.');
         }
 
         $alias = (new $modelClass)->getMorphClass();
@@ -258,9 +269,11 @@ class CommissionConfigurationsSource extends AbstractMigrationSource
         throw new RuntimeException('The legacy rule has neither a percentage nor an amount; it cannot be migrated.');
     }
 
-    private function buildName(CommissionRecipientRole $role, Model $recipient, Model $destination): string
+    private function buildName(CommissionRecipientRole $role, ?Model $recipient, Model $destination): string
     {
-        return mb_substr("Legacy - {$role->label()} - {$recipient->name} - {$destination->name}", 0, self::NAME_MAX_LENGTH);
+        $parts = array_filter(['Legacy', $role->label(), $recipient?->name, $destination->name]);
+
+        return mb_substr(implode(' - ', $parts), 0, self::NAME_MAX_LENGTH);
     }
 
     private function validFrom(mixed $createdAt): string
