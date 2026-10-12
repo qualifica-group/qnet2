@@ -133,14 +133,16 @@ export interface InvoiceWritePayload {
   lines: InvoiceLinePayload[]
 }
 
-/** PATCH `/invoices/{id}/details` body. */
+/** PATCH `/invoices/{id}/details` body: only the keys of the row being saved (spec 0224 D-2). */
 export interface InvoiceDetailsPayload {
-  external_number: string | null
-  external_date: string | null
-  tag: InvoiceTag | null
-  deviation: number | null
-  internal_note: string | null
-  layout_id: number | null
+  external_number?: string | null
+  external_date?: string | null
+  tag?: InvoiceTag | null
+  deviation?: number | null
+  internal_note?: string | null
+  notes?: string | null
+  financial_account_id?: number | null
+  layout_id?: number | null
 }
 
 /** PUT `/invoice-installments/{id}/collection` body. */

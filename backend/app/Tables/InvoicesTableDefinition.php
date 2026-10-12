@@ -158,8 +158,8 @@ class InvoicesTableDefinition extends AbstractTableDefinition
         $gate = Gate::forUser($actor);
         $allowed = [];
 
-        // Action key => policy ability; "details" is the PATCH, gated like update.
-        $abilities = ['view' => 'view', 'update' => 'update', 'details' => 'update', 'delete' => 'delete', 'activity' => 'viewActivity', 'pdf' => 'view', 'email' => 'sendEmail', 'remind' => 'sendEmail'];
+        // Action key => policy ability. No edit action: the detail edits in place (spec 0224 D-6).
+        $abilities = ['view' => 'view', 'delete' => 'delete', 'activity' => 'viewActivity', 'pdf' => 'view', 'email' => 'sendEmail', 'remind' => 'sendEmail'];
 
         foreach ($abilities as $key => $ability) {
             if ($gate->allows($ability, $row)) {

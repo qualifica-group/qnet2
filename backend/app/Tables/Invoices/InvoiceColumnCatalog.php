@@ -79,8 +79,6 @@ final class InvoiceColumnCatalog
     {
         return [
             ['key' => 'view', 'label' => 'actions.view', 'icon' => 'eye', 'type' => 'link', 'confirm' => false, 'permission' => 'invoices.view'],
-            ['key' => 'update', 'label' => 'actions.edit', 'icon' => 'pencil', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.update'],
-            ['key' => 'details', 'label' => 'invoices.actions.details', 'icon' => 'file-pen-line', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.update'],
             ['key' => 'delete', 'label' => 'actions.delete', 'icon' => 'trash', 'type' => 'danger', 'confirm' => true, 'permission' => 'invoices.delete'],
             ['key' => 'activity', 'label' => 'actions.activity', 'icon' => 'history', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.viewActivity'],
             ['key' => 'pdf', 'label' => 'invoices.actions.pdf', 'icon' => 'file-down', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.view'],

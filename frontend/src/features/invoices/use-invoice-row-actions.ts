@@ -12,8 +12,6 @@ export interface InvoiceDeleteTarget {
 /** Which dialog/sheet each row action opens; the table adapter renders them from this state. */
 export function useInvoiceRowActions() {
   const [viewId, setViewId] = useState<number | null>(null)
-  const [editId, setEditId] = useState<number | null>(null)
-  const [detailsId, setDetailsId] = useState<number | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<InvoiceDeleteTarget | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
@@ -26,12 +24,6 @@ export function useInvoiceRowActions() {
     switch (action.key) {
       case 'view':
         setViewId(id)
-        break
-      case 'update':
-        setEditId(id)
-        break
-      case 'details':
-        setDetailsId(id)
         break
       case 'delete':
         setDeleteTarget({ id, numberLabel: String(row.number_label ?? id) })
@@ -58,10 +50,6 @@ export function useInvoiceRowActions() {
     emailFlow,
     viewId,
     closeView: useCallback(() => setViewId(null), []),
-    editId,
-    closeEdit: useCallback(() => setEditId(null), []),
-    detailsId,
-    closeDetails: useCallback(() => setDetailsId(null), []),
     deleteTarget,
     closeDelete: useCallback(() => setDeleteTarget(null), []),
     activityRow,

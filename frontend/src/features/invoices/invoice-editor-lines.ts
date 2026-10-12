@@ -1,10 +1,10 @@
 import type { FieldPath } from 'react-hook-form'
 import { computeInvoiceTotals, type InvoiceTotalsCents, type PreviewLine } from '@/features/invoices/invoice-amounts'
-import type { InvoiceWriteFormValues } from '@/features/invoices/invoice-schema'
+import type { InvoiceFormValues } from '@/features/invoices/invoice-schema'
 import { NO_ID } from '@/features/invoices/invoice-editor-source'
 import type { AvailableInvoiceLine, InvoiceWritePayload, VatRateRef } from '@/features/invoices/types'
 
-export type InvoiceLineValues = InvoiceWriteFormValues['lines'][number]
+export type InvoiceLineValues = InvoiceFormValues['lines'][number]
 export type VatRefs = Record<number, VatRateRef>
 
 export const DEFAULT_LINE_QUANTITY = 1
@@ -53,16 +53,31 @@ export function totalsOf(lines: readonly InvoiceLineValues[], vatRefs: VatRefs):
   return computeInvoiceTotals(lines.map((line) => toPreviewLine(line, vatRefs)))
 }
 
-/** Empty notes travel as null; totals are never sent (the server recomputes them). */
-export function buildWritePayload(values: InvoiceWriteFormValues): InvoiceWritePayload {
+/** Blank text travels as null: an empty note is no note. */
+export function blankToNull(value: string | null): string | null {
+  return value?.trim() ? value : null
+}
+
+/**
+ * POST/PUT body: the write keys only (the registration fields go through PATCH
+ * details); totals are never sent (the server recomputes them).
+ */
+export function buildWritePayload(values: InvoiceFormValues): InvoiceWritePayload {
   return {
-    ...values,
-    notes: values.notes?.trim() ? values.notes : null,
-    internal_note: values.internal_note?.trim() ? values.internal_note : null,
+    document_date: values.document_date,
+    company_id: values.company_id,
+    customer_registry_id: values.customer_registry_id,
+    payment_method_id: values.payment_method_id,
+    financial_account_id: values.financial_account_id,
+    layout_id: values.layout_id,
+    notes: blankToNull(values.notes),
+    internal_note: blankToNull(values.internal_note),
+    tag: values.tag,
+    lines: values.lines,
   }
 }
 
-const HEADER_FIELDS = [
+const FORM_FIELDS = [
   'document_date',
   'company_id',
   'customer_registry_id',
@@ -72,10 +87,13 @@ const HEADER_FIELDS = [
   'notes',
   'internal_note',
   'tag',
+  'external_number',
+  'external_date',
+  'deviation',
 ] as const
 const LINE_FIELD_PATTERN = /^lines(\.\d+\.(quote_line_id|product_id|description|quantity|unit_price|vat_rate_id))?$/
 
 /** True when a server error key maps onto a field of the form. */
-export function isFormFieldPath(key: string): key is FieldPath<InvoiceWriteFormValues> {
-  return (HEADER_FIELDS as readonly string[]).includes(key) || LINE_FIELD_PATTERN.test(key)
+export function isFormFieldPath(key: string): key is FieldPath<InvoiceFormValues> {
+  return (FORM_FIELDS as readonly string[]).includes(key) || LINE_FIELD_PATTERN.test(key)
 }

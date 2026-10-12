@@ -6,8 +6,12 @@
 export const invoiceEditor = {
   createTitle: 'Proforma issue — Work order #{{code}}',
   createDescription: 'Check lines, payment and due dates, then issue the document.',
-  editTitle: 'Edit document {{number}}',
-  editDescription: 'Lines are replaced and due dates recomputed.',
+  leaveConfirm: {
+    title: 'Leave without issuing?',
+    description: 'The document has not been issued yet: what you entered will be lost.',
+    confirm: 'Leave without issuing',
+    cancel: 'Keep editing',
+  },
   rowAction: {
     alreadyIssued: 'Document already issued',
   },
@@ -15,7 +19,6 @@ export const invoiceEditor = {
   loadError: 'Unable to load the issue data. Try again.',
   alreadyInvoiced: 'This proforma request has already been invoiced.',
   sections: {
-    header: 'Header',
     availableLines: 'Available lines',
     documentLines: 'Document lines',
     installments: 'Due dates',
@@ -99,13 +102,10 @@ export const invoiceEditor = {
   actions: {
     issue: 'Issue',
     issuing: 'Issuing…',
-    save: 'Save',
-    saving: 'Saving…',
     cancel: 'Cancel',
   },
   messages: {
     issued: 'Document {{number}} issued.',
-    saved: 'Document updated.',
     genericError: 'Something went wrong. Try again.',
     conflictInvoiced: 'This proforma request has already been invoiced.',
     totalNotPositive: 'The document total must be greater than zero.',

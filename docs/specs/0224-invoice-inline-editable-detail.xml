@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0224-invoice-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Le Fatture Attive ricevono le modifiche dei moduli gia' migrati (spec 0195-0200, 0216-0222): niente modale di
+    modifica ne' modale "Dettagli fattura", il dettaglio si edita in place campo per campo, l'emissione da una
+    richiesta proforma e' una replica del dettaglio a righe chiuse. Primo modulo dell'onda 2 del piano "nessuna
+    pagina di modifica".
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-12, "e poi onda 2"; risposte: "prendi spunto da task opportunita offerte, anche in
+      creazione", "prendi anagrafiche come esempio", "gestione richieste non prenderlo in considerazione che rimarra'
+      come e'"): Gestione richieste e Gestione iscritti (stesso pannello) ESCLUSE dall'onda 2. Fatture segue il modello
+      Offerte (spec 0197): `RecordInlineField`, `useDraftInlineEdit`, una sola riga aperta, layout unico `RecordBody`.
+    - D-2: il PUT `/invoices/{id}` riscrive righe E scadenze (senza incassi le rigenera, con incassi le ribilancia):
+      un salvataggio per campo che non tocca il piano NON passa da li'. Gruppo DETTAGLI (PATCH `/invoices/{id}/details`,
+      solo le chiavi della riga): Riferimento esterno (numero + data in una riga), Tag, Layout di stampa, Scostamento,
+      Nota interna e - nuovi lato server - Note (stampate) e Conto bancario (deve appartenere alla societa' emittente,
+      stessa regola del PUT). Gruppo DOCUMENTO (PUT con il documento intero com'e' + la modifica): Data documento,
+      Cliente, Metodo di pagamento, Righe. Societa' emittente in sola lettura (non cambia dopo l'emissione).
+    - D-3: con incassi registrati Data documento, Cliente e Metodo di pagamento restano senza matita (spec 0196 D-1);
+      le Righe restano modificabili (il server ribilancia le scadenze aperte).
+    - D-4: le Righe sono una riga a tutta larghezza nella banda finale (come Offerte): la matita apre la stessa griglia
+      dell'emissione con il totale e l'anteprima delle scadenze live; Data e Metodo di pagamento mostrano anche loro
+      l'anteprima delle scadenze nel loro editor (cambiano il piano). Le Scadenze persistite (con Incassa/Annulla
+      incasso) restano sotto, invariate.
+    - D-5: emissione (modale da Richieste proforma, punto d'ingresso invariato) = replica del dettaglio: testata con
+      monogramma, sezioni a righe chiuse (Fatto/Ripristina), righe disponibili della commessa + griglia righe APERTA
+      (e' un editor tabellare), anteprima scadenze, Annulla/Emetti; chiusura con modifiche = conferma.
+    - D-6: dalla tabella spariscono le azioni "Modifica" e "Dettagli" (backend `InvoiceColumnCatalog`/
+      `InvoicesTableDefinition`): si modifica dal dettaglio ("Visualizza").
+  </context>
+
+  <contract>
+    <backend>
+      PATCH /api/invoices/{invoice}/details accetta in piu' `notes` (sometimes, nullable, string, max NOTES_MAX_LENGTH)
+      e `financial_account_id` (sometimes, nullable, integer, exists; conto bancario della societa' della fattura,
+      altrimenti 422 sul campo). Risposta invariata (dettaglio + permissions). Azioni tabella: `view`, `delete`,
+      `activity`, `pdf`, `email`, `remind`.
+    </backend>
+    <frontend>
+      `InvoiceDetailView({invoiceId, onChanged})` con `useInvoiceInlineEdit` (form `InvoiceRecordValues` = scrittura +
+      dettagli). `InvoiceEditorDialog` solo emissione (`proformaRequestId`). Eliminati `InvoiceDetailsDialog`,
+      `useInvoiceDetailsForm`, la modalita' edit dell'editor.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna azione "Modifica"/"Dettagli" in tabella; nessuna modale di modifica.</ac>
+    <ac id="AC-002">Matita su un campo del gruppo dettagli: Salva invia il PATCH dettagli con le sole chiavi della
+      riga; un campo del gruppo documento invia il PUT completo. Annulla/Esc/clic fuori non chiamano.</ac>
+    <ac id="AC-003">Senza permesso di modifica nessuna matita; con incassi Data/Cliente/Metodo di pagamento senza
+      matita; Societa' mai modificabile.</ac>
+    <ac id="AC-004">Emissione: righe chiuse, righe disponibili + griglia aperta, anteprima scadenze, Emetti valida
+      tutto e invia lo stesso payload di prima; uscita con conferma.</ac>
+    <ac id="AC-005">Backend: PATCH dettagli salva `notes` e `financial_account_id`, rifiuta un conto di un'altra
+      societa'; le scadenze non cambiano.</ac>
+    <ac id="AC-006">Guida in-app IT/EN `invoices` aggiornata.</ac>
+  </acceptance>
+</spec>

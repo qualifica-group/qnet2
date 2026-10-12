@@ -10,7 +10,7 @@ import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-a
 import { toPreviewLine, type VatRefs, type InvoiceLineValues } from '@/features/invoices/invoice-editor-lines'
 import { computeLineAmounts, fromCents } from '@/features/invoices/invoice-amounts'
 import { idToSelectValue, NO_ID } from '@/features/invoices/invoice-editor-source'
-import type { InvoiceWriteFormValues } from '@/features/invoices/invoice-schema'
+import type { InvoiceFormValues } from '@/features/invoices/invoice-schema'
 import type { VatRateRef } from '@/features/invoices/types'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 
@@ -24,7 +24,7 @@ export const LINE_GRID_CLASS = 'lg:grid-cols-[minmax(0,1fr)_5rem_7rem_9rem_6rem_
 
 interface InvoiceEditorLineRowProps {
   index: number
-  control: Control<InvoiceWriteFormValues>
+  control: Control<InvoiceFormValues>
   line: InvoiceLineValues
   vatRefs: VatRefs
   onRememberVat: (ref: VatRateRef) => void

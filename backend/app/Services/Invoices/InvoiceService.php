@@ -124,14 +124,19 @@ class InvoiceService
     }
 
     /**
-     * External number/date, tag, deviation and internal note: always allowed.
+     * External number/date, tag, deviation, internal and printed notes, layout
+     * and bank: always allowed, the schedule is left alone (spec 0224 D-2).
      * The external number decides the type (proforma becomes invoice, D-3/D-14).
      *
      * @param  array<string, mixed>  $data  validated details payload
      */
     public function updateDetails(Invoice $invoice, array $data): Invoice
     {
-        $attributes = Arr::only($data, ['external_number', 'external_date', 'tag', 'deviation', 'internal_note', 'layout_id']);
+        $attributes = Arr::only($data, ['external_number', 'external_date', 'tag', 'deviation', 'internal_note', 'layout_id', 'notes', 'financial_account_id']);
+
+        if (array_key_exists('financial_account_id', $attributes)) {
+            $this->assertBankBelongsToCompany(['financial_account_id' => $attributes['financial_account_id'], 'company_id' => $invoice->company_id]);
+        }
 
         if (array_key_exists('external_number', $attributes)) {
             $registered = filled($attributes['external_number']);

@@ -3,12 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { InvoiceEditorAddLine } from '@/features/invoices/invoice-editor-add-line'
 import { InvoiceEditorLineRow, LINE_GRID_CLASS } from '@/features/invoices/invoice-editor-line-row'
 import type { InvoiceLineValues, NewLineFields, VatRefs } from '@/features/invoices/invoice-editor-lines'
-import type { InvoiceWriteFormValues } from '@/features/invoices/invoice-schema'
+import type { InvoiceFormValues } from '@/features/invoices/invoice-schema'
 import type { VatRateRef } from '@/features/invoices/types'
 
 interface InvoiceEditorLinesSectionProps {
-  form: UseFormReturn<InvoiceWriteFormValues>
-  lineArray: UseFieldArrayReturn<InvoiceWriteFormValues, 'lines'>
+  form: UseFormReturn<InvoiceFormValues>
+  lineArray: UseFieldArrayReturn<InvoiceFormValues, 'lines'>
   lines: InvoiceLineValues[]
   vatRefs: VatRefs
   onRememberVat: (ref: VatRateRef) => void

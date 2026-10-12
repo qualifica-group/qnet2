@@ -1,16 +1,17 @@
 import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { useInvoiceFieldLabelClass } from '@/features/invoices/use-invoice-field-label-class'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { idToSelectValue, NO_ID } from '@/features/invoices/invoice-editor-source'
-import type { InvoiceWriteFormValues } from '@/features/invoices/invoice-schema'
+import type { InvoiceFormValues } from '@/features/invoices/invoice-schema'
 import type { NamedRef } from '@/features/invoices/types'
 
 type RelationFieldName = 'company_id' | 'customer_registry_id' | 'payment_method_id' | 'financial_account_id'
 
 interface InvoiceEditorRelationFieldProps {
-  control: Control<InvoiceWriteFormValues>
+  control: Control<InvoiceFormValues>
   name: RelationFieldName
   /** for-select resource segment (`companies`, `registries`, ...). */
   resource: string
@@ -38,6 +39,7 @@ export function InvoiceEditorRelationField({
   onPicked,
 }: InvoiceEditorRelationFieldProps) {
   const { t } = useTranslation()
+  const labelClass = useInvoiceFieldLabelClass(name)
   const selectedItem: ForSelectItem | null = selected ? { id: selected.id, label: selected.name } : null
 
   return (
@@ -46,7 +48,7 @@ export function InvoiceEditorRelationField({
       name={name}
       render={({ field }) => (
         <FormItem className="gap-1">
-          <FormLabel required={required} className="text-xs">
+          <FormLabel required={required} className={labelClass}>
             {label}
           </FormLabel>
           <FormControl>

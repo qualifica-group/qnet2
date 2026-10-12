@@ -3,6 +3,38 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FATTURE ATTIVE MODIFICABILI SUL POSTO + EMISSIONE COME IL DETTAGLIO (spec 0224, 2026-10-12) — VERDE, COMMITTATO
+
+- Richiesta utente: "committa e procedi a 2 e poi onda 2". Risposte: modello Task/Opportunita'/Offerte "anche in
+  creazione", layout Anagrafiche, **Gestione richieste (e Iscritti, stesso pannello) RESTANO COME SONO: esclusi
+  dall'onda 2**. Spec numerata 0224 perche' un'altra sessione in parallelo ha preso 0223 (provvigioni).
+- Backend: PATCH `/invoices/{id}/details` accetta anche `notes` e `financial_account_id` (conto della societa'
+  della fattura, `assertBankBelongsToCompany`). Motivo: il PUT riscrive righe E scadenze, quindi le righe che non
+  toccano il piano passano dal PATCH. Azioni tabella `update`/`details` rimosse (`InvoiceColumnCatalog`,
+  `InvoicesTableDefinition`). Test: nuovo `InvoiceDetailsPatchTest` (2), `InvoicesTableTest` REQUIREMENT CHANGED.
+- Frontend: schema unico `buildInvoiceFormSchema`/`InvoiceFormValues` (scrittura + external_number/date +
+  deviation; `buildWritePayload` sceglie le sole chiavi di scrittura). `useInvoiceLines` (field array, VAT, totali,
+  aggiunta righe), `useInvoiceIssueForm` (bozza a righe chiuse, `useDraftInlineEdit`), `useInvoiceInlineEdit`
+  (`DETAILS_ROW_KEYS` -> PATCH con le sole chiavi della riga; data/cliente/pagamento/righe -> PUT completo;
+  anteprima scadenze solo con editor di data/pagamento/righe aperto). `InvoiceRecordSections` (Testata + Note,
+  condivise), `invoice-fields.tsx`, `InvoiceDetailLines` (banda Righe + Scadenze), `InvoiceInstallmentsSection`,
+  `useInvoiceDraftDisplay`, `invoice-form-errors.ts`, `use-invoice-field-label-class.ts`. Dettaglio: sezioni
+  Testata, Note, Registrazione (Fattura esterna in una riga, Commessa, Offerta, Emesso da), Totali (Scostamento).
+  Con incassi: data/cliente/pagamento senza matita + avviso `rebalance.lockedHint`. `InvoiceEditorDialog` solo
+  emissione (prop `mode` tolta), conferma uscita con modifiche. Eliminati `invoice-details-dialog`,
+  `use-invoice-details-form`, `use-invoice-editor-form`, `invoice-editor-header-section`.
+- i18n: nuove `invoices.detail.registration`, `invoiceEditor.leaveConfirm.*`; tolte `invoices.actions.update/details`,
+  `invoices.details.{title,description,tag,internalNote,save,saving,cancel,saved,genericError}`,
+  `invoices.detail.{layout,internalNote}`, `invoiceEditor.{editTitle,editDescription,sections.header,
+  actions.save/saving,messages.saved}`.
+- Test: `invoice-detail-inline-edit.test.tsx` (6, sostituisce `invoice-editor-rebalance.test.tsx`: il
+  ribilanciamento ora e' nel dettaglio), `invoice-editor-dialog.test.tsx` (3, REQUIREMENT CHANGED: righe chiuse).
+- Verifica: Pest Invoices+ProformaRequests 71 verdi; Vitest invoices/proforma/i18n 225 + help 115 verdi;
+  `tsc -b --force` 0 errori; ESLint pulito. Browser NON provato.
+- Manuale: guide in-app IT/EN `invoices` (emissione a righe chiuse, nuova sezione `edit`, azioni). Manuale Claude
+  Docs: NON ha una sezione Fatture Attive (gap gia' noto): da scrivere, chiedere all'utente.
+- Prossimi dell'onda 2: Ore, Modelli di task, Categorie prodotto, Ruoli, Campi personalizzati.
+
 ## PUNTO 2 DOPO L'ONDA 1 (2026-10-12) — VERDE, COMMITTATO
 
 - HANDOFF archiviato: le voci dalla "SEEDER — CAMPI OBBLIGATORI" indietro sono in `docs/handoff-archive/2026-10.md`
@@ -335,7 +367,7 @@
   modulo alla volta (niente team/subagent), le tabelle di impostazione dopo con un KIT CONDIVISO.
 - PIANO (fatti prima: Task 0195, Commesse 0196, Offerte 0197, Opportunità 0198, Anagrafiche 0200):
   onda 1 = Referenti (FATTO, 0216) -> Lead (FATTO, 0217) -> Prodotti (FATTO, 0218) -> Contratti (FATTO, 0219) -> Progetti (FATTO, 0220) -> Campagne (FATTO, 0221) -> Utenti (FATTO, 0222);
-  onda 2 = Gestione richieste/Iscritti, Fatture, Ore, Modelli di task, Categorie prodotto, Ruoli, Campi personalizzati;
+  onda 2 = Gestione richieste/Iscritti (ESCLUSI, utente 2026-10-12: restano come sono), Fatture (FATTO, 0224), Ore, Modelli di task, Categorie prodotto, Ruoli, Campi personalizzati;
   onda 3 = ~30 tabelle di impostazione (stati, tipi, priorità, importanze, tag, fonti, IVA, unità, metodi di
   pagamento, società, sedi, settori...) con un componente comune riga chiusa + matita per i campi ricorrenti
   (nome, colore, icona, attivo, ordine, descrizione). Ogni modulo: spec propria, si ferma a ogni verde.
