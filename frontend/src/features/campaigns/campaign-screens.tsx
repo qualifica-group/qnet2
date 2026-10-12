@@ -1,12 +1,13 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { campaignDetailQueryKey, fetchCampaign } from '@/features/campaigns/api'
+import { fetchCampaign, campaignDetailQueryKey } from '@/features/campaigns/api'
 import { CampaignForm } from '@/features/campaigns/campaign-form'
+import { CampaignDuplicateLoader } from '@/features/campaigns/campaign-duplicate-loader'
 import { CampaignDetailView } from '@/features/campaigns/campaign-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -19,10 +20,13 @@ import type { CampaignDetail } from '@/features/campaigns/types'
  * Content-only `campaigns` screens for the module registry (spec 0042):
  * fetch + the existing presentational view/form, no page chrome. Reused
  * as-is by the modal Sheet (`useModuleOpener`) and by the generic dedicated
- * pages (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from
- * `CampaignsTable`'s inline loaders, which the rewire removed.
+ * pages (`ModuleDetailPage`/`ModuleFormPage`), which own the surrounding
+ * chrome.
+ *
+ * Spec 0220: the detail edits its fields in place, so `onEdit` is never used;
+ * each save reports through `onChanged`.
  */
-export function CampaignDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function CampaignDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: campaign,
@@ -47,119 +51,53 @@ export function CampaignDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <CampaignDetailView campaign={campaign} onEdit={onEdit} />
+  return <CampaignDetailView campaign={campaign} onChanged={onChanged} />
 }
 
+/**
+ * Create and duplicate only (spec 0221): there is no edit form, and the
+ * registry generates no `:id/edit` route. Leaving a campaign being created —
+ * Cancel, the Sheet's X/overlay/Esc, a link, a reload — always asks first.
+ */
 export function CampaignFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('campaigns.form.leaveConfirm.title'),
+    description: t('campaigns.form.leaveConfirm.description'),
+    confirmLabel: t('campaigns.form.leaveConfirm.confirm'),
+    cancelLabel: t('campaigns.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
+
+  if (mode.type === 'edit') {
+    return null
+  }
 
   const handleSuccess = (saved: CampaignDetail) => {
     queryClient.invalidateQueries({ queryKey: campaignDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new campaign's detail is no "leaving".
+    leaveGuard.allowLeave()
     onSuccess(saved.id)
   }
 
-  if (mode.type === 'create') {
-    return <CampaignForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
-  }
-
-  if (mode.type === 'duplicate') {
-    return <CampaignDuplicateScreen campaignId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-  }
-
-  return <CampaignEditScreen campaignId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-}
-
-interface CampaignEditScreenProps {
-  campaignId: number
-  onSuccess: (campaign: CampaignDetail) => void
-  onCancel: () => void
-}
-
-/**
- * Fetches the fresh, re-authorized campaign detail before mounting the edit
- * form, so the partial PATCH starts from authoritative values rather than a
- * stale snapshot.
- */
-function CampaignEditScreen({ campaignId, onSuccess, onCancel }: CampaignEditScreenProps) {
-  const { t } = useTranslation()
-  const {
-    data: campaign,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(campaignDetailQueryKey(campaignId), () => fetchCampaign(campaignId))
-
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('campaigns.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
-  }
-
-  if (isLoading || !campaign) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
   }
 
   return (
-    <CampaignForm mode={{ type: 'edit', campaign }} onSuccess={onSuccess} onCancel={onCancel} />
-  )
-}
-
-interface CampaignDuplicateScreenProps {
-  campaignId: number
-  onSuccess: (campaign: CampaignDetail) => void
-  onCancel: () => void
-}
-
-/**
- * Fetches the fresh, re-authorized source campaign before mounting the
- * create form pre-filled from it (row action "duplicate"): the copy still
- * submits via the create path (`CampaignFormMode: 'duplicate'`).
- */
-function CampaignDuplicateScreen({ campaignId, onSuccess, onCancel }: CampaignDuplicateScreenProps) {
-  const { t } = useTranslation()
-  const {
-    data: campaign,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(campaignDetailQueryKey(campaignId), () => fetchCampaign(campaignId))
-
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('campaigns.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
-  }
-
-  if (isLoading || !campaign) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
-  }
-
-  return (
-    <CampaignForm mode={{ type: 'duplicate', source: campaign }} onSuccess={onSuccess} onCancel={onCancel} />
+    <>
+      {leaveGuard.navigationGuard}
+      {mode.type === 'duplicate' ? (
+        <CampaignDuplicateLoader campaignId={mode.id} onSuccess={handleSuccess} onCancel={handleCancel} />
+      ) : (
+        <CampaignForm onSuccess={handleSuccess} onCancel={handleCancel} />
+      )}
+    </>
   )
 }
 
@@ -171,8 +109,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.campaigns',
   DetailScreen: CampaignDetailScreen,
   FormScreen: CampaignFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button — the same registration Opportunita',
-  // Utenti and Lead carry.
+  // The detail IS the edit form (spec 0221): no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

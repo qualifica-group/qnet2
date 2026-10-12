@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { DetailError } from '@/components/detail/detail-panel'
-import { Skeleton } from '@/components/ui/skeleton'
+import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchProject, projectDetailQueryKey } from '@/features/projects/api'
 import { ProjectForm } from '@/features/projects/project-form'
@@ -17,6 +17,7 @@ interface ProjectDuplicateLoaderProps {
  * form pre-filled from it (row action "duplicate"), so the copy starts from
  * authoritative values rather than the grid row snapshot. The form itself
  * still submits via the create path (`ProjectFormMode: 'duplicate'`).
+ * Loading shows the same record skeleton as the create form.
  */
 export function ProjectDuplicateLoader({ projectId, onSuccess, onCancel }: ProjectDuplicateLoaderProps) {
   const { t } = useTranslation()
@@ -40,14 +41,8 @@ export function ProjectDuplicateLoader({ projectId, onSuccess, onCancel }: Proje
   }
 
   if (isLoading || !project) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+    return <RecordFormSkeleton />
   }
 
-  return <ProjectForm mode={{ type: 'duplicate', source: project }} onSuccess={onSuccess} onCancel={onCancel} />
+  return <ProjectForm source={project} onSuccess={onSuccess} onCancel={onCancel} />
 }

@@ -1,122 +1,46 @@
-import { useTranslation } from 'react-i18next'
-import { FileText, FolderKanban, Globe, Tags } from 'lucide-react'
-import { DetailEmpty } from '@/components/detail/detail-panel'
-import { RecordLink } from '@/components/detail/record-link'
+import { RecordSectionsGrid } from '@/components/detail/record-panel'
+import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field-record-sections'
+import { persistedCampaignValues } from '@/features/campaigns/campaign-record'
 import {
-  RecordField,
-  RecordFieldList,
-  RecordSection,
-  RecordSectionsGrid,
-} from '@/components/detail/record-panel'
-import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
+  CampaignClassificationRecordSection,
+  CampaignGeographyRecordSection,
+  CampaignIdentityRecordSection,
+  CampaignPlanningRecordSection,
+  CampaignProjectRecordSection,
+} from '@/features/campaigns/campaign-record-sections'
+import type { CampaignDetailEditor } from '@/features/campaigns/use-campaign-inline-edit'
 import type { CampaignDetailWithPermissions as CampaignDetailData } from '@/features/campaigns/types'
-
-/** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
-const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
 
 interface CampaignDetailSectionsProps {
   campaign: CampaignDetailData
+  editor: CampaignDetailEditor
 }
 
 /**
- * The record's `RecordSectionsGrid` body, named after the module's OWN
- * `form.sections.*` like every other detail in the app: the project, the
- * Partner and the Sede live in "Collegamento al progetto" — the section that
- * already owned them — simply rendered as links, rather than pulled out into a
- * separate "links" group (user directive 2026-09-11).
- *
- * The 4 geo levels always show the EFFECTIVE (merged) tuple (BR-5, spec 0027);
- * `CampaignResource` resolves it server-side, so nothing here special-cases
- * `derived_from_project` beyond the inherited-levels hint.
+ * The campaign record's `RecordSectionsGrid` body, every user-written field
+ * editable in place (spec 0221): identity, the project link (Partner, Sede and
+ * Fonte live there, rendered as links), classification, geography, planning
+ * and the custom fields ("campi flessibili"). The 3 classification values and
+ * the 4 geo levels are the EFFECTIVE ones (BR-2/BR-5, resolved server-side).
+ * The create form renders the same sections in the same order.
  */
-export function CampaignDetailSections({ campaign }: CampaignDetailSectionsProps) {
-  const { t } = useTranslation()
+export function CampaignDetailSections({ campaign, editor }: CampaignDetailSectionsProps) {
+  const { form, inline } = editor
+  const sectionProps = { values: persistedCampaignValues(campaign), form, inline }
 
   return (
     <RecordSectionsGrid>
-      {campaign.description ? (
-        <RecordSection
-          title={t('campaigns.form.description')}
-          icon={<FileText />}
-          className={FULL_WIDTH_SECTION_CLASS}
-        >
-          {/* `whitespace-pre-wrap`: a pasted multi-line brief keeps its shape. */}
-          <p className="text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground">
-            {campaign.description}
-          </p>
-        </RecordSection>
-      ) : null}
-
-      <RecordSection title={t('campaigns.form.sections.project.title')} icon={<FolderKanban />}>
-        <RecordFieldList>
-          <RecordField label={t('campaigns.form.project')}>
-            {campaign.project ? (
-              <RecordLink domain="projects" id={campaign.project.id}>
-                {`${campaign.project.code} — ${campaign.project.name}`}
-              </RecordLink>
-            ) : (
-              <DetailEmpty />
-            )}
-          </RecordField>
-
-          {/*
-            The Partner is a `Referent`, NOT a User — so it gets a `RecordLink`
-            to its own module, never `UserProfileHoverCard` (which opens the
-            shared USER detail Sheet and would resolve the wrong record).
-          */}
-          <RecordField label={t('campaigns.form.partner')}>
-            {campaign.partner ? (
-              <RecordLink domain="referents" id={campaign.partner.id}>
-                {campaign.partner.name}
-              </RecordLink>
-            ) : (
-              <DetailEmpty />
-            )}
-          </RecordField>
-
-          <RecordField label={t('campaigns.form.operationalSite')}>
-            {campaign.operational_site && campaign.operational_site.label ? (
-              <RecordLink domain="operational-sites" id={campaign.operational_site.id}>
-                {campaign.operational_site.label}
-              </RecordLink>
-            ) : (
-              <DetailEmpty />
-            )}
-          </RecordField>
-
-          <RecordField label={t('campaigns.form.source')}>
-            {campaign.source?.name ?? <DetailEmpty />}
-          </RecordField>
-        </RecordFieldList>
-      </RecordSection>
-
-      {/* The pipeline status is NOT repeated here: it is the badge in the
-          identity band, the way Opportunita' keeps its own. */}
-      <RecordSection title={t('campaigns.form.sections.classification.title')} icon={<Tags />}>
-        <RecordFieldList>
-          <RecordField label={t('campaigns.form.productLines')}>
-            <ProductLinesReadOnlyList lines={campaign.product_lines} />
-          </RecordField>
-        </RecordFieldList>
-      </RecordSection>
-
-      <RecordSection title={t('campaigns.form.sections.geography.title')} icon={<Globe />}>
-        <RecordFieldList>
-          <RecordField label={t('geo.country')}>
-            {campaign.country?.name ?? <DetailEmpty />}
-          </RecordField>
-          <RecordField label={t('geo.state')}>{campaign.state?.name ?? <DetailEmpty />}</RecordField>
-          <RecordField label={t('geo.province')}>
-            {campaign.province?.name ?? <DetailEmpty />}
-          </RecordField>
-          <RecordField label={t('geo.city')}>{campaign.city?.name ?? <DetailEmpty />}</RecordField>
-        </RecordFieldList>
-        {campaign.geo_locked_levels.length > 0 ? (
-          <p className="text-xs text-muted-foreground">
-            {t('campaigns.form.geoInheritedFromProject')}
-          </p>
-        ) : null}
-      </RecordSection>
+      <CampaignIdentityRecordSection {...sectionProps} />
+      <CampaignProjectRecordSection {...sectionProps} />
+      <CampaignClassificationRecordSection {...sectionProps} />
+      <CampaignGeographyRecordSection {...sectionProps} />
+      <CampaignPlanningRecordSection {...sectionProps} />
+      <CustomFieldRecordSections
+        resource="campaigns"
+        values={sectionProps.values.custom_fields}
+        inline={inline}
+        control={form.control}
+      />
     </RecordSectionsGrid>
   )
 }

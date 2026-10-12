@@ -16,6 +16,8 @@ import type { ContractDetailWithPermissions } from '@/features/contracts/types'
  * lines read-only via the shared component, mounts the two documents
  * sections with the right upload/delete gating, and shows the "Sospeso"
  * badge with the reactivate action gated on `contracts.reactivate`.
+ * REQUIREMENT CHANGED (spec 0219): no "Edit data" action — the contract's own
+ * fields edit in place, gated the same way (update + working status group).
  */
 
 // The related-record links mount `useModuleOpener`, whose mode resolution
@@ -277,7 +279,8 @@ describe('ContractDetailView — action gating (AC-044)', () => {
     renderView(contract())
     expect(screen.getByRole('button', { name: 'Validate contract' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Edit data' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit data' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit Expiry' })).toBeInTheDocument()
     // Aperto: "Programma" belongs to the positive closure only.
     expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
   })
@@ -301,19 +304,20 @@ describe('ContractDetailView — action gating (AC-044)', () => {
     expect(screen.queryByRole('button', { name: 'Terminate contract' })).not.toBeInTheDocument()
   })
 
-  it('omits "Edit data" without contracts.update', () => {
+  it('offers no in-place pencil without contracts.update (spec 0219)', () => {
     renderView(contract({ permissions: { ...contract().permissions, resource: { ...contract().permissions.resource, update: false } } }))
-    expect(screen.queryByRole('button', { name: 'Edit data' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Expiry' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Payment notes' })).not.toBeInTheDocument()
   })
 })
 
 describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-31 rev.2)', () => {
-  it('offre Modifica dati, Modifica stato, Valida e Disdici su uno stato APERTO', () => {
+  it('offre i dati sul posto, Modifica stato, Valida e Disdici su uno stato APERTO', () => {
     renderView(contract())
     expect(screen.getByRole('button', { name: 'Validate contract' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Change status' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Edit data' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit Renewal' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reopen contract' })).not.toBeInTheDocument()
   })
@@ -335,7 +339,7 @@ describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-3
     expect(screen.getByRole('button', { name: 'Reopen contract' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit data' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Expiry' })).not.toBeInTheDocument()
   })
 
   it('su CHIUSO POSITIVO la riapertura chiede lo stato di ripartenza, non il confirm inline', async () => {
@@ -355,7 +359,7 @@ describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-3
     expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Terminate contract' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit data' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Expiry' })).not.toBeInTheDocument()
     // I due link verso Offerta/Opportunita' non sono gated sul ciclo di vita.
     expect(screen.getByRole('button', { name: 'Accordo Acme' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Fornitura 2026' })).toBeInTheDocument()

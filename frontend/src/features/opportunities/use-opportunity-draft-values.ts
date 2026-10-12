@@ -5,7 +5,7 @@ import { useForSelectLabels } from '@/features/for-select/use-for-select'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
-import { rootCategoryIdFor } from '@/features/product-lines/category-tree-scope'
+import { categoryPathLabel } from '@/features/product-lines/category-path-label'
 import type { ProductLineRow } from '@/features/product-lines/types'
 import { PRODUCTS_FOR_SELECT_RESOURCE, productCategoryIdOf } from '@/features/products/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
@@ -32,31 +32,6 @@ const NO_TREE: ProductCategoryTreeNode[] = []
 function idsOf(...ids: (number | null | undefined)[]): number[] {
   const present = ids.filter((id): id is number => id != null)
   return present.length > 0 ? present : NO_IDS
-}
-
-/** Depth-first lookup by id in the cached category tree. */
-function findCategory(nodes: ProductCategoryTreeNode[], id: number): ProductCategoryTreeNode | null {
-  for (const node of nodes) {
-    if (node.id === id) {
-      return node
-    }
-    const found = findCategory(node.children, id)
-    if (found) {
-      return found
-    }
-  }
-  return null
-}
-
-/** "Root > Category" of a draft classification row, as the detail's read-only list names it. */
-function categoryPathLabel(tree: ProductCategoryTreeNode[], categoryId: number): string {
-  const category = findCategory(tree, categoryId)
-  if (!category) {
-    return PENDING_LABEL
-  }
-  const rootId = rootCategoryIdFor(tree, categoryId)
-  const root = rootId !== null && rootId !== categoryId ? findCategory(tree, rootId) : null
-  return root ? `${root.name} > ${category.name}` : category.name
 }
 
 function refOf(labels: Map<number, ForSelectItem>, id: number | null | undefined): RelationFieldRef | null {

@@ -1,17 +1,26 @@
 import { useTranslation } from 'react-i18next'
 import { useWatch, type Control } from 'react-hook-form'
-import { Loader2, Radar, TriangleAlert } from 'lucide-react'
+import { Loader2, Radar, TriangleAlert, UserRound } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { RECORD_HEADER_CLASS } from '@/components/record-form/layout'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordCardHeader } from '@/components/detail/record-panel'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { enumLabelOf } from '@/features/config/enum-label'
+import type { PersonalDataDraft } from '@/features/personal-data/types'
+import { ReferentStatsStrip } from '@/features/referents/referent-detail-header'
 import type { ReferentFormValues } from '@/features/referents/use-referent-form'
+
+/** The name the server will derive from the card (ADR 0012): the company name, or first and last name. */
+function draftName(draft: PersonalDataDraft): string {
+  const name = draft.type === 'company' ? draft.company_name : [draft.first_name, draft.last_name].filter(Boolean).join(' ')
+  return name?.trim() ?? ''
+}
 
 interface ReferentFormHeaderProps {
   control: Control<ReferentFormValues>
-  /** Drives the heading pair (create vs edit). */
-  isEdit: boolean
+  /** The buffered card: it names the referente being created and holds its contacts/addresses. */
+  profileDraft: PersonalDataDraft
   /** id of the RHF `<form>` the save action attaches to via the HTML `form=` attribute. */
   formId: string
   isSubmitting: boolean
@@ -20,18 +29,18 @@ interface ReferentFormHeaderProps {
 }
 
 /**
- * Identity bar of the referente form — the same bar Opportunità, Gestione
- * Richieste and the anagrafica carry (`RECORD_HEADER_CLASS`): heading and the
- * live ambit pill on the left, the actions on the right, a refused save
- * reported right under the button that was pressed.
+ * Identity band + KPI strip of the referente create form, the detail's own
+ * (`ReferentDetailHeader` + `ReferentStatsStrip`, spec 0216): monogram and name
+ * follow the card being typed, the ambit pill and the strip follow the draft,
+ * the actions sit where the detail has none. A refused save is reported right
+ * under the actions.
  *
- * The pill is LIVE against the select far below and is gated by the same field
- * permission as that control: a label alone already tells the actor a hidden
- * field exists.
+ * The ambit pill is gated by the same field permission as its control — a
+ * label alone already tells the actor a hidden field exists.
  */
 export function ReferentFormHeader({
   control,
-  isEdit,
+  profileDraft,
   formId,
   isSubmitting,
   submitError,
@@ -40,46 +49,50 @@ export function ReferentFormHeader({
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
   const contactScope = useWatch({ control, name: 'contact_scope' })
+  const heading = draftName(profileDraft) || t('referents.form.createTitle')
 
   return (
-    <header className={RECORD_HEADER_CLASS}>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-        <div className="flex min-w-0 flex-col">
-          <h1 className="min-w-0 truncate text-base font-semibold">
-            {t(isEdit ? 'referents.form.editTitle' : 'referents.form.createTitle')}
-          </h1>
-          <p className="min-w-0 truncate text-sm text-muted-foreground">
-            {t(isEdit ? 'referents.form.editSubtitle' : 'referents.form.createSubtitle')}
-          </p>
-        </div>
+    <>
+      <RecordCardHeader
+        media={<DetailMonogram name={heading} icon={<UserRound />} className="size-10 text-base [&>svg]:size-5" />}
+        title={heading}
+        subtitle={t('referents.form.createSubtitle')}
+        badges={
+          contactScope && fieldPermission('contact_scope').visible ? (
+            <Badge variant="secondary" className="gap-1.5">
+              <Radar aria-hidden="true" />
+              {enumLabelOf('referent_contact_scope', contactScope)}
+            </Badge>
+          ) : null
+        }
+        actions={
+          <>
+            <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
+              {t('referents.form.cancel')}
+            </Button>
+            <Button type="submit" form={formId} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+              {isSubmitting ? t('referents.form.saving') : t('referents.form.save')}
+            </Button>
+          </>
+        }
+      />
 
-        {contactScope && fieldPermission('contact_scope').visible ? (
-          <Badge variant="secondary" className="h-5 min-h-5 gap-1.5">
-            <Radar className="size-3" aria-hidden="true" />
-            {enumLabelOf('referent_contact_scope', contactScope)}
-          </Badge>
-        ) : null}
-      </div>
-
-      <div className="ml-auto flex shrink-0 items-center gap-2">
-        <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
-          {t('referents.form.cancel')}
-        </Button>
-        <Button type="submit" form={formId} disabled={isSubmitting}>
-          {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-          {isSubmitting ? t('referents.form.saving') : t('referents.form.save')}
-        </Button>
-      </div>
-
-      {submitError && (
+      {submitError ? (
         <div
           role="alert"
-          className="flex w-full items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive"
+          className="mx-4 mt-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive"
         >
           <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
           {submitError}
         </div>
-      )}
-    </header>
+      ) : null}
+
+      <ReferentStatsStrip
+        contacts={profileDraft.contacts.length}
+        addresses={profileDraft.addresses.length}
+        cardType={profileDraft.type}
+      />
+    </>
   )
 }

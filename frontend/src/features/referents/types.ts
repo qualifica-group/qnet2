@@ -59,9 +59,9 @@ export interface ReferentDetail {
 
 /**
  * A `ReferentDetail` carrying the actor's authorization metadata for this
- * instance (spec 0004), as returned by `GET /referents/{id}` (`show`). Used to
- * seed the edit form's `ResourcePermissionsProvider` — and the anagraphic
- * draft, via `cardToDraft(personal_data)` — without a second request.
+ * instance (spec 0004), as returned by `GET`/`PATCH /referents/{id}`. Seeds the
+ * in-place detail's `ResourcePermissionsProvider` (spec 0216) — and the
+ * anagraphic draft, via `cardToDraft(personal_data)` — without a second request.
  */
 export interface ReferentDetailWithPermissions extends ReferentDetail {
   permissions: ResourcePermissions
@@ -99,7 +99,7 @@ export interface UpdateReferentPayload {
   custom_fields?: Record<string, CustomFieldValue>
 }
 
-/** Discriminated form mode shared by the form hook/meta-resolver and `ReferentForm`. */
+/** Discriminated form mode of `useReferentForm`: the create form, or the in-place detail (edit). */
 export type ReferentFormMode =
   | { type: 'create' }
   | { type: 'edit'; referent: ReferentDetailWithPermissions }

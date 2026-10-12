@@ -1,8 +1,9 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
+import { ProductDetailView } from '@/features/products/product-detail'
 import { ProductForm } from '@/features/products/product-form'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
@@ -14,7 +15,8 @@ import type { ResourceMeta, ResourcePermissions } from '@/features/authorization
  * the user directive of 2026-08-03: an unselectable category is no longer
  * omitted but LISTED DISABLED — it is the parent its selectable children hang
  * from. The category already saved on the product being edited stays pickable
- * (AC-016).
+ * (AC-016). REQUIREMENT CHANGED (spec 0218): the picker opens from the
+ * Category row, on the create draft and on the in-place detail.
  */
 
 vi.mock('@/features/products/api', () => ({
@@ -176,24 +178,19 @@ beforeEach(() => {
 
 describe('ProductFormBody — category picker selectability', () => {
   it('lists an unselectable category disabled, its selectable child pickable (AC-015)', async () => {
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<ProductForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Category' }))
     await screen.findByTestId('category-select-stub')
     await waitFor(() => expect(lastOptionIds()).toEqual(['1:disabled', '2']))
   })
 
   it('keeps the category already saved on the product being edited (AC-016)', async () => {
-    render(
-      <ProductForm
-        mode={{ type: 'edit', product: product({ category_id: 1, category: { id: 1, name: 'Container' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    render(<ProductDetailView product={product({ category_id: 1, category: { id: 1, name: 'Container' } })} />, {
+      wrapper: wrapper(),
+    })
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Category' }))
     await screen.findByTestId('category-select-stub')
     await waitFor(() => expect(lastOptionIds()).toEqual(['1', '2']))
   })
@@ -204,10 +201,9 @@ describe('ProductFormBody — category picker selectability', () => {
       treeNode({ id: 3, name: 'Active root' }),
     ])
 
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<ProductForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Category' }))
     await screen.findByTestId('category-select-stub')
     await waitFor(() => expect(lastOptionIds()).toEqual(['3']))
   })
@@ -222,10 +218,9 @@ describe('ProductFormBody — category picker selectability', () => {
       }),
     ])
 
-    render(<ProductForm mode={{ type: 'edit', product: product() }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<ProductDetailView product={product()} />, { wrapper: wrapper() })
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Category' }))
     await screen.findByTestId('category-select-stub')
     await waitFor(() => expect(lastOptionIds()).toEqual(['1:disabled', '2']))
   })

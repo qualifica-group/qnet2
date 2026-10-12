@@ -364,8 +364,7 @@ export const products = {
     hintNoCategories: 'Add a business function with its product category first.',
   },
   empty: 'No product selected.',
-  // Price minus cost, shown both on the record (KPI strip) and in the form
-  // (the readout under the two fields, and the side recap row).
+  // Price minus cost, shown in the KPI strip of the record and of the create form.
   margin: 'Margin',
   marginPercent: '{{percent}}% of the price',
   columns: {
@@ -383,17 +382,16 @@ export const products = {
   },
   detail: {
     title: 'Product details',
-    subtitle: 'Read-only view of the selected product.',
+    subtitle: 'Details of the selected product, editable in place.',
     loadError: 'Unable to load the product. Please try again.',
     details: 'Details',
     created_at: 'Created at',
+    newAttributes: 'Attributes of the new category',
   },
   form: {
     newProduct: 'New product',
     createTitle: 'Create product',
     createSubtitle: 'Add a new product.',
-    editTitle: 'Edit product',
-    editSubtitle: 'Update the selected product.',
     code: 'Code',
     codePlaceholder: 'Suggested code, editable',
     codeMax: 'Code must be at most 32 characters.',
@@ -446,23 +444,22 @@ export const products = {
     deleted: 'Product deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the product. Please try again.',
-    deleteForbidden: 'You cannot delete this product.',
-    summary: {
-      title: 'Summary',
-      description: 'What you are about to save.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The product has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
     },
+    deleteForbidden: 'You cannot delete this product.',
     sections: {
       identity: {
         title: 'Identity',
-        description: 'Code, name and description of the product.',
       },
       classification: {
         title: 'Classification',
-        description: 'Category, typology, unit of measure and product type.',
       },
       pricing: {
         title: 'Pricing and supply',
-        description: 'Cost, price, VAT rate and supplier.',
       },
     },
     hints: {
@@ -470,7 +467,6 @@ export const products = {
     },
     dynamicFields: {
       title: 'Attributes',
-      empty: 'Select a category to see its attributes.',
     },
   },
 }

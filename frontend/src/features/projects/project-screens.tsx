@@ -5,9 +5,9 @@ import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchProject, projectDetailQueryKey } from '@/features/projects/api'
 import { ProjectForm } from '@/features/projects/project-form'
-import { ProjectEditLoader } from '@/features/projects/project-edit-loader'
 import { ProjectDuplicateLoader } from '@/features/projects/project-duplicate-loader'
 import { ProjectDetailView } from '@/features/projects/project-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -21,10 +21,12 @@ import type { ProjectDetail } from '@/features/projects/types'
  * fetch + the existing presentational view/form, no page chrome. Reused
  * as-is by the modal Sheet (`useModuleOpener`) and by the generic dedicated
  * pages (`ModuleDetailPage`/`ModuleFormPage`), which own the surrounding
- * chrome. Mirrors what `ProjectsTable`'s inline loaders did before the
- * rewire — no new fetch/view logic, only the reusable seam extracted.
+ * chrome.
+ *
+ * Spec 0220: the detail edits its fields in place, so `onEdit` is never used;
+ * each save reports through `onChanged`.
  */
-export function ProjectDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function ProjectDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: project,
@@ -49,26 +51,54 @@ export function ProjectDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <ProjectDetailView project={project} onEdit={onEdit} />
+  return <ProjectDetailView project={project} onChanged={onChanged} />
 }
 
+/**
+ * Create and duplicate only (spec 0220): there is no edit form, and the
+ * registry generates no `:id/edit` route. Leaving a project being created —
+ * Cancel, the Sheet's X/overlay/Esc, a link, a reload — always asks first.
+ */
 export function ProjectFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('projects.form.leaveConfirm.title'),
+    description: t('projects.form.leaveConfirm.description'),
+    confirmLabel: t('projects.form.leaveConfirm.confirm'),
+    cancelLabel: t('projects.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
+
+  if (mode.type === 'edit') {
+    return null
+  }
 
   const handleSuccess = (saved: ProjectDetail) => {
     queryClient.invalidateQueries({ queryKey: projectDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new project's detail is no "leaving".
+    leaveGuard.allowLeave()
     onSuccess(saved.id)
   }
 
-  if (mode.type === 'create') {
-    return <ProjectForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
   }
 
-  if (mode.type === 'duplicate') {
-    return <ProjectDuplicateLoader projectId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-  }
-
-  return <ProjectEditLoader projectId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
+  return (
+    <>
+      {leaveGuard.navigationGuard}
+      {mode.type === 'duplicate' ? (
+        <ProjectDuplicateLoader projectId={mode.id} onSuccess={handleSuccess} onCancel={handleCancel} />
+      ) : (
+        <ProjectForm onSuccess={handleSuccess} onCancel={handleCancel} />
+      )}
+    </>
+  )
 }
 
 /** Auto-registered in the module registry (spec 0042). */
@@ -79,8 +109,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.projects',
   DetailScreen: ProjectDetailScreen,
   FormScreen: ProjectFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button — the same registration Opportunita',
-  // Utenti and Lead carry.
+  // The detail IS the edit form (spec 0220): no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

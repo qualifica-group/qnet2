@@ -152,10 +152,6 @@ export const router = createBrowserRouter([
             element: <ReferentDetailPage />,
           },
           {
-            path: 'referents/:id/edit',
-            element: <ReferentFormPage />,
-          },
-          {
             path: 'registries',
             element: <RegistriesPage />,
           },
@@ -202,10 +198,6 @@ export const router = createBrowserRouter([
           {
             path: 'products/:id',
             element: <ProductDetailPage />,
-          },
-          {
-            path: 'products/:id/edit',
-            element: <ProductFormPage />,
           },
           {
             path: 'sources',

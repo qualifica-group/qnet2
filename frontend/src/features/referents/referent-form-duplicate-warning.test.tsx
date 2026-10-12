@@ -1,12 +1,13 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ReferentForm } from '@/features/referents/referent-form'
 import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
 import type { EnumOption } from '@/features/config/types'
+import { fillCardNames } from '@/features/referents/referent-test-fixtures'
 
 /**
  * Integration coverage of spec 0037 through the real create form (AC-007,
@@ -21,6 +22,7 @@ const checkIdentityDuplicatesMock = vi.fn()
 
 vi.mock('@/features/referents/api', () => ({
   createReferent: (...args: unknown[]) => createReferentMock(...args),
+  referentDetailQueryKey: (id: number | null) => ['referents', 'detail', id] as const,
 }))
 
 vi.mock('@/features/identity-duplicates/duplicate-check-api', async () => {
@@ -40,10 +42,6 @@ const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   fields: {},
   actions: {},
 }
-
-vi.mock('@/features/referents/use-referent-form-meta', () => ({
-  useReferentFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
-}))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
@@ -95,7 +93,7 @@ beforeEach(() => {
 describe('ReferentForm — duplicate warning (spec 0037)', () => {
   it('does not check while the form is untouched (AC-008)', async () => {
     render(
-      <ReferentForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <ReferentForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
@@ -121,12 +119,11 @@ describe('ReferentForm — duplicate warning (spec 0037)', () => {
     const onSuccess = vi.fn()
 
     render(
-      <ReferentForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />,
+      <ReferentForm onSuccess={onSuccess} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
-    fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
+    await fillCardNames()
     fireEvent.change(screen.getByLabelText('Email'), {
       target: { value: 'duplicate@example.com' },
     })
@@ -136,12 +133,13 @@ describe('ReferentForm — duplicate warning (spec 0037)', () => {
     const status = await screen.findByRole('status')
     expect(status).toHaveTextContent('Referent Existing Referent might be a duplicate (email).')
 
-    // It lives in the sticky SIDE column (user directive 2026-09-11): at the
-    // foot of the form it was off-screen exactly while the operator was typing
-    // the field that triggers it.
-    expect(within(screen.getByRole('complementary')).getByRole('status')).toBe(status)
+    // It heads the SIDE column, above the contacts (user directive
+    // 2026-09-11): at the foot of the form it was off-screen exactly while the
+    // operator was typing the field that triggers it.
+    const contactsTitle = screen.getByText('Contacts')
+    expect(status.compareDocumentPosition(contactsTitle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
-    const saveButton = within(screen.getByRole('banner')).getByRole('button', { name: 'Save' })
+    const saveButton = screen.getAllByRole('button', { name: 'Save' })[0]
     expect(saveButton).not.toBeDisabled()
 
     fireEvent.click(saveButton)
@@ -155,11 +153,11 @@ describe('ReferentForm — duplicate warning (spec 0037)', () => {
     })
 
     render(
-      <ReferentForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <ReferentForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    fireEvent.change(screen.getByLabelText('Email'), {
+    fireEvent.change(await screen.findByLabelText('Email'), {
       target: { value: 'duplicate@example.com' },
     })
     await screen.findByRole('status')

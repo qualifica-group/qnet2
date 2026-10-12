@@ -30,7 +30,7 @@ export const leads = {
   },
   detail: {
     title: 'Lead details',
-    subtitle: 'Read-only view of the selected lead.',
+    subtitle: 'Details of the selected lead, editable in place.',
     loadError: 'Unable to load the lead. Please try again.',
     unknownRegistry: 'Unknown registry',
     importedData: {
@@ -48,32 +48,18 @@ export const leads = {
     importLeads: 'Import leads',
     createTitle: 'Create lead',
     createSubtitle: 'Add a new lead to your organization.',
-    editTitle: 'Edit lead',
-    editSubtitle: 'Update the selected lead.',
     sections: {
       conversion: {
         title: 'Opportunity conversion',
-        description: 'Automatically generate the linked Opportunity when the Lead is created.',
       },
       contact: {
         title: 'Registry & campaign',
-        description: 'The registry, the campaign that generated it and the lead status.',
       },
       details: {
         title: 'Details',
-        description: 'The assigned site and operator, and the source the lead came from.',
       },
       productsOfInterest: {
         title: 'Products of interest',
-        description: 'The products the lead is interested in, filtered by the chosen Campaign categories.',
-      },
-      notes: {
-        title: 'Notes',
-        description: 'Free-form notes about the lead.',
-      },
-      extraFields: {
-        title: 'Extra fields / Imported data',
-        description: 'Free-form key/value pairs, usually carried over from an import.',
       },
     },
     registry: 'Registry',
@@ -132,6 +118,12 @@ export const leads = {
     deleted: 'Lead deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the lead. Please try again.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The lead has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     deleteForbidden: 'You cannot delete this lead.',
   },
   assign: {

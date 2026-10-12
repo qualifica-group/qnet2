@@ -45,7 +45,6 @@ const projects: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <ProjectForm
-          mode={{ type: 'create' }}
           // Mirrors ProjectForSelectResource: label = "{code} — {name}".
           onSuccess={(project) => onSuccess({ id: project.id, name: `${project.code} — ${project.name}` })}
           onCancel={onCancel}

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
 import i18n from '@/i18n'
+import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { CampaignsTable } from '@/features/campaigns/campaigns-table'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
@@ -159,7 +160,9 @@ function renderTable() {
     ...render(
       <QueryClientProvider client={client}>
         <MemoryRouter>
-          <CampaignsTable />
+          <ConfirmDialogProvider>
+            <CampaignsTable />
+          </ConfirmDialogProvider>
         </MemoryRouter>
       </QueryClientProvider>,
     ),
@@ -206,16 +209,15 @@ describe('CampaignsTable — Sheet-based CRUD (AC-024)', () => {
     expect(await screen.findAllByText('Spring outreach')).not.toHaveLength(0)
   })
 
-  it('ignores the retired edit row action and opens the edit sheet from the detail Edit button', async () => {
+  it('ignores the retired edit row action, and the detail offers no Edit button (spec 0221)', async () => {
     renderTable()
 
     fireEvent.click(screen.getByText('trigger-edit'))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('trigger-view'))
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
-
-    expect(await screen.findByText('Edit campaign')).toBeInTheDocument()
+    expect(await screen.findAllByText('Spring outreach')).not.toHaveLength(0)
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
   })
 
   it('opens the create sheet from the New campaign button', async () => {
@@ -283,16 +285,14 @@ describe('CampaignsTable — mutation success closes the sheet and refreshes (AC
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['campaigns', 'detail', 21] })
   })
 
-  it('closes the edit sheet on cancel without refreshing the grid', async () => {
+  it('closes the create sheet on a confirmed cancel without refreshing the grid', async () => {
     renderTable()
 
-    fireEvent.click(screen.getByText('trigger-view'))
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
-    expect(await screen.findByText('Edit campaign')).toBeInTheDocument()
-
+    fireEvent.click(screen.getByRole('button', { name: /new campaign/i }))
     fireEvent.click(await screen.findByText('stub-cancel'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave without saving' }))
 
-    await waitFor(() => expect(screen.queryByText('Edit campaign')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Create campaign')).not.toBeInTheDocument())
     expect(refreshMock).not.toHaveBeenCalled()
   })
 })

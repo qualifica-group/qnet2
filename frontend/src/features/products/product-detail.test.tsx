@@ -1,71 +1,62 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { render as rtlRender, screen } from '@testing-library/react'
-import type { ReactElement } from 'react'
-import { MemoryRouter } from 'react-router-dom'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
 import i18n from '@/i18n'
+import type { ResourceMeta } from '@/features/authorization/types'
 import { ProductDetailView } from '@/features/products/product-detail'
+import { PRODUCT_ENUMS, permissionsFor, productFixture, productWrapper } from '@/features/products/product-test-fixtures'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
 
-/** Every render goes through a Router: the card links related records with real `<Link>`s. */
-function render(ui: ReactElement) {
-  return rtlRender(ui, { wrapper: MemoryRouter })
-}
+/**
+ * The product record card: typology badge (spec 0204), VAT rate and supplier,
+ * price/cost/margin by usage (spec 0191). REQUIREMENT CHANGED (spec 0218): the
+ * card has no Edit action, and the pricing rows are always there — an empty
+ * one shows a dash, since it is where the value is set.
+ */
 
-// Related-record links open their target in a modal through `useModuleOpener`,
-// whose mode resolver reads the authenticated user's preference. The preference
-// is not what these tests are about, so the resolver is stubbed rather than
-// dragging an AuthProvider into every render.
-vi.mock('@/features/modules/use-module-open-mode', () => ({
-  useModuleOpenMode: () => 'modal',
-}))
-
-// Related-record links render only for an actor who can view the target
-// module; these tests are not about abilities, so every ability is granted.
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
 }))
-
-// Isolates the view from the activity log network/section, out of scope here.
 vi.mock('@/features/activity-log/activity-log-section', () => ({
   ActivityLogSection: () => <div data-testid="activity-log" />,
 }))
+vi.mock('@/features/config/use-config', () => ({
+  useEnumOptions: (key: string) => PRODUCT_ENUMS[key] ?? [],
+}))
+vi.mock('@/features/product-categories/use-product-category-tree', () => ({
+  useProductCategoryTree: () => ({ data: [], isPending: false, isError: false, refetch: () => {} }),
+}))
+vi.mock('@/features/product-categories/api', () => ({
+  fetchEffectiveAttributes: () => Promise.resolve([]),
+}))
 
-function product(overrides: Partial<ProductDetailWithPermissions> = {}): ProductDetailWithPermissions {
-  return {
-    id: 5,
-    code: 'PRD-0005',
-    name: 'ThinkPad X1',
-    description: null,
-    cost: 800,
-    price: 1200,
-    category_id: 3,
-    category: { id: 3, name: 'Laptops' },
-    product_type: 'SERVICE',
-    created_at: '2026-01-01T00:00:00Z',
-    vat_rate_id: null,
-    vat_rate: null,
-    supplier_id: null,
-    supplier: null,
-    unit_of_measure_id: 1,
-    unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
-    product_typology_id: 1,
-    product_typology: { id: 1, name: 'Ente', color: 'violet' },
-    permissions: {
-      resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-      fields: {},
-      actions: {},
-    },
-    ...overrides,
-  }
+const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
+vi.mock('@/features/authorization/api', () => ({
+  fetchResourceMeta: () => fetchResourceMetaMock(),
+}))
+
+function renderDetail(product: ProductDetailWithPermissions) {
+  const { wrapper } = productWrapper()
+  return render(<ProductDetailView product={product} />, { wrapper })
+}
+
+/** The KPI tile labelled `label` (the strip labels are the grid's column names). */
+function hasStat(label: string): boolean {
+  return screen.queryAllByText(label).some((element) => element.closest('dt') === null)
 }
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
+beforeEach(() => {
+  fetchResourceMetaMock.mockReset()
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
+})
+
 describe('ProductDetailView — typology badge (spec 0204 AC-005)', () => {
   it('shows the typology as a badge in its colour, in the header and in the classification', () => {
-    render(<ProductDetailView product={product()} />)
+    renderDetail(productFixture())
 
     const badges = screen.getAllByText('Ente')
     expect(badges).toHaveLength(2)
@@ -77,51 +68,55 @@ describe('ProductDetailView — typology badge (spec 0204 AC-005)', () => {
 
 describe('ProductDetailView — VAT rate + Supplier', () => {
   it('renders the VAT rate and supplier names when assigned', () => {
-    render(
-      <ProductDetailView
-        product={product({
-          vat_rate_id: 4,
-          vat_rate: { id: 4, name: 'Standard 22%', rate: 22 },
-          supplier_id: 11,
-          supplier: { id: 11, name: 'ACME Supplies' },
-        })}
-      />,
+    renderDetail(
+      productFixture({
+        vat_rate_id: 4,
+        vat_rate: { id: 4, name: 'Standard 22%', rate: 22 },
+        supplier_id: 11,
+        supplier: { id: 11, name: 'ACME Supplies' },
+      }),
     )
 
     expect(screen.getByText('Standard 22%')).toBeInTheDocument()
     expect(screen.getByText('ACME Supplies')).toBeInTheDocument()
   })
 
-  it('omits the VAT rate and supplier fields when unassigned', () => {
-    render(<ProductDetailView product={product()} />)
+  it('keeps the VAT rate and supplier rows, with a pencil, when unassigned', () => {
+    renderDetail(productFixture())
 
-    expect(screen.queryByText('VAT')).not.toBeInTheDocument()
-    expect(screen.queryByText('Supplier')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit VAT' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit Supplier' })).toBeInTheDocument()
   })
 })
 
 describe('ProductDetailView — price/cost/margin by usage (spec 0191 AC-013)', () => {
   it('shows the price only, no cost nor margin, for a Sellable-only product', () => {
-    render(<ProductDetailView product={product({ usages: ['SALE'] })} />)
+    renderDetail(productFixture({ usages: ['SALE'] }))
 
-    expect(screen.getByText('Price')).toBeInTheDocument()
+    expect(hasStat('Price')).toBe(true)
     expect(screen.queryByText('Cost')).not.toBeInTheDocument()
     expect(screen.queryByText('Margin')).not.toBeInTheDocument()
   })
 
   it('shows the cost only, no price nor margin, for a cost-only product', () => {
-    render(<ProductDetailView product={product({ usages: ['COST'] })} />)
+    renderDetail(productFixture({ usages: ['COST'] }))
 
-    expect(screen.getByText('Cost')).toBeInTheDocument()
+    expect(hasStat('Cost')).toBe(true)
     expect(screen.queryByText('Price')).not.toBeInTheDocument()
     expect(screen.queryByText('Margin')).not.toBeInTheDocument()
   })
 
   it('shows price, cost and margin when both usages are on', () => {
-    render(<ProductDetailView product={product({ usages: ['SALE', 'COST'] })} />)
+    renderDetail(productFixture({ usages: ['SALE', 'COST'] }))
 
-    expect(screen.getByText('Price')).toBeInTheDocument()
-    expect(screen.getByText('Cost')).toBeInTheDocument()
+    expect(hasStat('Price')).toBe(true)
+    expect(hasStat('Cost')).toBe(true)
     expect(screen.getByText('Margin')).toBeInTheDocument()
+  })
+
+  it('offers no Edit action: the record edits in place (spec 0218 AC-001)', () => {
+    renderDetail(productFixture())
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
   })
 })

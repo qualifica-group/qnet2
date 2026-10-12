@@ -3,70 +3,29 @@ import { useForm } from 'react-hook-form'
 import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
-import { useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
-import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import type { LayoutFormMode } from '@/features/attributes/attribute-layout-types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
+import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
 import { useEffectiveAttributes } from '@/features/product-categories/use-effective-attributes'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
-import { createProduct, productDetailQueryKey, updateProduct } from '@/features/products/api'
-import {
-  buildCreatePayload,
-  buildUpdatePayload,
-  DEFAULT_PRODUCT_USAGES,
-  normalizeDecimal,
-} from '@/features/products/product-form-payload'
+import { toEffectiveAttribute } from '@/features/request-management/applicable-attribute-adapter'
+import { DEFAULT_PRODUCT_USAGES, normalizeDecimal } from '@/features/products/product-form-payload'
 import {
   buildCreateProductSchema,
   buildUpdateProductSchema,
   type CreateProductFormValues,
 } from '@/features/products/product-schema'
-import type {
-  ProductDetail,
-  ProductDetailWithPermissions,
-  ProductFormMode,
-} from '@/features/products/types'
-import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
+import type { ProductDetail, ProductFormMode } from '@/features/products/types'
 import { useProductAttributeLayout } from '@/features/products/use-product-attribute-layout'
-import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
-
-/** Server-side generic field names mapped onto the form for 422 handling. */
-const SERVER_ERROR_FIELDS = [
-  'code',
-  'name',
-  'description',
-  'cost',
-  'price',
-  'category_id',
-  'product_type',
-  'usages',
-  'vat_rate_id',
-  'supplier_id',
-  'unit_of_measure_id',
-  'product_typology_id',
-] as const
 
 /** Default product type for a new product (SERVICE-only catalogue for now). */
 const DEFAULT_PRODUCT_TYPE = 'SERVICE' as const
-
-/** Domain key of the module statistics (mirrors `PRODUCTS_DOMAIN` in `products-table.tsx`). */
-const PRODUCTS_DOMAIN = 'products'
 
 /** Stable empty default: hoisted so it never creates a fresh reference per render (frontend.md §10). */
 const EMPTY_ATTRIBUTES: EffectiveAttribute[] = []
 
 export type ProductFormValues = CreateProductFormValues
 
-interface UseProductFormArgs {
-  mode: ProductFormMode
-  /** Called after a successful create/update so the caller can close + refresh. */
-  onSuccess: (product: ProductDetail) => void
-  /** Create-only: sequential code suggestion prefilled into the `code` default (spec 0065). */
-  initialCode?: string
-}
-
-/** Seeds/prunes the dynamic `attribute_values` RHF slice: every current PRODUCT-context code, known value or `null` when unset. */
+/** Seeds the dynamic `attribute_values` RHF slice: every current PRODUCT-context code, known value or `null` when unset. */
 function seedAttributeValues(
   attributes: EffectiveAttribute[],
   values: Record<string, unknown>,
@@ -78,44 +37,93 @@ function seedAttributeValues(
   return seeded
 }
 
-/**
- * Owns every non-render concern of `ProductForm`: RHF/Zod wiring, default
- * values, server 422 mapping and the create/update submit. The component
- * stays UI-only; this hook is the orchestration point (`onSubmit`). Also
- * owns the spec 0061 dynamic `attribute_values` slice: the selected
- * category's PRODUCT-context effective attributes drive both validation
- * (`buildCreateProductSchema`) and which RHF paths exist.
- */
-export function useProductForm({ mode, onSuccess, initialCode }: UseProductFormArgs) {
-  const { t } = useTranslation()
-  const queryClient = useQueryClient()
-  const invalidateStats = useInvalidateModuleStats(PRODUCTS_DOMAIN)
-  const [serverError, setServerError] = useState<string | null>(null)
+/** The persisted product as the edit form holds it (the in-place detail's clean state). */
+export function editDefaults(
+  product: ProductDetail,
+  customFields: Record<string, CustomFieldValue>,
+  attributes: EffectiveAttribute[],
+): ProductFormValues {
+  return {
+    code: product.code,
+    name: product.name,
+    description: product.description,
+    cost: normalizeDecimal(product.cost),
+    price: normalizeDecimal(product.price),
+    category_id: product.category_id,
+    product_type: product.product_type,
+    usages: product.usages ?? DEFAULT_PRODUCT_USAGES,
+    vat_rate_id: product.vat_rate_id,
+    supplier_id: product.supplier_id,
+    unit_of_measure_id: product.unit_of_measure_id,
+    product_typology_id: product.product_typology_id,
+    custom_fields: customFields,
+    attribute_values: seedAttributeValues(attributes, product.attribute_values ?? {}),
+  }
+}
 
+function createDefaults(customFields: Record<string, CustomFieldValue>, initialCode: string | undefined): ProductFormValues {
+  return {
+    code: initialCode ?? '',
+    name: '',
+    description: null,
+    cost: null,
+    price: null,
+    category_id: null,
+    product_type: DEFAULT_PRODUCT_TYPE,
+    usages: DEFAULT_PRODUCT_USAGES,
+    vat_rate_id: null,
+    supplier_id: null,
+    unit_of_measure_id: null,
+    product_typology_id: null,
+    custom_fields: customFields,
+    attribute_values: {},
+  }
+}
+
+interface UseProductFormArgs {
+  mode: ProductFormMode
+  /** Create-only: sequential code suggestion prefilled into the `code` default (spec 0065). */
+  initialCode?: string
+}
+
+/**
+ * Owns the RHF/Zod wiring of the product create form and of the in-place
+ * detail (`useProductInlineEdit`, edit mode): custom fields (spec 0021) and
+ * the spec 0061 dynamic `attribute_values` slice — the selected category's
+ * PRODUCT-context effective attributes drive both validation and which RHF
+ * paths exist. Submission lives in `useProductFormSubmit`.
+ *
+ * Edit mode IS the product detail (spec 0218): the persisted record can
+ * change under the form, so `values` re-syncs it while `keepDirtyValues`
+ * preserves the row still being edited.
+ */
+export function useProductForm({ mode, initialCode }: UseProductFormArgs) {
+  const { t } = useTranslation()
   const isEdit = mode.type === 'edit'
 
-  // Tracked as its OWN state (not derived from `form.watch`, which would need
-  // `form` to already exist — circular, since `form` itself is built from a
-  // schema that depends on this id) and updated straight from the category
-  // field's `onChange` (`onCategoryChange` below), an event handler — never
-  // from an effect (react-compiler forbids `setState` inside one) — so the
-  // dynamic attribute schema/fields react to the user picking a category
-  // mid-session, not just at mount.
-  const [categoryId, setCategoryId] = useState<number | null>(
-    mode.type === 'edit' ? mode.product.category_id : null,
-  )
+  // Tracked as its OWN state (the schema depends on it, so it cannot be read
+  // back from the form it builds) and moved from the category control's
+  // `onChange` — an event handler — or re-synced on the form's category when
+  // a row opens or is cancelled (`syncCategory`).
+  const [categoryId, setCategoryId] = useState<number | null>(mode.type === 'edit' ? mode.product.category_id : null)
   const productAttributesQuery = useEffectiveAttributes(categoryId, 'product')
-  const productAttributes = productAttributesQuery.data ?? EMPTY_ATTRIBUTES
+  // The detail already carries its category's attributes: they stand in until
+  // the lookup answers, so a row opened right away is validated and sent.
+  const persistedAttributes = useMemo(
+    () =>
+      mode.type === 'edit'
+        ? (mode.product.applicable_attributes ?? []).map((attribute) => toEffectiveAttribute(attribute, 'product'))
+        : EMPTY_ATTRIBUTES,
+    [mode],
+  )
+  const productAttributes =
+    productAttributesQuery.data ??
+    (mode.type === 'edit' && categoryId === mode.product.category_id ? persistedAttributes : EMPTY_ATTRIBUTES)
 
-  // Spec 0062: the selected category's configured PRODUCT-context layout for
-  // this form's own mode (create/edit are independent layouts, D3) — additive
-  // to `productAttributes` above, never a replacement for it.
-  const layoutFormMode: LayoutFormMode = isEdit ? 'edit' : 'create'
-  const productLayoutQuery = useProductAttributeLayout(categoryId, layoutFormMode)
-  const productLayout = productLayoutQuery.data ?? null
+  // Spec 0062: the create rows follow the category's configured create-form
+  // layout; the detail shows the persisted product's own view layout.
+  const productLayoutQuery = useProductAttributeLayout(isEdit ? null : categoryId, 'create')
 
-  // Custom fields (spec 0021): the single reusable integration — builds the
-  // dynamic schema, defaults and 422 paths; `<CustomFieldsSection>` renders.
   const customFields = useCustomFieldsForm(
     'products',
     mode.type === 'edit' ? { type: 'edit', customFields: mode.product.custom_fields } : { type: 'create' },
@@ -129,54 +137,29 @@ export function useProductForm({ mode, onSuccess, initialCode }: UseProductFormA
     [isEdit, t, customFields.schema, productAttributes],
   )
 
-  const defaultValues = useMemo<ProductFormValues>(() => {
-    if (mode.type === 'edit') {
-      const { product } = mode
-      return {
-        code: product.code,
-        name: product.name,
-        description: product.description,
-        cost: normalizeDecimal(product.cost),
-        price: normalizeDecimal(product.price),
-        category_id: product.category_id,
-        product_type: product.product_type,
-        usages: product.usages ?? DEFAULT_PRODUCT_USAGES,
-        vat_rate_id: product.vat_rate_id,
-        supplier_id: product.supplier_id,
-        unit_of_measure_id: product.unit_of_measure_id,
-        product_typology_id: product.product_typology_id,
-        custom_fields: customFields.defaultValues,
-        attribute_values: seedAttributeValues(productAttributes, product.attribute_values ?? {}),
-      }
-    }
-    return {
-      code: initialCode ?? '',
-      name: '',
-      description: null,
-      cost: null,
-      price: null,
-      category_id: null,
-      product_type: DEFAULT_PRODUCT_TYPE,
-      usages: DEFAULT_PRODUCT_USAGES,
-      vat_rate_id: null,
-      supplier_id: null,
-      unit_of_measure_id: null,
-      product_typology_id: null,
-      custom_fields: customFields.defaultValues,
-      attribute_values: {},
-    }
-    // `productAttributes` is intentionally excluded: this seeds the form's
-    // INITIAL state only (mount), the effect below keeps it in sync as the
-    // category — and therefore the effective attribute set — changes later.
+  const defaultValues = useMemo<ProductFormValues>(
+    () =>
+      mode.type === 'edit'
+        ? editDefaults(mode.product, customFields.defaultValues, productAttributes)
+        : createDefaults(customFields.defaultValues, initialCode),
+    // `productAttributes` is intentionally excluded: a category switch inside
+    // an open row must not re-seed the form; the effect below adds the codes
+    // a new attribute set brings.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, customFields.defaultValues, initialCode])
+    [mode, customFields.defaultValues, initialCode],
+  )
 
-  const form = useForm<ProductFormValues>({ resolver: zodResolver(schema), defaultValues })
+  const form = useForm<ProductFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: isEdit ? { keepDirtyValues: true } : undefined,
+  })
 
   // Adds every newly-appearing PRODUCT attribute code to the RHF state (so
   // its control has a defined, controlled value); a code that stops applying
-  // (category switch) is left in place but harmless — `buildCreatePayload`/
-  // `buildUpdatePayload` only read the CURRENT attribute set.
+  // (category switch) is left in place but harmless — the payload builders
+  // only read the CURRENT attribute set.
   useEffect(() => {
     const known = mode.type === 'edit' ? (mode.product.attribute_values ?? {}) : {}
     for (const attribute of productAttributes) {
@@ -190,58 +173,19 @@ export function useProductForm({ mode, onSuccess, initialCode }: UseProductFormA
     }
   }, [productAttributes, form, mode])
 
-  const onSubmit = async (values: ProductFormValues) => {
-    setServerError(null)
-    const attributeCodes = productAttributes.map((attribute) => attribute.code)
-    const errorFields: Path<ProductFormValues>[] = [
-      ...SERVER_ERROR_FIELDS,
-      ...(customFields.errorPaths as Path<ProductFormValues>[]),
-      ...attributeCodes.map((code) => `attribute_values.${code}` as Path<ProductFormValues>),
-    ]
-    try {
-      if (mode.type === 'edit') {
-        const saved = await updateProduct(
-          mode.product.id,
-          buildUpdatePayload(values, mode.product, attributeCodes),
-        )
-        // Overlay the saved fields onto the cached entry instead of replacing
-        // it: `saved` is a bare `ProductDetail` without the `permissions`
-        // envelope sibling, and the detail page reads `permissions.resource`.
-        // Replacing would strip `permissions` and crash on navigation. When
-        // nothing is cached, leave it untouched — the page's
-        // `invalidateQueries` refetches the full `ProductDetailWithPermissions`.
-        queryClient.setQueryData<ProductDetailWithPermissions>(
-          productDetailQueryKey(mode.product.id),
-          (previous) => (previous ? { ...previous, ...saved } : previous),
-        )
-        toast.success(t('products.form.updated'))
-        invalidateStats()
-        onSuccess(saved)
-        return
-      }
-
-      const created = await createProduct(buildCreatePayload(values, attributeCodes))
-      toast.success(t('products.form.created'))
-      invalidateStats()
-      onSuccess(created)
-    } catch (error) {
-      const handled = applyServerValidationErrors(error, form.setError, errorFields)
-      if (!handled) {
-        setServerError(t('products.form.genericError'))
-      }
-    }
-  }
-
   return {
     form,
-    isEdit,
-    serverError,
-    onSubmit,
     productAttributes,
     productAttributesLoading: productAttributesQuery.isLoading || productLayoutQuery.isLoading,
-    productLayout,
-    layoutFormMode,
-    /** Wire the category field's `onChange` to also call this, alongside `field.onChange` — see `categoryId` above. */
+    /** The create rows' configured layout (`null` on the detail, which reads the product's own). */
+    createLayout: productLayoutQuery.data ?? null,
+    customFieldErrorPaths: customFields.errorPaths,
+    /** Wire the category control's `onChange` to also call this, alongside `field.onChange`. */
     onCategoryChange: setCategoryId,
+    /** Re-aligns the attribute set on the form's category (a row opened, cancelled or reset). */
+    syncCategory: () => setCategoryId(form.getValues('category_id')),
   }
 }
+
+/** What `useProductForm` hands its callers. */
+export type ProductFormState = ReturnType<typeof useProductForm>

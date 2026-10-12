@@ -9,13 +9,16 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import { GeneralNotesCallout } from '@/components/record-form/general-notes-callout'
+import { NotesCalloutRow } from '@/components/record-form/notes-callout-row'
+import { RecordInlineField } from '@/components/record-form/record-inline-field'
+import { ContractCommentsField, ContractDateField, ContractPaymentNotesField } from '@/features/contracts/contract-fields'
 import {
   ContractOpportunityLink,
   ContractQuoteLink,
   NoOpportunityText,
 } from '@/features/contracts/contract-related-links'
 import type { ContractDetail, ContractRelationRef } from '@/features/contracts/types'
+import type { ContractDetailEditor } from '@/features/contracts/use-contract-inline-edit'
 import { formatDate } from '@/lib/formatting/date-display'
 
 /** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
@@ -84,6 +87,9 @@ function RelationField({
 
 interface ContractDetailSectionsProps {
   contract: ContractDetail
+  editor: ContractDetailEditor
+  /** The contract may still be edited: `contracts.update` and a working status group (spec 0219 D-3). */
+  canEdit: boolean
 }
 
 /**
@@ -98,19 +104,27 @@ interface ContractDetailSectionsProps {
  * does not render them.
  *
  * Every relation here is a LIVE projection through the quote (BR-7/AC-040):
- * nothing below is a persisted column on `contracts`.
+ * nothing below is a persisted column on `contracts` — except the four the
+ * contract owns (comments, renewal and expiry dates, payment notes), which
+ * edit in place (spec 0219): there is no "Modifica dati" dialog any more.
  */
-export function ContractDetailSections({ contract }: ContractDetailSectionsProps) {
+export function ContractDetailSections({ contract, editor, canEdit }: ContractDetailSectionsProps) {
   const { t } = useTranslation()
+  const { form, inline } = editor
 
   return (
     <RecordSectionsGrid>
       {/* Lo STESSO callout dell'Offerta e dell'Opportunita': il testo libero del
           record si legge PRIMA dei campi strutturati, e si rende da se' nullo
           quando non c'e'. */}
-      <GeneralNotesCallout
+      <NotesCalloutRow
+        field="comments"
         title={t('contracts.detail.comments')}
         notes={contract.comments}
+        placeholder={t('contracts.detail.commentsPlaceholder')}
+        inline={inline}
+        editor={<ContractCommentsField control={form.control} />}
+        canEdit={canEdit}
         className={FULL_WIDTH_SECTION_CLASS}
       />
 
@@ -162,8 +176,24 @@ export function ContractDetailSections({ contract }: ContractDetailSectionsProps
           <RecordField label={t('contracts.detail.validatedAt')}>
             <StampedDate date={contract.validated_at} by={contract.validated_by} />
           </RecordField>
-          <DateField label={t('contracts.detail.renewalDate')} value={contract.renewal_date} />
-          <DateField label={t('contracts.detail.expiryDate')} value={contract.expiry_date} />
+          <RecordInlineField
+            field="renewal_date"
+            label={t('contracts.detail.renewalDate')}
+            inline={inline}
+            canEdit={canEdit}
+            editor={<ContractDateField control={form.control} name="renewal_date" label={t('contracts.detail.renewalDate')} />}
+          >
+            {formatDate(contract.renewal_date) || <DetailEmpty />}
+          </RecordInlineField>
+          <RecordInlineField
+            field="expiry_date"
+            label={t('contracts.detail.expiryDate')}
+            inline={inline}
+            canEdit={canEdit}
+            editor={<ContractDateField control={form.control} name="expiry_date" label={t('contracts.detail.expiryDate')} />}
+          >
+            {formatDate(contract.expiry_date) || <DetailEmpty />}
+          </RecordInlineField>
           <RecordField label={t('contracts.detail.terminatedAt')}>
             <StampedDate date={contract.terminated_at} by={contract.terminated_by} />
           </RecordField>
@@ -178,7 +208,13 @@ export function ContractDetailSections({ contract }: ContractDetailSectionsProps
       <RecordSection title={t('contracts.detail.sections.payment')} icon={<CreditCard />}>
         <RecordFieldList>
           <RelationField label={t('contracts.detail.paymentMethod')} relation={contract.payment_method} />
-          <RecordField label={t('contracts.detail.paymentNotes')}>
+          <RecordInlineField
+            field="payment_notes"
+            label={t('contracts.detail.paymentNotes')}
+            inline={inline}
+            canEdit={canEdit}
+            editor={<ContractPaymentNotesField control={form.control} />}
+          >
             {contract.payment_notes ? (
               <p className="max-h-40 overflow-y-auto break-words whitespace-pre-wrap">
                 {contract.payment_notes}
@@ -186,7 +222,7 @@ export function ContractDetailSections({ contract }: ContractDetailSectionsProps
             ) : (
               <DetailEmpty />
             )}
-          </RecordField>
+          </RecordInlineField>
         </RecordFieldList>
       </RecordSection>
     </RecordSectionsGrid>

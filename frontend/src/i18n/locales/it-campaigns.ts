@@ -34,7 +34,7 @@ export const campaigns = {
   },
   detail: {
     title: 'Dettagli campagna',
-    subtitle: 'Vista di sola lettura della campagna selezionata.',
+    subtitle: 'Dettaglio della campagna selezionata, modificabile sul posto.',
     loadError: 'Impossibile caricare la campagna. Riprova.',
     budget: 'Budget',
     linkedToProject: 'Collegata a un progetto',
@@ -44,43 +44,19 @@ export const campaigns = {
     newCampaign: 'Nuova campagna',
     createTitle: 'Crea campagna',
     createSubtitle: "Aggiungi una nuova campagna all'organizzazione.",
-    editTitle: 'Modifica campagna',
-    editSubtitle: 'Aggiorna la campagna selezionata.',
     sections: {
-      identity: {
-        title: 'Identità',
-        description: 'Codice, denominazione e descrizione della campagna.',
-      },
-      project: {
-        title: 'Collegamento al progetto',
-        description: 'Collegando un progetto si precompila Partner qui sotto.',
-      },
-      classification: {
-        title: 'Classificazione',
-        description: 'Stato e linee prodotto.',
-        descriptionLinked:
-          'Sola lettura: ereditati dal progetto collegato. Scollega il progetto per impostarli tu stesso.',
-      },
-      geography: {
-        title: 'Geografia',
-        description:
-          'Nazione, regione, provincia e città. Un livello valorizzato dal progetto collegato viene ereditato e bloccato.',
-      },
-      planning: {
-        title: 'Pianificazione e budget',
-        description: 'Tempistiche, budget e target lead.',
-      },
+      identity: { title: 'Identità' },
+      project: { title: 'Collegamento al progetto' },
+      classification: { title: 'Classificazione' },
+      geography: { title: 'Geografia' },
+      planning: { title: 'Pianificazione e budget' },
     },
     hints: {
-      moreInfoLabel: 'Ulteriori informazioni su {{field}}',
       code: 'Precompilato con il prossimo codice sequenziale; modificalo se ne vuoi uno personalizzato.',
-      project: 'Collegare un progetto precompila e blocca Classificazione e Geografia qui sotto.',
       classification: 'Ereditati dal progetto collegato.',
       partner: 'Compila se la campagna è richiesta dal partner (i costi sono imputati al partner).',
       operationalSite: 'Precompilata dal progetto collegato quando ne selezioni uno; resta liberamente modificabile.',
       source: 'Facoltativa. Se impostata, viene ereditata dai lead generati da questa campagna (precompilata, modificabile).',
-      geography:
-        'Nazione, regione, provincia e città seguono una cascata dall\'alto in basso; i livelli valorizzati da un progetto collegato sono ereditati e bloccati.',
     },
     code: 'Codice',
     codePlaceholder: 'Codice suggerito, modificabile',
@@ -98,6 +74,7 @@ export const campaigns = {
     countryRequired: 'La nazione è obbligatoria quando il progetto collegato non ne fornisce una.',
     provinceRequiresState: 'Seleziona una regione prima di una provincia.',
     cityRequiresState: 'Seleziona una regione prima di una città.',
+    unlinkedHint: 'Senza progetto, stato, righe prodotto e geografia sono della campagna: compilali qui.',
     geoInheritedFromProject: 'Ereditato dal progetto collegato: i livelli corrispondenti sono bloccati.',
     partner: 'Partner',
     partnerSearch: 'Cerca partner…',
@@ -125,6 +102,12 @@ export const campaigns = {
     deleted: 'Campagna eliminata con successo.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare la campagna. Riprova.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'La campagna non è ancora stata creata: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     deleteForbidden: 'Non puoi eliminare questa campagna.',
   },
 }

@@ -47,7 +47,6 @@ const referents: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <ReferentForm
-          mode={{ type: 'create' }}
           onSuccess={(referent) => onSuccess({ id: referent.id, name: referent.name })}
           onCancel={onCancel}
         />
@@ -154,7 +153,6 @@ const campaigns: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <CampaignForm
-          mode={{ type: 'create' }}
           onSuccess={(campaign) => onSuccess({ id: campaign.id, name: campaign.name })}
           onCancel={onCancel}
         />

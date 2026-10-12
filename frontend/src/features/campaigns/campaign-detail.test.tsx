@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render as rtlRender, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { CampaignDetailView } from '@/features/campaigns/campaign-detail'
+import { campaignWrapper } from '@/features/campaigns/campaign-test-fixtures'
 import type { CampaignDetailWithPermissions } from '@/features/campaigns/types'
 
 // Related-record links render only for an actor who can view the target
@@ -19,9 +19,9 @@ vi.mock('@/features/auth/use-abilities', () => ({
  * re-derives it, it only surfaces the inherited-levels hint.
  */
 
-/** Every render goes through a Router: the card links related records with real `<Link>`s. */
+/** Router (real `<Link>`s), query client and confirm dialog: the card edits in place (spec 0221). */
 function render(ui: ReactElement) {
-  return rtlRender(ui, { wrapper: MemoryRouter })
+  return rtlRender(ui, { wrapper: campaignWrapper().wrapper })
 }
 
 const activityLogSectionMock = vi.fn()
@@ -98,8 +98,10 @@ describe('CampaignDetailView — identity band', () => {
     render(<CampaignDetailView campaign={campaign()} />)
 
     expect(screen.getByRole('heading', { name: 'Spring push' })).toBeInTheDocument()
-    expect(screen.getByText('CMP-0001')).toBeInTheDocument()
-    expect(screen.getByText('Active')).toBeInTheDocument()
+    // The subtitle, and the Code row of the identity section.
+    expect(screen.getAllByText('CMP-0001')).toHaveLength(2)
+    // The band's badge, and the Status row of the classification section.
+    expect(screen.getAllByText('Active')).not.toHaveLength(0)
   })
 
   it('marks a campaign with no project as standalone', () => {
@@ -116,20 +118,10 @@ describe('CampaignDetailView — identity band', () => {
     expect(screen.queryByText('Standalone')).not.toBeInTheDocument()
   })
 
-  it('renders no edit control when the actor may not update the campaign', () => {
-    render(
-      <CampaignDetailView
-        campaign={campaign({
-          permissions: {
-            ...campaign().permissions,
-            resource: { ...campaign().permissions.resource, update: false },
-          },
-        })}
-        onEdit={() => {}}
-      />,
-    )
+  it('offers no Edit action: the record edits in place (spec 0221 AC-001)', () => {
+    render(<CampaignDetailView campaign={campaign()} />)
 
-    expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
   })
 })
 
@@ -214,13 +206,14 @@ describe('CampaignDetailView — geography (spec 0027)', () => {
 })
 
 describe('CampaignDetailView — description', () => {
-  it('renders the description section only when there is one', () => {
+  // REQUIREMENT CHANGED (spec 0221 D-2): the description is a row of the identity section.
+  it('shows the description in its row when there is one', () => {
     render(<CampaignDetailView campaign={campaign({ description: 'Push the spring catalogue.' })} />)
 
     expect(screen.getByText('Push the spring catalogue.')).toBeInTheDocument()
   })
 
-  it('omits the section entirely when the description is null', () => {
+  it('shows the empty placeholder in its row when the description is null', () => {
     const { container } = render(<CampaignDetailView campaign={campaign({ description: null })} />)
 
     expect(container.textContent).not.toContain('Push the spring catalogue.')

@@ -223,5 +223,12 @@ export function useLeadCampaignProductInterest({
     [confirm, form, onCampaignApplied, productIds, queryClient, t],
   )
 
-  return { campaignCategoryIds, isCampaignChangePending, handleCampaignItemChange }
+  // The in-place rows (spec 0217) open one at a time on a form that may have
+  // been reset or saved since: the "previous campaign" a held-back switch
+  // reverts to is the one the row opened with.
+  const syncBaseline = useCallback(() => {
+    previousCampaignIdRef.current = form.getValues('campaign_id')
+  }, [form])
+
+  return { campaignCategoryIds, isCampaignChangePending, handleCampaignItemChange, syncBaseline }
 }

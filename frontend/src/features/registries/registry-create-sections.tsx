@@ -1,10 +1,14 @@
+import { useTranslation } from 'react-i18next'
 import type { UseFormReturn } from 'react-hook-form'
 import { RecordSectionsGrid } from '@/components/detail/record-panel'
 import type { InlineEdit } from '@/components/record-form/record-inline-field'
 import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field-record-sections'
+import {
+  PersonalDataIdentityRecordSection,
+  type PersonalDataCardBuffer,
+} from '@/features/personal-data/personal-data-identity-record-section'
 import { anagraphicSectionProps } from '@/features/personal-data/use-reveal-blocked-section'
 import { RegistryBusinessRecordSection } from '@/features/registries/registry-record-business'
-import { RegistryIdentityRecordSection, type RegistryCardBuffer } from '@/features/registries/registry-record-identity'
 import {
   RegistryReferentsRecordSection,
   RegistryRelationsRecordSection,
@@ -16,7 +20,7 @@ import type { RegistryFormValues } from '@/features/registries/use-registry-form
 interface RegistryCreateSectionsProps {
   form: UseFormReturn<RegistryFormValues>
   draft: InlineEdit
-  card: RegistryCardBuffer
+  card: PersonalDataCardBuffer
 }
 
 /**
@@ -27,6 +31,7 @@ interface RegistryCreateSectionsProps {
  * creates the whole draft.
  */
 export function RegistryCreateSections({ form, draft, card }: RegistryCreateSectionsProps) {
+  const { t } = useTranslation()
   const values = useRegistryDraftValues(form.control)
   const sectionProps = { values, form, inline: draft }
 
@@ -34,7 +39,12 @@ export function RegistryCreateSections({ form, draft, card }: RegistryCreateSect
     <RecordSectionsGrid>
       {/* The grid item itself, so a refused save can scroll it into view. */}
       <div {...anagraphicSectionProps('card')} className="flex min-w-0 flex-col">
-        <RegistryIdentityRecordSection identity={card.draft} buffer={card} inline={draft} />
+        <PersonalDataIdentityRecordSection
+          title={t('registries.form.sections.identity.title')}
+          identity={card.draft}
+          buffer={card}
+          inline={draft}
+        />
       </div>
       <RegistryRelationsRecordSection {...sectionProps} />
       <RegistryBusinessRecordSection {...sectionProps} />

@@ -137,8 +137,9 @@ export interface ProductDetail {
 
 /**
  * A `ProductDetail` carrying the actor's authorization metadata for this
- * instance (spec 0004), as returned by `GET /products/{id}` (`show`). Used to
- * seed the edit form's `ResourcePermissionsProvider` without a second request.
+ * instance (spec 0004), as returned by `GET`/`PATCH /products/{id}`. Seeds
+ * the in-place detail's `ResourcePermissionsProvider` (spec 0218) without a
+ * second request.
  */
 export interface ProductDetailWithPermissions extends ProductDetail {
   permissions: ResourcePermissions
@@ -171,8 +172,5 @@ export interface CreateProductPayload {
 /** Payload for PATCH /products/{id} (partial update). Generic fields are sparse (only what changed). */
 export type UpdateProductPayload = Partial<CreateProductPayload>
 
-/**
- * Discriminated form mode shared by the form hook/meta-resolver and the
- * `ProductForm` component (mirrors `BusinessFunctionFormMode`).
- */
+/** Discriminated form mode of `useProductForm`: the create form, or the in-place detail (edit). */
 export type ProductFormMode = { type: 'create' } | { type: 'edit'; product: ProductDetailWithPermissions }

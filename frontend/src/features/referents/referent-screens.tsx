@@ -1,11 +1,10 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchReferent, referentDetailQueryKey } from '@/features/referents/api'
-import { ReferentForm } from '@/features/referents/referent-form'
+import { GuardedReferentForm } from '@/features/referents/guarded-referent-form'
 import { ReferentDetailView } from '@/features/referents/referent-detail'
 import { OPEN_MODE_PAGE } from '@/features/modules/types'
 import type {
@@ -22,8 +21,12 @@ import type { ReferentDetail } from '@/features/referents/types'
  * (spec 0022, `ReferentDetailPage`/`ReferentFormPage`) and does NOT get
  * generated routes (`generateRoutes: false`) — these screens only back the
  * 'modal' alternative a user can opt into (spec 0042).
+ *
+ * Spec 0216: the detail edits its fields in place, so `onEdit` is never used;
+ * each save reports through `onChanged` (the modal host refreshes its grid and
+ * keeps the record open).
  */
-export function ReferentDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function ReferentDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: referent,
@@ -48,61 +51,23 @@ export function ReferentDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <ReferentDetailView referent={referent} onEdit={onEdit} />
+  return <ReferentDetailView referent={referent} onChanged={onChanged} />
 }
 
+/** Create only (spec 0216): there is no edit form, and no host asks for one. */
 export function ReferentFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const queryClient = useQueryClient()
+
+  if (mode.type !== 'create') {
+    return null
+  }
 
   const handleSuccess = (saved: ReferentDetail) => {
     queryClient.invalidateQueries({ queryKey: referentDetailQueryKey(saved.id) })
     onSuccess(saved.id)
   }
 
-  if (mode.type === 'create') {
-    return <ReferentForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
-  }
-
-  return <ReferentEditScreen referentId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-}
-
-interface ReferentEditScreenProps {
-  referentId: number
-  onSuccess: (referent: ReferentDetail) => void
-  onCancel: () => void
-}
-
-/**
- * Fetches the fresh, re-authorized referent detail before mounting the edit
- * form, so the partial PATCH starts from authoritative values rather than a
- * stale snapshot.
- */
-function ReferentEditScreen({ referentId, onSuccess, onCancel }: ReferentEditScreenProps) {
-  const { t } = useTranslation()
-  const {
-    data: referent,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(referentDetailQueryKey(referentId), () => fetchReferent(referentId))
-
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('referents.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
-  }
-
-  if (isLoading || !referent) {
-    return <RecordFormSkeleton />
-  }
-
-  return <ReferentForm mode={{ type: 'edit', referent }} onSuccess={onSuccess} onCancel={onCancel} />
+  return <GuardedReferentForm onSuccess={handleSuccess} onCancel={onCancel} />
 }
 
 /** Auto-registered in the module registry (spec 0042). */
@@ -114,9 +79,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.referents',
   DetailScreen: ReferentDetailScreen,
   FormScreen: ReferentFormScreen,
-  // The record card renders its own Edit action, and the form its own identity
-  // bar — same registration Opportunità carries, so the hosts must not stack a
-  // second heading or button on top of them.
+  // The detail IS the edit form (spec 0216): no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
   formOwnsHeader: true,
 }

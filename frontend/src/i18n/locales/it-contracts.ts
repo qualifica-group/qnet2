@@ -70,6 +70,7 @@ export const contracts = {
     terminationReason: 'Motivazione disdetta',
     paymentNotes: 'Note di pagamento',
     comments: 'Commenti',
+    commentsPlaceholder: 'Scrivi un commento su questo contratto…',
     noOpportunity: "Nessuna opportunità collegata.",
     tabs: {
       contractDocuments: 'Documenti contratto',
@@ -191,17 +192,9 @@ export const contracts = {
       reasonRequired: 'La motivazione è obbligatoria.',
       reasonMax: 'La motivazione può contenere al massimo 2000 caratteri.',
     },
-    // Nessuna collisione col backend: la riga di tabella "edit" usa la
-    // chiave condivisa `actions.edit`, non `contracts.actions.edit`.
+    // Il salvataggio sul posto dei campi del contratto (spec 0219): la vecchia
+    // finestra "Modifica dati" non c'e' piu', restano solo i suoi messaggi di esito.
     edit: {
-      title: 'Modifica dati',
-      description: 'Aggiorna le date e le note del contratto.',
-      expiryDate: 'Data di scadenza',
-      renewalDate: 'Data di rinnovo',
-      paymentNotes: 'Note di pagamento',
-      comments: 'Commenti',
-      confirm: 'Salva',
-      saving: 'Salvataggio…',
       success: 'Contratto aggiornato con successo.',
       genericError: 'Impossibile aggiornare il contratto. Riprova.',
     },

@@ -29,7 +29,7 @@ const guide: HelpGuide = {
             'Apri Prodotti › Prodotti.',
             'Scrivi nel campo Cerca… in alto nella tabella.',
             "Restringi l'elenco con i filtri sulle colonne: Categoria, Tipologia, Funzione aziendale o Utilizzo in offerta.",
-            'Dal menu Azioni della riga scegli Visualizza per vedere la scheda; per cambiarla premi Modifica nella scheda.',
+            'Dal menu Azioni della riga scegli Visualizza per aprire la scheda: i dati si modificano lì, un campo alla volta.',
           ],
         },
       ],
@@ -41,10 +41,10 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Premi Nuovo prodotto.',
-            "Compila le sezioni nell'ordine: Anagrafica, Classificazione, Prezzi e fornitura, Attributi.",
-            'Controlla il riquadro Riepilogo a destra.',
-            'Premi Salva. Compare "Prodotto creato con successo."',
+            'Premi Nuovo prodotto: il modulo ha lo stesso aspetto della scheda, con le stesse sezioni e righe chiuse (il Codice è già proposto).',
+            "Fai clic su una riga (o sulla matita) per aprirla, compila e premi Fatto per tenere il valore o Ripristina per riportarlo com'era. Sezioni: Anagrafica, Classificazione, Prezzi e fornitura, Attributi.",
+            'In testa vedi crescere Prezzo, Costo e Margine mentre compili.',
+            'Premi Salva: QNet controlla tutto e mostra "Prodotto creato con successo.". Se esci senza salvare ti viene chiesta conferma.',
           ],
         },
       ],
@@ -166,8 +166,8 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'Senza categoria la sezione mostra: "Seleziona una categoria per vedere i suoi attributi."',
-            'Scelta la categoria compaiono i suoi campi, compresi quelli ereditati dalle categorie superiori.',
+            'Senza categoria la sezione non compare.',
+            'Scelta la categoria compaiono i suoi campi, compresi quelli ereditati dalle categorie superiori, ciascuno come una riga da aprire.',
             'La categoria può raggrupparli in più sezioni; quelli fuori gruppo finiscono in Altre informazioni.',
             'Gli attributi indicati come Obbligatorio nella categoria vanno compilati per forza.',
           ],
@@ -184,11 +184,23 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Dal menu Azioni scegli Visualizza per aprire la scheda in sola lettura. Trovi codice e nome, Prezzo, Costo e Margine in evidenza (ciascuno solo se pertinente: il Margine compare solo con entrambi gli utilizzi), le sezioni Anagrafica, Classificazione e Prezzi e fornitura, i valori degli attributi (divisi nelle stesse sezioni impostate per la categoria, solo quelli compilati), lo storico delle modifiche (se hai il permesso) e la data Creato il.',
+          text: 'Dal menu Azioni scegli Visualizza per aprire la scheda. Trovi codice e nome, Prezzo, Costo e Margine in evidenza (ciascuno solo se pertinente: il Margine compare solo con entrambi gli utilizzi), le sezioni Anagrafica, Classificazione e Prezzi e fornitura, gli attributi (divisi nelle stesse sezioni impostate per la categoria, anche quelli vuoti), i campi personalizzati, lo storico delle modifiche (se hai il permesso) e la data Creato il.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Non esiste una pagina di modifica separata: passa col mouse sul campo da cambiare e premi la matita (o fai clic sul valore).',
+            'Modifica il valore nel controllo che compare.',
+            "Premi Salva per salvare solo quel campo; Annulla (o Esc, o un clic fuori dal campo aperto) lo chiude lasciandolo com'era.",
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Il Codice non si modifica dopo la creazione. Se cambi la Categoria, gli attributi che la nuova categoria aggiunge si compilano nello stesso riquadro; se attivi un Utilizzo, nello stesso riquadro ti viene chiesto il Prezzo o il Costo. Un campo senza matita è in sola lettura per il tuo ruolo.',
         },
         {
           type: 'paragraph',
-          text: 'Per cambiare i dati premi Modifica nella scheda. Per eliminare un prodotto scegli Elimina dal menu Azioni e conferma.',
+          text: 'Per eliminare un prodotto scegli Elimina dal menu Azioni e conferma.',
         },
       ],
     },

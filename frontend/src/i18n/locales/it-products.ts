@@ -366,8 +366,7 @@ export const products = {
     hintNoCategories: 'Aggiungi prima una funzione aziendale con la sua categoria prodotto.',
   },
   empty: 'Nessun prodotto selezionato.',
-  // Differenza prezzo/costo, mostrata sia nella scheda (KPI) sia nel form
-  // (riquadro sotto i due campi e riga del riepilogo laterale).
+  // Differenza prezzo/costo, mostrata nella striscia KPI della scheda e della creazione.
   margin: 'Margine',
   marginPercent: '{{percent}}% sul prezzo',
   columns: {
@@ -385,17 +384,16 @@ export const products = {
   },
   detail: {
     title: 'Dettagli prodotto',
-    subtitle: 'Vista di sola lettura del prodotto selezionato.',
+    subtitle: 'Dettaglio del prodotto selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare il prodotto. Riprova.',
     details: 'Dettagli',
     created_at: 'Creato il',
+    newAttributes: 'Attributi della nuova categoria',
   },
   form: {
     newProduct: 'Nuovo prodotto',
     createTitle: 'Crea prodotto',
     createSubtitle: 'Aggiungi un nuovo prodotto.',
-    editTitle: 'Modifica prodotto',
-    editSubtitle: 'Aggiorna il prodotto selezionato.',
     code: 'Codice',
     codePlaceholder: 'Codice suggerito, modificabile',
     codeMax: 'Il codice deve avere al massimo 32 caratteri.',
@@ -448,23 +446,22 @@ export const products = {
     deleted: 'Prodotto eliminato con successo.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare il prodotto. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo prodotto.',
-    summary: {
-      title: 'Riepilogo',
-      description: 'Quello che stai per salvare.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il prodotto non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
     },
+    deleteForbidden: 'Non puoi eliminare questo prodotto.',
     sections: {
       identity: {
         title: 'Anagrafica',
-        description: 'Codice, nome e descrizione del prodotto.',
       },
       classification: {
         title: 'Classificazione',
-        description: 'Categoria, tipologia, unita di misura e tipo del prodotto.',
       },
       pricing: {
         title: 'Prezzi e fornitura',
-        description: 'Costo, prezzo, aliquota IVA e fornitore.',
       },
     },
     hints: {
@@ -472,7 +469,6 @@ export const products = {
     },
     dynamicFields: {
       title: 'Attributi',
-      empty: 'Seleziona una categoria per vedere i suoi attributi.',
     },
   },
 }

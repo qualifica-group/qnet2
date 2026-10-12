@@ -70,6 +70,7 @@ export const contracts = {
     terminationReason: 'Termination reason',
     paymentNotes: 'Payment notes',
     comments: 'Comments',
+    commentsPlaceholder: 'Write a comment on this contract…',
     noOpportunity: 'No linked opportunity.',
     tabs: {
       contractDocuments: 'Contract documents',
@@ -191,17 +192,9 @@ export const contracts = {
       reasonRequired: 'Reason is required.',
       reasonMax: 'Reason must be at most 2000 characters.',
     },
-    // No collision with the backend: the table row "edit" action uses the
-    // shared `actions.edit` key, not `contracts.actions.edit`.
+    // The in-place save of the contract's own fields (spec 0219): the former
+    // "Edit data" dialog is gone, only its outcome messages remain.
     edit: {
-      title: 'Edit data',
-      description: 'Update the dates and notes of the contract.',
-      expiryDate: 'Expiry date',
-      renewalDate: 'Renewal date',
-      paymentNotes: 'Payment notes',
-      comments: 'Comments',
-      confirm: 'Save',
-      saving: 'Saving…',
       success: 'Contract updated successfully.',
       genericError: 'Unable to update the contract. Please try again.',
     },

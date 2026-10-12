@@ -3,14 +3,18 @@ import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
+import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { LeadDetailView } from '@/features/leads/lead-detail'
 import type { LeadDetailWithPermissions } from '@/features/leads/types'
 
 /**
- * AC-065: `/leads/:id` shows the lead read-only, no editable control. Since the
- * card moved onto the enterprise-CRM record kit it also owns real cross-record
+ * AC-065: `/leads/:id` shows the lead with no control open. Since the card
+ * moved onto the enterprise-CRM record kit it also owns real cross-record
  * LINKS (anagrafica, campagna, Sede, opportunita') and the anagrafica's
- * actionable contacts, so the view now needs a Router and a QueryClient.
+ * actionable contacts, so the view needs a Router and a QueryClient — and,
+ * since its rows edit in place (spec 0217), the confirm dialog of the
+ * Campaign cascade. REQUIREMENT CHANGED (spec 0217): the imported data
+ * section is always there (empty = a dash), since it is where they are added.
  */
 
 const canMock = vi.fn<(permission: string) => boolean>()
@@ -59,7 +63,9 @@ function renderDetail(data: LeadDetailWithPermissions = lead()) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <LeadDetailView lead={data} />
+        <ConfirmDialogProvider>
+          <LeadDetailView lead={data} />
+        </ConfirmDialogProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -74,8 +80,8 @@ beforeEach(() => {
   canMock.mockReturnValue(false)
 })
 
-describe('LeadDetailView — read-only (AC-065)', () => {
-  it('renders the lead fields read-only, the anagrafica as the heading and the colored status badge (AC-015)', () => {
+describe('LeadDetailView — record card (AC-065)', () => {
+  it('renders the lead fields, the anagrafica as the heading and the colored status badge (AC-015)', () => {
     renderDetail()
 
     expect(screen.getByRole('heading', { name: 'Mario Rossi' })).toBeInTheDocument()
@@ -88,7 +94,7 @@ describe('LeadDetailView — read-only (AC-065)', () => {
     expect(screen.getByText('Interested in the enterprise plan.')).toBeInTheDocument()
   })
 
-  it('renders no editable control', () => {
+  it('renders no open control until a row is opened', () => {
     renderDetail()
 
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
@@ -233,28 +239,23 @@ describe('LeadDetailView — products of interest (spec 0094)', () => {
   })
 })
 
-/** AC-014: the "Imported data" section shows extra_fields read-only, only when non-empty. */
+/** AC-014: the "Imported data" section lists extra_fields; empty, it shows a dash (spec 0217). */
 describe('LeadDetailView — imported data (AC-014)', () => {
-  it('shows the section with every key/value pair when extra_fields is set', () => {
+  it('shows every key/value pair when extra_fields is set', () => {
     renderDetail(lead({ extra_fields: { 'Original column A': 'foo', 'Original column B': 'bar' } }))
 
-    expect(screen.getByText('Imported data')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Imported data' })).toBeInTheDocument()
     expect(screen.getByText('Original column A')).toBeInTheDocument()
     expect(screen.getByText('foo')).toBeInTheDocument()
     expect(screen.getByText('Original column B')).toBeInTheDocument()
     expect(screen.getByText('bar')).toBeInTheDocument()
   })
 
-  it('does not render the section when extra_fields is null', () => {
+  it('keeps the section, with a pencil to add pairs, when extra_fields is empty', () => {
     renderDetail(lead({ extra_fields: null }))
 
-    expect(screen.queryByText('Imported data')).not.toBeInTheDocument()
-  })
-
-  it('does not render the section when extra_fields is an empty object', () => {
-    renderDetail(lead({ extra_fields: {} }))
-
-    expect(screen.queryByText('Imported data')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Imported data' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit Imported data' })).toBeInTheDocument()
   })
 })
 

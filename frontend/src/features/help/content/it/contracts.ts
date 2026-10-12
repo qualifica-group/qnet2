@@ -23,7 +23,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Stato attuale', 'Azioni disponibili'],
           rows: [
-            ['Aperto o In attesa', '**Modifica dati**, **Cambia stato**, **Valida contratto**, **Disdici contratto**'],
+            ['Aperto o In attesa', 'Dati modificabili sul posto, **Cambia stato**, **Valida contratto**, **Disdici contratto**'],
             ['Chiuso positivo', '**Programma**, **Disdici contratto**, **Riapri contratto**'],
             ['Chiuso negativo', '**Riapri contratto**'],
             ['Sospeso', '**Riapri contratto**'],
@@ -34,7 +34,7 @@ const guide: HelpGuide = {
           items: [
             '**Valida contratto**: indica la **Data di validazione** (non futura).',
             '**Disdici contratto**: indica **Data di disdetta**, **Motivazione** e **Stato di destinazione**.',
-            '**Modifica dati**: aggiorna **Data di scadenza**, **Data di rinnovo**, **Note di pagamento** e **Commenti**.',
+            'Dati del contratto: **Scadenza**, **Rinnovo**, **Note di pagamento** e **Commenti** si modificano direttamente nella scheda, finché il contratto è Aperto o In attesa: premi la matita accanto al campo (o fai clic sul valore), cambia il valore e premi **Salva** (Annulla, Esc o un clic fuori chiudono senza salvare). I Commenti si scrivono dentro il loro riquadro in cima alla scheda.',
             '**Riapri contratto**: riporta il contratto in lavorazione; se era sospeso, torna allo stato precedente.',
           ],
         },
@@ -90,7 +90,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'Compila sempre **Data di scadenza** e **Data di rinnovo** con **Modifica dati**: senza queste date gli avvisi non compaiono.',
+          text: 'Compila sempre **Scadenza** e **Rinnovo** nella scheda del contratto: senza queste date gli avvisi non compaiono.',
         },
       ],
     },

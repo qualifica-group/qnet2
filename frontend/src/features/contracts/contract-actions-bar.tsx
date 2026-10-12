@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { BadgeCheck, CalendarClock, Pencil, RotateCcw, Shuffle, XOctagon } from 'lucide-react'
+import { BadgeCheck, CalendarClock, RotateCcw, Shuffle, XOctagon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { ACTION_BUTTON_VARIANT } from '@/features/table/action-tone'
@@ -9,7 +9,6 @@ import { ContractValidateDialog } from '@/features/contracts/contract-validate-d
 import { ContractProgramDialog } from '@/features/contracts/contract-program-dialog'
 import { ContractTerminateDialog } from '@/features/contracts/contract-terminate-dialog'
 import { ContractChangeStatusDialog } from '@/features/contracts/contract-change-status-dialog'
-import { ContractEditDialog } from '@/features/contracts/contract-edit-dialog'
 import { ContractReactivateDialog } from '@/features/contracts/contract-reactivate-dialog'
 import { contractLifecycleActions, isContractClosed } from '@/features/contracts/contract-lifecycle'
 import { useReactivateContract } from '@/features/contracts/use-contract-mutations'
@@ -17,7 +16,7 @@ import type { ContractDetailWithPermissions } from '@/features/contracts/types'
 import type { WorkOrderDetail } from '@/features/work-orders/types'
 
 /** Which action dialog (if any) is currently open. */
-type OpenDialog = 'none' | 'validate' | 'program' | 'terminate' | 'edit' | 'reactivate' | 'change-status'
+type OpenDialog = 'none' | 'validate' | 'program' | 'terminate' | 'reactivate' | 'change-status'
 
 interface ContractActionsBarProps {
   contract: ContractDetailWithPermissions
@@ -41,6 +40,9 @@ interface ContractActionsBarProps {
  * opens a dialog asking for the destination status, while the suspended
  * path (D-3/AC-048) keeps its plain confirm — there the pre-suspension
  * status is restored server-side.
+ *
+ * The contract's own data has no action here: it edits in place in the
+ * sections (spec 0219, the former "Modifica dati" dialog).
  *
  * This bar carries MUTATIONS only: reaching the Offerta or the Opportunità is
  * not an action but a link on the field that names them, in
@@ -132,13 +134,6 @@ export function ContractActionsBar({ contract, onChanged, onWorkOrderCreated }: 
         </Button>
       ) : null}
 
-      {lifecycle.edit && contract.permissions.resource.update ? (
-        <Button type="button" variant={ACTION_BUTTON_VARIANT.link} className="bg-card" size="sm" onClick={() => setOpenDialog('edit')}>
-          <Pencil aria-hidden="true" />
-          {t('contracts.actions.edit.title')}
-        </Button>
-      ) : null}
-
       {lifecycle.changeStatus && contract.permissions.actions.change_status ? (
         <Button type="button" variant={ACTION_BUTTON_VARIANT.action} className="bg-card" size="sm" onClick={() => setOpenDialog('change-status')}>
           <Shuffle aria-hidden="true" />
@@ -175,12 +170,6 @@ export function ContractActionsBar({ contract, onChanged, onWorkOrderCreated }: 
         onOpenChange={(open) => setOpenDialog(open ? 'change-status' : 'none')}
         contract={contract}
         onChanged={(updated) => onChanged({ ...contract, ...updated })}
-      />
-      <ContractEditDialog
-        open={openDialog === 'edit'}
-        onOpenChange={(open) => setOpenDialog(open ? 'edit' : 'none')}
-        contract={contract}
-        onUpdated={onChanged}
       />
     </div>
   )

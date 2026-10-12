@@ -23,7 +23,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Current status', 'Available actions'],
           rows: [
-            ['Open or Pending', '**Edit data**, **Change status**, **Validate contract**, **Terminate contract**'],
+            ['Open or Pending', 'Data editable in place, **Change status**, **Validate contract**, **Terminate contract**'],
             ['Closed (positive)', '**Program**, **Terminate contract**, **Reopen contract**'],
             ['Closed (negative)', '**Reopen contract**'],
             ['"Sospeso"', '**Reopen contract**'],
@@ -34,7 +34,7 @@ const guide: HelpGuide = {
           items: [
             '**Validate contract**: set the **Validation date** (not in the future).',
             '**Terminate contract**: set the **Termination date**, **Reason** and **Destination status**.',
-            '**Edit data**: update **Expiry date**, **Renewal date**, **Payment notes** and **Comments**.',
+            'Contract data: **Expiry**, **Renewal**, **Payment notes** and **Comments** are edited straight in the card while the contract is Open or Pending: press the pencil next to the field (or click the value), change it and press **Save** (Cancel, Esc or a click outside close without saving). Comments are written inside their box at the top of the card.',
             '**Reopen contract**: brings the contract back to working; if it was suspended, it returns to the previous status.',
           ],
         },
@@ -90,7 +90,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'Always fill in **Expiry date** and **Renewal date** with **Edit data**: without these dates, the alerts never appear.',
+          text: 'Always fill in **Expiry** and **Renewal** in the contract card: without these dates, the alerts never appear.',
         },
       ],
     },

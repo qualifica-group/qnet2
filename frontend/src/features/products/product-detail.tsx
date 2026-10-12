@@ -1,70 +1,50 @@
 import { useTranslation } from 'react-i18next'
-import { FolderTree, Hash, Package, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
-import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
-import { RecordLink } from '@/components/detail/record-link'
+import { Form } from '@/components/ui/form'
 import { RecordBody } from '@/components/detail/record-body'
-import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
-import {
-  RecordCanvas,
-  RecordCardHeader,
-  RecordField,
-  RecordFieldList,
-  RecordMeta,
-  RecordSection,
-  RecordSectionsGrid,
-  RecordStat,
-  RecordStatStrip,
-} from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta } from '@/components/detail/record-panel'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
-import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
-import { enumLabelOf } from '@/features/config/enum-label'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { formatDecimal } from '@/features/products/column-renderers'
-import { computeProductMargin } from '@/features/products/product-margin'
-import { productPricingVisibility } from '@/features/products/product-pricing-visibility'
 import { DEFAULT_PRODUCT_USAGES } from '@/features/products/product-form-payload'
-import { ProductAttributeValuesSection } from '@/features/products/product-attribute-values-section'
+import { ProductDetailHeader, ProductStatsStrip } from '@/features/products/product-detail-header'
+import { ProductDetailSections } from '@/features/products/product-detail-sections'
+import { useProductInlineEdit } from '@/features/products/use-product-inline-edit'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
-
-/** One column per visible KPI tile (price / cost / margin, spec 0191), never the strip's default four. */
-const STAT_STRIP_CLASS: Record<number, string> = {
-  1: '@2xl:grid-cols-1',
-  2: '@2xl:grid-cols-2',
-  3: '@2xl:grid-cols-3',
-}
 
 interface ProductDetailViewProps {
   product: ProductDetailWithPermissions
-  /** Opens the module's edit surface (page navigation or sheet swap); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the product (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single product, rendered as the same enterprise-CRM
- * record as Opportunita' (`@/components/detail/record-panel` + `RecordBody`):
- * identity band with the Edit action, the price/cost/margin KPI strip, the
- * spec-sheet sections, then the category-driven attributes; the activity log
- * takes the side column when the actor may read it, and the record keeps the
- * full width when they may not.
+ * Detail of a single product, rendered as the same enterprise-CRM record as
+ * every other detail (`RecordBody`): identity band, the price/cost/margin KPI
+ * strip, the spec-sheet sections, the category's attributes and the custom
+ * fields; the activity log takes the side column when the actor may read it.
  *
- * Purely presentational: the caller (the dedicated page, or the module Sheet)
- * fetches the fresh, re-authorized detail and passes it down.
+ * There is no edit page (spec 0218): the sections' fields edit IN PLACE, one
+ * at a time (`RecordInlineField`, driven by `useProductInlineEdit`), each save
+ * a PATCH of that field alone.
  */
-export function ProductDetailView({ product, onEdit }: ProductDetailViewProps) {
+export function ProductDetailView(props: ProductDetailViewProps) {
+  // The edit form reads the field permissions while it is built, so the
+  // provider wraps the whole detail, not just the sections.
+  return (
+    <ResourcePermissionsProvider permissions={props.product.permissions}>
+      <ProductDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function ProductDetailContent({ product, onChanged }: ProductDetailViewProps) {
   const { t } = useTranslation()
+  const editor = useProductInlineEdit(product, onChanged)
   const createdAt = formatDateTime(product.created_at)
-  const canEdit = product.permissions.resource.update
   const collaborationTabs: RecordCollaborationTab[] = product.permissions.actions.view_activity
     ? [activityLogTab('products', product.id, t('activityLog.title'))]
     : []
-  const margin = computeProductMargin(product.cost, product.price)
-  // A server that omits `usages` means the default, Sellable only (spec 0142 D-3).
-  const pricing = productPricingVisibility(product.usages ?? DEFAULT_PRODUCT_USAGES)
-  const statCount = Number(pricing.price) + Number(pricing.cost) + Number(pricing.margin)
-  const productTypeLabel = enumLabelOf('product_type', product.product_type)
 
   return (
     <RecordCanvas>
@@ -72,147 +52,20 @@ export function ProductDetailView({ product, onEdit }: ProductDetailViewProps) {
         collaborationTabs={collaborationTabs}
         header={
           <>
-            <RecordCardHeader
-              media={
-                <DetailMonogram
-                  name={product.name}
-                  icon={<Package />}
-                  className="size-10 text-base [&>svg]:size-5"
-                />
-              }
-              title={product.name}
-              subtitle={product.category?.name}
-              badges={
-                <>
-                  <Badge variant="outline">
-                    <Hash aria-hidden="true" />
-                    {product.code}
-                  </Badge>
-                  <Badge variant="secondary">{productTypeLabel}</Badge>
-                  {product.product_typology ? (
-                    <ProductTypologyBadge name={product.product_typology.name} color={product.product_typology.color} />
-                  ) : null}
-                </>
-              }
-              actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+            <ProductDetailHeader product={product} />
+            {/* A server that omits `usages` means the default, Sellable only (spec 0142 D-3). */}
+            <ProductStatsStrip
+              cost={product.cost}
+              price={product.price}
+              usages={product.usages ?? DEFAULT_PRODUCT_USAGES}
             />
-
-            {statCount > 0 ? (
-              <RecordStatStrip className={STAT_STRIP_CLASS[statCount]}>
-                {pricing.price ? (
-                  <RecordStat
-                    label={t('products.columns.price')}
-                    icon={<TrendingUp aria-hidden="true" />}
-                    value={formatDecimal(product.price) || <DetailEmpty />}
-                  />
-                ) : null}
-                {pricing.cost ? (
-                  <RecordStat
-                    label={t('products.columns.cost')}
-                    icon={<TrendingDown aria-hidden="true" />}
-                    value={formatDecimal(product.cost) || <DetailEmpty />}
-                  />
-                ) : null}
-                {pricing.margin ? (
-                  <RecordStat
-                    label={t('products.margin')}
-                    icon={<Wallet aria-hidden="true" />}
-                    value={
-                      margin ? (
-                        <span className={cn(margin.amount < 0 && 'text-destructive')}>
-                          {formatDecimal(margin.amount)}
-                        </span>
-                      ) : (
-                        <DetailEmpty />
-                      )
-                    }
-                    hint={
-                      margin && margin.percent !== null
-                        ? t('products.marginPercent', { percent: formatDecimal(margin.percent) })
-                        : undefined
-                    }
-                  />
-                ) : null}
-              </RecordStatStrip>
-            ) : null}
           </>
         }
       >
-        <RecordSectionsGrid>
-          <RecordSection title={t('products.form.sections.identity.title')} icon={<Package />}>
-            <RecordFieldList>
-              <RecordField label={t('products.form.code')}>{product.code}</RecordField>
-              <RecordField label={t('products.columns.product_type')}>
-                <Badge variant="secondary">{productTypeLabel}</Badge>
-              </RecordField>
-              <RecordField label={t('products.columns.usages')}>
-                {product.usages && product.usages.length > 0 ? (
-                  <span className="flex flex-wrap gap-1">
-                    {product.usages.map((usage) => (
-                      <Badge key={usage} variant="outline">
-                        {enumLabelOf('product_usage', usage)}
-                      </Badge>
-                    ))}
-                  </span>
-                ) : (
-                  <DetailEmpty />
-                )}
-              </RecordField>
-              <RecordField label={t('products.columns.description')}>
-                {product.description ?? <DetailEmpty />}
-              </RecordField>
-            </RecordFieldList>
-          </RecordSection>
-
-          <RecordSection title={t('products.form.sections.classification.title')} icon={<FolderTree />}>
-            <RecordFieldList>
-              <RecordField label={t('products.columns.category')}>
-                {product.category?.name ?? <DetailEmpty />}
-              </RecordField>
-              {product.business_function ? (
-                <RecordField label={t('products.columns.business_function')}>
-                  {product.business_function.name}
-                </RecordField>
-              ) : null}
-              {product.product_typology ? (
-                <RecordField label={t('products.form.productTypology')}>
-                  <ProductTypologyBadge name={product.product_typology.name} color={product.product_typology.color} />
-                </RecordField>
-              ) : null}
-              {product.unit_of_measure ? (
-                <RecordField label={t('products.form.unitOfMeasure')}>
-                  {product.unit_of_measure.name}
-                </RecordField>
-              ) : null}
-            </RecordFieldList>
-          </RecordSection>
-
-          {/* Absent as a whole when neither is assigned: an empty
-              "Prezzi e fornitura" card would read as data we failed to
-              load rather than as data nobody filled in. */}
-          {product.vat_rate || product.supplier ? (
-            <RecordSection title={t('products.form.sections.pricing.title')} icon={<Wallet />} full>
-              <RecordFieldList>
-                {product.vat_rate ? (
-                  <RecordField label={t('products.form.vatRate')}>{product.vat_rate.name}</RecordField>
-                ) : null}
-                {product.supplier ? (
-                  <RecordField label={t('products.form.supplier')}>
-                    <RecordLink domain="registries" id={product.supplier.id}>
-                      {product.supplier.name}
-                    </RecordLink>
-                  </RecordField>
-                ) : null}
-              </RecordFieldList>
-            </RecordSection>
-          ) : null}
-
-          <ProductAttributeValuesSection
-            layout={product.attribute_layout ?? null}
-            attributes={product.applicable_attributes ?? []}
-            values={product.attribute_values ?? {}}
-          />
-        </RecordSectionsGrid>
+        {/* Provider only (no DOM): the inline editors share the edit form. */}
+        <Form {...editor.state.form}>
+          <ProductDetailSections product={product} editor={editor} />
+        </Form>
       </RecordBody>
 
       {createdAt ? (

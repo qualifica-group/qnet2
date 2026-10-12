@@ -14,7 +14,7 @@ import type {
 
 /**
  * Query key of a single lead's detail (fresh-on-open pattern). Shared by
- * the detail/edit pages and by the post-mutation invalidation, so they can
+ * the detail page and by the post-mutation invalidation, so they can
  * never drift apart. `null` (an unparsable route param) is a key that is never
  * fetched.
  */
@@ -39,10 +39,17 @@ export async function createLead(payload: CreateLeadPayload): Promise<LeadDetail
   return data.data
 }
 
-/** Partially updates a lead (PATCH). Returns the updated resource. */
-export async function updateLead(id: number, payload: UpdateLeadPayload): Promise<LeadDetail> {
-  const { data } = await apiClient.patch<ApiResponse<LeadDetail>>(`/leads/${id}`, payload)
-  return data.data
+/**
+ * Partially updates a lead (PATCH). Returns the updated resource with the
+ * actor's re-authorized `permissions`, so the in-place detail (spec 0217) can
+ * seed its cache with the full shape.
+ */
+export async function updateLead(id: number, payload: UpdateLeadPayload): Promise<LeadDetailWithPermissions> {
+  const { data } = await apiClient.patch<ApiResponseWithPermissions<LeadDetail, ResourcePermissions>>(
+    `/leads/${id}`,
+    payload,
+  )
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a lead. Backend responds 204 with no body. */

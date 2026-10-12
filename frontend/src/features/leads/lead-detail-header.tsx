@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next'
 import { Contact, MapPin, Package, UserCheck } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
@@ -26,22 +25,15 @@ const LEAD_STATUS_COLOR: Record<LeadLifecycleStatus, string> = {
   converted_to_opportunity: 'green',
 }
 
-interface LeadDetailHeaderProps {
-  lead: LeadDetailData
-  /** Opens the module's existing edit surface; absent = no edit affordance. */
-  onEdit?: () => void
-}
-
 /**
  * Identity band: monogram, the anagrafica as the title (a Lead has no name of
  * its own — D-3, spec 0041 D-1: the identity IS the anagrafica), the campaign
- * as the subtitle, the lifecycle badge, and the two actions the record offers
- * (conversion, edit).
+ * as the subtitle, the lifecycle badge and the conversion action. No edit
+ * action: the record edits in place (spec 0217).
  */
-export function LeadDetailHeader({ lead, onEdit }: LeadDetailHeaderProps) {
+export function LeadDetailHeader({ lead }: { lead: LeadDetailData }) {
   const { t } = useTranslation()
   const registryName = lead.registry?.name ?? t('leads.detail.unknownRegistry')
-  const canEdit = Boolean(onEdit) && lead.permissions.resource.update
 
   return (
     <RecordCardHeader
@@ -55,12 +47,7 @@ export function LeadDetailHeader({ lead, onEdit }: LeadDetailHeaderProps) {
       title={registryName}
       subtitle={lead.campaign ? `${lead.campaign.code} — ${lead.campaign.name}` : undefined}
       badges={<LeadStatusBadge status={lead.lead_status} />}
-      actions={
-        <>
-          <LeadConversionAction leadId={lead.id} opportunity={lead.opportunity} />
-          {canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
-        </>
-      }
+      actions={<LeadConversionAction leadId={lead.id} opportunity={lead.opportunity} />}
     />
   )
 }
@@ -81,33 +68,32 @@ export function LeadStatusBadge({ status }: { status: LeadLifecycleStatus }) {
   )
 }
 
-interface LeadDetailStatsProps {
-  lead: LeadDetailData
+interface LeadStatsStripProps {
+  operator: string | null
+  site: string | null
+  source: string | null
+  productCount: number
 }
 
 /**
  * KPI strip: the four answers to "can this lead be worked, and by whom" —
- * who owns it, out of which Sede, what it is interested in. The lifecycle
+ * who owns it, out of which Sede, what it is interested in — the persisted
+ * ones on the detail, the draft's, live, on create (spec 0217). The lifecycle
  * status is NOT repeated here: it already sits in the identity band above.
  */
-export function LeadDetailStats({ lead }: LeadDetailStatsProps) {
+export function LeadStatsStrip({ operator, site, source, productCount }: LeadStatsStripProps) {
   const { t } = useTranslation()
-  const productCount = lead.products_of_interest?.length ?? 0
 
   return (
     <RecordStatStrip>
       <RecordStat
         label={t('leads.form.operator')}
         icon={<UserCheck />}
-        value={lead.operator?.name ?? <DetailEmpty />}
-        hint={lead.operator ? undefined : t('leads.detail.stats.unassignedHint')}
+        value={operator ?? <DetailEmpty />}
+        hint={operator ? undefined : t('leads.detail.stats.unassignedHint')}
       />
-      <RecordStat
-        label={t('leads.form.operationalSite')}
-        icon={<MapPin />}
-        value={lead.operational_site?.label || <DetailEmpty />}
-      />
-      <RecordStat label={t('leads.form.source')} value={lead.source?.name ?? <DetailEmpty />} />
+      <RecordStat label={t('leads.form.operationalSite')} icon={<MapPin />} value={site || <DetailEmpty />} />
+      <RecordStat label={t('leads.form.source')} value={source ?? <DetailEmpty />} />
       <RecordStat
         label={t('leads.form.sections.productsOfInterest.title')}
         icon={<Package />}
