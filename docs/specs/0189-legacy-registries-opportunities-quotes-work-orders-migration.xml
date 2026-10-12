@@ -74,6 +74,14 @@
       in `manager_user_ids` i gestori dell'OPPORTUNITA' (stessa regola di `migration/opportunities`, helper legacy
       `LegacyOpportunityManagers`) seguiti da `quotations.assigned_to`/`assigned2_to`; distinti, max 12. Un gestore
       dell'offerta assente sull'opportunita' viene aggiunto all'opportunita' (promozione gia' esistente in qnet-2).
+      G-17 campi flessibili offerta (decisione utente 2026-10-12, stessa migrazione delle offerte): i valori delle
+      "Info preliminari" legacy (`pre_info_*`, una riga per OPPORTUNITA', la prima per id) vanno su OGNI offerta
+      dell'opportunita' in `quotes.attribute_values`, con i codici del contesto Offerta della spec 0183. Il legacy
+      espone `attribute_values` per le sole card (`services.spec_service`) dei prodotti delle righe dell'offerta;
+      qnet-2 scrive solo i codici applicabili alle categorie delle righe importate (QuoteAttributeResolver): codice non
+      applicabile, valore non valido per il tipo, utente non migrato -> valore saltato con warning, l'offerta si
+      importa comunque. Esclusi: note libere (F-1), card 16 (F-3), allegati (F-7), `orderisos` (commesse). Sedi ISO
+      (F-8): righe di `pre_info_iso_addresses` dell'opportunita', indirizzo ricostruito da `company_addresses`.
   </context>
 
   <scope>
@@ -87,7 +95,8 @@
       <item>Etichette `/migrations` IT/EN, guida in-app `migrations` IT/EN, manuale Claude Docs.</item>
     </in>
     <out>
-      <item>Note (activity_log legacy), documenti/allegati, valori campi flessibili (`pre_info_*`, `orderisos`),
+      <item>Note (activity_log legacy), documenti/allegati, valori campi flessibili delle commesse (`orderisos`;
+        quelli delle offerte entrano con G-17),
         fasi/task delle commesse, storico fasi opportunita', tag e ATECO delle anagrafiche, referenti "responsabile"
         testuali delle anagrafiche, richieste GOL senza cliente (G-1), costi orari delle offerte (`quotationemployees`, G-13).</item>
     </out>
@@ -146,6 +155,18 @@
           commissions: [{ role:("commercial"|"reporter"|"supervisor"|"supplier"),
             recipient_id:int (contacts.id per commercial/reporter, users.id per supervisor, companies.id per supplier),
             percentage:?number, amount:?number }] }],
+        attribute_values: { code: value } (G-17; {} se nessuno). Solo valori non vuoti dei codici Offerta (spec 0183)
+          delle card dei prodotti delle righe; ISO con tutti i gruppi grp1..grp6. Valore come nel legacy: testo, numero,
+          data Y-m-d, enum = valore dell'opzione; `categorie_mepa` lista di valori; `ps_user_id`/`responsabile_progetto`
+          = id utente legacy (0 -> assente); tabelle = { rows: [{ colonna: valore }] }:
+          `pre_info_iso_addresses` { indirizzo, cap, citta, provincia (sigla), tipo_sede ("1"|"2"|"3"),
+          request_certification:bool, performed_activities, employees_per_site:int },
+          `pre_info_progetti_ruoli` { ruolo, utente (nome utente legacy), mansione }.
+          Colonne legacy con nome diverso: legal_request_certification=legal_site_certificate;
+          descrizione_azienda=pre_info_res.note; res_degree=degree; ps_user_id=user_id; ps_date_first_tel_call,
+          ps_date_tel_recall, ps_partner, ps_email, ps_phone, ps_regione, ps_citta, ps_fonte = colonne senza `ps_`;
+          inizio_programmato, fine_programmata, inizio_effettivo, fine_effettiva = date_inizio_programmato,
+          date_fine_programmato, date_inizio_effettivo, date_fine_effettivo; status_progetto=step_operativo.
         created_at, updated_at }
     </shape>
     <shape name="GET migration/work-orders">
@@ -180,5 +201,9 @@
       (G-14); cliente legacy diverso da quello dell'opportunita' -> warning (G-15).</ac>
     <ac id="AC-011b">Offerta: gestori = gestori dell'opportunita' legacy piu' quelli propri dell'offerta (G-16); un
       gestore dell'offerta assente sull'opportunita' viene aggiunto ai Gestori Account dell'opportunita'.</ac>
+    <ac id="AC-011c">Offerta: `attribute_values` legacy scritti in `quotes.attribute_values` per i soli codici
+      applicabili alle categorie delle righe (G-17); utenti rimappati via `old_id`; codice non applicabile, valore non
+      valido o utente non migrato -> valore saltato con warning, offerta importata. Piu' offerte della stessa
+      opportunita' ricevono gli stessi valori.</ac>
   </acceptance_criteria>
 </spec>

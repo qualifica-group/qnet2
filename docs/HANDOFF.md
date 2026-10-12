@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CAMPI FLESSIBILI OFFERTE LEGACY = INFO PRELIMINARI DELL'OPPORTUNITA' (spec 0189 G-17, 2026-10-12) — VERDE, COMMITTATO
+
+- Decisione utente: i valori `pre_info_*` (sull'opportunita' legacy) vanno sull'offerta, nella STESSA migrazione
+  `quotes` (niente sorgente nuova). Ogni offerta della stessa opportunita' riceve gli stessi valori.
+- Legacy (`/Users/Repository/qnet`, non committato): nuovo `App\Support\Migration\LegacyQuoteAttributeValues`
+  (una query per tabella per pagina, prima riga per opportunita', colonne rinominate in `COLUMNS`, sedi ISO da
+  `company_addresses` + `provincies`, ruoli progetto con "cognome nome"); `QuoteMigrationController` espone
+  `attribute_values` per le sole card (`services.spec_service`) delle righe dell'offerta. Verificato su tutto il DB
+  legacy: 17.281 offerte, 1.295 con valori. Solo `php -l` (il legacy non ha test ne' Pint).
+- qnet-2: nuovo `App\Migrations\Support\LegacyQuoteAttributeValueApplier` (codici applicabili via
+  `QuoteAttributeResolver`, validazione codice per codice con `AttributeValueValidator`, utenti rimappati via
+  `old_id`, scrittura con `QuoteAttributeValueWriter`; persistita dal `finalizeLegacyRecord`). `QuotesSource`:
+  dipendenza opzionale `product-category-attributes`. Helper delle offerte legacy spostati da
+  `QuotesSourceImportTest` a `tests/Helpers/QuoteMigrationHelpers.php` (nessuna asserzione cambiata); nuovo
+  `QuotesSourceAttributeValuesImportTest` (4 test). Migration 392/392, Unit/Migrations 30/30, Quotes verdi tranne
+  `QuoteDocumentPdfTest` (LibreOffice assente in locale, non correlato). Pint ok.
+- Spec 0189: G-17, campo `attribute_values` nella shape `migration/quotes`, AC-011c. Guida `migrations` IT/EN e
+  manuale Claude Docs aggiornati (PDF derivato da rigenerare).
+- Da verificare: e2e reale legacy -> qnet-2 (warning attesi su codici ISO dei gruppi non previsti dalla norma della
+  categoria). HANDOFF oltre 50 KB: archiviare le voci vecchie in `docs/handoff-archive/`.
+
 ## ONDA 2 COMPLETATA IN PARALLELO: CATEGORIE PRODOTTO, RUOLI, CAMPI PERSONALIZZATI (spec 0229/0230/0231, 2026-10-12) — VERDE, NON COMMITTATO
 
 - Richiesta utente: "committa, pero' usa gli agenti e velocizza le modifiche in parallelo". Tre agenti `frontend`

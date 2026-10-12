@@ -12,6 +12,7 @@ use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
 use App\Migrations\Sources\Concerns\MapsLegacyQuoteCostLines;
 use App\Migrations\Sources\Concerns\MapsLegacyQuoteLines;
 use App\Migrations\Support\ExternalApiClient;
+use App\Migrations\Support\LegacyQuoteAttributeValueApplier;
 use App\Migrations\Support\LegacyQuoteStatusApplier;
 use App\Models\CompanySite;
 use App\Models\OperationalSite;
@@ -42,7 +43,8 @@ use RuntimeException;
  * (G-3). Costs come in as COST lines (G-13); the offer date and the parent
  * opportunity's callback are written as is (G-14); a legacy customer other
  * than the opportunity's is reported, the offer stays under the opportunity
- * (G-15).
+ * (G-15). The legacy "Info preliminari" land in the attribute values
+ * applicable to the offer's own lines (G-17).
  */
 class QuotesSource extends AbstractMigrationSource
 {
@@ -61,6 +63,7 @@ class QuotesSource extends AbstractMigrationSource
         private readonly QuoteManagerInheritance $managerInheritance,
         private readonly QuoteManagerSyncMode $managerSyncMode,
         private readonly LegacyQuoteStatusApplier $statusApplier,
+        private readonly LegacyQuoteAttributeValueApplier $attributeValueApplier,
     ) {
         parent::__construct($client);
     }
@@ -84,6 +87,7 @@ class QuotesSource extends AbstractMigrationSource
             MigrationDependency::required('opportunities'),
             MigrationDependency::optional('products'),
             MigrationDependency::optional('cost-products'),
+            MigrationDependency::optional('product-category-attributes'),
             MigrationDependency::optional('vat-rates'),
             MigrationDependency::optional('payment-methods'),
             MigrationDependency::optional('company-sites'),
@@ -174,13 +178,15 @@ class QuotesSource extends AbstractMigrationSource
         // Step 4: anchor each created line to its legacy line.
         $this->tagLegacyLines($quote, $legacyLineIds);
 
-        // Step 5: legacy status and contract, then old_id, callback and timestamps.
+        // Step 5: legacy status and contract, the additional information (G-17),
+        // then old_id, callback and timestamps in the final quiet save.
         $this->statusApplier->apply($quote, (int) ($record['status'] ?? 0), [
             'accepted_at' => $this->legacyTimestamp($record['accepted_at'] ?? null),
             'validated_at' => $this->legacyTimestamp($record['validated_at'] ?? null),
             'renewal_date' => $this->legacyTimestamp($record['renewal_date'] ?? null),
             'declined_at' => $this->legacyTimestamp($record['declined_at'] ?? null),
         ], $warnings);
+        $this->attributeValueApplier->apply($quote, (array) ($record['attribute_values'] ?? []), $warnings);
         $this->finalizeLegacyRecord($quote, $externalId, $record, [
             'next_callback_at' => $this->legacyTimestamp($record['callback_date'] ?? null)?->startOfDay(),
         ]);
