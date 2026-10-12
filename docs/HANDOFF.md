@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## SEEDER — CAMPI OBBLIGATORI COMPILATI IN TUTTI I MODULI (2026-10-12) — VERDE, NON COMMITTATO
+## SEEDER — CAMPI OBBLIGATORI COMPILATI IN TUTTI I MODULI (2026-10-12) — VERDE, COMMITTATO (c7158c07)
 
 - Richiesta utente: tutti i seeder devono compilare i campi obbligatori (task e tutti gli altri moduli). Audit su
   DB MySQL di prova (creati e poi eliminati): DemoDataSeeder (+ QualificaSampleDataSeeder sopra),
@@ -23,6 +23,37 @@
   `SectorTest` fillable, `QualificaProductionDataSeederTest` 395 vs 418 prodotti); Vitest help 115/115;
   `tsc -b --force` 0; Pint/ESLint puliti.
 - Segnalato, non fatto: il manuale cita "Nuovo task › Da modello…" e "Converti in modello", assenti nel codice.
+
+## DETTAGLIO RECORD — COLONNA LATERALE FISSA, COMPRIMIBILE, SCHEDE SU SCHERMI STRETTI (2026-10-12) — VERDE (mirato), NON COMMITTATO
+
+- Richiesta utente: in `/tasks/:id` la colonna destra era troppo larga e su schermi piccoli la card principale diventava
+  un'accozzaglia. Decisioni utente: schermi stretti -> schede in testa; grandi -> colonna comprimibile con animazione;
+  da compressa, le icone aprono il contenuto in un pannello VOLANTE (non riaprono la colonna), chiuso cliccando fuori/Esc;
+  pannello volante piu' grande; colonna APERTA = larghezza ORIGINALE 7:4 (decisione utente 2026-10-12, dopo aver
+  provato la larghezza fissa 22-30rem). Prima solo Task, poi gli altri moduli.
+- Kit condiviso `components/detail/` (vale per TUTTI i dettagli):
+  - `record-layout.ts`: split invariato `7fr:4fr` (`RECORD_BODY_WITH_SIDE_CLASS`). Nuove costanti
+    `RECORD_SIDE_COLUMNS_CLASS` (7:4 incondizionato), `RECORD_RAIL_COLUMNS_CLASS` (`minmax(0,7fr) minmax(2.75rem,0fr)`:
+    stesse forme di traccia, cosi' la transizione interpola), `RECORD_SIDE_LAYOUT_MIN_WIDTH_PX` (992 = `@5xl` - padding).
+    In chiusura la card mantiene la larghezza misurata (frozen) e sfuma ritagliata.
+  - `record-panel.tsx`: `RecordFieldList` e' `@container` -> le righe etichetta/valore si affiancano sulla larghezza
+    della LISTA, non della colonna (causa dell'accozzaglia nelle sezioni a 2 colonne).
+  - Nuovo percorso opt-in `RecordBody collaborationTabs={tabs}` + `RecordDetailsTabs` attorno alle sezioni:
+    `record-collaboration-body.tsx` (misura con `useRecordSideLayout`, ResizeObserver; stretto = schede
+    "Dettagli | Note | ..." sotto header/KPI; largo = colonna fissa animata, transizione su grid-template-columns +
+    dissolvenza card/barra, card smontata a fine transizione), `record-collaboration-rail.tsx` (barra icone, Popover
+    volante 32rem x max 40rem, `TooltipProvider` proprio), `use-record-side-layout.ts` (layout + preferenza
+    `localStorage['record.side.collapsed']`, UNA chiave per tutti i dettagli; DEFAULT CHIUSA se non c'e' valore,
+    decisione utente 2026-10-12). `RecordCollaborationCard` ora accetta `value/onValueChange/onCollapse`.
+  - Il vecchio percorso `RecordBody side={...}` resta per gli altri moduli (impilato sotto `@5xl`, invariato).
+- Task: `task-detail.tsx` usa `collaborationTabs` + `RecordDetailsTabs`. i18n `common.recordSide.{details,collapse,expand}`
+  IT/EN. Guida in-app tasks IT/EN (sezione collaboration-and-notifications). Manuale Claude Docs: da aggiornare
+  (sezione dettaglio Task / disposizione della scheda).
+- Test: `record-collaboration-body.test.tsx` (largo, compressione+smontaggio, volante + click fuori, espandi, stretto,
+  preferenza ignorata da stretto). Vitest completo 7338/7338 (prima del ritorno al 7:4), detail+tasks 519/519 dopo;
+  `tsc -b --force` 0; ESLint pulito.
+- Prossimo passo: estendere `collaborationTabs` + `RecordDetailsTabs` agli altri dettagli (sostituire
+  `side={<RecordCollaborationCard tabs=.../>}`); moduli con side diverso dalla card (callout, card correlate) da valutare.
 
 ## COMMESSE — SCADENZA CONTRATTO IN SOLA LETTURA (dettaglio + colonna griglia, 2026-10-09) — VERDE, NON COMMITTATO
 

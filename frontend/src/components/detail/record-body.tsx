@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { RecordCollaborationBody } from '@/components/detail/record-collaboration-body'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import {
   RECORD_BODY_GRID_CLASS,
   RECORD_BODY_WITH_SIDE_CLASS,
@@ -15,6 +17,12 @@ interface RecordBodyProps {
    * the caller decides, and the record then keeps the full width.
    */
   side?: ReactNode
+  /**
+   * Alternative to `side` when the side column is the collaboration card:
+   * fixed-width and collapsible when wide, merged into the record's tab strip
+   * when narrow (the caller wraps its sections in `RecordDetailsTabs`).
+   */
+  collaborationTabs?: RecordCollaborationTab[]
 }
 
 /**
@@ -22,7 +30,11 @@ interface RecordBodyProps {
  * record on the left, the side column on the right at wide container widths,
  * stacked in that order while narrow.
  */
-export function RecordBody({ children, side }: RecordBodyProps) {
+export function RecordBody({ children, side, collaborationTabs }: RecordBodyProps) {
+  if (collaborationTabs && collaborationTabs.length > 0) {
+    return <RecordCollaborationBody tabs={collaborationTabs}>{children}</RecordCollaborationBody>
+  }
+
   const hasSide = side !== null && side !== undefined && side !== false
 
   return (

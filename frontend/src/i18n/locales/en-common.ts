@@ -36,6 +36,12 @@ export const common = {
       description: 'You do not have the necessary permissions to view this record.',
     },
   },
+  /** Record detail side column (collaboration): the record's own tab when narrow, collapse/expand when wide. */
+  recordSide: {
+    details: 'Details',
+    collapse: 'Collapse side panel',
+    expand: 'Expand side panel',
+  },
   /** In-place editing of a record's rows (spec 0195): the pencil, and the open row's confirm/cancel. */
   inlineEdit: {
     edit: 'Edit {{field}}',

@@ -397,7 +397,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Nel dettaglio del task trovi **Note**, **Documenti**, **Cronologia attività** e **Segnatempo**. Ricevi una notifica (campanella ed email) quando:',
+          text: 'Nel dettaglio del task trovi **Note**, **Documenti**, **Cronologia attività** e **Segnatempo**.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Sugli schermi larghi stanno in una colonna a destra, che parte chiusa: una barra di icone lascia tutto lo spazio ai dati del task. Clicca un\'icona per vedere quella scheda in un pannello volante, senza aprire la colonna (si chiude cliccando fuori o con Esc). **Espandi pannello laterale** apre la colonna, **Comprimi pannello laterale** la richiude. La scelta resta memorizzata nel browser e vale per tutte le schede. Sugli schermi stretti (tablet, telefono, pannello modale) la colonna non c\'è: sotto intestazione e indicatori trovi le schede **Dettagli**, **Note**, **Documenti**, **Cronologia attività** e **Segnatempo**.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Ricevi una notifica (campanella ed email) quando:',
         },
         {
           type: 'list',

@@ -394,7 +394,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "In the task's detail you find **Notes**, **Documents**, **History** and **Time tracking**. You receive a notification (bell and email) when:",
+          text: "In the task's detail you find **Notes**, **Documents**, **History** and **Time tracking**.",
+        },
+        {
+          type: 'paragraph',
+          text: 'On wide screens they sit in a column on the right, which starts collapsed: an icon bar leaves all the room to the task data. Click an icon to see that tab in a floating panel without opening the column (click outside or press Esc to close it). **Expand side panel** opens the column, **Collapse side panel** closes it again. The choice is remembered in the browser and applies to every record view. On narrow screens (tablet, phone, modal panel) there is no column: below the header and the indicators you find the **Details**, **Notes**, **Documents**, **Activity log** and **Time tracking** tabs.',
+        },
+        {
+          type: 'paragraph',
+          text: 'You receive a notification (bell and email) when:',
         },
         {
           type: 'list',
