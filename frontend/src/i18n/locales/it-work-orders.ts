@@ -39,7 +39,6 @@ export const workOrders = {
     startDate: 'Data inizio',
     supervisors: 'Responsabili',
     participants: 'Partecipanti',
-    contractNumber: 'Contratto n.',
     registry: 'Anagrafica cliente',
     contract: 'Contratto',
     contractExpiryDate: 'Scadenza contratto',

@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Anagrafica cliente, Contratto, Scadenza contratto, Società e sedi derivano dall\'offerta (la scadenza si modifica sul contratto); Stato e Completamento sono calcolati dai task.',
+          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Anagrafica cliente, Contratto (codice e titolo), Società e sedi derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Completamento sono calcolati dai task.',
         },
         {
           type: 'note',

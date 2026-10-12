@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMMESSA — SCADENZA CONTRATTO NEI KPI, CONTRATTO CON CODICE (2026-10-12) — VERDE, COMMITTATO
+
+- Richiesta utente: nel dettaglio commessa la Scadenza contratto prende il posto di "Contratto n." nella striscia
+  KPI (`WorkOrderStatsStrip`, prop `contractExpiryDate` da `workOrder.contract?.expiry_date`; in creazione `null`) e
+  esce dalla sezione Contratto. Il campo Contratto mostra `codice — titolo` (stesso formato del link commessa nel task).
+- Rimossa la chiave i18n `workOrders.detail.contractNumber` (non più usata). `contract_number` resta nel payload e
+  nella griglia. Solo frontend, nessun cambio di contratto API.
+- Guida in-app work-orders IT/EN aggiornata; manuale Claude Docs: nessun impatto (Commesse ancora "in fase di sviluppo").
+- Verifica: Vitest work-orders + help 355/355, `tsc -b --force` pulito, ESLint pulito.
+
 ## SEEDER — CAMPI OBBLIGATORI COMPILATI IN TUTTI I MODULI (2026-10-12) — VERDE, COMMITTATO (c7158c07)
 
 - Richiesta utente: tutti i seeder devono compilare i campi obbligatori (task e tutti gli altri moduli). Audit su

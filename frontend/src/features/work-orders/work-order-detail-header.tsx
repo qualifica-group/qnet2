@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { CalendarClock, CalendarDays, CheckCircle2, FileSignature, Hammer } from 'lucide-react'
+import { CalendarClock, CalendarDays, CalendarX, CheckCircle2, Hammer } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { Badge } from '@/components/ui/badge'
@@ -80,15 +80,16 @@ interface WorkOrderStatsStripProps {
   completionPercentage: number | null
   startDate: string | null
   callbackDate: string | null
-  contractNumber: string | null
+  /** Expiry of the contract reached through the offer (read-only, edited on the contract). */
+  contractExpiryDate: string | null
 }
 
-/** KPI strip: completion, start date, callback date and contract number — the detail's, and the create draft's live. */
+/** KPI strip: completion, start date, callback date and contract expiry — the detail's, and the create draft's live. */
 export function WorkOrderStatsStrip({
   completionPercentage,
   startDate,
   callbackDate,
-  contractNumber,
+  contractExpiryDate,
 }: WorkOrderStatsStripProps) {
   const { t } = useTranslation()
 
@@ -116,9 +117,9 @@ export function WorkOrderStatsStrip({
         value={formatDate(callbackDate) || <DetailEmpty />}
       />
       <RecordStat
-        label={t('workOrders.detail.contractNumber')}
-        icon={<FileSignature aria-hidden="true" />}
-        value={contractNumber ?? <DetailEmpty />}
+        label={t('workOrders.detail.contractExpiryDate')}
+        icon={<CalendarX aria-hidden="true" />}
+        value={formatDate(contractExpiryDate) || <DetailEmpty />}
       />
     </RecordStatStrip>
   )
@@ -130,7 +131,7 @@ export function WorkOrderDetailStats({ workOrder }: { workOrder: WorkOrderDetail
       completionPercentage={workOrder.completion_percentage}
       startDate={workOrder.start_date}
       callbackDate={workOrder.callback_date}
-      contractNumber={workOrder.contract_number}
+      contractExpiryDate={workOrder.contract?.expiry_date ?? null}
     />
   )
 }

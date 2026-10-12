@@ -137,7 +137,7 @@ beforeEach(() => {
 })
 
 describe('WorkOrderDetailView — detail fields (AC-075)', () => {
-  it('shows number, title, type, status, callback date, contract no. and contract', () => {
+  it('shows number, title, type, status, callback date and contract', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
     expect(screen.getByRole('heading', { name: 'Installazione impianto' })).toBeInTheDocument()
@@ -146,8 +146,7 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
     expect(screen.getAllByText('Processing').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Open').length).toBeGreaterThan(0)
     expect(screen.getAllByText(formatDate('2026-09-30')).length).toBeGreaterThan(0)
-    expect(screen.getByText('QUO-0004')).toBeInTheDocument()
-    expect(screen.getByText('Fornitura annuale')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'QUO-0004 — Fornitura annuale' })).toHaveAttribute('href', '/contracts/9')
   })
 
   it('shows the task template name when the commessa was generated from one (spec 0124 D-9)', () => {
@@ -318,7 +317,7 @@ describe('WorkOrderDetailView — related records', () => {
     render(<WorkOrderDetailView workOrder={workOrder({ task_template: { id: 3, name: 'Onboarding cliente' } })} />)
 
     const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
-    expect(hrefOf('Fornitura annuale')).toBe('/contracts/9')
+    expect(hrefOf('QUO-0004 — Fornitura annuale')).toBe('/contracts/9')
     expect(hrefOf('Onboarding cliente')).toBe('/task-templates/3')
     expect(hrefOf('Consulenza')).toBe('/products/1')
     expect(hrefOf('Installazione')).toBe('/products/2')
@@ -352,10 +351,12 @@ describe('WorkOrderDetailView — related records', () => {
     expect(screen.getByRole('link', { name: 'Acme S.p.A.' })).toHaveAttribute('href', '/registries/7')
   })
 
-  it('shows the contract expiry date read-only, in the Contract section', () => {
+  it('shows the contract expiry date read-only in the KPI strip, in place of the contract no.', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
+    expect(screen.getAllByText('Contract expiry')).toHaveLength(1)
     expect(screen.getByText('Contract expiry').closest('div')).toHaveTextContent(formatDate('2027-03-31'))
+    expect(screen.queryByText('Contract no.')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /contract expiry/i })).not.toBeInTheDocument()
   })
 

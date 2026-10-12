@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Client registry, Contract, Contract expiry, Company and sites come from the offer (the expiry is edited on the contract); Status and Completion are computed from the tasks.',
+          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Client registry, Contract (code and title), Company and sites come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Completion are computed from the tasks.',
         },
         {
           type: 'note',
