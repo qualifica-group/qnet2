@@ -4,9 +4,12 @@ use App\Enums\TaskStatusGroup;
 use App\Models\Attachment;
 use App\Models\Quote;
 use App\Models\Task;
+use App\Models\TaskImportance;
+use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\TaskTemplate;
 use App\Models\TaskTemplateItem;
+use App\Models\TaskType;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Notifications\TaskAssigned;
@@ -93,6 +96,29 @@ it('AC-014/AC-015: generates one task per row, assigned to every supervisor, dat
     // AC-015: due_offset_days 5 off the SAME start_date.
     expect($second->start_date->toDateString())->toBe('2026-10-01')
         ->and($second->end_date->toDateString())->toBe('2026-10-06');
+});
+
+it('spec 0154 D-8: generated tasks, sub-tasks included, take the default type, priority and importance', function () {
+    $type = TaskType::factory()->default()->create();
+    $priority = TaskPriority::factory()->default()->create();
+    $importance = TaskImportance::factory()->default()->create();
+    $template = TaskTemplate::factory()->create();
+    $root = TaskTemplateItem::factory()->forTemplate($template)->atPosition(0)->create(['due_offset_days' => 3]);
+    TaskTemplateItem::factory()->forTemplate($template)->atPosition(1)->create(['parent_id' => $root->id, 'due_offset_days' => 1]);
+    Sanctum::actingAs(taskTemplateGenerationActor(['create', 'view']));
+
+    $response = $this->postJson('/api/work-orders', [
+        'quote_id' => Quote::factory()->create()->id, 'type' => 'processing',
+        'start_date' => '2026-10-01', 'supervisor_ids' => [User::factory()->create()->id],
+        'task_template_id' => $template->id,
+    ])->assertCreated();
+
+    $tasks = Task::query()->where('work_order_id', $response->json('data.id'))->get();
+
+    expect($tasks)->toHaveCount(2)
+        ->and($tasks->pluck('task_type_id')->unique()->all())->toBe([$type->id])
+        ->and($tasks->pluck('task_priority_id')->unique()->all())->toBe([$priority->id])
+        ->and($tasks->pluck('task_importance_id')->unique()->all())->toBe([$importance->id]);
 });
 
 it('AC-016: uses the row\'s own active open/pending status, falls back to the ordinary derivation otherwise', function () {

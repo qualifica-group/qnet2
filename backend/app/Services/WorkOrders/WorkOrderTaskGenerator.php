@@ -14,6 +14,7 @@ use App\RichText\RichText;
 use App\RichText\RichTextAttachmentCopier;
 use App\Services\AttachmentService;
 use App\Services\Notifications\TaskNotifier;
+use App\Services\Tasks\TaskDefaultLookupResolver;
 use App\Services\Tasks\TaskInitialStatusResolver;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -54,6 +55,10 @@ use Throwable;
  * `subtask_position` is 0..n among the rows sharing the same DIRECT parent,
  * in item order — the same shape `App\Services\Tasks\TaskSubtaskBatchCreator`
  * assigns for a manually created sub-task.
+ *
+ * Spec 0154, D-8: a template row carries no type/priority/importance, so
+ * every generated Task takes the lookups' default rows — the same fallback
+ * `TaskService::create()` applies, which this class bypasses.
  */
 final class WorkOrderTaskGenerator
 {
@@ -63,6 +68,7 @@ final class WorkOrderTaskGenerator
         private readonly TaskNotifier $notifier,
         private readonly RichTextAttachmentCopier $descriptionCopier,
         private readonly GeneratedTaskPositioner $positioner,
+        private readonly TaskDefaultLookupResolver $defaultLookups,
     ) {}
 
     /**
@@ -75,6 +81,7 @@ final class WorkOrderTaskGenerator
         $supervisorIds = $workOrder->supervisors()->pluck('users.id')->all();
 
         $stageIdsByTemplateStageId = $this->copyStages($workOrder, $template);
+        $lookupIds = $this->defaultLookupIds();
         /** @var array<int, int> $stagePositions keyed by copied work_order_stage_id, 0 for "Senza fase" — ROOT rows only (spec 0172, AC-010) */
         $stagePositions = [];
         /** @var array<int, int> $subtaskPositions keyed by the parent Task's own id */
@@ -105,6 +112,7 @@ final class WorkOrderTaskGenerator
                     $stagePositions,
                     $parentTask,
                     $subtaskPositions,
+                    $lookupIds,
                 );
 
                 $taskByTemplateItemId[$item->id] = $task;
@@ -147,6 +155,7 @@ final class WorkOrderTaskGenerator
      * @param  array<int, int>  $stageIdsByTemplateStageId
      * @param  array<int, int>  $stagePositions
      * @param  array<int, int>  $subtaskPositions
+     * @param  array{task_type_id: ?int, task_priority_id: ?int, task_importance_id: ?int}  $lookupIds
      */
     private function materialize(
         TaskTemplateItem $item,
@@ -158,6 +167,7 @@ final class WorkOrderTaskGenerator
         array &$stagePositions,
         ?Task $parentTask,
         array &$subtaskPositions,
+        array $lookupIds,
     ): Task {
         // `start_date` casts to a MUTABLE Carbon (no immutable-date override
         // in this codebase): addDays() below must run on a copy, or the
@@ -182,6 +192,7 @@ final class WorkOrderTaskGenerator
             'start_date' => $startDate,
             'end_date' => $endDate,
             'requires_validation' => false,
+            ...$lookupIds,
         ]);
         $task->creator_id = $actor->id;
         $task->task_status_id = $this->resolveInitialStatus($item, $supervisorIds, $actor);
@@ -222,6 +233,20 @@ final class WorkOrderTaskGenerator
         }
 
         return $task;
+    }
+
+    /**
+     * Resolved once per generation: every row of the template shares them.
+     *
+     * @return array{task_type_id: ?int, task_priority_id: ?int, task_importance_id: ?int}
+     */
+    private function defaultLookupIds(): array
+    {
+        return [
+            'task_type_id' => $this->defaultLookups->taskTypeId(),
+            'task_priority_id' => $this->defaultLookups->taskPriorityId(),
+            'task_importance_id' => $this->defaultLookups->taskImportanceId(),
+        ];
     }
 
     /**

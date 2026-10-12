@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEEDER — CAMPI OBBLIGATORI COMPILATI IN TUTTI I MODULI (2026-10-12) — VERDE, NON COMMITTATO
+
+- Richiesta utente: tutti i seeder devono compilare i campi obbligatori (task e tutti gli altri moduli). Audit su
+  DB MySQL di prova (creati e poi eliminati): DemoDataSeeder (+ QualificaSampleDataSeeder sopra),
+  DatabaseSeeder + QualificaProductionDataSeeder (import legacy escluso) + QualificaSampleDataSeeder, controllando i
+  campi `required` delle Store*Request/servizi di ~40 moduli. Dopo le correzioni: nessuna riga incompleta.
+- Causa principale (DB dev: 3487 task senza tipologia/priorità/importanza): `WorkOrderTaskGenerator` crea i task da
+  Modello di Task senza `TaskService` e saltava i default di spec 0154 D-8. Ora inietta `TaskDefaultLookupResolver`
+  (risolti una volta per generazione, anche per i sotto-task). Test: `WorkOrderTaskTemplateGenerationTest` (+1).
+  Vale anche per l'app (Programma commessa con modello), non solo per i seeder. I task già esistenti nel DB dev
+  restano senza valori: serve un reseed o un backfill (non fatto).
+- Seeder: `DemoCommissionShowcaseSeeder` (telefono sulle anagrafiche), `DemoUserSeeder` (scheda anagrafica
+  Demo/User, `firstOrCreate`), `QualificaSampleLeadSeeder` (progetto: paese IT + data inizio; campagna: data inizio),
+  `PicksDemoOffers` (solo prodotti SALE: un prodotto solo-costo come riga d'offerta faceva crashare
+  QualificaSampleRequestSeeder).
+- Guida in-app task-templates IT/EN + manuale Claude Docs (Parte 3, Modello di Task) aggiornati.
+- Verifica: Pest completo 9915/9922; i fallimenti sono estranei (LibreOffice assente per QuoteDocumentPdfTest,
+  `SectorTest` fillable, `QualificaProductionDataSeederTest` 395 vs 418 prodotti); Vitest help 115/115;
+  `tsc -b --force` 0; Pint/ESLint puliti.
+- Segnalato, non fatto: il manuale cita "Nuovo task › Da modello…" e "Converti in modello", assenti nel codice.
+
 ## COMMESSE — SCADENZA CONTRATTO IN SOLA LETTURA (dettaglio + colonna griglia, 2026-10-09) — VERDE, NON COMMITTATO
 
 - Richiesta utente: nel dettaglio commessa e come colonna della tabella Commesse mostrare la data di scadenza del
