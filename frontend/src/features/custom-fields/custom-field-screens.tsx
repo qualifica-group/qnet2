@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchCustomFieldDefinition } from '@/features/custom-fields/api'
+import { customFieldDetailQueryKey, fetchCustomFieldDefinition } from '@/features/custom-fields/api'
 import { CustomFieldDefinitionForm } from '@/features/custom-fields/custom-field-definition-form'
 import { CustomFieldDetailView } from '@/features/custom-fields/custom-field-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -15,19 +15,16 @@ import type {
 } from '@/features/modules/types'
 import type { CustomFieldDefinitionDetail } from '@/features/custom-fields/types'
 
-/** Query key for a single definition's detail (fresh-on-open pattern), moved verbatim from `CustomFieldsTable`. */
-function detailQueryKey(id: number) {
-  return ['custom-fields', 'detail', id] as const
-}
-
 /**
  * Content-only `custom-fields` screens for the module registry (spec 0042):
- * fetch + the existing presentational view/form, no page chrome. Reused
- * as-is by the modal Sheet (`useModuleOpener`) and by the generic dedicated
- * pages (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from
- * `CustomFieldsTable`'s inline loaders, which the rewire removed.
+ * fetch + the presentational view/form, no page chrome. Reused as-is by the
+ * modal Sheet (`useModuleOpener`) and by the generic dedicated pages
+ * (`ModuleDetailPage`/`ModuleFormPage`).
+ *
+ * Spec 0231: the detail edits its rows in place, so `onEdit` is never used;
+ * each save reports through `onChanged`.
  */
-export function CustomFieldDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function CustomFieldDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: definition,
@@ -35,7 +32,7 @@ export function CustomFieldDetailScreen({ id, onEdit }: ModuleDetailScreenProps)
     isError,
     error,
     refetch,
-  } = useEntityDetail(detailQueryKey(id), () => fetchCustomFieldDefinition(id))
+  } = useEntityDetail(customFieldDetailQueryKey(id), () => fetchCustomFieldDefinition(id))
 
   if (isError) {
     return (
@@ -52,80 +49,49 @@ export function CustomFieldDetailScreen({ id, onEdit }: ModuleDetailScreenProps)
     return <DetailLoading />
   }
 
-  return <CustomFieldDetailView definition={definition} onEdit={onEdit} />
-}
-
-export function CustomFieldFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (saved: CustomFieldDefinitionDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(saved.id) })
-    onSuccess(saved.id)
-  }
-
-  if (mode.type === 'create') {
-    return (
-      <CustomFieldDefinitionForm
-        mode={{ type: 'create' }}
-        onSuccess={handleSuccess}
-        onCancel={onCancel}
-      />
-    )
-  }
-
-  return (
-    <CustomFieldEditScreen definitionId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-  )
-}
-
-interface CustomFieldEditScreenProps {
-  definitionId: number
-  onSuccess: (definition: CustomFieldDefinitionDetail) => void
-  onCancel: () => void
+  return <CustomFieldDetailView definition={definition} onChanged={onChanged} />
 }
 
 /**
- * Fetches the fresh, re-authorized definition detail before mounting the
- * edit form, so the partial PATCH starts from authoritative values rather
- * than a stale snapshot.
+ * Create only (spec 0231): there is no edit form, and the registry generates
+ * no `:id/edit` route. Leaving a definition being created — Cancel, the
+ * Sheet's X/overlay/Esc, a link, a reload — always asks first.
  */
-function CustomFieldEditScreen({ definitionId, onSuccess, onCancel }: CustomFieldEditScreenProps) {
+export function CustomFieldFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const { t } = useTranslation()
-  const {
-    data: definition,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(detailQueryKey(definitionId), () => fetchCustomFieldDefinition(definitionId))
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('customFields.form.leaveConfirm.title'),
+    description: t('customFields.form.leaveConfirm.description'),
+    confirmLabel: t('customFields.form.leaveConfirm.confirm'),
+    cancelLabel: t('customFields.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('customFields.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
+  if (mode.type !== 'create') {
+    return null
   }
 
-  if (isLoading || !definition) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+  const handleSuccess = (saved: CustomFieldDefinitionDetail) => {
+    queryClient.invalidateQueries({ queryKey: customFieldDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new definition's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(saved.id)
+  }
+
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
   }
 
   return (
-    <CustomFieldDefinitionForm
-      mode={{ type: 'edit', definition }}
-      onSuccess={onSuccess}
-      onCancel={onCancel}
-    />
+    <>
+      {leaveGuard.navigationGuard}
+      <CustomFieldDefinitionForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
   )
 }
 
@@ -137,8 +103,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.customFields',
   DetailScreen: CustomFieldDetailScreen,
   FormScreen: CustomFieldFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button — the same registration Opportunita',
-  // Utenti and Lead carry.
+  // The detail IS the edit form (spec 0231): no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

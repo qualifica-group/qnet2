@@ -312,8 +312,3 @@ export interface CreateCustomFieldDefinitionPayload {
  * definition has recorded values (server-enforced, spec AC-019).
  */
 export type UpdateCustomFieldDefinitionPayload = Partial<CreateCustomFieldDefinitionPayload>
-
-/** Discriminated form mode shared by the definition form hook/meta-resolver (mirrors `AttributeFormMode`). */
-export type CustomFieldDefinitionFormMode =
-  | { type: 'create' }
-  | { type: 'edit'; definition: CustomFieldDefinitionDetailWithPermissions }

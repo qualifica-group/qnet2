@@ -3,6 +3,42 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ONDA 2 COMPLETATA IN PARALLELO: CATEGORIE PRODOTTO, RUOLI, CAMPI PERSONALIZZATI (spec 0229/0230/0231, 2026-10-12) — VERDE, NON COMMITTATO
+
+- Richiesta utente: "committa, pero' usa gli agenti e velocizza le modifiche in parallelo". Tre agenti `frontend`
+  a ownership disgiunta (cartella feature + locale + guida + spec propri); HANDOFF, manuale e commit al lead.
+  Spec 0228 saltata: usata dall'altra sessione (data offerta). Backend invariato per tutti e tre (PATCH parziali
+  che restituiscono gia' `permissions`; gli `update*` frontend ora le tipizzano e popolano la cache del dettaglio).
+- Categorie prodotto (0229): Dettagli (Nome, Padre, Descrizione, Funzione aziendale; ereditata = senza matita),
+  Regole di gestione una riga per regola (le 4 regole decise dalla radice, su una sottocategoria, "Ereditata da"
+  senza matita; Colonne report solo se visibile nei report), Attributi e Gestori Account righe `block`, campi
+  personalizzati in place. Creazione/duplicazione = replica (tolti striscia KPI e Riepilogo laterale; duplicate con
+  `layout_source_id`). Conferma azzeramento funzione aziendale delle discendenti ora al salvataggio della riga.
+- Ruoli (0230): Nome e Membri righe, Permessi riga `block` (esploratore + matrice campi), campi personalizzati in
+  place; super-admin / senza `update` nessuna matita. `RoleForm` solo creazione, usato anche dal quick-create
+  (`quick-create-entries/advanced-entries.tsx`: tolta la prop `mode`). i18n ruoli in `locales/{it,en}.ts`.
+  Aperti: `description` del ruolo esposto dal backend ma mai gestito dal frontend (fuori scope); caso teorico
+  `permissions` non editabile ma `field_permissions` si' -> ora nessuna matita (nessun caso reale noto).
+- Campi personalizzati (0231): Modulo/Tipo/Chiave solo creazione (senza matita); Etichetta, Gruppo, Ordine, Attivo,
+  Indicizzato righe; Presentazione riga raggruppata; Impostazioni/Opzioni/Relazione/Colonne/Validazione righe
+  `block` (editor condivisi con gli attributi NON modificati). Validazione per riga (un valore storico invalido
+  altrove non blocca). Aperti: la guida cita "Scheda" ma nessun controllo la espone (pre-esistente); nei blocchi
+  complessi aperti il titolo compare due volte (titolo sezione + card dell'editor condiviso).
+- Verifica lead: `tsc -b --force` 0 errori sull'albero; ESLint 0 errori (1 warning pre-esistente in
+  `table-field-control.test.tsx`); Vitest completo 983 file / 7433 verdi (un primo giro aveva 2 flaky di timing,
+  `stat-donut-chart` e `attribute-form-table-editor`, verdi da soli e al secondo giro completo). Browser
+  (Playwright): Categorie prodotto e Campi personalizzati dagli agenti, Ruoli dal lead (creazione a righe chiuse,
+  Nome sul posto, riga Permessi, `/roles/:id/edit` non trovata, 375 px ok, console pulita); record e token di
+  prova eliminati.
+- Manuale: guide in-app IT/EN dei tre moduli aggiornate dagli agenti; manuale Claude Docs aggiornato per Ruoli
+  ("Creare un ruolo" + "Modificare un ruolo"), Campi personalizzati (passo di creazione + punto "Modificare") e
+  Categorie prodotto (creazione radice e sottocategoria a righe chiuse, nuova "Modificare una categoria", tolti i
+  rimandi al pannello Riepilogo). PDF da rigenerare.
+- Aperti Categorie prodotto: chiavi `productCategories.detail.title/subtitle` gia' orfane prima (lasciate); da
+  confermare con l'utente se rivuole la striscia KPI nella creazione; un 422 sulla funzione aziendale ora compare
+  sulla riga chiusa (prima il form azzerava il valore).
+- Prossimo: commit separati per modulo su ordine esplicito. ONDA 2 CHIUSA (onda 3 resta annullata).
+
 ## GESTORI OFFERTE LEGACY = GESTORI OPPORTUNITA' + PROPRI (spec 0189 G-16, 2026-10-12) — VERDE, COMMITTATO
 
 - Decisione utente: qnet-2 importa cio' che il legacy dice; i gestori dell'offerta li decide l'API legacy.
@@ -46,7 +82,7 @@
 - Fuori scope segnalati: colonna/filtro "Data offerta" nella griglia Offerte e nei documenti; `quotationemployees`
   (80 costi orari); 498 provvigioni legacy con valore ma senza destinatario (qnet-2 richiede recipient_id).
 
-## MODELLI DI TASK MODIFICABILI SUL POSTO + CREAZIONE COME IL DETTAGLIO (spec 0227, 2026-10-12) — VERDE, NON COMMITTATO
+## MODELLI DI TASK MODIFICABILI SUL POSTO + CREAZIONE COME IL DETTAGLIO (spec 0227, 2026-10-12) — VERDE, COMMITTATO (999c63a8)
 
 - Richiesta utente: "committa e passa avanti" (onda 2, dopo Segnatempo). Solo frontend: PATCH /task-templates/{id}
   parziale gia' esistente; ora `updateTaskTemplate` restituisce anche `permissions` (il backend le mandava gia').
@@ -511,8 +547,8 @@
   onda 1 = Referenti (FATTO, 0216) -> Lead (FATTO, 0217) -> Prodotti (FATTO, 0218) -> Contratti (FATTO, 0219) -> Progetti (FATTO, 0220) -> Campagne (FATTO, 0221) -> Utenti (FATTO, 0222);
   PIANO CHIUSO ALL'ONDA 1 (utente 2026-10-12): onda 2 e onda 3 annullate, i moduli restanti tengono la pagina di
   modifica. Il tentativo su Fatture (spec 0224, 7b5edbb7) e' stato annullato da 8fec3019.
-  ONDA 2 RIAPERTA (utente 2026-10-12, stesso giorno): Segnatempo (FATTO, 0226) -> Modelli di task (FATTO, 0227) -> Categorie prodotto ->
-  Ruoli -> Campi personalizzati; esclusi Gestione richieste, Gestione iscritti, Attiva, Gestione conti; onda 3 resta
+  ONDA 2 RIAPERTA (utente 2026-10-12, stesso giorno): Segnatempo (FATTO, 0226) -> Modelli di task (FATTO, 0227) -> Categorie prodotto (FATTO, 0229) ->
+  Ruoli (FATTO, 0230) -> Campi personalizzati (FATTO, 0231): ONDA 2 CHIUSA; esclusi Gestione richieste, Gestione iscritti, Attiva, Gestione conti; onda 3 resta
   annullata.
 - Referenti (solo frontend, PATCH già con `permissions`): dettaglio a righe `RecordInlineField` (Dati anagrafici = una
   riga, Dettagli referente: Tipo, Ambito, Utente collegato, Note; campi personalizzati con `CustomFieldRecordSections`;

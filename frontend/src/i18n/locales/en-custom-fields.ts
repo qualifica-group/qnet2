@@ -47,8 +47,6 @@ export const customFields = {
     subtitle: 'Read-only view of the selected custom field.',
     loadError: 'Unable to load the custom field. Please try again.',
     details: 'Details',
-    options: 'Options',
-    relation: 'Relation',
     created_at: 'Created at',
   },
   entities: {
@@ -171,8 +169,6 @@ export const customFields = {
     newDefinition: 'New custom field',
     createTitle: 'Create custom field',
     createSubtitle: 'Define a new dynamic field.',
-    editTitle: 'Edit custom field',
-    editSubtitle: 'Update the selected custom field.',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
@@ -200,22 +196,20 @@ export const customFields = {
     group: 'Group',
     tab: 'Tab',
     sortOrder: 'Sort order',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The custom field has not been created yet: the data you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
         description: 'Module, key, type and presentation of the field.',
       },
-      base: {
-        title: 'Basics',
-        description: 'What the field is: module, type, key and label.',
-      },
       presentation: {
         title: 'Presentation',
         description: 'How it looks to the user: description, help text, placeholder and icon.',
-      },
-      organization: {
-        title: 'Organization',
-        description: 'Grouping and ordering among custom fields.',
       },
       config: {
         title: 'Field settings',
@@ -232,9 +226,6 @@ export const customFields = {
       validation: {
         title: 'Validation',
         description: 'Rules applied when a value is written.',
-      },
-      flags: {
-        title: 'Indexing & status',
       },
     },
     addOption: 'Add option',

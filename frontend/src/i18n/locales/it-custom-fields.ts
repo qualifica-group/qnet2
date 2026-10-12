@@ -47,8 +47,6 @@ export const customFields = {
     subtitle: 'Vista di sola lettura del campo personalizzato selezionato.',
     loadError: 'Impossibile caricare il campo personalizzato. Riprova.',
     details: 'Dettagli',
-    options: 'Opzioni',
-    relation: 'Relazione',
     created_at: 'Creato il',
   },
   entities: {
@@ -171,8 +169,6 @@ export const customFields = {
     newDefinition: 'Nuovo campo personalizzato',
     createTitle: 'Crea campo personalizzato',
     createSubtitle: 'Definisci un nuovo campo dinamico.',
-    editTitle: 'Modifica campo personalizzato',
-    editSubtitle: 'Aggiorna il campo personalizzato selezionato.',
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',
@@ -200,22 +196,20 @@ export const customFields = {
     group: 'Gruppo',
     tab: 'Scheda',
     sortOrder: 'Ordine',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il campo personalizzato non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
         description: 'Modulo, chiave, tipo e presentazione del campo.',
       },
-      base: {
-        title: 'Base',
-        description: 'Cosa è il campo: modulo, tipo, chiave ed etichetta.',
-      },
       presentation: {
         title: 'Presentazione',
         description: 'Come appare all’utente: descrizione, testo di aiuto, placeholder e icona.',
-      },
-      organization: {
-        title: 'Organizzazione',
-        description: 'Raggruppamento e ordinamento tra i custom field.',
       },
       config: {
         title: 'Impostazioni campo',
@@ -232,9 +226,6 @@ export const customFields = {
       validation: {
         title: 'Validazione',
         description: 'Regole applicate alla scrittura di un valore.',
-      },
-      flags: {
-        title: 'Indicizzazione e stato',
       },
     },
     addOption: 'Aggiungi opzione',

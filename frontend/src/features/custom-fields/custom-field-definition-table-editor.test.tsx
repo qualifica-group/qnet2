@@ -4,8 +4,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import i18n from '@/i18n'
-import { CustomFieldDefinitionForm } from '@/features/custom-fields/custom-field-definition-form'
-import type { ResourcePermissions } from '@/features/authorization/types'
+import { CustomFieldDefinitionFormBody } from '@/features/custom-fields/custom-field-definition-form-body'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 
 /** Spec 0180 AC-021: the `table` columns editor inside the custom field definition form. */
 
@@ -29,16 +29,6 @@ vi.mock('@/features/custom-fields/use-custom-field-entities', () => ({
     isLoading: false,
     isError: false,
   }),
-}))
-
-const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
-}
-
-vi.mock('@/features/custom-fields/use-custom-field-definition-form-meta', () => ({
-  useCustomFieldDefinitionFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
 }))
 
 function wrapper() {
@@ -68,13 +58,27 @@ function pick(combobox: HTMLElement, option: string) {
   fireEvent.click(screen.getByRole('option', { name: option }))
 }
 
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+
+/** The create form's rows are closed until their pencil is clicked (spec 0231). */
+function openRow(field: string) {
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field }) }))
+}
+
 function renderTableForm() {
-  render(<CustomFieldDefinitionForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-    wrapper: wrapper(),
-  })
+  render(
+    <ResourcePermissionsProvider permissions={null}>
+      <CustomFieldDefinitionFormBody onSuccess={vi.fn()} onCancel={vi.fn()} />
+    </ResourcePermissionsProvider>,
+    { wrapper: wrapper() },
+  )
+  openRow('Module')
   pick(screen.getByRole('combobox', { name: 'Module' }), 'Companies')
+  openRow('Key')
   fireEvent.change(screen.getByLabelText('Key'), { target: { value: 'inspections' } })
+  openRow('Label')
   fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Inspections' } })
+  openRow('Type')
   pick(screen.getByRole('combobox', { name: 'Type' }), 'Table')
 }
 
@@ -141,7 +145,7 @@ describe('DefinitionTableColumnsEditor in the custom field form (AC-021)', () =>
     pick(screen.getByRole('combobox', { name: 'Strategy' }), 'Selected row')
     fireEvent.change(screen.getByLabelText('Maximum rows'), { target: { value: '10' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
     await waitFor(() => expect(createDefinitionMock).toHaveBeenCalledTimes(1))
     const payload = createDefinitionMock.mock.calls[0][0]
@@ -171,7 +175,7 @@ describe('DefinitionTableColumnsEditor in the custom field form (AC-021)', () =>
     addColumn('Phase')
     pick(screen.getAllByRole('combobox', { name: 'Column type' })[0], 'List of options')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
     expect(await screen.findByText('Duplicate key.')).toBeInTheDocument()
     expect(screen.getByText('Add at least one option.')).toBeInTheDocument()
@@ -180,7 +184,7 @@ describe('DefinitionTableColumnsEditor in the custom field form (AC-021)', () =>
 
   it('requires at least one column', async () => {
     renderTableForm()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
     expect(await screen.findByText('Add at least one column.')).toBeInTheDocument()
     expect(createDefinitionMock).not.toHaveBeenCalled()
@@ -198,7 +202,7 @@ describe('DefinitionTableColumnsEditor in the custom field form (AC-021)', () =>
     renderTableForm()
     addColumn('Phase')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
     expect(await screen.findByText('The column key is reserved.')).toBeInTheDocument()
   })

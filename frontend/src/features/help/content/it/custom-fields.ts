@@ -16,7 +16,7 @@ const guide: HelpGuide = {
       id: 'create-custom-field',
       title: 'Creare un campo personalizzato',
       blocks: [
-        { type: 'steps', items: ['Apri **Amministrazione › Campi personalizzati**.', 'Fai clic su **Nuovo campo personalizzato**.', 'Compila le sezioni. Il riquadro **Anteprima** mostra in tempo reale come apparirà il campo.', 'Fai clic su **Salva**.'] },
+        { type: 'steps', items: ['Apri **Amministrazione › Campi personalizzati**.', 'Fai clic su **Nuovo campo personalizzato**.', 'Il riquadro **Anteprima** mostra in tempo reale come apparirà il campo. Le righe sono chiuse: premi la matita (o fai clic sul valore) di **Modulo**, **Tipo**, **Chiave** ed **Etichetta**, compila e conferma con **Fatto**; **Ripristina** riporta la riga com’era.', 'Gli editor che dipendono dal tipo (impostazioni, opzioni, relazione, colonne della tabella, validazione) compaiono già aperti sotto le righe.', 'Fai clic su **Salva**, in alto o in fondo alla pagina. **Annulla** chiede conferma prima di scartare i dati inseriti.'] },
         {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],
@@ -90,10 +90,19 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'edit-in-place',
+      title: 'Modificare un campo sul posto',
+      blocks: [
+        { type: 'paragraph', text: 'La scheda di un campo non ha un modulo di modifica: ogni riga si modifica sul posto. Premi la matita su una riga (ad esempio **Etichetta**, **Gruppo**, **Ordine**, **Attivo** o **Indicizzato**), cambia il valore e premi **Salva**; **Annulla** o Esc lasciano la riga com’era. Ogni riga salva solo i propri dati.' },
+        { type: 'paragraph', text: '**Presentazione** è una riga unica che raccoglie descrizione, testo di aiuto, placeholder e icona. Le impostazioni che dipendono dal tipo sono righe a tutta larghezza con la loro matita: **Impostazioni campo**, **Opzioni** (elenco), **Relazione**, **Colonne** (tabella) e **Validazione**; la matita apre lo stesso editor della creazione e **Salva** invia solo quella parte.' },
+        { type: 'note', text: '**Modulo**, **Tipo** e **Chiave** si scelgono alla creazione e non si possono cambiare dopo: non hanno la matita. Senza il permesso di modifica nessuna riga ha la matita.' },
+      ],
+    },
+    {
       id: 'edit-deactivate-delete',
       title: 'Modificare, disattivare ed eliminare',
       blocks: [
-        { type: 'list', items: ['**Modificare:** apri la scheda con **Visualizza**, premi **Modifica**, cambia i dati e fai clic su **Salva**.', '**Disattivare:** spegni **Attivo**. Il campo sparisce ovunque, ma i valori già inseriti restano.', '**Eliminare:** scegli **Elimina** e conferma.'] },
+        { type: 'list', items: ['**Modificare:** apri la scheda con **Visualizza** e modifica le righe sul posto (vedi la sezione precedente).', '**Disattivare:** spegni **Attivo**. Il campo sparisce ovunque, ma i valori già inseriti restano.', '**Eliminare:** scegli **Elimina** e conferma.'] },
         { type: 'warning', text: 'Quando un campo contiene già dei valori, non puoi più cambiarne **Modulo**, **Tipo** e **Chiave**. Eliminando un campo cancelli anche tutti i suoi valori: nel dubbio, disattivalo.' },
       ],
     },

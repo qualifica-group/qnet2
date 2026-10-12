@@ -36,6 +36,11 @@ export async function fetchCustomFieldRelationTargets(): Promise<CustomFieldEnti
  * ---------------------------------------------------------------------------
  */
 
+/** Query key for a single definition's detail (fresh-on-open pattern). */
+export function customFieldDetailQueryKey(id: number) {
+  return ['custom-fields', 'detail', id] as const
+}
+
 /**
  * Fetches a single custom field definition together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -61,16 +66,15 @@ export async function createCustomFieldDefinition(
   return data.data
 }
 
-/** Partially updates a custom field definition (PATCH). Returns the updated resource. */
+/** Partially updates a custom field definition (PATCH). Returns the updated resource with the actor's permissions, like `show`. */
 export async function updateCustomFieldDefinition(
   id: number,
   payload: UpdateCustomFieldDefinitionPayload,
-): Promise<CustomFieldDefinitionDetail> {
-  const { data } = await apiClient.patch<ApiResponse<CustomFieldDefinitionDetail>>(
-    `/custom-fields/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<CustomFieldDefinitionDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<CustomFieldDefinitionDetail, ResourcePermissions>
+  >(`/custom-fields/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a custom field definition. Backend responds 204 with no body. */

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0231-custom-field-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    La definizione di Campo personalizzato riceve le stesse modifiche dei moduli gia' migrati (spec 0195-0200,
+    0216-0222, 0226, 0227): niente pagina di modifica, il dettaglio si edita sul posto riga per riga; la creazione e'
+    una replica del dettaglio. Onda 2 del piano "nessuna pagina di modifica" (utente 2026-10-12).
+  </goal>
+
+  <context>
+    - D-1: regole 0195 D-2/D-3/D-6/D-8 con `RecordInlineField`, `useDraftInlineEdit`, `useFormLeaveGuard`; nessuna
+      modifica backend: `PATCH /api/custom-fields/{id}` e' un PATCH parziale (tutti i campi `sometimes`) e risponde
+      gia' con `permissions`.
+    - D-2: sezione "Dettagli": Modulo, Tipo, Chiave (solo creazione: `entity_type`/`type`/`key` erano gia' bloccati in
+      modifica e restano senza matita), Etichetta, Gruppo, Ordine, Attivo, Indicizzato (nascosto per `table`), una riga
+      ciascuno. Il salvataggio invia i soli campi della riga, scelti dal diff con la definizione salvata.
+    - D-3: "Presentazione" (descrizione, testo di aiuto, placeholder, icona) e' UNA riga raggruppata a tutta larghezza
+      che riusa l'editor condiviso con gli attributi, invariato: salva i quattro campi insieme (solo quelli cambiati).
+    - D-4: gli editor dipendenti dal tipo sono righe `layout="block"` a tutta larghezza, ognuna con la sua matita e
+      il suo permesso di campo: impostazioni (`config`: text, textarea, integer, decimal, boolean, enum), opzioni
+      (`options`, enum), relazione (`relation_target`), colonne (riga `table`, permesso `config`, salva `config`),
+      validazione (`validation`). Gli editor sono i componenti condivisi con gli attributi, non modificati.
+    - D-5: ogni riga valida solo i propri campi (`trigger`), cosi' un valore storico non valido altrove non blocca il
+      salvataggio; un salvataggio senza differenze chiude la riga senza chiamate.
+    - D-6: creazione = replica del dettaglio: banda d'identita' con etichetta live e Annulla/Salva, righe chiuse
+      (Fatto/Ripristina), editor dipendenti dal tipo APERTI (come le board, 0197/0227), azioni ripetute in fondo,
+      conferma di uscita. L'anteprima live resta in entrambe le viste.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica.</backend>
+    <frontend>
+      Registry `custom-fields`: `generateEditRoute: false`, `detailOwnsEditAction: true`, `formOwnsHeader: true`;
+      `CustomFieldDetailView` perde `onEdit`, guadagna `onChanged`; `updateCustomFieldDefinition` restituisce
+      `CustomFieldDefinitionDetailWithPermissions`; nuovo `customFieldDetailQueryKey`. Nuovi
+      `useCustomFieldDefinitionInlineEdit`, `CustomFieldDefinitionSections`/`TypeSections`, riepiloghi di sola
+      lettura, controlli di campo singoli (`definition-identity-fields`); `useCustomFieldDefinitionForm` solo
+      creazione; `buildUpdateCustomFieldDefinitionSchema` e `buildCreate...` unificati in
+      `buildCustomFieldDefinitionSchema`. Rimossi `useCustomFieldDefinitionFormMeta`,
+      `CustomFieldDefinitionFormMode`, `DefinitionBaseFields`/`FlagsFields`/`OrganizationFields`, i18n
+      `form.editTitle/editSubtitle`, `form.sections.base/organization/flags`, `detail.options/relation`.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/custom-fields/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su Etichetta/Gruppo/Ordine/Attivo/Indicizzato: Salva invia il solo campo; Annulla/Esc non chiamano.</ac>
+    <ac id="AC-003">Matita su Presentazione/Impostazioni/Opzioni/Relazione/Colonne/Validazione: Salva invia solo i campi di quella riga.</ac>
+    <ac id="AC-004">Modulo, Tipo e Chiave non hanno matita sul dettaglio; senza permesso di modifica nessuna matita.</ac>
+    <ac id="AC-005">Creazione: righe chiuse, editor del tipo aperti, Salva crea tutto, uscita con conferma.</ac>
+    <ac id="AC-006">Guida in-app IT/EN `custom-fields` aggiornata.</ac>
+  </acceptance>
+</spec>
