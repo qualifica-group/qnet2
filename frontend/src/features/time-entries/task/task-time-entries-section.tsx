@@ -1,9 +1,9 @@
 /**
  * "Segnatempo" tab body of the Task detail (spec 0122 MT-F6, D-9): the
  * "Nuovo intervallo" editor gated on `can_create` (dashed placeholder
- * otherwise), the day-grouped list, the shared edit Sheet and the delete
+ * otherwise), the day-grouped list, the shared detail Sheet and the delete
  * confirmation — same building blocks the dashboard's day card already uses
- * (`TimeEntryEditSheet`, `useDeleteTimeEntry` from `form/`), wired to the
+ * (`TimeEntryDetailSheet`, `useDeleteTimeEntry` from `form/`), wired to the
  * task-scoped read endpoint instead of the dashboard's own.
  */
 
@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { TimeEntryEditSheet } from '@/features/time-entries/form/time-entry-edit-sheet'
+import { TimeEntryDetailSheet } from '@/features/time-entries/form/time-entry-detail-sheet'
 import { useDeleteTimeEntry } from '@/features/time-entries/form/use-time-entry-mutations'
 import { TaskTimeEntryEditor } from '@/features/time-entries/task/task-time-entry-editor'
 import { TaskTimeEntriesList } from '@/features/time-entries/task/task-time-entries-list'
@@ -94,7 +94,7 @@ export function TaskTimeEntriesSection({ taskId }: TaskTimeEntriesSectionProps) 
       />
 
       {editingEntryId !== null ? (
-        <TimeEntryEditSheet
+        <TimeEntryDetailSheet
           open={editingEntryId !== null}
           onOpenChange={(open) => !open && setEditingEntryId(null)}
           timeEntryId={editingEntryId}

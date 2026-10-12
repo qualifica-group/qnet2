@@ -61,7 +61,7 @@ const TaskImportancesPage = lazyRoute(() => import('@/pages/task-importances-pag
 const TaskTemplatesPage = lazyRoute(() => import('@/pages/task-templates-page'))
 const TimeEntriesPage = lazyRoute(() => import('@/pages/time-entries-page'))
 const TimeEntryNewPage = lazyRoute(() => import('@/pages/time-entry-new-page'))
-const TimeEntryEditPage = lazyRoute(() => import('@/pages/time-entry-edit-page'))
+const TimeEntryDetailPage = lazyRoute(() => import('@/pages/time-entry-detail-page'))
 const CommissionConfigurationsPage = lazyRoute(() => import('@/pages/commission-configurations-page'))
 const RequestManagementPage = lazyRoute(() => import('@/pages/request-management-page'))
 const RequestStatisticsPage = lazyRoute(() => import('@/pages/request-statistics-page'))
@@ -340,7 +340,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'time-entries/:id',
-            element: <TimeEntryEditPage />,
+            element: <TimeEntryDetailPage />,
           },
           {
             path: 'commission-configurations',

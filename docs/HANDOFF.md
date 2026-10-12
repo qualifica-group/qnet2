@@ -3,6 +3,43 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEGNATEMPO MODIFICABILE SUL POSTO + CREAZIONE A RIGHE CHIUSE (spec 0226, 2026-10-12) — VERDE, NON COMMITTATO
+
+- Richiesta utente (ripetuta): "eliminare le pagine di edit anche per altri moduli, tutto inline, anche la creazione".
+  Segnalato il conflitto con la chiusura del piano (22bd06ed); decisione utente: RIAPRIRE L'ONDA 2, senza toccare
+  Gestione richieste, Gestione iscritti, Attiva e Gestione conti. Ordine onda 2: Segnatempo (FATTO, 0226) -> Modelli di
+  task -> Categorie prodotto -> Ruoli -> Campi personalizzati. Un modulo alla volta, stop a ogni verde.
+- Solo frontend (PUT /time-entries/{id} completo invariato: la riga salva il form intero, cambia solo quel campo).
+  Righe: Titolo, Data, Tipo, Orario (Dalle/Alle/Tempo, UNA riga, chiave `minutes`), Note; Contesto segnatempo =
+  UNA riga "Collegamenti" (chiave `registry_id`). Le righe di gruppo azzerano `MetaFieldRowContext` (`GroupEditor`)
+  cosi' ogni campo tiene la sua etichetta. Titolo senza matita con task collegato; nessuna matita senza
+  `permissions.update`; Elimina nel piede se `permissions.delete`. Errori su campi non visibili -> toast
+  (`hiddenErrorMessage`, `time-entry-row-fields.ts`).
+- File nuovi in `features/time-entries/form/`: `time-entry-fields` (controlli condivisi con `TimeEntryEditor`),
+  `time-entry-type-chip`, `time-entry-record(.ts|-sections.tsx)` (`TimeEntryRecord` = RecordCanvas/RecordCard),
+  `time-entry-row-fields`, `use-time-entry-inline-edit`, `time-entry-detail`, `time-entry-detail-sheet` (ex
+  edit-sheet), `time-entry-create-form`, `time-entry-test-fixtures`. Rimossi `time-entry-form-body`,
+  `time-entry-form-screen`, `time-entry-edit-sheet`, ramo edit di `TimeEntryFormActions`; `TimeEntryEditor` ora solo
+  per gli editor incorporati nel task (senza titolo/contesto: rimosse le prop morte nei due chiamanti).
+  `useTimeEntryForm`: `values`+`keepDirtyValues` in edit, espone `submit` grezzo e `clearServerError`.
+  Pagina `/time-entries/:id` = `pages/time-entry-detail-page.tsx` (gate `time-entries.viewAny`). Menu riga
+  "Modifica" -> "Apri" (`timeEntries.table.open`); i18n nuove `form.detailTitle/detailSubtitle/
+  activitySectionTitle/scheduleRow/contextRow`, rimosse `form.editTitle/editSubtitle/update`.
+  `time-entry-context-fields` usa `WORK_ORDERS_FOR_SELECT_RESOURCE` condiviso (`tasks/for-select-api`).
+- Fuori scope (D-7): "Nuovo intervallo" nel task e sezione segnatempo della chiusura task, invariati.
+- Test: REQUIREMENT CHANGED `time-entry-form-body.test.tsx` -> `time-entry-create-form.test.tsx` (8) +
+  `time-entry-detail-inline-edit.test.tsx` (10); aggiornati dashboard (sheet di dettaglio) e day-entries-table
+  ("Open"). Vitest time-entries+tasks+pages+routes 719 verdi, help+i18n 310; ESLint pulito; `tsc -b --force` 0.
+  Browser reale (Playwright): `/time-entries/new` righe chiuse -> creazione (90 min) -> `/time-entries/:id` Note
+  salvata sul posto, riga Collegamenti con etichette, 375 px senza scroll orizzontale, Elimina; nessun errore
+  console; voci di prova (71, 72) e token temporaneo eliminati.
+- Manuale: guida in-app IT/EN `time-entries` (creazione a righe chiuse, tabella campi, "Apri", paragrafo modifica
+  sul posto); manuale Claude Docs (passi di creazione + paragrafo modifica nella sezione Segnatempo). PDF da
+  rigenerare.
+- NOTA: nello stesso albero c'e' lavoro non committato di un'altra sessione (badge OLD ID, `LegacyIdPolicy`, help
+  `roles`, permessi): al commit includere SOLO i file di questa voce.
+- Prossimo: commit su ordine esplicito; poi Modelli di task (onda 2).
+
 ## OLD ID: COLONNA NELLE GRIGLIE + BADGE NELLE SCHEDE, DIETRO PERMESSO (2026-10-12) — VERDE, COMMITTATO
 
 - Richieste utente: in ogni tabella, oltre all'id, anche l'old_id (committato in 39ffecc6); poi nel dettaglio un badge
@@ -401,6 +438,9 @@
   onda 1 = Referenti (FATTO, 0216) -> Lead (FATTO, 0217) -> Prodotti (FATTO, 0218) -> Contratti (FATTO, 0219) -> Progetti (FATTO, 0220) -> Campagne (FATTO, 0221) -> Utenti (FATTO, 0222);
   PIANO CHIUSO ALL'ONDA 1 (utente 2026-10-12): onda 2 e onda 3 annullate, i moduli restanti tengono la pagina di
   modifica. Il tentativo su Fatture (spec 0224, 7b5edbb7) e' stato annullato da 8fec3019.
+  ONDA 2 RIAPERTA (utente 2026-10-12, stesso giorno): Segnatempo (FATTO, 0226) -> Modelli di task -> Categorie prodotto ->
+  Ruoli -> Campi personalizzati; esclusi Gestione richieste, Gestione iscritti, Attiva, Gestione conti; onda 3 resta
+  annullata.
 - Referenti (solo frontend, PATCH già con `permissions`): dettaglio a righe `RecordInlineField` (Dati anagrafici = una
   riga, Dettagli referente: Tipo, Ambito, Utente collegato, Note; campi personalizzati con `CustomFieldRecordSections`;
   Contatti/Indirizzi in persistenza immediata). Creazione = replica a righe chiuse (Fatto/Ripristina, telefono

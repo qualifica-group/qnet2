@@ -163,7 +163,7 @@ function TaskTimeEntryRow({ entry, isFirst, onEditEntry, onRequestDelete }: Task
                 actionsLabel={t('timeEntries.table.actions')}
                 canWrite
                 deleteLabel={t('timeEntries.table.delete')}
-                editLabel={t('timeEntries.table.edit')}
+                openLabel={t('timeEntries.table.open')}
                 entry={entry}
                 onEditEntry={onEditEntry}
                 onRequestDelete={onRequestDelete}
