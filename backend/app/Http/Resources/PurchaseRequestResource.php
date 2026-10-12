@@ -112,6 +112,7 @@ class PurchaseRequestResource extends JsonResource
             'approved_by' => $line->approvedBy === null ? null : $this->userSummary($line->approvedBy),
             'approved_at' => $line->approved_at,
             'oda_reference' => $line->oda_reference,
+            'purchase_order' => $line->purchaseOrderReference(),
             'abilities' => [
                 'update' => $canUpdateRequest && $line->status === PurchaseRequestLineStatus::PendingApproval,
                 'update_supplier' => app(PurchaseRequestCapabilityResolver::class)->canUpdateSupplier($actor, $this->resource, $line, $canUpdateRequest),

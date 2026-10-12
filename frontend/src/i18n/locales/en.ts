@@ -27,6 +27,7 @@ import { accounting } from './en-accounting'
 import { purchaseRequestLines, purchaseRequests } from './en-purchase-requests'
 import { purchaseOrders } from './en-purchase-orders'
 import { purchaseOrderForm } from './en-purchase-order-form'
+import { purchaseOrderActions } from './en-purchase-order-actions'
 import { sources } from './en-sources'
 import { vatRates } from './en-vat-rates'
 import { unitsOfMeasure } from './en-units-of-measure'
@@ -432,6 +433,7 @@ export const en = {
   purchaseRequestLines,
   purchaseOrders,
   purchaseOrderForm,
+  purchaseOrderActions,
   productTypologies,
   tags,
   projects: { ...projects, stats: moduleStats.projects },

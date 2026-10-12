@@ -33,6 +33,15 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
  */
 export const INLINE_ACTION_LIMIT = 3
 
+/** Width of one inline icon action (icon-xs button + gap) and the cell's side padding. */
+const INLINE_ICON_SLOT_WIDTH = 26
+const INLINE_ACTIONS_PADDING = 24
+
+/** Actions-column width when every action of the catalog renders inline (`inlineAllActions`). */
+export function inlineActionsColumnWidth(actionCount: number): number {
+  return actionCount * INLINE_ICON_SLOT_WIDTH + INLINE_ACTIONS_PADDING
+}
+
 /** Actions-column width when inline actions show their label (`labeledActions`). */
 export const LABELED_ACTIONS_COLUMN_WIDTH = 190
 
@@ -72,6 +81,12 @@ export interface RowActionsOptions {
    * self-explanatory as an icon. Opt-in; every other domain keeps icons.
    */
   labeledActions?: boolean
+  /**
+   * Every allowed action renders as an inline icon, never folded into the
+   * three-dots overflow menu: for a domain whose users prefer one-click icons
+   * over the menu. Opt-in; every other domain keeps INLINE_ACTION_LIMIT.
+   */
+  inlineAllActions?: boolean
 }
 
 interface RowActionsProps extends RowActionsOptions {
@@ -130,6 +145,7 @@ function RowActions({
   decorateRow,
   iconMap,
   labeledActions,
+  inlineAllActions,
   resolveActionState,
 }: RowActionsProps) {
   const { t } = useTranslation()
@@ -147,14 +163,14 @@ function RowActions({
   // Split into always-visible inline icons and the overflow remainder. With few
   // enough actions the overflow stays empty and everything renders inline.
   const { visible, overflow } = useMemo(() => {
-    if (available.length <= INLINE_ACTION_LIMIT) {
+    if (inlineAllActions || available.length <= INLINE_ACTION_LIMIT) {
       return { visible: available, overflow: [] as TableActionDefinition[] }
     }
     return {
       visible: available.slice(0, INLINE_ACTION_LIMIT),
       overflow: available.slice(INLINE_ACTION_LIMIT),
     }
-  }, [available])
+  }, [available, inlineAllActions])
 
   if (available.length === 0) {
     return null
@@ -285,6 +301,7 @@ export function createRowActionsRenderer(
         decorateRow={options.decorateRow}
         iconMap={options.iconMap}
         labeledActions={options.labeledActions}
+        inlineAllActions={options.inlineAllActions}
         resolveActionState={options.resolveActionState}
       />
     )

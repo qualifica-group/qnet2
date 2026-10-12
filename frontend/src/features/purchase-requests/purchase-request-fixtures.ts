@@ -24,6 +24,7 @@ export function makeLine(overrides: Partial<PurchaseRequestLine> = {}): Purchase
     approved_by: null,
     approved_at: null,
     oda_reference: null,
+    purchase_order: null,
     abilities: { update: true, delete: true, transitions: ['approved', 'rejected'] satisfies LineStatus[], capabilities: ['approve'], update_supplier: true },
     ...overrides,
   }

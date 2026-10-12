@@ -2,23 +2,28 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { FileDown, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
+import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { purchaseOrderColumnRenderers } from '@/features/purchase-orders/column-renderers'
 import { PurchaseOrderDetailPanel } from '@/features/purchase-orders/purchase-order-detail-panel'
 import { StatusTabs } from '@/features/purchase-orders/status-tabs'
 import { usePurchaseOrderDelete } from '@/features/purchase-orders/use-purchase-order-actions'
+import { usePurchaseOrderPdf } from '@/features/purchase-orders/use-purchase-order-pdf'
 import { useStatusTabFilter } from '@/features/purchase-orders/use-status-tab-filter'
 import { PURCHASE_ORDERS_DOMAIN } from '@/features/purchase-orders/types'
 
 /** Grid filter key of the status tabs (spec 0210 contract: tab per stato). */
 const STATUS_FILTER_KEY = 'status'
+
+/** Domain icons the shared map lacks (the grid would otherwise fall back to the three-dots glyph). */
+const PURCHASE_ORDER_ACTION_ICONS: ActionIconMap = { 'file-down': FileDown }
 
 const renderDetail = (params: ICellRendererParams<TableRow>) => <PurchaseOrderDetailPanel {...params} />
 
@@ -36,6 +41,7 @@ export function PurchaseOrdersTable() {
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
   const tabs = useStatusTabFilter(tableRef, STATUS_FILTER_KEY)
   const removeOrder = usePurchaseOrderDelete()
+  const { download: downloadPdf } = usePurchaseOrderPdf()
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
@@ -64,11 +70,14 @@ export function PurchaseOrdersTable() {
         case 'activity':
           setActivityRow(row)
           break
+        case 'pdf':
+          void downloadPdf(Number(row.id))
+          break
         default:
           break
       }
     },
-    [navigate, runDelete],
+    [downloadPdf, navigate, runDelete],
   )
 
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])
@@ -92,6 +101,8 @@ export function PurchaseOrdersTable() {
         domain={PURCHASE_ORDERS_DOMAIN}
         renderers={purchaseOrderColumnRenderers}
         onAction={handleAction}
+        iconMap={PURCHASE_ORDER_ACTION_ICONS}
+        inlineAllActions
         onFilterModelChange={tabs.onFilterModelChange}
         isBusy={isBusy}
         masterDetail

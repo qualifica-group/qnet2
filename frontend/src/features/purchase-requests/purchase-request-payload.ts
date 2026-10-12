@@ -39,6 +39,8 @@ export function newLineValues(overrides: Partial<PurchaseRequestLineFormValues> 
     vat_rate_id: null,
     supplier_id: null,
     supplier_ref: null,
+    purchase_order: null,
+    oda_reference: null,
     ...overrides,
   }
 }
@@ -87,6 +89,8 @@ function lineToFormValues(line: PurchaseRequestLine, isClosed: boolean, canUpdat
     vat_rate_id: line.vat_rate?.id ?? null,
     supplier_id: line.supplier?.id ?? null,
     supplier_ref: line.supplier,
+    purchase_order: line.purchase_order,
+    oda_reference: line.oda_reference,
   }
 }
 

@@ -34,6 +34,7 @@ function target(overrides: Partial<LineTarget> & Pick<LineTarget, 'id'>): LineTa
     totalAmount: 1234.5,
     supplier: null,
     canUpdateSupplier: true,
+    purchaseOrder: null,
     purchaseRequestId: 5,
     purchaseRequestSubject: 'Laptops',
     ...overrides,

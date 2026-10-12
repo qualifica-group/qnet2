@@ -6,6 +6,7 @@ import {
   type LineStatus,
   type LineSupplierAssignment,
   type NamedRef,
+  type PurchaseOrderRef,
   type PurchaseRequestLine,
 } from '@/features/purchase-requests/types'
 
@@ -25,6 +26,8 @@ export interface LineTarget {
   supplier: NamedRef | null
   /** `abilities.update_supplier`: whether the supplier can still be assigned or changed (D-3). */
   canUpdateSupplier: boolean
+  /** ODA the line is already linked to (spec 0210): such a line cannot generate another one. */
+  purchaseOrder: PurchaseOrderRef | null
   purchaseRequestId: number | null
   purchaseRequestSubject: string | null
 }
@@ -44,6 +47,11 @@ function readSymbol(value: unknown): string | null {
   const unit = value as { symbol?: unknown; name?: unknown } | null | undefined
   const label = unit?.symbol ?? unit?.name
   return typeof label === 'string' ? label : null
+}
+
+function readPurchaseOrder(value: unknown): PurchaseOrderRef | null {
+  const order = value as { id?: unknown; code?: unknown } | null | undefined
+  return typeof order?.id === 'number' && typeof order.code === 'string' ? { id: order.id, code: order.code } : null
 }
 
 function readText(value: unknown): string | null {
@@ -73,6 +81,7 @@ export function toLineTarget(row: TableRow): LineTarget {
     totalAmount: Number(row.total_amount) || 0,
     supplier: readNamedRef(row.supplier),
     canUpdateSupplier: abilities?.update_supplier === true,
+    purchaseOrder: readPurchaseOrder(row.purchase_order),
     purchaseRequestId: requestId !== null && Number.isFinite(requestId) ? requestId : null,
     purchaseRequestSubject: readText(row.purchase_request_subject),
   }
@@ -95,6 +104,7 @@ export function lineToTarget(
     totalAmount: Number(line.total_amount),
     supplier: line.supplier,
     canUpdateSupplier: line.abilities.update_supplier,
+    purchaseOrder: line.purchase_order,
     purchaseRequestId: request.id,
     purchaseRequestSubject: request.subject,
   }

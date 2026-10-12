@@ -9,12 +9,13 @@ import type { EmailTemplateModule } from '@/features/email-templates/types'
 import type { EmailRecipientSuggestion } from '@/components/ui/email-recipients-input'
 
 /** Parent record an email thread hangs off: the URL segment is the REST resource name (spec 0195 D-10/D-14). */
-export type EmailOwnerRef = { type: 'work-orders' | 'invoices'; id: number }
+export type EmailOwnerRef = { type: 'work-orders' | 'invoices' | 'purchase-orders'; id: number }
 
 /** Email-template module whose templates/placeholders an owner uses (`GET /email-templates*?module=`). */
 export const EMAIL_OWNER_TEMPLATE_MODULE: Record<EmailOwnerRef['type'], EmailTemplateModule> = {
   'work-orders': 'work_orders',
   invoices: 'invoices',
+  'purchase-orders': 'purchase_orders',
 }
 
 export type OutboundEmailPurpose = 'document' | 'reminder'

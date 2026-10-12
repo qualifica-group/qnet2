@@ -62,6 +62,7 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
             'supplier:id,name',
             'unitOfMeasure:id,name,symbol',
             'approvedBy:id,name',
+            'purchaseOrderLine.purchaseOrder:id,number,year',
         ]);
 
         return PurchaseRequestVisibilityScope::scopeLinesToActor($query, Auth::user());
@@ -139,6 +140,7 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
             'approved_by' => $row->approvedBy === null ? null : ['id' => $row->approvedBy->id, 'name' => $row->approvedBy->name],
             'approved_at' => $row->approved_at,
             'oda_reference' => $row->oda_reference,
+            'purchase_order' => $row->purchaseOrderReference(),
             'abilities' => [
                 'update_supplier' => $this->capabilities->canUpdateSupplier($actor, $request, $row, ! $request->isClosed() && Gate::forUser($actor)->allows('update', $request)),
                 'transitions' => array_map(

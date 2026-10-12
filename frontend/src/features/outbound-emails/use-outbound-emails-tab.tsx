@@ -8,6 +8,7 @@ import type { CreateOutboundEmailPayload, EmailOwnerRef } from '@/features/outbo
 const TAB_VALUE: Record<EmailOwnerRef['type'], string> = {
   'work-orders': 'work-order-emails',
   invoices: 'invoice-emails',
+  'purchase-orders': 'purchase-order-emails',
 }
 
 /**

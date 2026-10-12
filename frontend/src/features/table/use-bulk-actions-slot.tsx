@@ -34,6 +34,8 @@ export interface BulkAction {
   onSelect: () => void
   destructive?: boolean
   disabled?: boolean
+  /** Why the action is disabled; shown as a tooltip on hover of the disabled entry. */
+  disabledReason?: string
 }
 
 interface UseBulkActionsSlotArgs {
@@ -154,14 +156,16 @@ export function useBulkActionsSlot({
             return (
               <Fragment key={item.key}>
                 {needsSeparator ? <DropdownMenuSeparator /> : null}
-                <DropdownMenuItem
-                  variant={item.destructive ? 'destructive' : 'default'}
-                  disabled={item.disabled}
-                  onSelect={() => item.onSelect()}
-                >
-                  {item.icon ? <item.icon aria-hidden="true" /> : null}
-                  {item.label}
-                </DropdownMenuItem>
+                <span title={item.disabled ? item.disabledReason : undefined} className="block">
+                  <DropdownMenuItem
+                    variant={item.destructive ? 'destructive' : 'default'}
+                    disabled={item.disabled}
+                    onSelect={() => item.onSelect()}
+                  >
+                    {item.icon ? <item.icon aria-hidden="true" /> : null}
+                    {item.label}
+                  </DropdownMenuItem>
+                </span>
               </Fragment>
             )
           })}

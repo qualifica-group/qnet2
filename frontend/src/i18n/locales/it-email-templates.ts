@@ -25,6 +25,7 @@ export const emailTemplates = {
   modules: {
     work_orders: 'Commesse',
     invoices: 'Fatture',
+    purchase_orders: 'Ordini di acquisto',
   },
   detail: {
     title: 'Dettaglio modello email',

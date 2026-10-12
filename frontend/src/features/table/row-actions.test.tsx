@@ -4,7 +4,7 @@ import { I18nextProvider } from 'react-i18next'
 import type { ICellRendererParams } from 'ag-grid-community'
 import i18n from '@/i18n'
 import { ConfirmContext } from '@/components/confirm-dialog-context'
-import { createRowActionsRenderer, type RowActionsOptions } from '@/features/table/row-actions'
+import { createRowActionsRenderer, inlineActionsColumnWidth, type RowActionsOptions } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 
 // Assert against the English catalogue (the app default locale is Italian).
@@ -151,5 +151,21 @@ describe('RowActions labeledActions (spec 0150 D-8)', () => {
     renderActions(catalogOf(2))
 
     expect(screen.getByRole('button', { name: 'a0' })).toHaveTextContent('')
+  })
+})
+
+describe('RowActions inlineAllActions (spec 0210)', () => {
+  it('renders all 5 actions inline with no three-dots menu when opted in', () => {
+    renderActions(catalogOf(5), vi.fn(), {}, { inlineAllActions: true })
+
+    for (const key of ['a0', 'a1', 'a2', 'a3', 'a4']) {
+      expect(screen.getByRole('button', { name: key })).toBeInTheDocument()
+    }
+    expect(screen.queryByRole('button', { name: 'More actions' })).not.toBeInTheDocument()
+  })
+
+  it('sizes the actions column to fit every inline icon', () => {
+    expect(inlineActionsColumnWidth(5)).toBeGreaterThan(inlineActionsColumnWidth(3))
+    expect(inlineActionsColumnWidth(6)).toBe(6 * 26 + 24)
   })
 })

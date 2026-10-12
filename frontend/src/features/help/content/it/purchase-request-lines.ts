@@ -80,6 +80,29 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'generate-orders',
+      title: 'Generare le ODA',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Seleziona le righe **Approvate** con un fornitore (anche di RDA diverse) e scegli **Genera ODA** dal menu **Azioni**. La voce è attiva solo se hai il permesso di creare ordini di acquisto.',
+            'La finestra mostra le righe raggruppate per **fornitore** e quante ODA verranno create (una per fornitore; le RDA con società o sedi diverse generano ODA separate).',
+            'Scegli il **Tipo costo** (obbligatorio), se vuoi il **Metodo di pagamento** e la **Data ordine** (di default oggi), poi conferma con **Genera N ODA**.',
+            'A operazione conclusa la finestra elenca le ODA create: ogni codice è un **link** all’ordine, che nasce in **bozza**.',
+          ],
+        },
+        {
+          type: 'warning',
+          text: 'Se anche una sola riga non è idonea (non Approvata, senza fornitore o già collegata a una ODA) la voce è disabilitata e il motivo appare passando il mouse; la generazione è **tutto o niente**.',
+        },
+        {
+          type: 'note',
+          text: 'Le righe RDA passano a **Ordinato** e la colonna **ODA** mostra il codice come link all’ordine. Se era l’ultima riga non finale, la RDA si chiude da sola. Eliminando la riga dall’ODA, la riga RDA torna Approvata.',
+        },
+      ],
+    },
+    {
       id: 'history',
       title: 'Storico della riga',
       blocks: [

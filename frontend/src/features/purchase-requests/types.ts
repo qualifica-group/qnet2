@@ -60,6 +60,12 @@ export interface PurchaseRequestLineAbilities {
   update_supplier: boolean
 }
 
+/** ODA a purchase-order line is linked to (spec 0210 D-17), enough for the link of the ODA column. */
+export interface PurchaseOrderRef {
+  id: number
+  code: string
+}
+
 export interface PurchaseRequestLine {
   id: number
   position: number
@@ -78,6 +84,7 @@ export interface PurchaseRequestLine {
   approved_by: NamedRef | null
   approved_at: string | null
   oda_reference: string | null
+  purchase_order: PurchaseOrderRef | null
   abilities: PurchaseRequestLineAbilities
 }
 
@@ -206,4 +213,24 @@ export interface PurchaseRequestClosure {
   is_forced: boolean
   non_terminal_count: number
   line_status_counts: LineStatusCounts
+}
+
+/** Body of the bulk "Generate ODA" (spec 0210 D-17); `order_date` defaults to today server-side. */
+export interface GenerateOrdersPayload {
+  line_ids: number[]
+  cost_type_id: number
+  payment_method_id?: number
+  order_date?: string
+}
+
+export interface GeneratedOrder {
+  id: number
+  code: string
+  supplier: NamedRef
+  lines_count: number
+}
+
+export interface GenerateOrdersResult {
+  purchase_orders: GeneratedOrder[]
+  closed_purchase_request_ids: number[]
 }

@@ -22,6 +22,7 @@ import { accounting } from './it-accounting'
 import { purchaseRequestLines, purchaseRequests } from './it-purchase-requests'
 import { purchaseOrders } from './it-purchase-orders'
 import { purchaseOrderForm } from './it-purchase-order-form'
+import { purchaseOrderActions } from './it-purchase-order-actions'
 import { sources } from './it-sources'
 import { vatRates } from './it-vat-rates'
 import { unitsOfMeasure } from './it-units-of-measure'
@@ -418,6 +419,7 @@ export const it: TranslationResources = {
   purchaseRequestLines,
   purchaseOrders,
   purchaseOrderForm,
+  purchaseOrderActions,
   productTypologies,
   tags,
   projects: { ...projects, stats: moduleStats.projects },

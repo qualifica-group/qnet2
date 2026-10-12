@@ -65,7 +65,7 @@ export function PurchaseOrderForm({ order, onSaved, onCancel, onDeleted }: Purch
             </h1>
             {order ? <PurchaseOrderStatusBadge status={order.status} /> : null}
           </div>
-          {order ? <PurchaseOrderFormActions order={order} /> : null}
+          {order ? <PurchaseOrderFormActions order={order} isDirty={form.formState.isDirty} /> : null}
         </div>
 
         {statusLocked ? (

@@ -292,6 +292,12 @@
         409 riga di RDA chiusa; 422 `line_ids.N` (non approved, senza fornitore, gia' collegata). Tutto-o-niente.</errors>
     </endpoint>
 
+    <type name="PurchaseRequestLine (delta additivo, Resource RDA e righe SSRM purchase-request-lines)">
+      + purchase_order: { id:int, code:string }|null  — ODA a cui la riga e' collegata (via
+      purchase_order_lines.purchase_request_line_id); usato dal FE per il link della colonna ODA (AC-022).
+      oda_reference resta invariato.
+    </type>
+
     <endpoint method="GET" path="/api/registries/for-select">
       <!-- ESISTENTE. Modifica additiva: meta.is_qualified_supplier:bool. -->
     </endpoint>

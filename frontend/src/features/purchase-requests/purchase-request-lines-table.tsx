@@ -1,13 +1,16 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { ListChecks, Truck } from 'lucide-react'
+import { FileText, ListChecks, Truck } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
+import { useAbilities } from '@/features/auth/use-abilities'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
 import { purchaseRequestLineColumnRenderers } from '@/features/purchase-requests/column-renderers'
+import { GenerateOrdersDialog } from '@/features/purchase-requests/generate-orders-dialog'
+import { GENERATE_ORDERS_PERMISSION, generateOrdersBlocker } from '@/features/purchase-requests/generate-orders'
 import { LineSupplierDialog } from '@/features/purchase-requests/line-supplier-dialog'
 import { LineStatusDialog } from '@/features/purchase-requests/line-status-dialog'
 import { LineStatusHistoryDialog } from '@/features/purchase-requests/line-status-history-dialog'
@@ -23,8 +26,8 @@ const NO_TARGETS: readonly LineTarget[] = []
 /**
  * Thin "RDA line management" adapter over the generic table: status tabs, a
  * bulk "Change status" action over the selection (one line or many, one
- * dialog, all or nothing), the bulk "Assign supplier" action (spec 0209 D-4)
- * and the open-RDA and history row actions. The
+ * dialog, all or nothing), the bulk "Assign supplier" action (spec 0209 D-4),
+ * the bulk "Generate ODA" action (spec 0210 D-17) and the open-RDA and history row actions. The
  * dialog offers only what the server advertised in `abilities.transitions`.
  */
 export function PurchaseRequestLinesTable() {
@@ -33,9 +36,12 @@ export function PurchaseRequestLinesTable() {
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
   const tabs = useStatusTabFilter(tableRef, STATUS_FILTER_KEY)
+  const { can } = useAbilities()
+  const canGenerateOrders = can(GENERATE_ORDERS_PERMISSION)
 
   const [targets, setTargets] = useState<readonly LineTarget[]>(NO_TARGETS)
   const [supplierTargets, setSupplierTargets] = useState<readonly LineTarget[]>(NO_TARGETS)
+  const [orderTargets, setOrderTargets] = useState<readonly LineTarget[]>(NO_TARGETS)
   const [historyLineId, setHistoryLineId] = useState<number | null>(null)
 
   const handleAction: RowActionHandler = useCallback(
@@ -55,21 +61,32 @@ export function PurchaseRequestLinesTable() {
   )
 
   const getBulkActions = useCallback(
-    (selection: TableSelection): BulkAction[] => [
-      {
-        key: 'change-status',
-        label: t('purchaseRequests.statusDialog.bulkAction'),
-        icon: ListChecks,
-        onSelect: () => setTargets(selection.rows.map(toLineTarget)),
-      },
-      {
-        key: 'assign-supplier',
-        label: t('purchaseRequests.supplierDialog.bulkAction'),
-        icon: Truck,
-        onSelect: () => setSupplierTargets(selection.rows.map(toLineTarget)),
-      },
-    ],
-    [t],
+    (selection: TableSelection): BulkAction[] => {
+      const blocker = generateOrdersBlocker(selection.rows.map(toLineTarget), canGenerateOrders)
+      return [
+        {
+          key: 'change-status',
+          label: t('purchaseRequests.statusDialog.bulkAction'),
+          icon: ListChecks,
+          onSelect: () => setTargets(selection.rows.map(toLineTarget)),
+        },
+        {
+          key: 'assign-supplier',
+          label: t('purchaseRequests.supplierDialog.bulkAction'),
+          icon: Truck,
+          onSelect: () => setSupplierTargets(selection.rows.map(toLineTarget)),
+        },
+        {
+          key: 'generate-orders',
+          label: t('purchaseRequests.generateOrders.bulkAction'),
+          icon: FileText,
+          disabled: blocker !== null,
+          disabledReason: blocker === null ? undefined : t(`purchaseRequests.generateOrders.blocked.${blocker}`),
+          onSelect: () => setOrderTargets(selection.rows.map(toLineTarget)),
+        },
+      ]
+    },
+    [t, canGenerateOrders],
   )
 
   return (
@@ -104,6 +121,12 @@ export function PurchaseRequestLinesTable() {
           setSupplierTargets(NO_TARGETS)
           refreshGrid()
         }}
+      />
+      <GenerateOrdersDialog
+        key={`orders-${orderTargets.map((target) => target.id).join(',')}`}
+        targets={orderTargets}
+        onOpenChange={(open) => (open ? undefined : setOrderTargets(NO_TARGETS))}
+        onGenerated={refreshGrid}
       />
       <LineStatusHistoryDialog
         lineId={historyLineId}

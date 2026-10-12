@@ -1,6 +1,8 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
 import type {
+  GenerateOrdersPayload,
+  GenerateOrdersResult,
   LineStatusChangePayload,
   LineStatusChangeResult,
   LineStatusLog,
@@ -55,6 +57,15 @@ export async function changeLinesStatus(payload: LineStatusChangePayload): Promi
 export async function assignLinesSupplier(payload: LineSupplierPayload): Promise<LineSupplierResult> {
   const { data } = await apiClient.post<ApiResponse<LineSupplierResult>>(
     '/purchase-request-lines/supplier',
+    payload,
+  )
+  return data.data
+}
+
+/** Bulk "Generate ODA" (spec 0210 D-17): one draft ODA per supplier group, all-or-nothing server-side (403/409/422). */
+export async function generatePurchaseOrders(payload: GenerateOrdersPayload): Promise<GenerateOrdersResult> {
+  const { data } = await apiClient.post<ApiResponse<GenerateOrdersResult>>(
+    '/purchase-request-lines/purchase-orders',
     payload,
   )
   return data.data

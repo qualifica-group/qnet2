@@ -10,6 +10,7 @@ import type { TableRow } from '@/features/table/types'
 import { fetchPurchaseRequest, purchaseRequestKeys } from '@/features/purchase-requests/api'
 import { LineStatusDialog } from '@/features/purchase-requests/line-status-dialog'
 import { lineToTarget, type LineTarget } from '@/features/purchase-requests/line-status-transitions'
+import { OdaLink } from '@/features/purchase-requests/oda-link'
 import { LineStatusBadge } from '@/features/purchase-requests/purchase-request-status-badge'
 import type { PurchaseRequestLine } from '@/features/purchase-requests/types'
 
@@ -41,6 +42,9 @@ function LineRow({ line, onChangeStatus }: { line: PurchaseRequestLine; onChange
       <td className={NUM_CELL}>{formatQuoteAmount(Number(line.total_amount))}</td>
       <td className={CELL}>
         <LineStatusBadge status={line.status} />
+      </td>
+      <td className={CELL}>
+        <OdaLink purchaseOrder={line.purchase_order} odaReference={line.oda_reference} />
       </td>
       <td className={`${CELL} text-right`}>
         {line.abilities.transitions.length > 0 ? (
@@ -119,6 +123,7 @@ export function PurchaseRequestDetailPanel({ data, node, api, onChanged }: Purch
               <th scope="col" className={NUM_HEAD}>{t('purchaseRequests.lines.vat')}</th>
               <th scope="col" className={NUM_HEAD}>{t('purchaseRequests.lines.total')}</th>
               <th scope="col" className={HEAD}>{t('purchaseRequests.lines.status')}</th>
+              <th scope="col" className={HEAD}>{t('purchaseRequests.lines.oda')}</th>
               <th scope="col" className={HEAD}>
                 <span className="sr-only">{t('purchaseRequests.lines.changeStatus')}</span>
               </th>

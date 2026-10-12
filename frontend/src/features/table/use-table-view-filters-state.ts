@@ -89,6 +89,7 @@ export function useTableViewFiltersState(
     decorateRow,
     iconMap,
     labeledActions,
+    inlineAllActions,
     resolveActionState,
     t,
   } = args
@@ -185,9 +186,10 @@ export function useTableViewFiltersState(
       decorateRow,
       iconMap,
       labeledActions,
+      inlineAllActions,
       resolveActionState,
     })
-  }, [config, onAction, isBusy, decorateRow, iconMap, labeledActions, resolveActionState])
+  }, [config, onAction, isBusy, decorateRow, iconMap, labeledActions, inlineAllActions, resolveActionState])
 
   // Fit the grid to the screen instead of a fixed height: it takes what is
   // left of the viewport below this module's chrome, never taller than the

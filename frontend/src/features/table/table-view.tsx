@@ -8,7 +8,11 @@ import { useTableConfig } from '@/features/table/use-table-config'
 import { TableToolbar } from '@/features/table/table-toolbar'
 import { AdvancedFilterPanel, ADVANCED_FILTER_PANEL_ANIMATION } from '@/features/table/advanced-filters/advanced-filter-panel'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
-import { INLINE_ACTION_LIMIT, LABELED_ACTIONS_COLUMN_WIDTH } from '@/features/table/row-actions'
+import {
+  INLINE_ACTION_LIMIT,
+  LABELED_ACTIONS_COLUMN_WIDTH,
+  inlineActionsColumnWidth,
+} from '@/features/table/row-actions'
 import { RowGroupingBar } from '@/features/table/row-grouping-bar'
 import { useRowGroupColumns } from '@/features/table/use-row-group-columns'
 import { ActiveFilterChips } from '@/features/table/custom-filters/active-filter-chips'
@@ -35,6 +39,18 @@ const GROUP_KEY_SEPARATOR = ','
  * Adding a new domain requires no change here — only a new adapter that mounts
  * this component with its `domain`, renderer map and action handler.
  */
+/** Explicit actions-column width for the opt-in action layouts; undefined = DataTable default. */
+function actionsColumnWidthFor(
+  actionCount: number,
+  labeledActions: boolean | undefined,
+  inlineAllActions: boolean | undefined,
+): number | undefined {
+  if (labeledActions) {
+    return LABELED_ACTIONS_COLUMN_WIDTH
+  }
+  return inlineAllActions && actionCount > INLINE_ACTION_LIMIT ? inlineActionsColumnWidth(actionCount) : undefined
+}
+
 export const TableView = forwardRef<TableViewHandle, TableViewProps>(
   function TableView(
     {
@@ -51,6 +67,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       decorateRow,
       iconMap,
       labeledActions,
+      inlineAllActions,
       resolveActionState,
       importSlot,
       isRowSelectable,
@@ -95,6 +112,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         decorateRow,
         iconMap,
         labeledActions,
+        inlineAllActions,
         resolveActionState,
         getBulkActions,
         disableBuiltinDelete,
@@ -159,8 +177,8 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           cellRenderers={renderers}
           renderRowActions={view.renderRowActions}
           actionsHeaderLabel="table.actionsHeader"
-          actionsColumnHasOverflow={config.actions.length > INLINE_ACTION_LIMIT}
-          actionsColumnWidth={labeledActions ? LABELED_ACTIONS_COLUMN_WIDTH : undefined}
+          actionsColumnHasOverflow={!inlineAllActions && config.actions.length > INLINE_ACTION_LIMIT}
+          actionsColumnWidth={actionsColumnWidthFor(config.actions.length, labeledActions, inlineAllActions)}
           onGridReady={view.handleGridReady}
           onColumnStateChanged={view.handleColumnStateChanged}
           initialFilterModel={view.initialFilterModel}

@@ -156,5 +156,11 @@
     "This purchase order can no longer be changed.": "Questo ordine di acquisto non può più essere modificato.",
     "This status change is not allowed for the order.": "Questo cambio di stato non è consentito per l'ordine.",
     "The line does not belong to this purchase order.": "La riga non appartiene a questo ordine di acquisto.",
-    "Purchase order deleted": "ODA eliminata"
+    "Purchase order deleted": "ODA eliminata",
+    "Only approved lines can generate a purchase order.": "Solo le righe approvate possono generare un ordine di acquisto.",
+    "A supplier is required to generate a purchase order.": "Per generare un ordine di acquisto serve un fornitore.",
+    "The line is already linked to a purchase order.": "La riga è già collegata a un ordine di acquisto.",
+    "The line is no longer available.": "La riga non è più disponibile.",
+    "The line already belongs to this purchase order.": "La riga appartiene già a questo ordine di acquisto.",
+    "The line belongs to a purchase order of another supplier or company.": "La riga appartiene a un ordine di acquisto di un altro fornitore o di un'altra società."
 }

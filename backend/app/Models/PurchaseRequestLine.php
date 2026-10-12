@@ -102,6 +102,19 @@ class PurchaseRequestLine extends BaseModel
     }
 
     /**
+     * The order this line is linked to, for the ODA link of the grids (spec 0210).
+     * Needs `purchaseOrderLine.purchaseOrder` eager loaded (lazy loading is forbidden).
+     *
+     * @return array{id: int, code: string}|null
+     */
+    public function purchaseOrderReference(): ?array
+    {
+        $order = $this->purchaseOrderLine?->purchaseOrder;
+
+        return $order === null ? null : ['id' => $order->id, 'code' => $order->code()];
+    }
+
+    /**
      * @return HasMany<PurchaseRequestLineStatusLog, $this>
      */
     public function statusLogs(): HasMany

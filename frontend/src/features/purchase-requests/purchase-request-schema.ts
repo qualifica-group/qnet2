@@ -58,6 +58,9 @@ function buildLineSchema(t: TFunction) {
     supplier_id: z.number().int().nullable(),
     /** Label of the selected supplier so the picker shows it without a lookup; never sent. */
     supplier_ref: z.object({ id: z.number().int(), name: z.string() }).nullable(),
+    /** Read-only link to the ODA generated from the line (spec 0210) and the legacy free-text reference; never sent. */
+    purchase_order: z.object({ id: z.number().int(), code: z.string() }).nullable(),
+    oda_reference: z.string().nullable(),
   })
 }
 

@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0209 — Fornitore sulle righe RDA + righe compatte — VERDE, NON COMMITTATO (2026-10-12)
+## Spec 0209 — Fornitore sulle righe RDA + righe compatte — VERDE, COMMITTATO 8473e971 (2026-10-12)
 
 - Spec `docs/specs/0209-purchase-request-line-suppliers.xml` (approvata, D-1..D-11, AC-001..AC-018). Modifica 0208.
 - Dati: `purchase_request_lines.supplier_id` (FK registries nullOnDelete); `purchase_requests.supplier_id` ELIMINATA.
@@ -32,9 +32,15 @@
 - Aperto: `PurchaseRequestService.php` 330 righe (soft limit); manca test della griglia Gestione righe (azione massiva);
   verifica visiva desktop/375px; manuale Claude Docs (RDA righe/testata, cambio stato Ordinato, Gestione righe) da aggiornare.
 
-## Spec 0210 — Modulo ODA (Ordini di Acquisto) — CHECKPOINT A VERDE, NON COMMITTATO (2026-10-12)
+## Spec 0210 — Modulo ODA (Ordini di Acquisto) — CHECKPOINT A (8473e971) + B VERDI E COMMITTATI (2026-10-12)
 
-- ATTENZIONE: il working tree contiene anche le modifiche NON committate della spec 0209 (stessi file RDA).
+- Checkpoint B committato: MT-5 (`POST /purchase-request-lines/purchase-orders` Genera ODA da righe RDA,
+  `PurchaseOrderFromRequestLinesService`; Unifica `GET merge-candidates` / `POST merge` / `GET merge-logs`,
+  `PurchaseOrderMergeService`), MT-11 (FE dialog stato/unifica/storico, hook PDF/email), MT-12 (FE Genera ODA in
+  Gestione righe RDA, link colonna ODA via `purchase_order{id,code}` sulle righe). Verde: Pest PurchaseOrders+
+  PurchaseRequests 218/218, Vitest purchase-orders/purchase-requests/table/i18n 674/674, tsc -b --force, ESLint, Pint.
+- Resta checkpoint C: MT-6 (PDF + email ODA lato BE: gli hook FE use-purchase-order-pdf/email chiamano endpoint non
+  ancora presenti), MT-13 (guide complete), MT-14 (gate completo).
 
 - Spec `docs/specs/0210-purchase-orders.xml` (approvata, D-1..D-20, AC-001..AC-023). Build in 3 checkpoint:
   A (fatto) = MT-1..4, MT-7..10; B = MT-5 (Genera ODA da RDA, Unifica + storico), MT-11 (FE stato/unifica/PDF/email

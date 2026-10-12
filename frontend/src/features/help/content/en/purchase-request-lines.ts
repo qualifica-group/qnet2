@@ -80,6 +80,29 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'generate-orders',
+      title: 'Generate the ODA',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Tick the **Approved** lines that have a supplier (even from different RDA) and pick **Generate ODA** from the **Actions** menu. The entry is only enabled if you can create purchase orders.',
+            'The dialog shows the lines grouped by **supplier** and how many ODA will be created (one per supplier; RDA with a different company or site produce separate ODA).',
+            'Choose the **Cost type** (required), optionally the **Payment method** and the **Order date** (today by default), then confirm with **Generate N ODA**.',
+            'When done the dialog lists the created ODA: each code is a **link** to the order, which is created as a **draft**.',
+          ],
+        },
+        {
+          type: 'warning',
+          text: 'If even one line is not eligible (not Approved, no supplier or already linked to an ODA) the entry is disabled and the reason shows on hover; generation is **all or nothing**.',
+        },
+        {
+          type: 'note',
+          text: 'The RDA lines move to **Ordered** and the **ODA** column shows the code as a link to the order. If it was the last non-final line, the RDA closes by itself. Deleting the line from the ODA brings the RDA line back to Approved.',
+        },
+      ],
+    },
+    {
       id: 'history',
       title: 'Line history',
       blocks: [

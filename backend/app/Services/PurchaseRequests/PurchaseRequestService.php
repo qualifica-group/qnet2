@@ -40,6 +40,7 @@ class PurchaseRequestService
         'lines.unitOfMeasure:id,name,symbol',
         'lines.vatRate:id,name,rate',
         'lines.approvedBy:id,name',
+        'lines.purchaseOrderLine.purchaseOrder:id,number,year',
     ];
 
     /** Line states a line may be deleted from (D-11). */

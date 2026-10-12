@@ -23,6 +23,24 @@ final class PurchaseRequestLineLinker
     public function __construct(private readonly PurchaseRequestLineLocker $locker) {}
 
     /**
+     * Point the request lines at the code of the order that now holds them
+     * (generation from RDA, D-17; merge, D-19). Status is not touched.
+     *
+     * @param  array<int, string>  $codes  request line id => order code
+     */
+    public function link(array $codes): void
+    {
+        if ($codes === []) {
+            return;
+        }
+
+        foreach ($this->locker->lines(array_keys($codes)) as $line) {
+            $line->oda_reference = $codes[$line->id];
+            $line->save();
+        }
+    }
+
+    /**
      * Release the request lines linked to the given order lines (about to be
      * deleted): each goes back to approved with a log row and loses its ODA
      * reference. A closed request stays closed.

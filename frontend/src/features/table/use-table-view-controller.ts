@@ -105,6 +105,7 @@ export function useTableViewController(
     decorateRow,
     iconMap,
     labeledActions,
+    inlineAllActions,
     resolveActionState,
     getBulkActions,
     disableBuiltinDelete,
@@ -158,6 +159,7 @@ export function useTableViewController(
     decorateRow,
     iconMap,
     labeledActions,
+    inlineAllActions,
     resolveActionState,
     t,
   })

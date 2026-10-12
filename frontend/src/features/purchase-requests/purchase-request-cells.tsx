@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { CELL_WRAPPER, EmptyCell } from '@/features/table/cell-renderers'
 import { LineStatusBadge } from '@/features/purchase-requests/purchase-request-status-badge'
-import { LINE_STATUSES, type LineStatus, type LineStatusCounts } from '@/features/purchase-requests/types'
+import { OdaLink } from '@/features/purchase-requests/oda-link'
+import { LINE_STATUSES, type LineStatus, type LineStatusCounts, type PurchaseOrderRef } from '@/features/purchase-requests/types'
 
 function isLineStatus(value: unknown): value is LineStatus {
   return typeof value === 'string' && (LINE_STATUSES as readonly string[]).includes(value)
@@ -96,5 +97,19 @@ export function SuppliersCell({ value }: ICellRendererParams) {
         {joined}
       </span>
     </div>
+  )
+}
+
+/** ODA column of the lines grid: link to the order when the row carries `purchase_order`, else the reference text. */
+export function OdaCell({ value, data }: ICellRendererParams) {
+  const order = (data as { purchase_order?: PurchaseOrderRef | null } | undefined)?.purchase_order ?? null
+  const reference = typeof value === 'string' && value !== '' ? value : null
+  if (!order && !reference) {
+    return <EmptyCell align="left" />
+  }
+  return (
+    <span className="truncate">
+      <OdaLink purchaseOrder={order} odaReference={reference} />
+    </span>
   )
 }

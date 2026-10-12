@@ -299,4 +299,14 @@ describe('PurchaseOrderForm read-only (AC-020)', () => {
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove line 1' })).toBeInTheDocument()
   })
+
+  it('refuses to open the merge dialog while the form has unsaved changes (AC-021)', async () => {
+    renderForm(makePurchaseOrder())
+
+    fireEvent.change(screen.getByLabelText('Description 1'), { target: { value: 'Edited line' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Merge' }))
+
+    await waitFor(() => expect(toast.warning).toHaveBeenCalled())
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
 })

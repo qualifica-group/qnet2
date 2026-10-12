@@ -21,6 +21,7 @@ function target(overrides: Partial<LineTarget> & Pick<LineTarget, 'id'>): LineTa
     totalAmount: 0,
     supplier: null,
     canUpdateSupplier: true,
+    purchaseOrder: null,
     purchaseRequestId: 5,
     purchaseRequestSubject: 'Laptops',
     ...overrides,
@@ -89,6 +90,7 @@ describe('toLineTarget', () => {
       totalAmount: 120.5,
       supplier: { id: 12, name: 'Rossi Srl' },
       canUpdateSupplier: true,
+      purchaseOrder: null,
       purchaseRequestId: 5,
       purchaseRequestSubject: 'Laptops',
     })

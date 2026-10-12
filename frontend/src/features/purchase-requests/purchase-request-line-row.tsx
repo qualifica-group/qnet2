@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
+import { OdaLink } from '@/features/purchase-requests/oda-link'
 import { LineActions } from '@/features/purchase-requests/purchase-request-line-actions'
 import {
   LineNumberField,
@@ -21,9 +22,6 @@ import type {
 import { LineStatusBadge } from '@/features/purchase-requests/purchase-request-status-badge'
 import { LineSupplierSelect } from '@/features/purchase-requests/purchase-request-supplier'
 import { useLineProductDefaults } from '@/features/purchase-requests/use-line-product-defaults'
-
-/** Placeholder of the ODA column until the supplier-order module exists (spec 0208 D-3). */
-const ODA_PLACEHOLDER = '—'
 
 interface PurchaseRequestLineRowProps {
   index: number
@@ -142,7 +140,7 @@ export function PurchaseRequestLineRow({
         <LineStatusBadge status={line.status} />
       </div>
       <div data-label={t('purchaseRequests.lines.oda')} className={cn(CAPTIONED_CELL, 'col-span-2 sm:col-span-1')}>
-        {ODA_PLACEHOLDER}
+        <OdaLink purchaseOrder={line.purchase_order} odaReference={line.oda_reference} />
       </div>
       <div className="col-span-2 sm:col-span-4 lg:col-span-1">
         <LineActions

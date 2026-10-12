@@ -6,11 +6,15 @@ use App\Authorization\AuthorizationRegistry;
 use App\Authorization\ResourcePermissionsBuilder;
 use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
+use App\Http\Requests\PurchaseOrders\PurchaseOrderMergeRequest;
 use App\Http\Requests\PurchaseOrders\PurchaseOrderStatusRequest;
 use App\Http\Requests\PurchaseOrders\PurchaseOrderWriteRequest;
+use App\Http\Resources\PurchaseOrderMergeCandidateResource;
+use App\Http\Resources\PurchaseOrderMergeLogResource;
 use App\Http\Resources\PurchaseOrderResource;
 use App\Models\PurchaseOrder;
 use App\Models\User;
+use App\Services\PurchaseOrders\PurchaseOrderMergeService;
 use App\Services\PurchaseOrders\PurchaseOrderService;
 use App\Services\PurchaseOrders\PurchaseOrderStatusService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -32,6 +36,7 @@ class PurchaseOrderController extends BaseApiController
     public function __construct(
         private readonly PurchaseOrderService $service,
         private readonly PurchaseOrderStatusService $statusService,
+        private readonly PurchaseOrderMergeService $mergeService,
         private readonly AuthorizationRegistry $authorization,
         private readonly ResourcePermissionsBuilder $permissionsBuilder,
     ) {}
@@ -110,6 +115,54 @@ class PurchaseOrderController extends BaseApiController
             $changed = $this->statusService->change($purchaseOrder, $request->toStatus(), $request->user());
 
             return $this->detailResponse($request->user(), $this->service->detail($changed));
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__, ['purchaseOrder' => $purchaseOrder->id]);
+        }
+    }
+
+    /**
+     * GET /api/purchase-orders/{purchaseOrder}/merge-candidates (409 when the order is not editable)
+     */
+    public function mergeCandidates(PurchaseOrder $purchaseOrder): JsonResponse
+    {
+        try {
+            $this->authorize('merge', $purchaseOrder);
+
+            return $this->ok(PurchaseOrderMergeCandidateResource::collection($this->mergeService->candidates($purchaseOrder)));
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__, ['purchaseOrder' => $purchaseOrder->id]);
+        }
+    }
+
+    /**
+     * POST /api/purchase-orders/{purchaseOrder}/merge (`meta.deleted_purchase_order_ids` lists the emptied sources)
+     */
+    public function merge(PurchaseOrderMergeRequest $request, PurchaseOrder $purchaseOrder): JsonResponse
+    {
+        try {
+            $this->authorize('merge', $purchaseOrder);
+
+            $result = $this->mergeService->merge($purchaseOrder, $request->lineIds(), $request->user());
+
+            return $this->detailResponse(
+                $request->user(),
+                $this->service->detail($result['purchase_order']),
+                meta: ['deleted_purchase_order_ids' => $result['deleted_purchase_order_ids']],
+            );
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__, ['purchaseOrder' => $purchaseOrder->id]);
+        }
+    }
+
+    /**
+     * GET /api/purchase-orders/{purchaseOrder}/merge-logs (most recent first)
+     */
+    public function mergeLogs(PurchaseOrder $purchaseOrder): JsonResponse
+    {
+        try {
+            $this->authorize('view', $purchaseOrder);
+
+            return $this->ok(PurchaseOrderMergeLogResource::collection($this->mergeService->logs($purchaseOrder)));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['purchaseOrder' => $purchaseOrder->id]);
         }

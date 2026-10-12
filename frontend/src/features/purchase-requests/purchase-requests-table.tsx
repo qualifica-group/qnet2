@@ -121,6 +121,7 @@ export function PurchaseRequestsTable() {
         renderers={purchaseRequestColumnRenderers}
         iconMap={PURCHASE_ACTION_ICONS}
         onAction={handleAction}
+        inlineAllActions
         onFilterModelChange={tabs.onFilterModelChange}
         isBusy={isBusy}
         masterDetail

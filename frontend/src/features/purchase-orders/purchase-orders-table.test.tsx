@@ -31,9 +31,11 @@ vi.mock('@/components/page-header', () => ({
 }))
 
 const deletePurchaseOrderMock = vi.fn()
+const downloadPurchaseOrderPdfMock = vi.fn()
 vi.mock('@/features/purchase-orders/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/purchase-orders/api')>()),
   deletePurchaseOrder: (...args: unknown[]) => deletePurchaseOrderMock(...args),
+  downloadPurchaseOrderPdf: (...args: unknown[]) => downloadPurchaseOrderPdfMock(...args),
 }))
 
 const toastSuccessMock = vi.fn()
@@ -48,6 +50,7 @@ vi.mock('sonner', () => ({
 const ACTIONS: Record<string, TableActionDefinition> = {
   delete: { key: 'delete', label: 'actions.delete', icon: 'trash', type: 'danger', confirm: true },
   view: { key: 'view', label: 'actions.view', icon: 'eye', type: 'link', confirm: false },
+  pdf: { key: 'pdf', label: 'actions.pdf', icon: 'file', type: 'link', confirm: false },
 }
 const ROW: TableRow = { id: 7, actions: ['view', 'delete'], code: '3/2026' }
 
@@ -64,6 +67,9 @@ vi.mock('@/features/table/table-view', () => ({
         </button>
         <button type="button" onClick={() => onAction?.(ACTIONS.view, ROW)}>
           open row
+        </button>
+        <button type="button" onClick={() => onAction?.(ACTIONS.pdf, ROW)}>
+          print row
         </button>
       </div>
     )
@@ -101,6 +107,7 @@ beforeEach(() => {
   canMock.mockReturnValue(true)
   setFilterModelMock.mockReset()
   deletePurchaseOrderMock.mockReset()
+  downloadPurchaseOrderPdfMock.mockReset()
   toastSuccessMock.mockReset()
   toastErrorMock.mockReset()
 })
@@ -176,5 +183,24 @@ describe('PurchaseOrdersTable', () => {
     deletePurchaseOrderMock.mockRejectedValueOnce(axiosError(403))
     fireEvent.click(screen.getByRole('button', { name: 'delete row' }))
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this purchase order.'))
+  })
+
+  it('downloads the PDF of the row with the `pdf` action', async () => {
+    downloadPurchaseOrderPdfMock.mockResolvedValue(undefined)
+
+    renderWith(<PurchaseOrdersTable />)
+    fireEvent.click(screen.getByRole('button', { name: 'print row' }))
+
+    await waitFor(() => expect(downloadPurchaseOrderPdfMock).toHaveBeenCalledWith(7))
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('PDF generated.'))
+  })
+
+  it('shows the server message when no layout is active (422)', async () => {
+    downloadPurchaseOrderPdfMock.mockRejectedValue(axiosError(422, 'No active layout for purchase orders.'))
+
+    renderWith(<PurchaseOrdersTable />)
+    fireEvent.click(screen.getByRole('button', { name: 'print row' }))
+
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('No active layout for purchase orders.'))
   })
 })

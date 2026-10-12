@@ -4,6 +4,7 @@ import { UserCell } from '@/features/table/user-cell'
 import {
   LineStatusCell,
   LineStatusCountsCell,
+  OdaCell,
   PriorityCell,
   RequestStatusCell,
   SuppliersCell,
@@ -36,4 +37,5 @@ export const purchaseRequestLineColumnRenderers: TableRendererMap = {
   unit_of_measure: (params) => <RelationCell {...params} />,
   supplier: (params) => <RelationCell {...params} />,
   status: (params) => <LineStatusCell {...params} />,
+  oda_reference: (params) => <OdaCell {...params} />,
 }
