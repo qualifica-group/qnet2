@@ -10,6 +10,12 @@ import type {
 export const PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE = 'product-categories'
 
 /**
+ * Every active category, containers included (spec 0223): the commission
+ * configurator's picker, whose rule covers the whole branch.
+ */
+export const PRODUCT_CATEGORY_NODES_FOR_SELECT_RESOURCE = 'product-category-nodes'
+
+/**
  * Fetches a page of product-category options from
  * `GET /api/product-categories/for-select`. Thin wrapper over the generic
  * for-select fetcher, bound to the `product-categories` resource. Distinct

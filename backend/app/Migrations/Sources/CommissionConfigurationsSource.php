@@ -32,9 +32,10 @@ use RuntimeException;
  * (the legacy id spaces overlap, R-2): company -> Registry, contact ->
  * Referent, user -> User, each via `old_id`. A rule the Configuratore could not
  * hold is a FAILED row with a readable message, never an invented rule: no
- * role, no/unmigrated recipient, a recipient kind the role does not admit, no
- * unmigrated or non-selectable category/product, no amount. Written without
- * activity log: a migration notifies and audits nobody (as spec 0189).
+ * role, no/unmigrated recipient, a recipient kind the role does not admit, an
+ * unmigrated category/product, no amount. A container category is fine: its
+ * rule covers the whole branch (spec 0223). Written without activity log: a
+ * migration notifies and audits nobody (as spec 0189).
  */
 class CommissionConfigurationsSource extends AbstractMigrationSource
 {
@@ -236,11 +237,6 @@ class CommissionConfigurationsSource extends AbstractMigrationSource
 
         if ($category === null) {
             throw new RuntimeException("Category not migrated (legacy id {$legacyCategoryId}); migrate product-categories first.");
-        }
-
-        // Same rule the Configuratore enforces (spec 0074): a container category can never fire.
-        if (! $category->is_selectable) {
-            throw new RuntimeException("Category '{$category->name}' is not selectable; a commission rule cannot target it.");
         }
 
         return ['scope' => CommissionApplicationScope::ProductCategory, 'model' => $category];

@@ -8,7 +8,8 @@ use Illuminate\Http\Request;
 
 /**
  * For-select projection of a product-category BRANCH
- * (GET /api/product-category-branches/for-select, spec 0092).
+ * (GET /api/product-category-branches/for-select, spec 0092), also used by
+ * the node picker (GET /api/product-category-nodes/for-select, spec 0223).
  *
  * Strictly `{id, label}`: unlike ProductCategoryForSelectResource this feeds
  * ONE consumer, the quote-workflow criteria editor, which renders a plain

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MetaField } from '@/features/authorization/MetaField'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { useForSelectLabels } from '@/features/for-select/use-for-select'
-import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
+import { PRODUCT_CATEGORY_NODES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { CommissionConfigurationRecipientField } from './commission-configuration-recipient-field'
@@ -150,7 +150,7 @@ export function CommissionConfigurationFormBody({ mode, onSuccess, onCancel }: P
               })}
               {selectField('application_scope', OPTIONS.application_scope)}
               {scope === 'RECIPIENT' ? null : scope === 'PRODUCT_CATEGORY' ? (
-                <RelationSelectField control={form.control} name="product_category_id" metaKey="product_category_id" label={t('commissionConfigurations.form.product_category_id')} resource={PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE} searchPlaceholder={t('commissionConfigurations.form.searchCategory')} selected={selectedCategory} {...relationLabels} />
+                <RelationSelectField control={form.control} name="product_category_id" metaKey="product_category_id" label={t('commissionConfigurations.form.product_category_id')} resource={PRODUCT_CATEGORY_NODES_FOR_SELECT_RESOURCE} searchPlaceholder={t('commissionConfigurations.form.searchCategory')} hint={t('commissionConfigurations.form.categoryBranchHint')} selected={selectedCategory} {...relationLabels} />
               ) : (
                 <RelationSelectField control={form.control} name="product_id" metaKey="product_id" label={t('commissionConfigurations.form.product_id')} resource={PRODUCTS_FOR_SELECT_RESOURCE} searchPlaceholder={t('commissionConfigurations.form.searchProduct')} selected={selectedProduct} {...relationLabels} />
               )}

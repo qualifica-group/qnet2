@@ -27,7 +27,7 @@ const guide: HelpGuide = {
             ['Offerta unica per opportunità', "Quante offerte può avere un'opportunità."],
             ['Prevede un contratto', "Se un'offerta chiusa con esito positivo apre un contratto."],
             ['Semplificazione riga offerta', 'Se in Gestione Richieste la riga offerta si compila da sola.'],
-            ['Selezionabile', 'Se la categoria compare negli elenchi di scelta di prodotti, righe prodotto, progetti, campagne e regole provvigionali.'],
+            ['Selezionabile', 'Se la categoria compare negli elenchi di scelta di prodotti, righe prodotto, progetti e campagne. Le regole provvigionali possono usare qualsiasi categoria attiva, anche una madre: valgono per tutto il ramo.'],
             ['Attiva', 'Se la categoria, con tutto il suo ramo e i suoi prodotti, compare nei campi di inserimento. Se la spegni sparisce da lì ma resta nello storico e nei filtri delle griglie.'],
             ['Visibile nei report e Colonne report', 'Righe e colonne del report e della dashboard di Gestione Richieste e Gestione Iscritti.'],
             ['Gestori Account', 'Il nome di ogni livello di Gestore Account (per esempio "Tutor" invece di "Gestore account 1").'],

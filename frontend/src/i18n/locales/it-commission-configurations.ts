@@ -23,7 +23,7 @@ export const commissionConfigurations = {
     name: 'Nome configurazione', recipient_role: 'Ruolo destinatario', application_scope: 'Ambito di applicazione',
     product_category_id: 'Categoria prodotto', product_id: 'Prodotto', recipient_type: 'Tipo destinatario', recipient_id: 'Destinatario', commission_type: 'Tipologia commissione',
     value: 'Valore commissione', priority: 'Priorità regola', valid_from: 'Data inizio validità', valid_until: 'Data fine validità',
-    status: 'Stato', internal_note: 'Nota di servizio interna', searchCategory: 'Cerca categorie prodotto…',
+    status: 'Stato', internal_note: 'Nota di servizio interna', searchCategory: 'Cerca categorie prodotto…', categoryBranchHint: 'Vale anche per tutte le sottocategorie; se più regole coprono il prodotto vince la categoria più vicina.',
     searchProduct: 'Cerca prodotti…', searchRecipient: 'Cerca destinatario…', selectPlaceholder: 'Seleziona…', selectEmpty: 'Nessun risultato.', selectError: 'Impossibile caricare le opzioni.',
     sections: { scope: 'Identità e ambito', calculation: 'Calcolo', validity: 'Validità', notes: 'Nota interna' },
     hints: { priority: 'Decide quale regola vince quando più configurazioni valide competono per lo stesso ruolo e lo stesso ambito: vince il numero più alto, poi la data di inizio più recente. Una regola su Prodotto batte comunque sempre una regola su Categoria.' },

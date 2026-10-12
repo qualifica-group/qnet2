@@ -134,7 +134,6 @@ it('AC-003: a supervisor rule on a user maps to the migrated user', function () 
 
 it('AC-004: unimportable rules fail with a readable message and create nothing', function (array $override, string $message) {
     migratedCommissionRuleTargets();
-    ProductCategory::factory()->create(['old_id' => 71, 'name' => 'Contenitore', 'is_selectable' => false]);
 
     $run = runLegacyCommissionRulesImport([legacyCommissionRule($override)]);
 
@@ -149,11 +148,21 @@ it('AC-004: unimportable rules fail with a readable message and create nothing',
     'recipient not migrated' => [['recipient_id' => 999999], 'Recipient not migrated'],
     'kind not allowed for the role' => [['role' => 'supplier', 'recipient_kind' => 'contact', 'recipient_id' => 888], 'not allowed for the SUPPLIER role'],
     'category not migrated' => [['category_id' => 12345], 'Category not migrated'],
-    'category not selectable' => [['category_id' => 71], 'not selectable'],
     'product not migrated' => [['category_id' => null, 'product_id' => 777], 'Product not migrated'],
     'no destination' => [['category_id' => null, 'product_id' => null], 'neither a category nor a product'],
     'no amount' => [['percentage' => null, 'amount' => null], 'neither a percentage nor an amount'],
 ]);
+
+it('spec 0223 AC-009: a rule on a container category is imported, it covers the whole branch', function () {
+    migratedCommissionRuleTargets();
+    $container = ProductCategory::factory()->create(['old_id' => 71, 'name' => 'ISO', 'is_selectable' => false]);
+
+    $run = runLegacyCommissionRulesImport([legacyCommissionRule(['category_id' => 71, 'product_id' => null])]);
+
+    expect($run->created_rows)->toBe(1)
+        ->and($run->failed_rows)->toBe(0)
+        ->and(CommissionConfiguration::sole()->product_category_id)->toBe($container->id);
+});
 
 it('AC-005: a re-run skips the already imported rules without duplicating', function () {
     migratedCommissionRuleTargets();

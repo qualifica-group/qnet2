@@ -61,5 +61,5 @@ export const migrationRequirements = {
   'product-suppliers':
     'Creates no records: it sets the supplier on the imported products. Without the product the row fails; a supplier not yet imported from Registries is skipped with a warning. A supplier already chosen in QNet is never overwritten.',
   'commission-configurations':
-    'Each rule needs its recipient (registry, referent or user) and its product or category already imported: when missing, the row fails. Rules on non-selectable categories, such as the legacy APL branch and the “OLD” functions, fail.',
+    'Each rule needs its recipient (registry, referent or user) and its product or category already imported: when missing, the row fails. A rule on a parent category, such as ISO or GDPR, is imported and applies to all its subcategories.',
 }

@@ -3,6 +3,29 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CONFIGURATORE COMMISSIONI: REGOLA DI CATEGORIA VALE PER IL RAMO (spec 0223, 2026-10-12) — VERDE, COMMITTATO
+
+- Motivo: import `commission-configurations` 501 falliti su 615, di cui 471 su categorie madre non selezionabili
+  (ISO, SOA-, SICUREZZA N/N, GDPR, GARE-, AVVALIMENTI-, ENTE DI CERTIFICAZIONE - SOA). Decisioni utente: "Regola
+  vale per il ramo" (D-1), "vince la categoria piu' vicina" (D-2). Spec `docs/specs/0223-...xml` approvata.
+- `CommissionRuleResolver`: gradino categoria = `product_category_id IN` (categoria del prodotto + antenati, catena
+  strutturale via `CategoryHierarchy::ancestors`, calcolata UNA volta per `resolve()`); candidati ordinati
+  priority/valid_from/id, vince il primo della categoria piu' vicina (`closestCategoryRule`). Catena 0089 invariata
+  (personali 1-3 prima dei gradini di ruolo, prodotto prima di categoria).
+- Validazione regole: `ActiveProductCategory` al posto di `SelectableProductCategory` (contenitori ammessi, inattive
+  no). `ProductCategorySelectableTest` AC-012 (solo il caso commissioni) aggiornato: requisito cambiato.
+- Nuovo `GET /api/product-category-nodes/for-select` (`ProductCategoryNodeForSelectController`,
+  `ProductCategoryForSelectResolver::resolveNodes`, request/resource dei rami riusate, `resolvePlain` condiviso con
+  `resolveBranches`): tutte le categorie attive, contenitori compresi; `product-categories/for-select` invariato.
+- Frontend: form Configuratore usa `PRODUCT_CATEGORY_NODES_FOR_SELECT_RESOURCE` + hint `categoryBranchHint`.
+- Import: tolto il rifiuto "not selectable" da `CommissionConfigurationsSource`.
+- Verifiche: CommissionConfigurations 40, ProductCategories 324, Migration 374 verdi; Vitest commission+categories
+  280, help+migrations 145 verdi; Pint/ESLint/`tsc -b` puliti. Quotes: 1 fallito `QuoteDocumentPdfTest` "real PDF"
+  per `DocumentConversionException` (conversione PDF dell'ambiente, non legato alle commissioni).
+- Manuale: guide in-app commission-configurations e product-categories (it/en), testo migrazione commissioni,
+  manuale Claude Docs (elenco "come si sceglie la regola" + riga Selezionabile). PDF da rigenerare.
+- Da fare: rilanciare l'import "Configuratore commissioni" (attese ~585 create, 30 fallite).
+
 ## MIGRAZIONI: PRODOTTI SENZA CATEGORIA IN "No categoria" (2026-10-12) — VERDE, COMMITTATO
 
 - Problema utente: 24 prodotti legacy falliti con `category_id is required` (sconti, prove, voci di servizio:

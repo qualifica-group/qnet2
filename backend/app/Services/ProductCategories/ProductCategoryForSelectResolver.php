@@ -131,10 +131,30 @@ class ProductCategoryForSelectResolver
      */
     public function resolveBranches(ForSelectQuery $query): ForSelectResult
     {
-        $base = ProductCategory::query()->select(['id', 'name'])->whereHas('children');
-
         // Spec 0208 D-5: no opt-out here, the criteria editor never needs
         // inactive branches (saved values still hydrate via `ids[]`).
+        return $this->resolvePlain(ProductCategory::query()->select(['id', 'name'])->whereHas('children'), $query);
+    }
+
+    /**
+     * The NODE picker (spec 0223 D-5): every active category, containers and
+     * leaves alike, `is_selectable` ignored — the commission configurator's
+     * category, whose rule covers the whole branch. A separate scope for the
+     * same reason as resolveBranches(): resolve() keeps its selectable filter.
+     */
+    public function resolveNodes(ForSelectQuery $query): ForSelectResult
+    {
+        return $this->resolvePlain(ProductCategory::query()->select(['id', 'name']), $query);
+    }
+
+    /**
+     * Active-only, searchable, paginated `{id, name}` page plus the `ids[]`
+     * hydration, without the business-function / management-mode meta.
+     *
+     * @param  Builder<ProductCategory>  $base
+     */
+    private function resolvePlain(Builder $base, ForSelectQuery $query): ForSelectResult
+    {
         $this->excludeInactive($base);
 
         if ($query->hasSearch()) {

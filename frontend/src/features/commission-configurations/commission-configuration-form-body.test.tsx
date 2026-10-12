@@ -15,18 +15,20 @@ vi.mock('@/components/form/relation-select-field', async () => {
     // `useController`), so tests can both read the current value and simulate
     // a pick — the real `AsyncPaginatedSelect` needs network data this suite
     // does not provide.
-    RelationSelectField: ({ control, name, label, resource, selected }: {
+    RelationSelectField: ({ control, name, label, resource, selected, hint }: {
       control: Parameters<typeof useController>[0]['control']
       name: Parameters<typeof useController>[0]['name']
       label: string
       resource: string
       selected: { id: number; name: string } | null
+      hint?: string
     }) => {
       const { field } = useController({ control, name })
       return (
         <div>
           <span>{`${label}: ${resource}: ${String(field.value)}`}</span>
           {selected ? <span>{`${name} selected: ${selected.name}`}</span> : null}
+          {hint ? <span>{hint}</span> : null}
           <button type="button" onClick={() => field.onChange(99)}>{`pick ${name}`}</button>
         </div>
       )
@@ -91,6 +93,15 @@ describe('CommissionConfigurationFormBody', () => {
     fireEvent.change(container.querySelector('textarea[name="internal_note"]')!, { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(onCancel).toHaveBeenCalled()
+  })
+
+  it('picks the category among every active category, containers included, and says the rule covers the branch (spec 0223 AC-008)', () => {
+    render(wrapper(
+      <CommissionConfigurationFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+    ))
+
+    expect(screen.getByText(/^Product category: product-category-nodes:/)).toBeInTheDocument()
+    expect(screen.getByText(/Also applies to every subcategory/)).toBeInTheDocument()
   })
 
   it('renders the product relation for an edit product rule', () => {

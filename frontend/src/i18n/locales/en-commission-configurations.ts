@@ -23,7 +23,7 @@ export const commissionConfigurations = {
     name: 'Configuration name', recipient_role: 'Recipient role', application_scope: 'Application scope',
     product_category_id: 'Product category', product_id: 'Product', recipient_type: 'Recipient type', recipient_id: 'Recipient', commission_type: 'Commission type',
     value: 'Commission value', priority: 'Rule priority', valid_from: 'Valid from', valid_until: 'Valid until',
-    status: 'Status', internal_note: 'Internal service note', searchCategory: 'Search product categories…',
+    status: 'Status', internal_note: 'Internal service note', searchCategory: 'Search product categories…', categoryBranchHint: 'Also applies to every subcategory; when several rules cover the product, the closest category wins.',
     searchProduct: 'Search products…', searchRecipient: 'Search recipient…', selectPlaceholder: 'Select…', selectEmpty: 'No results found.', selectError: 'Unable to load options.',
     sections: { scope: 'Identity and scope', calculation: 'Calculation', validity: 'Validity', notes: 'Internal note' },
     hints: { priority: 'Decides which rule wins when several valid configurations compete for the same role and the same scope: the highest number wins, then the most recent start date. A Product rule always beats a Category rule regardless.' },

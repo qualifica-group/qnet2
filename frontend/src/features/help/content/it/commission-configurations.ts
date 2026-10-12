@@ -24,7 +24,7 @@ const guide: HelpGuide = {
       id: 'rule-selection',
       title: 'Come viene scelta la regola',
       blocks: [
-        { type: 'list', items: ['Valgono solo le regole **Attiva** e valide alla data di riferimento.', 'Il destinatario non si sceglie sulla riga: Commerciale, Segnalatore e Supervisore sono quelli dell’offerta, il Fornitore è quello del prodotto.', 'Le regole per un destinatario preciso vincono su quelle valide per tutto il ruolo.', 'A parità, una regola su un Prodotto vince su una regola su una Categoria.', 'Se restano più regole, vince la **Priorità regola** più alta; a parità, la data di inizio più recente.'] },
+        { type: 'list', items: ['Valgono solo le regole **Attiva** e valide alla data di riferimento.', 'Il destinatario non si sceglie sulla riga: Commerciale, Segnalatore e Supervisore sono quelli dell’offerta, il Fornitore è quello del prodotto.', 'Le regole per un destinatario preciso vincono su quelle valide per tutto il ruolo.', 'A parità, una regola su un Prodotto vince su una regola su una Categoria.', 'Una regola su una Categoria vale anche per tutte le sue sottocategorie, e si può mettere anche su una categoria madre (ad esempio ISO). Se più regole di categoria coprono il prodotto, vince quella sulla categoria più vicina al prodotto.', 'Se restano più regole sulla stessa categoria o sullo stesso prodotto, vince la **Priorità regola** più alta; a parità, la data di inizio più recente.'] },
       ],
     },
     {

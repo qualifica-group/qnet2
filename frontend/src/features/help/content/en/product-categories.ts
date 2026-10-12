@@ -27,7 +27,7 @@ const guide: HelpGuide = {
             ['Single offer per opportunity', 'How many offers an opportunity can have.'],
             ['Generates a contract', 'Whether an offer closed with a positive outcome opens a contract.'],
             ['Simplified offer line', 'Whether the offer line fills itself in Request Management.'],
-            ['Selectable', 'Whether the category appears in the selection lists of products, product lines, projects, campaigns and commission rules.'],
+            ['Selectable', 'Whether the category appears in the selection lists of products, product lines, projects and campaigns. Commission rules can use any active category, a parent one too: they apply to the whole branch.'],
             ['Active', 'Whether the category, with its whole branch and its products, appears in the input fields. Turned off, it disappears from there but stays in the history and in the grid filters.'],
             ['Reportable and Report columns', 'Rows and columns of the report and dashboard of Request Management and Enrollee Management.'],
             ['Account Managers', 'The name of each Account Manager level (for example "Tutor" instead of "Account manager 1").'],

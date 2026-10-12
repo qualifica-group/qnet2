@@ -61,5 +61,5 @@ export const migrationRequirements = {
   'product-suppliers':
     'Non crea record: imposta il fornitore sui prodotti importati. Senza il prodotto la riga fallisce; un fornitore non ancora importato da Anagrafiche viene saltato con un avviso. Un fornitore già scelto in QNet non viene sovrascritto.',
   'commission-configurations':
-    'Ogni regola vuole già importati il suo destinatario (anagrafica, referente o utente) e il prodotto o la categoria: se mancano, la riga fallisce. Le regole su categorie non selezionabili, come il ramo APL legacy e le funzioni “OLD”, falliscono.',
+    'Ogni regola vuole già importati il suo destinatario (anagrafica, referente o utente) e il prodotto o la categoria: se mancano, la riga fallisce. Una regola su una categoria madre, come ISO o GDPR, si importa e vale per tutte le sue sottocategorie.',
 }
