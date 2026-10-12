@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MIGRAZIONI — NOMI SORGENTI IN ITALIANO, SORGENTI DI COLLEGAMENTO (2026-10-12) — VERDE, COMMITTATO
+
+- Richiesta utente: in /migrations tradurre in italiano le sorgenti ancora in inglese; ogni sorgente che fa da
+  collegamento deve dirlo nel nome. Aggiunte in `it-/en-migrations.ts` le chiavi `sources.*` mancanti (task-templates,
+  payment-methods, cost-products, email-templates, document-bundles, commission-configurations) e le sorgenti di
+  collegamento con il suffisso "— collega …" / "— link …": `product-suppliers` (Prodotti — collega fornitori),
+  `work-order-line-payments` (Commesse — collega dati di pagamento alle righe), `business-function-members`
+  rinominata da "riconcilia" a "collega responsabile e operatori"; `product-category-attributes` lo era gia'.
+  Testi IT: "source" -> "sorgente". Il `label()` backend resta inglese (solo fallback). Le etichette delle colonne
+  del template/anteprima e i messaggi del report restano inglesi (vengono dal backend).
+- Guida in-app migrations IT/EN aggiornata (elenco sorgenti + nota sulle sorgenti di collegamento); manuale Claude
+  Docs aggiornato (nomi italiani + paragrafo collegamenti); PDF derivato da rigenerare.
+- Verifica: Vitest migrations + help 135/135, ESLint pulito, `tsc -b --force` pulito.
+
 ## COMMESSA — SCADENZA CONTRATTO NEI KPI, CONTRATTO CON CODICE (2026-10-12) — VERDE, COMMITTATO
 
 - Richiesta utente: nel dettaglio commessa la Scadenza contratto prende il posto di "Contratto n." nella striscia
