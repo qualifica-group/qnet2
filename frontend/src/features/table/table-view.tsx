@@ -24,6 +24,18 @@ export type { TableViewHandle } from '@/features/table/use-table-view-controller
 
 const GROUP_KEY_SEPARATOR = ','
 
+/** Explicit actions-column width for the opt-in action layouts; undefined = DataTable default. */
+function actionsColumnWidthFor(
+  actionCount: number,
+  labeledActions: boolean | undefined,
+  inlineAllActions: boolean | undefined,
+): number | undefined {
+  if (labeledActions) {
+    return LABELED_ACTIONS_COLUMN_WIDTH
+  }
+  return inlineAllActions && actionCount > INLINE_ACTION_LIMIT ? inlineActionsColumnWidth(actionCount) : undefined
+}
+
 /**
  * Generic, domain-driven table. Given a `domain`, it loads the backend config,
  * builds the SSRM datasource, and mounts the agnostic DataTable wrapper fused
@@ -39,18 +51,6 @@ const GROUP_KEY_SEPARATOR = ','
  * Adding a new domain requires no change here — only a new adapter that mounts
  * this component with its `domain`, renderer map and action handler.
  */
-/** Explicit actions-column width for the opt-in action layouts; undefined = DataTable default. */
-function actionsColumnWidthFor(
-  actionCount: number,
-  labeledActions: boolean | undefined,
-  inlineAllActions: boolean | undefined,
-): number | undefined {
-  if (labeledActions) {
-    return LABELED_ACTIONS_COLUMN_WIDTH
-  }
-  return inlineAllActions && actionCount > INLINE_ACTION_LIMIT ? inlineActionsColumnWidth(actionCount) : undefined
-}
-
 export const TableView = forwardRef<TableViewHandle, TableViewProps>(
   function TableView(
     {

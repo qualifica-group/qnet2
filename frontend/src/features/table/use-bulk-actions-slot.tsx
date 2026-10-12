@@ -153,19 +153,29 @@ export function useBulkActionsSlot({
           {items.map((item, index) => {
             const previous = items[index - 1]
             const needsSeparator = Boolean(item.destructive && previous && !previous.destructive)
+            const entry = (
+              <DropdownMenuItem
+                variant={item.destructive ? 'destructive' : 'default'}
+                disabled={item.disabled}
+                onSelect={() => item.onSelect()}
+              >
+                {item.icon ? <item.icon aria-hidden="true" /> : null}
+                {item.label}
+              </DropdownMenuItem>
+            )
+            // A disabled item swallows pointer events, so its reason sits on a wrapper;
+            // only the entries that carry one get it (the DOM of the others is unchanged).
+            const explained = item.disabled && item.disabledReason
             return (
               <Fragment key={item.key}>
                 {needsSeparator ? <DropdownMenuSeparator /> : null}
-                <span title={item.disabled ? item.disabledReason : undefined} className="block">
-                  <DropdownMenuItem
-                    variant={item.destructive ? 'destructive' : 'default'}
-                    disabled={item.disabled}
-                    onSelect={() => item.onSelect()}
-                  >
-                    {item.icon ? <item.icon aria-hidden="true" /> : null}
-                    {item.label}
-                  </DropdownMenuItem>
-                </span>
+                {explained ? (
+                  <span title={item.disabledReason} className="block">
+                    {entry}
+                  </span>
+                ) : (
+                  entry
+                )}
               </Fragment>
             )
           })}

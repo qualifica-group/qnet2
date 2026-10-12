@@ -39,6 +39,11 @@
   `PurchaseOrderMergeService`), MT-11 (FE dialog stato/unifica/storico, hook PDF/email), MT-12 (FE Genera ODA in
   Gestione righe RDA, link colonna ODA via `purchase_order{id,code}` sulle righe). Verde: Pest PurchaseOrders+
   PurchaseRequests 218/218, Vitest purchase-orders/purchase-requests/table/i18n 674/674, tsc -b --force, ESLint, Pint.
+- Griglia condivisa: opzione opt-in `inlineAllActions` (row-actions + table-view, `inlineActionsColumnWidth`) attiva
+  su liste ODA e RDA = niente menu "..." (richiesta utente); icona `file-down` mappata per l'azione PDF ODA (prima
+  ricadeva sull'icona di fallback a tre puntini). Pulizie post-verifier: docblock di TableView
+  rimesso sopra il componente; in use-bulk-actions-slot il wrapper `<span title>` solo per le voci con disabledReason.
+- Verifier B: Pest 9941/9945 (3 QuoteDocumentPdfTest = soffice), Vitest mirato 815/815, probe MySQL dev senza 5xx.
 - Resta checkpoint C: MT-6 (PDF + email ODA lato BE: gli hook FE use-purchase-order-pdf/email chiamano endpoint non
   ancora presenti), MT-13 (guide complete), MT-14 (gate completo).
 
