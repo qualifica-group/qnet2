@@ -1,12 +1,9 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWatch, type Control } from 'react-hook-form'
-import { ListChecks } from 'lucide-react'
-import { FormSection } from '@/components/form-section'
 import { FormControl, FormDescription } from '@/components/ui/form'
 import { Switch } from '@/components/ui/switch'
 import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
 import { AttributeAssignmentEditor } from '@/features/product-categories/attribute-assignment-editor'
 import { useEffectiveAttributes } from '@/features/product-categories/use-effective-attributes'
 import type { AttributeCatalogEntry } from '@/features/attributes/use-attribute-catalog'
@@ -100,7 +97,7 @@ function InheritanceToggle({ control, context }: InheritanceToggleProps) {
   )
 }
 
-interface ProductCategoryAttributesSectionProps {
+interface ProductCategoryAttributesEditorProps {
   control: Control<ProductCategoryFormValues>
   mode: ProductCategoryFormMode
   /** Current watched `parent_id`: what the category inherits comes from the SELECTED parent, not the saved one. */
@@ -108,21 +105,22 @@ interface ProductCategoryAttributesSectionProps {
 }
 
 /**
- * The category's attribute assignments (spec 0061/0098): its own rows plus the
- * read-only list of what each usage context inherits from the ancestry.
+ * The category's attribute assignments editor (spec 0061/0098): its own rows
+ * plus the read-only list of what each usage context inherits from the
+ * ancestry. The detail's block row and the create form's open section both
+ * render it (spec 0229 D-5).
  *
  * The inherited preview reacts to the per-context barrier immediately, not
  * after the save: opting a context out means it inherits nothing, and the list
  * must say so while the switch is still under the finger — only for the
  * context whose switch moved, the other two are untouched.
  */
-export function ProductCategoryAttributesSection({
+export function ProductCategoryAttributesEditor({
   control,
   mode,
   parentId,
-}: ProductCategoryAttributesSectionProps) {
+}: ProductCategoryAttributesEditorProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
 
   const inheritsProduct = useWatch({ control, name: 'inherits_product_attributes' })
   const inheritsQuote = useWatch({ control, name: 'inherits_quote_attributes' })
@@ -150,42 +148,32 @@ export function ProductCategoryAttributesSection({
     ],
   )
 
-  if (!fieldPermission('attributes').visible) {
-    return null
-  }
-
   return (
-    <FormSection
-      icon={ListChecks}
-      title={t('productCategories.form.sections.attributes.title')}
-      description={t('productCategories.form.sections.attributes.description')}
+    <MetaField
+      control={control}
+      name="attributes"
+      metaKey="attributes"
+      label={t('productCategories.form.attributes')}
     >
-      <MetaField
-        control={control}
-        name="attributes"
-        metaKey="attributes"
-        label={t('productCategories.form.attributes')}
-      >
-        {({ field, disabled }) => (
-          <AttributeAssignmentEditor
-            value={field.value}
-            onChange={field.onChange}
-            known={knownAttributes}
-            inherited={inherited}
-            disabled={disabled}
-            // A root category has no ancestry to inherit from: no switch to show.
-            productInheritToggle={
-              parentId !== null ? <InheritanceToggle control={control} context="product" /> : null
-            }
-            quoteInheritToggle={
-              parentId !== null ? <InheritanceToggle control={control} context="quote" /> : null
-            }
-            workOrderInheritToggle={
-              parentId !== null ? <InheritanceToggle control={control} context="work_order" /> : null
-            }
-          />
-        )}
-      </MetaField>
-    </FormSection>
+      {({ field, disabled }) => (
+        <AttributeAssignmentEditor
+          value={field.value}
+          onChange={field.onChange}
+          known={knownAttributes}
+          inherited={inherited}
+          disabled={disabled}
+          // A root category has no ancestry to inherit from: no switch to show.
+          productInheritToggle={
+            parentId !== null ? <InheritanceToggle control={control} context="product" /> : null
+          }
+          quoteInheritToggle={
+            parentId !== null ? <InheritanceToggle control={control} context="quote" /> : null
+          }
+          workOrderInheritToggle={
+            parentId !== null ? <InheritanceToggle control={control} context="work_order" /> : null
+          }
+        />
+      )}
+    </MetaField>
   )
 }

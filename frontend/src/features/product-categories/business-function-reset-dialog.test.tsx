@@ -1,15 +1,20 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { ProductCategoryForm } from '@/features/product-categories/product-category-form'
+import { ProductCategoryDetailView } from '@/features/product-categories/product-category-detail'
+import {
+  categoryWrapper,
+  category as baseCategory,
+  pencilOf,
+  permissionsFor,
+  saveRow,
+} from '@/features/product-categories/product-category-test-fixtures'
 import { collectDescendantsWithOwnBusinessFunction } from '@/features/product-categories/business-function-inheritance'
 import type {
   ProductCategoryDetailWithPermissions,
   ProductCategoryTreeNode,
 } from '@/features/product-categories/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
+import type { ResourceMeta } from '@/features/authorization/types'
 import type { ForSelectItem } from '@/features/for-select/types'
 
 /**
@@ -24,14 +29,15 @@ import type { ForSelectItem } from '@/features/for-select/types'
 const updateProductCategoryMock = vi.fn()
 const fetchProductCategoryTreeMock = vi.fn<() => Promise<ProductCategoryTreeNode[]>>()
 
-vi.mock('@/features/product-categories/api', () => ({
+vi.mock('@/features/product-categories/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/product-categories/api')>()),
   createProductCategory: vi.fn(),
   updateProductCategory: (...args: unknown[]) => updateProductCategoryMock(...args),
   fetchProductCategoryTree: () => fetchProductCategoryTreeMock(),
   fetchEffectiveAttributes: () => Promise.resolve([]),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
@@ -54,24 +60,12 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
-const FULL_ACCESS: ResourcePermissions['resource'] = {
-  view: true,
-  create: true,
-  update: true,
-  delete: true,
-  export: true,
-  import: true,
-}
-
-function permissivePermissions(): ResourcePermissions {
-  return { resource: FULL_ACCESS, fields: {}, actions: {} }
-}
-
 function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
+  return categoryWrapper().wrapper
+}
+
+function renderDetail(detail: ProductCategoryDetailWithPermissions) {
+  return render(<ProductCategoryDetailView category={detail} />, { wrapper: wrapper() })
 }
 
 function treeNode(overrides: Partial<ProductCategoryTreeNode> = {}): ProductCategoryTreeNode {
@@ -126,51 +120,9 @@ function treeWithOwningDescendants(): ProductCategoryTreeNode[] {
   ]
 }
 
-function category(
-  overrides: Partial<ProductCategoryDetailWithPermissions> = {},
-): ProductCategoryDetailWithPermissions {
-  return {
-    id: 4,
-    name: 'Laptops',
-    parent_id: 1,
-    parent: { id: 1, name: 'Electronics' },
-    inherits_product_attributes: true,
-    inherits_quote_attributes: true,
-    inherits_work_order_attributes: true,
-    description: null,
-    attributes: [],
-    inherited_attributes: [],
-    created_at: '2026-01-01T00:00:00Z',
-    business_function_id: null,
-    requires_quote: false,
-    business_function: null,
-    effective_business_function: null,
-    requires_quote_source_category: null,
-    is_selectable: true,
-    is_active: true,
-    is_reportable: false,
-    effective_is_reportable: false,
-    is_reportable_source_category: null,
-    report_columns: null,
-    effective_report_columns: [],
-    report_columns_source_category: null,
-    inherited_report_columns: [],
-    inherited_report_columns_source_category: null,
-    management_mode: 'multiple',
-    single_quote_per_opportunity: false,
-    generates_contract: true,
-    management_mode_source_category: null,
-    single_quote_per_opportunity_source_category: null,
-    generates_contract_source_category: null,
-    simplified_offer_line: false,
-    simplified_offer_line_override: null,
-    simplified_offer_line_source_category: null,
-    manager_labels: {},
-    inherits_manager_labels: true,
-    inherited_manager_labels: {},
-    permissions: permissivePermissions(),
-    ...overrides,
-  }
+/** A category under "Electronics" that owns no business function (the shared root fixture, reparented). */
+function category(overrides: Partial<ProductCategoryDetailWithPermissions> = {}): ProductCategoryDetailWithPermissions {
+  return baseCategory({ id: 4, parent_id: 1, parent: { id: 1, name: 'Electronics' }, ...overrides })
 }
 
 function queryState(items: ForSelectItem[] = []) {
@@ -185,17 +137,15 @@ function queryState(items: ForSelectItem[] = []) {
   }
 }
 
-/** Renders the edit form, picks `Support` in the business-function field and saves. */
+/** Renders the detail, opens the business function row, picks `Support` and saves. */
 async function pickBusinessFunctionAndSave(detail = category()) {
-  render(
-    <ProductCategoryForm mode={{ type: 'edit', category: detail }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-    { wrapper: wrapper() },
-  )
+  renderDetail(detail)
 
+  fireEvent.click(pencilOf('businessFunction') as HTMLElement)
   const trigger = await screen.findByRole('combobox', { name: 'Business function' })
   fireEvent.click(trigger)
   fireEvent.click(screen.getByRole('option', { name: 'Support' }))
-  fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+  saveRow()
 }
 
 beforeAll(async () => {
@@ -208,7 +158,7 @@ beforeEach(() => {
   fetchProductCategoryTreeMock.mockReset()
   fetchProductCategoryTreeMock.mockResolvedValue(treeWithOwningDescendants())
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissivePermissions() })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
   useForSelectMock.mockReset()
   useForSelectMock.mockReturnValue(queryState([{ id: 7, label: 'Support' }]))
 })
@@ -230,7 +180,7 @@ describe('collectDescendantsWithOwnBusinessFunction', () => {
   })
 })
 
-describe('ProductCategoryForm — business function reset confirmation', () => {
+describe('business function reset confirmation (in place, spec 0229)', () => {
   it('holds the save back and lists the descendants about to be cleared', async () => {
     await pickBusinessFunctionAndSave()
 
@@ -278,17 +228,11 @@ describe('ProductCategoryForm — business function reset confirmation', () => {
   })
 
   it('does not warn when the edit leaves the business function untouched', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{ type: 'edit', category: category() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(category())
 
+    fireEvent.click(pencilOf('name') as HTMLElement)
     fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'Laptops Pro' } })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    saveRow()
 
     await waitFor(() => expect(updateProductCategoryMock).toHaveBeenCalledTimes(1))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()

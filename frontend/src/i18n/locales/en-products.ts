@@ -137,8 +137,6 @@ export const productCategories = {
     newRootCategory: 'New category',
     createTitle: 'Create category',
     createSubtitle: 'Add a new product category.',
-    editTitle: 'Edit category',
-    editSubtitle: 'Update the selected category.',
     name: 'Name',
     nameRequired: 'Name is required.',
     nameMax: 'Name must be at most 191 characters.',
@@ -288,13 +286,15 @@ export const productCategories = {
     inheritsManagerLabelsHint:
       'When off, this category ignores its ancestors: neither it nor its subcategories inherit these labels from above.',
     inheritedManagerLabels: 'Inherited from ancestor categories',
-    summary: {
-      title: 'Summary',
-      description: 'What you are about to save.',
-    },
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The category has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     created: 'Category created successfully.',
     updated: 'Category updated successfully.',
     deleted: 'Category deleted successfully.',
@@ -305,16 +305,12 @@ export const productCategories = {
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name, parent and description of the category.',
       },
       rules: {
         title: 'Management rules',
-        description:
-          'What this category imposes downstream: quoting, card lines, offers per opportunity and selectability.',
       },
       attributes: {
         title: 'Attributes',
-        description: 'Attributes assigned to this category, plus what it inherits.',
       },
       productAttributes: {
         title: 'Product attributes',
@@ -332,8 +328,6 @@ export const productCategories = {
       },
       managerLabels: {
         title: 'Account managers',
-        description:
-          'Customize the denomination of each Account Manager level for this category. Fields left blank use the default denomination.',
       },
     },
   },

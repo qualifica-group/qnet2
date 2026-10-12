@@ -36,7 +36,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'Una modifica a una categoria radice può cambiare il comportamento di tutto il ramo. Prima di salvare controlla il pannello Riepilogo a lato del form.',
+          text: 'Una modifica a una categoria radice può cambiare il comportamento di tutto il ramo. Ricontrolla le regole della radice prima di confermare.',
         },
       ],
     },
@@ -77,7 +77,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Azione sulla riga', 'Cosa fa'],
           rows: [
-            ['Visualizza', 'Scheda in sola lettura, con regole, attributi, gestori account e anteprima del layout.'],
+            ['Visualizza', 'La scheda con regole, attributi, gestori account e anteprima del layout: ogni riga si modifica sul posto (vedi Modificare una categoria).'],
             ['Layout attributi', "Apre l'editor del layout."],
             ['Duplica', 'Apre il form di creazione già compilato con i dati della categoria (vedi Duplicare una categoria).'],
             ['Elimina', 'Elimina dopo conferma (vedi i vincoli più avanti).'],
@@ -101,12 +101,13 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Clicca Nuova categoria.',
-            'Compila Dettagli, lasciando Categoria padre su Nessun padre (categoria radice).',
+            'Clicca Nuova categoria: si apre la scheda della nuova categoria, uguale a quella di una categoria esistente, con le righe chiuse.',
+            'Per compilare una riga premi la matita (o il valore), scrivi o scegli e premi Fatto; Ripristina riporta la riga com\'era. Nulla viene salvato finché non premi Salva.',
+            'In Dettagli scrivi il Nome, lasciando Categoria padre su Nessun padre (categoria radice).',
             'Imposta le Regole di gestione: sulla radice sono tutte modificabili.',
-            'Assegna gli attributi nelle tre sezioni.',
-            'Se serve, dai un nome ai livelli di Gestori Account.',
-            'Controlla il Riepilogo e clicca Salva. Compare "Categoria creata con successo."',
+            'Assegna gli attributi nelle tre sezioni: l\'editor è già aperto.',
+            'Se serve, dai un nome ai livelli di Gestori Account: anche questo editor è già aperto.',
+            'Premi Salva (in alto o in fondo alla pagina). Compare "Categoria creata con successo."; Annulla chiede conferma prima di scartare quanto inserito.',
           ],
         },
         {
@@ -121,7 +122,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Regole di gestione: ogni regola è un riquadro con interruttore; l'icona (i) ne spiega l'effetto.",
+          text: "Regole di gestione: ogni regola è una riga; aprendola compare il riquadro con interruttore, e l'icona (i) ne spiega l'effetto.",
         },
         {
           type: 'table',
@@ -156,7 +157,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Clicca Nuova categoria e scrivi il Nome.',
-            'In Categoria padre cerca e scegli la categoria superiore: il form si aggiorna subito.',
+            'In Categoria padre cerca e scegli la categoria superiore, poi premi Fatto: le righe delle regole del ramo mostrano subito il valore ereditato.',
             'Imposta ciò che vale solo qui: Selezionabile, Attiva, Visibile nei report, Colonne report, Semplificazione riga offerta, i tuoi attributi e le etichette dei gestori.',
             'Clicca Salva.',
           ],
@@ -164,8 +165,8 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'Le cinque regole del ramo si bloccano con il badge Ereditata da "Nome radice".',
-            'La Funzione aziendale si blocca se un antenato ne ha una.',
+            'Le righe delle quattro regole decise dalla radice mostrano il badge Ereditata da "Nome radice" e non hanno la matita; Semplificazione riga offerta mostra Ereditata da … ma si può forzare.',
+            'La riga Funzione aziendale non ha la matita se un antenato ne ha una.',
             "Ogni blocco di attributi mostra Eredita dal padre e l'elenco Ereditati dalle categorie antenate.",
           ],
         },
@@ -179,8 +180,8 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Nella riga della categoria da copiare scegli Duplica (serve il permesso di creare categorie).',
-            'Si apre il form di creazione con tutti i dati della categoria: il Nome ha il suffisso " (copia)", padre, regole, attributi, gestori account e altri campi sono gli stessi.',
-            'Cambia ciò che serve (almeno il Nome) e clicca Salva.',
+            'Si apre la scheda di creazione con tutti i dati della categoria: il Nome ha il suffisso " (copia)", padre, regole, attributi, gestori account e altri campi sono gli stessi.',
+            'Cambia ciò che serve (almeno il Nome) con la matita di ogni riga e clicca Salva.',
           ],
         },
         {
@@ -189,6 +190,29 @@ const guide: HelpGuide = {
             'Anche il layout attributi della categoria viene copiato. Se nella copia togli un attributo, il campo sparisce dal layout copiato.',
             "Non vengono copiati le sottocategorie, i prodotti e lo storico: la copia è una categoria nuova e vuota.",
             "La categoria originale non cambia.",
+          ],
+        },
+      ],
+    },
+    {
+      id: 'editing-a-category',
+      title: 'Modificare una categoria',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "La scheda di una categoria non ha un modulo di modifica: ogni riga si modifica sul posto, una alla volta. Premi la matita (o il valore) su Nome, Categoria padre, Descrizione, Funzione aziendale, su una regola di gestione o su un campo personalizzato, cambia il valore e premi Salva; Annulla o Esc lasciano la riga com'era. Ogni Salva invia solo ciò che hai cambiato in quella riga.",
+        },
+        {
+          type: 'paragraph',
+          text: "Attributi e Gestori Account sono ciascuno un'unica riga a tutta larghezza: la matita apre lo stesso editor della creazione (con i tre Eredita dal padre per gli attributi e quello dei gestori) e Salva li salva tutti insieme.",
+        },
+        {
+          type: 'list',
+          items: [
+            'Le quattro regole decise dalla radice (Prevede preventivo, Modalità di gestione, Offerta unica per opportunità, Prevede un contratto) e la Funzione aziendale ereditata non hanno la matita sulle sottocategorie: mostrano il valore con il badge Ereditata da …; per cambiarle apri la categoria indicata.',
+            'La riga Colonne report compare solo se la categoria è visibile nei report.',
+            'Se assegni una funzione aziendale a una categoria con sottocategorie che ne hanno una propria, prima di salvare compare la richiesta di conferma.',
+            'Senza il permesso di modifica le righe non mostrano la matita.',
           ],
         },
       ],
@@ -205,7 +229,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Tipo', 'Impostazioni', 'Come funziona'],
           rows: [
-            ['Decide solo la radice', 'Prevede preventivo, Modalità di gestione, Offerta unica per opportunità, Prevede un contratto', 'Tutto il ramo le segue; sulle sottocategorie sono bloccate. Cambiandole sulla radice cambiano subito per tutto il ramo.'],
+            ['Decide solo la radice', 'Prevede preventivo, Modalità di gestione, Offerta unica per opportunità, Prevede un contratto', 'Tutto il ramo le segue; sulle sottocategorie la riga mostra il valore senza matita. Cambiandole sulla radice cambiano subito per tutto il ramo.'],
             ["Dall'antenato più vicino", 'Funzione aziendale', "Vale quella dell'antenato più vicino che ne ha una; se nessuno ce l'ha, la scegli tu e da lì in giù si eredita."],
             ['Ereditata ma forzabile', 'Visibile nei report, Colonne report, Semplificazione riga offerta', 'La sottocategoria prende il valore del padre (Ereditata da …); se lo cambi compare Forzato. Riportandolo al valore del padre torna a ereditare.'],
             ['Solo per la categoria', 'Selezionabile', 'Non si eredita mai: un padre non selezionabile può avere figli selezionabili.'],
@@ -284,7 +308,7 @@ const guide: HelpGuide = {
             'Attiva Obbligatorio se il campo va sempre compilato.',
             'In Ordine scrivi un numero: i più bassi vengono prima.',
             'Per togliere un attributo usa Rimuovi attributo.',
-            'Clicca Salva.',
+            'Premi Salva (sulla scheda di una categoria esistente) per salvare tutti gli attributi e i tre Eredita dal padre insieme; Annulla scarta le modifiche.',
           ],
         },
         {
@@ -370,8 +394,8 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Attiva Visibile nei report: compare il riquadro Colonne report.',
-            'Spunta le colonne che ti servono; il contatore mostra quante ne hai scelte (per esempio "7/14"). Tutte e Nessuna selezionano o svuotano.',
-            'Clicca Salva.',
+            'Sulla riga Colonne report premi la matita e spunta le colonne che ti servono; il contatore mostra quante ne hai scelte (per esempio "7/14"). Tutte e Nessuna selezionano o svuotano.',
+            'Premi Salva (Fatto nella creazione).',
           ],
         },
         {
@@ -390,7 +414,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Per spostare una categoria aprila, premi Modifica e cambia la Categoria padre (non puoi scegliere la categoria stessa né una sua discendente). Per spostarne molte:',
+          text: 'Per spostare una categoria aprila, premi la matita su Categoria padre, scegli il nuovo padre e premi Salva (non puoi scegliere la categoria stessa né una sua discendente). Per spostarne molte:',
         },
         {
           type: 'steps',
@@ -475,7 +499,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             "Progetta l'albero prima di caricare i prodotti: radici per area di business, contenitori al secondo livello, categorie selezionabili in fondo.",
-            'Decidi le regole sulla radice e verificale nel Riepilogo prima di salvare.',
+            'Decidi le regole sulla radice e ricontrollale prima di salvare.',
             'Assegna la funzione aziendale una sola volta, il più in alto possibile.',
             'Metti gli attributi comuni in alto e quelli specifici in basso.',
             'Disegna il layout sulla radice e personalizza solo dove serve.',

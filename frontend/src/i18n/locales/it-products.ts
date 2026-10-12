@@ -138,8 +138,6 @@ export const productCategories = {
     newRootCategory: 'Nuova categoria',
     createTitle: 'Crea categoria',
     createSubtitle: 'Aggiungi una nuova categoria prodotto.',
-    editTitle: 'Modifica categoria',
-    editSubtitle: 'Aggiorna la categoria selezionata.',
     name: 'Nome',
     nameRequired: 'Il nome è obbligatorio.',
     nameMax: 'Il nome deve avere al massimo 191 caratteri.',
@@ -290,13 +288,15 @@ export const productCategories = {
     inheritsManagerLabelsHint:
       'Se disattivato, questa categoria ignora i suoi antenati: né lei né le sue sottocategorie ereditano queste etichette dai livelli superiori.',
     inheritedManagerLabels: 'Ereditate dalle categorie antenate',
-    summary: {
-      title: 'Riepilogo',
-      description: 'Quello che stai per salvare.',
-    },
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'La categoria non è ancora stata creata: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     created: 'Categoria creata con successo.',
     updated: 'Categoria aggiornata con successo.',
     deleted: 'Categoria eliminata con successo.',
@@ -307,16 +307,12 @@ export const productCategories = {
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome, padre e descrizione della categoria.',
       },
       rules: {
         title: 'Regole di gestione',
-        description:
-          "Cosa impone questa categoria a valle: preventivo, righe di scheda, offerte per opportunità e selezionabilità.",
       },
       attributes: {
         title: 'Attributi',
-        description: 'Attributi assegnati a questa categoria, più quelli ereditati.',
       },
       productAttributes: {
         title: 'Attributi Prodotto',
@@ -334,8 +330,6 @@ export const productCategories = {
       },
       managerLabels: {
         title: 'Gestori Account',
-        description:
-          'Personalizza la denominazione di ogni livello di Gestore Account per questa categoria. I campi lasciati vuoti usano la denominazione predefinita.',
       },
     },
   },

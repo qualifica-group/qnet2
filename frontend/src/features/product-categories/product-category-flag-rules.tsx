@@ -1,104 +1,16 @@
 import { useController, type Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { ChartNoAxesColumn, MousePointerClick, Power, SlidersHorizontal } from 'lucide-react'
-import { FormSection } from '@/components/form-section'
+import { ChartNoAxesColumn, MousePointerClick, Power } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { FormControl, FormDescription } from '@/components/ui/form'
 import { Switch } from '@/components/ui/switch'
 import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
-import { ProductCategoryGeneratesContractField } from '@/features/product-categories/product-category-generates-contract-field'
-import { ProductCategoryManagementModeField } from '@/features/product-categories/product-category-management-mode-field'
-import { ProductCategoryReportColumnsField } from '@/features/product-categories/product-category-report-columns-field'
-import { ProductCategoryRequiresQuoteField } from '@/features/product-categories/product-category-requires-quote-field'
 import { ProductCategoryRuleCard } from '@/features/product-categories/product-category-rule-card'
-import { ProductCategorySimplifiedOfferLineField } from '@/features/product-categories/product-category-simplified-offer-line-field'
-import { ProductCategorySingleQuoteField } from '@/features/product-categories/product-category-single-quote-field'
 import { reportableOverrideFor } from '@/features/product-categories/reportable-inheritance'
 import type { ProductCategoryFormMode } from '@/features/product-categories/types'
 import type { ProductCategoryFormValues } from '@/features/product-categories/use-product-category-form'
 import { useInactiveAncestor } from '@/features/product-categories/use-inactive-ancestor'
 import { useReportableInheritance } from '@/features/product-categories/use-reportable-inheritance'
-
-interface ProductCategoryRulesSectionProps {
-  control: Control<ProductCategoryFormValues>
-  mode: ProductCategoryFormMode
-  /** Current watched `parent_id` form value — every root-owned rule reacts live to it. */
-  parentId: number | null
-}
-
-/**
- * "Regole di gestione" (user directive 2026-08-07): the behavioural rules a
- * category imposes downstream — whether it is quoted, how many product lines
- * a card carries, how many offers an opportunity may hold, whether a closed
- * deal becomes a contract (spec 0091), whether Gestione Richieste compiles
- * its offer row automatically (spec 0114), and whether it can be picked at
- * all. They used to sit mixed into the identity fields, where an operator
- * could not tell an inert label from a rule that changes what the system
- * accepts.
- *
- * Every rule but `is_selectable`/`is_reportable` is owned by the branch ROOT
- * and inherited by the whole subtree; each carries an (i) tooltip explaining
- * what turning it on actually does. `is_selectable` is a plain per-node flag;
- * `is_reportable` is inherited from the nearest ancestor but can be forced on
- * any node (ReportableRule). While the category is EFFECTIVELY reportable
- * (own or inherited), the statistics-column picker (spec 0141) appears right
- * below the tiles, spanning both columns.
- *
- * Two columns from `sm:` up: the tiles stay readable at 375px and the section
- * does not become a tall stack on a desktop config screen.
- */
-export function ProductCategoryRulesSection({
-  control,
-  mode,
-  parentId,
-}: ProductCategoryRulesSectionProps) {
-  const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  // Drives the report-columns picker below: it only makes sense once the
-  // category actually behaves as reportable, live watched value included
-  // (reparenting/toggling the switch shows or hides it without a save).
-  const reportable = useReportableInheritance(control, mode)
-
-  const visible =
-    fieldPermission('requires_quote').visible ||
-    fieldPermission('management_mode').visible ||
-    fieldPermission('single_quote_per_opportunity').visible ||
-    fieldPermission('generates_contract').visible ||
-    fieldPermission('simplified_offer_line').visible ||
-    fieldPermission('is_selectable').visible ||
-    fieldPermission('is_active').visible ||
-    fieldPermission('is_reportable').visible ||
-    fieldPermission('report_columns').visible
-
-  if (!visible) {
-    return null
-  }
-
-  return (
-    <FormSection
-      icon={SlidersHorizontal}
-      title={t('productCategories.form.sections.rules.title')}
-      description={t('productCategories.form.sections.rules.description')}
-    >
-      <div className="grid gap-3 sm:grid-cols-2">
-        <ProductCategoryRequiresQuoteField control={control} mode={mode} parentId={parentId} />
-        <ProductCategoryManagementModeField control={control} mode={mode} parentId={parentId} />
-        <ProductCategorySingleQuoteField control={control} mode={mode} parentId={parentId} />
-        <ProductCategoryGeneratesContractField control={control} mode={mode} parentId={parentId} />
-        <ProductCategorySimplifiedOfferLineField control={control} mode={mode} parentId={parentId} />
-
-        <SelectableRule control={control} />
-        <ActiveRule control={control} />
-        <ReportableRule control={control} mode={mode} />
-
-        {reportable.effective ? (
-          <ProductCategoryReportColumnsField control={control} mode={mode} className="sm:col-span-2" />
-        ) : null}
-      </div>
-    </FormSection>
-  )
-}
 
 interface SelectableRuleProps {
   control: Control<ProductCategoryFormValues>
@@ -109,7 +21,7 @@ interface SelectableRuleProps {
  * it needs none of the root-owned chrome — defined at module level, never
  * inside the section component.
  */
-function SelectableRule({ control }: SelectableRuleProps) {
+export function SelectableRule({ control }: SelectableRuleProps) {
   const { t } = useTranslation()
   const { field } = useController({ control, name: 'is_selectable' })
 
@@ -146,7 +58,7 @@ function SelectableRule({ control }: SelectableRuleProps) {
  * flag; when an ancestor is inactive the whole branch is effectively inactive
  * whatever this flag says, so the tile names the ancestor responsible.
  */
-function ActiveRule({ control }: SelectableRuleProps) {
+export function ActiveRule({ control }: SelectableRuleProps) {
   const { t } = useTranslation()
   const { field } = useController({ control, name: 'is_active' })
   const inactiveAncestor = useInactiveAncestor(control)
@@ -199,7 +111,7 @@ interface ReportableRuleProps {
  * EFFECTIVE value; setting it back to the inherited one stores null again
  * (reportableOverrideFor), so there is no separate reset control.
  */
-function ReportableRule({ control, mode }: ReportableRuleProps) {
+export function ReportableRule({ control, mode }: ReportableRuleProps) {
   const { t } = useTranslation()
   const { override, inherited, effective } = useReportableInheritance(control, mode)
   const sourceName = inherited?.sourceCategory?.name ?? null

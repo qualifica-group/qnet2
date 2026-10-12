@@ -36,7 +36,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'A change to a root category can change the behaviour of the whole branch. Before saving, check the Summary panel next to the form.',
+          text: 'A change to a root category can change the behaviour of the whole branch. Double-check the rules of the root before confirming.',
         },
       ],
     },
@@ -77,7 +77,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Row action', 'What it does'],
           rows: [
-            ['View', 'Read-only card, with rules, attributes, account managers and a layout preview.'],
+            ['View', 'The card with rules, attributes, account managers and a layout preview: every row is edited in place (see Editing a category).'],
             ['Attribute layout', 'Opens the layout editor.'],
             ['Duplicate', "Opens the create form pre-filled with the category's data (see Duplicating a category)."],
             ['Delete', 'Deletes after confirmation (see the constraints further below).'],
@@ -101,12 +101,13 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Click New category.',
-            'Fill in Details, leaving Parent category on No parent (root category).',
+            'Click New category: the card of the new category opens, the same as an existing category\'s, with its rows closed.',
+            'To fill in a row press its pencil (or the value), type or choose, and press Done; Revert puts the row back as it was. Nothing is saved until you press Save.',
+            'In Details write the Name, leaving Parent category on No parent (root category).',
             'Set the Management rules: on the root they are all editable.',
-            'Assign attributes in the three sections.',
-            'If needed, name the Account Manager levels.',
-            'Check the Summary and click Save. "Category created successfully." appears.',
+            'Assign attributes in the three sections: the editor is already open.',
+            'If needed, name the Account Manager levels: this editor is already open too.',
+            'Press Save (at the top or at the bottom of the page). "Category created successfully." appears; Cancel asks for confirmation before discarding what you entered.',
           ],
         },
         {
@@ -121,7 +122,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Management rules: each rule is a panel with a switch; the (i) icon explains its effect.',
+          text: 'Management rules: each rule is a row; opening it shows the panel with a switch, and the (i) icon explains its effect.',
         },
         {
           type: 'table',
@@ -156,7 +157,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Click New category and write the Name.',
-            'In Parent category search for and choose the category above it: the form updates immediately.',
+            'In Parent category search for and choose the category above it, then press Done: the rule rows of the branch show the inherited value immediately.',
             'Set what applies only here: Selectable, Active, Reportable, Report columns, Simplified offer line, your attributes and the manager labels.',
             'Click Save.',
           ],
@@ -164,8 +165,8 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'The branch\'s five rules lock with the Inherited from "Root name" badge.',
-            'The Business function locks if an ancestor already has one.',
+            'The rows of the four rules decided by the root show the Inherited from "Root name" badge and have no pencil; Simplified offer line shows Inherited from … but can be forced.',
+            'The Business function row has no pencil if an ancestor already has one.',
             'Each attribute block shows Inherit from parent and the Inherited from ancestor categories list.',
           ],
         },
@@ -179,8 +180,8 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'On the row of the category to copy, choose Duplicate (you need the permission to create categories).',
-            'The create form opens with all the category\'s data: the Name gets the " (copy)" suffix, parent, rules, attributes, account managers and other fields are the same.',
-            'Change what you need (at least the Name) and click Save.',
+            'The create card opens with all the category\'s data: the Name gets the " (copy)" suffix, parent, rules, attributes, account managers and other fields are the same.',
+            'Change what you need (at least the Name) with the pencil of each row and click Save.',
           ],
         },
         {
@@ -189,6 +190,29 @@ const guide: HelpGuide = {
             "The category's attribute layout is copied too. If you remove an attribute from the copy, its field disappears from the copied layout.",
             'Subcategories, products and history are not copied: the copy is a new, empty category.',
             'The original category does not change.',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'editing-a-category',
+      title: 'Editing a category',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "A category's card has no edit form: every row is edited in place, one at a time. Press the pencil (or the value) on Name, Parent category, Description, Business function, a management rule or a custom field, change the value and press Save; Cancel or Esc leave the row as it was. Each Save sends only what you changed in that row.",
+        },
+        {
+          type: 'paragraph',
+          text: 'Attributes and Account Managers are each a single full-width row: the pencil opens the same editor as the creation (with the three Inherit from parent switches for the attributes and the one for the managers) and Save saves them all together.',
+        },
+        {
+          type: 'list',
+          items: [
+            'The four rules decided by the root (Generates quote, Management mode, Single offer per opportunity, Generates a contract) and an inherited Business function have no pencil on subcategories: they show the value with the Inherited from … badge; to change them open the indicated category.',
+            'The Report columns row appears only if the category is reportable.',
+            'If you assign a business function to a category whose subcategories have their own, a confirmation is asked before saving.',
+            'Without the edit permission the rows show no pencil.',
           ],
         },
       ],
@@ -205,7 +229,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Type', 'Settings', 'How it works'],
           rows: [
-            ['Only the root decides', 'Generates quote, Management mode, Single offer per opportunity, Generates a contract', 'The whole branch follows them; they are locked on subcategories. Changing them on the root changes them immediately for the whole branch.'],
+            ['Only the root decides', 'Generates quote, Management mode, Single offer per opportunity, Generates a contract', 'The whole branch follows them; on subcategories the row shows the value without a pencil. Changing them on the root changes them immediately for the whole branch.'],
             ['From the nearest ancestor', 'Business function', "The nearest ancestor's function applies; if none has one, you choose it and it is inherited from there down."],
             ['Inherited but overridable', 'Reportable, Report columns, Simplified offer line', "The subcategory takes the parent's value (Inherited from …); changing it shows Overridden. Setting it back to the parent's value resumes inheriting."],
             ['Only for the category', 'Selectable', 'Never inherited: a non-selectable parent can have selectable children.'],
@@ -284,7 +308,7 @@ const guide: HelpGuide = {
             'Turn on Required if the field must always be filled in.',
             'In Order write a number: lower numbers come first.',
             'To remove an attribute use Remove attribute.',
-            'Click Save.',
+            'Press Save (on the card of an existing category) to save all the attributes and the three Inherit from parent switches together; Cancel discards the changes.',
           ],
         },
         {
@@ -370,8 +394,8 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Turn on Reportable: the Report columns panel appears.',
-            'Tick the columns you need; the counter shows how many you chose (for example "7/14"). All and None select or clear them.',
-            'Click Save.',
+            'On the Report columns row press the pencil and tick the columns you need; the counter shows how many you chose (for example "7/14"). All and None select or clear them.',
+            'Press Save (Done while creating).',
           ],
         },
         {
@@ -390,7 +414,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'To move a category open it, press Edit and change the Parent category (you cannot choose the category itself or one of its descendants). To move several at once:',
+          text: 'To move a category open it, press the pencil on Parent category, choose the new parent and press Save (you cannot choose the category itself or one of its descendants). To move several at once:',
         },
         {
           type: 'steps',
@@ -475,7 +499,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'Design the tree before loading products: roots for each business area, containers at the second level, selectable categories at the bottom.',
-            'Decide the rules on the root and check them in the Summary before saving.',
+            'Decide the rules on the root and double-check them before saving.',
             'Assign the business function only once, as high up as possible.',
             'Put common attributes near the top and specific ones near the bottom.',
             'Design the layout on the root and customize only where needed.',
