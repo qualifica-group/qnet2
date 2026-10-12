@@ -64,7 +64,7 @@ it('GET /api/tables/opportunities/columns: 200 with the declared columns, 403 wi
     // directive 2026-07-23): `products_of_interest` follows the two aggregated
     // classification columns.
     expect($ids)->toBe([
-        'id', 'name', 'registry', 'referent', 'commercial', 'supervisor', 'managers', 'source', 'operational_site', 'status',
+        'id', 'old_id', 'name', 'registry', 'referent', 'commercial', 'supervisor', 'managers', 'source', 'operational_site', 'status',
         'product_category', 'business_function', 'products_of_interest', 'estimated_value', 'success_probability', 'start_date',
         'expected_close_date', 'created_at',
     ]);

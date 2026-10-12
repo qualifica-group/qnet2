@@ -92,7 +92,7 @@ it('returns the 11 columns in order with the declared flags, 403 without viewAny
         ->and($data['searchable'])->toBe(['name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['logo_url', 'id', 'is_default', 'name', 'company', 'primary_contact', 'city', 'province', 'region', 'postal_code', 'created_at']);
+    expect($ids)->toBe(['logo_url', 'id', 'old_id', 'is_default', 'name', 'company', 'primary_contact', 'city', 'province', 'region', 'postal_code', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['logo_url']['sortable'])->toBeFalse()

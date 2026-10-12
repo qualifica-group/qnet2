@@ -70,7 +70,7 @@ it('returns the 9 columns in order with the declared flags, 403 without viewAny'
         ->and($data['searchable'])->toBe(['denomination', 'vat_number']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'denomination', 'vat_number', 'city', 'province', 'region', 'postal_code', 'country', 'created_at']);
+    expect($ids)->toBe(['id', 'old_id', 'denomination', 'vat_number', 'city', 'province', 'region', 'postal_code', 'country', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['denomination']['sortable'])->toBeTrue()

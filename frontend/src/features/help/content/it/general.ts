@@ -58,7 +58,7 @@ const guide: HelpGuide = {
             ['Filtro di colonna', 'Passa sull’intestazione e apri il filtro: spunta i valori o imposta una condizione, per esempio "Contiene".'],
             ['**Filtri avanzati**', 'Dove presente, apre campi di ricerca aggiuntivi: compila e premi **Applica**; **Azzera** li svuota.'],
             ['**Azzera filtri**', 'Toglie tutti i filtri in una volta.'],
-            ['Colonne', 'Trascina le intestazioni per riordinarle e i bordi per allargarle. La linguetta **Colonne** a destra le mostra o nasconde.'],
+            ['Colonne', 'Trascina le intestazioni per riordinarle e i bordi per allargarle. La linguetta **Colonne** a destra le mostra o nasconde: tra quelle nascoste ci sono **ID** e, nei moduli con dati importati dal vecchio gestionale, **ID legacy**.'],
             ['**Ripristina layout**', 'In **Opzioni tabella** (i tre puntini): riporta colonne e filtri all’impostazione iniziale.'],
             ['**Dimensione Pagina:**', 'In fondo: quante righe vedere per pagina.'],
             ['**Schermo intero**', 'Allarga l’elenco a tutta la finestra; **Esc** per uscire.'],

@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COLONNA `old_id` IN TUTTE LE GRIGLIE (2026-10-12) — VERDE, COMMITTATO
+
+- Richiesta utente: in ogni tabella, oltre all'id, anche l'old_id. Decisioni utente: solo dove la tabella DB ha gia'
+  `old_id` (31 griglie su 57, nessuna migrazione); nascosta di default come l'id.
+- `InjectsDefaultIdColumn::columnsWithDefaultId()` inietta `old_id` (label `table.columns.old_id`, number, sortable,
+  non filtrabile, `visible:false`) subito DOPO la colonna `id` (iniettata o dichiarata), se `Schema::hasColumn` sul
+  table di `modelClass()` (memo statico per connessione+tabella) e il catalogo non la dichiara gia'.
+- `TableService::mapRowWithMeta` aggiunge `old_id` al payload riga quando il model lo ha tra gli attributi (`??=`, un
+  mapRow che lo espone gia' vince). Export invariato (usa `columns()` grezzo).
+- Effetto noto: l'ordine di default delle colonne dopo `id` scala di 1 (layout salvati: al piu' piccoli riordini a
+  parita' di order, come per l'id iniettato).
+- i18n `table.columns.old_id` = "ID legacy" / "Legacy ID"; guida `general` IT/EN e manuale Claude Docs (riga Colonne).
+- Test: nuovo `tests/Feature/Table/TableLegacyIdColumnTest.php`; aggiornati (requisito cambiato) 20 test con l'elenco
+  esatto delle colonne + `TablePreferencesTest` (order di default). Suite Pest: tutto verde tranne 3
+  `QuoteDocumentPdfTest` (LibreOffice assente sulla macchina, non correlati). Vitest help+i18n 310, ESLint, `tsc -b` ok.
+
 ## PROVINCE COME DESTINAZIONE DEI CAMPI RELAZIONE (spec 0225, 2026-10-12) — VERDE, COMMITTATO
 
 - Problema utente: in /migrations "Attributi" falliva la riga legacy 101 `province_id` "Provincia" (relation verso

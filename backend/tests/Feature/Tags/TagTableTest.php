@@ -51,7 +51,7 @@ it('returns the 3 columns in order with the declared flags, 403 without viewAny'
         ->and($data['searchable'])->toBe(['name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'created_at']);
+    expect($ids)->toBe(['id', 'old_id', 'name', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['name']['sortable'])->toBeTrue()

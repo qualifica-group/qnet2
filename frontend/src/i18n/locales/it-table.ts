@@ -5,10 +5,11 @@
  * `t('table.xxx')` call sites are unaffected.
  */
 export const table = {
-  // The default hidden `id` column injected into every table
+  // The default hidden `id` (and, where the table has one, `old_id`) columns injected into every table
   // (AbstractTableDefinition / InjectsDefaultIdColumn).
   columns: {
     id: 'ID',
+    old_id: 'ID legacy',
   },
   actionsHeader: 'Azioni',
   rowActions: 'Azioni riga',

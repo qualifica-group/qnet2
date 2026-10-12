@@ -56,7 +56,7 @@ it('returns the 13 columns in order with the declared flags, 403 without viewAny
 
     $ids = collect($data['columns'])->pluck('id')->all();
     expect($ids)->toBe([
-        'id', 'name', 'registry_type', 'source', 'is_supplier', 'agreement_status', 'size_class', 'primary_contact',
+        'id', 'old_id', 'name', 'registry_type', 'source', 'is_supplier', 'agreement_status', 'size_class', 'primary_contact',
         'commercial', 'supervisor', 'reporter', 'managers', 'created_at',
     ]);
 

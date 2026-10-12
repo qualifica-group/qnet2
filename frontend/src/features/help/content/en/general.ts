@@ -58,7 +58,7 @@ const guide: HelpGuide = {
             ['Column filter', 'Hover the header and open the filter: check values or set a condition, for example "Contains".'],
             ['**Advanced filters**', 'Where available, opens extra search fields: fill them in and press **Apply**; **Clear** empties them.'],
             ['**Clear filters**', 'Removes all filters at once.'],
-            ['Columns', 'Drag the headers to reorder them and their edges to resize them. The **Columns** tab on the right shows or hides them.'],
+            ['Columns', 'Drag the headers to reorder them and their edges to resize them. The **Columns** tab on the right shows or hides them: the hidden ones include **ID** and, in modules with data imported from the old system, **Legacy ID**.'],
             ['**Reset layout**', 'In **Table options** (the three dots): restores columns and filters to their initial setting.'],
             ['**Page size:**', 'At the bottom: how many rows to show per page.'],
             ['**Full screen**', 'Expands the list to the whole window; **Esc** to exit.'],

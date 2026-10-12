@@ -48,7 +48,7 @@ it('returns the 5 columns in order with the declared flags, 403 without viewAny'
         ->and($data['defaultSort'])->toBe([['columnId' => 'created_at', 'direction' => 'desc']]);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'code', 'name', 'type', 'created_at']);
+    expect($ids)->toBe(['id', 'old_id', 'code', 'name', 'type', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['id']['type'])->toBe('number')
