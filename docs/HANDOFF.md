@@ -195,8 +195,7 @@
   email, verdetto "Non assegnabile"; `/users/1/edit` non trovata; nessun errore in console. Token eliminato.
 - Manuale: guide in-app IT/EN `users` (creazione, assegnazione, modifica sul posto, password); manuale Claude Docs
   (passi di creazione, tabella, assegnazione, modifica/disattivazione, reimpostazione password). PDF da rigenerare.
-- Onda 1 COMPLETATA. Prossima: onda 2 (Gestione richieste/Iscritti, Fatture, Ore, Modelli di task, Categorie
-  prodotto, Ruoli, Campi personalizzati).
+- Onda 1 COMPLETATA: il piano si chiude qui (vedi PIANO sotto).
 
 ## CAMPAGNE MODIFICABILI SUL POSTO + CREAZIONE COME IL DETTAGLIO (spec 0221, 2026-10-12) — VERDE, COMMITTATO
 
@@ -373,13 +372,8 @@
   modulo alla volta (niente team/subagent), le tabelle di impostazione dopo con un KIT CONDIVISO.
 - PIANO (fatti prima: Task 0195, Commesse 0196, Offerte 0197, Opportunità 0198, Anagrafiche 0200):
   onda 1 = Referenti (FATTO, 0216) -> Lead (FATTO, 0217) -> Prodotti (FATTO, 0218) -> Contratti (FATTO, 0219) -> Progetti (FATTO, 0220) -> Campagne (FATTO, 0221) -> Utenti (FATTO, 0222);
-  onda 2 = Gestione richieste/Iscritti (ESCLUSI, utente 2026-10-12: restano come sono), Ore, Modelli di task, Categorie prodotto, Ruoli, Campi personalizzati;
-  onda 3 = ~30 tabelle di impostazione (stati, tipi, priorità, importanze, tag, fonti, IVA, unità, metodi di
-  pagamento, società, sedi, settori...) con un componente comune riga chiusa + matita per i campi ricorrenti
-  (nome, colore, icona, attivo, ordine, descrizione). Ogni modulo: spec propria, si ferma a ogni verde.
-  ESCLUSA tutta la Contabilita' (utente 2026-10-12, "sara' modificato in un secondo momento"): Gestione conti e
-  Attiva (Richieste proforma, Fatture Attive, Scadenze). Il tentativo su Fatture (spec 0224, 7b5edbb7) e' stato
-  annullato da 8fec3019.
+  PIANO CHIUSO ALL'ONDA 1 (utente 2026-10-12): onda 2 e onda 3 annullate, i moduli restanti tengono la pagina di
+  modifica. Il tentativo su Fatture (spec 0224, 7b5edbb7) e' stato annullato da 8fec3019.
 - Referenti (solo frontend, PATCH già con `permissions`): dettaglio a righe `RecordInlineField` (Dati anagrafici = una
   riga, Dettagli referente: Tipo, Ambito, Utente collegato, Note; campi personalizzati con `CustomFieldRecordSections`;
   Contatti/Indirizzi in persistenza immediata). Creazione = replica a righe chiuse (Fatto/Ripristina, telefono
