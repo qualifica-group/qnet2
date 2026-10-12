@@ -27,7 +27,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Apri **Task › Modelli di Task** e premi **Nuovo modello di task**.',
-            'Inserisci **Nome** e **Descrizione**, lasciando attivo **Attivo**.',
+            'Si apre la scheda del nuovo modello con le righe **Nome**, **Descrizione** e **Attivo** chiuse: premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com\'era.',
             'In **Fasi** premi **Aggiungi fase** per ogni fase del lavoro (facoltativo) e dai un nome a ciascuna.',
             'Premi **Aggiungi riga** per ogni task del modello.',
             'Trascina fasi e righe nell\'ordine voluto (le righe anche da una fase all\'altra) e premi **Salva**.',
@@ -44,6 +44,24 @@ const guide: HelpGuide = {
             ['Stato iniziale', 'Lo stato con cui il task nasce.'],
             ['Allegati', 'File da allegare al task generato.'],
           ],
+        },
+      ],
+    },
+    {
+      id: 'editing-a-template',
+      title: 'Modificare un modello',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "La scheda di un modello non ha un modulo di modifica: ogni riga si modifica sul posto. Premi la matita su **Nome**, **Descrizione** o **Attivo**, cambia il valore e premi **Salva**; **Annulla** o Esc lasciano la riga com'era.",
+        },
+        {
+          type: 'paragraph',
+          text: "**Fasi** è un'unica riga a tutta larghezza: la matita apre la stessa board della creazione (fasi, righe, sotto-task, allegati). Premi **Salva** per salvare tutte le fasi e righe insieme, **Annulla** per scartare le modifiche. Gli allegati delle righe già salvate si caricano subito; quelli delle righe nuove dopo il salvataggio.",
+        },
+        {
+          type: 'note',
+          text: 'Senza il permesso di modifica le righe non mostrano la matita.',
         },
       ],
     },

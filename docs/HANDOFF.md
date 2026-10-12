@@ -3,7 +3,37 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## SEGNATEMPO MODIFICABILE SUL POSTO + CREAZIONE A RIGHE CHIUSE (spec 0226, 2026-10-12) — VERDE, NON COMMITTATO
+## MODELLI DI TASK MODIFICABILI SUL POSTO + CREAZIONE COME IL DETTAGLIO (spec 0227, 2026-10-12) — VERDE, NON COMMITTATO
+
+- Richiesta utente: "committa e passa avanti" (onda 2, dopo Segnatempo). Solo frontend: PATCH /task-templates/{id}
+  parziale gia' esistente; ora `updateTaskTemplate` restituisce anche `permissions` (il backend le mandava gia').
+- Dettaglio: "Dettagli" = Nome, Descrizione (rich text), Attivo, una riga ciascuno (PATCH del solo campo). "Fasi" =
+  UNA riga `layout="block"` chiave `items` (stesso permesso di campo della board): la matita apre la board della
+  creazione, Salva invia SOLO `items`+`stages` (full sync) e poi carica gli allegati in coda delle righe nuove
+  (prima, in modifica, venivano persi). Nessuna matita senza `permissions.resource.update`.
+- Creazione: replica del dettaglio (banda con nome live + Annulla/Salva, Dettagli a righe chiuse Fatto/Ripristina,
+  board APERTA come le griglie offerta 0197, azioni ripetute in fondo, `useFormLeaveGuard`). Registry:
+  `generateEditRoute: false`, `formOwnsHeader: true`, `onChanged`.
+- File: nuovi `use-task-template-board` (stato board + validate + errori 422 + upload posizionale, `reset`),
+  `use-task-template-inline-edit`, `task-template-fields`, `task-template-record-sections`,
+  `task-template-items-overview` (lista read-only estratta dal dettaglio). `useTaskTemplateForm` solo creazione
+  (spread della board); `buildUpdatePayload` -> `buildBoardUpdatePayload`; `useTaskTemplateStages` espone
+  `setStageRows`; `taskTemplateDetailQueryKey` in `api.ts`. Rimossi `use-task-template-form-meta.ts`,
+  `TaskTemplateFormMode`, i18n `form.editTitle/editSubtitle`, `detail.description/isActive/items.title`,
+  `sections.identity.description`, `sections.stages.description`; nuove `form.leaveConfirm.*`; `detail.subtitle`
+  "modificabile sul posto". NB: `sections.stages.title` ("Fasi") e' anche l'aria-label del select di spostamento.
+- Test: REQUIREMENT CHANGED payload test (board), hook test (solo creazione: tolti i 2 casi edit, coperti dal nuovo
+  `task-template-detail-inline-edit.test.tsx`, 7), form-body (+1, righe chiuse/board aperta), detail test (wrapper
+  QueryClient). Vitest completo 980 file / 7398 verdi; ESLint pulito su task-templates; `tsc -b --force` pulito sui
+  file di questo lavoro (errori `quote_date` nei test offerte = lavoro in corso di un'altra sessione).
+  Browser (Playwright): `/task-templates/new` righe chiuse -> Nome + Riga 1 -> Salva -> dettaglio: Nome salvato sul
+  posto, Fasi + Riga 2 salvate, `/task-templates/:id/edit` non trovata, 375 px senza scroll orizzontale, nessun
+  errore console; modelli di prova (42, 43) e token temporaneo eliminati.
+- Manuale: guida in-app IT/EN `task-templates` (creazione a righe chiuse, nuova sezione `editing-a-template`);
+  manuale Claude Docs (passi di creazione + paragrafo modifica sul posto). PDF da rigenerare.
+- Prossimo: commit su ordine esplicito (solo i file di questa voce); poi Categorie prodotto (onda 2).
+
+## SEGNATEMPO MODIFICABILE SUL POSTO + CREAZIONE A RIGHE CHIUSE (spec 0226, 2026-10-12) — VERDE, COMMITTATO (8321dee8)
 
 - Richiesta utente (ripetuta): "eliminare le pagine di edit anche per altri moduli, tutto inline, anche la creazione".
   Segnalato il conflitto con la chiusura del piano (22bd06ed); decisione utente: RIAPRIRE L'ONDA 2, senza toccare
@@ -438,7 +468,7 @@
   onda 1 = Referenti (FATTO, 0216) -> Lead (FATTO, 0217) -> Prodotti (FATTO, 0218) -> Contratti (FATTO, 0219) -> Progetti (FATTO, 0220) -> Campagne (FATTO, 0221) -> Utenti (FATTO, 0222);
   PIANO CHIUSO ALL'ONDA 1 (utente 2026-10-12): onda 2 e onda 3 annullate, i moduli restanti tengono la pagina di
   modifica. Il tentativo su Fatture (spec 0224, 7b5edbb7) e' stato annullato da 8fec3019.
-  ONDA 2 RIAPERTA (utente 2026-10-12, stesso giorno): Segnatempo (FATTO, 0226) -> Modelli di task -> Categorie prodotto ->
+  ONDA 2 RIAPERTA (utente 2026-10-12, stesso giorno): Segnatempo (FATTO, 0226) -> Modelli di task (FATTO, 0227) -> Categorie prodotto ->
   Ruoli -> Campi personalizzati; esclusi Gestione richieste, Gestione iscritti, Attiva, Gestione conti; onda 3 resta
   annullata.
 - Referenti (solo frontend, PATCH già con `permissions`): dettaglio a righe `RecordInlineField` (Dati anagrafici = una

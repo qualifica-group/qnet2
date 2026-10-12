@@ -27,7 +27,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Open **Task › Task Templates** and press **New task template**.',
-            'Enter **Name** and **Description**, leaving **Active** on.',
+            'The new template opens with its **Name**, **Description** and **Active** rows closed: press the pencil (or the value), fill it in and press **Done**; **Revert** puts the row back as it was.',
             'In **Phases** press **Add phase** for every phase of the work (optional) and name each one.',
             'Press **Add row** for every task of the template.',
             'Drag phases and rows into the order you want (rows also from one phase to another) and press **Save**.',
@@ -44,6 +44,24 @@ const guide: HelpGuide = {
             ['Initial status', 'The status the task is created with.'],
             ['Attachments', 'Files to attach to the generated task.'],
           ],
+        },
+      ],
+    },
+    {
+      id: 'editing-a-template',
+      title: 'Edit a template',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'A template has no edit form: each row edits in place. Press the pencil on **Name**, **Description** or **Active**, change the value and press **Save**; **Cancel** or Esc leave the row as it was.',
+        },
+        {
+          type: 'paragraph',
+          text: '**Phases** is a single full-width row: the pencil opens the same board as creation (phases, rows, sub-tasks, attachments). Press **Save** to save all phases and rows together, **Cancel** to discard the changes. Attachments of rows already saved upload right away; those of new rows after saving.',
+        },
+        {
+          type: 'note',
+          text: 'Without the edit permission the rows show no pencil.',
         },
       ],
     },

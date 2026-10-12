@@ -1,165 +1,118 @@
-import { Info, Layers } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FormSection } from '@/components/form-section'
+import { useWatch } from 'react-hook-form'
+import { ListChecks, Loader2, TriangleAlert } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordCanvas, RecordCard, RecordCardHeader, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordFormActions } from '@/components/record-form/record-form-actions'
+import { RecordFormBody } from '@/components/record-form/record-form-body'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import { RichTextEditor } from '@/components/rich-text/rich-text-editor'
-import { Form, FormControl } from '@/components/ui/form'
-import { MetaField } from '@/features/authorization/MetaField'
+import { Form } from '@/components/ui/form'
 import { useResourcePermissions } from '@/features/authorization/permissions'
-import { TaskTemplateStagesEditor } from '@/features/task-templates/task-template-stages-editor'
+import {
+  TaskTemplateBoardEditor,
+  TaskTemplateBoardSection,
+  TaskTemplateIdentityRecordSection,
+} from '@/features/task-templates/task-template-record-sections'
 import { useTaskTemplateForm } from '@/features/task-templates/use-task-template-form'
-import type { TaskTemplateDetail, TaskTemplateFormMode } from '@/features/task-templates/types'
+import type { TaskTemplateDetail } from '@/features/task-templates/types'
+
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const TASK_TEMPLATE_FORM_ID = 'task-template-form'
 
 interface TaskTemplateFormBodyProps {
-  mode: TaskTemplateFormMode
   onSuccess: (taskTemplate: TaskTemplateDetail) => void
   onCancel: () => void
 }
 
 /**
- * The task template create/edit form UI: identity fields (`MetaField`-driven,
- * spec 0004) plus the row editor. `items` is a CUSTOM authorization field
- * (D-1): gated the same way every `MetaField` is — hidden when not visible,
- * disabled when not editable — but through `useResourcePermissions()`
- * directly, since it edits a whole local array rather than a single RHF
- * path. All non-render logic lives in `useTaskTemplateForm`.
+ * The task template create form UI as a replica of the detail (spec 0227
+ * D-4): the record card with its identity band (monogram and title follow
+ * the name being typed, Annulla/Salva), the "Dettagli" rows closed until
+ * clicked (Fatto/Ripristina, nothing saved per row) and the "Fasi e
+ * attivita'" board OPEN, since it is an editor rather than a field (the
+ * precedent of the quote's line grids, spec 0197). `items` stays a custom
+ * authorization field (D-1): hidden when not visible, disabled when not
+ * editable. All non-render logic lives in `useTaskTemplateForm`.
  */
-export function TaskTemplateFormBody({ mode, onSuccess, onCancel }: TaskTemplateFormBodyProps) {
+export function TaskTemplateFormBody({ onSuccess, onCancel }: TaskTemplateFormBodyProps) {
   const { t } = useTranslation()
   const { field: fieldPermission } = useResourcePermissions()
-  const {
-    form,
-    serverError,
-    itemsError,
-    itemErrors,
-    itemRows,
-    addItemRow,
-    addSubtaskItemRow,
-    removeItemRow,
-    updateItemRow,
-    moveItemRow,
-    stagedFilesByRow,
-    addStagedRowFiles,
-    removeStagedRowFile,
-    stageRows,
-    stagesError,
-    stageErrors,
-    addStageRow,
-    renameStageRow,
-    removeStageRow,
-    reorderStageRows,
-    onSubmit,
-  } = useTaskTemplateForm({ mode, onSuccess })
-
-  const identityVisible =
-    fieldPermission('name').visible ||
-    fieldPermission('description').visible ||
-    fieldPermission('is_active').visible
+  const taskTemplateForm = useTaskTemplateForm({ onSuccess })
+  const { form, serverError, onSubmit } = taskTemplateForm
+  const draft = useDraftInlineEdit(form)
+  const values = useWatch({ control: form.control })
+  const { isSubmitting } = form.formState
   const itemsPermission = fieldPermission('items')
+  const heading = values.name?.trim() || t('taskTemplates.form.createTitle')
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4" noValidate>
-          {identityVisible && (
-            <FormSection
-              icon={Info}
-              title={t('taskTemplates.form.sections.identity.title')}
-              description={t('taskTemplates.form.sections.identity.description')}
-            >
-              <MetaField control={form.control} name="name" metaKey="name" label={t('taskTemplates.form.name')}>
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="description"
-                metaKey="description"
-                label={t('taskTemplates.form.description')}
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <RichTextEditor disabled={disabled} value={field.value} onChange={field.onChange} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="is_active"
-                metaKey="is_active"
-                label={t('taskTemplates.form.isActive')}
-                layout="inline"
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
-                  </FormControl>
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          {itemsPermission.visible ? (
-            <FormSection
-              icon={Layers}
-              title={t('taskTemplates.form.sections.stages.title')}
-              description={t('taskTemplates.form.sections.stages.description')}
-            >
-              <TaskTemplateStagesEditor
-                itemRows={itemRows}
-                stageRows={stageRows}
-                itemErrors={itemErrors}
-                stageErrors={stageErrors}
-                stagedFilesByRow={stagedFilesByRow}
-                onAddStage={addStageRow}
-                onRenameStage={renameStageRow}
-                onRemoveStage={removeStageRow}
-                onReorderStages={reorderStageRows}
-                onAddItem={addItemRow}
-                onUpdateItem={updateItemRow}
-                onRemoveItem={removeItemRow}
-                onAddSubtaskItem={addSubtaskItemRow}
-                onMoveItem={moveItemRow}
-                onAddStagedFiles={addStagedRowFiles}
-                onRemoveStagedFile={removeStagedRowFile}
-                disabled={!itemsPermission.editable || itemsPermission.disabled}
+    <Form {...form}>
+      {/* `display: contents`: this native `<form>` only scopes the HTML submit
+          boundary, it must not become an extra box around the canvas. */}
+      <form id={TASK_TEMPLATE_FORM_ID} onSubmit={form.handleSubmit(onSubmit)} className="contents" noValidate>
+        <RecordCanvas>
+          <RecordFormBody>
+            <RecordCard>
+              <RecordCardHeader
+                media={<DetailMonogram name={heading} icon={<ListChecks />} />}
+                title={heading}
+                subtitle={t('taskTemplates.form.createSubtitle')}
+                actions={
+                  <>
+                    <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
+                      {t('taskTemplates.form.cancel')}
+                    </Button>
+                    <Button type="submit" form={TASK_TEMPLATE_FORM_ID} disabled={isSubmitting}>
+                      {isSubmitting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+                      {isSubmitting ? t('taskTemplates.form.saving') : t('taskTemplates.form.save')}
+                    </Button>
+                  </>
+                }
               />
-              {itemsError ? (
-                <p className="text-sm font-medium text-destructive" role="alert">
-                  {itemsError}
-                </p>
+              {serverError ? (
+                <div
+                  role="alert"
+                  className="mx-4 mt-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive"
+                >
+                  <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                  {serverError}
+                </div>
               ) : null}
-              {stagesError ? (
-                <p className="text-sm font-medium text-destructive" role="alert">
-                  {stagesError}
-                </p>
-              ) : null}
-            </FormSection>
-          ) : null}
+              <RecordSectionsGrid>
+                <TaskTemplateIdentityRecordSection
+                  values={{
+                    name: values.name ?? '',
+                    description: values.description ?? null,
+                    is_active: values.is_active ?? true,
+                  }}
+                  form={form}
+                  inline={draft}
+                  canEdit
+                />
+                {itemsPermission.visible ? (
+                  <TaskTemplateBoardSection>
+                    <TaskTemplateBoardEditor
+                      board={taskTemplateForm}
+                      disabled={!itemsPermission.editable || itemsPermission.disabled || isSubmitting}
+                    />
+                  </TaskTemplateBoardSection>
+                ) : null}
+              </RecordSectionsGrid>
+            </RecordCard>
 
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={onCancel} disabled={form.formState.isSubmitting}>
-              {t('taskTemplates.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('taskTemplates.form.saving') : t('taskTemplates.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+            {/* The same actions the identity band carries, repeated where the
+                form ends: the operator finishes the board far from the top. */}
+            <RecordFormActions
+              formId={TASK_TEMPLATE_FORM_ID}
+              isSubmitting={isSubmitting}
+              submitLabel={t('taskTemplates.form.save')}
+              submittingLabel={t('taskTemplates.form.saving')}
+              cancel={{ label: t('taskTemplates.form.cancel'), onCancel }}
+            />
+          </RecordFormBody>
+        </RecordCanvas>
+      </form>
+    </Form>
   )
 }

@@ -8,6 +8,11 @@ import type {
   UpdateTaskTemplatePayload,
 } from '@/features/task-templates/types'
 
+/** Query key of a single task template's detail, shared by the detail screen and its in-place saves. */
+export function taskTemplateDetailQueryKey(id: number) {
+  return ['task-templates', 'detail', id] as const
+}
+
 /**
  * Fetches a single task template detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -29,14 +34,17 @@ export async function createTaskTemplate(payload: CreateTaskTemplatePayload): Pr
 /**
  * Partially updates a task template (PATCH). `items`, when sent, is a full
  * authoritative sync of the rows (a row missing from the array is deleted
- * server-side, D-1/AC-004). Returns the updated resource.
+ * server-side, D-1/AC-004). Returns the updated resource with the actor's
+ * permissions on it, so the in-place detail (spec 0227) re-syncs on it as is.
  */
 export async function updateTaskTemplate(
   id: number,
   payload: UpdateTaskTemplatePayload,
-): Promise<TaskTemplateDetail> {
-  const { data } = await apiClient.patch<ApiResponse<TaskTemplateDetail>>(`/task-templates/${id}`, payload)
-  return data.data
+): Promise<TaskTemplateDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<TaskTemplateDetail, ResourcePermissions>
+  >(`/task-templates/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

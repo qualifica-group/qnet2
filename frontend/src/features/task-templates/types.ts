@@ -139,11 +139,6 @@ export interface UpdateTaskTemplatePayload {
   stages?: UpdateTaskTemplateStagePayload[]
 }
 
-/** Discriminated form mode shared by the form hook/meta-resolver and `TaskTemplateForm`. */
-export type TaskTemplateFormMode =
-  | { type: 'create' }
-  | { type: 'edit'; taskTemplate: TaskTemplateDetailWithPermissions }
-
 /**
  * One row as edited locally by `<TaskTemplateStagesEditor>` (a local array,
  * not an RHF field array — mirrors quote-workflows' `WorkflowStatusFormRow`).

@@ -1,5 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
+import type { ReactElement, ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { TaskTemplateDetailView } from '@/features/task-templates/task-template-detail'
 import type { TaskTemplateDetailWithPermissions } from '@/features/task-templates/types'
@@ -44,19 +46,27 @@ function taskTemplate(
   }
 }
 
+/** One QueryClient per test: the in-place editor (spec 0227) saves through React Query. */
+function renderView(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+  })
+}
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
 describe('TaskTemplateDetailView — description via RichTextContent (AC-024)', () => {
   it('hands the header HTML to RichTextContent', () => {
-    render(<TaskTemplateDetailView taskTemplate={taskTemplate({ description: '<p><strong>Ciao</strong></p>' })} />)
+    renderView(<TaskTemplateDetailView taskTemplate={taskTemplate({ description: '<p><strong>Ciao</strong></p>' })} />)
 
     expect(screen.getByText('<p><strong>Ciao</strong></p>')).toBeInTheDocument()
   })
 
   it('hands each row own description HTML to RichTextContent', () => {
-    render(
+    renderView(
       <TaskTemplateDetailView
         taskTemplate={taskTemplate({
           items_count: 1,
@@ -85,7 +95,7 @@ describe('TaskTemplateDetailView — description via RichTextContent (AC-024)', 
 
 describe('TaskTemplateDetailView — items grouped by fase (spec 0146 D-2)', () => {
   it('renders one group per stage, in stage order, "Senza fase" last', () => {
-    render(
+    renderView(
       <TaskTemplateDetailView
         taskTemplate={taskTemplate({
           items_count: 2,
@@ -135,7 +145,7 @@ describe('TaskTemplateDetailView — items grouped by fase (spec 0146 D-2)', () 
 /** Spec 0172 AC-019: a sub-item is shown under its root, in the root's own fase — its OWN stage_id is always null (D-3). */
 describe('TaskTemplateDetailView — sub-items nest under their root (spec 0172 AC-019)', () => {
   it('renders a sub-item under its root, inside the root own fase group', () => {
-    render(
+    renderView(
       <TaskTemplateDetailView
         taskTemplate={taskTemplate({
           items_count: 2,

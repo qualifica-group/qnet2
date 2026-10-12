@@ -44,5 +44,5 @@ export function useTaskTemplateStages({ initialStageRows, onStageRemoved }: UseT
     })
   }
 
-  return { stageRows, addStageRow, updateStageRow, removeStageRow, reorderStageRows }
+  return { stageRows, setStageRows, addStageRow, updateStageRow, removeStageRow, reorderStageRows }
 }

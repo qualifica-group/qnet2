@@ -4,17 +4,16 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { TaskTemplateFormBody } from '@/features/task-templates/task-template-form-body'
-import type { TaskTemplateFormMode } from '@/features/task-templates/types'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 
 /**
  * Spec 0128 AC-024: the template header's description field is
- * `RichTextEditor`. Row-level coverage (item description, status filter,
+ * `RichTextEditor`, opened from its closed row (spec 0227 D-4). Row-level coverage (item description, status filter,
  * error triad) lives in `task-template-items-editor.test.tsx`.
  */
 
 vi.mock('@/features/task-templates/api', () => ({
   createTaskTemplate: vi.fn(),
-  updateTaskTemplate: vi.fn(),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -40,8 +39,13 @@ function wrapper() {
   )
 }
 
-function renderForm(mode: TaskTemplateFormMode = { type: 'create' }) {
-  render(<TaskTemplateFormBody mode={mode} onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
+function renderForm() {
+  render(
+    <ResourcePermissionsProvider permissions={null}>
+      <TaskTemplateFormBody onSuccess={vi.fn()} onCancel={vi.fn()} />
+    </ResourcePermissionsProvider>,
+    { wrapper: wrapper() },
+  )
 }
 
 const label = (key: string) => i18n.t(key)
@@ -51,8 +55,9 @@ beforeAll(async () => {
 })
 
 describe('TaskTemplateFormBody — header description uses RichTextEditor (AC-024)', () => {
-  it('renders the field and emits null when cleared', () => {
+  it('renders the field in its row and emits null when cleared', () => {
     renderForm()
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: label('taskTemplates.form.description') }) }))
 
     const description = screen.getByLabelText(label('taskTemplates.form.description'))
     fireEvent.change(description, { target: { value: '<p>Nota</p>' } })
@@ -60,5 +65,15 @@ describe('TaskTemplateFormBody — header description uses RichTextEditor (AC-02
 
     fireEvent.change(description, { target: { value: '' } })
     expect(description).toHaveValue('')
+  })
+})
+
+describe('TaskTemplateFormBody — a replica of the detail (spec 0227 D-4)', () => {
+  it('keeps the header rows closed and the board open', () => {
+    renderForm()
+
+    expect(screen.queryByLabelText(label('taskTemplates.form.name'))).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: label('taskTemplates.form.items.add') })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: label('taskTemplates.form.stages.add') })).toBeInTheDocument()
   })
 })

@@ -41,7 +41,7 @@ beforeEach(() => {
 describe('useTaskTemplateForm — sub-tasks (spec 0172 D-1/AC-018)', () => {
   it('adds a sub-task under a row, nested right after it, and removing the parent removes it too', () => {
     const { result } = renderHook(
-      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      () => useTaskTemplateForm({ onSuccess: () => undefined }),
       { wrapper: wrapper() },
     )
 
@@ -58,7 +58,7 @@ describe('useTaskTemplateForm — sub-tasks (spec 0172 D-1/AC-018)', () => {
 
   it('removing a sub-task alone leaves its parent and siblings untouched', () => {
     const { result } = renderHook(
-      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      () => useTaskTemplateForm({ onSuccess: () => undefined }),
       { wrapper: wrapper() },
     )
 
@@ -74,7 +74,7 @@ describe('useTaskTemplateForm — sub-tasks (spec 0172 D-1/AC-018)', () => {
 
   it('a grandchild nests after its own parent, keeping the tree depth-first', () => {
     const { result } = renderHook(
-      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      () => useTaskTemplateForm({ onSuccess: () => undefined }),
       { wrapper: wrapper() },
     )
 
@@ -102,7 +102,7 @@ describe('useTaskTemplateForm — sub-tasks (spec 0172 D-1/AC-018)', () => {
     })
 
     const { result } = renderHook(
-      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      () => useTaskTemplateForm({ onSuccess: () => undefined }),
       { wrapper: wrapper() },
     )
 
