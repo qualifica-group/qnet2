@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { IdCard } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordSection } from '@/components/detail/record-panel'
@@ -30,6 +31,8 @@ interface PersonalDataIdentityRecordSectionProps {
   identity: PersonalDataIdentity | null
   buffer: PersonalDataCardBuffer
   inline: InlineEdit
+  /** Shown above the card's row, inside the section (a user's profile photo). */
+  leading?: ReactNode
 }
 
 /**
@@ -44,9 +47,11 @@ export function PersonalDataIdentityRecordSection({
   identity,
   buffer,
   inline,
+  leading,
 }: PersonalDataIdentityRecordSectionProps) {
   return (
     <RecordSection title={title} icon={<IdCard />}>
+      {leading}
       <RecordInlineField
         field={PERSONAL_DATA_CARD_FIELD}
         metaKey="personal_data.type"

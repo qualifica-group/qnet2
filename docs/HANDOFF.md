@@ -86,6 +86,46 @@
 - Manuale: guide in-app it/en `migrations.ts` (sezione `operational-records` sostituita da `not-imported`), manuale
   Claude Docs aggiornato (riepilogo Migrazioni, nuovo paragrafo, tolti i due collegamenti). Il PDF va rigenerato.
 
+## UTENTI MODIFICABILI SUL POSTO + CREAZIONE COME IL DETTAGLIO (spec 0222, 2026-10-12) — VERDE, NON COMMITTATO
+
+- Richiesta utente: "committa e procedi" (commit 1aa6a1ad = onda 1 fino a Campagne; poi Utenti, ultimo dell'onda 1).
+  Solo frontend: `updateUser` restituisce `UserDetailWithPermissions`; nuovo `userDetailQueryKey`.
+- Niente pagina di modifica: `generateEditRoute: false`; `UserDetailView({userId, onChanged})` (fa ancora la sua fetch:
+  lo usa anche il pannello condiviso del dettaglio utente, che ora e' modificabile secondo i permessi). Eliminati
+  `use-user-form-meta`, `user-form-account-tabs`, `user-form-employment-tabs`, `user-form-contract-data-tab`,
+  `user-form-assignment-section`, `user-form-summary`; `useUserFormHydration` tolto da `user-form-defaults`
+  (ora `editDefaults` + `useUserFormDefaults`); `UserFormMode` spostato in `types.ts`.
+- Struttura: `use-user-form` (solo form), `use-user-form-submit` (gate della scheda in creazione, avatar differito,
+  422 indicizzati competenze/riporti + `personalDataServerErrorMessage`), `use-user-inline-edit` (buffer scheda come
+  Referenti), `user-record.ts` (`UserRecordValues` con `assignment` e `password_state`, cascate
+  `MANAGER_CASCADE_FIELDS`/`COVERS_ALL_CASCADE_FIELDS`, `toFieldRefs`), `user-account-fields`,
+  `user-employment-fields`, `user-record-sections` (Credenziali e accesso, Profilo, Rapporto contrattuale, Dati
+  contrattuali), `user-assignment-record-section`, `user-avatar-field` (upload/rimozione immediati, poi invalidate: la
+  risposta degli endpoint avatar non ha l'albero del profilo), `use-user-draft-values`, `user-create-sections`,
+  `user-form-header` (RecordCardHeader + `UserDetailStats`), `user-form-body`, `user-form` (solo creazione).
+  `useUserSectionVisibility` in `user-assignment.ts`. `PersonalDataIdentityRecordSection` ha `leading?` (foto profilo).
+- PATCH sparso (D-3): `employment` intero solo se un suo campo cambia (prima sempre), `personal_data` solo se la scheda
+  cambia (prima sempre), password solo se digitata. Sezioni del rapporto di lavoro sempre presenti (prima assenti senza
+  profilo): il primo salvataggio crea il profilo.
+- Cascate: Responsabile svuota Riporta a, Tutte le categorie azzera le Competenze; le due righe si aprono solo se anche il
+  campo svuotato e' modificabile. Il verdetto di assegnazione sta nella striscia KPI (creazione: live) e nel callout.
+- i18n: `users.form.sections.*` solo titoli (credentials = "Credenziali e accesso", tolta `access`), tolti
+  `editTitle/editSubtitle`, `assignment.description/rule/summary`; nuovi `users.detail.password.*`,
+  `users.form.leaveConfirm`; `detail.subtitle` cambiato.
+- Test: nuovi `user-test-fixtures.tsx`/`user-test-stubs.tsx`, `user-detail-inline-edit.test.tsx` (6); riscritti
+  form/employment/sites/competence/competence-flag/metadata/custom-fields/assignment-surfaces (REQUIREMENT CHANGED
+  dove serve: D-8 competenze "insieme vuoto accettato", employment sparso nel payload test, flag "tutte le categorie"
+  nel dettaglio). Utenti + quick-create 137 verdi.
+- Verifica: `tsc -b --force` 0 errori; ESLint pulito; Vitest completo 974 file: 7355 verdi + 6 falliti per timeout
+  (load average 138 della macchina, durate 67-450 s, moduli non toccati: lead, opportunita', anagrafiche, task, import),
+  ripassati da soli 6/6 (41 test). Browser: `/users/1` scheda anagrafica modificata e ripristinata (PATCH solo
+  `personal_data`, 200), riga Password aperta, 375 px senza scroll orizzontale; `/users/new` righe chiuse, invito via
+  email, verdetto "Non assegnabile"; `/users/1/edit` non trovata; nessun errore in console. Token eliminato.
+- Manuale: guide in-app IT/EN `users` (creazione, assegnazione, modifica sul posto, password); manuale Claude Docs
+  (passi di creazione, tabella, assegnazione, modifica/disattivazione, reimpostazione password). PDF da rigenerare.
+- Onda 1 COMPLETATA. Prossima: onda 2 (Gestione richieste/Iscritti, Fatture, Ore, Modelli di task, Categorie
+  prodotto, Ruoli, Campi personalizzati).
+
 ## CAMPAGNE MODIFICABILI SUL POSTO + CREAZIONE COME IL DETTAGLIO (spec 0221, 2026-10-12) — VERDE, COMMITTATO
 
 - Richiesta utente: "procedi" (onda 1, dopo Progetti). Solo frontend: `updateCampaign` ora restituisce
@@ -260,7 +300,7 @@
   per altri moduli e rendere tutto modificabile inline, anche la creazione". Scelte utente: partire dall'onda 1, un
   modulo alla volta (niente team/subagent), le tabelle di impostazione dopo con un KIT CONDIVISO.
 - PIANO (fatti prima: Task 0195, Commesse 0196, Offerte 0197, Opportunità 0198, Anagrafiche 0200):
-  onda 1 = Referenti (FATTO, 0216) -> Lead (FATTO, 0217) -> Prodotti (FATTO, 0218) -> Contratti (FATTO, 0219) -> Progetti (FATTO, 0220) -> Campagne (FATTO, 0221) -> Utenti;
+  onda 1 = Referenti (FATTO, 0216) -> Lead (FATTO, 0217) -> Prodotti (FATTO, 0218) -> Contratti (FATTO, 0219) -> Progetti (FATTO, 0220) -> Campagne (FATTO, 0221) -> Utenti (FATTO, 0222);
   onda 2 = Gestione richieste/Iscritti, Fatture, Ore, Modelli di task, Categorie prodotto, Ruoli, Campi personalizzati;
   onda 3 = ~30 tabelle di impostazione (stati, tipi, priorità, importanze, tag, fonti, IVA, unità, metodi di
   pagamento, società, sedi, settori...) con un componente comune riga chiusa + matita per i campi ricorrenti

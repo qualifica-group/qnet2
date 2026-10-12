@@ -5,20 +5,11 @@
  * `users.*` namespace from there.
  */
 
-/** `FormSection` header (title/description) for the three employment sections. */
+/** Section titles of the three employment sections (spec 0222: the record sections carry no description). */
 export const usersFormEmploymentSections = {
-  profile: {
-    title: 'Profile',
-    description: 'Organizational role, job description and reporting line.',
-  },
-  contract: {
-    title: 'Contract',
-    description: 'Relationship type and employing company.',
-  },
-  contractData: {
-    title: 'Contract data',
-    description: 'Qualification, employment dates and daily durations.',
-  },
+  profile: { title: 'Profile' },
+  contract: { title: 'Contract' },
+  contractData: { title: 'Contract data' },
 }
 
 /** Field labels, placeholders and validation messages for `employment.*`. */
@@ -106,8 +97,6 @@ export const usersDetailEmployment = {
  */
 export const usersAssignment = {
   title: 'Assignment configuration',
-  description: 'Competences and sites: they decide which offers can be matched to this person.',
-  rule: 'A request reaches this person only when they belong to the request\'s site AND one of their competences covers the product category it requires.',
   sitesHint: 'Physical and remote sites weigh the same for assignment: what counts is belonging to the site, not how the person works there.',
   assignable: 'Assignable',
   notAssignable: 'Not assignable',
@@ -134,8 +123,5 @@ export const usersAssignment = {
       site: 'Site missing',
     },
   },
-  summary: {
-    title: 'Summary',
-    description: 'Updated as you type.',
-  },
+  summary: { title: 'Summary' },
 }

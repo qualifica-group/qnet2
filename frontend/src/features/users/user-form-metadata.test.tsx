@@ -1,138 +1,93 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen } from '@testing-library/react'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
-import { UserForm } from '@/features/users/user-form'
-import type { UserDetailWithPermissions } from '@/features/users/types'
 import type { ResourceMeta } from '@/features/authorization/types'
-import type { EnumOption } from '@/features/config/types'
-import type { PersonalDataCard } from '@/features/personal-data/types'
+import { UserDetailView } from '@/features/users/user-detail'
+import { UserForm } from '@/features/users/user-form'
+import {
+  HIDDEN,
+  READ_ONLY,
+  REQUIRED,
+  focusedInput,
+  pencilOf,
+  permissionsFor,
+  typeInRow,
+  userFixture,
+  userWrapper,
+} from '@/features/users/user-test-fixtures'
+import type { UserDetailWithPermissions } from '@/features/users/types'
 
 /**
- * Acceptance criteria 11-16 (spec 0004): the metadata-driven behaviour of the
- * form (hidden fields, readonly/disabled fields, required labels, gated
- * actions, edit-seeded permissions + 422 mapping, graceful fallback). The
- * users-CRUD behaviour itself (payload shaping, personal-data buffering, …)
- * is covered by `user-form.test.tsx`.
+ * Spec 0004 AC11-16 on the record layout of spec 0222: a hidden field has no
+ * row, a read-only one no pencil, a required one its marker in the editor; a
+ * field missing from the metadata falls back to visible + editable; an action
+ * gated off has no affordance; a 422 lands inline on the open row.
+ * REQUIREMENT CHANGED (spec 0222): "disabled control" became "no pencil".
  */
 
+const fetchUserMock = vi.fn()
 const createUserMock = vi.fn()
 const updateUserMock = vi.fn()
-const uploadUserAvatarMock = vi.fn()
 
-vi.mock('@/features/users/api', () => ({
+vi.mock('@/features/users/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/users/api')>()),
+  fetchUser: (...args: unknown[]) => fetchUserMock(...args),
   createUser: (...args: unknown[]) => createUserMock(...args),
   updateUser: (...args: unknown[]) => updateUserMock(...args),
-  uploadUserAvatar: (...args: unknown[]) => uploadUserAvatarMock(...args),
+  uploadUserAvatar: vi.fn(),
   deleteUserAvatar: vi.fn(),
 }))
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+// The quick-create "+" (spec 0028) is gated by `Can`/`useAbilities`, which needs
+// an `AuthProvider` these suites do not render: deny everything so it never mounts.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-// This suite isn't about the quick-create "+" (spec 0028): every relation
-// field's `QuickCreateButton` reads `useAbilities()` via `Can`, which needs
-// an `AuthProvider` this suite doesn't render.
-vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
-}))
-
-const localeOptions: EnumOption[] = [
-  { value: 'en', label: 'English', color: null, icon: null, is_default: true, hidden_on_form: false },
-  { value: 'it', label: 'Italiano', color: null, icon: null, is_default: false, hidden_on_form: false },
-]
-
-// The single-screen form mounts the address block too, whose geo cascade reads
-// the app config for the default country: no config, nothing preselected.
-vi.mock('@/features/config/use-config', () => ({
-  useConfig: () => ({ data: undefined }),
-  useEnumOptions: () => localeOptions,
-}))
-
-const validCard: PersonalDataCard = {
-  id: 99,
-  type: 'individual',
-  gender: null,
-  first_name: 'Ada',
-  last_name: 'Lovelace',
-  company_name: null,
-  full_name: 'Ada Lovelace',
-  ceo: null,
-  tax_code: null,
-  vat_number: null,
-  sdi_code: null,
-  birth_date: null,
-  birth_city_id: null,
-  residence_city_id: null,
-  personable_type: 'user',
-  personable_id: 7,
-  contacts: [],
-  addresses: [],
-  created_at: null,
-}
-
-vi.mock('@/features/personal-data/use-personal-data', () => ({
-  usePersonalDataByOwner: () => ({
-    data: validCard,
-    isPending: false,
-    isError: false,
-    refetch: vi.fn(),
-  }),
-}))
-
-/** The block a `FormSection` heading names, to scope an ambiguous query to it. */
-function section(title: string): HTMLElement {
-  return screen.getByText(title).closest('section') as HTMLElement
-}
-
-/**
- * The `<label>` element whose text starts with `text`, inside the
- * Authentication block. Scoped because the single-screen form mounts the
- * contacts block's quick "Email" alongside the sign-in one.
- */
-function labelFor(text: string): HTMLElement {
-  return within(section('Authentication')).getByText(
-    (_, element) => element?.tagName === 'LABEL' && element.textContent?.startsWith(text) === true,
-  )
-}
-
-/** The sign-in email, ambiguous with the contacts block's quick one. */
-function signInEmail(): HTMLElement {
-  return within(section('Authentication')).getByLabelText(/^Email/)
-}
-
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-    </QueryClientProvider>
-  )
-}
-
-function user(overrides: Partial<UserDetailWithPermissions> = {}): UserDetailWithPermissions {
+vi.mock('@/features/config/use-config', async () => {
+  const { USER_ENUMS } = await import('@/features/users/user-test-fixtures')
   return {
-    id: 7,
-    name: 'Ada Lovelace',
-    email: 'ada@example.com',
-    locale: 'en',
-    is_active: true,
-    roles: [],
-    avatar_url: 'https://example.test/avatar.png',
-    must_set_password: false,
-    created_at: null,
-    permissions: {
-      resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-      fields: {},
-      actions: { upload_avatar: true, delete_avatar: true },
-    },
-    ...overrides,
+    useConfig: () => ({ data: { enums: USER_ENUMS } }),
+    useEnumOptions: (key: string) => USER_ENUMS[key] ?? [],
   }
+})
+
+vi.mock('@/features/for-select/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/for-select/api')>()),
+  fetchForSelect: vi.fn().mockResolvedValue({ items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }),
+}))
+
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/users/user-test-stubs')).StubAsyncSelect,
+}))
+vi.mock('@/components/ui/async-paginated-multi-select', async () => ({
+  AsyncPaginatedMultiSelect: (await import('@/features/users/user-test-stubs')).StubMultiSelect,
+}))
+vi.mock('@/features/activity-log/activity-log-section', () => ({
+  ActivityLogSection: () => <div>activity-log-section</div>,
+}))
+
+function renderCreate() {
+  const { client, wrapper } = userWrapper()
+  render(<UserForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
+  return client
+}
+
+async function renderDetail(user: UserDetailWithPermissions) {
+  fetchUserMock.mockResolvedValue(user)
+  const { client, wrapper } = userWrapper()
+  render(<UserDetailView userId={user.id} />, { wrapper })
+  await screen.findByRole('button', { name: 'Edit Personal details' })
+  return client
 }
 
 beforeAll(async () => {
@@ -140,133 +95,67 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  vi.restoreAllMocks()
+  fetchUserMock.mockReset()
   createUserMock.mockReset()
   updateUserMock.mockReset()
-  uploadUserAvatarMock.mockReset()
+  createUserMock.mockResolvedValue(userFixture())
+  updateUserMock.mockResolvedValue(userFixture())
   fetchResourceMetaMock.mockReset()
-  // `useCustomFieldsForm` (spec 0021) also reads this same endpoint (for the
-  // dynamic custom-fields schema); default to none defined so it never
-  // interferes with the metadata assertions below (edit-mode tests never
-  // override this).
-  fetchResourceMetaMock.mockResolvedValue({
-    fields: [],
-    permissions: { resource: { view: true, create: true, update: true, delete: true, export: true, import: true }, fields: {}, actions: {} },
-  })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
 })
 
 describe('UserForm — metadata-driven authorization (spec 0004)', () => {
-  it('AC11/12/13 — hides a hidden field, disables a readonly field, marks a required field', async () => {
+  it('AC11/12/13 — no row for a hidden field, no pencil on a read-only one, the marker on a required one', async () => {
     fetchResourceMetaMock.mockResolvedValue({
       fields: [],
-      permissions: {
-        resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-        fields: {
-          email: {
-            visible: true, hidden: false, editable: true, readonly: false, required: true, disabled: false,
-          },
-          roles: {
-            visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false,
-          },
-          password: {
-            visible: true, hidden: false, editable: false, readonly: true, required: false, disabled: false,
-          },
-        },
-        actions: {},
-      },
+      permissions: permissionsFor({ email: REQUIRED, roles: HIDDEN, password: READ_ONLY }),
     })
+    renderCreate()
 
-    render(
-      <UserForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    await screen.findByRole('button', { name: 'Edit Personal details' })
+    expect(screen.queryByRole('button', { name: 'Edit Roles' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Password' })).not.toBeInTheDocument()
 
-    await waitFor(() => expect(section('Authentication')).toBeInTheDocument())
-
-    // AC11: the hidden field is absent from the DOM.
-    expect(signInEmail()).toBeInTheDocument()
-    expect(screen.queryByLabelText(/Roles/)).not.toBeInTheDocument()
-
-    // AC12: the readonly/non-editable field renders disabled.
-    expect(screen.getByLabelText(/^Password/)).toBeDisabled()
-
-    // AC13: `required` from metadata drives the label's `*` — email is
-    // required, password is not (other required markers on screen belong to
-    // the unrelated personal-data card, so the check is scoped per label).
-    expect(labelFor('Email').textContent).toContain('*')
-    expect(labelFor('Password').textContent).not.toContain('*')
+    fireEvent.click(pencilOf('Email'))
+    const email = focusedInput('Email') as HTMLInputElement
+    expect(email.labels?.[0]?.textContent).toContain('*')
   })
 
-  it('AC16 — falls back to visible+editable when a field is missing from metadata', async () => {
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: {
-        resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-        fields: {
-          email: {
-            visible: true, hidden: false, editable: true, readonly: false, required: true, disabled: false,
-          },
-          // `password` intentionally absent from the metadata.
-        },
-        actions: {},
-      },
-    })
+  it('AC16 — falls back to visible+editable when a field is missing from the metadata', async () => {
+    fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor({ email: REQUIRED }) })
+    renderCreate()
 
-    render(
-      <UserForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    await waitFor(() => expect(section('Authentication')).toBeInTheDocument())
-
-    expect(signInEmail()).toBeInTheDocument()
-    // No crash, and the field renders visible + editable (the graceful default).
-    expect(screen.getByLabelText(/^Password/)).toBeEnabled()
+    await screen.findByRole('button', { name: 'Edit Personal details' })
+    fireEvent.click(pencilOf('Password'))
+    expect(focusedInput('Password')).toBeEnabled()
   })
 
-  it('AC14 — hides an action affordance gated off by metadata', () => {
-    render(
-      <UserForm
-        mode={{ type: 'edit', user: user({ permissions: {
-          resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-          fields: {},
-          actions: { upload_avatar: false, delete_avatar: true },
-        } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
+  it('AC14 — hides an action affordance gated off by metadata', async () => {
+    await renderDetail(
+      userFixture({
+        avatar_url: 'https://example.test/avatar.png',
+        permissions: permissionsFor({}, { upload_avatar: false, delete_avatar: true }),
+      }),
     )
 
     expect(screen.queryByRole('button', { name: 'Choose image' })).not.toBeInTheDocument()
-    // The un-gated action stays available (contrast: not everything is hidden).
     expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument()
   })
 
   it('AC15 — seeds permissions from the loaded detail and surfaces a 422 field error inline', async () => {
-    updateUserMock.mockRejectedValue(
-      new AxiosError(
-        'Unprocessable',
-        '422',
-        undefined,
-        undefined,
-        {
-          status: 422,
-          data: { success: false, message: 'Validation failed', errors: { email: ['field not editable'] } },
-        } as never,
-      ),
-    )
     vi.spyOn(axios, 'isAxiosError').mockReturnValue(true)
-
-    render(
-      <UserForm mode={{ type: 'edit', user: user() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
+    updateUserMock.mockRejectedValue(
+      new AxiosError('Unprocessable', '422', undefined, undefined, {
+        status: 422,
+        data: { success: false, message: 'Validation failed', errors: { email: ['field not editable'] } },
+      } as never),
     )
+    await renderDetail(userFixture())
 
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    typeInRow('Email', 'ada@other.example.com', 'Save')
 
-    await waitFor(() => expect(screen.getByText('field not editable')).toBeInTheDocument())
+    expect(await screen.findByText('field not editable')).toBeInTheDocument()
     expect(updateUserMock).toHaveBeenCalledTimes(1)
-
-    vi.restoreAllMocks()
   })
 })

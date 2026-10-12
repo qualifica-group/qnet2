@@ -188,7 +188,6 @@ const users: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <UserForm
-          mode={{ type: 'create' }}
           onSuccess={(user) => onSuccess({ id: user.id, name: user.name })}
           onCancel={onCancel}
         />

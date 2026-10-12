@@ -1,83 +1,27 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
-import { UserForm } from '@/features/users/user-form'
-import type { UserDetailWithPermissions } from '@/features/users/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
-import type { EnumOption } from '@/features/config/types'
+import type { ResourceMeta } from '@/features/authorization/types'
 import type { CustomFieldDescriptor } from '@/features/custom-fields/types'
-import type { PersonalDataCard } from '@/features/personal-data/types'
+import { UserDetailView } from '@/features/users/user-detail'
+import { UserForm } from '@/features/users/user-form'
+import {
+  EDITABLE,
+  clickCreateSave,
+  confirmOpenRow,
+  fillRequiredCreateRows,
+  pencilOf,
+  permissionsFor,
+  userFixture,
+  userWrapper,
+} from '@/features/users/user-test-fixtures'
+import type { UserDetailWithPermissions } from '@/features/users/types'
 
 /**
- * Spec 0021: wiring the universal custom-fields renderer into the Users form
- * via the SAME toolbox as Companies (the pilot) — mounting
- * `<CustomFieldsSection>` is the only users-specific integration. This suite
- * exercises the wiring (rendering + create payload); the section's own
- * per-type rendering is covered by `CustomFieldsSection.test.tsx`.
+ * Spec 0021 on the record layout of spec 0222: a custom field is a closed row
+ * on create and an in-place row on the detail. REQUIREMENT CHANGED (spec
+ * 0222): the control opens from its row.
  */
-
-const createUserMock = vi.fn()
-const updateUserMock = vi.fn()
-
-vi.mock('@/features/users/api', () => ({
-  createUser: (...args: unknown[]) => createUserMock(...args),
-  updateUser: (...args: unknown[]) => updateUserMock(...args),
-  uploadUserAvatar: vi.fn(),
-  deleteUserAvatar: vi.fn(),
-}))
-
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
-
-const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
-vi.mock('@/features/authorization/api', () => ({
-  fetchResourceMeta: () => fetchResourceMetaMock(),
-}))
-
-// This suite isn't about the quick-create "+" (spec 0028): the relation
-// custom field's `QuickCreateButton` reads `useAbilities()` via `Can`, which
-// needs an `AuthProvider` this suite doesn't render.
-vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
-}))
-
-const enums: Record<string, EnumOption[]> = {
-  personal_data_type: [
-    { value: 'individual', label: 'Individual', color: null, icon: null, is_default: true, hidden_on_form: false },
-    { value: 'company', label: 'Company', color: null, icon: null, is_default: false, hidden_on_form: false },
-  ],
-  contact_type: [],
-  locale: [
-    { value: 'en', label: 'English', color: null, icon: null, is_default: true, hidden_on_form: false },
-    { value: 'it', label: 'Italiano', color: null, icon: null, is_default: false, hidden_on_form: false },
-  ],
-}
-
-vi.mock('@/features/config/use-config', () => ({
-  useConfig: () => ({ data: { enums } }),
-  useEnumOptions: (key: string) => enums[key] ?? [],
-}))
-
-const personalDataData = vi.fn<() => PersonalDataCard | null | undefined>()
-vi.mock('@/features/personal-data/use-personal-data', () => ({
-  usePersonalDataByOwner: () => ({
-    data: personalDataData(),
-    isPending: false,
-    isError: false,
-    refetch: vi.fn(),
-  }),
-}))
-
-const FULL_ACCESS: ResourcePermissions['resource'] = {
-  view: true,
-  create: true,
-  update: true,
-  delete: true,
-  export: true,
-  import: true,
-}
 
 const PIPPO_FIELD: CustomFieldDescriptor = {
   key: 'custom.pippo',
@@ -88,46 +32,70 @@ const PIPPO_FIELD: CustomFieldDescriptor = {
   source: 'custom',
 }
 
-function permissionsWithPippo(): ResourcePermissions {
+const PIPPO_PERMISSIONS = permissionsFor({ 'custom.pippo': EDITABLE })
+
+const fetchUserMock = vi.fn()
+const createUserMock = vi.fn()
+const updateUserMock = vi.fn()
+
+vi.mock('@/features/users/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/users/api')>()),
+  fetchUser: (...args: unknown[]) => fetchUserMock(...args),
+  createUser: (...args: unknown[]) => createUserMock(...args),
+  updateUser: (...args: unknown[]) => updateUserMock(...args),
+  uploadUserAvatar: vi.fn(),
+  deleteUserAvatar: vi.fn(),
+}))
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+// The quick-create "+" (spec 0028) is gated by `Can`/`useAbilities`, which needs
+// an `AuthProvider` these suites do not render: deny everything so it never mounts.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
+
+const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
+vi.mock('@/features/authorization/api', () => ({
+  fetchResourceMeta: () => fetchResourceMetaMock(),
+}))
+
+vi.mock('@/features/config/use-config', async () => {
+  const { USER_ENUMS } = await import('@/features/users/user-test-fixtures')
   return {
-    resource: FULL_ACCESS,
-    fields: {
-      'custom.pippo': {
-        visible: true,
-        hidden: false,
-        editable: true,
-        readonly: false,
-        required: false,
-        disabled: false,
-      },
-    },
-    actions: { upload_avatar: true, delete_avatar: true },
+    useConfig: () => ({ data: { enums: USER_ENUMS } }),
+    useEnumOptions: (key: string) => USER_ENUMS[key] ?? [],
   }
+})
+
+vi.mock('@/features/for-select/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/for-select/api')>()),
+  fetchForSelect: vi.fn().mockResolvedValue({ items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }),
+}))
+
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/users/user-test-stubs')).StubAsyncSelect,
+}))
+vi.mock('@/components/ui/async-paginated-multi-select', async () => ({
+  AsyncPaginatedMultiSelect: (await import('@/features/users/user-test-stubs')).StubMultiSelect,
+}))
+vi.mock('@/features/activity-log/activity-log-section', () => ({
+  ActivityLogSection: () => <div>activity-log-section</div>,
+}))
+
+function renderCreate() {
+  const { client, wrapper } = userWrapper()
+  render(<UserForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
+  return client
 }
 
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-    </QueryClientProvider>
-  )
-}
-
-function user(overrides: Partial<UserDetailWithPermissions> = {}): UserDetailWithPermissions {
-  return {
-    id: 7,
-    name: 'Ada Lovelace',
-    email: 'ada@example.com',
-    locale: 'en',
-    is_active: true,
-    roles: [],
-    avatar_url: null,
-    must_set_password: false,
-    created_at: null,
-    permissions: permissionsWithPippo(),
-    ...overrides,
-  }
+async function renderDetail(user: UserDetailWithPermissions) {
+  fetchUserMock.mockResolvedValue(user)
+  const { client, wrapper } = userWrapper()
+  render(<UserDetailView userId={user.id} />, { wrapper })
+  await screen.findByRole('button', { name: 'Edit Personal details' })
+  return client
 }
 
 beforeAll(async () => {
@@ -135,65 +103,50 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  vi.restoreAllMocks()
+  fetchUserMock.mockReset()
   createUserMock.mockReset()
   updateUserMock.mockReset()
-  personalDataData.mockReset()
-  personalDataData.mockReturnValue(undefined)
+  createUserMock.mockResolvedValue(userFixture())
+  updateUserMock.mockResolvedValue(userFixture())
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [PIPPO_FIELD], permissions: permissionsWithPippo() })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
 })
 
-describe('UserForm — custom fields (spec 0021)', () => {
-  it('renders the resource custom field control in create mode', async () => {
-    render(
-      <UserForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+describe('Users — custom fields (spec 0021)', () => {
+  beforeEach(() => {
+    fetchResourceMetaMock.mockResolvedValue({ fields: [PIPPO_FIELD], permissions: PIPPO_PERMISSIONS })
+  })
 
-    expect(await screen.findByRole('checkbox', { name: 'Pippo' })).toBeInTheDocument()
+  it('offers the custom field as a closed row on create', async () => {
+    renderCreate()
+
+    expect(await screen.findByRole('button', { name: 'Edit Pippo' })).toBeInTheDocument()
   })
 
   it('includes the valued custom field in the create payload', async () => {
-    createUserMock.mockResolvedValue(user())
-    const onSuccess = vi.fn()
+    renderCreate()
 
-    render(
-      <UserForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(await screen.findByLabelText(/^First name/), { target: { value: 'Ada' } })
-    fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
-
-    // The contacts block's quick "Email" shares the screen: scope to the
-    // Authentication block.
-    const authentication = screen.getByText('Authentication').closest('section') as HTMLElement
-    fireEvent.change(within(authentication).getByLabelText(/^Email/), {
-      target: { value: 'ada@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'secret123' } })
-    fireEvent.change(screen.getByLabelText(/^Confirm password/), { target: { value: 'secret123' } })
-
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'Pippo' }))
-
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    await fillRequiredCreateRows()
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Pippo' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Pippo' }))
+    confirmOpenRow('Done')
+    clickCreateSave()
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
-    const payload = createUserMock.mock.calls[0][0]
-    expect(payload.custom_fields).toEqual({ pippo: true })
+    expect(createUserMock.mock.calls[0][0].custom_fields).toEqual({ pippo: true })
   })
 
-  it('seeds the custom field value from the loaded user detail in edit mode', async () => {
-    render(
-      <UserForm
-        mode={{ type: 'edit', user: user({ custom_fields: { pippo: true } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('seeds the custom field from the loaded user and PATCHes it alone', async () => {
+    await renderDetail(userFixture({ permissions: PIPPO_PERMISSIONS, custom_fields: { pippo: true } }))
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Pippo' }))
+    const checkbox = screen.getByRole('checkbox', { name: 'Pippo' })
+    expect(checkbox).toBeChecked()
+    fireEvent.click(checkbox)
+    confirmOpenRow('Save')
 
-    expect(await screen.findByRole('checkbox', { name: 'Pippo' })).toBeChecked()
+    await waitFor(() => expect(updateUserMock).toHaveBeenCalledWith(7, { custom_fields: { pippo: false } }))
+    expect(pencilOf('Email')).toBeInTheDocument()
   })
 })

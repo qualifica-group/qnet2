@@ -1,17 +1,17 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
-import { UserForm } from '@/features/users/user-form'
+import { UserDetailView } from '@/features/users/user-detail'
+import { confirmOpenRow, userFixture, userWrapper } from '@/features/users/user-test-fixtures'
 import type { EmploymentDetail, UserDetailWithPermissions } from '@/features/users/types'
 import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
 import type { EnumOption } from '@/features/config/types'
-import type { PersonalDataCard } from '@/features/personal-data/types'
 
 /**
+ * REQUIREMENT CHANGED (spec 0222): the rows open from the detail's
+ * Competence row and save in place (`employment` whole, nothing else).
+ *
  * Spec 0111 AC-023/AC-024: the Profile section configures the user's
  * competence as ROWS ("funzione aziendale -> categoria prodotto") with
  * `CompetenceLinesField`, gated by the single `employment.product_lines`
@@ -35,13 +35,18 @@ const CAMPAIGNS_CATEGORY = 200
 const createUserMock = vi.fn()
 const updateUserMock = vi.fn()
 
-vi.mock('@/features/users/api', () => ({
+const fetchUserMock = vi.fn()
+
+vi.mock('@/features/users/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/users/api')>()),
   createUser: (...args: unknown[]) => createUserMock(...args),
   updateUser: (...args: unknown[]) => updateUserMock(...args),
   uploadUserAvatar: vi.fn(),
   deleteUserAvatar: vi.fn(),
-  fetchUser: vi.fn(),
+  fetchUser: (...args: unknown[]) => fetchUserMock(...args),
 }))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
+vi.mock('@/features/activity-log/activity-log-section', () => ({ ActivityLogSection: () => null }))
 
 /**
  * The category picker reads the structural TREE, so the fixture IS a tree: an
@@ -99,11 +104,6 @@ const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   actions: { upload_avatar: true, delete_avatar: true, view_activity: false },
 }
 
-/** Controllable per-test, defaulting to full access (the gate case overrides it). */
-const formMetaPermissions = vi.fn<() => ResourcePermissions>(() => FULL_ACCESS_PERMISSIONS)
-vi.mock('@/features/users/use-user-form-meta', () => ({
-  useUserFormMeta: () => ({ status: 'ready', permissions: formMetaPermissions() }),
-}))
 
 // The quick-create "+" (spec 0028) is gated by `Can`/`useAbilities`, which needs
 // an `AuthProvider` this suite does not render: deny everything so it never mounts.
@@ -134,15 +134,6 @@ vi.mock('@/features/config/use-config', () => ({
   useEnumOptions: (key: string) => enums[key] ?? [],
 }))
 
-const personalDataData = vi.fn<() => PersonalDataCard | null | undefined>()
-vi.mock('@/features/personal-data/use-personal-data', () => ({
-  usePersonalDataByOwner: () => ({
-    data: personalDataData(),
-    isPending: false,
-    isError: false,
-    refetch: vi.fn(),
-  }),
-}))
 
 /**
  * Stand-in for the network-backed single select: publishes the bound value
@@ -223,14 +214,6 @@ vi.mock('@/components/ui/searchable-select', () => ({
   ),
 }))
 
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-    </QueryClientProvider>
-  )
-}
 
 const BASE_EMPLOYMENT: EmploymentDetail = {
   id: 1,
@@ -263,20 +246,9 @@ const BASE_EMPLOYMENT: EmploymentDetail = {
 
 function userWithCompetence(
   employment: EmploymentDetail = BASE_EMPLOYMENT,
+  permissions: ResourcePermissions = FULL_ACCESS_PERMISSIONS,
 ): UserDetailWithPermissions {
-  return {
-    id: 7,
-    name: 'Ada Lovelace',
-    email: 'ada@example.com',
-    locale: 'en',
-    is_active: true,
-    roles: [],
-    avatar_url: null,
-    must_set_password: false,
-    created_at: null,
-    permissions: FULL_ACCESS_PERMISSIONS,
-    employment,
-  }
+  return userFixture({ permissions, employment })
 }
 
 /**
@@ -299,28 +271,6 @@ function permissionsWithCompetenceHidden(): ResourcePermissions {
   }
 }
 
-/** A valid, seeded card, so an edit-mode submit is not blocked by the mandatory-identity gate. */
-const validCard: PersonalDataCard = {
-  id: 99,
-  type: 'individual',
-  first_name: 'Ada',
-  last_name: 'Lovelace',
-  company_name: null,
-  full_name: 'Ada Lovelace',
-  ceo: null,
-  tax_code: null,
-  vat_number: null,
-  sdi_code: null,
-  birth_date: null,
-  birth_city_id: null,
-  residence_city_id: null,
-  gender: null,
-  personable_type: 'user',
-  personable_id: 7,
-  contacts: [],
-  addresses: [],
-  created_at: null,
-}
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -329,14 +279,11 @@ beforeAll(async () => {
 beforeEach(() => {
   createUserMock.mockReset()
   updateUserMock.mockReset()
-  personalDataData.mockReset()
-  personalDataData.mockReturnValue(undefined)
+  fetchUserMock.mockReset()
   createUserMock.mockResolvedValue(userWithCompetence())
   updateUserMock.mockResolvedValue(userWithCompetence())
   fetchResourceMetaMock.mockReset()
   fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_ACCESS_PERMISSIONS })
-  formMetaPermissions.mockReset()
-  formMetaPermissions.mockReturnValue(FULL_ACCESS_PERMISSIONS)
   fetchForSelectMock.mockReset()
   fetchForSelectMock.mockResolvedValue({
     items: [],
@@ -345,14 +292,16 @@ beforeEach(() => {
   })
 })
 
-function renderEditForm(user: UserDetailWithPermissions = userWithCompetence()) {
-  render(<UserForm mode={{ type: 'edit', user }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-    wrapper: wrapper(),
-  })
+/** Opens the detail's Competence row, where the row editor lives. */
+async function renderEditForm(user: UserDetailWithPermissions = userWithCompetence()) {
+  fetchUserMock.mockResolvedValue(user)
+  const { wrapper } = userWrapper()
+  render(<UserDetailView userId={user.id} />, { wrapper })
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit Competence' }))
 }
 
 function save() {
-  fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+  confirmOpenRow('Save')
 }
 
 /** The employment object of the single PATCH the form fired. */
@@ -362,8 +311,8 @@ async function submittedEmployment() {
 }
 
 describe('UserForm — competence rows (spec 0111 AC-023)', () => {
-  it('renders one row per persisted pair, hydrated from the loaded product_lines', () => {
-    renderEditForm()
+  it('renders one row per persisted pair, hydrated from the loaded product_lines', async () => {
+    await renderEditForm()
 
     expect(screen.getByLabelText('Business function 1 value')).toHaveTextContent(
       String(SALES_FUNCTION),
@@ -374,8 +323,7 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
   })
 
   it('adds a row, scopes its category to the chosen function and writes the pair to the payload', async () => {
-    personalDataData.mockReturnValue(validCard)
-    renderEditForm()
+    await renderEditForm()
 
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
     // Before a function is chosen the category picker has nothing to offer.
@@ -404,8 +352,7 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
   })
 
   it('removes a row, and the pair leaves the payload with it', async () => {
-    personalDataData.mockReturnValue(validCard)
-    renderEditForm()
+    await renderEditForm()
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove product line' }))
     save()
@@ -414,8 +361,7 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
   })
 
   it('refuses the save while a row is half-filled, and sends nothing', async () => {
-    personalDataData.mockReturnValue(validCard)
-    renderEditForm()
+    await renderEditForm()
 
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
     fireEvent.click(
@@ -431,17 +377,21 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
     expect(updateUserMock).not.toHaveBeenCalled()
   })
 
-  it('D-8 — sends an empty array for a user with no competence at all', async () => {
-    personalDataData.mockReturnValue(validCard)
-    renderEditForm(userWithCompetence({ ...BASE_EMPLOYMENT, product_lines: [] }))
+  // REQUIREMENT CHANGED (spec 0222 D-3): an untouched profile is not re-sent,
+  // so D-8 reads as "an empty set is accepted": nothing refuses the save.
+  it('D-8 — accepts an empty competence set: the save is not refused', async () => {
+    await renderEditForm(userWithCompetence({ ...BASE_EMPLOYMENT, product_lines: [] }))
 
     save()
 
-    expect((await submittedEmployment()).product_lines).toEqual([])
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument())
+    expect(
+      screen.queryByText('Each row requires both a business function and a product category (or "All").'),
+    ).not.toBeInTheDocument()
   })
 
-  it('AC-024 — keeps "Add" enabled on a single-mode category (the card cap is opted out)', () => {
-    renderEditForm(
+  it('AC-024 — keeps "Add" enabled on a single-mode category (the card cap is opted out)', async () => {
+    await renderEditForm(
       userWithCompetence({
         ...BASE_EMPLOYMENT,
         product_lines: [
@@ -458,7 +408,6 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
   })
 
   it('surfaces a per-row 422 under the field, since no RHF path matches the indexed key', async () => {
-    personalDataData.mockReturnValue(validCard)
     updateUserMock.mockRejectedValue(
       new AxiosError('Unprocessable', '422', undefined, undefined, {
         status: 422,
@@ -473,7 +422,7 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
         },
       } as never),
     )
-    renderEditForm()
+    await renderEditForm()
 
     save()
 
@@ -484,12 +433,13 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
     )
   })
 
-  it('does not render the field for a role whose matrix hides it', () => {
-    formMetaPermissions.mockReturnValue(permissionsWithCompetenceHidden())
+  it('does not render the field for a role whose matrix hides it', async () => {
+    fetchUserMock.mockResolvedValue(userWithCompetence(BASE_EMPLOYMENT, permissionsWithCompetenceHidden()))
+    const { wrapper } = userWrapper()
+    render(<UserDetailView userId={7} />, { wrapper })
 
-    renderEditForm()
-
-    expect(screen.queryByLabelText('Business function 1 value')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Add product line' })).not.toBeInTheDocument()
+    await screen.findByRole('button', { name: 'Edit Personal details' })
+    expect(screen.queryByRole('button', { name: 'Edit Competence' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Photovoltaic')).not.toBeInTheDocument()
   })
 })

@@ -16,8 +16,8 @@ const guide: HelpGuide = {
       id: 'create-user',
       title: 'Creating a user',
       blocks: [
-        { type: 'steps', items: ['Open **Administration › Users**.', 'Click **New user**.', 'Fill in the form sections (see the tables below).', 'Click **Save**. The message "User created successfully." appears.'] },
-        { type: 'paragraph', text: 'The **Save** button sits both at the top and at the bottom of the form. In the side column, a **Summary** updates as you fill it in.' },
+        { type: 'steps', items: ['Open **Administration › Users** and click **New user**: the form looks like the record, with the same sections and **closed rows**.', 'Click a row (or its pencil) to open it, fill it in and press **Done** to keep the value or **Revert** to put it back (see the tables below). The **Personal details** are required.', '**Contacts** and **Addresses** are filled in the side column and saved together with the user.', 'Click **Save**. The message "User created successfully." appears. If you leave without saving, you are asked to confirm.'] },
+        { type: 'paragraph', text: 'The **Save** button sits both at the top and at the bottom of the form. The figures strip at the top (competences, sites, roles, matching) updates as you fill it in.' },
         {
           type: 'table',
           headers: ['Field', 'What to enter'],
@@ -25,8 +25,7 @@ const guide: HelpGuide = {
             ['**Avatar**', 'Profile picture (JPEG, PNG, GIF or WebP, up to 10 MB).'],
             ['Personal details', 'Identifying data of the person or company.'],
             ['**Email**', "Address used to sign in. It's required."],
-            ['**Account password**', 'Optional. Leave it empty to send an invite; if you fill it in, it is a temporary password of at least 8 characters.'],
-            ['**Repeat password**', 'The same password, for confirmation (only if you filled in the password).'],
+            ['**Password**', 'Optional. Leave it empty to send an invite; if you fill in **Password** and **Confirm password**, it is a temporary password of at least 8 characters.'],
             ['**Roles**', "One or more roles. The user's permissions come from their roles."],
             ['**Active**', 'If turned off, the account cannot sign in.'],
           ],
@@ -51,7 +50,7 @@ const guide: HelpGuide = {
             ['**Remote sites**', 'Other operational sites where they work.'],
           ],
         },
-        { type: 'paragraph', text: 'Physical site and remote sites count the same way for assignment. At the top of the module a label shows **Assignable** or **Not assignable**.' },
+        { type: 'paragraph', text: 'Physical site and remote sites count the same way for assignment. In the figures strip at the top, **Matching** shows **Assignable** or **Not assignable**.' },
         { type: 'warning', text: 'The person receives assignments only when all three conditions hold: **Assignable** on, at least one competency and at least one site. The module flags the missing one with "Assignment turned off", "Missing competency" or "Missing site".' },
       ],
     },
@@ -74,7 +73,8 @@ const guide: HelpGuide = {
             ['**Daily break duration**', 'Length of the daily break.'],
           ],
         },
-        { type: 'paragraph', text: 'The form also has **Contacts** and **Addresses** sections. At the bottom, an **Other fields** section may appear, with the custom fields for users.' },
+        { type: 'paragraph', text: 'The employment sections are there even for a user with no profile yet: the first save creates it. **Contacts** and **Addresses** follow; at the bottom, an **Other fields** section may appear, with the custom fields for users.' },
+        { type: 'note', text: 'Turning on **Manager** empties **Reports to**, turning on **Competent for all categories** clears the **Competence** rows: that is why the two rows have no pencil if you cannot also edit the field they empty.' },
       ],
     },
     {
@@ -82,7 +82,7 @@ const guide: HelpGuide = {
       title: 'Editing, deactivating and deleting',
       blocks: [
         { type: 'paragraph', text: 'Every row in the list has an actions menu with **View**, **Delete**, **Activity** and **Impersonate**. You only see the actions your role allows.' },
-        { type: 'list', items: ['**Edit:** open the record with **View**, press **Edit**, change the data and click **Save**.', '**Deactivate:** open **Edit** and turn off **Active**. The person can no longer sign in, but their record and history remain. **Inactive** appears at the top.', '**Delete:** choose **Delete** and confirm.', '**Activity:** shows the history of changes made to the record.'] },
+        { type: 'list', items: ['**Edit:** there is no separate edit page. Open the record with **View**, hover the field and press the **pencil** (or click the value), change the value and press **Save**: only that field is saved. **Cancel** (or Esc, or a click outside) closes without saving. Contacts, addresses and the avatar save on their own.', '**Deactivate:** on the record, open the **Active** row and turn it off. The person can no longer sign in, but their record and history remain. **Inactive** appears at the top.', '**Delete:** choose **Delete** and confirm.', '**Activity:** shows the history of changes made to the record.'] },
         { type: 'warning', text: 'You cannot delete your own account, nor the last user with the super-admin role.' },
         { type: 'tip', text: 'If a person leaves the company, deactivate them instead of deleting them. This keeps the history of their work.' },
       ],
@@ -91,8 +91,8 @@ const guide: HelpGuide = {
       id: 'reset-password',
       title: "Resetting a user's password",
       blocks: [
-        { type: 'steps', items: ["Open the user's record with **View** and press **Edit**.", 'In the **Authentication** section, type the **New password** and then **Repeat password**.', 'Click **Save**.'] },
-        { type: 'note', text: 'If you leave the password fields empty, the current password stays unchanged. A password you set is temporary: at their next sign-in the user will be advised to change it. Alternatively, the person can reset it themselves with **Forgot your password?** on the sign-in page.' },
+        { type: 'steps', items: ["Open the user's record with **View**.", 'In the **Credentials & access** section, press the pencil of the **Password** row.', 'Type the **New password** and then **Confirm password**.', 'Click **Save**.'] },
+        { type: 'note', text: 'Until you save the row, the current password stays unchanged. A password you set is temporary: at their next sign-in the user will be advised to change it. Alternatively, the person can reset it themselves with **Forgot your password?** on the sign-in page.' },
       ],
     },
     {

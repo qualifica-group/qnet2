@@ -144,8 +144,16 @@ export const it: TranslationResources = {
     assignment: usersAssignment,
     detail: {
       title: 'Dettaglio utente',
-      subtitle: "Visualizzazione in sola lettura dell'utente selezionato.",
+      subtitle: "Dettaglio dell'utente selezionato, modificabile sul posto.",
       loadError: "Impossibile caricare l'utente. Riprova.",
+      // Riga Password del dettaglio e della creazione (spec 0222).
+      password: {
+        label: 'Password',
+        set: 'Impostata',
+        pending: 'Primo accesso in sospeso',
+        invite: "Invito via email: l'utente sceglierà la password",
+        temporary: 'Password provvisoria impostata',
+      },
       // Primo accesso (spec 0177).
       pendingFirstAccess: 'In attesa di primo accesso',
       resendWelcome: 'Reinvia email di benvenuto',
@@ -161,8 +169,6 @@ export const it: TranslationResources = {
       avatarLabel: 'Avatar',
       createTitle: 'Crea utente',
       createSubtitle: 'Aggiungi un nuovo utente alla tua applicazione.',
-      editTitle: 'Modifica utente',
-      editSubtitle: "Aggiorna l'utente selezionato.",
       name: 'Nome',
       email: 'Email',
       locale: 'Lingua',
@@ -197,27 +203,17 @@ export const it: TranslationResources = {
       genericError: 'Si è verificato un errore. Riprova.',
       deleteError: "Impossibile eliminare l'utente. Riprova.",
       deleteForbidden: 'Non puoi eliminare questo utente.',
+      leaveConfirm: {
+        title: 'Uscire senza salvare?',
+        description: "L'utente non è ancora stato creato: i dati inseriti andranno persi.",
+        confirm: 'Esci senza salvare',
+        cancel: 'Continua a compilare',
+      },
       sections: {
-        identity: {
-          title: 'Anagrafica',
-          description: "Dati identificativi della persona o dell'azienda.",
-        },
-        credentials: {
-          title: 'Autenticazione',
-          description: "Credenziali di accesso e lingua dell'interfaccia.",
-        },
-        access: {
-          title: 'Ruoli e accessi',
-          description: 'Ruoli assegnati; i permessi vengono ereditati dai ruoli.',
-        },
-        contacts: {
-          title: 'Contatti',
-          description: 'Recapiti telefonici ed email.',
-        },
-        addresses: {
-          title: 'Indirizzi',
-          description: 'Sedi e indirizzi di fatturazione.',
-        },
+        identity: { title: 'Anagrafica' },
+        credentials: { title: 'Credenziali e accesso' },
+        contacts: { title: 'Contatti' },
+        addresses: { title: 'Indirizzi' },
         ...usersFormEmploymentSections,
       },
       // The personal-data card fields/sections (spec 0008), read by the role

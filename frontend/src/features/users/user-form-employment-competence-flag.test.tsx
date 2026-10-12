@@ -1,16 +1,16 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
-import { UserForm } from '@/features/users/user-form'
+import { UserDetailView } from '@/features/users/user-detail'
+import { confirmOpenRow, pencilOf, userFixture, userWrapper } from '@/features/users/user-test-fixtures'
 import type { EmploymentDetail, UserDetailWithPermissions } from '@/features/users/types'
 import type { ResourcePermissions, ResourceMeta } from '@/features/authorization/types'
 import type { EnumOption } from '@/features/config/types'
-import type { PersonalDataCard } from '@/features/personal-data/types'
 
 /**
+ * REQUIREMENT CHANGED (spec 0222): the switches and the row editor are three
+ * in-place rows of the detail, each saved on its own.
+ *
  * Spec 0129 D-1/D-2 (AC-020), D-3/D-5 (AC-021), D-6/D-7 (AC-022), AC-023: the
  * "competent for all categories" switch, the per-row "All" checkbox and the
  * container category `CompetenceLinesField` makes
@@ -27,13 +27,18 @@ const AUDIT_CATEGORY = 23
 const createUserMock = vi.fn()
 const updateUserMock = vi.fn()
 
-vi.mock('@/features/users/api', () => ({
+const fetchUserMock = vi.fn()
+
+vi.mock('@/features/users/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/users/api')>()),
   createUser: (...args: unknown[]) => createUserMock(...args),
   updateUser: (...args: unknown[]) => updateUserMock(...args),
   uploadUserAvatar: vi.fn(),
   deleteUserAvatar: vi.fn(),
-  fetchUser: vi.fn(),
+  fetchUser: (...args: unknown[]) => fetchUserMock(...args),
 }))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
+vi.mock('@/features/activity-log/activity-log-section', () => ({ ActivityLogSection: () => null }))
 
 /** Mirrors `user-form-employment-competence.test.tsx`'s fixture: an unselectable root owning Sales with three children. */
 const { CATEGORY_TREE } = vi.hoisted(() => {
@@ -86,9 +91,6 @@ const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   actions: { upload_avatar: true, delete_avatar: true, view_activity: false },
 }
 
-vi.mock('@/features/users/use-user-form-meta', () => ({
-  useUserFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
-}))
 
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
@@ -115,15 +117,6 @@ vi.mock('@/features/config/use-config', () => ({
   useEnumOptions: (key: string) => enums[key] ?? [],
 }))
 
-const personalDataData = vi.fn<() => PersonalDataCard | null | undefined>()
-vi.mock('@/features/personal-data/use-personal-data', () => ({
-  usePersonalDataByOwner: () => ({
-    data: personalDataData(),
-    isPending: false,
-    isError: false,
-    refetch: vi.fn(),
-  }),
-}))
 
 vi.mock('@/components/ui/async-paginated-select', () => ({
   AsyncPaginatedSelect: ({
@@ -191,14 +184,6 @@ vi.mock('@/components/ui/searchable-select', () => ({
   ),
 }))
 
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-    </QueryClientProvider>
-  )
-}
 
 const BASE_EMPLOYMENT: EmploymentDetail = {
   id: 1,
@@ -229,45 +214,10 @@ const BASE_EMPLOYMENT: EmploymentDetail = {
   remote_operational_sites: [],
 }
 
-function userWithCompetence(
-  employment: EmploymentDetail = BASE_EMPLOYMENT,
-): UserDetailWithPermissions {
-  return {
-    id: 7,
-    name: 'Ada Lovelace',
-    email: 'ada@example.com',
-    locale: 'en',
-    is_active: true,
-    roles: [],
-    avatar_url: null,
-    must_set_password: false,
-    created_at: null,
-    permissions: FULL_ACCESS_PERMISSIONS,
-    employment,
-  }
+function userWithCompetence(employment: EmploymentDetail = BASE_EMPLOYMENT): UserDetailWithPermissions {
+  return userFixture({ permissions: FULL_ACCESS_PERMISSIONS, employment })
 }
 
-const validCard: PersonalDataCard = {
-  id: 99,
-  type: 'individual',
-  first_name: 'Ada',
-  last_name: 'Lovelace',
-  company_name: null,
-  full_name: 'Ada Lovelace',
-  ceo: null,
-  tax_code: null,
-  vat_number: null,
-  sdi_code: null,
-  birth_date: null,
-  birth_city_id: null,
-  residence_city_id: null,
-  gender: null,
-  personable_type: 'user',
-  personable_id: 7,
-  contacts: [],
-  addresses: [],
-  created_at: null,
-}
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -276,8 +226,7 @@ beforeAll(async () => {
 beforeEach(() => {
   createUserMock.mockReset()
   updateUserMock.mockReset()
-  personalDataData.mockReset()
-  personalDataData.mockReturnValue(undefined)
+  fetchUserMock.mockReset()
   createUserMock.mockResolvedValue(userWithCompetence())
   updateUserMock.mockResolvedValue(userWithCompetence())
   fetchResourceMetaMock.mockReset()
@@ -290,14 +239,12 @@ beforeEach(() => {
   })
 })
 
-function renderEditForm(user: UserDetailWithPermissions = userWithCompetence()) {
-  render(<UserForm mode={{ type: 'edit', user }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-    wrapper: wrapper(),
-  })
-}
-
-function save() {
-  fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+/** Renders the detail and opens the row labelled `row`. */
+async function openRow(row: string, user: UserDetailWithPermissions = userWithCompetence()) {
+  fetchUserMock.mockResolvedValue(user)
+  const { wrapper } = userWrapper()
+  render(<UserDetailView userId={user.id} />, { wrapper })
+  fireEvent.click(await screen.findByRole('button', { name: `Edit ${row}` }))
 }
 
 async function submittedEmployment() {
@@ -307,55 +254,50 @@ async function submittedEmployment() {
 
 const COVERS_ALL_SWITCH_NAME = 'Competent for all categories'
 
-describe('UserForm — is_assignable switch (spec 0194)', () => {
-  it('AC-008 — defaults on; switching it off submits false and keeps competence rows and Sedi', async () => {
-    personalDataData.mockReturnValue(validCard)
-    renderEditForm()
+describe('UserDetailView — is_assignable row (spec 0194)', () => {
+  it('AC-008 — on by default; switching it off submits false and keeps the competence rows', async () => {
+    await openRow('Assignable')
 
     const assignable = screen.getByRole('switch', { name: 'Assignable' })
     expect(assignable).toBeChecked()
     fireEvent.click(assignable)
-    expect(assignable).not.toBeChecked()
-    expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
-
-    save()
+    confirmOpenRow('Save')
 
     const employment = await submittedEmployment()
     expect(employment.is_assignable).toBe(false)
     expect(employment.covers_all_product_categories).toBe(false)
+    expect(employment.product_lines).toEqual([{ business_function_id: SALES_FUNCTION, product_category_id: PHOTOVOLTAIC_CATEGORY }])
   })
 })
 
-describe('UserForm — covers_all_product_categories & "all categories" rows (spec 0129)', () => {
-  it('AC-020 — activating the switch hides the row editor and submits the flag with empty rows', async () => {
-    personalDataData.mockReturnValue(validCard)
-    renderEditForm()
+describe('UserDetailView — covers_all_product_categories & "all categories" rows (spec 0129)', () => {
+  it('AC-020 — activating the switch submits the flag with the rows cleared', async () => {
+    await openRow(COVERS_ALL_SWITCH_NAME)
 
     fireEvent.click(screen.getByRole('switch', { name: COVERS_ALL_SWITCH_NAME }))
-
-    expect(screen.queryByLabelText('Business function 1 value')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Add product line' })).not.toBeInTheDocument()
-
-    save()
+    confirmOpenRow('Save')
 
     const employment = await submittedEmployment()
     expect(employment.covers_all_product_categories).toBe(true)
     expect(employment.product_lines).toEqual([])
   })
 
-  it('AC-020 — deactivating the switch reopens an EMPTY editor, not the rows it had before', () => {
-    renderEditForm()
+  it('AC-020 — deactivating the switch leaves no dormant rows behind', async () => {
+    await openRow(
+      COVERS_ALL_SWITCH_NAME,
+      userWithCompetence({ ...BASE_EMPLOYMENT, covers_all_product_categories: true, product_lines: [] }),
+    )
 
     fireEvent.click(screen.getByRole('switch', { name: COVERS_ALL_SWITCH_NAME }))
-    fireEvent.click(screen.getByRole('switch', { name: COVERS_ALL_SWITCH_NAME }))
+    confirmOpenRow('Save')
 
-    expect(screen.queryByLabelText('Business function 1 value')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add product line' })).toBeEnabled()
+    const employment = await submittedEmployment()
+    expect(employment.covers_all_product_categories).toBe(false)
+    expect(employment.product_lines).toEqual([])
   })
 
   it('AC-021 — checking "All" on a row disables/clears the category, and the row is not incomplete', async () => {
-    personalDataData.mockReturnValue(validCard)
-    renderEditForm(userWithCompetence({ ...BASE_EMPLOYMENT, product_lines: [] }))
+    await openRow('Competence', userWithCompetence({ ...BASE_EMPLOYMENT, product_lines: [] }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
     fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${SALES_FUNCTION}` }))
@@ -364,28 +306,27 @@ describe('UserForm — covers_all_product_categories & "all categories" rows (sp
     expect(screen.getByRole('checkbox')).toBeChecked()
     expect(screen.getByLabelText('Product category 1 disabled')).toHaveTextContent('true')
 
-    save()
+    confirmOpenRow('Save')
 
     expect((await submittedEmployment()).product_lines).toEqual([
       { business_function_id: SALES_FUNCTION, product_category_id: null },
     ])
   })
 
-  it('AC-022 — a container category (is_selectable=false) is pickable in this variant', () => {
-    renderEditForm()
+  it('AC-022 — a container category (is_selectable=false) is pickable in this variant', async () => {
+    await openRow('Competence')
 
     expect(screen.getByLabelText('Product category 1 options')).toHaveTextContent(
       `100,${PHOTOVOLTAIC_CATEGORY},${HEAT_PUMPS_CATEGORY},${AUDIT_CATEGORY}`,
     )
   })
 
-  it('AC-023 — a persisted (function, null) row opens with "All" checked', () => {
-    renderEditForm(
+  it('AC-023 — a persisted (function, null) row opens with "All" checked', async () => {
+    await openRow(
+      'Competence',
       userWithCompetence({
         ...BASE_EMPLOYMENT,
-        product_lines: [
-          { id: 93, business_function: { id: SALES_FUNCTION, name: 'Sales' }, product_category: null },
-        ],
+        product_lines: [{ id: 93, business_function: { id: SALES_FUNCTION, name: 'Sales' }, product_category: null }],
       }),
     )
 
@@ -393,12 +334,15 @@ describe('UserForm — covers_all_product_categories & "all categories" rows (sp
     expect(screen.getByLabelText('Product category 1 disabled')).toHaveTextContent('true')
   })
 
-  it('AC-023 — a user with the flag opens with the switch active and the editor hidden', () => {
-    renderEditForm(
+  it('AC-023 — a user with the flag shows it on and has no competence row', async () => {
+    fetchUserMock.mockResolvedValue(
       userWithCompetence({ ...BASE_EMPLOYMENT, covers_all_product_categories: true, product_lines: [] }),
     )
+    const { wrapper } = userWrapper()
+    render(<UserDetailView userId={7} />, { wrapper })
 
-    expect(screen.getByRole('switch', { name: COVERS_ALL_SWITCH_NAME })).toBeChecked()
-    expect(screen.queryByLabelText('Business function 1 value')).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: `Edit ${COVERS_ALL_SWITCH_NAME}` })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Competence' })).not.toBeInTheDocument()
+    expect(pencilOf('Assignable')).toBeInTheDocument()
   })
 })

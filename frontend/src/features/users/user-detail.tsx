@@ -1,39 +1,40 @@
 import { useTranslation } from 'react-i18next'
-import { RecordCanvas, RecordMeta } from '@/components/detail/record-panel'
+import { useQueryClient } from '@tanstack/react-query'
+import { Form } from '@/components/ui/form'
+import { RecordCanvas, RecordMeta, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { PersonalDataRecordSections } from '@/features/personal-data/personal-data-record-cards'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchUser } from '@/features/users/api'
-import { summarizeAssignment } from '@/features/users/user-assignment'
+import { fetchUser, userDetailQueryKey } from '@/features/users/api'
 import { UserDetailHeader, UserDetailStats } from '@/features/users/user-detail-header'
 import { UserDetailSections } from '@/features/users/user-detail-sections'
-import type { EmploymentDetail } from '@/features/users/types'
-import type { CompetenceLineRow } from '@/features/product-lines/types'
+import { persistedUserValues } from '@/features/users/user-record'
+import { useUserInlineEdit } from '@/features/users/use-user-inline-edit'
+import type { UserDetailWithPermissions } from '@/features/users/types'
 import { formatDateTime } from '@/lib/formatting/date-display'
-
-/** Stable empty defaults: a user with no employment profile answers like an empty one. */
-const EMPTY_COMPETENCE_ROWS: CompetenceLineRow[] = []
-const EMPTY_REMOTE_SITE_IDS: number[] = []
 
 interface UserDetailProps {
   userId: number
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the user (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single user, rendered as an enterprise-CRM record —
- * the same kit the Opportunità record uses (user directive 2026-09-11): the
- * identity/KPI/sections card on the left, the activity card on the right, a
- * metadata footer. Container-query driven (`RecordCanvas`) so the same tree
- * renders correctly both inside a resizable Sheet and on the full-bleed
- * `/users/:id` page.
+ * Detail of a single user, rendered as an enterprise-CRM record — the same
+ * `RecordBody` every detail uses: identity + KPI, the sections, then "how to
+ * reach them" (contacts, addresses), the activity in the side column, a
+ * metadata footer. It owns its own fetch: every caller across the app (the
+ * module, the shared user sheet) opens this card by id.
  *
- * It owns its own fetch (unlike the opportunity screen, whose view takes
- * already-loaded data): every caller across the app opens this card by id.
+ * There is no edit page (spec 0222): the fields — the anagraphic card and the
+ * custom fields included — edit IN PLACE, one at a time (`RecordInlineField`,
+ * driven by `useUserInlineEdit`); contacts, addresses and the profile photo
+ * are saved on their own.
  */
-export function UserDetailView({ userId, onEdit }: UserDetailProps) {
+export function UserDetailView({ userId, onChanged }: UserDetailProps) {
   const { t } = useTranslation()
   const {
     data: user,
@@ -41,7 +42,7 @@ export function UserDetailView({ userId, onEdit }: UserDetailProps) {
     isError,
     error,
     refetch,
-  } = useEntityDetail(['users', 'detail', userId], () => fetchUser(userId))
+  } = useEntityDetail(userDetailQueryKey(userId), () => fetchUser(userId))
 
   if (isError) {
     return (
@@ -58,11 +59,29 @@ export function UserDetailView({ userId, onEdit }: UserDetailProps) {
     return <DetailLoading />
   }
 
+  // The edit form reads the field permissions while it is built, so the
+  // provider wraps the whole record, not just the sections.
+  return (
+    <ResourcePermissionsProvider permissions={user.permissions}>
+      <UserDetailRecord user={user} onChanged={onChanged} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function UserDetailRecord({ user, onChanged }: { user: UserDetailWithPermissions; onChanged?: () => void }) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const editor = useUserInlineEdit(user, onChanged)
   const createdAt = formatDateTime(user.created_at)
-  const assignment = summarizeAssignment(assignmentInput(user.employment))
   const collaborationTabs = user.permissions.actions.view_activity
-    ? [activityLogTab('users', userId, t('activityLog.title'))]
+    ? [activityLogTab('users', user.id, t('activityLog.title'))]
     : []
+
+  // A contact/address persisted on its own: refetch the record and tell the host.
+  const handleCardChanged = () => {
+    void queryClient.invalidateQueries({ queryKey: userDetailQueryKey(user.id) })
+    onChanged?.()
+  }
 
   return (
     <RecordCanvas>
@@ -70,12 +89,23 @@ export function UserDetailView({ userId, onEdit }: UserDetailProps) {
         collaborationTabs={collaborationTabs}
         header={
           <>
-            <UserDetailHeader user={user} onEdit={onEdit} canUpdate={user.permissions.resource.update} />
-            <UserDetailStats user={user} assignment={assignment} />
+            <UserDetailHeader user={user} canUpdate={user.permissions.resource.update} />
+            <UserDetailStats roles={user.roles.length} assignment={persistedUserValues(user).assignment} />
           </>
         }
       >
-        <UserDetailSections user={user} assignment={assignment} />
+        {/* Provider only (no DOM): the inline editors share the edit form. */}
+        <Form {...editor.form}>
+          <UserDetailSections user={user} editor={editor} onChanged={onChanged} />
+        </Form>
+        <RecordSectionsGrid className="border-t">
+          <PersonalDataRecordSections
+            card={user.personal_data ?? null}
+            contactsTitle={t('users.form.sections.contacts.title')}
+            addressesTitle={t('users.form.sections.addresses.title')}
+            editing={{ fieldPermission: editor.card.fieldPermission, onChanged: handleCardChanged }}
+          />
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (
@@ -88,27 +118,4 @@ export function UserDetailView({ userId, onEdit }: UserDetailProps) {
       ) : null}
     </RecordCanvas>
   )
-}
-
-/**
- * Projects the persisted profile onto the shape `summarizeAssignment` reads.
- * The persisted competence rows always have a business function (the server
- * rejects a half-filled one), so only that id is non-null by construction
- * here — unlike the form, where a row exists while it is being typed. A null
- * `product_category` (spec 0129 D-3) is a deliberate "all categories of the
- * function" row, not an incomplete one, and counts as such (`all_categories`).
- */
-function assignmentInput(employment: EmploymentDetail | null | undefined) {
-  return {
-    competenceRows:
-      employment?.product_lines?.map((line) => ({
-        business_function_id: line.business_function.id,
-        product_category_id: line.product_category?.id ?? null,
-        all_categories: line.product_category === null,
-      })) ?? EMPTY_COMPETENCE_ROWS,
-    isAssignable: employment?.is_assignable ?? true,
-    coversAllProductCategories: employment?.covers_all_product_categories ?? false,
-    primarySiteId: employment?.primary_operational_site_id ?? null,
-    remoteSiteIds: employment?.remote_operational_site_ids ?? EMPTY_REMOTE_SITE_IDS,
-  }
 }

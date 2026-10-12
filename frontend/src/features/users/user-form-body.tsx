@@ -1,263 +1,128 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AvatarUpload } from '@/components/avatar-upload'
 import { Form } from '@/components/ui/form'
-import {
-  MAIN_COLUMN_CLASS,
-  PANEL_GRID_CLASS,
-  SIDE_COLUMN_CLASS,
-} from '@/components/record-form/layout'
+import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
-import { useResourcePermissions } from '@/features/authorization/permissions'
-import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
-import {
-  AccessTabContent,
-  AddressesTabContent,
-  ContactsTabContent,
-  CredentialsTabContent,
-  IdentityTabContent,
-} from '@/features/users/user-form-account-tabs'
-import { useAssignmentFieldsVisibility } from '@/features/users/user-assignment'
-import { UserAssignmentSection } from '@/features/users/user-form-assignment-section'
-import { ContractDataTabContent } from '@/features/users/user-form-contract-data-tab'
-import { ContractTabContent, ProfileTabContent } from '@/features/users/user-form-employment-tabs'
-import { UserFormHeader } from '@/features/users/user-form-header'
-import { UserFormSummary } from '@/features/users/user-form-summary'
-import { useUserForm } from '@/features/users/use-user-form'
-import type { UserFormMode } from '@/features/users/user-form'
-import type { UserDetail } from '@/features/users/types'
+import { RecordFormBody } from '@/components/record-form/record-form-body'
+import { emptyPersonalDataDraft } from '@/features/personal-data/drafts'
+import { PERSONAL_DATA_CARD_FIELD } from '@/features/personal-data/personal-data-identity-record-section'
+import { PersonalDataChildCards } from '@/features/personal-data/personal-data-record-cards'
+import type { PersonalDataDraft } from '@/features/personal-data/types'
+import { usePersonalDataDraftInlineEdit } from '@/features/personal-data/use-personal-data-draft-inline-edit'
 import {
   anagraphicSectionProps,
   useRevealBlockedSection,
 } from '@/features/personal-data/use-reveal-blocked-section'
+import { UserCreateSections } from '@/features/users/user-create-sections'
+import { UserFormHeader } from '@/features/users/user-form-header'
+import { useUserDraftValues } from '@/features/users/use-user-draft-values'
+import { useUserForm } from '@/features/users/use-user-form'
+import { useUserFormSubmit } from '@/features/users/use-user-form-submit'
+import type { UserDetail } from '@/features/users/types'
 
-/**
- * DOM id bridging the sticky header's save action to the RHF `<form>` below,
- * exactly as the Opportunità and Gestione Richieste screens do: the same id
- * serves the footer actions, so both copies of the button submit this form
- * without either of them nesting the other.
- */
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
 const USER_FORM_ID = 'user-form'
 
+/** Stable create mode: a fresh object per render would rebuild the form's defaults. */
+const CREATE_MODE = { type: 'create' } as const
+
 interface UserFormBodyProps {
-  mode: UserFormMode
   onSuccess: (user: UserDetail) => void
   onCancel: () => void
-  onAvatarChange?: () => void
 }
 
 /**
- * The user create/edit form UI (spec 0015), rebuilt as the TWIN of the
- * Opportunità form (user directive 2026-09-11: "rifatti al modulo
- * opportunità"). Not a resemblance: the layout primitives are literally the
- * same objects (`@/components/record-form` — `RECORD_HEADER_CLASS`,
- * `PANEL_GRID_CLASS`/`SIDE_COLUMN_CLASS`/`MAIN_COLUMN_CLASS`, `SummaryRow`,
- * `RecordFormActions`), so neither screen can drift apart with a later edit to
- * the other.
- *
- * Same skeleton as that form:
- *  - `@container` + `bg-surface`, sticky identity bar carrying the live pills
- *    and the save/cancel actions, repeated at the foot;
- *  - two columns at `@4xl` — the read-only side column FIRST in the DOM
- *    (narrow containers read it before the long form), reordered to the right;
- *  - side column = the live assignment verdict on top, then the recap;
- *  - main column = who the account IS first (anagrafica, credentials, roles),
- *    then the ASSIGNMENT configuration (competence + Sedi: the two halves of
- *    what makes this person reachable by a record, user directive
- *    2026-09-11), then what merely describes them.
- *
- * The assignment block sits right after "Ruoli e accessi" and before the
- * employment ones on purpose: it reads as the second half of "what this person
- * is allowed and able to receive", not as a term of their contract. Its
- * verdict stays visible from the sticky bar and the sticky side column
- * wherever the operator has scrolled to.
- *
- * Each section keeps its own visibility gate, so a section whose fields are
- * all hidden simply is not rendered. Every field is wrapped in `MetaField`
- * (spec 0004): hidden fields are absent, non-editable fields render
- * disabled/read-only, `required` comes from the resolved
- * `ResourcePermissions` — no hardcoded permission logic lives here. All
- * non-render logic lives in `useUserForm`.
+ * The user create form UI, aligned with the in-place detail (spec 0222, spec
+ * 0195 D-8 applied to Utenti): the same `RecordCanvas`, the record card with
+ * its identity band, KPI strip and sections, every row closed until clicked —
+ * the anagraphic card too (`UserCreateSections`) — and the Contatti/Indirizzi
+ * cards in the side column, kept in the draft until Salva (the twin of
+ * `ReferentFormBody`). The profile photo is chosen here and uploaded once the
+ * user exists. There is no edit form: the detail edits a persisted user in
+ * place.
  */
-export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: UserFormBodyProps) {
+export function UserFormBody({ onSuccess, onCancel }: UserFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const assignmentFields = useAssignmentFieldsVisibility()
-  // The form's own scroll container: what a refused save scrolls, and the
-  // boundary that keeps it from scrolling another owner form's blocks.
+  // The form's own scroll scope: what a refused save reveals, never another owner form's blocks.
   const containerRef = useRef<HTMLDivElement>(null)
-  const {
+  const [profileDraft, setProfileDraft] = useState<PersonalDataDraft>(emptyPersonalDataDraft)
+  const [pendingAvatar, setPendingAvatar] = useState<File | null>(null)
+  const { form, customFieldErrorPaths } = useUserForm({ mode: CREATE_MODE })
+  const { inline, cardSignal } = usePersonalDataDraftInlineEdit(form, profileDraft, setProfileDraft)
+  const submit = useUserFormSubmit({
     form,
-    isEdit,
-    serverError,
+    mode: CREATE_MODE,
     profileDraft,
-    setProfileDraft,
-    profileQuery,
-    profileName,
-    revalidateSignal,
-    blockedSection,
-    selectedRoleItems,
-    selectedCompanyItem,
-    selectedPrimaryOperationalSiteItem,
-    selectedRemoteOperationalSiteItems,
-    knownProductLines,
-    selectedReportsToItems,
-    onSubmit,
-    setPendingAvatar,
-    handleAvatarUpload,
-    handleAvatarRemove,
-    canUploadAvatar,
-    canRemoveAvatar,
-    personalDataFieldPermission,
-  } = useUserForm({ mode, onSuccess, onAvatarChange })
+    customFieldErrorPaths,
+    pendingAvatar,
+    onSuccess,
+    // An incomplete card refuses the save: open its row, where the card marks the fields.
+    onRefused: (section) => {
+      if (section === 'card') {
+        inline.start(PERSONAL_DATA_CARD_FIELD)
+      }
+    },
+  })
+  const values = useUserDraftValues(form.control)
+  const fieldPermission = submit.personalDataFieldPermission
 
-  // The blocks are all on screen, but the offending one can be far above the
-  // save button: a refused save brings it back under the user's eyes.
-  useRevealBlockedSection(revalidateSignal, blockedSection, containerRef)
-
-  // The identity card's data is still loading/failed (edit mode only): show a
-  // single skeleton/retry in its place, and hold off on contacts/addresses
-  // (their buffers are not seeded yet either) instead of rendering empty rows.
-  // `isFetching` (not just `isPending`) so a reopen with a stale cached card
-  // waits for the on-open refetch before mounting: the card's inner RHF seeds
-  // its defaults once at mount, so it must mount only from fresh server values.
-  const isProfileLoading = isEdit && (profileQuery.isPending || profileQuery.isFetching)
-  const isProfileError = isEdit && profileQuery.isError
-
-  // Section visibility, read from the same authorization context `MetaField`
-  // uses: a section is only worth rendering if at least one of its fields is
-  // visible. `MetaField` still gates each field individually — this only
-  // decides whether the surrounding section is shown at all. Identity has no
-  // permission-gated field of its own, so it is always shown.
-  const credentialsVisible =
-    fieldPermission('email').visible || fieldPermission('password').visible
-  const accessVisible = fieldPermission('roles').visible
-  const profileVisible =
-    fieldPermission('employment.is_manager').visible ||
-    fieldPermission('employment.job_description').visible ||
-    fieldPermission('employment.reports_to_ids').visible
-  const contractVisible =
-    fieldPermission('employment.relationship_type').visible ||
-    fieldPermission('employment.company_id').visible
-  const contractDataVisible =
-    fieldPermission('employment.qualification_type').visible ||
-    fieldPermission('employment.hired_at').visible ||
-    fieldPermission('employment.terminated_at').visible ||
-    fieldPermission('employment.standard_daily_minutes').visible ||
-    fieldPermission('employment.break_daily_minutes').visible
-  const contactsVisible = personalDataFieldPermission('personal_data.contacts').visible
-  const addressesVisible = personalDataFieldPermission('personal_data.addresses').visible
-
-  // Contacts/addresses live in the buffered personal-data draft, seeded only
-  // once the identity card has loaded — so they are gated on the profile query
-  // too, not just field visibility.
-  const contactsRenderable = !isProfileLoading && !isProfileError && contactsVisible
-  const addressesRenderable = !isProfileLoading && !isProfileError && addressesVisible
-
+  useRevealBlockedSection(submit.revalidateSignal, submit.blockedSection, containerRef)
   const { isSubmitting } = form.formState
 
+  const side = (
+    <PersonalDataChildCards
+      draft={profileDraft}
+      contactsTitle={t('users.form.sections.contacts.title')}
+      addressesTitle={t('users.form.sections.addresses.title')}
+      fieldPermission={fieldPermission}
+      onChange={(patch) => setProfileDraft({ ...profileDraft, ...patch })}
+      createMode
+      contactsBoxProps={anagraphicSectionProps('contacts')}
+      addressesBoxProps={anagraphicSectionProps('addresses')}
+    />
+  )
+
   return (
-    <div ref={containerRef} className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
+    <div ref={containerRef} className="contents">
       <Form {...form}>
-        <UserFormHeader
-          control={form.control}
-          isEdit={isEdit}
-          formId={USER_FORM_ID}
-          isSubmitting={isSubmitting}
-          submitError={serverError}
-          onCancel={onCancel}
-        />
-
-        <div className={PANEL_GRID_CLASS}>
-          <aside className={SIDE_COLUMN_CLASS}>
-            <UserFormSummary
-              control={form.control}
-              selectedPrimaryOperationalSiteItem={selectedPrimaryOperationalSiteItem}
-            />
-          </aside>
-
-          <div className={MAIN_COLUMN_CLASS}>
-            {/* `display: contents`: this native `<form>` only scopes the HTML
-                submit boundary, it must not become an extra flex box. */}
-            <form
-              id={USER_FORM_ID}
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="contents"
-              noValidate
-            >
-              <div {...anagraphicSectionProps('card')}>
-                <IdentityTabContent
-                  mode={mode}
-                  profileName={profileName}
-                  isLoading={isProfileLoading}
-                  isError={isProfileError}
-                  onRetry={() => profileQuery.refetch()}
+        {/* `display: contents`: this native `<form>` only scopes the HTML submit
+            boundary, it must not become an extra box around the canvas. */}
+        <form id={USER_FORM_ID} onSubmit={form.handleSubmit(submit.onSubmit)} className="contents" noValidate>
+          <RecordCanvas>
+            <RecordFormBody side={side}>
+              <RecordCard>
+                <UserFormHeader
+                  values={values}
                   profileDraft={profileDraft}
-                  setProfileDraft={setProfileDraft}
-                  revalidateSignal={revalidateSignal}
-                  personalDataFieldPermission={personalDataFieldPermission}
-                  setPendingAvatar={setPendingAvatar}
-                  handleAvatarUpload={handleAvatarUpload}
-                  handleAvatarRemove={handleAvatarRemove}
-                  canUploadAvatar={canUploadAvatar}
-                  canRemoveAvatar={canRemoveAvatar}
+                  formId={USER_FORM_ID}
+                  isSubmitting={isSubmitting}
+                  submitError={submit.serverError}
+                  onCancel={onCancel}
                 />
-              </div>
-
-              {credentialsVisible && <CredentialsTabContent control={form.control} isEdit={isEdit} />}
-
-              {accessVisible && (
-                <AccessTabContent control={form.control} selectedRoleItems={selectedRoleItems} />
-              )}
-
-              {assignmentFields.any && (
-                <UserAssignmentSection
-                  control={form.control}
-                  knownProductLines={knownProductLines}
-                  selectedPrimaryOperationalSiteItem={selectedPrimaryOperationalSiteItem}
-                  selectedRemoteOperationalSiteItems={selectedRemoteOperationalSiteItems}
+                <UserCreateSections
+                  values={values}
+                  form={form}
+                  draft={inline}
+                  card={{
+                    draft: profileDraft,
+                    setDraft: setProfileDraft,
+                    revalidateSignal: submit.revalidateSignal + cardSignal,
+                    fieldPermission,
+                  }}
+                  avatar={
+                    <AvatarUpload
+                      mode="deferred"
+                      label={t('users.form.avatarLabel')}
+                      name={values.email}
+                      onFileSelected={setPendingAvatar}
+                    />
+                  }
                 />
-              )}
+              </RecordCard>
 
-              {profileVisible && (
-                <ProfileTabContent
-                  control={form.control}
-                  selectedReportsToItems={selectedReportsToItems}
-                />
-              )}
-
-              {contractVisible && (
-                <ContractTabContent control={form.control} selectedCompanyItem={selectedCompanyItem} />
-              )}
-
-              {contractDataVisible && <ContractDataTabContent control={form.control} />}
-
-              {contactsRenderable && (
-                <div {...anagraphicSectionProps('contacts')}>
-                  <ContactsTabContent
-                    profileDraft={profileDraft}
-                    setProfileDraft={setProfileDraft}
-                    personalDataFieldPermission={personalDataFieldPermission}
-                    createMode={!isEdit}
-                  />
-                </div>
-              )}
-
-              {addressesRenderable && (
-                <div {...anagraphicSectionProps('addresses')}>
-                  <AddressesTabContent
-                    profileDraft={profileDraft}
-                    setProfileDraft={setProfileDraft}
-                    personalDataFieldPermission={personalDataFieldPermission}
-                    createMode={!isEdit}
-                  />
-                </div>
-              )}
-
-              <CustomFieldsSection resource="users" control={form.control} />
-
-              {/* The same actions the identity bar carries, repeated where the
-                  form ends: it is long enough that the operator finishes typing
-                  far from the sticky bar. */}
+              {/* The same actions the identity band carries, repeated where the
+                  form ends: the operator finishes typing far from the top. */}
               <RecordFormActions
                 formId={USER_FORM_ID}
                 isSubmitting={isSubmitting}
@@ -265,9 +130,9 @@ export function UserFormBody({ mode, onSuccess, onCancel, onAvatarChange }: User
                 submittingLabel={t('users.form.saving')}
                 cancel={{ label: t('users.form.cancel'), onCancel }}
               />
-            </form>
-          </div>
-        </div>
+            </RecordFormBody>
+          </RecordCanvas>
+        </form>
       </Form>
     </div>
   )
