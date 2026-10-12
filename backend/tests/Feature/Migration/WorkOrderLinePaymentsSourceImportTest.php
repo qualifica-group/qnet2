@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\MigrationStatus;
-use App\Migrations\MigrationOrder;
 use App\Migrations\Sources\WorkOrderLinePaymentsSource;
 use App\Models\MigrationRun;
 use App\Models\QuoteLine;
@@ -56,7 +55,9 @@ function migratedWorkOrderWithLines(int $legacyId = 17, int $lineCount = 2): arr
     return compact('workOrder', 'lines');
 }
 
+// The source is detached (not in config/migrations.php): register it for the test.
 beforeEach(function () {
+    config(['migrations.definitions.work-order-line-payments' => WorkOrderLinePaymentsSource::class]);
     seedMigrationsConfig();
     $this->seed(WorkOrderPaymentStatusSeeder::class);
 });
@@ -148,10 +149,7 @@ it('AC-014: a work order without lines is a warning, nothing is written', functi
         ->and(collect($run->report)->where('level', 'warning')->count())->toBe(1);
 });
 
-it('AC-014: the source is registered, ordered after work-orders and previews the expected columns', function () {
-    expect(config('migrations.definitions'))->toHaveKey('work-order-line-payments')
-        ->and(collect(MigrationOrder::phases())->flatten()->all())->toContain('work-order-line-payments');
-
+it('AC-014: the source previews the expected columns', function () {
     $source = app(WorkOrderLinePaymentsSource::class);
 
     expect(collect($source->columns())->pluck('id')->all())->toBe(['id', 'stato_pagamento', 'accordo_pagamento', 'insoluti']);

@@ -32,8 +32,9 @@ use RuntimeException;
  * column null with a non-fatal warning instead of failing the row.
  * `supplier_id` is NOT remapped here: products come BEFORE the registries (which
  * carry the `old_id` the supplier resolves through). It is left null with a
- * non-fatal warning when the external record carries one; the later
- * ProductSuppliersSource fills it once the registries are migrated (spec 0203).
+ * non-fatal warning when the external record carries one. ProductSuppliersSource
+ * (spec 0203), which would fill it, is detached with the registries (not in
+ * config/migrations.php): the supplier is chosen in qnet.
  *
  * `code` (spec 0065, D-1) carries the external `code` as-is when present; an
  * absent/blank value leaves it null so ProductService::create() falls back to

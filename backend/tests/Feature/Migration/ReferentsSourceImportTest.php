@@ -2,6 +2,7 @@
 
 use App\Enums\MigrationStatus;
 use App\Jobs\RunMigrationJob;
+use App\Migrations\Sources\ReferentsSource;
 use App\Models\Country;
 use App\Models\MigrationRun;
 use App\Models\Referent;
@@ -14,6 +15,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
+
+// The source is detached (not in config/migrations.php): register it for the test.
+beforeEach(fn () => config(['migrations.definitions.referents' => ReferentsSource::class]));
 
 // The shared helpers are defined once, guarded by function_exists, across the
 // Migration feature suite (see CompaniesSourceImportTest).

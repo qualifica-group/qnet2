@@ -1,5 +1,6 @@
 <?php
 
+use App\Migrations\Sources\RegistriesSource;
 use App\Models\Country;
 use App\Models\MigrationRun;
 use App\Models\Referent;
@@ -13,6 +14,9 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
+
+// The source is detached (not in config/migrations.php): register it for the test.
+beforeEach(fn () => config(['migrations.definitions.registries' => RegistriesSource::class]));
 
 // ---------------------------------------------------------------------------
 // RegistriesSource (spec 0189) — legacy `companies` -> anagrafiche

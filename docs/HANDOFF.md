@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MIGRAZIONI LEGACY: SGANCIATI I MODULI OPERATIVI (2026-10-12) — VERDE, COMMITTATO
+
+- Decisione utente: anagrafiche, opportunita', offerte, commesse e referenti "troppo grandi per essere importati";
+  restano tutte le tabelle di appoggio e i collegamenti. Tolte dal registro anche le sorgenti che dipendono da
+  quelle (scelta utente): `work-order-line-payments`, `product-suppliers`, `commission-configurations`.
+- **Solo dall'elenco** (scelta utente, NON cancellare il codice): rimosse da `config/migrations.php` (commento
+  "Detached on 2026-10-12") e da `MigrationOrder::PHASES`, ora 6 fasi / 22 sorgenti. Le classi `*Source`, i concern
+  `MapsLegacy*` e i support (`LegacyQuoteStatusApplier`, `QuoteLineDuplicator`, `PersonNameSplitter`) restano;
+  per riattivarle: una riga in config + la fase in `MigrationOrder`. Il piano "Importa tutto" scarta da solo le
+  chiavi non registrate (`MigrationPlanService::reconcile`).
+- Test: gli 8 `*SourceImportTest` registrano la propria sorgente in `beforeEach` (`config(['migrations.definitions.<key>'
+  => ...])`) cosi' il codice tenuto resta verificato; i due test "registrata e ordinata" (WorkOrderLinePayments AC-014,
+  CommissionConfigurations AC-007) ora controllano solo le colonne; nuovo guard in `MigrationRegistryTest` che le 8
+  chiavi non siano ne' registrate ne' in ordine. `tests/Feature/Migration` 362 verdi, `tests/Unit/Migrations` 28 verdi.
+- Manuale: guide in-app it/en `migrations.ts` (sezione `operational-records` sostituita da `not-imported`), manuale
+  Claude Docs aggiornato (riepilogo Migrazioni, nuovo paragrafo, tolti i due collegamenti). Il PDF va rigenerato.
+
 ## MIGRAZIONI — NOMI SORGENTI IN ITALIANO, SORGENTI DI COLLEGAMENTO (2026-10-12) — VERDE, COMMITTATO
 
 - Richiesta utente: in /migrations tradurre in italiano le sorgenti ancora in inglese; ogni sorgente che fa da
