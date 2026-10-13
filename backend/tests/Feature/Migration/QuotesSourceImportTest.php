@@ -313,6 +313,24 @@ it('imports the legacy costs as cost lines imputed to the offer line of the same
         ->and((float) $quote->margin_net)->toBe(225.0);
 });
 
+it('imports revenue and cost lines whose products sit on categories that are not active, history only (user directive 2026-10-13)', function () {
+    $service = legacyQuoteServiceProduct(10);
+    $service->category->update(['is_active' => false]);
+    $costProduct = Product::factory()->costOnly()->create(['old_source' => 'expense_reports', 'old_id' => 3]);
+    $costProduct->category->update(['is_active' => false]);
+
+    $run = runLegacyQuotesImport([legacyQuoteRecord([
+        'lines' => [['id' => 900, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 100, 'commissions' => []]],
+        'cost_lines' => [['id' => 1, 'product_id' => 3, 'description' => null, 'quantity' => 1, 'unit_price' => 15, 'vat_rate_id' => null, 'supplier_id' => null, 'offer_line_id' => 900]],
+    ])]);
+
+    $quote = Quote::query()->where('old_id', 42)->sole();
+
+    expect($run->report)->toBeNull()
+        ->and($quote->offerLines()->sole()->product_id)->toBe($service->id)
+        ->and($quote->costLines()->sole()->product_id)->toBe($costProduct->id);
+});
+
 it('keeps a cost whose offer line was dropped as a generic cost and skips an unmigrated cost product', function () {
     legacyQuoteServiceProduct(10);
     Product::factory()->costOnly()->create(['old_source' => 'expense_reports', 'old_id' => 3]);

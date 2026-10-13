@@ -17,7 +17,7 @@ use RuntimeException;
 /**
  * `product-categories` migration source (spec 0013 / 0017): a SELF-referential
  * tree (id, name, parent_id, inherits_attributes, inherits_quote_attributes,
- * inherits_work_order_attributes, requires_quote, is_selectable, description, business_function_id) created through
+ * inherits_work_order_attributes, requires_quote, is_selectable, is_active, description, business_function_id) created through
  * ProductCategoryService. `business_function_id` is an EXTERNAL business
  * function id remapped via `old_id` (CategoryBusinessFunctionLinker), which
  * also redirects the functions a created category may not be filed on
@@ -31,18 +31,19 @@ use RuntimeException;
  * anomaly: the child is created detached with a non-fatal warning.
  * The category/attribute pivot (attribute_category) is NOT carried here
  * (mirrors SectorsSource: the import creates only the entity itself). Re-import
- * is idempotent (skip by old_id); `name` carries no unique index, so a category
- * qnet ALREADY holds under that name is ADOPTED and refreshed rather than
- * duplicated (user directive 2026-09-07, mirrors SourcesSource) — see adopt().
- * Never into the manual "APL" branch, though: its legacy twin is imported
- * beside it as "APL old", not selectable (user directive 2026-10-05,
- * LegacyAplBranch).
+ * is idempotent (skip by old_id). Every legacy category is CREATED, never
+ * adopted into a qnet one: the legacy sends its name behind the "[OLD] "
+ * prefix, so it stays apart from the qnet catalogue, and as NOT active: the
+ * migrated catalogue is history only, hidden with its products from every
+ * input (spec 0208), while the records linked to it stay valid (user
+ * directive 2026-10-13). The legacy APL branch arrives as "[OLD] APL" and is imported
+ * as containers (LegacyAplBranch).
  */
 class ProductCategoriesSource extends AbstractMigrationSource
 {
     /**
      * The qnet ids THIS run created. afterImport() closes the ones that end up
-     * in the "APL old" branch or on an "OLD" business function; a node an earlier run created is left alone, so
+     * in the "[OLD] APL" branch or on an "OLD" business function; a node an earlier run created is left alone, so
      * a selectability set by hand survives a re-import.
      *
      * @var list<int>
@@ -92,6 +93,7 @@ class ProductCategoriesSource extends AbstractMigrationSource
             ['id' => 'inherits_work_order_attributes', 'label' => 'Inherits work order attributes (optional)', 'type' => 'boolean'],
             ['id' => 'requires_quote', 'label' => 'Requires quote (root only)', 'type' => 'boolean'],
             ['id' => 'is_selectable', 'label' => 'Selectable', 'type' => 'boolean'],
+            ['id' => 'is_active', 'label' => 'Active', 'type' => 'boolean'],
             ['id' => 'description', 'label' => 'Description', 'type' => 'string'],
             ['id' => 'business_function_id', 'label' => 'Business function (external id)', 'type' => 'number'],
         ];
@@ -122,6 +124,7 @@ class ProductCategoriesSource extends AbstractMigrationSource
             'inherits_work_order_attributes' => $record['inherits_work_order_attributes'] ?? null,
             'requires_quote' => $record['requires_quote'] ?? null,
             'is_selectable' => $record['is_selectable'] ?? null,
+            'is_active' => $record['is_active'] ?? null,
             'description' => $record['description'] ?? null,
             'business_function_id' => $record['business_function_id'] ?? null,
         ];
@@ -146,25 +149,6 @@ class ProductCategoriesSource extends AbstractMigrationSource
         }
 
         $warnings = [];
-
-        // Adopt the category qnet already holds under this name and that no
-        // other external id has claimed — the static catalogue seeds part of
-        // the same tree (QualificaCatalogSeeder), and a second row with the
-        // same name would be an unusable duplicate in every select.
-        $existing = ProductCategory::query()->where('name', $name)->whereNull('old_id')->first();
-        $manualTwin = $this->aplBranch->manualNodeNamed($name);
-
-        if ($existing !== null && $manualTwin === null) {
-            return $this->adopt($existing, $externalId, $record);
-        }
-
-        // The legacy twin of a manual APL node is imported beside it, under a
-        // name of its own, wherever its legacy parent puts it (LegacyAplBranch).
-        if ($manualTwin !== null) {
-            $name = $this->aplBranch->legacyName($name);
-            $warnings[] = sprintf('Legacy twin of the catalogue category "%s" imported as "%s" instead of adopted.', $manualTwin->name, $name);
-        }
-
         $parentId = $this->resolveParent($record['parent_id'] ?? null, $warnings);
 
         $inherits = $this->inheritanceFlags($record) ?? [
@@ -185,6 +169,9 @@ class ProductCategoriesSource extends AbstractMigrationSource
             isSelectable: array_key_exists('is_selectable', $record)
                 ? (bool) $record['is_selectable']
                 : true,
+            isActive: array_key_exists('is_active', $record)
+                ? (bool) $record['is_active']
+                : true,
         ));
 
         $category->old_id = $externalId;
@@ -192,61 +179,6 @@ class ProductCategoriesSource extends AbstractMigrationSource
         $this->createdIds[] = $category->id;
 
         return MigrationRowOutcome::created($warnings, $category);
-    }
-
-    /**
-     * Claims an existing qnet category for $externalId and refreshes it from
-     * the external record, instead of creating a second node under the same
-     * name.
-     *
-     * Only the DESCRIPTIVE fields are refreshed. What the node's own tree
-     * says about itself is qnet's and stays put:
-     *   - `parent_id` — adopting must never MOVE a branch. The external tree
-     *     is nested under one root by QualificaLegacyImportSeeder; a category
-     *     the static catalogue already placed keeps the place it gave it;
-     *   - `requires_quote` — owned by the branch root
-     *     (RequiresQuoteInheritance), never authored on a node with a parent;
-     *   - `is_selectable` — the static catalogue REALIGNS it on every seed run
-     *     (spec 0074), so writing the external value here would only survive
-     *     until the next seed, and would reopen a container in the meantime.
-     *
-     * `business_function_id` is only filled into a FREE slot, so an assignment
-     * made in qnet (QualificaBusinessFunctionLinkSeeder, or by hand) survives.
-     *
-     * `old_id` is set directly: it is not fillable, being the migration
-     * engine's own bookkeeping rather than a domain field.
-     *
-     * @param  array<string, mixed>  $record
-     */
-    private function adopt(ProductCategory $category, int|string $externalId, array $record): MigrationRowOutcome
-    {
-        $warnings = [sprintf('Existing category "%s" adopted and refreshed instead of duplicated.', $category->name)];
-
-        $category->old_id = $externalId;
-        $category->fill($this->adoptableAttributes($record));
-        $this->businessFunctions->fillFreeSlot($category, $record['business_function_id'] ?? null, $warnings);
-        $category->save();
-        $this->cutManualChildrenFromLegacyFields($category);
-
-        return MigrationRowOutcome::created($warnings, $category);
-    }
-
-    /**
-     * Spec 0183 F-6: the adopted category now receives the legacy Offerta /
-     * Commessa fields, which its manual (no `old_id`) children would inherit
-     * on top of the fields they already had. Closing their quote and
-     * work_order barriers keeps exactly the pre-import set. The DIRECT children
-     * are enough: CategoryHierarchy::inheritedAncestors() stops climbing at the
-     * first opted-out ancestor, so a deeper manual descendant already reaches
-     * nothing above its own opted-out parent. The Product barrier is left as
-     * is. Idempotent: it rewrites the same two flags to the same value.
-     */
-    private function cutManualChildrenFromLegacyFields(ProductCategory $adopted): void
-    {
-        ProductCategory::query()
-            ->where('parent_id', $adopted->id)
-            ->whereNull('old_id')
-            ->update(['inherits_quote_attributes' => false, 'inherits_work_order_attributes' => false]);
     }
 
     /**
@@ -277,33 +209,6 @@ class ProductCategoriesSource extends AbstractMigrationSource
             'quote' => array_key_exists('inherits_quote_attributes', $record) ? (bool) $record['inherits_quote_attributes'] : $single,
             'work_order' => array_key_exists('inherits_work_order_attributes', $record) ? (bool) $record['inherits_work_order_attributes'] : $single,
         ];
-    }
-
-    /**
-     * The fields an adoption refreshes, each only when the external record
-     * carries it — an absent key means "the external system says nothing",
-     * which must not blank the value qnet holds.
-     *
-     * @param  array<string, mixed>  $record
-     * @return array<string, mixed>
-     */
-    private function adoptableAttributes(array $record): array
-    {
-        $attributes = [];
-
-        if (array_key_exists('description', $record)) {
-            $attributes['description'] = $this->mapDescription($record['description']);
-        }
-
-        $inherits = $this->inheritanceFlags($record);
-
-        if ($inherits !== null) {
-            $attributes['inherits_product_attributes'] = $inherits['product'];
-            $attributes['inherits_quote_attributes'] = $inherits['quote'];
-            $attributes['inherits_work_order_attributes'] = $inherits['work_order'];
-        }
-
-        return $attributes;
     }
 
     /**

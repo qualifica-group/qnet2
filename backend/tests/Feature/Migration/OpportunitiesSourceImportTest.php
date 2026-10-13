@@ -191,6 +191,19 @@ it('creates the product lines from the product_category_ids the legacy sends', f
         ->and($lines(907))->toBe([$second->id]);
 });
 
+it('creates the product lines on a migrated category that is not active, history only (user directive 2026-10-13)', function () {
+    opportunitiesSourceRegistry(14);
+    $inactive = ProductCategory::factory()->create(['business_function_id' => BusinessFunction::factory()->create()->id, 'is_active' => false]);
+    $inactive->forceFill(['old_id' => 41])->save();
+    fakeLegacyOpportunities([['id' => 906, 'registry_id' => 14, 'product_category_ids' => [41]]]);
+
+    $run = runOpportunitiesMigration();
+
+    expect($run->created_rows)->toBe(1)
+        ->and($run->report ?? [])->toBe([])
+        ->and(Opportunity::query()->where('old_id', 906)->firstOrFail()->productLines()->pluck('product_category_id')->all())->toBe([$inactive->id]);
+});
+
 it('back-fills the product lines of an imported opportunity that has none on a re-run, never overwriting', function () {
     opportunitiesSourceRegistry(15);
     [$own, $late] = ProductCategory::factory()->count(2)->create(['business_function_id' => BusinessFunction::factory()->create()->id]);

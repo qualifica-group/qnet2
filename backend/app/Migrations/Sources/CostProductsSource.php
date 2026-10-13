@@ -133,17 +133,11 @@ class CostProductsSource extends AbstractMigrationSource
             return MigrationRowOutcome::skipped();
         }
 
-        $name = trim((string) ($record['name'] ?? ''));
-
-        if ($name === '') {
-            throw new RuntimeException('name is required.');
-        }
-
         // Step 2: create the cost-only product in its branch category.
         $warnings = [];
 
         $product = $this->service->create(new CreateProductData(
-            name: $name,
+            name: $this->productName($record['name'] ?? null),
             description: $record['description'] ?? null,
             cost: (float) ($record['cost'] ?? 0),
             price: (float) ($record['price'] ?? 0),

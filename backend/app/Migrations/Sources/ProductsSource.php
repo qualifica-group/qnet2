@@ -10,7 +10,6 @@ use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsExternalProductRecord;
 use App\Migrations\Support\ExternalApiClient;
-use App\Migrations\Support\LegacyAplBranch;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTypology;
@@ -23,8 +22,8 @@ use RuntimeException;
  * is an EXTERNAL id remapped to the qnet category via `old_id` (product-categories
  * must be migrated first) — it is a REQUIRED FK, so a row whose category is not
  * migrated fails per-row (never created detached, unlike the self-referential
- * ProductCategoriesSource). A category of the legacy "APL old" branch is swapped
- * for the manual one replacing it (LegacyAplBranch, user directive 2026-10-05).
+ * ProductCategoriesSource). A product of the legacy "[OLD] APL" branch stays
+ * there, history only like the rest (user directive 2026-10-13).
  * `product_type` maps to the ProductType enum, falling
  * back to the default case on an absent/unknown value with a non-fatal warning.
  *
@@ -63,14 +62,14 @@ class ProductsSource extends AbstractMigrationSource
     /**
      * The category a legacy product WITHOUT a category is filed under, seeded
      * by QualificaCatalogSeeder (user decision 2026-10-12): a holding place to
-     * reclassify from, instead of a failed row.
+     * reclassify from, instead of a failed row. Made NOT active on first use,
+     * like the rest of the migrated catalogue (user directive 2026-10-13).
      */
     public const string UNCATEGORIZED_CATEGORY = 'No categoria';
 
     public function __construct(
         ExternalApiClient $client,
         private readonly ProductService $service,
-        private readonly LegacyAplBranch $aplBranch,
     ) {
         parent::__construct($client);
     }
@@ -159,20 +158,14 @@ class ProductsSource extends AbstractMigrationSource
             return MigrationRowOutcome::skipped();
         }
 
-        $name = trim((string) ($record['name'] ?? ''));
-
-        if ($name === '') {
-            throw new RuntimeException('name is required.');
-        }
-
         $warnings = [];
 
         $product = $this->service->create(new CreateProductData(
-            name: $name,
+            name: $this->productName($record['name'] ?? null),
             description: $record['description'] ?? null,
             cost: (float) ($record['cost'] ?? 0),
             price: (float) ($record['price'] ?? 0),
-            categoryId: $this->aplBranch->productCategoryFor($this->resolveCategory($record['category_id'] ?? null, $warnings), $warnings),
+            categoryId: $this->resolveCategory($record['category_id'] ?? null, $warnings),
             productType: $this->mapProductType($record['product_type'] ?? null, $warnings),
             vatRateId: $this->resolveVatRate($record['vat_rate_id'] ?? null, $warnings),
             supplierId: $this->unresolvableReference('supplier_id', $record['supplier_id'] ?? null, $warnings),
@@ -215,15 +208,20 @@ class ProductsSource extends AbstractMigrationSource
      */
     private function uncategorizedCategory(array &$warnings): int
     {
-        $id = ProductCategory::query()->where('name', self::UNCATEGORIZED_CATEGORY)->value('id');
+        $category = ProductCategory::query()->where('name', self::UNCATEGORIZED_CATEGORY)->first();
 
-        if ($id === null) {
+        if ($category === null) {
             throw new RuntimeException("category_id is missing and the '".self::UNCATEGORIZED_CATEGORY."' category does not exist; run QualificaCatalogSeeder first.");
+        }
+
+        // Per-model update, so the activity log records it.
+        if ($category->is_active) {
+            $category->update(['is_active' => false]);
         }
 
         $warnings[] = "No category in the legacy record; filed under '".self::UNCATEGORIZED_CATEGORY."'.";
 
-        return $id;
+        return $category->id;
     }
 
     /**

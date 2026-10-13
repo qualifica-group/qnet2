@@ -35,10 +35,6 @@ final class CategoryBusinessFunctionLinker
      * tree is imported beside the manual one (LegacyAplBranch), never on its
      * function. Match on the name is case-insensitive.
      *
-     * Deliberately out of the ADOPTION path (fillFreeSlot): an adopted
-     * category is a qnet node of the static catalogue, and it keeps the
-     * function the external record names.
-     *
      * @var array<string, string>
      */
     private const array REDIRECTED_FUNCTIONS = [
@@ -112,28 +108,6 @@ final class CategoryBusinessFunctionLinker
             ->get()
             ->filter(fn (ProductCategory $category): bool => in_array($this->hierarchy->effectiveBusinessFunction($category)['id'] ?? null, $replacementIds, true))
             ->each(fn (ProductCategory $category) => $category->update(['is_selectable' => false]));
-    }
-
-    /**
-     * Assigns the external function to an ADOPTED category only when the slot
-     * is free: no own value (a qnet assignment is never overwritten), none
-     * inherited from an ancestor, none owned by a descendant.
-     *
-     * @param  array<int, string>  $warnings
-     */
-    public function fillFreeSlot(ProductCategory $category, mixed $externalRef, array &$warnings): void
-    {
-        if ($category->business_function_id !== null || $this->hierarchy->inheritedBusinessFunctionFor($category->parent_id) !== null) {
-            return;
-        }
-
-        $descendantIds = $this->hierarchy->descendantIds($category->id);
-
-        if ($descendantIds !== [] && ProductCategory::query()->whereIn('id', $descendantIds)->whereNotNull('business_function_id')->exists()) {
-            return;
-        }
-
-        $category->business_function_id = $this->resolve($externalRef, $warnings);
     }
 
     /**

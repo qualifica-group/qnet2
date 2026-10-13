@@ -340,4 +340,29 @@
     <item>Ownership file disgiunta. Contratto qui = punto di sincronizzazione. File GATE (schema/models old_id, `config/migrations.php`, `routes/api.php`, `bootstrap/app.php`, `config/navigation.php`+`NavigationService`, `router.tsx`, indice i18n, `icon-map.ts`) chiusi prima delle lane parallele dipendenti.</item>
   </constraints>
 
+  <amendments>
+    <amendment date="2026-10-13" title="Catalogo legacy marcato [OLD], niente adozione delle categorie">
+      Decisione utente: tutto il catalogo che arriva dal legacy porta il prefisso "[OLD] " nel nome. Lo mette il legacy
+      (`App\Support\Migration\LegacyNameMark`, regola backend.md §9) su: `product-categories.name`, `products.name`,
+      `cost-products.name` e `cost-products.category_name` (sotto-categorie di magazzino). Il ramo "Costi" e i suoi
+      rami fissi (Articoli, Veicoli, Attrezzature, Note spese) sono di qnet-2 e restano senza prefisso.
+      qnet-2 salva il nome com'e' arrivato; taglia solo a 191 caratteri il nome prodotto (limite colonna).
+      `ProductCategoriesSource` non adotta piu' per nome una categoria qnet senza old_id (supera la direttiva
+      2026-09-07 e la F-6 / AC-004 della spec 0183): ogni categoria legacy e' creata. Il ramo APL legacy arriva come
+      "[OLD] APL" (sostituisce "APL old"); `LegacyAplBranch` non rinomina piu' i gemelli, sposta ancora i prodotti di
+      "[OLD] Formazione Apprendistato", "[OLD] Tirocini extracurriculari privati" e "[OLD] Orientamento Specialistico"
+      sulle categorie manuali. I dati gia' importati non vengono rinominati: il prefisso vale dal prossimo import pulito.
+    </amendment>
+    <amendment date="2026-10-13" title="bis - Catalogo legacy solo storico (categorie non attive)">
+      Decisione utente: le categorie e i prodotti [OLD] servono solo allo storico, mai selezionabili. Leva = flag
+      "Attiva" della spec 0208 (una categoria non attiva nasconde ramo e prodotti da ogni inserimento, lo storico resta
+      valido). Il legacy manda `is_active: false` su ogni `product-categories`; qnet-2 lo mappa (assente = true).
+      Ramo dei costi: qnet-2 lo crea come "[OLD] Costi" non attivo, con rami "[OLD] Articoli", "[OLD] Veicoli",
+      "[OLD] Attrezzature", "[OLD] Note spese" (`CostProductCatalogue`). "No categoria" diventa non attiva al primo
+      prodotto legacy archiviato li' (`ProductsSource`). Supera l'emendamento precedente sul ramo APL: i prodotti del
+      ramo "[OLD] APL" restano sulle loro categorie legacy, `LegacyAplBranch` non li sposta piu' sulle categorie
+      manuali. L'import di opportunita', offerte (righe ricavo e costo) e commesse non verifica lo stato attivo.
+    </amendment>
+  </amendments>
+
 </spec>

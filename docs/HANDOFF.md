@@ -3,6 +3,42 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MIGRAZIONE: CATALOGO LEGACY MARCATO [OLD] (2026-10-13) — VERDE, NON COMMITTATO
+
+- Decisione utente: categorie prodotto, prodotti e prodotti di costo (+ sotto-categorie di magazzino) dal legacy
+  hanno il nome "[OLD] ...". Il ramo Costi e i rami fissi (Articoli/Veicoli/Attrezzature/Note spese) restano senza.
+- Legacy (`../qnet`, NON committato): nuovo `app/Support/Migration/LegacyNameMark` (PREFIX `[OLD] `, null se
+  blank) usato da `ProductCategoryMigrationController` (name), `ProductMigrationController` (name),
+  `CostProductMigrationController` (name, category_name). Verificato via tinker: "[OLD] ISO", "[OLD] Alpha"/"[OLD] Veleni".
+- qnet-2: `ProductCategoriesSource` NON adotta piu' per nome (tolti adopt/adoptableAttributes/
+  cutManualChildrenFromLegacyFields; supera direttiva 2026-09-07 e spec 0183 F-6/AC-004).
+  `CategoryBusinessFunctionLinker::fillFreeSlot` rimosso (morto). `LegacyAplBranch`: LEGACY_BRANCH = "[OLD] APL"
+  (era "APL old"), tolti manualNodeNamed/legacyName/suffisso; PRODUCT_CATEGORIES confrontato con prefisso.
+  `QualificaLegacyImportSeeder`: tolta la guardia `$staticRootIds` (serviva solo all'adozione).
+  `MapsExternalProductRecord::productName()` taglia il nome prodotto a 191 (30 titoli legacy > 185 caratteri).
+- Spec 0013 `<amendments>` 2026-10-13; spec 0183 AC-004 marcato SUPERATO. Guida in-app migrations IT+EN e
+  manuale Claude Docs: paragrafo "[OLD]" prima di quello sui Prodotti di costo.
+- Test: `tests/Feature/Migration` 390/390 (7 test di adozione tolti, 1 nuovo sul taglio a 191); suite completa
+  10.397 verdi, 3 rossi solo in QuoteDocumentPdfTest (LibreOffice non installato, estraneo). Vitest help 122/122, tsc -b ok.
+- Aperto: i dati gia' importati (183 categorie, 1.464 prodotti nel DB dev) NON vengono rinominati: decisione utente
+  = il prefisso vale dal prossimo import pulito. Non toccate le redirect delle funzioni aziendali ("FORMAZIONE OLD",
+  "APL OLD").
+- BIS (stesso giorno): catalogo [OLD] solo storico. Legacy `ProductCategoryMigrationController` manda
+  `is_active: false`; `ProductCategoriesSource` mappa `is_active` (assente = true). `CostProductCatalogue`: ROOT
+  "[OLD] Costi" + rami "[OLD] Articoli/Veicoli/Attrezzature/Note spese"; `CostCategoryResolver` crea la radice non
+  attiva. `ProductsSource` rende non attiva "No categoria" al primo uso (il `QualificaCatalogSeeder` e' a 504 righe,
+  l'hook blocca ogni modifica: non toccato). APL: tolto lo spostamento dei prodotti sulle categorie manuali
+  (`LegacyAplBranch::productCategoryFor`/PRODUCT_CATEGORIES rimossi), restano sul ramo "[OLD] APL". Nuovi test:
+  opportunita' e offerta (ricavo + costo) importate su categorie non attive. Migration 392/392. Spec 0013 emendamento
+  bis, guida migrations IT+EN, manuale Claude Docs aggiornati.
+- Token migrazione: quello nel `.env` era firmato con chiavi Passport diverse da quelle del legacy locale (401);
+  rigenerato per l'utente legacy 449 (Nicola Eliseo) il 2026-10-13.
+- APL manuale: confermato dall'utente che bastano le categorie gia' seedate (Apprendistato, Tirocinio, Orientamento
+  specialistico, con i loro campi); nessuna categoria nuova.
+- Suite completa: 10.396 verdi. Rossi estranei: QuoteDocumentPdfTest (LibreOffice assente) e 3 casi di
+  RecordActorWriteTest causati dalla cache rotte locale `bootstrap/cache/routes-v7.php` (creata 17:08): con
+  `APP_ROUTES_CACHE` puntato altrove passa 10/10. Rimedio: `php artisan optimize:clear`.
+
 ## MIGRAZIONE: RIGHE PRODOTTO OPPORTUNITA' DALLE OFFERTE (2026-10-13) — VERDE, NON COMMITTATO
 
 - Bug: opportunita' 19561 (legacy 173033) con 2 righe prodotto e 1 solo prodotto in offerta. Il legacy mandava la

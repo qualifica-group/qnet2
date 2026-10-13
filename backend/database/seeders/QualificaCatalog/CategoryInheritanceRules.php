@@ -38,7 +38,7 @@ final class CategoryInheritanceRules
      *
      * The APL internships likewise (user directive 2026-10-02): their own
      * form (AplInternshipAttributeCatalogue), nothing assigned on the "APL"
-     * root (the legacy Ricerca & Selezione fields go to "APL old" since the
+     * root (the legacy Ricerca & Selezione fields go to "[OLD] APL" since the
      * user directive 2026-10-05, LegacyAplBranch). So do the apprenticeships and
      * the orientation practices (ApprenticeshipAttributeCatalogue,
      * AplOrientationAttributeCatalogue, user directives 2026-10-05).

@@ -4,6 +4,7 @@ namespace App\Migrations\Sources\Concerns;
 
 use App\Migrations\AbstractMigrationSource;
 use App\Models\VatRate;
+use RuntimeException;
 
 /**
  * Field-mapping helpers shared by the migration sources that create products:
@@ -15,6 +16,24 @@ use App\Models\VatRate;
  */
 trait MapsExternalProductRecord
 {
+    /** Length of the `products.name` column. */
+    private const int NAME_MAX_LENGTH = 191;
+
+    /**
+     * The required product name, trimmed and cut to the column: the "[OLD] "
+     * prefix the legacy adds can push a long title past it.
+     */
+    private function productName(mixed $externalName): string
+    {
+        $name = trim((string) $externalName);
+
+        if ($name === '') {
+            throw new RuntimeException('name is required.');
+        }
+
+        return mb_substr($name, 0, self::NAME_MAX_LENGTH);
+    }
+
     /**
      * Remap the OPTIONAL external VAT rate reference to the qnet vat_rate id via
      * `old_id`. Absent/blank → null (no warning: the legacy row simply carries

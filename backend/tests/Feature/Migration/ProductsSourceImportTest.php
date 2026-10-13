@@ -47,14 +47,14 @@ if (! function_exists('runMigrationJobFor')) {
 it('creates a product, remapping the required category_id via old_id', function () {
     seedMigrationsConfig();
     // A category already migrated: its external id (5) is what a product points at.
-    ProductCategory::factory()->create(['old_id' => 5, 'name' => 'Consulting']);
+    ProductCategory::factory()->create(['old_id' => 5, 'name' => '[OLD] Consulting']);
 
     Http::fake([
         fakeMigrationsBaseUrl().'/products*' => Http::response([
             'items' => [
                 [
                     'id' => 1,
-                    'name' => 'Onboarding package',
+                    'name' => '[OLD] Onboarding package',
                     'description' => 'Setup service',
                     'cost' => 100,
                     'price' => 250.5,
@@ -74,7 +74,7 @@ it('creates a product, remapping the required category_id via old_id', function 
     $product = Product::query()->where('old_id', 1)->first();
     $category = ProductCategory::query()->where('old_id', 5)->first();
 
-    expect($product->name)->toBe('Onboarding package')
+    expect($product->name)->toBe('[OLD] Onboarding package')
         ->and($product->description)->toBe('Setup service')
         ->and((float) $product->cost)->toBe(100.0)
         ->and((float) $product->price)->toBe(250.5)
@@ -221,6 +221,26 @@ it('defaults an absent folder and warns on one matching no typology', function (
         ->and(collect($fresh->report)->where('level', 'warning'))->toHaveCount(1);
 });
 
+it('cuts a name the "[OLD] " prefix pushed past the column to its 191 characters (user directive 2026-10-13)', function () {
+    seedMigrationsConfig();
+    ProductCategory::factory()->create(['old_id' => 5]);
+    $longName = '[OLD] '.str_repeat('a', 191);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/products*' => Http::response([
+            'items' => [['id' => 1, 'name' => $longName, 'category_id' => 5, 'product_type' => 'SERVICE']],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'products']);
+
+    runMigrationJobFor($run);
+
+    expect(Product::query()->where('old_id', 1)->value('name'))->toBe(mb_substr($longName, 0, 191))
+        ->and($run->fresh()->created_rows)->toBe(1);
+});
+
 it('re-importing the same product is idempotent (skip, no duplicate)', function () {
     seedMigrationsConfig();
     ProductCategory::factory()->create(['old_id' => 5]);
@@ -272,46 +292,31 @@ it('fails a product whose required category is not migrated, without blocking a 
         ->and(collect($fresh->report)->firstWhere('level', 'error'))->not->toBeNull();
 });
 
-it('files a product of the legacy "APL old" branch on the manual category replacing its own (user directive 2026-10-05)', function () {
+it('REQUIREMENT CHANGED (user directive 2026-10-13): keeps a product of the legacy "[OLD] APL" branch on its own legacy node, never on the manual one', function () {
     seedMigrationsConfig();
     $manualRoot = ProductCategory::factory()->create(['name' => 'APL', 'parent_id' => null]);
-    $targets = collect(['Apprendistato', 'Tirocinio', 'Orientamento specialistico'])
-        ->mapWithKeys(fn (string $name) => [$name => ProductCategory::factory()->create(['name' => $name, 'parent_id' => $manualRoot->id])->id]);
+    $manualTarget = ProductCategory::factory()->create(['name' => 'Apprendistato', 'parent_id' => $manualRoot->id]);
 
-    // The legacy branch as the import leaves it: under "Consulenza".
+    // The legacy branch as the import leaves it: under "Consulenza", history only.
     $consulenza = ProductCategory::factory()->create(['name' => 'Consulenza', 'parent_id' => null]);
-    $legacyRoot = ProductCategory::factory()->create(['old_id' => 10, 'name' => 'APL old', 'parent_id' => $consulenza->id]);
-    foreach ([11 => 'Formazione Apprendistato', 12 => 'Tirocini extracurriculari privati', 13 => 'Orientamento Specialistico old', 14 => 'Ricerca e Selezione'] as $oldId => $name) {
-        ProductCategory::factory()->create(['old_id' => $oldId, 'name' => $name, 'parent_id' => $legacyRoot->id]);
-    }
-    $elsewhere = ProductCategory::factory()->create(['old_id' => 20, 'name' => 'Tirocini extracurriculari privati', 'parent_id' => null]);
+    $legacyRoot = ProductCategory::factory()->create(['old_id' => 10, 'name' => '[OLD] APL', 'parent_id' => $consulenza->id, 'is_active' => false]);
+    $legacyNode = ProductCategory::factory()->create(['old_id' => 11, 'name' => '[OLD] Formazione Apprendistato', 'parent_id' => $legacyRoot->id, 'is_active' => false]);
 
     Http::fake([
         fakeMigrationsBaseUrl().'/products*' => Http::response([
-            'items' => collect([1 => 11, 2 => 12, 3 => 13, 4 => 14, 5 => 20])
-                ->map(fn (int $categoryId, int $id) => ['id' => $id, 'name' => "Product {$id}", 'category_id' => $categoryId, 'product_type' => 'SERVICE'])
-                ->values()->all(),
-            'pagination' => ['total' => 5],
+            'items' => [['id' => 1, 'name' => '[OLD] Product 1', 'category_id' => 11, 'product_type' => 'SERVICE']],
+            'pagination' => ['total' => 1],
         ]),
     ]);
 
-    $actor = migrationsSuperAdminActor();
-    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'products']);
+    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'products']);
 
     runMigrationJobFor($run);
 
-    $categoryOf = fn (int $oldId) => Product::query()->where('old_id', $oldId)->value('category_id');
-
-    expect($categoryOf(1))->toBe($targets['Apprendistato'])
-        ->and($categoryOf(2))->toBe($targets['Tirocinio'])
-        ->and($categoryOf(3))->toBe($targets['Orientamento specialistico'])
-        // No manual replacement: kept on its legacy node, with a warning.
-        ->and($categoryOf(4))->toBe(ProductCategory::query()->where('old_id', 14)->value('id'))
-        // Same name outside the legacy APL branch: untouched.
-        ->and($categoryOf(5))->toBe($elsewhere->id)
-        ->and($run->fresh()->created_rows)->toBe(5)
-        ->and(collect($run->fresh()->report)->pluck('message')->filter(fn (string $message) => str_contains($message, 'no manual replacement'))->count())
-        ->toBe(1);
+    expect(Product::query()->where('old_id', 1)->value('category_id'))->toBe($legacyNode->id)
+        ->and(Product::query()->where('category_id', $manualTarget->id)->exists())->toBeFalse()
+        ->and($run->fresh()->created_rows)->toBe(1)
+        ->and($run->fresh()->report)->toBeNull();
 });
 
 it('files a product the legacy left without a category under "No categoria", with a warning', function () {
@@ -332,6 +337,9 @@ it('files a product the legacy left without a category under "No categoria", wit
     expect($fresh->created_rows)->toBe(1)
         ->and($fresh->failed_rows)->toBe(0)
         ->and(Product::query()->where('old_id', 499)->value('category_id'))->toBe($uncategorized->id)
+        // History only, like the rest of the migrated catalogue (user
+        // directive 2026-10-13).
+        ->and($uncategorized->fresh()->is_active)->toBeFalse()
         ->and(collect($fresh->report)->pluck('message')->implode(' '))->toContain("filed under 'No categoria'");
 });
 

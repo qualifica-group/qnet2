@@ -7,6 +7,9 @@ namespace App\Migrations\Support;
  * branch each legacy cost table lands in, and the legacy fields with no native
  * product column, stored as PRODUCT-context attributes of that branch. Pure
  * data — CostCategoryResolver provisions it, CostProductsSource fills it.
+ * The branch exists only for the legacy costs, so it carries the "[OLD] "
+ * mark of the migrated catalogue and is history only (user directive
+ * 2026-10-13).
  */
 final class CostProductCatalogue
 {
@@ -15,7 +18,7 @@ final class CostProductCatalogue
      * category never pairs into a product line, so a cost item never becomes a
      * REVENUE row (same choice as DemoCostProductCatalogue).
      */
-    public const string ROOT = 'Costi';
+    public const string ROOT = '[OLD] Costi';
 
     public const string ATTRIBUTE_TYPE = 'text';
 
@@ -28,10 +31,10 @@ final class CostProductCatalogue
      * @var array<string, string>
      */
     public const array BRANCHES = [
-        'products' => 'Articoli',
-        'vehicles' => 'Veicoli',
-        'equipment' => 'Attrezzature',
-        self::EXPENSE_REPORTS => 'Note spese',
+        'products' => '[OLD] Articoli',
+        'vehicles' => '[OLD] Veicoli',
+        'equipment' => '[OLD] Attrezzature',
+        self::EXPENSE_REPORTS => '[OLD] Note spese',
     ];
 
     /**
