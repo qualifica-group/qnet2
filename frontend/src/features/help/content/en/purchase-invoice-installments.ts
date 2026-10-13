@@ -18,8 +18,8 @@ const guide: HelpGuide = {
           text: 'Installments are **not created or deleted** from here. From this list you can **record or clear a payment** and **change the date and method** of an unpaid installment.',
         },
         {
-          type: 'warning',
-          text: 'Registering passive invoices and proformas is still **under development**: for now the list is populated only with **demo data**. There is no action to open the document yet; the **Linked POs** column gives its context.',
+          type: 'paragraph',
+          text: 'With **Open document** on the row you open the sheet of the **passive invoice or proforma** the installment belongs to, from the **Accounting › Payable › Passive invoices** page. It requires the permission to view passive invoices. Installments come from the document: see the **Passive invoices** guide.',
         },
       ],
     },
@@ -173,6 +173,7 @@ const guide: HelpGuide = {
             ['See the list and the **Installments** menu (Payable)', 'View payable installments'],
             ['**Edit due date**', 'Edit payable installments (and the single field permission)'],
             ['**Record / Clear payment**, **Bulk payment**', 'Record payments (passive invoices)'],
+            ['**Open document**', 'View passive invoices'],
             ['**Export**', 'Export payable installments'],
           ],
         },

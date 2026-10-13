@@ -5,7 +5,7 @@
  */
 
 export const purchaseInvoiceInstallments = {
-  title: 'Scadenze',
+  title: 'Scadenze passive',
   subtitle: 'Tutte le rate da pagare ai fornitori: filtra, raggruppa, paga e sposta le scadenze.',
   forbidden: 'Non hai il permesso di visualizzare le scadenze passive.',
   quickFilter: {
@@ -50,6 +50,7 @@ export const purchaseInvoiceInstallments = {
     edit: 'Modifica scadenza',
     record_payment: 'Registra pagamento',
     clear_payment: 'Annulla pagamento',
+    open_document: 'Apri documento',
   },
   lookupError: 'Impossibile caricare la scadenza. Riprova.',
   edit: {

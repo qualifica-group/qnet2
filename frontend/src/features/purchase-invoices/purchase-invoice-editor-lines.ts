@@ -1,0 +1,167 @@
+import type { FieldPath } from 'react-hook-form'
+import { computeInvoiceTotals, type InvoiceTotalsCents, type PreviewLine } from '@/features/invoices/invoice-amounts'
+import type { VatRateRef } from '@/features/invoices/types'
+import type {
+  PurchaseInvoiceLineFormValues,
+  PurchaseInvoiceWriteFormValues,
+} from '@/features/purchase-invoices/purchase-invoice-schema'
+import type {
+  PurchaseInvoiceLine,
+  PurchaseInvoiceLineWrite,
+  PurchaseInvoiceWritePayload,
+} from '@/features/purchase-invoices/types'
+
+export type VatRefs = Record<number, VatRateRef>
+
+/** Form sentinel of an unselected required id (zod `z.number()` rejects NaN with the field message). */
+export const NO_ID = Number.NaN
+
+export const DEFAULT_LINE_QUANTITY = 1
+
+export function idToSelectValue(id: number): number | null {
+  return Number.isNaN(id) ? null : id
+}
+
+/** Header defaults proposed to every row added afterwards. */
+export interface LineDefaults {
+  cost_type_id: number | null
+  work_order_id: number | null
+}
+
+/** New free or catalog row; the header cost type and work order are only a proposal. */
+export function newLine(
+  fields: Partial<PurchaseInvoiceLineFormValues> & Pick<PurchaseInvoiceLineFormValues, 'description'>,
+  defaults: LineDefaults,
+): PurchaseInvoiceLineFormValues {
+  return {
+    id: null,
+    purchase_order_line_id: null,
+    product_id: null,
+    quantity: DEFAULT_LINE_QUANTITY,
+    unit_price: 0,
+    vat_rate_id: null,
+    cost_type_id: defaults.cost_type_id ?? NO_ID,
+    work_order_id: defaults.work_order_id,
+    ...fields,
+  }
+}
+
+/** Form row of a draft line (from an ODA): no persisted id yet. */
+export function lineFromDraft(line: Omit<PurchaseInvoiceLine, 'id'>): PurchaseInvoiceLineFormValues {
+  return {
+    id: null,
+    purchase_order_line_id: line.purchase_order_line_id,
+    product_id: line.product?.id ?? null,
+    description: line.description,
+    quantity: Number(line.quantity),
+    unit_price: Number(line.unit_price),
+    vat_rate_id: line.vat_rate?.id ?? null,
+    cost_type_id: line.cost_type.id,
+    work_order_id: line.work_order?.id ?? null,
+  }
+}
+
+/** Form row of a persisted line (edit). */
+export function lineFromInvoice(line: PurchaseInvoiceLine): PurchaseInvoiceLineFormValues {
+  return { ...lineFromDraft(line), id: line.id }
+}
+
+export function vatRefsOf(lines: Array<{ vat_rate: VatRateRef | null }>): VatRefs {
+  return Object.fromEntries(lines.flatMap((line) => (line.vat_rate === null ? [] : [[line.vat_rate.id, line.vat_rate]])))
+}
+
+/** Percentage of the row's VAT rate; null (no VAT, or rate not known yet) counts as 0. */
+export function vatPercentOf(vatRateId: number | null, vatRefs: VatRefs): number | null {
+  if (vatRateId === null) {
+    return null
+  }
+  const rate = vatRefs[vatRateId]?.rate
+  return rate === undefined ? null : Number(rate)
+}
+
+export function toPreviewLine(line: PurchaseInvoiceLineFormValues, vatRefs: VatRefs): PreviewLine {
+  return {
+    quantity: Number.isFinite(line.quantity) ? line.quantity : 0,
+    unitPrice: Number.isFinite(line.unit_price) ? line.unit_price : 0,
+    vatRatePercent: vatPercentOf(line.vat_rate_id, vatRefs),
+  }
+}
+
+/** Header totals = sum of the rows (client preview; the server recomputes). */
+export function totalsOf(lines: readonly PurchaseInvoiceLineFormValues[], vatRefs: VatRefs): InvoiceTotalsCents {
+  return computeInvoiceTotals(lines.map((line) => toPreviewLine(line, vatRefs)))
+}
+
+function toLineWrite(line: PurchaseInvoiceLineFormValues): PurchaseInvoiceLineWrite {
+  const { id, ...rest } = line
+  return id === null ? rest : { id, ...rest }
+}
+
+/** Empty notes travel as null; totals are never sent. Number/type only exist at creation. */
+export function buildWritePayload(
+  values: PurchaseInvoiceWriteFormValues,
+  mode: 'create' | 'edit',
+): PurchaseInvoiceWritePayload {
+  const { document_type, document_number, lines, notes, ...header } = values
+  const base: PurchaseInvoiceWritePayload = {
+    ...header,
+    notes: notes?.trim() ? notes : null,
+    lines: lines.map(toLineWrite),
+  }
+  if (mode === 'edit') {
+    return base
+  }
+  return {
+    ...base,
+    document_type,
+    document_number: document_type === 'invoice' ? (document_number?.trim() ?? null) : null,
+  }
+}
+
+type FormPath = FieldPath<PurchaseInvoiceWriteFormValues>
+
+const HEADER_FIELDS = [
+  'document_type',
+  'document_number',
+  'document_date',
+  'company_id',
+  'supplier_id',
+  'payment_method_id',
+  'financial_account_id',
+  'company_site_id',
+  'operational_site_id',
+  'cost_type_id',
+  'work_order_id',
+  'notes',
+  'lines',
+] as const
+const LINE_ERROR_PATTERN = /^lines\.(\d+)\.(purchase_order_line_id|product_id|description|quantity|unit_price|vat_rate_id|cost_type_id|work_order_id)$/
+
+/** Server 422 messages split into the ones that land on an input and the ones to list in the form. */
+export interface MappedServerErrors {
+  fields: Array<{ path: FormPath; message: string }>
+  general: string[]
+}
+
+/**
+ * Maps server error keys onto form paths. An already-invoiced ODA row
+ * (`lines.N.purchase_order_line_id`) has no input of its own, so its message is
+ * shown on the row's description.
+ */
+export function mapServerErrors(errors: Record<string, string[]>): MappedServerErrors {
+  const mapped: MappedServerErrors = { fields: [], general: [] }
+  for (const [key, messages] of Object.entries(errors)) {
+    const message = messages[0]
+    if (!message) continue
+    const line = LINE_ERROR_PATTERN.exec(key)
+    if (line) {
+      const field = line[2] === 'purchase_order_line_id' ? 'description' : line[2]
+      mapped.fields.push({ path: `lines.${line[1]}.${field}` as FormPath, message })
+    } else if ((HEADER_FIELDS as readonly string[]).includes(key)) {
+      mapped.fields.push({ path: key as FormPath, message })
+    } else {
+      mapped.general.push(message)
+    }
+  }
+  return mapped
+}

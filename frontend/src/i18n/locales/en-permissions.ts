@@ -70,7 +70,7 @@ export const permissions = {
     revealCardNumber: 'Reveal card number',
     collect: 'Record collections',
     // Spec 0243: registered active invoices.
-    downgrade: 'Correct/undo FiC registration',
+    downgrade: 'Correct/undo registration',
     // Spec 0211: passive invoices.
     pay: 'Record payments',
     // Spec 0213: commission statements.

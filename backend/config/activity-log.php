@@ -30,6 +30,7 @@ use App\Models\ProductCategory;
 use App\Models\ProductTypology;
 use App\Models\ProformaRequest;
 use App\Models\Project;
+use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderStatusLabel;
 use App\Models\PurchaseRequest;
@@ -307,6 +308,10 @@ return [
         ],
         'cost-types' => [
             'model' => CostType::class,
+        ],
+        // spec 0250: fatture passive.
+        'purchase-invoices' => [
+            'model' => PurchaseInvoice::class,
         ],
         // spec 0194: fatture attive.
         'invoices' => [

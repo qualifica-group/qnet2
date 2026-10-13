@@ -66,6 +66,14 @@ return [
             'route' => null,
             'permission' => null,
             'children' => [
+                // spec 0250: payable documents (proforma and invoices).
+                [
+                    'key' => 'purchase-invoices',
+                    'label' => 'navigation.purchaseInvoices',
+                    'icon' => 'file-text',
+                    'route' => '/purchase-invoices',
+                    'permission' => 'purchase-invoices.view',
+                ],
                 [
                     'key' => 'purchase-invoice-installments',
                     'label' => 'navigation.purchaseInvoiceInstallments',

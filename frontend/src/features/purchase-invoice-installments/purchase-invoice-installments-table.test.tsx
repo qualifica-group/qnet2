@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle, type ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import i18n from '@/i18n'
 import { PurchaseInvoiceInstallmentsTable } from '@/features/purchase-invoice-installments/purchase-invoice-installments-table'
 import { axiosError, purchaseDetail } from '@/features/purchase-invoice-installments/purchase-installment-fixtures'
@@ -36,7 +37,7 @@ function action(key: string): TableActionDefinition {
   return { key, label: `actions.${key}`, icon: 'eye', type: 'action', confirm: false }
 }
 
-const ROW: TableRow = { id: 7, sequence: 2, actions: [] }
+const ROW: TableRow = { id: 7, sequence: 2, purchase_invoice_id: 31, actions: [] }
 
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
@@ -61,7 +62,7 @@ vi.mock('@/features/table/table-view', () => ({
         <button type="button" onClick={() => onRowGroupColumnsChange?.(['supplier'])}>
           group-supplier
         </button>
-        {['edit', 'record_payment', 'clear_payment'].map((key) => (
+        {['edit', 'record_payment', 'clear_payment', 'open_document'].map((key) => (
           <button key={key} type="button" onClick={() => onAction?.(action(key), ROW)}>
             {key}
           </button>
@@ -76,7 +77,12 @@ function renderTable() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <PurchaseInvoiceInstallmentsTable />
+      <MemoryRouter initialEntries={['/purchase-invoice-installments']}>
+        <Routes>
+          <Route path="/purchase-invoice-installments" element={<PurchaseInvoiceInstallmentsTable />} />
+          <Route path="/purchase-invoices/:id" element={<p>document page</p>} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -111,6 +117,14 @@ describe('PurchaseInvoiceInstallmentsTable (spec 0211 AC-014, AC-016)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'edit' }))
 
     expect(screen.getByRole('dialog', { name: 'edit dialog' })).toHaveTextContent('edit 7')
+  })
+
+  it('"open document" goes to the passive invoice the installment belongs to (spec 0250 AC-013)', () => {
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'open_document' }))
+
+    expect(screen.getByText('document page')).toBeInTheDocument()
   })
 
   it('"record payment" reads the installment fresh and opens the payment dialog', async () => {

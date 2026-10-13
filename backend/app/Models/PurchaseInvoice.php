@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PurchaseInvoiceType;
 use App\Models\Abstracts\BaseModel;
+use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\PurchaseInvoiceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,12 +14,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * Payable document, proforma or invoice from a supplier (spec 0211, D-1).
- * Phase 1 has no write endpoint: `created_by` is set by the seeder and, later,
- * by the module that owns the document form.
+ * Payable document, proforma or invoice from a supplier (spec 0211, D-1; lines
+ * and write path in spec 0250). `document_year` is derived on save: the year of
+ * the document date for an invoice, null for a proforma (D-7).
  */
 #[Fillable([
-    'document_type', 'company_id', 'supplier_id', 'document_number', 'document_date',
+    'document_type', 'company_id', 'supplier_id', 'document_number', 'document_date', 'document_year',
     'payment_method_id', 'financial_account_id', 'cost_type_id', 'company_site_id',
     'operational_site_id', 'work_order_id', 'net_amount', 'vat_amount', 'total_amount',
     'notes', 'created_by',
@@ -26,7 +27,30 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class PurchaseInvoice extends BaseModel
 {
     /** @use HasFactory<PurchaseInvoiceFactory> */
-    use HasFactory, LogsModelActivity;
+    use HasAttachments, HasFactory, LogsModelActivity;
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $document): void {
+            $document->document_year = $document->isRegistered() ? $document->document_date->year : null;
+        });
+    }
+
+    /** Registered by the supplier number: frozen but for its details (spec 0250, D-2). */
+    public function isRegistered(): bool
+    {
+        return $this->document_type === PurchaseInvoiceType::Invoice;
+    }
+
+    /** Whether any installment has a payment; reads the loaded schedule when there is one. */
+    public function hasPayments(): bool
+    {
+        if ($this->relationLoaded('installments')) {
+            return $this->installments->contains(fn (PurchaseInvoiceInstallment $row): bool => $row->isPaid());
+        }
+
+        return $this->installments()->where('paid_amount', '>', 0)->exists();
+    }
 
     /**
      * @return array<string, mixed>
@@ -96,6 +120,38 @@ class PurchaseInvoice extends BaseModel
     public function purchaseOrders(): BelongsToMany
     {
         return $this->belongsToMany(PurchaseOrder::class, 'purchase_invoice_purchase_order')->withTimestamps();
+    }
+
+    /**
+     * @return BelongsTo<CompanySite, $this>
+     */
+    public function companySite(): BelongsTo
+    {
+        return $this->belongsTo(CompanySite::class);
+    }
+
+    /**
+     * @return BelongsTo<OperationalSite, $this>
+     */
+    public function operationalSite(): BelongsTo
+    {
+        return $this->belongsTo(OperationalSite::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * @return HasMany<PurchaseInvoiceLine, $this>
+     */
+    public function lines(): HasMany
+    {
+        return $this->hasMany(PurchaseInvoiceLine::class)->orderBy('sort_order')->orderBy('id');
     }
 
     /**

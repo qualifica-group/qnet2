@@ -41,6 +41,17 @@ vi.mock('@/features/outbound-emails/outbound-email-composer-dialog', () => ({
   ),
 }))
 
+const canMock = vi.hoisted(() => vi.fn<(permission: string) => boolean>())
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: (permission: string) => canMock(permission), hasRole: () => false, roles: [], isLoading: false }),
+}))
+
+vi.mock('@/features/purchase-invoices/purchase-invoice-editor-dialog', () => ({
+  PurchaseInvoiceEditorDialog: ({ mode, purchaseOrderIds }: { mode: string; purchaseOrderIds?: number[] }) => (
+    <div role="dialog" aria-label="Invoice editor">{`${mode}/${(purchaseOrderIds ?? []).join(',')}`}</div>
+  ),
+}))
+
 const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }))
 vi.mock('sonner', () => ({ toast: toastMock }))
 
@@ -119,6 +130,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  canMock.mockReturnValue(true)
 })
 
 describe('PurchaseOrderFormActions - gating', () => {
@@ -151,6 +163,32 @@ describe('PurchaseOrderFormActions - gating', () => {
 
     renderActions(makePurchaseOrder({ status: 'approved' }))
     expect(screen.getByRole('button', { name: 'Send to supplier' })).toBeInTheDocument()
+  })
+})
+
+describe('PurchaseOrderFormActions - Register invoice (spec 0250 AC-013)', () => {
+  it.each(['approved', 'sent_to_supplier', 'partially_fulfilled', 'fulfilled'] as const)(
+    'opens the invoice editor preloaded with the order when the order is %s',
+    (status) => {
+      renderActions(makePurchaseOrder({ status }))
+
+      fireEvent.click(screen.getByRole('button', { name: 'Register invoice' }))
+
+      expect(screen.getByRole('dialog', { name: 'Invoice editor' })).toHaveTextContent('create/5')
+    },
+  )
+
+  it.each(['draft', 'in_validation', 'cancelled'] as const)('is hidden when the order is %s', (status) => {
+    renderActions(makePurchaseOrder({ status }))
+
+    expect(screen.queryByRole('button', { name: 'Register invoice' })).not.toBeInTheDocument()
+  })
+
+  it('is hidden without the purchase-invoices.create permission', () => {
+    canMock.mockImplementation((permission) => permission !== 'purchase-invoices.create')
+    renderActions(makePurchaseOrder({ status: 'approved' }))
+
+    expect(screen.queryByRole('button', { name: 'Register invoice' })).not.toBeInTheDocument()
   })
 })
 

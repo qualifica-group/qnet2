@@ -91,6 +91,7 @@ final class PurchaseInstallmentColumnCatalog
             ['key' => 'edit', 'label' => 'purchaseInvoiceInstallments.actions.edit', 'icon' => 'pencil', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-invoice-installments.update'],
             ['key' => 'record_payment', 'label' => 'purchaseInvoiceInstallments.actions.record_payment', 'icon' => 'hand-coins', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-invoices.pay'],
             ['key' => 'clear_payment', 'label' => 'purchaseInvoiceInstallments.actions.clear_payment', 'icon' => 'undo-2', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-invoices.pay'],
+            ['key' => 'open_document', 'label' => 'purchaseInvoiceInstallments.actions.open_document', 'icon' => 'file-text', 'type' => 'link', 'confirm' => false, 'permission' => 'purchase-invoices.view'],
         ];
     }
 

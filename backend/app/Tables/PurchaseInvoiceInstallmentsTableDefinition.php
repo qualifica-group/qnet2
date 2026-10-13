@@ -222,6 +222,10 @@ class PurchaseInvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             $allowed[] = $paid ? 'clear_payment' : 'record_payment';
         }
 
+        if ($actor->can('purchase-invoices.view')) {
+            $allowed[] = 'open_document';
+        }
+
         return $allowed;
     }
 

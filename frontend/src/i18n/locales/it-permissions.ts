@@ -73,7 +73,7 @@ export const permissions = {
     revealCardNumber: 'Rivelare numero carta',
     collect: 'Registra incassi',
     // Spec 0243: fatture attive registrate.
-    downgrade: 'Correggi/annulla registrazione FiC',
+    downgrade: 'Correggi/annulla registrazione',
     // Spec 0211: fatture passive.
     pay: 'Registra pagamenti',
     // Spec 0213: estratti provvigioni.

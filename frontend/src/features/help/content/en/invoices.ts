@@ -90,7 +90,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'warning', text: 'A **registered invoice** (with the Fatture in Cloud number entered) cannot be **edited or deleted**: the Delete action does not appear. Tag, deviation, internal notes and layout stay editable in **Details**, and collections and installments can still be managed.' },
-        { type: 'warning', text: 'Changing or clearing the Fatture in Cloud number and date (turning the invoice back into a proforma) requires the **Correct/undo FiC registration** permission and is recorded in the **Activity** history. Without the permission the two fields are read-only.' },
+        { type: 'warning', text: 'Changing or clearing the Fatture in Cloud number and date (turning the invoice back into a proforma) requires the **Correct/undo registration** permission and is recorded in the **Activity** history. Without the permission the two fields are read-only.' },
         { type: 'note', text: 'The **credit note** is not available yet.' },
         { type: 'warning', text: 'If you delete a proforma, the source request returns to **Pending** and can be issued again, but the deleted number is not reused.' },
       ],

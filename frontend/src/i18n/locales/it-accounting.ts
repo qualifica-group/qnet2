@@ -12,6 +12,8 @@ import { invoices, invoiceTags } from './it-invoices'
 import { paymentMethods } from './it-payment-methods'
 import { proformaRequests } from './it-proforma-requests'
 import { purchaseInvoiceInstallments } from './it-purchase-invoice-installments'
+import { purchaseInvoices } from './it-purchase-invoices'
+import { purchaseInvoiceViews } from './it-purchase-invoice-views'
 
 export const accounting = {
   financialAccounts,
@@ -20,6 +22,8 @@ export const accounting = {
   invoices,
   invoiceTags,
   invoiceInstallments,
+  purchaseInvoices,
+  purchaseInvoiceViews,
   purchaseInvoiceInstallments,
   agentFiscalProfiles,
   commissionAccruals,

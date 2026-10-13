@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0250-purchase-invoices-phase-2" status="draft" owner="ciro" date="2026-10-13">
+
+  <goal>
+    Fase 2 del ciclo passivo: registrare e gestire nell'app le fatture (e proforma) dei fornitori con le loro righe,
+    da zero o a partire da uno o piu' ODA, con scadenze generate dalla modalita' di pagamento e allegati. Prerequisito
+    del consuntivo commessa (ADR 0018). Audit 2026-10-13: COS-04, COS-16.
+  </goal>
+
+  <context>
+    ADR docs/adr/0018-unified-cost-model.md (decisione 3). Spec 0211 (fase 1: testata minima, scadenze, pagamenti; fase 2
+    rimandata), 0194/0243 (modello fatture attive da rispecchiare), 0210/0244 (ODA).
+
+    Decisioni utente 2026-10-13:
+    - D-1 Creazione da zero oppure "Registra fattura" da uno o piu' ODA dello stesso fornitore e societa', in stato
+      approved / sent_to_supplier / partially_fulfilled / fulfilled: righe precompilate (descrizione, prodotto, quantita',
+      prezzo, IVA, tipo di costo, commessa, riferimento alla riga ODA) e collegamento ODA automatico (pivot esistente).
+      Righe modificabili, aggiungibili (da catalogo o libere) ed eliminabili.
+    - D-2 Come la parte attiva: il documento nasce proforma o fattura; una proforma diventa fattura inserendo numero e
+      data del fornitore (PATCH details). Una fattura (document_type=invoice) e' bloccata: righe, importi, fornitore,
+      data ed eliminazione -> 409; cambiare/svuotare numero e data del fornitore richiede il nuovo permesso
+      purchase-invoices.downgrade (activity log). Un documento con pagamenti registrati non si elimina; in modifica le
+      scadenze si ribilanciano come per le fatture attive (spec 0196).
+    - D-3 Allegati del documento del fornitore con il sistema allegati esistente (HasAttachments, DocumentsSection).
+    - D-4 Scadenze generate dalla modalita' di pagamento (PurchaseInvoiceInstallmentPlanner esistente), ricalcolate in
+      modifica senza pagamenti, ribilanciate con pagamenti.
+
+    Decisioni tecniche proposte:
+    - D-5 Nuova tabella `purchase_invoice_lines`: purchase_invoice_id (FK cascade), purchase_order_line_id (FK nullable
+      restrictOnDelete: una riga ODA fatturata non si elimina), product_id (nullable),
+      description (500), quantity decimal(12,3), unit_price decimal(14,2), vat_rate_id (nullable), cost_type_id (required,
+      restrict), work_order_id (nullable, nullOnDelete), net_amount/vat_amount/total_amount decimal(15,2), sort_order,
+      timestamps; indici purchase_invoice_id, purchase_order_line_id, work_order_id, cost_type_id.
+      Importi riga con PurchaseRequestAmountCalculator (bcmath, quantita' a 3 decimali, IVA null = 0); testata = somma.
+    - D-6 (COS-04) Tipo di costo e commessa stanno sulle righe; i campi di testata cost_type_id e work_order_id restano
+      come default proposti alle nuove righe (non piu' fonte del dato). Backfill: per le fatture esistenti senza righe,
+      una riga unica con la testata (descrizione "Documento" + numero, imponibile/IVA/totale della testata, cost_type e
+      commessa di testata; se la testata non ha tipo di costo si usa il primo tipo attivo per sort_order) cosi' ogni
+      documento ha righe.
+    - D-7 (COS-16) Unicita' del numero fornitore per le fatture: (supplier_id, document_number, anno di document_date)
+      solo per document_type=invoice; violazione -> 422 su document_number. Validazione applicativa + indice univoco su
+      colonna `document_year` (nuova, valorizzata in scrittura e nel backfill; nulla per le proforma).
+    - D-8 Una riga ODA puo' essere fatturata una sola volta (purchase_order_line_id unico tra le righe di fatture non
+      eliminate) -> 422 sulla riga; la bozza da ODA esclude le righe gia' fatturate.
+    - D-9 Permessi: PurchaseInvoicePolicy abilities += create, update, delete, export, viewActivity, downgrade. Nuova
+      PurchaseInvoicesAuthorization (campi e azioni come InvoicesAuthorization, adattati). Allegati: attachable_types +=
+      purchase_invoice.
+    - D-10 Nuova lista "Fatture passive" (Contabilita' > Passiva, prima di Scadenze passive), dominio SSRM
+      purchase-invoices (una riga per documento: tipo, numero fornitore, data, fornitore, societa', ODA collegati, totale,
+      pagato, residuo, stato pagamento derivato); azioni view, update, details, delete, activity. Dalla griglia Scadenze
+      passive nuova azione "Apri documento" (supera 0211 D-9).
+    - D-11 Servizi in parallelo a quelli attivi (0211 D-6: i servizi attivi non si toccano): PurchaseInvoiceService
+      (create/update/updateDetails/delete/preview), PurchaseInvoiceScheduleRebalancer (copia adattata a paid_amount e
+      supplier_id, riusa InstallmentRebalancer e InstallmentScheduleCalculator), RegisteredPurchaseInvoiceGuard,
+      PurchaseInvoiceLineGuard (D-8, stesso fornitore/societa' degli ODA, ODA fatturabili), PurchaseInvoiceDraftBuilder
+      (da ODA). La deduplicazione attivo/passivo resta all'Onda 4.
+
+    Fatti verificati: vedi ricognizione 2026-10-13 (PurchaseInvoice senza righe ne' scrittura, policy viewAny/view/pay,
+    nessuna Authorization purchase-invoices, pivot purchase_invoice_purchase_order, planner usato solo dai seeder,
+    PayableDocumentWriter dei seeder demo, PurchaseOrderDeletionGuard, nessun for-select ODA, attachments config
+    allowlist, FE solo features/purchase-invoice-installments con avviso "in sviluppo" nella guida).
+  </context>
+
+  <scope>
+    <in>
+      <item>BE: migrazione righe + document_year + backfill + indice univoco; model PurchaseInvoiceLine, relazioni e HasAttachments su PurchaseInvoice; Policy/permessi; Authorization; FormRequest; servizi D-11; Resource; endpoint (data_contract); TableDefinition purchase-invoices; navigazione; attachments config; PayableDocumentWriter/seeder demo aggiornati per creare righe tramite il nuovo servizio; azione "Apri documento" nelle scadenze passive (actionsFor).</item>
+      <item>FE: features/purchase-invoices (lista, scheda dettaglio con righe/scadenze/documenti/ODA collegati, editor create/edit con righe e anteprima scadenze, dialog dettagli fornitore, "Registra fattura" da ODA con scelta ODA, eliminazione), pagina, rotte, menu, permessi i18n, azione "Apri documento" nella griglia Scadenze passive, azione "Registra fattura" dal dettaglio ODA (ODA fatturabili, permesso purchase-invoices.create).</item>
+      <item>Guide IT+EN: nuova purchase-invoices; purchase-invoice-installments (via l'avviso "in sviluppo"); purchase-orders (Registra fattura).</item>
+    </in>
+    <out>
+      <item>Consuntivo commessa (spec 0252), tassonomia sui prodotti (0251), calcolo unico/IVA per aliquota (0253).</item>
+      <item>Import XML / SDI / Fatture in Cloud, PDF generato dei documenti passivi, email al fornitore.</item>
+      <item>Note di credito passive.</item>
+      <item>Deduplicazione con i servizi attivi (Onda 4).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <types>
+      PurchaseInvoiceLine = { id, purchase_order_line_id: int|null, purchase_order: {id, code}|null, product: {id,name}|null,
+        description, quantity: string(3 dec), unit_price: string, vat_rate: {id,name,rate}|null, cost_type: {id,name,color},
+        work_order: {id,code,title}|null, net_amount, vat_amount, total_amount, sort_order }
+      PurchaseInvoice (detail) = { id, document_type: "proforma"|"invoice", document_number: string|null, document_date,
+        company:{id,name}, supplier:{id,name}, payment_method:{id,name}, financial_account:{id,name,iban}|null,
+        company_site:{id,name}|null, operational_site:{id,name}|null, cost_type:{id,name,color}|null (default),
+        work_order:{id,code,title}|null (default), notes, net_amount, vat_amount, total_amount, paid_amount, residual_amount,
+        has_payments: bool, purchase_orders:[{id,code}], lines: PurchaseInvoiceLine[], installments:[...come
+        PurchaseInvoiceInstallmentResource...], created_by:{id,name}, created_at,
+        permissions: { resource, fields, actions: { update, delete, details, downgrade, view_activity, pay } } }
+      Line write = { id?: int, purchase_order_line_id?: int|null, product_id?: int|null, description, quantity, unit_price,
+        vat_rate_id?: int|null, cost_type_id: int, work_order_id?: int|null }
+    </types>
+
+    <endpoint method="GET" path="/api/purchase-invoices/{purchaseInvoice}">detail; 403 senza purchase-invoices.view.</endpoint>
+    <endpoint method="POST" path="/api/purchase-invoices">
+      <request>{ document_type, document_number?, document_date, company_id, supplier_id, payment_method_id, financial_account_id?,
+        company_site_id?, operational_site_id?, cost_type_id?, work_order_id?, notes?, purchase_order_ids?: int[], lines: Line[] (1..200) }</request>
+      <response status="201">detail</response>
+      <errors>422 validazione (righe, numero duplicato D-7, riga ODA gia' fatturata D-8, ODA di altro fornitore/societa' o non fatturabile, conto non della societa'); 403 senza create.</errors>
+    </endpoint>
+    <endpoint method="PUT" path="/api/purchase-invoices/{purchaseInvoice}">
+      <request>come POST senza document_type/document_number (che si cambiano nei details); fornitore e societa' non modificabili (422).</request>
+      <errors>409 __('purchase_invoices.registered_locked') se document_type=invoice; con pagamenti: data, modalita' e fornitore congelati (422) e scadenze ribilanciate.</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/purchase-invoices/{purchaseInvoice}/details">
+      <request>{ document_number: string|null, notes?: string|null }. Numero valorizzato -> invoice; svuotato -> proforma (serve downgrade se era invoice). La data documento si cambia solo con PUT (proforma).</request>
+      <errors>403 __('purchase_invoices.downgrade_forbidden'); 422 numero duplicato.</errors>
+    </endpoint>
+    <endpoint method="DELETE" path="/api/purchase-invoices/{purchaseInvoice}">409 se invoice o con pagamenti; elimina righe, scadenze, pivot, allegati.</endpoint>
+    <endpoint method="POST" path="/api/purchase-invoices/installment-preview">{ purchase_invoice_id?, document_date, payment_method_id, net_amount, vat_amount, total_amount } -> righe piano (come attivo).</endpoint>
+    <endpoint method="GET" path="/api/purchase-invoices/draft?purchase_order_ids[]=">bozza da ODA: { defaults: {company, supplier, payment_method, company_site, operational_site, cost_type?, work_order?}, lines: Line[] precompilate con purchase_order_line_id, purchase_order_ids } ; 422 ODA di fornitori/societa' diversi o non fatturabili; righe gia' fatturate escluse.</endpoint>
+    <endpoint method="GET" path="/api/purchase-invoices/invoiceable-orders?supplier_id=&amp;company_id=">ODA fatturabili (stati D-1, con almeno una riga non fatturata): [{id, code, order_date, grand_total, status}].</endpoint>
+    <endpoint method="SSRM" path="tables/purchase-invoices">righe documento (D-10), filtri set per tipo/fornitore/societa', azioni view/update/details/delete/activity con REGISTERED_HIDDEN_ACTIONS come le attive.</endpoint>
+    <endpoint method="SSRM" path="tables/purchase-invoice-installments">nuova azione `open_document` (purchase-invoices.view).</endpoint>
+    <note>Allegati via /api/attachments con attachable_type=purchase_invoice (esistente).</note>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Migrazione: tabella righe creata; ogni fattura esistente ha almeno una riga (backfill D-6) con importi uguali alla testata; document_year valorizzato per le invoice; rollback reversibile.</criterion>
+    <criterion id="AC-002">POST da zero con 2 righe (tipi di costo e commesse diversi): 201, importi riga bcmath (quantita' 3 decimali, IVA null=0), testata = somma, scadenze generate dalla modalita' di pagamento.</criterion>
+    <criterion id="AC-003">GET draft da 2 ODA dello stesso fornitore/societa': righe precompilate con purchase_order_line_id, tipo di costo e commessa della riga ODA; POST con quelle righe collega gli ODA nel pivot; ODA di fornitori diversi o in bozza -> 422.</criterion>
+    <criterion id="AC-004">Una riga ODA gia' su una fattura e' esclusa dalla bozza e rifiutata (422) in un'altra fattura; nella stessa fattura in modifica resta valida.</criterion>
+    <criterion id="AC-005">Numero fornitore duplicato per stesso fornitore e anno su una invoice -> 422; stesso numero su anno diverso o su proforma -> ammesso.</criterion>
+    <criterion id="AC-006">PATCH details con numero su una proforma -> diventa invoice; PUT/DELETE su invoice -> 409; svuotare il numero senza downgrade -> 403, con downgrade -> proforma e activity log.</criterion>
+    <criterion id="AC-007">PUT su proforma senza pagamenti sostituisce righe e ricalcola scadenze; con pagamenti: data/modalita'/fornitore congelati (422), scadenze ribilanciate (somma = totale), rate pagate intatte; DELETE con pagamenti -> 409.</criterion>
+    <criterion id="AC-008">Permessi: senza create/update/delete -> 403 sui rispettivi endpoint; permissions:sync crea purchase-invoices.create/update/delete/export/viewActivity/downgrade.</criterion>
+    <criterion id="AC-009">Lista tables/purchase-invoices: una riga per documento con totale/pagato/residuo e filtri; per invoice niente azioni update/delete; griglia scadenze passive offre open_document.</criterion>
+    <criterion id="AC-010">Allegati: upload/elenco/eliminazione su una fattura passiva via /api/attachments; eliminando la proforma gli allegati vengono rimossi.</criterion>
+    <criterion id="AC-011">Seeder demo: i documenti demo vengono creati con righe tramite il servizio (PayableDocumentWriter) e la suite Seeding resta verde.</criterion>
+    <criterion id="AC-012">(Vitest) Editor: crea da zero, aggiunge/rimuove righe con tipo di costo e commessa, anteprima importi e scadenze, salva; "Registra fattura" da ODA precompila le righe; errori server mappati sui campi (triade accessibile).</criterion>
+    <criterion id="AC-013">(Vitest) Lista e scheda dettaglio (righe, scadenze, ODA collegati, documenti); dialog dettagli fornitore (numero/data, blocco senza downgrade); "Apri documento" dalle scadenze passive; "Registra fattura" dal dettaglio ODA visibile solo per ODA fatturabili e col permesso.</criterion>
+    <criterion id="AC-014">Menu, permessi i18n (parity), nuova guida purchase-invoices in HELP_GUIDE_KEYS, guida scadenze passive senza avviso "in sviluppo", help-content-parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Servizi attivi non modificati (0211 D-6); copie adattate dichiarate, deduplica all'Onda 4.</item>
+    <item>Transazioni con lockForUpdate sul documento (come pagamenti esistenti) e sugli ODA collegati in ordine di id.</item>
+    <item>Migrazioni reversibili, solo Schema/query builder; aggiornare i contatori --step dei test di migrazione.</item>
+    <item>FormRequest + Policy su ogni endpoint; Resource; envelope; messaggi via __(); nessuna query per riga; file sotto 300 righe (estrarre classi).</item>
+    <item>FE: TanStack Query, RHF + Zod, componenti ui esistenti, compatto, responsive; nessuna regola di stato ricalcolata (si leggono permissions/actions).</item>
+    <item>Test Pest per ogni endpoint (happy, 403, 422/409); Vitest; suite completa dal verifier; tsc -b --force.</item>
+    <item>Nessun commit senza ordine esplicito.</item>
+  </constraints>
+
+</spec>

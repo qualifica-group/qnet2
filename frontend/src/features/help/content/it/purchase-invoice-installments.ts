@@ -18,8 +18,8 @@ const guide: HelpGuide = {
           text: 'Le scadenze **non si creano né si eliminano** da qui. Da questo elenco puoi **registrare o annullare un pagamento** e **cambiare data e modalità** di una rata da pagare.',
         },
         {
-          type: 'warning',
-          text: 'La registrazione delle fatture e proforma passive è ancora **in fase di sviluppo**: per ora l’elenco si popola solo con **dati dimostrativi**. Non esiste ancora l’azione per aprire il documento; la colonna **ODA collegati** ne dà il contesto.',
+          type: 'paragraph',
+          text: 'Con **Apri documento** sulla riga apri la scheda della **fattura o proforma passiva** a cui appartiene la rata, dalla pagina **Contabilità › Passiva › Fatture passive**. Serve il permesso di visualizzazione delle fatture passive. Le rate nascono dal documento: vedi la guida **Fatture passive**.',
         },
       ],
     },
@@ -173,6 +173,7 @@ const guide: HelpGuide = {
             ['Vedere l’elenco e il menu **Scadenze** (Passiva)', 'Visualizzazione scadenze passive'],
             ['**Modifica scadenza**', 'Modifica scadenze passive (e permesso sul singolo campo)'],
             ['**Registra / Annulla pagamento**, **Pagamento multiplo**', 'Registra pagamenti (fatture passive)'],
+            ['**Apri documento**', 'Visualizzazione fatture passive'],
             ['**Esporta**', 'Esportazione scadenze passive'],
           ],
         },

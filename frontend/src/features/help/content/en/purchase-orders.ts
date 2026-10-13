@@ -186,6 +186,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'register-invoice',
+      title: 'Registering the invoice',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'On the page of an ODA that is **Approved**, **Sent to supplier**, **Partially fulfilled** or **Fulfilled** the **Register invoice** button appears (it requires the permission to create passive invoices). It opens the passive invoice editor with the **order lines already filled in** and the ODA already linked; from there you can add other ODAs of the same supplier and company, and edit, add or remove lines.',
+        },
+        {
+          type: 'note',
+          text: 'An order line can be invoiced **only once**: lines already on another passive invoice are not offered again. See the **Passive invoices** guide.',
+        },
+      ],
+    },
+    {
       id: 'pdf-email',
       title: 'PDF printing and sending to the supplier',
       blocks: [
@@ -213,6 +227,7 @@ const guide: HelpGuide = {
             ['**Approve**', 'Move the order to Approved.'],
             ['**Merge**', 'Use Merge ODA.'],
             ['**Send to supplier**', 'Send the email with the PDF.'],
+            ['**Register invoice** (Create permission of passive invoices)', 'Open the passive invoice editor from the ODA.'],
             ['**Export**, **View activity**', 'Export the list and see the change history.'],
           ],
         },

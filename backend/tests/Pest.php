@@ -61,6 +61,7 @@ require_once __DIR__.'/Helpers/CommissionAccrualHelpers.php';
 require_once __DIR__.'/Helpers/CommissionSettlementHelpers.php';
 require_once __DIR__.'/Helpers/CommissionSettlementTableHelpers.php';
 require_once __DIR__.'/Helpers/PurchaseInvoiceInstallmentHelpers.php';
+require_once __DIR__.'/Helpers/PurchaseInvoiceHelpers.php';
 require_once __DIR__.'/Helpers/ApiClientAdminHelpers.php';
 require_once __DIR__.'/Helpers/ApiDocsHelpers.php';
 

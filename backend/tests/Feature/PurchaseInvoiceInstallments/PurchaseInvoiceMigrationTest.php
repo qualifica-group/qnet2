@@ -11,13 +11,15 @@ use Illuminate\Support\Facades\Schema;
  */
 uses(DatabaseMigrations::class);
 
-it('AC-001: rolls back the three payable tables and re-applies them with the virtual residual working', function () {
+it('AC-001: rolls back the payable tables and re-applies them with the virtual residual working', function () {
     $tables = ['purchase_invoices', 'purchase_invoice_purchase_order', 'purchase_invoice_installments'];
     // `--path`, not `--step`: a step count breaks whenever a newer migration lands.
     $migrations = [
         'database/migrations/2026_10_14_100000_create_purchase_invoices_table.php',
         'database/migrations/2026_10_14_100100_create_purchase_invoice_purchase_order_table.php',
         'database/migrations/2026_10_14_100200_create_purchase_invoice_installments_table.php',
+        // spec 0250: the lines table and `document_year` hang on purchase_invoices.
+        'database/migrations/2026_10_17_180000_create_purchase_invoice_lines_table.php',
     ];
 
     expect(Artisan::call('migrate:rollback', ['--path' => $migrations]))->toBe(0);

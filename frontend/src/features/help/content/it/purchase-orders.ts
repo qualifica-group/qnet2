@@ -186,6 +186,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'register-invoice',
+      title: 'Registrare la fattura',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Nella pagina di un’ODA **Approvata**, **Inviata al fornitore**, **Parzialmente evasa** o **Evasa** compare il pulsante **Registra fattura** (serve il permesso di creazione delle fatture passive). Apre l’editor della fattura passiva con le **righe dell’ordine già precompilate** e l’ODA già collegata; da lì puoi aggiungere altri ODA dello stesso fornitore e società, modificare, aggiungere o togliere righe.',
+        },
+        {
+          type: 'note',
+          text: 'Una riga d’ordine si può fatturare **una sola volta**: le righe già presenti su un’altra fattura passiva non vengono riproposte. Vedi la guida **Fatture passive**.',
+        },
+      ],
+    },
+    {
       id: 'pdf-email',
       title: 'Stampa PDF e invio al fornitore',
       blocks: [
@@ -213,6 +227,7 @@ const guide: HelpGuide = {
             ['**Approvare**', 'Portare l’ordine allo stato Approvato.'],
             ['**Unificare**', 'Usare Unifica ODA.'],
             ['**Inviare al fornitore**', 'Inviare l’email con il PDF.'],
+            ['**Registra fattura** (permesso Crea delle fatture passive)', 'Aprire l’editor della fattura passiva dall’ODA.'],
             ['**Esportare**, **Visualizzare attività**', 'Esportare l’elenco e vedere lo storico delle modifiche.'],
           ],
         },

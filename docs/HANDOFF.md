@@ -3,7 +3,32 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0249 — Tipi di costo: natura, colore, modifica in linea, riordino (audit Onda 2-C) — VERDE, NON COMMITTATO (2026-10-13)
+## ADR 0018 + Spec 0250 — Fatture passive fase 2 (audit Onda 3, primo passo) — VERDE, NON COMMITTATO (2026-10-13)
+
+- ADR `docs/adr/0018-unified-cost-model.md`: tipi di costo = tassonomia unica dei costi (categorie solo vendite);
+  consuntivo commessa ibrido in lettura; fatture passive con righe; IVA attive per aliquota. Ordine: 0250 -> 0251
+  (cost_type_id su prodotti e work_order_costs, mapping ramo "Costi") -> 0252 (consuntivo per tipo di costo) -> 0253
+  (motore importi unico bcmath + IVA per aliquota).
+- Spec `docs/specs/0250-purchase-invoices-phase-2.xml` (D-1..D-11, AC-001..014 PASS dopo 1 fix FE + 1 fix race).
+- BE: `purchase_invoice_lines` (purchase_order_line_id UNIQUE nullable restrict, cost_type_id required, work_order_id,
+  quantity 12,3), `purchase_invoices.document_year` + unique (supplier_id, document_number, document_year) solo invoice;
+  backfill una riga per documento esistente. Servizi App\Services\PurchaseInvoices\{PurchaseInvoiceService,
+  PurchaseInvoiceScheduleRebalancer, RegisteredPurchaseInvoiceGuard, PurchaseInvoiceLineGuard (lock + lockForUpdate su
+  righe gia' fatturate), PurchaseInvoiceAmountCalculator, PurchaseInvoiceHeaderGuard, PurchaseInvoiceDraftBuilder
+  (INVOICEABLE_STATUSES)}. Endpoint /api/purchase-invoices (show/store/update/details/delete/installment-preview/draft/
+  invoiceable-orders); `permissions` al top-level della risposta (FE lo fonde in api.ts). Policy += create, update,
+  delete, export, viewActivity, downgrade. Lista SSRM purchase-invoices, azione open_document sulle scadenze passive,
+  allegati purchase_invoice. Servizi attivi NON toccati (copie adattate, deduplica Onda 4).
+- FE: features/purchase-invoices (editor da zero/da ODA, dettagli fornitore, lista, scheda, documenti), "Registra
+  fattura" nel dettaglio ODA, "Apri documento" dalle scadenze; i18n purchaseInvoices (FE-A) + purchaseInvoiceViews.
+  Etichetta permesso downgrade resa generica ("Correggi/annulla registrazione").
+- Seeder demo: PayableDocumentWriter crea i documenti via servizio con righe libere (lo stesso ODA fatturato due volte
+  nei demo: costi duplicati nei dati fake, da rivedere per il consuntivo 0252).
+- Aperti: "Registra fattura" visibile anche per ODA gia' interamente fatturati (editor con 0 righe); /new e
+  /:id/duplicate generati dal registro moduli; race D-8 coperta da indice univoco (non riproducibile su SQLite).
+  Contatori --step: PurchaseOrderMigrationTest 32, SupplierCommissionDirectionTest 47, QuoteWorkflowMigrationTest 183.
+
+## Spec 0249 — Tipi di costo: natura, colore, modifica in linea, riordino (audit Onda 2-C) — COMMITTATO 12f9248b (2026-10-13)
 
 - Spec `docs/specs/0249-cost-types-nature-inline-edit.xml` (D-1..D-6, AC-001..008 PASS). Onda 2 completata.
 - `App\Enums\CostTypeNature` (direct|indirect|general, enumKey `cost_type_nature` in config form_enums, alias FE

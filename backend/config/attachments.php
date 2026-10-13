@@ -7,6 +7,7 @@ use App\Models\DocumentLayout;
 use App\Models\Note;
 use App\Models\Opportunity;
 use App\Models\OutboundEmail;
+use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
@@ -155,6 +156,8 @@ return [
         'purchase_request_line' => PurchaseRequestLine::class,
         // Purchase order documents (spec 0210, D-14): alias in the global morph map.
         'purchase_order' => PurchaseOrder::class,
+        // Supplier document (spec 0250, D-3): alias in the global morph map.
+        'purchase_invoice' => PurchaseInvoice::class,
     ],
 
 ];

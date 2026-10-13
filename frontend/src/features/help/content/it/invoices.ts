@@ -90,7 +90,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'warning', text: 'Una **fattura registrata** (con il numero di Fatture in Cloud inserito) non si può **modificare né eliminare**: l\'azione Elimina non compare. Restano modificabili tag, scostamento, note interne e layout nei **Dettagli**, e restano gestibili incassi e scadenze delle rate.' },
-        { type: 'warning', text: 'Cambiare o togliere numero e data di Fatture in Cloud (riportando la fattura a proforma) richiede il permesso **Correggi/annulla registrazione FiC** e viene registrato nello storico **Attività**. Senza il permesso i due campi sono in sola lettura.' },
+        { type: 'warning', text: 'Cambiare o togliere numero e data di Fatture in Cloud (riportando la fattura a proforma) richiede il permesso **Correggi/annulla registrazione** e viene registrato nello storico **Attività**. Senza il permesso i due campi sono in sola lettura.' },
         { type: 'note', text: 'La **nota di credito** non è ancora disponibile.' },
         { type: 'warning', text: 'Se elimini un proforma, la richiesta di origine torna **Da evadere** e può essere emessa di nuovo, ma il numero eliminato non viene riutilizzato.' },
       ],

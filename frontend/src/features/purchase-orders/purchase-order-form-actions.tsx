@@ -1,18 +1,28 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { FileText, GitMerge, History, ListChecks, Send, type LucideIcon } from 'lucide-react'
+import { FilePlus2, FileText, GitMerge, History, ListChecks, Send, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useAbilities } from '@/features/auth/use-abilities'
 import { OutboundEmailComposerDialog } from '@/features/outbound-emails/outbound-email-composer-dialog'
+import { PurchaseInvoiceEditorDialog } from '@/features/purchase-invoices/purchase-invoice-editor-dialog'
 import { PurchaseOrderMergeDialog } from '@/features/purchase-orders/purchase-order-merge-dialog'
 import { PurchaseOrderMergeLogsDialog } from '@/features/purchase-orders/purchase-order-merge-logs-dialog'
 import { PurchaseOrderStatusDialog } from '@/features/purchase-orders/purchase-order-status-dialog'
-import { EDITABLE_STATUSES, type PurchaseOrder } from '@/features/purchase-orders/types'
+import { EDITABLE_STATUSES, type PurchaseOrder, type PurchaseOrderStatus } from '@/features/purchase-orders/types'
 import { usePurchaseOrderEmail } from '@/features/purchase-orders/use-purchase-order-email'
 import { usePurchaseOrderPdf } from '@/features/purchase-orders/use-purchase-order-pdf'
 
-type OpenDialog = 'status' | 'merge' | 'history' | null
+type OpenDialog = 'status' | 'merge' | 'history' | 'invoice' | null
+
+/** Statuses from which the supplier invoice can be registered (spec 0250 D-1). */
+const INVOICEABLE_STATUSES: readonly PurchaseOrderStatus[] = [
+  'approved',
+  'sent_to_supplier',
+  'partially_fulfilled',
+  'fulfilled',
+]
 
 interface PurchaseOrderFormActionsProps {
   /** The saved ODA the actions operate on. */
@@ -48,7 +58,7 @@ function ActionButton({ label, tooltip, icon: Icon, disabled, onClick }: ActionB
 /**
  * Record-level actions of the ODA form header (rendered only for a saved
  * ODA, next to the status badge): change status, merge, merge history, PDF
- * and send to the supplier. Each gates itself on `order.abilities`; the
+ * send to the supplier and register the supplier invoice. Each gates itself on `order.abilities`; the
  * server re-authorizes every call.
  */
 export function PurchaseOrderFormActions({ order, isDirty = false, children }: PurchaseOrderFormActionsProps) {
@@ -57,7 +67,9 @@ export function PurchaseOrderFormActions({ order, isDirty = false, children }: P
   const pdf = usePurchaseOrderPdf()
   const email = usePurchaseOrderEmail()
   const closeDialog = (open: boolean) => (open ? undefined : setDialog(null))
+  const { can } = useAbilities()
   const canMerge = order.abilities.merge && EDITABLE_STATUSES.includes(order.status)
+  const canRegisterInvoice = can('purchase-invoices.create') && INVOICEABLE_STATUSES.includes(order.status)
 
   const openMerge = () => {
     if (isDirty) {
@@ -112,12 +124,28 @@ export function PurchaseOrderFormActions({ order, isDirty = false, children }: P
             onClick={() => email.startEmail(order.id)}
           />
         ) : null}
+        {canRegisterInvoice ? (
+          <ActionButton
+            label={t('purchaseInvoiceViews.registerInvoice.button')}
+            tooltip={t('purchaseInvoiceViews.registerInvoice.tooltip')}
+            icon={FilePlus2}
+            onClick={() => setDialog('invoice')}
+          />
+        ) : null}
         {children}
       </div>
 
       {dialog === 'status' ? <PurchaseOrderStatusDialog order={order} onOpenChange={closeDialog} /> : null}
       {dialog === 'merge' ? <PurchaseOrderMergeDialog order={order} onOpenChange={closeDialog} /> : null}
       {dialog === 'history' ? <PurchaseOrderMergeLogsDialog order={order} onOpenChange={closeDialog} /> : null}
+      {dialog === 'invoice' ? (
+        <PurchaseInvoiceEditorDialog
+          mode="create"
+          purchaseOrderIds={[order.id]}
+          open
+          onOpenChange={closeDialog}
+        />
+      ) : null}
       {email.target ? (
         <OutboundEmailComposerDialog
           key={email.target.emailId}

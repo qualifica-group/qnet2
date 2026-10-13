@@ -5,7 +5,7 @@
  */
 
 export const purchaseInvoiceInstallments = {
-  title: 'Installments',
+  title: 'Payable installments',
   subtitle: 'Every installment to pay to suppliers: filter, group, pay and move due dates.',
   forbidden: 'You do not have permission to view the payable installments.',
   quickFilter: {
@@ -50,6 +50,7 @@ export const purchaseInvoiceInstallments = {
     edit: 'Edit due date',
     record_payment: 'Record payment',
     clear_payment: 'Clear payment',
+    open_document: 'Open document',
   },
   lookupError: 'Unable to load the installment. Please try again.',
   edit: {
