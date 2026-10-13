@@ -51,7 +51,6 @@ import {
   Wallet,
   HandCoins,
   IdCard,
-  BookOpen,
   FileSpreadsheet,
   Play,
   type LucideIcon,

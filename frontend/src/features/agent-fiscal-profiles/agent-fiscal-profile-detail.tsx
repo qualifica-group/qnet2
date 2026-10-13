@@ -51,38 +51,39 @@ export function AgentFiscalProfileDetailView({ profile, onEdit }: AgentFiscalPro
             subtitle={`${formatDate(profile.valid_from)} - ${until}`}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('agentFiscalProfiles.detail.fiscalData')} full>
-              <RecordFieldList>
-                <RecordField label={t('agentFiscalProfiles.detail.withholdingEnabled')}>
-                  {yesNo(profile.withholding_enabled)}
-                </RecordField>
-                <RecordField label={t('agentFiscalProfiles.detail.withholdingRate')}>
-                  {percent(profile.withholding_rate) ?? <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('agentFiscalProfiles.detail.withholdingBasePercent')}>
-                  {percent(profile.withholding_base_percent) ?? <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('agentFiscalProfiles.detail.enasarcoEnabled')}>
-                  {yesNo(profile.enasarco_enabled)}
-                </RecordField>
-                <RecordField label={t('agentFiscalProfiles.detail.mandateType')}>
-                  {profile.enasarco_mandate_type ? (
-                    t(`enums.enasarco_mandate_type.${profile.enasarco_mandate_type}`)
-                  ) : (
-                    <DetailEmpty />
-                  )}
-                </RecordField>
-                <RecordField label={t('agentFiscalProfiles.detail.vatRate')}>
-                  {profile.vat_rate ? `${profile.vat_rate.name} (${Number(profile.vat_rate.rate)}%)` : t('agentFiscalProfiles.detail.vatNone')}
-                </RecordField>
-                <RecordField label={t('agentFiscalProfiles.detail.notes')}>
-                  {profile.notes ? profile.notes : <DetailEmpty />}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('agentFiscalProfiles.detail.fiscalData')} full>
+            <RecordFieldList>
+              <RecordField label={t('agentFiscalProfiles.detail.withholdingEnabled')}>
+                {yesNo(profile.withholding_enabled)}
+              </RecordField>
+              <RecordField label={t('agentFiscalProfiles.detail.withholdingRate')}>
+                {percent(profile.withholding_rate) ?? <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('agentFiscalProfiles.detail.withholdingBasePercent')}>
+                {percent(profile.withholding_base_percent) ?? <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('agentFiscalProfiles.detail.enasarcoEnabled')}>
+                {yesNo(profile.enasarco_enabled)}
+              </RecordField>
+              <RecordField label={t('agentFiscalProfiles.detail.mandateType')}>
+                {profile.enasarco_mandate_type ? (
+                  t(`enums.enasarco_mandate_type.${profile.enasarco_mandate_type}`)
+                ) : (
+                  <DetailEmpty />
+                )}
+              </RecordField>
+              <RecordField label={t('agentFiscalProfiles.detail.vatRate')}>
+                {profile.vat_rate ? `${profile.vat_rate.name} (${Number(profile.vat_rate.rate)}%)` : t('agentFiscalProfiles.detail.vatNone')}
+              </RecordField>
+              <RecordField label={t('agentFiscalProfiles.detail.notes')}>
+                {profile.notes ? profile.notes : <DetailEmpty />}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt || updatedAt ? (
