@@ -81,6 +81,10 @@ export const purchaseRequests = {
     technical_requirements: 'Technical requirements',
     special_conditions: 'Special conditions',
   },
+  approver: {
+    requesterFirst: 'Select the requester first.',
+    none: 'The requester has no manager in their profile and the business function has no valid manager.',
+  },
   select: {
     placeholder: 'Select...',
     search: 'Search...',

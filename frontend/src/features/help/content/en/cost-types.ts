@@ -37,7 +37,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'You cannot delete a cost type already used by purchase order lines: deactivate it instead.',
+          text: 'You cannot delete a cost type already used by purchase order lines or purchase invoices: deactivate it instead. In the grid the Delete action is not available for types in use.',
         },
       ],
     },

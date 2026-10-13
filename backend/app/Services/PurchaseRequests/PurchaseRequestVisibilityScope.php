@@ -66,6 +66,6 @@ final class PurchaseRequestVisibilityScope
     public static function isVisibleTo(User $user, PurchaseRequest $request): bool
     {
         return $user->can(self::VIEW_ALL_PERMISSION)
-            || in_array($user->id, [$request->requester_id, $request->function_manager_id, $request->created_by], true);
+            || in_array((int) $user->id, [(int) $request->requester_id, (int) $request->function_manager_id, (int) $request->created_by], true);
     }
 }

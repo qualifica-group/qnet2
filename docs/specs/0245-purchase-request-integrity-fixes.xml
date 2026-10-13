@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0245-purchase-request-integrity-fixes" status="draft" owner="ciro" date="2026-10-13">
+
+  <goal>
+    Chiudere sul server i difetti gravi delle RDA emersi dall'audit del 2026-10-13 (RDA-01, RDA-02,
+    RDA-05, RDA-06): l'approvatore e' il diretto superiore del richiedente, le azioni sulle righe
+    rispettano la visibilita', la RDA si chiude quando non ha piu' righe aperte, le righe gia' su un
+    ODA non tornano indietro dalla gestione RDA.
+  </goal>
+
+  <context>
+    Fonte: "Audit moduli Acquisti, Costi e Contabilita' attiva" 2026-10-13, Onda 1. Spec di riferimento:
+    0208/0209 (RDA), 0210 (ODA), 0244 (rilascio righe RDA, D-2/D-3). Branch: feature/amministrazione.
+
+    Decisioni utente 2026-10-13:
+    - D-1 (RDA-01) Il Responsabile di funzione (approvatore) di una RDA deve essere un diretto superiore del
+      RICHIEDENTE (requester_id), cioe' uno degli utenti di EmploymentProfile::reportsTo() del richiedente
+      (tabella employment_profile_manager; possono essere piu' di uno).
+    - D-2 (RDA-01) Se il richiedente non ha diretti superiori configurati: ripiego sul responsabile della
+      funzione aziendale scelta (BusinessFunction::manager, comportamento di oggi), purche' diverso dal
+      richiedente. Senza superiori e senza responsabile di funzione valido -> 422.
+    - D-3 (RDA-01) Le RDA esistenti con un responsabile fuori regola restano valide: la regola si applica alla
+      creazione e in modifica solo quando cambia requester_id, function_manager_id o business_function_id.
+
+    Decisioni tecniche proposte (da validare con la spec):
+    - D-4 (RDA-01) Difesa in profondita': la capability Approve non e' mai concessa a chi e' il richiedente della
+      RDA (anche su RDA esistenti fuori regola).
+    - D-5 (RDA-01) Un unico resolver `PurchaseRequestApproverResolver` calcola gli approvatori ammessi
+      (superiori, oppure ripiego) ed e' usato sia dalla validazione sia da un nuovo endpoint di opzioni per il form.
+      Il form preseleziona l'approvatore quando l'elenco ne contiene uno solo.
+    - D-6 (RDA-02) Nessuna capability (Approve, Fulfill, Manage) se l'attore non ha purchase-requests.view o la RDA
+      non gli e' visibile (PurchaseRequestVisibilityScope::isVisibleTo). Cambio stato, fornitore massivo e Genera ODA
+      passano tutti dal resolver: 403 sulle righe non visibili. isVisibleTo confronta id con cast (int) (RDA-16).
+    - D-7 (RDA-05) Dopo update() della RDA (righe rimosse/aggiornate) si chiama
+      PurchaseRequestClosureService::closeIfComplete: se tutte le righe sono terminali la RDA si chiude.
+    - D-8 (RDA-06) Una riga RDA collegata a una riga ODA (purchaseOrderLine esiste) non puo' uscire da `ordered`
+      o `received` tramite il cambio stato RDA: 422 sulla riga. Le uscite le governa l'ODA (spec 0244). La riga
+      rilasciata su RDA chiusa e' gia' gestita da 0244 D-2 (on_hold).
+
+    Fatti verificati nel codice:
+    - PurchaseRequestWriteRequest: function_manager_id = utente attivo qualsiasi (o il gia' assegnato);
+      authorize(): true (Policy nel controller).
+    - PurchaseRequestCapabilityResolver::capabilities(): Approve se function_manager_id == actor; Fulfill/Manage col
+      solo permesso; nessun controllo di visibilita' ne' di view. Usato da PurchaseRequestLineStatusService::assertAllowed,
+      PurchaseRequestLineSupplierService::assertAllowed, PurchaseOrderFromRequestLinesService.
+    - PurchaseRequestVisibilityScope: viewAll oppure requester_id / function_manager_id / created_by; isVisibleTo usa
+      in_array strict senza cast.
+    - PurchaseRequestService::update (file 331 righe): nessun closeIfComplete dopo la sync righe.
+    - PurchaseRequestLine::purchaseOrderLine(): HasOne.
+    - FE purchase-request-header-fields.tsx: function_manager_id da USERS_FOR_SELECT_RESOURCE; proposeManager()
+      preimposta il manager della funzione aziendale.
+    - EmploymentProfile::reportsTo() (ordinati per nome); il profilo dell'utente si raggiunge da User (verificare la
+      relazione reale in User.php: employment / employmentProfile).
+  </context>
+
+  <scope>
+    <in>
+      <item>RDA-01: PurchaseRequestApproverResolver; validazione function_manager_id (D-1..D-3) nel FormRequest o nel service; capability Approve mai al richiedente (D-4); endpoint opzioni approvatore; form FE che usa le opzioni.</item>
+      <item>RDA-02: resolver capability con view + visibilita' (D-6); cast id in isVisibleTo.</item>
+      <item>RDA-05: closeIfComplete dopo update (D-7); estrarre PurchaseRequestLineSynchronizer se PurchaseRequestService supera 300 righe.</item>
+      <item>RDA-06: guard 422 sulle uscite da ordered/received per righe collegate a ODA (D-8).</item>
+      <item>Messaggi nuovi via __() in lang/{it,en}/purchase_requests.php.</item>
+      <item>Guide in-app IT+EN purchase-requests e purchase-request-lines. Manuale Claude Docs: segnalare.</item>
+    </in>
+    <out>
+      <item>Notifica al nuovo responsabile in caso di riassegnazione (RDA-20).</item>
+      <item>Blocco della modifica del responsabile dopo la prima approvazione.</item>
+      <item>Spostare la Policy in authorize() dei FormRequest (RDA-14) e l'esposizione di Rule::exists su line_ids.</item>
+      <item>Priorita'/stati configurabili, abilities comprensive dello stato, deduplicazione (onde 2 e 4).</item>
+      <item>Riallineamento delle RDA esistenti (D-3).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/purchase-requests/approver-options">
+      <request>query: requester_id (int, required, users.id), business_function_id (int, nullable, business_functions.id)</request>
+      <response status="200">
+        { success: true, data: { source: "reports_to" | "business_function" | "none",
+                                 approvers: [ { id: int, name: string } ] } }
+        reports_to = diretti superiori del richiedente (ordinati per nome, solo utenti attivi);
+        business_function = [manager della funzione] se il richiedente non ha superiori e il manager e' attivo e diverso dal richiedente;
+        none = elenco vuoto.
+      </response>
+      <errors>403 senza purchase-requests.create ne' purchase-requests.update; 422 parametri non validi.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-requests">
+      <errors>422 errors.function_manager_id = [__('purchase_requests.approver_not_allowed')] se non e' tra gli approvatori del resolver;
+        se l'elenco e' vuoto: [__('purchase_requests.no_approver_available')].</errors>
+    </endpoint>
+    <endpoint method="PUT" path="/api/purchase-requests/{purchaseRequest}">
+      <errors>Stesse regole SOLO se cambia requester_id, function_manager_id o business_function_id (D-3).</errors>
+      <response status="200">Se dopo la sync tutte le righe sono terminali, status=closed (D-7).</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-request-lines/status (path reale da verificare in routes)">
+      <errors>403 se una riga appartiene a una RDA non visibile all'attore o l'attore non ha purchase-requests.view.
+        422 errors["line_ids.N"] = [__('purchase_requests.line_linked_to_order')] uscendo da ordered/received con riga ODA collegata.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/purchase-request-lines/supplier e POST /api/purchase-request-lines/purchase-orders">
+      <errors>403 sulle righe non visibili (D-6).</errors>
+    </endpoint>
+
+    <note>I path esatti di cambio stato e fornitore massivo vanno presi da routes/api (non inventare).</note>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un richiedente con superiori S1 e S2, quando GET approver-options, allora source=reports_to e approvers=[S1,S2] (attivi, per nome).</criterion>
+    <criterion id="AC-002">Dato un richiedente senza superiori e una funzione con manager M attivo diverso dal richiedente, allora source=business_function e approvers=[M]; se M e' il richiedente o manca, source=none e lista vuota.</criterion>
+    <criterion id="AC-003">Quando POST RDA con function_manager_id non tra gli approvatori (es. il richiedente stesso, o un utente qualsiasi), allora 422 su function_manager_id; con S1 201.</criterion>
+    <criterion id="AC-004">Dato un richiedente senza superiori ne' manager di funzione valido, quando POST, allora 422 no_approver_available.</criterion>
+    <criterion id="AC-005">Data una RDA esistente con responsabile fuori regola, quando PUT che non cambia requester/responsabile/funzione, allora 200; quando PUT cambia il richiedente senza adeguare il responsabile, allora 422.</criterion>
+    <criterion id="AC-006">Data una RDA (anche legacy) in cui function_manager_id == requester_id, allora l'attore non ha la capability Approve e un cambio stato verso approved da lui -> 403.</criterion>
+    <criterion id="AC-007">Dato un utente con purchase-requests.fulfill (o manage) ma senza viewAll e non coinvolto nella RDA, quando cambia stato, assegna fornitore o genera ODA su una riga di quella RDA, allora 403 e nulla cambia.</criterion>
+    <criterion id="AC-008">Dato un utente con fulfill senza purchase-requests.view, stesse azioni su una RDA in cui e' coinvolto -> 403.</criterion>
+    <criterion id="AC-009">Data una RDA aperta con righe [received, pending_approval], quando PUT elimina la riga pending, allora la RDA risulta closed.</criterion>
+    <criterion id="AC-010">Data una riga `ordered` collegata a una riga ODA, quando un utente con Manage la porta a pending_approval o rejected, allora 422 line_linked_to_order e lo stato non cambia; una riga ordered senza ODA collegato puo' cambiare come oggi.</criterion>
+    <criterion id="AC-011">(Vitest) Form RDA: il campo Responsabile mostra solo gli approvatori restituiti per il richiedente scelto; con un solo approvatore viene preselezionato; cambiando richiedente le opzioni si aggiornano e un responsabile non piu' valido viene azzerato; con source=none il campo mostra un messaggio.</criterion>
+    <criterion id="AC-012">Guide in-app IT+EN aggiornate; help-content-parity.test.ts verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Un solo resolver per gli approvatori (validazione + endpoint), un solo resolver per le capability.</item>
+    <item>Endpoint con FormRequest + autorizzazione server-side; risposta via Resource o array esplicito nell'envelope.</item>
+    <item>Nessuna query per riga nella griglia righe RDA a causa della visibilita' (la griglia e' gia' filtrata dallo scope).</item>
+    <item>File sotto 300 righe dove si tocca (PurchaseRequestService oggi 331: estrarre se si aggiunge codice).</item>
+    <item>FE: dati server con TanStack Query, niente useEffect+fetch; il form non ricalcola regole oltre alle opzioni ricevute.</item>
+    <item>Messaggi via __(); test Pest mirati tests/Feature/PurchaseRequests, PurchaseOrders; suite completa dal verifier; tsc -b --force.</item>
+    <item>Nessun commit senza ordine esplicito.</item>
+  </constraints>
+
+</spec>

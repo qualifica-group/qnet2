@@ -5,11 +5,11 @@ import { Label } from '@/components/ui/label'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
 import { COMPANY_SITES_FOR_SELECT_RESOURCE } from '@/features/company-sites/for-select-api'
-import type { ForSelectItem } from '@/features/for-select/types'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { WORK_ORDERS_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
+import { PurchaseRequestApproverField } from '@/features/purchase-requests/purchase-request-approver-field'
 import {
   PrioritySelectField,
   PurchaseRelationField,
@@ -17,11 +17,6 @@ import {
 } from '@/features/purchase-requests/purchase-request-fields'
 import type { RequestRefs } from '@/features/purchase-requests/purchase-request-refs'
 import type { PurchaseRequestFormValues } from '@/features/purchase-requests/purchase-request-schema'
-
-/** The business-functions for-select item carries the function's manager (spec 0208 D-4). */
-interface BusinessFunctionItem extends ForSelectItem {
-  manager?: { id: number; name: string } | null
-}
 
 interface PurchaseRequestHeaderFieldsProps {
   control: Control<PurchaseRequestFormValues>
@@ -40,13 +35,6 @@ export function PurchaseRequestHeaderFields({
   createdByName,
 }: PurchaseRequestHeaderFieldsProps) {
   const { t } = useTranslation()
-
-  const proposeManager = (item: ForSelectItem | null) => {
-    const manager = (item as BusinessFunctionItem | null)?.manager
-    if (manager) {
-      setValue('function_manager_id', manager.id, { shouldDirty: true, shouldValidate: true })
-    }
-  }
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -94,15 +82,8 @@ export function PurchaseRequestHeaderFields({
         resource={BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE}
         selected={refs.business_function_id}
         required
-        onItemChange={proposeManager}
       />
-      <PurchaseRelationField
-        control={control}
-        name="function_manager_id"
-        resource={USERS_FOR_SELECT_RESOURCE}
-        selected={refs.function_manager_id}
-        required
-      />
+      <PurchaseRequestApproverField control={control} setValue={setValue} refs={refs} />
       <PurchaseRelationField
         control={control}
         name="customer_id"

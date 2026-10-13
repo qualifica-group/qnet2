@@ -234,3 +234,11 @@ export interface GenerateOrdersResult {
   purchase_orders: GeneratedOrder[]
   closed_purchase_request_ids: number[]
 }
+
+export type ApproverSource = 'reports_to' | 'business_function' | 'none'
+
+/** GET /purchase-requests/approver-options (spec 0245). */
+export interface ApproverOptions {
+  source: ApproverSource
+  approvers: NamedRef[]
+}

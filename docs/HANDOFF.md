@@ -3,7 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0244 — Correzioni integrita' ODA (audit 2026-10-13, ODA-01/02/04/06/07/08) — VERDE, NON COMMITTATO (2026-10-13)
+## Spec 0245 RDA + 0246 Tipi di costo (audit 2026-10-13, Onda 1 chiusa) — VERDE, COMMITTATO (2026-10-13)
+
+- 0245 `docs/specs/0245-purchase-request-integrity-fixes.xml` (D-1..D-8, AC-001..012 PASS): approvatore RDA =
+  diretto superiore attivo del RICHIEDENTE (`User::employment` -> `EmploymentProfile::reportsTo()`), ripiego sul manager
+  della funzione se attivo e != richiedente; regola solo alla creazione o se cambiano requester/manager/funzione (RDA
+  legacy valide). `PurchaseRequestApproverResolver` unico (validazione `enforceApprover` nel WriteRequest + endpoint
+  `GET /api/purchase-requests/approver-options` -> {source: reports_to|business_function|none, approvers[]}).
+  `PurchaseRequestCapabilityResolver`: [] senza purchase-requests.view o visibilita'; Approve mai al richiedente.
+  update() RDA -> closeIfComplete; sync righe estratta in `PurchaseRequestLineSynchronizer`. Riga RDA con riga ODA non
+  esce da ordered/received dal cambio stato RDA (422 `purchase_request_lines.line_linked_to_order`).
+  FE: campo Responsabile da approver-options (`use-purchase-request-approvers.ts`, preselezione singola, reset al cambio
+  richiedente, valore legacy mantenuto). Helper test `purchaseRequestPayload` crea richiedente con superiore.
+- 0246 `docs/specs/0246-cost-type-delete-guard.xml` (AC-001..006 PASS): tipo di costo usato da righe ODA o fatture
+  passive -> 409 `cost_types.in_use`, delete nascosta in griglia; FK purchase_invoices.cost_type_id restrictOnDelete
+  (migrazione 2026_10_17_110000). Il dettaglio tipo di costo espone ancora delete col solo permesso (409 al click).
+- Aperti: messaggi inglesi hard-coded in PurchaseRequestLineSynchronizer (preesistenti); flaky DemoOpportunitySeederTest:147
+  (seed casuale); manuale Claude Docs da aggiornare (RDA, righe RDA, Tipi di costo).
+- Onda 1 dell'audit completata (0243-0246). Prossimo: Onda 2 "cataloghi acquisti e contabilita'" (RDA-03, RDA-04,
+  RDA-13, ODA-03, ATT-10, ATT-11, ATT-12, COS-10, COS-11) — servono decisioni su ATT-11 e RDA-13.
+
+## Spec 0244 — Correzioni integrita' ODA (audit 2026-10-13, ODA-01/02/04/06/07/08) — COMMITTATO b14653d2 (2026-10-13)
 
 - Spec `docs/specs/0244-purchase-order-integrity-fixes.xml` (D-1..D-6, AC-001..AC-016 tutti PASS dal verifier).
   0210 D-18 marcata come superata.

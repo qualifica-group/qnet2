@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0246-cost-type-delete-guard" status="draft" owner="ciro" date="2026-10-13">
+
+  <goal>
+    Impedire che l'eliminazione di un tipo di costo declassifichi in silenzio le fatture passive che lo
+    usano (audit 2026-10-13, COS-03).
+  </goal>
+
+  <context>
+    Fonte: audit 2026-10-13, Onda 1, COS-03. Branch: feature/amministrazione.
+    Fatti verificati: CostTypeService::delete() controlla solo purchaseOrderLines() (409 non tradotto);
+    purchase_invoices.cost_type_id e' nullable nullOnDelete (migrazione 2026_10_14_100000); CostType non ha la
+    relazione purchaseInvoices(); purchase_order_lines.cost_type_id e' gia' restrictOnDelete.
+    - D-1 Un tipo di costo usato da righe ODA o da fatture passive non si elimina: 409 tradotto (messaggio unico
+      "in uso"); si puo' disattivare (is_active) come oggi.
+    - D-2 FK purchase_invoices.cost_type_id -> restrictOnDelete (nuova migrazione reversibile, resta nullable).
+  </context>
+
+  <scope>
+    <in>
+      <item>Relazione CostType::purchaseInvoices(); guard in CostTypeService::delete (righe ODA o fatture passive) con __().</item>
+      <item>Azione delete nella griglia/detail Tipi di costo nascosta se il tipo e' in uso, se il dettaglio espone gia' azioni per record (verificare CostTypesTableDefinition / CostTypesAuthorization); altrimenti solo 409.</item>
+      <item>Migrazione FK restrictOnDelete reversibile.</item>
+      <item>Guide in-app IT+EN cost-types: un tipo in uso non si elimina, si disattiva.</item>
+    </in>
+    <out>
+      <item>Modifica in linea e riordino dei tipi di costo (COS-11), natura/gruppo (COS-10), tassonomia unica (COS-02).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="DELETE" path="/api/cost-types/{costType}">
+      <errors>409 { message: __('cost_types.in_use') } se usato da righe ODA o fatture passive (anche nel bulk delete generico).</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un tipo di costo usato solo da una fattura passiva, quando DELETE, allora 409 tradotto e la fattura conserva cost_type_id.</criterion>
+    <criterion id="AC-002">Dato un tipo usato da una riga ODA, DELETE -> 409 (regressione, messaggio tradotto).</criterion>
+    <criterion id="AC-003">Dato un tipo non usato, DELETE -> successo.</criterion>
+    <criterion id="AC-004">Se la griglia/detail espone le azioni per record, l'azione delete non e' offerta per un tipo in uso (withExists, nessuna query per riga).</criterion>
+    <criterion id="AC-005">La migrazione e' reversibile e dopo la migrazione cancellare a DB un tipo usato da una fattura passiva fallisce per vincolo.</criterion>
+    <criterion id="AC-006">Guide in-app IT+EN aggiornate; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; messaggi via __() in lang/{it,en}/cost_types.php; migrazione nuova senza SQL grezzo.</item>
+    <item>Nessun commit senza ordine esplicito.</item>
+  </constraints>
+
+</spec>

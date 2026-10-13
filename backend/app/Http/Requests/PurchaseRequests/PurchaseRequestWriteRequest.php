@@ -6,7 +6,10 @@ use App\DataObjects\PurchaseRequests\PurchaseRequestData;
 use App\Enums\HttpStatusEnum;
 use App\Enums\PurchaseRequestPriority;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Models\BusinessFunction;
 use App\Models\PurchaseRequest;
+use App\Models\User;
+use App\Services\PurchaseRequests\PurchaseRequestApproverResolver;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -78,7 +81,45 @@ class PurchaseRequestWriteRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
+            $this->enforceApprover($validator);
         });
+    }
+
+    /**
+     * The approver must be one of the resolver's options (spec 0245, D-1..D-3):
+     * always on create, on update only when the requester, the approver or the
+     * business function change, so legacy requests stay editable.
+     */
+    private function enforceApprover(Validator $validator): void
+    {
+        if ($validator->errors()->hasAny(['requester_id', 'function_manager_id', 'business_function_id']) || ! $this->approverCheckNeeded()) {
+            return;
+        }
+
+        $resolver = app(PurchaseRequestApproverResolver::class);
+        $requester = User::query()->findOrFail((int) $this->input('requester_id'));
+        $function = BusinessFunction::query()->find((int) $this->input('business_function_id'));
+
+        if ($resolver->allows((int) $this->input('function_manager_id'), $requester, $function)) {
+            return;
+        }
+
+        $validator->errors()->add('function_manager_id', $resolver->resolve($requester, $function)['approvers']->isEmpty()
+            ? __('purchase_requests.no_approver_available')
+            : __('purchase_requests.approver_not_allowed'));
+    }
+
+    private function approverCheckNeeded(): bool
+    {
+        $stored = $this->authorizationModel();
+
+        if (! $stored instanceof PurchaseRequest) {
+            return true;
+        }
+
+        return (int) $this->input('requester_id') !== (int) $stored->requester_id
+            || (int) $this->input('function_manager_id') !== (int) $stored->function_manager_id
+            || (int) $this->input('business_function_id') !== (int) $stored->business_function_id;
     }
 
     protected function prepareForValidation(): void

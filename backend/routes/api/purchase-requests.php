@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PurchaseRequests\PurchaseRequestApproverOptionsController;
 use App\Http\Controllers\PurchaseRequests\PurchaseRequestController;
 use App\Http\Controllers\PurchaseRequests\PurchaseRequestLineStatusController;
 use App\Http\Controllers\PurchaseRequests\PurchaseRequestLineSupplierController;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\Route;
 | `purchase-requests` and `purchase-request-lines` table domains.
 */
 
+// Literal segment declared ABOVE the bound {purchaseRequest} wildcard (spec 0245).
+Route::get('purchase-requests/approver-options', PurchaseRequestApproverOptionsController::class);
 Route::get('purchase-requests/{purchaseRequest}', [PurchaseRequestController::class, 'show']);
 Route::post('purchase-requests', [PurchaseRequestController::class, 'store']);
 Route::match(['put', 'patch'], 'purchase-requests/{purchaseRequest}', [PurchaseRequestController::class, 'update']);

@@ -37,4 +37,12 @@ class CostType extends BaseModel
     {
         return $this->hasMany(PurchaseOrderLine::class);
     }
+
+    /**
+     * @return HasMany<PurchaseInvoice, $this>
+     */
+    public function purchaseInvoices(): HasMany
+    {
+        return $this->hasMany(PurchaseInvoice::class);
+    }
 }

@@ -34,7 +34,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Someone with several roles gets the union of the possibilities. On a **closed** RDA no status can change anymore.',
+          text: 'Someone with several roles gets the union of the possibilities. On a **closed** RDA no status can change anymore. Actions on lines (status change, supplier assignment, ODA generation) only apply to RDAs you can see; an RDA’s **requester** cannot approve its lines.',
         },
       ],
     },
@@ -54,7 +54,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'The change is **all or nothing**: if even one line cannot move to the chosen status, no line is changed.',
+          text: 'The change is **all or nothing**: if even one line cannot move to the chosen status, no line is changed. A line already linked to an **ODA** cannot leave Ordered or Received from here: the ODA governs its status.',
         },
         {
           type: 'note',

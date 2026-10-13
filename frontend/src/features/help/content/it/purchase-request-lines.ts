@@ -34,7 +34,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Chi ha più ruoli ottiene l’unione delle possibilità. Su una RDA **chiusa** non si cambia più alcuno stato.',
+          text: 'Chi ha più ruoli ottiene l’unione delle possibilità. Su una RDA **chiusa** non si cambia più alcuno stato. Le azioni sulle righe (cambio stato, assegnazione del fornitore, generazione ODA) valgono solo per le RDA che puoi vedere; il **richiedente** di una RDA non ne può approvare le righe.',
         },
       ],
     },
@@ -54,7 +54,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'Il cambio è **tutto o niente**: se anche una sola riga non può passare allo stato scelto, nessuna riga viene modificata.',
+          text: 'Il cambio è **tutto o niente**: se anche una sola riga non può passare allo stato scelto, nessuna riga viene modificata. Una riga già collegata a una **ODA** non esce da Ordinato o Ricevuto da qui: il suo stato lo governa l’ODA.',
         },
         {
           type: 'note',

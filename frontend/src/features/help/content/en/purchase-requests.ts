@@ -27,7 +27,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Press **New RDA** and fill in the header: **Subject**, **Request date**, **Priority**, **Requester** and the organization fields (**Company**, **Company site**, **Operational site**, **Business function**).',
-            'Choosing the **Business function** proposes its **Function manager** automatically: you can change it to any active user. **Company site** only lists the sites of the chosen company.',
+            'The **Function manager** is picked among the **requester’s direct superiors** (company profile in **Users**): with a single superior it is proposed automatically, and changing the requester updates the list. If the requester has no superiors the manager of the **Business function** is used; if that is missing too, a message under the field says so and the RDA cannot be saved. The requester cannot approve their own RDA. **Company site** only lists the sites of the chosen company.',
             'Optional: **Customer** and **Work order**. The **Supplier** is no longer in the header but on each line. The **+** next to a field creates a new supplier, customer or product on the spot.',
             'Add the lines (at least one) and the documents if needed, then press **Save**.',
           ],
@@ -85,7 +85,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Automatic closing**: the RDA closes by itself when all its lines are in a final status (Received, On hold or Rejected).',
+            '**Automatic closing**: the RDA closes by itself when no open lines are left, that is all of them are in a final status (Received, On hold or Rejected), even after deleting lines and saving.',
             '**Close RDA**: manual closing. If non-final lines remain the closing is **forced** and the **reason is mandatory**. A closed RDA is never reopened.',
             '**Send to manager**: sends the Function manager again the notification (app and email) received on creation.',
             '**Delete**: removes the RDA with its lines, history and documents after confirmation; not possible when a line is already Ordered or Received.',

@@ -27,6 +27,9 @@ class PurchaseRequestLineStatusService
     /** Statuses that record who approved (or rejected) the line and when. */
     private const array APPROVAL_STATUSES = [PurchaseRequestLineStatus::Approved, PurchaseRequestLineStatus::Rejected];
 
+    /** Statuses owned by the purchase order once the line is linked to an order line. */
+    private const array ORDER_DRIVEN_STATUSES = [PurchaseRequestLineStatus::Ordered, PurchaseRequestLineStatus::Received];
+
     public function __construct(
         private readonly PurchaseRequestCapabilityResolver $capabilities,
         private readonly PurchaseRequestClosureService $closure,
@@ -42,7 +45,7 @@ class PurchaseRequestLineStatusService
     {
         return DB::transaction(function () use ($actor, $lineIds, $to, $reason, $suppliers): array {
             // Step 1: lock the lines and their requests
-            $lines = $this->locker->lines($lineIds);
+            $lines = $this->locker->lines($lineIds)->load('purchaseOrderLine:id,purchase_request_line_id');
             $requests = $this->locker->requests($lines);
 
             // Step 2: refuse the whole change if any line is out of reach (403), closed (409) or not allowed (422)
@@ -87,7 +90,7 @@ class PurchaseRequestLineStatusService
 
         foreach ($lineIds as $index => $id) {
             if ($lines->get($id)->supplier_id === null && ! isset($suppliers[$id])) {
-                $errors["line_ids.{$index}"] = ['A supplier is required to mark the line as ordered.'];
+                $errors["line_ids.{$index}"] = [__('purchase_request_lines.supplier_required')];
             }
         }
 
@@ -121,13 +124,23 @@ class PurchaseRequestLineStatusService
 
         foreach ($ordered as $index => $line) {
             if (! in_array($to, $this->capabilities->transitions($actor, $requests->get($line->purchase_request_id), $line), true)) {
-                $errors["line_ids.{$index}"] = ['This status change is not allowed for the line.'];
+                $errors["line_ids.{$index}"] = [__('purchase_request_lines.status_change_not_allowed')];
+            } elseif ($this->isDrivenByOrder($line, $to)) {
+                $errors["line_ids.{$index}"] = [__('purchase_request_lines.line_linked_to_order')];
             }
         }
 
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    /** A line linked to an order line leaves `ordered`/`received` only through the order (spec 0245, D-8). */
+    private function isDrivenByOrder(PurchaseRequestLine $line, PurchaseRequestLineStatus $to): bool
+    {
+        return in_array($line->status, self::ORDER_DRIVEN_STATUSES, true)
+            && $line->status !== $to
+            && $line->purchaseOrderLine !== null;
     }
 
     private function apply(PurchaseRequestLine $line, User $actor, PurchaseRequestLineStatus $to, ?string $reason, ?string $groupId): void

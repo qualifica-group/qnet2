@@ -24,7 +24,7 @@ function lineSuppliers(array $lineIds): array
 // ---------------------------------------------------------------------------
 
 it('AC-007: ordering a line without supplier is refused and nothing changes', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['fulfill']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'fulfill']));
     $supplier = supplierRegistry();
     $request = purchaseRequestWithLines([LineStatus::Approved, LineStatus::Approved]);
     $request->lines[0]->update(['supplier_id' => $supplier->id]);
@@ -39,7 +39,7 @@ it('AC-007: ordering a line without supplier is refused and nothing changes', fu
 });
 
 it('AC-007: the supplier is required even with the manage capability, and not for other statuses', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['manageStatuses']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'manageStatuses']));
     $request = purchaseRequestWithLines([LineStatus::Approved, LineStatus::Approved]);
 
     changeStatus($this, [$request->lines[0]->id], 'ordered')->assertUnprocessable()->assertJsonValidationErrors('line_ids.0');
@@ -47,7 +47,7 @@ it('AC-007: the supplier is required even with the manage capability, and not fo
 });
 
 it('AC-008: the supplied suppliers are saved with the change to ordered', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['fulfill']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'fulfill']));
     $existing = supplierRegistry();
     $supplied = supplierRegistry();
     $request = purchaseRequestWithLines([LineStatus::Approved, LineStatus::Approved]);
@@ -63,7 +63,7 @@ it('AC-008: the supplied suppliers are saved with the change to ordered', functi
 });
 
 it('AC-008: suppliers are refused with another status, for a foreign line or a non supplier', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['fulfill']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'fulfill']));
     $supplier = supplierRegistry();
     $request = purchaseRequestWithLines([LineStatus::Approved, LineStatus::Approved]);
     [$first, $second] = $request->lines->pluck('id')->all();
@@ -83,7 +83,7 @@ it('AC-008: suppliers are refused with another status, for a foreign line or a n
 // ---------------------------------------------------------------------------
 
 it('AC-009: assigns one supplier to the selected approved lines', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['fulfill']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'fulfill']));
     $supplier = supplierRegistry();
     $first = purchaseRequestWithLines([LineStatus::Approved]);
     $second = purchaseRequestWithLines([LineStatus::Approved]);
@@ -98,7 +98,7 @@ it('AC-009: assigns one supplier to the selected approved lines', function () {
 });
 
 it('AC-009: a frozen line refuses the whole assignment', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['fulfill']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'fulfill']));
     $request = purchaseRequestWithLines([LineStatus::Approved, LineStatus::Ordered], [], ['supplier_id' => supplierRegistry()->id]);
     $ids = $request->lines->pluck('id')->all();
     $before = lineSuppliers($ids);
@@ -133,14 +133,14 @@ it('AC-009: without any capability or update right the assignment is forbidden',
 });
 
 it('AC-009: a closed request answers 409', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['fulfill']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'fulfill']));
     $request = purchaseRequestWithLines([LineStatus::Approved], ['status' => 'closed', 'closed_by' => User::factory()->create()->id, 'closed_at' => now()]);
 
     assignSupplier($this, [$request->lines[0]->id], supplierRegistry()->id)->assertStatus(409);
 });
 
 it('AC-009: validates the payload', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['fulfill']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'fulfill']));
     $request = purchaseRequestWithLines([LineStatus::Approved]);
     $id = $request->lines[0]->id;
 

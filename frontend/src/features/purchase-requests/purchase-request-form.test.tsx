@@ -39,6 +39,11 @@ vi.mock('@/features/products/api', async (importOriginal) => ({
   fetchProduct: (id: number) => fetchProductMock(id),
 }))
 
+vi.mock('@/features/purchase-requests/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/purchase-requests/api')>()),
+  fetchApproverOptions: vi.fn(async () => ({ source: 'reports_to', approvers: [{ id: 9, name: 'Luca Neri' }] })),
+}))
+
 vi.mock('@/features/attachments/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/attachments/api')>()),
   listAttachments: vi.fn().mockResolvedValue([]),
@@ -94,10 +99,8 @@ beforeEach(() => {
 })
 
 describe('PurchaseRequestForm header (AC-017)', () => {
-  it('proposes the function manager when a business function is chosen', async () => {
+  it('offers the approvers of the requester and preselects the only one', async () => {
     renderForm()
-
-    await pick(/Business function/, /IT/)
 
     await waitFor(() =>
       expect(screen.getByRole('combobox', { name: /Function manager/ })).toHaveTextContent('Luca Neri'),

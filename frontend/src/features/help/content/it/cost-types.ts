@@ -37,7 +37,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Non puoi eliminare un tipo di costo già usato da righe di ordini di acquisto: disattivalo.',
+          text: 'Non puoi eliminare un tipo di costo già usato da righe di ordini di acquisto o da fatture passive: disattivalo. Nella griglia i tipi in uso non offrono Elimina.',
         },
       ],
     },

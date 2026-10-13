@@ -65,12 +65,15 @@ if (! function_exists('purchaseRequestPayload')) {
             ];
         }
 
+        // Spec 0245: the approver must be a direct superior of the requester.
+        $approver = User::factory()->create();
+
         return array_merge([
             'subject' => 'Laptops',
             'requested_at' => '2026-10-09',
             'priority' => 'high',
-            'requester_id' => User::factory()->create()->id,
-            'function_manager_id' => User::factory()->create()->id,
+            'requester_id' => User::factory()->reportsTo($approver)->create()->id,
+            'function_manager_id' => $approver->id,
             'company_id' => $company->id,
             'company_site_id' => CompanySite::factory()->create(['company_id' => $company->id])->id,
             'operational_site_id' => OperationalSite::factory()->create()->id,

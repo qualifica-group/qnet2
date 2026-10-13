@@ -80,6 +80,10 @@ export const purchaseRequests = {
     technical_requirements: 'Requisiti tecnici',
     special_conditions: 'Condizioni particolari',
   },
+  approver: {
+    requesterFirst: 'Seleziona prima il richiedente.',
+    none: 'Il richiedente non ha un responsabile nel profilo e la funzione non ha un responsabile valido.',
+  },
   select: {
     placeholder: 'Seleziona...',
     search: 'Cerca...',

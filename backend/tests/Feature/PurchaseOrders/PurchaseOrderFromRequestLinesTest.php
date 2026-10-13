@@ -161,11 +161,11 @@ it('AC-008: an actor without the fulfill or manage capability is refused with 40
 it('AC-008: manageStatuses is enough to order, and creating orders is still required', function () {
     [$line] = approvedLines([supplierRegistry()]);
 
-    Sanctum::actingAs(purchaseRequestUserWith(['manageStatuses']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'manageStatuses']));
     generateOrders($this, [$line->id])->assertForbidden();
     expect(PurchaseOrder::query()->count())->toBe(0);
 
-    Sanctum::actingAs(generatorActor(['manageStatuses']));
+    Sanctum::actingAs(generatorActor(['view', 'viewAll', 'manageStatuses']));
     generateOrders($this, [$line->id])->assertCreated();
 });
 

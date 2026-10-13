@@ -18,6 +18,8 @@ use App\Models\User;
  */
 class PurchaseRequestCapabilityResolver
 {
+    public const string VIEW_PERMISSION = 'purchase-requests.view';
+
     public const string FULFILL_PERMISSION = 'purchase-requests.fulfill';
 
     public const string MANAGE_PERMISSION = 'purchase-requests.manageStatuses';
@@ -27,10 +29,16 @@ class PurchaseRequestCapabilityResolver
      */
     public function capabilities(User $actor, PurchaseRequest $request): array
     {
+        // D-6: no capability without the view permission and a visible request.
+        if (! $actor->can(self::VIEW_PERMISSION) || ! PurchaseRequestVisibilityScope::isVisibleTo($actor, $request)) {
+            return [];
+        }
+
         $capabilities = [];
 
         // Cast both sides: some MySQL/MariaDB drivers return integer columns as strings.
-        if ((int) $request->function_manager_id === (int) $actor->id) {
+        // D-4: the requester never approves their own request, even a legacy one.
+        if ((int) $request->function_manager_id === (int) $actor->id && (int) $request->requester_id !== (int) $actor->id) {
             $capabilities[] = PurchaseRequestCapability::Approve;
         }
 

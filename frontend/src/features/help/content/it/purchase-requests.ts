@@ -27,7 +27,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Premi **Nuova RDA** e compila la testata: **Oggetto**, **Data richiesta**, **Priorità**, **Richiedente** e i campi organizzativi (**Società aziendale**, **Società / Sede**, **Sede operativa**, **Funzione aziendale**).',
-            'Scegliendo la **Funzione aziendale** il **Responsabile di funzione** viene proposto in automatico: puoi cambiarlo con qualsiasi utente attivo. **Società / Sede** mostra solo le sedi della società scelta.',
+            'Il **Responsabile di funzione** si sceglie tra i **diretti superiori del richiedente** (profilo aziendale in **Utenti**): con un solo superiore viene proposto in automatico, cambiando il richiedente l’elenco si aggiorna. Se il richiedente non ha superiori si usa il responsabile della **Funzione aziendale**; se manca anche quello un messaggio sotto il campo lo segnala e la RDA non si può salvare. Chi è il richiedente non può approvare la propria RDA. **Società / Sede** mostra solo le sedi della società scelta.',
             'Facoltativi: **Cliente** e **Commessa**. Il **Fornitore** non è più nella testata ma sulle singole righe. Il pulsante **+** accanto a un campo crea al volo un nuovo fornitore, cliente o prodotto.',
             'Aggiungi le righe (almeno una) e, se serve, i documenti, poi premi **Salva**.',
           ],
@@ -85,7 +85,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Chiusura automatica**: la RDA si chiude da sola quando tutte le righe sono in uno stato finale (Ricevuto, Stand by o Rifiutato).',
+            '**Chiusura automatica**: la RDA si chiude da sola quando non restano righe aperte, cioè tutte sono in uno stato finale (Ricevuto, Stand by o Rifiutato), anche dopo aver eliminato delle righe e salvato.',
             '**Chiudi RDA**: chiusura a mano. Se restano righe non finali la chiusura è **forzata** e la **motivazione è obbligatoria**. Una RDA chiusa non si riapre.',
             '**Invia al responsabile**: rinvia al Responsabile di funzione la notifica (app ed email) che riceve alla creazione.',
             '**Elimina**: rimuove la RDA con righe, storico e documenti dopo conferma; non è possibile se una riga è già Ordinata o Ricevuta.',

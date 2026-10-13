@@ -34,6 +34,7 @@ const createMock = vi.fn<(payload: PurchaseRequestPayload) => Promise<PurchaseRe
 vi.mock('@/features/purchase-requests/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/purchase-requests/api')>()),
   createPurchaseRequest: (payload: PurchaseRequestPayload) => createMock(payload),
+  fetchApproverOptions: vi.fn(async () => ({ source: 'reports_to', approvers: [{ id: 9, name: 'Luca Neri' }] })),
 }))
 
 const uploadMock = vi.fn()

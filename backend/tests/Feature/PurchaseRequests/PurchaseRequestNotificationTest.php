@@ -14,7 +14,7 @@ it('AC-013: creating a request notifies the function manager by database and mai
     Sanctum::actingAs($author = purchaseRequestUserWith(['create']));
     $manager = User::factory()->create();
 
-    $this->postJson('/api/purchase-requests', purchaseRequestPayload(['function_manager_id' => $manager->id]))->assertCreated();
+    $this->postJson('/api/purchase-requests', purchaseRequestPayload(['function_manager_id' => $manager->id, 'requester_id' => User::factory()->reportsTo($manager)->create()->id]))->assertCreated();
 
     Notification::assertSentTo($manager, PurchaseRequestSubmittedNotification::class, function ($notification, array $channels) use ($manager): bool {
         $payload = $notification->toArray($manager);
@@ -31,7 +31,7 @@ it('AC-013: the notification links the request to a recipient who can open it', 
     Sanctum::actingAs(purchaseRequestUserWith(['create']));
     $manager = purchaseRequestUserWith(['view']);
 
-    $id = $this->postJson('/api/purchase-requests', purchaseRequestPayload(['function_manager_id' => $manager->id]))
+    $id = $this->postJson('/api/purchase-requests', purchaseRequestPayload(['function_manager_id' => $manager->id, 'requester_id' => User::factory()->reportsTo($manager)->create()->id]))
         ->assertCreated()->json('data.id');
 
     Notification::assertSentTo($manager, PurchaseRequestSubmittedNotification::class, fn ($notification): bool => $notification->toArray($manager)['action_url'] === "/purchase-requests/{$id}");
@@ -40,7 +40,7 @@ it('AC-013: the notification links the request to a recipient who can open it', 
 it('AC-013: an author who is also the function manager is not notified', function () {
     Sanctum::actingAs($author = purchaseRequestUserWith(['create']));
 
-    $this->postJson('/api/purchase-requests', purchaseRequestPayload(['function_manager_id' => $author->id]))->assertCreated();
+    $this->postJson('/api/purchase-requests', purchaseRequestPayload(['function_manager_id' => $author->id, 'requester_id' => User::factory()->reportsTo($author)->create()->id]))->assertCreated();
 
     Notification::assertNothingSent();
 });

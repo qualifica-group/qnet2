@@ -11,6 +11,7 @@ import type {
   PurchaseRequest,
   PurchaseRequestClosure,
   PurchaseRequestPayload,
+  ApproverOptions,
 } from '@/features/purchase-requests/types'
 
 /** Centralized query keys of the purchase-requests feature. */
@@ -19,6 +20,8 @@ export const purchaseRequestKeys = {
   detail: (id: number) => ['purchase-requests', 'detail', id] as const,
   closure: (id: number) => ['purchase-requests', 'closure', id] as const,
   lineLogs: (lineId: number) => ['purchase-requests', 'line-logs', lineId] as const,
+  approverOptions: (requesterId: number | null, businessFunctionId: number | null) =>
+    ['purchase-requests', 'approver-options', requesterId, businessFunctionId] as const,
 }
 
 export async function fetchPurchaseRequest(id: number): Promise<PurchaseRequest> {
@@ -94,4 +97,15 @@ export async function closePurchaseRequest(id: number, reason?: string): Promise
 export async function notifyPurchaseRequestManager(id: number): Promise<string> {
   const { data } = await apiClient.post<ApiResponse<null>>(`/purchase-requests/${id}/notify-manager`)
   return data.message
+}
+
+/** Allowed approvers for a requester (spec 0245 D-5): the requester's direct superiors, else the function manager. */
+export async function fetchApproverOptions(
+  requesterId: number,
+  businessFunctionId: number | null,
+): Promise<ApproverOptions> {
+  const { data } = await apiClient.get<ApiResponse<ApproverOptions>>('/purchase-requests/approver-options', {
+    params: { requester_id: requesterId, ...(businessFunctionId === null ? {} : { business_function_id: businessFunctionId }) },
+  })
+  return data.data
 }

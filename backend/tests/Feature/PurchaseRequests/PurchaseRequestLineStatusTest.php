@@ -3,7 +3,6 @@
 use App\Enums\PurchaseRequestLineStatus as LineStatus;
 use App\Models\PurchaseRequestLine;
 use App\Models\PurchaseRequestLineStatusLog;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
@@ -14,7 +13,7 @@ uses(RefreshDatabase::class);
 // ---------------------------------------------------------------------------
 
 it('AC-004: the assigned function manager approves a pending line, with log and approval data', function () {
-    $manager = User::factory()->create();
+    $manager = purchaseRequestUserWith(['view']);
     $request = purchaseRequestWithLines([LineStatus::PendingApproval, LineStatus::PendingApproval], ['function_manager_id' => $manager->id]);
     $line = $request->lines->first();
     Sanctum::actingAs($manager);
@@ -50,7 +49,7 @@ it('AC-004: a user who is not the function manager of that request gets 403 and 
 });
 
 it('AC-004: the manager can reject but cannot order', function () {
-    $manager = User::factory()->create();
+    $manager = purchaseRequestUserWith(['view']);
     $request = purchaseRequestWithLines([LineStatus::PendingApproval, LineStatus::PendingApproval], ['function_manager_id' => $manager->id]);
     Sanctum::actingAs($manager);
 
@@ -66,7 +65,7 @@ it('AC-004: the manager can reject but cannot order', function () {
 // ---------------------------------------------------------------------------
 
 it('AC-005: fulfill cannot skip approval, but orders an approved line and receives an ordered one', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['fulfill']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'fulfill']));
     $request = purchaseRequestWithLines([LineStatus::PendingApproval, LineStatus::Approved], [], ['supplier_id' => supplierRegistry()->id]);
     [$pending, $approved] = [$request->lines[0], $request->lines[1]];
 
@@ -79,7 +78,7 @@ it('AC-005: fulfill cannot skip approval, but orders an approved line and receiv
 });
 
 it('AC-005: fulfill parks an approved line on hold but cannot approve', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['fulfill']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'fulfill']));
     $request = purchaseRequestWithLines([LineStatus::Approved, LineStatus::PendingApproval]);
 
     changeStatus($this, [$request->lines[0]->id], 'on_hold')->assertOk();
@@ -87,7 +86,7 @@ it('AC-005: fulfill parks an approved line on hold but cannot approve', function
 });
 
 it('AC-006: manageStatuses moves a line to any other status, but not to the current one', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['manageStatuses']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'manageStatuses']));
     $request = purchaseRequestWithLines([LineStatus::Received, LineStatus::PendingApproval]);
     $received = $request->lines[0];
 
@@ -122,7 +121,7 @@ it('exposes the allowed transitions of each line to the actor', function () {
 // ---------------------------------------------------------------------------
 
 it('AC-007: a mass change with one line not allowed changes none of them', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['fulfill']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'fulfill']));
     $request = purchaseRequestWithLines([LineStatus::Approved, LineStatus::Approved, LineStatus::PendingApproval]);
 
     changeStatus($this, $request->lines->pluck('id')->all(), 'ordered')
@@ -134,7 +133,7 @@ it('AC-007: a mass change with one line not allowed changes none of them', funct
 });
 
 it('AC-007: a mass change across requests shares one bulk group and logs every line', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['fulfill']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'fulfill']));
     $withSupplier = ['supplier_id' => supplierRegistry()->id];
     $first = purchaseRequestWithLines([LineStatus::Approved, LineStatus::Approved], [], $withSupplier);
     $second = purchaseRequestWithLines([LineStatus::Approved], [], $withSupplier);
@@ -151,7 +150,7 @@ it('AC-007: a mass change across requests shares one bulk group and logs every l
 });
 
 it('AC-007: a mass change including a request the actor cannot touch is refused with 403 and changes nothing', function () {
-    $manager = User::factory()->create();
+    $manager = purchaseRequestUserWith(['view']);
     $mine = purchaseRequestWithLines([LineStatus::PendingApproval], ['function_manager_id' => $manager->id]);
     $other = purchaseRequestWithLines();
     Sanctum::actingAs($manager);
@@ -162,7 +161,7 @@ it('AC-007: a mass change including a request the actor cannot touch is refused 
 });
 
 it('validates the payload of the status endpoint', function (array $payload, string $key) {
-    Sanctum::actingAs(purchaseRequestUserWith(['manageStatuses']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'manageStatuses']));
 
     $this->postJson('/api/purchase-request-lines/status', $payload)->assertUnprocessable()->assertJsonValidationErrors($key);
 })->with([
@@ -176,7 +175,7 @@ it('validates the payload of the status endpoint', function (array $payload, str
 // ---------------------------------------------------------------------------
 
 it('AC-008: the request closes by itself when the last open line reaches a terminal status', function () {
-    $actor = purchaseRequestUserWith(['manageStatuses']);
+    $actor = purchaseRequestUserWith(['view', 'viewAll', 'manageStatuses']);
     $request = purchaseRequestWithLines([LineStatus::Received, LineStatus::Rejected, LineStatus::Approved, LineStatus::Ordered]);
     Sanctum::actingAs($actor);
 
@@ -197,7 +196,7 @@ it('AC-008: the request closes by itself when the last open line reaches a termi
 });
 
 it('AC-008: a rejection that leaves nothing to work on closes the request too', function () {
-    $manager = User::factory()->create();
+    $manager = purchaseRequestUserWith(['view']);
     $request = purchaseRequestWithLines([LineStatus::Received, LineStatus::PendingApproval], ['function_manager_id' => $manager->id]);
     Sanctum::actingAs($manager);
 
@@ -207,7 +206,7 @@ it('AC-008: a rejection that leaves nothing to work on closes the request too', 
 });
 
 it('AC-009: a status change on a closed request is refused with 409', function () {
-    Sanctum::actingAs(purchaseRequestUserWith(['manageStatuses']));
+    Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'manageStatuses']));
     $request = purchaseRequestWithLines([LineStatus::Received], ['status' => 'closed']);
 
     changeStatus($this, [$request->lines->first()->id], 'approved')->assertStatus(409)->assertJsonPath('success', false);
@@ -219,7 +218,7 @@ it('AC-009: a status change on a closed request is refused with 409', function (
 // ---------------------------------------------------------------------------
 
 it('lists the status history of a line, most recent first, to who can view the request', function () {
-    $manager = User::factory()->create();
+    $manager = purchaseRequestUserWith(['view']);
     $request = purchaseRequestWithLines([LineStatus::PendingApproval], ['function_manager_id' => $manager->id]);
     $line = $request->lines->first();
     Sanctum::actingAs($manager);

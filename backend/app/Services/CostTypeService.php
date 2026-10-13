@@ -29,12 +29,13 @@ class CostTypeService
     }
 
     /**
-     * Restrictive delete: a cost type still used by a purchase order line cannot be removed.
+     * Restrictive delete: a cost type still used by a purchase order line or a
+     * purchase invoice cannot be removed (it can be deactivated instead).
      */
     public function delete(CostType $costType): void
     {
-        if ($costType->purchaseOrderLines()->exists()) {
-            abort(409, 'This cost type is used by a purchase order line and cannot be deleted.');
+        if ($costType->purchaseOrderLines()->exists() || $costType->purchaseInvoices()->exists()) {
+            abort(409, __('cost_types.in_use'));
         }
 
         $costType->delete();
