@@ -100,6 +100,11 @@ trait InjectsDefaultIdColumn
      * (number filter) and part of the quick search — unlike `id`, users look
      * records up by the id they knew in the legacy system.
      *
+     * No Set value checklist (`hasFilterValues: false`): the id is unique per
+     * row, so the list is as long as the table and the values endpoint caps it
+     * (TableValuesRequest, 200) — an id past the cap could never be found by
+     * the checklist search. The number condition filter reaches every row.
+     *
      * @return array<string, mixed>
      */
     private function defaultLegacyIdColumn(): array
@@ -112,6 +117,7 @@ trait InjectsDefaultIdColumn
             'sortable' => true,
             'filterable' => true,
             'filterType' => 'number',
+            'hasFilterValues' => false,
             'searchable' => true,
         ];
     }

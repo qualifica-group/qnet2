@@ -50,6 +50,26 @@ it('injects a hidden sortable and filterable old_id column right after id when t
         ->order->toBe(2);
 });
 
+it('filters old_id with the number condition only, never a capped value checklist', function () {
+    Sanctum::actingAs(legacyIdActor(['opportunities.viewAny']));
+
+    $target = Opportunity::factory()->create(['old_id' => 173029]);
+    Opportunity::factory()->create(['old_id' => 173030]);
+
+    $column = collect($this->getJson('/api/tables/opportunities/columns')->assertOk()->json('data.columns'))
+        ->firstWhere('id', 'old_id');
+
+    expect($column['hasFilterValues'])->toBeFalse();
+
+    $rows = $this->postJson('/api/tables/opportunities/rows', [
+        'startRow' => 0,
+        'endRow' => 25,
+        'filterModel' => ['old_id' => ['filterType' => 'number', 'type' => 'equals', 'filter' => 173029]],
+    ])->assertOk()->json('items');
+
+    expect(array_column($rows, 'id'))->toBe([$target->id]);
+});
+
 it('places old_id after a table-declared id column', function () {
     Sanctum::actingAs(legacyIdActor(['users.viewAny']));
 
@@ -147,7 +167,8 @@ it('sorts, filters and searches by old_id on every grid that exposes it', functi
             ->firstWhere('id', 'old_id');
 
         expect($column)->not->toBeNull("{$domain} does not expose old_id")
-            ->sortable->toBeTrue()->filterable->toBeTrue()->filterType->toBe('number');
+            ->sortable->toBeTrue()->filterable->toBeTrue()->filterType->toBe('number')
+            ->hasFilterValues->toBeFalse("{$domain} offers a capped value checklist on old_id");
         expect(in_array('old_id', $this->getJson("/api/tables/{$domain}/columns")->json('data.searchable'), true))
             ->toBeTrue("{$domain} does not search old_id");
 

@@ -47,6 +47,13 @@
   search 200). Pest parallelo 10407 verdi; rossi i 3 LibreOffice + `DemoOpportunitySeederTest` INV-1/INV-2
   instabile (1 fallimento su 6 run isolati, non legato a questa modifica).
 - Manuale: guida `general` IT/EN (righe "Colonne" e "Cerca…") + manuale Claude Docs (stesse righe). PDF da rigenerare.
+- FIX (COMMITTATO): nel filtro di colonna "ID legacy" di Opportunita' "173029" non compariva nella checklist: la
+  checklist (Set Filter) carica al massimo 200 valori (`TableValuesRequest::MAX_LIMIT`) e la sua ricerca e' client-side
+  su quei 200 (19.561 opportunita'). `defaultLegacyIdColumn()` ora ha `hasFilterValues: false` -> solo filtro numerico
+  (Uguale a / intervallo), nessuna checklist, in tutte le griglie. Nessun codice FE (`resolveFilter` gestisce gia' il
+  flag). Test nuovo "filters old_id with the number condition only..." + sweep sulle 28 griglie con `old_id` ora
+  verifica anche `hasFilterValues: false`; `tests/Feature/Table` 303 verdi, Pint pulito.
+  Manuale: nessun impatto (la guida dice gia' "filtrare come numero").
 
 ## MERGE main -> feature/amministrazione — VERDE, NON COMMITTATO (2026-10-13)
 
