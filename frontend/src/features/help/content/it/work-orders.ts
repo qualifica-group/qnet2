@@ -187,7 +187,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Se hai il permesso di creare richieste proforma, nella colonna **Azioni** dell\'elenco Commesse (anche nel tab Commesse del contratto e dell\'anagrafica) trovi il pulsante **€**. Il colore indica lo stato: **grigio** nessuna richiesta, **blu** richiesta inviata e non ancora evasa, **giallo** proforma emessa.',
+          text: 'Se hai il permesso di creare richieste proforma, nella colonna **Azioni** dell\'elenco Commesse (anche nel tab Commesse del contratto e dell\'anagrafica) trovi il pulsante **€**. Il colore indica lo stato: **grigio** nessuna richiesta, **blu** richiesta inviata e non ancora evasa, **giallo** richieste già evase (proforma emessa).',
         },
         {
           type: 'steps',
@@ -200,11 +200,21 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Con il pulsante **€** blu la finestra mostra **Ultima richiesta del** e la data: finché la richiesta non è evasa non se ne può inviare un\'altra e **Invia richiesta** resta disattivato. Con il pulsante giallo non si apre nulla.',
+          text: 'Con il pulsante **€** blu la finestra mostra **Ultima richiesta del** e la data: finché la richiesta non è evasa non se ne può inviare un\'altra e **Invia richiesta** resta disattivato. Con il pulsante giallo non si apre nulla: le richieste sono già evase e non se ne possono generare di nuove. Una commessa genera le richieste una sola volta.',
         },
         {
           type: 'tip',
           text: 'Le richieste inviate si consultano in **Contabilità › Attiva › Richieste Proforma**.',
+        },
+      ],
+    },
+    {
+      id: 'deleting-a-work-order',
+      title: 'Eliminare una commessa',
+      blocks: [
+        {
+          type: 'warning',
+          text: 'Una commessa **non si può eliminare** se ha richieste proforma, fatture attive, ordini di acquisto (ODA) o fatture passive collegati: in questo caso il pulsante **Elimina** non compare. Task, ore e costi inseriti a mano non bloccano l\'eliminazione.',
         },
       ],
     },

@@ -109,7 +109,7 @@ class InvoiceController extends BaseApiController
         try {
             $this->authorize('update', $invoice);
 
-            return $this->detailResponse($request->user(), $this->service->updateDetails($invoice, $request->payload()));
+            return $this->detailResponse($request->user(), $this->service->updateDetails($invoice, $request->payload(), $request->user()));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['invoice' => $invoice->id]);
         }

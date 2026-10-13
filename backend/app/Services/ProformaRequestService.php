@@ -47,13 +47,13 @@ class ProformaRequestService
         return DB::transaction(function () use ($workOrder, $actor, $note): Collection {
             // Step 1: serialize concurrent submits on the work order row, then refuse a duplicate (D-4)
             WorkOrder::query()->whereKey($workOrder->getKey())->lockForUpdate()->first();
-            $this->assertNoPendingRequest($workOrder);
+            $this->assertFirstGeneration($workOrder);
 
             // Step 2: group the covered lines into the requests to raise (D-1/D-2)
             $drafts = $this->buildDrafts($workOrder);
 
             if ($drafts === []) {
-                abort(422, 'No billable lines on this work order.');
+                abort(422, __('proforma_requests.no_billable_lines'));
             }
 
             // Step 3: persist them with the offer payment method as a snapshot (D-9)
@@ -109,19 +109,34 @@ class ProformaRequestService
         return $this->detail($request);
     }
 
+    /** Refuses issued or invoiced requests: the work order -> request -> invoice chain must not break (spec 0243, D-4). */
     public function delete(ProformaRequest $request): void
     {
-        $request->delete();
+        DB::transaction(function () use ($request): void {
+            // Step 1: lock the request so a concurrent issue cannot slip in
+            $locked = ProformaRequest::query()->whereKey($request->getKey())->lockForUpdate()->firstOrFail();
+
+            // Step 2: refuse when issued or linked to an invoice
+            if (! $locked->isDeletable()) {
+                abort(409, __('proforma_requests.delete_invoiced'));
+            }
+
+            // Step 3: delete
+            $locked->delete();
+        });
     }
 
-    private function assertNoPendingRequest(WorkOrder $workOrder): void
+    /** A work order generates requests once only (spec 0243, D-2). */
+    private function assertFirstGeneration(WorkOrder $workOrder): void
     {
-        $hasPending = $workOrder->proformaRequests()
-            ->where('status', ProformaRequestStatus::Pending)
-            ->exists();
+        $statuses = $workOrder->proformaRequests()->pluck('status');
 
-        if ($hasPending) {
-            abort(409, 'This work order already has a pending proforma request.');
+        if ($statuses->contains(ProformaRequestStatus::Pending)) {
+            abort(409, __('proforma_requests.already_pending'));
+        }
+
+        if ($statuses->isNotEmpty()) {
+            abort(409, __('proforma_requests.already_issued'));
         }
     }
 

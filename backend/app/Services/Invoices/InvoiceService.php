@@ -52,6 +52,8 @@ class InvoiceService
         private readonly InvoiceNumberAllocator $numbers,
         private readonly InvoiceScheduleRebalancer $schedule,
         private readonly CommissionAccrualSynchronizer $accruals,
+        private readonly InvoiceLineGuard $lineGuard,
+        private readonly RegisteredInvoiceGuard $registeredGuard,
     ) {}
 
     /**
@@ -68,7 +70,7 @@ class InvoiceService
 
             // Step 2: validate and compute everything before touching the sequence
             $workOrder = WorkOrder::query()->findOrFail($locked->work_order_id, ['id', 'quote_id']);
-            $prepared = $this->prepare($data, $workOrder->id);
+            $prepared = $this->prepare($data, $workOrder->id, null);
 
             // Step 3: allocate the number and persist header, lines, schedule
             $invoice = Invoice::query()->create($prepared['header'] + [
@@ -100,6 +102,7 @@ class InvoiceService
         return DB::transaction(function () use ($invoice, $data): Invoice {
             // Step 1: lock the row and refuse a change of the issuing company
             $locked = Invoice::query()->whereKey($invoice->getKey())->lockForUpdate()->firstOrFail();
+            $this->registeredGuard->assertEditable($locked);
 
             if ((int) $data['company_id'] !== $locked->company_id) {
                 throw ValidationException::withMessages(['company_id' => ['The issuing company cannot be changed.']]);
@@ -108,7 +111,7 @@ class InvoiceService
             // Step 2: validate and compute; with collections plan the rebalancing first
             $collected = $this->schedule->hasCollections($locked);
             $collected && $this->schedule->assertFrozenFields($locked, $data);
-            $prepared = $this->prepare($data, $locked->work_order_id, ! $collected);
+            $prepared = $this->prepare($data, $locked->work_order_id, $locked->id, ! $collected);
             $plan = $collected ? $this->schedule->plan($locked, $prepared['header']['total_amount']) : null;
 
             // Step 3: replace header, lines and schedule
@@ -129,12 +132,13 @@ class InvoiceService
     }
 
     /**
-     * External number/date, tag, deviation and internal note: always allowed.
-     * The external number decides the type (proforma becomes invoice, D-3/D-14).
+     * External number/date, tag, deviation and internal note.
+     * The external number decides the type (proforma becomes invoice, D-3/D-14);
+     * on a registered invoice changing it needs the downgrade permission (spec 0243).
      *
      * @param  array<string, mixed>  $data  validated details payload
      */
-    public function updateDetails(Invoice $invoice, array $data): Invoice
+    public function updateDetails(Invoice $invoice, array $data, User $actor): Invoice
     {
         $attributes = Arr::only($data, ['external_number', 'external_date', 'tag', 'deviation', 'internal_note', 'layout_id']);
 
@@ -147,7 +151,11 @@ class InvoiceService
             }
         }
 
-        $invoice->update($attributes);
+        DB::transaction(function () use ($invoice, $attributes, $actor): void {
+            $locked = Invoice::query()->whereKey($invoice->getKey())->lockForUpdate()->firstOrFail();
+            $this->registeredGuard->assertExternalReferenceChangeAllowed($locked, $attributes, $actor);
+            $locked->update($attributes);
+        });
 
         return $this->detail($invoice);
     }
@@ -157,6 +165,7 @@ class InvoiceService
     {
         DB::transaction(function () use ($invoice): void {
             $locked = Invoice::query()->whereKey($invoice->getKey())->lockForUpdate()->firstOrFail();
+            $this->registeredGuard->assertEditable($locked);
             $this->assertNoCollections($locked, 'This invoice has collected installments and cannot be deleted.');
 
             ProformaRequest::query()->whereKey($locked->proforma_request_id)
@@ -203,10 +212,10 @@ class InvoiceService
      * @param  array<string, mixed>  $data
      * @return array{header: array<string, mixed>, lines: array<int, array<string, mixed>>, installments: array<int, array<string, mixed>>}
      */
-    private function prepare(array $data, ?int $workOrderId, bool $withSchedule = true): array
+    private function prepare(array $data, ?int $workOrderId, ?int $ignoreInvoiceId, bool $withSchedule = true): array
     {
         $this->assertBankBelongsToCompany($data);
-        $this->assertLinesBelongToWorkOrder($data['lines'], $workOrderId);
+        $this->lineGuard->assert($data['lines'], $workOrderId, $ignoreInvoiceId);
 
         $computed = $this->amounts->compute($data['lines'], $this->amounts->vatRates(array_column($data['lines'], 'vat_rate_id')));
 
@@ -264,27 +273,6 @@ class InvoiceService
 
         if (! $valid) {
             throw ValidationException::withMessages(['financial_account_id' => ['The bank account must belong to the issuing company.']]);
-        }
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $lines
-     */
-    private function assertLinesBelongToWorkOrder(array $lines, ?int $workOrderId): void
-    {
-        $allowed = $workOrderId === null
-            ? []
-            : WorkOrder::query()->findOrFail($workOrderId, ['id'])->quoteLines()->pluck('quote_lines.id')->all();
-        $errors = [];
-
-        foreach (array_values($lines) as $index => $line) {
-            if (! empty($line['quote_line_id']) && ! in_array((int) $line['quote_line_id'], $allowed, true)) {
-                $errors["lines.{$index}.quote_line_id"] = ['The line does not belong to the work order of this request.'];
-            }
-        }
-
-        if ($errors !== []) {
-            throw ValidationException::withMessages($errors);
         }
     }
 

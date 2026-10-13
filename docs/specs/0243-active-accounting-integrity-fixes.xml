@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0243-active-accounting-integrity-fixes" status="draft" owner="ciro" date="2026-10-13">
+
+  <goal>
+    Chiudere sul server i quattro difetti gravi della Contabilita' attiva emersi dall'audit del
+    2026-10-13 (ATT-01..ATT-04): niente cancellazioni che spezzano il legame commessa -> richiesta
+    -> fattura, niente doppia fatturazione della stessa riga d'offerta, fattura registrata su
+    Fatture in Cloud non piu' modificabile ne' cancellabile.
+  </goal>
+
+  <context>
+    Fonte: "Audit moduli Acquisti, Costi e Contabilita' attiva" 2026-10-13, Onda 1, parte attiva.
+    Spec di riferimento: 0193 (richieste proforma, D-4/D-5/D-7), 0194 (fatture attive, D-3/D-7/D-14).
+    Branch: feature/amministrazione (decisione utente).
+
+    Decisioni utente 2026-10-13:
+    - D-1 (ATT-02) Una commessa NON si cancella se ha documenti contabili collegati: richieste
+      proforma, fatture attive, ODA (testata o righe) o fatture passive. Task, ore, costi manuali,
+      stadi, RDA restano come oggi (cascade / scollegamento).
+    - D-2 (ATT-03) Una commessa genera richieste proforma UNA sola volta, come D-5 della 0193:
+      se ha gia' una richiesta qualsiasi (pending o issued) un nuovo invio -> 409. Inoltre una riga
+      d'offerta (quote_line_id) non puo' stare in due fatture: esclusa dalla bozza e rifiutata al
+      salvataggio.
+    - D-3 (ATT-04) Fattura registrata = type `invoice` (numero esterno FiC valorizzato):
+      PUT (righe, importi, intestatario, data, pagamento, banca, note) -> 409; DELETE -> 409.
+      Nei "dettagli" (PATCH) restano liberi tag, deviation, internal_note, layout_id. Cambiare o
+      svuotare external_number/external_date su una fattura registrata richiede il nuovo permesso
+      `invoices.downgrade` ed e' tracciato nell'activity log (Invoice usa gia' LogsModelActivity).
+      Incassi e modifica delle rate (PATCH invoice-installments) restano consentiti.
+      Nota di credito: fuori scope (spec futura).
+    - D-4 (ATT-01) Una richiesta proforma `issued` o con fattura collegata non si cancella (409).
+      Eliminando la fattura la richiesta torna `pending` (0194 D-7, invariato) e torna cancellabile.
+
+    Fatti verificati nel codice (main @ 37be58f6, invariati sul branch):
+    - ProformaRequestService::delete() (riga 112) cancella senza controlli;
+      assertNoPendingRequest() blocca solo `pending`.
+    - WorkOrderService::delete() (riga 335) "No guard (D-11)".
+    - FK: proforma_requests.work_order_id cascadeOnDelete; invoices.proforma_request_id (unique)
+      nullOnDelete; invoices.work_order_id nullOnDelete; purchase_orders.work_order_id,
+      purchase_order_lines.work_order_id, purchase_invoices.work_order_id nullOnDelete.
+    - InvoiceService::update/delete/updateDetails non guardano `type`; updateDetails svuotando
+      external_number riporta type a proforma. assertNoCollections() gia' restituisce 409.
+    - InvoiceDraftBuilder::availableLines() non esclude righe gia' fatturate;
+      InvoiceService::assertLinesBelongToWorkOrder() e' il punto dove validare le righe (422 per
+      campo `lines.N.quote_line_id`).
+    - Azioni di riga: InvoicesTableDefinition::actionsFor (update/details/delete),
+      ProformaRequestsTableDefinition::actionsFor (delete), WorkOrdersTableDefinition::actionsFor
+      (delete); bulk delete generico passa da deleteModel() -> service.
+    - Detail: blocco `permissions` da ResourcePermissionsBuilder con InvoicesAuthorization,
+      ProformaRequestsAuthorization, WorkOrdersAuthorization (actionPermissions, fieldPermissionCeiling).
+    - Permessi: catalogo da Policy::abilities() via `permissions:sync`; aggiungere `downgrade` a
+      InvoicePolicy::abilities() crea `invoices.downgrade`.
+    - Messaggi 409 tradotti con __('file.chiave') (es. outbound_emails.*).
+    - FE: work-orders/proforma-row-action.ts disabilita gia' l'azione con status `issued`.
+  </context>
+
+  <scope>
+    <in>
+      <item>ATT-01: guard 409 su ProformaRequestService::delete (issued o fattura collegata); azione `delete` non offerta in elenco ne' nel detail per quelle richieste; FK invoices.proforma_request_id -> restrictOnDelete.</item>
+      <item>ATT-02: guard 409 su WorkOrderService::delete (D-1); azione `delete` non offerta per quelle commesse; FK proforma_requests.work_order_id e invoices.work_order_id -> restrictOnDelete.</item>
+      <item>ATT-03: ProformaRequestService::createForWorkOrder -> 409 se esiste una richiesta qualsiasi; InvoiceDraftBuilder esclude le righe d'offerta gia' presenti in un'altra fattura; InvoiceService create/update -> 422 su `lines.N.quote_line_id` gia' fatturata in un altro documento.</item>
+      <item>ATT-04: guard 409 su InvoiceService::update e ::delete per type=invoice; updateDetails: external_number/external_date modificabili su fattura registrata solo con `invoices.downgrade` (403 altrimenti); nuova ability `downgrade` in InvoicePolicy; azioni `update`/`delete` non offerte per type=invoice; campi di testata in sola lettura nel blocco permissions.</item>
+      <item>Messaggi 409/422 tradotti (lang it/en).</item>
+      <item>Frontend: dialog dettagli fattura con numero/data FiC in sola lettura senza `permissions.actions.downgrade`; nessuna regola ricalcolata lato client (si leggono azioni e permessi dal server).</item>
+      <item>Guide in-app IT+EN: invoices, proforma-requests, work-orders. Manuale completo Claude Docs: sezioni corrispondenti.</item>
+      <item>Test Pest che riproducono ogni difetto prima del fix; test Vitest del dialog dettagli.</item>
+    </in>
+    <out>
+      <item>Nota di credito / storno (spec futura, D-3).</item>
+      <item>Validare che la riga d'offerta corrisponda a tipologia/fornitore della richiesta (oltre al vincolo "una riga, una fattura").</item>
+      <item>Righe libere o da catalogo: nessun vincolo di unicita' (non hanno quote_line_id).</item>
+      <item>FK di purchase_orders / purchase_order_lines / purchase_invoices verso work_orders: restano nullOnDelete, il blocco e' applicativo (onda ODA/COS).</item>
+      <item>Altri rilievi ATT-05..ATT-22, stati configurabili, deduplicazione attivo/passivo.</item>
+      <item>Tag acconto/saldo come tabella (ATT-10, onda 2).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint nuovo. Cambiano esiti ed errori degli endpoint esistenti. Envelope invariato { success, message, ... }. -->
+
+    <endpoint method="DELETE" path="/api/proforma-requests/{proformaRequest}">
+      <response status="200">invariata</response>
+      <errors>
+        409 { success:false, message: __('proforma_requests.delete_invoiced') } se status=issued o esiste invoices.proforma_request_id.
+        403 senza proforma-requests.delete (invariato).
+      </errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/work-orders/{workOrder}">
+      <errors>
+        409 { success:false, message: __('work_orders.delete_has_accounting_documents') } se esistono
+        proforma_requests, invoices, purchase_orders, purchase_order_lines o purchase_invoices con questo work_order_id.
+        Stesso guard nel bulk delete generico (deleteModel): la commessa bloccata non viene cancellata.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/proforma-requests">
+      <errors>
+        409 { message: __('proforma_requests.already_pending') } se esiste una richiesta pending (invariato, messaggio tradotto).
+        409 { message: __('proforma_requests.already_issued') } se le richieste esistenti sono tutte issued (nuovo).
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/proforma-requests/{proformaRequest}/invoice-draft">
+      <response status="200">
+        shape invariata; `available_lines` NON contiene righe d'offerta gia' presenti in invoice_lines di un'altra fattura.
+      </response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/proforma-requests/{proformaRequest}/invoice">
+      <errors>
+        422 errors["lines.N.quote_line_id"] = [__('invoices.line_already_invoiced')] se la riga d'offerta e' gia' in un'altra fattura.
+      </errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/invoices/{invoice}">
+      <errors>
+        409 { message: __('invoices.registered_locked') } se type=invoice (prima di ogni validazione di business).
+        422 errors["lines.N.quote_line_id"] = [__('invoices.line_already_invoiced')] se la riga e' in un'ALTRA fattura (la stessa fattura non conta).
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/invoices/{invoice}/details">
+      <request>invariato: { external_number, external_date, tag, deviation, internal_note, layout_id }</request>
+      <errors>
+        403 { message: __('invoices.downgrade_forbidden') } se la fattura e' type=invoice, il payload cambia
+        external_number o external_date rispetto al valore salvato e l'utente non ha invoices.downgrade.
+        Stesso valore reinviato = nessun cambiamento, nessun 403.
+      </errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/invoices/{invoice}">
+      <errors>
+        409 { message: __('invoices.registered_locked') } se type=invoice.
+        409 incassi presenti (invariato).
+      </errors>
+    </endpoint>
+
+    <permissions_block>
+      GET /api/invoices/{invoice} -> permissions.actions:
+        delete: false se type=invoice;
+        downgrade (NUOVO, bool): true solo se type=invoice e l'utente ha invoices.downgrade.
+      permissions.fields per type=invoice: document_date, company_id, customer_registry_id, payment_method_id,
+        financial_account_id, notes -> visibleReadonly; external_number, external_date -> editable solo con downgrade;
+        tag, deviation, internal_note -> invariati.
+      GET /api/proforma-requests/{id} -> permissions.actions.delete: false se issued o con fattura.
+      GET /api/work-orders/{id} -> permissions.actions.delete: false se ha documenti contabili (D-1).
+    </permissions_block>
+
+    <row_actions>
+      tables/invoices: `update` e `delete` assenti per type=invoice; `details` invariato.
+      tables/proforma-requests: `delete` assente se issued o con fattura.
+      tables/work-orders: `delete` assente se la commessa ha documenti contabili (calcolato in baseQuery con withExists, nessuna query per riga).
+    </row_actions>
+
+    <permission_catalog>Nuovo permesso `invoices.downgrade` (InvoicePolicy::abilities). Etichette IT/EN nel catalogo permessi.</permission_catalog>
+
+    <migration>
+      Nuova migrazione reversibile: proforma_requests.work_order_id, invoices.proforma_request_id,
+      invoices.work_order_id -> restrictOnDelete. down() ripristina cascadeOnDelete / nullOnDelete.
+    </migration>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato una richiesta proforma issued con fattura, quando DELETE /api/proforma-requests/{id}, allora 409 con messaggio tradotto e la richiesta esiste ancora.</criterion>
+    <criterion id="AC-002">Dato una richiesta pending senza fattura, quando DELETE, allora 200 e la richiesta e' cancellata (regressione).</criterion>
+    <criterion id="AC-003">Dato una richiesta issued, allora la riga in tables/proforma-requests non contiene l'azione `delete` e il detail espone permissions.actions.delete=false.</criterion>
+    <criterion id="AC-004">Dato una fattura eliminata, la sua richiesta torna pending e diventa cancellabile (200).</criterion>
+    <criterion id="AC-005">Dato una commessa con una richiesta proforma, quando DELETE /api/work-orders/{id}, allora 409 e la commessa e le sue richieste esistono ancora.</criterion>
+    <criterion id="AC-006">Dato una commessa referenziata solo da una fattura passiva, oppure solo da una riga ODA, quando DELETE, allora 409 (un test per ciascun caso: fattura attiva, ODA testata, riga ODA, fattura passiva).</criterion>
+    <criterion id="AC-007">Dato una commessa con solo task/ore/costi/RDA, quando DELETE, allora 200 (comportamento attuale invariato).</criterion>
+    <criterion id="AC-008">Dato una commessa con documenti contabili, allora tables/work-orders non offre `delete` per quella riga e il detail espone permissions.actions.delete=false; il bulk delete generico non la cancella.</criterion>
+    <criterion id="AC-009">Dato una commessa con richieste tutte issued, quando POST /api/work-orders/{id}/proforma-requests, allora 409 `already_issued` e nessuna nuova richiesta viene creata.</criterion>
+    <criterion id="AC-010">Dato una riga d'offerta gia' presente in una fattura, quando GET invoice-draft di un'altra richiesta della stessa commessa, allora la riga non e' in available_lines.</criterion>
+    <criterion id="AC-011">Dato una riga d'offerta gia' fatturata nel documento A, quando POST invoice o PUT del documento B con quella quote_line_id, allora 422 su lines.N.quote_line_id e nulla viene salvato; PUT del documento A con la stessa riga resta valido.</criterion>
+    <criterion id="AC-012">Dato una fattura type=invoice, quando PUT /api/invoices/{id}, allora 409 `registered_locked` e righe, importi e rate restano invariati.</criterion>
+    <criterion id="AC-013">Dato una fattura type=invoice senza incassi, quando DELETE, allora 409 e la richiesta collegata resta issued.</criterion>
+    <criterion id="AC-014">Dato una fattura type=invoice e un utente senza invoices.downgrade, quando PATCH details svuota o cambia external_number, allora 403 e il documento resta type=invoice; quando PATCH cambia solo tag/deviation/internal_note/layout_id, allora 200.</criterion>
+    <criterion id="AC-015">Dato un utente con invoices.downgrade, quando PATCH details svuota external_number, allora 200, type=proforma e l'activity log della fattura registra il cambio di external_number e type.</criterion>
+    <criterion id="AC-016">Dato una fattura type=invoice, allora tables/invoices non offre `update` ne' `delete` (offre `details`) e il detail espone permissions.actions.downgrade secondo il permesso e i campi di testata in sola lettura; per type=proforma tutto invariato.</criterion>
+    <criterion id="AC-017">Il permesso invoices.downgrade esiste dopo permissions:sync ed e' assegnato al super-admin.</criterion>
+    <criterion id="AC-018">La migrazione FK e' reversibile (migrate + rollback in SQLite di test senza errori) e dopo la migrazione cancellare a DB una commessa con richiesta fallisce per vincolo.</criterion>
+    <criterion id="AC-019">(Vitest) Dialog dettagli fattura: con type=invoice e permissions.actions.downgrade=false i campi numero/data FiC sono disabilitati e tag/scostamento/nota restano modificabili; con downgrade=true sono modificabili.</criterion>
+    <criterion id="AC-020">Guide in-app IT+EN aggiornate (invoices, proforma-requests, work-orders) con gli stessi id di sezione; help-content-parity.test.ts verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Laravel 13, Pest 4, React 19, Vitest.</item>
+    <item>Regole di dominio nei service (409 come assertNoCollections); Policy resta sul permesso; azioni di riga e blocco permissions riflettono lo stato, il frontend non ricalcola le regole.</item>
+    <item>Guard eseguiti dentro la transazione con lockForUpdate sulla riga interessata (fattura, richiesta, commessa).</item>
+    <item>Messaggi sempre via __() con chiavi in lang/it e lang/en; nessun nome di classe nei messaggi.</item>
+    <item>Nessuna query per riga nelle TableDefinition (withExists in baseQuery).</item>
+    <item>Migrazione nuova, mai modificare quelle committate; down() reversibile.</item>
+    <item>Test Pest mirati: XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/{Invoices,ProformaRequests,WorkOrders}; typecheck cd frontend &amp;&amp; npx tsc -b --force.</item>
+    <item>Nessun commit senza ordine esplicito (CLAUDE.md §3.6).</item>
+  </constraints>
+
+</spec>

@@ -69,8 +69,9 @@ it('AC-004: numbers are progressive per company and year and never reused after 
     Sanctum::actingAs(invoiceUserWith(['create', 'delete']));
     $first = invoiceRequest();
     $workOrder = $first->workOrder;
+    // Free lines: an offer line can sit in one document only (spec 0243, D-2), these requests share the work order.
     $issue = fn (ProformaRequest $request, array $overrides = []): array => $this
-        ->postJson("/api/proforma-requests/{$request->id}/invoice", invoicePayload($request, $overrides))
+        ->postJson("/api/proforma-requests/{$request->id}/invoice", invoicePayload($request, $overrides + ['lines' => [[...invoicePayload($request)['lines'][0], 'quote_line_id' => null]]]))
         ->assertCreated()->json('data');
 
     $one = $issue($first);

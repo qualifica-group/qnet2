@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Le richieste non si creano da questo elenco: si inviano dal pulsante **€** dell\'elenco **Commesse** (vedi la guida Commesse). Per ogni commessa il sistema genera **una richiesta** per le righe di tipo **Consulenza** e **una richiesta per ciascun fornitore** delle righe di tipo **Ente**.',
+          text: 'Le richieste non si creano da questo elenco: si inviano dal pulsante **€** dell\'elenco **Commesse** (vedi la guida Commesse). Una commessa genera le richieste **una sola volta**: se ne ha già una (da evadere o evasa) non se ne possono inviare altre. Per ogni commessa il sistema genera **una richiesta** per le righe di tipo **Consulenza** e **una richiesta per ciascun fornitore** delle righe di tipo **Ente**.',
         },
         {
           type: 'table',
@@ -71,7 +71,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'L\'eliminazione è definitiva. Se elimini una richiesta non evasa, la commessa potrà riceverne una nuova.',
+          text: 'L\'eliminazione è definitiva. Una richiesta **evasa** (con fattura) non si può eliminare e l\'azione Elimina non compare: se elimini la fattura, la richiesta torna **Da evadere** e allora puoi eliminarla. Se elimini una richiesta non evasa, la commessa potrà riceverne una nuova.',
         },
       ],
     },

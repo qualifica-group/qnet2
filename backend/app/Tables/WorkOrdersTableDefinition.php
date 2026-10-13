@@ -117,6 +117,9 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             ]);
         }
 
+        // Spec 0243, D-1: same rule as the delete guard, as EXISTS flags.
+        $query->withAccountingDocumentFlags();
+
         return WorkOrderVisibilityScope::scopeToActor($query, Auth::user());
     }
 
@@ -291,7 +294,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             $allowed[] = 'proforma';
         }
 
-        if (Gate::forUser($actor)->allows('delete', $row)) {
+        if (! $row->hasAccountingDocuments() && Gate::forUser($actor)->allows('delete', $row)) {
             $allowed[] = 'delete';
         }
 
@@ -309,8 +312,8 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
 
     /**
      * Delegate to WorkOrderService::delete() so the generic bulk-delete
-     * endpoint respects the SAME (future) guard as the single DELETE
-     * /work-orders/{workOrder} endpoint (D-11, AC-043).
+     * endpoint respects the SAME guard (409 on accounting documents, spec
+     * 0243) as the single DELETE /work-orders/{workOrder} endpoint.
      */
     public function deleteModel(Model $model): void
     {

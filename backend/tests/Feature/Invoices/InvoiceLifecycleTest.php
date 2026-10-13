@@ -24,7 +24,8 @@ function issuedInvoice(): array
 }
 
 it('AC-005: details switch the type, edits recompute, collections rebalance the edit and lock the delete until cleared', function () {
-    Sanctum::actingAs(invoiceUserWith(INVOICE_ABILITIES));
+    // Clearing the external number of a registered invoice needs invoices.downgrade (spec 0243, D-3).
+    Sanctum::actingAs(invoiceUserWith([...INVOICE_ABILITIES, 'downgrade']));
     [$request, $invoice] = issuedInvoice();
     $url = "/api/invoices/{$invoice['id']}";
 

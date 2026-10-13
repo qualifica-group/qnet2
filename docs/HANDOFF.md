@@ -3,6 +3,38 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0243 — Correzioni integrita' Contabilita' attiva (audit 2026-10-13, Onda 1, ATT-01..04) — VERDE, NON COMMITTATO (2026-10-13)
+
+- Spec `docs/specs/0243-active-accounting-integrity-fixes.xml` (D-1..D-4, AC-001..AC-020 tutti PASS dal verifier).
+  Fonte: PDF "Audit Acquisti, Costi e Attiva" 2026-10-13 (77 rilievi, 4 onde). Prossime spec Onda 1: 0244 ODA
+  (ODA-01/02/04/08), 0245 RDA (RDA-01/02/05/06), 0246 Tipi di costo (COS-03).
+- Decisione utente per 0245 / RDA-01: l'elenco "Responsabile di funzione" della RDA si riempie SOLO con il diretto
+  superiore del richiedente, preso da `employment_profiles` / `employment_profile_manager`.
+- Regole introdotte (409 dal service, azioni di riga e blocco `permissions` coerenti, FE non ricalcola):
+  - Richiesta proforma: `ProformaRequest::isDeletable()` (pending e senza fattura); `createForWorkOrder` -> 409
+    `already_pending` / `already_issued` (una sola generazione per commessa, D-2).
+  - Commessa: `WorkOrder::hasAccountingDocuments()` + scope `withAccountingDocumentFlags()` (proforma, fatture attive,
+    ODA testata/righe, fatture passive) -> 409 su delete, `delete` nascosta; nuove relazioni invoices/purchaseOrders/
+    purchaseOrderLines/purchaseInvoices su WorkOrder.
+  - Fattura: `Invoice::isRegistered()` (type=invoice); `RegisteredInvoiceGuard` (PUT/DELETE 409 `registered_locked`;
+    PATCH details che cambia external_number/date -> 403 senza `invoices.downgrade`); `InvoiceLineGuard` (riga d'offerta
+    in una sola fattura, 422 `lines.N.quote_line_id`); bozza esclude righe gia' fatturate. Nuova ability `downgrade`
+    in InvoicePolicy, `permissions.actions.downgrade` nel detail. `updateDetails` riceve `User $actor`.
+  - Migrazione `2026_10_17_100000_restrict_work_order_accounting_foreign_keys.php`: restrictOnDelete su
+    proforma_requests.work_order_id, invoices.proforma_request_id, invoices.work_order_id (reversibile).
+  - Lang nuovi: `lang/{it,en}/{invoices,proforma_requests,work_orders}.php`.
+- Test esistenti adeguati (requisito cambiato D-2/D-3): `InvoiceIssueTest` AC-004 (righe libere), `InvoiceLifecycleTest`
+  AC-005 (+downgrade), `tests/Helpers/InvoiceHelpers.php` (permesso downgrade).
+- Suite: backend 10599/10606; i 4 rossi sono preesistenti (rollback migrazioni PurchaseOrder/QuoteWorkflow/
+  SupplierCommission, QuoteDocumentPdf senza soffice). Vitest 7905 pass, 5 rossi in file non toccati (chart skeleton,
+  request-dashboard-tabs) da verificare a parte. tsc -b --force pulito.
+- Ambiente: il PHP di Laragon non carica sqlite; per i test usare Herd `/c/Users/ciroc/.config/herd/bin/php84`
+  (con memory_limit alto per --parallel).
+- Manuale completo Claude Docs: NON aggiornato (doc non condiviso col connettore). Da aggiornare: Fatture attive,
+  Richieste proforma, Commesse. Guide in-app IT/EN aggiornate.
+- Aperti minori: messaggio "The line does not belong to the work order..." ancora non tradotto (InvoiceLineGuard);
+  WorkOrderService 363 e WorkOrdersTableDefinition 365 righe (oltre il soft limit di 300).
+
 ## Spec 0213 — Liquidazioni Agenti M2: lanci, estratti, rettifiche, ritenute/ENASARCO — VERDE, NON COMMITTATO (2026-10-13)
 
 - Spec `docs/specs/0213-agent-commission-settlements.xml` (approvata, D-1..D-9, AC-001..AC-024). Emendamento in build:

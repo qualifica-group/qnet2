@@ -8,6 +8,7 @@ use App\Enums\FinancialAccountType;
 use App\Enums\ProformaRequestKind;
 use App\Enums\QuoteLineType;
 use App\Models\FinancialAccount;
+use App\Models\InvoiceLine;
 use App\Models\ProformaRequest;
 use App\Models\QuoteLine;
 use App\Models\Registry;
@@ -82,6 +83,7 @@ final class InvoiceDraftBuilder
 
         return $request->workOrder->quoteLines()
             ->where('line_type', QuoteLineType::Revenue->value)
+            ->whereNotIn('quote_lines.id', InvoiceLine::query()->whereNotNull('quote_line_id')->select('quote_line_id'))
             ->with('product:id,name,supplier_id,product_typology_id,vat_rate_id', 'product.productTypology:id,code', 'product.vatRate:id,name,rate', 'vatRate:id,name,rate')
             ->get()
             ->filter(fn (QuoteLine $line): bool => $line->product?->productTypology?->code === $code)

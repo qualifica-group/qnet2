@@ -58,6 +58,16 @@ class ProformaRequest extends BaseModel
     }
 
     /**
+     * Deletable only while it is pending and no document was issued from it
+     * (spec 0243, D-4). Single predicate shared by service, table and authorization.
+     */
+    public function isDeletable(): bool
+    {
+        return $this->status === ProformaRequestStatus::Pending
+            && $this->loadMissing('invoice')->invoice === null;
+    }
+
+    /**
      * @return BelongsTo<Registry, $this>
      */
     public function supplier(): BelongsTo

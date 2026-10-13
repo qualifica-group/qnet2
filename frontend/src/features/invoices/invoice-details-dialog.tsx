@@ -10,12 +10,14 @@ import { InvoiceLayoutField } from '@/features/invoices/invoice-layout-field'
 import { parseNumberInput } from '@/features/invoices/invoice-format'
 import { useInvoiceDetailsForm } from '@/features/invoices/use-invoice-details-form'
 import { useInvoice } from '@/features/invoices/use-invoice-queries'
-import { INVOICE_TAGS, type Invoice, type InvoiceTag } from '@/features/invoices/types'
+import { INVOICE_TAGS, type InvoiceTag, type InvoiceWithPermissions } from '@/features/invoices/types'
 
 const NO_TAG = 'none'
 
-function DetailsForm({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
+function DetailsForm({ invoice, onClose }: { invoice: InvoiceWithPermissions; onClose: () => void }) {
   const { t } = useTranslation()
+  // The server decides: a registered invoice only lets holders of invoices.downgrade touch the FiC reference.
+  const externalLocked = invoice.type === 'invoice' && invoice.permissions.actions.downgrade !== true
   const { form, submit, isPending } = useInvoiceDetailsForm(invoice, onClose)
 
   return (
@@ -29,7 +31,7 @@ function DetailsForm({ invoice, onClose }: { invoice: Invoice; onClose: () => vo
               <FormItem>
                 <FormLabel>{t('invoices.details.externalNumber')}</FormLabel>
                 <FormControl>
-                  <Input {...field} value={field.value ?? ''} onChange={(event) => field.onChange(event.target.value)} />
+                  <Input {...field} disabled={externalLocked} value={field.value ?? ''} onChange={(event) => field.onChange(event.target.value)} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -42,14 +44,14 @@ function DetailsForm({ invoice, onClose }: { invoice: Invoice; onClose: () => vo
               <FormItem>
                 <FormLabel>{t('invoices.details.externalDate')}</FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} value={field.value ?? ''} onChange={(event) => field.onChange(event.target.value)} />
+                  <Input type="date" {...field} disabled={externalLocked} value={field.value ?? ''} onChange={(event) => field.onChange(event.target.value)} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
-        <p className="-mt-1 text-xs text-muted-foreground">{t('invoices.details.externalNumberHint')}</p>
+        <p className="-mt-1 text-xs text-muted-foreground">{t(externalLocked ? 'invoices.details.externalLockedHint' : 'invoices.details.externalNumberHint')}</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <FormField
             control={form.control}

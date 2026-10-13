@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Authorization;
 
+use App\Models\Invoice;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
@@ -14,6 +15,12 @@ use Illuminate\Database\Eloquent\Model;
  */
 class InvoicesAuthorization extends AbstractResourceAuthorization
 {
+    /** Header fields frozen once the invoice is registered. */
+    private const array REGISTERED_READONLY_FIELDS = ['document_date', 'company_id', 'customer_registry_id', 'payment_method_id', 'financial_account_id', 'notes'];
+
+    /** Fields that identify the registration on Fatture in Cloud. */
+    private const array EXTERNAL_REFERENCE_FIELDS = ['external_number', 'external_date'];
+
     public function __construct(FieldPermissionRepository $fieldPermissionRepository)
     {
         parent::__construct($fieldPermissionRepository);
@@ -49,7 +56,7 @@ class InvoicesAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'view_activity', 'collect', 'view_emails', 'send_email'];
+        return ['delete', 'downgrade', 'export', 'view_activity', 'collect', 'view_emails', 'send_email'];
     }
 
     /**
@@ -66,6 +73,18 @@ class InvoicesAuthorization extends AbstractResourceAuthorization
             $permissions[$field->key] = $field->mandatory ? $required : $editable;
         }
 
+        // A registered invoice (spec 0243, D-3): the header is frozen and the
+        // external reference changes only with the downgrade permission.
+        if ($model instanceof Invoice && $model->isRegistered()) {
+            foreach (self::REGISTERED_READONLY_FIELDS as $key) {
+                $permissions[$key] = FieldPermission::visibleReadonly();
+            }
+
+            foreach (self::EXTERNAL_REFERENCE_FIELDS as $key) {
+                $permissions[$key] = $mayWrite && $actor->can('invoices.downgrade') ? $editable : FieldPermission::visibleReadonly();
+            }
+        }
+
         return $permissions;
     }
 
@@ -74,8 +93,11 @@ class InvoicesAuthorization extends AbstractResourceAuthorization
      */
     public function actionPermissions(User $actor, ?Model $model): array
     {
+        $registered = $model instanceof Invoice && $model->isRegistered();
+
         return [
-            'delete' => $model !== null && $actor->can('invoices.delete'),
+            'delete' => $model !== null && ! $registered && $actor->can('invoices.delete'),
+            'downgrade' => $registered && $actor->can('invoices.downgrade'),
             'export' => $actor->can('invoices.export'),
             'view_activity' => $model !== null && $actor->can('invoices.viewActivity'),
             'collect' => $model !== null && $actor->can('invoices.collect'),

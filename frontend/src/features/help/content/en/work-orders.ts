@@ -187,7 +187,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'If you can create proforma requests, the **Actions** column of the Work orders list (also in the Work orders tab of a contract and of a registry) shows the **€** button. Its color is the state: **grey** no request yet, **blue** request sent and not yet fulfilled, **yellow** proforma issued.',
+          text: 'If you can create proforma requests, the **Actions** column of the Work orders list (also in the Work orders tab of a contract and of a registry) shows the **€** button. Its color is the state: **grey** no request yet, **blue** request sent and not yet fulfilled, **yellow** requests already fulfilled (proforma issued).',
         },
         {
           type: 'steps',
@@ -200,11 +200,21 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'With the blue **€** button the window shows **Last request on** and the date: until the request is fulfilled another one cannot be sent and **Send request** stays disabled. The yellow button opens nothing.',
+          text: 'With the blue **€** button the window shows **Last request on** and the date: until the request is fulfilled another one cannot be sent and **Send request** stays disabled. The yellow button opens nothing: the requests are already fulfilled and no new ones can be generated. A work order generates its requests only once.',
         },
         {
           type: 'tip',
           text: 'Sent requests are listed in **Accounting › Receivables › Proforma requests**.',
+        },
+      ],
+    },
+    {
+      id: 'deleting-a-work-order',
+      title: 'Deleting a work order',
+      blocks: [
+        {
+          type: 'warning',
+          text: 'A work order **cannot be deleted** if it has linked proforma requests, active invoices, purchase orders or purchase invoices: in that case the **Delete** button does not appear. Tasks, hours and manually entered costs do not block deletion.',
         },
       ],
     },

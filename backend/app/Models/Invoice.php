@@ -48,6 +48,12 @@ class Invoice extends BaseModel
         ];
     }
 
+    /** Registered on Fatture in Cloud (spec 0243): frozen but for the details. */
+    public function isRegistered(): bool
+    {
+        return $this->type === InvoiceType::Invoice;
+    }
+
     /**
      * @return BelongsTo<Company, $this>
      */

@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Requests are not created from this list: they are sent with the **€** button of the **Work orders** list (see the Work orders guide). For each work order the system generates **one request** for the **Consultancy** lines and **one request per supplier** of the **Institution** lines.',
+          text: 'Requests are not created from this list: they are sent with the **€** button of the **Work orders** list (see the Work orders guide). A work order generates its requests **only once**: if it already has one (pending or issued) no more can be sent. For each work order the system generates **one request** for the **Consultancy** lines and **one request per supplier** of the **Institution** lines.',
         },
         {
           type: 'table',
@@ -71,7 +71,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'Deletion is permanent. If you delete a pending request, the work order can receive a new one.',
+          text: 'Deletion is permanent. A **fulfilled** request (with an invoice) cannot be deleted and the Delete action does not appear: if you delete the invoice, the request returns to **Pending** and can then be deleted. If you delete a pending request, the work order can receive a new one.',
         },
       ],
     },

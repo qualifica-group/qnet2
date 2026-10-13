@@ -141,6 +141,10 @@ class ProformaRequestsTableDefinition extends AbstractTableDefinition
         $abilities = ['view' => 'view', 'update' => 'update', 'notes' => 'view', 'delete' => 'delete', 'activity' => 'viewActivity'];
 
         foreach ($abilities as $key => $ability) {
+            if ($key === 'delete' && ! $row->isDeletable()) {
+                continue;
+            }
+
             if ($gate->allows($ability, $row)) {
                 $allowed[] = $key;
             }

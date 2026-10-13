@@ -25,7 +25,13 @@ class InvoicePolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return ['viewAny', 'view', 'create', 'update', 'delete', 'export', 'viewActivity', 'collect', 'viewEmails', 'sendEmail'];
+        return ['viewAny', 'view', 'create', 'update', 'delete', 'export', 'viewActivity', 'collect', 'viewEmails', 'sendEmail', 'downgrade'];
+    }
+
+    /** Change or clear the external number/date of a registered invoice (spec 0243, D-3). */
+    public function downgrade(User $user, Invoice $invoice): bool
+    {
+        return $user->can($this->permission('downgrade'));
     }
 
     public function collect(User $user, Invoice $invoice): bool

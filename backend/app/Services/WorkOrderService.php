@@ -327,11 +327,23 @@ class WorkOrderService
     /**
      * Delete the work order. `quote_line_work_order`, `work_order_supervisor`
      * and `work_order_participant` pivot rows cascade away via their own FKs
-     * (AC-003/AC-060); the linked Quote/QuoteLine/User rows are untouched. No guard (D-11): nothing references a work order yet.
+     * (AC-003/AC-060); the linked Quote/QuoteLine/User rows are untouched.
+     * Refused with 409 once any accounting document references it
+     * (spec 0243, D-1); the check runs under a row lock so a concurrent
+     * request/invoice cannot slip in between check and delete.
      */
     public function delete(WorkOrder $workOrder): void
     {
-        $workOrder->delete();
+        DB::transaction(function () use ($workOrder): void {
+            // Step 1: lock the commessa row
+            $locked = WorkOrder::query()->lockForUpdate()->findOrFail($workOrder->id);
+
+            // Step 2: refuse when accounting documents hang off it
+            abort_if($locked->hasAccountingDocuments(), 409, __('work_orders.delete_has_accounting_documents'));
+
+            // Step 3: delete
+            $locked->delete();
+        });
     }
 
     /**

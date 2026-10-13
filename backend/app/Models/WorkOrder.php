@@ -9,6 +9,7 @@ use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\WorkOrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -64,6 +65,9 @@ class WorkOrder extends BaseModel
 {
     /** @use HasFactory<WorkOrderFactory> */
     use HasAttachments, HasFactory, HasNotes, LogsModelActivity;
+
+    /** Relations whose rows block deleting the commessa (spec 0243, D-1). */
+    private const array ACCOUNTING_RELATIONS = ['proformaRequests', 'invoices', 'purchaseOrders', 'purchaseOrderLines', 'purchaseInvoices'];
 
     /**
      * @return array<string, string>
@@ -130,6 +134,78 @@ class WorkOrder extends BaseModel
     public function proformaRequests(): HasMany
     {
         return $this->hasMany(ProformaRequest::class);
+    }
+
+    /**
+     * @return HasMany<Invoice, $this>
+     */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * @return HasMany<PurchaseOrder, $this>
+     */
+    public function purchaseOrders(): HasMany
+    {
+        return $this->hasMany(PurchaseOrder::class);
+    }
+
+    /**
+     * @return HasMany<PurchaseOrderLine, $this>
+     */
+    public function purchaseOrderLines(): HasMany
+    {
+        return $this->hasMany(PurchaseOrderLine::class);
+    }
+
+    /**
+     * @return HasMany<PurchaseInvoice, $this>
+     */
+    public function purchaseInvoices(): HasMany
+    {
+        return $this->hasMany(PurchaseInvoice::class);
+    }
+
+    /**
+     * Adds one EXISTS flag per accounting relation (no query per row). Read
+     * back through hasAccountingDocuments(); spec 0243, D-1.
+     *
+     * @param  Builder<WorkOrder>  $query
+     */
+    public function scopeWithAccountingDocumentFlags(Builder $query): void
+    {
+        $query->withExists(array_map(
+            static fn (string $relation): string => "{$relation} as ".self::accountingFlag($relation),
+            self::ACCOUNTING_RELATIONS,
+        ));
+    }
+
+    /**
+     * True when any proforma request, active invoice, purchase order (header
+     * or line) or purchase invoice references this commessa. Uses the flags
+     * loaded by scopeWithAccountingDocumentFlags() when present, else queries.
+     */
+    public function hasAccountingDocuments(): bool
+    {
+        foreach (self::ACCOUNTING_RELATIONS as $relation) {
+            $flag = self::accountingFlag($relation);
+            $present = array_key_exists($flag, $this->attributes)
+                ? (bool) $this->attributes[$flag]
+                : $this->{$relation}()->exists();
+
+            if ($present) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function accountingFlag(string $relation): string
+    {
+        return 'has_accounting_'.$relation;
     }
 
     /**

@@ -154,6 +154,7 @@ export const invoices = {
     description: 'Numero e data della fattura esterna, tag, scostamento e note interne.',
     externalNumber: 'Numero fattura esterna',
     externalNumberHint: 'Valorizzandolo il proforma diventa fattura; svuotandolo torna proforma.',
+    externalLockedHint: 'Fattura registrata: numero e data esterni si modificano solo con il permesso "Correggi/annulla registrazione FiC".',
     externalDate: 'Data fattura esterna',
     tag: 'Tag',
     deviation: 'Scostamento',

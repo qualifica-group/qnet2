@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Authorization;
 
+use App\Models\ProformaRequest;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
@@ -60,7 +61,7 @@ class ProformaRequestsAuthorization extends AbstractResourceAuthorization
     public function actionPermissions(User $actor, ?Model $model): array
     {
         return [
-            'delete' => $model !== null && $actor->can('proforma-requests.delete'),
+            'delete' => $model instanceof ProformaRequest && $model->isDeletable() && $actor->can('proforma-requests.delete'),
             'export' => $actor->can('proforma-requests.export'),
             'view_activity' => $model !== null && $actor->can('proforma-requests.viewActivity'),
         ];

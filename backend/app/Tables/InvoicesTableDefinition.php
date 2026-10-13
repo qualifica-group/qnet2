@@ -26,6 +26,9 @@ class InvoicesTableDefinition extends AbstractTableDefinition
 {
     private const string FIRST_UNPAID_DUE_DATE = 'first_unpaid_due_date';
 
+    /** Row actions not offered for a registered invoice. */
+    private const array REGISTERED_HIDDEN_ACTIONS = ['update', 'delete'];
+
     private const string COLLECTED_SUM = 'installments_sum_collected_amount';
 
     public function domain(): string
@@ -162,6 +165,11 @@ class InvoicesTableDefinition extends AbstractTableDefinition
         $abilities = ['view' => 'view', 'update' => 'update', 'details' => 'update', 'delete' => 'delete', 'activity' => 'viewActivity', 'pdf' => 'view', 'email' => 'sendEmail', 'remind' => 'sendEmail'];
 
         foreach ($abilities as $key => $ability) {
+            // A registered invoice cannot be edited or deleted (spec 0243, D-3); "details" stays.
+            if ($row->isRegistered() && in_array($key, self::REGISTERED_HIDDEN_ACTIONS, true)) {
+                continue;
+            }
+
             if ($gate->allows($ability, $row)) {
                 $allowed[] = $key;
             }

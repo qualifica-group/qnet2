@@ -110,7 +110,9 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
     public function actionPermissions(User $actor, ?Model $model): array
     {
         return [
-            'delete' => $model !== null && $actor->can('work-orders.delete'),
+            // Spec 0243, D-1: not offered once accounting documents hang off it.
+            'delete' => $model !== null && $actor->can('work-orders.delete')
+                && ! ($model instanceof WorkOrder && $model->hasAccountingDocuments()),
             'export' => $actor->can('work-orders.export'),
             'import' => $actor->can('work-orders.import'),
             // Gates the ActivityLogSection in the detail (spec 0034); the

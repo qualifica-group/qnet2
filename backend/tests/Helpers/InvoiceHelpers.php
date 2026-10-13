@@ -21,7 +21,7 @@ if (! function_exists('invoiceUserWith')) {
      */
     function invoiceUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'viewActivity', 'collect'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'viewActivity', 'collect', 'downgrade'] as $ability) {
             Permission::findOrCreate("invoices.{$ability}");
         }
 

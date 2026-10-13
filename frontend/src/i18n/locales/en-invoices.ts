@@ -154,6 +154,7 @@ export const invoices = {
     description: 'External invoice number and date, tag, deviation and internal notes.',
     externalNumber: 'External invoice number',
     externalNumberHint: 'Setting it turns the proforma into an invoice; clearing it turns it back.',
+    externalLockedHint: 'Registered invoice: the external number and date can only be changed with the "Correct/undo FiC registration" permission.',
     externalDate: 'External invoice date',
     tag: 'Tag',
     deviation: 'Deviation',
