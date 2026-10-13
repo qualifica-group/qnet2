@@ -12,7 +12,10 @@ use App\Enums\CommissionConfigurationStatus;
 use App\Enums\CommissionOrigin;
 use App\Enums\CommissionRecipientRole;
 use App\Models\CommissionConfiguration;
+use App\Models\ProductCategory;
+use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 final class CommissionRuleResolver
 {
@@ -29,7 +32,10 @@ final class CommissionRuleResolver
         CommissionApplicationScope::ProductCategory,
     ];
 
-    public function __construct(private readonly CommissionRecipientIdentities $identities) {}
+    public function __construct(
+        private readonly CommissionRecipientIdentities $identities,
+        private readonly CategoryHierarchy $hierarchy,
+    ) {}
 
     /**
      * @return array<int, ResolvedCommissionRule>
@@ -37,9 +43,12 @@ final class CommissionRuleResolver
     public function resolve(CommissionResolutionContext $context): array
     {
         $matches = [];
+        // Spec 0223 D-1: a category rule covers the whole branch, so the
+        // product's category chain is computed once, for every role and gradino.
+        $lineage = $this->categoryLineage($context->productCategoryId);
 
         foreach ($context->roles as $role) {
-            $configuration = $this->resolveRole($context, $role);
+            $configuration = $this->resolveRole($context, $role, $lineage);
 
             if ($configuration === null) {
                 continue;
@@ -70,10 +79,13 @@ final class CommissionRuleResolver
      * SET (itself plus its linked referent/user, `CommissionRecipientIdentities`),
      * resolved once per role — never per gradino, never per identity query
      * (D-6, AC-016).
+     *
+     * @param  list<int>  $lineage  the product's category, then its ancestors
      */
     private function resolveRole(
         CommissionResolutionContext $context,
         CommissionRecipientRole $role,
+        array $lineage,
     ): ?CommissionConfiguration {
         $recipient = $context->recipients[$role->value] ?? null;
 
@@ -81,7 +93,7 @@ final class CommissionRuleResolver
             $identities = $this->identities->forRecipient($recipient);
 
             foreach (self::PERSONAL_SCOPES as $scope) {
-                $configuration = $this->firstMatch($context, $role, $scope, $identities);
+                $configuration = $this->firstMatch($context, $role, $scope, $identities, $lineage);
 
                 if ($configuration !== null) {
                     return $configuration;
@@ -90,7 +102,7 @@ final class CommissionRuleResolver
         }
 
         foreach (self::ROLE_SCOPES as $scope) {
-            $configuration = $this->firstMatch($context, $role, $scope, []);
+            $configuration = $this->firstMatch($context, $role, $scope, [], $lineage);
 
             if ($configuration !== null) {
                 return $configuration;
@@ -109,15 +121,21 @@ final class CommissionRuleResolver
      * belonging to a DIFFERENT recipient would win as if it were role-wide
      * (risk R-2, covered by AC-005).
      *
+     * The category gradino matches the product's category AND its ancestors
+     * (spec 0223 D-1); the closest category wins (D-2), the tie-break orders
+     * only the rules of that same category.
+     *
      * @param  array<int, CommissionRecipient>  $identities
+     * @param  list<int>  $lineage
      */
     private function firstMatch(
         CommissionResolutionContext $context,
         CommissionRecipientRole $role,
         CommissionApplicationScope $scope,
         array $identities,
+        array $lineage,
     ): ?CommissionConfiguration {
-        if ($scope === CommissionApplicationScope::ProductCategory && $context->productCategoryId === null) {
+        if ($scope === CommissionApplicationScope::ProductCategory && $lineage === []) {
             return null;
         }
 
@@ -143,13 +161,55 @@ final class CommissionRuleResolver
                 }
             });
 
-        match ($scope) {
-            CommissionApplicationScope::Product => $query->where('product_id', $context->productId),
-            CommissionApplicationScope::ProductCategory => $query->where('product_category_id', $context->productCategoryId),
-            CommissionApplicationScope::Recipient => null,
-        };
+        if ($scope === CommissionApplicationScope::ProductCategory) {
+            return $this->closestCategoryRule($query->whereIn('product_category_id', $lineage)->get(), $lineage);
+        }
+
+        if ($scope === CommissionApplicationScope::Product) {
+            $query->where('product_id', $context->productId);
+        }
 
         return $query->first();
+    }
+
+    /**
+     * The first candidate of the closest category: candidates arrive in
+     * tie-break order, so the first one of a category is that category's winner.
+     *
+     * @param  Collection<int, CommissionConfiguration>  $candidates
+     * @param  list<int>  $lineage
+     */
+    private function closestCategoryRule(Collection $candidates, array $lineage): ?CommissionConfiguration
+    {
+        foreach ($lineage as $categoryId) {
+            $winner = $candidates->firstWhere('product_category_id', $categoryId);
+
+            if ($winner !== null) {
+                return $winner;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The product's category followed by its ancestors, closest first — the
+     * STRUCTURAL chain: inheritance barriers concern the offer form, not the
+     * commissions (spec 0223 D-4). Empty when the product has no category.
+     *
+     * @return list<int>
+     */
+    private function categoryLineage(?int $productCategoryId): array
+    {
+        $category = $productCategoryId === null ? null : ProductCategory::query()->find($productCategoryId);
+
+        if ($category === null) {
+            return [];
+        }
+
+        $ancestorIds = $this->hierarchy->ancestors($category)->pluck('id')->reverse()->values()->all();
+
+        return [$category->id, ...$ancestorIds];
     }
 
     /**

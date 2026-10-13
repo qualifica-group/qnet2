@@ -26,10 +26,8 @@ export const productTypologies = {
   },
   detail: {
     title: 'Product typology detail',
-    subtitle: 'Read-only view of the selected product typology.',
+    subtitle: 'Details of the selected product typology, editable in place.',
     loadError: 'Unable to load the product typology. Please retry.',
-    color: 'Color',
-    description: 'Description',
     created_at: 'Created at',
     updated_at: 'Updated at',
   },
@@ -67,6 +65,12 @@ export const productTypologies = {
     deleteForbidden: 'You cannot delete this product typology.',
     deleteInUse:
       'This product typology cannot be deleted because it is linked to one or more products.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The product typology has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       commission: {
         title: "Supplier commission",
@@ -80,7 +84,6 @@ export const productTypologies = {
     hints: {
       supplierCommissionDirection:
         "Received: the commission is the line revenue, the taxable amount goes to the supplier. Paid: it is a cost towards the supplier.",
-      codeLocked: 'The code cannot be changed after creation.',
     },
   },
   supplierCommissionDirection: {

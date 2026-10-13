@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\AttributeContext;
+use App\Migrations\Sources\ProductsSource;
 use App\Models\ProductCategory;
 use App\Models\RewardType;
 use App\Models\Source;
@@ -55,7 +56,7 @@ use Illuminate\Database\Seeder;
  *     courses under their own region, the self-funded ones under their own
  *     "Autofinanziato - <Regione>" with their price and VAT rate, and the one
  *     product each single-offer category sells ("Autoimpiego", "Yisu" and
- *     "Orientamento specialistico"), plus the e-Campus degree fees on the
+ *     "Orientamento specialistico"), plus the e-Campus products on the
  *     "Corsi E-Campus" leaf (ECampusCourseCatalogue). No other product is seeded;
  *   - the ROOT-OWNED rules of the three roots (how many
  *     product lines a card carries, how many offers an opportunity may hold),
@@ -69,11 +70,12 @@ use Illuminate\Database\Seeder;
  *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
  *     category and carrying its own working-state pick list;
  *   - the business function links (spec 0023) of the "Formazione" root, of
- *     the "APL" subcategory and of "Presa Appuntamenti", delegated to
- *     QualificaBusinessFunctionLinkSeeder as the very last step: the first
- *     two functions are imported from the external qnet CRM, not seeded
- *     here, so those links are a documented no-op whenever the import did
- *     not run; "Consulenza" is created by that seeder itself.
+ *     the "APL" subcategory, of "Presa Appuntamenti" and of "No categoria",
+ *     delegated to QualificaBusinessFunctionLinkSeeder as the very last step:
+ *     the first two functions are imported from the external qnet CRM, not
+ *     seeded here, so those links are a documented no-op whenever the import
+ *     did not run; "Consulenza" and "No funzione aziendale" are created by
+ *     that seeder itself.
  *
  * Deliberately separate from QualificaTemplateSeeder, which provisions
  * STRUCTURE ONLY (the custom field definitions) and creates no domain row.
@@ -185,6 +187,9 @@ class QualificaCatalogSeeder extends Seeder
             AplInternshipAttributeCatalogue::CATEGORY => [],
             ApprenticeshipAttributeCatalogue::CATEGORY => [],
         ],
+        // The holding place of the legacy products imported without a category
+        // (user decision 2026-10-12): a container, to reclassify them from.
+        ProductsSource::UNCATEGORIZED_CATEGORY => [],
     ];
 
     /**

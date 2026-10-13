@@ -10,12 +10,6 @@ import type {
 } from '@/features/registries/types'
 import type { RegistryFormValues } from '@/features/registries/use-registry-form'
 
-/**
- * Key of the anagraphic card's single in-place row (spec 0200 D-4). Not an RHF
- * path: the card is a buffered draft, so this only names the open editor.
- */
-export const REGISTRY_CARD_FIELD = 'personal_data'
-
 /** What the record's rows show: the persisted anagrafica on the detail, the draft (with resolved labels) on create. */
 export interface RegistryRecordValues {
   source: ReferenceRef | null

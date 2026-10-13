@@ -19,6 +19,8 @@ interface NotesCalloutRowProps {
   inline: InlineEdit
   /** The note's textarea, styled with `GENERAL_NOTES_TEXTAREA_CLASS`: it is written inside the callout. */
   editor: ReactNode
+  /** Extra condition on top of the field permission (e.g. a contract editable only while still working). */
+  canEdit?: boolean
   className?: string
 }
 
@@ -40,6 +42,7 @@ export function NotesCalloutRow({
   placeholder,
   inline,
   editor,
+  canEdit = true,
   className,
 }: NotesCalloutRowProps) {
   const titleId = useId()
@@ -48,7 +51,7 @@ export function NotesCalloutRow({
   const hasNotes = notes !== null && notes.trim() !== ''
   const isEditing = inline.editingField === field
 
-  if (!permission.visible || (!hasNotes && !isEditing && !permission.editable)) {
+  if (!permission.visible || (!hasNotes && !isEditing && !(permission.editable && canEdit))) {
     return null
   }
 
@@ -58,7 +61,15 @@ export function NotesCalloutRow({
         <StickyNote className="size-3.5 shrink-0" aria-hidden="true" />
         {title}
       </h3>
-      <RecordInlineField field={field} label={title} inline={inline} layout="block" editor={editor} className="mt-1">
+      <RecordInlineField
+        field={field}
+        label={title}
+        inline={inline}
+        layout="block"
+        editor={editor}
+        canEdit={canEdit}
+        className="mt-1"
+      >
         {hasNotes ? (
           <p className={GENERAL_NOTES_TEXT_CLASS}>{notes}</p>
         ) : (

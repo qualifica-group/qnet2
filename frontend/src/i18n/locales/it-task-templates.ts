@@ -20,15 +20,12 @@ export const taskTemplates = {
   },
   detail: {
     title: 'Dettaglio modello di task',
-    subtitle: 'Visualizzazione in sola lettura del modello selezionato.',
+    subtitle: 'Dettaglio del modello di task selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare il modello di task. Riprova.',
-    description: 'Descrizione',
-    isActive: 'Attivo',
     itemsCount: '{{count}} righe',
     created_at: 'Creato il',
     updated_at: 'Aggiornato il',
     items: {
-      title: 'Righe',
       dueOffsetDays: 'Scadenza: +{{count}} giorni',
       estimatedMinutes: 'Stima: {{value}} min',
     },
@@ -37,8 +34,6 @@ export const taskTemplates = {
     newTaskTemplate: 'Nuovo modello di task',
     createTitle: 'Crea modello di task',
     createSubtitle: 'Aggiungi un nuovo modello di task.',
-    editTitle: 'Modifica modello di task',
-    editSubtitle: 'Aggiorna il modello di task selezionato.',
     name: 'Nome',
     description: 'Descrizione',
     isActive: 'Attivo',
@@ -55,10 +50,15 @@ export const taskTemplates = {
     deleteForbidden: 'Non puoi eliminare questo modello di task.',
     deleteInUse:
       'Questo modello di task è stato usato per generare commesse e non può essere eliminato. Disattivalo.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il modello di task non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome, descrizione e stato.',
       },
       items: {
         title: 'Righe',
@@ -66,7 +66,6 @@ export const taskTemplates = {
       },
       stages: {
         title: 'Fasi',
-        description: 'Raggruppa le righe in fasi, trascinale tra una fase e l\'altra.',
       },
     },
     /** Spec 0146 D-2: le fasi raggruppano le righe del modello; copiate nei `work_order_stages` della commessa alla generazione. */

@@ -26,7 +26,7 @@ export const pipelineStatuses = {
   },
   detail: {
     title: 'Dettaglio stato progetto',
-    subtitle: 'Visualizzazione in sola lettura dello stato selezionato.',
+    subtitle: 'Dettaglio del record selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare lo stato progetto. Riprova.',
     color: 'Colore',
     sort_order: 'Ordine',
@@ -37,8 +37,6 @@ export const pipelineStatuses = {
     newPipelineStatus: 'Nuovo stato',
     createTitle: 'Crea stato progetto',
     createSubtitle: 'Aggiungi un nuovo stato per progetti e campagne.',
-    editTitle: 'Modifica stato progetto',
-    editSubtitle: 'Aggiorna lo stato progetto selezionato.',
     name: 'Nome',
     color: 'Colore',
     group: {
@@ -60,14 +58,16 @@ export const pipelineStatuses = {
     deleteError: 'Impossibile eliminare lo stato progetto. Riprova.',
     deleteForbidden: 'Non puoi eliminare questo stato progetto.',
     deleteInUseFallback: 'Questo stato è usato da un progetto o una campagna e non può essere eliminato.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il record non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome, colore e gruppo dello stato.',
       },
-    },
-    hints: {
-      systemStatusGroup: 'Gli stati di sistema hanno un gruppo fisso e non possono essere riclassificati.',
     },
   },
   reorder: {

@@ -1,12 +1,10 @@
 /* eslint-disable react-refresh/only-export-components -- module registry adapter: exports the `moduleScreen` descriptor alongside its screen components (spec 0042 pattern, same as `project-screens.tsx`) */
 import { useTranslation } from 'react-i18next'
-import { DetailError } from '@/components/detail/detail-panel'
 import { useQueryClient } from '@tanstack/react-query'
-import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchUser } from '@/features/users/api'
-import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
+import { userDetailQueryKey } from '@/features/users/api'
 import { UserForm } from '@/features/users/user-form'
 import { UserDetailView } from '@/features/users/user-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -19,70 +17,57 @@ import type { UserDetail } from '@/features/users/types'
  * Content-only `users` screens for the module registry (spec 0042). Reused
  * as-is by the modal Sheet (`useModuleOpener`) and by the generic dedicated
  * pages (`ModuleDetailPage`/`ModuleFormPage`), which own the surrounding
- * chrome. `UserDetailView` already owns its own fetch/loading/error (unlike
- * `projects`, whose presentational view takes already-loaded data), so this
- * screen only forwards the id.
+ * chrome. `UserDetailView` owns its own fetch, so this screen only forwards
+ * the id.
+ *
+ * Spec 0222: the detail edits its fields in place, so `onEdit` is never used;
+ * each save reports through `onChanged`.
  */
-export function UserDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
-  return <UserDetailView userId={id} onEdit={onEdit} />
-}
-
-export function UserFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (saved: UserDetail) => {
-    queryClient.invalidateQueries({ queryKey: ['users', 'detail', saved.id] })
-    onSuccess(saved.id)
-  }
-
-  if (mode.type === 'create') {
-    return <UserForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
-  }
-
-  return <EditUserLoader userId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-}
-
-interface EditUserLoaderProps {
-  userId: number
-  onSuccess: (user: UserDetail) => void
-  onCancel: () => void
+export function UserDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
+  return <UserDetailView userId={id} onChanged={onChanged} />
 }
 
 /**
- * Fetches the fresh, re-authorized user detail before mounting the edit form,
- * so the partial PATCH starts from authoritative values rather than a stale
- * snapshot. Moved verbatim from `UsersTable`'s inline loader, which the
- * rewire removed. `onAvatarChange` is deliberately not wired here: it used to
- * refresh the grid's own row immediately after an avatar upload via the
- * table's imperative ref, which `ModuleFormScreenProps` has no seam for (see
- * handoff — flagged, not invented).
+ * Create only (spec 0222): there is no edit form, and the registry generates
+ * no `:id/edit` route. Leaving a user being created — Cancel, the Sheet's
+ * X/overlay/Esc, a link, a reload — always asks first.
  */
-function EditUserLoader({ userId, onSuccess, onCancel }: EditUserLoaderProps) {
+export function UserFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const { t } = useTranslation()
-  const {
-    data: user,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(['users', 'detail', userId], () => fetchUser(userId))
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('users.form.leaveConfirm.title'),
+    description: t('users.form.leaveConfirm.description'),
+    confirmLabel: t('users.form.leaveConfirm.confirm'),
+    cancelLabel: t('users.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('users.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
+  if (mode.type !== 'create') {
+    return null
   }
 
-  if (isLoading || !user) {
-    return <RecordFormSkeleton />
+  const handleSuccess = (saved: UserDetail) => {
+    queryClient.invalidateQueries({ queryKey: userDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new user's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(saved.id)
   }
 
-  return <UserForm mode={{ type: 'edit', user }} onSuccess={onSuccess} onCancel={onCancel} />
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
+  }
+
+  return (
+    <>
+      {leaveGuard.navigationGuard}
+      <UserForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
+  )
 }
 
 /** Auto-registered in the module registry (spec 0042). */
@@ -93,9 +78,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.users',
   DetailScreen: UserDetailScreen,
   FormScreen: UserFormScreen,
-  // The record card renders its own Edit action, and the form its own identity
-  // bar (title/subtitle + actions on one row) — same registration Opportunità
-  // carries, so the generic hosts must not stack a second heading or button.
+  // The detail IS the edit form (spec 0222): no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
   formOwnsHeader: true,
 }

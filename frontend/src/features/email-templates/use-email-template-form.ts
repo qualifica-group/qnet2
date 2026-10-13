@@ -6,7 +6,11 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createEmailTemplate, updateEmailTemplate } from '@/features/email-templates/api'
+import {
+  createEmailTemplate,
+  emailTemplateDetailQueryKey,
+  updateEmailTemplate,
+} from '@/features/email-templates/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -32,8 +36,10 @@ interface UseEmailTemplateFormArgs {
 
 /**
  * Owns every non-render concern of `EmailTemplateForm`: RHF/Zod wiring,
- * default values, server 422 mapping and the create/update submit. The
- * component stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * default values, server 422 mapping and the create/update submit. Create
+ * backs `EmailTemplateForm`; edit backs the detail's in-place rows (diff
+ * PATCH). The component stays UI-only; this hook is the orchestration point
+ * (`onSubmit`).
  */
 export function useEmailTemplateForm({ mode, onSuccess }: UseEmailTemplateFormArgs) {
   const { t } = useTranslation()
@@ -68,9 +74,13 @@ export function useEmailTemplateForm({ mode, onSuccess }: UseEmailTemplateFormAr
     }
   }, [mode])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<EmailTemplateFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: EmailTemplateFormValues) => {
@@ -82,7 +92,7 @@ export function useEmailTemplateForm({ mode, onSuccess }: UseEmailTemplateFormAr
           mode.emailTemplate.id,
           buildUpdatePayload(values, mode.emailTemplate),
         )
-        queryClient.setQueryData(['email-templates', 'detail', mode.emailTemplate.id], saved)
+        queryClient.setQueryData(emailTemplateDetailQueryKey(mode.emailTemplate.id), saved)
         toast.success(t('emailTemplates.form.updated'))
         onSuccess(saved)
         return
@@ -100,8 +110,8 @@ export function useEmailTemplateForm({ mode, onSuccess }: UseEmailTemplateFormAr
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

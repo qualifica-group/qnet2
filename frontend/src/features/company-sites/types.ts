@@ -29,6 +29,8 @@ export interface CompanySiteBank {
  */
 export interface CompanySiteDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   notes: string | null
   is_default: boolean
@@ -115,3 +117,8 @@ export interface BankDraft {
   /** The site's preferred bank (single-primary across the list). */
   is_primary: boolean
 }
+
+/** Discriminated form mode shared by the form hooks: create form, or the in-place detail (edit). */
+export type CompanySiteFormMode =
+  | { type: 'create' }
+  | { type: 'edit'; companySite: CompanySiteDetailWithPermissions }

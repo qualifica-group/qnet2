@@ -1,172 +1,126 @@
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
-import { Landmark, MapPin, Phone } from 'lucide-react'
-import { DetailEmpty, DetailError, DetailLoading } from '@/components/detail/detail-panel'
-import {
-  RecordCanvas,
-  RecordCard,
-  RecordMeta,
-  RecordSection,
-  RecordSectionsGrid,
-} from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
+import { Form } from '@/components/ui/form'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field-record-sections'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
+import {
+  CompanySiteIdentitySection,
+  CompanySitePersistedChildSections,
+} from '@/features/company-sites/company-site-card-sections'
 import {
   CompanySiteDetailHeader,
   CompanySiteDetailStats,
 } from '@/features/company-sites/company-site-detail-header'
+import {
+  CompanySiteBanksSection,
+  CompanySiteCompanySection,
+  CompanySiteGeneralSection,
+} from '@/features/company-sites/company-site-rows'
+import { companySiteDetailQueryKey } from '@/features/company-sites/api'
+import { useCompanySiteActions } from '@/features/company-sites/use-company-site-actions'
+import { useCompanySiteInlineEdit } from '@/features/company-sites/use-company-site-inline-edit'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { activityLogTab } from '@/features/activity-log/activity-log-tab'
-import { AddressesManager } from '@/features/personal-data/addresses-manager'
-import { ContactsManager } from '@/features/personal-data/contacts-manager'
-import { cardToDraft } from '@/features/personal-data/drafts'
-import type { PersonalDataFieldPermissionResolver } from '@/features/personal-data/types'
-import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchCompanySite, setDefaultCompanySite } from '@/features/company-sites/api'
-import type { CompanySiteBank } from '@/features/company-sites/types'
+import type { CompanySiteDetailWithPermissions } from '@/features/company-sites/types'
 
-/**
- * Renders the (owner-agnostic, reused unchanged) contacts/addresses managers
- * in pure read-only mode: visible, never editable — no add/edit/remove
- * affordance shows up.
- */
-const READ_ONLY_FIELD_PERMISSION: PersonalDataFieldPermissionResolver = () => ({
-  visible: true,
-  editable: false,
-  required: false,
-  disabled: false,
-  readonly: true,
-})
+/** Stable empty set: a fresh object per render would break the sections' memo. */
+const NO_CUSTOM_FIELDS: Record<string, CustomFieldValue> = {}
 
-/** No-op change handler: the read-only managers never call it. */
-function noopChange(): void {}
-
-interface CompanySiteDetailProps {
-  companySiteId: number
-  /** Called after a successful set-default so the caller can refresh the grid. */
-  onDefaultChange?: () => void
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+interface CompanySiteDetailViewProps {
+  companySite: CompanySiteDetailWithPermissions
+  /** Called after an in-place save, a logo change or a set-default, so the host refreshes whatever lists the site (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single company site, rendered as an enterprise-CRM
- * record on the same kit Opportunita', Lead, Campagne, Progetti e Sedi use: the
- * identity/KPI/sections card on the left, the activity card on the right, a
- * metadata footer. Container-query driven (`RecordCanvas`) so the same tree
- * renders correctly both inside a resizable Sheet and on a full-bleed page.
+ * Detail of a single company site, rendered as an enterprise-CRM record on the
+ * same kit Opportunita', Lead, Campagne, Progetti e Sedi use: identity/KPI
+ * header, the sections, the activity card on the right, a metadata footer.
  *
- * Still hosts the "Società di Default" action (AC-020), now in the identity
- * band beside Edit: it is shown only when the site is not already the default
- * and the actor may perform it.
+ * There is no edit page (wave 3 of the "no edit pages" plan): the name, notes,
+ * company, the anagraphic card, the banks and the custom fields edit IN PLACE,
+ * one row at a time, each save a PATCH of that field alone; contacts, the
+ * address, the logo and "Società di Default" act at once.
  */
-export function CompanySiteDetailView({
-  companySiteId,
-  onDefaultChange,
-  onEdit,
-}: CompanySiteDetailProps) {
+export function CompanySiteDetailView(props: CompanySiteDetailViewProps) {
+  // The edit form reads the field permissions while it is built, so the
+  // provider wraps the whole detail, not just the sections.
+  return (
+    <ResourcePermissionsProvider permissions={props.companySite.permissions}>
+      <CompanySiteDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function CompanySiteDetailContent({ companySite, onChanged }: CompanySiteDetailViewProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [settingDefault, setSettingDefault] = useState(false)
-  const {
-    data: site,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(['company-sites', 'detail', companySiteId], () =>
-    fetchCompanySite(companySiteId),
-  )
-
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('companySites.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
-  }
-
-  if (isLoading || !site) {
-    return <DetailLoading />
-  }
-
-  const handleSetDefault = async () => {
-    setSettingDefault(true)
-    try {
-      const updated = await setDefaultCompanySite(site.id)
-      queryClient.setQueryData(['company-sites', 'detail', site.id], {
-        ...updated,
-        permissions: site.permissions,
-      })
-      toast.success(t('companySites.form.defaultSet'))
-      onDefaultChange?.()
-    } catch {
-      toast.error(t('companySites.form.defaultError'))
-    } finally {
-      setSettingDefault(false)
-    }
-  }
-
-  const createdAt = formatDateTime(site.created_at)
-  const canSetDefault = !site.is_default && site.permissions.actions.set_default
-  const card = site.personal_data
-  const draft = card ? cardToDraft(card) : null
-  const collaborationTabs = site.permissions.actions.view_activity
-    ? [activityLogTab('company-sites', site.id, t('activityLog.title'))]
+  const editor = useCompanySiteInlineEdit(companySite, onChanged)
+  const actions = useCompanySiteActions(companySite, onChanged)
+  const { form, inline, card, banks } = editor
+  const createdAt = formatDateTime(companySite.created_at)
+  const collaborationTabs: RecordCollaborationTab[] = companySite.permissions.actions.view_activity
+    ? [activityLogTab('company-sites', companySite.id, t('activityLog.title'))]
     : []
+
+  // A contact/address persisted on its own: refetch the record and tell the host.
+  const handleCardChanged = () => {
+    void queryClient.invalidateQueries({ queryKey: companySiteDetailQueryKey(companySite.id) })
+    onChanged?.()
+  }
 
   return (
     <RecordCanvas>
       <RecordBody
-        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <CompanySiteDetailHeader
+              site={companySite}
+              onSetDefault={actions.canSetDefault ? () => void actions.setDefault() : undefined}
+              isSettingDefault={actions.settingDefault}
+            />
+            <CompanySiteDetailStats site={companySite} />
+          </>
+        }
       >
-        <RecordCard>
-          <CompanySiteDetailHeader
-            site={site}
-            onEdit={onEdit}
-            onSetDefault={canSetDefault ? () => void handleSetDefault() : undefined}
-            isSettingDefault={settingDefault}
-          />
-          <CompanySiteDetailStats site={site} />
-
+        {/* Provider only (no DOM): the inline editors share the edit form. */}
+        <Form {...form}>
           <RecordSectionsGrid>
-            <RecordSection title={t('companySites.form.sections.contacts.title')} icon={<Phone />}>
-              {draft ? (
-                <ContactsManager
-                  value={draft.contacts}
-                  onChange={noopChange}
-                  fieldPermission={READ_ONLY_FIELD_PERMISSION}
-                  showHeader={false}
-                />
-              ) : (
-                <DetailEmpty />
-              )}
-            </RecordSection>
-
-            <RecordSection title={t('companySites.form.sections.address.title')} icon={<MapPin />}>
-              {draft ? (
-                <AddressesManager
-                  value={draft.addresses}
-                  onChange={noopChange}
-                  fieldPermission={READ_ONLY_FIELD_PERMISSION}
-                  showHeader={false}
-                  showSiteType
-                />
-              ) : (
-                <DetailEmpty />
-              )}
-            </RecordSection>
-
-            <RecordSection title={t('companySites.form.sections.banks.title')} icon={<Landmark />} full>
-              <BanksBlock banks={site.banks} />
-            </RecordSection>
+            <CompanySiteGeneralSection
+              form={form}
+              inline={inline}
+              logo={{
+                mode: 'immediate',
+                url: companySite.logo_url,
+                onUpload: actions.uploadLogo,
+                onRemove: actions.removeLogo,
+                canUpload: actions.canUploadLogo,
+                canRemove: actions.canRemoveLogo,
+              }}
+            />
+            <CompanySiteIdentitySection identity={companySite.personal_data} buffer={card} inline={inline} />
+            <CompanySiteCompanySection form={form} inline={inline} company={companySite.company} />
+            <CustomFieldRecordSections
+              resource="company-sites"
+              values={companySite.custom_fields ?? NO_CUSTOM_FIELDS}
+              inline={inline}
+              control={form.control}
+            />
+            <CompanySiteBanksSection inline={inline} banks={banks.draft} onChange={banks.setDraft} />
           </RecordSectionsGrid>
-        </RecordCard>
+        </Form>
+        <RecordSectionsGrid className="border-t">
+          <CompanySitePersistedChildSections
+            card={companySite.personal_data}
+            fieldPermission={card.fieldPermission}
+            onChanged={handleCardChanged}
+          />
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (
@@ -178,23 +132,5 @@ export function CompanySiteDetailView({
         </RecordMeta>
       ) : null}
     </RecordCanvas>
-  )
-}
-
-/** The site's banks as a compact name + IBAN list. */
-function BanksBlock({ banks }: { banks: CompanySiteBank[] }) {
-  if (banks.length === 0) {
-    return <DetailEmpty />
-  }
-
-  return (
-    <ul className="flex flex-col gap-2">
-      {banks.map((bank) => (
-        <li key={bank.id} className="flex flex-col gap-0.5 text-sm">
-          <span className="font-medium text-foreground">{bank.name}</span>
-          {bank.iban ? <span className="text-muted-foreground">{bank.iban}</span> : null}
-        </li>
-      ))}
-    </ul>
   )
 }

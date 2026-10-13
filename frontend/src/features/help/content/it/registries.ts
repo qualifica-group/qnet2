@@ -32,6 +32,8 @@ const guide: HelpGuide = {
           items: [
             'Apri Anagrafiche › Anagrafiche.',
             "Scrivi nel campo Cerca… in alto nella tabella: l'elenco si aggiorna mentre scrivi.",
+            "La ricerca trova il nome o la ragione sociale (anche una parte interna), la partita IVA o il codice fiscale, un numero di telefono dell'anagrafica (principale o no, con o senza spazi) e il nome o il telefono di un referente collegato. Per partita IVA, codice fiscale, telefoni e referenti scrivi l'inizio della parola o del numero, almeno 3 caratteri: per esempio \"ros\" trova il referente Rossi, \"02 6885\" trova 02 6885 7892.",
+            'Usa le schede sopra la tabella per separare le anagrafiche: Tutte, Persone fisiche o Aziende. La colonna Tipo mostra a quale gruppo appartiene ogni riga.',
             'Per restringere la ricerca usa i filtri sulle colonne, per esempio Fonte, Fornitore o Stato convenzione.',
             "Le colonne Commerciale, Supervisore, Segnalatore e Operatori mostrano il team dell'anagrafica: Operatori riporta i Gestori account nel loro ordine. Puoi filtrarle per nome e ordinarle, tranne Operatori che si filtra soltanto.",
             'Per vedere la scheda, apri il menu Azioni della riga e scegli Visualizza.',
@@ -49,7 +51,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Per creare una scheda premi **Nuova anagrafica**: il modulo ha lo stesso aspetto del dettaglio, con le stesse sezioni e **righe chiuse**. Fai clic sulla riga (o sulla matita) per aprirla, poi **Fatto** per tenere il valore o **Ripristina** per riportarlo com'era. Nei **Dati anagrafici** scegli prima il Tipo, Persona fisica o Azienda (i campi cambiano di conseguenza): con Fatto il nome compare in testa alla scheda. Contatti e Indirizzi sono nella colonna di destra, con i campi già pronti da compilare: Email, Telefono (obbligatorio), PEC e Fax, più **Aggiungi contatto** per altri recapiti, e un indirizzo con il suo Tipo sede, più **Aggiungi indirizzo** per le altre sedi. **Salva** controlla tutto e crea l'anagrafica; se esci senza salvare ti viene chiesta conferma.",
+          text: "Per creare una scheda premi **Nuova anagrafica**: il modulo ha lo stesso aspetto del dettaglio, con le stesse sezioni e **righe chiuse**. Fai clic sulla riga (o sulla matita) per aprirla, poi **Fatto** per tenere il valore o **Ripristina** per riportarlo com'era. Nei **Dati anagrafici** scegli prima il Tipo, Persona fisica o Azienda (i campi cambiano di conseguenza): con Fatto il nome compare in testa alla scheda. Contatti e Indirizzi sono nella colonna di destra, con i campi già pronti da compilare: Email, Telefono (obbligatorio), PEC, Fax e Sito web, più **Aggiungi contatto** per altri recapiti, e un indirizzo con il suo Tipo sede, più **Aggiungi indirizzo** per le altre sedi. **Salva** controlla tutto e crea l'anagrafica; se esci senza salvare ti viene chiesta conferma.",
         },
         {
           type: 'table',
@@ -59,8 +61,8 @@ const guide: HelpGuide = {
             ['Relazioni', 'Fonte, Settori merceologici, Commerciale e Segnalatore.'],
             ['Team', 'Supervisore e Gestori account, in ordine di importanza dal primo in alto; riordinali con Sposta su e Sposta giù.'],
             ['Dati commerciali', 'Gruppo IVA, Fornitore, Fornitore qualificato (solo per i fornitori), Stato convenzione (In trattativa, Respinta o Concordata), Classe dimensionale, Numero dipendenti e Note convenzione.'],
-            ['Note generali', "Il riquadro giallo in cima alla colonna di destra, lo stesso di Gestione richieste: un testo libero (fino a 5000 caratteri) con ciò che chi apre l'anagrafica deve leggere per primo."],
-            ['Contatti', 'Email, Telefono (obbligatorio), PEC e Fax; con Aggiungi contatto ne inserisci altri e indichi il Contatto principale.'],
+            ['Note generali', "Il riquadro giallo, lo stesso di Gestione richieste (nel dettaglio in cima ai dati dell'anagrafica, nella creazione in cima alla colonna di destra): un testo libero (fino a 5000 caratteri) con ciò che chi apre l'anagrafica deve leggere per primo."],
+            ['Contatti', 'Email, Telefono (obbligatorio), PEC, Fax e Sito web; con Aggiungi contatto ne inserisci altri e indichi il Contatto principale.'],
             ['Indirizzi', 'Uno o più indirizzi, ciascuno con un Tipo sede: Sede legale, Consegna, Fatturazione o Sede operativa.'],
             ['Referenti', 'Le persone di contatto del cliente, a tutta larghezza sotto le altre sezioni.'],
             ['Altri campi', "I campi personalizzati delle anagrafiche, tra cui Tag: scegli uno o più tag dall'elenco gestito nel modulo Tag. Compaiono anche nel dettaglio, raggruppati come nel modulo."],
@@ -91,7 +93,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "I **Dati anagrafici** (tipo, nome o ragione sociale, codice fiscale, partita IVA…) si modificano insieme: la matita apre l'intera scheda e Salva aggiorna anche il nome dell'anagrafica. **Contatti** e **Indirizzi**, nella colonna di destra, si aggiungono, modificano ed eliminano lì stesso e si salvano subito.",
+          text: "I **Dati anagrafici** (tipo, nome o ragione sociale, codice fiscale, partita IVA…) si modificano insieme: la matita apre l'intera scheda e Salva aggiorna anche il nome dell'anagrafica. **Contatti** e **Indirizzi**, in fondo ai dati della scheda, si aggiungono, modificano ed eliminano lì stesso e si salvano subito.",
         },
         {
           type: 'note',
@@ -99,7 +101,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Le **Note generali** si scrivono dentro il loro riquadro in cima alla colonna di destra: fai clic sul testo (o sulla matita), scrivi e premi **Salva**. Se l'anagrafica non ha note e non puoi modificarle, il riquadro non compare.",
+          text: "Le **Note generali** si scrivono dentro il loro riquadro in cima ai dati dell'anagrafica: fai clic sul testo (o sulla matita), scrivi e premi **Salva**. Se l'anagrafica non ha note e non puoi modificarle, il riquadro non compare.",
         },
       ],
     },
@@ -221,7 +223,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Quando crei un'anagrafica o un referente, QNet cerca schede simili. Se ne trova, mostra Possibile duplicato, con il tipo di scheda (Utente, Anagrafica o Referente) e il dato uguale: email, telefono, codice fiscale o partita IVA.",
+          text: "Quando crei un'anagrafica o un referente, QNet cerca schede simili. Se ne trova, mostra Possibile duplicato, con il tipo di scheda (Utente, Anagrafica o Referente) e il dato uguale: email, telefono, codice fiscale o partita IVA. Lo stesso avviso compare quando inserisci un nuovo cliente da Gestione Richieste.",
+        },
+        {
+          type: 'paragraph',
+          text: 'Codice fiscale e partita IVA vengono confrontati tra loro: per le aziende il codice fiscale di solito coincide con la partita IVA, quindi un codice fiscale uguale alla partita IVA di un\'altra scheda è un duplicato.',
         },
         {
           type: 'steps',
@@ -234,7 +240,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: "L'avviso non blocca il salvataggio. Tocca a te decidere se la scheda è davvero un duplicato.",
+          text: "Codice fiscale, partita IVA e telefono già presenti su un'altra scheda bloccano il salvataggio, ovunque li inserisci: creazione, modifica, contatti del dettaglio e Gestione Richieste. L'email invece genera solo l'avviso: tocca a te decidere se la scheda è davvero un duplicato.",
         },
       ],
     },

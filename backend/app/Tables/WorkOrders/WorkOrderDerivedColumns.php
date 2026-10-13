@@ -27,7 +27,8 @@ use Illuminate\Support\Facades\DB;
  * stack, not sortable, `set`-filtered via whereHas, exactly like
  * QuoteRelationColumns' own `managers`). `registry` (the Anagrafica,
  * reached through `quote.opportunity`) is delegated to
- * WorkOrderRegistryColumn.
+ * WorkOrderRegistryColumn, `contract_expiry_date` (the Contratto's own
+ * `expiry_date`) to WorkOrderContractExpiryColumn.
  *
  * Every column id reaching this class comes from the definition's own static
  * catalogue (WorkOrderColumnCatalog) — never client input.
@@ -67,6 +68,7 @@ final class WorkOrderDerivedColumns
         private readonly WorkOrderStatusResolver $statusResolver,
         private readonly FilterApplier $filterApplier,
         private readonly WorkOrderRegistryColumn $registryColumn,
+        private readonly WorkOrderContractExpiryColumn $contractExpiryColumn,
     ) {}
 
     /**
@@ -96,6 +98,12 @@ final class WorkOrderDerivedColumns
 
         if ($columnId === WorkOrderRegistryColumn::COLUMN) {
             $this->registryColumn->applyFilter($query, $filter);
+
+            return true;
+        }
+
+        if ($columnId === WorkOrderContractExpiryColumn::COLUMN) {
+            $this->contractExpiryColumn->applyFilter($query, $columnConfig, $filter);
 
             return true;
         }
@@ -159,6 +167,12 @@ final class WorkOrderDerivedColumns
     {
         if ($columnId === WorkOrderRegistryColumn::COLUMN) {
             $this->registryColumn->applySort($query, $direction);
+
+            return true;
+        }
+
+        if ($columnId === WorkOrderContractExpiryColumn::COLUMN) {
+            $this->contractExpiryColumn->applySort($query, $direction);
 
             return true;
         }

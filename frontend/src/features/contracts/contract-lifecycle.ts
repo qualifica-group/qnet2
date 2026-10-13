@@ -4,7 +4,7 @@ import type { ContractDetail, ContractStatusGroupValue } from '@/features/contra
  * Which domain actions the contract's CURRENT status group admits (direttiva
  * utente 2026-08-31 rev.2):
  *
- * - Aperto | Pending    → "Modifica dati", "Modifica stato", "Valida", "Disdici"
+ * - Aperto | Pending    → dati modificabili sul posto (spec 0219), "Modifica stato", "Valida", "Disdici"
  * - Chiuso positivo     → "Disdici", "Programma" e "Riapri contratto", nient'altro
  * - Chiuso negativo     → "Riapri contratto", nient'altro
  *

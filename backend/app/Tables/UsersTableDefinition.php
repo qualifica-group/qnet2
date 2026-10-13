@@ -81,6 +81,7 @@ class UsersTableDefinition extends AbstractTableDefinition
         // mapRow reads the user_type/address/geo/contact columns entirely from
         // memory — a fixed number of queries regardless of row count.
         return User::query()
+            ->excludingServiceAccounts()
             ->with('roles', 'avatar')
             ->with([
                 'personalData.addresses' => function ($query): void {

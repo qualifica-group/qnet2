@@ -13,10 +13,10 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'create-edit-role',
-      title: 'Creare o modificare un ruolo',
+      id: 'create-role',
+      title: 'Creare un ruolo',
       blocks: [
-        { type: 'steps', items: ['Apri **Amministrazione › Ruoli**.', 'Fai clic su **Nuovo ruolo**, oppure apri un ruolo con **Visualizza** e premi **Modifica**.', 'In **Dettagli ruolo** scrivi il **Nome**. Se vuoi, scegli subito gli utenti in **Membri**.', 'Nella sezione **Permessi** scegli cosa può fare il ruolo.', 'Fai clic su **Salva**.'] },
+        { type: 'steps', items: ['Apri **Amministrazione › Ruoli**.', 'Fai clic su **Nuovo ruolo**: si apre la scheda del nuovo ruolo, con le stesse sezioni di un ruolo già salvato.', 'In **Dettagli ruolo** le righe **Nome** e **Membri** sono chiuse: premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com\'era.', 'La sezione **Permessi** è già aperta: scegli cosa può fare il ruolo. Se il modulo ha campi personalizzati, compaiono in una sezione a parte (**Altri campi**).', 'Fai clic su **Salva**. Se esci prima, QNet chiede di confermare: il ruolo non è ancora stato creato.'] },
         {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],
@@ -26,6 +26,15 @@ const guide: HelpGuide = {
             ['**Permessi**', 'Le azioni consentite, modulo per modulo.'],
           ],
         },
+      ],
+    },
+    {
+      id: 'editing-a-role',
+      title: 'Modificare un ruolo',
+      blocks: [
+        { type: 'paragraph', text: 'La scheda di un ruolo non ha un modulo di modifica: ogni riga si modifica sul posto. Premi la matita su **Nome** o **Membri**, cambia il valore e premi **Salva**; **Annulla** o Esc lasciano la riga com\'era. Ogni salvataggio invia solo la riga che hai cambiato.' },
+        { type: 'paragraph', text: '**Permessi** è un\'unica riga a tutta larghezza: la matita apre lo stesso esploratore della creazione (azioni e permessi sui campi). Premi **Salva** per salvare i permessi, **Annulla** per scartare le modifiche.' },
+        { type: 'note', text: 'Se il ruolo non è modificabile (come **super-admin**) o non hai il permesso di modifica, le righe non hanno la matita e restano in sola lettura.' },
       ],
     },
     {
@@ -46,6 +55,7 @@ const guide: HelpGuide = {
         },
         { type: 'paragraph', text: 'Le altre azioni stanno sotto **Configurazione avanzata**, nel riquadro **Azioni aggiuntive**: ad esempio **Esporta**, **Importa**, **Visualizza attività** e **Impersona**. Alcuni moduli hanno azioni proprie, come **Valida**, **Cambia stato** o **Visualizza tutti**.' },
         { type: 'paragraph', text: 'Nell\'area **Trasversali** trovi anche **Filtri salvati**, con il permesso **Pubblica filtri condivisi**: senza, un utente può salvare solo viste e filtri personalizzati privati, mai condivisi con i colleghi, su qualunque modulo con elenco.' },
+        { type: 'paragraph', text: 'Sempre in **Trasversali** c’è **ID legacy**, con il permesso **Visualizza**: mostra l’id del vecchio gestionale, come colonna **ID legacy** negli elenchi e come badge **OLD ID #123** accanto al titolo delle schede. Senza il permesso l’id non compare da nessuna parte; il super-admin lo vede sempre.' },
         { type: 'list', items: ['**Cerca moduli o permessi…** filtra l’albero.', '**Seleziona area** attiva tutti i permessi di un’area.', '**Seleziona tutti** attiva tutti i permessi di un modulo.', '**Seleziona tutti i permessi** attiva l’intero catalogo.', 'Accanto a ogni area e modulo un contatore indica i permessi scelti sul totale.'] },
       ],
     },

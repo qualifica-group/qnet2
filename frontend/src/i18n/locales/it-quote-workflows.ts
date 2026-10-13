@@ -43,8 +43,6 @@ export const quoteWorkflows = {
     newQuoteWorkflow: 'Nuovo workflow',
     createTitle: 'Crea workflow offerta',
     createSubtitle: 'Definisci un nuovo workflow di stati di lavorazione per le offerte.',
-    editTitle: 'Modifica workflow offerta',
-    editSubtitle: 'Aggiorna il workflow offerta selezionato.',
     name: 'Nome',
     isActive: 'Attivo',
     save: 'Salva',
@@ -58,10 +56,15 @@ export const quoteWorkflows = {
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il workflow offerta. Riprova.',
     deleteForbidden: 'Non puoi eliminare questo workflow offerta.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il workflow offerta non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome e stato attivo del workflow.',
       },
       criteria: {
         title: 'Criteri',

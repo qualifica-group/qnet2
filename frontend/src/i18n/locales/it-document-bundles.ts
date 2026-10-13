@@ -21,8 +21,6 @@ export const documentBundles = {
     title: 'Dettaglio modello documenti',
     subtitle: 'Visualizzazione in sola lettura del modello selezionato.',
     loadError: 'Impossibile caricare il modello documenti. Riprova.',
-    description: 'Descrizione',
-    isActive: 'Attivo',
     filesCount: 'File',
     created_at: 'Creato il',
     updated_at: 'Aggiornato il',
@@ -49,6 +47,12 @@ export const documentBundles = {
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il modello documenti. Riprova.',
     deleteForbidden: 'Non puoi eliminare questo modello documenti.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il modello documenti non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',

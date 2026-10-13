@@ -16,8 +16,8 @@ const guide: HelpGuide = {
       id: 'create-user',
       title: 'Creare un utente',
       blocks: [
-        { type: 'steps', items: ['Apri **Amministrazione › Utenti**.', 'Fai clic su **Nuovo utente**.', 'Compila le sezioni del modulo (vedi le tabelle qui sotto).', 'Fai clic su **Salva**. Compare il messaggio "Utente creato con successo."'] },
-        { type: 'paragraph', text: 'Il pulsante **Salva** si trova sia in alto sia in fondo al modulo. Nella colonna laterale un **Riepilogo** si aggiorna mentre compili.' },
+        { type: 'steps', items: ['Apri **Amministrazione › Utenti** e fai clic su **Nuovo utente**: il modulo ha lo stesso aspetto della scheda, con le stesse sezioni e **righe chiuse**.', 'Fai clic su una riga (o sulla matita) per aprirla, compila e premi **Fatto** per tenere il valore o **Ripristina** per riportarlo com’era (vedi le tabelle qui sotto). I **Dati anagrafici** sono obbligatori.', '**Contatti** e **Indirizzi** si compilano nella colonna laterale e vengono salvati insieme all’utente.', 'Fai clic su **Salva**. Compare il messaggio "Utente creato con successo." Se esci senza salvare ti viene chiesta conferma.'] },
+        { type: 'paragraph', text: 'Il pulsante **Salva** si trova sia in alto sia in fondo al modulo. La fascia dei numeri in alto (competenze, sedi, ruoli, abbinamento) si aggiorna mentre compili.' },
         {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],
@@ -25,8 +25,7 @@ const guide: HelpGuide = {
             ['**Avatar**', 'Immagine del profilo (JPEG, PNG, GIF o WebP, massimo 10 MB).'],
             ['Dati anagrafici', 'Dati identificativi della persona o dell’azienda.'],
             ['**Email**', 'Indirizzo usato per accedere. È obbligatorio.'],
-            ['**La password dell’account**', 'Facoltativa. Lasciala vuota per inviare un invito; se la compili è una password provvisoria, di almeno 8 caratteri.'],
-            ['**Ripeti la password**', 'La stessa password, per conferma (solo se hai compilato la password).'],
+            ['**Password**', 'Facoltativa. Lasciala vuota per inviare un invito; se compili **La password dell’account** e **Ripeti la password** è una password provvisoria, di almeno 8 caratteri.'],
             ['**Ruoli**', 'Uno o più ruoli. I permessi dell’utente derivano dai suoi ruoli.'],
             ['**Attivo**', 'Se lo spegni, l’account non può accedere.'],
           ],
@@ -51,7 +50,7 @@ const guide: HelpGuide = {
             ['**Sedi remote**', 'Altre sedi operative in cui lavora.'],
           ],
         },
-        { type: 'paragraph', text: 'Sede fisica e sedi remote valgono allo stesso modo per l’assegnazione. In alto nel modulo un’etichetta indica **Assegnabile** oppure **Non assegnabile**.' },
+        { type: 'paragraph', text: 'Sede fisica e sedi remote valgono allo stesso modo per l’assegnazione. Nella fascia dei numeri in alto, **Abbinamento** indica **Assegnabile** oppure **Non assegnabile**.' },
         { type: 'warning', text: 'La persona riceve assegnazioni solo se sono vere tutte e tre le condizioni: **Assegnabile** acceso, almeno una competenza e almeno una sede. Il modulo segnala la condizione mancante con "Assegnazione disattivata", "Manca la competenza" o "Manca la sede".' },
       ],
     },
@@ -74,7 +73,8 @@ const guide: HelpGuide = {
             ['**Durata pausa giornaliera**', 'Durata della pausa quotidiana.'],
           ],
         },
-        { type: 'paragraph', text: 'Il modulo contiene anche le sezioni **Contatti** e **Indirizzi**. In fondo può comparire la sezione **Altri campi**, con i campi personalizzati degli utenti.' },
+        { type: 'paragraph', text: 'Le sezioni del rapporto di lavoro ci sono anche per un utente che non ha ancora un profilo: il primo salvataggio lo crea. Seguono **Contatti** e **Indirizzi**; in fondo può comparire la sezione **Altri campi**, con i campi personalizzati degli utenti.' },
+        { type: 'note', text: 'Attivare **Responsabile** svuota **Risponde a**, attivare **Competente per tutte le categorie** azzera le righe di **Competenza**: per questo le due righe non hanno la matita se non puoi modificare anche il campo che svuotano.' },
       ],
     },
     {
@@ -82,7 +82,7 @@ const guide: HelpGuide = {
       title: 'Modificare, disattivare ed eliminare',
       blocks: [
         { type: 'paragraph', text: 'Ogni riga dell’elenco ha un menu azioni con **Visualizza**, **Elimina**, **Attività** e **Impersona**. Vedi solo le azioni permesse dal tuo ruolo.' },
-        { type: 'list', items: ['**Modificare:** apri la scheda con **Visualizza**, premi **Modifica**, cambia i dati e fai clic su **Salva**.', '**Disattivare:** apri **Modifica** e spegni **Attivo**. La persona non può più accedere, ma scheda e storico restano. In alto compare **Non attivo**.', '**Eliminare:** scegli **Elimina** e conferma.', '**Attività:** mostra lo storico delle modifiche fatte sulla scheda.'] },
+        { type: 'list', items: ['**Modificare:** non esiste una pagina di modifica separata. Apri la scheda con **Visualizza**, passa col mouse sul campo e premi la **matita** (o fai clic sul valore), cambia il valore e premi **Salva**: si salva solo quel campo. **Annulla** (o Esc, o un clic fuori) chiude senza salvare. Contatti, indirizzi e avatar si salvano da soli.', '**Disattivare:** nella scheda apri la riga **Attivo** e spegnilo. La persona non può più accedere, ma scheda e storico restano. In alto compare **Non attivo**.', '**Eliminare:** scegli **Elimina** e conferma.', '**Attività:** mostra lo storico delle modifiche fatte sulla scheda.'] },
         { type: 'warning', text: 'Non puoi eliminare il tuo stesso account, né l’ultimo utente con ruolo super-admin.' },
         { type: 'tip', text: 'Se una persona lascia l’azienda, disattivala invece di eliminarla. Così conservi lo storico del suo lavoro.' },
       ],
@@ -91,8 +91,8 @@ const guide: HelpGuide = {
       id: 'reset-password',
       title: 'Reimpostare la password di un utente',
       blocks: [
-        { type: 'steps', items: ['Apri la scheda dell’utente con **Visualizza** e premi **Modifica**.', 'Nella sezione **Autenticazione** scrivi la **Nuova password** e poi **Ripeti la password**.', 'Fai clic su **Salva**.'] },
-        { type: 'note', text: 'Se lasci vuoti i campi password, la password attuale resta invariata. La password che imposti tu è provvisoria: al prossimo accesso all’utente verrà consigliato di cambiarla. In alternativa, la persona può reimpostarla da sola con **Password dimenticata?** nella pagina di accesso.' },
+        { type: 'steps', items: ['Apri la scheda dell’utente con **Visualizza**.', 'Nella sezione **Credenziali e accesso** premi la matita della riga **Password**.', 'Scrivi la **Nuova password** e poi **Ripeti la password**.', 'Fai clic su **Salva**.'] },
+        { type: 'note', text: 'Finché non salvi la riga, la password attuale resta invariata. La password che imposti tu è provvisoria: al prossimo accesso all’utente verrà consigliato di cambiarla. In alternativa, la persona può reimpostarla da sola con **Password dimenticata?** nella pagina di accesso.' },
       ],
     },
     {

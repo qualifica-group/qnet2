@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0223-commission-category-branch-rules" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Una regola del Configuratore commissioni con ambito "categoria prodotto" vale per l'intero ramo della categoria:
+    la categoria stessa e tutte le sue sottocategorie, contenitori compresi. Cosi' le regole del QNet legacy sulle
+    categorie madre (ISO, SOA-, GDPR...) si importano e scattano sui prodotti del ramo, come nel legacy.
+  </goal>
+
+  <context>
+    - Motivo: l'import `commission-configurations` (run 28 locale) fallisce su 501 righe su 615; 471 puntano a
+      categorie madre non selezionabili (ISO 121, SOA- 108, SICUREZZA N/N 99, GDPR 96, GARE- 23, AVVALIMENTI- 23,
+      ENTE DI CERTIFICAZIONE - SOA 1). Le altre 30 (29 senza destinatario, 1 senza ruolo) restano fallite: sono
+      regole legacy incomplete.
+    - D-1 (utente 2026-10-12, "Regola vale per il ramo"): una regola su una categoria vale anche per le sue
+      sottocategorie, a qualsiasi profondita'. Emenda spec 0074 per le sole regole commissione: il commento in
+      `CommissionConfigurationRules` ("the resolver matches it EXACTLY (no subtree walk)") decade.
+    - D-2 (utente 2026-10-12, "La categoria piu' vicina"): fra regole di categoria dello stesso gradino vince quella
+      sulla categoria piu' vicina al prodotto (la categoria del prodotto, poi il padre, poi il nonno...); la priorita'
+      e poi `valid_from` desc, `id` desc decidono solo fra regole sulla STESSA categoria.
+    - D-3: la catena a gradini di spec 0089 D-4 resta identica: gradini personali 1-3 (prodotto, categoria,
+      destinatario) prima dei gradini di ruolo 4-5 (prodotto, categoria); il prodotto batte sempre la categoria.
+      Il ramo cambia solo COME si abbina il gradino "categoria" (personale e di ruolo).
+    - D-4: la risalita e' STRUTTURALE (`parent_id`), non si ferma alle barriere di ereditarieta'
+      (`CategoryInheritanceRules`): quelle riguardano i campi del form Offerta, non le commissioni. Si ferma alla
+      radice o a `CategoryHierarchy::MAX_DEPTH`.
+    - D-5: nel Configuratore si possono scegliere tutte le categorie ATTIVE, contenitori compresi: la validazione
+      passa da `SelectableProductCategory` a `ActiveProductCategory` (esiste gia': esistenza + attivita' effettiva,
+      stessa esenzione per il valore gia' salvato). Il selettore `product-categories/for-select` NON cambia (filtro
+      `is_selectable` incondizionato, spec 0074 D-4): il Configuratore usa un nuovo selettore separato, come gia'
+      fatto per i rami dei criteri di workflow (`product-category-branches/for-select`, spec 0092 D-4).
+    - D-6: `CommissionConfigurationsSource` toglie il rifiuto delle categorie non selezionabili; tutto il resto
+      (destinatario e ruolo obbligatori, categoria/prodotto importati) resta.
+    - Fatti verificati: `CommissionRuleResolver::firstMatch()` abbina con `where('product_category_id', ...)`;
+      `CommissionResolutionContext::productCategoryId` arriva da `QuoteCommissionInitializer` (`$product->category_id`);
+      `CategoryHierarchy::ancestors()` restituisce gli antenati root-first; nel DB locale le 114 regole di categoria
+      esistenti sono tutte importate e nessuna sta su una categoria con figli (nessun cambio di comportamento sulle
+      regole gia' presenti in locale).
+  </context>
+
+  <scope>
+    <in>
+      <item>Resolver: il gradino "categoria" abbina la categoria del prodotto e i suoi antenati, vince il piu' vicino (D-2).</item>
+      <item>Validazione create/update regole: `ActiveProductCategory` al posto di `SelectableProductCategory`.</item>
+      <item>Nuovo selettore `GET /api/product-category-nodes/for-select`: tutte le categorie attive, contenitori compresi.</item>
+      <item>Form del Configuratore: il campo Categoria usa il nuovo selettore e spiega che la regola vale per le sottocategorie.</item>
+      <item>Import `commission-configurations`: niente rifiuto per categoria non selezionabile.</item>
+      <item>Manuale: guida in-app `commission-configurations` (it/en), testo "cosa serve" della sorgente, manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Nessun cambio a `product-categories/for-select` ne' alla selezionabilita' per prodotti, linee prodotto, progetti, campagne.</item>
+      <item>Nessuna regola "per ramo" sull'ambito prodotto o destinatario: solo l'ambito categoria.</item>
+      <item>Nessun ricalcolo delle commissioni gia' scritte sulle offerte: il resolver vale per le nuove righe/ricalcoli, come oggi.</item>
+      <item>Nessuna moltiplicazione delle regole sulle sottocategorie, nessuna migrazione di schema.</item>
+      <item>Le 30 regole legacy senza destinatario o ruolo restano fallite.</item>
+      <item>Nessun percorso (breadcrumb) nelle voci del selettore: solo il nome, come gli altri selettori di categoria.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/product-category-nodes/for-select">
+      <request>
+        Query (stesso standard for-select, ADR 0011, regole di `ProductCategoryBranchForSelectRequest`):
+        search: string|null (max 255), offset: int >= 0, limit: int 1..BaseApiController::MAX_LIMIT,
+        ids[]: int[] (idratazione: restituisce anche categorie inattive gia' salvate).
+      </request>
+      <response status="200">
+        Envelope paginato for-select esistente (`paginatedResponse`): { items: [{ id: int, label: string }],
+        pagination: { total, offset, limit } }, voci ordinate
+        per nome poi id; solo categorie attive (propria + antenati), con o senza figli, `is_selectable` ignorato;
+        piu' gli `ids[]` richiesti anche se inattivi. Stessa shape di `product-category-branches/for-select`.
+      </response>
+      <errors>401 non autenticato; 422 parametri non validi. Nessun gate di permesso oltre `auth:sanctum` (ADR 0011).</errors>
+    </endpoint>
+    <endpoint method="POST|PUT|PATCH" path="/api/commission-configurations[/{id}]">
+      <request>Invariato. `product_category_id`: nullable int, deve esistere ed essere attiva (esente il valore gia'
+        salvato in update); NON deve piu' essere selezionabile.</request>
+      <response status="200|201">Invariata.</response>
+      <errors>422 "This product category is not active." / "The selected product category is invalid."; il messaggio
+        "This product category is not selectable." non viene piu' restituito per questo campo.</errors>
+    </endpoint>
+    <behaviour name="CommissionRuleResolver">
+      Gradino categoria = regole attive e valide alla data con `product_category_id` IN (categoria del prodotto +
+      antenati). Ordine: distanza (0 = categoria del prodotto) asc, poi priority desc, valid_from desc, id desc.
+      Prodotto senza categoria: il gradino non abbina nulla (come oggi).
+    </behaviour>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un prodotto nella categoria C figlia di P e una sola regola di ruolo attiva su P, quando si risolvono le commissioni, allora la regola su P viene applicata con origine PRODUCT_CATEGORY (test resolver).</criterion>
+    <criterion id="AC-002">Dato un prodotto in C (figlia di P, nipote di N) e regole di ruolo su C (priorita' 1), P (priorita' 5) e N (priorita' 9), quando si risolve, allora vince la regola su C; togliendo C vince P (test resolver).</criterion>
+    <criterion id="AC-003">Date due regole sulla stessa categoria con priorita' diverse, quando si risolve, allora vince la priorita' piu' alta e, a parita', valid_from piu' recente e poi id piu' alto (test resolver esistenti verdi).</criterion>
+    <criterion id="AC-004">Dato un prodotto in C con una regola di prodotto e una regola sul padre P, quando si risolve, allora vince la regola di prodotto; e una regola personale (destinatario) su P batte una regola di ruolo su C (catena 0089 invariata, test resolver).</criterion>
+    <criterion id="AC-005">Data una regola su una categoria che NON e' antenata della categoria del prodotto (sorella o figlia), quando si risolve, allora non viene applicata (test resolver).</criterion>
+    <criterion id="AC-006">Dato un utente con `commission-configurations.create`, quando crea una regola su una categoria attiva non selezionabile, allora riceve 201; su una categoria inattiva riceve 422 "not active" (test CRUD; ProductCategorySelectableTest AC-012 aggiornato per il requisito cambiato).</criterion>
+    <criterion id="AC-007">Dato un utente autenticato, quando chiama `GET /api/product-category-nodes/for-select`, allora riceve contenitori e foglie attivi, non riceve le categorie inattive salvo quelle passate in `ids[]`, e `search`/`offset`/`limit` funzionano; senza autenticazione 401 (test feature).</criterion>
+    <criterion id="AC-008">Dato il form del Configuratore con ambito Categoria, quando si apre il selettore, allora interroga `product-category-nodes` e il campo mostra il testo che la regola vale anche per le sottocategorie (test Vitest del form).</criterion>
+    <criterion id="AC-009">Data una regola legacy su una categoria importata non selezionabile, quando gira l'import `commission-configurations`, allora la regola viene creata; una regola senza destinatario continua a fallire (CommissionConfigurationsSourceImportTest aggiornato).</criterion>
+    <criterion id="AC-010">Guide in-app `commission-configurations` it/en aggiornate con la regola del ramo; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza, nessuna migrazione.
+    - Il resolver non usa SQL grezzo per l'ordine per distanza: carica i candidati del gradino gia' ordinati per
+      priorita'/data/id e sceglie in PHP il primo della categoria piu' vicina (pochi candidati per gradino).
+    - Gli antenati si calcolano UNA volta per `resolve()` (non per ruolo, non per gradino): niente N+1 per gradino
+      (spec 0089 D-6).
+    - Authz invariata: Policy/permessi esistenti del Configuratore; il nuovo for-select segue ADR 0011.
+    - Il nuovo selettore e' un segmento di risorsa separato: `product-categories/for-select` resta intatto.
+    - Test eseguiti (Pest mirati + Vitest), Pint/ESLint/`tsc -b --force` puliti; file sotto 300 righe.
+  </constraints>
+
+</spec>

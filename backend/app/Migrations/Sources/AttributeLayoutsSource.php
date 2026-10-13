@@ -5,6 +5,7 @@ namespace App\Migrations\Sources;
 use App\Enums\AttributeContext;
 use App\Enums\LayoutFormScope;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Support\ExternalApiClient;
@@ -49,6 +50,17 @@ class AttributeLayoutsSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Attribute layouts';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::required('product-categories'),
+            MigrationDependency::required('product-category-attributes'),
+        ];
     }
 
     public function endpoint(): string

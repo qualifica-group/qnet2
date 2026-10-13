@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchTaskTemplate } from '@/features/task-templates/api'
+import { fetchTaskTemplate, taskTemplateDetailQueryKey } from '@/features/task-templates/api'
 import { TaskTemplateForm } from '@/features/task-templates/task-template-form'
 import { TaskTemplateDetailView } from '@/features/task-templates/task-template-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -15,19 +15,15 @@ import type {
 } from '@/features/modules/types'
 import type { TaskTemplateDetail } from '@/features/task-templates/types'
 
-/** Query key for a single task template's detail (fresh-on-open pattern). */
-function detailQueryKey(id: number) {
-  return ['task-templates', 'detail', id] as const
-}
-
 /**
  * Content-only `task-templates` screens for the module registry (spec 0042):
- * fetch + the existing presentational view/form, no page chrome. Reused as-is
- * by the modal Sheet (`useModuleOpener`) and by the generic dedicated pages
- * (`ModuleDetailPage`/`ModuleFormPage`). Mirrors `ProductTypologyDetailScreen`/
- * `ProductTypologyFormScreen`.
+ * fetch + the presentational view/form, no page chrome. Reused as-is by the
+ * modal Sheet (`useModuleOpener`) and by the generic dedicated pages.
+ *
+ * Spec 0227: the detail edits its rows in place, so `onEdit` is never used;
+ * each save reports through `onChanged`.
  */
-export function TaskTemplateDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function TaskTemplateDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: taskTemplate,
@@ -35,7 +31,7 @@ export function TaskTemplateDetailScreen({ id, onEdit }: ModuleDetailScreenProps
     isError,
     error,
     refetch,
-  } = useEntityDetail(detailQueryKey(id), () => fetchTaskTemplate(id))
+  } = useEntityDetail(taskTemplateDetailQueryKey(id), () => fetchTaskTemplate(id))
 
   if (isError) {
     return (
@@ -52,69 +48,50 @@ export function TaskTemplateDetailScreen({ id, onEdit }: ModuleDetailScreenProps
     return <DetailLoading />
   }
 
-  return <TaskTemplateDetailView taskTemplate={taskTemplate} onEdit={onEdit} />
-}
-
-export function TaskTemplateFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (saved: TaskTemplateDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(saved.id) })
-    onSuccess(saved.id)
-  }
-
-  if (mode.type === 'create') {
-    return <TaskTemplateForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
-  }
-
-  return (
-    <TaskTemplateEditScreen taskTemplateId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-  )
-}
-
-interface TaskTemplateEditScreenProps {
-  taskTemplateId: number
-  onSuccess: (taskTemplate: TaskTemplateDetail) => void
-  onCancel: () => void
+  return <TaskTemplateDetailView taskTemplate={taskTemplate} onChanged={onChanged} />
 }
 
 /**
- * Fetches the fresh, re-authorized task template detail before mounting the
- * edit form, so the partial PATCH starts from authoritative values rather
- * than a stale snapshot.
+ * Create only (spec 0227): there is no edit form, and the registry generates
+ * no `:id/edit` route. Leaving a template being created — Cancel, the Sheet's
+ * X/overlay/Esc, a link, a reload — always asks first.
  */
-function TaskTemplateEditScreen({ taskTemplateId, onSuccess, onCancel }: TaskTemplateEditScreenProps) {
+export function TaskTemplateFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const { t } = useTranslation()
-  const {
-    data: taskTemplate,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(detailQueryKey(taskTemplateId), () => fetchTaskTemplate(taskTemplateId))
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('taskTemplates.form.leaveConfirm.title'),
+    description: t('taskTemplates.form.leaveConfirm.description'),
+    confirmLabel: t('taskTemplates.form.leaveConfirm.confirm'),
+    cancelLabel: t('taskTemplates.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('taskTemplates.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
+  if (mode.type !== 'create') {
+    return null
   }
 
-  if (isLoading || !taskTemplate) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+  const handleSuccess = (saved: TaskTemplateDetail) => {
+    queryClient.invalidateQueries({ queryKey: taskTemplateDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new template's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(saved.id)
   }
 
-  return <TaskTemplateForm mode={{ type: 'edit', taskTemplate }} onSuccess={onSuccess} onCancel={onCancel} />
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
+  }
+
+  return (
+    <>
+      {leaveGuard.navigationGuard}
+      <TaskTemplateForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
+  )
 }
 
 /** Auto-registered in the module registry (spec 0042). */
@@ -125,8 +102,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.taskTemplates',
   DetailScreen: TaskTemplateDetailScreen,
   FormScreen: TaskTemplateFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button — the same registration Opportunita',
-  // Utenti and Lead carry.
+  // The detail IS the edit form (spec 0227): no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

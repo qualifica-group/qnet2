@@ -70,7 +70,7 @@ export function taskCategoryPathLabel(nodes: TaskCategoryTreeNode[], id: number)
 
 /**
  * Every descendant of `id` (exclusive) — used by the admin parent picker
- * (`TaskCategoryFormBody`) to disable the branch under the category being
+ * (`TaskCategoryParentRow`) to disable the branch under the category being
  * edited client-side (UX only; the server's own cycle guard, spec 0154 D-1,
  * is the actual defense on submit).
  */

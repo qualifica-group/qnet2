@@ -34,7 +34,7 @@ export const contractStatuses = {
   },
   detail: {
     title: 'Dettaglio stato contratto',
-    subtitle: 'Visualizzazione in sola lettura dello stato selezionato.',
+    subtitle: 'Dettaglio del record selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare lo stato contratto. Riprova.',
     description: 'Descrizione',
     color: 'Colore',
@@ -48,8 +48,6 @@ export const contractStatuses = {
     newContractStatus: 'Nuovo stato',
     createTitle: 'Crea stato contratto',
     createSubtitle: 'Aggiungi un nuovo stato per i contratti.',
-    editTitle: 'Modifica stato contratto',
-    editSubtitle: 'Aggiorna lo stato contratto selezionato.',
     name: 'Nome',
     description: 'Descrizione',
     color: 'Colore',
@@ -77,15 +75,16 @@ export const contractStatuses = {
     deleteError: 'Impossibile eliminare lo stato contratto. Riprova.',
     deleteForbidden: 'Non puoi eliminare questo stato contratto.',
     deleteInUseFallback: 'Questo stato contratto è usato da un contratto e non può essere eliminato.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il record non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome, descrizione, colore, gruppo e stato del contratto.',
       },
-    },
-    hints: {
-      systemStatusFields: 'Gli stati di sistema hanno campi fissi: solo nome e colore sono modificabili.',
-      cannotUnsetDefault: 'Per rimuovere il predefinito, riassegnalo a un altro stato.',
     },
   },
   reorder: {

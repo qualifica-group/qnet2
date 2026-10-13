@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
@@ -9,6 +9,12 @@ import type { ReferentDetailWithPermissions } from '@/features/referents/types'
 import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
 import type { CustomFieldDescriptor } from '@/features/custom-fields/types'
 import type { PersonalDataCard } from '@/features/personal-data/types'
+import {
+  clickCreateSave,
+  confirmOpenRow,
+  fillCardNames,
+  fillRequiredPhone,
+} from '@/features/referents/referent-test-fixtures'
 
 /**
  * Spec 0021: wiring the universal custom-fields renderer into the Referents
@@ -16,14 +22,17 @@ import type { PersonalDataCard } from '@/features/personal-data/types'
  * `<CustomFieldsSection>` is the only referents-specific integration. This
  * suite exercises the wiring (rendering + create payload) without touching
  * the section's own per-type rendering (covered by `CustomFieldsSection.test.tsx`).
+ * REQUIREMENT CHANGED (spec 0216): the custom field is a closed row of the
+ * create draft, opened by its pencil; the edit-mode case moved to
+ * `referent-detail-inline-edit.test.tsx`.
  */
 
 const createReferentMock = vi.fn()
-const updateReferentMock = vi.fn()
 
 vi.mock('@/features/referents/api', () => ({
   createReferent: (...args: unknown[]) => createReferentMock(...args),
-  updateReferent: (...args: unknown[]) => updateReferentMock(...args),
+  updateReferent: vi.fn(),
+  referentDetailQueryKey: (id: number | null) => ['referents', 'detail', id] as const,
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -131,7 +140,6 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createReferentMock.mockReset()
-  updateReferentMock.mockReset()
   fetchResourceMetaMock.mockReset()
   fetchResourceMetaMock.mockResolvedValue({
     fields: [SPONSOR_LEVEL_FIELD],
@@ -140,51 +148,26 @@ beforeEach(() => {
 })
 
 describe('ReferentForm — custom fields (spec 0021)', () => {
-  it('renders the resource custom field control in create mode', async () => {
-    render(
-      <ReferentForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('renders the resource custom field as a closed row that opens on its control', async () => {
+    render(<ReferentForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    expect(await screen.findByRole('textbox', { name: 'Sponsor level' })).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Sponsor level' }))
+    expect(screen.getByRole('textbox', { name: 'Sponsor level' })).toBeInTheDocument()
   })
 
   it('includes the valued custom field in the create payload', async () => {
     createReferentMock.mockResolvedValue(referent())
-    const onSuccess = vi.fn()
+    render(<ReferentForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    render(
-      <ReferentForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(await screen.findByLabelText(/^First name/), { target: { value: 'Ada' } })
-    fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
-
-    // Creating a referent requires a phone number (user directive 2026-07-31).
-    fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: '+39 333 1234567' } })
-
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Sponsor level' }), {
-      target: { value: 'Gold' },
-    })
-
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    await fillCardNames()
+    fillRequiredPhone()
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Sponsor level' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Sponsor level' }), { target: { value: 'Gold' } })
+    confirmOpenRow('Done')
+    clickCreateSave()
 
     await waitFor(() => expect(createReferentMock).toHaveBeenCalledTimes(1))
     const payload = createReferentMock.mock.calls[0][0]
     expect(payload.custom_fields).toEqual({ sponsor_level: 'Gold' })
-  })
-
-  it('seeds the custom field value from the loaded referent detail in edit mode', async () => {
-    render(
-      <ReferentForm
-        mode={{ type: 'edit', referent: referent({ custom_fields: { sponsor_level: 'Platinum' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(await screen.findByRole('textbox', { name: 'Sponsor level' })).toHaveValue('Platinum')
   })
 })

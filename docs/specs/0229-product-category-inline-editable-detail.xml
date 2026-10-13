@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0229-product-category-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    La Categoria prodotto riceve le stesse modifiche dei moduli gia' migrati (spec 0195-0200, 0216-0222, 0226, 0227):
+    niente pagina di modifica, il dettaglio si edita sul posto riga per riga; la creazione (e la duplicazione) e' una
+    replica del dettaglio. Onda 2 del piano "nessuna pagina di modifica" (utente 2026-10-12: "eliminare le pagine di
+    modifica e rendere tutto modificabile inline, creazione compresa").
+  </goal>
+
+  <context>
+    - D-1: regole 0195 D-2/D-3/D-6/D-8 con `RecordInlineField`, `useDraftInlineEdit`, `useFormLeaveGuard`; nessuna
+      modifica backend (PATCH /api/product-categories/{id} gia' parziale, `sometimes` su ogni campo, con
+      `permissions` nella risposta). Come Progetti (0220): il form in modalita' edit resta il motore del dettaglio e
+      la conferma di una riga invia l'intero form, il cui `buildUpdatePayload` e' un diff: parte solo cio' che
+      quella riga ha cambiato.
+    - D-2: sezione "Dettagli": Nome, Categoria padre, Descrizione, Funzione aziendale, una riga ciascuno. La funzione
+      aziendale ereditata (spec 0023) e' mostrata con il badge della categoria sorgente e senza matita.
+    - D-3: sezione "Regole di gestione": una riga per regola, nell'ordine del vecchio form (Prevede preventivo,
+      Modalita' di gestione, Offerta unica, Contratto, Semplificazione riga offerta, Selezionabile, Attiva, Visibile
+      nei report, Colonne report). La riga si apre sullo STESSO riquadro-regola della creazione (interruttore, (i),
+      descrizione). Le quattro regole decise dalla radice, su una sottocategoria, mostrano il valore con il badge
+      "Ereditata da ..." e NON hanno la matita (nel vecchio form erano bloccate); Semplificazione riga offerta (override,
+      spec 0188), Selezionabile, Attiva e Visibile nei report restano modificabili. "Colonne report" compare solo se la
+      categoria e' effettivamente visibile nei report (spec 0141). La chiave della riga Semplificazione e'
+      `simplified_offer_line` su una radice, `simplified_offer_line_override` su una figlia.
+    - D-4: creazione = replica del dettaglio: banda d'identita' con nome live, pill (radice, non selezionabile, non
+      attiva, visibile nei report) e Annulla/Salva, righe chiuse (Fatto/Ripristina) con i valori ereditati risolti
+      sull'albero in cache (`buildDraftRecordValues`), azioni ripetute in fondo, conferma di uscita. Niente striscia
+      KPI (sono figure del record salvato) e niente riepilogo laterale (le righe sono il riepilogo). La duplicazione
+      resta una creazione precompilata con `layout_source_id`.
+    - D-5: "Attributi" (tre contesti con le tre barriere "Eredita dal padre") e "Gestori Account" (etichette per
+      livello con la propria barriera) sono ciascuno UNA riga a tutta larghezza (`layout="block"`, chiavi
+      `attributes` e `manager_labels`): chiusa mostra l'elenco salvato, la matita apre lo stesso editor della
+      creazione e Salva invia solo cio' che e' cambiato (attributi in sincronizzazione completa, barriere, etichette).
+      Nella creazione i due editor restano APERTI (sono editor, non campi). Precedente: board del modello di task (0227).
+    - D-6: assegnare una funzione aziendale che azzererebbe quelle delle discendenti passa dalla conferma gia'
+      esistente (`BusinessFunctionResetDialog`, direttiva 2026-09-16), ora sul salvataggio della riga.
+    - D-7: i campi personalizzati sono righe in-place (`CustomFieldRecordSections`, 0200 D-3).
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica.</backend>
+    <frontend>
+      Registry `product-categories`: `generateEditRoute: false`, `detailOwnsEditAction: true`, `formOwnsHeader: true`;
+      `ProductCategoryDetailView` perde `onEdit`, guadagna `onChanged`; `updateProductCategory` restituisce
+      `ProductCategoryDetailWithPermissions`. `ProductCategoryFormScreen` gestisce solo create/duplicate (conferma di
+      uscita, `ProductCategoryDuplicateLoader`). Hook: `useProductCategoryForm` (RHF, edit con `values` + `keepDirtyValues`),
+      `useProductCategoryFormSubmit` (create/PATCH, 422), `useProductCategoryInlineEdit` (riga aperta, conferma
+      funzione aziendale), `useProductCategoryDraftValues`, `useProductCategoryParentPicker`. Rimossi: la pagina di
+      modifica, `ProductCategoryFormHeader`, `ProductCategoryFormSummary`, le sezioni a form (`identity`, `rules`,
+      `attributes`, `manager-labels`), `ProductCategoryDetailRules`, `useProductCategoryFormMeta`, i18n
+      `form.editTitle/editSubtitle`, `form.summary`, le descrizioni di sezione.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/product-categories/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su Nome/Padre/Descrizione/Funzione aziendale/regola/campo personalizzato: Salva invia il solo
+      campo cambiato; Annulla/Esc non chiamano.</ac>
+    <ac id="AC-003">Su una sottocategoria le regole decise dalla radice e la funzione ereditata non hanno la matita e
+      nominano la categoria sorgente; la Semplificazione riga offerta si forza con l'override.</ac>
+    <ac id="AC-004">Le righe Attributi e Gestori Account aprono l'editor della creazione; Salva invia attributi e
+      barriere / etichette e barriera, nient'altro.</ac>
+    <ac id="AC-005">Senza permesso di modifica (o su un campo non editabile) nessuna matita.</ac>
+    <ac id="AC-006">Creazione e duplicazione: righe chiuse con valori ereditati live, editor di attributi e gestori
+      aperti, Salva crea tutto, uscita con conferma.</ac>
+    <ac id="AC-007">Guida in-app IT/EN `product-categories` aggiornata.</ac>
+  </acceptance>
+</spec>

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -12,16 +12,14 @@ import { parseEntityId } from '@/routes/entity-id'
 import NotFoundPage from '@/pages/not-found-page'
 
 /**
- * Dedicated read-only page of a single referent (spec 0022, replaces the view
- * Sheet). Mirrors `RegistryDetailPage`: fresh re-authorized fetch on mount,
- * unchanged presentational `ReferentDetailView`; the record card owns the
- * single "Edit" affordance, gated by the `permissions` block of THIS
- * response.
+ * Dedicated page of a single referent (spec 0022, replaces the view Sheet).
+ * Mirrors `RegistryDetailPage`: fresh re-authorized fetch on mount, then
+ * `ReferentDetailView`, which edits its fields in place (spec 0216) under the
+ * `permissions` block of THIS response. There is no edit page.
  */
 export default function ReferentDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams()
-  const navigate = useNavigate()
   const referentId = parseEntityId(id)
 
   const {
@@ -69,10 +67,7 @@ export default function ReferentDetailPage() {
         ) : isLoading || !referent ? (
           <DetailLoading />
         ) : (
-          <ReferentDetailView
-            referent={referent}
-            onEdit={() => void navigate(`/referents/${referentId}/edit`)}
-          />
+          <ReferentDetailView referent={referent} />
         )}
       </div>
     </div>

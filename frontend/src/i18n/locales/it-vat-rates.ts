@@ -15,7 +15,7 @@ export const vatRates = {
   },
   detail: {
     title: 'Dettaglio aliquota IVA',
-    subtitle: "Visualizzazione in sola lettura dell'aliquota IVA selezionata.",
+    subtitle: "Dettaglio dell'aliquota IVA selezionata, modificabile sul posto.",
     loadError: "Impossibile caricare l'aliquota IVA. Riprova.",
     details: 'Dettagli',
     created_at: 'Creato il',
@@ -41,6 +41,12 @@ export const vatRates = {
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: "Impossibile eliminare l'aliquota IVA. Riprova.",
     deleteForbidden: 'Non puoi eliminare questa aliquota IVA.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: "L'aliquota IVA non è ancora stata creata: i dati inseriti andranno persi.",
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',

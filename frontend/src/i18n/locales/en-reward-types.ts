@@ -23,7 +23,7 @@ export const rewardTypes = {
   },
   detail: {
     title: 'Reward type details',
-    subtitle: 'Read-only view of the selected reward type.',
+    subtitle: 'Details of the selected record, editable in place.',
     loadError: 'Unable to load the reward type. Please try again.',
     color: 'Color',
     created_at: 'Created at',
@@ -33,8 +33,6 @@ export const rewardTypes = {
     newRewardType: 'New reward type',
     createTitle: 'Create reward type',
     createSubtitle: 'Add a new voucher, reward or incentive type.',
-    editTitle: 'Edit reward type',
-    editSubtitle: 'Update the selected reward type.',
     name: 'Name',
     nameRequired: 'Name is required.',
     nameMax: 'Name must be at most 191 characters.',
@@ -51,10 +49,15 @@ export const rewardTypes = {
     deleteError: 'Unable to delete the reward type. Please try again.',
     deleteForbidden: 'You cannot delete this reward type.',
     deleteInUseFallback: 'This reward type is in use and cannot be deleted.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The record has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name and color of the reward type.',
       },
     },
   },

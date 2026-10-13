@@ -9,6 +9,7 @@ use App\Models\Address;
 use App\Models\Campaign;
 use App\Models\City;
 use App\Models\Contact;
+use App\Models\Country;
 use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\PersonalData;
@@ -75,6 +76,8 @@ class QualificaSampleLeadSeeder extends Seeder
     private const string PROJECT_NAME = 'Progetto commerciale di esempio';
 
     private const string CAMPAIGN_NAME = 'Campagna lead di esempio';
+
+    private const string PROJECT_COUNTRY_ISO2 = 'IT';
 
     private const int CITY_SAMPLE = 200;
 
@@ -153,7 +156,9 @@ class QualificaSampleLeadSeeder extends Seeder
             pipelineStatusId: null,
             productLines: null,
             stateId: null,
-            startDate: null,
+            // Required by the campaign form; the country is inherited from
+            // the linked project.
+            startDate: now()->toDateString(),
             endDate: null,
             totalBudget: null,
             targetLead: $leads,
@@ -182,11 +187,12 @@ class QualificaSampleLeadSeeder extends Seeder
             stateId: null,
             partnerId: null,
             operationalSiteId: null,
-            startDate: null,
+            // Country and start date are required by the project form.
+            startDate: now()->toDateString(),
             endDate: null,
             totalBudget: null,
             targetLead: $leads,
-            countryId: null,
+            countryId: Country::query()->where('iso2', self::PROJECT_COUNTRY_ISO2)->value('id'),
             provinceId: null,
             cityId: null,
         ));

@@ -1,29 +1,26 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { RoleForm } from '@/features/roles/role-form'
-import type { RoleDetailWithPermissions } from '@/features/roles/types'
 import type { ResourceMeta } from '@/features/authorization/types'
 
 /**
  * Acceptance criteria 11-16 (spec 0004): the metadata-driven behaviour of the
  * form (hidden fields, readonly/disabled fields, required labels, edit-seeded
- * permissions + 422 mapping, graceful fallback). AC14 (gated action
- * affordance) does not apply here — the role form has no action buttons of
+ * permissions + 422 mapping, graceful fallback). AC12 and AC15 now live in
+ * `role-detail-inline-edit.test.tsx`, the only edit surface (spec 0230).
+ * AC14 (gated action affordance) does not apply here — the role form has no action buttons of
  * its own (covered instead by `user-form-metadata.test.tsx`, avatar
  * upload/remove). The roles-CRUD behaviour itself (payload diffing, members
  * hydration, …) is covered by `role-form.test.tsx`.
  */
 
 const createRoleMock = vi.fn()
-const updateRoleMock = vi.fn()
 
 vi.mock('@/features/roles/api', () => ({
   createRole: (...args: unknown[]) => createRoleMock(...args),
-  updateRole: (...args: unknown[]) => updateRoleMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
@@ -56,27 +53,14 @@ function labelFor(text: string): HTMLElement {
   )
 }
 
+const findPencilOf = (field: string) =>
+  screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field }) })
+
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   )
-}
-
-function role(overrides: Partial<RoleDetailWithPermissions> = {}): RoleDetailWithPermissions {
-  return {
-    id: 3,
-    name: 'Editor',
-    permissions: ['users.viewAny'],
-    created_at: null,
-    field_permissions: [],
-    authorization: {
-      resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-      fields: {},
-      actions: {},
-    },
-    ...overrides,
-  }
 }
 
 beforeAll(async () => {
@@ -85,11 +69,10 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createRoleMock.mockReset()
-  updateRoleMock.mockReset()
   fetchResourceMetaMock.mockReset()
 })
 
-describe('RoleForm — metadata-driven authorization (spec 0004)', () => {
+describe('RoleForm — metadata-driven authorization (spec 0004, create)', () => {
   it('AC11/13 — hides a hidden field, marks a required field from create-context metadata', async () => {
     fetchResourceMetaMock.mockResolvedValue({
       fields: [],
@@ -111,53 +94,23 @@ describe('RoleForm — metadata-driven authorization (spec 0004)', () => {
     })
 
     render(
-      <RoleForm
-        mode={{ type: 'create' }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
+      <RoleForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
     // AC11: the hidden field (and everything it would have rendered) is
     // absent from the DOM.
-    await waitFor(() => expect(screen.getByLabelText(/^Name/)).toBeInTheDocument())
+    fireEvent.click(await findPencilOf('Name'))
+    expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
     expect(screen.queryByText('Permissions')).not.toBeInTheDocument()
     expect(screen.queryByText('Select all permissions')).not.toBeInTheDocument()
 
     // AC13: `required` from metadata drives the label's `*` — name is
     // required, the (visible) members field is not.
     expect(labelFor('Name').textContent).toContain('*')
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.apply') }))
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Members' }) }))
     expect(labelFor('Members').textContent).not.toContain('*')
-  })
-
-  it('AC12 — edit mode renders a readonly/non-editable field (super-admin role name) disabled', () => {
-    render(
-      <RoleForm
-        mode={{
-          type: 'edit',
-          role: role({
-            name: 'super-admin',
-            authorization: {
-              resource: { view: true, create: true, update: false, delete: false, export: true, import: false },
-              fields: {
-                name: {
-                  visible: true, hidden: false, editable: false, readonly: true, required: false, disabled: false,
-                },
-              },
-              actions: {},
-            },
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    const name = screen.getByLabelText(/^Name/)
-    expect(name).toBeDisabled()
-    expect(name).toHaveAttribute('readonly')
   })
 
   it('AC16 — falls back to visible+editable when a field is missing from metadata', async () => {
@@ -176,48 +129,12 @@ describe('RoleForm — metadata-driven authorization (spec 0004)', () => {
     })
 
     render(
-      <RoleForm
-        mode={{ type: 'create' }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
+      <RoleForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
     // No crash, and the field renders visible + editable (the graceful default).
-    await waitFor(() => expect(screen.getByLabelText(/^Name/)).toBeInTheDocument())
+    fireEvent.click(await findPencilOf('Name'))
     expect(screen.getByLabelText(/^Name/)).toBeEnabled()
-  })
-
-  it('AC15 — seeds permissions from the loaded detail and surfaces a 422 field error inline', async () => {
-    updateRoleMock.mockRejectedValue(
-      new AxiosError(
-        'Unprocessable',
-        '422',
-        undefined,
-        undefined,
-        {
-          status: 422,
-          data: { success: false, message: 'Validation failed', errors: { name: ['field not editable'] } },
-        } as never,
-      ),
-    )
-    vi.spyOn(axios, 'isAxiosError').mockReturnValue(true)
-
-    render(
-      <RoleForm
-        mode={{ type: 'edit', role: role() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(screen.getByText('field not editable')).toBeInTheDocument())
-    expect(updateRoleMock).toHaveBeenCalledTimes(1)
-
-    vi.restoreAllMocks()
   })
 })

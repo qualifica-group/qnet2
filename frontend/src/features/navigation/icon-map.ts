@@ -1,6 +1,7 @@
 import {
   Activity,
   Award,
+  BookOpen,
   BookUser,
   Briefcase,
   CalendarClock,
@@ -23,6 +24,7 @@ import {
   MapPin,
   Megaphone,
   Package,
+  Plug,
   Percent,
   Puzzle,
   Ruler,
@@ -49,7 +51,6 @@ import {
   Wallet,
   HandCoins,
   IdCard,
-  BookOpen,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -121,6 +122,9 @@ const iconMap: Record<string, LucideIcon> = {
   // Spec 0212: "Provvigioni agenti" group under Contabilita'.
   'hand-coins': HandCoins,
   'id-card': IdCard,
+  // Spec 0209: "API e integrazioni" under Amministrazione.
+  plug: Plug,
+  // "Documentazione API" under Develop.
   'book-open': BookOpen,
 }
 

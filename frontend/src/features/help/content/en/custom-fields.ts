@@ -16,7 +16,7 @@ const guide: HelpGuide = {
       id: 'create-custom-field',
       title: 'Creating a custom field',
       blocks: [
-        { type: 'steps', items: ['Open **Administration › Custom Fields**.', 'Click **New custom field**.', 'Fill in the sections. The **Preview** box shows in real time how the field will look.', 'Click **Save**.'] },
+        { type: 'steps', items: ['Open **Administration › Custom Fields**.', 'Click **New custom field**.', 'The **Preview** box shows in real time how the field will look. The rows start closed: press the pencil (or click the value) of **Module**, **Type**, **Key** and **Label**, fill it in and confirm with **Done**; **Revert** puts the row back as it was.', 'The editors that depend on the type (settings, options, relation, table columns, validation) appear already open below the rows.', 'Click **Save**, at the top or at the bottom of the page. **Cancel** asks for confirmation before discarding what you entered.'] },
         {
           type: 'table',
           headers: ['Field', 'What to enter'],
@@ -59,7 +59,7 @@ const guide: HelpGuide = {
             ['**Table**', 'Several rows with their own columns, for example the inspection audits of a work order.'],
           ],
         },
-        { type: 'list', items: ['**Option list:** add values with **Add option**. Each option has **Value**, **Label** and, if you want, a color and icon. At least one option is required.', '**Relation:** choose the **Target module** and the **Cardinality**: **Single** links one record, **Multiple** links several.', '**Text** and numbers: you can set lengths, minimum, maximum and decimal digits.'] },
+        { type: 'list', items: ['**Option list:** add values with **Add option**. Each option has **Value**, **Label** and, if you want, a color and icon. At least one option is required.', '**Relation:** choose the **Target module** and the **Cardinality**: **Single** links one record, **Multiple** links several. You can also choose **Provinces** as the target module: the field then picks among the provinces.', '**Text** and numbers: you can set lengths, minimum, maximum and decimal digits.'] },
         { type: 'paragraph', text: 'In the **Validation** section, **Required** prevents saving with the field empty. **Unique** prevents two records of the same module from sharing the same value.' },
       ],
     },
@@ -90,10 +90,19 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'edit-in-place',
+      title: 'Editing a field in place',
+      blocks: [
+        { type: 'paragraph', text: "A field's record has no edit form: every row is edited in place. Press the pencil on a row (for example **Label**, **Group**, **Sort order**, **Active** or **Indexed**), change the value and press **Save**; **Cancel** or Esc leave the row as it was. Each row saves only its own data." },
+        { type: 'paragraph', text: '**Presentation** is a single row grouping description, help text, placeholder and icon. The settings that depend on the type are full-width rows with their own pencil: **Field settings**, **Options** (list), **Relation**, **Columns** (table) and **Validation**; the pencil opens the same editor as creation and **Save** sends only that part.' },
+        { type: 'note', text: '**Module**, **Type** and **Key** are chosen at creation and cannot be changed afterwards: they have no pencil. Without the edit permission no row has a pencil.' },
+      ],
+    },
+    {
       id: 'edit-deactivate-delete',
       title: 'Editing, deactivating and deleting',
       blocks: [
-        { type: 'list', items: ['**Edit:** open the record with **View**, press **Edit**, change the data and click **Save**.', '**Deactivate:** turn off **Active**. The field disappears everywhere, but the values already entered remain.', '**Delete:** choose **Delete** and confirm.'] },
+        { type: 'list', items: ['**Edit:** open the record with **View** and edit the rows in place (see the previous section).', '**Deactivate:** turn off **Active**. The field disappears everywhere, but the values already entered remain.', '**Delete:** choose **Delete** and confirm.'] },
         { type: 'warning', text: "Once a field already holds values, you can no longer change its **Module**, **Type** and **Key**. Deleting a field also deletes all its values: when in doubt, deactivate it instead." },
       ],
     },

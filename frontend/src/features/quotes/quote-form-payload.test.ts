@@ -10,6 +10,7 @@ function formValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
   return {
     code: 'QUO-0001',
     title: 'Offerta cliente Acme',
+    quote_date: '2026-03-15',
     opportunity_id: 10,
     // Matches `detail()`'s default below (quote_workflow_status_id is a required FK,
     // never null) so the "unchanged" fixtures below are genuinely unchanged.
@@ -38,6 +39,7 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     id: 5,
     code: 'QUO-0001',
     title: 'Offerta cliente Acme',
+    quote_date: '2026-03-15',
     opportunity_id: 10,
     opportunity: { id: 10, name: 'Deal Acme' },
     quote_workflow_status_id: 1,
@@ -110,6 +112,10 @@ describe('buildCreatePayload', () => {
 
   it('omits a blank title, so the server derives the automatic one (spec 0171 rev.2)', () => {
     expect(buildCreatePayload(formValues({ title: '  ' }))).not.toHaveProperty('title')
+  })
+
+  it('sends the quote date on create (spec 0228)', () => {
+    expect(buildCreatePayload(formValues({ quote_date: '2026-10-12' })).quote_date).toBe('2026-10-12')
   })
 
   it('sends opportunity_id on create', () => {
@@ -206,6 +212,10 @@ describe('buildUpdatePayload', () => {
   it('includes only the field that changed', () => {
     const payload = buildUpdatePayload(formValues({ title: 'Titolo aggiornato' }), detail())
     expect(payload).toEqual({ title: 'Titolo aggiornato' })
+  })
+
+  it('sends the quote date only when it changed (spec 0228)', () => {
+    expect(buildUpdatePayload(formValues({ quote_date: '2026-04-01' }), detail())).toEqual({ quote_date: '2026-04-01' })
   })
 
   it('sends null for a cleared title, back to the automatic one (spec 0171 rev.2)', () => {

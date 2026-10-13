@@ -207,7 +207,7 @@ it('AC-064: GET show exposes permissions.fields with the full key set, code read
     // manager_slots joined it with spec 0087, D-1 (the Offerta's own Gestori
     // Account).
     expect(array_keys($fields))->toEqual([
-        'code', 'title', 'opportunity_id', 'quote_workflow_status_id', 'commercial_id',
+        'code', 'title', 'quote_date', 'opportunity_id', 'quote_workflow_status_id', 'commercial_id',
         'reporter_id', 'supervisor_id', 'company_id', 'company_site_id', 'operational_site_id',
         'layout_id', 'payment_method_id', 'internal_notes', 'manager_slots', 'offer_lines', 'cost_lines',
         'attribute_values', 'commissions', 'commission_recipient', 'commission_type',

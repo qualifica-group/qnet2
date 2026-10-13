@@ -212,7 +212,7 @@ it('opportunities update: resubmitting the OWN lines unchanged passes (AC-011)',
 });
 
 // ---------------------------------------------------------------------------
-// projects / campaigns / commission configurations — AC-012
+// projects / campaigns — AC-012 (commission configurations: spec 0223 below)
 // ---------------------------------------------------------------------------
 
 // Spec 0094 (D-1/D-2) replaced the scalar business_function_id/
@@ -255,12 +255,14 @@ it('campaigns create: an unselectable category is rejected (AC-012)', function (
     ])->assertStatus(422)->assertJsonValidationErrors('product_lines.0.product_category_id');
 });
 
-it('commission configurations create: an unselectable category is rejected (AC-012)', function () {
+// Spec 0223 D-5 emends AC-012 for commission rules only: a rule on a container
+// category covers its whole branch, so the container is a valid target.
+it('commission configurations create: an unselectable container category is accepted (spec 0223 AC-006)', function () {
     $container = ProductCategory::factory()->create(['is_selectable' => false]);
     Sanctum::actingAs(selectableCategoryActorWith(['commission-configurations.create']));
 
     $this->postJson('/api/commission-configurations', [
-        'name' => 'Rejected rule',
+        'name' => 'Branch rule',
         'recipient_role' => 'COMMERCIAL',
         'application_scope' => 'PRODUCT_CATEGORY',
         'product_category_id' => $container->id,
@@ -269,5 +271,5 @@ it('commission configurations create: an unselectable category is rejected (AC-0
         'priority' => 0,
         'valid_from' => '2026-01-01',
         'status' => 'ACTIVE',
-    ])->assertStatus(422)->assertJsonValidationErrors('product_category_id');
+    ])->assertCreated()->assertJsonPath('data.product_category_id', $container->id);
 });

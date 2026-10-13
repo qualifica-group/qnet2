@@ -1,11 +1,13 @@
 <?php
 
 use App\Models\Country;
+use App\Models\CustomFieldDefinition;
 use App\Models\MigrationRun;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Sector;
 use App\Models\Source;
+use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -215,4 +217,30 @@ it('skips already imported registries on a second run', function () {
     expect($second->skipped_rows)->toBe(1)
         ->and($second->created_rows)->toBe(0)
         ->and(Registry::query()->where('old_id', 46)->count())->toBe(1);
+});
+
+it('writes the remapped legacy tags into the tags custom field', function () {
+    CustomFieldDefinition::factory()->forEntity('registries')->ofType('relation')->create([
+        'key' => 'tags',
+        'relation_target' => ['entity_type' => 'tags', 'cardinality' => 'many', 'for_select_resource' => 'tags'],
+    ]);
+    [$first, $second] = Tag::factory()->count(2)->create();
+    $first->forceFill(['old_id' => 81])->save();
+    $second->forceFill(['old_id' => 82])->save();
+    fakeLegacyRegistries([['id' => 48, 'is_private' => false, 'company_name' => 'Tagged Srl', 'tag_ids' => [82, 81, 899]]]);
+
+    $run = runRegistriesMigration();
+
+    expect(Registry::query()->where('old_id', 48)->firstOrFail()->custom_fields)->toBe(['tags' => [$second->id, $first->id]])
+        ->and(registriesRunWarnings($run))->toBe(['Unresolved tag_ids (legacy id 899).']);
+});
+
+it('reports the tags when the tags custom field is not defined', function () {
+    Tag::factory()->create()->forceFill(['old_id' => 83])->save();
+    fakeLegacyRegistries([['id' => 49, 'is_private' => false, 'company_name' => 'Untagged Srl', 'tag_ids' => [83]]]);
+
+    $run = runRegistriesMigration();
+
+    expect($run->created_rows)->toBe(1)
+        ->and(registriesRunWarnings($run))->toBe(['Tags not imported: the registries "tags" custom field is not defined.']);
 });

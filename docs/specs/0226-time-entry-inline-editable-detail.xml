@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0226-time-entry-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    La voce di segnatempo (modulo Ore) riceve le stesse modifiche dei moduli gia' migrati (spec 0195-0200,
+    0216-0222): niente modulo di modifica, il dettaglio si edita sul posto campo per campo; la creazione e' una
+    replica del dettaglio a righe chiuse. Primo modulo dell'onda 2 del piano "nessuna pagina di modifica",
+    riaperta dall'utente il 2026-10-12 (esclusi Gestione richieste, Gestione iscritti, Attiva, Gestione conti).
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-12, "onda 2"): regole 0195 D-2/D-3/D-6/D-8 con `RecordInlineField`,
+      `useDraftInlineEdit`; nessuna modifica backend.
+    - D-2: righe (stesso ordine in creazione): Titolo, Data, Tipo, Contesto segnatempo (UNA riga per Cliente,
+      Opportunita', Commessa, Fase e Attivita': la cascata D-5 di spec 0122 resta in un solo editor), Orario (UNA
+      riga per Dalle ore, Alle ore e Tempo: il Tempo si ricalcola dagli orari, AC-029 di spec 0122), Note.
+    - D-3: con un'Attivita' (task) collegata il Titolo non ha matita (lo impone il task, spec 0122 D-5).
+    - D-4: il salvataggio di una riga usa il PUT completo esistente (`PUT /api/time-entries/{id}`): il form
+      contiene tutto il record, cambia solo il campo dell'editor aperto. Senza `permissions.update` nessuna
+      matita; "Elimina" (con conferma) resta nel piede del dettaglio se `permissions.delete`.
+    - D-5: dove si apre il dettaglio: clic sul titolo della voce o "Apri" nel menu riga della giornata (era
+      "Modifica"), clic su una voce nella scheda Segnatempo del task, rotta `/time-entries/:id`. Il cambio tipo
+      in linea nella tabella della giornata resta.
+    - D-6: la creazione (sheet "Nuovo segnatempo", "+" del giorno, rotta `/time-entries/new`) mostra le stesse
+      righe chiuse con Fatto/Ripristina; Reimposta, Annulla, Aggiungi nel piede; la conferma di uscita con
+      modifiche non salvate resta.
+    - D-7: fuori scope: l'editor "Nuovo intervallo" nella scheda Segnatempo del task e la sezione segnatempo
+      della chiusura del task (gia' parte del dettaglio del task, spec 0195): restano come sono.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica.</backend>
+    <frontend>
+      `TimeEntryEditSheet` -> `TimeEntryDetailSheet`; nuovi `TimeEntryDetail` (righe sul posto) e
+      `TimeEntryCreateForm` (bozza a righe chiuse); `useTimeEntryForm` in edit risincronizza i valori dal record
+      salvato; nuovo `useTimeEntryInlineEdit`; campi estratti in `time-entry-fields.tsx` e condivisi con
+      `TimeEntryEditor` (che resta solo per gli editor incorporati nel task, senza titolo ne' contesto).
+      Rimossi `TimeEntryFormBody`, `TimeEntryFormScreen`, il ramo "edit" di `TimeEntryFormActions`.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessun modulo di modifica: il dettaglio mostra righe chiuse; nel menu riga "Apri" invece di
+      "Modifica".</ac>
+    <ac id="AC-002">Matita su una riga: Salva invia il PUT con il solo campo cambiato rispetto al record;
+      Annulla/Esc non chiamano l'API.</ac>
+    <ac id="AC-003">Task collegato: Titolo senza matita. Senza permesso di modifica nessuna matita.</ac>
+    <ac id="AC-004">Creazione: righe chiuse, Fatto/Ripristina, Aggiungi valida tutto e crea con il payload di
+      spec 0122 (user_id del chiamante compreso).</ac>
+    <ac id="AC-005">Guida in-app IT/EN `time-entries` aggiornata.</ac>
+  </acceptance>
+</spec>

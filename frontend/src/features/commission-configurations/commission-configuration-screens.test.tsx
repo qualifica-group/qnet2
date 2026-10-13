@@ -10,6 +10,7 @@ import {
 } from './commission-configuration-screens'
 
 const useDetail = vi.hoisted(() => vi.fn())
+const detailProps = vi.hoisted(() => ({ current: null as null | Record<string, unknown> }))
 const formProps = vi.hoisted(() => ({ current: null as null | Record<string, unknown> }))
 vi.mock('@/hooks/use-entity-detail', () => ({
   useEntityDetail: (...args: unknown[]) => useDetail(...args),
@@ -21,7 +22,10 @@ vi.mock('./commission-configuration-form', () => ({
   },
 }))
 vi.mock('./commission-configuration-detail', () => ({
-  CommissionConfigurationDetailView: () => <div>configuration detail</div>,
+  CommissionConfigurationDetailView: (props: Record<string, unknown>) => {
+    detailProps.current = props
+    return <div>configuration detail</div>
+  },
 }))
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -42,6 +46,7 @@ describe('commission configuration screens', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     formProps.current = null
+    detailProps.current = null
   })
 
   it('covers detail loading, error retry and ready states', () => {
@@ -58,6 +63,15 @@ describe('commission configuration screens', () => {
     expect(screen.getByText('configuration detail')).toBeInTheDocument()
   })
 
+  it('passes onChanged to the detail view, which edits in place', () => {
+    const onChanged = vi.fn()
+    useDetail.mockReturnValue({ data: detail, isLoading: false, isError: false, refetch: vi.fn() })
+    render(<CommissionConfigurationDetailScreen id={1} onChanged={onChanged} />)
+
+    expect(detailProps.current?.onChanged).toBe(onChanged)
+    expect(detailProps.current).not.toHaveProperty('onEdit')
+  })
+
   it('renders create and forwards saved ids', () => {
     const onSuccess = vi.fn()
     render(<CommissionConfigurationFormScreen mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper })
@@ -68,28 +82,24 @@ describe('commission configuration screens', () => {
 
   it('reads the supplier registry from the create params (spec 0204)', () => {
     render(<CommissionConfigurationFormScreen mode={{ type: 'create', params: { registry_id: 12 } }} onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
-    expect(formProps.current?.mode).toEqual({ type: 'create', supplierRegistryId: 12 })
+    expect(formProps.current?.supplierRegistryId).toBe(12)
   })
 
-  it('covers edit loading, error retry and ready states', () => {
-    const refetch = vi.fn()
-    useDetail.mockReturnValue({ data: undefined, isLoading: true, isError: false, refetch })
-    const props = { mode: { type: 'edit' as const, id: 1 }, onSuccess: vi.fn(), onCancel: vi.fn() }
-    const { rerender } = render(<CommissionConfigurationFormScreen {...props} />, { wrapper })
-    expect(document.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(8)
-    useDetail.mockReturnValue({ data: undefined, isLoading: false, isError: true, refetch })
-    rerender(<CommissionConfigurationFormScreen {...props} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(refetch).toHaveBeenCalled()
-    useDetail.mockReturnValue({ data: detail, isLoading: false, isError: false, refetch })
-    rerender(<CommissionConfigurationFormScreen {...props} />)
-    expect(screen.getByText('configuration form')).toBeInTheDocument()
+  it('has no edit form: an edit mode renders nothing', () => {
+    const { container } = render(
+      <CommissionConfigurationFormScreen mode={{ type: 'edit', id: 1 }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      { wrapper },
+    )
+    expect(container).toBeEmptyDOMElement()
   })
 
   it('exports the expected module registry descriptor', () => {
     expect(moduleScreen).toMatchObject({
       domain: 'commission-configurations',
       basePath: '/commission-configurations',
+      generateEditRoute: false,
+      detailOwnsEditAction: true,
+      formOwnsHeader: true,
     })
   })
 })

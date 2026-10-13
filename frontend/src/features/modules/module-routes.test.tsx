@@ -23,7 +23,8 @@ function elementOf(route: { element?: React.ReactNode } | undefined) {
 }
 
 describe('buildModuleRoutes — payment-methods deep-links (AC-113)', () => {
-  it('generates new/:id/:id-edit/:id-duplicate for the payment-methods domain', () => {
+  // Wave 3 of the "no edit pages" plan: the detail edits in place, so no `:id/edit`.
+  it('generates new/:id/:id-duplicate for the payment-methods domain, no edit route', () => {
     const routes = buildModuleRoutes()
     const paymentMethodRoutes = routes.filter(
       (route) => typeof route.path === 'string' && route.path.startsWith('payment-methods'),
@@ -33,7 +34,6 @@ describe('buildModuleRoutes — payment-methods deep-links (AC-113)', () => {
     expect([...byPath.keys()].sort()).toEqual([
       'payment-methods/:id',
       'payment-methods/:id/duplicate',
-      'payment-methods/:id/edit',
       'payment-methods/new',
     ])
 
@@ -44,10 +44,6 @@ describe('buildModuleRoutes — payment-methods deep-links (AC-113)', () => {
     const detailRoute = elementOf(byPath.get('payment-methods/:id'))
     expect(detailRoute.type).toBe(ModuleDetailPage)
     expect(detailRoute.props).toMatchObject({ domain: 'payment-methods' })
-
-    const editRoute = elementOf(byPath.get('payment-methods/:id/edit'))
-    expect(editRoute.type).toBe(ModuleFormPage)
-    expect(editRoute.props).toMatchObject({ domain: 'payment-methods' })
 
     const duplicateRoute = elementOf(byPath.get('payment-methods/:id/duplicate'))
     expect(duplicateRoute.type).toBe(ModuleFormPage)

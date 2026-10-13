@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Authorization\LegacyIdVisibility;
 use App\Models\Address;
 use App\Models\BusinessFunction;
 use App\Models\OperationalSite;
@@ -21,6 +22,7 @@ class BusinessFunctionResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id),
             'name' => $this->name,
             'is_business_unit' => $this->is_business_unit,
             'is_business_service' => $this->is_business_service,

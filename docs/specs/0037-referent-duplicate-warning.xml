@@ -147,4 +147,34 @@
     </changes>
   </amendment>
 
+  <amendment id="A2" date="2026-10-08" owner="utente">
+    <summary>Chiusi i varchi rimasti al vincolo di unicita' CF/P.IVA/telefono e confronto incrociato
+      CF&lt;-&gt;P.IVA. SDI ed email invariati (SDI non e' univoco per natura: 0000000 e codici degli
+      intermediari; email resta solo avviso).</summary>
+    <changes>
+      <item>Confronto incrociato: un identificativo fiscale e' confrontato con ENTRAMBE le colonne
+            (`IdentityUniquenessScope::withFiscalIdentifier`), sia nel gate bloccante
+            (`UniquePersonalDataIdentifier`) sia nel pannello (`IdentityDuplicateFinder`, che lo
+            riporta sotto il campo inviato). Motivo: il CF di un'azienda coincide di solito con la
+            P.IVA. Una card con lo stesso numero come CF e P.IVA resta valida.</item>
+      <item>Cliente ESISTENTE di una richiesta: supera il FUORI SCOPE di A1. Nuovo
+            `RequestClientUniquenessGuard`, chiamato da `RequestClientProfileWriter` (unico punto
+            raggiunto da pannello e celle inline). Owner escluso = la Registry della richiesta.
+            422 su `client_identity.{tax_code|vat_number}`, `client_contacts.{i}.value` (pannello) e
+            `client_tax_code|client_vat_number|client_phone` (inline). Si controlla solo un valore che
+            la card NON ha gia': un duplicato legacy gia' presente non blocca il salvataggio.</item>
+      <item>Endpoint contatti `POST/PUT /api/contacts` (dettaglio anagrafica/referente/profilo):
+            telefono unico nel namespace se la card e' nel namespace (`IdentityUniquenessScope::covers`);
+            card CompanySite esclusa; numero invariato su update = no-op. 422 su `value`.</item>
+      <item>FE: il pannello "Possibile duplicato" compare anche sul nuovo cliente del form di
+            creazione richiesta (`RequestCreateClientSection`), disattivo se si sceglie
+            un'anagrafica esistente.</item>
+      <item>Endpoint generico `POST/PUT /api/personal-data`: `StorePersonalDataRequest::
+            validateNamespaceFiscalIdentity` riusa `UniquePersonalDataIdentifier` (owner = personable della
+            card, escluso da se stesso) solo se l'owner e' nel namespace; 422 su `tax_code`/`vat_number`.</item>
+      <item>Import lead: `LeadDuplicateMatcher` cerca il valore fiscale della riga in ENTRAMBE le colonne
+            della card (`cardHoldsFiscalValue`), riportandolo sotto la colonna della riga.</item>
+    </changes>
+  </amendment>
+
 </spec>

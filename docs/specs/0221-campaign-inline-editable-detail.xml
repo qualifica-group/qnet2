@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0221-campaign-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    La Campagna riceve le stesse modifiche dei moduli gia' migrati (spec 0195-0200, 0216-0220): niente pagina di
+    modifica, il dettaglio si edita in place campo per campo, campi personalizzati compresi; la creazione (e la
+    "Duplica", che e' una creazione precompilata) e' una replica del dettaglio a righe chiuse. Sesto modulo
+    dell'onda 1 del piano "nessuna pagina di modifica".
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-12, "procedi"): regole 0195 D-2/D-3/D-6/D-7/D-8/D-9 con `RecordInlineField`,
+      `useDraftInlineEdit`, `CustomFieldRecordSections`, `useFormLeaveGuard`, come Progetti (spec 0220).
+    - D-2: sezioni (stesso ordine in creazione): Anagrafica (Codice solo in creazione, Nome, Descrizione);
+      Collegamento al progetto (Progetto, Partner, Sede, Fonte); Classificazione (Stato, Righe di prodotto);
+      Area geografica (UNA riga per la cascata, un solo editor `GeoSelect` con i livelli del progetto bloccati);
+      Pianificazione (Data inizio, Data fine, Budget totale con il residuo del progetto, Lead obiettivo); Campi
+      personalizzati. Badge e striscia KPI restano in testa (live in creazione). La Descrizione lascia la sezione a
+      tutta larghezza in cima: diventa una riga di Anagrafica come per Progetti.
+    - D-3: la riga Progetto e' una cascata (spec 0023 AC-042, spec 0027 BR-5): scegliere un progetto precompila
+      Partner, Sede, Data inizio (se il progetto ne ha una), Stato, Righe di prodotto e i livelli geografici del
+      progetto (bloccati). Il salvataggio di quella riga porta con se' questi campi. La riga si apre solo se tutti
+      i campi che la cascata scrive sono modificabili (spec 0195 D-6c, `useCascadeEditable`, ora condiviso in
+      `components/record-form`).
+    - D-4: scollegare il progetto (AC-043 invariato) svuota Stato, Righe e livelli geografici, che tornano
+      obbligatori: nello STESSO riquadro della riga Progetto compaiono Stato, Righe di prodotto e Area geografica
+      da compilare, cosi' il salvataggio non fallisce su campi fuori vista. Vale per una campagna che era collegata
+      quando la riga si e' aperta (dettaglio e creazione). Le Righe di prodotto ripartono da UNA riga vuota (non da
+      zero, come una creazione nuova: direttiva utente 2026-07-29).
+    - D-5: campagna collegata: Stato e Righe di prodotto senza matita (derivati dal progetto, BR-2) con la nota
+      gia' esistente; Area geografica modificabile solo sui livelli che il progetto non riempie (nessuna matita se
+      li riempie tutti).
+    - D-6: la creazione semplice preseleziona lo stato di sistema "Nuovo" (spec 0039 D-3) e il paese predefinito
+      (spec 0027, come Progetti 0220 D-3), entrambi solo se il campo e' intatto e la campagna non e' collegata.
+      La "Duplica" resta (codice nuovo, nome con suffisso copia, progetto copiato).
+    - D-7: un 422 su `product_lines` (righe) va nel messaggio dell'editor/testata; il 422 del budget (BR-3) resta
+      sul campo Budget totale.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica: PATCH /api/campaigns/{id} parziale esistente (gia' restituisce `permissions`).</backend>
+    <frontend>
+      Registry `campaigns`: `generateEditRoute: false`, `formOwnsHeader: true`; `CampaignDetailView` perde `onEdit`,
+      guadagna `onChanged`; `updateCampaign` restituisce `CampaignDetailWithPermissions`; `useCampaignForm` solo
+      form (edit = `values` + `keepDirtyValues`), submit in `useCampaignFormSubmit`, nuovo `useCampaignInlineEdit`.
+      `CampaignForm` solo creazione (`{source?, onSuccess, onCancel}`); quick-create senza `mode`.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/campaigns/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su un campo editabile: Salva invia il solo campo cambiato (Area geografica i suoi livelli
+      non bloccati cambiati; Progetto anche i campi della sua cascata); Annulla/Esc/clic fuori non chiamano.</ac>
+    <ac id="AC-003">Codice senza matita nel dettaglio; campagna collegata: Stato e Righe senza matita; senza
+      permesso di modifica nessuna matita; riga Progetto senza matita se un campo della cascata non e'
+      modificabile.</ac>
+    <ac id="AC-004">Scollegando il progetto nel riquadro compaiono Stato, Righe e Area geografica; il salvataggio li
+      invia insieme a `project_id: null`.</ac>
+    <ac id="AC-005">Creazione e Duplica: righe chiuse, codice suggerito, stato e paese predefiniti,
+      Fatto/Ripristina, Salva valida tutto, uscita con conferma.</ac>
+    <ac id="AC-006">Guida in-app IT/EN `campaigns` aggiornata.</ac>
+  </acceptance>
+</spec>

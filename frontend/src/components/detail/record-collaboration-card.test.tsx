@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { RecordBody } from '@/components/detail/record-body'
 import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 
 const TABS = [
@@ -30,18 +29,5 @@ describe('RecordCollaborationCard', () => {
     const { container } = render(<RecordCollaborationCard tabs={[]} />)
 
     expect(container).toBeEmptyDOMElement()
-  })
-})
-
-describe('RecordBody', () => {
-  it('lays out the side column only when one is given', () => {
-    const { container, rerender } = render(<RecordBody side={<p>side</p>}>main</RecordBody>)
-
-    expect(container.firstElementChild?.children).toHaveLength(2)
-
-    rerender(<RecordBody side={null}>main</RecordBody>)
-
-    expect(container.firstElementChild?.children).toHaveLength(1)
-    expect(screen.queryByText('side')).not.toBeInTheDocument()
   })
 })

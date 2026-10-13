@@ -102,7 +102,6 @@ const SHARED_KEYS = [
   'form.nameRequired',
   'form.save',
   'form.saving',
-  'form.sections.identity.description',
   'form.sections.identity.title',
   'form.updated',
   'reorder.dragHandleLabel',
@@ -135,7 +134,6 @@ const STATUS_ONLY_KEYS = [
   'form.group.in_validation',
   'form.group.closed_positive',
   'form.group.closed_negative',
-  'form.hints.systemStatusFields',
   'form.newTaskStatus',
 ]
 

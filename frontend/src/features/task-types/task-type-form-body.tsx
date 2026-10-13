@@ -1,243 +1,63 @@
-import { Shapes } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FormSection } from '@/components/form-section'
-import { IconPicker } from '@/components/icon-picker'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
-import { Form, FormControl, useFormField } from '@/components/ui/form'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
-import { ColorTokenPicker } from '@/features/custom-fields/components/color-token-picker'
+import { useWatch } from 'react-hook-form'
+import { Shapes } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
+import { Form } from '@/components/ui/form'
+import { TaskTypeRows } from '@/features/task-types/task-type-rows'
 import { useTaskTypeForm } from '@/features/task-types/use-task-type-form'
-import type { TaskTypeDetail, TaskTypeFormMode } from '@/features/task-types/types'
+import type { TaskTypeDetail } from '@/features/task-types/types'
+
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const TASK_PRIORITY_FORM_ID = 'task-type-form'
+
+/** Create mode is static: a fresh object per render would rebuild the form's defaults. */
+const CREATE_MODE = { type: 'create' } as const
 
 interface TaskTypeFormBodyProps {
-  mode: TaskTypeFormMode
   onSuccess: (taskType: TaskTypeDetail) => void
   onCancel: () => void
 }
 
-/** The metadata keys this form owns, in render order. */
-const FIELD_KEYS = [
-  'name',
-  'description',
-  'color',
-  'icon',
-  'is_active',
-  'is_default',
-  'requires_time_entry',
-] as const
-
 /**
- * The task type create/edit form UI. Every field is wrapped in `MetaField`
- * (spec 0004): hidden means absent, non-editable means disabled, `required`
- * comes from the resolved `ResourcePermissions` — no hardcoded permission
- * logic lives here. `color` and `icon` reuse the shared `ColorTokenPicker`
- * and `IconPicker` (spec 0101 AC-087), never a bespoke copy.
- * All non-render logic lives in `useTaskTypeForm`.
+ * The task type create form as a replica of the detail (wave 3 of the "no
+ * edit pages" plan): the same rows, closed until clicked (Fatto/Ripristina,
+ * nothing saved per row); Salva validates and creates everything at once.
  */
-export function TaskTypeFormBody({ mode, onSuccess, onCancel }: TaskTypeFormBodyProps) {
+export function TaskTypeFormBody({ onSuccess, onCancel }: TaskTypeFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit } = useTaskTypeForm({ mode, onSuccess })
-
-  const identityVisible = FIELD_KEYS.some((key) => fieldPermission(key).visible)
+  const { form, serverError, onSubmit } = useTaskTypeForm({ mode: CREATE_MODE, onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const name = useWatch({ control: form.control, name: 'name' })
+  const heading = name.trim() || t('taskTypes.form.createTitle')
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4" noValidate>
-          {identityVisible && (
-            <FormSection
-              icon={Shapes}
-              title={t('taskTypes.form.sections.identity.title')}
-              description={t('taskTypes.form.sections.identity.description')}
-            >
-              <MetaField
-                control={form.control}
-                name="name"
-                metaKey="name"
-                label={t('taskTypes.form.name')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="description"
-                metaKey="description"
-                label={t('taskTypes.form.description')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Textarea
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={field.value ?? ''}
-                      onChange={(event) => field.onChange(event.target.value || null)}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="color"
-                metaKey="color"
-                label={t('taskTypes.form.color')}
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <ColorTokenPicker
-                      value={field.value}
-                      onChange={field.onChange}
-                      disabled={disabled}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="icon"
-                metaKey="icon"
-                label={t('taskTypes.form.icon')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <IconPickerControl
-                    value={field.value}
-                    onChange={field.onChange}
-                    disabled={disabled}
-                    readOnly={readOnly}
-                  />
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="is_active"
-                metaKey="is_active"
-                label={t('taskTypes.form.isActive')}
-                layout="inline"
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={disabled}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="is_default"
-                metaKey="is_default"
-                label={t('taskTypes.form.isDefault')}
-                hint={t('taskTypes.form.isDefaultHint')}
-                layout="inline"
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={disabled}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="requires_time_entry"
-                metaKey="requires_time_entry"
-                label={t('taskTypes.form.requiresTimeEntry')}
-                hint={t('taskTypes.form.requiresTimeEntryHint')}
-                layout="inline"
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={disabled}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-card"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('taskTypes.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('taskTypes.form.saving') : t('taskTypes.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
-  )
-}
-
-interface IconPickerControlProps {
-  value: string
-  onChange: (name: string) => void
-  disabled: boolean
-  readOnly: boolean
-}
-
-/**
- * Bridges the shared `IconPicker` into the RHF/`FormItem` context: reads the
- * accessible-error triad ids via `useFormField()` (one level inside the
- * `MetaField` render prop) and supplies the localized picker labels, which are
- * generic UI vocabulary shared with the custom-fields module.
- */
-function IconPickerControl({ value, onChange, disabled, readOnly }: IconPickerControlProps) {
-  const { t } = useTranslation()
-  const { formItemId, formDescriptionId, formMessageId, error } = useFormField()
-
-  return (
-    <IconPicker
-      value={value}
-      onChange={onChange}
-      disabled={disabled}
-      readOnly={readOnly}
-      id={formItemId}
-      describedBy={error ? `${formDescriptionId} ${formMessageId}` : formDescriptionId}
-      invalid={Boolean(error)}
-      labels={{
-        placeholder: t('customFields.form.iconPickerPlaceholder'),
-        searchPlaceholder: t('customFields.form.iconSearchPlaceholder'),
-        empty: t('customFields.form.iconEmpty'),
-        clearLabel: t('customFields.form.iconClear'),
-      }}
-    />
+    <Form {...form}>
+      <RecordCreateLayout
+        formId={TASK_PRIORITY_FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        title={heading}
+        subtitle={t('taskTypes.form.createSubtitle')}
+        media={<DetailMonogram name={heading} icon={<Shapes />} />}
+        isSubmitting={form.formState.isSubmitting}
+        serverError={serverError}
+        onCancel={onCancel}
+        labels={{
+          save: t('taskTypes.form.save'),
+          saving: t('taskTypes.form.saving'),
+          cancel: t('taskTypes.form.cancel'),
+        }}
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('taskTypes.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <TaskTypeRows inline={draft} canEdit />
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
+      </RecordCreateLayout>
+    </Form>
   )
 }

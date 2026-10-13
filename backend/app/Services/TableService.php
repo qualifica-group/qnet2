@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Authorization\LegacyIdVisibility;
 use App\DataObjects\Table\DistinctValuesResult;
 use App\DataObjects\Table\RowsResult;
 use App\Models\User;
@@ -250,6 +251,12 @@ class TableService
     private function mapRowWithMeta(TableDefinition $definition, User $actor, Model $row): array
     {
         $mapped = $definition->mapRow($actor, $row);
+        // The legacy id behind the default `old_id` column (InjectsDefaultIdColumn):
+        // attached for every table whose rows carry it, so no mapRow repeats it,
+        // and only for an actor who may see it.
+        if (array_key_exists('old_id', $row->getAttributes()) && LegacyIdVisibility::allows($actor)) {
+            $mapped['old_id'] ??= $row->getAttribute('old_id');
+        }
         $mapped['actions'] = $definition->actionsFor($actor, $row);
         // Per-row inline-edit authorization (spec 0053, D-4), orthogonal to
         // the per-column `editable` allow-list emitted by GET /columns.

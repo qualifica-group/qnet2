@@ -30,7 +30,7 @@ const guide: HelpGuide = {
             ['General notes', 'Free-form text'],
             ['Details', '**Title** (optional), **Start date**, **Expected close date**, **Estimated value**, **Success probability (%)**'],
             ['Registry and contacts', '**Registry** (required), **Contact**, **Sales rep**, **Reporter** with the **Assigned rewards**'],
-            ['Classification', '**Source**, **Business functions and product categories** (at least one row), **Products of interest**'],
+            ['Classification', '**Source**, **Product lines** (at least one row: parent category, optional intermediate **Filter**, product category), **Products of interest**'],
             ['Team', '**Supervisor**, **Account managers**'],
           ],
         },

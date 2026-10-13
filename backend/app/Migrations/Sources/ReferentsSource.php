@@ -11,6 +11,7 @@ use App\Enums\GenderEnum;
 use App\Enums\PersonalDataTypeEnum;
 use App\Enums\ReferentContactScopeEnum;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsExternalProfileRecord;
@@ -52,6 +53,16 @@ class ReferentsSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Referents';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::optional('referent-types'),
+        ];
     }
 
     /**

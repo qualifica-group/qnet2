@@ -1,46 +1,75 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Building2, Hash, MapPinned, Power } from 'lucide-react'
-import {
-  RecordCanvas,
-  RecordCard,
-  RecordField,
-  RecordFieldList,
-  RecordMeta,
-  RecordSection,
-  RecordSectionsGrid,
-} from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
-import { DetailEmpty } from '@/components/detail/detail-panel'
+import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
+import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field-record-sections'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
 import {
   OperationalSiteDetailHeader,
   OperationalSiteDetailStats,
 } from '@/features/operational-sites/operational-site-detail-header'
+import { OperationalSiteRows } from '@/features/operational-sites/operational-site-rows'
+import {
+  useOperationalSiteForm,
+  type OperationalSiteFormValues,
+} from '@/features/operational-sites/use-operational-site-form'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import type { OperationalSiteDetailWithPermissions } from '@/features/operational-sites/types'
+import type {
+  OperationalSiteDetailWithPermissions,
+  OperationalSiteFormMode,
+} from '@/features/operational-sites/types'
+
+/** Stable empty set: a fresh object per render would break the sections' memo. */
+const NO_CUSTOM_FIELDS: Record<string, CustomFieldValue> = {}
 
 interface OperationalSiteDetailViewProps {
   operationalSite: OperationalSiteDetailWithPermissions
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the site (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single operational site, rendered as an enterprise-CRM
- * record on the same kit Opportunita', Lead, Campagne e Progetti use: the
+ * Detail of a single operational site, rendered as an enterprise-CRM record on
+ * the same kit Opportunita', Lead, Campagne e Progetti use: the
  * identity/KPI/sections card on the left, the activity card on the right, a
- * metadata footer. Container-query driven (`RecordCanvas`) so the same tree
- * renders correctly both inside a resizable Sheet and on the full-bleed
- * `/operational-sites/:id` page.
- *
- * Purely presentational: the caller fetches the fresh, re-authorized detail.
+ * metadata footer. There is no edit page (wave 3 of the "no edit pages"
+ * plan): every row edits IN PLACE, one at a time, each save a PATCH of that
+ * field alone. Purely presentational: the caller fetches the fresh,
+ * re-authorized detail.
  */
-export function OperationalSiteDetailView({
-  operationalSite,
-  onEdit,
-}: OperationalSiteDetailViewProps) {
+export function OperationalSiteDetailView(props: OperationalSiteDetailViewProps) {
+  // The rows read the field permissions, so the provider wraps the whole detail.
+  return (
+    <ResourcePermissionsProvider permissions={props.operationalSite.permissions}>
+      <OperationalSiteDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function OperationalSiteDetailContent({ operationalSite, onChanged }: OperationalSiteDetailViewProps) {
   const { t } = useTranslation()
+  const editing = useInlineEditingField()
+  // Stable per saved record: the form re-syncs its values on a new one.
+  const mode = useMemo<OperationalSiteFormMode>(() => ({ type: 'edit', operationalSite }), [operationalSite])
+  const { form, onSubmit, serverError, clearServerError } = useOperationalSiteForm({
+    mode,
+    onSuccess: () => {
+      editing.close()
+      onChanged?.()
+    },
+  })
+  const inline = useRecordInlineEdit<OperationalSiteFormValues>({
+    editing,
+    form,
+    onSubmit,
+    serverError,
+    clearServerError,
+    genericErrorMessage: t('operationalSites.form.genericError'),
+  })
   const createdAt = formatDateTime(operationalSite.created_at)
   const collaborationTabs = operationalSite.permissions.actions.view_activity
     ? [activityLogTab('operational-sites', operationalSite.id, t('activityLog.title'))]
@@ -49,36 +78,35 @@ export function OperationalSiteDetailView({
   return (
     <RecordCanvas>
       <RecordBody
-        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <OperationalSiteDetailHeader operationalSite={operationalSite} />
+            <OperationalSiteDetailStats operationalSite={operationalSite} />
+          </>
+        }
       >
-        <RecordCard>
-          <OperationalSiteDetailHeader operationalSite={operationalSite} onEdit={onEdit} />
-          <OperationalSiteDetailStats operationalSite={operationalSite} />
-
+        {/* Provider only (no DOM): the in-place rows share the edit form. */}
+        <Form {...form}>
           <RecordSectionsGrid>
-            <RecordSection
-              title={t('operationalSites.form.sections.address.title')}
-              icon={<MapPinned />}
-            >
-              <RecordFieldList>
-                {/* Only when an alias headlines the card: without one the
-                    street IS the title, and repeating it here would say the
-                    same thing twice (the decision the previous card made). */}
-                {operationalSite.alias ? (
-                  <RecordField label={t('operationalSites.detail.line1')} icon={<Building2 />}>
-                    {operationalSite.line1}
-                  </RecordField>
-                ) : null}
-                <RecordField label={t('operationalSites.detail.postal_code')} icon={<Hash />}>
-                  {operationalSite.postal_code || <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('operationalSites.detail.is_active')} icon={<Power />}>
-                  {operationalSite.is_active ? t('common.yes') : t('common.no')}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
+            <OperationalSiteRows
+              form={form}
+              inline={inline}
+              geo={{
+                city: operationalSite.city,
+                province: operationalSite.province,
+                state: operationalSite.region,
+                country: operationalSite.country,
+              }}
+            />
+            <CustomFieldRecordSections
+              resource="operational-sites"
+              values={operationalSite.custom_fields ?? NO_CUSTOM_FIELDS}
+              inline={inline}
+              control={form.control}
+            />
           </RecordSectionsGrid>
-        </RecordCard>
+        </Form>
       </RecordBody>
 
       {createdAt ? (

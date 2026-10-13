@@ -1,7 +1,6 @@
 /**
  * Localized strings for the Company Sites module (spec 0020): grid columns,
- * the read-only detail sheet and the multi-tab create/edit form (Profilo /
- * Impostazioni / Banche).
+ * the in-place editable detail and the create form.
  *
  * Extracted from `it.ts` to keep that file within the engineering size limits
  * (see `.claude/rules/engineering.md` §6). Mirrors `en-company-sites.ts` 1:1.
@@ -27,20 +26,14 @@ export const companySites = {
   },
   detail: {
     title: 'Dettagli sede',
-    subtitle: 'Visualizzazione in sola lettura della sede selezionata.',
+    subtitle: 'Consulta e modifica la sede selezionata.',
     loadError: 'Impossibile caricare la sede. Riprova.',
     defaultBadge: 'Predefinita',
-    summary: {
-      title: 'Riepilogo',
-      description: 'Si aggiorna mentre compili.',
-    },
   },
   form: {
     newCompanySite: 'Nuova sede',
     createTitle: 'Crea sede',
     createSubtitle: 'Aggiungi una nuova sede alla tua società.',
-    editTitle: 'Modifica sede',
-    editSubtitle: 'Aggiorna la sede selezionata.',
     logoLabel: 'Logo',
     name: 'Nome',
     company: 'Società',
@@ -64,30 +57,30 @@ export const companySites = {
     settingDefault: 'Impostazione in corso…',
     defaultSet: 'Questa sede è ora quella predefinita.',
     defaultError: 'Impossibile impostare questa sede come predefinita. Riprova.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'La sede non è ancora stata creata: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       general: {
         title: 'Generale',
-        description: 'Nome, note e logo della sede.',
       },
       identity: {
         title: 'Dati azienda',
-        description: 'Ragione sociale, partita IVA, codice fiscale e codice destinatario SDI.',
       },
       contacts: {
         title: 'Contatti',
-        description: 'Telefono, email, PEC e altri canali di contatto.',
       },
       address: {
         title: 'Indirizzo',
-        description: 'Indirizzo della sede (al massimo uno).',
       },
       company: {
         title: 'Società',
-        description: 'La società a cui è collegata questa sede.',
       },
       banks: {
         title: 'Banche',
-        description: 'Le banche associate a questa sede.',
       },
     },
     banks: {

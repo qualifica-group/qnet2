@@ -1,8 +1,9 @@
+import { useTranslation } from 'react-i18next'
 import { RecordSectionsGrid } from '@/components/detail/record-panel'
 import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field-record-sections'
+import { PersonalDataIdentityRecordSection } from '@/features/personal-data/personal-data-identity-record-section'
 import { persistedRegistryValues } from '@/features/registries/registry-record'
 import { RegistryBusinessRecordSection } from '@/features/registries/registry-record-business'
-import { RegistryIdentityRecordSection } from '@/features/registries/registry-record-identity'
 import {
   RegistryReferentsRecordSection,
   RegistryRelationsRecordSection,
@@ -24,13 +25,19 @@ interface RegistryDetailSectionsProps {
  * renders the same sections in the same order (`RegistryCreateSections`).
  */
 export function RegistryDetailSections({ registry, editor }: RegistryDetailSectionsProps) {
+  const { t } = useTranslation()
   const { form, inline, card } = editor
   const values = persistedRegistryValues(registry)
   const sectionProps = { values, form, inline }
 
   return (
     <RecordSectionsGrid>
-      <RegistryIdentityRecordSection identity={registry.personal_data} buffer={card} inline={inline} />
+      <PersonalDataIdentityRecordSection
+        title={t('registries.form.sections.identity.title')}
+        identity={registry.personal_data}
+        buffer={card}
+        inline={inline}
+      />
       <RegistryRelationsRecordSection {...sectionProps} />
       <RegistryBusinessRecordSection {...sectionProps} />
       <RegistryTeamRecordSection {...sectionProps} />

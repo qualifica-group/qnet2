@@ -15,6 +15,7 @@ function formValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
   return {
     code: 'QUO-0001',
     title: 'Offerta cliente Acme',
+    quote_date: '2026-03-15',
     opportunity_id: 10,
     quote_workflow_status_id: 1,
     note: null,
@@ -41,6 +42,7 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     id: 5,
     code: 'QUO-0001',
     title: 'Offerta cliente Acme',
+    quote_date: '2026-03-15',
     opportunity_id: 10,
     opportunity: { id: 10, name: 'Deal Acme' },
     quote_workflow_status_id: 1,

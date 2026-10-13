@@ -1,54 +1,57 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
+import type { ResourceMeta } from '@/features/authorization/types'
+import { ProductDetailView } from '@/features/products/product-detail'
 import { ProductForm } from '@/features/products/product-form'
+import {
+  RAM_ATTRIBUTE,
+  clickCreateSave,
+  completeRequiredCreateRows,
+  confirmOpenRow,
+  pencilOf,
+  permissionsFor,
+  productFixture,
+  productWrapper,
+} from '@/features/products/product-test-fixtures'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
-import type { EffectiveAttribute } from '@/features/product-categories/types'
 
 /**
- * Spec 0061: the product form's dynamic-fields block, driven by the selected
- * category's PRODUCT-context effective attributes. Reuses the same isolation
- * harness as `product-form-custom-fields.test.tsx` (stubbed category/VAT/
- * supplier pickers), mocking `fetchEffectiveAttributes` instead of the
- * custom-fields meta.
+ * Spec 0061/0062: the category's PRODUCT-context attributes. REQUIREMENT
+ * CHANGED (spec 0218): every attribute is a row — on create once a category
+ * is picked (following the configured create layout), on the detail from the
+ * persisted product, valued or not — and a category change on the detail
+ * asks the new category's attributes inside its own editor (D-4).
  */
 
 const createProductMock = vi.fn()
 const updateProductMock = vi.fn()
+const fetchProductNextCodeMock = vi.fn<() => Promise<string>>()
 
-vi.mock('@/features/products/api', () => ({
+vi.mock('@/features/products/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/products/api')>()),
   createProduct: (...args: unknown[]) => createProductMock(...args),
   updateProduct: (...args: unknown[]) => updateProductMock(...args),
-  fetchProductNextCode: () => Promise.resolve('PRD-0100'),
+  fetchProductNextCode: () => fetchProductNextCodeMock(),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-vi.mock('@/features/config/use-config', () => ({
-  useEnumOptions: () => [
-    { value: 'SERVICE', label: 'Service', color: null, icon: null, is_default: true, hidden_on_form: false },
-  ],
-}))
+vi.mock('@/features/config/use-config', async () => {
+  const { PRODUCT_ENUMS } = await import('@/features/products/product-test-fixtures')
+  return { useEnumOptions: (key: string) => PRODUCT_ENUMS[key] ?? [] }
+})
 
 vi.mock('@/features/product-categories/use-product-category-tree', () => ({
   useProductCategoryTree: () => ({ data: [], isPending: false, isError: false, refetch: () => {} }),
 }))
 
-vi.mock('@/components/ui/searchable-select', () => ({
-  SearchableSelect: ({ onChange }: { onChange: (id: number) => void }) => (
-    <button type="button" onClick={() => onChange(3)}>
-      select-category-3
-    </button>
-  ),
+vi.mock('@/components/ui/searchable-select', async () => ({
+  SearchableSelect: (await import('@/features/products/product-test-stubs')).StubSearchableSelect,
 }))
 
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({ value }: { value: number | null }) => (
-    <div data-testid="product-select-value">{value ?? ''}</div>
-  ),
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/products/product-test-stubs')).StubAsyncSelect,
 }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
@@ -61,31 +64,47 @@ vi.mock('@/features/product-categories/api', () => ({
   fetchEffectiveAttributes: (...args: unknown[]) => fetchEffectiveAttributesMock(...args),
 }))
 
-/**
- * Spec 0062: the layout query is a SEPARATE hook (`useProductAttributeLayout`)
- * from `useEffectiveAttributes` above — mocked independently so this suite
- * controls the layout each test sees without a real network round-trip.
- * Defaults to "no layout configured" (AC-007 flat fallback).
- */
 const productAttributeLayoutMock = vi.fn()
 vi.mock('@/features/products/use-product-attribute-layout', () => ({
   useProductAttributeLayout: (...args: unknown[]) => productAttributeLayoutMock(...args),
 }))
 
-const FULL_ACCESS: ResourcePermissions['resource'] = {
-  view: true,
-  create: true,
-  update: true,
-  delete: true,
-  export: true,
-  import: true,
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+}))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
+
+function renderCreate(onSuccess = vi.fn()) {
+  const { client, wrapper } = productWrapper()
+  render(<ProductForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper })
+  return client
 }
 
-function permissions(): ResourcePermissions {
-  return { resource: FULL_ACCESS, fields: {}, actions: {} }
+function renderDetail(product: ProductDetailWithPermissions) {
+  const { client, wrapper } = productWrapper()
+  render(<ProductDetailView product={product} />, { wrapper })
+  return client
 }
 
-const RAM_ATTRIBUTE: EffectiveAttribute = {
+beforeAll(async () => {
+  await i18n.changeLanguage('en')
+})
+
+beforeEach(() => {
+  vi.restoreAllMocks()
+  createProductMock.mockReset()
+  updateProductMock.mockReset()
+  fetchProductNextCodeMock.mockReset()
+  fetchProductNextCodeMock.mockResolvedValue('PRD-0100')
+  fetchResourceMetaMock.mockReset()
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
+  fetchEffectiveAttributesMock.mockReset()
+  fetchEffectiveAttributesMock.mockResolvedValue([])
+  productAttributeLayoutMock.mockReset()
+  productAttributeLayoutMock.mockReturnValue({ data: null, isLoading: false })
+})
+
+const RAM_APPLICABLE = {
   id: 1,
   code: 'ram_gb',
   name: 'RAM (GB)',
@@ -98,203 +117,103 @@ const RAM_ATTRIBUTE: EffectiveAttribute = {
   relation_target: null,
   is_required: false,
   sort_order: 0,
-  inherited: false,
-  context: 'product',
   options: [],
 }
 
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
+const SPECIFICATIONS_LAYOUT = {
+  sections: [
+    {
+      id: 's1',
+      title: 'Specifications',
+      description: null,
+      variant: 'default' as const,
+      collapsible: false,
+      default_collapsed: false,
+      columns: 1,
+      sort_order: 0,
+      rows: [{ id: 'r1', items: [{ attribute_code: 'ram_gb', width: 'full' as const }] }],
+    },
+  ],
 }
 
-function product(overrides: Partial<ProductDetailWithPermissions> = {}): ProductDetailWithPermissions {
-  return {
-    id: 5,
-    code: 'PRD-0005',
-    name: 'ThinkPad X1',
-    description: null,
-    cost: 800,
-    price: 1200,
-    category_id: 3,
-    category: { id: 3, name: 'Laptops' },
-    product_type: 'SERVICE',
-    created_at: '2026-01-01T00:00:00Z',
-    vat_rate_id: null,
-    vat_rate: null,
-    supplier_id: null,
-    supplier: null,
-    unit_of_measure_id: 1,
-    unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
-    product_typology_id: 1,
-    product_typology: { id: 1, name: 'Ente', color: 'violet' },
-    permissions: permissions(),
-    ...overrides,
-  }
-}
+describe('Product — attribute rows on create (spec 0061)', () => {
+  it('shows no attribute row before a category is picked', async () => {
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-beforeAll(async () => {
-  await i18n.changeLanguage('en')
-})
-
-beforeEach(() => {
-  createProductMock.mockReset()
-  updateProductMock.mockReset()
-  fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissions() })
-  fetchEffectiveAttributesMock.mockReset()
-  fetchEffectiveAttributesMock.mockResolvedValue([])
-  productAttributeLayoutMock.mockReset()
-  productAttributeLayoutMock.mockReturnValue({ data: null, isLoading: false })
-})
-
-describe('ProductForm — dynamic attribute fields (spec 0061)', () => {
-  it('shows the empty hint before any category is picked', async () => {
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    expect(await screen.findByText('Select a category to see its attributes.')).toBeInTheDocument()
+    expect(screen.queryByText('RAM (GB)')).not.toBeInTheDocument()
     expect(fetchEffectiveAttributesMock).not.toHaveBeenCalled()
   })
 
-  it('fetches the PRODUCT context effective attributes once a category is picked and renders a control per attribute', async () => {
+  it("adds a row per attribute of the picked category and sends the kept value", async () => {
     fetchEffectiveAttributesMock.mockResolvedValue([RAM_ATTRIBUTE])
+    createProductMock.mockResolvedValue(productFixture())
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    fireEvent.click(await screen.findByText('select-category-3'))
-
+    completeRequiredCreateRows()
     await waitFor(() => expect(fetchEffectiveAttributesMock).toHaveBeenCalledWith(3, 'product'))
-    expect(await screen.findByRole('spinbutton', { name: 'RAM (GB)' })).toBeInTheDocument()
-  })
-
-  it('submits the filled attribute value in attribute_values', async () => {
-    fetchEffectiveAttributesMock.mockResolvedValue([RAM_ATTRIBUTE])
-    createProductMock.mockResolvedValue(product())
-
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'ThinkPad X1' } })
-    fireEvent.click(screen.getByText('select-category-3'))
-    fireEvent.change(screen.getByLabelText(/^Price/), { target: { value: '1200' } })
-
-    const ramField = await screen.findByRole('spinbutton', { name: 'RAM (GB)' })
-    fireEvent.change(ramField, { target: { value: '16' } })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit RAM (GB)' }))
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'RAM (GB)' }), { target: { value: '16' } })
+    confirmOpenRow('Done')
+    clickCreateSave()
 
     await waitFor(() => expect(createProductMock).toHaveBeenCalledTimes(1))
-    const payload = createProductMock.mock.calls[0][0]
-    expect(payload.attribute_values).toEqual({ ram_gb: 16 })
+    expect(createProductMock.mock.calls[0][0].attribute_values).toEqual({ ram_gb: 16 })
   })
 
-  it('seeds the attribute value from the loaded product in edit mode', async () => {
+  it('follows the configured create layout (spec 0062 AC-014)', async () => {
     fetchEffectiveAttributesMock.mockResolvedValue([RAM_ATTRIBUTE])
+    productAttributeLayoutMock.mockReturnValue({ data: SPECIFICATIONS_LAYOUT, isLoading: false })
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    render(
-      <ProductForm
-        mode={{ type: 'edit', product: product({ attribute_values: { ram_gb: 8 } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    completeRequiredCreateRows()
 
-    expect(await screen.findByRole('spinbutton', { name: 'RAM (GB)' })).toHaveValue(8)
+    await waitFor(() => expect(productAttributeLayoutMock).toHaveBeenCalledWith(3, 'create'))
+    expect(await screen.findByText('Specifications')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit RAM (GB)' })).toBeInTheDocument()
   })
 })
 
-describe('ProductForm — configured attribute layout (spec 0062 AC-014)', () => {
-  it('renders the selected category attributes sectioned when a layout is configured', async () => {
+describe('Product — attribute rows on the detail (spec 0218)', () => {
+  it('shows every attribute, valued or not, and PATCHes the edited one alone', async () => {
     fetchEffectiveAttributesMock.mockResolvedValue([RAM_ATTRIBUTE])
-    productAttributeLayoutMock.mockReturnValue({
-      data: {
-        sections: [
-          {
-            id: 's1',
-            title: 'Specifications',
-            description: null,
-            variant: 'default',
-            collapsible: false,
-            default_collapsed: false,
-            columns: 1,
-            sort_order: 0,
-            rows: [{ id: 'r1', items: [{ attribute_code: 'ram_gb', width: 'full' }] }],
-          },
-        ],
-      },
-      isLoading: false,
-    })
+    updateProductMock.mockResolvedValue(productFixture({ attribute_values: { ram_gb: 32 } }))
+    renderDetail(productFixture({ applicable_attributes: [RAM_APPLICABLE], attribute_values: { ram_gb: null } }))
 
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    fireEvent.click(pencilOf('RAM (GB)'))
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'RAM (GB)' }), { target: { value: '32' } })
+    confirmOpenRow('Save')
 
-    fireEvent.click(await screen.findByText('select-category-3'))
+    await waitFor(() => expect(updateProductMock).toHaveBeenCalledWith(5, { attribute_values: { ram_gb: 32 } }))
+  })
+
+  it('offers no attribute pencil without the update permission (D-5)', () => {
+    renderDetail(
+      productFixture({ applicable_attributes: [RAM_APPLICABLE], permissions: permissionsFor({}, { update: false }) }),
+    )
+
+    expect(screen.getByText('RAM (GB)')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit RAM (GB)' })).not.toBeInTheDocument()
+  })
+
+  it("asks the new category's attributes inside the category editor and sends them together (D-4)", async () => {
+    // The persisted category has no attribute; category 3 (the stub's pick) brings RAM.
+    fetchEffectiveAttributesMock.mockImplementation((categoryId: number) =>
+      Promise.resolve(categoryId === 3 ? [RAM_ATTRIBUTE] : []),
+    )
+    updateProductMock.mockResolvedValue(productFixture())
+    renderDetail(productFixture({ category_id: 9, category: { id: 9, name: 'Desktops' }, applicable_attributes: [] }))
+
+    fireEvent.click(pencilOf('Category'))
+    fireEvent.click(screen.getByTestId('category-select'))
+    expect(await screen.findByText('Attributes of the new category')).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'RAM (GB)' }), { target: { value: '8' } })
+    confirmOpenRow('Save')
 
     await waitFor(() =>
-      expect(productAttributeLayoutMock).toHaveBeenCalledWith(3, 'create'),
+      expect(updateProductMock).toHaveBeenCalledWith(5, { category_id: 3, attribute_values: { ram_gb: 8 } }),
     )
-    expect(await screen.findByRole('heading', { name: 'Specifications' })).toBeInTheDocument()
-    expect(screen.getByRole('spinbutton', { name: 'RAM (GB)' })).toBeInTheDocument()
-  })
-
-  it('AC-007: falls back to the flat list when no layout is configured for the category', async () => {
-    fetchEffectiveAttributesMock.mockResolvedValue([RAM_ATTRIBUTE])
-    productAttributeLayoutMock.mockReturnValue({ data: null, isLoading: false })
-
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    fireEvent.click(await screen.findByText('select-category-3'))
-
-    expect(await screen.findByRole('spinbutton', { name: 'RAM (GB)' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Specifications' })).not.toBeInTheDocument()
-  })
-
-  it('submits attribute_values unchanged (spec 0061 payload) when a layout is configured', async () => {
-    fetchEffectiveAttributesMock.mockResolvedValue([RAM_ATTRIBUTE])
-    productAttributeLayoutMock.mockReturnValue({
-      data: {
-        sections: [
-          {
-            id: 's1',
-            title: 'Specifications',
-            description: null,
-            variant: 'default',
-            collapsible: false,
-            default_collapsed: false,
-            columns: 1,
-            sort_order: 0,
-            rows: [{ id: 'r1', items: [{ attribute_code: 'ram_gb', width: 'full' }] }],
-          },
-        ],
-      },
-      isLoading: false,
-    })
-    createProductMock.mockResolvedValue(product())
-
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'ThinkPad X1' } })
-    fireEvent.click(screen.getByText('select-category-3'))
-    fireEvent.change(screen.getByLabelText(/^Price/), { target: { value: '1200' } })
-
-    const ramField = await screen.findByRole('spinbutton', { name: 'RAM (GB)' })
-    fireEvent.change(ramField, { target: { value: '16' } })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(createProductMock).toHaveBeenCalledTimes(1))
-    const payload = createProductMock.mock.calls[0][0]
-    expect(payload.attribute_values).toEqual({ ram_gb: 16 })
   })
 })

@@ -1,230 +1,95 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
+import type { ResourceMeta } from '@/features/authorization/types'
+import { UserDetailView } from '@/features/users/user-detail'
 import { UserForm } from '@/features/users/user-form'
+import {
+  clickCreateSave,
+  confirmOpenRow,
+  fillCardNames,
+  fillRequiredCreateRows,
+  focusedInput,
+  pencilOf,
+  permissionsFor,
+  typeInRow,
+  userCard,
+  userFixture,
+  userWrapper,
+} from '@/features/users/user-test-fixtures'
 import type { UserDetailWithPermissions } from '@/features/users/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
-import type { EnumOption } from '@/features/config/types'
-import type { PersonalDataCard } from '@/features/personal-data/types'
 
-/* ----------------------------- module mocks ------------------------------- */
+/**
+ * The user create form and the anagraphic card (spec 0222): the card is ONE
+ * row, mandatory on create and validated before any request; contacts and
+ * addresses wait in the draft (side cards) and travel nested in the single
+ * create; the password row picks invite vs temporary password (spec 0177).
+ * REQUIREMENT CHANGED (spec 0222): rows are closed until opened, and the
+ * edit cases run on the in-place detail.
+ */
 
+const fetchUserMock = vi.fn()
 const createUserMock = vi.fn()
 const updateUserMock = vi.fn()
 
-vi.mock('@/features/users/api', () => ({
+vi.mock('@/features/users/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/users/api')>()),
+  fetchUser: (...args: unknown[]) => fetchUserMock(...args),
   createUser: (...args: unknown[]) => createUserMock(...args),
   updateUser: (...args: unknown[]) => updateUserMock(...args),
   uploadUserAvatar: vi.fn(),
   deleteUserAvatar: vi.fn(),
 }))
 
-/**
- * This suite is not about authorization metadata (covered by
- * `user-form-metadata.test.tsx`): every field resolves as visible+editable
- * (the `MetaField` fallback, since `fields` is empty) so create/edit render
- * exactly as they did before spec 0004.
- */
-const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: { upload_avatar: true, delete_avatar: true },
-}
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-vi.mock('@/features/users/use-user-form-meta', () => ({
-  useUserFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
-}))
-
-// This suite isn't about the quick-create "+" (spec 0028), so gate it off:
-// every relation field's `QuickCreateButton` reads `useAbilities()` via `Can`,
-// which requires an `AuthProvider` this suite doesn't render.
+// The quick-create "+" (spec 0028) is gated by `Can`/`useAbilities`, which needs
+// an `AuthProvider` these suites do not render: deny everything so it never mounts.
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
 
-// `useCustomFieldsForm` (spec 0021) also reads the resource meta directly,
-// bypassing `useUserFormMeta` above: stub it with no custom fields defined, so
-// this suite (not about custom fields) renders exactly as it did before.
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-// Enum options consumed by the personal-data card form (controlled, no network).
-const enums: Record<string, EnumOption[]> = {
-  personal_data_type: [
-    {
-      value: 'individual',
-      label: 'Individual',
-      color: null,
-      icon: null,
-      is_default: true,
-      hidden_on_form: false,
-    },
-    {
-      value: 'company',
-      label: 'Company',
-      color: null,
-      icon: null,
-      is_default: false,
-      hidden_on_form: false,
-    },
-  ],
-  contact_type: [],
-  locale: [
-    {
-      value: 'en',
-      label: 'English',
-      color: null,
-      icon: null,
-      is_default: true,
-      hidden_on_form: false,
-    },
-    {
-      value: 'it',
-      label: 'Italiano',
-      color: null,
-      icon: null,
-      is_default: false,
-      hidden_on_form: false,
-    },
-  ],
-}
-
-vi.mock('@/features/config/use-config', () => ({
-  useConfig: () => ({ data: { enums } }),
-  useEnumOptions: (key: string) => enums[key] ?? [],
-}))
-
-// Create mode now mounts `AddressCreateField` (quick-create UX) as soon as the
-// Contact info tab is shown, so it talks to `GeoSelect` directly — stub it with
-// a controllable button, mirroring `address-form.test.tsx`/`addresses-manager.test.tsx`.
-vi.mock('@/features/geo/geo-select', () => ({
-  GeoSelect: ({
-    value,
-    onChange,
-  }: {
-    value: {
-      country_id: number | null
-      state_id: number | null
-      province_id: number | null
-      city_id: number | null
-    }
-    onChange: (next: {
-      country_id: number | null
-      state_id: number | null
-      province_id: number | null
-      city_id: number | null
-    }) => void
-  }) => (
-    <button
-      type="button"
-      data-testid="geo-select"
-      data-city={value.city_id ?? ''}
-      onClick={() => onChange({ country_id: 5, state_id: 6, province_id: 8, city_id: 7 })}
-    >
-      geo
-    </button>
-  ),
-}))
-
-// Control the edit-mode card seed without hitting the network.
-const personalDataData = vi.fn<() => PersonalDataCard | null | undefined>()
-vi.mock('@/features/personal-data/use-personal-data', () => ({
-  usePersonalDataByOwner: () => ({
-    data: personalDataData(),
-    isPending: false,
-    isError: false,
-    refetch: vi.fn(),
-  }),
-}))
-
-/* -------------------------------- helpers --------------------------------- */
-
-/** The block a `FormSection` heading names, to scope an ambiguous query to it. */
-function section(title: string): HTMLElement {
-  return screen.getByText(title).closest('section') as HTMLElement
-}
-
-/**
- * The sign-in email. On the single-screen form the contacts block's quick
- * "Email" is mounted alongside it, so the label alone matches both.
- */
-function signInEmail(): HTMLElement {
-  return within(section('Authentication')).getByLabelText(/^Email/)
-}
-
-/** The contacts block's quick email, ambiguous with the sign-in one above. */
-function quickContactEmail(): HTMLElement {
-  return within(section('Contacts')).getByLabelText('Email')
-}
-
-function wrapper() {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-    </QueryClientProvider>
-  )
-}
-
-function user(overrides: Partial<UserDetailWithPermissions> = {}): UserDetailWithPermissions {
+vi.mock('@/features/config/use-config', async () => {
+  const { USER_ENUMS } = await import('@/features/users/user-test-fixtures')
   return {
-    id: 7,
-    name: 'Ada Lovelace',
-    email: 'ada@example.com',
-    locale: 'en',
-    is_active: true,
-    roles: [],
-    avatar_url: null,
-    must_set_password: false,
-    created_at: null,
-    // `useUserFormMeta` is mocked above, so this value is never actually read;
-    // present only to satisfy `UserFormMode`'s edit-variant type.
-    permissions: FULL_ACCESS_PERMISSIONS,
-    ...overrides,
+    useConfig: () => ({ data: { enums: USER_ENUMS } }),
+    useEnumOptions: (key: string) => USER_ENUMS[key] ?? [],
   }
+})
+
+vi.mock('@/features/for-select/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/for-select/api')>()),
+  fetchForSelect: vi.fn().mockResolvedValue({ items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }),
+}))
+
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/users/user-test-stubs')).StubAsyncSelect,
+}))
+vi.mock('@/components/ui/async-paginated-multi-select', async () => ({
+  AsyncPaginatedMultiSelect: (await import('@/features/users/user-test-stubs')).StubMultiSelect,
+}))
+vi.mock('@/features/activity-log/activity-log-section', () => ({
+  ActivityLogSection: () => <div>activity-log-section</div>,
+}))
+
+function renderCreate() {
+  const { client, wrapper } = userWrapper()
+  render(<UserForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
+  return client
 }
 
-function card(overrides: Partial<PersonalDataCard> = {}): PersonalDataCard {
-  return {
-    id: 99,
-    type: 'individual',
-    first_name: 'Ada',
-    last_name: 'Lovelace',
-    company_name: null,
-    full_name: 'Ada Lovelace',
-    ceo: null,
-    tax_code: null,
-    vat_number: null,
-    sdi_code: null,
-    birth_date: null,
-    birth_city_id: null,
-    residence_city_id: null,
-    gender: null,
-    personable_type: 'user',
-    personable_id: 7,
-    contacts: [
-      {
-        id: 5,
-        type: 'email',
-        label: 'Work',
-        value: 'ada@work.com',
-        is_primary: true,
-        contactable_type: 'personal_data',
-        contactable_id: 99,
-        created_at: null,
-      },
-    ],
-    addresses: [],
-    created_at: null,
-    ...overrides,
-  }
+async function renderDetail(user: UserDetailWithPermissions) {
+  fetchUserMock.mockResolvedValue(user)
+  const { client, wrapper } = userWrapper()
+  render(<UserDetailView userId={user.id} />, { wrapper })
+  await screen.findByRole('button', { name: 'Edit Personal details' })
+  return client
 }
 
 beforeAll(async () => {
@@ -232,202 +97,138 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  vi.restoreAllMocks()
+  fetchUserMock.mockReset()
   createUserMock.mockReset()
   updateUserMock.mockReset()
-  personalDataData.mockReset()
-  personalDataData.mockReturnValue(undefined)
-  createUserMock.mockResolvedValue(user())
-  updateUserMock.mockResolvedValue(user())
+  createUserMock.mockResolvedValue(userFixture())
+  updateUserMock.mockResolvedValue(userFixture())
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_ACCESS_PERMISSIONS })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
 })
 
-/* --------------------------------- tests ---------------------------------- */
+/** The side column's card titled `title` (Contacts / Addresses). */
+function sideCard(title: string): HTMLElement {
+  return screen.getByText(title).closest('section') as HTMLElement
+}
 
-describe('UserForm — atomic personal data', () => {
-  it('renders the always-active personal-data section in create mode', () => {
-    render(
-      <UserForm
-        mode={{ type: 'create' }}
-        onSuccess={() => {}}
-        onCancel={() => {}}
-      />,
-      { wrapper: wrapper() },
-    )
+describe('UserForm — create with the nested personal data', () => {
+  it('offers the anagraphic card as one closed row, no add/remove affordance', async () => {
+    renderCreate()
 
-    // The card is active from the start: no add/remove affordance, the required
-    // identity fields are rendered immediately. The identity `FormSection`
-    // heading replaces the old "Personal data" copy (presentation-only).
-    expect(screen.getByText('Personal details')).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'Add personal data' }),
-    ).not.toBeInTheDocument()
-    expect(screen.getByLabelText(/^First name/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/^Last name/)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Edit Personal details' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add personal data' })).not.toBeInTheDocument()
   })
 
-  it('submits one createUser call carrying the nested personal_data', async () => {
-    render(
-      <UserForm
-        mode={{ type: 'create' }}
-        onSuccess={() => {}}
-        onCancel={() => {}}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('submits one createUser call carrying the nested personal_data, no name, and the invite (no password)', async () => {
+    renderCreate()
 
-    // No account `name` field: identity comes only from the card. Fill the
-    // required individual fields.
-    fireEvent.change(screen.getByLabelText(/^First name/), {
-      target: { value: 'Ada' },
-    })
-    fireEvent.change(screen.getByLabelText(/^Last name/), {
-      target: { value: 'Lovelace' },
-    })
-
-    fireEvent.change(signInEmail(), {
-      target: { value: 'ada@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText(/^Password/), {
-      target: { value: 'secret123' },
-    })
-    fireEvent.change(screen.getByLabelText(/^Confirm password/), {
-      target: { value: 'secret123' },
-    })
-
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    await fillRequiredCreateRows()
+    clickCreateSave()
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
-    expect(updateUserMock).not.toHaveBeenCalled()
-
     const payload = createUserMock.mock.calls[0][0]
-    // No top-level `name` is sent; the backend derives users.name from the card.
     expect(payload.name).toBeUndefined()
-    expect(payload.personal_data).toBeDefined()
-    expect(payload.personal_data.type).toBe('individual')
-    expect(payload.personal_data.first_name).toBe('Ada')
-    expect(payload.personal_data.last_name).toBe('Lovelace')
+    expect(payload.email).toBe('ada@example.com')
+    expect(payload).not.toHaveProperty('password')
+    expect(payload.personal_data).toMatchObject({ type: 'individual', first_name: 'Ada', last_name: 'Lovelace' })
     expect(payload.personal_data.contacts).toEqual([])
     expect(payload.personal_data.addresses).toEqual([])
   })
 
-  it('blocks the save until the required personal-data fields are filled', async () => {
-    render(
-      <UserForm
-        mode={{ type: 'create' }}
-        onSuccess={() => {}}
-        onCancel={() => {}}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('sends a typed temporary password with its confirmation (spec 0177)', async () => {
+    renderCreate()
 
-    // All account fields valid, but the mandatory identity fields are left empty.
-    fireEvent.change(signInEmail(), {
-      target: { value: 'grace@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText(/^Password/), {
-      target: { value: 'secret123' },
-    })
-    fireEvent.change(screen.getByLabelText(/^Confirm password/), {
-      target: { value: 'secret123' },
-    })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    // The card is mandatory: the request must not fire, and the error NAMES the
-    // fields left empty.
-    await waitFor(() =>
-      expect(
-        screen.getByText(
-          'Complete the required personal data fields: First name: First name is required. · Last name: Last name is required.',
-        ),
-      ).toBeInTheDocument(),
-    )
-    expect(createUserMock).not.toHaveBeenCalled()
-  })
-
-  it('blocks the save when a create-mode quick contact is invalid', async () => {
-    render(
-      <UserForm mode={{ type: 'create' }} onSuccess={() => {}} onCancel={() => {}} />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
-    fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
-
-    fireEvent.change(signInEmail(), { target: { value: 'ada@example.com' } })
-    fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'secret123' } })
+    await fillRequiredCreateRows()
+    fireEvent.click(pencilOf('Password'))
+    fireEvent.change(focusedInput('Password'), { target: { value: 'secret123' } })
     fireEvent.change(screen.getByLabelText(/^Confirm password/), { target: { value: 'secret123' } })
+    confirmOpenRow('Done')
+    expect(screen.getByText('Temporary password set')).toBeInTheDocument()
+    clickCreateSave()
 
-    // A malformed value in the quick email field.
-    fireEvent.change(quickContactEmail(), { target: { value: 'not-an-email' } })
+    await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
+    expect(createUserMock.mock.calls[0][0]).toMatchObject({ password: 'secret123', password_confirmation: 'secret123' })
+  })
 
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+  it('refuses the save until the card is complete, naming the missing fields and reopening its row', async () => {
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Personal details' })
 
-    await waitFor(() =>
-      expect(
-        screen.getByText('Fix the contacts: Email: Enter a valid email address.'),
-      ).toBeInTheDocument(),
-    )
+    typeInRow('Email', 'grace@example.com')
+    clickCreateSave()
+
+    expect(
+      await screen.findByText(
+        'Complete the required personal data fields: First name: First name is required. · Last name: Last name is required.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText(/^First name/)).toBeInTheDocument()
     expect(createUserMock).not.toHaveBeenCalled()
   })
 
-  it('blocks the save when a create-mode address is started but missing the city', async () => {
-    render(
-      <UserForm mode={{ type: 'create' }} onSuccess={() => {}} onCancel={() => {}} />,
-      { wrapper: wrapper() },
-    )
+  it('refuses the save when a quick contact is invalid', async () => {
+    renderCreate()
 
-    fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
-    fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
+    await fillRequiredCreateRows()
+    fireEvent.change(within(sideCard('Contacts')).getByLabelText('Email'), { target: { value: 'not-an-email' } })
+    clickCreateSave()
 
-    fireEvent.change(signInEmail(), { target: { value: 'ada@example.com' } })
-    fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'secret123' } })
-    fireEvent.change(screen.getByLabelText(/^Confirm password/), { target: { value: 'secret123' } })
-
-    // The inline address is started (line1 filled) but no city is chosen.
-    fireEvent.change(screen.getByLabelText(/^Address\*?$/), { target: { value: 'Via Roma 1' } })
-
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() =>
-      expect(
-        screen.getByText('Complete the address: City: The city is required.'),
-      ).toBeInTheDocument(),
-    )
+    expect(await screen.findByText('Fix the contacts: Email: Enter a valid email address.')).toBeInTheDocument()
     expect(createUserMock).not.toHaveBeenCalled()
   })
 
-  it('seeds the card in edit mode and submits the tree in one updateUser call', async () => {
-    personalDataData.mockReturnValue(card())
+  it('refuses the save when an address is started but missing the city', async () => {
+    renderCreate()
 
-    render(
-      <UserForm
-        mode={{ type: 'edit', user: user() }}
-        onSuccess={() => {}}
-        onCancel={() => {}}
-      />,
-      { wrapper: wrapper() },
-    )
+    await fillRequiredCreateRows()
+    fireEvent.change(within(sideCard('Addresses')).getByLabelText(/^Address\*?$/), { target: { value: 'Via Roma 1' } })
+    clickCreateSave()
 
-    // Seeded card fields are present in the form.
-    await waitFor(() =>
-      expect(screen.getByLabelText(/^First name/)).toHaveValue('Ada'),
-    )
+    expect(await screen.findByText('Complete the address: City: The city is required.')).toBeInTheDocument()
+    expect(createUserMock).not.toHaveBeenCalled()
+  })
+})
 
-    // The seeded contact is on the same screen, no tab to open.
-    expect(screen.getByText('ada@work.com')).toBeInTheDocument()
+describe('UserDetailView — the anagraphic card row (spec 0222 D-3)', () => {
+  it('PATCHes the card alone, with its children, when the card row is saved', async () => {
+    const card = userCard({
+      contacts: [
+        {
+          id: 5,
+          type: 'email',
+          label: 'Work',
+          value: 'ada@work.com',
+          is_primary: true,
+          contactable_type: 'personal_data',
+          contactable_id: 99,
+          created_at: null,
+        },
+      ],
+    })
+    await renderDetail(userFixture({ personal_data: card }))
 
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    await fillCardNames('Save', 'Augusta', 'Lovelace')
 
     await waitFor(() => expect(updateUserMock).toHaveBeenCalledTimes(1))
-    expect(createUserMock).not.toHaveBeenCalled()
-
     const [id, payload] = updateUserMock.mock.calls[0]
     expect(id).toBe(7)
-    // The card is upserted by owner, so it carries no id; children do.
-    expect(payload.personal_data.type).toBe('individual')
-    expect(payload.personal_data.contacts).toHaveLength(1)
-    expect(payload.personal_data.contacts[0].id).toBe(5)
-    expect(payload.personal_data.contacts[0].value).toBe('ada@work.com')
+    expect(Object.keys(payload)).toEqual(['personal_data'])
+    expect(payload.personal_data.first_name).toBe('Augusta')
+    expect(payload.personal_data.contacts[0]).toMatchObject({ id: 5, value: 'ada@work.com' })
+  })
+
+  it('never sends the card (nor the employment) when another row is saved', async () => {
+    await renderDetail(userFixture())
+
+    typeInRow('Email', 'ada@new.example.com', 'Save')
+
+    await waitFor(() => expect(updateUserMock).toHaveBeenCalledWith(7, { email: 'ada@new.example.com' }))
+  })
+
+  it('shows the profile photo control to an actor allowed to upload', async () => {
+    await renderDetail(userFixture({ permissions: permissionsFor({}, { upload_avatar: true, delete_avatar: true }) }))
+
+    expect(screen.getAllByText('Avatar').length).toBeGreaterThan(0)
   })
 })

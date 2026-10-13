@@ -14,7 +14,7 @@ import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Can } from '@/features/auth/can'
 import { TimeEntryCreateSheet } from '@/features/time-entries/form/time-entry-create-sheet'
-import { TimeEntryEditSheet } from '@/features/time-entries/form/time-entry-edit-sheet'
+import { TimeEntryDetailSheet } from '@/features/time-entries/form/time-entry-detail-sheet'
 import { TimeEntriesPeriodCard } from '@/features/time-entries/dashboard/time-entries-period-card'
 import { TimeEntriesStatsPanels } from '@/features/time-entries/dashboard/time-entries-stats-panels'
 import { TimeEntriesViewSwitch } from '@/features/time-entries/dashboard/time-entries-view-switch'
@@ -152,7 +152,7 @@ export function TimeEntriesDashboard() {
       />
 
       {editEntryId !== null ? (
-        <TimeEntryEditSheet
+        <TimeEntryDetailSheet
           open={editEntryId !== null}
           onOpenChange={(open) => {
             if (!open) setEditEntryId(null)

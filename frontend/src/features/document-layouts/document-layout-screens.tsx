@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchDocumentLayout } from '@/features/document-layouts/api'
+import { documentLayoutDetailQueryKey, fetchDocumentLayout } from '@/features/document-layouts/api'
 import { DocumentLayoutForm } from '@/features/document-layouts/document-layout-form'
 import { DocumentLayoutDetailView } from '@/features/document-layouts/document-layout-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_PAGE } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -15,26 +15,15 @@ import type {
 } from '@/features/modules/types'
 import type { DocumentLayoutDetail } from '@/features/document-layouts/types'
 
-/** Query key for a single document layout's detail (fresh-on-open pattern). */
-export function detailQueryKey(id: number) {
-  return ['document-layouts', 'detail', id] as const
-}
-
 /**
  * Content-only `document-layouts` screens for the module registry (spec
- * 0069): fetch + the existing presentational view/form, no page chrome.
- * `document-layouts` uses `OPEN_MODE_PAGE` (D-9: the visual editor needs the
- * width of a canvas + inspector + variables panel, it does not fit a modal
- * Sheet) WITHOUT `generateRoutes: false` — like `quotes`, this module has no
- * bespoke page of its own: the generic `ModuleDetailPage`/`ModuleFormPage`
- * (from `buildModuleRoutes()`) host these screens directly for
- * `new`/`:id`/`:id/edit`; only the list route (`/document-layouts`) stays
- * declared by hand in `router.tsx`. These screens render only the METADATA
- * form (name/code/description/module/active/default, wave 1) — editing the
- * block/zone `config` is the visual editor's own surface (wave 2, a separate
- * owner), mounted elsewhere.
+ * 0042): fetch + the presentational view/form, no page chrome. The detail
+ * edits its rows in place, so `onEdit` is never used; each save reports
+ * through `onChanged`. The module opens as a page (`OPEN_MODE_PAGE`, spec
+ * 0069 D-9): the visual editor needs the width of a canvas + inspector +
+ * variables panel, it does not fit a modal Sheet.
  */
-export function DocumentLayoutDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function DocumentLayoutDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: documentLayout,
@@ -42,7 +31,7 @@ export function DocumentLayoutDetailScreen({ id, onEdit }: ModuleDetailScreenPro
     isError,
     error,
     refetch,
-  } = useEntityDetail(detailQueryKey(id), () => fetchDocumentLayout(id))
+  } = useEntityDetail(documentLayoutDetailQueryKey(id), () => fetchDocumentLayout(id))
 
   if (isError) {
     return (
@@ -59,88 +48,49 @@ export function DocumentLayoutDetailScreen({ id, onEdit }: ModuleDetailScreenPro
     return <DetailLoading />
   }
 
-  return <DocumentLayoutDetailView documentLayout={documentLayout} onEdit={onEdit} />
-}
-
-export function DocumentLayoutFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (saved: DocumentLayoutDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(saved.id) })
-    onSuccess(saved.id)
-  }
-
-  if (mode.type === 'create') {
-    return (
-      <DocumentLayoutForm
-        mode={{ type: 'create' }}
-        onSuccess={handleSuccess}
-        onCancel={onCancel}
-      />
-    )
-  }
-
-  return (
-    <DocumentLayoutEditScreen
-      documentLayoutId={mode.id}
-      onSuccess={handleSuccess}
-      onCancel={onCancel}
-    />
-  )
-}
-
-interface DocumentLayoutEditScreenProps {
-  documentLayoutId: number
-  onSuccess: (documentLayout: DocumentLayoutDetail) => void
-  onCancel: () => void
+  return <DocumentLayoutDetailView documentLayout={documentLayout} onChanged={onChanged} />
 }
 
 /**
- * Fetches the fresh, re-authorized document layout detail before mounting
- * the edit form, so the partial PATCH starts from authoritative values
- * rather than a stale snapshot.
+ * Create only: there is no edit form, and the registry generates no
+ * `:id/edit` route. Leaving a layout being created — Cancel, the Sheet's
+ * X/overlay/Esc, a link, a reload — always asks first.
  */
-function DocumentLayoutEditScreen({
-  documentLayoutId,
-  onSuccess,
-  onCancel,
-}: DocumentLayoutEditScreenProps) {
+export function DocumentLayoutFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const { t } = useTranslation()
-  const {
-    data: documentLayout,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(detailQueryKey(documentLayoutId), () => fetchDocumentLayout(documentLayoutId))
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('documentLayouts.form.leaveConfirm.title'),
+    description: t('documentLayouts.form.leaveConfirm.description'),
+    confirmLabel: t('documentLayouts.form.leaveConfirm.confirm'),
+    cancelLabel: t('documentLayouts.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('documentLayouts.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
+  if (mode.type !== 'create') {
+    return null
   }
 
-  if (isLoading || !documentLayout) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+  const handleSuccess = (saved: DocumentLayoutDetail) => {
+    queryClient.invalidateQueries({ queryKey: documentLayoutDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new record's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(saved.id)
+  }
+
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
   }
 
   return (
-    <DocumentLayoutForm
-      mode={{ type: 'edit', documentLayout }}
-      onSuccess={onSuccess}
-      onCancel={onCancel}
-    />
+    <>
+      {leaveGuard.navigationGuard}
+      <DocumentLayoutForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
   )
 }
 
@@ -152,7 +102,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.documentLayouts',
   DetailScreen: DocumentLayoutDetailScreen,
   FormScreen: DocumentLayoutFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button.
+  // The detail IS the edit form: no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

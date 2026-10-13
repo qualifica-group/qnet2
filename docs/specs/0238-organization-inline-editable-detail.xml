@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0238-organization-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Onda 3 del piano "nessuna pagina di modifica" (kit 0233): Societa' aziendali, Societa' sedi e Sedi operative perdono
+    la pagina di modifica. Il dettaglio modifica sul posto una riga alla volta; la creazione e' una replica del dettaglio
+    a righe chiuse. Backend invariato.
+  </goal>
+
+  <context>
+    - D-1 (companies, operational-sites): campi semplici col kit (`TextInlineRow`, `SwitchInlineRow`); la cascata geo e'
+      UNA riga `RecordInlineField` (chiave `address.city_id` / `city_id`) con `GeoSelect`, valore chiuso = luoghi
+      comune-first; modificabile solo se i permessi dei campi coinvolti lo sono (`address`; i quattro id geo). La
+      partita IVA conserva `formatOnBlur`. L'indirizzo della societa' si invia sempre per intero (contratto 0010).
+    - D-2 (company-sites): come registries/referents (0200/0216): la scheda anagrafica e' UNA riga a bozza
+      (`PERSONAL_DATA_CARD_FIELD`) ma BLOCCATA su `company` (sezione locale, quella condivisa non ha `lockType`); le
+      banche sono UNA riga a bozza (`BANKS_FIELD`, `banks[]` autorevole); contatti e indirizzo (max 1) restano a
+      persistenza immediata; logo (upload/rimozione) e "Societa' di Default" agiscono subito e riscrivono la cache col
+      dettaglio+permessi che il server risponde. In creazione: logo solo in anteprima (caricato dopo il salvataggio).
+    - D-3: `api.update*` (e set-default/logo) restituiscono il dettaglio CON `permissions`; `*DetailQueryKey` da `api.ts`;
+      hook del form con `values` + `resetOptions.keepDirtyValues` e `clearServerError`; screens con
+      `generateEditRoute: false`, `detailOwnsEditAction: true`, `formOwnsHeader: true`, `useFormLeaveGuard` +
+      `form.leaveConfirm.*`; form wrapper solo creazione via `useResourceMeta` (via i `use-*-form-meta.ts`).
+    - D-4: `personalDataServerErrorMessage` unico in `features/personal-data` (la copia locale di company-sites e' stata
+      rimossa).
+  </context>
+
+  <acceptance>
+    <ac id="AC-001">Per modulo: nessuna rotta `:id/edit` ne' pulsante Modifica; ogni riga salva solo il proprio campo;
+      Annulla non chiama; 422 sulla riga; senza permesso `update` sul campo nessuna matita.</ac>
+    <ac id="AC-002">Creazione a righe chiuse con Fatto/Ripristina; Salva valida tutto; uscita con conferma.</ac>
+    <ac id="AC-003">Company-sites: la scheda e' sempre azienda; le banche si salvano come elenco unico; set-default e logo
+      restano immediati.</ac>
+    <ac id="AC-004">Guide in-app IT/EN `companies`, `company-sites`, `operational-sites` aggiornate (sezione `editing`).</ac>
+  </acceptance>
+</spec>

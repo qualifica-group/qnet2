@@ -1,14 +1,14 @@
 /**
- * "Contesto segnatempo" fieldset (spec 0122 D-3/D-5/MT-F2): Cliente full
- * width, then Opportunita'/Commessa side by side, then the standalone form's
- * own Attivita' (Task) picker (D-3a — q-net keeps it commented out, the
+ * "Contesto segnatempo" editor (spec 0122 D-3/D-5/MT-F2), the record's one
+ * context row (spec 0226 D-2): Cliente full width, then Opportunita'/Commessa
+ * side by side, then the standalone form's own Attivita' (Task) picker (D-3a — q-net keeps it commented out, the
  * document requires it here). With a Task linked, Cliente/Opportunita'/
  * Commessa lock to the task's own values (AC-031): the server imposes them
  * regardless of what this form sends (D-5), so the picker shows them
  * read-only rather than the form's own (irrelevant) state.
  */
 /* eslint-disable react-refresh/only-export-components -- `workOrderRefOf` is a
-   pure projection reused verbatim by `time-entry-form-body.tsx`, not a component. */
+   pure projection reused verbatim by the record rows (`time-entry-record.ts`), not a component. */
 
 import { useTranslation } from 'react-i18next'
 import { useWatch, type Control } from 'react-hook-form'
@@ -20,20 +20,12 @@ import { Input } from '@/components/ui/input'
 import { MetaField } from '@/features/authorization/MetaField'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { OPPORTUNITIES_FOR_SELECT_RESOURCE } from '@/features/opportunities/for-select-api'
-import { TASKS_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
+import { TASKS_FOR_SELECT_RESOURCE, WORK_ORDERS_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
 import { useTimeEntryWorkOrderStageOptions } from '@/features/time-entries/form/use-time-entry-work-order-stage-options'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { TaskDetailWithPermissions } from '@/features/tasks/types'
 import type { TimeEntryFormValues } from '@/features/time-entries/form/time-entry-schema'
 import type { TimeEntryWorkOrderStageRef } from '@/features/time-entries/types'
-
-/**
- * Resource segment of the work orders for-select endpoint. Declared locally,
- * same as `features/tasks/task-links-section.tsx`: no shared constant exists
- * for it yet (`features/work-orders/` owns no `for-select-api.ts`), and this
- * module's write surface cannot add one.
- */
-const WORK_ORDERS_FOR_SELECT_RESOURCE = 'work-orders'
 
 /** Separator between a commessa's code and title, matching `WorkOrderForSelectResource::LABEL_SEPARATOR`. */
 const WORK_ORDER_LABEL_SEPARATOR = ' — '
@@ -45,8 +37,7 @@ const NO_STAGE_VALUE = '__no_stage__'
  * The `meta` block `GET /api/work-orders/for-select` carries on each item
  * (spec 0122 D-5/AC-031, backend delta 2026-09-14): the Cliente resolved via
  * `quote.opportunity.registry`, `null` when that chain is incomplete. Declared
- * here rather than in a shared `for-select-api.ts` for the same reason as the
- * resource constant above: `features/work-orders/` owns none yet.
+ * here rather than in a shared `for-select-api.ts`: `features/work-orders/` owns none yet.
  */
 export interface WorkOrderForSelectMeta {
   registry: { id: number; name: string } | null
@@ -134,10 +125,7 @@ export function TimeEntryContextFields({
   )
 
   return (
-    <fieldset className="grid min-w-0 gap-4 rounded-md border bg-muted/25 p-3">
-      <legend className="px-1 text-sm font-semibold text-foreground">
-        {t('timeEntries.form.contextTitle')}
-      </legend>
+    <div className="grid min-w-0 gap-4">
 
       <RelationSelectField
         control={control}
@@ -227,6 +215,6 @@ export function TimeEntryContextFields({
         forceDisabled={disabled}
         {...selectLabels}
       />
-    </fieldset>
+    </div>
   )
 }

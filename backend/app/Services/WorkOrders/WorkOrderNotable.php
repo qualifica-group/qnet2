@@ -61,6 +61,7 @@ final class WorkOrderNotable implements NotableEntity
         $viewAllExists = $this->permissionExists(WorkOrderVisibilityScope::VIEW_ALL_PERMISSION);
 
         return User::query()
+            ->excludingServiceAccounts()
             ->where('is_active', true)
             ->where(function (Builder $query) use ($memberIds, $viewExists, $viewAllExists): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))

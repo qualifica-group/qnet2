@@ -7,6 +7,7 @@ use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\HasFieldChangeRequests;
 use App\Models\Concerns\HasRewards;
 use App\Models\Concerns\LogsModelActivity;
+use Carbon\CarbonImmutable;
 use Database\Factories\QuoteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -104,6 +105,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  */
 #[Fillable([
     'title',
+    'quote_date',
     'opportunity_id',
     'commercial_id',
     'reporter_id',
@@ -121,6 +123,18 @@ class Quote extends BaseModel
     use HasFactory, HasFieldChangeRequests, HasRewards, LogsModelActivity;
 
     /**
+     * Spec 0228 AC-001: an offer always has its date. A channel that does not
+     * ask for it (Gestione Richieste, lead conversion) gets the day of the
+     * insert, i.e. the date of `created_at`.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Quote $quote): void {
+            $quote->quote_date ??= CarbonImmutable::today();
+        });
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -136,6 +150,7 @@ class Quote extends BaseModel
             'next_callback_reminded_at' => 'datetime',
             'is_transferred' => 'boolean',
             'title_is_manual' => 'boolean',
+            'quote_date' => 'date',
         ];
     }
 

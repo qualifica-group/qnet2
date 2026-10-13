@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0219-contract-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Il Contratto perde la finestra "Modifica dati": i suoi campi modificabili (Data di rinnovo, Data di scadenza,
+    Note di pagamento, Commenti) si editano in place nel dettaglio, come negli altri moduli migrati (spec 0195-0200,
+    0216-0218). Quarto modulo dell'onda 1 del piano "nessuna pagina di modifica". Il contratto non ha creazione
+    manuale (nasce dall'offerta, spec 0072 D-6): nessuna creazione da replicare.
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-12, "continua con la tua onda"): regole 0195 D-2/D-6/D-7 con `RecordInlineField` e
+      `NotesCalloutRow` condivisi.
+    - D-2: Commenti = il callout in testa, scritto dentro il riquadro; Data di rinnovo e Data di scadenza = righe di
+      "Ciclo di vita"; Note di pagamento = riga di "Documento e pagamento". Gli altri campi restano proiezioni in
+      sola lettura dell'offerta (BR-7).
+    - D-3: matita solo se il permesso di campo lo consente, con `contracts.update`, e solo mentre il contratto e'
+      ancora in lavorazione (gruppi Aperto/Pending: la stessa regola che mostrava "Modifica dati",
+      `contractLifecycleActions().edit`). Lo stato resta governato dalle sole azioni di dominio.
+    - D-4: il PATCH invia il solo campo cambiato (prima la finestra inviava sempre tutti e quattro).
+    - D-5: `NotesCalloutRow` guadagna `canEdit` facoltativo (default invariato).
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica: PATCH /api/contracts/{id} esistente (gia' restituisce `permissions`).</backend>
+    <frontend>
+      Rimossi `ContractEditDialog` e il pulsante "Modifica dati" di `ContractActionsBar`; nuovo `useContractInlineEdit`;
+      `buildEditPayload` diventa diff sparso (`buildUpdatePayload`).
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessun pulsante "Modifica dati": i quattro campi hanno la matita nel dettaglio.</ac>
+    <ac id="AC-002">Salva invia il solo campo cambiato; Annulla/Esc/clic fuori non chiamano.</ac>
+    <ac id="AC-003">Senza `contracts.update`, senza permesso di campo o con contratto chiuso nessuna matita.</ac>
+    <ac id="AC-004">Guida in-app IT/EN `contracts` aggiornata.</ac>
+  </acceptance>
+</spec>

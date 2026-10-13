@@ -16,8 +16,15 @@ const guide: HelpGuide = {
       id: 'create-layout',
       title: 'Creare un layout',
       blocks: [
-        { type: 'steps', items: ['Apri **Configurazione › Layout** e premi **Nuovo layout**.', 'Nella scheda **Dettagli** compila **Nome**, **Codice**, **Modulo** e **Descrizione**; imposta **Attivo** e, se serve, **Predefinito**.', 'Salva il layout.', 'Apri la scheda **Contenuto** e costruisci la pagina con l’editor visuale.'] },
+        { type: 'steps', items: ['Apri **Configurazione › Layout** e premi **Nuovo layout**.', 'Si apre la scheda con le righe chiuse: per **Nome**, **Codice**, **Modulo**, **Descrizione**, **Attivo** e **Predefinito** premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com’era.', 'La sezione **Contenuto** è già aperta: costruisci la pagina con l’editor visuale.', 'Premi **Salva**: il layout viene creato con tutto insieme.'] },
         { type: 'warning', text: 'Dopo la creazione **Codice** e **Modulo** non si modificano.' },
+      ],
+    },
+    {
+      id: 'edit-layout',
+      title: 'Modificare un layout',
+      blocks: [
+        { type: 'paragraph', text: 'Non c’è un modulo di modifica a parte: apri il layout con **Visualizza**, premi la matita sulla riga (**Nome**, **Descrizione**, **Attivo**, **Predefinito**), cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com’era. **Contenuto** è una riga a tutta larghezza con l’anteprima della pagina: la matita apre lo stesso editor visuale della creazione e **Salva** registra solo il contenuto.' },
       ],
     },
     {

@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Client registry, Contract, Company and sites come from the offer; Status and Completion are computed from the tasks.',
+          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Client registry, Contract (code and title), Company and sites come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Completion are computed from the tasks.',
         },
         {
           type: 'note',
@@ -46,7 +46,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "**Force closing** stays a row action (it asks for a reason), not a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. Work order no., Contract no., Linked offer, Registry, Status, Completion, Created at and Updated at stay read-only.",
+          text: "**Force closing** stays a row action (it asks for a reason), not a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). Work order no., Contract no., Linked offer, Registry, Contract expiry, Status, Completion, Created at and Updated at stay read-only.",
         },
       ],
     },
@@ -83,6 +83,20 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'In **Offer and product lines** choose the offer first, then its lines: the Additional information appears at the bottom as soon as the lines provide for it. **Save** at the top (or bottom) checks every field and creates the work order; errors appear under the rows to fix. Leaving without saving asks for confirmation.',
+        },
+      ],
+    },
+    {
+      id: 'automatic-title',
+      title: 'Automatic title',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'The work order **Title** is optional. If you leave it empty, the work order gets the automatic **code - products of its lines** title (e.g. COM-0042 - ISO 9001 + SOA), which follows the lines when they change.',
+        },
+        {
+          type: 'note',
+          text: 'If you write your own title, it stays yours and is no longer recalculated. To go back to the automatic one, **clear the field** and save. Existing work orders keep the title they have. The same applies to the contract **Program** window.',
         },
       ],
     },

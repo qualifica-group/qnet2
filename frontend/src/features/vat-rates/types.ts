@@ -14,6 +14,8 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
  */
 export interface VatRateDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   rate: number
   created_at: string

@@ -464,3 +464,23 @@ it('spec 0182 AC-004: imports an enum with 79 options and duplicated labels', fu
     expect($run->fresh()->failed_rows)->toBe(0)
         ->and(Attribute::query()->where('old_id', 110)->first()->options)->toHaveCount(79);
 });
+
+it('spec 0225 AC-006: imports a legacy RELATION attribute targeting provinces', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/attributes*' => Http::response([
+            'items' => [[
+                'id' => 101, 'code' => 'province_id', 'name' => 'Provincia', 'type' => 'relation',
+                'relation_target' => ['entity_type' => 'provinces', 'cardinality' => 'one', 'for_select_resource' => 'provinces'],
+            ]],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'attributes']);
+    runMigrationJobFor($run);
+
+    expect(Attribute::query()->where('old_id', 101)->first()->relation_target)
+        ->toBe(['entity_type' => 'provinces', 'cardinality' => 'one', 'for_select_resource' => 'provinces'])
+        ->and($run->fresh()->failed_rows)->toBe(0);
+});

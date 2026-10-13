@@ -15,7 +15,7 @@ export const vatRates = {
   },
   detail: {
     title: 'VAT rate details',
-    subtitle: 'Read-only view of the selected VAT rate.',
+    subtitle: 'Details of the selected VAT rate, editable in place.',
     loadError: 'Unable to load the VAT rate. Please try again.',
     details: 'Details',
     created_at: 'Created at',
@@ -41,6 +41,12 @@ export const vatRates = {
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the VAT rate. Please try again.',
     deleteForbidden: 'You cannot delete this VAT rate.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The VAT rate has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',

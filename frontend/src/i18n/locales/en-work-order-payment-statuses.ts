@@ -29,7 +29,7 @@ export const workOrderPaymentStatuses = {
   },
   detail: {
     title: 'Payment status details',
-    subtitle: 'Read-only view of the selected payment status.',
+    subtitle: 'Details of the selected record, editable in place.',
     loadError: 'Unable to load the payment status. Please try again.',
     description: 'Description',
     color: 'Color',
@@ -43,8 +43,6 @@ export const workOrderPaymentStatuses = {
     newWorkOrderPaymentStatus: 'New status',
     createTitle: 'Create payment status',
     createSubtitle: 'Add a new payment status for work order lines.',
-    editTitle: 'Edit payment status',
-    editSubtitle: 'Update the selected payment status.',
     name: 'Name',
     description: 'Description',
     color: 'Color',
@@ -65,10 +63,15 @@ export const workOrderPaymentStatuses = {
     deleteError: 'Unable to delete the payment status. Please try again.',
     deleteForbidden: 'You cannot delete this payment status.',
     deleteInUseFallback: 'This payment status is used by a work order line and cannot be deleted.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The record has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name, description, color, active state and delivery.',
       },
     },
     hints: {

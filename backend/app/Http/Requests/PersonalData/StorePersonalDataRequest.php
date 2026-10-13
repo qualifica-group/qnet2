@@ -8,8 +8,11 @@ use App\Enums\PersonalDataTypeEnum;
 use App\Http\Requests\Concerns\FormatsPersonalDataInput;
 use App\Http\Requests\Concerns\ResolvesOwner;
 use App\Rules\TaxCode;
+use App\Rules\UniquePersonalDataIdentifier;
 use App\Rules\VatNumber;
+use App\Support\IdentityUniquenessScope;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -80,14 +83,41 @@ class StorePersonalDataRequest extends FormRequest
     }
 
     /**
-     * Enforce a valid, existing owner that does not already hold a card.
+     * Enforce a valid, existing owner that does not already hold a card, then
+     * the namespace-wide fiscal uniqueness on it.
      */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
             $this->validateOwner($validator);
             $this->guardSingleCard($validator);
+
+            if ($validator->errors()->isEmpty()) {
+                $this->validateNamespaceFiscalIdentity($validator, $this->owner());
+            }
         });
+    }
+
+    /**
+     * The codice fiscale and partita IVA of a card owned by a user, an
+     * anagrafica or a referente must be free across that namespace (user
+     * directive 2026-10-08) — the same `UniquePersonalDataIdentifier` the
+     * owner forms apply, so this generic endpoint is no door around them. A
+     * card of any other owner (a company site) is never checked.
+     */
+    protected function validateNamespaceFiscalIdentity(Validator $validator, ?Model $owner): void
+    {
+        if ($validator->errors()->isNotEmpty() || $owner === null || ! IdentityUniquenessScope::covers($owner->getMorphClass())) {
+            return;
+        }
+
+        foreach (IdentityUniquenessScope::FISCAL_COLUMNS as $column) {
+            (new UniquePersonalDataIdentifier($column, $owner::class, (int) $owner->getKey()))->validate(
+                $column,
+                $this->input($column),
+                fn (string $message) => $validator->errors()->add($column, $message),
+            );
+        }
     }
 
     /**

@@ -6,134 +6,94 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import {
+  commissionConfigurationDetailKey,
   createCommissionConfiguration,
   updateCommissionConfiguration,
 } from './api'
 import {
+  buildCreatePayload,
+  buildUpdatePayload,
+  createDefaults,
+  toFormValues,
+} from './commission-configuration-form-payload'
+import {
   buildCommissionConfigurationSchema,
   type CommissionConfigurationFormValues,
 } from './commission-configuration-schema'
-import {
-  COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES,
-  type CommissionConfigurationDetail,
-  type CommissionConfigurationFormMode,
-  type CommissionConfigurationPayload,
-  type CommissionRole,
-} from './types'
+import type { CommissionConfigurationDetail, CommissionConfigurationFormMode } from './types'
+
+/** Server-side field names mapped onto the form for 422 handling. */
+const SERVER_ERROR_FIELDS = [
+  'name',
+  'recipient_role',
+  'application_scope',
+  'product_category_id',
+  'product_id',
+  'recipient_type',
+  'recipient_id',
+  'commission_type',
+  'value',
+  'priority',
+  'valid_from',
+  'valid_until',
+  'status',
+  'internal_note',
+] as const
 
 interface Args {
   mode: CommissionConfigurationFormMode
+  /** Called after a successful create/update so the caller can close + refresh. */
   onSuccess: (configuration: CommissionConfigurationDetail) => void
 }
 
-/** A fresh rule: a role-wide COMMERCIAL default, or a personal SUPPLIER rule on `supplierRegistryId` (spec 0204 D-4). */
-function createDefaults(supplierRegistryId: number | null | undefined): CommissionConfigurationFormValues {
-  const supplierPreset = supplierRegistryId != null
-  const role: CommissionRole = supplierPreset ? 'SUPPLIER' : 'COMMERCIAL'
-  return {
-    name: '',
-    recipient_role: role,
-    application_scope: supplierPreset ? 'RECIPIENT' : 'PRODUCT_CATEGORY',
-    product_category_id: null,
-    product_id: null,
-    recipient_type: COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES[role][0],
-    recipient_id: supplierRegistryId ?? null,
-    commission_type: 'PERCENTAGE',
-    value: 0,
-    priority: 0,
-    valid_from: new Date().toISOString().slice(0, 10),
-    valid_until: null,
-    status: 'ACTIVE',
-    internal_note: null,
-  }
-}
-
-function payload(values: CommissionConfigurationFormValues): CommissionConfigurationPayload {
-  return {
-    ...values,
-    product_category_id:
-      values.application_scope === 'PRODUCT_CATEGORY' ? values.product_category_id : null,
-    product_id: values.application_scope === 'PRODUCT' ? values.product_id : null,
-    // recipient_type/recipient_id are orthogonal to application_scope (D-2):
-    // sent as-is, whichever scope is active.
-    recipient_type: values.recipient_type,
-    recipient_id: values.recipient_id,
-    valid_until: values.valid_until || null,
-    internal_note: values.internal_note || null,
-  }
-}
-
+/**
+ * Owns every non-render concern of the commission configuration form:
+ * RHF/Zod wiring, defaults, 422 mapping and the submit. Create backs the
+ * create form; edit backs the detail's in-place rows (diff PATCH).
+ */
 export function useCommissionConfigurationForm({ mode, onSuccess }: Args) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
   const schema = useMemo(() => buildCommissionConfigurationSchema(t), [t])
+  const isEdit = mode.type === 'edit'
+  const defaultValues = useMemo(
+    () => (mode.type === 'edit' ? toFormValues(mode.configuration) : createDefaults(mode.supplierRegistryId)),
+    [mode],
+  )
+
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<CommissionConfigurationFormValues>({
     resolver: zodResolver(schema),
-    defaultValues:
-      mode.type === 'edit'
-        ? {
-            name: mode.configuration.name,
-            recipient_role: mode.configuration.recipient_role,
-            application_scope: mode.configuration.application_scope,
-            product_category_id: mode.configuration.product_category_id,
-            product_id: mode.configuration.product_id,
-            // Omitted when not visible for field permission: falls back to
-            // the role's default (server-side derivation, spec 0090 D-4).
-            recipient_type:
-              mode.configuration.recipient_type ??
-              COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES[mode.configuration.recipient_role][0],
-            recipient_id: mode.configuration.recipient_id ?? null,
-            commission_type: mode.configuration.commission_type,
-            value: Number(mode.configuration.value),
-            priority: mode.configuration.priority,
-            valid_from: mode.configuration.valid_from,
-            valid_until: mode.configuration.valid_until,
-            status: mode.configuration.status,
-            internal_note: mode.configuration.internal_note,
-          }
-        : createDefaults(mode.supplierRegistryId),
+    defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: CommissionConfigurationFormValues) => {
     setServerError(null)
     try {
-      const saved =
-        mode.type === 'edit'
-          ? await updateCommissionConfiguration(mode.configuration.id, payload(values))
-          : await createCommissionConfiguration(payload(values))
-      queryClient.setQueryData(['commission-configurations', 'detail', saved.id], saved)
-      toast.success(
-        t(
-          mode.type === 'edit'
-            ? 'commissionConfigurations.form.updated'
-            : 'commissionConfigurations.form.created',
-        ),
-      )
-      onSuccess(saved)
+      if (mode.type === 'edit') {
+        const saved = await updateCommissionConfiguration(
+          mode.configuration.id,
+          buildUpdatePayload(values, toFormValues(mode.configuration)),
+        )
+        queryClient.setQueryData(commissionConfigurationDetailKey(mode.configuration.id), saved)
+        toast.success(t('commissionConfigurations.form.updated'))
+        onSuccess(saved)
+        return
+      }
+
+      const created = await createCommissionConfiguration(buildCreatePayload(values))
+      toast.success(t('commissionConfigurations.form.created'))
+      onSuccess(created)
     } catch (error) {
-      if (
-        !applyServerValidationErrors(error, form.setError, [
-          'name',
-          'recipient_role',
-          'application_scope',
-          'product_category_id',
-          'product_id',
-          'recipient_type',
-          'recipient_id',
-          'commission_type',
-          'value',
-          'priority',
-          'valid_from',
-          'valid_until',
-          'status',
-          'internal_note',
-        ])
-      ) {
+      if (!applyServerValidationErrors(error, form.setError, [...SERVER_ERROR_FIELDS])) {
         setServerError(t('commissionConfigurations.form.genericError'))
       }
     }
   }
 
-  return { form, serverError, onSubmit }
+  return { form, serverError, clearServerError: () => setServerError(null), onSubmit }
 }

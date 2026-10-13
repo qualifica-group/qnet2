@@ -19,6 +19,9 @@ final class CostProductCatalogue
 
     public const string ATTRIBUTE_TYPE = 'text';
 
+    /** The legacy table the offers' cost lines (`quotationexpensereports`) point at. */
+    public const string EXPENSE_REPORTS = 'expense_reports';
+
     /**
      * Legacy table => its branch category under ROOT.
      *
@@ -28,7 +31,7 @@ final class CostProductCatalogue
         'products' => 'Articoli',
         'vehicles' => 'Veicoli',
         'equipment' => 'Attrezzature',
-        'expense_reports' => 'Note spese',
+        self::EXPENSE_REPORTS => 'Note spese',
     ];
 
     /**
@@ -52,6 +55,6 @@ final class CostProductCatalogue
             'model' => ['code' => 'cost_model', 'name' => 'Modello'],
             'serial_number' => ['code' => 'cost_serial_number', 'name' => 'Matricola'],
         ],
-        'expense_reports' => [],
+        self::EXPENSE_REPORTS => [],
     ];
 }

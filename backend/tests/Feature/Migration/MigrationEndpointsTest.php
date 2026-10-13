@@ -39,6 +39,36 @@ it('index: 200 with the registered sources for a super-admin', function () {
         ->assertJsonPath('data.sources.1.key', 'users');
 });
 
+it('index: a source that never ran has no last run and no migration time', function () {
+    Sanctum::actingAs(migrationsSuperAdminActor());
+
+    $this->getJson('/api/migrations')
+        ->assertOk()
+        ->assertJsonPath('data.sources.0.key', 'roles')
+        ->assertJsonPath('data.sources.0.phase', 1)
+        ->assertJsonPath('data.sources.0.last_run', null)
+        ->assertJsonPath('data.sources.0.migrated_at', null);
+});
+
+it('index: each source carries its latest run and when it last completed, whoever ran it', function () {
+    $actor = migrationsSuperAdminActor();
+    $otherAdmin = migrationsSuperAdminActor();
+    MigrationRun::factory()->create(['user_id' => $otherAdmin->id, 'source' => 'roles', 'status' => MigrationStatus::Completed, 'created_rows' => 4]);
+    $failed = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'roles', 'status' => MigrationStatus::Failed]);
+    MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'users', 'status' => MigrationStatus::Processing]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->getJson('/api/migrations')->assertOk();
+
+    $sources = collect($response->json('data.sources'))->keyBy('key');
+    expect($sources['roles']['last_run']['id'])->toBe($failed->id)
+        ->and($sources['roles']['last_run']['status'])->toBe('failed')
+        ->and($sources['roles']['migrated_at'])->not->toBeNull()
+        ->and($sources['users']['last_run']['status'])->toBe('processing')
+        ->and($sources['users']['migrated_at'])->toBeNull()
+        ->and($sources['tags']['last_run'])->toBeNull();
+});
+
 it('index: 403 for an authenticated non-super-admin', function () {
     Sanctum::actingAs(User::factory()->create());
 
@@ -59,6 +89,21 @@ it('columns: 200 with the column catalogue', function () {
     $this->getJson('/api/migrations/roles/columns')
         ->assertOk()
         ->assertJsonPath('data.columns.1.id', 'name');
+});
+
+it('columns: lists the sources to import first, required or optional', function () {
+    Sanctum::actingAs(migrationsSuperAdminActor());
+
+    $this->getJson('/api/migrations/products/columns')
+        ->assertOk()
+        ->assertJsonPath('data.dependencies', [
+            ['source' => 'product-categories', 'required' => true],
+            ['source' => 'vat-rates', 'required' => false],
+        ]);
+
+    $this->getJson('/api/migrations/roles/columns')
+        ->assertOk()
+        ->assertJsonPath('data.dependencies', []);
 });
 
 it('columns: 404 for an unknown source', function () {

@@ -1,39 +1,75 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Shapes } from 'lucide-react'
-import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
+import { DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
-  RecordField,
   RecordFieldList,
   RecordMeta,
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
+import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
+import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
-import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import {
+  ProductTypologyCommissionRow,
+  ProductTypologyIdentityRows,
+} from '@/features/product-typologies/product-typology-rows'
+import {
+  useProductTypologyForm,
+  type ProductTypologyFormValues,
+} from '@/features/product-typologies/use-product-typology-form'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import type { ProductTypologyDetailWithPermissions } from '@/features/product-typologies/types'
+import type {
+  ProductTypologyDetailWithPermissions,
+  ProductTypologyFormMode,
+} from '@/features/product-typologies/types'
 
 interface ProductTypologyDetailViewProps {
   productTypology: ProductTypologyDetailWithPermissions
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the record (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single product typology, rendered as an
- * enterprise-CRM record (Opportunita' reference layout): the
- * identity/fields card on the left, the activity card on the right, a
- * metadata footer. `code` is shown as the header subtitle, not a labeled
- * field.
+ * Detail of a single product typology on the record kit: identity band
+ * (`code` as the subtitle), the rows, the activity card, a metadata footer.
+ * There is no edit page (wave 3 of the "no edit pages" plan): every row
+ * edits IN PLACE, one at a time, each save a PATCH of that field alone.
  */
-export function ProductTypologyDetailView({ productTypology, onEdit }: ProductTypologyDetailViewProps) {
+export function ProductTypologyDetailView(props: ProductTypologyDetailViewProps) {
+  // The rows read the field permissions, so the provider wraps the whole detail.
+  return (
+    <ResourcePermissionsProvider permissions={props.productTypology.permissions}>
+      <ProductTypologyDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function ProductTypologyDetailContent({ productTypology, onChanged }: ProductTypologyDetailViewProps) {
   const { t } = useTranslation()
+  const editing = useInlineEditingField()
+  // Stable per saved record: the form re-syncs its values on a new one.
+  const mode = useMemo<ProductTypologyFormMode>(() => ({ type: 'edit', productTypology }), [productTypology])
+  const { form, onSubmit, serverError, clearServerError } = useProductTypologyForm({
+    mode,
+    onSuccess: () => {
+      editing.close()
+      onChanged?.()
+    },
+  })
+  const inline = useRecordInlineEdit<ProductTypologyFormValues>({
+    editing,
+    form,
+    onSubmit,
+    serverError,
+    clearServerError,
+    genericErrorMessage: t('productTypologies.form.genericError'),
+  })
   const canEdit = productTypology.permissions.resource.update
   const createdAt = formatDateTime(productTypology.created_at)
   const updatedAt = formatDateTime(productTypology.updated_at)
@@ -42,15 +78,8 @@ export function ProductTypologyDetailView({ productTypology, onEdit }: ProductTy
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab('product-typologies', productTypology.id, t('activityLog.title'))]}
-            />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab('product-typologies', productTypology.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={
               <DetailMonogram
@@ -61,35 +90,24 @@ export function ProductTypologyDetailView({ productTypology, onEdit }: ProductTy
             }
             title={productTypology.name}
             subtitle={productTypology.code}
-            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
+        }
+      >
+        {/* Provider only (no DOM): the in-place rows share the edit form. */}
+        <Form {...form}>
           <RecordSectionsGrid>
             <RecordSection title={t('productTypologies.form.sections.identity.title')} full>
               <RecordFieldList>
-                <RecordField label={t('productTypologies.detail.color')}>
-                  <ProductTypologyBadge name={productTypology.name} color={productTypology.color} />
-                </RecordField>
-                <RecordField label={t('productTypologies.detail.description')}>
-                  {productTypology.description ? productTypology.description : <DetailEmpty />}
-                </RecordField>
+                <ProductTypologyIdentityRows inline={inline} canEdit={canEdit} />
               </RecordFieldList>
             </RecordSection>
             <RecordSection title={t('productTypologies.form.sections.commission.title')} full>
               <RecordFieldList>
-                <RecordField label={t('productTypologies.form.supplierCommissionEnabled')}>
-                  {productTypology.supplier_commission_enabled ? t('common.yes') : t('common.no')}
-                </RecordField>
-                {productTypology.supplier_commission_direction ? (
-                  <RecordField label={t('productTypologies.form.supplierCommissionDirection')}>
-                    {t(
-                      `productTypologies.supplierCommissionDirection.${productTypology.supplier_commission_direction}`,
-                    )}
-                  </RecordField>
-                ) : null}
+                <ProductTypologyCommissionRow inline={inline} canEdit={canEdit} />
               </RecordFieldList>
             </RecordSection>
           </RecordSectionsGrid>
-        </RecordCard>
+        </Form>
       </RecordBody>
 
       <RecordMeta>

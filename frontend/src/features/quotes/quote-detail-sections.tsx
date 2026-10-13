@@ -81,6 +81,7 @@ export function QuoteDetailSections({ quote, editor }: QuoteDetailSectionsProps)
         values={{
           code: quote.code,
           title: quote.title,
+          quoteDate: quote.quote_date,
           status: quote.quote_workflow_status,
           opportunity: { id: quote.opportunity.id, name: quote.opportunity.name },
         }}

@@ -15,6 +15,8 @@ export interface SectorTreeNode {
   id: number
   name: string
   parent_id: number | null
+  /** The node's OWN flag (spec 0212); an inactive ancestor deactivates the whole branch. */
+  is_active: boolean
   children: SectorTreeNode[]
 }
 
@@ -24,9 +26,14 @@ export interface SectorTreeNode {
  */
 export interface SectorDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
+  /** Verbatim code (01, 07a, NA), spec 0213; null when none. */
+  code: string | null
   name: string
   parent_id: number | null
   parent: { id: number; name: string } | null
+  is_active: boolean
   created_at: string
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
@@ -43,8 +50,10 @@ export interface SectorDetailWithPermissions extends SectorDetail {
 
 /** Payload for POST /sectors (create). */
 export interface CreateSectorPayload {
+  code?: string | null
   name: string
   parent_id?: number | null
+  is_active?: boolean
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
 }
@@ -52,11 +61,7 @@ export interface CreateSectorPayload {
 /** Payload for PATCH /sectors/{id} (partial update). */
 export type UpdateSectorPayload = Partial<CreateSectorPayload>
 
-/**
- * Discriminated form mode. Create optionally pre-selects a parent (an
- * "add sub-sector" affordance on a given tree node, mirrors
- * `ProductCategoryFormMode`).
- */
+/** Discriminated form mode: create (a blank draft) or edit (the detail's in-place rows). */
 export type SectorFormMode =
-  | { type: 'create'; parentId: number | null }
+  | { type: 'create' }
   | { type: 'edit'; sector: SectorDetailWithPermissions }

@@ -8,6 +8,11 @@ import type {
   UpdateContractStatusPayload,
 } from '@/features/contract-statuses/types'
 
+/** Query key of a single contract status's detail, shared by the detail screen and its in-place saves. */
+export function contractStatusDetailQueryKey(id: number) {
+  return ['contract-statuses', 'detail', id] as const
+}
+
 /**
  * Fetches a single contract status detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -31,16 +36,18 @@ export async function createContractStatus(
   return data.data
 }
 
-/** Partially updates a contract status (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a contract status (PATCH). Returns the saved record with the actor's
+ * permissions, so the in-place detail re-syncs on it as is.
+ */
 export async function updateContractStatus(
   id: number,
   payload: UpdateContractStatusPayload,
-): Promise<ContractStatusDetail> {
-  const { data } = await apiClient.patch<ApiResponse<ContractStatusDetail>>(
-    `/contract-statuses/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<ContractStatusDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<ContractStatusDetail, ResourcePermissions>
+  >(`/contract-statuses/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

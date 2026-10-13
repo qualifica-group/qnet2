@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchVatRate } from '@/features/vat-rates/api'
+import { fetchVatRate, vatRateDetailQueryKey } from '@/features/vat-rates/api'
 import { VatRateForm } from '@/features/vat-rates/vat-rate-form'
 import { VatRateDetailView } from '@/features/vat-rates/vat-rate-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -15,19 +15,13 @@ import type {
 } from '@/features/modules/types'
 import type { VatRateDetail } from '@/features/vat-rates/types'
 
-/** Query key for a single VAT rate's detail (fresh-on-open pattern), moved verbatim from `VatRatesTable`. */
-function detailQueryKey(id: number) {
-  return ['vat-rates', 'detail', id] as const
-}
-
 /**
- * Content-only `vat-rates` screens for the module registry (spec 0042):
- * fetch + the existing presentational view/form, no page chrome. Reused
- * as-is by the modal Sheet (`useModuleOpener`) and by the generic dedicated
- * pages (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from
- * `VatRatesTable`'s inline loaders, which the rewire removed.
+ * Content-only `vat-rates` screens for the module registry (spec
+ * 0042): fetch + the presentational view/form, no page chrome. The detail
+ * edits its rows in place, so `onEdit` is never used; each save reports
+ * through `onChanged`.
  */
-export function VatRateDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function VatRateDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: vatRate,
@@ -35,7 +29,7 @@ export function VatRateDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
     isError,
     error,
     refetch,
-  } = useEntityDetail(detailQueryKey(id), () => fetchVatRate(id))
+  } = useEntityDetail(vatRateDetailQueryKey(id), () => fetchVatRate(id))
 
   if (isError) {
     return (
@@ -52,68 +46,49 @@ export function VatRateDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <VatRateDetailView vatRate={vatRate} onEdit={onEdit} />
-}
-
-export function VatRateFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (saved: VatRateDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(saved.id) })
-    onSuccess(saved.id)
-  }
-
-  if (mode.type === 'create') {
-    return <VatRateForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
-  }
-
-  return <VatRateEditScreen vatRateId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-}
-
-interface VatRateEditScreenProps {
-  vatRateId: number
-  onSuccess: (vatRate: VatRateDetail) => void
-  onCancel: () => void
+  return <VatRateDetailView vatRate={vatRate} onChanged={onChanged} />
 }
 
 /**
- * Fetches the fresh, re-authorized VAT rate detail before mounting the edit
- * form, so the partial PATCH starts from authoritative values rather than a
- * stale snapshot.
+ * Create only: there is no edit form, and the registry generates no
+ * `:id/edit` route. Leaving a VAT rate being created — Cancel, the Sheet's
+ * X/overlay/Esc, a link, a reload — always asks first.
  */
-function VatRateEditScreen({ vatRateId, onSuccess, onCancel }: VatRateEditScreenProps) {
+export function VatRateFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const { t } = useTranslation()
-  const {
-    data: vatRate,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(detailQueryKey(vatRateId), () => fetchVatRate(vatRateId))
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('vatRates.form.leaveConfirm.title'),
+    description: t('vatRates.form.leaveConfirm.description'),
+    confirmLabel: t('vatRates.form.leaveConfirm.confirm'),
+    cancelLabel: t('vatRates.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('vatRates.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
+  if (mode.type !== 'create') {
+    return null
   }
 
-  if (isLoading || !vatRate) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+  const handleSuccess = (saved: VatRateDetail) => {
+    queryClient.invalidateQueries({ queryKey: vatRateDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new record's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(saved.id)
+  }
+
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
   }
 
   return (
-    <VatRateForm mode={{ type: 'edit', vatRate }} onSuccess={onSuccess} onCancel={onCancel} />
+    <>
+      {leaveGuard.navigationGuard}
+      <VatRateForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
   )
 }
 
@@ -125,8 +100,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.vatRates',
   DetailScreen: VatRateDetailScreen,
   FormScreen: VatRateFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button — the same registration Opportunita',
-  // Utenti and Lead carry.
+  // The detail IS the edit form: no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

@@ -52,7 +52,7 @@ const guide: HelpGuide = {
       id: 'table-field',
       title: 'Attributo di tipo Tabella',
       blocks: [
-        { type: 'paragraph', text: 'Il tipo Tabella raccoglie più righe con le stesse colonne, ad esempio le verifiche ispettive di una commessa (data verifica, ispettore, supporto On/Off Site, fase Stage 1/Stage 2). Nel form dell\'attributo compare l\'editor Colonne.' },
+        { type: 'paragraph', text: 'Il tipo Tabella raccoglie più righe con le stesse colonne, ad esempio le verifiche ispettive di una commessa (data verifica, ispettore, supporto On/Off Site, fase Stage 1/Stage 2). Nella scheda dell\'attributo compare l\'editor Colonne.' },
         {
           type: 'list',
           items: [
@@ -75,11 +75,33 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Apri Prodotti › Attributi e premi Nuovo attributo.',
-            'Inserisci Codice e Nome.',
-            'Scegli il Tipo di campo.',
-            "Per un Elenco di opzioni aggiungi almeno un'opzione, con Valore ed Etichetta.",
-            'Per una Relazione scegli il modulo collegato.',
-            'Premi Salva.',
+            'Il form di creazione ha la stessa forma della scheda: le righe (Codice, Nome, Tipo, Presentazione e i campi personalizzati) sono chiuse. Premi la matita (o il valore) per aprirne una e inserire Codice, Nome e Tipo di campo; Fatto conferma la riga senza salvare nulla, Ripristina la riporta com\'era.',
+            "Gli editor che dipendono dal Tipo (Impostazioni del campo, Opzioni, Relazione, Colonne) sono già aperti: per un Elenco di opzioni aggiungi almeno un'opzione, con Valore ed Etichetta.",
+            'Per una Relazione scegli il modulo collegato: oltre ai moduli puoi scegliere Province, per collegare una provincia.',
+            "In alto vedi l'anteprima del campo, che segue le tue scelte.",
+            'Premi Salva (in alto o in fondo): il nuovo attributo viene creato con tutti i dati e si apre la sua scheda.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Se esci dal form (Annulla, chiusura del pannello, cambio pagina) prima di salvare, ti viene chiesto di confermare: i dati inseriti andrebbero persi.',
+        },
+      ],
+    },
+    {
+      id: 'editing-an-attribute',
+      title: 'Modificare un attributo',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "La scheda di un attributo non ha un modulo di modifica: ogni riga si modifica sul posto, una alla volta. Premi la matita (o il valore) su Nome, Presentazione (descrizione, testo di aiuto, segnaposto, icona), Impostazioni del campo, Opzioni, Relazione, Colonne o su un campo personalizzato, cambia il valore e premi Salva; Annulla o Esc lasciano la riga com'era. Ogni Salva invia solo ciò che hai cambiato in quella riga.",
+        },
+        {
+          type: 'list',
+          items: [
+            'Codice e Tipo si scelgono alla creazione e non hanno la matita.',
+            'Le righe che compaiono dipendono dal Tipo: Opzioni per un Elenco di opzioni, Relazione per una Relazione, Colonne per una Tabella.',
+            'Senza il permesso di modifica le righe non mostrano la matita.',
           ],
         },
       ],
@@ -111,7 +133,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Il tipo di campo non si cambia dopo la creazione. Un attributo assegnato a una categoria o con valori sui prodotti non si può eliminare.',
+          text: 'Codice e tipo di campo non si cambiano dopo la creazione. Un attributo assegnato a una categoria o con valori sui prodotti non si può eliminare.',
         },
         {
           type: 'note',

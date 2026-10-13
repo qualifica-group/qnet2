@@ -7,9 +7,11 @@ use App\DataObjects\Users\CreateUserData;
 use App\DataObjects\Users\ProfileData;
 use App\Enums\PersonalDataTypeEnum;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsExternalUserRecord;
+use App\Migrations\Support\ExistingUserMatcher;
 use App\Migrations\Support\ExternalApiClient;
 use App\Migrations\Support\MigrationGeoResolver;
 use App\Models\User;
@@ -34,6 +36,10 @@ use Throwable;
  * transaction (importRow()) overwrites `users.password` with the external
  * hash directly via the query builder — bypassing the model's `hashed` cast,
  * which would otherwise re-hash (and so invalidate) an already-hashed value.
+ *
+ * A legacy user that already exists in qnet (same email, or same name when not
+ * linked yet: ExistingUserMatcher) is ADOPTED instead of created: it gets the
+ * `old_id` and only its empty employment references are filled.
  */
 class UsersSource extends AbstractMigrationSource
 {
@@ -52,6 +58,7 @@ class UsersSource extends AbstractMigrationSource
         ExternalApiClient $client,
         private readonly UserService $service,
         private readonly MigrationGeoResolver $geoResolver,
+        private readonly ExistingUserMatcher $matcher,
     ) {
         parent::__construct($client);
     }
@@ -64,6 +71,18 @@ class UsersSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Users';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::optional('roles'),
+            MigrationDependency::optional('companies'),
+            MigrationDependency::optional('operational-sites'),
+        ];
     }
 
     /**
@@ -166,6 +185,12 @@ class UsersSource extends AbstractMigrationSource
             throw new RuntimeException('email, first_name and last_name are required.');
         }
 
+        $existing = $this->matcher->match($email, $firstName, $lastName);
+
+        if ($existing !== null) {
+            return $this->adopt($existing, $externalId, $record);
+        }
+
         if (! preg_match(self::BCRYPT_PATTERN, $externalHash)) {
             throw new RuntimeException('password must already be a valid bcrypt hash.');
         }
@@ -211,6 +236,25 @@ class UsersSource extends AbstractMigrationSource
         $user->save();
 
         return MigrationRowOutcome::created($warnings, $user);
+    }
+
+    /**
+     * Link an existing qnet user to the legacy record: set its `old_id` and fill
+     * only its empty employment references. Role, password, email, name and
+     * contacts stay as qnet has them; no model on the outcome, so no custom
+     * field value is written either.
+     *
+     * @param  array<string, mixed>  $record
+     */
+    private function adopt(User $user, int|string $externalId, array $record): MigrationRowOutcome
+    {
+        $user->old_id = $externalId;
+        $user->save();
+
+        return MigrationRowOutcome::created([
+            "Existing user {$user->email} linked to this legacy record; only empty fields were filled.",
+            ...$this->reconcileEmployment($externalId, $record),
+        ]);
     }
 
     /**

@@ -1,49 +1,53 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
-import { ProductForm } from '@/features/products/product-form'
+import type { ResourceMeta } from '@/features/authorization/types'
+import { ProductDetailView } from '@/features/products/product-detail'
+import {
+  inputOf,
+  pencilOf,
+  permissionsFor,
+  productFixture,
+  productWrapper,
+  typeInRow,
+} from '@/features/products/product-test-fixtures'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
 
 /**
- * Regression: `cost`/`price` are `decimal:2` casts, so the API returns them
- * as the STRINGS `"800.00"`/`"1200.00"`. Seeding those strings straight into
- * the form made its zod schema reject them ("expected number, received
- * string") as soon as an edit form was reopened on a saved product, and made
- * the sparse PATCH treat every untouched money field as changed.
+ * The money columns arrive as `decimal:2` strings ("1200.00"): the detail
+ * shows them formatted and the in-place editor holds them as numbers, so a
+ * PATCH carries only what changed. REQUIREMENT CHANGED (spec 0218): the
+ * edit form is now the in-place detail.
  */
 
 const createProductMock = vi.fn()
 const updateProductMock = vi.fn()
+const fetchProductNextCodeMock = vi.fn<() => Promise<string>>()
 
-vi.mock('@/features/products/api', () => ({
+vi.mock('@/features/products/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/products/api')>()),
   createProduct: (...args: unknown[]) => createProductMock(...args),
   updateProduct: (...args: unknown[]) => updateProductMock(...args),
-  fetchProductNextCode: () => Promise.resolve('PRD-0100'),
+  fetchProductNextCode: () => fetchProductNextCodeMock(),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-vi.mock('@/features/config/use-config', () => ({
-  useEnumOptions: () => [
-    { value: 'SERVICE', label: 'Service', color: null, icon: null, is_default: true, hidden_on_form: false },
-  ],
-}))
+vi.mock('@/features/config/use-config', async () => {
+  const { PRODUCT_ENUMS } = await import('@/features/products/product-test-fixtures')
+  return { useEnumOptions: (key: string) => PRODUCT_ENUMS[key] ?? [] }
+})
 
 vi.mock('@/features/product-categories/use-product-category-tree', () => ({
   useProductCategoryTree: () => ({ data: [], isPending: false, isError: false, refetch: () => {} }),
 }))
 
-vi.mock('@/components/ui/searchable-select', () => ({
-  SearchableSelect: () => <div data-testid="category-select-stub" />,
+vi.mock('@/components/ui/searchable-select', async () => ({
+  SearchableSelect: (await import('@/features/products/product-test-stubs')).StubSearchableSelect,
 }))
 
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({ value }: { value: number | null }) => (
-    <div data-testid="product-select-value">{value ?? ''}</div>
-  ),
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/products/product-test-stubs')).StubAsyncSelect,
 }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
@@ -51,48 +55,25 @@ vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-vi.mock('@/features/products/use-product-attribute-layout', () => ({
-  useProductAttributeLayout: () => ({ data: null, isLoading: false }),
+const fetchEffectiveAttributesMock = vi.fn()
+vi.mock('@/features/product-categories/api', () => ({
+  fetchEffectiveAttributes: (...args: unknown[]) => fetchEffectiveAttributesMock(...args),
 }))
 
-const FULL_ACCESS: ResourcePermissions = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
-}
+const productAttributeLayoutMock = vi.fn()
+vi.mock('@/features/products/use-product-attribute-layout', () => ({
+  useProductAttributeLayout: (...args: unknown[]) => productAttributeLayoutMock(...args),
+}))
 
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
-}
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+}))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
 
-/** A product as the API actually serializes it: money fields are decimal strings. */
-function product(overrides: Partial<ProductDetailWithPermissions> = {}): ProductDetailWithPermissions {
-  return {
-    id: 5,
-    code: 'PRD-0005',
-    name: 'ThinkPad X1',
-    description: null,
-    cost: '800.00',
-    price: '1200.00',
-    category_id: 3,
-    category: { id: 3, name: 'Laptops' },
-    product_type: 'SERVICE',
-    usages: ['SALE', 'COST'],
-    created_at: '2026-01-01T00:00:00Z',
-    vat_rate_id: null,
-    vat_rate: null,
-    supplier_id: null,
-    supplier: null,
-    unit_of_measure_id: 1,
-    unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
-    product_typology_id: 1,
-    product_typology: { id: 1, name: 'Ente', color: 'violet' },
-    permissions: FULL_ACCESS,
-    ...overrides,
-  }
+function renderDetail(product: ProductDetailWithPermissions) {
+  const { client, wrapper } = productWrapper()
+  render(<ProductDetailView product={product} />, { wrapper })
+  return client
 }
 
 beforeAll(async () => {
@@ -100,37 +81,33 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  vi.restoreAllMocks()
   createProductMock.mockReset()
   updateProductMock.mockReset()
+  fetchProductNextCodeMock.mockReset()
+  fetchProductNextCodeMock.mockResolvedValue('PRD-0100')
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_ACCESS })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
+  fetchEffectiveAttributesMock.mockReset()
+  fetchEffectiveAttributesMock.mockResolvedValue([])
+  productAttributeLayoutMock.mockReset()
+  productAttributeLayoutMock.mockReturnValue({ data: null, isLoading: false })
 })
 
-describe('ProductFormBody — decimal cost/price hydration', () => {
-  it('seeds the money inputs as numbers from the decimal strings the API returns', async () => {
-    render(
-      <ProductForm mode={{ type: 'edit', product: product() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+describe('Product — decimal cost/price hydration', () => {
+  it('opens the money editor on the number behind the decimal string', () => {
+    renderDetail(productFixture({ price: '1200.50' }))
 
-    expect(await screen.findByLabelText(/^Cost/)).toHaveValue(800)
-    expect(screen.getByLabelText(/^Price/)).toHaveValue(1200)
+    fireEvent.click(pencilOf('Price'))
+    expect(inputOf('Price')).toHaveValue(1200.5)
   })
 
-  it('submits an edit without a type error on cost/price, PATCHing only what changed', async () => {
-    updateProductMock.mockResolvedValue(product())
+  it('PATCHes only the edited amount', async () => {
+    updateProductMock.mockResolvedValue(productFixture({ price: '1250.00' }))
+    renderDetail(productFixture({ usages: ['SALE', 'COST'] }))
 
-    render(
-      <ProductForm mode={{ type: 'edit', product: product() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    typeInRow('Price', '1250', 'Save')
 
-    fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'ThinkPad X1 Gen 2' } })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateProductMock).toHaveBeenCalledTimes(1))
-    const [, payload] = updateProductMock.mock.calls[0]
-    expect(payload).toEqual({ name: 'ThinkPad X1 Gen 2' })
-    expect(screen.queryByText(/expected number/i)).not.toBeInTheDocument()
+    await waitFor(() => expect(updateProductMock).toHaveBeenCalledWith(5, { price: 1250 }))
   })
 })

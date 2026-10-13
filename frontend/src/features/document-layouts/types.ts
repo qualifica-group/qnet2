@@ -51,8 +51,8 @@ export interface DocumentLayoutDetail {
 /**
  * A `DocumentLayoutDetail` carrying the actor's authorization metadata for
  * this instance (spec 0004), as returned by `GET /document-layouts/{id}`
- * (`show`). Used to seed the edit form's `ResourcePermissionsProvider`
- * without a second request.
+ * (`show`). Seeds the detail's `ResourcePermissionsProvider` without a second
+ * request.
  */
 export interface DocumentLayoutDetailWithPermissions extends DocumentLayoutDetail {
   permissions: ResourcePermissions
@@ -84,8 +84,8 @@ export type UpdateDocumentLayoutPayload = Partial<
 >
 
 /**
- * Discriminated form mode shared by the form hook/meta-resolver and the
- * `DocumentLayoutForm` component.
+ * Discriminated form mode of `useDocumentLayoutForm`: `create` backs the
+ * create form, `edit` the detail's in-place rows.
  */
 export type DocumentLayoutFormMode =
   | { type: 'create' }

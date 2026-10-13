@@ -3,6 +3,8 @@
  * 0122 MT-F2): RHF/Zod wiring, default values, the D-5 cascade (Cliente ->
  * Opportunita'/Commessa, Commessa -> Cliente, Task -> locked title/links),
  * the AC-029 minutes-from-times computation and the create/update submit.
+ * Edit backs the detail's in-place rows (spec 0226): the PUT stays a full
+ * replace, built from the whole form, of which only the open row changed.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -112,7 +114,7 @@ function optionalTime(value: string | null): string | undefined {
  * Builds the wire payload from form values. With a task linked (D-5), the
  * title/links are OMITTED rather than sent stale: the server derives and
  * imposes them from the task regardless, and the editor never even shows the
- * form's own values for those fields while locked (see `time-entry-editor`).
+ * form's own values for those fields while locked (see `time-entry-fields`).
  */
 function buildPayload(values: TimeEntryFormValues): UpdateTimeEntryPayload {
   const isTaskLinked = values.task_id !== null
@@ -146,7 +148,14 @@ export function useTimeEntryForm({ mode, onSuccess }: UseTimeEntryFormArgs) {
   // Stable indirection (mirrors `useTaskForm`): `useForm` gets a resolver whose
   // identity never changes but which always runs the latest schema.
   const resolverRef = useRef<Resolver<TimeEntryFormValues>>(zodResolver(buildTimeEntrySchema(t)))
-  const form = useForm<TimeEntryFormValues>({ resolver: (...args) => resolverRef.current(...args), defaultValues })
+  // Edit (spec 0226): the detail edits in place, so a saved record re-syncs the
+  // form; `keepDirtyValues` spares an editor still open over a background refetch.
+  const form = useForm<TimeEntryFormValues>({
+    resolver: (...args) => resolverRef.current(...args),
+    defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
+  })
   const schema = useMemo(() => buildTimeEntrySchema(t), [t])
   useEffect(() => {
     resolverRef.current = zodResolver(schema)
@@ -267,11 +276,13 @@ export function useTimeEntryForm({ mode, onSuccess }: UseTimeEntryFormArgs) {
 
   return {
     form,
-    isEdit,
     isTaskLinked,
     taskQuery,
     serverError,
+    clearServerError: () => setServerError(null),
     isSubmitting,
+    /** The raw values handler, for a caller wiring its own `handleSubmit` (the detail's row save). */
+    submit: onSubmit,
     onSubmit: form.handleSubmit(onSubmit),
     handleRegistryChange,
     handleOpportunityItemChange,

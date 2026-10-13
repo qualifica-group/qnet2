@@ -33,15 +33,15 @@ export async function createCommissionConfiguration(
   return data.data
 }
 
+/** Partial update; returns the saved record with the actor's permissions so the in-place detail re-syncs on it as is. */
 export async function updateCommissionConfiguration(
   id: number,
   payload: UpdateCommissionConfigurationPayload,
-): Promise<CommissionConfigurationDetail> {
-  const { data } = await apiClient.patch<ApiResponse<CommissionConfigurationDetail>>(
-    `/${COMMISSION_CONFIGURATIONS_DOMAIN}/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<CommissionConfigurationDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<CommissionConfigurationDetail, ResourcePermissions>
+  >(`/${COMMISSION_CONFIGURATIONS_DOMAIN}/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 export async function deleteCommissionConfiguration(id: number): Promise<void> {

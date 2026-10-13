@@ -15,7 +15,8 @@ use Illuminate\Contracts\Validation\Validator;
  * shape (App\CustomFields\FieldTypeRegistry is the single source of truth
  * for the allowed `type` values in both families): an ENUM type requires at
  * least one option with unique values; a RELATION type requires a valid
- * relation_target (a custom-fieldable entity_type, a one|many cardinality, a
+ * relation_target (a relation target entity_type — custom-fieldable or a
+ * relation-only reference model, spec 0225 — a one|many cardinality, a
  * non-empty for_select_resource).
  *
  * `fieldTypeDefinitionType()`/`shouldValidateOptions()`/
@@ -51,7 +52,7 @@ trait ValidatesFieldTypeDefinition
     }
 
     /**
-     * RELATION requires a valid relation_target: a custom-fieldable
+     * RELATION requires a valid relation_target: a relation target
      * entity_type, a one|many cardinality and a for_select_resource.
      */
     protected function validateRelationTarget(Validator $validator): void
@@ -72,8 +73,8 @@ trait ValidatesFieldTypeDefinition
         $cardinality = $target['cardinality'] ?? null;
         $forSelectResource = $target['for_select_resource'] ?? null;
 
-        if (! is_string($entityType) || ! app(CustomFieldEntityRegistry::class)->isCustomFieldable($entityType)) {
-            $validator->errors()->add('relation_target.entity_type', 'The relation target must be a custom-fieldable entity.');
+        if (! is_string($entityType) || ! app(CustomFieldEntityRegistry::class)->isRelationTarget($entityType)) {
+            $validator->errors()->add('relation_target.entity_type', 'The relation target must be a valid relation target entity.');
         }
 
         if (! in_array($cardinality, ['one', 'many'], true)) {

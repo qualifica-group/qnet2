@@ -14,9 +14,19 @@ export interface CustomFieldEntity {
   label: string
 }
 
-/** Populates the admin form's `entity_type` (and `relation_target`) pickers. */
+/** Populates the custom field form's host `entity_type` picker. */
 export async function fetchCustomFieldEntities(): Promise<CustomFieldEntity[]> {
   const { data } = await apiClient.get<ApiResponse<CustomFieldEntity[]>>('/custom-fields/entities')
+  return data.data
+}
+
+/**
+ * Populates the `relation_target` pickers (custom fields and attributes): the
+ * custom-fieldable modules plus the relation-only reference data such as
+ * provinces (spec 0225), same item shape as `fetchCustomFieldEntities`.
+ */
+export async function fetchCustomFieldRelationTargets(): Promise<CustomFieldEntity[]> {
+  const { data } = await apiClient.get<ApiResponse<CustomFieldEntity[]>>('/custom-fields/relation-targets')
   return data.data
 }
 
@@ -25,6 +35,11 @@ export async function fetchCustomFieldEntities(): Promise<CustomFieldEntity[]> {
  * ADMIN CRUD (spec 0021 — ADMIN PANEL): `CustomFieldDefinition` catalogue.
  * ---------------------------------------------------------------------------
  */
+
+/** Query key for a single definition's detail (fresh-on-open pattern). */
+export function customFieldDetailQueryKey(id: number) {
+  return ['custom-fields', 'detail', id] as const
+}
 
 /**
  * Fetches a single custom field definition together with the actor's
@@ -51,16 +66,15 @@ export async function createCustomFieldDefinition(
   return data.data
 }
 
-/** Partially updates a custom field definition (PATCH). Returns the updated resource. */
+/** Partially updates a custom field definition (PATCH). Returns the updated resource with the actor's permissions, like `show`. */
 export async function updateCustomFieldDefinition(
   id: number,
   payload: UpdateCustomFieldDefinitionPayload,
-): Promise<CustomFieldDefinitionDetail> {
-  const { data } = await apiClient.patch<ApiResponse<CustomFieldDefinitionDetail>>(
-    `/custom-fields/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<CustomFieldDefinitionDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<CustomFieldDefinitionDetail, ResourcePermissions>
+  >(`/custom-fields/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a custom field definition. Backend responds 204 with no body. */

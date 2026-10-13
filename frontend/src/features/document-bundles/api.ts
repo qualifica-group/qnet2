@@ -16,6 +16,11 @@ import type {
  */
 export const DOCUMENT_BUNDLE_ATTACHABLE_ALIAS = 'document_bundle'
 
+/** Query key of a single document bundle's detail, shared by the detail screen and its in-place saves. */
+export function documentBundleDetailQueryKey(id: number) {
+  return ['document-bundles', 'detail', id] as const
+}
+
 /**
  * Fetches a single document bundle detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -34,13 +39,19 @@ export async function createDocumentBundle(payload: CreateDocumentBundlePayload)
   return data.data
 }
 
-/** Partially updates a document bundle (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a document bundle (PATCH). Returns the saved record with
+ * the actor's permissions, so the in-place detail re-syncs on it as is.
+ */
 export async function updateDocumentBundle(
   id: number,
   payload: UpdateDocumentBundlePayload,
-): Promise<DocumentBundle> {
-  const { data } = await apiClient.patch<ApiResponse<DocumentBundle>>(`/document-bundles/${id}`, payload)
-  return data.data
+): Promise<DocumentBundleWithPermissions> {
+  const { data } = await apiClient.patch<ApiResponseWithPermissions<DocumentBundle, ResourcePermissions>>(
+    `/document-bundles/${id}`,
+    payload,
+  )
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a document bundle. Backend responds 204 with no body. */

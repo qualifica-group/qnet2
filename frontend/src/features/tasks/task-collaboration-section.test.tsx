@@ -234,6 +234,9 @@ describe('props of the mounted sections', () => {
 describe('integration with the detail', () => {
   it('AC-023: the detail renders the activity log inside the card and nowhere else', () => {
     granted = ['tasks.view']
+    // The side column starts collapsed by default (2026-10-12): this checks
+    // the expanded card's tab strip, so the stored preference opens it.
+    window.localStorage.setItem('record.side.collapsed', 'false')
     // `TaskActionsBar` inside the detail needs the confirm provider and the
     // query client its mutations hang off. One client per test, never per
     // render (frontend.md §10).

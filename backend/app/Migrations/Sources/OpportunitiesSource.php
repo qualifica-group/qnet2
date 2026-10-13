@@ -4,6 +4,7 @@ namespace App\Migrations\Sources;
 
 use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
@@ -16,6 +17,7 @@ use App\Models\Registry;
 use App\Models\Source;
 use App\Models\User;
 use App\Services\OpportunityService;
+use App\Services\ProductLines\ProductLineWriter;
 use RuntimeException;
 
 /**
@@ -25,6 +27,12 @@ use RuntimeException;
  * the mandatory parent: a registry not migrated fails the row (AC-003). The
  * legacy phase (`status`) has no column here: the status is computed from
  * the quotes.
+ *
+ * G-12: an opportunity with no product category of its own takes the
+ * categories of the products on its quotes' lines (`quote_product_category_ids`),
+ * the same rows OpportunityProductLineCoverage adds when a quote is built
+ * here. A re-import fills them in on an already imported opportunity that
+ * still has no product line (never overwriting existing ones).
  */
 class OpportunitiesSource extends AbstractMigrationSource
 {
@@ -34,9 +42,12 @@ class OpportunitiesSource extends AbstractMigrationSource
 
     private const string RESERVED_NOTES_LABEL = 'Note riservate:';
 
+    private const string BACKFILLED_PRODUCT_LINES_NOTE = 'Missing product categories back-filled.';
+
     public function __construct(
         ExternalApiClient $client,
         private readonly OpportunityService $service,
+        private readonly ProductLineWriter $productLineWriter,
     ) {
         parent::__construct($client);
     }
@@ -49,6 +60,21 @@ class OpportunitiesSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Opportunities';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::required('registries'),
+            MigrationDependency::optional('users'),
+            MigrationDependency::optional('referents'),
+            MigrationDependency::optional('sources'),
+            MigrationDependency::optional('product-categories'),
+            MigrationDependency::optional('operational-sites'),
+        ];
     }
 
     public function endpoint(): string
@@ -68,6 +94,7 @@ class OpportunitiesSource extends AbstractMigrationSource
             ['id' => 'supervisor_user_id', 'label' => 'Supervisor (external id)', 'type' => 'number'],
             ['id' => 'manager_user_ids', 'label' => 'Managers (external ids)', 'type' => 'string'],
             ['id' => 'product_category_ids', 'label' => 'Product categories (external ids)', 'type' => 'string'],
+            ['id' => 'quote_product_category_ids', 'label' => 'Quote product categories (external ids)', 'type' => 'string'],
             ['id' => 'start_date', 'label' => 'Start date', 'type' => 'date'],
             ['id' => 'expected_close_date', 'label' => 'Expected close date', 'type' => 'date'],
             ['id' => 'estimated_value', 'label' => 'Estimated value', 'type' => 'number'],
@@ -98,11 +125,11 @@ class OpportunitiesSource extends AbstractMigrationSource
             throw new RuntimeException('External id is required.');
         }
 
-        if ($this->existsByOldId(Opportunity::class, $externalId)) {
-            return MigrationRowOutcome::skipped();
-        }
+        $existing = Opportunity::query()->where('old_id', $externalId)->first();
 
-        return activity()->withoutLogs(fn (): MigrationRowOutcome => $this->importRecord($externalId, $record));
+        return activity()->withoutLogs(fn (): MigrationRowOutcome => $existing === null
+            ? $this->importRecord($externalId, $record)
+            : $this->backfillProductLines($existing, $record));
     }
 
     /**
@@ -123,6 +150,51 @@ class OpportunitiesSource extends AbstractMigrationSource
         $this->finalizeLegacyRecord($opportunity, $externalId, $record);
 
         return MigrationRowOutcome::created($warnings, $opportunity);
+    }
+
+    /**
+     * Skipped row (idempotent re-import, AC-002) that still fills in the
+     * product lines of an opportunity imported without any (G-12). Warnings
+     * are reported only alongside a write: a row with nothing to fill stays a
+     * silent skip on every re-run.
+     *
+     * @param  array<string, mixed>  $record
+     */
+    private function backfillProductLines(Opportunity $opportunity, array $record): MigrationRowOutcome
+    {
+        if ($opportunity->productLines()->exists()) {
+            return MigrationRowOutcome::skipped();
+        }
+
+        $warnings = [];
+        $productLines = $this->productLines($record, $warnings);
+
+        if ($productLines === []) {
+            return MigrationRowOutcome::skipped();
+        }
+
+        $this->productLineWriter->sync($opportunity, $productLines);
+
+        return MigrationRowOutcome::skipped([...$warnings, self::BACKFILLED_PRODUCT_LINES_NOTE]);
+    }
+
+    /**
+     * The opportunity's own legacy categories; none resolved -> those of the
+     * products on its quotes' lines (G-12).
+     *
+     * @param  array<string, mixed>  $record
+     * @param  array<int, string>  $warnings
+     * @return array<int, array{product_category_id: int}>
+     */
+    private function productLines(array $record, array &$warnings): array
+    {
+        $categoryIds = $this->remapLegacyIds(ProductCategory::class, $record['product_category_ids'] ?? [], 'product_category_ids', $warnings);
+
+        if ($categoryIds === []) {
+            $categoryIds = $this->remapLegacyIds(ProductCategory::class, $record['quote_product_category_ids'] ?? [], 'quote_product_category_ids', $warnings);
+        }
+
+        return array_map(static fn (int $id): array => ['product_category_id' => $id], $categoryIds);
     }
 
     /**
@@ -147,7 +219,6 @@ class OpportunitiesSource extends AbstractMigrationSource
      */
     private function buildData(int $registryId, array $record, array &$warnings): CreateOpportunityData
     {
-        $productCategoryIds = $this->remapLegacyIds(ProductCategory::class, $record['product_category_ids'] ?? [], 'product_category_ids', $warnings);
         $estimatedValue = $record['estimated_value'] ?? null;
 
         return new CreateOpportunityData(
@@ -159,7 +230,7 @@ class OpportunitiesSource extends AbstractMigrationSource
             sourceId: $this->remapLegacyId(Source::class, $record['source_id'] ?? null, 'source_id', $warnings),
             leadId: null,
             managerSlots: $this->legacyManagerSlots($record['manager_user_ids'] ?? [], $warnings),
-            productLines: array_map(static fn (int $id): array => ['product_category_id' => $id], $productCategoryIds),
+            productLines: $this->productLines($record, $warnings),
             startDate: $this->blankToNull($record['start_date'] ?? null),
             estimatedValue: is_numeric($estimatedValue) ? (float) $estimatedValue : null,
             expectedCloseDate: $this->blankToNull($record['expected_close_date'] ?? null),

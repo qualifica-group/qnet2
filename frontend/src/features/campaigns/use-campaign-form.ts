@@ -1,71 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useForm } from 'react-hook-form'
-import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
-import { useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
-import { toast } from 'sonner'
-import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { campaignDetailQueryKey, createCampaign, updateCampaign } from '@/features/campaigns/api'
-import { buildCreatePayload, buildUpdatePayload } from '@/features/campaigns/campaign-form-payload'
 import {
   buildCreateCampaignSchema,
   buildUpdateCampaignSchema,
   type CreateCampaignFormValues,
 } from '@/features/campaigns/campaign-schema'
+import { useDefaultCountryId } from '@/features/geo/use-default-country'
 import { PROJECT_STATUSES_FOR_SELECT_RESOURCE } from '@/features/pipeline-statuses/for-select-api'
 import { useDefaultSystemStatusId } from '@/features/status-reorder/use-default-system-status'
 import { emptyProductLineRow } from '@/features/product-lines/types'
 import type { CampaignDetail, CampaignFormMode } from '@/features/campaigns/types'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
-
-/** Server-side field names mapped onto the form for 422 handling. `total_budget` also carries BR-3's insufficient-budget message. `product_lines` is handled separately (banner, see `collectPrefixedServerErrors`). */
-const SERVER_ERROR_FIELDS = [
-  'code',
-  'name',
-  'project_id',
-  'description',
-  'partner_id',
-  'operational_site_id',
-  'source_id',
-  'pipeline_status_id',
-  'country_id',
-  'state_id',
-  'province_id',
-  'city_id',
-  'start_date',
-  'end_date',
-  'total_budget',
-  'target_lead',
-] as const
-
-/** Every 422 key that names the `product_lines` collection or one of its rows (spec 0094). */
-const PRODUCT_LINES_ERROR_PREFIXES = ['product_lines']
-
-/**
- * Joins every 422 message whose key is `prefix` or `prefix.<anything>` (a
- * per-row key like `product_lines.0.product_category_id`), for a single
- * banner above the field. Reimplemented locally (not imported) from
- * `request-management/use-request-create-form.ts`'s `collectPrefixedServerErrors`:
- * that file is owned by another feature/session, so this ~12-line helper is
- * duplicated rather than creating a cross-feature dependency on a file
- * currently changing under a different owner.
- */
-function collectPrefixedServerErrors(error: unknown, prefixes: string[]): string | null {
-  if (!axios.isAxiosError(error) || error.response?.status !== 422) {
-    return null
-  }
-  const errors = error.response.data?.errors as Record<string, string[]> | undefined
-  if (!errors) {
-    return null
-  }
-  const messages = Object.entries(errors)
-    .filter(([key]) => prefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}.`)))
-    .flatMap(([, fieldMessages]) => fieldMessages)
-  return messages.length > 0 ? messages.join(' ') : null
-}
 
 export type CampaignFormValues = CreateCampaignFormValues
 
@@ -108,25 +56,31 @@ function mapCampaignToFormValues(
   }
 }
 
+/** The persisted campaign as the edit form holds it (the in-place detail's clean state). */
+export function editDefaults(
+  campaign: CampaignDetail,
+  customFields: Record<string, CustomFieldValue>,
+): CampaignFormValues {
+  return { code: campaign.code, name: campaign.name, ...mapCampaignToFormValues(campaign, customFields) }
+}
+
 interface UseCampaignFormArgs {
   mode: CampaignFormMode
-  /** Called after a successful create/update so the caller can navigate to the detail page. */
-  onSuccess: (campaign: CampaignDetail) => void
-  /** Create-only: sequential code suggestion prefilled into the `code` default (spec 0025). */
+  /** Create/duplicate: sequential code suggestion prefilled into the `code` default (spec 0025). */
   initialCode?: string
 }
 
 /**
- * Owns every non-render concern of `CampaignForm`: RHF/Zod wiring, default
- * values, server 422 mapping (BR-3's budget message included, verbatim) and
- * the create/update submit. The component stays UI-only; this hook is the
- * orchestration point (`onSubmit`).
+ * Owns the RHF/Zod wiring of the campaign create/duplicate form and of the
+ * in-place detail (`useCampaignInlineEdit`, edit mode), custom fields included
+ * (spec 0021). Submission lives in `useCampaignFormSubmit`.
+ *
+ * Edit mode IS the campaign detail (spec 0221): the persisted record can
+ * change under the form, so `values` re-syncs it while `keepDirtyValues`
+ * preserves the row still being edited.
  */
-export function useCampaignForm({ mode, onSuccess, initialCode }: UseCampaignFormArgs) {
+export function useCampaignForm({ mode, initialCode }: UseCampaignFormArgs) {
   const { t } = useTranslation()
-  const queryClient = useQueryClient()
-  const [serverError, setServerError] = useState<string | null>(null)
-  const [productLinesError, setProductLinesError] = useState<string | null>(null)
 
   const isEdit = mode.type === 'edit'
   // Only a bare standalone create preselects the system default status below
@@ -156,11 +110,7 @@ export function useCampaignForm({ mode, onSuccess, initialCode }: UseCampaignFor
 
   const defaultValues = useMemo<CampaignFormValues>(() => {
     if (mode.type === 'edit') {
-      return {
-        code: mode.campaign.code,
-        name: mode.campaign.name,
-        ...mapCampaignToFormValues(mode.campaign, customFields.defaultValues),
-      }
+      return editDefaults(mode.campaign, customFields.defaultValues)
     }
     if (mode.type === 'duplicate') {
       return {
@@ -198,6 +148,8 @@ export function useCampaignForm({ mode, onSuccess, initialCode }: UseCampaignFor
   const form = useForm<CampaignFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: isEdit ? { keepDirtyValues: true } : undefined,
   })
 
   // Spec 0039 D-3: preselect the system "Nuovo" status on a standalone bare
@@ -228,40 +180,22 @@ export function useCampaignForm({ mode, onSuccess, initialCode }: UseCampaignFor
     appliedDefaultStatus.current = true
   }, [isStandaloneCreate, defaultStatus.data, form])
 
-  const onSubmit = async (values: CampaignFormValues) => {
-    setServerError(null)
-    setProductLinesError(null)
-    const errorFields: Path<CampaignFormValues>[] = [
-      ...SERVER_ERROR_FIELDS,
-      ...(customFields.errorPaths as Path<CampaignFormValues>[]),
-    ]
-    try {
-      if (mode.type === 'edit') {
-        const saved = await updateCampaign(mode.campaign.id, buildUpdatePayload(values, mode.campaign))
-        queryClient.setQueryData(campaignDetailQueryKey(mode.campaign.id), saved)
-        toast.success(t('campaigns.form.updated'))
-        onSuccess(saved)
-        return
-      }
-
-      const created = await createCampaign(buildCreatePayload(values))
-      toast.success(t('campaigns.form.created'))
-      onSuccess(created)
-    } catch (error) {
-      const mappedScalar = applyServerValidationErrors(error, form.setError, errorFields)
-      const productLinesMessage = collectPrefixedServerErrors(error, PRODUCT_LINES_ERROR_PREFIXES)
-      setProductLinesError(productLinesMessage)
-      if (!mappedScalar && !productLinesMessage) {
-        setServerError(t('campaigns.form.genericError'))
-      }
+  // Same rule for the national default country (spec 0027, `GeoSelect`): the
+  // geography row starts closed (spec 0221 D-6), so its editor is not mounted
+  // to preselect it — the draft takes it here, only while untouched and
+  // standalone (a linked project brings its own levels).
+  const defaultCountryId = useDefaultCountryId()
+  const appliedDefaultCountry = useRef(false)
+  useEffect(() => {
+    if (!isStandaloneCreate || appliedDefaultCountry.current || defaultCountryId === null) {
+      return
     }
-  }
+    appliedDefaultCountry.current = true
+    const untouched = !form.getFieldState('country_id').isDirty && form.getValues('country_id') === null
+    if (untouched && form.getValues('project_id') === null) {
+      form.setValue('country_id', defaultCountryId)
+    }
+  }, [isStandaloneCreate, defaultCountryId, form])
 
-  return {
-    form,
-    isEdit,
-    serverError,
-    productLinesError,
-    onSubmit,
-  }
+  return { form, customFieldErrorPaths: customFields.errorPaths }
 }

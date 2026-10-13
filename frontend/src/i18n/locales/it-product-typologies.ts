@@ -28,10 +28,8 @@ export const productTypologies = {
   },
   detail: {
     title: 'Dettaglio tipologia prodotto',
-    subtitle: 'Visualizzazione in sola lettura della tipologia selezionata.',
+    subtitle: 'Dettaglio della tipologia selezionata, modificabile sul posto.',
     loadError: 'Impossibile caricare la tipologia prodotto. Riprova.',
-    color: 'Colore',
-    description: 'Descrizione',
     created_at: 'Creato il',
     updated_at: 'Aggiornato il',
   },
@@ -69,6 +67,12 @@ export const productTypologies = {
     deleteForbidden: 'Non puoi eliminare questa tipologia prodotto.',
     deleteInUse:
       'Impossibile eliminare la Tipologia Prodotto perché risulta associata a uno o più prodotti.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'La tipologia prodotto non è ancora stata creata: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       commission: {
         title: "Commissione Fornitore",
@@ -82,7 +86,6 @@ export const productTypologies = {
     hints: {
       supplierCommissionDirection:
         "Ricevuta: la commissione è il ricavo della riga, l'imponibile passa al fornitore. Pagata: è un costo verso il fornitore.",
-      codeLocked: 'Il codice non può essere modificato dopo la creazione.',
     },
   },
   supplierCommissionDirection: {

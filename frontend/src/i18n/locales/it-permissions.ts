@@ -33,6 +33,9 @@ export const permissions = {
     // Spec 0105: terzo livello di visibilità di Gestione Richieste — le
     // richieste delle sedi di appartenenza, anche senza esserne il gestore.
     viewSite: 'Visualizza per sede',
+    // Spec 0214: solo Task — i task dei propri sottoposti lungo tutta la
+    // catena "Riporta a", anche disattivati; sola lettura.
+    viewTeam: 'Visualizza team',
     // Spec 0165: solo Gestione Iscritti — gli iscritti della propria sede
     // fisica (non delle sedi remote), oltre a quelli di cui si è operatore.
     viewPrimarySite: 'Visualizza sede fisica',
@@ -157,6 +160,8 @@ export const permissions = {
     'vat-rates': 'IVA',
     // Spec 0158: modulo permission-only, trasversale a tutte le tabelle (filtri personalizzati/viste salvate).
     'table-filter-views': 'Filtri salvati',
+    // Permission-only: vedere l'old id (ID legacy) in griglie e schede (`legacy-ids.view`).
+    'legacy-ids': 'ID legacy',
   },
   areas: {
     // Area finale dell'albero: moduli permission-only assegnabili ma senza

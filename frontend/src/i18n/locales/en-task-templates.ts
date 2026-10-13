@@ -20,15 +20,12 @@ export const taskTemplates = {
   },
   detail: {
     title: 'Task template detail',
-    subtitle: 'Read-only view of the selected task template.',
+    subtitle: 'Details of the selected task template, editable in place.',
     loadError: 'Unable to load the task template. Please retry.',
-    description: 'Description',
-    isActive: 'Active',
     itemsCount: '{{count}} rows',
     created_at: 'Created at',
     updated_at: 'Updated at',
     items: {
-      title: 'Rows',
       dueOffsetDays: 'Due: +{{count}} days',
       estimatedMinutes: 'Estimate: {{value}} min',
     },
@@ -37,8 +34,6 @@ export const taskTemplates = {
     newTaskTemplate: 'New task template',
     createTitle: 'Create task template',
     createSubtitle: 'Add a new task template.',
-    editTitle: 'Edit task template',
-    editSubtitle: 'Update the selected task template.',
     name: 'Name',
     description: 'Description',
     isActive: 'Active',
@@ -54,10 +49,15 @@ export const taskTemplates = {
     deleteError: 'Unable to delete the task template. Please retry.',
     deleteForbidden: 'You cannot delete this task template.',
     deleteInUse: 'This task template was used to generate Commesse and cannot be deleted. Deactivate it instead.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The task template has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name, description and status.',
       },
       items: {
         title: 'Rows',
@@ -65,7 +65,6 @@ export const taskTemplates = {
       },
       stages: {
         title: 'Phases',
-        description: 'Group the rows into phases, drag rows between them.',
       },
     },
     /** Spec 0146 D-2: phases group the template's rows; copied into the commessa's own `work_order_stages` at generation. */

@@ -10,7 +10,7 @@ import type {
 
 /**
  * Query key of a single product's detail (fresh-on-open pattern). Shared by
- * the detail/edit pages and by the post-mutation invalidation, so they can
+ * the detail page and by the post-mutation invalidation, so they can
  * never drift apart. `null` (an unparsable route param) is a key that is never
  * fetched.
  */
@@ -46,13 +46,19 @@ export async function createProduct(payload: CreateProductPayload): Promise<Prod
   return data.data
 }
 
-/** Partially updates a product (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a product (PATCH). Returns the updated resource with the
+ * actor's re-authorized `permissions` (and the category's attributes/layout),
+ * so the in-place detail (spec 0218) can seed its cache with the full shape.
+ */
 export async function updateProduct(
   id: number,
   payload: UpdateProductPayload,
-): Promise<ProductDetail> {
-  const { data } = await apiClient.patch<ApiResponse<ProductDetail>>(`/products/${id}`, payload)
-  return data.data
+): Promise<ProductDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<ProductDetail, ResourcePermissions>
+  >(`/products/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a product. Backend responds 204 with no body. */

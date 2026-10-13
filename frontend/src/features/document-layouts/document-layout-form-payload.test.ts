@@ -14,6 +14,7 @@ const formValues: DocumentLayoutFormValues = {
   module: 'quotes',
   is_active: true,
   is_default: false,
+  config: createEmptyDocumentLayoutConfig(),
 }
 
 function original(
@@ -44,7 +45,7 @@ function original(
 describe('buildCreatePayload (spec 0069, AC-112)', () => {
   it('builds the full create payload shape, including config', () => {
     const config = createEmptyDocumentLayoutConfig()
-    expect(buildCreatePayload(formValues, config)).toEqual({
+    expect(buildCreatePayload({ ...formValues, config })).toEqual({
       name: 'Standard quote layout',
       code: 'standard_quote',
       module: 'quotes',
@@ -97,20 +98,13 @@ describe('buildUpdatePayload (spec 0069, AC-112)', () => {
     expect(buildUpdatePayload(diverged, original())).not.toHaveProperty('module')
   })
 
-  it('omits config when not passed', () => {
-    expect(buildUpdatePayload(formValues, original())).not.toHaveProperty('config')
-  })
-
   it('includes config only when it changed from the original', () => {
     const originalRecord = original()
-    const unchangedConfig = createEmptyDocumentLayoutConfig()
-    expect(buildUpdatePayload(formValues, originalRecord, unchangedConfig)).not.toHaveProperty(
-      'config',
-    )
+    expect(buildUpdatePayload(formValues, originalRecord)).not.toHaveProperty('config')
 
     const changedConfig = createEmptyDocumentLayoutConfig()
     changedConfig.page.orientation = 'landscape'
-    expect(buildUpdatePayload(formValues, originalRecord, changedConfig)).toEqual({
+    expect(buildUpdatePayload({ ...formValues, config: changedConfig }, originalRecord)).toEqual({
       config: changedConfig,
     })
   })

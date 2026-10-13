@@ -3,7 +3,6 @@ import { IdCard } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,7 +11,6 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -45,50 +43,44 @@ export function AgentFiscalProfileDetailView({ profile, onEdit }: AgentFiscalPro
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab(AGENT_FISCAL_PROFILES_DOMAIN, profile.id, t('activityLog.title'))]}
-            />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab(AGENT_FISCAL_PROFILES_DOMAIN, profile.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={profile.referent.name} icon={<IdCard />} />}
             title={profile.referent.name}
             subtitle={`${formatDate(profile.valid_from)} - ${until}`}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('agentFiscalProfiles.detail.fiscalData')} full>
-              <RecordFieldList>
-                <RecordField label={t('agentFiscalProfiles.detail.withholdingEnabled')}>
-                  {yesNo(profile.withholding_enabled)}
-                </RecordField>
-                <RecordField label={t('agentFiscalProfiles.detail.withholdingRate')}>
-                  {percent(profile.withholding_rate) ?? <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('agentFiscalProfiles.detail.withholdingBasePercent')}>
-                  {percent(profile.withholding_base_percent) ?? <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('agentFiscalProfiles.detail.enasarcoEnabled')}>
-                  {yesNo(profile.enasarco_enabled)}
-                </RecordField>
-                <RecordField label={t('agentFiscalProfiles.detail.mandateType')}>
-                  {profile.enasarco_mandate_type ? (
-                    t(`enums.enasarco_mandate_type.${profile.enasarco_mandate_type}`)
-                  ) : (
-                    <DetailEmpty />
-                  )}
-                </RecordField>
-                <RecordField label={t('agentFiscalProfiles.detail.notes')}>
-                  {profile.notes ? profile.notes : <DetailEmpty />}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('agentFiscalProfiles.detail.fiscalData')} full>
+            <RecordFieldList>
+              <RecordField label={t('agentFiscalProfiles.detail.withholdingEnabled')}>
+                {yesNo(profile.withholding_enabled)}
+              </RecordField>
+              <RecordField label={t('agentFiscalProfiles.detail.withholdingRate')}>
+                {percent(profile.withholding_rate) ?? <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('agentFiscalProfiles.detail.withholdingBasePercent')}>
+                {percent(profile.withholding_base_percent) ?? <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('agentFiscalProfiles.detail.enasarcoEnabled')}>
+                {yesNo(profile.enasarco_enabled)}
+              </RecordField>
+              <RecordField label={t('agentFiscalProfiles.detail.mandateType')}>
+                {profile.enasarco_mandate_type ? (
+                  t(`enums.enasarco_mandate_type.${profile.enasarco_mandate_type}`)
+                ) : (
+                  <DetailEmpty />
+                )}
+              </RecordField>
+              <RecordField label={t('agentFiscalProfiles.detail.notes')}>
+                {profile.notes ? profile.notes : <DetailEmpty />}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt || updatedAt ? (

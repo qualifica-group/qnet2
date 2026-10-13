@@ -2,12 +2,13 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
 import { Form } from '@/components/ui/form'
-import { RecordBody } from '@/components/detail/record-body'
+import { RecordFormBody } from '@/components/record-form/record-form-body'
 import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { IdentityDuplicateWarning } from '@/features/identity-duplicates/identity-duplicate-warning'
 import { useIdentityDuplicateCheck } from '@/features/identity-duplicates/use-identity-duplicate-check'
 import { emptyPersonalDataDraft } from '@/features/personal-data/drafts'
+import { PERSONAL_DATA_CARD_FIELD } from '@/features/personal-data/personal-data-identity-record-section'
 import { PersonalDataChildCards } from '@/features/personal-data/personal-data-record-cards'
 import type { QuickContactType } from '@/features/personal-data/quick-contacts'
 import type { PersonalDataDraft } from '@/features/personal-data/types'
@@ -15,11 +16,10 @@ import {
   anagraphicSectionProps,
   useRevealBlockedSection,
 } from '@/features/personal-data/use-reveal-blocked-section'
+import { usePersonalDataDraftInlineEdit } from '@/features/personal-data/use-personal-data-draft-inline-edit'
 import { RegistryCreateSections } from '@/features/registries/registry-create-sections'
 import { RegistryFormHeader } from '@/features/registries/registry-form-header'
 import { RegistryGeneralNotesRow } from '@/features/registries/registry-general-notes'
-import { REGISTRY_CARD_FIELD } from '@/features/registries/registry-record'
-import { useRegistryDraftInlineEdit } from '@/features/registries/use-registry-draft-inline-edit'
 import { useRegistryForm } from '@/features/registries/use-registry-form'
 import { useRegistryFormSubmit } from '@/features/registries/use-registry-form-submit'
 import type { RegistryDetail } from '@/features/registries/types'
@@ -63,7 +63,7 @@ export function RegistryFormBody({ onSuccess, onCancel, isSupplierPreset = false
   const containerRef = useRef<HTMLDivElement>(null)
   const [profileDraft, setProfileDraft] = useState<PersonalDataDraft>(emptyPersonalDataDraft)
   const { form, customFieldErrorPaths } = useRegistryForm({ mode: CREATE_MODE, isSupplierPreset })
-  const { inline, cardSignal } = useRegistryDraftInlineEdit(form, profileDraft, setProfileDraft)
+  const { inline, cardSignal } = usePersonalDataDraftInlineEdit(form, profileDraft, setProfileDraft)
   const submit = useRegistryFormSubmit({
     form,
     mode: CREATE_MODE,
@@ -73,7 +73,7 @@ export function RegistryFormBody({ onSuccess, onCancel, isSupplierPreset = false
     // An incomplete card refuses the save: open its row, where the card marks the fields.
     onRefused: (section) => {
       if (section === 'card') {
-        inline.start(REGISTRY_CARD_FIELD)
+        inline.start(PERSONAL_DATA_CARD_FIELD)
       }
     },
   })
@@ -110,7 +110,7 @@ export function RegistryFormBody({ onSuccess, onCancel, isSupplierPreset = false
             boundary, it must not become an extra box around the canvas. */}
         <form id={REGISTRY_FORM_ID} onSubmit={form.handleSubmit(submit.onSubmit)} className="contents" noValidate>
           <RecordCanvas>
-            <RecordBody side={side}>
+            <RecordFormBody side={side}>
               <RecordCard>
                 <RegistryFormHeader
                   control={form.control}
@@ -141,7 +141,7 @@ export function RegistryFormBody({ onSuccess, onCancel, isSupplierPreset = false
                 submittingLabel={t('registries.form.saving')}
                 cancel={{ label: t('registries.form.cancel'), onCancel }}
               />
-            </RecordBody>
+            </RecordFormBody>
           </RecordCanvas>
         </form>
       </Form>

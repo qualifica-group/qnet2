@@ -58,6 +58,17 @@ class UserFactory extends Factory
     }
 
     /**
+     * Technical user of an external API client (spec 0210): cannot log in.
+     * is_service_account is guarded, so it is forced after creation.
+     */
+    public function serviceAccount(): static
+    {
+        return $this->afterMaking(function (User $user): void {
+            $user->forceFill(['is_service_account' => true]);
+        });
+    }
+
+    /**
      * Attach an employment profile (spec 0015) after creation. Pass a
      * closure to customize the EmploymentProfileFactory state (e.g.
      * ->manager() or ->reportsTo($manager)).

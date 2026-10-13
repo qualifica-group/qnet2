@@ -11,7 +11,8 @@ use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
 use App\Models\CommissionConfiguration;
 use App\Models\User;
-use App\Rules\SelectableProductCategory;
+use App\Rules\ActiveCategoryProduct;
+use App\Rules\ActiveProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -33,15 +34,14 @@ trait CommissionConfigurationRules
             'recipient_role' => [...$required, Rule::enum(CommissionRecipientRole::class)],
             'application_scope' => [...$required, Rule::enum(CommissionApplicationScope::class)],
             'product_category_id' => [
-                // Spec 0074: only a selectable category can carry a commission
-                // rule — the resolver matches it EXACTLY (no subtree walk), so
-                // a rule on a container category could never fire anyway.
-                'nullable', 'integer', new SelectableProductCategory($this->exemptProductCategoryIds()),
+                // Spec 0223 D-5: any ACTIVE category, containers included — the
+                // resolver applies a category rule to its whole branch (D-1).
+                'nullable', 'integer', new ActiveProductCategory($this->exemptProductCategoryIds()),
                 Rule::requiredIf(fn () => $this->input('application_scope') === CommissionApplicationScope::ProductCategory->value),
                 Rule::prohibitedIf(fn () => $this->scopeExcludesCategory()),
             ],
             'product_id' => [
-                'nullable', 'integer', Rule::exists('products', 'id'),
+                'nullable', 'integer', new ActiveCategoryProduct($this->exemptProductIds()),
                 Rule::requiredIf(fn () => $this->input('application_scope') === CommissionApplicationScope::Product->value),
                 Rule::prohibitedIf(fn () => $this->scopeExcludesProduct()),
             ],
@@ -73,7 +73,7 @@ trait CommissionConfigurationRules
 
     /**
      * The category already persisted on the configuration being updated,
-     * exempt from the selectable check (spec 0074 D-3b). Empty on create.
+     * exempt from the inactive check (spec 0208 D-2). Empty on create.
      *
      * @return array<int, int>
      */
@@ -83,6 +83,21 @@ trait CommissionConfigurationRules
 
         return $configuration instanceof CommissionConfiguration && $configuration->product_category_id !== null
             ? [(int) $configuration->product_category_id]
+            : [];
+    }
+
+    /**
+     * The product already persisted on the configuration being updated,
+     * exempt from the inactive-category check (spec 0208 D-2). Empty on create.
+     *
+     * @return array<int, int>
+     */
+    protected function exemptProductIds(): array
+    {
+        $configuration = $this->route('commissionConfiguration');
+
+        return $configuration instanceof CommissionConfiguration && $configuration->product_id !== null
+            ? [(int) $configuration->product_id]
             : [];
     }
 

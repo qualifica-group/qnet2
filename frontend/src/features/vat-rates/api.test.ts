@@ -54,11 +54,12 @@ describe('vat-rates api rate normalization', () => {
 
   it('coerces the wire decimal string to a number on update', async () => {
     patchMock.mockResolvedValue({
-      data: { data: { id: 3, name: 'IVA 4%', rate: '4.00', created_at: null } },
+      data: { data: { id: 3, name: 'IVA 4%', rate: '4.00', created_at: null }, permissions: PERMISSIONS },
     })
 
     const result = await updateVatRate(3, { rate: 4 })
 
     expect(result.rate).toBe(4)
+    expect(result.permissions).toEqual(PERMISSIONS)
   })
 })

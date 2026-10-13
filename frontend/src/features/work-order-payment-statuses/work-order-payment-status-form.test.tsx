@@ -7,30 +7,31 @@ import { WorkOrderPaymentStatusForm } from '@/features/work-order-payment-status
 import type { WorkOrderPaymentStatusDetailWithPermissions } from '@/features/work-order-payment-statuses/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 
+/**
+ * The form is create-only, a replica of the detail with its rows closed
+ * (spec 0235); the in-place edits live in `work-order-payment-status-detail.test.tsx`.
+ */
+
 const createWorkOrderPaymentStatusMock = vi.fn()
-const updateWorkOrderPaymentStatusMock = vi.fn()
 
 vi.mock('@/features/work-order-payment-statuses/api', () => ({
   createWorkOrderPaymentStatus: (...args: unknown[]) => createWorkOrderPaymentStatusMock(...args),
-  updateWorkOrderPaymentStatus: (...args: unknown[]) => updateWorkOrderPaymentStatusMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
 
-/**
- * Every field resolves as visible+editable (the `MetaField` fallback, since
- * `fields` is empty) — not about authorization metadata.
- */
+/** Every field resolves as visible+editable (the `MetaField` fallback, since `fields` is empty). */
 const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
   fields: {},
   actions: {},
 }
 
-vi.mock('@/features/work-order-payment-statuses/use-work-order-payment-status-form-meta', () => ({
-  useWorkOrderPaymentStatusFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
+vi.mock('@/features/authorization/use-resource-meta', () => ({
+  useResourceMeta: () => ({ data: { permissions: FULL_ACCESS_PERMISSIONS }, isError: false, refetch: vi.fn() }),
 }))
 
+/** A QueryClient per test, never per render: a shared cache makes suites flaky. */
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
@@ -38,21 +39,32 @@ function wrapper() {
   )
 }
 
-function workOrderPaymentStatus(
-  overrides: Partial<WorkOrderPaymentStatusDetailWithPermissions> = {},
-): WorkOrderPaymentStatusDetailWithPermissions {
+/** Opens a closed row through its pencil. */
+function openRow(key: string) {
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t(key) }) }))
+}
+
+/** Picks a token from the `ColorTokenPicker` popover by its localized name. */
+function pickColor(name: string) {
+  openRow('workOrderPaymentStatuses.form.color')
+  fireEvent.click(screen.getByRole('button', { name: /choose a color/i }))
+  fireEvent.click(screen.getByRole('option', { name }))
+}
+
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+
+function workOrderPaymentStatus(): WorkOrderPaymentStatusDetailWithPermissions {
   return {
-    id: 9,
+    id: 7,
     name: 'Paid',
-    description: 'Paid in full',
-    color: 'green',
-    sort_order: 10,
+    description: 'Cashed in full',
+    color: 'blue',
+    sort_order: 3,
     is_active: true,
     allows_delivery: false,
-    created_at: null as unknown as string,
-    updated_at: null as unknown as string,
+    created_at: '2026-01-01T09:00:00Z',
+    updated_at: '2026-02-15T14:30:00Z',
     permissions: FULL_ACCESS_PERMISSIONS,
-    ...overrides,
   }
 }
 
@@ -62,46 +74,24 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createWorkOrderPaymentStatusMock.mockReset()
-  updateWorkOrderPaymentStatusMock.mockReset()
 })
 
-describe('WorkOrderPaymentStatusForm — create/edit (spec 0201)', () => {
-  it('renders name, description, color and is_active fields in create mode, with no order input (D-3)', () => {
-    render(
-      <WorkOrderPaymentStatusForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+describe('WorkOrderPaymentStatusForm — create', () => {
+  it('starts with every row closed, with no order input', () => {
+    render(<WorkOrderPaymentStatusForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    openRow('workOrderPaymentStatuses.form.name')
     expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/^Description/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /choose a color/i })).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Active' })).toBeChecked()
     expect(screen.queryByLabelText(/^Order/)).not.toBeInTheDocument()
   })
 
-  it('renders the allows_delivery switch, hydrated in edit mode', () => {
-    render(
-      <WorkOrderPaymentStatusForm
-        mode={{ type: 'edit', workOrderPaymentStatus: workOrderPaymentStatus({ allows_delivery: true }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('shows the errors on the closed rows and does not call the API when name and color are missing', async () => {
+    render(<WorkOrderPaymentStatusForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    expect(screen.getByRole('switch', { name: 'Can be delivered' })).toBeChecked()
-    expect(screen.queryByRole('combobox', { name: /^Group/ })).not.toBeInTheDocument()
-  })
+    save()
 
-  it('shows an inline error and does not call the API when name is empty and color is unchosen', async () => {
-    render(
-      <WorkOrderPaymentStatusForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(screen.getByText('Name is required.')).toBeInTheDocument())
+    expect(await screen.findByText('Name is required.')).toHaveAttribute('role', 'alert')
     expect(screen.getByText('Color is required.')).toBeInTheDocument()
     expect(createWorkOrderPaymentStatusMock).not.toHaveBeenCalled()
   })
@@ -110,61 +100,31 @@ describe('WorkOrderPaymentStatusForm — create/edit (spec 0201)', () => {
     createWorkOrderPaymentStatusMock.mockResolvedValue(workOrderPaymentStatus())
     const onSuccess = vi.fn()
 
-    render(
-      <WorkOrderPaymentStatusForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    render(<WorkOrderPaymentStatusForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    openRow('workOrderPaymentStatuses.form.name')
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Paid' } })
-    fireEvent.click(screen.getByRole('button', { name: /choose a color/i }))
-    fireEvent.click(screen.getByRole('option', { name: 'Green' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    pickColor('Green')
+    save()
 
     await waitFor(() => expect(createWorkOrderPaymentStatusMock).toHaveBeenCalledTimes(1))
-    expect(createWorkOrderPaymentStatusMock).toHaveBeenCalledWith({
-      name: 'Paid',
-      description: null,
-      color: 'green',
-      is_active: true,
-      allows_delivery: false,
-    })
+    expect(createWorkOrderPaymentStatusMock).toHaveBeenCalledWith({ name: 'Paid', description: null, color: 'green', is_active: true, allows_delivery: false })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(workOrderPaymentStatus()))
   })
 
-  it('hydrates name, description, color and is_active in edit mode', () => {
-    render(
-      <WorkOrderPaymentStatusForm
-        mode={{ type: 'edit', workOrderPaymentStatus: workOrderPaymentStatus({ is_active: false }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('submits allows_delivery when switched on', async () => {
+    createWorkOrderPaymentStatusMock.mockResolvedValue(workOrderPaymentStatus())
 
-    expect(screen.getByLabelText(/^Name/)).toHaveValue('Paid')
-    expect(screen.getByLabelText(/^Description/)).toHaveValue('Paid in full')
-    expect(screen.getByRole('button', { name: /Green/ })).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Active' })).not.toBeChecked()
-  })
+    render(<WorkOrderPaymentStatusForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-  it('submits only the changed name on a partial update', async () => {
-    updateWorkOrderPaymentStatusMock.mockResolvedValue(workOrderPaymentStatus({ name: 'Unpaid' }))
+    openRow('workOrderPaymentStatuses.form.name')
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Paid' } })
+    pickColor('Green')
+    openRow('workOrderPaymentStatuses.form.allowsDelivery')
+    fireEvent.click(screen.getByRole('switch', { name: /Can be delivered/ }))
+    save()
 
-    render(
-      <WorkOrderPaymentStatusForm
-        mode={{ type: 'edit', workOrderPaymentStatus: workOrderPaymentStatus() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Unpaid' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateWorkOrderPaymentStatusMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateWorkOrderPaymentStatusMock.mock.calls[0]
-    expect(id).toBe(9)
-    expect(payload).toEqual({ name: 'Unpaid' })
+    await waitFor(() => expect(createWorkOrderPaymentStatusMock).toHaveBeenCalledTimes(1))
+    expect(createWorkOrderPaymentStatusMock).toHaveBeenCalledWith(expect.objectContaining({ allows_delivery: true }))
   })
 })

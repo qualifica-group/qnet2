@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\PersonalData;
 
+use App\Models\Contact;
 use Illuminate\Contracts\Validation\Validator;
 
 /**
@@ -23,10 +24,16 @@ class UpdateContactRequest extends StoreContactRequest
     }
 
     /**
-     * No owner validation on update (the owner is immutable).
+     * No owner validation on update (the owner is immutable); the phone
+     * uniqueness runs against the card the contact already belongs to.
      */
     public function withValidator(Validator $validator): void
     {
-        // Intentionally empty: the contact keeps its existing owner.
+        $validator->after(function (Validator $validator): void {
+            /** @var Contact $contact */
+            $contact = $this->route('contact');
+
+            $this->validateNamespacePhone($validator, $contact->contactable, $contact);
+        });
     }
 }

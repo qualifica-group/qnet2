@@ -6,6 +6,7 @@ use App\DataObjects\Products\CreateProductData;
 use App\Enums\ProductType;
 use App\Enums\ProductUsage;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsExternalProductRecord;
@@ -54,6 +55,16 @@ class CostProductsSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Cost products';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::optional('vat-rates'),
+        ];
     }
 
     public function endpoint(): string

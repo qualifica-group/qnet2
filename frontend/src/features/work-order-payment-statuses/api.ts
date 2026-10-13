@@ -8,6 +8,11 @@ import type {
   UpdateWorkOrderPaymentStatusPayload,
 } from '@/features/work-order-payment-statuses/types'
 
+/** Query key of a single work order payment status's detail, shared by the detail screen and its in-place saves. */
+export function workOrderPaymentStatusDetailQueryKey(id: number) {
+  return ['work-order-payment-statuses', 'detail', id] as const
+}
+
 /**
  * Fetches a single work order payment status detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -31,16 +36,18 @@ export async function createWorkOrderPaymentStatus(
   return data.data
 }
 
-/** Partially updates a work order payment status (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a work order payment status (PATCH). Returns the saved record with the actor's
+ * permissions, so the in-place detail re-syncs on it as is.
+ */
 export async function updateWorkOrderPaymentStatus(
   id: number,
   payload: UpdateWorkOrderPaymentStatusPayload,
-): Promise<WorkOrderPaymentStatusDetail> {
-  const { data } = await apiClient.patch<ApiResponse<WorkOrderPaymentStatusDetail>>(
-    `/work-order-payment-statuses/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<WorkOrderPaymentStatusDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<WorkOrderPaymentStatusDetail, ResourcePermissions>
+  >(`/work-order-payment-statuses/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

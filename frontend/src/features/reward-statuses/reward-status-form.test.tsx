@@ -7,30 +7,31 @@ import { RewardStatusForm } from '@/features/reward-statuses/reward-status-form'
 import type { RewardStatusDetailWithPermissions } from '@/features/reward-statuses/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 
+/**
+ * The form is create-only, a replica of the detail with its rows closed
+ * (spec 0235); the in-place edits live in `reward-status-detail.test.tsx`.
+ */
+
 const createRewardStatusMock = vi.fn()
-const updateRewardStatusMock = vi.fn()
 
 vi.mock('@/features/reward-statuses/api', () => ({
   createRewardStatus: (...args: unknown[]) => createRewardStatusMock(...args),
-  updateRewardStatus: (...args: unknown[]) => updateRewardStatusMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
 
-/**
- * Every field resolves as visible+editable (the `MetaField` fallback, since
- * `fields` is empty) — not about authorization metadata.
- */
+/** Every field resolves as visible+editable (the `MetaField` fallback, since `fields` is empty). */
 const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
   fields: {},
   actions: {},
 }
 
-vi.mock('@/features/reward-statuses/use-reward-status-form-meta', () => ({
-  useRewardStatusFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
+vi.mock('@/features/authorization/use-resource-meta', () => ({
+  useResourceMeta: () => ({ data: { permissions: FULL_ACCESS_PERMISSIONS }, isError: false, refetch: vi.fn() }),
 }))
 
+/** A QueryClient per test, never per render: a shared cache makes suites flaky. */
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
@@ -38,22 +39,33 @@ function wrapper() {
   )
 }
 
-function rewardStatus(
-  overrides: Partial<RewardStatusDetailWithPermissions> = {},
-): RewardStatusDetailWithPermissions {
+/** Opens a closed row through its pencil. */
+function openRow(key: string) {
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t(key) }) }))
+}
+
+/** Picks a token from the `ColorTokenPicker` popover by its localized name. */
+function pickColor(name: string) {
+  openRow('rewardStatuses.form.color')
+  fireEvent.click(screen.getByRole('button', { name: /choose a color/i }))
+  fireEvent.click(screen.getByRole('option', { name }))
+}
+
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+
+function rewardStatus(): RewardStatusDetailWithPermissions {
   return {
-    id: 9,
-    name: 'Approvato',
-    description: 'Buono approvato',
-    color: 'green',
+    id: 7,
+    name: 'Granted',
+    description: 'Voucher handed over',
+    color: 'blue',
     group: 'pending',
-    sort_order: 10,
+    sort_order: 3,
     is_active: true,
     system_key: null,
-    created_at: null as unknown as string,
-    updated_at: null as unknown as string,
+    created_at: '2026-01-01T09:00:00Z',
+    updated_at: '2026-02-15T14:30:00Z',
     permissions: FULL_ACCESS_PERMISSIONS,
-    ...overrides,
   }
 }
 
@@ -63,59 +75,24 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createRewardStatusMock.mockReset()
-  updateRewardStatusMock.mockReset()
 })
 
-describe('RewardStatusForm — create/edit (spec 0060, AC-024)', () => {
-  it('renders name, description, color and is_active fields in create mode, with no order input (D-3)', () => {
-    render(
-      <RewardStatusForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+describe('RewardStatusForm — create', () => {
+  it('starts with every row closed, with no order input', () => {
+    render(<RewardStatusForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    openRow('rewardStatuses.form.name')
     expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/^Description/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /choose a color/i })).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Active' })).toBeChecked()
     expect(screen.queryByLabelText(/^Order/)).not.toBeInTheDocument()
   })
 
-  it('renders the group picker, hydrated in edit mode and disabled on a system row (spec 0073, AC-016)', () => {
-    const { unmount } = render(
-      <RewardStatusForm
-        mode={{ type: 'edit', rewardStatus: rewardStatus({ group: 'closed_lost' }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('shows the errors on the closed rows and does not call the API when name and color are missing', async () => {
+    render(<RewardStatusForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    const picker = screen.getByRole('combobox', { name: /^Group/ })
-    expect(picker).toHaveTextContent('Denied')
-    expect(picker).not.toBeDisabled()
-    unmount()
+    save()
 
-    render(
-      <RewardStatusForm
-        mode={{ type: 'edit', rewardStatus: rewardStatus({ system_key: 'pending' }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.getByRole('combobox', { name: /^Group/ })).toBeDisabled()
-  })
-
-  it('shows an inline error and does not call the API when name is empty and color is unchosen', async () => {
-    render(
-      <RewardStatusForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(screen.getByText('Name is required.')).toBeInTheDocument())
+    expect(await screen.findByText('Name is required.')).toHaveAttribute('role', 'alert')
     expect(screen.getByText('Color is required.')).toBeInTheDocument()
     expect(createRewardStatusMock).not.toHaveBeenCalled()
   })
@@ -124,83 +101,23 @@ describe('RewardStatusForm — create/edit (spec 0060, AC-024)', () => {
     createRewardStatusMock.mockResolvedValue(rewardStatus())
     const onSuccess = vi.fn()
 
-    render(
-      <RewardStatusForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    render(<RewardStatusForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Approvato' } })
-    fireEvent.click(screen.getByRole('button', { name: /choose a color/i }))
-    fireEvent.click(screen.getByRole('option', { name: 'Green' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    openRow('rewardStatuses.form.name')
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Granted' } })
+    pickColor('Green')
+    save()
 
     await waitFor(() => expect(createRewardStatusMock).toHaveBeenCalledTimes(1))
-    expect(createRewardStatusMock).toHaveBeenCalledWith({
-      name: 'Approvato',
-      description: null,
-      color: 'green',
-      // The picker defaults to the pending phase, submitted as-is.
-      group: 'pending',
-      is_active: true,
-    })
+    expect(createRewardStatusMock).toHaveBeenCalledWith({ name: 'Granted', description: null, color: 'green', group: 'pending', is_active: true })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(rewardStatus()))
   })
 
-  it('hydrates name, description, color and is_active in edit mode', () => {
-    render(
-      <RewardStatusForm
-        mode={{ type: 'edit', rewardStatus: rewardStatus({ is_active: false }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('opens the group row on its select, defaulting to the pending phase', () => {
+    render(<RewardStatusForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    expect(screen.getByLabelText(/^Name/)).toHaveValue('Approvato')
-    expect(screen.getByLabelText(/^Description/)).toHaveValue('Buono approvato')
-    expect(screen.getByRole('button', { name: /Green/ })).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Active' })).not.toBeChecked()
-  })
+    openRow('rewardStatuses.form.group.label')
 
-  it('submits only the changed name on a partial update', async () => {
-    updateRewardStatusMock.mockResolvedValue(rewardStatus({ name: 'Rifiutato' }))
-
-    render(
-      <RewardStatusForm
-        mode={{ type: 'edit', rewardStatus: rewardStatus() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Rifiutato' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateRewardStatusMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateRewardStatusMock.mock.calls[0]
-    expect(id).toBe(9)
-    expect(payload).toEqual({ name: 'Rifiutato' })
-  })
-})
-
-describe('RewardStatusForm — system row (spec 0060 D-2)', () => {
-  it('disables description and is_active while name/color stay editable', () => {
-    render(
-      <RewardStatusForm
-        mode={{
-          type: 'edit',
-          rewardStatus: rewardStatus({ name: 'In attesa', system_key: 'pending' }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.getByLabelText(/^Name/)).not.toBeDisabled()
-    expect(screen.getByRole('button', { name: /Green/ })).not.toBeDisabled()
-    expect(screen.getByLabelText(/^Description/)).toBeDisabled()
-    expect(screen.getByRole('switch', { name: 'Active' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Group' })).toHaveTextContent('Pending')
   })
 })

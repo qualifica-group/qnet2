@@ -22,6 +22,17 @@ final class SectorColumnCatalog
     {
         return [
             [
+                // Spec 0213: verbatim code (01, 07a, NA), a real column.
+                'id' => 'code',
+                'label' => 'sectors.columns.code',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'text',
+                'searchable' => true,
+            ],
+            [
                 'id' => 'name',
                 'label' => 'sectors.columns.name',
                 'type' => 'text',
@@ -46,6 +57,18 @@ final class SectorColumnCatalog
                 'filterType' => 'set',
             ],
             [
+                // Spec 0212 D-7: the node's OWN flag (a real column); the
+                // effective value inherited from an inactive ancestor is not
+                // derived here.
+                'id' => 'is_active',
+                'label' => 'sectors.columns.is_active',
+                'type' => 'boolean',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'boolean',
+            ],
+            [
                 'id' => 'created_at',
                 'label' => 'sectors.columns.created_at',
                 'type' => 'datetime',
@@ -63,8 +86,10 @@ final class SectorColumnCatalog
     public static function filters(): array
     {
         return [
+            ['columnId' => 'code', 'type' => 'text'],
             ['columnId' => 'name', 'type' => 'text'],
             ['columnId' => 'parent', 'type' => 'set'],
+            ['columnId' => 'is_active', 'type' => 'boolean'],
             ['columnId' => 'created_at', 'type' => 'date'],
         ];
     }

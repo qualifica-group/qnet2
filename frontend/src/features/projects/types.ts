@@ -88,8 +88,9 @@ export interface ProjectDetail {
 
 /**
  * A `ProjectDetail` carrying the actor's authorization metadata for this
- * instance (spec 0004), as returned by `GET /projects/{id}`. Used to seed the
- * edit form's `ResourcePermissionsProvider` without a second request.
+ * instance (spec 0004), as returned by `GET`/`PATCH /projects/{id}`. Seeds the
+ * in-place detail's `ResourcePermissionsProvider` (spec 0220) without a
+ * second request.
  */
 export interface ProjectDetailWithPermissions extends ProjectDetail {
   permissions: ResourcePermissions
@@ -137,7 +138,7 @@ export interface CreateProjectPayload {
 /** Payload for PATCH /projects/{id} (partial update). Every field is optional (sparse diff). */
 export type UpdateProjectPayload = Partial<CreateProjectPayload>
 
-/** Discriminated form mode shared by the form hook/meta-resolver and `ProjectForm`. */
+/** Discriminated form mode of `useProjectForm`: create, duplicate (a prefilled create) or the in-place detail (edit). */
 export type ProjectFormMode =
   | { type: 'create' }
   | { type: 'edit'; project: ProjectDetailWithPermissions }

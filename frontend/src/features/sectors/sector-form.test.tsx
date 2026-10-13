@@ -4,61 +4,61 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { SectorForm } from '@/features/sectors/sector-form'
-import type { SectorDetailWithPermissions } from '@/features/sectors/types'
-import type { SectorTreeNode } from '@/features/sectors/types'
-import type { ResourcePermissions } from '@/features/authorization/types'
+import type { SectorDetailWithPermissions, SectorTreeNode } from '@/features/sectors/types'
+import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
+import type { CustomFieldDescriptor } from '@/features/custom-fields/types'
 
-/** Spec 0018 AC-017/AC-018: metadata-driven form fields, parent picker anti-cycle exclusion. */
+/**
+ * Spec 0237: the sector form is create-only, a replica of the detail with its
+ * rows closed (the in-place edits live in `sector-detail.test.tsx`). Covers
+ * the parent picker (spec 0018), the active flag default (spec 0212), the
+ * metadata-driven behaviour (spec 0004) and the custom fields (spec 0021).
+ */
 
 const createSectorMock = vi.fn()
-const updateSectorMock = vi.fn()
 const fetchSectorTreeMock = vi.fn<() => Promise<SectorTreeNode[]>>()
 
 vi.mock('@/features/sectors/api', () => ({
   createSector: (...args: unknown[]) => createSectorMock(...args),
-  updateSector: (...args: unknown[]) => updateSectorMock(...args),
   fetchSectorTree: () => fetchSectorTreeMock(),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
 
-/**
- * Not about authorization metadata: every field resolves as visible+editable
- * (the `MetaField` fallback, since `fields` is empty).
- */
-const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
+const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
+vi.mock('@/features/authorization/api', () => ({
+  fetchResourceMeta: () => fetchResourceMetaMock(),
+}))
+
+const NOTES_FIELD: CustomFieldDescriptor = {
+  key: 'custom.notes',
+  type: 'text',
+  label: 'Notes',
+  group: null,
+  mandatory: false,
+  source: 'custom',
 }
 
-vi.mock('@/features/sectors/use-sector-form-meta', () => ({
-  useSectorFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
-}))
+const EDITABLE = { visible: true, hidden: false, editable: true, readonly: false, required: false, disabled: false }
 
-// `useSectorForm` reads `/meta/sectors` (spec 0021) to build the dynamic
-// custom-fields schema; this suite has no custom fields to exercise (covered
-// by `sector-form-custom-fields.test.tsx`), so it resolves to an empty catalogue.
-vi.mock('@/features/authorization/api', () => ({
-  fetchResourceMeta: () => Promise.resolve({ fields: [], permissions: FULL_ACCESS_PERMISSIONS }),
-}))
+function permissions(fields: ResourcePermissions['fields'] = {}): ResourcePermissions {
+  return {
+    resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
+    fields: { 'custom.notes': EDITABLE, ...fields },
+    actions: {},
+  }
+}
 
-/** Root A > Child A1 > Grandchild A1a, plus a second root sibling. */
+/** Root A > Child A1, plus a second root sibling. */
 const TREE: SectorTreeNode[] = [
   {
     id: 1,
     name: 'Root A',
     parent_id: null,
-    children: [
-      {
-        id: 2,
-        name: 'Child A1',
-        parent_id: 1,
-        children: [{ id: 3, name: 'Grandchild A1a', parent_id: 2, children: [] }],
-      },
-    ],
+    is_active: true,
+    children: [{ id: 2, name: 'Child A1', parent_id: 1, is_active: true, children: [] }],
   },
-  { id: 4, name: 'Root B', parent_id: null, children: [] },
+  { id: 4, name: 'Root B', parent_id: null, is_active: true, children: [] },
 ]
 
 function wrapper() {
@@ -68,22 +68,30 @@ function wrapper() {
   )
 }
 
-function sector(
-  overrides: Partial<SectorDetailWithPermissions> = {},
-): SectorDetailWithPermissions {
+function sector(): SectorDetailWithPermissions {
   return {
-    id: 2,
-    name: 'Child A1',
-    parent_id: 1,
-    parent: { id: 1, name: 'Root A' },
+    id: 5,
+    code: null,
+    name: 'New Sector',
+    parent_id: null,
+    parent: null,
+    is_active: true,
     created_at: '2026-01-01T00:00:00Z',
-    permissions: FULL_ACCESS_PERMISSIONS,
-    ...overrides,
+    permissions: permissions(),
   }
 }
 
-function openParentPicker() {
-  fireEvent.click(screen.getByRole('combobox'))
+/** Opens a closed row through its pencil. */
+function openRow(label: string) {
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: label }) }))
+}
+
+const label = (key: string) => i18n.t(`sectors.form.${key}`)
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: label('save') })[0])
+
+async function renderForm(onSuccess = vi.fn()) {
+  render(<SectorForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
+  await screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Notes' }) })
 }
 
 beforeAll(async () => {
@@ -92,111 +100,114 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createSectorMock.mockReset()
-  updateSectorMock.mockReset()
   fetchSectorTreeMock.mockReset()
   fetchSectorTreeMock.mockResolvedValue(TREE)
+  fetchResourceMetaMock.mockReset()
+  fetchResourceMetaMock.mockResolvedValue({ fields: [NOTES_FIELD], permissions: permissions() })
 })
 
-describe('SectorForm — create/edit (AC-017)', () => {
-  it('renders the name field and the parent picker in create mode', async () => {
-    render(
-      <SectorForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+describe('SectorForm — create (spec 0237)', () => {
+  it('starts with every row closed; the name row opens on its own control', async () => {
+    await renderForm()
 
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+
+    openRow(label('name'))
     expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
-    expect(screen.getByRole('combobox')).toBeInTheDocument()
+  })
 
-    openParentPicker()
+  it('offers the sector tree, with the root option, in the parent row', async () => {
+    await renderForm()
+
+    openRow(label('parent'))
+    fireEvent.click(screen.getByRole('combobox'))
+
     expect(await screen.findByRole('option', { name: 'No parent (root sector)' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Root A' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Root B' })).toBeInTheDocument()
   })
 
-  it('shows a validation error when name is empty on submit', async () => {
-    render(
-      <SectorForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('shows the error on the closed row and does not call the API when name is empty', async () => {
+    await renderForm()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
-    expect(await screen.findByText('Name is required.')).toBeInTheDocument()
+    expect(await screen.findByText('Name is required.')).toHaveAttribute('role', 'alert')
     expect(createSectorMock).not.toHaveBeenCalled()
   })
 
   it('shows a validation error when name exceeds 191 characters', async () => {
-    render(
-      <SectorForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    await renderForm()
 
+    openRow(label('name'))
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'a'.repeat(192) } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
     expect(await screen.findByText('Name must be at most 191 characters.')).toBeInTheDocument()
     expect(createSectorMock).not.toHaveBeenCalled()
   })
 
-  it('submits the create payload with parent_id null as root', async () => {
-    createSectorMock.mockResolvedValue(sector({ id: 5, name: 'New Sector', parent_id: null, parent: null }))
+  it('submits the create payload with parent_id null as root and the sector active', async () => {
+    fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissions() })
+    createSectorMock.mockResolvedValue(sector())
     const onSuccess = vi.fn()
+    render(<SectorForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
+    await screen.findAllByRole('button', { name: label('save') })
 
-    render(
-      <SectorForm mode={{ type: 'create', parentId: null }} onSuccess={onSuccess} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
+    openRow(label('name'))
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'New Sector' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
     await waitFor(() => expect(createSectorMock).toHaveBeenCalledTimes(1))
     expect(createSectorMock).toHaveBeenCalledWith({
+      code: null,
       name: 'New Sector',
       parent_id: null,
+      is_active: true,
     })
-    await waitFor(() => expect(onSuccess).toHaveBeenCalled())
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(sector()))
   })
 
-  it('hydrates name and parent in edit mode', () => {
-    render(
-      <SectorForm mode={{ type: 'edit', sector: sector() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('creates under the picked parent', async () => {
+    createSectorMock.mockResolvedValue(sector())
+    await renderForm()
 
-    expect(screen.getByLabelText(/^Name/)).toHaveValue('Child A1')
-  })
-})
+    openRow(label('name'))
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'New Sector' } })
+    openRow(label('parent'))
+    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(await screen.findByRole('option', { name: 'Root B' }))
+    openRow('Notes')
+    fireEvent.change(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: 'A note' } })
+    save()
 
-describe('SectorForm — parent picker anti-cycle exclusion (AC-018)', () => {
-  it('excludes the edited node and its subtree from the parent options', async () => {
-    render(
-      <SectorForm mode={{ type: 'edit', sector: sector() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    openParentPicker()
-
-    expect(await screen.findByRole('option', { name: 'Root A' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'Root B' })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: 'Child A1' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: /Grandchild A1a/ })).not.toBeInTheDocument()
+    await waitFor(() => expect(createSectorMock).toHaveBeenCalledTimes(1))
+    expect(createSectorMock.mock.calls[0][0]).toMatchObject({
+      name: 'New Sector',
+      parent_id: 4,
+      custom_fields: { notes: 'A note' },
+    })
   })
 
-  it('submits only the changed field on a partial update', async () => {
-    updateSectorMock.mockResolvedValue(sector({ name: 'Renamed' }))
+  it('defaults the Active switch to on', async () => {
+    await renderForm()
 
-    render(
-      <SectorForm mode={{ type: 'edit', sector: sector() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    openRow(label('isActive'))
 
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Renamed' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(screen.getByRole('switch', { name: /Active/ })).toBeChecked()
+  })
 
-    await waitFor(() => expect(updateSectorMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateSectorMock.mock.calls[0]
-    expect(id).toBe(2)
-    expect(payload).toEqual({ name: 'Renamed' })
+  it('hides a hidden field from the create-context metadata', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [],
+      permissions: permissions({
+        code: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
+      }),
+    })
+    render(<SectorForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
+    await screen.findAllByRole('button', { name: label('save') })
+
+    expect(screen.queryByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: label('code') }) })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: label('name') }) })).toBeInTheDocument()
   })
 })

@@ -26,9 +26,10 @@ function CardStat({ label, value }: { label: string; value: number | string }) {
 
 /**
  * A single project card in the card grid (spec 0026 AC-009): code, status
- * badge, name, the 2 stats and an "Open detail" link. The edit affordance
- * only renders when `project.can.update` (server-computed, BR-2) — UI hides,
- * the backend re-authorizes the actual mutation.
+ * badge, name, the 2 stats and an "Open detail" link. The edit affordance —
+ * it opens the project's detail, which edits in place (spec 0220) — only
+ * renders when `project.can.update` (server-computed, BR-2): UI hides, the
+ * backend re-authorizes the actual mutation.
  */
 export function ProjectCard({ project, onEdit }: ProjectCardProps) {
   const { t } = useTranslation()

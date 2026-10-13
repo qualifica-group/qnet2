@@ -4,33 +4,28 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { QuoteWorkflowForm } from '@/features/quote-workflows/quote-workflow-form'
-import type {
-  CriterionFieldOption,
-  QuoteWorkflowDetailWithPermissions,
-} from '@/features/quote-workflows/types'
+import type { CriterionFieldOption, QuoteWorkflowDetail } from '@/features/quote-workflows/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 
 /**
- * Spec 0047 AC-024 (3 sections; criteria editor add/remove, value select
- * dependent on the field) and AC-025 (`<SortableList>` statuses editor: the
- * pinned open/closed_won/closed_lost rows have no drag handle/remove action; custom rows are
- * reorderable and the order lands in the payload). Mirrors
- * `opportunity-status-form.test.tsx`/`status-reorder-sheet.test.tsx`'s
- * mocking boundaries (HTTP + `sonner`), driving the SAME real
- * `<SortableList>`/keyboard sensor.
+ * Spec 0242 (create = replica of the detail): the name/active rows start
+ * closed, the criteria and statuses editors start OPEN. Spec 0047 AC-024
+ * (criteria editor add/remove, value select dependent on the field) and
+ * AC-004/AC-025 (the pinned open/closed_won/closed_lost rows are seeded and
+ * editable, and land in the create payload). Mocks the HTTP boundary and
+ * `sonner`.
  */
 
 const createQuoteWorkflowMock = vi.fn()
-const updateQuoteWorkflowMock = vi.fn()
 const fetchCriterionFieldsMock = vi.fn()
 
-vi.mock('@/features/quote-workflows/api', () => ({
+vi.mock('@/features/quote-workflows/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/quote-workflows/api')>()),
   createQuoteWorkflow: (...args: unknown[]) => createQuoteWorkflowMock(...args),
-  updateQuoteWorkflow: (...args: unknown[]) => updateQuoteWorkflowMock(...args),
   fetchCriterionFields: (...args: unknown[]) => fetchCriterionFieldsMock(...args),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 /** Every field resolves as visible+editable (the `MetaField` fallback, since `fields` is empty). */
 const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
@@ -39,8 +34,8 @@ const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   actions: {},
 }
 
-vi.mock('@/features/quote-workflows/use-quote-workflow-form-meta', () => ({
-  useQuoteWorkflowFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
+vi.mock('@/features/authorization/use-resource-meta', () => ({
+  useResourceMeta: () => ({ data: { permissions: FULL_ACCESS_PERMISSIONS }, isError: false, refetch: vi.fn() }),
 }))
 
 /**
@@ -94,61 +89,32 @@ function wrapper() {
   )
 }
 
-const ROW_HEIGHT = 40
 
-/** jsdom's all-zero rects tie every row; stub a rect whose `top` follows DOM order (mirrors `status-reorder-sheet.test.tsx`). */
-function mockRowRects() {
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-    const rows = Array.from(document.querySelectorAll('li'))
-    const index = rows.indexOf(this as HTMLLIElement)
-    const top = index === -1 ? 0 : index * ROW_HEIGHT
-    return {
-      width: 280,
-      height: ROW_HEIGHT,
-      top,
-      bottom: top + ROW_HEIGHT,
-      left: 0,
-      right: 280,
-      x: 0,
-      y: top,
-      toJSON: () => ({}),
-    } as DOMRect
-  })
+const CREATED = { id: 9, name: 'EMEA workflow' } as QuoteWorkflowDetail
+
+/** Opens a closed row through its pencil. */
+function openRow(label: string) {
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: label }) }))
 }
 
-/** The keyboard sensor attaches its move/drop listeners in a macrotask. */
-async function flushSensorAttach() {
-  await new Promise((resolve) => setTimeout(resolve, 0))
+/** Picks the Source criterion and a value on the first criteria row. */
+async function fillCriterion() {
+  fireEvent.click(screen.getByRole('combobox', { name: 'Field' }))
+  fireEvent.click(await screen.findByRole('option', { name: 'Source' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Pick Value' }))
 }
 
-function quoteWorkflow(
-  overrides: Partial<QuoteWorkflowDetailWithPermissions> = {},
-): QuoteWorkflowDetailWithPermissions {
-  return {
-    id: 9,
-    name: 'EMEA workflow',
-    is_active: true,
-    criteria: [
-      {
-        id: 1,
-        field: 'source_id',
-        value_id: 5,
-        value_label: 'Fiera',
-        field_label: 'quoteWorkflows.criterionFields.source_id',
-        field_source: 'native',
-      },
-    ],
-    statuses: [
-      { id: 10, name: 'Open', color: null, sort_order: 0, system_key: 'open', group: 'open', description: null, requires_note: false },
-      { id: 11, name: 'Alpha', color: 'blue', sort_order: 10, system_key: null, group: 'pending', description: null, requires_note: false },
-      { id: 12, name: 'Bravo', color: 'green', sort_order: 20, system_key: null, group: 'pending', description: null, requires_note: false },
-      { id: 13, name: 'Closed', color: null, sort_order: 30, system_key: 'closed_won', group: 'closed_won', description: null, requires_note: false },
-    ],
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z',
-    permissions: FULL_ACCESS_PERMISSIONS,
-    ...overrides,
-  }
+function nameTheWorkflow() {
+  openRow('Name')
+  fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'EMEA workflow' } })
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.apply') }))
+}
+
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+
+function renderForm(onSuccess = vi.fn()) {
+  render(<QuoteWorkflowForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
+  return onSuccess
 }
 
 beforeAll(async () => {
@@ -156,31 +122,26 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-  mockRowRects()
   createQuoteWorkflowMock.mockReset()
-  updateQuoteWorkflowMock.mockReset()
   fetchCriterionFieldsMock.mockReset().mockResolvedValue(CRITERION_FIELDS)
 })
 
-describe('QuoteWorkflowForm — 3 sections (AC-024)', () => {
-  it('renders the general, criteria and statuses sections', async () => {
-    render(
-      <QuoteWorkflowForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+describe('QuoteWorkflowForm — replica of the detail (AC-004)', () => {
+  it('renders the three sections with the name row closed and the editors open', () => {
+    renderForm()
 
     expect(screen.getByRole('heading', { name: 'Details' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Criteria' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Workflow statuses' })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Field' })).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Open')).toBeInTheDocument()
   })
 })
 
 describe('QuoteWorkflowForm — criteria editor (AC-024)', () => {
   it('starts with one empty row and adds/removes rows', async () => {
-    render(
-      <QuoteWorkflowForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderForm()
 
     await screen.findByRole('button', { name: 'Add criterion' })
     expect(screen.getAllByRole('combobox', { name: 'Field' })).toHaveLength(1)
@@ -192,11 +153,8 @@ describe('QuoteWorkflowForm — criteria editor (AC-024)', () => {
     expect(screen.getAllByRole('combobox', { name: 'Field' })).toHaveLength(1)
   })
 
-  it('disables the value select until a field is picked, then scopes it to the field\'s resource', async () => {
-    render(
-      <QuoteWorkflowForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it("disables the value select until a field is picked, then scopes it to the field's resource", async () => {
+    renderForm()
 
     await screen.findByText(/^Value:.*:disabled$/)
 
@@ -208,11 +166,7 @@ describe('QuoteWorkflowForm — criteria editor (AC-024)', () => {
 
   it('renders a custom field option with its literal label (no t()), a native one translated, and scopes the value select to it (AC-035)', async () => {
     fetchCriterionFieldsMock.mockResolvedValue([...CRITERION_FIELDS, CUSTOM_CRITERION_FIELD])
-
-    render(
-      <QuoteWorkflowForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderForm()
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Field' }))
     expect(await screen.findByRole('option', { name: 'Source' })).toBeInTheDocument()
@@ -224,70 +178,35 @@ describe('QuoteWorkflowForm — criteria editor (AC-024)', () => {
   })
 })
 
-describe('QuoteWorkflowForm — statuses editor (AC-025)', () => {
-  it('pins open first and closed last, without a handle or a remove action', async () => {
-    render(
-      <QuoteWorkflowForm
-        mode={{ type: 'edit', quoteWorkflow: quoteWorkflow() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+describe('QuoteWorkflowForm — create submit (AC-004, AC-025)', () => {
+  it('does not call the API when the name is missing, and shows the error on the closed row', async () => {
+    renderForm()
 
-    await screen.findByDisplayValue('Alpha')
-    // 2 custom rows -> 2 drag handles; the 2 pinned rows never get one.
-    expect(screen.getAllByRole('button', { name: 'Drag to reorder' })).toHaveLength(2)
-    // Only the custom rows can be removed.
-    expect(screen.getAllByRole('button', { name: 'Remove status' })).toHaveLength(2)
+    await fillCriterion()
+    save()
 
-    const rows = screen.getAllByRole('listitem')
-    expect(rows[0]).toHaveTextContent('Open')
-    expect(rows[rows.length - 1]).toHaveTextContent('Closed')
+    expect(await screen.findByText('Name is required.')).toBeInTheDocument()
+    expect(createQuoteWorkflowMock).not.toHaveBeenCalled()
   })
 
-  it('sends the reordered custom statuses in the update payload after a drag', async () => {
-    updateQuoteWorkflowMock.mockResolvedValue(quoteWorkflow())
-    const onSuccess = vi.fn()
+  it('blocks the save while a status has no name', async () => {
+    renderForm()
 
-    render(
-      <QuoteWorkflowForm
-        mode={{ type: 'edit', quoteWorkflow: quoteWorkflow() }}
-        onSuccess={onSuccess}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    nameTheWorkflow()
+    await fillCriterion()
+    fireEvent.change(screen.getByDisplayValue('Open'), { target: { value: '' } })
+    save()
 
-    await screen.findByDisplayValue('Alpha')
-
-    const [alphaHandle] = screen.getAllByRole('button', { name: 'Drag to reorder' })
-    alphaHandle.focus()
-    fireEvent.keyDown(alphaHandle, { code: 'Space' })
-    await flushSensorAttach()
-    fireEvent.keyDown(document, { code: 'ArrowDown' })
-    fireEvent.keyDown(document, { code: 'Space' })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateQuoteWorkflowMock).toHaveBeenCalledTimes(1))
-    const [, payload] = updateQuoteWorkflowMock.mock.calls[0]
-    expect(payload.statuses.map((status: { id?: number }) => status.id)).toEqual([10, 12, 11, 13])
+    expect(await screen.findByText('Every status needs a name.')).toBeInTheDocument()
+    expect(createQuoteWorkflowMock).not.toHaveBeenCalled()
   })
 
   // Requirement changed (user directive 2026-08-07): there is no 'validated'
   // system row at all — a new set starts with the 3 mandatory rows.
   it('seeds editable open/closed_won/closed_lost rows and sends them with the added custom row in the create payload', async () => {
-    createQuoteWorkflowMock.mockResolvedValue(quoteWorkflow())
-    const onSuccess = vi.fn()
+    createQuoteWorkflowMock.mockResolvedValue(CREATED)
+    const onSuccess = renderForm()
 
-    render(
-      <QuoteWorkflowForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    // The 3 mandatory pinned rows are present and editable from the start
-    // (seeded); nothing seeds a 'Validated' row.
     expect(screen.getByDisplayValue('Open')).toBeInTheDocument()
     expect(screen.queryByDisplayValue('Validated')).not.toBeInTheDocument()
     expect(screen.getByDisplayValue('Closed (won)')).toBeInTheDocument()
@@ -299,12 +218,9 @@ describe('QuoteWorkflowForm — statuses editor (AC-025)', () => {
     const nameInputs = screen.getAllByRole('textbox', { name: 'Status name' })
     fireEvent.change(nameInputs[1], { target: { value: 'In review' } })
 
-    fireEvent.click(screen.getByRole('combobox', { name: 'Field' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'Source' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Pick Value' }))
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'EMEA workflow' } })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await fillCriterion()
+    nameTheWorkflow()
+    save()
 
     await waitFor(() => expect(createQuoteWorkflowMock).toHaveBeenCalledTimes(1))
     const [payload] = createQuoteWorkflowMock.mock.calls[0]
@@ -315,29 +231,22 @@ describe('QuoteWorkflowForm — statuses editor (AC-025)', () => {
       { name: 'Closed (lost)', color: null, group: 'closed_lost', system_key: 'closed_lost', description: null, requires_note: false },
     ])
     expect(payload.criteria).toEqual([{ field: 'source_id', value_id: 101 }])
-    expect(onSuccess).toHaveBeenCalled()
+    expect(payload.name).toBe('EMEA workflow')
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(CREATED))
   })
 
   it('lets the user rename a pinned row up front; the new label lands in the create payload', async () => {
-    createQuoteWorkflowMock.mockResolvedValue(quoteWorkflow())
-
-    render(
-      <QuoteWorkflowForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    createQuoteWorkflowMock.mockResolvedValue(CREATED)
+    renderForm()
 
     fireEvent.change(screen.getByDisplayValue('Open'), { target: { value: 'Aperto (in corso)' } })
-
-    fireEvent.click(screen.getByRole('combobox', { name: 'Field' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'Source' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Pick Value' }))
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'EMEA workflow' } })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await fillCriterion()
+    nameTheWorkflow()
+    save()
 
     await waitFor(() => expect(createQuoteWorkflowMock).toHaveBeenCalledTimes(1))
     const [payload] = createQuoteWorkflowMock.mock.calls[0]
-    const openRow = payload.statuses.find((status: { system_key: string | null }) => status.system_key === 'open')
-    expect(openRow.name).toBe('Aperto (in corso)')
+    const openStatus = payload.statuses.find((status: { system_key: string | null }) => status.system_key === 'open')
+    expect(openStatus.name).toBe('Aperto (in corso)')
   })
 })

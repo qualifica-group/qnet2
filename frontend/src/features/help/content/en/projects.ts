@@ -23,10 +23,9 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open **Marketing & Leads › Projects**.',
-            'Click **New project**.',
-            'Fill in the sections (see table).',
-            'Click **Save**.',
+            'Open **Marketing & Leads › Projects** and click **New project**: the form looks like the record, with the same sections and **closed rows** (the Code is already suggested).',
+            'Click a row (or its pencil) to open it, fill it in and press **Done** to keep the value or **Revert** to put it back (see table).',
+            'Click **Save**: QNet checks everything and creates the project. If you leave without saving, you are asked to confirm.',
           ],
         },
         {
@@ -39,13 +38,44 @@ const guide: HelpGuide = {
               '**Status**, **Product lines**, **Partner**, **Site**',
               'Fill in **Partner** if the project is requested by the partner: costs are charged to it.',
             ],
-            ['Geographic scope', 'Country, region, province, city', 'Pick the country first, then narrow down.'],
+            [
+              'Geographic scope',
+              'Country, region, province, city',
+              'A single row: pick the country first (the default one is already suggested), then narrow down.',
+            ],
             [
               'Planning & budget',
               '**Start date**, **End date**, **Total budget**, **Target leads**',
               'The end date cannot precede the start date.',
             ],
           ],
+        },
+        {
+          type: 'note',
+          text: 'The **Duplicate** action opens the creation already filled with the source project data: a new code and the name with " (copy)".',
+        },
+      ],
+    },
+    {
+      id: 'edit-a-project',
+      title: 'Editing a project',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "There is no separate edit page: a project is edited **directly from its record**, one field at a time. The pencil on a grid card also opens the project's record.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Open the project from the list or the grid.',
+            'Hover the field to change and press the **pencil** (or click the value).',
+            'Change the value in the control that appears.',
+            'Press **Save** to save that field; **Cancel** (or Esc, or a click outside the open field) closes it unchanged, without saving.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'The **Code** cannot change after creation. The **Geographic scope** is edited in one box: country, region, province and city change together. A field without a pencil is read-only for your role.',
         },
       ],
     },

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Authorization\LegacyIdVisibility;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTypology;
@@ -44,6 +45,7 @@ class ProductResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id),
             'code' => $this->code,
             'name' => $this->name,
             'description' => $this->description,

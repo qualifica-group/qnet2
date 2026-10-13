@@ -52,7 +52,7 @@ const guide: HelpGuide = {
       id: 'table-field',
       title: 'Table attribute',
       blocks: [
-        { type: 'paragraph', text: 'The Table type collects several rows sharing the same columns, for example the inspection audits of a work order (audit date, inspector, On/Off Site support, Stage 1/Stage 2 phase). The attribute form shows the Columns editor.' },
+        { type: 'paragraph', text: 'The Table type collects several rows sharing the same columns, for example the inspection audits of a work order (audit date, inspector, On/Off Site support, Stage 1/Stage 2 phase). The attribute page shows the Columns editor.' },
         {
           type: 'list',
           items: [
@@ -75,11 +75,33 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Open Products › Attributes and press New attribute.',
-            'Enter Code and Name.',
-            'Choose the field Type.',
-            'For an Option list add at least one option, with a Value and a Label.',
-            'For a Relation choose the linked module.',
-            'Press Save.',
+            'The create form has the same shape as the attribute page: the rows (Code, Name, Type, Presentation and the custom fields) are closed. Press the pencil (or the value) to open one and enter the Code, Name and field Type; Done confirms the row without saving anything, Revert puts it back as it was.',
+            'The editors that depend on the Type (Field settings, Options, Relation, Columns) are already open: for an Option list add at least one option, with a Value and a Label.',
+            'For a Relation choose the linked module: besides the modules you can choose Provinces, to link a province.',
+            'At the top you see the field preview, which follows your choices.',
+            'Press Save (at the top or at the bottom): the new attribute is created with all the data and its page opens.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'If you leave the form (Cancel, closing the panel, changing page) before saving, you are asked to confirm: what you entered would be lost.',
+        },
+      ],
+    },
+    {
+      id: 'editing-an-attribute',
+      title: 'Editing an attribute',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'An attribute page has no edit form: each row is edited in place, one at a time. Press the pencil (or the value) on Name, Presentation (description, help text, placeholder, icon), Field settings, Options, Relation, Columns or a custom field, change the value and press Save; Cancel or Esc leave the row as it was. Each Save sends only what you changed in that row.',
+        },
+        {
+          type: 'list',
+          items: [
+            'Code and Type are chosen at creation and have no pencil.',
+            'The rows shown depend on the Type: Options for an Option list, Relation for a Relation, Columns for a Table.',
+            'Without the edit permission the rows show no pencil.',
           ],
         },
       ],
@@ -111,7 +133,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'The field type cannot be changed after creation. An attribute assigned to a category or with values on products cannot be deleted.',
+          text: 'The code and the field type cannot be changed after creation. An attribute assigned to a category or with values on products cannot be deleted.',
         },
         {
           type: 'note',

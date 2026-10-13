@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\MigrationStatus;
 use App\Models\MassMigrationRun;
 use App\Models\ProductCategory;
+use App\Models\Sector;
 use App\Models\User;
 use App\Services\MigrationService;
 use App\Services\UserService;
@@ -139,6 +140,9 @@ class QualificaLegacyImportSeeder extends Seeder
         // Step 5: reparent the freshly imported taxonomy under the client root.
         $this->nestImportedCategories($staticRootIds);
 
+        // Step 6: the legacy sectors are history only (spec 0213 D-2).
+        $this->deactivateLegacySectors();
+
         $this->report($run);
     }
 
@@ -194,6 +198,27 @@ class QualificaLegacyImportSeeder extends Seeder
                 $orphans->count(),
                 self::LEGACY_CATEGORY_ROOT,
             ));
+        }
+    }
+
+    /**
+     * Every sector with an `old_id` is left NOT active (spec 0213 D-2): the
+     * client classifies with the EA catalogue QualificaSectorSeeder provides,
+     * while the legacy rows stay valid on the registries already linked to
+     * them. On EVERY run, by user decision, including a legacy sector someone
+     * reactivated by hand.
+     *
+     * Per-model update (not a mass query update) so the activity log records
+     * the change, as every other write on this model does.
+     */
+    private function deactivateLegacySectors(): void
+    {
+        $active = Sector::query()->whereNotNull('old_id')->where('is_active', true)->get();
+
+        $active->each(fn (Sector $sector) => $sector->update(['is_active' => false]));
+
+        if ($active->isNotEmpty()) {
+            $this->command?->info(sprintf('%d legacy sectors deactivated.', $active->count()));
         }
     }
 

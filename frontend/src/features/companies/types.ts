@@ -36,6 +36,8 @@ export interface CompanyAddress {
  */
 export interface CompanyDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   denomination: string
   vat_number: string | null
   address: CompanyAddress | null
@@ -87,3 +89,8 @@ export interface UpdateCompanyPayload {
   /** Only the custom fields that changed, keyed by raw key (spec 0021, sparse diff). */
   custom_fields?: Record<string, CustomFieldValue>
 }
+
+/** Discriminated form mode shared by the form hook: create form, or the in-place detail (edit). */
+export type CompanyFormMode =
+  | { type: 'create' }
+  | { type: 'edit'; company: CompanyDetailWithPermissions }

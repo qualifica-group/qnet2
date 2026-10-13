@@ -11,7 +11,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'steps',
-          items: ['Open **Marketing & Leads › Leads** and click **New lead**.', 'Fill in the fields (see table).', 'Click **Save**.'],
+          items: [
+            'Open **Marketing & Leads › Leads** and click **New lead**: the form looks like the lead card, with the same sections and **closed rows**.',
+            'Click a row (or its pencil) to open it, pick the value and press **Done** to keep it or **Revert** to put it back (see table).',
+            'Click **Save**: QNet checks everything and creates the lead. Leaving without saving asks for confirmation.',
+          ],
         },
         {
           type: 'table',
@@ -24,7 +28,7 @@ const guide: HelpGuide = {
             ['**Source**', "Required. Prefilled from the campaign's Source, if it has one; editable."],
             ['Products of interest', "Limited to the campaign's categories."],
             ['**Notes**', 'Free-form text, up to 5000 characters.'],
-            ['Extra fields / Imported data', '**Key** and **Value** pairs, usually from an import.'],
+            ['Imported data', '**Key** and **Value** pairs, usually from an import: open the row and add them with **Add field**.'],
           ],
         },
         {
@@ -34,6 +38,33 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: 'Turn on **Automatically convert to Opportunity** to create the opportunity together with the lead right away (requires the permission to create opportunities).',
+        },
+      ],
+    },
+    {
+      id: 'editing-a-lead',
+      title: 'Editing a lead',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'There is no separate edit page: a lead is edited **straight from its card**, one field at a time.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Open the lead from the list.',
+            'Hover the field to change and press the **pencil** (or click the value).',
+            'Change the value in the control that appears.',
+            'Press **Save** to save that field; **Cancel** (or Esc, or a click outside the open field) closes it unchanged, without saving.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Some fields update others, as on creation: changing the **Campaign** prefills Site and Source (when the campaign has them) and may ask to remove the products it no longer covers; changing the **Site** clears the Operator; picking an **Operator** fills the Site when it is empty. The save carries those fields too.',
+        },
+        {
+          type: 'note',
+          text: "A field without a pencil is not editable by you: your role's permissions make it read-only (or you cannot edit a field that change would update).",
         },
       ],
     },

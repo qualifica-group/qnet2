@@ -21,7 +21,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Premi Nuova sede e compila le sezioni:',
+          text: "Premi Nuova sede: il modulo ha lo stesso aspetto del dettaglio, con le righe chiuse. Fai clic sulla riga (o sulla matita) per aprirla, poi **Fatto** per tenere il valore o **Ripristina** per riportarlo com'era; **Salva** controlla tutto e crea la sede (se esci senza salvare ti viene chiesta conferma). Le sezioni sono:",
         },
         {
           type: 'table',
@@ -38,12 +38,22 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'editing',
+      title: 'Modificare una sede',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Non esiste una pagina di modifica separata: la sede si modifica **direttamente dal suo dettaglio**, una riga alla volta, campi personalizzati compresi. Premi la **matita** (o fai clic sul valore), cambia il valore e premi **Salva**: si salva solo quella riga; **Annulla** o Esc la lasciano com'era. I **Dati azienda** si modificano insieme (sono sempre di un'azienda) e anche le **Banche** si salvano come elenco unico. **Contatti**, **Indirizzo** e **Logo** si gestiscono lì stesso e si salvano subito.",
+        },
+      ],
+    },
+    {
       id: 'default-site',
       title: 'Sede predefinita',
       blocks: [
         {
           type: 'paragraph',
-          text: "Per rendere una sede quella principale, aprila in modifica e premi Imposta come sede predefinita. Nella tabella ha l'etichetta Predefinita.",
+          text: "Per rendere una sede quella principale, aprila e premi Imposta come sede predefinita nella testata. Nella tabella ha l'etichetta Predefinita.",
         },
         {
           type: 'note',

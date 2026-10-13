@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchTaskType } from '@/features/task-types/api'
+import { fetchTaskType, taskTypeDetailQueryKey } from '@/features/task-types/api'
 import { TaskTypeForm } from '@/features/task-types/task-type-form'
 import { TaskTypeDetailView } from '@/features/task-types/task-type-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -15,18 +15,13 @@ import type {
 } from '@/features/modules/types'
 import type { TaskTypeDetail } from '@/features/task-types/types'
 
-/** Query key for a single task type's detail (fresh-on-open pattern). */
-function detailQueryKey(id: number) {
-  return ['task-types', 'detail', id] as const
-}
-
 /**
- * Content-only `task-types` screens for the module registry (spec 0042): fetch
- * + the existing presentational view/form, no page chrome. Reused as-is by the
- * modal Sheet (`useModuleOpener`) and by the generic dedicated pages
- * (`ModuleDetailPage`/`ModuleFormPage`).
+ * Content-only `task-types` screens for the module registry (spec 0042):
+ * fetch + the presentational view/form, no page chrome. The detail edits its
+ * rows in place, so `onEdit` is never used; each save reports through
+ * `onChanged`.
  */
-export function TaskTypeDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function TaskTypeDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: taskType,
@@ -34,7 +29,7 @@ export function TaskTypeDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
     isError,
     error,
     refetch,
-  } = useEntityDetail(detailQueryKey(id), () => fetchTaskType(id))
+  } = useEntityDetail(taskTypeDetailQueryKey(id), () => fetchTaskType(id))
 
   if (isError) {
     return (
@@ -51,70 +46,49 @@ export function TaskTypeDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
     return <DetailLoading />
   }
 
-  return <TaskTypeDetailView taskType={taskType} onEdit={onEdit} />
-}
-
-export function TaskTypeFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (saved: TaskTypeDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(saved.id) })
-    onSuccess(saved.id)
-  }
-
-  if (mode.type === 'create') {
-    return <TaskTypeForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
-  }
-
-  return (
-    <TaskTypeEditScreen taskTypeId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-  )
-}
-
-interface TaskTypeEditScreenProps {
-  taskTypeId: number
-  onSuccess: (taskType: TaskTypeDetail) => void
-  onCancel: () => void
+  return <TaskTypeDetailView taskType={taskType} onChanged={onChanged} />
 }
 
 /**
- * Fetches the fresh, re-authorized task type detail before mounting the edit
- * form, so the partial PATCH starts from authoritative values rather than a
- * stale snapshot.
+ * Create only: there is no edit form, and the registry generates no
+ * `:id/edit` route. Leaving a record being created — Cancel, the Sheet's
+ * X/overlay/Esc, a link, a reload — always asks first.
  */
-function TaskTypeEditScreen({ taskTypeId, onSuccess, onCancel }: TaskTypeEditScreenProps) {
+export function TaskTypeFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const { t } = useTranslation()
-  const {
-    data: taskType,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(detailQueryKey(taskTypeId), () => fetchTaskType(taskTypeId))
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('taskTypes.form.leaveConfirm.title'),
+    description: t('taskTypes.form.leaveConfirm.description'),
+    confirmLabel: t('taskTypes.form.leaveConfirm.confirm'),
+    cancelLabel: t('taskTypes.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('taskTypes.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
+  if (mode.type !== 'create') {
+    return null
   }
 
-  if (isLoading || !taskType) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+  const handleSuccess = (saved: TaskTypeDetail) => {
+    queryClient.invalidateQueries({ queryKey: taskTypeDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new record's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(saved.id)
+  }
+
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
   }
 
   return (
-    <TaskTypeForm mode={{ type: 'edit', taskType }} onSuccess={onSuccess} onCancel={onCancel} />
+    <>
+      {leaveGuard.navigationGuard}
+      <TaskTypeForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
   )
 }
 
@@ -126,7 +100,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.taskTypes',
   DetailScreen: TaskTypeDetailScreen,
   FormScreen: TaskTypeFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button.
+  // The detail IS the edit form: no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

@@ -79,6 +79,8 @@ import { moduleStats, statsPanel } from './en-stats'
 import { impersonation } from './en-impersonation'
 import { permissions, permissionExplorer } from './en-permissions'
 import { help } from './en-help'
+import { apiIntegrations } from './en-api-integrations'
+import { apiClients } from './en-api-clients'
 import {
   usersAssignment,
   usersColumnsEmployment,
@@ -156,8 +158,16 @@ export const en = {
     assignment: usersAssignment,
     detail: {
       title: 'User details',
-      subtitle: 'Read-only view of the selected user.',
+      subtitle: 'Details of the selected user, editable in place.',
       loadError: 'Unable to load the user. Please try again.',
+      // Password row of the detail and of the create form (spec 0222).
+      password: {
+        label: 'Password',
+        set: 'Set',
+        pending: 'First sign-in pending',
+        invite: 'Email invite: the user will choose the password',
+        temporary: 'Temporary password set',
+      },
       // First access (spec 0177).
       pendingFirstAccess: 'Awaiting first sign-in',
       resendWelcome: 'Resend welcome email',
@@ -173,8 +183,6 @@ export const en = {
       avatarLabel: 'Avatar',
       createTitle: 'Create user',
       createSubtitle: 'Add a new user to your application.',
-      editTitle: 'Edit user',
-      editSubtitle: 'Update the selected user.',
       name: 'Name',
       email: 'Email',
       locale: 'Language',
@@ -209,27 +217,17 @@ export const en = {
       genericError: 'Something went wrong. Please try again.',
       deleteError: 'Unable to delete the user. Please try again.',
       deleteForbidden: 'You cannot delete this user.',
+      leaveConfirm: {
+        title: 'Leave without saving?',
+        description: 'The user has not been created yet: what you entered will be lost.',
+        confirm: 'Leave without saving',
+        cancel: 'Keep editing',
+      },
       sections: {
-        identity: {
-          title: 'Personal details',
-          description: 'Identifying details of the person or company.',
-        },
-        credentials: {
-          title: 'Authentication',
-          description: 'Sign-in credentials and interface language.',
-        },
-        access: {
-          title: 'Roles & access',
-          description: 'Assigned roles; permissions are inherited from the roles.',
-        },
-        contacts: {
-          title: 'Contacts',
-          description: 'Phone and email contact details.',
-        },
-        addresses: {
-          title: 'Addresses',
-          description: 'Registered offices and billing addresses.',
-        },
+        identity: { title: 'Personal details' },
+        credentials: { title: 'Credentials & access' },
+        contacts: { title: 'Contacts' },
+        addresses: { title: 'Addresses' },
         ...usersFormEmploymentSections,
       },
       // The personal-data card fields/sections (spec 0008), read by the role
@@ -279,15 +277,13 @@ export const en = {
     },
     detail: {
       title: 'Role details',
-      subtitle: 'Read-only view of the selected role.',
+      subtitle: 'Details of the selected role.',
       loadError: 'Unable to load the role. Please try again.',
     },
     form: {
       newRole: 'New role',
       createTitle: 'Create role',
       createSubtitle: 'Add a new role and choose its permissions.',
-      editTitle: 'Edit role',
-      editSubtitle: 'Update the selected role and its permissions.',
       name: 'Name',
       permissions: 'Permissions',
       selectAll: 'Select all',
@@ -313,13 +309,16 @@ export const en = {
       sections: {
         details: {
           title: 'Role details',
-          description: 'Role name and the users it is assigned to.',
         },
         permissions: {
           title: 'Permissions',
-          description:
-            'Grouped by domain. Advanced permissions live in the dedicated configuration.',
         },
+      },
+      leaveConfirm: {
+        title: 'Leave without saving?',
+        description: 'The role has not been created yet: the data you entered will be lost.',
+        confirm: 'Leave without saving',
+        cancel: 'Keep editing',
       },
       advanced: 'Advanced configuration',
       advancedActions: 'Additional actions',
@@ -484,6 +483,8 @@ export const en = {
   documentLayouts,
   dashboard,
   help,
+  apiIntegrations,
+  apiClients,
 }
 
 export type TranslationResources = typeof en

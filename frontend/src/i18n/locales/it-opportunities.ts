@@ -83,7 +83,7 @@ export const opportunities = {
         title: 'Stato di lavorazione',
       },
       productLines: {
-        title: 'Funzioni aziendali e categorie prodotto',
+        title: 'Linee prodotto',
       },
       team: {
         title: 'Team',

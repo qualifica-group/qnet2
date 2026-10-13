@@ -1,6 +1,6 @@
 /**
  * Localized strings for the companies module (spec 0010): grid columns, the
- * read-only detail sheet and the create/edit form (general + single embedded
+ * in-place editable detail and the create form (general + single embedded
  * address section).
  *
  * Extracted from `it.ts` to keep that file within the engineering size limits
@@ -23,25 +23,18 @@ export const companies = {
   },
   detail: {
     title: 'Dettagli società',
-    subtitle: 'Visualizzazione in sola lettura della società selezionata.',
+    subtitle: 'Consulta e modifica la società selezionata.',
     loadError: 'Impossibile caricare la società. Riprova.',
-    summary: {
-      title: 'Riepilogo',
-      description: 'Si aggiorna mentre compili.',
-    },
     // Etichette proprie del dettaglio, come le ha `operationalSites.detail`:
     // quelle sotto `columns` sono intestazioni di tabella, non di scheda.
     city: 'Comune',
     province: 'Provincia',
-    region: 'Regione',
     country: 'Nazione',
   },
   form: {
     newCompany: 'Nuova società',
     createTitle: 'Crea società',
     createSubtitle: 'Aggiungi una nuova società aziendale alla tua applicazione.',
-    editTitle: 'Modifica società',
-    editSubtitle: 'Aggiorna la società selezionata.',
     denomination: 'Denominazione',
     vatNumber: 'Partita IVA',
     line1: 'Indirizzo',
@@ -60,6 +53,12 @@ export const companies = {
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la società. Riprova.',
     deleteForbidden: 'Non puoi eliminare questa società.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'La società non è ancora stata creata: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       general: {
         title: 'Generale',

@@ -1,13 +1,14 @@
 /**
  * The two richer cell renderers of the entries table (spec 0122 D-14): the
  * title cell (type-change dropdown + title + notes) and the actions cell
- * (Modifica/Elimina menu). Split out of `time-entry-entries-columns.tsx`
- * to keep both files under the 300-line soft limit (`engineering.md` §6).
+ * (Apri/Elimina menu: the detail edits in place, spec 0226). Split out of
+ * `time-entry-entries-columns.tsx` to keep both files under the 300-line soft
+ * limit (`engineering.md` §6).
  */
 
 import { createElement } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { MoreHorizontal, PanelRightOpen, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -100,7 +101,7 @@ interface EntryActionsCellProps {
   entry: TimeEntry
   canWrite: boolean
   actionsLabel: string
-  editLabel: string
+  openLabel: string
   deleteLabel: string
   onEditEntry: (entryId: number) => void
   onRequestDelete: (entry: TimeEntry) => void
@@ -110,7 +111,7 @@ export function EntryActionsCell({
   entry,
   canWrite,
   actionsLabel,
-  editLabel,
+  openLabel,
   deleteLabel,
   onEditEntry,
   onRequestDelete,
@@ -133,8 +134,8 @@ export function EntryActionsCell({
         <DropdownMenuContent align="end">
           {canEdit ? (
             <DropdownMenuItem onSelect={() => onEditEntry(entry.id)}>
-              <Pencil aria-hidden="true" className="size-4" />
-              {editLabel}
+              <PanelRightOpen aria-hidden="true" className="size-4" />
+              {openLabel}
             </DropdownMenuItem>
           ) : null}
           {canDelete ? (

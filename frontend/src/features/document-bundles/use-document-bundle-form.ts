@@ -6,7 +6,11 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createDocumentBundle, updateDocumentBundle } from '@/features/document-bundles/api'
+import {
+  createDocumentBundle,
+  documentBundleDetailQueryKey,
+  updateDocumentBundle,
+} from '@/features/document-bundles/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -32,8 +36,10 @@ interface UseDocumentBundleFormArgs {
 
 /**
  * Owns every non-render concern of `DocumentBundleForm`: RHF/Zod wiring,
- * default values, server 422 mapping and the create/update submit. The
- * component stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * default values, server 422 mapping and the create/update submit. Create
+ * backs `DocumentBundleForm`; edit backs the detail's in-place rows (diff
+ * PATCH). The component stays UI-only; this hook is the orchestration point
+ * (`onSubmit`).
  */
 export function useDocumentBundleForm({ mode, onSuccess }: UseDocumentBundleFormArgs) {
   const { t } = useTranslation()
@@ -62,9 +68,13 @@ export function useDocumentBundleForm({ mode, onSuccess }: UseDocumentBundleForm
     }
   }, [mode])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<DocumentBundleFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: DocumentBundleFormValues) => {
@@ -76,7 +86,7 @@ export function useDocumentBundleForm({ mode, onSuccess }: UseDocumentBundleForm
           mode.documentBundle.id,
           buildUpdatePayload(values, mode.documentBundle),
         )
-        queryClient.setQueryData(['document-bundles', 'detail', mode.documentBundle.id], saved)
+        queryClient.setQueryData(documentBundleDetailQueryKey(mode.documentBundle.id), saved)
         toast.success(t('documentBundles.form.updated'))
         onSuccess(saved)
         return
@@ -94,8 +104,8 @@ export function useDocumentBundleForm({ mode, onSuccess }: UseDocumentBundleForm
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

@@ -20,8 +20,15 @@ import { ImportDialog } from '@/features/migrations/import-dialog'
 import { MassImportDialog } from '@/features/migrations/mass-import-dialog'
 import { MigrationPlanPanel } from '@/features/migrations/migration-plan-panel'
 import { MigrationPreviewTable } from '@/features/migrations/migration-preview-table'
+import { MigrationRequirementsCard } from '@/features/migrations/migration-requirements-card'
+import { MigrationStatusOverview } from '@/features/migrations/migration-status-overview'
 import { MigrationTemplatePanel } from '@/features/migrations/migration-template-panel'
-import type { MigrationColumn, MigrationPreviewRow } from '@/features/migrations/types'
+import type {
+  MigrationColumn,
+  MigrationDependency,
+  MigrationPreviewRow,
+  MigrationSourceSummary,
+} from '@/features/migrations/types'
 import {
   useMigrationColumns,
   useMigrationPreview,
@@ -31,6 +38,7 @@ import {
 const FIRST_PAGE = 1
 const EMPTY_COLUMNS: MigrationColumn[] = []
 const EMPTY_ROWS: MigrationPreviewRow[] = []
+const EMPTY_DEPENDENCIES: MigrationDependency[] = []
 
 /**
  * Migrations page (spec 0013, super-admin only, template-first redesign):
@@ -65,9 +73,12 @@ export default function MigrationsPage() {
   // back to the backend's English label when a key has no translation.
   const translateSourceLabel = (key: string, fallback: string) =>
     t(`sources.${key}`, { defaultValue: fallback })
+  const labelOfKey = (key: string) =>
+    translateSourceLabel(key, sources.find((source) => source.key === key)?.label ?? key)
+  const labelOfSource = (source: MigrationSourceSummary) => translateSourceLabel(source.key, source.label)
   const selectedSourceMatch = sources.find((source) => source.key === selectedSource)
   const selectedSourceLabel = selectedSourceMatch
-    ? translateSourceLabel(selectedSourceMatch.key, selectedSourceMatch.label)
+    ? labelOfSource(selectedSourceMatch)
     : (selectedSource ?? '')
 
   const pagination = previewQuery.data?.pagination
@@ -112,7 +123,7 @@ export default function MigrationsPage() {
                 <SelectContent>
                   {sources.map((source) => (
                     <SelectItem key={source.key} value={source.key}>
-                      {translateSourceLabel(source.key, source.label)}
+                      {labelOfSource(source)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -121,6 +132,25 @@ export default function MigrationsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {sources.length > 0 ? (
+        <MigrationStatusOverview
+          sources={sources}
+          selectedSource={selectedSource}
+          onSelect={handleSourceChange}
+          translateLabel={labelOfSource}
+        />
+      ) : null}
+
+      {selectedSource ? (
+        <MigrationRequirementsCard
+          source={selectedSource}
+          dependencies={columnsQuery.data?.dependencies ?? EMPTY_DEPENDENCIES}
+          sources={sources}
+          isLoading={columnsQuery.isLoading}
+          translateLabel={labelOfKey}
+        />
+      ) : null}
 
       {selectedSource ? (
         <MigrationTemplatePanel

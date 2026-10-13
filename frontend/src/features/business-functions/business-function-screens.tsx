@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchBusinessFunction } from '@/features/business-functions/api'
+import { fetchBusinessFunction, businessFunctionDetailQueryKey } from '@/features/business-functions/api'
 import { BusinessFunctionForm } from '@/features/business-functions/business-function-form'
 import { BusinessFunctionDetailView } from '@/features/business-functions/business-function-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -15,18 +15,13 @@ import type {
 } from '@/features/modules/types'
 import type { BusinessFunctionDetail } from '@/features/business-functions/types'
 
-/** Query key for a single business function's detail (fresh-on-open pattern). */
-function detailQueryKey(id: number) {
-  return ['business-functions', 'detail', id] as const
-}
-
 /**
- * Content-only `business-functions` screens for the module registry (spec
- * 0042): fetch + the existing presentational view/form, no page chrome. Reused
- * as-is by the modal Sheet (`useModuleOpener`) and by the generic dedicated
- * pages. Moved verbatim from `BusinessFunctionsTable`'s inline loaders.
+ * Content-only `business-functions` screens for the module registry (spec 0042):
+ * fetch + the presentational view/form, no page chrome. The detail edits its
+ * rows in place, so `onEdit` is never used; each save reports through
+ * `onChanged`.
  */
-export function BusinessFunctionDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function BusinessFunctionDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: businessFunction,
@@ -34,7 +29,7 @@ export function BusinessFunctionDetailScreen({ id, onEdit }: ModuleDetailScreenP
     isError,
     error,
     refetch,
-  } = useEntityDetail(detailQueryKey(id), () => fetchBusinessFunction(id))
+  } = useEntityDetail(businessFunctionDetailQueryKey(id), () => fetchBusinessFunction(id))
 
   if (isError) {
     return (
@@ -51,90 +46,49 @@ export function BusinessFunctionDetailScreen({ id, onEdit }: ModuleDetailScreenP
     return <DetailLoading />
   }
 
-  return <BusinessFunctionDetailView businessFunction={businessFunction} onEdit={onEdit} />
-}
-
-export function BusinessFunctionFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (saved: BusinessFunctionDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(saved.id) })
-    onSuccess(saved.id)
-  }
-
-  if (mode.type === 'create') {
-    return (
-      <BusinessFunctionForm
-        mode={{ type: 'create' }}
-        onSuccess={handleSuccess}
-        onCancel={onCancel}
-      />
-    )
-  }
-
-  return (
-    <BusinessFunctionEditScreen
-      businessFunctionId={mode.id}
-      onSuccess={handleSuccess}
-      onCancel={onCancel}
-    />
-  )
-}
-
-interface BusinessFunctionEditScreenProps {
-  businessFunctionId: number
-  onSuccess: (businessFunction: BusinessFunctionDetail) => void
-  onCancel: () => void
+  return <BusinessFunctionDetailView businessFunction={businessFunction} onChanged={onChanged} />
 }
 
 /**
- * Fetches the fresh, re-authorized business function detail before mounting the
- * edit form, so the partial PATCH starts from authoritative values rather than
- * a stale snapshot.
+ * Create only: there is no edit form, and the registry generates no
+ * `:id/edit` route. Leaving a business function being created — Cancel, the Sheet's
+ * X/overlay/Esc, a link, a reload — always asks first.
  */
-function BusinessFunctionEditScreen({
-  businessFunctionId,
-  onSuccess,
-  onCancel,
-}: BusinessFunctionEditScreenProps) {
+export function BusinessFunctionFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const { t } = useTranslation()
-  const {
-    data: businessFunction,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(detailQueryKey(businessFunctionId), () =>
-    fetchBusinessFunction(businessFunctionId),
-  )
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('businessFunctions.form.leaveConfirm.title'),
+    description: t('businessFunctions.form.leaveConfirm.description'),
+    confirmLabel: t('businessFunctions.form.leaveConfirm.confirm'),
+    cancelLabel: t('businessFunctions.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('businessFunctions.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
+  if (mode.type !== 'create') {
+    return null
   }
 
-  if (isLoading || !businessFunction) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+  const handleSuccess = (saved: BusinessFunctionDetail) => {
+    queryClient.invalidateQueries({ queryKey: businessFunctionDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new record's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(saved.id)
+  }
+
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
   }
 
   return (
-    <BusinessFunctionForm
-      mode={{ type: 'edit', businessFunction }}
-      onSuccess={onSuccess}
-      onCancel={onCancel}
-    />
+    <>
+      {leaveGuard.navigationGuard}
+      <BusinessFunctionForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
   )
 }
 
@@ -146,8 +100,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.businessFunctions',
   DetailScreen: BusinessFunctionDetailScreen,
   FormScreen: BusinessFunctionFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button — the same registration Opportunita',
-  // Utenti and Lead carry.
+  // The detail IS the edit form: no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

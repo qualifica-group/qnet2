@@ -21,17 +21,45 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Per creare un referente vai in Referenti e premi Nuovo referente.',
+          text: "Per creare un referente vai in Referenti e premi **Nuovo referente**: il modulo ha lo stesso aspetto del dettaglio, con le stesse sezioni e **righe chiuse**. Fai clic sulla riga (o sulla matita) per aprirla, poi **Fatto** per tenere il valore o **Ripristina** per riportarlo com'era. Nei **Dati anagrafici** scegli prima il Tipo, Persona fisica o Azienda: con Fatto il nome compare in testa alla scheda. Contatti e Indirizzi sono nella colonna di destra, con i campi già pronti da compilare (Telefono obbligatorio). **Salva** controlla tutto e crea il referente; se esci senza salvare ti viene chiesta conferma.",
         },
         {
           type: 'table',
           headers: ['Sezione', 'Cosa contiene'],
           rows: [
             ['Dati anagrafici', "Gli stessi campi dell'anagrafica, con Persona fisica o Azienda."],
-            ['Dettagli referente', 'Tipo referente, Utente collegato (se la persona usa QNet), Ambito contatto (Interno o Esterno) e Note.'],
+            ['Dettagli referente', 'Tipo referente, Ambito contatto (Interno o Esterno), Utente collegato (se la persona usa QNet) e Note.'],
+            ['Altri campi', 'I campi personalizzati dei referenti, raggruppati come nel modulo.'],
             ['Contatti', 'I recapiti. Il Telefono è obbligatorio in creazione.'],
             ['Indirizzi', 'Sedi e indirizzi di fatturazione.'],
           ],
+        },
+      ],
+    },
+    {
+      id: 'editing-a-referent',
+      title: 'Modificare un referente',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Non esiste una pagina di modifica separata: il referente si modifica **direttamente dal suo dettaglio**, un campo alla volta, campi personalizzati compresi.',
+        },
+        {
+          type: 'steps',
+          items: [
+            "Apri il referente dall'elenco.",
+            'Passa col mouse sul campo da cambiare e premi la **matita** (o fai clic sul valore).',
+            'Modifica il valore nel controllo che compare.',
+            "Premi **Salva** (o Invio nei campi di testo) per salvare solo quel campo; **Annulla** (o Esc, o un clic fuori dal campo aperto) per chiuderlo lasciandolo com'era, senza salvare.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "I **Dati anagrafici** si modificano insieme: la matita apre l'intera scheda e Salva aggiorna anche il nome del referente. **Contatti** e **Indirizzi** si aggiungono, modificano ed eliminano lì stesso e si salvano subito.",
+        },
+        {
+          type: 'note',
+          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura.',
         },
       ],
     },

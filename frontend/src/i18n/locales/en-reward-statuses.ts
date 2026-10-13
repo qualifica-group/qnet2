@@ -30,7 +30,7 @@ export const rewardStatuses = {
   },
   detail: {
     title: 'Reward status details',
-    subtitle: 'Read-only view of the selected reward status.',
+    subtitle: 'Details of the selected record, editable in place.',
     loadError: 'Unable to load the reward status. Please try again.',
     description: 'Description',
     color: 'Color',
@@ -44,8 +44,6 @@ export const rewardStatuses = {
     newRewardStatus: 'New status',
     createTitle: 'Create reward status',
     createSubtitle: 'Add a new status for linked rewards.',
-    editTitle: 'Edit reward status',
-    editSubtitle: 'Update the selected reward status.',
     name: 'Name',
     description: 'Description',
     color: 'Color',
@@ -72,14 +70,16 @@ export const rewardStatuses = {
     deleteError: 'Unable to delete the reward status. Please try again.',
     deleteForbidden: 'You cannot delete this reward status.',
     deleteInUseFallback: 'This reward status is used by a linked reward and cannot be deleted.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The record has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name, description, color and active/inactive state.',
       },
-    },
-    hints: {
-      systemStatusLocked: "A system status's fields are fixed and cannot be changed.",
     },
   },
   reorder: {

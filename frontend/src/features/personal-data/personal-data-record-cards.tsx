@@ -1,4 +1,4 @@
-import { useState, type HTMLAttributes } from 'react'
+import { useState, type HTMLAttributes, type ReactNode } from 'react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordCard, RecordSection } from '@/components/detail/record-panel'
 import { Badge } from '@/components/ui/badge'
@@ -15,10 +15,11 @@ import type {
 } from '@/features/personal-data/types'
 
 /**
- * The anagraphic card's contacts and addresses as two `RecordCard`s, for the
- * record screens of every owner that has one (anagrafica, referente, and
- * whoever comes next) — one component, so the screens cannot drift apart on
- * something none of them owns.
+ * The anagraphic card's contacts and addresses, for the screens of every owner
+ * that has one (anagrafica, referente, and whoever comes next) — one
+ * component, so the screens cannot drift apart on something none of them
+ * owns: two `RecordCard`s in the create forms' side column, two sections of
+ * the record card on the details (`asSections`).
  *
  * The managers are the SAME components the forms use, so what the record shows
  * can never diverge from what a form would show (spec 0020/0016).
@@ -62,6 +63,12 @@ interface PersonalDataChildCardsProps {
   requiredCreateTypes?: QuickContactType[]
   contactsBoxProps?: CardBoxProps
   addressesBoxProps?: CardBoxProps
+  /** Bare sections for a `RecordSectionsGrid` inside the record card, instead of two cards of their own. */
+  asSections?: boolean
+}
+
+function BlockFrame({ asSections, children }: { asSections: boolean; children: ReactNode }) {
+  return asSections ? children : <RecordCard className="p-4">{children}</RecordCard>
 }
 
 /**
@@ -80,13 +87,14 @@ export function PersonalDataChildCards({
   requiredCreateTypes,
   contactsBoxProps,
   addressesBoxProps,
+  asSections = false,
 }: PersonalDataChildCardsProps) {
   const permission = onChange && fieldPermission ? fieldPermission : READ_ONLY_FIELD_PERMISSION
 
   return (
     <>
       <div {...contactsBoxProps}>
-        <RecordCard className="p-4">
+        <BlockFrame asSections={asSections}>
           <RecordSection
             title={contactsTitle}
             icon={<Mail />}
@@ -106,11 +114,11 @@ export function PersonalDataChildCards({
               <DetailEmpty />
             )}
           </RecordSection>
-        </RecordCard>
+        </BlockFrame>
       </div>
 
       <div {...addressesBoxProps}>
-        <RecordCard className="p-4">
+        <BlockFrame asSections={asSections}>
           <RecordSection
             title={addressesTitle}
             icon={<MapPin />}
@@ -131,7 +139,7 @@ export function PersonalDataChildCards({
               <DetailEmpty />
             )}
           </RecordSection>
-        </RecordCard>
+        </BlockFrame>
       </div>
     </>
   )
@@ -145,7 +153,7 @@ export interface PersonalDataCardsEditing {
   onChanged: () => void
 }
 
-interface PersonalDataRecordCardsProps {
+interface PersonalDataRecordSectionsProps {
   /** `null` for the pathological owner with no card yet: both blocks then show the empty marker (never editable). */
   card: PersonalDataCard | null
   contactsTitle: string
@@ -155,10 +163,11 @@ interface PersonalDataRecordCardsProps {
 }
 
 /**
- * The cards of a PERSISTED card: read-only by default; with `editing` each
- * add/edit/remove is written straight to the card (spec 0200 D-4).
+ * The sections of a PERSISTED card, inside the record card of a detail:
+ * read-only by default; with `editing` each add/edit/remove is written
+ * straight to the card (spec 0200 D-4).
  */
-export function PersonalDataRecordCards({ card, editing, ...titles }: PersonalDataRecordCardsProps) {
+export function PersonalDataRecordSections({ card, editing, ...titles }: PersonalDataRecordSectionsProps) {
   // The managers' buffer: re-seeded whenever the owner hands a new card, and
   // updated by the managers' own synced rows in between (adjust-on-prop-change).
   const [buffer, setBuffer] = useState(() => ({ card, draft: card ? cardToDraft(card) : null }))
@@ -182,6 +191,7 @@ export function PersonalDataRecordCards({ card, editing, ...titles }: PersonalDa
       fieldPermission={editing?.fieldPermission}
       persistence={persistence}
       onChange={persistence ? handleChange : undefined}
+      asSections
     />
   )
 }

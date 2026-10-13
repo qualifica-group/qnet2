@@ -29,7 +29,7 @@ const guide: HelpGuide = {
             'Open Products › Products.',
             'Type in the Search… field at the top of the table.',
             'Narrow the list with the column filters: Category, Typology, Business function or Offer usage.',
-            'From the row Actions menu choose View to see the card; to change it press Edit in the card.',
+            'From the row Actions menu choose View to open the card: its data is edited right there, one field at a time.',
           ],
         },
       ],
@@ -41,10 +41,10 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Press New product.',
-            'Fill in the sections in order: Identity, Classification, Pricing and supply, Attributes.',
-            'Check the Summary panel on the right.',
-            'Press Save. "Product created successfully." appears.',
+            'Press New product: the form looks like the card, with the same sections and closed rows (the Code is already suggested).',
+            'Click a row (or its pencil) to open it, fill it in and press Done to keep the value or Revert to put it back. Sections: Identity, Classification, Pricing and supply, Attributes.',
+            'The header shows Price, Cost and Margin as you fill them in.',
+            'Press Save: QNet checks everything and shows "Product created successfully.". Leaving without saving asks for confirmation.',
           ],
         },
       ],
@@ -93,7 +93,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Some categories appear in the list but cannot be chosen: they only group subcategories. In that case choose a subcategory. The product's Business function derives from the category and is read-only on the card.",
+          text: "Some categories appear in the list but cannot be chosen: they only group subcategories. In that case choose a subcategory. Inactive categories (with their whole branch) are not offered; when editing, the category already saved stays visible. The product's Business function derives from the category and is read-only on the card.",
         },
       ],
     },
@@ -166,8 +166,8 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'Without a category the section shows: "Select a category to see its attributes."',
-            'Once the category is chosen, its fields appear, including those inherited from higher categories.',
+            'Without a category the section does not appear.',
+            'Once the category is chosen, its fields appear, including those inherited from higher categories, each as a row to open.',
             'The category can group them into several sections; ungrouped ones end up in Other information.',
             'Attributes marked as Required on the category must always be filled in.',
           ],
@@ -184,11 +184,23 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "From the Actions menu choose View to open the read-only card. You find the code and name, Price, Cost and Margin in evidence (each only when relevant: the Margin appears only with both usages), the Identity, Classification and Pricing and supply sections, the attribute values (split into the same sections set up for the category, only the filled ones), the change history (if you have permission) and the Created at date.",
+          text: "From the Actions menu choose View to open the card. You find the code and name, Price, Cost and Margin in evidence (each only when relevant: the Margin appears only with both usages), the Identity, Classification and Pricing and supply sections, the attributes (split into the same sections set up for the category, empty ones included), the custom fields, the change history (if you have permission) and the Created at date.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'There is no separate edit page: hover the field to change and press the pencil (or click the value).',
+            'Change the value in the control that appears.',
+            'Press Save to save that field alone; Cancel (or Esc, or a click outside the open field) closes it unchanged.',
+          ],
+        },
+        {
+          type: 'note',
+          text: "The Code cannot change after creation. Changing the Category, the attributes the new category adds are filled in the same box; turning on a Usage asks the Price or Cost in the same box. A field without a pencil is read-only for your role.",
         },
         {
           type: 'paragraph',
-          text: 'To change the data press Edit in the card. To delete a product choose Delete from the Actions menu and confirm.',
+          text: 'To delete a product choose Delete from the Actions menu and confirm.',
         },
       ],
     },

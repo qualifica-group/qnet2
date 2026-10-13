@@ -8,6 +8,11 @@ import type {
   UpdateUnitOfMeasurePayload,
 } from '@/features/units-of-measure/types'
 
+/** Query key of a single unit of measure's detail, shared by the detail screen and its in-place saves. */
+export function unitOfMeasureDetailQueryKey(id: number) {
+  return ['units-of-measure', 'detail', id] as const
+}
+
 /**
  * Fetches a single unit of measure detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -34,17 +39,17 @@ export async function createUnitOfMeasure(
 /**
  * Partially updates a unit of measure (PATCH). `code` is never a key of
  * `UpdateUnitOfMeasurePayload` (D-1): the backend rejects its mere presence
- * with 422 regardless of role. Returns the updated resource.
+ * with 422 regardless of role. Returns the saved record with the actor's
+ * permissions, so the in-place detail re-syncs on it as is.
  */
 export async function updateUnitOfMeasure(
   id: number,
   payload: UpdateUnitOfMeasurePayload,
-): Promise<UnitOfMeasureDetail> {
-  const { data } = await apiClient.patch<ApiResponse<UnitOfMeasureDetail>>(
-    `/units-of-measure/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<UnitOfMeasureDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<UnitOfMeasureDetail, ResourcePermissions>
+  >(`/units-of-measure/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

@@ -38,7 +38,7 @@ vi.mock('@/features/contracts/api', () => ({
   terminateContract: vi.fn(),
   reactivateContract: vi.fn(),
   fetchContractProgrammableLines: vi.fn(),
-  createContractWorkOrder: vi.fn(),
+  createContractWorkOrdersBatch: vi.fn(),
 }))
 
 // The Commesse tab mounts the real `TableView`; stubbed the same way every
@@ -175,13 +175,13 @@ describe('ContractActionsBar — refresh delle azioni dopo un cambio di stato', 
     fireEvent.click(await screen.findByRole('button', { name: 'Validate' }))
 
     // Nuovo gruppo (chiuso positivo): "Programma" compare attivo,
-    // "Valida"/"Modifica stato"/"Modifica dati" spariscono — subito, senza reload.
+    // "Valida"/"Modifica stato" e le matite dei dati (spec 0219) spariscono — subito, senza reload.
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Program' })).toBeEnabled()
     })
     expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit data' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Expiry' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
     // Il badge di stato nell'hero segue lo stesso aggiornamento.
     expect(screen.getByText('Validato')).toBeInTheDocument()

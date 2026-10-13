@@ -22,9 +22,9 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Premi **Nuovo segnatempo**.',
-            'Compila i campi.',
-            'Premi **Aggiungi**.',
+            'Premi **Nuovo segnatempo**: si apre la scheda con le righe chiuse.',
+            'Per ogni riga premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** la riporta com\'era.',
+            'Premi **Aggiungi**: controlla tutte le righe e crea il segnatempo.',
           ],
         },
         {
@@ -32,10 +32,10 @@ const guide: HelpGuide = {
           headers: ['Campo', 'Note'],
           rows: [
             ['Titolo, Data, Tipo', 'Obbligatori (tipo: per esempio riunione o chiamata).'],
-            ['Dalle ore / Alle ore', 'Facoltativi, ma se ne indichi uno servono entrambi.'],
-            ['Tempo', 'Minuti, da 1 a 1440; calcolato dagli orari, correggibile a mano.'],
+            ['Orario: Dalle ore / Alle ore', 'Facoltativi, ma se ne indichi uno servono entrambi.'],
+            ['Orario: Tempo', 'Minuti, da 1 a 1440; calcolato dagli orari, correggibile a mano.'],
             ['Note', 'Facoltative.'],
-            ['Cliente, Opportunità, Commessa, Attività', 'Collegamenti facoltativi.'],
+            ['Collegamenti: Cliente, Opportunità, Commessa, Attività', 'Facoltativi, tutti in una sola riga.'],
             ['Fase', 'Compare solo con una Commessa e senza Attività: una delle fasi aperte della commessa, oppure nessuna.'],
           ],
         },
@@ -77,7 +77,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Espandi un giorno per vedere le voci e aggiungere una nota della giornata. Su ogni voce usa **Modifica**, **Elimina** o **Cambia tipo**, poi **Aggiorna**. Filtri e **Ordinamento** restringono e ordinano i giorni; **Esporta** scarica il report filtrato o il report mensile di un utente.',
+          text: 'Espandi un giorno per vedere le voci e aggiungere una nota della giornata. Su ogni voce usa **Apri** (o clic sul titolo), **Elimina** o **Cambia tipo**. Filtri e **Ordinamento** restringono e ordinano i giorni; **Esporta** scarica il report filtrato o il report mensile di un utente.',
+        },
+        {
+          type: 'paragraph',
+          text: "La scheda di una voce non ha un modulo di modifica: ogni riga si modifica sul posto. Premi la matita (o il valore), cambia il campo e premi **Salva**; **Annulla** o Esc lasciano la riga com'era. Orario (Dalle ore, Alle ore, Tempo) e Collegamenti (Cliente, Opportunità, Commessa, Fase, Attività) si modificano ciascuno in un'unica riga. Con un'Attività collegata il Titolo non si modifica, lo decide il task. **Elimina**, in fondo alla scheda, rimuove la voce dopo una conferma. Senza il permesso di modifica le righe non mostrano la matita.",
         },
       ],
     },

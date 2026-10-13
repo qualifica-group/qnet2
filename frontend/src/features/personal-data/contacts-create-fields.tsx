@@ -15,6 +15,7 @@ const QUICK_LABEL_KEYS: Record<QuickContactType, string> = {
   phone: 'personalData.contacts.quickPhone',
   pec: 'personalData.contacts.quickPec',
   fax: 'personalData.contacts.quickFax',
+  website: 'personalData.contacts.quickWebsite',
 }
 
 /** Hoisted so the default prop keeps a stable identity across renders. */
@@ -34,8 +35,8 @@ interface ContactsCreateFieldsProps {
 }
 
 /**
- * Four always-visible, fully-controlled inline fields for the quick-create
- * flow: email, phone, pec, fax. Each is bound to the first buffered draft of
+ * Five always-visible, fully-controlled inline fields for the quick-create
+ * flow: email, phone, pec, fax, website. Each is bound to the first buffered draft of
  * its type — typing appends/replaces/removes that draft directly in the
  * parent buffer, no RHF and no dialog. Validates per-type on every change,
  * reusing the same schema as the dialog `ContactForm`. Extracted from

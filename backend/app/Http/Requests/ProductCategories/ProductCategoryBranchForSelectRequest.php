@@ -11,7 +11,8 @@ use Illuminate\Foundation\Http\FormRequest;
  * (spec 0092, ADR 0011), mirroring ProductCategoryForSelectRequest minus the
  * scoping params (`business_function_id`/`root_category_id`): the branch
  * picker has a single consumer, the quote-workflow criteria editor, which
- * only ever searches and paginates.
+ * only ever searches and paginates. The node picker
+ * (GET /api/product-category-nodes/for-select, spec 0223) takes the same query.
  *
  * Authorization is intentionally absent: option lists feed forms whose actor
  * may legitimately lack browse rights on the source module (ADR 0011, amended

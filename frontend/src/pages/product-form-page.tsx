@@ -1,95 +1,51 @@
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { DetailError } from '@/components/detail/detail-panel'
-import { Skeleton } from '@/components/ui/skeleton'
+import { ArrowLeft } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
-import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchProduct, productDetailQueryKey } from '@/features/products/api'
-import { ProductForm } from '@/features/products/product-form'
+import { productDetailQueryKey } from '@/features/products/api'
+import { GuardedProductForm } from '@/features/products/guarded-product-form'
 import type { ProductDetail } from '@/features/products/types'
-import { useBreadcrumbTitle } from '@/routes/breadcrumb-title'
-import { parseEntityId } from '@/routes/entity-id'
-import NotFoundPage from '@/pages/not-found-page'
 
 /**
- * Dedicated create/edit page of a product (spec 0022, replaces the create and
- * edit Sheets). One page serves `/products/new` and `/products/:id/edit`;
- * `ProductForm` and its hook/payload are reused as-is.
+ * Dedicated create page of a product (`/products/new`, spec 0022). There is no
+ * edit page (spec 0218): the detail edits in place. The form sits behind its
+ * leave guard, and a successful create lands on the new detail.
  */
 export default function ProductFormPage() {
   const { t } = useTranslation()
-  const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
-  const isEdit = id !== undefined
-  const productId = parseEntityId(id)
-
-  const {
-    data: product,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(
-    productDetailQueryKey(productId),
-    () => fetchProduct(productId as number),
-    productId !== null,
-  )
-
-  useBreadcrumbTitle(`/products/${id}`, product?.name)
-
-  const onSuccess = useCallback(
-    (saved: ProductDetail) => {
-      queryClient.invalidateQueries({ queryKey: productDetailQueryKey(saved.id) })
-      void navigate(`/products/${saved.id}`)
-    },
-    [navigate, queryClient],
-  )
-
-  const onCancel = useCallback(() => {
-    void navigate(isEdit ? `/products/${productId}` : '/products')
-  }, [isEdit, navigate, productId])
-
-  if (isEdit && productId === null) {
-    return <NotFoundPage />
+  const onSuccess = (saved: ProductDetail) => {
+    queryClient.invalidateQueries({ queryKey: productDetailQueryKey(saved.id) })
+    void navigate(`/products/${saved.id}`)
   }
 
   return (
     <Can
-      permission={isEdit ? 'products.update' : 'products.create'}
+      permission="products.create"
       fallback={<p className="text-sm text-muted-foreground">{t('products.forbidden')}</p>}
     >
       <div className="flex flex-1 flex-col gap-4">
-        <PageHeader />
+        {/* The same chrome as the detail page: the leave guard intercepts the link. */}
+        <PageHeader
+          actions={
+            <Button variant="outline" asChild>
+              <Link to="/products">
+                <ArrowLeft aria-hidden="true" />
+                {t('common.back')}
+              </Link>
+            </Button>
+          }
+        />
 
-        {/* No heading of its own: the form owns the identity bar (title,
-            subtitle and the save/cancel actions on one row), exactly as the
-            `formOwnsHeader` modules do on the generic page. */}
-        <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
-          {isError ? (
-            <DetailError
-              error={error}
-              message={t('products.detail.loadError')}
-              retryLabel={t('common.retry')}
-              onRetry={() => refetch()}
-            />
-          ) : isEdit && (isLoading || !product) ? (
-            <div className="flex flex-col gap-4 p-4" aria-hidden="true">
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-9 w-full" />
-            </div>
-          ) : (
-            <ProductForm
-              mode={product ? { type: 'edit', product } : { type: 'create' }}
-              onSuccess={onSuccess}
-              onCancel={onCancel}
-            />
-          )}
+        {/* No `bg-card`: the record canvas paints its own `bg-surface` and the
+            cards inside it are the `bg-card` rung (ui-design.md §1-bis). */}
+        <div className="flex flex-1 flex-col overflow-hidden rounded-lg border">
+          <GuardedProductForm onSuccess={onSuccess} onCancel={() => void navigate('/products')} />
         </div>
       </div>
     </Can>

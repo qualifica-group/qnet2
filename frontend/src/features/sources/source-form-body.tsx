@@ -1,88 +1,56 @@
-import { Database } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FormSection } from '@/components/form-section'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Form, FormControl } from '@/components/ui/form'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
+import { useWatch } from 'react-hook-form'
+import { Database } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
+import { Form } from '@/components/ui/form'
+import { SourceSections } from '@/features/sources/source-rows'
 import { useSourceForm } from '@/features/sources/use-source-form'
-import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
-import type { SourceDetail, SourceFormMode } from '@/features/sources/types'
+import type { SourceDetail } from '@/features/sources/types'
+
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const SOURCE_FORM_ID = 'source-form'
+
+/** Create mode is static: a fresh object per render would rebuild the form's defaults. */
+const CREATE_MODE = { type: 'create' } as const
 
 interface SourceFormBodyProps {
-  mode: SourceFormMode
   onSuccess: (source: SourceDetail) => void
   onCancel: () => void
 }
 
 /**
- * The source create/edit form UI. The single `name` field is wrapped in
- * `MetaField` (spec 0004): hidden means absent, non-editable means disabled,
- * `required` comes from the resolved `ResourcePermissions` — no hardcoded
- * permission logic lives here. All non-render logic lives in `useSourceForm`.
- * `<CustomFieldsSection>` (spec 0021) mounts the resource's admin-defined
- * custom fields with zero sources-specific rendering/validation logic.
+ * The source create form as a replica of the detail (wave 3 of the "no edit
+ * pages" plan): the same rows, closed until clicked (Fatto/Ripristina,
+ * nothing saved per row); Salva validates and creates everything at once.
  */
-export function SourceFormBody({ mode, onSuccess, onCancel }: SourceFormBodyProps) {
+export function SourceFormBody({ onSuccess, onCancel }: SourceFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit } = useSourceForm({ mode, onSuccess })
-
-  const identityVisible = fieldPermission('name').visible
+  const { form, serverError, onSubmit } = useSourceForm({ mode: CREATE_MODE, onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const [name, customFields] = useWatch({ control: form.control, name: ['name', 'custom_fields'] })
+  const heading = name.trim() || t('sources.form.createTitle')
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4 p-4"
-          noValidate
-        >
-          {identityVisible && (
-            <FormSection
-              icon={Database}
-              title={t('sources.form.sections.identity.title')}
-              description={t('sources.form.sections.identity.description')}
-            >
-              <MetaField
-                control={form.control}
-                name="name"
-                metaKey="name"
-                label={t('sources.form.name')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          <CustomFieldsSection resource="sources" control={form.control} />
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('sources.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('sources.form.saving') : t('sources.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+    <Form {...form}>
+      <RecordCreateLayout
+        formId={SOURCE_FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        title={heading}
+        subtitle={t('sources.form.createSubtitle')}
+        media={<DetailMonogram name={heading} icon={<Database />} />}
+        isSubmitting={form.formState.isSubmitting}
+        serverError={serverError}
+        onCancel={onCancel}
+        labels={{
+          save: t('sources.form.save'),
+          saving: t('sources.form.saving'),
+          cancel: t('sources.form.cancel'),
+        }}
+      >
+        <SourceSections form={form} inline={draft} canEdit customFieldValues={customFields} />
+      </RecordCreateLayout>
+    </Form>
   )
 }

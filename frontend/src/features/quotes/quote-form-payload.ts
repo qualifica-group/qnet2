@@ -26,6 +26,7 @@ export function buildCreatePayload(values: QuoteFormValues): CreateQuotePayload 
   return {
     ...(code ? { code } : {}),
     ...(title ? { title } : {}),
+    quote_date: values.quote_date,
     opportunity_id: values.opportunity_id as number,
     quote_workflow_status_id: values.quote_workflow_status_id,
     // Spec 0084: la mappa viaggia sempre alla create — non c'e' nulla di
@@ -76,6 +77,9 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   const title = blankToNull(values.title)
   if (title !== original.title) {
     payload.title = title
+  }
+  if (values.quote_date !== original.quote_date) {
+    payload.quote_date = values.quote_date
   }
   // Spec 0084: la mappa viaggia solo se un valore e' cambiato. Il server fa un
   // merge SPARSO, quindi mandarla identica sarebbe un no-op costoso; mandarla

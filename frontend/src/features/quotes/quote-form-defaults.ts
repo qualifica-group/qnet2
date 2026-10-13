@@ -16,6 +16,7 @@ export function editDefaults(quote: QuoteDetail): QuoteFormValues {
   return {
     code: quote.code,
     title: quote.title,
+    quote_date: quote.quote_date,
     opportunity_id: quote.opportunity_id,
     quote_workflow_status_id: quote.quote_workflow_status_id,
     note: null,
@@ -54,6 +55,14 @@ function defaultManagerSlots(): (number | null)[] {
   return Array.from({ length: DEFAULT_MANAGER_SLOTS }, () => null)
 }
 
+/** Today as `Y-m-d` in the user's own time zone (spec 0228 AC-004), not UTC's. */
+function todayDate(): string {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
 /** Default values of a brand-new quote, its `code` prefilled with the suggestion (D-13/AC-082). */
 export function createDefaults(mode: QuoteCreateFormMode, initialCode: string | undefined): QuoteFormValues {
   // Spec 0067 AC-050/051: a numeric `params.opportunity_id` seeds the
@@ -63,6 +72,7 @@ export function createDefaults(mode: QuoteCreateFormMode, initialCode: string | 
   return {
     code: initialCode ?? '',
     title: '',
+    quote_date: todayDate(),
     opportunity_id: forcedOpportunityId,
     quote_workflow_status_id: null,
     note: null,

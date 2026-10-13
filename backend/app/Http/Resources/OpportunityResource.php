@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Authorization\LegacyIdVisibility;
 use App\Http\Resources\Concerns\SummarizesProductLines;
 use App\Http\Resources\Concerns\SummarizesRewards;
 use App\Models\Opportunity;
@@ -102,6 +103,7 @@ class OpportunityResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id),
             'name' => $this->name,
             // Spec 0171: true when the title was typed by the user.
             'name_is_manual' => $this->name_is_manual,

@@ -1,9 +1,10 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { Paperclip, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { FilterTabs } from '@/components/ui/filter-tabs'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
@@ -19,6 +20,8 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { registryColumnRenderers } from '@/features/registries/column-renderers'
 import { deleteRegistry, REGISTRY_ATTACHABLE_ALIAS } from '@/features/registries/api'
+import { REGISTRY_TYPE_TABS } from '@/features/registries/types'
+import { useRegistryTypeTab } from '@/features/registries/use-registry-type-tab'
 
 /** Domain key used to mount the generic table for registries. */
 const REGISTRIES_DOMAIN = 'registries'
@@ -43,7 +46,8 @@ const REGISTRIES_ACTION_ICONS: ActionIconMap = {
  * and the SSRM grid refresh after every mutation via the table's imperative
  * handle. Permission gating is an affordance only; the backend re-authorizes
  * each call. The `documents` row action (spec 0173) opens the shared
- * `DocumentsDialog`, exactly like Opportunita'.
+ * `DocumentsDialog`, exactly like Opportunita'. The Tutte / Persone fisiche /
+ * Aziende tabs are a preset of the `registry_type` grid filter.
  */
 export function RegistriesTable() {
   const { t } = useTranslation()
@@ -52,6 +56,11 @@ export function RegistriesTable() {
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
+  const typeTab = useRegistryTypeTab(tableRef)
+  const typeTabOptions = useMemo(
+    () => REGISTRY_TYPE_TABS.map((value) => ({ value, label: t(`registries.typeTabs.${value}`) })),
+    [t],
+  )
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
@@ -145,9 +154,18 @@ export function RegistriesTable() {
 
       <ModuleStatsPanel domain={REGISTRIES_DOMAIN} isOpen={stats.isOpen} />
 
+      <FilterTabs
+        aria-label={t('registries.typeTabs.label')}
+        value={typeTab.tab}
+        options={typeTabOptions}
+        onValueChange={typeTab.setTab}
+        className="rounded-xl border border-border bg-surface p-3"
+      />
+
       <TableView
         ref={tableRef}
         domain={REGISTRIES_DOMAIN}
+        onFilterModelChange={typeTab.onFilterModelChange}
         renderers={registryColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}

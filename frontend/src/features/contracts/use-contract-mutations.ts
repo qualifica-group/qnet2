@@ -55,14 +55,26 @@ export function buildReactivatePayload(values: ReactivateContractFormValues): Re
   return { contract_status_id: values.contract_status_id as number }
 }
 
-/** The status is never sent from here (user directive 2026-08-31): only the domain actions move it. */
-export function buildEditPayload(values: EditContractFormValues): UpdateContractPayload {
-  return {
-    renewal_date: values.renewal_date,
-    expiry_date: values.expiry_date,
-    payment_notes: values.payment_notes,
-    comments: values.comments,
+/**
+ * The PATCH of the in-place detail (spec 0219 D-4): only the fields that
+ * changed from the persisted contract, compared as the form holds it. The status is never sent from here
+ * (user directive 2026-08-31): only the domain actions move it.
+ */
+export function buildUpdatePayload(values: EditContractFormValues, original: EditContractFormValues): UpdateContractPayload {
+  const payload: UpdateContractPayload = {}
+  if (values.renewal_date !== original.renewal_date) {
+    payload.renewal_date = values.renewal_date
   }
+  if (values.expiry_date !== original.expiry_date) {
+    payload.expiry_date = values.expiry_date
+  }
+  if (values.payment_notes !== original.payment_notes) {
+    payload.payment_notes = values.payment_notes
+  }
+  if (values.comments !== original.comments) {
+    payload.comments = values.comments
+  }
+  return payload
 }
 
 interface ContractMutationOptions {

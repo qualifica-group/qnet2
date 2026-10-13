@@ -15,19 +15,14 @@ export const attributes = {
     created_at: 'Created at',
   },
   detail: {
-    title: 'Attribute details',
-    subtitle: 'Read-only view of the selected attribute.',
     loadError: 'Unable to load the attribute. Please try again.',
     details: 'Details',
-    options: 'Options',
     created_at: 'Created at',
   },
   form: {
     newAttribute: 'New attribute',
     createTitle: 'Create attribute',
     createSubtitle: 'Add a new reusable dynamic attribute.',
-    editTitle: 'Edit attribute',
-    editSubtitle: 'Update the selected attribute.',
     code: 'Code',
     name: 'Name',
     save: 'Save',
@@ -45,20 +40,17 @@ export const attributes = {
     deleteError: 'Unable to delete the attribute. Please try again.',
     deleteForbidden: 'You cannot delete this attribute.',
     deleteInUse: 'This attribute is assigned to a category or has product values.',
-    sections: {
-      identity: {
-        title: 'Details',
-        description: 'Code, name and type of the attribute.',
-      },
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The attribute has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
     },
     optionValueRequired: 'Value is required.',
     optionValueMax: 'Value must be at most 191 characters.',
     optionLabelRequired: 'Label is required.',
     optionLabelMax: 'Label must be at most 191 characters.',
     optionsRequiredForEnum: 'Add at least one option for a list attribute.',
-    // Read-only empty state of the detail: it describes, it does not ask
-    // (unlike `optionsRequiredForEnum`, which is a form error).
-    optionsEmpty: 'No options defined.',
     optionValuesDuplicate: 'Option values must be unique.',
     relationEntityTypeRequired: 'The relation target module is required.',
     relationForSelectResourceRequired: 'The picker resource is required.',
@@ -79,6 +71,7 @@ export const productCategories = {
   badges: {
     root: 'Root',
     notSelectable: 'Not selectable',
+    notActive: 'Not active',
     reportable: 'Visible in reports',
   },
   columns: {
@@ -90,6 +83,7 @@ export const productCategories = {
     business_function: 'Business function',
     requires_quote: 'Quoted',
     is_selectable: 'Selectable',
+    is_active: 'Active',
     is_reportable: 'Visible in reports',
     management_mode: 'Management mode',
     single_quote_per_opportunity: 'One offer per opportunity',
@@ -135,8 +129,6 @@ export const productCategories = {
     newRootCategory: 'New category',
     createTitle: 'Create category',
     createSubtitle: 'Add a new product category.',
-    editTitle: 'Edit category',
-    editSubtitle: 'Update the selected category.',
     name: 'Name',
     nameRequired: 'Name is required.',
     nameMax: 'Name must be at most 191 characters.',
@@ -186,6 +178,10 @@ export const productCategories = {
     isSelectable: 'Selectable',
     isSelectableHint:
       'When off, the category can only group subcategories: it disappears from the pickers and can no longer be assigned to a product, a product line, a project, a campaign or a commission rule. Existing associations are kept.',
+    isActive: 'Active',
+    isActiveHint:
+      'When off, the category disappears from the input fields together with its whole branch and its products. Existing links are kept.',
+    isActiveInheritedNotice: 'Not active because "{{category}}" is not',
     isReportable: 'Visible in reports',
     isReportableHint:
       'The category appears in the Gestione Richieste and Gestione Iscritti reports and dashboard; selecting it also shows its subcategories.',
@@ -244,6 +240,9 @@ export const productCategories = {
     isSelectableInfo:
       'Turns the category into a pure container. It stays a parent for its subcategories and keeps every association already made, but it no longer appears in the pickers. Unlike the other rules, this one belongs to THIS category alone: it is never inherited, so an unselectable parent can still have selectable children.',
     isSelectableInfoLabel: 'More info about Selectable',
+    isActiveInfo:
+      'When the category is not active it disappears, together with all its subcategories and the products of that branch, from the input and edit fields: nothing new can be linked to it. Existing links stay valid and are still shown, and the grid filters keep seeing the category. Unlike Selectable (which keeps the category visible as a container) the Active flag applies to the whole branch, without changing the subcategories\' own flag.',
+    isActiveInfoLabel: 'More info about Active',
     isReportableInfo:
       'Decides whether the category shows up as a selectable row in the Gestione Richieste and Gestione Iscritti reports and dashboard. A subcategory inherits its parent\'s value: when the parent is visible in the reports so are its children, but each child can be forced to "no" (and its subcategories with it). An excluded category is not counted in its parent\'s totals either.',
     isReportableInfoLabel: 'More info about Visible in reports',
@@ -279,13 +278,15 @@ export const productCategories = {
     inheritsManagerLabelsHint:
       'When off, this category ignores its ancestors: neither it nor its subcategories inherit these labels from above.',
     inheritedManagerLabels: 'Inherited from ancestor categories',
-    summary: {
-      title: 'Summary',
-      description: 'What you are about to save.',
-    },
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The category has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     created: 'Category created successfully.',
     updated: 'Category updated successfully.',
     deleted: 'Category deleted successfully.',
@@ -296,16 +297,12 @@ export const productCategories = {
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name, parent and description of the category.',
       },
       rules: {
         title: 'Management rules',
-        description:
-          'What this category imposes downstream: quoting, card lines, offers per opportunity and selectability.',
       },
       attributes: {
         title: 'Attributes',
-        description: 'Attributes assigned to this category, plus what it inherits.',
       },
       productAttributes: {
         title: 'Product attributes',
@@ -323,8 +320,6 @@ export const productCategories = {
       },
       managerLabels: {
         title: 'Account managers',
-        description:
-          'Customize the denomination of each Account Manager level for this category. Fields left blank use the default denomination.',
       },
     },
   },
@@ -355,8 +350,7 @@ export const products = {
     hintNoCategories: 'Add a business function with its product category first.',
   },
   empty: 'No product selected.',
-  // Price minus cost, shown both on the record (KPI strip) and in the form
-  // (the readout under the two fields, and the side recap row).
+  // Price minus cost, shown in the KPI strip of the record and of the create form.
   margin: 'Margin',
   marginPercent: '{{percent}}% of the price',
   columns: {
@@ -374,17 +368,16 @@ export const products = {
   },
   detail: {
     title: 'Product details',
-    subtitle: 'Read-only view of the selected product.',
+    subtitle: 'Details of the selected product, editable in place.',
     loadError: 'Unable to load the product. Please try again.',
     details: 'Details',
     created_at: 'Created at',
+    newAttributes: 'Attributes of the new category',
   },
   form: {
     newProduct: 'New product',
     createTitle: 'Create product',
     createSubtitle: 'Add a new product.',
-    editTitle: 'Edit product',
-    editSubtitle: 'Update the selected product.',
     code: 'Code',
     codePlaceholder: 'Suggested code, editable',
     codeMax: 'Code must be at most 32 characters.',
@@ -437,23 +430,22 @@ export const products = {
     deleted: 'Product deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the product. Please try again.',
-    deleteForbidden: 'You cannot delete this product.',
-    summary: {
-      title: 'Summary',
-      description: 'What you are about to save.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The product has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
     },
+    deleteForbidden: 'You cannot delete this product.',
     sections: {
       identity: {
         title: 'Identity',
-        description: 'Code, name and description of the product.',
       },
       classification: {
         title: 'Classification',
-        description: 'Category, typology, unit of measure and product type.',
       },
       pricing: {
         title: 'Pricing and supply',
-        description: 'Cost, price, VAT rate and supplier.',
       },
     },
     hints: {
@@ -461,7 +453,6 @@ export const products = {
     },
     dynamicFields: {
       title: 'Attributes',
-      empty: 'Select a category to see its attributes.',
     },
   },
 }

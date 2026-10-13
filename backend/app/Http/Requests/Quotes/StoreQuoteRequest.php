@@ -79,6 +79,8 @@ class StoreQuoteRequest extends FormRequest
             'code' => ['nullable', 'string', 'max:32', Rule::unique('quotes', 'code')],
             // Spec 0171 rev.2: optional, null = the automatic `<code> - <products>` title.
             'title' => ['nullable', 'string', 'max:191'],
+            // Spec 0228: never null; absent = today (Quote model).
+            'quote_date' => ['sometimes', 'date_format:Y-m-d'],
             'opportunity_id' => ['required', 'integer', Rule::exists('opportunities', 'id')],
             'quote_workflow_status_id' => ['nullable', 'integer', Rule::exists('quote_workflow_statuses', 'id')],
             // Spec 0083, T-04, AC-023: the note a `requires_note` destination

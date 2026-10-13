@@ -72,6 +72,29 @@ export function QuoteTitleField({ control }: FieldProps) {
   )
 }
 
+/** Spec 0228 "Data offerta": always set (today on create), so never `null`. */
+export function QuoteDateField({ control }: FieldProps) {
+  const { t } = useTranslation()
+  return (
+    <MetaField control={control} name="quote_date" metaKey="quote_date" label={t('quotes.form.quoteDate')}>
+      {({ field, disabled, readOnly }) => (
+        <FormControl>
+          <Input
+            type="date"
+            disabled={disabled}
+            readOnly={readOnly}
+            value={field.value}
+            onChange={(event) => field.onChange(event.target.value)}
+            onBlur={field.onBlur}
+            name={field.name}
+            ref={field.ref}
+          />
+        </FormControl>
+      )}
+    </MetaField>
+  )
+}
+
 interface OpportunityFieldProps extends RelationFieldProps {
   /** A pick or clear: the create form inherits the Opportunita's roles, sede and G.A. from its `meta`. */
   onItemChange: (item: ForSelectItem | null) => void

@@ -16,7 +16,7 @@ uses(RefreshDatabase::class);
 /*
  * The Commessa detail names its Contratto, not the underlying offer (user
  * directive 2026-09-16): WorkOrderResource exposes `contract` as the
- * `{ id, code, title }` of the Contract born from the linked quote, `null`
+ * `{ id, code, title, expiry_date }` of the Contract born from the linked quote, `null`
  * while that quote has no contract.
  */
 
@@ -32,9 +32,9 @@ function contractSummaryActor(): User
     return $user;
 }
 
-it('exposes the contract of the linked quote as { id, code, title }', function () {
+it('exposes the contract of the linked quote as { id, code, title, expiry_date }', function () {
     $quote = Quote::factory()->create();
-    $contract = Contract::factory()->create(['quote_id' => $quote->id]);
+    $contract = Contract::factory()->create(['quote_id' => $quote->id, 'expiry_date' => '2027-03-31']);
     $workOrder = WorkOrder::factory()->create(['quote_id' => $quote->id]);
     Sanctum::actingAs(contractSummaryActor());
 
@@ -44,6 +44,7 @@ it('exposes the contract of the linked quote as { id, code, title }', function (
         'id' => $contract->id,
         'code' => $quote->code,
         'title' => $quote->title,
+        'expiry_date' => '2027-03-31',
     ]);
 });
 

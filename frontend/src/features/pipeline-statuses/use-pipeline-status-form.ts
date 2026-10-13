@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createPipelineStatus, updatePipelineStatus } from '@/features/pipeline-statuses/api'
+import { createPipelineStatus, pipelineStatusDetailQueryKey, updatePipelineStatus } from '@/features/pipeline-statuses/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -36,8 +36,10 @@ interface UsePipelineStatusFormArgs {
 
 /**
  * Owns every non-render concern of `PipelineStatusForm`: RHF/Zod wiring,
- * default values, server 422 mapping and the create/update submit. The
- * component stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * default values, server 422 mapping and the create/update submit. Create
+ * backs `PipelineStatusForm`; edit backs the detail's in-place rows (diff
+ * PATCH). The component stays UI-only; this hook is the orchestration point
+ * (`onSubmit`).
  */
 export function usePipelineStatusForm({ mode, onSuccess }: UsePipelineStatusFormArgs) {
   const { t } = useTranslation()
@@ -75,6 +77,8 @@ export function usePipelineStatusForm({ mode, onSuccess }: UsePipelineStatusForm
     return { name: '', color: '', group: 'open', custom_fields: customFields.defaultValues }
   }, [mode, customFields.defaultValues])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<PipelineStatusFormValues>({
     // `schema` is a create/edit union and
     // `sort_order`'s `z.coerce.number()` widens the schema's own inferred
@@ -83,6 +87,8 @@ export function usePipelineStatusForm({ mode, onSuccess }: UsePipelineStatusForm
     // fix: at runtime it still validates through the same schema.
     resolver: zodResolver(schema) as Resolver<PipelineStatusFormValues>,
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: PipelineStatusFormValues) => {
@@ -97,7 +103,7 @@ export function usePipelineStatusForm({ mode, onSuccess }: UsePipelineStatusForm
           mode.pipelineStatus.id,
           buildUpdatePayload(values, mode.pipelineStatus),
         )
-        queryClient.setQueryData(['pipeline-statuses', 'detail', mode.pipelineStatus.id], saved)
+        queryClient.setQueryData(pipelineStatusDetailQueryKey(mode.pipelineStatus.id), saved)
         toast.success(t('pipelineStatuses.form.updated'))
         onSuccess(saved)
         return
@@ -115,8 +121,8 @@ export function usePipelineStatusForm({ mode, onSuccess }: UsePipelineStatusForm
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

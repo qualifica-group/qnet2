@@ -1,5 +1,10 @@
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
-import { draftToPayload, omitNonEditableFields } from '@/features/personal-data/drafts'
+import {
+  cardToDraft,
+  draftToPayload,
+  emptyPersonalDataDraft,
+  omitNonEditableFields,
+} from '@/features/personal-data/drafts'
 import type {
   PersonalDataDraft,
   PersonalDataFieldPermissionResolver,
@@ -11,6 +16,7 @@ import type {
   UpdateUserPayload,
   UserDetailWithPermissions,
 } from '@/features/users/types'
+import { editDefaults } from '@/features/users/user-form-defaults'
 import type { EmploymentFormValues } from '@/features/users/user-schema'
 import type { UserFormValues } from '@/features/users/use-user-form'
 
@@ -94,11 +100,15 @@ export function buildCreatePayload(
 }
 
 /**
- * Builds a partial PATCH payload carrying only fields that changed from the
- * original user. Password is included only when a new one was typed. The nested
- * `personal_data` tree is always sent when a card is present (authoritative sync),
- * so children added/edited/removed in the buffer persist in the one request; it
- * omits any scalar field/section `fieldPermission` marks non-editable (spec 0008 D2).
+ * Builds a partial PATCH payload carrying only what changed from the original
+ * user (spec 0222 D-3): the in-place detail saves one row at a time. Password
+ * is included only when a new one was typed. The nested `employment` object is
+ * an upsert of the whole profile, so it travels whole — but only when one of
+ * its fields changed. The `personal_data` tree is included only when the
+ * buffered card differs from the persisted one (`draftToPayload` builds its
+ * object with a fixed key order, so a `JSON.stringify` comparison is a
+ * reliable deep-equal), omitting any field `fieldPermission` marks
+ * non-editable (spec 0008 D2).
  */
 export function buildUpdatePayload(
   values: UserFormValues,
@@ -124,8 +134,18 @@ export function buildUpdatePayload(
     payload.password = values.password
     payload.password_confirmation = values.password_confirmation
   }
-  payload.personal_data = omitNonEditableFields(draftToPayload(profileDraft), fieldPermission)
-  payload.employment = buildEmploymentPayload(values.employment)
+
+  const employment = buildEmploymentPayload(values.employment)
+  const originalEmployment = buildEmploymentPayload(editDefaults(original, {}).employment)
+  if (JSON.stringify(employment) !== JSON.stringify(originalEmployment)) {
+    payload.employment = employment
+  }
+
+  const originalDraft = original.personal_data ? cardToDraft(original.personal_data) : emptyPersonalDataDraft()
+  const nextCard = draftToPayload(profileDraft)
+  if (JSON.stringify(nextCard) !== JSON.stringify(draftToPayload(originalDraft))) {
+    payload.personal_data = omitNonEditableFields(nextCard, fieldPermission)
+  }
 
   const customFields = buildCustomFieldsUpdate(values.custom_fields, original.custom_fields ?? {})
   if (Object.keys(customFields).length > 0) {

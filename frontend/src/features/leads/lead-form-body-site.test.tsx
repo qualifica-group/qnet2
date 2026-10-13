@@ -1,148 +1,61 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { LeadForm } from '@/features/leads/lead-form'
-import type { LeadDetailWithPermissions } from '@/features/leads/types'
+import { LeadDetailView } from '@/features/leads/lead-detail'
 import type { ResourceMeta } from '@/features/authorization/types'
-import type { ForSelectItem } from '@/features/for-select/types'
-import type { CampaignForSelectItem } from '@/features/campaigns/for-select-api'
+import {
+  CAMPAIGN_PREFILL,
+  SITE_A,
+  clickCreateSave,
+  confirmOpenRow,
+  leadFixture,
+  leadWrapper,
+  pencilOf,
+  permissionsFor,
+  pickInRow,
+  stubState,
+} from '@/features/leads/lead-test-fixtures'
 
 /**
- * Project -> campaign -> lead prefill chain: picking a Campaign prefills the
- * Lead's Sede (`operational_site_id`) from the campaign's own
- * `for-select` `meta.operational_site` (`{id, label}`) — a PREFILL, not a
- * lock: the Site field stays fully editable/clearable afterwards.
- * Split out of `lead-form-body.test.tsx` for size (engineering.md §6).
+ * Project -> campaign -> lead prefill chain (spec 0176 D-2): a picked
+ * Campaign carrying its own Sede and Fonte prefills both, still editable.
+ * REQUIREMENT CHANGED (spec 0217): the rows are closed, so the prefill is read
+ * by opening the prefilled row (create) or in the PATCH the Campaign row
+ * sends (detail, D-3: the cascade rides on the same save).
  */
 
 const createLeadMock = vi.fn()
 const updateLeadMock = vi.fn()
 
-vi.mock('@/features/leads/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/leads/api')>('@/features/leads/api')
-  return {
-    ...actual,
-    createLead: (...args: unknown[]) => createLeadMock(...args),
-    updateLead: (...args: unknown[]) => updateLeadMock(...args),
-  }
-})
+vi.mock('@/features/leads/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/leads/api')>()),
+  createLead: (...args: unknown[]) => createLeadMock(...args),
+  updateLead: (...args: unknown[]) => updateLeadMock(...args),
+}))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
-
-const FULL_PERMISSIONS = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
-}
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-const canMock = vi.fn<(permission: string) => boolean>()
 vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: canMock, hasRole: () => false, roles: [], isLoading: false }),
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+}))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
+
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/leads/lead-test-stubs')).StubSelect,
+}))
+vi.mock('@/components/ui/async-paginated-multi-select', async () => ({
+  AsyncPaginatedMultiSelect: (await import('@/features/leads/lead-test-stubs')).StubMultiSelect,
 }))
 
-/**
- * The Campaign's for-select item, carrying its Sede's AND Fonte's `meta`
- * (spec 0176 D-2 mirrors the Sede prefill chain 1:1).
- */
-const CAMPAIGN_ITEM: CampaignForSelectItem = {
-  id: 20,
-  label: 'Spring push',
-  meta: {
-    operational_site: { id: 55, label: 'Warehouse A' },
-    source: { id: 77, name: 'Referral' },
-  },
-}
-
-/**
- * Stubs every single-select field, keyed by its accessible trigger label
- * (mirrors `lead-form-body.test.tsx`). The Campaign button also invokes
- * `onItemChange` with its `meta`, so the prefill handler under test is
- * exercisable without a real dropdown.
- */
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({
-    value,
-    onChange,
-    onItemChange,
-    labels,
-  }: {
-    value: number | null
-    onChange: (value: number) => void
-    onItemChange?: (item: ForSelectItem | null) => void
-    labels: { triggerLabel: string }
-  }) => (
-    <button
-      type="button"
-      data-testid={`select-${labels.triggerLabel}`}
-      onClick={() => {
-        if (labels.triggerLabel === 'Campaign') {
-          onChange(CAMPAIGN_ITEM.id)
-          onItemChange?.(CAMPAIGN_ITEM)
-          return
-        }
-        onChange(3)
-      }}
-    >
-      {value ?? ''}
-    </button>
-  ),
-}))
-
-/** Stubs the "Prodotti di interesse" picker: not exercised by this suite. */
-vi.mock('@/components/ui/async-paginated-multi-select', () => ({
-  AsyncPaginatedMultiSelect: ({
-    value,
-    labels,
-    disabled,
-  }: {
-    value: number[]
-    labels: { triggerLabel: string }
-    disabled?: boolean
-  }) => (
-    <div data-testid={`multi-${labels.triggerLabel}`} data-disabled={disabled ? 'true' : 'false'}>
-      {value.join(',')}
-    </div>
-  ),
-}))
-
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-    </QueryClientProvider>
-  )
-}
-
-function lead(overrides: Partial<LeadDetailWithPermissions> = {}): LeadDetailWithPermissions {
-  return {
-    id: 9,
-    registry_id: 10,
-    registry: { id: 10, name: 'Mario Rossi' },
-    campaign_id: 20,
-    campaign: { id: 20, code: 'CMP-0001', name: 'Spring push' },
-    lead_status: 'not_associated',
-    operational_site_id: null,
-    operational_site: null,
-    source_id: null,
-    source: null,
-    operator_id: null,
-    operator: null,
-    notes: null,
-    extra_fields: null,
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z',
-    permissions: FULL_PERMISSIONS,
-    ...overrides,
-  }
+function renderCreate() {
+  const { wrapper } = leadWrapper()
+  render(<LeadForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
 }
 
 beforeAll(async () => {
@@ -153,94 +66,63 @@ beforeEach(() => {
   createLeadMock.mockReset()
   updateLeadMock.mockReset()
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_PERMISSIONS })
-  canMock.mockReset()
-  canMock.mockReturnValue(true)
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
+  stubState.campaigns = [CAMPAIGN_PREFILL]
 })
 
-describe('LeadFormBody — Sede prefill from Campaign (project -> campaign -> lead chain)', () => {
-  it('prefills the Site field from the picked Campaign meta, still editable', async () => {
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+describe('LeadForm — Sede and Fonte prefill from Campaign', () => {
+  it('prefills the Site and Source rows from the picked Campaign meta, the Site still editable', async () => {
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Campaign' })
 
-    await waitFor(() => expect(screen.getByTestId('select-Campaign')).toBeInTheDocument())
-    expect(screen.getByTestId('select-Site')).toHaveTextContent('')
+    pickInRow('Campaign', 'Campaign')
 
-    fireEvent.click(screen.getByTestId('select-Campaign'))
+    fireEvent.click(pencilOf('Source'))
+    expect(screen.getByTestId('select-Source')).toHaveTextContent('77')
+    confirmOpenRow('Done')
 
-    await waitFor(() => expect(screen.getByTestId('select-Site')).toHaveTextContent('55'))
-    expect(screen.getByTestId('select-Site')).not.toBeDisabled()
-
+    fireEvent.click(pencilOf('Site'))
+    expect(screen.getByTestId('select-Site')).toHaveTextContent('55')
     // The prefill is not a lock: the user can still override it manually.
     fireEvent.click(screen.getByTestId('select-Site'))
-    expect(screen.getByTestId('select-Site')).toHaveTextContent('3')
+    expect(screen.getByTestId('select-Site')).toHaveTextContent(String(SITE_A.id))
   })
 
-  it('sends the campaign-prefilled operational_site_id in the create payload', async () => {
-    createLeadMock.mockResolvedValue(lead())
+  it('sends the campaign-prefilled operational_site_id and source_id in the create payload', async () => {
+    createLeadMock.mockResolvedValue(leadFixture())
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Registry' })
 
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-    fireEvent.click(screen.getByTestId('select-Registry'))
-    fireEvent.click(screen.getByTestId('select-Campaign'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    pickInRow('Registry', 'Registry')
+    pickInRow('Campaign', 'Campaign')
+    clickCreateSave()
 
     await waitFor(() => expect(createLeadMock).toHaveBeenCalledTimes(1))
-    expect(createLeadMock.mock.calls[0][0].operational_site_id).toBe(55)
+    expect(createLeadMock.mock.calls[0][0]).toMatchObject({ operational_site_id: 55, source_id: 77 })
   })
 
-  it('a different single-select field never triggers the Sede prefill', async () => {
+  it('carries the prefill in the same PATCH as the Campaign change on the detail (spec 0217 D-3)', async () => {
+    updateLeadMock.mockResolvedValue(leadFixture())
+    const { wrapper } = leadWrapper()
+    render(<LeadDetailView lead={leadFixture()} />, { wrapper })
+
+    pickInRow('Campaign', 'Campaign', 'Save')
+
+    await waitFor(() =>
+      expect(updateLeadMock).toHaveBeenCalledWith(9, { campaign_id: 21, operational_site_id: 55, source_id: 77 }),
+    )
+  })
+
+  it('a different single-select field never triggers the prefill', async () => {
+    updateLeadMock.mockResolvedValue(leadFixture())
+    const { wrapper } = leadWrapper()
     render(
-      <LeadForm
-        mode={{ type: 'edit', lead: lead({ operational_site_id: 8, operational_site: { id: 8, label: 'Depot B' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
+      <LeadDetailView lead={leadFixture({ operational_site_id: 8, operational_site: { id: 8, label: 'Depot B' } })} />,
+      { wrapper },
     )
 
-    await waitFor(() => expect(screen.getByTestId('select-Site')).toHaveTextContent('8'))
+    pickInRow('Source', 'Source', 'Save')
 
-    fireEvent.click(screen.getByTestId('select-Source'))
-    expect(screen.getByTestId('select-Site')).toHaveTextContent('8')
-  })
-})
-
-describe('LeadFormBody — Fonte prefill from Campaign (spec 0176 D-2)', () => {
-  it('prefills the Source field from the picked Campaign meta, still editable', async () => {
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Campaign')).toBeInTheDocument())
-    expect(screen.getByTestId('select-Source')).toHaveTextContent('')
-
-    fireEvent.click(screen.getByTestId('select-Campaign'))
-
-    await waitFor(() => expect(screen.getByTestId('select-Source')).toHaveTextContent('77'))
-
-    // The prefill is not a lock: the user can still override it manually.
-    fireEvent.click(screen.getByTestId('select-Source'))
-    expect(screen.getByTestId('select-Source')).toHaveTextContent('3')
-  })
-
-  it('sends the campaign-prefilled source_id in the create payload', async () => {
-    createLeadMock.mockResolvedValue(lead())
-
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-    fireEvent.click(screen.getByTestId('select-Registry'))
-    fireEvent.click(screen.getByTestId('select-Campaign'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(createLeadMock).toHaveBeenCalledTimes(1))
-    expect(createLeadMock.mock.calls[0][0].source_id).toBe(77)
+    await waitFor(() => expect(updateLeadMock).toHaveBeenCalledWith(9, { source_id: 3 }))
   })
 })

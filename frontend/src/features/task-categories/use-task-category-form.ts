@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createTaskCategory, updateTaskCategory } from '@/features/task-categories/api'
+import { createTaskCategory, taskCategoryDetailQueryKey, updateTaskCategory } from '@/features/task-categories/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -38,8 +38,9 @@ interface UseTaskCategoryFormArgs {
 }
 
 /**
- * Owns every non-render concern of `TaskCategoryForm`: RHF/Zod wiring, default
- * values, server 422 mapping and the create/update submit. The component stays
+ * Owns every non-render concern of the task category form: RHF/Zod wiring, default
+ * values, server 422 mapping and the create/update submit. Create backs
+ * `TaskCategoryForm`; edit backs the detail's in-place rows (diff PATCH). The component stays
  * UI-only; this hook is the orchestration point (`onSubmit`).
  */
 export function useTaskCategoryForm({ mode, onSuccess }: UseTaskCategoryFormArgs) {
@@ -75,9 +76,13 @@ export function useTaskCategoryForm({ mode, onSuccess }: UseTaskCategoryFormArgs
     }
   }, [mode])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<TaskCategoryFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: TaskCategoryFormValues) => {
@@ -89,7 +94,7 @@ export function useTaskCategoryForm({ mode, onSuccess }: UseTaskCategoryFormArgs
           mode.taskCategory.id,
           buildUpdatePayload(values, mode.taskCategory),
         )
-        queryClient.setQueryData(['task-categories', 'detail', mode.taskCategory.id], saved)
+        queryClient.setQueryData(taskCategoryDetailQueryKey(mode.taskCategory.id), saved)
         toast.success(t('taskCategories.form.updated'))
         onSuccess(saved)
         return
@@ -107,8 +112,8 @@ export function useTaskCategoryForm({ mode, onSuccess }: UseTaskCategoryFormArgs
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

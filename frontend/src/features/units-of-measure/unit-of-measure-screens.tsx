@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchUnitOfMeasure } from '@/features/units-of-measure/api'
+import { fetchUnitOfMeasure, unitOfMeasureDetailQueryKey } from '@/features/units-of-measure/api'
 import { UnitOfMeasureForm } from '@/features/units-of-measure/unit-of-measure-form'
 import { UnitOfMeasureDetailView } from '@/features/units-of-measure/unit-of-measure-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -15,18 +15,13 @@ import type {
 } from '@/features/modules/types'
 import type { UnitOfMeasureDetail } from '@/features/units-of-measure/types'
 
-/** Query key for a single unit of measure's detail (fresh-on-open pattern). */
-function detailQueryKey(id: number) {
-  return ['units-of-measure', 'detail', id] as const
-}
-
 /**
  * Content-only `units-of-measure` screens for the module registry (spec
- * 0042): fetch + the existing presentational view/form, no page chrome.
- * Reused as-is by the modal Sheet (`useModuleOpener`) and by the generic
- * dedicated pages (`ModuleDetailPage`/`ModuleFormPage`).
+ * 0042): fetch + the presentational view/form, no page chrome. The detail
+ * edits its rows in place, so `onEdit` is never used; each save reports
+ * through `onChanged`.
  */
-export function UnitOfMeasureDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function UnitOfMeasureDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: unitOfMeasure,
@@ -34,7 +29,7 @@ export function UnitOfMeasureDetailScreen({ id, onEdit }: ModuleDetailScreenProp
     isError,
     error,
     refetch,
-  } = useEntityDetail(detailQueryKey(id), () => fetchUnitOfMeasure(id))
+  } = useEntityDetail(unitOfMeasureDetailQueryKey(id), () => fetchUnitOfMeasure(id))
 
   if (isError) {
     return (
@@ -51,88 +46,49 @@ export function UnitOfMeasureDetailScreen({ id, onEdit }: ModuleDetailScreenProp
     return <DetailLoading />
   }
 
-  return <UnitOfMeasureDetailView unitOfMeasure={unitOfMeasure} onEdit={onEdit} />
-}
-
-export function UnitOfMeasureFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (saved: UnitOfMeasureDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(saved.id) })
-    onSuccess(saved.id)
-  }
-
-  if (mode.type === 'create') {
-    return (
-      <UnitOfMeasureForm
-        mode={{ type: 'create' }}
-        onSuccess={handleSuccess}
-        onCancel={onCancel}
-      />
-    )
-  }
-
-  return (
-    <UnitOfMeasureEditScreen
-      unitOfMeasureId={mode.id}
-      onSuccess={handleSuccess}
-      onCancel={onCancel}
-    />
-  )
-}
-
-interface UnitOfMeasureEditScreenProps {
-  unitOfMeasureId: number
-  onSuccess: (unitOfMeasure: UnitOfMeasureDetail) => void
-  onCancel: () => void
+  return <UnitOfMeasureDetailView unitOfMeasure={unitOfMeasure} onChanged={onChanged} />
 }
 
 /**
- * Fetches the fresh, re-authorized unit of measure detail before mounting
- * the edit form, so the partial PATCH starts from authoritative values
- * rather than a stale snapshot.
+ * Create only: there is no edit form, and the registry generates no
+ * `:id/edit` route. Leaving a unit of measure being created — Cancel, the Sheet's
+ * X/overlay/Esc, a link, a reload — always asks first.
  */
-function UnitOfMeasureEditScreen({
-  unitOfMeasureId,
-  onSuccess,
-  onCancel,
-}: UnitOfMeasureEditScreenProps) {
+export function UnitOfMeasureFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const { t } = useTranslation()
-  const {
-    data: unitOfMeasure,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(detailQueryKey(unitOfMeasureId), () => fetchUnitOfMeasure(unitOfMeasureId))
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('unitsOfMeasure.form.leaveConfirm.title'),
+    description: t('unitsOfMeasure.form.leaveConfirm.description'),
+    confirmLabel: t('unitsOfMeasure.form.leaveConfirm.confirm'),
+    cancelLabel: t('unitsOfMeasure.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('unitsOfMeasure.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
+  if (mode.type !== 'create') {
+    return null
   }
 
-  if (isLoading || !unitOfMeasure) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+  const handleSuccess = (saved: UnitOfMeasureDetail) => {
+    queryClient.invalidateQueries({ queryKey: unitOfMeasureDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new record's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(saved.id)
+  }
+
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
   }
 
   return (
-    <UnitOfMeasureForm
-      mode={{ type: 'edit', unitOfMeasure }}
-      onSuccess={onSuccess}
-      onCancel={onCancel}
-    />
+    <>
+      {leaveGuard.navigationGuard}
+      <UnitOfMeasureForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
   )
 }
 
@@ -144,8 +100,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.unitsOfMeasure',
   DetailScreen: UnitOfMeasureDetailScreen,
   FormScreen: UnitOfMeasureFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button — the same registration Opportunita',
-  // Utenti and Lead carry.
+  // The detail IS the edit form: no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

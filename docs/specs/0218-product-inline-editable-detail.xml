@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0218-product-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Il Prodotto riceve le stesse modifiche dei moduli gia' migrati (spec 0195-0200, 0216, 0217): niente pagina di
+    modifica, il dettaglio (`/products/:id` e lo stesso schermo nel pannello modale) si edita in place campo per
+    campo, attributi di categoria e campi personalizzati compresi; la creazione e' una replica del dettaglio a righe
+    chiuse. Terzo modulo dell'onda 1 del piano "nessuna pagina di modifica".
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-12, "procedi con prossimo modulo"): regole 0195 D-2/D-3/D-6/D-7/D-8/D-9 applicate ai
+      Prodotti con `RecordInlineField`, `useDraftInlineEdit`, `CustomFieldRecordSections`, `useFormLeaveGuard`.
+    - D-2: sezioni del dettaglio (stesso ordine in creazione): Identita' (Codice, Nome, Descrizione), Classificazione
+      (Categoria, Funzione aziendale in sola lettura, Tipologia, Unita' di misura, Tipo prodotto, Utilizzi), Prezzi e
+      fornitura (Costo solo se "Utilizzabile come costo", Prezzo solo se "Vendibile", Aliquota IVA, Fornitore),
+      Attributi della categoria (un attributo = una riga, layout configurato, anche vuoti), Campi personalizzati. La
+      striscia KPI prezzo/costo/margine resta in testa (live in creazione).
+    - D-3: il Codice e' modificabile solo in creazione (precompilato con il prossimo codice, spec 0065): nel
+      dettaglio resta in sola lettura (soglia del permesso di campo).
+    - D-4 (cascate dentro l'editor della riga aperta): cambiare la Categoria cambia gli attributi; gli attributi che
+      la nuova categoria aggiunge si compilano nello stesso editor (un obbligatorio altrimenti rifiuterebbe il
+      salvataggio). Attivare un Utilizzo mostra nello stesso editor l'importo che diventa obbligatorio (Costo o
+      Prezzo). Annullare riporta categoria e attributi a quelli salvati.
+    - D-5: gli attributi sono autorizzati a livello di risorsa (nessun permesso per campo): matita solo con
+      `update` (dettaglio) / `create` (creazione).
+    - D-6: creazione = replica del dettaglio (monogramma e nome live, badge codice e categoria, KPI live, righe chiuse
+      con Fatto/Ripristina, Salva valida tutto). Sparisce il Riepilogo laterale. Uscire senza salvare chiede conferma.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica: PATCH /api/products/{id} parziale esistente (gia' restituisce `permissions`,
+      `applicable_attributes`, `attribute_layout`).</backend>
+    <frontend>
+      Rotta `products/:id/edit` rimossa; `ProductFormPage` solo creazione; `ProductDetailView` perde `onEdit`,
+      guadagna `onChanged`; registry `products`: `generateEditRoute: false`. `updateProduct` restituisce
+      `ProductDetailWithPermissions`. `useProductForm` in edit = `values` + `keepDirtyValues`, submit in
+      `useProductFormSubmit`; nuovo `useProductInlineEdit`. `ProductForm` solo creazione (`{onSuccess, onCancel}`).
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/products/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su un campo editabile (attributi e campi personalizzati compresi): Salva invia il solo campo
+      cambiato (piu' quanto compilato nello stesso editor, D-4); Annulla/Esc/clic fuori non chiamano.</ac>
+    <ac id="AC-003">Codice senza matita nel dettaglio; senza permesso di modifica nessuna matita.</ac>
+    <ac id="AC-004">Cambio Categoria: gli attributi nuovi si compilano nell'editor e partono nello stesso PATCH;
+      attivare un Utilizzo chiede l'importo nell'editor.</ac>
+    <ac id="AC-005">Creazione: righe chiuse, codice suggerito, Fatto/Ripristina, Salva valida tutto, uscita con
+      conferma.</ac>
+    <ac id="AC-006">Guida in-app IT/EN `products` aggiornata.</ac>
+  </acceptance>
+</spec>

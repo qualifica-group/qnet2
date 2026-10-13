@@ -13,9 +13,6 @@ import { TimeEntryEditor } from '@/features/time-entries/form/time-entry-editor'
 import { useTimeEntryTypeOptions } from '@/features/time-entries/form/time-entry-type-picker'
 import { useTaskTimeEntryForm } from '@/features/time-entries/task/use-task-time-entry-form'
 
-/** No-op forwarded to `TimeEntryEditor`'s context-field handlers, unreachable with `showContext={false}`. */
-function noop(): void {}
-
 interface TaskTimeEntryEditorProps {
   taskId: number
 }
@@ -34,19 +31,8 @@ export function TaskTimeEntryEditor({ taskId }: TaskTimeEntryEditorProps) {
         <TimeEntryEditor
           control={form.control}
           disabled={isSubmitting}
-          showTitle={false}
-          showContext={false}
           headerTitle={t('timeEntries.task.newInterval')}
           headerDescription={t('timeEntries.task.register')}
-          isTaskLinked
-          taskDetail={undefined}
-          registry={null}
-          opportunity={null}
-          workOrder={null}
-          task={null}
-          onRegistryChange={noop}
-          onOpportunityItemChange={noop}
-          onWorkOrderItemChange={noop}
           onStartTimeChange={handleStartTimeChange}
           onEndTimeChange={handleEndTimeChange}
           serverError={serverError}

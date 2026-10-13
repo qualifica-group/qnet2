@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AsyncPaginatedMultiSelect,
@@ -9,6 +10,32 @@ import {
 } from '@/components/ui/async-paginated-select'
 import { toOptionValueArray } from '@/features/table/advanced-filters/option-utils'
 import type { AdvancedFilterFieldProps } from '@/features/table/advanced-filters/advanced-filter-field-props'
+import type { AdvancedFilterDescriptor } from '@/features/table/advanced-filters/types'
+
+type SelectParams = Record<string, string | number>
+
+/**
+ * The for-select query params of a relation field (spec 0208): the descriptor's
+ * static `source.params` merged with the dependency params, the dependency
+ * winning on the same key. Booleans travel as 1/0 (Laravel `boolean` rule).
+ * Memoised so the select does not see a new object on every render.
+ */
+function useSourceParams(
+  descriptor: AdvancedFilterDescriptor,
+  dependencyParams: SelectParams | undefined,
+): SelectParams | undefined {
+  const staticParams = descriptor.source?.params
+
+  return useMemo(() => {
+    if (staticParams === undefined) {
+      return dependencyParams
+    }
+    const normalized = Object.fromEntries(
+      Object.entries(staticParams).map(([key, entry]) => [key, typeof entry === 'boolean' ? Number(entry) : entry]),
+    )
+    return { ...normalized, ...dependencyParams }
+  }, [staticParams, dependencyParams])
+}
 
 /**
  * Single-select for-select field, shared by `autocomplete`, `async_search`
@@ -28,6 +55,7 @@ function SingleRelationField({
   dependencyParams,
 }: AdvancedFilterFieldProps) {
   const { t } = useTranslation()
+  const params = useSourceParams(descriptor, dependencyParams)
   const labels: AsyncPaginatedSelectLabels = {
     placeholder: descriptor.placeholder
       ? t(descriptor.placeholder)
@@ -49,7 +77,7 @@ function SingleRelationField({
       id={id}
       aria-describedby={describedBy}
       aria-invalid={invalid}
-      params={dependencyParams}
+      params={params}
       labels={labels}
     />
   )
@@ -67,6 +95,7 @@ function MultiRelationField({
   dependencyParams,
 }: AdvancedFilterFieldProps) {
   const { t } = useTranslation()
+  const params = useSourceParams(descriptor, dependencyParams)
   const labels: AsyncPaginatedMultiSelectLabels = {
     placeholder: descriptor.placeholder
       ? t(descriptor.placeholder)
@@ -90,7 +119,7 @@ function MultiRelationField({
       id={id}
       aria-describedby={describedBy}
       aria-invalid={invalid}
-      params={dependencyParams}
+      params={params}
       labels={labels}
     />
   )

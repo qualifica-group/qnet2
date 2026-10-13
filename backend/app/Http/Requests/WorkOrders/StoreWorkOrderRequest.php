@@ -55,7 +55,7 @@ class StoreWorkOrderRequest extends FormRequest
         return [
             'code' => ['sometimes', 'nullable', 'string', 'max:'.self::CODE_MAX, Rule::unique('work_orders', 'code')],
             'quote_id' => ['required', 'integer', 'exists:quotes,id'],
-            'title' => ['required', 'string', 'max:'.self::TITLE_MAX],
+            'title' => ['nullable', 'string', 'max:'.self::TITLE_MAX],
             'type' => ['required', 'string', Rule::in(WorkOrderType::values())],
             // Spec 0096, D-1: `start_date` is NOT NULL and a commessa always
             // has at least one Responsabile — required here and in the

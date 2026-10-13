@@ -205,8 +205,8 @@ export function RegistryTasksPanel({ registryId, onRowCountChanged }: RegistryRe
   const { interceptCommit, dialogSlot: statusDialogSlot } = useTaskStatusCellIntercept({ onMutated: refresh })
   // The Task grid opens on "assigned to me": here the client's tasks are the
   // point, so this visit starts on every task the actor may see — `visible`
-  // with viewAll/viewSite, otherwise `all` (every role, the same set for them).
-  const canSeeBeyondRoles = can('tasks.viewAll') || can('tasks.viewSite')
+  // with viewAll/viewSite/viewTeam, otherwise `all` (every role, the same set for them).
+  const canSeeBeyondRoles = can('tasks.viewAll') || can('tasks.viewSite') || can('tasks.viewTeam')
   const assignmentOverride = useMemo(
     () => ({ [TASK_ASSIGNMENT_FILTER]: [canSeeBeyondRoles ? TASK_ASSIGNMENT_VISIBLE : TASK_ASSIGNMENT_ALL_ROLES] }),
     [canSeeBeyondRoles],

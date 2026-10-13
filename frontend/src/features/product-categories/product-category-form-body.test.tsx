@@ -1,33 +1,45 @@
-import type { ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
+import { ProductCategoryDetailView } from '@/features/product-categories/product-category-detail'
 import { ProductCategoryForm } from '@/features/product-categories/product-category-form'
+import {
+  applyRow,
+  categoryWrapper,
+  category,
+  childCategory,
+  pencilOf,
+  permissionsFor,
+  saveRow,
+  treeNode,
+} from '@/features/product-categories/product-category-test-fixtures'
 import type { AttributeLayoutData, ProductCategoryDetailWithPermissions, ProductCategoryTreeNode } from '@/features/product-categories/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
+import type { ResourceMeta } from '@/features/authorization/types'
 
 /**
- * Spec 0062 revision: the attribute-layout configurator moved OFF the
- * category form entirely, into a dedicated Sheet opened by a row action on
- * the Product Categories table (`ProductCategoryAttributeLayoutSheet`). This
- * suite asserts the negative: the form never mounts the layout editor, in
- * either mode. The editor's own fetch/edit/save wiring is covered by
- * `product-category-attribute-layout-editor.test.tsx`.
+ * The category create form (a replica of the detail, spec 0229) and the detail's
+ * block rows, with the real controls.
  *
- * Second suite below: the inherit-from-parent switch is per usage context and
- * lives INSIDE the section it governs, so the two barriers move independently.
+ * Spec 0062 revision: the attribute-layout configurator lives OFF the category
+ * form, in a dedicated Sheet opened by a row action on the Product Categories
+ * table (`ProductCategoryAttributeLayoutSheet`); its own fetch/edit/save wiring
+ * is covered by `product-category-attribute-layout-editor.test.tsx`.
+ *
+ * The inherit-from-parent switch is per usage context and lives INSIDE the
+ * attributes editor, so the three barriers move independently.
  */
 
+const updateProductCategoryMock = vi.fn()
 const fetchProductCategoryTreeMock = vi.fn<() => Promise<ProductCategoryTreeNode[]>>()
 const fetchAttributeLayoutMock = vi.fn<
   (categoryId: number, context: string, formMode: string) => Promise<AttributeLayoutData>
 >()
 const fetchEffectiveManagerLabelsMock = vi.fn<(categoryId: number) => Promise<Record<string, string>>>()
 
-vi.mock('@/features/product-categories/api', () => ({
+vi.mock('@/features/product-categories/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/product-categories/api')>()),
   createProductCategory: vi.fn(),
-  updateProductCategory: vi.fn(),
+  updateProductCategory: (...args: unknown[]) => updateProductCategoryMock(...args),
   fetchProductCategoryTree: () => fetchProductCategoryTreeMock(),
   fetchEffectiveAttributes: () => Promise.resolve([]),
   fetchEffectiveManagerLabels: (categoryId: number) => fetchEffectiveManagerLabelsMock(categoryId),
@@ -56,70 +68,18 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
-const FULL_ACCESS: ResourcePermissions['resource'] = {
-  view: true,
-  create: true,
-  update: true,
-  delete: true,
-  export: true,
-  import: true,
-}
-
-function permissivePermissions(): ResourcePermissions {
-  return { resource: FULL_ACCESS, fields: {}, actions: {} }
-}
-
-function category(
-  overrides: Partial<ProductCategoryDetailWithPermissions> = {},
-): ProductCategoryDetailWithPermissions {
-  return {
-    id: 4,
-    name: 'Laptops',
-    parent_id: null,
-    parent: null,
-    inherits_product_attributes: true,
-    inherits_quote_attributes: true,
-    inherits_work_order_attributes: true,
-    description: null,
-    attributes: [],
-    inherited_attributes: [],
-    created_at: '2026-01-01T00:00:00Z',
-    business_function_id: null,
-    requires_quote: false,
-    business_function: null,
-    effective_business_function: null,
-    requires_quote_source_category: null,
-    is_selectable: true,
-    is_reportable: false,
-    effective_is_reportable: false,
-    is_reportable_source_category: null,
-    report_columns: null,
-    effective_report_columns: [],
-    report_columns_source_category: null,
-    inherited_report_columns: [],
-    inherited_report_columns_source_category: null,
-    management_mode: 'multiple',
-    single_quote_per_opportunity: false,
-    generates_contract: true,
-    management_mode_source_category: null,
-    single_quote_per_opportunity_source_category: null,
-    generates_contract_source_category: null,
-    simplified_offer_line: false,
-    simplified_offer_line_override: null,
-    simplified_offer_line_source_category: null,
-    manager_labels: {},
-    inherits_manager_labels: true,
-    inherited_manager_labels: {},
-    permissions: permissivePermissions(),
-    ...overrides,
-  }
-}
-
 function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
+  return categoryWrapper().wrapper
+}
+
+function renderDetail(detail: ProductCategoryDetailWithPermissions) {
+  return render(<ProductCategoryDetailView category={detail} />, { wrapper: wrapper() })
+}
+
+function renderCreate() {
+  return render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
+    wrapper: wrapper(),
+  })
 }
 
 beforeAll(async () => {
@@ -134,35 +94,71 @@ beforeEach(() => {
   fetchEffectiveManagerLabelsMock.mockReset()
   fetchEffectiveManagerLabelsMock.mockResolvedValue({})
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissivePermissions() })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
 })
 
-describe('ProductCategoryFormBody — attribute-layout NOT mounted (spec 0062 revision)', () => {
-  it('edit mode: does not mount the layout editor', async () => {
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    // The form's own submit exists twice now (identity bar + footer, spec-wide
-    // record-form skeleton): the footer copy is the one INSIDE the <form>, the
-    // bar's reaches it through the HTML `form=` attribute.
-    const saveButtons = await screen.findAllByRole('button', { name: 'Save' })
-    expect(saveButtons.some((button) => button.closest('form') !== null)).toBe(true)
-
-    expect(screen.queryByRole('button', { name: 'Save layout' })).not.toBeInTheDocument()
-    await waitFor(() => expect(fetchAttributeLayoutMock).not.toHaveBeenCalled())
-  })
-
-  it('create mode: does not mount the layout editor', async () => {
-    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+describe('create form — replica of the detail (spec 0229 D-4)', () => {
+  it('does not mount the layout editor', async () => {
+    renderCreate()
 
     await screen.findAllByRole('button', { name: 'Save' })
 
     expect(screen.queryByRole('button', { name: 'Save layout' })).not.toBeInTheDocument()
     expect(fetchAttributeLayoutMock).not.toHaveBeenCalled()
+  })
+
+  it('shows the header rows closed, each with its pencil, and the Details rows are not inputs', async () => {
+    renderCreate()
+
+    expect(await screen.findByRole('button', { name: 'Edit Name' })).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: /^Name/ })).not.toBeInTheDocument()
+    expect(pencilOf('parent')).toBeInTheDocument()
+    expect(pencilOf('description')).toBeInTheDocument()
+    expect(pencilOf('businessFunction')).toBeInTheDocument()
+  })
+
+  it('the identity band follows the name being typed (Done keeps it in the draft)', async () => {
+    renderCreate()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Name' }))
+    fireEvent.change(screen.getByRole('textbox', { name: /^Name/ }), { target: { value: 'Printers' } })
+    applyRow()
+
+    expect(await screen.findByRole('heading', { name: 'Printers' })).toBeInTheDocument()
+  })
+
+  it('groups the rules under one section, one closed row each', async () => {
+    renderCreate()
+
+    await screen.findAllByRole('button', { name: 'Save' })
+    const rules = screen.getByRole('heading', { name: 'Management rules' }).closest('section') as HTMLElement
+
+    for (const key of [
+      'requiresQuote',
+      'managementMode',
+      'singleQuotePerOpportunity',
+      'generatesContract',
+      'simplifiedOfferLine',
+      'isSelectable',
+      'isActive',
+      'isReportable',
+    ]) {
+      expect(within(rules).getByRole('button', { name: `Edit ${i18n.t(`productCategories.form.${key}`)}` })).toBeInTheDocument()
+    }
+    expect(within(rules).queryAllByRole('switch')).toHaveLength(0)
+  })
+
+  it('shows the attributes and the manager labels editors open', async () => {
+    renderCreate()
+
+    await screen.findAllByRole('button', { name: 'Save' })
+
+    expect(screen.getByRole('heading', { name: 'Product attributes' })).toBeInTheDocument()
+    for (const n of [1, 2, 3, 4]) {
+      const input = screen.getByRole('textbox', { name: `A.M. ${n}` })
+      expect(input).toHaveAttribute('placeholder', `Account manager ${n}`)
+      expect(input).toHaveValue('')
+    }
   })
 })
 
@@ -175,27 +171,12 @@ function attributeSection(title: string): HTMLElement {
   return section
 }
 
-/** A whole top-level `FormSection` (its `<section>` root), located by its own h3 title. */
-function formSection(title: string): HTMLElement {
-  const section = screen.getByRole('heading', { name: title }).closest('section')
-  if (section === null) {
-    throw new Error(`Form section "${title}" not found`)
-  }
-  return section
-}
+describe('attributes block row — per-context inheritance switches', () => {
+  it('renders one switch per context and toggles them independently', async () => {
+    renderDetail(childCategory())
 
-describe('ProductCategoryFormBody — per-context inheritance switches', () => {
-  it('renders one switch per section and toggles the two contexts independently', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{ type: 'edit', category: category({ parent_id: 1, parent: { id: 1, name: 'Electronics' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    await screen.findAllByRole('button', { name: 'Save' })
+    fireEvent.click(pencilOf('sections.attributes.title') as HTMLElement)
+    await screen.findByRole('heading', { name: 'Product attributes' })
 
     const productSwitch = within(attributeSection('Product attributes')).getByRole('switch')
     const quoteSwitch = within(attributeSection('Quote attributes')).getByRole('switch')
@@ -209,67 +190,39 @@ describe('ProductCategoryFormBody — per-context inheritance switches', () => {
   })
 
   it('root category: no inheritance switch at all (no ancestry to inherit from)', async () => {
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(category())
 
-    await screen.findAllByRole('button', { name: 'Save' })
+    fireEvent.click(pencilOf('sections.attributes.title') as HTMLElement)
+    await screen.findByRole('heading', { name: 'Product attributes' })
 
-    // Scoped by accessible name: the rules section carries its own, unrelated
-    // switches (quote flag, single offer, selectable), which a bare role query
-    // would count.
     expect(screen.queryAllByRole('switch', { name: 'Inherit from parent' })).toHaveLength(0)
   })
-})
 
-describe('ProductCategoryFormBody — selectable switch (spec 0074)', () => {
-  it('create mode: the switch is on by default and can be turned off (AC-014)', async () => {
-    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('saving the toggled barrier sends it alone', async () => {
+    const saved = childCategory({ inherits_product_attributes: false })
+    updateProductCategoryMock.mockResolvedValue(saved)
+    renderDetail(childCategory())
 
-    await screen.findAllByRole('button', { name: 'Save' })
+    fireEvent.click(pencilOf('sections.attributes.title') as HTMLElement)
+    await screen.findByRole('heading', { name: 'Product attributes' })
+    fireEvent.click(within(attributeSection('Product attributes')).getByRole('switch'))
+    saveRow()
 
-    const selectableSwitch = screen.getByRole('switch', { name: 'Selectable' })
-    expect(selectableSwitch).toBeChecked()
-
-    fireEvent.click(selectableSwitch)
-
-    await waitFor(() => expect(selectableSwitch).not.toBeChecked())
-  })
-
-  it('edit mode: the switch mirrors the saved value, with no parent-driven read-only state', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({ parent_id: 1, parent: { id: 1, name: 'Electronics' }, is_selectable: false }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    await screen.findAllByRole('button', { name: 'Save' })
-
-    const selectableSwitch = screen.getByRole('switch', { name: 'Selectable' })
-    expect(selectableSwitch).not.toBeChecked()
-    // Unlike the quote flag, this one is never inherited: a child still edits it.
-    expect(selectableSwitch).toBeEnabled()
+    await waitFor(() => expect(updateProductCategoryMock).toHaveBeenCalledTimes(1))
+    expect(updateProductCategoryMock).toHaveBeenCalledWith(4, { inherits_product_attributes: false })
   })
 })
 
-describe('ProductCategoryFormBody — reportable switch (inherited, can be forced)', () => {
+function reportableTreeNode(overrides: Partial<ProductCategoryTreeNode>): ProductCategoryTreeNode {
+  return treeNode({ is_reportable: null, ...overrides })
+}
+
+describe('reportable row (inherited, can be forced)', () => {
   it('create mode: the switch is off by default and can be turned on', async () => {
-    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    renderCreate()
 
-    await screen.findAllByRole('button', { name: 'Save' })
-
-    const reportableSwitch = screen.getByRole('switch', { name: 'Visible in reports' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Visible in reports' }))
+    const reportableSwitch = await screen.findByRole('switch', { name: 'Visible in reports' })
     expect(reportableSwitch).not.toBeChecked()
 
     fireEvent.click(reportableSwitch)
@@ -280,21 +233,16 @@ describe('ProductCategoryFormBody — reportable switch (inherited, can be force
   it('edit mode: a child inherits a reportable parent, and switching it off forces it', async () => {
     fetchProductCategoryTreeMock.mockResolvedValue([reportableTreeNode({ id: 1, name: 'Electronics', is_reportable: true })])
 
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({ parent_id: 1, parent: { id: 1, name: 'Electronics' }, is_reportable: null }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
+    renderDetail(
+      childCategory({
+        is_reportable: null,
+        effective_is_reportable: true,
+        is_reportable_source_category: { id: 1, name: 'Electronics' },
+      }),
     )
 
-    await screen.findAllByRole('button', { name: 'Save' })
-
-    const reportableSwitch = screen.getByRole('switch', { name: 'Visible in reports' })
+    fireEvent.click(pencilOf('isReportable') as HTMLElement)
+    const reportableSwitch = await screen.findByRole('switch', { name: 'Visible in reports' })
     await waitFor(() => expect(reportableSwitch).toBeChecked())
     expect(reportableSwitch).toBeEnabled()
     expect(screen.getByText(/Inherited from "Electronics"\. Change it to force it/)).toBeInTheDocument()
@@ -311,25 +259,13 @@ describe('ProductCategoryFormBody — reportable switch (inherited, can be force
     await waitFor(() => expect(reportableSwitch).toBeChecked())
     expect(screen.queryByText('Forced')).not.toBeInTheDocument()
   })
-})
 
-describe('ProductCategoryFormBody — reportable switch with no ancestor setting it', () => {
   it('turning it on under a non-reportable branch makes it the starting point, not a forced value', async () => {
     fetchProductCategoryTreeMock.mockResolvedValue([reportableTreeNode({ id: 1, name: 'Electronics' })])
 
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({ parent_id: 1, parent: { id: 1, name: 'Electronics' }, is_reportable: null }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(childCategory({ is_reportable: null }))
 
-    await screen.findAllByRole('button', { name: 'Save' })
+    fireEvent.click(pencilOf('isReportable') as HTMLElement)
     expect(await screen.findByText(/No parent category is visible in the reports/)).toBeInTheDocument()
 
     const reportableSwitch = screen.getByRole('switch', { name: 'Visible in reports' })
@@ -339,99 +275,30 @@ describe('ProductCategoryFormBody — reportable switch with no ancestor setting
     expect(screen.getByText(/Set on this category: every subcategory inherits it/)).toBeInTheDocument()
     expect(screen.queryByText('Forced')).not.toBeInTheDocument()
   })
-})
 
-function reportableTreeNode(overrides: Partial<ProductCategoryTreeNode>): ProductCategoryTreeNode {
-  return {
-    id: 1,
-    name: 'Node',
-    parent_id: null,
-    children: [],
-    attributes_count: 0,
-    products_count: 0,
-    business_function_id: null,
-    requires_quote: false,
-    is_selectable: true,
-    is_reportable: null,
-    management_mode: 'multiple',
-    single_quote_per_opportunity: false,
-    generates_contract: true,
-    simplified_offer_line: false,
-    simplified_offer_line_override: null,
-    ...overrides,
-  }
-}
+  it('each rule carries its info glyph once its row is open', async () => {
+    renderDetail(category())
 
-/**
- * User directive 2026-08-07: the four behavioural rules moved out of the
- * identity fields into their own section, each carrying an (i) explanation.
- */
-describe('ProductCategoryFormBody — management rules section', () => {
-  it('groups the four rules under one section, each with its info glyph', async () => {
-    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await screen.findAllByRole('button', { name: 'Save' })
-
-    const rules = formSection('Management rules')
-
-    expect(within(rules).getByRole('switch', { name: 'Quoted' })).toBeInTheDocument()
-    expect(within(rules).getByRole('combobox')).toBeInTheDocument()
-    expect(within(rules).getByRole('switch', { name: 'One offer per opportunity' })).toBeInTheDocument()
-    expect(within(rules).getByRole('switch', { name: 'Selectable' })).toBeInTheDocument()
-    expect(within(rules).getByRole('switch', { name: 'Visible in reports' })).toBeInTheDocument()
-
-    for (const rule of [
-      'Quoted',
-      'Management mode',
-      'One offer per opportunity',
-      'Selectable',
-      'Visible in reports',
+    for (const [key, name] of [
+      ['requiresQuote', 'Quoted'],
+      ['managementMode', 'Management mode'],
+      ['singleQuotePerOpportunity', 'One offer per opportunity'],
+      ['isSelectable', 'Selectable'],
+      ['isReportable', 'Visible in reports'],
     ]) {
-      expect(within(rules).getByRole('button', { name: `More info about ${rule}` })).toBeInTheDocument()
+      fireEvent.click(pencilOf(key) as HTMLElement)
+      expect(await screen.findByRole('button', { name: `More info about ${name}` })).toBeInTheDocument()
     }
-  })
-
-  it('no longer shows the rules inside the identity section', async () => {
-    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await screen.findAllByRole('button', { name: 'Save' })
-
-    expect(within(formSection('Details')).queryAllByRole('switch')).toHaveLength(0)
   })
 })
 
-describe('ProductCategoryFormBody — manager labels section (spec 0080)', () => {
-  it('create mode: renders 4 G.A. rows with the default-denomination placeholder (AC-040)', async () => {
-    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+describe('manager labels block row (spec 0080)', () => {
+  it("edit mode: the row opens prefilled with the category's own labels (AC-040)", async () => {
+    renderDetail(category({ manager_labels: { '1': 'Commercial', '3': 'Consultant' } }))
 
-    await screen.findAllByRole('button', { name: 'Save' })
+    fireEvent.click(pencilOf('sections.managerLabels.title') as HTMLElement)
 
-    for (const n of [1, 2, 3, 4]) {
-      const input = screen.getByRole('textbox', { name: `A.M. ${n}` })
-      expect(input).toHaveAttribute('placeholder', `Account manager ${n}`)
-      expect(input).toHaveValue('')
-    }
-  })
-
-  it("edit mode: prefills the rows with the category's own labels (AC-040)", async () => {
-    render(
-      <ProductCategoryForm
-        mode={{ type: 'edit', category: category({ manager_labels: { '1': 'Commercial', '3': 'Consultant' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    await screen.findAllByRole('button', { name: 'Save' })
-
-    expect(screen.getByRole('textbox', { name: 'A.M. 1' })).toHaveValue('Commercial')
+    expect(await screen.findByRole('textbox', { name: 'A.M. 1' })).toHaveValue('Commercial')
     expect(screen.getByRole('textbox', { name: 'A.M. 3' })).toHaveValue('Consultant')
     expect(screen.getByRole('textbox', { name: 'A.M. 2' })).toHaveValue('')
   })
@@ -439,19 +306,12 @@ describe('ProductCategoryFormBody — manager labels section (spec 0080)', () =>
   it('disabling the inherit toggle drops the inherited preview immediately, before saving (AC-041)', async () => {
     fetchEffectiveManagerLabelsMock.mockResolvedValue({ '2': 'Operator' })
 
-    render(
-      <ProductCategoryForm
-        mode={{ type: 'edit', category: category({ parent_id: 1, parent: { id: 1, name: 'Electronics' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(childCategory())
 
-    await screen.findAllByRole('button', { name: 'Save' })
+    fireEvent.click(pencilOf('sections.managerLabels.title') as HTMLElement)
     await screen.findByText('Operator')
 
-    const toggle = within(formSection('Account managers')).getByRole('switch')
+    const toggle = screen.getByRole('switch', { name: 'Inherit from parent' })
     expect(toggle).toBeChecked()
 
     fireEvent.click(toggle)
@@ -461,9 +321,7 @@ describe('ProductCategoryFormBody — manager labels section (spec 0080)', () =>
 
   // Spec 0080 amendment A1.
   it('"Add level" appends a 5th row, and resetting it removes only that row (AC-050, AC-054, AC-055)', async () => {
-    render(<ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    renderCreate()
 
     await screen.findAllByRole('button', { name: 'Save' })
     expect(screen.queryByRole('textbox', { name: 'A.M. 5' })).not.toBeInTheDocument()
@@ -483,18 +341,11 @@ describe('ProductCategoryFormBody — manager labels section (spec 0080)', () =>
 
   it('"Add level" is disabled once all 12 positions are configured (AC-055)', async () => {
     const twelvePositions = Object.fromEntries(Array.from({ length: 12 }, (_, index) => [String(index + 1), '']))
-    render(
-      <ProductCategoryForm
-        mode={{ type: 'edit', category: category({ manager_labels: twelvePositions }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(category({ manager_labels: twelvePositions }))
 
-    await screen.findAllByRole('button', { name: 'Save' })
+    fireEvent.click(pencilOf('sections.managerLabels.title') as HTMLElement)
 
-    expect(screen.getByRole('textbox', { name: 'A.M. 12' })).toBeInTheDocument()
+    expect(await screen.findByRole('textbox', { name: 'A.M. 12' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add level' })).toBeDisabled()
   })
 })

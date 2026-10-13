@@ -27,6 +27,8 @@ export interface RoleFieldPermission {
  */
 export interface RoleDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   permissions: string[]
   created_at: string | null

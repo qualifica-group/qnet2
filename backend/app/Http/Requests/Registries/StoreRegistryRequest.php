@@ -11,6 +11,7 @@ use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
 use App\Http\Requests\Concerns\ValidatesRequiredPhoneContact;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
 use App\Models\Registry;
+use App\Rules\ActiveSector;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -86,7 +87,7 @@ class StoreRegistryRequest extends FormRequest
         return array_merge([
             'source_id' => ['nullable', 'integer', Rule::exists('sources', 'id')],
             'sector_ids' => ['sometimes', 'array'],
-            'sector_ids.*' => ['integer', Rule::exists('sectors', 'id')],
+            'sector_ids.*' => ['integer', new ActiveSector],
             'referent_ids' => ['sometimes', 'array'],
             'referent_ids.*' => ['integer', Rule::exists('referents', 'id')],
             // Supervisor is an INTERNAL user (like managers); commercial/reporter

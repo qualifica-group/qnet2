@@ -41,6 +41,14 @@ interface MigrationSource
     public function columns(): array;
 
     /**
+     * The sources to import BEFORE this one, each required or optional.
+     * Every key is a registered source in an earlier MigrationOrder phase.
+     *
+     * @return list<MigrationDependency>
+     */
+    public function dependencies(): array;
+
+    /**
      * Relative path (under config('migrations.base_url')) of this resource's
      * list endpoint on the external system — the single source of truth also
      * used internally to fetch every page (preview and import alike), and

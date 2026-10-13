@@ -8,6 +8,11 @@ import type {
   UpdateReferentTypePayload,
 } from '@/features/referent-types/types'
 
+/** Query key of a single referent type's detail, shared by the detail screen and its in-place saves. */
+export function referentTypeDetailQueryKey(id: number) {
+  return ['referent-types', 'detail', id] as const
+}
+
 /**
  * Fetches a single referent-type detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -33,16 +38,18 @@ export async function createReferentType(
   return data.data
 }
 
-/** Partially updates a referent type (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a referent type (PATCH). Returns the saved record with the
+ * actor's permissions, so the in-place detail re-syncs on it as is.
+ */
 export async function updateReferentType(
   id: number,
   payload: UpdateReferentTypePayload,
-): Promise<ReferentTypeDetail> {
-  const { data } = await apiClient.patch<ApiResponse<ReferentTypeDetail>>(
-    `/referent-types/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<ReferentTypeDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<ReferentTypeDetail, ResourcePermissions>
+  >(`/referent-types/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a referent type. Backend responds 204 with no body. */

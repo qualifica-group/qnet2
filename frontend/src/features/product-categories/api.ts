@@ -92,16 +92,18 @@ export async function createProductCategory(
   return data.data
 }
 
-/** Partially updates a category (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a category (PATCH). Returns the updated resource with the
+ * actor's permissions on it, so the in-place detail (spec 0229) re-syncs on it as is.
+ */
 export async function updateProductCategory(
   id: number,
   payload: UpdateProductCategoryPayload,
-): Promise<ProductCategoryDetail> {
-  const { data } = await apiClient.patch<ApiResponse<ProductCategoryDetail>>(
-    `/product-categories/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<ProductCategoryDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<ProductCategoryDetail, ResourcePermissions>
+  >(`/product-categories/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

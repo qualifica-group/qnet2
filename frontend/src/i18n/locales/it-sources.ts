@@ -14,7 +14,7 @@ export const sources = {
   },
   detail: {
     title: 'Dettaglio fonte',
-    subtitle: 'Visualizzazione in sola lettura della fonte selezionata.',
+    subtitle: 'Dettaglio della fonte selezionata, modificabile sul posto.',
     loadError: 'Impossibile caricare la fonte. Riprova.',
     created_at: 'Creato il',
   },
@@ -22,8 +22,6 @@ export const sources = {
     newSource: 'Nuova fonte',
     createTitle: 'Crea fonte',
     createSubtitle: 'Aggiungi una nuova fonte alla tua organizzazione.',
-    editTitle: 'Modifica fonte',
-    editSubtitle: 'Aggiorna la fonte selezionata.',
     name: 'Nome',
     save: 'Salva',
     saving: 'Salvataggio…',
@@ -36,10 +34,15 @@ export const sources = {
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la fonte. Riprova.',
     deleteForbidden: 'Non puoi eliminare questa fonte.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'La fonte non è ancora stata creata: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome della fonte.',
       },
     },
   },

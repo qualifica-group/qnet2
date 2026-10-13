@@ -143,6 +143,7 @@ class RequestManagementNotable implements NotableEntity
         ]);
 
         return User::query()
+            ->excludingServiceAccounts()
             ->where('is_active', true)
             ->where(function (Builder $query) use ($module, $operatorIds, $siteIds, $siteTiers): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))

@@ -5,8 +5,8 @@ import { get, type FieldErrors } from 'react-hook-form'
 import { firstErrorMessage } from '@/components/record-form/first-error-message'
 import type { InlineEdit } from '@/components/record-form/record-inline-field'
 import { cardToDraft, emptyPersonalDataDraft } from '@/features/personal-data/drafts'
+import { PERSONAL_DATA_CARD_FIELD } from '@/features/personal-data/personal-data-identity-record-section'
 import type { PersonalDataDraft } from '@/features/personal-data/types'
-import { REGISTRY_CARD_FIELD } from '@/features/registries/registry-record'
 import { useRegistryForm, type RegistryFormValues } from '@/features/registries/use-registry-form'
 import { useRegistryFormSubmit } from '@/features/registries/use-registry-form-submit'
 import type { RegistryDetailWithPermissions, RegistryFormMode } from '@/features/registries/types'
@@ -61,7 +61,7 @@ export function useRegistryInlineEdit(registry: RegistryDetailWithPermissions, o
 
   const start = (field: string) => {
     discard()
-    if (field === REGISTRY_CARD_FIELD) {
+    if (field === PERSONAL_DATA_CARD_FIELD) {
       setCardDraft(persistedCard)
     }
     setEditingField(field)

@@ -42,6 +42,8 @@ export interface BusinessFunctionOperationalSite {
  */
 export interface BusinessFunctionDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   is_business_unit: boolean
   is_business_service: boolean
@@ -93,14 +95,7 @@ export interface CreateBusinessFunctionPayload {
  */
 export type UpdateBusinessFunctionPayload = Partial<CreateBusinessFunctionPayload>
 
-/**
- * Discriminated form mode shared by the form hook/meta-resolver and the
- * (owned elsewhere) `BusinessFunctionForm` component. Defined here — rather
- * than re-exported from a `business-function-form.tsx` module, as the
- * `users`/`roles` convention does — because this microtask's ownership is
- * split across teammates and the form component does not exist yet; the form
- * component imports this type from here instead.
- */
+/** Discriminated form mode: create (a blank draft) or edit (the detail's in-place rows). */
 export type BusinessFunctionFormMode =
   | { type: 'create' }
   | { type: 'edit'; businessFunction: BusinessFunctionDetailWithPermissions }

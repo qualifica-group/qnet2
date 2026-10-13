@@ -2,11 +2,13 @@ import type {
   CreateQuoteWorkflowCriterionPayload,
   CreateQuoteWorkflowPayload,
   CreateQuoteWorkflowStatusPayload,
+  QuoteWorkflowDetail,
   UpdateDefaultStatusesPayload,
   UpdateQuoteWorkflowPayload,
   UpdateQuoteWorkflowStatusPayload,
   WorkflowStatusFormRow,
 } from '@/features/quote-workflows/types'
+import { statusRowsFromDetail } from '@/features/quote-workflows/workflow-status-rows'
 import type { CreateQuoteWorkflowFormValues } from '@/features/quote-workflows/quote-workflow-schema'
 
 /** One `criteria[]` row exactly as the RHF field array edits it (each id individually nullable while the row fills in). */
@@ -66,36 +68,47 @@ function buildStatusesUpdatePayload(rows: WorkflowStatusFormRow[]): UpdateQuoteW
     }))
 }
 
-/** Builds the create payload: `name`, `is_active`, `criteria` (min:1) and the custom `statuses`. */
-export function buildCreatePayload(
-  values: CreateQuoteWorkflowFormValues,
-  statusRows: WorkflowStatusFormRow[],
-): CreateQuoteWorkflowPayload {
+/** Builds the create payload: `name`, `is_active`, `criteria` (min:1) and the `statuses` rows. */
+export function buildCreatePayload(values: CreateQuoteWorkflowFormValues): CreateQuoteWorkflowPayload {
   return {
     name: values.name,
     is_active: values.is_active,
     criteria: buildCriteriaPayload(values.criteria),
-    statuses: buildStatusesCreatePayload(statusRows),
+    statuses: buildStatusesCreatePayload(values.statuses),
   }
 }
 
 /**
- * Builds the update payload: always the FULL authoritative shape (`criteria`
- * is a full-replace sync per the frozen contract; `statuses` likewise syncs
- * every custom row + order) rather than a sparse diff — mirrors the
- * parent+children pattern used by `syncProductLines` (spec 0040), where the
- * nested collections are never diffed positionally.
+ * Builds a partial PATCH payload carrying only what changed from the saved
+ * workflow, so an in-place row sends its own field alone. `criteria` and
+ * `statuses` are authoritative syncs: when changed they go whole, and the
+ * statuses keep their `id` (a status without one is a new custom row).
  */
 export function buildUpdatePayload(
   values: CreateQuoteWorkflowFormValues,
-  statusRows: WorkflowStatusFormRow[],
+  original: QuoteWorkflowDetail,
 ): UpdateQuoteWorkflowPayload {
-  return {
-    name: values.name,
-    is_active: values.is_active,
-    criteria: buildCriteriaPayload(values.criteria),
-    statuses: buildStatusesUpdatePayload(statusRows),
+  const payload: UpdateQuoteWorkflowPayload = {}
+
+  if (values.name !== original.name) {
+    payload.name = values.name
   }
+  if (values.is_active !== original.is_active) {
+    payload.is_active = values.is_active
+  }
+
+  const criteria = buildCriteriaPayload(values.criteria)
+  const originalCriteria = original.criteria.map(({ field, value_id }) => ({ field, value_id }))
+  if (JSON.stringify(criteria) !== JSON.stringify(originalCriteria)) {
+    payload.criteria = criteria
+  }
+
+  const statuses = buildStatusesUpdatePayload(values.statuses)
+  if (JSON.stringify(statuses) !== JSON.stringify(buildStatusesUpdatePayload(statusRowsFromDetail(original)))) {
+    payload.statuses = statuses
+  }
+
+  return payload
 }
 
 /** Builds the PUT /quote-workflows/default-statuses payload from the shared editor's local rows. */

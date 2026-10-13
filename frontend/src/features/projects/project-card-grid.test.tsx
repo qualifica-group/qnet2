@@ -30,12 +30,10 @@ vi.mock('@/features/table/use-table-filters', () => ({
   useSaveTableFilters: () => ({ mutate: saveFiltersMutateMock, isPending: false }),
 }))
 
-// The edit form itself is covered by its own tests; here we only assert that
-// the pencil opens the Sheet instead of navigating to the dedicated page.
-vi.mock('@/features/projects/project-edit-loader', () => ({
-  ProjectEditLoader: ({ projectId }: { projectId: number }) => (
-    <div>edit-loader:{projectId}</div>
-  ),
+// The detail itself is covered by its own tests; here we only assert that the
+// pencil opens it — editable in place (spec 0220 D-4) — in the Sheet.
+vi.mock('@/features/projects/project-screens', () => ({
+  ProjectDetailScreen: ({ id }: { id: number }) => <div>project-detail:{id}</div>,
 }))
 
 function buildCard(overrides: Partial<ProjectCard> = {}): ProjectCard {
@@ -214,7 +212,8 @@ describe('ProjectCardGrid (spec 0026 AC-007/009)', () => {
     expect(screen.getByRole('button', { name: 'Edit project' })).toBeInTheDocument()
   })
 
-  it('opens the edit sheet on the pencil instead of navigating to the dedicated page', async () => {
+  // REQUIREMENT CHANGED (spec 0220 D-4): the pencil opens the in-place-editable detail, not an edit form.
+  it('opens the project detail in the sheet on the pencil instead of navigating to the dedicated page', async () => {
     useProjectCardsMock.mockReturnValue(baseState({ data: pagesOf([buildCard({ id: 7 })]) }))
 
     renderGrid()
@@ -222,7 +221,7 @@ describe('ProjectCardGrid (spec 0026 AC-007/009)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit project' }))
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('edit-loader:7')).toBeInTheDocument()
+    expect(screen.getByText('project-detail:7')).toBeInTheDocument()
   })
 
   it('shows the derived geo scope badge (spec 0027 AC-012)', () => {

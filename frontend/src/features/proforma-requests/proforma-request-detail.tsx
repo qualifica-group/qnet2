@@ -3,7 +3,6 @@ import { ReceiptEuro, MessagesSquare } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,7 +11,7 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard, type RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { useAbilities } from '@/features/auth/use-abilities'
@@ -51,51 +50,53 @@ export function ProformaRequestDetailView({ proformaRequest: request, onEdit }: 
 
   return (
     <RecordCanvas>
-      <RecordBody side={tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}>
-        <RecordCard>
+      <RecordBody
+        collaborationTabs={tabs}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={request.work_order.code} icon={<ReceiptEuro />} />}
             title={t('proformaRequests.detail.title', { code: request.work_order.code })}
             subtitle={t(`proformaRequests.kinds.${request.kind}`)}
             actions={permissions.resource.update && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('proformaRequests.detail.sectionTitle')} full>
-              <RecordFieldList>
-                <RecordField label={t('proformaRequests.columns.work_order_title')}>
-                  {request.work_order.title ? request.work_order.title : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('proformaRequests.columns.company')}>
-                  {request.company ? request.company.name : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('proformaRequests.columns.customer')}>
-                  {request.customer ? request.customer.name : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('proformaRequests.columns.status')}>
-                  {t(`proformaRequests.statuses.${request.status}`)}
-                </RecordField>
-                {issuedAt ? (
-                  <RecordField label={t('proformaRequests.detail.issuedAt')}>{issuedAt}</RecordField>
-                ) : null}
-                <RecordField label={t('proformaRequests.columns.supplier')}>
-                  {request.supplier ? request.supplier.name : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('proformaRequests.columns.payment_method')}>
-                  {request.payment_method ? request.payment_method.name : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('proformaRequests.columns.assigned_to')}>
-                  {request.assigned_to.name}
-                </RecordField>
-                <RecordField label={t('proformaRequests.columns.assigned_by')}>
-                  {request.assigned_by.name}
-                </RecordField>
-                <RecordField label={t('proformaRequests.columns.note')}>
-                  <span className="whitespace-pre-wrap">{request.note}</span>
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('proformaRequests.detail.sectionTitle')} full>
+            <RecordFieldList>
+              <RecordField label={t('proformaRequests.columns.work_order_title')}>
+                {request.work_order.title ? request.work_order.title : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('proformaRequests.columns.company')}>
+                {request.company ? request.company.name : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('proformaRequests.columns.customer')}>
+                {request.customer ? request.customer.name : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('proformaRequests.columns.status')}>
+                {t(`proformaRequests.statuses.${request.status}`)}
+              </RecordField>
+              {issuedAt ? (
+                <RecordField label={t('proformaRequests.detail.issuedAt')}>{issuedAt}</RecordField>
+              ) : null}
+              <RecordField label={t('proformaRequests.columns.supplier')}>
+                {request.supplier ? request.supplier.name : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('proformaRequests.columns.payment_method')}>
+                {request.payment_method ? request.payment_method.name : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('proformaRequests.columns.assigned_to')}>
+                {request.assigned_to.name}
+              </RecordField>
+              <RecordField label={t('proformaRequests.columns.assigned_by')}>
+                {request.assigned_by.name}
+              </RecordField>
+              <RecordField label={t('proformaRequests.columns.note')}>
+                <span className="whitespace-pre-wrap">{request.note}</span>
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt ? (

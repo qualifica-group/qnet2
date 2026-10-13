@@ -8,6 +8,11 @@ import type {
   UpdatePipelineStatusPayload,
 } from '@/features/pipeline-statuses/types'
 
+/** Query key of a single project status's detail, shared by the detail screen and its in-place saves. */
+export function pipelineStatusDetailQueryKey(id: number) {
+  return ['pipeline-statuses', 'detail', id] as const
+}
+
 /**
  * Fetches a single project status detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -31,16 +36,18 @@ export async function createPipelineStatus(
   return data.data
 }
 
-/** Partially updates a project status (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a project status (PATCH). Returns the saved record with the actor's
+ * permissions, so the in-place detail re-syncs on it as is.
+ */
 export async function updatePipelineStatus(
   id: number,
   payload: UpdatePipelineStatusPayload,
-): Promise<PipelineStatusDetail> {
-  const { data } = await apiClient.patch<ApiResponse<PipelineStatusDetail>>(
-    `/pipeline-statuses/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<PipelineStatusDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<PipelineStatusDetail, ResourcePermissions>
+  >(`/pipeline-statuses/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

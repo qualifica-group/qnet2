@@ -8,21 +8,27 @@ export const sectors = {
   subtitle: 'Browse, filter and manage your sectors.',
   forbidden: "You don't have permission to view sectors.",
   columns: {
+    code: 'Code',
     name: 'Name',
     parent: 'Parent',
+    is_active: 'Active',
     created_at: 'Created at',
   },
   detail: {
     title: 'Sector details',
-    subtitle: 'Read-only view of the selected sector.',
+    subtitle: 'Details of the selected sector, editable in place.',
     loadError: 'Unable to load the sector. Please try again.',
+  },
+  badges: {
+    notActive: 'Not active',
   },
   form: {
     newSector: 'New sector',
     createTitle: 'Create sector',
     createSubtitle: 'Add a new sector.',
-    editTitle: 'Edit sector',
-    editSubtitle: 'Update the selected sector.',
+    code: 'Code',
+    codePlaceholder: 'E.g. 01, 07a, NA',
+    codeMax: 'Code must be at most 20 characters.',
     name: 'Name',
     nameRequired: 'Name is required.',
     nameMax: 'Name must be at most 191 characters.',
@@ -33,6 +39,10 @@ export const sectors = {
     parentNoMatch: 'No matches found.',
     parentError: 'Unable to load sectors.',
     noParent: 'No parent (root sector)',
+    isActive: 'Active',
+    isActiveHint:
+      'An inactive sector, with all its sub-sectors, no longer appears in selection fields. Existing links stay valid.',
+    isActiveInheritedNotice: 'Not active because "{{sector}}" is not',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
@@ -43,10 +53,15 @@ export const sectors = {
     deleteError: 'Unable to delete the sector. Please try again.',
     deleteForbidden: 'You cannot delete this sector.',
     deleteInUse: 'This sector has sub-sectors and cannot be deleted.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The sector has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name and parent of the sector.',
       },
     },
   },

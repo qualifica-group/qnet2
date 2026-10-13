@@ -8,6 +8,11 @@ import type {
   UpdateTaskImportancePayload,
 } from '@/features/task-importances/types'
 
+/** Query key of a single task importance's detail, shared by the detail screen and its in-place saves. */
+export function taskImportanceDetailQueryKey(id: number) {
+  return ['task-importances', 'detail', id] as const
+}
+
 /**
  * Fetches a single task importance detail together with the actor's authorization
  * metadata for it (`permissions`, a top-level envelope sibling of `data`).
@@ -28,14 +33,17 @@ export async function createTaskImportance(payload: CreateTaskImportancePayload)
 /**
  * Partially updates a task importance (PATCH). `system_key` and `sort_order` are
  * never keys of `UpdateTaskImportancePayload` (spec 0101 `data_contract`): the backend
- * rejects their mere presence with 422.
+ * rejects their mere presence with 422. Returns the saved record with the
+ * actor's permissions, so the in-place detail re-syncs on it as is.
  */
 export async function updateTaskImportance(
   id: number,
   payload: UpdateTaskImportancePayload,
-): Promise<TaskImportanceDetail> {
-  const { data } = await apiClient.patch<ApiResponse<TaskImportanceDetail>>(`/task-importances/${id}`, payload)
-  return data.data
+): Promise<TaskImportanceDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<TaskImportanceDetail, ResourcePermissions>
+  >(`/task-importances/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

@@ -91,6 +91,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     id: 4,
     code: 'COM-0001',
     title: 'Installazione impianto',
+    title_is_manual: true,
     type: 'processing',
     status: { value: 'open', is_force_closed: false },
     completion_percentage: 0,
@@ -105,7 +106,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     internal_notes: 'Nota interna',
     contract_number: 'QUO-0004',
     quote: { id: 4, code: 'QUO-0004', title: 'Fornitura annuale' },
-    contract: { id: 9, code: 'QUO-0004', title: 'Fornitura annuale' },
+    contract: { id: 9, code: 'QUO-0004', title: 'Fornitura annuale', expiry_date: '2027-03-31' },
     task_template: null,
     quote_lines: [
       { id: 11, sort_order: 2, product: { id: 2, code: 'PRD-0002', name: 'Installazione' } },
@@ -136,7 +137,7 @@ beforeEach(() => {
 })
 
 describe('WorkOrderDetailView — detail fields (AC-075)', () => {
-  it('shows number, title, type, status, callback date, contract no. and contract', () => {
+  it('shows number, title, type, status, callback date and contract', () => {
     render(<WorkOrderDetailView workOrder={workOrder()} />)
 
     expect(screen.getByRole('heading', { name: 'Installazione impianto' })).toBeInTheDocument()
@@ -145,8 +146,7 @@ describe('WorkOrderDetailView — detail fields (AC-075)', () => {
     expect(screen.getAllByText('Processing').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Open').length).toBeGreaterThan(0)
     expect(screen.getAllByText(formatDate('2026-09-30')).length).toBeGreaterThan(0)
-    expect(screen.getByText('QUO-0004')).toBeInTheDocument()
-    expect(screen.getByText('Fornitura annuale')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'QUO-0004 — Fornitura annuale' })).toHaveAttribute('href', '/contracts/9')
   })
 
   it('shows the task template name when the commessa was generated from one (spec 0124 D-9)', () => {
@@ -317,7 +317,7 @@ describe('WorkOrderDetailView — related records', () => {
     render(<WorkOrderDetailView workOrder={workOrder({ task_template: { id: 3, name: 'Onboarding cliente' } })} />)
 
     const hrefOf = (name: string) => screen.getByRole('link', { name }).getAttribute('href')
-    expect(hrefOf('Fornitura annuale')).toBe('/contracts/9')
+    expect(hrefOf('QUO-0004 — Fornitura annuale')).toBe('/contracts/9')
     expect(hrefOf('Onboarding cliente')).toBe('/task-templates/3')
     expect(hrefOf('Consulenza')).toBe('/products/1')
     expect(hrefOf('Installazione')).toBe('/products/2')
@@ -349,6 +349,26 @@ describe('WorkOrderDetailView — related records', () => {
 
     expect(screen.getByText('Client registry')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Acme S.p.A.' })).toHaveAttribute('href', '/registries/7')
+  })
+
+  it('shows the contract expiry date read-only in the KPI strip, in place of the contract no.', () => {
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
+
+    expect(screen.getAllByText('Contract expiry')).toHaveLength(1)
+    expect(screen.getByText('Contract expiry').closest('div')).toHaveTextContent(formatDate('2027-03-31'))
+    expect(screen.queryByText('Contract no.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /contract expiry/i })).not.toBeInTheDocument()
+  })
+
+  it('shows the empty placeholder for the contract expiry when the contract has none', () => {
+    render(
+      <WorkOrderDetailView
+        workOrder={workOrder({ contract: { id: 9, code: 'QUO-0004', title: 'Fornitura annuale', expiry_date: null } })}
+      />,
+    )
+
+    expect(screen.getByText('Contract expiry')).toBeInTheDocument()
+    expect(screen.queryByText(formatDate('2027-03-31'))).not.toBeInTheDocument()
   })
 
   it('shows the empty placeholder when the commessa has no client registry', () => {

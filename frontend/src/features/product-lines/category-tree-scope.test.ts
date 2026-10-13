@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  filterCategoriesUnderRoot,
   pickableCategoryIdsFor,
   resolveSimplifiedOfferLine,
   rootCategoryIdFor,
@@ -18,6 +19,7 @@ function node(overrides: Partial<ProductCategoryTreeNode> & { id: number }): Pro
     business_function_id: null,
     requires_quote: false,
     is_selectable: true,
+    is_active: true,
     is_reportable: false,
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
@@ -66,6 +68,7 @@ describe('pickableCategoryIdsFor', () => {
       name: 'Formazione',
       business_function_id: FUNCTION_A,
       is_selectable: false,
+      is_active: true,
       children: [node({ id: 101, name: 'Corso base', parent_id: 100 })],
     }),
     node({
@@ -73,6 +76,7 @@ describe('pickableCategoryIdsFor', () => {
       name: 'Neutral container',
       business_function_id: null,
       is_selectable: false,
+      is_active: true,
       children: [
         node({ id: 201, name: 'Under A', parent_id: 200, business_function_id: FUNCTION_A }),
         node({ id: 202, name: 'Under B', parent_id: 200, business_function_id: FUNCTION_B }),
@@ -136,12 +140,14 @@ describe('selectableIdsUnderRoot', () => {
       id: ROOT,
       name: 'Root',
       is_selectable: false,
+      is_active: true,
       children: [
         node({
           id: CONTAINER,
           name: 'Container',
           parent_id: ROOT,
           is_selectable: false,
+          is_active: true,
           children: [node({ id: LEAF_1, name: 'Leaf 1', parent_id: CONTAINER })],
         }),
         node({ id: LEAF_2, name: 'Leaf 2', parent_id: ROOT }),
@@ -182,12 +188,14 @@ describe('rootCategoryIdFor', () => {
       id: ROOT,
       name: 'Root',
       is_selectable: false,
+      is_active: true,
       children: [
         node({
           id: CONTAINER,
           name: 'Container',
           parent_id: ROOT,
           is_selectable: false,
+          is_active: true,
           children: [node({ id: LEAF, name: 'Leaf', parent_id: CONTAINER })],
         }),
       ],
@@ -205,5 +213,36 @@ describe('rootCategoryIdFor', () => {
 
   it('returns null for an id absent from the tree', () => {
     expect(rootCategoryIdFor(TREE, 999)).toBeNull()
+  })
+})
+
+/** User directive 2026-10-08: the optional filter between a card row's root and its category. */
+describe('filterCategoriesUnderRoot', () => {
+  const FILTER_TREE: ProductCategoryTreeNode[] = [
+    node({
+      id: 1,
+      name: 'Consulenza',
+      is_selectable: false,
+      is_active: true,
+      children: [
+        node({ id: 2, name: 'ISO', parent_id: 1, is_selectable: false, children: [node({ id: 3, name: 'ISO 9001', parent_id: 2 })] }),
+        node({ id: 4, name: 'SOA', parent_id: 1 }),
+        node({
+          id: 5,
+          name: 'Only containers',
+          parent_id: 1,
+          children: [node({ id: 6, name: 'Inner container', parent_id: 5, is_selectable: false })],
+        }),
+      ],
+    }),
+  ]
+
+  it('lists the root\'s direct children with selectable categories beneath them, containers included', () => {
+    expect(filterCategoriesUnderRoot(FILTER_TREE, 1).map((category) => category.id)).toEqual([2])
+  })
+
+  it('is empty for a root with no grouping child or an unknown root', () => {
+    expect(filterCategoriesUnderRoot(FILTER_TREE, 4)).toEqual([])
+    expect(filterCategoriesUnderRoot(FILTER_TREE, 999)).toEqual([])
   })
 })

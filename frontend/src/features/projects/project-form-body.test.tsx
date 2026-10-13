@@ -1,496 +1,242 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { projects as projectsEn } from '@/i18n/locales/en-projects'
+import type { ResourceMeta } from '@/features/authorization/types'
+import { ProjectDetailView } from '@/features/projects/project-detail'
 import { ProjectForm } from '@/features/projects/project-form'
+import {
+  READ_ONLY,
+  clickCreateSave,
+  clickInRow,
+  completeRequiredCreateRows,
+  confirmOpenRow,
+  inputOf,
+  pencilOf,
+  permissionsFor,
+  projectFixture,
+  projectWrapper,
+  typeInRow,
+} from '@/features/projects/project-test-fixtures'
 import type { ProjectDetailWithPermissions } from '@/features/projects/types'
-import type { FieldPermission, ResourceMeta } from '@/features/authorization/types'
 
 /**
- * Spec 0025 PARTE A: `code` is a manual, optional field — an enabled input
- * with a fallback-declaring placeholder in create (AC-010), disabled/
- * read-only showing the saved value in edit (AC-011), with a 422 duplicate
- * mapped onto the field itself (AC-012). Gated by the `code` field
- * permission, exactly like every other `MetaField`-driven control.
+ * The project create form and the in-place detail (spec 0220): default status
+ * preselection (spec 0039 D-3), the manual code (spec 0025 AC-010..012), the
+ * geo hierarchy (spec 0027 BR-4) and the date order (BR-6). REQUIREMENT
+ * CHANGED (spec 0220): rows are closed until opened, and the edit cases run on
+ * the in-place detail.
  */
 
 const createProjectMock = vi.fn()
 const updateProjectMock = vi.fn()
 const fetchProjectNextCodeMock = vi.fn<() => Promise<string>>()
 
-vi.mock('@/features/projects/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/projects/api')>(
-    '@/features/projects/api',
-  )
-  return {
-    ...actual,
-    createProject: (...args: unknown[]) => createProjectMock(...args),
-    updateProject: (...args: unknown[]) => updateProjectMock(...args),
-    fetchProjectNextCode: () => fetchProjectNextCodeMock(),
-  }
-})
+vi.mock('@/features/projects/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/projects/api')>()),
+  createProject: (...args: unknown[]) => createProjectMock(...args),
+  updateProject: (...args: unknown[]) => updateProjectMock(...args),
+  fetchProjectNextCode: () => fetchProjectNextCodeMock(),
+}))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-/**
- * `ProductLinesField`'s row picker resolves an unknown business-function
- * label through this API directly (`use-product-lines-field.ts`'s
- * `resolveLabel`), bypassing the mocked `AsyncPaginatedSelect` component —
- * left un-mocked it fires a real, unauthenticated request (mirrors
- * `opportunity-form-body.test.tsx`'s own `fetchForSelectMock`).
- */
-vi.mock('@/features/for-select/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
-    '@/features/for-select/api',
-  )
-  return {
-    ...actual,
-    fetchForSelect: vi.fn().mockResolvedValue({
-      items: [],
-      pagination: { offset: 0, limit: 25, total: 0 },
-      export_link: null,
-    }),
-  }
-})
-
-const FULL_PERMISSIONS = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
-}
+vi.mock('@/features/for-select/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/for-select/api')>()),
+  fetchForSelect: vi.fn().mockResolvedValue({ items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }),
+}))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-/** Spec 0039 D-3: the create form preselects this resolved "Nuovo" status id. */
 const fetchSystemStatusIdMock = vi.fn<() => Promise<number | null>>()
 vi.mock('@/features/status-reorder/api', () => ({
   fetchSystemStatusId: () => fetchSystemStatusIdMock(),
 }))
 
-/**
- * Stubs every single-select field, keyed by its accessible trigger label
- * (mirrors `registry-form-metadata.test.tsx`). Renders as a button calling
- * `onChange` so create-mode tests can satisfy the required Status select
- * without a real dropdown.
- */
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({
-    value,
-    onChange,
-    disabled,
-    labels,
-  }: {
-    value: number | null
-    onChange: (value: number) => void
-    disabled?: boolean
-    labels: { triggerLabel: string }
-  }) => (
-    <button
-      type="button"
-      disabled={disabled}
-      data-testid={`select-${labels.triggerLabel}`}
-      onClick={() => onChange(3)}
-    >
-      {value ?? ''}
-    </button>
-  ),
+const defaultCountryIdMock = vi.fn<() => number | null>()
+vi.mock('@/features/geo/use-default-country', () => ({
+  useDefaultCountryId: () => defaultCountryIdMock(),
 }))
 
-/**
- * The row's category picker reads the category TREE (user directive
- * 2026-08-03); this suite is about the surrounding form, so it stands in for
- * the picker with a local, clickable double (mirrors the AsyncPaginatedSelect
- * stub above) rather than the shared read-only
- * `product-category-tree-select-stub` (which exposes no "pick" affordance,
- * so it cannot satisfy a full happy-path submit).
- */
-vi.mock('@/features/product-lines/product-category-tree-select', () => ({
-  ProductCategoryTreeSelect: ({
-    value,
-    onChange,
-    scope,
-    disabled,
-    triggerLabel,
-  }: {
-    value: number | null
-    onChange: (id: number) => void
-    scope: { kind: 'root'; rootCategoryId: number | null }
-    disabled?: boolean
-    triggerLabel: string
-  }) => {
-    const isDisabled = Boolean(disabled) || scope.rootCategoryId === null
-    return (
-      <div>
-        <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
-        <span data-testid={`disabled-${triggerLabel}`}>{String(isDisabled)}</span>
-        <button
-          type="button"
-          disabled={isDisabled}
-          data-testid={`select-${triggerLabel}`}
-          onClick={() => onChange(4)}
-        >
-          {`select ${triggerLabel}`}
-        </button>
-      </div>
-    )
-  },
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/projects/project-test-stubs')).StubAsyncSelect,
+}))
+vi.mock('@/features/product-lines/product-category-tree-select', async () => ({
+  ProductCategoryTreeSelect: (await import('@/features/projects/project-test-stubs')).StubTreeSelect,
+}))
+vi.mock('@/features/product-lines/product-category-root-select', async () => ({
+  ProductCategoryRootSelect: (await import('@/features/projects/project-test-stubs')).StubRootSelect,
+}))
+vi.mock('@/features/geo/geo-select', async () => ({
+  GeoSelect: (await import('@/features/projects/project-test-stubs')).StubGeoSelect,
+}))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
-/** The row's FIRST step (spec 0132): same clickable-double style as the category picker above. */
-vi.mock('@/features/product-lines/product-category-root-select', () => ({
-  ProductCategoryRootSelect: ({
-    value,
-    onChange,
-    disabled,
-    triggerLabel,
-  }: {
-    value: number | null
-    onChange: (rootCategoryId: number) => void
-    disabled?: boolean
-    triggerLabel: string
-  }) => (
-    <button
-      type="button"
-      disabled={disabled}
-      data-testid={`select-${triggerLabel}`}
-      onClick={() => onChange(3)}
-    >
-      {value ?? ''}
-    </button>
-  ),
-}))
-
-/**
- * The geo cascade is covered end-to-end by `geo-select.test.tsx`; here it is
- * stubbed to a single button that fills `country_id` (spec 0027 BR-4: the
- * only field this suite's submit flows need to satisfy).
- */
-vi.mock('@/features/geo/geo-select', () => ({
-  GeoSelect: ({
-    value,
-    onChange,
-  }: {
-    value: { country_id: number | null }
-    onChange: (value: {
-      country_id: number | null
-      state_id: number | null
-      province_id: number | null
-      city_id: number | null
-    }) => void
-  }) => (
-    <button
-      type="button"
-      data-testid="geo-select"
-      onClick={() =>
-        onChange({ country_id: 1, state_id: null, province_id: null, city_id: null })
-      }
-    >
-      {value.country_id ?? ''}
-    </button>
-  ),
-}))
-
-/** `code` field-permission fixtures mirroring the spec 0025 contract's create/update ceilings. */
-const CODE_EDITABLE_PERMISSION: FieldPermission = {
-  visible: true,
-  hidden: false,
-  editable: true,
-  readonly: false,
-  required: false,
-  disabled: false,
-}
-const CODE_READONLY_PERMISSION: FieldPermission = {
-  visible: true,
-  hidden: false,
-  editable: false,
-  readonly: true,
-  required: false,
-  disabled: false,
+function renderCreate(source?: ProjectDetailWithPermissions) {
+  const { client, wrapper } = projectWrapper()
+  render(<ProjectForm source={source} onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
+  return client
 }
 
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
-}
-
-function project(
-  overrides: Partial<ProjectDetailWithPermissions> = {},
-): ProjectDetailWithPermissions {
-  return {
-    id: 7,
-    code: 'PRJ-0007',
-    name: 'Acme rollout',
-    description: null,
-    pipeline_status_id: 3,
-    pipeline_status: { id: 3, name: 'Active', color: 'blue' },
-    country_id: 1,
-    country: { id: 1, name: 'Italy' },
-    state_id: null,
-    state: null,
-    province_id: null,
-    province: null,
-    city_id: null,
-    city: null,
-    geo_scope: 'country',
-    product_lines: [{ id: 1, business_function: { id: 2, name: 'Sales' }, product_category: { id: 4, name: 'Widgets' } }],
-    partner_id: null,
-    partner: null,
-    operational_site_id: null,
-    operational_site: null,
-    start_date: '2026-01-01',
-    end_date: '2026-12-31',
-    total_budget: null,
-    target_lead: null,
-    allocated_budget: '0.00',
-    remaining_budget: null,
-    campaigns_count: 0,
-    created_at: '2026-01-01T00:00:00Z',
-    permissions: FULL_PERMISSIONS,
-    ...overrides,
-  }
+function renderDetail(project: ProjectDetailWithPermissions) {
+  const { client, wrapper } = projectWrapper()
+  render(<ProjectDetailView project={project} />, { wrapper })
+  return client
 }
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
-  // `projects` is not yet wired into `en.ts` (pending the wiring lane, see
-  // handoff): registered here so the feature's own copy renders for real.
-  i18n.addResourceBundle('en', 'translation', { projects: projectsEn }, true, true)
 })
 
 beforeEach(() => {
+  vi.restoreAllMocks()
   createProjectMock.mockReset()
   updateProjectMock.mockReset()
   fetchProjectNextCodeMock.mockReset()
   fetchProjectNextCodeMock.mockResolvedValue('PRJ-0100')
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_PERMISSIONS })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
   fetchSystemStatusIdMock.mockReset()
   fetchSystemStatusIdMock.mockResolvedValue(null)
+  defaultCountryIdMock.mockReset()
+  defaultCountryIdMock.mockReturnValue(null)
 })
 
-/**
- * Fills the create-form fields made mandatory alongside name/status/country:
- * the product_lines row 1 (stubbed selects, spec 0094) and the planning
- * dates (in the collapsed Planning & budget section, opened first). `code` is
- * auto-filled by the form from `fetchProjectNextCode`.
- */
-function completeRequiredCreateFields() {
-  fireEvent.click(screen.getByTestId('select-Parent category 1'))
-  fireEvent.click(screen.getByTestId('select-Product category 1'))
-  fireEvent.click(screen.getByRole('button', { name: /Planning & budget/ }))
-  fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-01-01' } })
-  fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-12-31' } })
-}
-
-describe('ProjectForm — default status preselection (spec 0039 D-3, AC-012)', () => {
+describe('Project — default status preselection (spec 0039 D-3, AC-012)', () => {
   it('preselects the resolved "Nuovo" status id on create once it resolves', async () => {
     fetchSystemStatusIdMock.mockResolvedValue(42)
+    renderCreate()
 
-    render(<ProjectForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Status' }))
     await waitFor(() => expect(screen.getByTestId('select-Status')).toHaveTextContent('42'))
   })
 
-  it('does not preselect in edit mode', async () => {
+  it('does not preselect on the detail', () => {
     fetchSystemStatusIdMock.mockResolvedValue(42)
+    renderDetail(projectFixture())
 
-    render(
-      <ProjectForm mode={{ type: 'edit', project: project() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    await waitFor(() => expect(screen.getByTestId('select-Status')).toBeInTheDocument())
+    fireEvent.click(pencilOf('Status'))
     expect(screen.getByTestId('select-Status')).toHaveTextContent('3')
     expect(fetchSystemStatusIdMock).not.toHaveBeenCalled()
   })
 })
 
-describe('ProjectForm — manual code (spec 0025 AC-010/AC-011)', () => {
-  it('auto-fills the enabled, required code field with the next sequential suggestion on create (AC-010)', async () => {
+describe('Project — manual code (spec 0025 AC-010/AC-011)', () => {
+  it('starts the create code row with the next sequential suggestion (AC-010)', async () => {
     fetchProjectNextCodeMock.mockResolvedValue('PRJ-0042')
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: { ...FULL_PERMISSIONS, fields: { code: CODE_EDITABLE_PERMISSION } },
-    })
+    renderCreate()
 
-    render(<ProjectForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Code' })).toBeInTheDocument())
-    const code = screen.getByRole('textbox', { name: 'Code' }) as HTMLInputElement
-    expect(code).not.toBeDisabled()
-    expect(code.value).toBe('PRJ-0042')
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Code' }))
+    expect(inputOf('Code')).toHaveValue('PRJ-0042')
   })
 
-  it('sends the trimmed manual code on create submit when the user fills it (AC-010)', async () => {
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: { ...FULL_PERMISSIONS, fields: { code: CODE_EDITABLE_PERMISSION } },
-    })
-    createProjectMock.mockResolvedValue(project({ code: 'ACME-2026' }))
+  it('sends the trimmed manual code on create (AC-010)', async () => {
+    createProjectMock.mockResolvedValue(projectFixture({ code: 'ACME-2026' }))
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    render(<ProjectForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Code' })).toBeInTheDocument())
-    fireEvent.change(screen.getByRole('textbox', { name: 'Code' }), { target: { value: '  ACME-2026  ' } })
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Acme rollout' } })
-    fireEvent.click(screen.getByTestId('select-Status'))
-    fireEvent.click(screen.getByTestId('geo-select'))
-    completeRequiredCreateFields()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    typeInRow('Code', '  ACME-2026  ')
+    completeRequiredCreateRows()
+    clickCreateSave()
 
     await waitFor(() => expect(createProjectMock).toHaveBeenCalledTimes(1))
-    const payload = createProjectMock.mock.calls[0][0] as Record<string, unknown>
-    expect(payload.code).toBe('ACME-2026')
+    expect(createProjectMock.mock.calls[0][0].code).toBe('ACME-2026')
   })
 
-  it('shows the saved code value, disabled/read-only, on edit (AC-011)', () => {
-    render(
-      <ProjectForm
-        mode={{ type: 'edit', project: project({ permissions: { ...FULL_PERMISSIONS, fields: { code: CODE_READONLY_PERMISSION } } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('shows the saved code without a pencil on the detail and never sends it (AC-011)', async () => {
+    updateProjectMock.mockResolvedValue(projectFixture({ name: 'Renamed rollout' }))
+    renderDetail(projectFixture())
 
-    const code = screen.getByRole('textbox', { name: 'Code' }) as HTMLInputElement
-    expect(code).toBeDisabled()
-    expect(code).toHaveAttribute('readonly')
-    expect(code.value).toBe('PRJ-0007')
-  })
+    expect(screen.queryByRole('button', { name: 'Edit Code' })).not.toBeInTheDocument()
+    typeInRow('Name', 'Renamed rollout', 'Save')
 
-  it('never sends a code field on edit submit (AC-011)', async () => {
-    updateProjectMock.mockResolvedValue(project({ name: 'Renamed rollout' }))
-
-    render(
-      <ProjectForm
-        mode={{ type: 'edit', project: project({ permissions: { ...FULL_PERMISSIONS, fields: { code: CODE_READONLY_PERMISSION } } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Renamed rollout' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateProjectMock).toHaveBeenCalledTimes(1))
-    const payload = updateProjectMock.mock.calls[0][1] as Record<string, unknown>
-    expect(payload).not.toHaveProperty('code')
-    expect(payload).toEqual({ name: 'Renamed rollout' })
+    await waitFor(() => expect(updateProjectMock).toHaveBeenCalledWith(7, { name: 'Renamed rollout' }))
   })
 })
 
-describe('ProjectForm — 422 duplicate code (spec 0025 AC-012)', () => {
-  it('maps a 422 on the code field onto the field itself, not only a toast', async () => {
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: { ...FULL_PERMISSIONS, fields: { code: CODE_EDITABLE_PERMISSION } },
-    })
+describe('Project — 422 duplicate code (spec 0025 AC-012)', () => {
+  it('maps a 422 on the code onto its row, not only a toast', async () => {
     createProjectMock.mockRejectedValue(
-      new AxiosError(
-        'Unprocessable',
-        '422',
-        undefined,
-        undefined,
-        {
-          status: 422,
-          data: { success: false, message: 'Validation failed.', errors: { code: ['The code has already been taken.'] } },
-        } as never,
-      ),
+      new AxiosError('Unprocessable', '422', undefined, undefined, {
+        status: 422,
+        data: { success: false, message: 'Validation failed.', errors: { code: ['The code has already been taken.'] } },
+      } as never),
     )
     vi.spyOn(axios, 'isAxiosError').mockReturnValue(true)
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    render(<ProjectForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    completeRequiredCreateRows()
+    clickCreateSave()
 
-    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Code' })).toBeInTheDocument())
-    fireEvent.change(screen.getByRole('textbox', { name: 'Code' }), { target: { value: 'ACME-2026' } })
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Acme rollout' } })
-    fireEvent.click(screen.getByTestId('select-Status'))
-    fireEvent.click(screen.getByTestId('geo-select'))
-    completeRequiredCreateFields()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() =>
-      expect(screen.getByText('The code has already been taken.')).toBeInTheDocument(),
-    )
+    expect(await screen.findByText('The code has already been taken.')).toBeInTheDocument()
     expect(screen.queryByText('Something went wrong. Please try again.')).not.toBeInTheDocument()
-
-    vi.restoreAllMocks()
   })
 })
 
-describe('ProjectForm — geo hierarchy (spec 0027 BR-4/AC-010)', () => {
-  it('blocks the submit with the required message when no country is chosen', async () => {
-    render(<ProjectForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+describe('Project — geo hierarchy (spec 0027 BR-4/AC-010)', () => {
+  it('refuses the save with the required message when no country is chosen', async () => {
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    await waitFor(() => expect(screen.getByLabelText('Name')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Acme rollout' } })
-    fireEvent.click(screen.getByTestId('select-Status'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    typeInRow('Name', 'Acme rollout')
+    clickCreateSave()
 
-    await waitFor(() => expect(screen.getByText('Country is required.')).toBeInTheDocument())
+    expect(await screen.findByText('Country is required.')).toBeInTheDocument()
     expect(createProjectMock).not.toHaveBeenCalled()
   })
 
-  it('submits once a country is chosen', async () => {
-    createProjectMock.mockResolvedValue(project())
+  it('sends the chosen country on create', async () => {
+    createProjectMock.mockResolvedValue(projectFixture())
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    render(<ProjectForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByLabelText('Name')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Acme rollout' } })
-    fireEvent.click(screen.getByTestId('select-Status'))
-    fireEvent.click(screen.getByTestId('geo-select'))
-    completeRequiredCreateFields()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    completeRequiredCreateRows()
+    clickCreateSave()
 
     await waitFor(() => expect(createProjectMock).toHaveBeenCalledTimes(1))
-    const payload = createProjectMock.mock.calls[0][0] as Record<string, unknown>
-    expect(payload.country_id).toBe(1)
+    expect(createProjectMock.mock.calls[0][0].country_id).toBe(1)
+  })
+
+  it('takes the national default country on create without opening the geography row', async () => {
+    defaultCountryIdMock.mockReturnValue(380)
+    createProjectMock.mockResolvedValue(projectFixture())
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
+
+    typeInRow('Name', 'Acme rollout')
+    clickInRow('Status', 'select-Status')
+    fireEvent.click(pencilOf('Product lines'))
+    fireEvent.click(screen.getByTestId('select-Parent category 1'))
+    fireEvent.click(screen.getByTestId('select-Product category 1'))
+    confirmOpenRow('Done')
+    typeInRow('Start date', '2026-01-01')
+    clickCreateSave()
+
+    await waitFor(() => expect(createProjectMock).toHaveBeenCalledTimes(1))
+    expect(createProjectMock.mock.calls[0][0].country_id).toBe(380)
+  })
+
+  it('edits the whole cascade as one row on the detail, all four levels gated together', () => {
+    renderDetail(projectFixture({ permissions: permissionsFor({ code: READ_ONLY, city_id: READ_ONLY }) }))
+
+    expect(screen.queryByRole('button', { name: 'Edit Geography' })).not.toBeInTheDocument()
   })
 })
 
-describe('ProjectForm — end_date validation (BR-6)', () => {
-  it('rejects an end_date earlier than the start_date', async () => {
-    render(
-      <ProjectForm mode={{ type: 'edit', project: project() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+describe('Project — end_date validation (BR-6)', () => {
+  it('rejects on the detail an end_date earlier than the start_date', async () => {
+    renderDetail(projectFixture())
 
-    // Planning & budget is a secondary section, collapsed by default (graphical refactor): open it first.
-    fireEvent.click(screen.getByRole('button', { name: /Planning & budget/ }))
+    typeInRow('End date', '2025-06-01', 'Save')
 
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-06-01' } })
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-01-01' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() =>
-      expect(screen.getByText('End date must not be earlier than the start date.')).toBeInTheDocument(),
-    )
+    expect(await screen.findByText('End date must not be earlier than the start date.')).toBeInTheDocument()
     expect(updateProjectMock).not.toHaveBeenCalled()
   })
 })
-
-// Sede (operational site) and product_lines (spec 0094) coverage lives in
-// `project-form-product-lines.test.tsx` (engineering.md §6 size split).

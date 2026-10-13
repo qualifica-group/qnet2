@@ -16,8 +16,8 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Creare, modificare ed eliminare',
       blocks: [
-        { type: 'steps', items: ['Apri **Configurazione › Tag** e premi **Nuovo tag**.', 'Scrivi il **Nome**.', 'Premi **Salva**.'] },
-        { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza** ed **Elimina**, se il tuo ruolo lo consente. Per modificare apri la scheda con **Visualizza** e premi **Modifica**.' },
+        { type: 'steps', items: ['Apri **Configurazione › Tag** e premi **Nuovo tag**.', 'Si apre la scheda con le righe chiuse: premi la matita (o il valore) su **Nome**, scrivilo e premi **Fatto** (**Ripristina** riporta la riga com’era).', 'Premi **Salva**.'] },
+        { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza** ed **Elimina**, se il tuo ruolo lo consente. Per modificare non c’è un modulo a parte: apri la scheda con **Visualizza**, premi la matita sulla riga, cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com’era.' },
         { type: 'note', text: 'Se un tag è già associato ad almeno un record, non puoi eliminarlo: un messaggio ne spiega il motivo.' },
       ],
     },

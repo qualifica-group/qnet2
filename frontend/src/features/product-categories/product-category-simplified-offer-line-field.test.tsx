@@ -1,9 +1,15 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { ProductCategoryForm } from '@/features/product-categories/product-category-form'
+import { ProductCategoryDetailView } from '@/features/product-categories/product-category-detail'
+import {
+  category,
+  categoryWrapper,
+  pencilOf,
+  permissionsFor,
+  saveRow,
+  treeNode,
+} from '@/features/product-categories/product-category-test-fixtures'
 import { indexCategoryTree } from '@/features/product-categories/business-function-inheritance'
 import {
   resolveInheritedSimplifiedOfferLine,
@@ -13,7 +19,7 @@ import type {
   ProductCategoryDetailWithPermissions,
   ProductCategoryTreeNode,
 } from '@/features/product-categories/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
+import type { ResourceMeta } from '@/features/authorization/types'
 
 /**
  * `simplified_offer_line` (spec 0114, 0188): a ROOT declares it itself (and
@@ -27,14 +33,15 @@ const createProductCategoryMock = vi.fn()
 const updateProductCategoryMock = vi.fn()
 const fetchProductCategoryTreeMock = vi.fn<() => Promise<ProductCategoryTreeNode[]>>()
 
-vi.mock('@/features/product-categories/api', () => ({
+vi.mock('@/features/product-categories/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/product-categories/api')>()),
   createProductCategory: (...args: unknown[]) => createProductCategoryMock(...args),
   updateProductCategory: (...args: unknown[]) => updateProductCategoryMock(...args),
   fetchProductCategoryTree: () => fetchProductCategoryTreeMock(),
   fetchEffectiveAttributes: () => Promise.resolve([]),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
@@ -64,91 +71,12 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
-const FULL_ACCESS: ResourcePermissions['resource'] = {
-  view: true,
-  create: true,
-  update: true,
-  delete: true,
-  export: true,
-  import: true,
-}
-
-function permissivePermissions(): ResourcePermissions {
-  return { resource: FULL_ACCESS, fields: {}, actions: {} }
-}
-
 function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
+  return categoryWrapper().wrapper
 }
 
-function treeNode(overrides: Partial<ProductCategoryTreeNode> = {}): ProductCategoryTreeNode {
-  return {
-    id: 1,
-    name: 'Node',
-    parent_id: null,
-    children: [],
-    attributes_count: 0,
-    products_count: 0,
-    business_function_id: null,
-    requires_quote: false,
-    is_selectable: true,
-    is_reportable: false,
-    management_mode: 'multiple',
-    single_quote_per_opportunity: false,
-    generates_contract: true,
-    simplified_offer_line: false,
-    simplified_offer_line_override: null,
-    ...overrides,
-  }
-}
-
-function category(
-  overrides: Partial<ProductCategoryDetailWithPermissions> = {},
-): ProductCategoryDetailWithPermissions {
-  return {
-    id: 4,
-    name: 'Laptops',
-    parent_id: null,
-    parent: null,
-    inherits_product_attributes: true,
-    inherits_quote_attributes: true,
-    inherits_work_order_attributes: true,
-    description: null,
-    attributes: [],
-    inherited_attributes: [],
-    created_at: '2026-01-01T00:00:00Z',
-    business_function_id: null,
-    business_function: null,
-    effective_business_function: null,
-    requires_quote: false,
-    requires_quote_source_category: null,
-    is_selectable: true,
-    is_reportable: false,
-    effective_is_reportable: false,
-    is_reportable_source_category: null,
-    report_columns: null,
-    effective_report_columns: [],
-    report_columns_source_category: null,
-    inherited_report_columns: [],
-    inherited_report_columns_source_category: null,
-    management_mode: 'multiple',
-    management_mode_source_category: null,
-    single_quote_per_opportunity: false,
-    single_quote_per_opportunity_source_category: null,
-    generates_contract: true,
-    generates_contract_source_category: null,
-    simplified_offer_line: false,
-    simplified_offer_line_override: null,
-    simplified_offer_line_source_category: null,
-    manager_labels: {},
-    inherits_manager_labels: true,
-    inherited_manager_labels: {},
-    permissions: permissivePermissions(),
-    ...overrides,
-  }
+function renderDetail(detail: ProductCategoryDetailWithPermissions) {
+  return render(<ProductCategoryDetailView category={detail} />, { wrapper: wrapper() })
 }
 
 /** The rule tile hosting a switch: badges are asserted there, not page-wide (other tiles show their own chips). */
@@ -173,7 +101,7 @@ beforeEach(() => {
   fetchProductCategoryTreeMock.mockReset()
   fetchProductCategoryTreeMock.mockResolvedValue([])
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissivePermissions() })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
 })
 
 describe('resolveInheritedSimplifiedOfferLine', () => {
@@ -240,7 +168,7 @@ const TRAINING_TREE = [
   }),
 ]
 
-function childCategory(overrides: Partial<ProductCategoryDetailWithPermissions> = {}) {
+function trainingChild(overrides: Partial<ProductCategoryDetailWithPermissions> = {}) {
   return category({
     parent_id: 1,
     parent: { id: 1, name: 'Training' },
@@ -252,20 +180,18 @@ function childCategory(overrides: Partial<ProductCategoryDetailWithPermissions> 
 }
 
 async function saveEdit() {
-  fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+  saveRow()
   await waitFor(() => expect(updateProductCategoryMock).toHaveBeenCalledTimes(1))
   return updateProductCategoryMock.mock.calls[0][1]
 }
 
-describe('ProductCategoryForm — simplified_offer_line field', () => {
+describe('simplified_offer_line row (spec 0229)', () => {
   it('AC-013 root: editable, and saving sends the flag, never the override', async () => {
     updateProductCategoryMock.mockResolvedValue(category({ simplified_offer_line: true }))
 
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(category())
 
+    fireEvent.click(pencilOf('simplifiedOfferLine') as HTMLElement)
     const simplifiedSwitch = await findSimplifiedOfferLineSwitch()
     expect(simplifiedSwitch).not.toBeDisabled()
     expect(simplifiedSwitch).not.toBeChecked()
@@ -281,30 +207,27 @@ describe('ProductCategoryForm — simplified_offer_line field', () => {
     expect(payload).not.toHaveProperty('simplified_offer_line_override')
   })
 
-  it('AC-012 child: editable, shows the effective value and the inherited badge', async () => {
+  it('AC-012 child: the row shows the effective value and the inherited badge, and is editable', async () => {
     fetchProductCategoryTreeMock.mockResolvedValue(TRAINING_TREE)
 
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: childCategory() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(trainingChild())
 
+    expect(screen.getByText('Inherited from Training')).toBeInTheDocument()
+    expect(screen.queryByText('Forced')).not.toBeInTheDocument()
+    fireEvent.click(pencilOf('simplifiedOfferLine') as HTMLElement)
     const simplifiedSwitch = await findSimplifiedOfferLineSwitch()
     await waitFor(() => expect(simplifiedSwitch).not.toBeDisabled())
     expect(simplifiedSwitch).toBeChecked()
     expect(within(tileOf(simplifiedSwitch)).getByText('Inherited from Training')).toBeInTheDocument()
-    expect(within(tileOf(simplifiedSwitch)).queryByText('Forced')).not.toBeInTheDocument()
   })
 
   it('AC-012 child: switching off sends override false, switching back on sends null', async () => {
     fetchProductCategoryTreeMock.mockResolvedValue(TRAINING_TREE)
-    updateProductCategoryMock.mockResolvedValue(childCategory())
+    updateProductCategoryMock.mockResolvedValue(trainingChild())
 
-    const { unmount } = render(
-      <ProductCategoryForm mode={{ type: 'edit', category: childCategory() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    const { unmount } = renderDetail(trainingChild())
 
+    fireEvent.click(pencilOf('simplifiedOfferLine') as HTMLElement)
     const simplifiedSwitch = await findSimplifiedOfferLineSwitch()
     await waitFor(() => expect(simplifiedSwitch).not.toBeDisabled())
     fireEvent.click(simplifiedSwitch)
@@ -315,22 +238,15 @@ describe('ProductCategoryForm — simplified_offer_line field', () => {
     unmount()
     updateProductCategoryMock.mockClear()
 
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: childCategory({
-            simplified_offer_line: false,
-            simplified_offer_line_override: false,
-            simplified_offer_line_source_category: null,
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
+    renderDetail(
+      trainingChild({
+        simplified_offer_line: false,
+        simplified_offer_line_override: false,
+        simplified_offer_line_source_category: null,
+      }),
     )
 
+    fireEvent.click(pencilOf('simplifiedOfferLine') as HTMLElement)
     const forcedSwitch = await findSimplifiedOfferLineSwitch()
     await waitFor(() => expect(forcedSwitch).not.toBeDisabled())
     expect(forcedSwitch).not.toBeChecked()
@@ -343,10 +259,9 @@ describe('ProductCategoryForm — simplified_offer_line field', () => {
   })
 
   it('explains the rule behind the (i) glyph', async () => {
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(category())
+
+    fireEvent.click(pencilOf('simplifiedOfferLine') as HTMLElement)
 
     expect(
       await screen.findByRole('button', { name: 'More info about Simplified offer line' }),

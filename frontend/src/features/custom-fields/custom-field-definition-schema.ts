@@ -93,8 +93,8 @@ function baseFields(t: TFunction) {
   }
 }
 
-/** Create schema. Edit reuses the exact same shape (spec: `sometimes` PATCH, diffed client-side). */
-export function buildCreateCustomFieldDefinitionSchema(t: TFunction) {
+/** One schema for the create form and the detail's rows (a row validates only its own fields, the PATCH is diffed client-side). */
+export function buildCustomFieldDefinitionSchema(t: TFunction) {
   const messages = schemaMessages(t)
   return z.object({ ...baseFields(t) }).superRefine((values, ctx) => {
     if (values.type === 'enum') {
@@ -109,10 +109,6 @@ export function buildCreateCustomFieldDefinitionSchema(t: TFunction) {
   })
 }
 
-export function buildUpdateCustomFieldDefinitionSchema(t: TFunction) {
-  return buildCreateCustomFieldDefinitionSchema(t)
-}
-
 export type CustomFieldDefinitionFormValues = z.infer<
-  ReturnType<typeof buildCreateCustomFieldDefinitionSchema>
+  ReturnType<typeof buildCustomFieldDefinitionSchema>
 >

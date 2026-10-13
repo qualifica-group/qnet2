@@ -17,6 +17,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'edit-in-place',
+      title: 'Modificare un workflow',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Non c\'è una pagina di modifica: apri il workflow dall\'elenco e modifica direttamente nel dettaglio. Passa il mouse su **Nome**, **Attivo**, **Criteri** o **Stati** (su touch la matita è sempre visibile) e clicca la matita: compare l\'editor di quella riga, che confermi con **Salva** o annulli con **Annulla**. Si modifica una riga alla volta e il salvataggio riguarda solo quella riga. Le matite compaiono solo se hai il permesso di modifica.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Con **Nuovo workflow** si apre lo stesso dettaglio in creazione: **Nome** e **Attivo** sono righe da confermare con **Fatto** (o **Ripristina**), mentre gli editor di **Criteri** e **Stati** sono già aperti. Il workflow nasce solo con **Salva**; se esci prima, QNet chiede conferma.',
+        },
+      ],
+    },
+    {
       id: 'criteria',
       title: 'Criteri',
       blocks: [

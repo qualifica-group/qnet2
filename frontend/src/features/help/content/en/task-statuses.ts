@@ -20,12 +20,26 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'managing',
+      title: 'Create and edit',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Press **New status**.',
+            'The record opens with its rows closed: on each row press the pencil (or the value), fill it in and press **Done**; **Revert** puts the row back as it was. Then press **Save**.',
+            'There is no separate edit form: open the record with **View**, press the pencil on the row, change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'system-statuses',
       title: 'System statuses and deactivation',
       blocks: [
         {
           type: 'paragraph',
-          text: 'The three system statuses (one pinned first, two pinned last) only allow changing the name, color, icon and completion percentage: every other field stays fixed.',
+          text: 'The three system statuses (one pinned first, two pinned last) only allow changing the name, color, icon and completion percentage: every other field stays fixed and its row shows no pencil.',
         },
         {
           type: 'note',

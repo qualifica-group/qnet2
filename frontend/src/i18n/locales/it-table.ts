@@ -5,10 +5,11 @@
  * `t('table.xxx')` call sites are unaffected.
  */
 export const table = {
-  // The default hidden `id` column injected into every table
+  // The default hidden `id` (and, where the table has one, `old_id`) columns injected into every table
   // (AbstractTableDefinition / InjectsDefaultIdColumn).
   columns: {
     id: 'ID',
+    old_id: 'ID legacy',
   },
   actionsHeader: 'Azioni',
   rowActions: 'Azioni riga',
@@ -128,7 +129,11 @@ export const table = {
     remove: 'Rimuovi {{name}}',
     back: 'Torna alle categorie genitore',
     rootCategoryStep: 'Passo 1: scegli la categoria genitore.',
-    categoryStep: 'Passo 2: scegli una categoria prodotto di {{name}}.',
+    /** Passo corrente in coda al percorso dell'editor (radice › filtro › passo). */
+    categoryStep: 'Categoria prodotto',
+    filterStep: 'Gruppo intermedio',
+    path: 'Percorso della scelta',
+    clearFilter: 'Rimuovi il filtro {{name}}',
     singleModeReached:
       'Questa categoria prodotto è gestita a riga singola: la categoria che scegli sostituisce quella presente.',
     categorySearch: 'Cerca categorie prodotto…',

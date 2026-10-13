@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Anagrafica cliente, Contratto, Società e sedi derivano dall\'offerta; Stato e Completamento sono calcolati dai task.',
+          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Anagrafica cliente, Contratto (codice e titolo), Società e sedi derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Completamento sono calcolati dai task.',
         },
         {
           type: 'note',
@@ -46,7 +46,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "La **Chiusura forzata** resta un'azione di riga (chiede il motivo), non una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Stato, Completamento, Creata il e Aggiornata il.",
+          text: "La **Chiusura forzata** resta un'azione di riga (chiede il motivo), non una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Lo stesso vale per la colonna **Scadenza contratto**, la data di scadenza del contratto da cui nasce la commessa (filtro per data, vuota se il contratto non ha una scadenza). Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Scadenza contratto, Stato, Completamento, Creata il e Aggiornata il.",
         },
       ],
     },
@@ -83,6 +83,20 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'Nella sezione **Offerta e righe prodotto** scegli prima l\'offerta, poi le sue righe: le Informazioni aggiuntive compaiono in fondo appena le righe le prevedono. **Salva** in alto (o in fondo) controlla tutti i campi e crea la commessa; gli errori compaiono sotto le righe da correggere. Uscendo senza salvare ti viene chiesta conferma.',
+        },
+      ],
+    },
+    {
+      id: 'automatic-title',
+      title: 'Titolo automatico',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Il **Titolo** della commessa è facoltativo. Se lo lasci vuoto, la commessa prende il titolo automatico **codice - prodotti delle sue righe** (es. COM-0042 - ISO 9001 + SOA), che segue le righe quando cambiano.',
+        },
+        {
+          type: 'note',
+          text: 'Se scrivi un titolo tuo, resta il tuo e non viene più ricalcolato. Per tornare all\'automatico **svuota il campo** e salva. Le commesse già esistenti mantengono il titolo che hanno. Lo stesso vale per il dialogo **Programma** del contratto.',
         },
       ],
     },

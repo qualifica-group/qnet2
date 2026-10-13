@@ -55,6 +55,7 @@ class ProductCategoryService
                 'description' => $data->description,
                 'business_function_id' => $data->businessFunctionId,
                 'is_selectable' => $data->isSelectable,
+                'is_active' => $data->isActive,
                 'is_reportable' => $data->isReportable,
                 'report_columns' => $this->normalizeReportColumns($data->reportColumns),
                 'manager_labels' => $this->normalizeManagerLabels($data->managerLabels),

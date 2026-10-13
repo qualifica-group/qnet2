@@ -45,13 +45,20 @@ export async function createCampaign(payload: CreateCampaignPayload): Promise<Ca
   return data.data
 }
 
-/** Partially updates a campaign (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a campaign (PATCH). Returns the updated resource with the
+ * actor's re-evaluated permissions, so the in-place detail (spec 0221) keeps
+ * gating its rows on fresh values.
+ */
 export async function updateCampaign(
   id: number,
   payload: UpdateCampaignPayload,
-): Promise<CampaignDetail> {
-  const { data } = await apiClient.patch<ApiResponse<CampaignDetail>>(`/campaigns/${id}`, payload)
-  return data.data
+): Promise<CampaignDetailWithPermissions> {
+  const { data } = await apiClient.patch<ApiResponseWithPermissions<CampaignDetail, ResourcePermissions>>(
+    `/campaigns/${id}`,
+    payload,
+  )
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a campaign. Backend responds 204 with no body. */

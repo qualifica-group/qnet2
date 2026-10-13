@@ -1,8 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { UserDetailView } from '@/features/users/user-detail'
+import { userWrapper } from '@/features/users/user-test-fixtures'
 import type { EmploymentDetail, UserDetailWithPermissions } from '@/features/users/types'
 
 /**
@@ -17,9 +17,11 @@ import type { EmploymentDetail, UserDetailWithPermissions } from '@/features/use
 const fetchUserMock = vi.fn()
 const activityLogSectionMock = vi.fn()
 
-vi.mock('@/features/users/api', () => ({
+vi.mock('@/features/users/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/users/api')>()),
   fetchUser: (...args: unknown[]) => fetchUserMock(...args),
 }))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
 
 vi.mock('@/features/activity-log/activity-log-section', () => ({
   ActivityLogSection: (props: { resource: string; id: number }) => {
@@ -79,12 +81,8 @@ function employment(
 
 function renderDetail(userDetail: UserDetailWithPermissions) {
   fetchUserMock.mockResolvedValue(userDetail)
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  render(
-    <QueryClientProvider client={client}>
-      <UserDetailView userId={userDetail.id} />
-    </QueryClientProvider>,
-  )
+  const { wrapper } = userWrapper()
+  render(<UserDetailView userId={userDetail.id} />, { wrapper })
 }
 
 beforeAll(async () => {
@@ -165,12 +163,15 @@ describe('UserDetailView — competence pairs (spec 0111 AC-025)', () => {
     expect(pairs[0]).toHaveTextContent('All categories')
   })
 
+  // REQUIREMENT CHANGED (spec 0222 D-4): the flag is its own row, and the
+  // competence rows are hidden while it is on; the KPI strip says "All categories".
   it('spec 0129 AC-025 — shows "all categories" instead of the list when the flag is active', async () => {
     renderDetail(user({ employment: employment([], true) }))
 
-    await waitFor(() => expect(screen.getByText('Competence')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Competent for all categories')).toBeInTheDocument())
     expect(screen.queryAllByRole('listitem')).toHaveLength(0)
-    expect(screen.getByText('Competence').closest('div')).toHaveTextContent('All categories')
+    expect(screen.queryByText('Competence')).not.toBeInTheDocument()
+    expect(screen.getByText('All categories')).toBeInTheDocument()
   })
 })
 

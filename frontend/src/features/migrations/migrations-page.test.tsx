@@ -6,6 +6,7 @@ import i18n from '@/i18n'
 import MigrationsPage from '@/features/migrations/migrations-page'
 import type {
   MigrationColumnsTemplate,
+  MigrationLastRun,
   MigrationPreviewPage,
   MigrationSourceSummary,
 } from '@/features/migrations/types'
@@ -47,10 +48,22 @@ vi.mock('@/routes/breadcrumbs', () => ({
   AppBreadcrumbs: () => null,
 }))
 
+const USERS_RUN: MigrationLastRun = {
+  id: 7,
+  source: 'users',
+  status: 'completed',
+  total_rows: 5,
+  created_rows: 5,
+  skipped_rows: 0,
+  failed_rows: 0,
+  has_report: false,
+  created_at: '2026-10-12T09:00:00.000000Z',
+}
+
 const SOURCES: MigrationSourceSummary[] = [
-  { key: 'roles', label: 'Roles' },
-  { key: 'users', label: 'Users' },
-  { key: 'company-sites', label: 'Company sites' },
+  { key: 'roles', label: 'Roles', phase: 1, last_run: null, migrated_at: null },
+  { key: 'users', label: 'Users', phase: 2, last_run: USERS_RUN, migrated_at: '2026-10-12T09:01:00.000000Z' },
+  { key: 'company-sites', label: 'Company sites', phase: 2, last_run: null, migrated_at: null },
 ]
 
 function previewPage(overrides: Partial<MigrationPreviewPage> = {}): MigrationPreviewPage {
@@ -63,6 +76,7 @@ function previewPage(overrides: Partial<MigrationPreviewPage> = {}): MigrationPr
 
 function columnsTemplate(overrides: Partial<MigrationColumnsTemplate> = {}): MigrationColumnsTemplate {
   return {
+    dependencies: [],
     columns: [{ id: 'name', label: 'Name', type: 'string' }],
     request: {
       method: 'GET',
@@ -114,6 +128,49 @@ async function selectRolesSource() {
 }
 
 describe('MigrationsPage', () => {
+  it('shows every source with its migration state, grouped by phase, and how many are migrated', async () => {
+    render(<MigrationsPage />, { wrapper: wrapper() })
+
+    expect(await screen.findByText('1 of 3 sources migrated')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Phase 1' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Phase 2' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Users.*Migrated/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Roles.*Not migrated/ })).toBeInTheDocument()
+  })
+
+  it('selecting a source in the overview opens what it needs, naming the required sources still missing', async () => {
+    fetchMigrationColumnsMock.mockResolvedValue(
+      columnsTemplate({
+        dependencies: [
+          { source: 'roles', required: true },
+          { source: 'company-sites', required: false },
+        ],
+      }),
+    )
+    render(<MigrationsPage />, { wrapper: wrapper() })
+
+    fireEvent.click(await screen.findByRole('button', { name: /Users.*Migrated/ }))
+
+    expect(await screen.findByText('What it takes to migrate well')).toBeInTheDocument()
+    expect(fetchMigrationColumnsMock).toHaveBeenCalledWith('users')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Required sources missing: Roles.')
+    const dependencies = screen.getByRole('list', { name: 'Import first' })
+    expect(dependencies).toHaveTextContent('Roles')
+    expect(dependencies).toHaveTextContent('Required')
+    expect(dependencies).toHaveTextContent('Company sites')
+    expect(dependencies).toHaveTextContent('Recommended')
+    expect(screen.getByText(/Email, first name and last name are required/)).toBeInTheDocument()
+  })
+
+  it('says when a source needs no other source first', async () => {
+    render(<MigrationsPage />, { wrapper: wrapper() })
+
+    await selectRolesSource()
+
+    expect(await screen.findByText('No source to import first.')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('translates the company-sites option in the Italian source select', async () => {
     await i18n.changeLanguage('it')
 

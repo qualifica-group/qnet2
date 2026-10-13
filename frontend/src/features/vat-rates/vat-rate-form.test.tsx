@@ -7,12 +7,16 @@ import { VatRateForm } from '@/features/vat-rates/vat-rate-form'
 import type { VatRateDetailWithPermissions } from '@/features/vat-rates/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 
+/**
+ * Wave 3 of the "no edit pages" plan (spec 0236): the form is create-only, a
+ * replica of the detail with its rows closed; the in-place edits live in
+ * `vat-rate-detail.test.tsx`.
+ */
+
 const createVatRateMock = vi.fn()
-const updateVatRateMock = vi.fn()
 
 vi.mock('@/features/vat-rates/api', () => ({
   createVatRate: (...args: unknown[]) => createVatRateMock(...args),
-  updateVatRate: (...args: unknown[]) => updateVatRateMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
@@ -28,13 +32,9 @@ const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   actions: {},
 }
 
-vi.mock('@/features/vat-rates/use-vat-rate-form-meta', () => ({
-  useVatRateFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
-}))
-
-// `useVatRateForm` reads `/meta/vat-rates` (spec 0021) to build the dynamic
-// custom-fields schema; this suite has no custom fields to exercise (covered
-// by `vat-rate-form-custom-fields.test.tsx`), so it resolves to an empty catalogue.
+// The form wrapper reads `/meta/vat-rates` (create-context permissions) and the
+// custom-field definitions from the same call; this suite has no custom
+// fields to exercise (covered by `vat-rate-form-custom-fields.test.tsx`).
 vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => Promise.resolve({ fields: [], permissions: FULL_ACCESS_PERMISSIONS }),
 }))
@@ -46,16 +46,24 @@ function wrapper() {
   )
 }
 
-function vatRate(overrides: Partial<VatRateDetailWithPermissions> = {}): VatRateDetailWithPermissions {
+function vatRate(): VatRateDetailWithPermissions {
   return {
     id: 9,
     name: 'Standard',
     rate: 22,
     created_at: null as unknown as string,
     permissions: FULL_ACCESS_PERMISSIONS,
-    ...overrides,
   }
 }
+
+/** Opens a closed row through its pencil. */
+async function openRow(key: string) {
+  fireEvent.click(
+    await screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t(key) }) }),
+  )
+}
+
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -63,16 +71,15 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createVatRateMock.mockReset()
-  updateVatRateMock.mockReset()
 })
 
-describe('VatRateForm — create/edit', () => {
-  it('renders the name and rate fields in create mode', () => {
-    render(<VatRateForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+describe('VatRateForm — create', () => {
+  it('starts with every row closed; the name and rate rows open on their own control', async () => {
+    render(<VatRateForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    await openRow('vatRates.form.name')
     expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
+    await openRow('vatRates.form.rate')
     expect(screen.getByLabelText(/^Rate/)).toBeInTheDocument()
   })
 
@@ -80,55 +87,27 @@ describe('VatRateForm — create/edit', () => {
     createVatRateMock.mockResolvedValue(vatRate())
     const onSuccess = vi.fn()
 
-    render(<VatRateForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<VatRateForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    await openRow('vatRates.form.name')
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Standard' } })
+    await openRow('vatRates.form.rate')
     fireEvent.change(screen.getByLabelText(/^Rate/), { target: { value: '22' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
     await waitFor(() => expect(createVatRateMock).toHaveBeenCalledTimes(1))
     expect(createVatRateMock).toHaveBeenCalledWith({ name: 'Standard', rate: 22 })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(vatRate()))
   })
 
-  it('rejects an empty rate at submit', async () => {
-    render(<VatRateForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('rejects an empty rate at submit, on the closed row', async () => {
+    render(<VatRateForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    await openRow('vatRates.form.name')
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Standard' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
-    await waitFor(() => expect(screen.getByText('Rate is required.')).toBeInTheDocument())
+    expect(await screen.findByText('Rate is required.')).toHaveAttribute('role', 'alert')
     expect(createVatRateMock).not.toHaveBeenCalled()
-  })
-
-  it('hydrates name and rate in edit mode', () => {
-    render(
-      <VatRateForm mode={{ type: 'edit', vatRate: vatRate() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.getByLabelText(/^Name/)).toHaveValue('Standard')
-    expect(screen.getByLabelText(/^Rate/)).toHaveValue(22)
-  })
-
-  it('submits only the changed rate on a partial update', async () => {
-    updateVatRateMock.mockResolvedValue(vatRate({ rate: 10 }))
-
-    render(
-      <VatRateForm mode={{ type: 'edit', vatRate: vatRate() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(/^Rate/), { target: { value: '10' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateVatRateMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateVatRateMock.mock.calls[0]
-    expect(id).toBe(9)
-    expect(payload).toEqual({ rate: 10 })
   })
 })

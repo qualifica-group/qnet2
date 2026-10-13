@@ -4,12 +4,14 @@ import { useWatch, type Control } from 'react-hook-form'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { RecordFieldList, RecordSection } from '@/components/detail/record-panel'
+import { formatDate } from '@/lib/formatting/date-display'
 import { NotesCalloutRow } from '@/components/record-form/notes-callout-row'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import { WorkflowStatusBadge } from '@/features/quote-workflows/workflow-status-badge'
 import {
   QuoteCodeField,
+  QuoteDateField,
   QuoteInternalNotesField,
   QuoteOpportunityField,
   QuoteTitleField,
@@ -24,6 +26,8 @@ export interface QuoteIdentityValues {
   code: string
   /** Blank only on a create draft: the server derives the automatic title (spec 0171 rev.2). */
   title: string
+  /** Spec 0228: `Y-m-d`, today on a create draft. */
+  quoteDate: string
   /** `null` on create: the backend assigns the `open` row of the set it resolves (AC-020). */
   status: QuoteWorkflowStatusRef | null
   opportunity: RelationFieldRef | null
@@ -109,6 +113,14 @@ export function QuoteIdentitySection({
           ) : (
             <span className="text-muted-foreground">{t('quotes.form.titlePlaceholder')}</span>
           )}
+        </RecordInlineField>
+        <RecordInlineField
+          field="quote_date"
+          label={t('quotes.form.quoteDate')}
+          inline={inline}
+          editor={<QuoteDateField control={control} />}
+        >
+          {formatDate(values.quoteDate) || <DetailEmpty />}
         </RecordInlineField>
         {status && values.status ? (
           <RecordInlineField

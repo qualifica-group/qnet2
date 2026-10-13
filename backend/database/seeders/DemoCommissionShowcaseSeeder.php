@@ -17,6 +17,7 @@ use App\Enums\ProductType;
 use App\Enums\ProductUsage;
 use App\Enums\WorkOrderType;
 use App\Models\CommissionConfiguration;
+use App\Models\Contact;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTypology;
@@ -36,6 +37,7 @@ use App\Services\QuoteService;
 use App\Services\RoleAssignmentGuard;
 use App\Services\WorkOrders\WorkOrderLinePaymentWriter;
 use App\Services\WorkOrderService;
+use Database\Factories\PersonalDataFactory;
 use Database\Seeders\Concerns\ResolvesDemoCategories;
 use Database\Seeders\Concerns\SeedsWithoutMail;
 use Database\Seeders\DemoCatalog\DemoCommissionShowcaseCatalogue as Catalogue;
@@ -139,8 +141,19 @@ class DemoCommissionShowcaseSeeder extends Seeder
 
         return Registry::query()->where('name', $name)->first()
             ?? Registry::factory()
-                ->withPersonalData(fn ($card) => $card->company()->state(['company_name' => $name]))
+                ->withPersonalData(fn ($card) => $this->companyCard($card, $name))
                 ->create(['name' => $name]);
+    }
+
+    /**
+     * The registry form requires a phone contact on create, so every showcase
+     * card carries one like the anagrafiche of DemoRegistrySeeder.
+     */
+    private function companyCard(PersonalDataFactory $card, string $name): PersonalDataFactory
+    {
+        return $card->company()
+            ->state(['company_name' => $name])
+            ->has(Contact::factory()->phone()->primary(), 'contacts');
     }
 
     private function ensureSupplier(): Registry
@@ -152,7 +165,7 @@ class DemoCommissionShowcaseSeeder extends Seeder
         }
 
         return Registry::factory()->supplier()
-            ->withPersonalData(fn ($card) => $card->company()->state(['company_name' => Catalogue::SUPPLIER_NAME]))
+            ->withPersonalData(fn ($card) => $this->companyCard($card, Catalogue::SUPPLIER_NAME))
             ->create(['name' => Catalogue::SUPPLIER_NAME]);
     }
 

@@ -1,35 +1,35 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
+import type { ResourceMeta } from '@/features/authorization/types'
+import { ProductDetailView } from '@/features/products/product-detail'
 import { ProductForm } from '@/features/products/product-form'
-import type { ProductDetailWithPermissions } from '@/features/products/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
+import {
+  PRODUCT_ENUMS,
+  pencilOf,
+  permissionsFor,
+  productFixture,
+  productWrapper,
+} from '@/features/products/product-test-fixtures'
 
 /**
- * The VAT rate + Supplier + Unit of measure relation pickers added to the
- * product form: all render, the supplier picker scopes its `registries`
- * for-select request to `is_supplier`, and edit mode hydrates from the
- * loaded product's `vat_rate`/`supplier`/`unit_of_measure` projections (spec
- * 0088, AC-070).
+ * The VAT rate, supplier and unit of measure pickers: each queries its own
+ * for-select resource, the supplier scoped to `is_supplier` registries, and
+ * the detail rows name the assigned records. REQUIREMENT CHANGED (spec 0218):
+ * the pickers live in closed rows, opened by their pencil.
  */
 
-const createProductMock = vi.fn()
-const updateProductMock = vi.fn()
-
-vi.mock('@/features/products/api', () => ({
-  createProduct: (...args: unknown[]) => createProductMock(...args),
-  updateProduct: (...args: unknown[]) => updateProductMock(...args),
+vi.mock('@/features/products/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/products/api')>()),
+  createProduct: vi.fn(),
+  updateProduct: vi.fn(),
   fetchProductNextCode: () => Promise.resolve('PRD-0100'),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 vi.mock('@/features/config/use-config', () => ({
-  useEnumOptions: () => [
-    { value: 'SERVICE', label: 'Service', color: null, icon: null, is_default: true, hidden_on_form: false },
-  ],
+  useEnumOptions: (key: string) => PRODUCT_ENUMS[key] ?? [],
 }))
 
 vi.mock('@/features/product-categories/use-product-category-tree', () => ({
@@ -45,18 +45,17 @@ vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-// Spec 0062: this suite is not about the attribute layout, so no layout is
-// ever configured — keeps edit mode's immediate category id deterministic
-// (no real network round-trip) without touching the relation-picker assertions below.
+vi.mock('@/features/product-categories/api', () => ({
+  fetchEffectiveAttributes: () => Promise.resolve([]),
+}))
+
 vi.mock('@/features/products/use-product-attribute-layout', () => ({
   useProductAttributeLayout: () => ({ data: null, isLoading: false }),
 }))
 
 const useForSelectMock = vi.fn()
-vi.mock('@/features/for-select/use-for-select', async () => {
-  const actual = await vi.importActual<
-    typeof import('@/features/for-select/use-for-select')
-  >('@/features/for-select/use-for-select')
+vi.mock('@/features/for-select/use-for-select', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/for-select/use-for-select')>()
   return {
     flattenForSelectPages: actual.flattenForSelectPages,
     useForSelect: (args: unknown) => useForSelectMock(args),
@@ -64,52 +63,14 @@ vi.mock('@/features/for-select/use-for-select', async () => {
   }
 })
 
-const canMock = vi.fn<(permission: string) => boolean>()
 vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({
-    can: (permission: string) => canMock(permission),
-    hasRole: () => false,
-    roles: [],
-    isLoading: false,
-  }),
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
 }))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
 
-const FULL_ACCESS: ResourcePermissions = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
-}
-
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
-}
-
-function product(overrides: Partial<ProductDetailWithPermissions> = {}): ProductDetailWithPermissions {
-  return {
-    id: 5,
-    code: 'PRD-0005',
-    name: 'ThinkPad X1',
-    description: null,
-    cost: 800,
-    price: 1200,
-    category_id: 3,
-    category: { id: 3, name: 'Laptops' },
-    product_type: 'SERVICE',
-    created_at: '2026-01-01T00:00:00Z',
-    vat_rate_id: null,
-    vat_rate: null,
-    supplier_id: null,
-    supplier: null,
-    unit_of_measure_id: 1,
-    unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
-    product_typology_id: 1,
-    product_typology: { id: 1, name: 'Ente', color: 'violet' },
-    permissions: FULL_ACCESS,
-    ...overrides,
-  }
+function renderCreate() {
+  const { wrapper } = productWrapper()
+  render(<ProductForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
 }
 
 beforeAll(async () => {
@@ -117,12 +78,8 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-  createProductMock.mockReset()
-  updateProductMock.mockReset()
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_ACCESS })
-  canMock.mockReset()
-  canMock.mockReturnValue(false)
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
   useForSelectMock.mockReset()
   useForSelectMock.mockReturnValue({
     data: { pages: [{ items: [] }] },
@@ -135,37 +92,21 @@ beforeEach(() => {
   })
 })
 
-describe('ProductFormBody — VAT rate + Supplier relation fields', () => {
-  it('renders all three pickers in create mode', async () => {
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    expect(await screen.findByRole('combobox', { name: 'VAT' })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Supplier' })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Unit of measure' })).toBeInTheDocument()
-  })
-
+describe('Product — VAT rate, supplier and unit of measure', () => {
   it('requests the vat-rates resource when the VAT picker opens', async () => {
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    renderCreate()
 
-    fireEvent.click(await screen.findByRole('combobox', { name: 'VAT' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit VAT' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'VAT' }))
 
-    await waitFor(() =>
-      expect(useForSelectMock).toHaveBeenCalledWith(
-        expect.objectContaining({ resource: 'vat-rates' }),
-      ),
-    )
+    await waitFor(() => expect(useForSelectMock).toHaveBeenCalledWith(expect.objectContaining({ resource: 'vat-rates' })))
   })
 
   it('scopes the supplier picker to registries with the is_supplier param', async () => {
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    renderCreate()
 
-    fireEvent.click(await screen.findByRole('combobox', { name: 'Supplier' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Supplier' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Supplier' }))
 
     await waitFor(() =>
       expect(useForSelectMock).toHaveBeenCalledWith(
@@ -174,42 +115,38 @@ describe('ProductFormBody — VAT rate + Supplier relation fields', () => {
     )
   })
 
-  it('hydrates the VAT rate, supplier and unit of measure trigger labels in edit mode', async () => {
-    render(
-      <ProductForm
-        mode={{
-          type: 'edit',
-          product: product({
-            vat_rate_id: 4,
-            vat_rate: { id: 4, name: 'Standard 22%', rate: 22 },
-            supplier_id: 11,
-            supplier: { id: 11, name: 'ACME Supplies' },
-            unit_of_measure_id: 2,
-            unit_of_measure: { id: 2, name: 'Kilogram', symbol: 'kg' },
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(await screen.findByRole('combobox', { name: 'VAT' })).toHaveTextContent('Standard 22%')
-    expect(screen.getByRole('combobox', { name: 'Supplier' })).toHaveTextContent('ACME Supplies')
-    expect(screen.getByRole('combobox', { name: 'Unit of measure' })).toHaveTextContent('Kilogram')
-  })
-
   it('requests the units-of-measure resource when the unit of measure picker opens', async () => {
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    renderCreate()
 
-    fireEvent.click(await screen.findByRole('combobox', { name: 'Unit of measure' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Unit of measure' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Unit of measure' }))
 
     await waitFor(() =>
-      expect(useForSelectMock).toHaveBeenCalledWith(
-        expect.objectContaining({ resource: 'units-of-measure' }),
-      ),
+      expect(useForSelectMock).toHaveBeenCalledWith(expect.objectContaining({ resource: 'units-of-measure' })),
     )
+  })
+
+  it('names the assigned records on the detail rows and hydrates their pickers', () => {
+    const { wrapper } = productWrapper()
+    render(
+      <ProductDetailView
+        product={productFixture({
+          vat_rate_id: 4,
+          vat_rate: { id: 4, name: 'Standard 22%', rate: 22 },
+          supplier_id: 11,
+          supplier: { id: 11, name: 'ACME Supplies' },
+          unit_of_measure_id: 2,
+          unit_of_measure: { id: 2, name: 'Kilogram', symbol: 'kg' },
+        })}
+      />,
+      { wrapper },
+    )
+
+    expect(screen.getByText('Standard 22%')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /ACME Supplies/ })).toBeInTheDocument()
+    expect(screen.getByText('Kilogram')).toBeInTheDocument()
+
+    fireEvent.click(pencilOf('VAT'))
+    expect(screen.getByRole('combobox', { name: 'VAT' })).toHaveTextContent('Standard 22%')
   })
 })

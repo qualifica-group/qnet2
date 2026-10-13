@@ -130,7 +130,7 @@ describe('TimeEntryDayEntriesTable row gating (AC-036)', () => {
     expect(screen.getByRole('button', { name: 'Chiamata cliente' })).toBeDisabled()
   })
 
-  it('shows a working row actions menu (Edit/Delete) when canWrite is true and the entry allows it', () => {
+  it('shows a working row actions menu (Open/Delete) when canWrite is true and the entry allows it', () => {
     const onEditEntry = vi.fn()
     const Wrapper = wrapper()
     render(<TimeEntryDayEntriesTable canWrite entries={[entry()]} onEditEntry={onEditEntry} />, {
@@ -140,10 +140,10 @@ describe('TimeEntryDayEntriesTable row gating (AC-036)', () => {
     const actionsTrigger = screen.getByRole('button', { name: 'Actions' })
     openMenu(actionsTrigger)
     const menu = screen.getByRole('menu')
-    expect(within(menu).getByText('Edit')).toBeInTheDocument()
+    expect(within(menu).getByText('Open')).toBeInTheDocument()
     expect(within(menu).getByText('Delete')).toBeInTheDocument()
 
-    fireEvent.click(within(menu).getByText('Edit'))
+    fireEvent.click(within(menu).getByText('Open'))
     expect(onEditEntry).toHaveBeenCalledWith(1)
   })
 

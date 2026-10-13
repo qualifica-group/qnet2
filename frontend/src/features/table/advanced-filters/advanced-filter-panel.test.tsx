@@ -158,6 +158,26 @@ describe('AdvancedFilterPanel', () => {
     expect(screen.getByRole('combobox', { name: 'Project' })).toBeInTheDocument()
   })
 
+  it('sends the static source.params to the for-select, the dependency winning on the same key (spec 0208 AC-023)', () => {
+    const descriptors = [
+      descriptor({
+        name: 'product_category',
+        type: 'relation',
+        label: 'Category',
+        source: { resource: 'product-categories', params: { include_inactive: 1, scope: 'all' } },
+      }),
+    ]
+
+    renderPanel(descriptors, fakeFilters({ dependencyParamsFor: () => ({ scope: 'mine' }) }))
+
+    expect(useForSelectMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resource: 'product-categories',
+        params: { include_inactive: 1, scope: 'mine' },
+      }),
+    )
+  })
+
   it('disables a dependent field and calls setFieldValue on change', () => {
     const descriptors = [descriptor({ name: 'status', type: 'text', label: 'Status' })]
     const setFieldValue = vi.fn()

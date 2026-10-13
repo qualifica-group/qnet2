@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError, AxiosHeaders } from 'axios'
 import { toast } from 'sonner'
 import i18n from '@/i18n'
-import { createTaskTemplate, updateTaskTemplate } from '@/features/task-templates/api'
+import { createTaskTemplate } from '@/features/task-templates/api'
 import { uploadAttachment } from '@/features/attachments/api'
 import { DOCUMENTS_COLLECTION } from '@/features/attachments/types'
 import { UNASSIGNED_STAGE_CONTAINER_ID } from '@/features/task-templates/task-template-item-stage-grouping'
@@ -22,7 +22,6 @@ import type { TaskTemplateDetail } from '@/features/task-templates/types'
 
 vi.mock('@/features/task-templates/api', () => ({
   createTaskTemplate: vi.fn(),
-  updateTaskTemplate: vi.fn(),
 }))
 
 vi.mock('@/features/attachments/api', () => ({ uploadAttachment: vi.fn() }))
@@ -57,7 +56,6 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.mocked(createTaskTemplate).mockReset()
-  vi.mocked(updateTaskTemplate).mockReset()
   vi.mocked(uploadAttachment).mockReset()
   vi.mocked(toast.success).mockClear()
   vi.mocked(toast.error).mockClear()
@@ -66,7 +64,7 @@ beforeEach(() => {
 describe('useTaskTemplateForm — row add/edit/remove/reorder (spec 0124 AC-024)', () => {
   it('adds a new empty row, patches it and removes it', () => {
     const { result } = renderHook(
-      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      () => useTaskTemplateForm({ onSuccess: () => undefined }),
       { wrapper: wrapper() },
     )
 
@@ -83,7 +81,7 @@ describe('useTaskTemplateForm — row add/edit/remove/reorder (spec 0124 AC-024)
 
   it('reorders rows within "Senza fase" via moveItemRow (spec 0146 D-2)', () => {
     const { result } = renderHook(
-      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      () => useTaskTemplateForm({ onSuccess: () => undefined }),
       { wrapper: wrapper() },
     )
 
@@ -101,77 +99,12 @@ describe('useTaskTemplateForm — row add/edit/remove/reorder (spec 0124 AC-024)
 
     expect(result.current.itemRows.map((row) => row.title)).toEqual(['Second', 'First'])
   })
-
-  it('sends the payload in the DISPLAYED order, existing rows keeping their id', async () => {
-    vi.mocked(updateTaskTemplate).mockResolvedValueOnce(taskTemplate())
-
-    const existing = taskTemplate({
-      items_count: 2,
-      items: [
-        {
-          id: 10,
-          title: 'A',
-          description: null,
-          estimated_minutes: null,
-          task_status_id: null,
-          task_status: null,
-          due_offset_days: 0,
-          sort_order: 0,
-          task_template_stage_id: null,
-          parent_id: null,
-          attachments: [],
-        },
-        {
-          id: 11,
-          title: 'B',
-          description: null,
-          estimated_minutes: null,
-          task_status_id: null,
-          task_status: null,
-          due_offset_days: 1,
-          sort_order: 1,
-          task_template_stage_id: null,
-          parent_id: null,
-          attachments: [],
-        },
-      ],
-    })
-
-    const { result } = renderHook(
-      () =>
-        useTaskTemplateForm({
-          mode: {
-            type: 'edit',
-            taskTemplate: { ...existing, permissions: { resource: {} as never, fields: {}, actions: {} } },
-          },
-          onSuccess: () => undefined,
-        }),
-      { wrapper: wrapper() },
-    )
-
-    const [, rowB] = result.current.itemRows
-    act(() => result.current.moveItemRow(rowB.id, UNASSIGNED_STAGE_CONTAINER_ID, 0))
-
-    await act(async () => {
-      await result.current.form.handleSubmit(result.current.onSubmit)()
-    })
-
-    expect(updateTaskTemplate).toHaveBeenCalledWith(
-      existing.id,
-      expect.objectContaining({
-        items: [
-          expect.objectContaining({ id: 11, title: 'B' }),
-          expect.objectContaining({ id: 10, title: 'A' }),
-        ],
-      }),
-    )
-  })
 })
 
 describe('useTaskTemplateForm — fasi add/rename/remove/reorder (spec 0146 D-2/AC-031)', () => {
   it('adds a stage, renames it, moves an item into it, then removes it — the item falls back to "Senza fase"', () => {
     const { result } = renderHook(
-      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      () => useTaskTemplateForm({ onSuccess: () => undefined }),
       { wrapper: wrapper() },
     )
 
@@ -194,7 +127,7 @@ describe('useTaskTemplateForm — fasi add/rename/remove/reorder (spec 0146 D-2/
 
   it('reorders stage rows', () => {
     const { result } = renderHook(
-      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      () => useTaskTemplateForm({ onSuccess: () => undefined }),
       { wrapper: wrapper() },
     )
 
@@ -217,7 +150,7 @@ describe('useTaskTemplateForm — fasi add/rename/remove/reorder (spec 0146 D-2/
     vi.mocked(createTaskTemplate).mockResolvedValueOnce(taskTemplate())
 
     const { result } = renderHook(
-      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      () => useTaskTemplateForm({ onSuccess: () => undefined }),
       { wrapper: wrapper() },
     )
 
@@ -284,7 +217,7 @@ describe('useTaskTemplateForm — staged attachments uploaded positionally after
     vi.mocked(uploadAttachment).mockResolvedValue({} as never)
 
     const { result } = renderHook(
-      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      () => useTaskTemplateForm({ onSuccess: () => undefined }),
       { wrapper: wrapper() },
     )
 
@@ -320,7 +253,7 @@ describe('useTaskTemplateForm — staged attachments uploaded positionally after
     vi.mocked(createTaskTemplate).mockResolvedValueOnce(taskTemplate({ items_count: 0, items: [] }))
 
     const { result } = renderHook(
-      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      () => useTaskTemplateForm({ onSuccess: () => undefined }),
       { wrapper: wrapper() },
     )
 
@@ -362,7 +295,7 @@ describe('useTaskTemplateForm — a 413 surfaces as the form error (spec 0128)',
     vi.mocked(createTaskTemplate).mockRejectedValueOnce(payloadTooLargeError())
 
     const { result } = renderHook(
-      () => useTaskTemplateForm({ mode: { type: 'create' }, onSuccess: () => undefined }),
+      () => useTaskTemplateForm({ onSuccess: () => undefined }),
       { wrapper: wrapper() },
     )
 
@@ -379,46 +312,5 @@ describe('useTaskTemplateForm — a 413 surfaces as the form error (spec 0128)',
     expect(result.current.serverError).toBe(i18n.t('richText.errors.payloadTooLarge'))
     expect(result.current.form.getValues('name')).toBe('Standard onboarding')
     expect(result.current.form.getFieldState('description').error).toBeUndefined()
-  })
-
-  it('sets serverError on edit too, not an item error', async () => {
-    vi.mocked(updateTaskTemplate).mockRejectedValueOnce(payloadTooLargeError())
-
-    const existing = taskTemplate({
-      items_count: 1,
-      items: [
-        {
-          id: 5,
-          title: 'Kickoff',
-          description: null,
-          estimated_minutes: null,
-          task_status_id: null,
-          task_status: null,
-          due_offset_days: 0,
-          sort_order: 0,
-          task_template_stage_id: null,
-          parent_id: null,
-          attachments: [],
-        },
-      ],
-    })
-    const { result } = renderHook(
-      () =>
-        useTaskTemplateForm({
-          mode: {
-            type: 'edit',
-            taskTemplate: { ...existing, permissions: { resource: {} as never, fields: {}, actions: {} } },
-          },
-          onSuccess: () => undefined,
-        }),
-      { wrapper: wrapper() },
-    )
-
-    await act(async () => {
-      await result.current.form.handleSubmit(result.current.onSubmit)()
-    })
-
-    expect(result.current.serverError).toBe(i18n.t('richText.errors.payloadTooLarge'))
-    expect(result.current.itemsError).toBeNull()
   })
 })

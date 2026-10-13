@@ -7,7 +7,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
-import { createOperationalSite, updateOperationalSite } from '@/features/operational-sites/api'
+import {
+  createOperationalSite,
+  operationalSiteDetailQueryKey,
+  updateOperationalSite,
+} from '@/features/operational-sites/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -45,9 +49,11 @@ interface UseOperationalSiteFormArgs {
 }
 
 /**
- * Owns every non-render concern of `OperationalSiteForm`: RHF/Zod wiring,
- * default values, server 422 mapping and the create/update submit. The
- * component stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * Owns every non-render concern of the operational-site form: RHF/Zod wiring,
+ * default values, server 422 mapping and the create/update submit. Create
+ * backs `OperationalSiteForm`; edit backs the detail's in-place rows (diff
+ * PATCH). The component stays UI-only; this hook is the orchestration point
+ * (`onSubmit`).
  */
 export function useOperationalSiteForm({ mode, onSuccess }: UseOperationalSiteFormArgs) {
   const { t } = useTranslation()
@@ -100,6 +106,8 @@ export function useOperationalSiteForm({ mode, onSuccess }: UseOperationalSiteFo
     }
   }, [mode, customFields.defaultValues])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<OperationalSiteFormValues>({
     // `schema` is a create/edit union (and one of its coerced/nullable numeric
     // fields widens the schema's own inferred
@@ -108,6 +116,8 @@ export function useOperationalSiteForm({ mode, onSuccess }: UseOperationalSiteFo
     // runtime it still validates through the same schema.
     resolver: zodResolver(schema) as Resolver<OperationalSiteFormValues>,
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: OperationalSiteFormValues) => {
@@ -118,7 +128,7 @@ export function useOperationalSiteForm({ mode, onSuccess }: UseOperationalSiteFo
           mode.operationalSite.id,
           buildUpdatePayload(values, mode.operationalSite),
         )
-        queryClient.setQueryData(['operational-sites', 'detail', mode.operationalSite.id], saved)
+        queryClient.setQueryData(operationalSiteDetailQueryKey(mode.operationalSite.id), saved)
         toast.success(t('operationalSites.form.updated'))
         onSuccess(saved)
         return
@@ -140,8 +150,8 @@ export function useOperationalSiteForm({ mode, onSuccess }: UseOperationalSiteFo
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

@@ -11,20 +11,14 @@ import { PROJECTS_FOR_SELECT_RESOURCE } from '@/features/projects/for-select-api
 import { fetchCampaignProjectMeta } from '@/features/campaigns/use-campaign-project-meta'
 import { EMPTY_PROJECT_GEO, lockedLevelsFromProjectGeo } from '@/features/campaigns/campaign-geo'
 import type { CampaignFormValues } from '@/features/campaigns/use-campaign-form'
-import type { CampaignProjectRef } from '@/features/campaigns/types'
 import type { ProjectForSelectProductLine } from '@/features/projects/for-select-api'
-import type { ProductLineRow } from '@/features/product-lines/types'
+import { emptyProductLineRow, type ProductLineRow } from '@/features/product-lines/types'
 
 interface CampaignProjectFieldProps {
   control: Control<CampaignFormValues>
   setValue: UseFormSetValue<CampaignFormValues>
-  /** The loaded campaign's linked project, if any (edit mode hydration). */
-  selected: CampaignProjectRef | null
-}
-
-/** Matches `ProjectForSelectResource`'s label: `"{code} — {name}"`. */
-function toForSelectItem(ref: CampaignProjectRef | null): ForSelectItem | null {
-  return ref ? { id: ref.id, label: `${ref.code} — ${ref.name}` } : null
+  /** The current project as the picker labels it (`"{code} — {name}"`), so the trigger never waits on a lookup. */
+  selected: ForSelectItem | null
 }
 
 /** The quick-create registry's `projects` entry already composes `name` as `"{code} — {name}"` (see `advanced-entries.tsx`). */
@@ -52,18 +46,17 @@ function productLineRowsFromMeta(lines: ProjectForSelectProductLine[]): ProductL
  * (`partner_id`), the Sede (`operational_site_id`, project -> campaign ->
  * lead inheritance chain) and the start date (`start_date`, only when the
  * project has one, so a date already typed is never blanked) — all still
- * editable — plus `pipeline_status_id`
- * (which the sibling `CampaignRelationField` then forces read-only),
- * `product_lines` (spec 0094, which the sibling `ProductLinesField` then
- * forces read-only) and the geo levels the project fills (BR-5, spec 0027:
- * the sibling `<GeoSelect lockedLevels>` then forces those read-only),
- * straight from the picker's own `for-select` `meta` block (AC-042): a single one-shot
- * fetch, run as a direct consequence of the user's selection (never a
- * render-time effect), so it never re-overwrites the user's own edits on a
- * later re-render. Clearing the project resets `pipeline_status_id` to
- * `null`, `product_lines` to `[]`, AND all 4 geo levels to `null` (and
- * unlocks them), so they become editable and required again (AC-043); the
- * always-own fields (Partner, Sede, start date) are left untouched.
+ * editable — plus `pipeline_status_id` and `product_lines` (spec 0094, whose
+ * rows then have no pencil, BR-2) and the geo levels the project fills (BR-5,
+ * spec 0027: `<GeoSelect lockedLevels>` then locks them), straight from the
+ * picker's own `for-select` `meta` block (AC-042): a single one-shot fetch,
+ * run as a direct consequence of the user's selection (never a render-time
+ * effect), so it never re-overwrites the user's own edits on a later
+ * re-render. Clearing the project resets `pipeline_status_id` to `null`,
+ * `product_lines` to one empty row, AND all 4 geo levels to `null` (and unlocks them),
+ * so they become editable and required again (AC-043, filled in the same
+ * editor, `CampaignProjectEditor`); the always-own fields (Partner, Sede,
+ * start date) are left untouched.
  */
 export function CampaignProjectField({ control, setValue, selected }: CampaignProjectFieldProps) {
   const { t } = useTranslation()
@@ -73,7 +66,8 @@ export function CampaignProjectField({ control, setValue, selected }: CampaignPr
   const applyProjectSelection = async (projectId: number | null) => {
     if (projectId === null) {
       setValue('pipeline_status_id', null, { shouldValidate: true, shouldDirty: true })
-      setValue('product_lines', [], { shouldValidate: true, shouldDirty: true })
+      // One empty row to fill, not zero (user directive 2026-07-29, as a bare create opens).
+      setValue('product_lines', [emptyProductLineRow()], { shouldValidate: true, shouldDirty: true })
       setValue('country_id', null, { shouldValidate: true, shouldDirty: true })
       setValue('state_id', null, { shouldDirty: true })
       setValue('province_id', null, { shouldDirty: true })
@@ -123,7 +117,7 @@ export function CampaignProjectField({ control, setValue, selected }: CampaignPr
               resource={PROJECTS_FOR_SELECT_RESOURCE}
               value={field.value}
               onChange={(projectId) => selectProject(field, projectId)}
-              selectedItem={toForSelectItemFromRef(quickCreatedMatch) ?? toForSelectItem(selected)}
+              selectedItem={toForSelectItemFromRef(quickCreatedMatch) ?? selected}
               disabled={disabled}
               labels={{
                 placeholder: t('campaigns.form.selectPlaceholder'),

@@ -5,7 +5,6 @@ import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -51,8 +50,8 @@ export function FieldChangeRequestDetailView({ request, onChanged }: FieldChange
 
   return (
     <RecordCanvas>
-      <RecordBody>
-        <RecordCard>
+      <RecordBody
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={request.field_label} icon={<ListChecks />} />}
             title={t(request.field_label)}
@@ -66,53 +65,54 @@ export function FieldChangeRequestDetailView({ request, onChanged }: FieldChange
               />
             }
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('fieldChangeRequests.detail.details')} full>
-              <RecordFieldList>
-                <RecordField label={t('fieldChangeRequests.detail.record')}>
-                  {subjectRecord ? (
-                    <RecordLink domain={subjectRecord.domain} id={subjectRecord.id} className="text-primary">
-                      {request.subject_label}
-                    </RecordLink>
-                  ) : subjectPath ? (
-                    <Link to={subjectPath} className="text-primary underline-offset-2 hover:underline">
-                      {request.subject_label}
-                    </Link>
-                  ) : (
-                    request.subject_label
-                  )}
-                </RecordField>
-                <RecordField label={t('fieldChangeRequests.detail.field')}>
-                  {t(request.field_label)}
-                </RecordField>
-                <RecordField label={t('fieldChangeRequests.detail.currentValue')}>
-                  {request.current_label ?? <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('fieldChangeRequests.detail.requestedValue')}>
-                  {request.requested_label ?? <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('fieldChangeRequests.detail.reason')}>
-                  {request.reason ?? <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('fieldChangeRequests.detail.requestedBy')}>
-                  {request.requested_by.name}
-                </RecordField>
-                <RecordField label={t('fieldChangeRequests.detail.requestedAt')}>
-                  {requestedAt ? requestedAt : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('fieldChangeRequests.detail.handledBy')}>
-                  {request.handled_by ? request.handled_by.name : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('fieldChangeRequests.detail.handledAt')}>
-                  {handledAt ? handledAt : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('fieldChangeRequests.detail.handlingNote')}>
-                  {request.handling_note ?? <DetailEmpty />}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('fieldChangeRequests.detail.details')} full>
+            <RecordFieldList>
+              <RecordField label={t('fieldChangeRequests.detail.record')}>
+                {subjectRecord ? (
+                  <RecordLink domain={subjectRecord.domain} id={subjectRecord.id} className="text-primary">
+                    {request.subject_label}
+                  </RecordLink>
+                ) : subjectPath ? (
+                  <Link to={subjectPath} className="text-primary underline-offset-2 hover:underline">
+                    {request.subject_label}
+                  </Link>
+                ) : (
+                  request.subject_label
+                )}
+              </RecordField>
+              <RecordField label={t('fieldChangeRequests.detail.field')}>
+                {t(request.field_label)}
+              </RecordField>
+              <RecordField label={t('fieldChangeRequests.detail.currentValue')}>
+                {request.current_label ?? <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('fieldChangeRequests.detail.requestedValue')}>
+                {request.requested_label ?? <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('fieldChangeRequests.detail.reason')}>
+                {request.reason ?? <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('fieldChangeRequests.detail.requestedBy')}>
+                {request.requested_by.name}
+              </RecordField>
+              <RecordField label={t('fieldChangeRequests.detail.requestedAt')}>
+                {requestedAt ? requestedAt : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('fieldChangeRequests.detail.handledBy')}>
+                {request.handled_by ? request.handled_by.name : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('fieldChangeRequests.detail.handledAt')}>
+                {handledAt ? handledAt : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('fieldChangeRequests.detail.handlingNote')}>
+                {request.handling_note ?? <DetailEmpty />}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
     </RecordCanvas>
   )

@@ -16,8 +16,15 @@ const guide: HelpGuide = {
       id: 'create-layout',
       title: 'Creating a layout',
       blocks: [
-        { type: 'steps', items: ['Open **Configuration › Layouts** and press **New layout**.', 'In the **Details** tab fill in **Name**, **Code**, **Module** and **Description**; set **Active** and, if needed, **Default**.', 'Save the layout.', 'Open the **Content** tab and build the page with the visual editor.'] },
+        { type: 'steps', items: ['Open **Configuration › Layouts** and press **New layout**.', 'The sheet opens with closed rows: for **Name**, **Code**, **Module**, **Description**, **Active** and **Default** press the pencil (or the value), fill in and press **Done**; **Revert** puts the row back as it was.', 'The **Content** section is already open: build the page with the visual editor.', 'Press **Save**: the layout is created with everything at once.'] },
         { type: 'warning', text: 'After creation, **Code** and **Module** cannot be changed.' },
+      ],
+    },
+    {
+      id: 'edit-layout',
+      title: 'Editing a layout',
+      blocks: [
+        { type: 'paragraph', text: 'There is no separate edit form: open the layout with **View**, press the pencil on the row (**Name**, **Description**, **Active**, **Default**), change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was. **Content** is a full-width row showing the page preview: its pencil opens the same visual editor as creation and **Save** stores the content alone.' },
       ],
     },
     {

@@ -1,245 +1,95 @@
-import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
+import type { ResourceMeta } from '@/features/authorization/types'
+import { UserDetailView } from '@/features/users/user-detail'
 import { UserForm } from '@/features/users/user-form'
+import {
+  READ_ONLY,
+  clickCreateSave,
+  confirmOpenRow,
+  employmentFixture,
+  fillRequiredCreateRows,
+  pencilOf,
+  permissionsFor,
+  typeInRow,
+  userFixture,
+  userWrapper,
+} from '@/features/users/user-test-fixtures'
 import type { UserDetailWithPermissions } from '@/features/users/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
-import type { EnumOption } from '@/features/config/types'
-import type { PersonalDataCard } from '@/features/personal-data/types'
 
 /**
- * Spec 0015 acceptance criteria AC-014..019 (frontend): the single-screen user
- * form, the employment fields and their i18n. The pre-existing account behaviour
- * (payload shaping, personal-data buffering, metadata gating) is covered by
- * `user-form.test.tsx`/`user-form-metadata.test.tsx`; `DurationInput` has its
- * own `duration-input.test.tsx`; the payload builder's `employment` mapping is
- * unit-tested directly in `user-form-payload.test.ts`.
+ * Spec 0015 AC-014..019 (frontend) on the record layout of spec 0222: the
+ * employment rows, the manager / reports-to cascade (spec 0166 D-5), the
+ * relation pickers, the employment payload and its 422 mapping, the i18n.
+ * REQUIREMENT CHANGED (spec 0222): rows are closed until opened, the edit
+ * cases run on the in-place detail, and `employment` travels only when one of
+ * its fields changed (D-3).
  */
 
+const fetchUserMock = vi.fn()
 const createUserMock = vi.fn()
 const updateUserMock = vi.fn()
 
-vi.mock('@/features/users/api', () => ({
+vi.mock('@/features/users/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/users/api')>()),
+  fetchUser: (...args: unknown[]) => fetchUserMock(...args),
   createUser: (...args: unknown[]) => createUserMock(...args),
   updateUser: (...args: unknown[]) => updateUserMock(...args),
   uploadUserAvatar: vi.fn(),
   deleteUserAvatar: vi.fn(),
 }))
 
-const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: { upload_avatar: true, delete_avatar: true },
-}
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-vi.mock('@/features/users/use-user-form-meta', () => ({
-  useUserFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
-}))
-
-// This suite isn't about the quick-create "+" (spec 0028): the Account tab's
-// `roles` field (`AsyncPaginatedMultiSelect`, left un-mocked below) renders a
-// `QuickCreateButton` gated by `Can`/`useAbilities`, which needs an
-// `AuthProvider` this suite doesn't render.
+// The quick-create "+" (spec 0028) is gated by `Can`/`useAbilities`, which needs
+// an `AuthProvider` these suites do not render: deny everything so it never mounts.
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
 
-// `useCustomFieldsForm` (spec 0021) also reads the resource meta directly,
-// bypassing `useUserFormMeta` above: stub it with no custom fields defined, so
-// this suite (not about custom fields) renders exactly as it did before.
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-const enums: Record<string, EnumOption[]> = {
-  personal_data_type: [
-    { value: 'individual', label: 'Individual', color: null, icon: null, is_default: true, hidden_on_form: false },
-    { value: 'company', label: 'Company', color: null, icon: null, is_default: false, hidden_on_form: false },
-  ],
-  contact_type: [],
-  locale: [
-    { value: 'en', label: 'English', color: null, icon: null, is_default: true, hidden_on_form: false },
-    { value: 'it', label: 'Italiano', color: null, icon: null, is_default: false, hidden_on_form: false },
-  ],
-}
-
-vi.mock('@/features/config/use-config', () => ({
-  useConfig: () => ({ data: { enums } }),
-  useEnumOptions: (key: string) => enums[key] ?? [],
-}))
-
-const personalDataData = vi.fn<() => PersonalDataCard | null | undefined>()
-vi.mock('@/features/personal-data/use-personal-data', () => ({
-  usePersonalDataByOwner: () => ({
-    data: personalDataData(),
-    isPending: false,
-    isError: false,
-    refetch: vi.fn(),
-  }),
-
-}))
-
-/**
- * Lightweight, controllable stand-in for the network-backed single select
- * (AC-016): exposes `resource` and the hydrated `selectedItem` label so tests
- * can assert wiring without a real `/for-select` fetch (covered by the
- * component's own tests).
- */
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({
-    resource,
-    value,
-    onChange,
-    selectedItem,
-    labels,
-  }: {
-    resource: string
-    value: number | null
-    onChange: (value: number | null) => void
-    selectedItem?: { id: number; label: string } | null
-    labels: { triggerLabel: string }
-  }) => (
-    <div>
-      <span data-testid={`resource-${labels.triggerLabel}`}>{resource}</span>
-      <span data-testid={`value-${labels.triggerLabel}`}>{value ?? ''}</span>
-      <span data-testid={`selected-label-${labels.triggerLabel}`}>{selectedItem?.label ?? ''}</span>
-      <button type="button" onClick={() => onChange(1)}>{`pick-${labels.triggerLabel}`}</button>
-      <button type="button" onClick={() => onChange(null)}>{`clear-${labels.triggerLabel}`}</button>
-    </div>
-  ),
-}))
-
-/**
- * Same stand-in, multi-select flavor (spec 0166: `reports_to_ids`): exposes
- * `resource` and the hydrated `selectedItems` labels, and lets a test append
- * one id via its `pick-*` button.
- */
-vi.mock('@/components/ui/async-paginated-multi-select', () => ({
-  AsyncPaginatedMultiSelect: ({
-    resource,
-    value,
-    onChange,
-    selectedItems,
-    labels,
-  }: {
-    resource: string
-    value: number[]
-    onChange: (value: number[]) => void
-    selectedItems?: { id: number; label: string }[]
-    labels: { triggerLabel: string }
-  }) => (
-    <div>
-      <span data-testid={`resource-${labels.triggerLabel}`}>{resource}</span>
-      <span data-testid={`selected-label-${labels.triggerLabel}`}>
-        {(selectedItems ?? []).map((item) => item.label).join(', ')}
-      </span>
-      <button type="button" onClick={() => onChange([...value, 1])}>{`pick-${labels.triggerLabel}`}</button>
-      <button type="button" onClick={() => onChange([])}>{`clear-${labels.triggerLabel}`}</button>
-    </div>
-  ),
-}))
-
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-    </QueryClientProvider>
-  )
-}
-
-function user(overrides: Partial<UserDetailWithPermissions> = {}): UserDetailWithPermissions {
+vi.mock('@/features/config/use-config', async () => {
+  const { USER_ENUMS } = await import('@/features/users/user-test-fixtures')
   return {
-    id: 7,
-    name: 'Ada Lovelace',
-    email: 'ada@example.com',
-    locale: 'en',
-    is_active: true,
-    roles: [],
-    avatar_url: null,
-    must_set_password: false,
-    created_at: null,
-    permissions: FULL_ACCESS_PERMISSIONS,
-    ...overrides,
+    useConfig: () => ({ data: { enums: USER_ENUMS } }),
+    useEnumOptions: (key: string) => USER_ENUMS[key] ?? [],
   }
+})
+
+vi.mock('@/features/for-select/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/for-select/api')>()),
+  fetchForSelect: vi.fn().mockResolvedValue({ items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }),
+}))
+
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/users/user-test-stubs')).StubAsyncSelect,
+}))
+vi.mock('@/components/ui/async-paginated-multi-select', async () => ({
+  AsyncPaginatedMultiSelect: (await import('@/features/users/user-test-stubs')).StubMultiSelect,
+}))
+vi.mock('@/features/activity-log/activity-log-section', () => ({
+  ActivityLogSection: () => <div>activity-log-section</div>,
+}))
+
+function renderCreate() {
+  const { client, wrapper } = userWrapper()
+  render(<UserForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
+  return client
 }
 
-function userWithEmployment(): UserDetailWithPermissions {
-  return user({
-    employment: {
-      id: 1,
-      is_manager: false,
-      job_description: 'Backend engineer',
-      relationship_type: 'employee',
-      qualification_type: 'coordinator',
-      hired_at: '2026-01-15',
-      terminated_at: null,
-      standard_daily_minutes: 480,
-      break_daily_minutes: 30,
-      reports_to_ids: [2],
-      company_id: 5,
-      primary_operational_site_id: 8,
-      remote_operational_site_ids: [9, 10],
-      is_assignable: true,
-      covers_all_product_categories: false,
-      reports_to: [{ id: 2, label: 'Grace Hopper' }],
-      company: { id: 5, label: 'Acme Srl' },
-      primary_operational_site: { id: 8, label: 'Via Roma 1' },
-      remote_operational_sites: [
-        { id: 9, label: 'Via Milano 2' },
-        { id: 10, label: 'Via Torino 3' },
-      ],
-    },
-  })
-}
-
-/** A valid, seeded personal-data card, needed so an edit-mode submit is not blocked by AC-014's mandatory-fields gate. */
-const validCard: PersonalDataCard = {
-  id: 99,
-  type: 'individual',
-  first_name: 'Ada',
-  last_name: 'Lovelace',
-  company_name: null,
-  full_name: 'Ada Lovelace',
-  ceo: null,
-  tax_code: null,
-  vat_number: null,
-  sdi_code: null,
-  birth_date: null,
-  birth_city_id: null,
-  residence_city_id: null,
-  gender: null,
-  personable_type: 'user',
-  personable_id: 7,
-  contacts: [],
-  addresses: [],
-  created_at: null,
-}
-
-function fillIdentity() {
-  fireEvent.change(screen.getByLabelText(/^First name/), { target: { value: 'Ada' } })
-  fireEvent.change(screen.getByLabelText(/^Last name/), { target: { value: 'Lovelace' } })
-}
-
-/**
- * The sign-in email. On the single-screen form the contacts block's quick
- * "Email" is mounted too, so the label alone is ambiguous: scope the query to
- * the Authentication block.
- */
-function signInEmail(): HTMLElement {
-  const section = screen.getByText('Authentication').closest('section') as HTMLElement
-  return within(section).getByLabelText(/^Email/)
-}
-
-function fillCredentials() {
-  fireEvent.change(signInEmail(), { target: { value: 'ada@example.com' } })
-  fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'secret123' } })
-  fireEvent.change(screen.getByLabelText(/^Confirm password/), { target: { value: 'secret123' } })
+async function renderDetail(user: UserDetailWithPermissions) {
+  fetchUserMock.mockResolvedValue(user)
+  const { client, wrapper } = userWrapper()
+  render(<UserDetailView userId={user.id} />, { wrapper })
+  await screen.findByRole('button', { name: 'Edit Personal details' })
+  return client
 }
 
 beforeAll(async () => {
@@ -247,106 +97,117 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  vi.restoreAllMocks()
+  fetchUserMock.mockReset()
   createUserMock.mockReset()
   updateUserMock.mockReset()
-  personalDataData.mockReset()
-  personalDataData.mockReturnValue(undefined)
-  createUserMock.mockResolvedValue(user())
-  updateUserMock.mockResolvedValue(user())
+  createUserMock.mockResolvedValue(userFixture())
+  updateUserMock.mockResolvedValue(userFixture())
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_ACCESS_PERMISSIONS })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
 })
 
-describe('UserForm — single-screen layout (user directive 2026-09-07)', () => {
-  it('mounts the identity, credentials, employment and contact blocks together, with no macro tabs', () => {
-    render(<UserForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+function userWithEmployment(): UserDetailWithPermissions {
+  return userFixture({
+    employment: employmentFixture({
+      job_description: 'Backend engineer',
+      relationship_type: 'employee',
+      qualification_type: 'coordinator',
+      hired_at: '2026-01-15',
+      standard_daily_minutes: 480,
+      break_daily_minutes: 30,
+      reports_to_ids: [2],
+      company_id: 5,
+      reports_to: [{ id: 2, label: 'Grace Hopper' }],
+      company: { id: 5, label: 'Acme Srl' },
+    }),
+  })
+}
 
-    // One block per former macro tab, all reachable without a single click.
-    expect(screen.getByLabelText(/^First name/)).toBeInTheDocument()
-    expect(signInEmail()).toBeInTheDocument()
-    expect(screen.getByText('Reports to')).toBeInTheDocument()
+function unprocessable(errors: Record<string, string[]>) {
+  return new AxiosError('Unprocessable', '422', undefined, undefined, {
+    status: 422,
+    data: { success: false, message: 'Validation failed', errors },
+  } as never)
+}
+
+describe('UserForm — the record layout (spec 0222 D-2)', () => {
+  it('lays out the card, credentials, assignment, employment and contact blocks on one screen, no macro tabs', async () => {
+    renderCreate()
+
+    expect(await screen.findByRole('button', { name: 'Edit Personal details' })).toBeInTheDocument()
+    expect(pencilOf('Email')).toBeInTheDocument()
+    expect(pencilOf('Reports to')).toBeInTheDocument()
     expect(screen.getByLabelText(/^Phone/)).toBeInTheDocument()
-
-    // The only tabs left on the screen are the card's individual/company
-    // toggle: the macro strip is gone, dots included.
-    expect(screen.queryByRole('tab', { name: /^Account/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Employment' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Contact info' })).not.toBeInTheDocument()
   })
 })
 
 describe('UserForm — is_manager / reports_to (spec 0015 AC-015, spec 0166 D-5)', () => {
   it('hides reports_to and force-empties it in the payload once is_manager is enabled', async () => {
-    render(<UserForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    renderCreate()
+    await fillRequiredCreateRows()
 
-    fillIdentity()
-    fillCredentials()
-
-    expect(screen.getByText('Reports to')).toBeInTheDocument()
-
-    // Two switches share the single screen now (Active, in the access block):
-    // name the one under test.
+    fireEvent.click(pencilOf('Reports to'))
+    fireEvent.click(screen.getByText('pick-Reports to'))
+    confirmOpenRow('Done')
+    fireEvent.click(pencilOf('Manager'))
     fireEvent.click(screen.getByRole('switch', { name: 'Manager' }))
-    expect(screen.queryByText('Reports to')).not.toBeInTheDocument()
+    confirmOpenRow('Done')
 
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    expect(screen.queryByRole('button', { name: 'Edit Reports to' })).not.toBeInTheDocument()
+    clickCreateSave()
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
-    const payload = createUserMock.mock.calls[0][0]
-    expect(payload.employment.is_manager).toBe(true)
-    expect(payload.employment.reports_to_ids).toEqual([])
+    expect(createUserMock.mock.calls[0][0].employment).toMatchObject({ is_manager: true, reports_to_ids: [] })
   })
 
-  it('keeps reports_to visible and submits its selected ids when is_manager is false', async () => {
-    render(<UserForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('submits the picked managers when the person is not a manager', async () => {
+    renderCreate()
+    await fillRequiredCreateRows()
 
-    fillIdentity()
-    fillCredentials()
-
+    fireEvent.click(pencilOf('Reports to'))
     fireEvent.click(screen.getByText('pick-Reports to'))
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    confirmOpenRow('Done')
+    clickCreateSave()
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
-    const payload = createUserMock.mock.calls[0][0]
-    expect(payload.employment.is_manager).toBe(false)
-    expect(payload.employment.reports_to_ids).toEqual([1])
+    expect(createUserMock.mock.calls[0][0].employment).toMatchObject({ is_manager: false, reports_to_ids: [1] })
+  })
+
+  it('offers no Manager pencil when "Reports to", which it empties, is read-only (spec 0222 D-4)', async () => {
+    await renderDetail(
+      userFixture({ permissions: permissionsFor({ 'employment.reports_to_ids': READ_ONLY }) }),
+    )
+
+    expect(screen.queryByRole('button', { name: 'Edit Manager' })).not.toBeInTheDocument()
+    expect(pencilOf('Job description')).toBeInTheDocument()
   })
 })
 
-describe('UserForm — employment relation selects (spec 0015 AC-016)', () => {
-  it('binds each select to its contract resource, hydrated from the loaded detail in edit mode', () => {
-    render(
-      <UserForm mode={{ type: 'edit', user: userWithEmployment() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+describe('UserDetailView — employment relation pickers (spec 0015 AC-016)', () => {
+  it('binds each picker to its resource, hydrated from the persisted profile', async () => {
+    await renderDetail(userWithEmployment())
 
+    fireEvent.click(pencilOf('Reports to'))
     expect(screen.getByTestId('resource-Reports to')).toHaveTextContent('users')
     expect(screen.getByTestId('selected-label-Reports to')).toHaveTextContent('Grace Hopper')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
+    fireEvent.click(pencilOf('Company'))
     expect(screen.getByTestId('resource-Company')).toHaveTextContent('companies')
     expect(screen.getByTestId('selected-label-Company')).toHaveTextContent('Acme Srl')
   })
 })
 
 describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () => {
-  it('includes the employment object with contract snake_case keys on create', async () => {
-    render(<UserForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    fillIdentity()
-    fillCredentials()
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+  it('includes the whole employment object with contract snake_case keys on create', async () => {
+    renderCreate()
+    await fillRequiredCreateRows()
+    clickCreateSave()
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
-    const payload = createUserMock.mock.calls[0][0]
-    expect(payload.employment).toEqual({
+    expect(createUserMock.mock.calls[0][0].employment).toEqual({
       is_manager: false,
       job_description: null,
       reports_to_ids: [],
@@ -365,61 +226,43 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
     })
   })
 
-  it('maps a nested employment.* 422 error onto the right field, inline', async () => {
-    personalDataData.mockReturnValue(validCard)
-    updateUserMock.mockRejectedValue(
-      new AxiosError('Unprocessable', '422', undefined, undefined, {
-        status: 422,
-        data: {
-          success: false,
-          message: 'Validation failed',
-          errors: { 'employment.company_id': ['The selected company is invalid.'] },
-        },
-      } as never),
-    )
+  it('sends the whole employment object, and nothing else, when one employment row is saved', async () => {
+    await renderDetail(userWithEmployment())
 
-    render(
-      <UserForm mode={{ type: 'edit', user: userWithEmployment() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    typeInRow('Job description', 'Platform engineer', 'Save')
 
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(updateUserMock).toHaveBeenCalledTimes(1))
+    const payload = updateUserMock.mock.calls[0][1]
+    expect(Object.keys(payload)).toEqual(['employment'])
+    expect(payload.employment).toMatchObject({ job_description: 'Platform engineer', company_id: 5, reports_to_ids: [2] })
+  })
 
-    await waitFor(() =>
-      expect(screen.getByText('The selected company is invalid.')).toBeInTheDocument(),
-    )
+  it('maps a nested employment.* 422 error onto its open row, inline', async () => {
+    updateUserMock.mockRejectedValue(unprocessable({ 'employment.company_id': ['The selected company is invalid.'] }))
+    await renderDetail(userWithEmployment())
+
+    fireEvent.click(pencilOf('Company'))
+    fireEvent.click(screen.getByText('pick-Company'))
+    confirmOpenRow('Save')
+
+    expect(await screen.findByText('The selected company is invalid.')).toBeInTheDocument()
     expect(updateUserMock).toHaveBeenCalledTimes(1)
   })
 
   /** Spec 0166 AC-014: the per-id 422 (duplicate/inexistent/self) is indexed, no RHF path matches it directly. */
   it('surfaces an indexed employment.reports_to_ids.N 422 under the field', async () => {
-    personalDataData.mockReturnValue(validCard)
-    updateUserMock.mockRejectedValue(
-      new AxiosError('Unprocessable', '422', undefined, undefined, {
-        status: 422,
-        data: {
-          success: false,
-          message: 'Validation failed',
-          errors: { 'employment.reports_to_ids.0': ['A user cannot report to themselves.'] },
-        },
-      } as never),
-    )
+    updateUserMock.mockRejectedValue(unprocessable({ 'employment.reports_to_ids.0': ['A user cannot report to themselves.'] }))
+    await renderDetail(userWithEmployment())
 
-    render(
-      <UserForm mode={{ type: 'edit', user: userWithEmployment() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    fireEvent.click(pencilOf('Reports to'))
+    fireEvent.click(screen.getByText('pick-Reports to'))
+    confirmOpenRow('Save')
 
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() =>
-      expect(screen.getByText('A user cannot report to themselves.')).toBeInTheDocument(),
-    )
-    expect(updateUserMock).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText('A user cannot report to themselves.')).toBeInTheDocument()
   })
 })
 
-describe('UserForm — employment i18n (spec 0015 AC-019)', () => {
+describe('UserDetailView — employment i18n (spec 0015 AC-019)', () => {
   beforeAll(async () => {
     await i18n.changeLanguage('it')
   })
@@ -427,19 +270,12 @@ describe('UserForm — employment i18n (spec 0015 AC-019)', () => {
     await i18n.changeLanguage('en')
   })
 
-  it('localizes the employment section headings and the relationship_type enum from the `enums` namespace', () => {
-    render(
-      <UserForm mode={{ type: 'edit', user: userWithEmployment() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('localizes the employment section headings and the relationship_type enum from the `enums` namespace', async () => {
+    fetchUserMock.mockResolvedValue(userWithEmployment())
+    const { wrapper } = userWrapper()
+    render(<UserDetailView userId={7} />, { wrapper })
 
-    expect(screen.getByText('Rapporto contrattuale')).toBeInTheDocument()
-
-    // relationship_type: 'employee' -> localized Italian label, no hardcoded string
-    // in the JSX. The Select trigger is queried directly: Radix mirrors the value
-    // into a hidden native <option>, so a bare text search would be ambiguous.
-    expect(
-      screen.getByRole('combobox', { name: 'Tipo di rapporto' }),
-    ).toHaveTextContent('Dipendente')
+    expect(await screen.findByText('Rapporto contrattuale')).toBeInTheDocument()
+    expect(screen.getByText('Dipendente')).toBeInTheDocument()
   })
 })

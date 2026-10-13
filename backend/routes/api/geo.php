@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Geo\GeoController;
+use App\Http\Controllers\Geo\ProvinceForSelectController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -25,4 +26,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('countries', [GeoController::class, 'countries']);
 Route::get('states', [GeoController::class, 'states']);
 Route::get('provinces', [GeoController::class, 'provinces']);
+// Free-search province picker of a RELATION field targeting provinces (spec 0225).
+Route::get('provinces/for-select', ProvinceForSelectController::class);
 Route::get('cities', [GeoController::class, 'cities']);

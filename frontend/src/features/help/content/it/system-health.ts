@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina si trova in **Amministrazione › Stato del sistema** ed è riservata al ruolo **super-admin**: per gli altri utenti la voce di menu non compare. In alto vedi l\'**esito complessivo** e l\'ora dell\'ultima verifica; sotto, la card **Utenti online** e una card per ogni sottosistema.',
+          text: 'La pagina si trova in **Develop › Stato del sistema** ed è riservata al ruolo **super-admin**: per gli altri utenti la voce di menu non compare. In alto vedi l\'**esito complessivo** e l\'ora dell\'ultima verifica; sotto, la card **Utenti online** e una card per ogni sottosistema.',
         },
       ],
     },

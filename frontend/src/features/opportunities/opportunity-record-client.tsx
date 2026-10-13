@@ -8,7 +8,8 @@ import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import { ExistingOpportunityAlert } from '@/features/opportunities/existing-opportunity-alert'
 import { OpportunityRegistryField } from '@/features/opportunities/opportunity-registry-field'
 import { OpportunityReporterField } from '@/features/opportunities/opportunity-reporter-field'
-import { useCascadeEditable, type OpportunityRecordSectionProps } from '@/features/opportunities/opportunity-record'
+import { useCascadeEditable } from '@/components/record-form/use-cascade-editable'
+import type { OpportunityRecordSectionProps } from '@/features/opportunities/opportunity-record'
 import {
   OpportunityCommercialField,
   OpportunityReferentField,

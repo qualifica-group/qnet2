@@ -5,11 +5,14 @@ namespace App\Migrations\Sources;
 use App\DataObjects\Quotes\CreateQuoteData;
 use App\DataObjects\Quotes\QuoteLineData;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
+use App\Migrations\Sources\Concerns\MapsLegacyQuoteCostLines;
 use App\Migrations\Sources\Concerns\MapsLegacyQuoteLines;
 use App\Migrations\Support\ExternalApiClient;
+use App\Migrations\Support\LegacyQuoteAttributeValueApplier;
 use App\Migrations\Support\LegacyQuoteStatusApplier;
 use App\Models\CompanySite;
 use App\Models\OperationalSite;
@@ -17,6 +20,7 @@ use App\Models\Opportunity;
 use App\Models\PaymentMethod;
 use App\Models\Quote;
 use App\Models\Referent;
+use App\Models\Registry;
 use App\Models\User;
 use App\Services\Quotes\QuoteManagerInheritance;
 use App\Services\Quotes\QuoteManagerSyncMode;
@@ -36,11 +40,16 @@ use RuntimeException;
  * notifies no one; promotion keeps them Gestori Account of the opportunity).
  * The status (G-6) and the contract (G-7) are applied afterwards by
  * LegacyQuoteStatusApplier, quietly. The whole row runs without activity log
- * (G-3).
+ * (G-3). Costs come in as COST lines (G-13); the offer date and the parent
+ * opportunity's callback are written as is (G-14); a legacy customer other
+ * than the opportunity's is reported, the offer stays under the opportunity
+ * (G-15). The legacy "Info preliminari" land in the attribute values
+ * applicable to the offer's own lines (G-17).
  */
 class QuotesSource extends AbstractMigrationSource
 {
     use MapsLegacyOperationalRecord;
+    use MapsLegacyQuoteCostLines;
     use MapsLegacyQuoteLines;
 
     private const string CODE_FORMAT = QuoteService::CODE_PREFIX.'-%04d';
@@ -54,6 +63,7 @@ class QuotesSource extends AbstractMigrationSource
         private readonly QuoteManagerInheritance $managerInheritance,
         private readonly QuoteManagerSyncMode $managerSyncMode,
         private readonly LegacyQuoteStatusApplier $statusApplier,
+        private readonly LegacyQuoteAttributeValueApplier $attributeValueApplier,
     ) {
         parent::__construct($client);
     }
@@ -66,6 +76,26 @@ class QuotesSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Quotes';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::required('opportunities'),
+            MigrationDependency::optional('products'),
+            MigrationDependency::optional('cost-products'),
+            MigrationDependency::optional('product-category-attributes'),
+            MigrationDependency::optional('vat-rates'),
+            MigrationDependency::optional('payment-methods'),
+            MigrationDependency::optional('company-sites'),
+            MigrationDependency::optional('operational-sites'),
+            MigrationDependency::optional('users'),
+            MigrationDependency::optional('referents'),
+            MigrationDependency::optional('registries'),
+        ];
     }
 
     public function endpoint(): string
@@ -87,6 +117,7 @@ class QuotesSource extends AbstractMigrationSource
             ['id' => 'accepted_at', 'label' => 'Accepted at', 'type' => 'date'],
             ['id' => 'manager_user_ids', 'label' => 'Managers (external ids)', 'type' => 'string'],
             ['id' => 'lines', 'label' => 'Lines', 'type' => 'number'],
+            ['id' => 'cost_lines', 'label' => 'Cost lines', 'type' => 'number'],
             ['id' => 'created_at', 'label' => 'Created at', 'type' => 'date'],
         ];
     }
@@ -127,16 +158,18 @@ class QuotesSource extends AbstractMigrationSource
     {
         $warnings = [];
 
-        // Step 1: the mandatory parent and the importable revenue lines.
+        // Step 1: the mandatory parent, its customer check and the importable lines.
         $opportunity = $this->resolveOpportunity($record['opportunity_id'] ?? null);
+        $this->reportCustomerMismatch($opportunity, $record['registry_id'] ?? null, $warnings);
         [$lines, $legacyLineIds] = $this->legacyOfferLines($record['lines'] ?? [], $warnings);
+        $costLines = $this->legacyCostLines($record['cost_lines'] ?? [], $legacyLineIds, $warnings);
 
         // Step 2: the managers to write after the create (read before it, see managerSlotsToWrite()).
         $managerSlots = $this->managerSlotsToWrite($opportunity, $record, $warnings);
 
         // Step 3: create through the domain service, without managers nor status (G-2/G-6),
         // then write the managers, which notifies nobody.
-        $quote = $this->service->create($this->buildData($externalId, $opportunity, $record, $lines, $warnings), $context->actor);
+        $quote = $this->service->create($this->buildData($externalId, $opportunity, $record, $lines, $costLines, $warnings), $context->actor);
 
         if ($managerSlots !== []) {
             $this->managerWriter->sync($quote, $managerSlots, promoteToOpportunity: true);
@@ -145,14 +178,18 @@ class QuotesSource extends AbstractMigrationSource
         // Step 4: anchor each created line to its legacy line.
         $this->tagLegacyLines($quote, $legacyLineIds);
 
-        // Step 5: legacy status and contract, then old_id and timestamps.
+        // Step 5: legacy status and contract, the additional information (G-17),
+        // then old_id, callback and timestamps in the final quiet save.
         $this->statusApplier->apply($quote, (int) ($record['status'] ?? 0), [
             'accepted_at' => $this->legacyTimestamp($record['accepted_at'] ?? null),
             'validated_at' => $this->legacyTimestamp($record['validated_at'] ?? null),
             'renewal_date' => $this->legacyTimestamp($record['renewal_date'] ?? null),
             'declined_at' => $this->legacyTimestamp($record['declined_at'] ?? null),
         ], $warnings);
-        $this->finalizeLegacyRecord($quote, $externalId, $record);
+        $this->attributeValueApplier->apply($quote, (array) ($record['attribute_values'] ?? []), $warnings);
+        $this->finalizeLegacyRecord($quote, $externalId, $record, [
+            'next_callback_at' => $this->legacyTimestamp($record['callback_date'] ?? null)?->startOfDay(),
+        ]);
 
         return MigrationRowOutcome::created($warnings, $quote);
     }
@@ -177,9 +214,10 @@ class QuotesSource extends AbstractMigrationSource
      *
      * @param  array<string, mixed>  $record
      * @param  array<int, QuoteLineData>  $lines
+     * @param  array<int, QuoteLineData>  $costLines
      * @param  array<int, string>  $warnings
      */
-    private function buildData(int|string $externalId, Opportunity $opportunity, array $record, array $lines, array &$warnings): CreateQuoteData
+    private function buildData(int|string $externalId, Opportunity $opportunity, array $record, array $lines, array $costLines, array &$warnings): CreateQuoteData
     {
         $companySite = $this->resolveCompanySite($record['company_site_id'] ?? null, $warnings);
         $operationalSiteId = $this->remapLegacyId(OperationalSite::class, $record['operational_site_id'] ?? null, 'operational_site_id', $warnings);
@@ -199,13 +237,38 @@ class QuotesSource extends AbstractMigrationSource
             supervisorIdSubmitted: true,
             internalNotes: $description !== '' ? $description : null,
             offerLines: $lines,
+            costLines: $costLines,
             companyId: $companySite?->company_id,
             companySiteId: $companySite?->id,
             operationalSiteId: $operationalSiteId,
             operationalSiteIdSubmitted: $operationalSiteId !== null,
             paymentMethodId: $this->remapLegacyId(PaymentMethod::class, $record['payment_method_id'] ?? null, 'payment_method_id', $warnings),
             managerSlots: [],
+            quoteDate: ($this->legacyTimestamp($record['quote_date'] ?? null) ?? $this->legacyTimestamp($record['created_at'] ?? null))?->toDateString(),
         );
+    }
+
+    /**
+     * An offer cannot have a customer other than its opportunity's (G-15):
+     * the legacy one, when different, is only reported.
+     *
+     * @param  array<int, string>  $warnings
+     */
+    private function reportCustomerMismatch(Opportunity $opportunity, mixed $externalRegistryId, array &$warnings): void
+    {
+        if ($externalRegistryId === null || $externalRegistryId === '' || (int) $externalRegistryId === 0) {
+            return;
+        }
+
+        $opportunityRegistryOldId = Registry::query()->whereKey($opportunity->registry_id)->value('old_id');
+
+        if ($opportunityRegistryOldId !== null && (int) $opportunityRegistryOldId === (int) $externalRegistryId) {
+            return;
+        }
+
+        $warnings[] = "Legacy customer (legacy id {$externalRegistryId}) differs from the opportunity's"
+            .($opportunityRegistryOldId === null ? '' : " (legacy id {$opportunityRegistryOldId})")
+            ."; the offer stays under the opportunity's customer.";
     }
 
     /**

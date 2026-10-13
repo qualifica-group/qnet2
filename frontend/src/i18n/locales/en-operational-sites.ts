@@ -1,6 +1,6 @@
 /**
  * Localized strings for the operational-sites module (spec 0011): grid
- * columns, the read-only detail sheet and the create/edit form (single
+ * columns, the in-place editable detail and the create form (single
  * embedded address — the site has no own name/label, it IS its address).
  *
  * Extracted from `en.ts` to keep that file within the engineering size limits
@@ -22,28 +22,18 @@ export const operationalSites = {
   },
   detail: {
     title: 'Operational site details',
-    subtitle: 'Read-only view of the selected operational site.',
+    subtitle: 'View and edit the selected operational site.',
     loadError: 'Unable to load the operational site. Please try again.',
-    alias: 'Alias',
-    line1: 'Street',
-    postal_code: 'Postal code',
     city: 'City',
     province: 'Province',
     region: 'Region',
     country: 'Country',
-    is_active: 'Active',
     created_at: 'Created at',
-    summary: {
-      title: 'Summary',
-      description: 'Updated as you type.',
-    },
   },
   form: {
     newOperationalSite: 'New operational site',
     createTitle: 'Create operational site',
     createSubtitle: 'Add a new operational site to your organization.',
-    editTitle: 'Edit operational site',
-    editSubtitle: 'Update the selected operational site.',
     alias: 'Alias',
     line1: 'Street',
     postalCode: 'Postal code',
@@ -62,6 +52,12 @@ export const operationalSites = {
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the operational site. Please try again.',
     deleteForbidden: 'You cannot delete this operational site.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The operational site has not been created yet: the data you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       address: {
         title: 'Address',

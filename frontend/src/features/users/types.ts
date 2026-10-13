@@ -125,6 +125,8 @@ export interface EmploymentProductLineInput {
  */
 export interface UserDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   email: string
   locale: UserLocale
@@ -235,3 +237,6 @@ export interface UpdateUserPayload {
   /** Only the custom fields that changed, keyed by raw key (spec 0021, sparse diff). */
   custom_fields?: Record<string, CustomFieldValue>
 }
+
+/** Discriminated form mode: a bare create, or the in-place detail of a persisted user (spec 0222). */
+export type UserFormMode = { type: 'create' } | { type: 'edit'; user: UserDetailWithPermissions }
