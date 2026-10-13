@@ -18,11 +18,11 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'steps', items: [
           'Open **Configuration › Commission Configurator** and press **New configuration**.',
-          'In **Identity and scope**: type the **Configuration name**; choose the **Recipient role** (Salesperson, Referrer, Supervisor or Supplier); choose the **Application scope** (Product category, Product or Specific recipient).',
+          'In **Recipient and scope**: type the **Configuration name**; choose the **Recipient role** (Salesperson, Referrer, Supervisor or Supplier); choose the **Application scope** (Product category, Product or Specific recipient).',
           'Depending on the scope, indicate **Product category**, **Product** or **Recipient type** (Referent, User or Registry) and **Recipient**.',
-          'In **Calculation** choose the **Commission type** (Fixed amount or Percentage), the **Commission value** and the **Rule priority**.',
-          'In **Validity** indicate the **Validity start date** (required), the optional **Validity end date** and the **Status** (Active or Suspended).',
-          'If you want, add an **Internal service note** and press **Save**.',
+          'In **Calculation** choose the **Commission type** (Fixed amount or Percentage), the **Commission value**, the **Rule priority** and the **Status** (Active or Suspended).',
+          'In **Validity and notes** indicate the **Validity start date** (required) and the optional **Validity end date**.',
+          'If you want, add an **Internal service note** and press **Save**. While creating, the form is identical to the detail: each row opens with the pencil and is confirmed with **Done** (**Revert** undoes the row); leaving before saving asks for confirmation.',
         ] },
         { type: 'tip', text: 'The rules of a single registry (supplier or not) can also be viewed and created from its detail, in the **Configured commissions** tab: there the form already starts with Role **Supplier** and that registry as Recipient.' },
       ],
@@ -45,7 +45,7 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Editing, suspending and deleting',
       blocks: [
-        { type: 'paragraph', text: 'From the list you can use **View** and **Delete** on the row, if your role allows it. To edit, open the record with **View** and press **Edit**.' },
+        { type: 'paragraph', text: 'From the list you can use **View** and **Delete** on the row, if your role allows it. There is no edit page: open the record with **View** and change one value at a time, with the pencil next to it (or by clicking the value), then **Save** to confirm or **Cancel** to go back. Data that must stay consistent is edited together in a single row: **Recipient** (role, recipient type and recipient), **Scope** (application scope and category or product) and **Validity** (start and end date).' },
         { type: 'warning', text: 'A configuration in use cannot be deleted: set it to **Suspended** instead.' },
       ],
     },

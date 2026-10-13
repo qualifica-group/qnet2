@@ -57,10 +57,13 @@ describe('commission configuration API', () => {
 
   it('creates, updates and deletes through the dedicated endpoints', async () => {
     vi.mocked(apiClient.post).mockResolvedValue({ data: { data: detail } })
-    vi.mocked(apiClient.patch).mockResolvedValue({ data: { data: detail } })
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: { data: detail, permissions: { resource: {}, fields: {}, actions: {} } } })
     vi.mocked(apiClient.delete).mockResolvedValue({})
     await expect(createCommissionConfiguration(payload)).resolves.toEqual(detail)
-    await expect(updateCommissionConfiguration(1, { name: 'Rule' })).resolves.toEqual(detail)
+    await expect(updateCommissionConfiguration(1, { name: 'Rule' })).resolves.toEqual({
+      ...detail,
+      permissions: { resource: {}, fields: {}, actions: {} },
+    })
     await deleteCommissionConfiguration(1)
     expect(apiClient.post).toHaveBeenCalledWith('/commission-configurations', payload)
     expect(apiClient.patch).toHaveBeenCalledWith('/commission-configurations/1', { name: 'Rule' })

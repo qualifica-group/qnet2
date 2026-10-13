@@ -35,6 +35,13 @@ export interface CommissionRelationRef {
   name: string
 }
 
+/** The names the closed rows show for the three relations: persisted on a detail, resolved from the draft's ids on create. */
+export interface CommissionConfigurationRefs {
+  category: CommissionRelationRef | null
+  product: CommissionRelationRef | null
+  recipient: CommissionRelationRef | null
+}
+
 export interface CommissionConfigurationDetail {
   id: number
   /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */

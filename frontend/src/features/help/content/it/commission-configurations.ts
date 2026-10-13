@@ -16,7 +16,7 @@ const guide: HelpGuide = {
       id: 'create-configuration',
       title: 'Creare una configurazione',
       blocks: [
-        { type: 'steps', items: ['Apri **Configurazione › Configuratore Commissioni** e premi **Nuova configurazione**.', 'In **Identità e ambito**: scrivi il **Nome configurazione**; scegli il **Ruolo destinatario** (Commerciale, Segnalatore, Supervisore o Fornitore); scegli l’**Ambito di applicazione** (Categoria prodotto, Prodotto o Destinatario specifico).', 'In base all’ambito indica **Categoria prodotto**, **Prodotto** oppure **Tipo destinatario** (Referente, Utente o Anagrafica) e **Destinatario**.', 'In **Calcolo** scegli la **Tipologia commissione** (Importo fisso o Percentuale), il **Valore commissione** e la **Priorità regola**.', 'In **Validità** indica la **Data inizio validità** (obbligatoria), l’eventuale **Data fine validità** e lo **Stato** (Attiva o Sospesa).', 'Se vuoi, aggiungi una **Nota di servizio interna** e premi **Salva**.'] },
+        { type: 'steps', items: ['Apri **Configurazione › Configuratore Commissioni** e premi **Nuova configurazione**.', 'In **Destinatario e ambito**: scrivi il **Nome configurazione**; scegli il **Ruolo destinatario** (Commerciale, Segnalatore, Supervisore o Fornitore); scegli l’**Ambito di applicazione** (Categoria prodotto, Prodotto o Destinatario specifico).', 'In base all’ambito indica **Categoria prodotto**, **Prodotto** oppure **Tipo destinatario** (Referente, Utente o Anagrafica) e **Destinatario**.', 'In **Calcolo** scegli la **Tipologia commissione** (Importo fisso o Percentuale), il **Valore commissione**, la **Priorità regola** e lo **Stato** (Attiva o Sospesa).', 'In **Validità e note** indica la **Data inizio validità** (obbligatoria) e l’eventuale **Data fine validità**.', 'Se vuoi, aggiungi una **Nota di servizio interna** e premi **Salva**. Nella creazione la scheda è identica al dettaglio: ogni riga si apre con la matita e si conferma con **Fatto** (**Ripristina** per annullare la riga); uscendo prima di salvare ti viene chiesta conferma.'] },
         { type: 'tip', text: 'Le regole di una singola anagrafica (fornitore o no) si consultano e si creano anche dal suo dettaglio, nella scheda **Commissioni configurate**: lì il modulo parte già con Ruolo **Fornitore** e quell’anagrafica come Destinatario.' },
       ],
     },
@@ -31,7 +31,7 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Modificare, sospendere ed eliminare',
       blocks: [
-        { type: 'paragraph', text: 'Dall’elenco puoi usare **Visualizza** ed **Elimina** sulla riga, se il tuo ruolo lo consente. Per modificare apri la scheda con **Visualizza** e premi **Modifica**.' },
+        { type: 'paragraph', text: 'Dall’elenco puoi usare **Visualizza** ed **Elimina** sulla riga, se il tuo ruolo lo consente. Non c’è una pagina di modifica: apri la scheda con **Visualizza** e cambia un dato alla volta, con la matita accanto al valore (o cliccando il valore) e **Salva** per confermare, **Annulla** per tornare indietro. I dati che devono essere coerenti tra loro si modificano insieme in un’unica riga: **Destinatario** (ruolo, tipo destinatario e destinatario), **Ambito** (ambito di applicazione e categoria o prodotto) e **Validità** (data di inizio e di fine).' },
         { type: 'warning', text: 'Una configurazione in uso non si può eliminare: impostala su **Sospesa**.' },
       ],
     },
