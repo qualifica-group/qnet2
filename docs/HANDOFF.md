@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## OLD ID FILTRABILE, ORDINABILE E CERCABILE IN OGNI GRIGLIA (2026-10-13) — VERDE, COMMITTATO
+
+- Richiesta utente: "la colonna id legacy deve essere filtrabile e sortabile ovunque".
+- `InjectsDefaultIdColumn::defaultLegacyIdColumn()`: `filterable: true`, `filterType: 'number'` (era solo sortable);
+  `LEGACY_ID_COLUMN` da `private` a `protected const`. `id` di default resta non filtrabile (invariato).
+- Bug trovato: `CommissionConfigurationsTableDefinition::resolveConfig` filtra le colonne con `visibleColumnIds()`
+  (costruita da `columns()` grezze) e scartava `old_id` iniettato -> colonna mai mostrata. Fix: `->push(self::LEGACY_ID_COLUMN)`
+  (l'iniezione resta gated da `LegacyIdVisibility`).
+- Test `TableLegacyIdColumnTest`: REQUIREMENT CHANGED `filterable` true; nuovi "filters the rows by old_id" e
+  sweep su TUTTI i domini di `config('tables.definitions')` la cui tabella ha `old_id` (28): colonna esposta,
+  sortable+filterable, rows con filtro+sort 200. Verificato che fallisce senza il fix provvigioni.
+- Verifica: Pest parallelo 10406 verdi, rossi solo i 3 `QuoteDocumentPdfTest` (LibreOffice); Pint pulito; Vitest help
+  122/122; ESLint + `tsc -b --force` puliti. Nessun codice FE (il filtro numerico e' generico).
+- Segnalazione utente: in Opportunita' la ricerca rapida "173029" non trovava il record (old_id 173029, id 19558):
+  filtri di colonna OK, ma la ricerca rapida copriva solo `name`. Fix: la colonna `old_id` iniettata e' anche
+  `searchable: true` -> entra nella ricerca rapida (OR-LIKE) di tutte le 28 griglie, solo per chi vede l'ID legacy.
+  Test: ricerca opportunita' per old_id, negativo senza permesso, sweep esteso (`searchable` contiene `old_id` +
+  search 200). Pest parallelo 10407 verdi; rossi i 3 LibreOffice + `DemoOpportunitySeederTest` INV-1/INV-2
+  instabile (1 fallimento su 6 run isolati, non legato a questa modifica).
+- Manuale: guida `general` IT/EN (righe "Colonne" e "Cerca…") + manuale Claude Docs (stesse righe). PDF da rigenerare.
+
 ## MERGE main -> feature/amministrazione — VERDE, NON COMMITTATO (2026-10-13)
 
 - Merge di main (fino a eb207f4f, spec 0240-0242) su feature/amministrazione (spec 0208-0212). 12 file in conflitto,

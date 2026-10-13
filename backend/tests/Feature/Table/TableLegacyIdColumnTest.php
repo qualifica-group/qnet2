@@ -1,9 +1,12 @@
 <?php
 
+use App\Models\Opportunity;
 use App\Models\RewardType;
 use App\Models\Tag;
 use App\Models\User;
+use App\Tables\TableRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -30,7 +33,7 @@ function legacyIdActor(array $abilities, bool $seesLegacyIds = true): User
     return $user;
 }
 
-it('injects a hidden sortable old_id column right after id when the table has a legacy id', function () {
+it('injects a hidden sortable and filterable old_id column right after id when the table has a legacy id', function () {
     Sanctum::actingAs(legacyIdActor(['tags.viewAny']));
 
     $columns = collect($this->getJson('/api/tables/tags/columns')->assertOk()->json('data.columns'));
@@ -42,7 +45,8 @@ it('injects a hidden sortable old_id column right after id when the table has a 
         ->type->toBe('number')
         ->visible->toBeFalse()
         ->sortable->toBeTrue()
-        ->filterable->toBeFalse()
+        ->filterable->toBeTrue()
+        ->filterType->toBe('number')
         ->order->toBe(2);
 });
 
@@ -78,6 +82,83 @@ it('returns old_id in the rows and sorts by it', function () {
     ])->assertOk()->json('items');
 
     expect(array_column($rows, 'old_id'))->toBe([30, 20, 10]);
+});
+
+it('filters the rows by old_id', function () {
+    Sanctum::actingAs(legacyIdActor(['tags.viewAny']));
+
+    Tag::factory()->create(['old_id' => 10]);
+    Tag::factory()->create(['old_id' => 20]);
+    Tag::factory()->create(['old_id' => 30]);
+
+    $rows = $this->postJson('/api/tables/tags/rows', [
+        'startRow' => 0,
+        'endRow' => 25,
+        'filterModel' => ['old_id' => ['filterType' => 'number', 'type' => 'inRange', 'filter' => 15, 'filterTo' => 30]],
+        'sortModel' => [['colId' => 'old_id', 'sort' => 'asc']],
+    ])->assertOk()->json('items');
+
+    expect(array_column($rows, 'old_id'))->toBe([20, 30]);
+});
+
+it('finds an opportunity by old_id through the quick search', function () {
+    Sanctum::actingAs(legacyIdActor(['opportunities.viewAny']));
+
+    $target = Opportunity::factory()->create(['old_id' => 173029]);
+    Opportunity::factory()->create(['old_id' => 173030]);
+
+    $response = $this->postJson('/api/tables/opportunities/rows', [
+        'startRow' => 0,
+        'endRow' => 25,
+        'search' => '173029',
+    ])->assertOk();
+
+    expect(array_column($response->json('items'), 'id'))->toBe([$target->id]);
+});
+
+it('keeps old_id out of the quick search for an actor without legacy-ids.view', function () {
+    Sanctum::actingAs(legacyIdActor(['opportunities.viewAny'], seesLegacyIds: false));
+
+    Opportunity::factory()->create(['old_id' => 173029, 'name' => 'Unrelated']);
+
+    $searchable = $this->getJson('/api/tables/opportunities/columns')->assertOk()->json('data.searchable');
+    $rows = $this->postJson('/api/tables/opportunities/rows', ['startRow' => 0, 'endRow' => 25, 'search' => '173029'])
+        ->assertOk()->json('items');
+
+    expect($searchable)->not->toContain('old_id')
+        ->and($rows)->toBeEmpty();
+});
+
+it('sorts, filters and searches by old_id on every grid that exposes it', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole(Role::findOrCreate('super-admin'));
+    Sanctum::actingAs($admin);
+
+    $domains = collect(array_keys(config('tables.definitions')))->filter(function (string $domain): bool {
+        $modelClass = app(TableRegistry::class)->resolveRaw($domain)->modelClass();
+
+        return Schema::hasColumn((new $modelClass)->getTable(), 'old_id');
+    });
+
+    expect($domains)->not->toBeEmpty();
+
+    foreach ($domains as $domain) {
+        $column = collect($this->getJson("/api/tables/{$domain}/columns")->assertOk()->json('data.columns'))
+            ->firstWhere('id', 'old_id');
+
+        expect($column)->not->toBeNull("{$domain} does not expose old_id")
+            ->sortable->toBeTrue()->filterable->toBeTrue()->filterType->toBe('number');
+        expect(in_array('old_id', $this->getJson("/api/tables/{$domain}/columns")->json('data.searchable'), true))
+            ->toBeTrue("{$domain} does not search old_id");
+
+        $this->postJson("/api/tables/{$domain}/rows", [
+            'startRow' => 0,
+            'endRow' => 25,
+            'filterModel' => ['old_id' => ['filterType' => 'number', 'type' => 'equals', 'filter' => 1]],
+            'sortModel' => [['colId' => 'old_id', 'sort' => 'desc']],
+            'search' => '1',
+        ])->assertOk();
+    }
 });
 
 it('leaves the row payload without old_id on a table without a legacy id', function () {

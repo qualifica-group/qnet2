@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Schema;
  * column-visibility preferences and the sort/filter whitelists — with no
  * per-domain declaration. When the model's table carries the legacy `old_id`
  * (the external-migration anchor) and the authenticated actor may see it
- * (LegacyIdVisibility), a hidden `old_id` column follows it.
+ * (LegacyIdVisibility), a hidden, sortable, filterable and quick-searchable
+ * `old_id` column follows it.
  *
  * Both columns are hidden by default (ADR-0004 visibility): the row payload
  * already carries `id` (every mapRow returns it) and `old_id` (TableService
@@ -26,7 +27,7 @@ use Illuminate\Support\Facades\Schema;
  */
 trait InjectsDefaultIdColumn
 {
-    private const LEGACY_ID_COLUMN = 'old_id';
+    protected const LEGACY_ID_COLUMN = 'old_id';
 
     /**
      * Whether each model table carries `old_id`, keyed by connection + table:
@@ -95,8 +96,9 @@ trait InjectsDefaultIdColumn
     }
 
     /**
-     * The default hidden `old_id` column: the legacy id, sortable and hidden by
-     * default, with the same non-filterable rationale as defaultIdColumn().
+     * The default hidden `old_id` column: the legacy id, sortable, filterable
+     * (number filter) and part of the quick search — unlike `id`, users look
+     * records up by the id they knew in the legacy system.
      *
      * @return array<string, mixed>
      */
@@ -108,8 +110,9 @@ trait InjectsDefaultIdColumn
             'type' => 'number',
             'visible' => false,
             'sortable' => true,
-            'filterable' => false,
-            'filterType' => null,
+            'filterable' => true,
+            'filterType' => 'number',
+            'searchable' => true,
         ];
     }
 
