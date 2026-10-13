@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchTaskImportance } from '@/features/task-importances/api'
+import { fetchTaskImportance, taskImportanceDetailQueryKey } from '@/features/task-importances/api'
 import { TaskImportanceForm } from '@/features/task-importances/task-importance-form'
 import { TaskImportanceDetailView } from '@/features/task-importances/task-importance-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -15,18 +15,13 @@ import type {
 } from '@/features/modules/types'
 import type { TaskImportanceDetail } from '@/features/task-importances/types'
 
-/** Query key for a single task importance's detail (fresh-on-open pattern). */
-function detailQueryKey(id: number) {
-  return ['task-importances', 'detail', id] as const
-}
-
 /**
- * Content-only `task-importances` screens for the module registry (spec 0042): fetch
- * + the existing presentational view/form, no page chrome. Reused as-is by the
- * modal Sheet (`useModuleOpener`) and by the generic dedicated pages
- * (`ModuleDetailPage`/`ModuleFormPage`).
+ * Content-only `task-importances` screens for the module registry (spec 0042):
+ * fetch + the presentational view/form, no page chrome. The detail edits its
+ * rows in place, so `onEdit` is never used; each save reports through
+ * `onChanged`.
  */
-export function TaskImportanceDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function TaskImportanceDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: taskImportance,
@@ -34,7 +29,7 @@ export function TaskImportanceDetailScreen({ id, onEdit }: ModuleDetailScreenPro
     isError,
     error,
     refetch,
-  } = useEntityDetail(detailQueryKey(id), () => fetchTaskImportance(id))
+  } = useEntityDetail(taskImportanceDetailQueryKey(id), () => fetchTaskImportance(id))
 
   if (isError) {
     return (
@@ -51,70 +46,49 @@ export function TaskImportanceDetailScreen({ id, onEdit }: ModuleDetailScreenPro
     return <DetailLoading />
   }
 
-  return <TaskImportanceDetailView taskImportance={taskImportance} onEdit={onEdit} />
-}
-
-export function TaskImportanceFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (saved: TaskImportanceDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(saved.id) })
-    onSuccess(saved.id)
-  }
-
-  if (mode.type === 'create') {
-    return <TaskImportanceForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
-  }
-
-  return (
-    <TaskImportanceEditScreen taskImportanceId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-  )
-}
-
-interface TaskImportanceEditScreenProps {
-  taskImportanceId: number
-  onSuccess: (taskImportance: TaskImportanceDetail) => void
-  onCancel: () => void
+  return <TaskImportanceDetailView taskImportance={taskImportance} onChanged={onChanged} />
 }
 
 /**
- * Fetches the fresh, re-authorized task importance detail before mounting the edit
- * form, so the partial PATCH starts from authoritative values rather than a
- * stale snapshot.
+ * Create only: there is no edit form, and the registry generates no
+ * `:id/edit` route. Leaving a record being created — Cancel, the Sheet's
+ * X/overlay/Esc, a link, a reload — always asks first.
  */
-function TaskImportanceEditScreen({ taskImportanceId, onSuccess, onCancel }: TaskImportanceEditScreenProps) {
+export function TaskImportanceFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const { t } = useTranslation()
-  const {
-    data: taskImportance,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(detailQueryKey(taskImportanceId), () => fetchTaskImportance(taskImportanceId))
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('taskImportances.form.leaveConfirm.title'),
+    description: t('taskImportances.form.leaveConfirm.description'),
+    confirmLabel: t('taskImportances.form.leaveConfirm.confirm'),
+    cancelLabel: t('taskImportances.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('taskImportances.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
+  if (mode.type !== 'create') {
+    return null
   }
 
-  if (isLoading || !taskImportance) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+  const handleSuccess = (saved: TaskImportanceDetail) => {
+    queryClient.invalidateQueries({ queryKey: taskImportanceDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new record's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(saved.id)
+  }
+
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
   }
 
   return (
-    <TaskImportanceForm mode={{ type: 'edit', taskImportance }} onSuccess={onSuccess} onCancel={onCancel} />
+    <>
+      {leaveGuard.navigationGuard}
+      <TaskImportanceForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
   )
 }
 
@@ -126,7 +100,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.taskImportances',
   DetailScreen: TaskImportanceDetailScreen,
   FormScreen: TaskImportanceFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button.
+  // The detail IS the edit form: no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createTaskStatus, updateTaskStatus } from '@/features/task-statuses/api'
+import { createTaskStatus, taskStatusDetailQueryKey, updateTaskStatus } from '@/features/task-statuses/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -45,8 +45,9 @@ interface UseTaskStatusFormArgs {
 }
 
 /**
- * Owns every non-render concern of `TaskStatusForm`: RHF/Zod wiring, default
- * values, server 422 mapping and the create/update submit. The component stays
+ * Owns every non-render concern of the task status form: RHF/Zod wiring, default
+ * values, server 422 mapping and the create/update submit. Create backs
+ * `TaskStatusForm`; edit backs the detail's in-place rows (diff PATCH). The component stays
  * UI-only; this hook is the orchestration point (`onSubmit`).
  */
 export function useTaskStatusForm({ mode, onSuccess }: UseTaskStatusFormArgs) {
@@ -84,9 +85,13 @@ export function useTaskStatusForm({ mode, onSuccess }: UseTaskStatusFormArgs) {
     }
   }, [mode])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<TaskStatusFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: TaskStatusFormValues) => {
@@ -98,7 +103,7 @@ export function useTaskStatusForm({ mode, onSuccess }: UseTaskStatusFormArgs) {
           mode.taskStatus.id,
           buildUpdatePayload(values, mode.taskStatus),
         )
-        queryClient.setQueryData(['task-statuses', 'detail', mode.taskStatus.id], saved)
+        queryClient.setQueryData(taskStatusDetailQueryKey(mode.taskStatus.id), saved)
         toast.success(t('taskStatuses.form.updated'))
         onSuccess(saved)
         return
@@ -116,8 +121,8 @@ export function useTaskStatusForm({ mode, onSuccess }: UseTaskStatusFormArgs) {
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

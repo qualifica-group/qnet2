@@ -39,9 +39,9 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Press **New task importance**.',
-            'Fill in the fields and press **Save**.',
-            'To edit, open the record with **View**, press **Edit**, change the data and press **Save**.',
-            'To deactivate, open **Edit** and turn off **Active**: the tasks using it stay intact.',
+            'The record opens with its rows closed: on each row press the pencil (or the value), fill it in and press **Done**; **Revert** puts the row back as it was. Then press **Save**.',
+            'There is no separate edit form: open the record with **View**, press the pencil on the row, change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.',
+            'To deactivate, press the pencil on **Active** and turn it off: the tasks using it stay intact.',
           ],
         },
       ],

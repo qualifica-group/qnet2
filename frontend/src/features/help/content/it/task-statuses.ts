@@ -20,12 +20,26 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'managing',
+      title: 'Creare e modificare',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Premi **Nuovo stato**.',
+            'Si apre la scheda con le righe chiuse: per ogni riga premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com\'era. Poi premi **Salva**.',
+            'Per modificare non c\'è un modulo a parte: apri la scheda con **Visualizza**, premi la matita sulla riga, cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com\'era.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'system-statuses',
       title: 'Stati di sistema e disattivazione',
       blocks: [
         {
           type: 'paragraph',
-          text: 'I tre stati di sistema (uno fissato in testa, due in coda) permettono di cambiare solo nome, colore, icona e percentuale di completamento: gli altri campi restano fissi.',
+          text: 'I tre stati di sistema (uno fissato in testa, due in coda) permettono di cambiare solo nome, colore, icona e percentuale di completamento: gli altri campi restano fissi e sulle loro righe non compare la matita.',
         },
         {
           type: 'note',

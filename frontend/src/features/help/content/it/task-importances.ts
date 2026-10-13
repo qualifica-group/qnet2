@@ -39,9 +39,9 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Premi **Nuova importanza**.',
-            'Compila i campi e premi **Salva**.',
-            'Per modificare, apri la scheda con **Visualizza**, premi **Modifica**, cambia i dati e premi **Salva**.',
-            'Per disattivare, apri **Modifica** e spegni **Attiva**: i task che la usano restano intatti.',
+            'Si apre la scheda con le righe chiuse: per ogni riga premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com\'era. Poi premi **Salva**.',
+            'Per modificare non c\'è un modulo a parte: apri la scheda con **Visualizza**, premi la matita sulla riga, cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com\'era.',
+            'Per disattivare, premi la matita su **Attiva** e spegnila: i task che la usano restano intatti.',
           ],
         },
       ],

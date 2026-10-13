@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Flag } from 'lucide-react'
-import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordBody } from '@/components/detail/record-body'
 import {
   RecordCanvas,
   RecordCardHeader,
@@ -10,95 +12,86 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import { RecordBody } from '@/components/detail/record-body'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
+import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
+import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { DynamicIcon } from '@/features/custom-fields/dynamic-icon'
-import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
-import { cn } from '@/lib/utils'
-import type { TaskStatusDetailWithPermissions } from '@/features/task-statuses/types'
+import { TaskStatusRows } from '@/features/task-statuses/task-status-rows'
+import { useTaskStatusForm, type TaskStatusFormValues } from '@/features/task-statuses/use-task-status-form'
+import type { TaskStatusDetailWithPermissions, TaskStatusFormMode } from '@/features/task-statuses/types'
 
 interface TaskStatusDetailViewProps {
   taskStatus: TaskStatusDetailWithPermissions
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the record (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single task status, rendered as an enterprise-CRM
- * record (Opportunita' reference layout): the identity/fields card on the
- * left, the activity card on the right, a metadata footer. `color` is shown
- * as its swatch + localized token name, `icon` as the resolved glyph + its
- * canonical name (both from the shared palette/catalogue) and `group` as the
- * localized label of its fixed phase.
+ * Detail of a single task status on the record kit: identity band, the
+ * "Dettagli" rows, the activity in the side column, a metadata footer. There
+ * is no edit page (wave 3 of the "no edit pages" plan): every row edits IN
+ * PLACE, one at a time, each save a PATCH of that field alone.
  */
-export function TaskStatusDetailView({ taskStatus, onEdit }: TaskStatusDetailViewProps) {
+export function TaskStatusDetailView(props: TaskStatusDetailViewProps) {
+  // The rows read the field permissions, so the provider wraps the whole detail.
+  return (
+    <ResourcePermissionsProvider permissions={props.taskStatus.permissions}>
+      <TaskStatusDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function TaskStatusDetailContent({ taskStatus, onChanged }: TaskStatusDetailViewProps) {
   const { t } = useTranslation()
+  const editing = useInlineEditingField()
+  // Stable per saved record: the form re-syncs its values on a new one.
+  const mode = useMemo<TaskStatusFormMode>(() => ({ type: 'edit', taskStatus }), [taskStatus])
+  const { form, onSubmit, serverError, clearServerError } = useTaskStatusForm({
+    mode,
+    onSuccess: () => {
+      editing.close()
+      onChanged?.()
+    },
+  })
+  const inline = useRecordInlineEdit<TaskStatusFormValues>({
+    editing,
+    form,
+    onSubmit,
+    serverError,
+    clearServerError,
+    genericErrorMessage: t('taskStatuses.form.genericError'),
+  })
   const canEdit = taskStatus.permissions.resource.update
   const createdAt = formatDateTime(taskStatus.created_at)
   const updatedAt = formatDateTime(taskStatus.updated_at)
-  const swatch = swatchClassFor(taskStatus.color)
-  const canViewActivity = taskStatus.permissions.actions.view_activity
+  const tabs: RecordCollaborationTab[] = taskStatus.permissions.actions.view_activity
+    ? [activityLogTab('task-statuses', taskStatus.id, t('activityLog.title'))]
+    : []
 
   return (
     <RecordCanvas>
       <RecordBody
-        collaborationTabs={canViewActivity ? [activityLogTab('task-statuses', taskStatus.id, t('activityLog.title'))] : []}
+        collaborationTabs={tabs}
         header={
           <RecordCardHeader
-            media={
-              <DetailMonogram
-                name={taskStatus.name}
-                icon={<Flag />}
-                className="size-10 text-base [&>svg]:size-5"
-              />
-            }
+            media={<DetailMonogram name={taskStatus.name} icon={<Flag />} />}
             title={taskStatus.name}
-            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
         }
       >
-        <RecordSectionsGrid>
-          <RecordSection title={t('taskStatuses.form.sections.identity.title')} full>
-            <RecordFieldList>
-              <RecordField label={t('taskStatuses.detail.description')}>
-                {taskStatus.description ? taskStatus.description : <DetailEmpty />}
-              </RecordField>
-              <RecordField label={t('taskStatuses.detail.color')}>
-                <span className="flex items-center gap-2">
-                  <span
-                    className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
-                    aria-hidden="true"
-                  />
-                  {t(`customFields.colors.${taskStatus.color}`)}
-                </span>
-              </RecordField>
-              <RecordField label={t('taskStatuses.detail.icon')}>
-                {taskStatus.icon ? (
-                  <span className="flex items-center gap-2">
-                    <DynamicIcon name={taskStatus.icon} className="size-3.5 text-muted-foreground" />
-                    {taskStatus.icon}
-                  </span>
-                ) : (
-                  <DetailEmpty />
-                )}
-              </RecordField>
-              <RecordField label={t('taskStatuses.detail.group')}>
-                {t(`taskStatuses.form.group.${taskStatus.group}`)}
-              </RecordField>
-              <RecordField label={t('taskStatuses.detail.completionPercentage')}>
-                {`${taskStatus.completion_percentage}%`}
-              </RecordField>
-              <RecordField label={t('taskStatuses.detail.sort_order')}>
-                {taskStatus.sort_order}
-              </RecordField>
-              <RecordField label={t('taskStatuses.detail.isActive')}>
-                {taskStatus.is_active ? t('common.yes') : t('common.no')}
-              </RecordField>
-            </RecordFieldList>
-          </RecordSection>
-        </RecordSectionsGrid>
+        {/* Provider only (no DOM): the in-place rows share the edit form. */}
+        <Form {...form}>
+          <RecordSectionsGrid>
+            <RecordSection title={t('taskStatuses.form.sections.identity.title')} full>
+              <RecordFieldList>
+                <TaskStatusRows inline={inline} canEdit={canEdit} isSystemRow={taskStatus.system_key !== null} />
+                <RecordField label={t('taskStatuses.detail.sort_order')}>{taskStatus.sort_order}</RecordField>
+              </RecordFieldList>
+            </RecordSection>
+          </RecordSectionsGrid>
+        </Form>
       </RecordBody>
 
       <RecordMeta>

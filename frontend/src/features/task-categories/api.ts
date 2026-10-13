@@ -8,6 +8,11 @@ import type {
   UpdateTaskCategoryPayload,
 } from '@/features/task-categories/types'
 
+/** Query key of a single task category's detail, shared by the detail screen and its in-place saves. */
+export function taskCategoryDetailQueryKey(id: number) {
+  return ['task-categories', 'detail', id] as const
+}
+
 /**
  * Fetches a single task category detail together with the actor's authorization
  * metadata for it (`permissions`, a top-level envelope sibling of `data`).
@@ -28,14 +33,17 @@ export async function createTaskCategory(payload: CreateTaskCategoryPayload): Pr
 /**
  * Partially updates a task category (PATCH). `system_key` and `sort_order` are
  * never keys of `UpdateTaskCategoryPayload` (spec 0101 `data_contract`): the backend
- * rejects their mere presence with 422.
+ * rejects their mere presence with 422. Returns the saved record with the
+ * actor's permissions, so the in-place detail re-syncs on it as is.
  */
 export async function updateTaskCategory(
   id: number,
   payload: UpdateTaskCategoryPayload,
-): Promise<TaskCategoryDetail> {
-  const { data } = await apiClient.patch<ApiResponse<TaskCategoryDetail>>(`/task-categories/${id}`, payload)
-  return data.data
+): Promise<TaskCategoryDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<TaskCategoryDetail, ResourcePermissions>
+  >(`/task-categories/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**
