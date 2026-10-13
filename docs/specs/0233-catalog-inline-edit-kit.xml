@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0233-catalog-inline-edit-kit" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Onda 3 del piano "nessuna pagina di modifica" (riaperta dall'utente il 2026-10-12, "ok procedi"): le ~25 tabelle
+    di impostazione perdono la pagina di modifica. Per non ripetere 25 volte lo stesso codice, un KIT CONDIVISO per la
+    modifica sul posto e la creazione come il dettaglio; pilota: Priorita' Task. Gli altri moduli: spec 0234-0239.
+  </goal>
+
+  <context>
+    - D-1 (kit, `frontend/src/components/record-form/`):
+      `use-record-inline-edit.ts` = `useInlineEditingField()` (stato della riga aperta, creato PRIMA dell'hook del
+      form del modulo, cosi' il suo `onSuccess` chiude la riga) + `useRecordInlineEdit({editing, form, onSubmit,
+      serverError, clearServerError, genericErrorMessage})` -> `InlineEdit` (una riga alla volta, Salva = submit del
+      form di modifica con payload diff, aprire un'altra riga scarta quella non confermata, errore su campo non
+      visibile = toast). `inline-rows.tsx` = `TextInlineRow` (anche `multiline`), `NumberInlineRow`, `ColorInlineRow`,
+      `IconInlineRow`, `SwitchInlineRow`: ogni riga e' un `RecordInlineField` col controllo `MetaField` del campo e
+      legge il valore chiuso DAL FORM (stessa riga per dettaglio e bozza di creazione); va dentro il `<Form>`.
+      `record-create-layout.tsx` = `RecordCreateLayout` (banda d'identita' con titolo live + Annulla/Salva, errore,
+      sezioni, azioni ripetute in fondo). `components/icon-picker-control.tsx` = l'unico `IconPickerControl`
+      (sostituisce le 6 copie locali).
+    - D-2 (contratto per modulo): `api.update*` restituisce il dettaglio CON `permissions` (il backend le manda gia');
+      `*DetailQueryKey` esportata da `api.ts`; l'hook del form in edit ha `values` + `resetOptions.keepDirtyValues`,
+      espone `clearServerError`; dettaglio = `ResourcePermissionsProvider` + `Form` + righe del kit, niente
+      `onEdit`, prop `onChanged`; creazione = `RecordCreateLayout` + stesse righe con `useDraftInlineEdit`; il form
+      wrapper e' solo creazione (`useResourceMeta`), via il `use-*-form-meta.ts`; screens: `generateEditRoute:
+      false`, `detailOwnsEditAction: true`, `formOwnsHeader: true`, `useFormLeaveGuard` + i18n `form.leaveConfirm.*`.
+    - D-3: campi non coperti dal kit (select di gruppo, padre, relazioni, testi ricchi, liste) = `RecordInlineField`
+      diretto col controllo esistente; editor complessi = righe `layout="block"` (precedente 0197/0227).
+    - D-4: backend invariato. Esclusi sempre Gestione richieste, Gestione iscritti, Attiva, Gestione conti.
+  </context>
+
+  <acceptance>
+    <ac id="AC-001">Priorita' Task: nessuna rotta `:id/edit` ne' pulsante Modifica; ogni riga salva solo il proprio
+      campo; Annulla non chiama; 422 sulla riga; senza `update` nessuna matita.</ac>
+    <ac id="AC-002">Creazione a righe chiuse con Fatto/Ripristina; Salva valida tutto; uscita con conferma.</ac>
+    <ac id="AC-003">Guida in-app IT/EN `task-priorities` aggiornata.</ac>
+  </acceptance>
+</spec>

@@ -14,7 +14,7 @@
  * asymmetry — it reflects the backend.
  *
  * Copy owned by the module author (teammate `frontend-config`) except the page
- * chrome (`forbidden`, `detail.title`/`subtitle`, `form.create*`/`edit*`),
+ * chrome (`forbidden`, `detail.title`/`subtitle`, `form.create*`),
  * which belongs to the pages in `src/pages/task-*-page.tsx`.
  */
 
@@ -50,7 +50,7 @@ function lookupBundle({ singular, plural }: LookupCopy) {
     },
     detail: {
       title: `${Singular} details`,
-      subtitle: `Read-only view of the selected ${singular}.`,
+      subtitle: `Details of the selected ${singular}, editable in place.`,
       loadError: `Unable to load the ${singular}. Please retry.`,
       description: 'Description',
       color: 'Color',
@@ -63,8 +63,6 @@ function lookupBundle({ singular, plural }: LookupCopy) {
     form: {
       createTitle: `Create ${singular}`,
       createSubtitle: `Add a new ${singular}.`,
-      editTitle: `Edit ${singular}`,
-      editSubtitle: `Update the selected ${singular}.`,
       name: 'Name',
       description: 'Description',
       color: 'Color',
@@ -88,10 +86,15 @@ function lookupBundle({ singular, plural }: LookupCopy) {
       // Fallback only: on a 409 the module shows the backend message verbatim,
       // which names the resource. This shows only if the body carries none.
       deleteInUse: `This ${singular} is used by a task and cannot be deleted.`,
+      leaveConfirm: {
+        title: 'Leave without saving?',
+        description: `The ${singular} has not been created yet: what you entered will be lost.`,
+        confirm: 'Leave without saving',
+        cancel: 'Keep editing',
+      },
       sections: {
         identity: {
           title: 'Details',
-          description: 'Name, description, color, icon and status.',
         },
       },
     },
@@ -211,7 +214,7 @@ export const taskStatuses = {
   },
   detail: {
     title: 'Task status details',
-    subtitle: 'Read-only view of the selected task status.',
+    subtitle: 'Details of the selected task status, editable in place.',
     loadError: 'Unable to load the task status. Please retry.',
     description: 'Description',
     color: 'Color',
@@ -226,8 +229,6 @@ export const taskStatuses = {
   form: {
     createTitle: 'Create task status',
     createSubtitle: 'Add a new task status.',
-    editTitle: 'Edit task status',
-    editSubtitle: 'Update the selected task status.',
     newTaskStatus: 'New status',
     name: 'Name',
     description: 'Description',
@@ -262,17 +263,15 @@ export const taskStatuses = {
     completionPercentageRequired: 'Completion percentage is required.',
     completionPercentageInvalid: 'Completion percentage must be a whole number.',
     completionPercentageRange: 'Completion percentage must be between 0 and 100.',
-    hints: {
-      // Deliberately names FOUR fields: the backend message still says "only
-      // name and color" and was left untouched to preserve AC-048, but the
-      // module never shows it. This is the accurate wording.
-      systemStatusFields:
-        'A system status has fixed fields — only name, color, icon and completion percentage can be changed.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The task status has not been created yet: the data you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
     },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name, description, color, icon, phase and status.',
       },
     },
   },

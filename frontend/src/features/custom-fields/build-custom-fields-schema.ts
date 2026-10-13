@@ -202,7 +202,10 @@ export function buildCustomFieldsSchema(
 
   for (const descriptor of fields) {
     const key = rawKey(descriptor.key)
-    shape[key] = buildFieldSchema(descriptor, t)
+    // A create form seeds `custom_fields` as `{}`: a field never touched is
+    // `undefined` and must not block the save; the required check below
+    // still refuses it, since `isEmptyCustomFieldValue(undefined)` is true.
+    shape[key] = buildFieldSchema(descriptor, t).optional()
     if (isRequired(descriptor, permissions)) {
       requiredKeys.push(key)
     }

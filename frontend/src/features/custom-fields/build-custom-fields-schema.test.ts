@@ -165,3 +165,26 @@ describe('buildCustomFieldsSchema', () => {
     expect(schema.safeParse({ tags: null }).success).toBe(false)
   })
 })
+
+/**
+ * A create form seeds `custom_fields` as `{}`: a field the user never touched
+ * is `undefined`, and that must not block the save (the closed-row creation
+ * of the "no edit pages" plan made it visible). A required field still refuses.
+ */
+describe('buildCustomFieldsSchema — untouched fields on create', () => {
+  it('accepts an optional field left undefined', () => {
+    const schema = buildCustomFieldsSchema([CODE_FIELD, AGE_FIELD, TIER_FIELD], permissionsFor({}), i18n.t)
+
+    expect(schema.safeParse({}).success).toBe(true)
+  })
+
+  it('still refuses a required field left undefined', () => {
+    const schema = buildCustomFieldsSchema(
+      [CODE_FIELD],
+      permissionsFor({ 'custom.code': permission({ required: true }) }),
+      i18n.t,
+    )
+
+    expect(schema.safeParse({}).success).toBe(false)
+  })
+})
