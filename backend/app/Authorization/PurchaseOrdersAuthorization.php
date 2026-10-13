@@ -84,7 +84,9 @@ class PurchaseOrdersAuthorization extends AbstractResourceAuthorization
         $permissions = [];
 
         foreach ($this->fields() as $field) {
-            $permissions[$field->key] = $mayWrite
+            // The numbering is per company: it is fixed once the order exists (spec 0244, D-1)
+            $fixed = $field->key === 'company_id' && $model?->exists === true;
+            $permissions[$field->key] = $mayWrite && ! $fixed
                 ? FieldPermission::visibleEditable(required: $field->mandatory)
                 : FieldPermission::visibleReadonly();
         }
@@ -102,7 +104,7 @@ class PurchaseOrdersAuthorization extends AbstractResourceAuthorization
         return [
             'delete' => $editable && $actor->can('purchase-orders.delete'),
             'merge' => $editable && $actor->can('purchase-orders.merge'),
-            'send' => $model !== null && $actor->can('purchase-orders.send'),
+            'send' => $model !== null && $model->status?->isSendable() === true && $actor->can('purchase-orders.send'),
             'export' => $actor->can('purchase-orders.export'),
             'view_activity' => $model !== null && $actor->can('purchase-orders.viewActivity'),
         ];

@@ -98,7 +98,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Le righe RDA passano a **Ordinato** e la colonna **ODA** mostra il codice come link all’ordine. Se era l’ultima riga non finale, la RDA si chiude da sola. Eliminando la riga dall’ODA, la riga RDA torna Approvata.',
+          text: 'Le righe RDA passano a **Ordinato** e la colonna **ODA** mostra il codice come link all’ordine. Se era l’ultima riga non finale, la RDA si chiude da sola. Se la riga viene tolta dall’ODA, o l’ODA è eliminata o annullata, la riga RDA **Ordinata** torna Approvata (Stand by se la RDA è già chiusa). Quando l’ODA è **Evasa**, le righe collegate diventano Ricevute e la RDA si chiude se tutte le righe sono concluse.',
         },
       ],
     },

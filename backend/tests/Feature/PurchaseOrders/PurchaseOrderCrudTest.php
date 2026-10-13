@@ -228,16 +228,11 @@ it('AC-005: a draft is updated: header, line edit, new line and deleted line', f
     expect(PurchaseOrderLine::query()->whereKey($dropped->id)->exists())->toBeFalse();
 });
 
-it('AC-005: editing keeps the number even if the company or the date change', function () {
+it('AC-005: editing keeps the number even if the date changes', function () {
     Sanctum::actingAs(purchaseOrderUserWith(['view', 'update']));
     $order = purchaseOrderWithLines();
-    $other = purchaseOrderPayload();
 
-    $this->putJson("/api/purchase-orders/{$order->id}", purchaseOrderUpdatePayload($order, [
-        'company_id' => $other['company_id'],
-        'company_site_id' => $other['company_site_id'],
-        'order_date' => '2031-05-05',
-    ]))->assertOk()->assertJsonPath('data.code', $order->code());
+    $this->putJson("/api/purchase-orders/{$order->id}", purchaseOrderUpdatePayload($order, ['order_date' => '2031-05-05']))->assertOk()->assertJsonPath('data.code', $order->code());
 });
 
 it('AC-005: PUT on an order that is not draft or in validation is a 409 and nothing changes', function (PurchaseOrderStatus $status) {
@@ -325,7 +320,7 @@ it('shows the order with its abilities, and 403 without view', function () {
         ->assertJsonPath('data.abilities.update', true)
         ->assertJsonPath('data.abilities.delete', true)
         ->assertJsonPath('data.abilities.merge', true)
-        ->assertJsonPath('data.abilities.send', true)
+        ->assertJsonPath('data.abilities.send', false)
         ->assertJsonPath('data.abilities.view_activity', true)
         ->assertJsonPath('data.field_permissions.supplier_id.editable', true);
 

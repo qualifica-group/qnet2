@@ -54,6 +54,7 @@ class PurchaseOrderService
         private readonly PurchaseOrderAmountCalculator $amounts,
         private readonly PurchaseOrderNumberAllocator $numbers,
         private readonly PurchaseRequestLineLinker $linker,
+        private readonly PurchaseOrderDeletionGuard $deletion,
     ) {}
 
     /**
@@ -126,6 +127,7 @@ class PurchaseOrderService
             // Step 1: serialize on the order and refuse a locked one
             $locked = $this->lock($order);
             $this->assertEditable($locked);
+            $this->assertCompanyUnchanged($locked, $data);
 
             // Step 2: check the line payload against the stored lines before writing anything
             $existing = $locked->lines()->lockForUpdate()->get()->keyBy('id');
@@ -164,11 +166,7 @@ class PurchaseOrderService
     {
         DB::transaction(function () use ($order, $actor): void {
             $locked = $this->lock($order);
-            $this->assertEditable($locked);
-
-            if ($locked->purchaseInvoices()->exists()) {
-                abort(409, 'This purchase order is linked to a purchase invoice.');
-            }
+            $this->deletion->assertDeletable($locked);
 
             $lines = $locked->lines()->lockForUpdate()->get();
             $this->linker->unlink($lines, $actor);
@@ -187,7 +185,15 @@ class PurchaseOrderService
     public function assertEditable(PurchaseOrder $order): void
     {
         if (! $order->status->isEditable()) {
-            abort(409, 'This purchase order can no longer be changed.');
+            abort(409, __('purchase_orders.not_editable'));
+        }
+    }
+
+    /** The numbering is per company: moving an order to another one would break it (spec 0244, D-1). */
+    private function assertCompanyUnchanged(PurchaseOrder $locked, PurchaseOrderData $data): void
+    {
+        if ((int) $data->header['company_id'] !== (int) $locked->company_id) {
+            throw ValidationException::withMessages(['company_id' => [__('purchase_orders.company_locked')]]);
         }
     }
 

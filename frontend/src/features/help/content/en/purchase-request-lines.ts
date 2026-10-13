@@ -98,7 +98,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The RDA lines move to **Ordered** and the **ODA** column shows the code as a link to the order. If it was the last non-final line, the RDA closes by itself. Deleting the line from the ODA brings the RDA line back to Approved.',
+          text: 'The RDA lines move to **Ordered** and the **ODA** column shows the code as a link to the order. If it was the last non-final line, the RDA closes by itself. If the line is removed from the ODA, or the ODA is deleted or cancelled, the **Ordered** RDA line goes back to Approved (On hold if the RDA is already closed). When the ODA is **Fulfilled**, the linked lines become Received and the RDA closes if all its lines are concluded.',
         },
       ],
     },

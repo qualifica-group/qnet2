@@ -69,6 +69,13 @@ class PurchaseOrderEmailController extends OwnerEmailController
 
     public function send(Request $request, PurchaseOrder $purchaseOrder, int $email): JsonResponse
     {
+        try {
+            $this->authorizeSend($purchaseOrder);
+            $this->purchaseOrderEmails->assertSendable($purchaseOrder);
+        } catch (Throwable $exception) {
+            return $this->failed($exception, 'send', $purchaseOrder, ['email' => $email]);
+        }
+
         return $this->sendEmail($request, $purchaseOrder, $email);
     }
 }

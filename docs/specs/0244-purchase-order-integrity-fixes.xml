@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0244-purchase-order-integrity-fixes" status="draft" owner="ciro" date="2026-10-13">
+
+  <goal>
+    Chiudere sul server i difetti di integrita' degli ODA emersi dall'audit del 2026-10-13
+    (ODA-01, ODA-02, ODA-04, ODA-06, ODA-07, ODA-08): numerazione per societa' non piu' corrompibile,
+    righe RDA sempre coerenti con il destino dell'ODA, unificazione che rispetta i permessi e le
+    fatture passive, invio al fornitore solo di ordini approvati.
+  </goal>
+
+  <context>
+    Fonte: "Audit moduli Acquisti, Costi e Contabilita' attiva" 2026-10-13, Onda 1 (ODA-01/02/04/08)
+    + ODA-06 e ODA-07 inclusi per decisione utente. Spec di riferimento: 0210 (ODA, D-4, D-17, D-18, D-19),
+    0208/0209 (RDA). Branch: feature/amministrazione.
+
+    Decisioni utente 2026-10-13:
+    - D-1 (ODA-01) La societa' di un ODA non si cambia dopo la creazione: 422 su company_id se diversa
+      dalla salvata (come InvoiceService::update). Nessuna rinumerazione.
+    - D-2 (ODA-02) Rilascio di una riga RDA (ODA eliminato, riga ODA rimossa, ODA annullato):
+      - riga `ordered` di RDA aperta -> `approved`;
+      - riga `ordered` di RDA chiusa -> `on_hold` (terminale), la RDA resta chiusa;
+      - righe in altri stati (received, rejected, on_hold, approved) -> nessun cambio di stato;
+      - in tutti i casi la riga perde oda_reference; ogni cambio di stato scrive
+        purchase_request_line_status_logs con motivo tradotto.
+    - D-3 (ODA-07, supera 0210 D-18) Lo stato dell'ODA si propaga alle righe RDA collegate:
+      - ODA -> `cancelled`: le righe RDA collegate sono rilasciate con la regola D-2 e le righe ODA perdono
+        purchase_request_line_id (riaprire l'ODA annullato non le ricollega);
+      - ODA -> `fulfilled`: le righe RDA collegate in stato `ordered` diventano `received` (log), poi la RDA si
+        chiude se tutte le sue righe sono terminali (PurchaseRequestClosureService::closeIfComplete);
+      - ODA `fulfilled` -> `partially_fulfilled` e `partially_fulfilled`: nessun effetto sulle RDA
+        (received e' terminale, nessun ritorno indietro).
+    - D-4 (ODA-08) Invio email al fornitore consentito solo con ODA `approved` o `sent_to_supplier`:
+      altrimenti 409 sia sulla creazione della bozza email sia sull'invio di una bozza esistente;
+      abilities.send = permesso E stato ammesso.
+    - D-5 (ODA-04) Unificazione: oltre a `merge` sulla destinazione serve `update` su ogni ODA d'origine e
+      `delete` su ogni origine che resta vuota (403 altrimenti, nulla viene spostato).
+    - D-6 (ODA-06) Un ODA d'origine collegato a una fattura passiva (pivot purchase_invoice_purchase_order)
+      non si svuota/elimina con l'unificazione: 409 con lo stesso controllo dell'eliminazione
+      (assertDeletable condiviso), nulla viene spostato.
+
+    Fatti verificati nel codice:
+    - PurchaseOrderService::update fa $locked->fill($data->header) compresa company_id; unique
+      (company_id, year, number) su purchase_orders. Il FE (purchase-order-header-fields.tsx) rispetta gia'
+      field_permissions.company_id.editable.
+    - PurchaseOrderService::delete: assertEditable + 409 se purchaseInvoices()->exists() (messaggio non tradotto),
+      poi PurchaseRequestLineLinker::unlink(). update() rimuove righe e chiama unlink().
+    - PurchaseRequestLineLinker::release() forza `Approved` da qualsiasi stato; non chiude ne' riapre RDA.
+    - PurchaseOrderStatusService::change() fa solo forceFill(['status' => $to]) dopo matrice e ability.
+    - PurchaseOrderMergeService::merge: lock ordinati, assertEditable, assertCompatible, moveFrom() cancella
+      la sorgente svuotata con $source->delete(); il controller autorizza solo `merge` sulla destinazione.
+    - PurchaseOrderEmailController::store chiama authorizeSend (solo permesso); send() delega a
+      AbstractOwnerEmailController::sendEmail. PurchaseOrdersAuthorization::actionPermissions 'send' = solo permesso;
+      PurchaseOrderResource espone abilities.send; purchase-order-form-actions.tsx mostra il pulsante su abilities.send.
+    - RDA: PurchaseRequestLineStatus terminali = received, on_hold, rejected; PurchaseRequest::isClosed();
+      PurchaseRequestClosureService::closeIfComplete($request, $actor).
+  </context>
+
+  <scope>
+    <in>
+      <item>ODA-01: 422 su company_id cambiata in update; PurchaseOrdersAuthorization rende company_id readonly sul record esistente.</item>
+      <item>ODA-02 + ODA-07 (cancel): nuova regola di rilascio nel PurchaseRequestLineLinker (D-2), usata da delete, update (righe rimosse) e annullamento.</item>
+      <item>ODA-07 (fulfil): propagazione `received` + closeIfComplete delle RDA coinvolte nel cambio di stato a fulfilled.</item>
+      <item>ODA-04: autorizzazione update/delete sulle sorgenti nell'unificazione.</item>
+      <item>ODA-06: assertDeletable condiviso (fattura passiva collegata) tra delete e unificazione; messaggi tradotti.</item>
+      <item>ODA-08: guard di stato su creazione bozza e invio email ODA; abilities.send dipendente dallo stato.</item>
+      <item>Messaggi 409/422 nuovi o toccati tradotti (lang/{it,en}/purchase_orders.php).</item>
+      <item>Guide in-app IT+EN: purchase-orders, purchase-request-lines, purchase-requests (dove descrivono rilascio/stati). Manuale Claude Docs: segnalare se non accessibile.</item>
+      <item>Aggiornare in 0210 la decisione D-18 con un rimando a 0244 D-3 (nota, non riscrittura).</item>
+    </in>
+    <out>
+      <item>Stati ODA configurabili (ODA-03, onda 2), storico dedicato dei cambi stato ODA (ODA-20).</item>
+      <item>Ricezione per riga / evasione parziale per riga (partially_fulfilled non propaga).</item>
+      <item>Rilievi RDA-01/02/05/06 (spec 0245), anche se toccano righe RDA.</item>
+      <item>Ripristino di un'unificazione, snapshot dei settori, FK merge logs (ODA-05).</item>
+      <item>Limiti numerici, deduplicazione FE RDA/ODA, numerazione unica (ODA-09..13).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint nuovo. Envelope invariato. -->
+    <endpoint method="PUT" path="/api/purchase-orders/{purchaseOrder}">
+      <errors>422 errors.company_id = [__('purchase_orders.company_locked')] se company_id diversa dalla salvata.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/purchase-orders/{purchaseOrder}">
+      <response status="204">Righe RDA collegate rilasciate con regola D-2.</response>
+      <errors>409 __('purchase_orders.linked_to_purchase_invoice') (messaggio ora tradotto); 409 non modificabile (invariato, tradotto).</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-orders/{purchaseOrder}/status">
+      <request>invariato (to_status)</request>
+      <response status="200">Effetti D-3 su cancelled e fulfilled, nella stessa transazione.</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-orders/{purchaseOrder}/merge">
+      <errors>
+        403 se manca update su una sorgente o delete su una sorgente che resterebbe vuota (nulla spostato).
+        409 __('purchase_orders.linked_to_purchase_invoice') se una sorgente da svuotare ha fatture passive (nulla spostato).
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-orders/{purchaseOrder}/emails">
+      <errors>409 __('purchase_orders.not_sendable_status') se status non e' approved o sent_to_supplier.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/purchase-orders/{purchaseOrder}/emails/{email}/send">
+      <errors>409 __('purchase_orders.not_sendable_status') stesso controllo.</errors>
+    </endpoint>
+
+    <permissions_block>
+      PurchaseOrderResource abilities.send e PurchaseOrdersAuthorization actions.send: true solo con
+      purchase-orders.send E status in {approved, sent_to_supplier}.
+      field_permissions.company_id: editable=false su un ODA esistente.
+    </permissions_block>
+
+    <note>La verifica effettiva dei path di stato/email va fatta sulle rotte reali (routes/api/purchase-orders.php,
+      purchase-order-emails.php): se il path del cambio stato differisce, vale quello reale, non questo documento.</note>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un ODA della societa' A, quando PUT con company_id = B, allora 422 su company_id e l'ODA resta di A con lo stesso numero.</criterion>
+    <criterion id="AC-002">Dato un ODA esistente, allora il detail espone field_permissions.company_id.editable=false; alla creazione resta modificabile.</criterion>
+    <criterion id="AC-003">Dato un ODA bozza con una riga collegata a una riga RDA `ordered` di RDA aperta, quando DELETE, allora la riga RDA e' `approved`, senza oda_reference, con log "ODA eliminato".</criterion>
+    <criterion id="AC-004">Dato lo stesso scenario ma RDA chiusa (chiusura forzata), quando DELETE, allora la riga RDA e' `on_hold`, la RDA resta chiusa, log presente.</criterion>
+    <criterion id="AC-005">Dato una riga RDA collegata in stato `received` (o rejected), quando l'ODA viene eliminato, allora lo stato non cambia e oda_reference e' null.</criterion>
+    <criterion id="AC-006">Dato un ODA in modifica, quando una riga collegata viene rimossa con PUT, allora la riga RDA segue la stessa regola (AC-003/AC-004).</criterion>
+    <criterion id="AC-007">Dato un ODA con righe RDA `ordered`, quando cambia stato a `cancelled`, allora le righe RDA sono rilasciate con regola D-2 e le righe ODA hanno purchase_request_line_id null; riportando l'ODA a `draft` le righe RDA non cambiano.</criterion>
+    <criterion id="AC-008">Dato un ODA `sent_to_supplier` con righe RDA `ordered`, quando cambia stato a `fulfilled`, allora quelle righe sono `received` con log e la RDA si chiude se tutte le sue righe sono terminali; se ha altre righe aperte resta aperta.</criterion>
+    <criterion id="AC-009">Dato un ODA `fulfilled`, quando torna `partially_fulfilled`, allora le righe RDA restano `received`.</criterion>
+    <criterion id="AC-010">Dato un utente con merge e update ma senza delete, quando unifica tutte le righe di una sorgente nella destinazione, allora 403 e nessuna riga e' spostata; con delete l'unificazione riesce.</criterion>
+    <criterion id="AC-011">Dato un utente con merge ma senza update sulla sorgente, quando unifica anche solo una parte delle righe, allora 403 e nulla e' spostato.</criterion>
+    <criterion id="AC-012">Dato una sorgente collegata a una fattura passiva, quando l'unificazione la svuoterebbe, allora 409 tradotto e nulla e' spostato (non 500).</criterion>
+    <criterion id="AC-013">Dato un ODA `draft`, `in_validation`, `partially_fulfilled`, `fulfilled` o `cancelled`, quando POST /emails o POST /emails/{email}/send, allora 409 not_sendable_status e nessuna email creata/inviata; con `approved` o `sent_to_supplier` funziona (regressione).</criterion>
+    <criterion id="AC-014">Dato un utente con purchase-orders.send, allora abilities.send e' true solo per ODA approved o sent_to_supplier.</criterion>
+    <criterion id="AC-015">(Vitest) Il pulsante "Invia" del dettaglio ODA non compare quando abilities.send e' false (copertura esistente o nuova; nessuna regola di stato lato client).</criterion>
+    <criterion id="AC-016">Guide in-app IT+EN aggiornate con stessi id di sezione; help-content-parity.test.ts verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Regole di dominio nei service, dentro la transazione esistente, lock nell'ordine gia' usato (ordini per id, poi righe RDA via PurchaseRequestLineLocker).</item>
+    <item>Il Linker resta l'unico punto che scrive lo stato delle righe RDA per effetto dell'ODA (bypass delle capability RDA, come oggi); un solo metodo "transizione + log".</item>
+    <item>closeIfComplete invocato una volta per RDA coinvolta, dopo gli aggiornamenti delle righe.</item>
+    <item>Messaggi via __() con chiavi in lang/{it,en}/purchase_orders.php; nessun nome di classe nei messaggi.</item>
+    <item>File sotto 300 righe dove possibile; se PurchaseOrderService cresce, estrarre (es. PurchaseOrderDeletionGuard).</item>
+    <item>Test Pest mirati tests/Feature/PurchaseOrders, PurchaseRequests; suite completa dal verifier; tsc -b --force.</item>
+    <item>Nessun commit senza ordine esplicito.</item>
+  </constraints>
+
+</spec>

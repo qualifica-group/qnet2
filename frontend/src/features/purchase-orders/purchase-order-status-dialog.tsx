@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { changePurchaseOrderStatus, purchaseOrderKeys } from '@/features/purchase-orders/api'
+import { purchaseRequestKeys } from '@/features/purchase-requests/api'
 import { PurchaseOrderStatusBadge } from '@/features/purchase-orders/purchase-order-status-badge'
 import { PurchaseOrderStatusOptions } from '@/features/purchase-orders/purchase-order-status-options'
 import type { PurchaseOrder, PurchaseOrderStatus } from '@/features/purchase-orders/types'
@@ -41,6 +42,8 @@ export function PurchaseOrderStatusDialog({ order, onOpenChange }: PurchaseOrder
     mutationFn: (toStatus: PurchaseOrderStatus) => changePurchaseOrderStatus(order.id, toStatus),
     onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.all })
+      // The order status and deletion move the linked RDA lines (spec 0244 D-2/D-3)
+      void queryClient.invalidateQueries({ queryKey: purchaseRequestKeys.all })
       toast.success(t('purchaseOrderActions.status.done', { status: t(`purchaseOrders.statuses.${updated.status}`) }))
       onOpenChange(false)
     },

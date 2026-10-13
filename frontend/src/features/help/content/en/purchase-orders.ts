@@ -85,7 +85,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'On creation each ODA gets a progressive number per **company** and **order-date year**, in the form **n/year** (for example 4/2026). The number is assigned once: it does not change if you later edit the date or the company.',
+          text: 'On creation each ODA gets a progressive number per **company** and **order-date year**, in the form **n/year** (for example 4/2026). The number is assigned once: it does not change if you later edit the date. The **company** is chosen on creation and **cannot be changed** afterwards.',
         },
       ],
     },
@@ -118,6 +118,10 @@ const guide: HelpGuide = {
           type: 'note',
           text: 'Sending the email to the supplier does not change the status by itself: change it by hand.',
         },
+        {
+          type: 'paragraph',
+          text: 'Statuses also affect the linked RDA lines (see **Link with RDA**): **Cancelled** frees them, **Fulfilled** moves them to **Received**. Going back from **Fulfilled** to **Partially fulfilled**, or from **Cancelled** to **Draft**, does not change the RDA.',
+        },
       ],
     },
     {
@@ -136,7 +140,9 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
+            'Besides the **Merge** permission on the destination you need the **edit** permission on the source ODA and the **delete** permission on those left without lines: if one is missing the operation is refused and nothing is moved.',
             'ODA left **without lines** are **deleted** (with their documents); sectors and documents of the source ODA are not moved.',
+            'A source ODA **linked to a purchase invoice or proforma** cannot be emptied by merging: the operation is refused and nothing is moved.',
             'Lines linked to an RDA keep the link, which now points to the destination order.',
             '**Merge history** (shown when the order has some): lists, most recent first, the merged orders with the moved lines, totals and who performed the operation.',
           ],
@@ -157,7 +163,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: '**Deleting a linked line** (or the whole ODA) brings the RDA line back to **Approved**, so it can generate a new order. **Cancelling** the ODA does not unlink the lines.',
+          text: '**Deleting a linked line**, **deleting the ODA** or **cancelling it** frees the linked RDA lines: an **Ordered** line goes back to **Approved**, so it can generate a new order; if its RDA is already **closed** it goes to **On hold** instead. Received, Rejected or On hold lines keep their status and only lose the reference to the ODA.',
+        },
+        {
+          type: 'paragraph',
+          text: 'A **cancelled** ODA loses its link to the RDA lines even if you reopen it (back to Draft): the RDA lines do not change. Moving the ODA to **Fulfilled** turns the **Ordered** RDA lines into **Received**, and the RDA closes by itself if all its lines are concluded. Going back to **Partially fulfilled** does not change the RDA.',
         },
       ],
     },
@@ -167,7 +177,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'An ODA can only be deleted in **Draft** or **In validation**, after confirmation. It cannot be deleted if it is **linked to a purchase invoice or proforma** (it appears under **Accounting › Payable › Installments**, column **Linked POs**): the operation is refused with a message. Linked RDA lines go back to Approved.',
+          text: 'An ODA can only be deleted in **Draft** or **In validation**, after confirmation. It cannot be deleted if it is **linked to a purchase invoice or proforma** (it appears under **Accounting › Payable › Installments**, column **Linked POs**): the operation is refused with a message. Linked RDA lines are freed as described in **Link with RDA**.',
         },
       ],
     },
@@ -181,7 +191,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: '**Send to supplier** opens the email window with the **PDF attached** and the supplier email as recipient: edit subject and text, then send. The action requires the send permission.',
+          text: '**Send to supplier** opens the email window with the **PDF attached** and the supplier email as recipient: edit subject and text, then send. The action requires the send permission and is available **only when the ODA is Approved or Sent to supplier**: in other statuses the button does not appear.',
         },
       ],
     },

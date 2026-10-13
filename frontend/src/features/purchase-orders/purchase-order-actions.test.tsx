@@ -136,6 +136,17 @@ describe('PurchaseOrderFormActions - gating', () => {
     expect(screen.queryByRole('button', { name: 'Send to supplier' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Print PDF' })).toBeInTheDocument()
   })
+
+  it('hides Send to supplier on an approved order when abilities.send is false', () => {
+    const order = makePurchaseOrder({ status: 'approved' })
+    order.abilities = { ...order.abilities, send: false }
+    const { unmount } = renderActions(order)
+    expect(screen.queryByRole('button', { name: 'Send to supplier' })).not.toBeInTheDocument()
+    unmount()
+
+    renderActions(makePurchaseOrder({ status: 'approved' }))
+    expect(screen.getByRole('button', { name: 'Send to supplier' })).toBeInTheDocument()
+  })
 })
 
 describe('Status dialog (AC-021)', () => {

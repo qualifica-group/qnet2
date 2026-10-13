@@ -68,6 +68,15 @@ enum PurchaseOrderStatus: string
     }
 
     /**
+     * The order can be emailed to the supplier only once approved, and again
+     * after it was sent (spec 0244, D-4).
+     */
+    public function isSendable(): bool
+    {
+        return in_array($this, [self::Approved, self::SentToSupplier], true);
+    }
+
+    /**
      * Header and lines can be edited, the order deleted or merged only while
      * it is a draft or in validation (D-10).
      */

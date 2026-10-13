@@ -115,6 +115,8 @@
       riga RDA torna approved (log "ODA eliminata", nessun controllo di capability: e' un effetto
       del permesso sull'ODA) e `oda_reference` = null. Annullare l'ODA NON scollega.
       Nel form la riga collegata mostra il badge "RDA #id"; descrizione/qty/prezzo restano modificabili.
+      SUPERATA da spec 0244 D-2/D-3 (2026-10-13): rilascio per stato (ordered -> approved, o on_hold su RDA
+      chiusa) e propagazione di annullamento (scollega) ed evasione (righe received, chiusura RDA).
     - D-19 Unifica ODA: dal form di una ODA salvata (draft/in_validation), modale con le ODA dello
       stesso fornitore E della stessa societa' in draft/in_validation (esclusa la corrente) con le
       loro righe; si selezionano righe o intere ODA. L'operazione e' IMMEDIATA lato server (non

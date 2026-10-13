@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -37,6 +38,7 @@ class PurchaseOrderMergeService
         private readonly PurchaseOrderService $orders,
         private readonly PurchaseOrderAmountCalculator $amounts,
         private readonly PurchaseRequestLineLinker $linker,
+        private readonly PurchaseOrderDeletionGuard $deletion,
     ) {}
 
     /**
@@ -86,6 +88,7 @@ class PurchaseOrderMergeService
             $sources = $orders->except($locked->getKey());
             $this->assertEditable($locked, $sources);
             $this->assertCompatible($locked, $lineIds, $lines, $orders);
+            $this->assertSourcesAllowed($sources, $lines, $actor);
 
             // Step 3: move the lines source by source, leaving a log each
             $deleted = [];
@@ -174,6 +177,26 @@ class PurchaseOrderMergeService
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    /**
+     * The actor needs `update` on every source and `delete` on the ones the
+     * merge empties (403), and an emptied source must be deletable (409): all
+     * checked before any line moves (spec 0244, D-5, D-6).
+     *
+     * @param  Collection<int, PurchaseOrder>  $sources
+     * @param  Collection<int, PurchaseOrderLine>  $lines  the lines being moved
+     */
+    private function assertSourcesAllowed(Collection $sources, Collection $lines, User $actor): void
+    {
+        $gate = Gate::forUser($actor);
+        $emptied = $sources->filter(
+            fn (PurchaseOrder $source): bool => $source->lines()->count() === $lines->where('purchase_order_id', $source->id)->count(),
+        );
+
+        $sources->each(fn (PurchaseOrder $source) => $gate->authorize('update', $source));
+        $emptied->each(fn (PurchaseOrder $source) => $gate->authorize('delete', $source));
+        $emptied->each(fn (PurchaseOrder $source) => $this->deletion->assertDeletable($source));
     }
 
     /**

@@ -3,7 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0243 — Correzioni integrita' Contabilita' attiva (audit 2026-10-13, Onda 1, ATT-01..04) — VERDE, NON COMMITTATO (2026-10-13)
+## Spec 0244 — Correzioni integrita' ODA (audit 2026-10-13, ODA-01/02/04/06/07/08) — VERDE, NON COMMITTATO (2026-10-13)
+
+- Spec `docs/specs/0244-purchase-order-integrity-fixes.xml` (D-1..D-6, AC-001..AC-016 tutti PASS dal verifier).
+  0210 D-18 marcata come superata.
+- Regole: company_id immutabile dopo la creazione (422 + field readonly); rilascio righe RDA nel
+  `PurchaseRequestLineLinker` (unico punto, metodo `transition()` stato+log): ordered -> approved, o on_hold se RDA
+  chiusa; altri stati perdono solo oda_reference. `PurchaseOrderStatusService::propagate()`: cancelled -> unlink +
+  purchase_order_lines.purchase_request_line_id null; fulfilled -> righe ordered -> received (`Linker::receive()`) +
+  closeIfComplete per RDA; partially_fulfilled nessun effetto. Merge: update su ogni sorgente, delete su quelle
+  svuotate (403), `PurchaseOrderDeletionGuard::assertDeletable` (409 fattura passiva) condiviso con delete.
+  `PurchaseOrderStatus::isSendable()` (approved, sent_to_supplier): 409 su bozza email e invio; abilities.send dipende.
+- Lang nuovi: `lang/{it,en}/purchase_orders.php`, `purchase_request_line_links.php`; rimosse 2 chiavi orfane da it.json.
+- FE: invalidazione `purchaseRequestKeys.all` dopo cambio stato / eliminazione ODA. Guide IT/EN purchase-orders,
+  purchase-requests, purchase-request-lines aggiornate. Manuale Claude Docs: non accessibile, da aggiornare (ODA, RDA).
+- Test esistenti adeguati per requisito: PurchaseOrderCrudTest, PurchaseOrderEmailTest, PurchaseOrderMergeTest.
+- Prossimo: spec 0245 RDA (RDA-01 responsabile = diretto superiore da employment_profile_manager, RDA-02, RDA-05,
+  RDA-06), poi 0246 COS-03.
+
+## Spec 0243 — Correzioni integrita' Contabilita' attiva (audit 2026-10-13, Onda 1, ATT-01..04) — COMMITTATO 857b87c4 (2026-10-13)
 
 - Spec `docs/specs/0243-active-accounting-integrity-fixes.xml` (D-1..D-4, AC-001..AC-020 tutti PASS dal verifier).
   Fonte: PDF "Audit Acquisti, Costi e Attiva" 2026-10-13 (77 rilievi, 4 onde). Prossime spec Onda 1: 0244 ODA

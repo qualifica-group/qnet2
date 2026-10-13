@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { deletePurchaseOrder, purchaseOrderKeys } from '@/features/purchase-orders/api'
+import { purchaseRequestKeys } from '@/features/purchase-requests/api'
 import { serverMessage } from '@/features/purchase-requests/purchase-request-server-errors'
 
 const FORBIDDEN_STATUS = 403
@@ -23,6 +24,8 @@ export function usePurchaseOrderDelete() {
       try {
         await deletePurchaseOrder(id)
         void queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.all })
+        // The order status and deletion move the linked RDA lines (spec 0244 D-2/D-3)
+        void queryClient.invalidateQueries({ queryKey: purchaseRequestKeys.all })
         toast.success(t('purchaseOrders.messages.deleted'))
         return true
       } catch (error) {

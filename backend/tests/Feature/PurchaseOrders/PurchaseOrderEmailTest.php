@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\EmailTemplateModule;
+use App\Enums\PurchaseOrderStatus;
 use App\Jobs\SendOutboundEmailJob;
 use App\Models\Contact;
 use App\Models\DocumentLayout;
@@ -28,7 +29,7 @@ function purchaseOrderWithSupplierEmail(): PurchaseOrder
     $card = PersonalData::factory()->for($supplier, 'personable')->create();
     Contact::factory()->email()->primary()->for($card, 'contactable')->create(['value' => 'orders@supplier.test']);
 
-    return purchaseOrderWithLines(attributes: ['supplier_id' => $supplier->id, 'number' => 5, 'year' => 2026]);
+    return purchaseOrderWithLines(PurchaseOrderStatus::Approved, 1, ['supplier_id' => $supplier->id, 'number' => 5, 'year' => 2026]);
 }
 
 function purchaseOrdersDefaultLayout(): DocumentLayout
@@ -111,7 +112,7 @@ it('AC-014: 403 without purchase-orders.send (write) and without purchase-orders
 
 it('AC-014: an email of another order is a 404 (scoped binding)', function () {
     $order = purchaseOrderWithSupplierEmail();
-    $other = purchaseOrderWithLines();
+    $other = purchaseOrderWithLines(PurchaseOrderStatus::Approved);
     Sanctum::actingAs(purchaseOrderUserWith(['view', 'send']));
     $id = $this->postJson("/api/purchase-orders/{$order->id}/emails", ['attach_pdf' => false])->json('data.id');
 

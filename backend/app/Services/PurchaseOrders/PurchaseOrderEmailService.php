@@ -25,8 +25,18 @@ final class PurchaseOrderEmailService
         private readonly PurchaseOrderEmailAttachmentImporter $importer,
     ) {}
 
+    /** 409 unless the order is approved or already sent (spec 0244, D-4). */
+    public function assertSendable(PurchaseOrder $order): void
+    {
+        if (! $order->status->isSendable()) {
+            abort(409, __('purchase_orders.not_sendable_status'));
+        }
+    }
+
     public function createDocumentDraft(PurchaseOrder $order, User $actor, OutboundEmailDraftData $data, bool $attachPdf): OutboundEmail
     {
+        $this->assertSendable($order);
+
         return DB::transaction(function () use ($order, $actor, $data, $attachPdf): OutboundEmail {
             // Step 1: the draft.
             $email = $this->emails->createDraft($order, $actor, $data, OutboundEmailPurpose::Document);

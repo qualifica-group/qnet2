@@ -85,7 +85,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Alla creazione ogni ODA riceve un numero progressivo per **società** e **anno della data ordine**, nel formato **n/anno** (per esempio 4/2026). Il numero viene assegnato una volta sola: non cambia se poi modifichi data o società.',
+          text: 'Alla creazione ogni ODA riceve un numero progressivo per **società** e **anno della data ordine**, nel formato **n/anno** (per esempio 4/2026). Il numero viene assegnato una volta sola: non cambia se poi modifichi la data. La **società** si sceglie alla creazione e **non si può cambiare** dopo.',
         },
       ],
     },
@@ -118,6 +118,10 @@ const guide: HelpGuide = {
           type: 'note',
           text: 'Inviare l’email al fornitore non cambia lo stato da solo: il cambio si fa a mano.',
         },
+        {
+          type: 'paragraph',
+          text: 'Gli stati influiscono anche sulle righe RDA collegate (vedi **Collegamento con le RDA**): **Annullato** le libera, **Evaso** le porta a **Ricevuta**. Tornare da **Evaso** a **Parzialmente evaso**, o da **Annullato** a **Bozza**, non cambia le RDA.',
+        },
       ],
     },
     {
@@ -136,7 +140,9 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
+            'Oltre al permesso **Unificare** sulla destinazione servono il permesso di **modifica** sulle ODA d’origine e quello di **eliminazione** su quelle che restano senza righe: se manca, l’operazione è rifiutata e non si sposta nulla.',
             'Le ODA che restano **senza righe** vengono **eliminate** (con i loro documenti); i settori e i documenti delle ODA sorgente non si spostano.',
+            'Un’ODA d’origine **collegata a una fattura o proforma passiva** non può essere svuotata dall’unificazione: l’operazione è rifiutata e non si sposta nulla.',
             'Le righe collegate a una RDA mantengono il collegamento, che ora punta all’ordine di destinazione.',
             '**Storico unificazioni** (compare quando l’ordine ne ha): elenca, dal più recente, gli ordini unificati con le righe spostate, i totali e chi ha eseguito l’operazione.',
           ],
@@ -157,7 +163,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: '**Eliminando una riga collegata** (o l’intera ODA) la riga RDA torna **Approvata** e potrà generare un nuovo ordine. **Annullare** l’ODA invece non scollega le righe.',
+          text: '**Eliminando una riga collegata**, **eliminando l’ODA** o **annullandola**, le righe RDA collegate vengono liberate: una riga **Ordinata** torna **Approvata** e potrà generare un nuovo ordine; se la sua RDA è già **chiusa** passa invece a **Stand by**. Le righe Ricevute, Rifiutate o in Stand by mantengono il proprio stato e perdono solo il riferimento all’ODA.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Un’ODA **annullata** perde il collegamento con le righe RDA anche se la riapri (torna in Bozza): le righe RDA non cambiano. Portando l’ODA a **Evaso**, le righe RDA **Ordinate** diventano **Ricevute** e la RDA si chiude da sola se tutte le sue righe sono concluse. Tornando a **Parzialmente evaso** le RDA non cambiano.',
         },
       ],
     },
@@ -167,7 +177,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Un’ODA si elimina solo in **Bozza** o **In validazione**, con conferma. Non si può eliminare se è **collegata a una fattura o proforma passiva** (compare in **Contabilità › Passiva › Scadenze**, colonna **ODA collegati**): in quel caso l’operazione è rifiutata con un messaggio. Le righe RDA collegate tornano Approvate.',
+          text: 'Un’ODA si elimina solo in **Bozza** o **In validazione**, con conferma. Non si può eliminare se è **collegata a una fattura o proforma passiva** (compare in **Contabilità › Passiva › Scadenze**, colonna **ODA collegati**): in quel caso l’operazione è rifiutata con un messaggio. Le righe RDA collegate vengono liberate come descritto in **Collegamento con le RDA**.',
         },
       ],
     },
@@ -181,7 +191,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: '**Invia al fornitore** apre la finestra email con il **PDF allegato** e come destinatario l’email del fornitore: modifica oggetto e testo, poi invia. L’azione richiede il permesso di invio.',
+          text: '**Invia al fornitore** apre la finestra email con il **PDF allegato** e come destinatario l’email del fornitore: modifica oggetto e testo, poi invia. L’azione richiede il permesso di invio ed è disponibile **solo con l’ODA Approvata o Inviata al fornitore**: negli altri stati il pulsante non compare.',
         },
       ],
     },

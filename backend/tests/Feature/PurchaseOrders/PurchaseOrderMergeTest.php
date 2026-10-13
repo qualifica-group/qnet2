@@ -40,7 +40,7 @@ function mergeInto(object $test, PurchaseOrder $destination, array $lineIds): Te
 }
 
 it('AC-010: moving every line of a source deletes it and logs a snapshot, lines keep their id', function () {
-    $actor = purchaseOrderUserWith(['merge']);
+    $actor = purchaseOrderUserWith(['merge', 'update', 'delete']);
     Sanctum::actingAs($actor);
     [$destination, $source] = mergePair();
     $moved = $source->lines->pluck('id')->all();
@@ -73,7 +73,7 @@ it('AC-010: moving every line of a source deletes it and logs a snapshot, lines 
 });
 
 it('AC-010: moving part of a source keeps it, with recomputed totals, and logs a partial merge', function () {
-    Sanctum::actingAs(purchaseOrderUserWith(['merge']));
+    Sanctum::actingAs(purchaseOrderUserWith(['merge', 'update', 'delete']));
     [$destination, $source] = mergePair();
     $first = $source->lines->first();
 
@@ -93,7 +93,7 @@ it('AC-010: moving part of a source keeps it, with recomputed totals, and logs a
 });
 
 it('AC-010: a moved line linked to a request line follows the order and the reference points to the destination', function () {
-    Sanctum::actingAs(purchaseOrderUserWith(['merge']));
+    Sanctum::actingAs(purchaseOrderUserWith(['merge', 'update', 'delete']));
     [$destination, $source] = mergePair();
     $requestLine = purchaseRequestWithLines([LineStatus::Ordered], [], ['oda_reference' => $source->code()])->lines->first();
     $source->lines->first()->forceFill(['purchase_request_line_id' => $requestLine->id])->save();
@@ -108,7 +108,7 @@ it('AC-010: a moved line linked to a request line follows the order and the refe
 });
 
 it('AC-011: a line of another supplier or company is refused with 422 and nothing moves', function (string $difference) {
-    Sanctum::actingAs(purchaseOrderUserWith(['merge']));
+    Sanctum::actingAs(purchaseOrderUserWith(['merge', 'update', 'delete']));
     [$destination, $source] = mergePair();
     $stranger = purchaseOrderWithLines(PurchaseOrderStatus::Draft, 1, [
         'supplier_id' => $difference === 'supplier' ? Registry::factory()->supplier()->create()->id : $destination->supplier_id,
@@ -125,14 +125,14 @@ it('AC-011: a line of another supplier or company is refused with 422 and nothin
 })->with(['supplier', 'company']);
 
 it('AC-011: a line of the destination itself is refused with 422', function () {
-    Sanctum::actingAs(purchaseOrderUserWith(['merge']));
+    Sanctum::actingAs(purchaseOrderUserWith(['merge', 'update', 'delete']));
     [$destination] = mergePair();
 
     mergeInto($this, $destination, [$destination->lines->first()->id])->assertUnprocessable()->assertJsonValidationErrors(['line_ids.0']);
 });
 
 it('AC-011: a destination or a source past draft/in validation is refused with 409', function (PurchaseOrderStatus $sourceStatus, PurchaseOrderStatus $destinationStatus) {
-    Sanctum::actingAs(purchaseOrderUserWith(['merge']));
+    Sanctum::actingAs(purchaseOrderUserWith(['merge', 'update', 'delete']));
     [$destination, $source] = mergePair($sourceStatus, $destinationStatus);
 
     mergeInto($this, $destination, [$source->lines->first()->id])->assertStatus(409)->assertJsonPath('success', false);
@@ -154,7 +154,7 @@ it('AC-011: merging without the merge permission is refused with 403', function 
 });
 
 it('rejects an invalid merge payload', function (array $payload, string $field) {
-    Sanctum::actingAs(purchaseOrderUserWith(['merge']));
+    Sanctum::actingAs(purchaseOrderUserWith(['merge', 'update', 'delete']));
     [$destination, $source] = mergePair();
 
     $this->postJson("/api/purchase-orders/{$destination->id}/merge", $payload)->assertUnprocessable()->assertJsonValidationErrors([$field]);
@@ -165,7 +165,7 @@ it('rejects an invalid merge payload', function (array $payload, string $field) 
 ]);
 
 it('AC-012: merge-candidates lists only editable orders of the same supplier and company, with their lines', function () {
-    Sanctum::actingAs(purchaseOrderUserWith(['merge']));
+    Sanctum::actingAs(purchaseOrderUserWith(['merge', 'update', 'delete']));
     [$destination, $source] = mergePair();
     $shared = ['supplier_id' => $destination->supplier_id, 'company_id' => $destination->company_id];
     purchaseOrderWithLines(PurchaseOrderStatus::Approved, 1, $shared);
@@ -189,14 +189,14 @@ it('AC-012: merge-candidates lists only editable orders of the same supplier and
 });
 
 it('AC-012: merge-candidates of a non editable order answers 409', function () {
-    Sanctum::actingAs(purchaseOrderUserWith(['merge']));
+    Sanctum::actingAs(purchaseOrderUserWith(['merge', 'update', 'delete']));
     [$destination] = mergePair(destinationStatus: PurchaseOrderStatus::Approved);
 
     $this->getJson("/api/purchase-orders/{$destination->id}/merge-candidates")->assertStatus(409);
 });
 
 it('AC-012: merge-logs returns the history of the destination, most recent first', function () {
-    $actor = purchaseOrderUserWith(['merge', 'view']);
+    $actor = purchaseOrderUserWith(['merge', 'update', 'delete', 'view']);
     Sanctum::actingAs($actor);
     [$destination, $source] = mergePair();
     $first = $source->lines->first();
@@ -227,7 +227,7 @@ it('AC-012: merge-logs returns the history of the destination, most recent first
 });
 
 it('AC-012: merge-logs requires view', function () {
-    Sanctum::actingAs(purchaseOrderUserWith(['merge']));
+    Sanctum::actingAs(purchaseOrderUserWith(['merge', 'update', 'delete']));
     [$destination] = mergePair();
 
     $this->getJson("/api/purchase-orders/{$destination->id}/merge-logs")->assertForbidden();
