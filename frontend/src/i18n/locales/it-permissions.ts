@@ -142,6 +142,9 @@ export const permissions = {
     'invoice-installments': 'Scadenze',
     'purchase-invoices': 'Fatture Passive',
     'purchase-invoice-installments': 'Scadenze Passive',
+    // Spec 0212: provvigioni agenti.
+    'agent-fiscal-profiles': 'Profili fiscali agenti',
+    'commission-accruals': 'Maturato provvigioni',
     'product-typologies': 'Tipologie Prodotto',
     // Modulo Task e i suoi cinque configuratori (spec 0101).
     tasks: 'Task',

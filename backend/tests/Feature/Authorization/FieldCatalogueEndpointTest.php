@@ -88,6 +88,10 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0211 `purchase-invoice-installments` (PurchaseInvoiceInstallmentsAuthorization: due date/payment
         // method code editable, amounts, payment state and account visible-readonly).
         'purchase-invoice-installments',
+        // spec 0212 `agent-fiscal-profiles` (AgentFiscalProfilesAuthorization: fiscal profile of the agents).
+        'agent-fiscal-profiles',
+        // spec 0212 `commission-accruals` (CommissionAccrualsAuthorization: read-only ledger, amounts hideable).
+        'commission-accruals',
         // spec 0185 `request-statistics` (RequestStatisticsAuthorization: a view-only module, no
         // field — registered only so its permission is assignable from the Role form).
         'request-statistics',

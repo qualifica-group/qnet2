@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\AgentFiscalProfile;
+use App\Models\CommissionAccrual;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Opportunity;
@@ -49,6 +51,10 @@ class DemoDataSeeder extends Seeder
         // below (same pre-clear pattern as DemoProjectSeeder with campaigns).
         // Invoices go first: they restrict their customer registry and company.
         // Payable documents likewise, and they restrict the purchase orders they bill.
+        // The accrual ledger and the agent profiles outlive their invoices/referents
+        // (nullOnDelete / restrict), so they are cleared first to keep re-runs stable.
+        CommissionAccrual::query()->delete();
+        AgentFiscalProfile::query()->delete();
         Invoice::query()->delete();
         PurchaseInvoice::query()->delete();
         PurchaseOrder::query()->delete();
@@ -145,6 +151,11 @@ class DemoDataSeeder extends Seeder
         // One proforma request + document per work order (spec 0194): needs the
         // work orders, the installment payment methods and the bank accounts.
         $this->call(DemoInvoiceSeeder::class);
+        // Agent fiscal profiles and the commission accrual ledger (spec 0212): the
+        // profiles need the quote commission recipients (DemoQuoteSeeder), the ledger
+        // is rebuilt by the real synchronizer from the collected installments above.
+        $this->call(DemoAgentFiscalProfileSeeder::class);
+        $this->call(DemoCommissionAccrualSeeder::class);
         // Payable documents and their installments (spec 0211): bill the demo purchase
         // orders, so they run after DemoPurchaseOrderSeeder, and need the payment
         // methods and financial accounts seeded above.

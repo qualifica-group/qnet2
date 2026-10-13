@@ -139,6 +139,9 @@ export const permissions = {
     'invoice-installments': 'Due dates',
     'purchase-invoices': 'Passive invoices',
     'purchase-invoice-installments': 'Payable installments',
+    // Spec 0212: agent commissions.
+    'agent-fiscal-profiles': 'Agent fiscal profiles',
+    'commission-accruals': 'Commission accruals',
     'product-typologies': 'Product Typologies',
     // Task module and its five configurators (spec 0101).
     tasks: 'Tasks',

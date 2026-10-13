@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AgentFiscalProfile;
 use App\Models\Attribute;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
@@ -258,6 +259,10 @@ return [
             'model' => VatRate::class,
         ],
         // spec 0189: card_number e' nascosto sul model, quindi mai nel log.
+        // spec 0212: profili fiscali degli agenti.
+        'agent-fiscal-profiles' => [
+            'model' => AgentFiscalProfile::class,
+        ],
         'financial-accounts' => [
             'model' => FinancialAccount::class,
         ],

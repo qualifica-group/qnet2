@@ -176,5 +176,11 @@
     "This installment is already paid.": "Questa rata è già pagata.",
     "The paid amount cannot exceed the installment amount.": "L'importo pagato non può superare l'importo della rata.",
     "The residual mode is required for a partial payment.": "La modalità del residuo è obbligatoria per un pagamento parziale.",
-    "This purchase order is linked to a purchase invoice.": "Questo ordine di acquisto è collegato a una fattura passiva."
+    "This purchase order is linked to a purchase invoice.": "Questo ordine di acquisto è collegato a una fattura passiva.",
+    "In force": "In vigore",
+    "Not in force": "Non in vigore",
+    "Single-principal": "Monomandatario",
+    "Multi-principal": "Plurimandatario",
+    "Accrual": "Maturazione",
+    "Reversal": "Storno"
 }

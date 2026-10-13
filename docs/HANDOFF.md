@@ -3,6 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0212 — Liquidazioni Agenti M1: profili fiscali + maturato provvigioni — VERDE, NON COMMITTATO (2026-10-12)
+
+- Brief modulo completo M1-M5: `docs/specs/0212-agent-commission-settlements-brief.md`. Spec M1
+  `docs/specs/0212-agent-commission-accruals.xml` (approvata, D-1..D-11, AC-001..AC-022; D-10 emendata in build:
+  `commission-accruals` abilities viewAny, view, export).
+- Dati: `agent_fiscal_profiles` (referent_id restrict, ritenuta rate/base, enasarco_enabled + mandate mono|pluri,
+  validita' non sovrapposta per referent) e `commission_accruals` (libro mastro a delta, senza unique: bucket
+  (invoice_id, quote_line_id, recipient_role, recipient_type, recipient_id); snapshot di destinatario/ruolo; FK
+  informative nullOnDelete; ACCRUAL positivi, REVERSAL negativi; `settled_externally_on`). Migrazioni 2026_10_15_100000/100100.
+- Calcolo (D-1): quota per fattura cumulativa sulla riga d'offerta (tetto 100%) x r = incassato/total_amount, bcmath.
+  `App\Services\Commissions\Accruals\{CommissionShareCalculator,AccrualStateLoader,CommissionAccrualSynchronizer}`.
+  Agganci SINCRONI in `InvoiceCollectionService::record/clear` e `InvoiceService::update` (304 righe). Lock in ordine
+  di id su tutte le fatture che condividono righe d'offerta + letture con lock dei movimenti (review security M1).
+  Storni datati oggi; primo sync di un bucket = replay per data di incasso.
+- Comando `commissions:sync-accruals {--invoice=*} {--from=} {--settled-before=} {--dry-run}`, schedulato 02:00
+  withoutOverlapping + onOneServer. Dopo il deploy: lanciarlo una volta con `--settled-before=<data taglio>` per lo storico.
+- UI: Contabilita' > Provvigioni agenti (`accounting-commissions`): `/agent-fiscal-profiles` (CRUD, permessi di campo,
+  sort/filter vietati sui campi nascosti) e `/commission-accruals` (sola lettura, row grouping, totali, quick filter).
+  FE `features/{agent-fiscal-profiles,commission-accruals}`, rotte in `routes/agent-commission-routes.tsx`, guide
+  in-app IT/EN "in fase di sviluppo".
+- Fix fuori scope tenuto: `TableBulkDeleteService::loadModels` usa la chiave qualificata (500 su tabelle con JOIN).
+- Test cambiati per requisito (2 migrazioni nuove): PurchaseOrderMigrationTest step 9->11, QuoteWorkflowMigrationTest
+  157->159, SupplierCommissionDirectionTest 21->23; FieldCatalogueEndpointTest (+2 risorse); help-guide-keys 65->67.
+- Verifier: Pest parallelo 10112 (unici rossi residui: 3 QuoteDocumentPdfTest per soffice assente, ambiente); 0212
+  97/97 due volte; tsc -b pulito; ESLint pulito; Vitest completo con 6-7 timeout sotto carico (fuori scope, verdi da soli).
+- Aperto: manuale Claude Docs NON aggiornato (connettore: access denied) -> nuova sezione Contabilita' > Provvigioni
+  agenti (Profili fiscali, Maturato), "in fase di sviluppo". Dopo il deploy `php artisan permissions:sync`.
+  Review security L1: l'activity log del profilo mostra i valori a chi ha viewActivity anche se il campo e' nascosto.
+- Prossimo: M2 (lanci, estratti in bozza, rettifiche, ritenute + tabella `enasarco_parameters`, soglia, solo referent).
+
 ## Spec 0211 — Scadenze passive (fase 1) — VERDE, NON COMMITTATO (2026-10-12)
 
 - Spec `docs/specs/0211-purchase-invoice-installments.xml` (approvata, D-1..D-10, AC-001..AC-019). Decisioni utente:

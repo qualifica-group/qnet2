@@ -70,6 +70,28 @@ export const enums = {
     proforma: 'Proforma',
     invoice: 'Invoice',
   },
+  // Agent commissions (spec 0212): ENASARCO mandate, ledger movement type, recipient role/kind, ledger status.
+  enasarco_mandate_type: {
+    mono: 'Single-firm',
+    pluri: 'Multi-firm',
+  },
+  commission_accrual_type: {
+    ACCRUAL: 'Accrual',
+    REVERSAL: 'Reversal',
+  },
+  commission_recipient_role: {
+    COMMERCIAL: 'Commercial',
+    REPORTER: 'Reporter',
+    SUPERVISOR: 'Supervisor',
+  },
+  commission_recipient_kind: {
+    referent: 'Referent',
+    user: 'User',
+  },
+  commission_accrual_status: {
+    open: 'Open',
+    settled_externally: 'Settled externally',
+  },
   installment_overdue: {
     yes: 'Yes',
     no: 'No',

@@ -11,11 +11,13 @@ use App\Imports\Recognition\CampaignRecognizer;
 use App\Mail\StagingMailRedirector;
 use App\Mail\Transport\MicrosoftGraphTransport;
 use App\Models\Address;
+use App\Models\AgentFiscalProfile;
 use App\Models\Attachment;
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
+use App\Models\CommissionAccrual;
 use App\Models\CommissionConfiguration;
 use App\Models\Company;
 use App\Models\CompanySite;
@@ -205,6 +207,8 @@ class AppServiceProvider extends ServiceProvider
             'product' => Product::class,
             'unit_of_measure' => UnitOfMeasure::class,
             'financial_account' => FinancialAccount::class,
+            'agent_fiscal_profile' => AgentFiscalProfile::class,
+            'commission_accrual' => CommissionAccrual::class,
             'proforma_request' => ProformaRequest::class,
             'purchase_request' => PurchaseRequest::class,
             'purchase_request_line' => PurchaseRequestLine::class,

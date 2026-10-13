@@ -47,6 +47,9 @@ import {
   ReceiptEuro,
   ShoppingCart,
   Wallet,
+  HandCoins,
+  IdCard,
+  BookOpen,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -115,6 +118,10 @@ const iconMap: Record<string, LucideIcon> = {
   'shopping-cart': ShoppingCart,
   // Spec 0211: "Passiva" group under Contabilita'.
   wallet: Wallet,
+  // Spec 0212: "Provvigioni agenti" group under Contabilita'.
+  'hand-coins': HandCoins,
+  'id-card': IdCard,
+  'book-open': BookOpen,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

@@ -229,9 +229,9 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_10_10_100000_add_residual_amount_to_invoice_installments_table` (143rd),
     // and spec 0207's `2026_10_11_100000_add_general_notes_to_registries_table` (144th),
     // and spec 0208's three purchase request tables (145th to 147th), and spec 0209's
-    // `2026_10_12_110000_move_supplier_to_purchase_request_lines` (148th), and spec 0210's six purchase order tables (149th to 154th), and spec 0211's three payable tables (155th to 157th).
+    // `2026_10_12_110000_move_supplier_to_purchase_request_lines` (148th), and spec 0210's six purchase order tables (149th to 154th), and spec 0211's three payable tables (155th to 157th), and spec 0212's two agent commission tables (158th and 159th).
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 157]);
+    Artisan::call('migrate:rollback', ['--step' => 159]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

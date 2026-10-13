@@ -7,6 +7,7 @@ namespace App\Services\Invoices;
 use App\Enums\ResidualMode;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
+use App\Services\Commissions\Accruals\CommissionAccrualSynchronizer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +24,7 @@ final class InvoiceCollectionService
         private readonly InvoiceAmountCalculator $amounts,
         private readonly InstallmentRebalancer $rebalancer,
         private readonly InvoiceService $invoices,
+        private readonly CommissionAccrualSynchronizer $accruals,
     ) {}
 
     /**
@@ -48,6 +50,9 @@ final class InvoiceCollectionService
                 $this->recordPartial($invoice, $current, $attributes, $payload);
             }
 
+            // Step 3: accrue the commissions in the same transaction (spec 0212, D-5)
+            $this->accruals->syncInvoice($invoice, $current);
+
             return $this->invoices->detail($invoice);
         });
     }
@@ -66,6 +71,9 @@ final class InvoiceCollectionService
             } else {
                 $this->restore($current, $rows);
             }
+
+            // Step 3: reverse the commissions accrued by the collection (spec 0212, D-5)
+            $this->accruals->syncInvoice($invoice, $current);
 
             return $this->invoices->detail($invoice);
         });

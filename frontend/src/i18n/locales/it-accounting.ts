@@ -3,6 +3,7 @@
  * Raggruppati qui per tenere `it.ts` entro i limiti dimensionali (`engineering.md` §6).
  */
 
+import { agentFiscalProfiles, commissionAccruals } from './it-agent-commissions'
 import { financialAccounts } from './it-financial-accounts'
 import { invoiceEditor } from './it-invoice-editor'
 import { invoiceInstallments } from './it-invoice-installments'
@@ -18,5 +19,7 @@ export const accounting = {
   invoices,
   invoiceInstallments,
   purchaseInvoiceInstallments,
+  agentFiscalProfiles,
+  commissionAccruals,
   invoiceEditor,
 }

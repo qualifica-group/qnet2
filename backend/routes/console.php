@@ -21,3 +21,8 @@ Schedule::command('tasks:generate-recurrences')->dailyAt('01:00')->withoutOverla
 // Spec 0178, D-6: the `database` cache store never removes expired rows that
 // are not read again; hourly, chunked, no-op on other stores.
 Schedule::command('cache:prune-expired')->hourly()->withoutOverlapping();
+
+// Spec 0212, D-7: realigns the commission accrual ledger (late changes to the
+// commissions of an offer are picked up here). Idempotent; never schedule it
+// with --settled-before.
+Schedule::command('commissions:sync-accruals')->dailyAt('02:00')->withoutOverlapping()->onOneServer();

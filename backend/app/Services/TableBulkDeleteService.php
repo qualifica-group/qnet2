@@ -76,7 +76,7 @@ class TableBulkDeleteService
         $key = $query->getModel()->getKeyName();
 
         /** @var array<int, Model> $models */
-        $models = $query->whereIn($key, $ids)->get()->keyBy($key)->all();
+        $models = $query->whereIn($query->getModel()->getQualifiedKeyName(), $ids)->get()->keyBy($key)->all();
 
         return $models;
     }

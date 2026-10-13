@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazyRoute } from '@/routes/lazy-route'
 import { ProtectedRoute } from '@/routes/protected-route'
+import { AGENT_COMMISSION_ROUTES } from '@/routes/agent-commission-routes'
 import { PURCHASING_ROUTES } from '@/routes/purchasing-routes'
 import { AppLayout } from '@/layouts/app-layout'
 import { MigrationRouteGuard } from '@/features/migrations/migration-route-guard'
@@ -231,6 +232,7 @@ export const router = createBrowserRouter([
             element: <ProformaRequestsPage />,
           },
           ...PURCHASING_ROUTES,
+          ...AGENT_COMMISSION_ROUTES,
           {
             path: 'invoices',
             element: <InvoicesPage />,

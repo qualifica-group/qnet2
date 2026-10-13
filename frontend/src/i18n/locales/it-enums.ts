@@ -69,6 +69,28 @@ export const enums = {
     proforma: 'Proforma',
     invoice: 'Fattura',
   },
+  // Provvigioni agenti (spec 0212): mandato ENASARCO, tipo movimento, ruolo/tipo destinatario, stato.
+  enasarco_mandate_type: {
+    mono: 'Monomandatario',
+    pluri: 'Plurimandatario',
+  },
+  commission_accrual_type: {
+    ACCRUAL: 'Maturato',
+    REVERSAL: 'Storno',
+  },
+  commission_recipient_role: {
+    COMMERCIAL: 'Commerciale',
+    REPORTER: 'Segnalatore',
+    SUPERVISOR: 'Supervisore',
+  },
+  commission_recipient_kind: {
+    referent: 'Referente',
+    user: 'Utente',
+  },
+  commission_accrual_status: {
+    open: 'Aperto',
+    settled_externally: 'Liquidato esternamente',
+  },
   installment_overdue: {
     yes: 'Sì',
     no: 'No',

@@ -1,8 +1,10 @@
 <?php
 
+use App\Tables\AgentFiscalProfilesTableDefinition;
 use App\Tables\AttributesTableDefinition;
 use App\Tables\BusinessFunctionsTableDefinition;
 use App\Tables\CampaignsTableDefinition;
+use App\Tables\CommissionAccrualsTableDefinition;
 use App\Tables\CommissionConfigurationsTableDefinition;
 use App\Tables\CompaniesTableDefinition;
 use App\Tables\CompanySitesTableDefinition;
@@ -132,6 +134,10 @@ return [
         // spec 0210: tipi di costo (righe ODA).
         'cost-types' => CostTypesTableDefinition::class,
         'financial-accounts' => FinancialAccountsTableDefinition::class,
+        // spec 0212: profili fiscali degli agenti.
+        'agent-fiscal-profiles' => AgentFiscalProfilesTableDefinition::class,
+        // spec 0212: maturato provvigioni (libro mastro in sola lettura).
+        'commission-accruals' => CommissionAccrualsTableDefinition::class,
         'proforma-requests' => ProformaRequestsTableDefinition::class,
         // spec 0208: purchase requests (RDA) and their line management grid.
         'purchase-requests' => PurchaseRequestsTableDefinition::class,

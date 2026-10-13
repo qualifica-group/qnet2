@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0212-agent-commission-accruals" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Liquidazioni Agenti — M1 Fondamenta. Profili fiscali degli agenti (CRUD completo) e libro mastro del maturato
+    provvigioni (`commission_accruals`): la provvigione di una riga d'offerta matura quando la fattura che la contiene
+    viene incassata, in proporzione all'incassato; annullare un incasso la storna; il ricalcolo e' idempotente; un
+    comando ricostruisce lo storico. Contabilita' vede profili e maturato in Contabilita' &gt; Provvigioni agenti.
+    Brief del modulo completo (M1-M5): `docs/specs/0212-agent-commission-settlements-brief.md`.
+  </goal>
+
+  <context>
+    <!-- Nomi reali verificati nel repo il 2026-10-12 -->
+    <item>`quote_line_commissions` / `App\Models\QuoteLineCommission`: quote_line_id (cascadeOnDelete),
+      recipient_role (`CommissionRecipientRole`: COMMERCIAL|REPORTER|SUPERVISOR|SUPPLIER), morph recipient
+      (`referent`|`user`|`registry`, enforceMorphMap in AppServiceProvider), calculated_amount decimal(15,2) cast
+      decimal:2, unique [quote_line_id, recipient_role]. GLI ID NON SONO STABILI:
+      `QuoteLineCommissionWriter::replaceWithDefaults()` cancella e reinserisce; righe d'offerta rimosse cancellano in
+      cascata.</item>
+    <item>`quote_lines.net_amount` decimal(15,2) = imponibile riga offerta.</item>
+    <item>`invoices` (type proforma|invoice cambia in place via `InvoiceService::updateDetails`; net_amount,
+      vat_amount, total_amount decimal(15,2); document_date). `invoice_lines.quote_line_id` nullable nullOnDelete,
+      net_amount; le righe sono ricreate a ogni `InvoiceService::update` (id instabili).</item>
+    <item>`invoice_installments`: amount, collected_amount (nullable), collected_at (date), un solo incasso cumulativo
+      per rata. `InvoiceCollectionService::record()` (transazione + lockForUpdate sulla fattura; un parziale riscrive
+      `amount` e sposta il residuo), `::clear()` (ripristino da snapshot, puo' cancellare la rata residua),
+      `InvoiceBulkCollector::handle()` (cicla su record), `InvoiceService::update()` (rimodulazione / ricreazione rate),
+      `InvoiceService::delete()` (bloccata con incassi). Nessun evento/observer: si aggancia nei servizi.</item>
+    <item>Importi: bcmath scala 2, arrotondamento half-up ±0.005 (`InvoiceAmountCalculator::normalize/round`).</item>
+    <item>Riferimento CRUD + permessi di campo: modulo Conti finanziari (0189) — `FinancialAccountController`
+      (okWithPermissions / handleControllerException), `FinancialAccountsAuthorization` (AbstractResourceAuthorization,
+      FieldDefinition), `FinancialAccountPolicy` (BasePolicy::abilities), `routes/api/financial-accounts.php` incluso da
+      `routes/api/accounting.php`, `config/authorization.php`, `config/tables.php`, `config/activity-log.php`; FE
+      `features/financial-accounts/*`. Griglia raggruppata: framework row grouping di 0197 (`supportsRowGroups()`,
+      `groupableColumns()`, `RowGroupQuery`).</item>
+    <item>Navigazione `config/navigation/accounting.php` (gruppi accounting-receivable, accounting-payable di 0211).
+      FE: `routes/router.tsx` a 493 righe -&gt; nuove rotte in un file dedicato come `purchasing-routes.tsx`.</item>
+    <item>Comandi: `app/Console/Commands`, firma `modulo:verbo-nome`, schedule in `routes/console.php`.</item>
+    <item>Nessun concetto agente/ENASARCO e nessuna tabella settings nel codice. Modulo Premi (0059) separato.</item>
+  </context>
+
+  <decisions>
+    <decision id="D-1">Maturazione all'incasso (brief D1), calcolo PER FATTURA e CUMULATIVO, non per rata (le rate
+      cambiano importo e id). Per ogni fattura F e riga d'offerta L fatturata in F:
+      quota(F,L,c) = calculated_amount(c) x [min(1, cumNet(L, fino a F incluso) / L.net_amount)
+                                            - min(1, cumNet(L, prima di F) / L.net_amount)]
+      dove cumNet somma `invoice_lines.net_amount` della riga L sulle fatture ordinate per (document_date, id).
+      Tetto al 100% (domanda 3): non si matura mai oltre calculated_amount. L.net_amount = 0 -&gt; quota intera sulla
+      prima fattura che contiene L. Rapporto clampato in [0,1].
+      maturato_atteso(F,L,c) = quota x r(F), r(F) = min(1, somma collected_amount di F / F.total_amount)
+      (lordo su lordo, domanda 1; total_amount 0 -&gt; r = 0). Con r = 1 il maturato atteso e' la quota esatta: la somma
+      quadra al centesimo senza regola dell'ultima rata. Proforma incassate maturano (stesso documento).</decision>
+    <decision id="D-2">Libro mastro a delta. Bucket = (invoice_id, quote_line_id, recipient_role, recipient_type,
+      recipient_id). delta = maturato_atteso - somma(amount dei movimenti del bucket). delta &gt; 0 -&gt; ACCRUAL,
+      delta &lt; 0 -&gt; REVERSAL, delta = 0 -&gt; nessun movimento (idempotenza). Bucket esistenti senza commissione
+      corrispondente (commissione cancellata, destinatario cambiato, riga d'offerta rimossa -&gt; quote_line_id null)
+      hanno maturato_atteso 0 -&gt; storno. I movimenti non si aggiornano ne' cancellano mai.</decision>
+    <decision id="D-3">Ruoli: COMMERCIAL, REPORTER, SUPERVISOR (brief D2); SUPPLIER escluso. Si registra il maturato
+      per tutti i tipi di destinatario (`referent` e `user`); il filtro "liquidati solo i referent" e' di M2 (domanda 1).
+      Commissione senza destinatario o con calculated_amount 0 -&gt; maturato atteso 0.</decision>
+    <decision id="D-4">Data del movimento `accrued_on` (domanda 4):
+      - bucket senza movimenti (prima sincronizzazione): replay degli incassi della fattura in ordine di collected_at,
+        un ACCRUAL per ogni data di incasso distinta (r cumulato a quella data), cosi' lo storico cade nei periodi giusti;
+      - ACCRUAL successivi: collected_at della rata che ha scatenato la sincronizzazione; senza rata trigger, oggi;
+      - REVERSAL: sempre oggi (timezone app). Uno storno di un periodo gia' chiuso cade nel periodo aperto.</decision>
+    <decision id="D-5">Sincronizzazione `App\Services\Commissions\Accruals\CommissionAccrualSynchronizer::syncInvoice(
+      Invoice $invoice, ?InvoiceInstallment $trigger = null)`: ricalcola i bucket di F e delle altre fatture che
+      condividono almeno una quote_line_id con F (D-1 dipende dall'ordine cumulativo). Chiamata SINCRONA dentro la
+      transazione gia' aperta da `InvoiceCollectionService::record` (trigger = rata), `::clear`, `InvoiceService::update`
+      (dopo la scrittura righe/rate). `InvoiceBulkCollector` e' coperto via record. Un errore di sincronizzazione annulla
+      l'operazione di incasso (atomicita').</decision>
+    <decision id="D-6">Modifiche alla provvigione sull'offerta dopo l'incasso (domanda 2): nessun aggancio nel salvataggio
+      offerta (blast radius); le recupera il comando schedulato ogni notte (D-7), che registra le differenze nel periodo
+      corrente come da D-2/D-4.</decision>
+    <decision id="D-7">Comando `commissions:sync-accruals {--invoice=*} {--from=} {--settled-before=} {--dry-run}`:
+      idempotente; elabora le fatture con almeno un incasso o almeno un movimento (filtro --from su document_date),
+      a blocchi, una transazione con lockForUpdate per fattura. `--settled-before=AAAA-MM-GG` (domanda 5) valorizza
+      `settled_externally_on` = quella data su tutti i movimenti con accrued_on precedente e settled_externally_on null:
+      non entreranno mai in un estratto. `--dry-run` non scrive e stampa i conteggi. Output: fatture elaborate,
+      movimenti creati (ACCRUAL/REVERSAL), movimenti marcati esterni. Schedulato `dailyAt('02:00')->withoutOverlapping()`
+      SENZA --settled-before.</decision>
+    <decision id="D-8">Profilo fiscale solo per i `referent` (brief D7, domanda 7): FK `referent_id`. Validita'
+      [valid_from, valid_until] (until nullable = aperto) non sovrapposta per lo stesso referent -&gt; 422 su valid_from
+      (`agent_fiscal_profiles.overlapping_validity`). withholding_rate e withholding_base_percent obbligatori con
+      withholding_enabled, null altrimenti; enasarco_mandate_type (mono|pluri) obbligatorio con enasarco_enabled, null
+      altrimenti; percentuali 0..100 con 2 decimali. In M1 il profilo non e' ancora usato: eliminabile.</decision>
+    <decision id="D-9">ENASARCO (domanda 6): aliquote agente/preponente e massimali per anno e tipo mandato NON stanno
+      sul profilo: tabella `enasarco_parameters` in M2 insieme al calcolo. Mai valori nel codice.</decision>
+    <decision id="D-10">Permessi: risorsa `agent-fiscal-profiles` (Policy abilities viewAny, view, create, update, delete,
+      export, viewActivity; niente import) con permessi di campo `AgentFiscalProfilesAuthorization`; risorsa
+      `commission-accruals` (Policy abilities viewAny, view, export; `view` gata la voce di menu come in invoice-installments — emendamento in build 2026-10-12) con `CommissionAccrualsAuthorization` (campi in sola
+      lettura base_amount, amount, per nascondere gli importi a chi non li deve vedere). Il maturato e' sola lettura:
+      nessun endpoint di scrittura.</decision>
+    <decision id="D-11">UI (domanda 8): gruppo menu `accounting-commissions` "Provvigioni agenti" in Contabilita' con
+      voci `agent-fiscal-profiles` "Profili fiscali" e `commission-accruals` "Maturato". Modulo marcato "in fase di
+      sviluppo" nelle guide in-app IT/EN (una per voce).</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni `agent_fiscal_profiles`, `commission_accruals` (reversibili).</item>
+      <item>Model AgentFiscalProfile, CommissionAccrual (LogsModelActivity solo sul profilo; morph alias
+        `agent_fiscal_profile`, `commission_accrual`), enum `EnasarcoMandateType` (mono|pluri),
+        `CommissionAccrualType` (ACCRUAL|REVERSAL), factory.</item>
+      <item>Profili: FormRequest store/update, DTO, Service, Resource, Controller, Policy, Authorization, rotte REST,
+        TableDefinition `agent-fiscal-profiles` (filtri, sort, export), voce activity-log.</item>
+      <item>Maturato: TableDefinition `commission-accruals` sola lettura con row grouping, totali ed export; Policy,
+        Authorization.</item>
+      <item>`CommissionAccrualSynchronizer` (+ calcolatore puro delle quote in bcmath) e aggancio in
+        InvoiceCollectionService::record/clear e InvoiceService::update.</item>
+      <item>Comando `commissions:sync-accruals` + schedule.</item>
+      <item>Navigazione, permissions:sync, i18n IT/EN, guide in-app IT/EN + HELP_GUIDE_KEYS.</item>
+      <item>FE: feature `agent-fiscal-profiles` (tabella, form create/edit in dialog/sheet come conti finanziari,
+        dettaglio, elimina) e feature `commission-accruals` (tabella raggruppabile con footer totali, quick filter).</item>
+      <item>Seeder `DemoAgentFiscalProfileSeeder` (profili per i referent commerciali demo) e `DemoCommissionAccrualSeeder`
+        (esegue il synchronizer sulle fatture demo incassate) in DemoDataSeeder dopo DemoInvoiceSeeder.</item>
+    </in>
+    <out>
+      <item>Lanci di liquidazione, estratti, rettifiche manuali, calcolo ritenuta/ENASARCO, soglia minima (M2).</item>
+      <item>Tabella enasarco_parameters (M2). PDF, email, documento agente, export paghe (M3). Scadenza passiva (M4).
+        Scheda agente, KPI, accesso agente (M5).</item>
+      <item>Commissione SUPPLIER. Modulo Premi (0059). Note di credito.</item>
+      <item>Aggancio nel salvataggio offerta/commissioni (D-6: lo copre il comando notturno).</item>
+      <item>Modifiche ai calcoli di `quote_line_commissions` (CommissionCalculator resta invariato).</item>
+      <item>Colonna `commission_settlement_id` (arriva con M2).</item>
+    </out>
+  </scope>
+
+  <data_model>
+    agent_fiscal_profiles: id; referent_id FK referents restrictOnDelete; withholding_enabled boolean default true;
+      withholding_rate decimal(5,2) nullable; withholding_base_percent decimal(5,2) nullable; enasarco_enabled boolean
+      default false; enasarco_mandate_type string(16) nullable; valid_from date; valid_until date nullable;
+      notes text nullable; created_by FK users nullOnDelete nullable; timestamps.
+      Indice (referent_id, valid_from).
+    commission_accruals: id; invoice_id FK invoices nullable nullOnDelete; quote_line_id FK quote_lines nullable
+      nullOnDelete; quote_line_commission_id FK quote_line_commissions nullable nullOnDelete (riferimento informativo);
+      invoice_installment_id FK invoice_installments nullable nullOnDelete (rata trigger, informativo);
+      recipient_role string(32); recipient_type string(32); recipient_id unsignedBigInteger; type string(16);
+      base_amount decimal(15,2) (quota D-1 al momento del movimento); amount decimal(15,2) con segno;
+      accrued_on date; settled_externally_on date nullable; created_at, updated_at.
+      Indici: (invoice_id, quote_line_id, recipient_role) bucket; (recipient_type, recipient_id, accrued_on);
+      (accrued_on); (settled_externally_on).
+    Snapshot su ogni movimento (recipient_*, role, quote_line_id, invoice_id): la storia regge alla cancellazione
+    delle sorgenti. Nessuna unique: l'idempotenza e' D-2.
+  </data_model>
+
+  <data_contract>
+    <!-- Envelope { success, message, data } come FinancialAccountController (okWithPermissions -> meta.permissions).
+         Tutte sotto auth:sanctum, file routes/api/agent-commissions.php incluso da routes/api/accounting.php.
+         Nessun throttle. -->
+
+    <endpoint method="GET" path="/api/agent-fiscal-profiles/{agentFiscalProfile}">
+      <response status="200">
+        data: { id, referent_id, referent: { id, name }, withholding_enabled: bool, withholding_rate: "23.00"|null,
+        withholding_base_percent: "50.00"|null, enasarco_enabled: bool, enasarco_mandate_type: "mono"|"pluri"|null,
+        valid_from: "YYYY-MM-DD", valid_until: "YYYY-MM-DD"|null, notes: string|null, created_at, updated_at }
+        + meta.permissions (fields/actions come i moduli esistenti). Campi non visibili assenti.
+      </response>
+      <errors>401; 403 senza agent-fiscal-profiles.view; 404 inesistente.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/agent-fiscal-profiles">
+      <request>
+        { referent_id: int (exists referents), withholding_enabled: bool, withholding_rate: decimal 0..100 | null,
+        withholding_base_percent: decimal 0..100 | null, enasarco_enabled: bool, enasarco_mandate_type: "mono"|"pluri"|null,
+        valid_from: date, valid_until: date &gt;= valid_from | null, notes: string max 2000 | null }
+        Campi non editabili per permesso di campo -&gt; 422 come negli altri moduli.
+      </request>
+      <response status="201">data: shape di GET + meta.permissions.</response>
+      <errors>403 senza create; 422 validazione (D-8: required_if, overlapping_validity su valid_from).</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/agent-fiscal-profiles/{agentFiscalProfile}">
+      <request>Stesso body di POST.</request>
+      <response status="200">data: shape di GET.</response>
+      <errors>403 senza update; 404; 422 (la sovrapposizione esclude il profilo stesso).</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/agent-fiscal-profiles/{agentFiscalProfile}">
+      <response status="204"/>
+      <errors>403 senza delete; 404.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST" path="/api/tables/agent-fiscal-profiles/{columns|rows|values}">
+      <response status="200">
+        Colonne (id | type | sortable | filter): referent text s f[set] | withholding_enabled boolean s f[set] |
+        withholding_rate number s f[number] | withholding_base_percent number s f[number] | enasarco_enabled boolean s f[set] |
+        enasarco_mandate_type badge s f[set: mono,pluri] | valid_from date s f[date] | valid_until date s f[date] |
+        is_current badge - f[set: yes,no] (valido oggi) | updated_at date s f[date].
+        Riga: { id, referent_id, ...colonne, abilities: { update, delete } }. Default sort referent asc, valid_from desc.
+        Export via framework exports con `agent-fiscal-profiles.export`.
+      </response>
+    </endpoint>
+
+    <endpoint method="GET|POST" path="/api/tables/commission-accruals/{columns|rows|values}">
+      <response status="200">
+        Sola lettura, row_grouping { enabled: true, max_depth: 3, columns: [recipient, recipient_role, accrued_month,
+        type, customer] }.
+        Colonne: accrued_on date s f[date] | accrued_month text - f[set] g (YYYY-MM, nascosta) |
+        recipient text s f[set] g ("nome" del referent/user) | recipient_kind badge s f[set: referent,user] |
+        recipient_role badge s f[set: COMMERCIAL,REPORTER,SUPERVISOR] g | type badge s f[set: ACCRUAL,REVERSAL] g |
+        invoice text s f[text] ("n/anno", tipo proforma/fattura) | customer text s f[set] g | quote text s f[text]
+        (codice offerta) | product text s f[text] (riga d'offerta) | base_amount number s f[number] |
+        amount number s f[number] sum | settled_externally_on date s f[date] | status badge - f[set: open,settled_externally].
+        Default sort accrued_on desc, id desc. Colonne con campo non visibile (base_amount, amount) assenti ovunque
+        (config, rows, values, group, aggregati, export) -&gt; 422 se usate in sort/filter/group.
+        Riga: { id, invoice_id, quote_id, recipient_type, recipient_id, ...colonne }.
+        Quick filter FE: Aperto (status=open, default) | Liquidato esternamente | Tutti.
+      </response>
+      <errors>403 senza commission-accruals.viewAny; export 403 senza commission-accruals.export.</errors>
+    </endpoint>
+
+    <command signature="commissions:sync-accruals {--invoice=*} {--from=} {--settled-before=} {--dry-run}">
+      Exit 0 con riepilogo: "Invoices: N, accruals: A, reversals: R, marked external: E". Data non valida -&gt; exit 1
+      con messaggio, nessuna scrittura.
+    </command>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Backend Pest: tests/Feature/CommissionAccruals/*, tests/Feature/AgentFiscalProfiles/*, tests/Unit dove puro. -->
+    <criterion id="AC-001">Dato una fattura con una riga collegata a riga d'offerta (net 1000) con commissione COMMERCIAL
+      calculated_amount 100 a un referent, fattura interamente sulla riga, total 1220 in 2 rate da 610, quando si
+      registra l'incasso totale della rata 1 allora esiste un ACCRUAL amount 50.00, accrued_on = collected_at della rata,
+      invoice_installment_id = rata 1.</criterion>
+    <criterion id="AC-002">Dato AC-001, quando si incassa anche la rata 2 allora la somma degli amount del bucket e'
+      esattamente 100.00 (anche con importi che generano resti, es. calculated 33.33 su 3 rate: somma 33.33).</criterion>
+    <criterion id="AC-003">Dato un incasso parziale (spread e new_installment), allora il maturato e' calculated x
+      collected/total arrotondato al centesimo; dopo il saldo di tutte le rate la somma e' calculated_amount.</criterion>
+    <criterion id="AC-004">Dato un incasso registrato con maturato, quando si annulla l'incasso (clear, anche con
+      ripristino snapshot che cancella la rata residua) allora viene creato un REVERSAL di pari importo con accrued_on =
+      oggi e la somma del bucket torna 0; il movimento originale e' invariato.</criterion>
+    <criterion id="AC-005">Idempotenza: eseguire due volte `syncInvoice` e due volte il comando sugli stessi dati non crea
+      movimenti aggiuntivi.</criterion>
+    <criterion id="AC-006">Fatturazione parziale e tetto: riga d'offerta net 1000 fatturata 400 su F1 e 600 su F2, entrambe
+      incassate -&gt; quote 40% e 60% di calculated; con una F3 ulteriore che porta il fatturato a 1200 la quota di F3 e' 0
+      e il totale maturato non supera calculated_amount.</criterion>
+    <criterion id="AC-007">Ruoli: con commissioni COMMERCIAL, REPORTER, SUPERVISOR e SUPPLIER sulla stessa riga, un incasso
+      genera movimenti solo per i primi tre; destinatari `user` e `referent` sono entrambi registrati.</criterion>
+    <criterion id="AC-008">Modifica provvigione dopo l'incasso: cambiare calculated_amount o il destinatario (o rigenerare
+      la commissione con id nuovo) e poi eseguire il comando produce la sola differenza: REVERSAL sul vecchio bucket /
+      ACCRUAL o REVERSAL sul delta, accrued_on = oggi; nessun movimento esistente modificato. Eliminare la riga d'offerta
+      storna tutto il bucket.</criterion>
+    <criterion id="AC-009">Rimodulazione: InvoiceService::update che cambia il totale fattura con incassi presenti
+      ricalcola r e registra il delta; un update senza incassi non crea movimenti.</criterion>
+    <criterion id="AC-010">Proforma: un incasso su proforma matura; il passaggio a fattura (updateDetails) non crea
+      movimenti.</criterion>
+    <criterion id="AC-011">Atomicita': se il synchronizer lancia eccezione durante record(), l'incasso non viene salvato.</criterion>
+    <criterion id="AC-012">Comando storico: su fatture con incassi in mesi diversi e nessun movimento, il comando crea un
+      ACCRUAL per data di incasso con accrued_on = collected_at; con --settled-before i movimenti precedenti alla data
+      hanno settled_externally_on valorizzato e i successivi no; --dry-run non scrive; --invoice limita alle fatture date;
+      data non valida -&gt; exit 1 senza scritture. Lo schedule contiene il comando dailyAt 02:00.</criterion>
+    <criterion id="AC-013">Profili CRUD: create/show/update/delete con happy path, envelope e meta.permissions; 403 per ogni
+      azione senza il permesso; 404 su id inesistente.</criterion>
+    <criterion id="AC-014">Profili validazione: required_if di aliquote e mandato; percentuali fuori 0..100 -&gt; 422;
+      valid_until &lt; valid_from -&gt; 422; validita' sovrapposta per lo stesso referent (anche con until null) -&gt; 422
+      overlapping_validity; update del profilo stesso non e' sovrapposizione; referent diverso non collide.</criterion>
+    <criterion id="AC-015">Profili permessi di campo: un campo readonly inviato con valore diverso -&gt; 422; campo nascosto
+      assente da show e righe tabella. Activity log registra create/update.</criterion>
+    <criterion id="AC-016">Tabella agent-fiscal-profiles: colonne/filtri/sort del contratto, is_current corretto rispetto a
+      oggi, export ammesso solo con permesso; 403 senza viewAny.</criterion>
+    <criterion id="AC-017">Tabella commission-accruals: righe, filtri, sort, row grouping per recipient e accrued_month con
+      somma amount per gruppo; colonne amount/base_amount assenti e 422 in sort/filter/group quando il campo non e'
+      visibile; nessun endpoint di scrittura (PATCH rows -&gt; 403/405); 403 senza viewAny.</criterion>
+    <criterion id="AC-018">Navigazione e permessi: permissions:sync crea agent-fiscal-profiles.* e commission-accruals.*
+      del contratto; il gruppo Provvigioni agenti compare solo con almeno un permesso view. FieldCatalogueEndpointTest
+      aggiornato per le due risorse.</criterion>
+    <criterion id="AC-019">Demo seed: DemoDataSeeder esegue i due seeder demo senza errori ed e' idempotente (seconda
+      esecuzione: stessi conteggi); DatabaseSeeder non li richiama.</criterion>
+    <!-- Frontend Vitest -->
+    <criterion id="AC-020">FE profili: schema Zod rispecchia D-8 (required_if, range, until &gt;= from) e mostra l'errore
+      server overlapping_validity sul campo valid_from con aria-invalid/role=alert; il form nasconde aliquote quando la
+      ritenuta e' disattiva e il mandato quando ENASARCO e' disattivo; create/edit/delete chiamano gli endpoint del contratto.</criterion>
+    <criterion id="AC-021">FE maturato: pagina con quick filter (Aperto default) e footer totali; nessuna azione di modifica;
+      rotte /agent-fiscal-profiles e /commission-accruals lazy con breadcrumb.</criterion>
+    <criterion id="AC-022">i18n e guide: chiavi IT/EN in parita' (test di parita'), guide `agent-fiscal-profiles` e
+      `commission-accruals` IT/EN con sezione "in fase di sviluppo", HELP_GUIDE_KEYS aggiornato, help-content-parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Importi solo bcmath scala 2 (half-up come InvoiceAmountCalculator); niente float nel
+      synchronizer.</item>
+    <item>Authz server-side su ogni endpoint (Policy + TableDefinition::viewAny); sort/filtri solo da allow-list;
+      `$request->safe()`; `$fillable` espliciti.</item>
+    <item>Blast radius sui servizi incassi: solo l'iniezione del synchronizer e una chiamata per metodo
+      (record, clear, update). InvoiceService resta sotto 300 righe se possibile, mai oltre 500.</item>
+    <item>Aliquote/basi/massimali mai nel codice (D-9). Nessun dato fiscale nei log applicativi.</item>
+    <item>Migrazioni reversibili; seeder demo solo in DemoDataSeeder. Test helper condivisi in
+      tests/Helpers/CommissionAccrualHelpers.php caricato da tests/Pest.php.</item>
+    <item>Test eseguiti davvero: `XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/CommissionAccruals tests/Feature/AgentFiscalProfiles`
+      + suite completa `composer test`; Vitest; `cd frontend &amp;&amp; npx tsc -b --force`; Pint; ESLint.</item>
+  </constraints>
+
+</spec>

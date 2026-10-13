@@ -13,6 +13,7 @@ use App\Models\PaymentMethod;
 use App\Models\ProformaRequest;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Services\Commissions\Accruals\CommissionAccrualSynchronizer;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -50,6 +51,7 @@ class InvoiceService
         private readonly InvoiceInstallmentPlanner $planner,
         private readonly InvoiceNumberAllocator $numbers,
         private readonly InvoiceScheduleRebalancer $schedule,
+        private readonly CommissionAccrualSynchronizer $accruals,
     ) {}
 
     /**
@@ -118,6 +120,9 @@ class InvoiceService
                 $this->writeLines($locked, $prepared);
                 $this->schedule->apply($locked, $plan);
             }
+
+            // Step 4: a new total changes the collected ratio of the commissions (spec 0212, D-5)
+            $this->accruals->syncInvoice($locked);
 
             return $this->detail($locked);
         });

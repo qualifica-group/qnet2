@@ -67,5 +67,29 @@ return [
                 ],
             ],
         ],
+        // "Provvigioni agenti" (spec 0212): agent commissions; a group with no route of its own.
+        [
+            'key' => 'accounting-commissions',
+            'label' => 'navigation.accountingCommissions',
+            'icon' => 'hand-coins',
+            'route' => null,
+            'permission' => null,
+            'children' => [
+                [
+                    'key' => 'agent-fiscal-profiles',
+                    'label' => 'navigation.agentFiscalProfiles',
+                    'icon' => 'id-card',
+                    'route' => '/agent-fiscal-profiles',
+                    'permission' => 'agent-fiscal-profiles.view',
+                ],
+                [
+                    'key' => 'commission-accruals',
+                    'label' => 'navigation.commissionAccruals',
+                    'icon' => 'book-open',
+                    'route' => '/commission-accruals',
+                    'permission' => 'commission-accruals.view',
+                ],
+            ],
+        ],
     ],
 ];

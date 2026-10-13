@@ -1,8 +1,10 @@
 <?php
 
+use App\Authorization\AgentFiscalProfilesAuthorization;
 use App\Authorization\AttributesAuthorization;
 use App\Authorization\BusinessFunctionsAuthorization;
 use App\Authorization\CampaignsAuthorization;
+use App\Authorization\CommissionAccrualsAuthorization;
 use App\Authorization\CommissionConfigurationsAuthorization;
 use App\Authorization\CompaniesAuthorization;
 use App\Authorization\CompanySitesAuthorization;
@@ -129,6 +131,10 @@ return [
         'cost-types' => CostTypesAuthorization::class,
         // spec 0189: conti finanziari (conto corrente, carta, cassa).
         'financial-accounts' => FinancialAccountsAuthorization::class,
+        // spec 0212: profili fiscali degli agenti.
+        'agent-fiscal-profiles' => AgentFiscalProfilesAuthorization::class,
+        // spec 0212: maturato provvigioni (libro mastro in sola lettura).
+        'commission-accruals' => CommissionAccrualsAuthorization::class,
         // spec 0193: richieste proforma alla Contabilita'.
         'proforma-requests' => ProformaRequestsAuthorization::class,
         // spec 0208: richieste di acquisto (RDA).
