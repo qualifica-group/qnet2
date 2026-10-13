@@ -29,7 +29,7 @@ export const workOrderPaymentStatuses = {
   },
   detail: {
     title: 'Dettaglio stato pagamento',
-    subtitle: 'Visualizzazione in sola lettura dello stato selezionato.',
+    subtitle: 'Dettaglio del record selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare lo stato pagamento. Riprova.',
     description: 'Descrizione',
     color: 'Colore',
@@ -43,8 +43,6 @@ export const workOrderPaymentStatuses = {
     newWorkOrderPaymentStatus: 'Nuovo stato',
     createTitle: 'Crea stato pagamento',
     createSubtitle: 'Aggiungi un nuovo stato di pagamento per le righe commessa.',
-    editTitle: 'Modifica stato pagamento',
-    editSubtitle: 'Aggiorna lo stato pagamento selezionato.',
     name: 'Nome',
     description: 'Descrizione',
     color: 'Colore',
@@ -65,10 +63,15 @@ export const workOrderPaymentStatuses = {
     deleteError: 'Impossibile eliminare lo stato pagamento. Riprova.',
     deleteForbidden: 'Non puoi eliminare questo stato pagamento.',
     deleteInUseFallback: 'Questo stato pagamento è usato da una riga commessa e non può essere eliminato.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il record non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome, descrizione, colore, stato attivo e consegna.',
       },
     },
     hints: {

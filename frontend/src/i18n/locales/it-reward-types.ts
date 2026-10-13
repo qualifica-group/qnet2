@@ -24,7 +24,7 @@ export const rewardTypes = {
   },
   detail: {
     title: 'Dettaglio tipologia di premio',
-    subtitle: 'Visualizzazione in sola lettura della tipologia selezionata.',
+    subtitle: 'Dettaglio del record selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare la tipologia di premio. Riprova.',
     color: 'Colore',
     created_at: 'Creato il',
@@ -34,8 +34,6 @@ export const rewardTypes = {
     newRewardType: 'Nuova tipologia',
     createTitle: 'Crea tipologia di premio',
     createSubtitle: 'Aggiungi una nuova tipologia di buono, premio o incentivo.',
-    editTitle: 'Modifica tipologia di premio',
-    editSubtitle: 'Aggiorna la tipologia di premio selezionata.',
     name: 'Nome',
     nameRequired: 'Il nome è obbligatorio.',
     nameMax: 'Il nome può contenere al massimo 191 caratteri.',
@@ -52,10 +50,15 @@ export const rewardTypes = {
     deleteError: 'Impossibile eliminare la tipologia di premio. Riprova.',
     deleteForbidden: 'Non puoi eliminare questa tipologia di premio.',
     deleteInUseFallback: 'Questa tipologia di premio è in uso e non può essere eliminata.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il record non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome e colore della tipologia.',
       },
     },
   },

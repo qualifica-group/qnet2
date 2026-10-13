@@ -8,6 +8,11 @@ import type {
   UpdateRewardStatusPayload,
 } from '@/features/reward-statuses/types'
 
+/** Query key of a single reward status's detail, shared by the detail screen and its in-place saves. */
+export function rewardStatusDetailQueryKey(id: number) {
+  return ['reward-statuses', 'detail', id] as const
+}
+
 /**
  * Fetches a single reward status detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -31,16 +36,18 @@ export async function createRewardStatus(
   return data.data
 }
 
-/** Partially updates a reward status (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a reward status (PATCH). Returns the saved record with the actor's
+ * permissions, so the in-place detail re-syncs on it as is.
+ */
 export async function updateRewardStatus(
   id: number,
   payload: UpdateRewardStatusPayload,
-): Promise<RewardStatusDetail> {
-  const { data } = await apiClient.patch<ApiResponse<RewardStatusDetail>>(
-    `/reward-statuses/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<RewardStatusDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<RewardStatusDetail, ResourcePermissions>
+  >(`/reward-statuses/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

@@ -1,98 +1,63 @@
-import { Gift } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FormSection } from '@/components/form-section'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Form, FormControl } from '@/components/ui/form'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
-import { ColorTokenPicker } from '@/features/custom-fields/components/color-token-picker'
+import { useWatch } from 'react-hook-form'
+import { Gift } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
+import { Form } from '@/components/ui/form'
+import { RewardTypeRows } from '@/features/reward-types/reward-type-rows'
 import { useRewardTypeForm } from '@/features/reward-types/use-reward-type-form'
-import type { RewardTypeDetail, RewardTypeFormMode } from '@/features/reward-types/types'
+import type { RewardTypeDetail } from '@/features/reward-types/types'
+
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const REWARD_TYPE_FORM_ID = 'reward-type-form'
+
+/** Create mode is static: a fresh object per render would rebuild the form's defaults. */
+const CREATE_MODE = { type: 'create' } as const
 
 interface RewardTypeFormBodyProps {
-  mode: RewardTypeFormMode
   onSuccess: (rewardType: RewardTypeDetail) => void
   onCancel: () => void
 }
 
 /**
- * The reward type create/edit form UI. `name` and `color` are each wrapped in
- * `MetaField` (spec 0004): hidden means absent, non-editable means disabled,
- * `required` comes from the resolved `ResourcePermissions` — no hardcoded
- * permission logic lives here. All non-render logic lives in
- * `useRewardTypeForm`.
+ * The reward type create form as a replica of the detail (spec 0235): the
+ * same rows, closed until clicked (Fatto/Ripristina, nothing saved per row);
+ * Salva validates and creates everything at once.
  */
-export function RewardTypeFormBody({ mode, onSuccess, onCancel }: RewardTypeFormBodyProps) {
+export function RewardTypeFormBody({ onSuccess, onCancel }: RewardTypeFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit } = useRewardTypeForm({ mode, onSuccess })
-
-  const identityVisible = fieldPermission('name').visible || fieldPermission('color').visible
+  const { form, serverError, onSubmit } = useRewardTypeForm({ mode: CREATE_MODE, onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const name = useWatch({ control: form.control, name: 'name' })
+  const heading = name.trim() || t('rewardTypes.form.createTitle')
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4 p-4"
-          noValidate
-        >
-          {identityVisible && (
-            <FormSection
-              icon={Gift}
-              title={t('rewardTypes.form.sections.identity.title')}
-              description={t('rewardTypes.form.sections.identity.description')}
-            >
-              <MetaField
-                control={form.control}
-                name="name"
-                metaKey="name"
-                label={t('rewardTypes.form.name')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="color"
-                metaKey="color"
-                label={t('rewardTypes.form.color')}
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <ColorTokenPicker value={field.value} onChange={field.onChange} disabled={disabled} />
-                  </FormControl>
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('rewardTypes.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('rewardTypes.form.saving') : t('rewardTypes.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+    <Form {...form}>
+      <RecordCreateLayout
+        formId={REWARD_TYPE_FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        title={heading}
+        subtitle={t('rewardTypes.form.createSubtitle')}
+        media={<DetailMonogram name={heading} icon={<Gift />} />}
+        isSubmitting={form.formState.isSubmitting}
+        serverError={serverError}
+        onCancel={onCancel}
+        labels={{
+          save: t('rewardTypes.form.save'),
+          saving: t('rewardTypes.form.saving'),
+          cancel: t('rewardTypes.form.cancel'),
+        }}
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('rewardTypes.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <RewardTypeRows inline={draft} canEdit />
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
+      </RecordCreateLayout>
+    </Form>
   )
 }

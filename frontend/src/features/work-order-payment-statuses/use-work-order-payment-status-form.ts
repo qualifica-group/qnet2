@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createWorkOrderPaymentStatus, updateWorkOrderPaymentStatus } from '@/features/work-order-payment-statuses/api'
+import { createWorkOrderPaymentStatus, workOrderPaymentStatusDetailQueryKey, updateWorkOrderPaymentStatus } from '@/features/work-order-payment-statuses/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -35,8 +35,9 @@ interface UseWorkOrderPaymentStatusFormArgs {
 
 /**
  * Owns every non-render concern of `WorkOrderPaymentStatusForm`: RHF/Zod wiring,
- * default values, server 422 mapping and the create/update submit. The
- * component stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * default values, server 422 mapping and the create/update submit. Create
+ * backs `WorkOrderPaymentStatusForm`; edit backs the detail's in-place rows (diff PATCH).
+ * The component stays UI-only; this hook is the orchestration point (`onSubmit`).
  */
 export function useWorkOrderPaymentStatusForm({ mode, onSuccess }: UseWorkOrderPaymentStatusFormArgs) {
   const { t } = useTranslation()
@@ -63,9 +64,13 @@ export function useWorkOrderPaymentStatusForm({ mode, onSuccess }: UseWorkOrderP
     return { name: '', description: null, color: '', is_active: true, allows_delivery: false }
   }, [mode])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<WorkOrderPaymentStatusFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: WorkOrderPaymentStatusFormValues) => {
@@ -77,7 +82,7 @@ export function useWorkOrderPaymentStatusForm({ mode, onSuccess }: UseWorkOrderP
           mode.workOrderPaymentStatus.id,
           buildUpdatePayload(values, mode.workOrderPaymentStatus),
         )
-        queryClient.setQueryData(['work-order-payment-statuses', 'detail', mode.workOrderPaymentStatus.id], saved)
+        queryClient.setQueryData(workOrderPaymentStatusDetailQueryKey(mode.workOrderPaymentStatus.id), saved)
         toast.success(t('workOrderPaymentStatuses.form.updated'))
         onSuccess(saved)
         return
@@ -95,8 +100,8 @@ export function useWorkOrderPaymentStatusForm({ mode, onSuccess }: UseWorkOrderP
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

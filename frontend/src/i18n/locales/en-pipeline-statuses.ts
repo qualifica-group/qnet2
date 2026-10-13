@@ -26,7 +26,7 @@ export const pipelineStatuses = {
   },
   detail: {
     title: 'Project status details',
-    subtitle: 'Read-only view of the selected project status.',
+    subtitle: 'Details of the selected record, editable in place.',
     loadError: 'Unable to load the project status. Please try again.',
     color: 'Color',
     sort_order: 'Order',
@@ -37,8 +37,6 @@ export const pipelineStatuses = {
     newPipelineStatus: 'New status',
     createTitle: 'Create project status',
     createSubtitle: 'Add a new status for projects and campaigns.',
-    editTitle: 'Edit project status',
-    editSubtitle: 'Update the selected project status.',
     name: 'Name',
     color: 'Color',
     group: {
@@ -60,14 +58,16 @@ export const pipelineStatuses = {
     deleteError: 'Unable to delete the project status. Please try again.',
     deleteForbidden: 'You cannot delete this project status.',
     deleteInUseFallback: 'This status is used by a project or a campaign and cannot be deleted.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The record has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name, color and group of the status.',
       },
-    },
-    hints: {
-      systemStatusGroup: 'System statuses have a fixed group and cannot be reclassified.',
     },
   },
   reorder: {

@@ -100,7 +100,6 @@ const pipelineStatuses: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <PipelineStatusForm
-          mode={{ type: 'create' }}
           onSuccess={(pipelineStatus) => onSuccess({ id: pipelineStatus.id, name: pipelineStatus.name })}
           onCancel={onCancel}
         />
@@ -118,7 +117,6 @@ const rewardTypes: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <RewardTypeForm
-          mode={{ type: 'create' }}
           onSuccess={(rewardType) => onSuccess({ id: rewardType.id, name: rewardType.name })}
           onCancel={onCancel}
         />

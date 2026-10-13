@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createRewardStatus, updateRewardStatus } from '@/features/reward-statuses/api'
+import { createRewardStatus, rewardStatusDetailQueryKey, updateRewardStatus } from '@/features/reward-statuses/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -35,8 +35,9 @@ interface UseRewardStatusFormArgs {
 
 /**
  * Owns every non-render concern of `RewardStatusForm`: RHF/Zod wiring,
- * default values, server 422 mapping and the create/update submit. The
- * component stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * default values, server 422 mapping and the create/update submit. Create
+ * backs `RewardStatusForm`; edit backs the detail's in-place rows (diff PATCH).
+ * The component stays UI-only; this hook is the orchestration point (`onSubmit`).
  */
 export function useRewardStatusForm({ mode, onSuccess }: UseRewardStatusFormArgs) {
   const { t } = useTranslation()
@@ -65,9 +66,13 @@ export function useRewardStatusForm({ mode, onSuccess }: UseRewardStatusFormArgs
     return { name: '', description: null, color: '', group: 'pending', is_active: true }
   }, [mode])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<RewardStatusFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: RewardStatusFormValues) => {
@@ -79,7 +84,7 @@ export function useRewardStatusForm({ mode, onSuccess }: UseRewardStatusFormArgs
           mode.rewardStatus.id,
           buildUpdatePayload(values, mode.rewardStatus),
         )
-        queryClient.setQueryData(['reward-statuses', 'detail', mode.rewardStatus.id], saved)
+        queryClient.setQueryData(rewardStatusDetailQueryKey(mode.rewardStatus.id), saved)
         toast.success(t('rewardStatuses.form.updated'))
         onSuccess(saved)
         return
@@ -97,8 +102,8 @@ export function useRewardStatusForm({ mode, onSuccess }: UseRewardStatusFormArgs
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

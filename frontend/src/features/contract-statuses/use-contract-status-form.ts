@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import {
   createContractStatus,
-  updateContractStatus,
+  contractStatusDetailQueryKey, updateContractStatus,
 } from '@/features/contract-statuses/api'
 import {
   buildCreatePayload,
@@ -46,8 +46,9 @@ interface UseContractStatusFormArgs {
 
 /**
  * Owns every non-render concern of `ContractStatusForm`: RHF/Zod wiring,
- * default values, server 422 mapping and the create/update submit. The
- * component stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * default values, server 422 mapping and the create/update submit. Create
+ * backs `ContractStatusForm`; edit backs the detail's in-place rows (diff PATCH).
+ * The component stays UI-only; this hook is the orchestration point (`onSubmit`).
  */
 export function useContractStatusForm({ mode, onSuccess }: UseContractStatusFormArgs) {
   const { t } = useTranslation()
@@ -75,9 +76,13 @@ export function useContractStatusForm({ mode, onSuccess }: UseContractStatusForm
     return { name: '', description: null, color: '', group: 'open', is_active: true, is_default: false }
   }, [mode])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<ContractStatusFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: ContractStatusFormValues) => {
@@ -89,7 +94,7 @@ export function useContractStatusForm({ mode, onSuccess }: UseContractStatusForm
           mode.contractStatus.id,
           buildUpdatePayload(values, mode.contractStatus),
         )
-        queryClient.setQueryData(['contract-statuses', 'detail', mode.contractStatus.id], saved)
+        queryClient.setQueryData(contractStatusDetailQueryKey(mode.contractStatus.id), saved)
         toast.success(t('contractStatuses.form.updated'))
         onSuccess(saved)
         return
@@ -107,8 +112,8 @@ export function useContractStatusForm({ mode, onSuccess }: UseContractStatusForm
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

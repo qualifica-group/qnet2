@@ -8,6 +8,11 @@ import type {
   UpdateRewardTypePayload,
 } from '@/features/reward-types/types'
 
+/** Query key of a single reward type's detail, shared by the detail screen and its in-place saves. */
+export function rewardTypeDetailQueryKey(id: number) {
+  return ['reward-types', 'detail', id] as const
+}
+
 /**
  * Fetches a single reward type detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -28,16 +33,18 @@ export async function createRewardType(
   return data.data
 }
 
-/** Partially updates a reward type (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a reward type (PATCH). Returns the saved record with the actor's
+ * permissions, so the in-place detail re-syncs on it as is.
+ */
 export async function updateRewardType(
   id: number,
   payload: UpdateRewardTypePayload,
-): Promise<RewardTypeDetail> {
-  const { data } = await apiClient.patch<ApiResponse<RewardTypeDetail>>(
-    `/reward-types/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<RewardTypeDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<RewardTypeDetail, ResourcePermissions>
+  >(`/reward-types/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**
