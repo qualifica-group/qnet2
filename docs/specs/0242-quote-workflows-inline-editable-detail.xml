@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0242-quote-workflows-inline-editable-detail" status="approved" owner="utente" date="2026-10-13">
+
+  <goal>
+    Onda 4 del piano "nessuna pagina di modifica" (utente 2026-10-13): il Configuratore Stati Offerta perde la pagina
+    di modifica; il dettaglio si edita sul posto, la creazione e' una replica del dettaglio.
+  </goal>
+
+  <context>
+    - D-1: kit della spec 0233 + contratto per modulo 0233 D-2. Backend invariato: `PATCH
+      /api/quote-workflows/{id}` e' parziale (`name`, `is_active`, criteri e stati `sometimes`) e risponde gia' con
+      `permissions`; la validazione dei criteri (unicita' fra flussi) resta server-side.
+    - D-2: Nome e Attivo righe del kit; Criteri e Stati righe `layout="block"` a tutta larghezza (precedente 0227
+      fasi dei modelli di task, 0239 contenuto dei layout): chiuse = la vista attuale del dettaglio, aperte = gli
+      editor esistenti `QuoteWorkflowCriteriaEditor` / `WorkflowStatusesEditor`; Salva invia SOLO l'array della
+      riga (criteri o stati). Il foglio "Stati predefiniti" resta com'e'.
+    - D-3: creazione = replica del dettaglio: righe semplici chiuse (Fatto/Ripristina), editor Criteri e Stati APERTI
+      (come le board 0197/0227), uscita con conferma.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica.</backend>
+    <frontend>
+      Registry `quote-workflows`: `generateEditRoute: false`, `detailOwnsEditAction: true`, `formOwnsHeader: true`;
+      `QuoteWorkflowDetailView` perde `onEdit`, guadagna `onChanged`; `updateQuoteWorkflow` restituisce
+      `QuoteWorkflowDetailWithPermissions`; `quoteWorkflowDetailQueryKey` esportata da `api.ts`; hook del form in
+      edit con `values`/`keepDirtyValues`/`clearServerError`; wrapper solo creazione (`useResourceMeta`), via
+      `use-quote-workflow-form-meta.ts` e `QuoteWorkflowEditScreen`; i18n `form.leaveConfirm.*`.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/quote-workflows/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su Nome/Attivo/Criteri/Stati: Salva invia solo i campi della riga; Annulla non chiama; 422 sulla riga.</ac>
+    <ac id="AC-003">Senza permesso `update` nessuna matita.</ac>
+    <ac id="AC-004">Creazione: righe chiuse, editor Criteri e Stati aperti, Salva crea tutto, uscita con conferma.</ac>
+    <ac id="AC-005">Guida in-app IT/EN `quote-workflows` aggiornata.</ac>
+  </acceptance>
+</spec>

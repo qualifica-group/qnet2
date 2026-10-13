@@ -38,6 +38,32 @@
 - Da verificare: e2e reale legacy -> qnet-2 (warning attesi su codici ISO dei gruppi non previsti dalla norma della
   categoria). HANDOFF oltre 50 KB: archiviare le voci vecchie in `docs/handoff-archive/`.
 
+## ONDA 4: ATTRIBUTI, CONFIGURATORE COMMISSIONI, CONFIGURATORE STATI OFFERTA SENZA PAGINA DI MODIFICA (spec 0240-0242, 2026-10-13) — VERDE, COMMITTATO (3 commit, uno per spec)
+
+- Richiesta utente: "ok procediamo allora con questi" (i moduli rimasti con la pagina di modifica, esclusi sempre
+  Gestione richieste/iscritti, Attiva = Richieste Proforma, Gestione conti). Contratti era gia' sul posto (0219):
+  restano solo commenti obsoleti su `ContractEditDialog` in `contract-screens.tsx`/`contracts-table.tsx` (segnalati).
+- 3 agenti `frontend` a ownership disgiunta, kit 0233 + contratto 0233 D-2, backend invariato (PATCH parziali che
+  rispondono gia' con `permissions`). Attributi (0240): gemello di custom-fields 0231, Codice/Tipo solo creazione,
+  editor `Definition*` riusati; `TypeSection`/`RelationTargetEditor` ora ESPORTATI da
+  `custom-field-definition-type-sections.tsx` (`RelationTargetEditor` generico `<T extends FieldDefinitionFormValues>`,
+  comportamento invariato); `:id/duplicate` resta. Commissioni (0241): righe raggruppate Destinatario (ruolo+tipo+
+  destinatario; cambio ruolo non ammesso azzera tipo/destinatario), Ambito (scope+categoria/prodotto, l'altra
+  relazione azzerata nel PATCH), Validita' (dal+al); `buildUpdatePayload` diff; editor dei gruppi dentro
+  `MetaFieldRowContext.Provider value={null}` (sotto-etichette visibili). Stati Offerta (0242): Nome/Attivo righe del kit,
+  Criteri/Stati righe `block`, `statuses` ora valore RHF validato, PATCH solo dell'array cambiato con `id` esistenti;
+  foglio "Stati predefiniti" invariato.
+- Verifica lead: `tsc -b --force` 0; Vitest completo 982 file / 7556 test, 7555 verdi + 1 flaky NON toccato
+  (`stat-chart.test.tsx`, chunk lazy sotto carico: 3/3 verde da solo, stessa famiglia di `stat-donut-chart`);
+  ESLint pulito sui file toccati. Browser
+  (Playwright): nessun "Modifica", `/edit` non trovata, 375 px senza overflow, duplica attributo ok, creazione e
+  modifica reale di una configurazione commissioni (PATCH `{"priority":7}`), poi eliminata; token eliminato.
+- Manuale: guide in-app IT/EN dei 3 moduli (agenti); Claude Docs: paragrafi "Creare e modificare un attributo",
+  passi di creazione + "Modificare una configurazione" (Commissioni), "Creare e modificare un workflow". PDF da rigenerare.
+- Segnalati, fuori scope: a 375 px l'editor Stati (selettore colore + badge) e la riga criterio si sovrappongono
+  (layout preesistente di `WorkflowStatusesEditor`/`ROW_GRID_CLASS`); `RecordCardHeader` tronca titolo/sottotitolo
+  della creazione a 375 px quando ci sono Annulla/Salva (vale per tutti i moduli).
+
 ## ONDA 3: TABELLE DI IMPOSTAZIONE SENZA PAGINA DI MODIFICA, KIT CONDIVISO + 25 MODULI (spec 0233-0239, 2026-10-12) — VERDE, COMMITTATO (7 commit, uno per spec)
 
 - Richiesta utente: "ok procedi" (riapertura onda 3 dopo il riepilogo). Esclusi sempre Gestione richieste/iscritti,

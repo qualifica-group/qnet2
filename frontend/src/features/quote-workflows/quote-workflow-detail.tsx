@@ -1,47 +1,84 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Workflow } from 'lucide-react'
-import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
+import { DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
   RecordCardHeader,
-  RecordField,
   RecordFieldList,
   RecordMeta,
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
-import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
+import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
 import { Badge } from '@/components/ui/badge'
+import { Form } from '@/components/ui/form'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import {
+  QuoteWorkflowCriteriaRow,
+  QuoteWorkflowGeneralRows,
+  QuoteWorkflowStatusesRow,
+} from '@/features/quote-workflows/quote-workflow-rows'
+import { useQuoteWorkflowForm, type QuoteWorkflowFormValues } from '@/features/quote-workflows/use-quote-workflow-form'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
-import { cn } from '@/lib/utils'
-import type { QuoteWorkflowDetailWithPermissions } from '@/features/quote-workflows/types'
+import type { QuoteWorkflowDetailWithPermissions, QuoteWorkflowFormMode } from '@/features/quote-workflows/types'
 
 interface QuoteWorkflowDetailViewProps {
   quoteWorkflow: QuoteWorkflowDetailWithPermissions
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the record (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single opportunity workflow (spec 0047 Lane C): its
- * criteria (field label + resolved value label) and its status set, in
- * `sort_order`. Rendered as an enterprise-CRM record on the same kit
- * Opportunita' uses: the identity/fields card on the left, the activity card
- * on the right, a metadata footer.
+ * Detail of a single opportunity workflow on the record kit: identity band,
+ * the "Dettagli" rows, its criteria and its status set as full-width rows
+ * (the persisted view until their pencil opens the editor creation uses), the
+ * activity card on the right, a metadata footer. There is no edit page (spec
+ * 0242): every row edits IN PLACE, one at a time, each save a PATCH of that
+ * row's fields alone.
  */
-export function QuoteWorkflowDetailView({ quoteWorkflow, onEdit }: QuoteWorkflowDetailViewProps) {
+export function QuoteWorkflowDetailView(props: QuoteWorkflowDetailViewProps) {
+  // The rows read the field permissions, so the provider wraps the whole detail.
+  return (
+    <ResourcePermissionsProvider permissions={props.quoteWorkflow.permissions}>
+      <QuoteWorkflowDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function QuoteWorkflowDetailContent({ quoteWorkflow, onChanged }: QuoteWorkflowDetailViewProps) {
   const { t } = useTranslation()
-  const createdAt = formatDateTime(quoteWorkflow.created_at)
+  const editing = useInlineEditingField()
+  // Stable per saved record: the form re-syncs its values on a new one.
+  const mode = useMemo<QuoteWorkflowFormMode>(() => ({ type: 'edit', quoteWorkflow }), [quoteWorkflow])
+  const { form, onSubmit, serverError, clearServerError } = useQuoteWorkflowForm({
+    mode,
+    onSuccess: () => {
+      editing.close()
+      onChanged?.()
+    },
+  })
+  const inline = useRecordInlineEdit<QuoteWorkflowFormValues>({
+    editing,
+    form,
+    onSubmit,
+    serverError,
+    clearServerError,
+    genericErrorMessage: t('quoteWorkflows.form.genericError'),
+  })
   const canEdit = quoteWorkflow.permissions.resource.update
-  const canViewActivity = quoteWorkflow.permissions.actions.view_activity
+  const createdAt = formatDateTime(quoteWorkflow.created_at)
+  const tabs: RecordCollaborationTab[] = quoteWorkflow.permissions.actions.view_activity
+    ? [activityLogTab('quote-workflows', quoteWorkflow.id, t('activityLog.title'))]
+    : []
 
   return (
     <RecordCanvas>
       <RecordBody
-        collaborationTabs={canViewActivity ? [activityLogTab('quote-workflows', quoteWorkflow.id, t('activityLog.title'))] : []}
+        collaborationTabs={tabs}
         header={
           <RecordCardHeader
             media={<DetailMonogram name={quoteWorkflow.name} icon={<Workflow />} />}
@@ -51,52 +88,25 @@ export function QuoteWorkflowDetailView({ quoteWorkflow, onEdit }: QuoteWorkflow
                 {t(quoteWorkflow.is_active ? 'quoteWorkflows.detail.active' : 'quoteWorkflows.detail.inactive')}
               </Badge>
             }
-            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
         }
       >
-        <RecordSectionsGrid>
-          <RecordSection title={t('quoteWorkflows.detail.criteriaTitle')}>
-            {quoteWorkflow.criteria.length === 0 ? (
-              <DetailEmpty />
-            ) : (
+        {/* Provider only (no DOM): the in-place rows share the edit form. */}
+        <Form {...form}>
+          <RecordSectionsGrid>
+            <RecordSection title={t('quoteWorkflows.form.sections.identity.title')} full>
               <RecordFieldList>
-                {quoteWorkflow.criteria.map((criterion) => (
-                  <RecordField
-                    key={criterion.id}
-                    label={criterion.field_source === 'custom' ? criterion.field_label : t(criterion.field_label)}
-                  >
-                    {criterion.value_label}
-                  </RecordField>
-                ))}
+                <QuoteWorkflowGeneralRows inline={inline} canEdit={canEdit} />
               </RecordFieldList>
-            )}
-          </RecordSection>
-
-          <RecordSection title={t('quoteWorkflows.detail.statusesTitle')}>
-            {quoteWorkflow.statuses.length === 0 ? (
-              <DetailEmpty />
-            ) : (
-              <ul className="flex flex-col gap-1.5">
-                {quoteWorkflow.statuses.map((status) => {
-                  const swatch = swatchClassFor(status.color)
-                  return (
-                    <li key={status.id} className="flex items-center gap-2 text-sm">
-                      <span
-                        className={cn('size-2.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
-                        aria-hidden="true"
-                      />
-                      <span className="flex-1 truncate">{status.name}</span>
-                      <Badge variant="secondary" className="shrink-0">
-                        {t(`quoteWorkflows.form.statuses.group.${status.group}`)}
-                      </Badge>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </RecordSection>
-        </RecordSectionsGrid>
+            </RecordSection>
+            <RecordSection title={t('quoteWorkflows.detail.criteriaTitle')} full>
+              <QuoteWorkflowCriteriaRow inline={inline} canEdit={canEdit} quoteWorkflow={quoteWorkflow} />
+            </RecordSection>
+            <RecordSection title={t('quoteWorkflows.detail.statusesTitle')} full>
+              <QuoteWorkflowStatusesRow inline={inline} canEdit={canEdit} quoteWorkflow={quoteWorkflow} />
+            </RecordSection>
+          </RecordSectionsGrid>
+        </Form>
       </RecordBody>
 
       {createdAt ? (

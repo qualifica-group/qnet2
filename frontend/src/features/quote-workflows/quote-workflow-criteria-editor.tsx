@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { ListFilter, Plus, Trash2 } from 'lucide-react'
-import { useWatch, type Control, type UseFieldArrayReturn, type UseFormSetValue } from 'react-hook-form'
-import { FormSection } from '@/components/form-section'
+import { Plus, Trash2 } from 'lucide-react'
+import { useFieldArray, useFormContext, useWatch } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import {
@@ -16,9 +15,6 @@ import type { CriterionFieldOption } from '@/features/quote-workflows/types'
 import type { QuoteWorkflowFormValues } from '@/features/quote-workflows/use-quote-workflow-form'
 
 interface QuoteWorkflowCriteriaEditorProps {
-  control: Control<QuoteWorkflowFormValues>
-  setValue: UseFormSetValue<QuoteWorkflowFormValues>
-  criteria: UseFieldArrayReturn<QuoteWorkflowFormValues, 'criteria'>
   criterionFields: CriterionFieldOption[]
   disabled?: boolean
 }
@@ -35,18 +31,13 @@ const ROW_GRID_CLASS = 'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_1.5rem] item
  * whatever field is already picked in ANOTHER row (server-enforced
  * distinctness, AC-008) and its value select is an `AsyncPaginatedSelect`
  * scoped to the chosen field's `for_select_resource`, disabled until a field
- * is picked. All non-render logic (default values, submit) lives in
- * `useQuoteWorkflowForm`; this component only renders the array.
+ * is picked. Binds to the surrounding `<Form>` (the detail's open row or the
+ * create form); all non-render logic lives in `useQuoteWorkflowForm`.
  */
-export function QuoteWorkflowCriteriaEditor({
-  control,
-  setValue,
-  criteria,
-  criterionFields,
-  disabled = false,
-}: QuoteWorkflowCriteriaEditorProps) {
+export function QuoteWorkflowCriteriaEditor({ criterionFields, disabled = false }: QuoteWorkflowCriteriaEditorProps) {
   const { t } = useTranslation()
-  const { fields, append, remove } = criteria
+  const { control, setValue } = useFormContext<QuoteWorkflowFormValues>()
+  const { fields, append, remove } = useFieldArray({ control, name: 'criteria' })
   const rows = useWatch({ control, name: 'criteria' }) ?? []
 
   const fieldOptionsFor = (index: number): CriterionFieldOption[] => {
@@ -59,11 +50,7 @@ export function QuoteWorkflowCriteriaEditor({
   }
 
   return (
-    <FormSection
-      icon={ListFilter}
-      title={t('quoteWorkflows.form.sections.criteria.title')}
-      description={t('quoteWorkflows.form.sections.criteria.description')}
-    >
+    <>
       <FormField control={control} name="criteria" render={() => <FormMessage />} />
 
       <div className="flex flex-col gap-2">
@@ -160,6 +147,6 @@ export function QuoteWorkflowCriteriaEditor({
           {t('quoteWorkflows.form.criteria.add')}
         </Button>
       </div>
-    </FormSection>
+    </>
   )
 }

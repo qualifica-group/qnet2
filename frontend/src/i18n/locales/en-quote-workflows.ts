@@ -43,8 +43,6 @@ export const quoteWorkflows = {
     newQuoteWorkflow: 'New workflow',
     createTitle: 'Create quote workflow',
     createSubtitle: 'Define a new processing-status workflow for quotes.',
-    editTitle: 'Edit quote workflow',
-    editSubtitle: 'Update the selected quote workflow.',
     name: 'Name',
     isActive: 'Active',
     save: 'Save',
@@ -58,10 +56,15 @@ export const quoteWorkflows = {
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the quote workflow. Please try again.',
     deleteForbidden: 'You cannot delete this quote workflow.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The quote workflow has not been created yet: the data you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name and active status of the workflow.',
       },
       criteria: {
         title: 'Criteria',
