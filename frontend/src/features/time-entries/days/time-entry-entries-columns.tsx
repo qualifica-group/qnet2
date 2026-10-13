@@ -80,7 +80,7 @@ export function buildTimeEntryColumns({
             actionsLabel={t('timeEntries.table.actions')}
             canWrite={canWrite}
             deleteLabel={t('timeEntries.table.delete')}
-            editLabel={t('timeEntries.table.edit')}
+            openLabel={t('timeEntries.table.open')}
             entry={params.data}
             onEditEntry={onEditEntry}
             onRequestDelete={onRequestDelete}

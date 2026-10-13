@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0222-user-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    L'Utente riceve le stesse modifiche dei moduli gia' migrati (spec 0195-0200, 0216-0221): niente pagina di
+    modifica, il dettaglio si edita in place campo per campo (scheda anagrafica e campi personalizzati compresi), la
+    creazione e' una replica del dettaglio a righe chiuse. Ultimo modulo dell'onda 1 del piano "nessuna pagina di
+    modifica".
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-12, "committa e procedi"): regole 0195 D-2/D-3/D-6/D-7/D-8/D-9 con il kit dei Referenti
+      (spec 0216): `PersonalDataIdentityRecordSection` (una riga per l'intera scheda, buffer fuori da RHF),
+      `usePersonalDataDraftInlineEdit`, `PersonalDataRecordSections`/`PersonalDataChildCards` per contatti e
+      indirizzi (nel dettaglio si salvano da soli, in creazione restano nella bozza fino a Salva).
+    - D-2: sezioni (stesso ordine in creazione): Dati anagrafici (foto profilo sopra la riga della scheda);
+      Credenziali e accesso (Email, Password, Ruoli, Account attivo, Lingua in sola lettura); Assegnazione a tutta
+      larghezza (avviso se non assegnabile, Assegnabile, Competente per tutte le categorie, Competenze, Sede fisica,
+      Sedi remote); Profilo (Responsabile, Mansione, Riporta a); Rapporto contrattuale (Tipo rapporto, Azienda); Dati
+      contrattuali (Qualifica, Assunzione, Cessazione, Orario giornaliero, Pausa); Campi personalizzati; poi Contatti
+      e Indirizzi. Le sezioni del rapporto di lavoro ci sono anche per un utente senza profilo (righe vuote): il primo
+      salvataggio lo crea (upsert esistente).
+    - D-3: PATCH sparso: `email`/`is_active`/`roles` solo se cambiati; `password` (con conferma) solo se digitata;
+      `employment` intero (il server fa upsert dell'oggetto) solo se un suo campo e' cambiato; `personal_data` solo se
+      la scheda e' cambiata (come Referenti). La scheda si valida solo quando fa parte del PATCH.
+    - D-4: cascate (spec 0195 D-6c): "Responsabile" attivo svuota "Riporta a" (spec 0166 D-5) e nasconde la riga;
+      "Competente per tutte le categorie" attivo svuota le Competenze (spec 0129 D-2) e le nasconde. Le due righe si
+      aprono solo se anche il campo che svuotano e' modificabile.
+    - D-5: Password: nel dettaglio la riga mostra "impostata" o "primo accesso in sospeso" e apre Nuova password +
+      Conferma; in creazione vuota = invito (spec 0177). Foto profilo: nel dettaglio carica/rimuove subito (azioni
+      `upload_avatar`/`delete_avatar`) e ricarica la scheda; in creazione e' differita e caricata dopo la creazione.
+    - D-6: "Reinvia email di benvenuto" resta nella testata. Nessuna Duplica per gli utenti (non esisteva).
+    - D-7: il pannello condiviso del dettaglio utente (aperto dalle persone in tutta l'app) mostra lo stesso dettaglio
+      modificabile, sempre secondo i permessi.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica: PATCH /api/users/{id} parziale esistente (gia' restituisce `permissions` e l'albero
+      completo `personal_data`/`employment`).</backend>
+    <frontend>
+      Registry `users`: `generateEditRoute: false`; `UserDetailView({userId, onChanged})`; `updateUser` restituisce
+      `UserDetailWithPermissions`; `useUserForm` solo form (edit = `values` + `keepDirtyValues`), submit in
+      `useUserFormSubmit`, nuovo `useUserInlineEdit`. `UserForm` solo creazione (`{onSuccess, onCancel}`).
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/users/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su un campo editabile: Salva invia il solo campo cambiato (D-3); Annulla/Esc/clic fuori non
+      chiamano.</ac>
+    <ac id="AC-003">Senza permesso di modifica nessuna matita; Responsabile / Tutte le categorie senza matita se il
+      campo che svuotano non e' modificabile.</ac>
+    <ac id="AC-004">Creazione: righe chiuse, scheda anagrafica obbligatoria, contatti e indirizzi nella bozza,
+      password vuota = invito, Fatto/Ripristina, Salva valida tutto, uscita con conferma.</ac>
+    <ac id="AC-005">Guida in-app IT/EN `users` aggiornata.</ac>
+  </acceptance>
+</spec>

@@ -1,6 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import axios, { AxiosError } from 'axios'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
@@ -13,17 +12,15 @@ import type { ResourceMeta } from '@/features/authorization/types'
  * Acceptance criteria 11-15 (spec 0006), rehomed into the module scheda by
  * spec 0076: the per-role field-permission matrix — renders from the
  * catalogue's selected module (default: the first one), toggles update form
- * state and the submit payload, edit mode seeds + round-trips, a server 422
- * on a `field_permissions.*` key surfaces inline, and the section is itself
- * gated by the role form's own metadata (0004 `resource.update`/`create`).
+ * state and the create payload, and the subsection is itself gated by the
+ * form's own metadata (0004 `resource.create`). Seeding from a saved role and
+ * the 422 mapping live in `role-detail-inline-edit.test.tsx` (spec 0230).
  */
 
 const createRoleMock = vi.fn()
-const updateRoleMock = vi.fn()
 
 vi.mock('@/features/roles/api', () => ({
   createRole: (...args: unknown[]) => createRoleMock(...args),
-  updateRole: (...args: unknown[]) => updateRoleMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
@@ -112,7 +109,6 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createRoleMock.mockReset()
-  updateRoleMock.mockReset()
   fetchResourceMetaMock.mockReset()
   fetchPermissionCatalogueMock.mockReset()
 })
@@ -125,7 +121,7 @@ describe('RoleForm — field-permission matrix (spec 0006/0076)', () => {
     )
 
     render(
-      <RoleForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RoleForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
@@ -149,7 +145,7 @@ describe('RoleForm — field-permission matrix (spec 0006/0076)', () => {
     createRoleMock.mockResolvedValue(role())
 
     render(
-      <RoleForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RoleForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
@@ -159,84 +155,16 @@ describe('RoleForm — field-permission matrix (spec 0006/0076)', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Tax code — Visible' }))
     expect(screen.getByRole('checkbox', { name: 'Tax code — Visible' })).not.toBeChecked()
 
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Name' }) }))
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Support' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.apply') }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(createRoleMock).toHaveBeenCalled())
     const payload = createRoleMock.mock.calls[0][0]
     expect(payload.field_permissions).toEqual([
       { resource: 'users', field: 'personal_data.tax_code', visible: false, editable: true, required: false },
     ])
-  })
-
-  it('AC13 — edit mode seeds the matrix from role.field_permissions; unchanged submit round-trips the same set', async () => {
-    fetchPermissionCatalogueMock.mockResolvedValue(
-      catalogueWithUsersField({ key: 'personal_data.tax_code', type: 'text', group: 'personal_data', mandatory: false }),
-    )
-    const seeded = role({
-      field_permissions: [
-        { resource: 'users', field: 'personal_data.tax_code', visible: false, editable: true, required: false },
-      ],
-    })
-    updateRoleMock.mockResolvedValue(seeded)
-
-    render(
-      <RoleForm mode={{ type: 'edit', role: seeded }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    // Seeded from `role.field_permissions`: the visible flag was restricted.
-    await waitFor(() =>
-      expect(screen.getByRole('checkbox', { name: 'Tax code — Visible' })).not.toBeChecked(),
-    )
-    expect(screen.getByRole('checkbox', { name: 'Tax code — Editable' })).toBeChecked()
-
-    // Submit unchanged: the matrix round-trips (payload omits the key,
-    // mirroring the existing `permissions`/`users` diff convention).
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateRoleMock).toHaveBeenCalled())
-    const [, payload] = updateRoleMock.mock.calls[0]
-    expect('field_permissions' in payload).toBe(false)
-  })
-
-  it('AC14 — a server 422 on a field_permissions.* key surfaces inline', async () => {
-    fetchPermissionCatalogueMock.mockResolvedValue(
-      catalogueWithUsersField({ key: 'personal_data.tax_code', type: 'text', group: 'personal_data', mandatory: false }),
-    )
-    updateRoleMock.mockRejectedValue(
-      new AxiosError(
-        'Unprocessable',
-        '422',
-        undefined,
-        undefined,
-        {
-          status: 422,
-          data: {
-            success: false,
-            message: 'Validation failed',
-            errors: { field_permissions: ['field not editable'] },
-          },
-        } as never,
-      ),
-    )
-    vi.spyOn(axios, 'isAxiosError').mockReturnValue(true)
-
-    render(
-      <RoleForm mode={{ type: 'edit', role: role() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    await waitFor(() =>
-      expect(screen.getByRole('checkbox', { name: 'Tax code — Visible' })).toBeInTheDocument(),
-    )
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Tax code — Visible' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(screen.getByText('field not editable')).toBeInTheDocument())
-    expect(updateRoleMock).toHaveBeenCalledTimes(1)
-
-    vi.restoreAllMocks()
   })
 
   it('a mandatory field (spec 0008) renders its three checkboxes checked and disabled', async () => {
@@ -246,7 +174,7 @@ describe('RoleForm — field-permission matrix (spec 0006/0076)', () => {
     )
 
     render(
-      <RoleForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
+      <RoleForm onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
@@ -261,28 +189,20 @@ describe('RoleForm — field-permission matrix (spec 0006/0076)', () => {
     expect(screen.getByRole('checkbox', { name: 'Email — Required' })).toBeDisabled()
   })
 
-  it('AC15 — the fields subsection is hidden when the role form metadata denies write access', async () => {
+  it('AC15 — the fields subsection is hidden when the form metadata denies the create ability', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [],
+      permissions: {
+        resource: { view: true, create: false, update: false, delete: false, export: true, import: false },
+        fields: {},
+        actions: {},
+      },
+    })
     fetchPermissionCatalogueMock.mockResolvedValue(
       catalogueWithUsersField({ key: 'personal_data.tax_code', type: 'text', group: 'personal_data', mandatory: false }),
     )
 
-    render(
-      <RoleForm
-        mode={{
-          type: 'edit',
-          role: role({
-            authorization: {
-              resource: { view: true, create: true, update: false, delete: false, export: true, import: false },
-              fields: {},
-              actions: {},
-            },
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    render(<RoleForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
     // The module's actions still render (a separate, non-field-permission gate)...
     expect(await screen.findByText('Actions')).toBeInTheDocument()

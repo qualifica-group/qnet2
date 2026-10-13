@@ -11,6 +11,11 @@ import type {
   UpdateQuoteWorkflowPayload,
 } from '@/features/quote-workflows/types'
 
+/** Query key of a single opportunity workflow's detail, shared by the detail screen and its in-place saves. */
+export function quoteWorkflowDetailQueryKey(id: number) {
+  return ['quote-workflows', 'detail', id] as const
+}
+
 /**
  * Fetches a single opportunity workflow detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -34,16 +39,19 @@ export async function createQuoteWorkflow(
   return data.data
 }
 
-/** Updates an opportunity workflow. `criteria`/`statuses`, when present, are authoritative syncs. */
+/**
+ * Updates an opportunity workflow. `criteria`/`statuses`, when present, are
+ * authoritative syncs. Returns the saved record with the actor's permissions,
+ * so the in-place detail re-syncs on it as is.
+ */
 export async function updateQuoteWorkflow(
   id: number,
   payload: UpdateQuoteWorkflowPayload,
-): Promise<QuoteWorkflowDetail> {
-  const { data } = await apiClient.patch<ApiResponse<QuoteWorkflowDetail>>(
-    `/quote-workflows/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<QuoteWorkflowDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<QuoteWorkflowDetail, ResourcePermissions>
+  >(`/quote-workflows/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

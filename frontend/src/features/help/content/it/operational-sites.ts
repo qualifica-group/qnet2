@@ -21,7 +21,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Premi Nuova sede operativa e compila:',
+          text: "Premi Nuova sede operativa: il modulo ha lo stesso aspetto del dettaglio, con le righe chiuse. Fai clic sulla riga (o sulla matita) per aprirla, poi **Fatto** per tenere il valore o **Ripristina** per riportarlo com'era; **Salva** controlla tutto e crea la sede (se esci senza salvare ti viene chiesta conferma). I campi sono:",
         },
         {
           type: 'table',
@@ -37,12 +37,22 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'editing',
+      title: 'Modificare una sede',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Non esiste una pagina di modifica separata: la sede si modifica **direttamente dal suo dettaglio**, una riga alla volta, campi personalizzati compresi. Premi la **matita** (o fai clic sul valore), cambia il valore e premi **Salva**: si salva solo quella riga. **Annulla** o Esc la lasciano com\'era. Il Comune si cambia insieme a Provincia, Regione e Nazione, in un\'unica riga.',
+        },
+      ],
+    },
+    {
       id: 'deactivating-instead-of-deleting',
       title: 'Disattivare invece di eliminare',
       blocks: [
         {
           type: 'tip',
-          text: 'Per una sede che non usi più, disattiva Sede attiva invece di eliminarla.',
+          text: 'Per una sede che non usi più, spegni Sede attiva (matita sulla riga) invece di eliminarla.',
         },
       ],
     },

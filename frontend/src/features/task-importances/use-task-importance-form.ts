@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createTaskImportance, updateTaskImportance } from '@/features/task-importances/api'
+import { createTaskImportance, taskImportanceDetailQueryKey, updateTaskImportance } from '@/features/task-importances/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -38,8 +38,9 @@ interface UseTaskImportanceFormArgs {
 }
 
 /**
- * Owns every non-render concern of `TaskImportanceForm`: RHF/Zod wiring, default
- * values, server 422 mapping and the create/update submit. The component stays
+ * Owns every non-render concern of the task importance form: RHF/Zod wiring, default
+ * values, server 422 mapping and the create/update submit. Create backs
+ * `TaskImportanceForm`; edit backs the detail's in-place rows (diff PATCH). The component stays
  * UI-only; this hook is the orchestration point (`onSubmit`).
  */
 export function useTaskImportanceForm({ mode, onSuccess }: UseTaskImportanceFormArgs) {
@@ -75,9 +76,13 @@ export function useTaskImportanceForm({ mode, onSuccess }: UseTaskImportanceForm
     }
   }, [mode])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<TaskImportanceFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: TaskImportanceFormValues) => {
@@ -89,7 +94,7 @@ export function useTaskImportanceForm({ mode, onSuccess }: UseTaskImportanceForm
           mode.taskImportance.id,
           buildUpdatePayload(values, mode.taskImportance),
         )
-        queryClient.setQueryData(['task-importances', 'detail', mode.taskImportance.id], saved)
+        queryClient.setQueryData(taskImportanceDetailQueryKey(mode.taskImportance.id), saved)
         toast.success(t('taskImportances.form.updated'))
         onSuccess(saved)
         return
@@ -107,8 +112,8 @@ export function useTaskImportanceForm({ mode, onSuccess }: UseTaskImportanceForm
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

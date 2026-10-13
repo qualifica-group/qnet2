@@ -65,7 +65,7 @@ export function WorkOrderFormHeader({ control, formId, isSubmitting, submitError
         completionPercentage={null}
         startDate={startDate || null}
         callbackDate={callbackDate}
-        contractNumber={null}
+        contractExpiryDate={null}
       />
     </>
   )

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Authorization\LegacyIdVisibility;
 use App\Models\Tag;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -18,6 +19,7 @@ class TagResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id),
             'name' => $this->name,
             'created_at' => $this->created_at,
         ];

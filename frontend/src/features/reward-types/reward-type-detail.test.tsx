@@ -1,5 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
+import { fireEvent, render as renderWithoutClient, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { RewardTypeDetailView } from '@/features/reward-types/reward-type-detail'
@@ -10,10 +13,19 @@ import type { RewardTypeDetailWithPermissions } from '@/features/reward-types/ty
  * and the Activity Log section. `RewardTypeDetailView` is purely
  * presentational (the caller fetches and passes the detail down), so the
  * section gate is exercised directly on the `permissions.actions.view_activity`
- * prop (mirrors `TagDetailView`'s suite).
+ * prop (mirrors `TagDetailView`'s suite). Spec 0235: name and color edit in
+ * place, each save a PATCH of that field alone.
  */
 
 const activityLogSectionMock = vi.fn()
+const updateRewardTypeMock = vi.fn()
+
+vi.mock('@/features/reward-types/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/reward-types/api')>()),
+  updateRewardType: (...args: unknown[]) => updateRewardTypeMock(...args),
+}))
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 vi.mock('@/features/activity-log/activity-log-section', () => ({
   ActivityLogSection: (props: { resource: string; id: number }) => {
@@ -40,12 +52,24 @@ function rewardType(
   }
 }
 
+/** One QueryClient per test: the in-place rows save through React Query. */
+function render(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return renderWithoutClient(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+  })
+}
+
+const pencilOf = (key: string) =>
+  screen.queryByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t(key) }) })
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
 beforeEach(() => {
   activityLogSectionMock.mockReset()
+  updateRewardTypeMock.mockReset()
 })
 
 describe('RewardTypeDetailView — detail fields (AC-024)', () => {
@@ -83,21 +107,66 @@ describe('RewardTypeDetailView — activity log section', () => {
   })
 })
 
-/** The Modifica action, gated by `onEdit` AND `permissions.resource.update`. */
-describe('RewardTypeDetailView — edit action', () => {
-  it('shows Modifica when onEdit is supplied and the actor can update', () => {
-    render(<RewardTypeDetailView rewardType={rewardType()} onEdit={vi.fn()} />)
-
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
-  })
-
-  it('hides Modifica when onEdit is absent', () => {
+describe('RewardTypeDetailView — in-place editing (spec 0235)', () => {
+  it('has no Edit button: every row is closed, with its pencil', () => {
     render(<RewardTypeDetailView rewardType={rewardType()} />)
 
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(pencilOf('rewardTypes.form.name')).toBeInTheDocument()
+    expect(pencilOf('rewardTypes.form.color')).toBeInTheDocument()
   })
 
-  it('hides Modifica when the actor cannot update the reward type', () => {
+  it('Save sends only the changed field', async () => {
+    updateRewardTypeMock.mockResolvedValue(rewardType({ name: 'Renamed' }))
+    render(<RewardTypeDetailView rewardType={rewardType()} />)
+
+    fireEvent.click(pencilOf('rewardTypes.form.name') as HTMLElement)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Renamed' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.save') }))
+
+    await waitFor(() => expect(updateRewardTypeMock).toHaveBeenCalledWith(1, { name: 'Renamed' }))
+  })
+
+  it('Cancel restores the row without calling the API', () => {
+    render(<RewardTypeDetailView rewardType={rewardType()} />)
+
+    fireEvent.click(pencilOf('rewardTypes.form.name') as HTMLElement)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Renamed' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.cancel') }))
+
+    expect(screen.queryByText('Renamed')).not.toBeInTheDocument()
+    expect(updateRewardTypeMock).not.toHaveBeenCalled()
+  })
+
+  it('AC-017 (D-5b): clearing the color with the picker "X" is refused on the row, without a request', async () => {
+    render(<RewardTypeDetailView rewardType={rewardType()} />)
+
+    fireEvent.click(pencilOf('rewardTypes.form.color') as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Clear color' }))
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.save') }))
+
+    expect(await screen.findByText('Color is required.')).toBeInTheDocument()
+    expect(updateRewardTypeMock).not.toHaveBeenCalled()
+  })
+
+  it('AC-016: maps a server 422 onto the open row', async () => {
+    updateRewardTypeMock.mockRejectedValue(
+      new AxiosError('Unprocessable', '422', undefined, undefined, {
+        status: 422,
+        data: { success: false, message: 'Validation failed', errors: { name: ['Name already taken.'] } },
+      } as never),
+    )
+    render(<RewardTypeDetailView rewardType={rewardType()} />)
+
+    fireEvent.click(pencilOf('rewardTypes.form.name') as HTMLElement)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Duplicate' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.save') }))
+
+    expect(await screen.findByText('Name already taken.')).toBeInTheDocument()
+  })
+
+  it('offers no pencil when the actor cannot update the reward type', () => {
     render(
       <RewardTypeDetailView
         rewardType={rewardType({
@@ -106,19 +175,10 @@ describe('RewardTypeDetailView — edit action', () => {
             resource: { ...rewardType().permissions.resource, update: false },
           },
         })}
-        onEdit={vi.fn()}
       />,
     )
 
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-  })
-
-  it('calls onEdit when Modifica is clicked', () => {
-    const onEdit = vi.fn()
-    render(<RewardTypeDetailView rewardType={rewardType()} onEdit={onEdit} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-
-    expect(onEdit).toHaveBeenCalledOnce()
+    expect(pencilOf('rewardTypes.form.name')).not.toBeInTheDocument()
+    expect(pencilOf('rewardTypes.form.color')).not.toBeInTheDocument()
   })
 })

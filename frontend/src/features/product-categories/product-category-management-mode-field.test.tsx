@@ -1,38 +1,48 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
 import { ProductCategoryForm } from '@/features/product-categories/product-category-form'
+import { ProductCategoryDetailView } from '@/features/product-categories/product-category-detail'
+import {
+  applyRow,
+  category,
+  categoryWrapper,
+  childCategory,
+  pencilOf,
+  permissionsFor,
+  saveRow,
+  treeNode,
+} from '@/features/product-categories/product-category-test-fixtures'
 import { indexCategoryTree } from '@/features/product-categories/business-function-inheritance'
 import { resolveInheritedManagementMode } from '@/features/product-categories/management-mode-inheritance'
 import type {
   ProductCategoryDetailWithPermissions,
   ProductCategoryTreeNode,
 } from '@/features/product-categories/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
+import type { ResourceMeta } from '@/features/authorization/types'
 
 /**
- * `management_mode` (spec 0077) belongs to the branch ROOT: the selector is
- * editable only while no parent is selected (AC-040), and turns into a
- * read-only mirror of the root's value (naming that root) as soon as one is
- * — live, off the cached tree, not just after a save. Mirrors the
- * `requires_quote` field suite's setup: only the API layer and the tree fetch
- * are mocked, the real form/controls render.
+ * `management_mode` (spec 0077) belongs to the branch ROOT: the row only offers
+ * a pencil while no parent is selected (AC-040); under a parent it shows the
+ * root's value and names that root, resolved off the cached tree (live on the
+ * create draft, spec 0229). Mirrors the `requires_quote` field suite's setup:
+ * only the API layer and the tree fetch are mocked, the real detail/form
+ * controls render.
  */
 
 const createProductCategoryMock = vi.fn()
 const updateProductCategoryMock = vi.fn()
 const fetchProductCategoryTreeMock = vi.fn<() => Promise<ProductCategoryTreeNode[]>>()
 
-vi.mock('@/features/product-categories/api', () => ({
+vi.mock('@/features/product-categories/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/product-categories/api')>()),
   createProductCategory: (...args: unknown[]) => createProductCategoryMock(...args),
   updateProductCategory: (...args: unknown[]) => updateProductCategoryMock(...args),
   fetchProductCategoryTree: () => fetchProductCategoryTreeMock(),
   fetchEffectiveAttributes: () => Promise.resolve([]),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
@@ -62,91 +72,12 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
-const FULL_ACCESS: ResourcePermissions['resource'] = {
-  view: true,
-  create: true,
-  update: true,
-  delete: true,
-  export: true,
-  import: true,
-}
-
-function permissivePermissions(): ResourcePermissions {
-  return { resource: FULL_ACCESS, fields: {}, actions: {} }
-}
-
 function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
+  return categoryWrapper().wrapper
 }
 
-function treeNode(overrides: Partial<ProductCategoryTreeNode> = {}): ProductCategoryTreeNode {
-  return {
-    id: 1,
-    name: 'Node',
-    parent_id: null,
-    children: [],
-    attributes_count: 0,
-    products_count: 0,
-    business_function_id: null,
-    requires_quote: false,
-    is_selectable: true,
-    is_reportable: false,
-    management_mode: 'multiple',
-    single_quote_per_opportunity: false,
-    generates_contract: true,
-    simplified_offer_line: false,
-    simplified_offer_line_override: null,
-    ...overrides,
-  }
-}
-
-function category(
-  overrides: Partial<ProductCategoryDetailWithPermissions> = {},
-): ProductCategoryDetailWithPermissions {
-  return {
-    id: 4,
-    name: 'Laptops',
-    parent_id: null,
-    parent: null,
-    inherits_product_attributes: true,
-    inherits_quote_attributes: true,
-    inherits_work_order_attributes: true,
-    description: null,
-    attributes: [],
-    inherited_attributes: [],
-    created_at: '2026-01-01T00:00:00Z',
-    business_function_id: null,
-    business_function: null,
-    effective_business_function: null,
-    requires_quote: false,
-    requires_quote_source_category: null,
-    is_selectable: true,
-    is_reportable: false,
-    effective_is_reportable: false,
-    is_reportable_source_category: null,
-    report_columns: null,
-    effective_report_columns: [],
-    report_columns_source_category: null,
-    inherited_report_columns: [],
-    inherited_report_columns_source_category: null,
-    management_mode: 'multiple',
-    single_quote_per_opportunity: false,
-    generates_contract: true,
-    management_mode_source_category: null,
-    single_quote_per_opportunity_source_category: null,
-    generates_contract_source_category: null,
-    simplified_offer_line: false,
-    simplified_offer_line_override: null,
-    simplified_offer_line_source_category: null,
-    manager_labels: {},
-    inherits_manager_labels: true,
-    inherited_manager_labels: {},
-    permissions: permissivePermissions(),
-    ...overrides,
-  }
+function renderDetail(detail: ProductCategoryDetailWithPermissions) {
+  return render(<ProductCategoryDetailView category={detail} />, { wrapper: wrapper() })
 }
 
 /** The management-mode selector, located by the label `MetaField` wires to it. */
@@ -164,7 +95,7 @@ beforeEach(() => {
   fetchProductCategoryTreeMock.mockReset()
   fetchProductCategoryTreeMock.mockResolvedValue([])
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissivePermissions() })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
 })
 
 describe('resolveInheritedManagementMode', () => {
@@ -211,12 +142,11 @@ describe('resolveInheritedManagementMode', () => {
   })
 })
 
-describe('ProductCategoryForm — management_mode field (AC-040)', () => {
-  it('root category: the selector is enabled and its own hint is shown', async () => {
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+describe('management_mode row (AC-040, spec 0229)', () => {
+  it('root category: the row opens on the enabled selector with its own hint', async () => {
+    renderDetail(category())
+
+    fireEvent.click(pencilOf('managementMode') as HTMLElement)
 
     const select = await findManagementModeSelect()
     expect(select).not.toBeDisabled()
@@ -230,101 +160,41 @@ describe('ProductCategoryForm — management_mode field (AC-040)', () => {
 
   it('root category: switching the mode sends the value on save', async () => {
     updateProductCategoryMock.mockResolvedValue(category({ management_mode: 'single' }))
+    renderDetail(category())
 
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
+    fireEvent.click(pencilOf('managementMode') as HTMLElement)
     fireEvent.click(await findManagementModeSelect())
     fireEvent.click(await screen.findByRole('option', { name: 'Single (one line per card)' }))
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    saveRow()
 
     await waitFor(() => expect(updateProductCategoryMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateProductCategoryMock.mock.calls[0]
     expect(payload).toEqual({ management_mode: 'single' })
   })
 
-  it('child category (AC-040): the selector is disabled, mirrors the root and names it', async () => {
-    fetchProductCategoryTreeMock.mockResolvedValue([
-      treeNode({
-        id: 1,
-        name: 'Electronics',
-        management_mode: 'single',
-        single_quote_per_opportunity: false,
-        generates_contract: true,
-        children: [treeNode({ id: 4, name: 'Laptops', parent_id: 1, management_mode: 'single' })],
-      }),
-    ])
+  it('child category (AC-040): the mode mirrors the root, names it and offers no pencil', () => {
+    renderDetail(childCategory({ management_mode: 'single' }))
 
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({
-            parent_id: 1,
-            parent: { id: 1, name: 'Electronics' },
-            management_mode: 'single',
-            single_quote_per_opportunity: false,
-            generates_contract: true,
-            management_mode_source_category: { id: 1, name: 'Electronics' },
-            single_quote_per_opportunity_source_category: null,
-            generates_contract_source_category: null,
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    const select = await findManagementModeSelect()
-    await waitFor(() => expect(select).toBeDisabled())
-    expect(select).toHaveTextContent('Single (one line per card)')
-    expect(
-      screen.getByText(
-        'The management mode is inherited from the root category "Electronics". To change it, edit that category instead.',
-      ),
-    ).toBeInTheDocument()
+    expect(pencilOf('managementMode')).not.toBeInTheDocument()
+    expect(screen.getByText('Single (one line per card)')).toBeInTheDocument()
+    expect(screen.getAllByText('Inherited from Electronics').length).toBeGreaterThan(0)
   })
 
   it('child category: the value never reaches the payload', async () => {
-    fetchProductCategoryTreeMock.mockResolvedValue([
-      treeNode({
-        id: 1,
-        name: 'Electronics',
-        management_mode: 'single',
-        single_quote_per_opportunity: false,
-        generates_contract: true,
-        children: [treeNode({ id: 4, name: 'Laptops', parent_id: 1, management_mode: 'single' })],
-      }),
-    ])
-    const child = category({
-      parent_id: 1,
-      parent: { id: 1, name: 'Electronics' },
-      management_mode: 'single',
-      single_quote_per_opportunity: false,
-      generates_contract: true,
-      management_mode_source_category: { id: 1, name: 'Electronics' },
-      single_quote_per_opportunity_source_category: null,
-      generates_contract_source_category: null,
-    })
+    const child = childCategory({ management_mode: 'single' })
     updateProductCategoryMock.mockResolvedValue(child)
+    renderDetail(child)
 
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: child }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'Laptops Pro' } })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    fireEvent.click(pencilOf('name') as HTMLElement)
+    fireEvent.change(await screen.findByRole('textbox', { name: /^Name/ }), { target: { value: 'Laptops Pro' } })
+    saveRow()
 
     await waitFor(() => expect(updateProductCategoryMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateProductCategoryMock.mock.calls[0]
     expect(payload).toEqual({ name: 'Laptops Pro' })
   })
 
-  it('create: picking a parent locks the selector on the root value, live', async () => {
+  it('create: a draft under a parent mirrors the root mode and offers no pencil', async () => {
     fetchProductCategoryTreeMock.mockResolvedValue([
       treeNode({ id: 1, name: 'Electronics', management_mode: 'single' }),
     ])
@@ -334,19 +204,14 @@ describe('ProductCategoryForm — management_mode field (AC-040)', () => {
       { wrapper: wrapper() },
     )
 
-    const select = await findManagementModeSelect()
-    expect(select).not.toBeDisabled()
-    expect(select).toHaveTextContent('Multiple (several lines per card)')
+    expect(await screen.findByText('Multiple (several lines per card)')).toBeInTheDocument()
 
+    fireEvent.click(pencilOf('parent') as HTMLElement)
     fireEvent.click(await screen.findByRole('combobox', { name: 'Parent category' }))
     fireEvent.click(await screen.findByRole('option', { name: 'Electronics' }))
+    applyRow()
 
-    await waitFor(() => expect(select).toBeDisabled())
-    expect(select).toHaveTextContent('Single (one line per card)')
-    expect(
-      screen.getByText(
-        'The management mode is inherited from the root category "Electronics". To change it, edit that category instead.',
-      ),
-    ).toBeInTheDocument()
+    await waitFor(() => expect(pencilOf('managementMode')).not.toBeInTheDocument())
+    expect(screen.getByText('Single (one line per card)')).toBeInTheDocument()
   })
 })

@@ -1,499 +1,266 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { campaigns as campaignsEn } from '@/i18n/locales/en-campaigns'
+import type { ResourceMeta } from '@/features/authorization/types'
+import { CampaignDetailView } from '@/features/campaigns/campaign-detail'
 import { CampaignForm } from '@/features/campaigns/campaign-form'
+import {
+  READ_ONLY,
+  campaignFixture,
+  campaignWrapper,
+  clickCreateSave,
+  clickInRow,
+  completeRequiredCreateRows,
+  confirmOpenRow,
+  pencilOf,
+  permissionsFor,
+  pickProductLine,
+  projectForSelectItem,
+  typeInRow,
+} from '@/features/campaigns/campaign-test-fixtures'
 import type { CampaignDetailWithPermissions } from '@/features/campaigns/types'
-import type { FieldPermission, ResourceMeta } from '@/features/authorization/types'
 
 /**
- * Spec 0025 PARTE A: `code` is a manual, optional field — an enabled input
- * with a fallback-declaring placeholder in create (AC-010), disabled/
- * read-only showing the saved value in edit (AC-011), with a 422 duplicate
- * mapped onto the field itself (AC-012). Gated by the `code` field
- * permission, exactly like every other `MetaField`-driven control. The
- * AC-042/AC-043/BR-3 Project-link behaviour lives in
- * `campaign-project-link.test.tsx` (split for file-size, engineering.md §6).
+ * The campaign create form and the in-place detail (spec 0221): default
+ * status and country preselection (spec 0039 D-3, spec 0221 D-6), the manual
+ * code (spec 0025 AC-010..012), the product lines (spec 0132), Sede and Fonte.
+ * REQUIREMENT CHANGED (spec 0221): rows are closed until opened, and the edit
+ * cases run on the in-place detail.
  */
 
 const createCampaignMock = vi.fn()
 const updateCampaignMock = vi.fn()
 const fetchCampaignNextCodeMock = vi.fn<() => Promise<string>>()
 
-vi.mock('@/features/campaigns/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/campaigns/api')>(
-    '@/features/campaigns/api',
-  )
-  return {
-    ...actual,
-    createCampaign: (...args: unknown[]) => createCampaignMock(...args),
-    updateCampaign: (...args: unknown[]) => updateCampaignMock(...args),
-    fetchCampaignNextCode: () => fetchCampaignNextCodeMock(),
-  }
-})
+vi.mock('@/features/campaigns/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/campaigns/api')>()),
+  createCampaign: (...args: unknown[]) => createCampaignMock(...args),
+  updateCampaign: (...args: unknown[]) => updateCampaignMock(...args),
+  fetchCampaignNextCode: () => fetchCampaignNextCodeMock(),
+}))
+
+const fetchProjectsForSelectMock = vi.fn()
+vi.mock('@/features/projects/for-select-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/projects/for-select-api')>()),
+  fetchProjectsForSelect: (...args: unknown[]) => fetchProjectsForSelectMock(...args),
+}))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-/**
- * `ProductLinesField`'s row picker resolves an unknown business-function
- * label through this API directly (`use-product-lines-field.ts`'s
- * `resolveLabel`), bypassing the mocked `AsyncPaginatedSelect` component —
- * left un-mocked it fires a real, unauthenticated request.
- */
-vi.mock('@/features/for-select/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
-    '@/features/for-select/api',
-  )
-  return {
-    ...actual,
-    fetchForSelect: vi.fn().mockResolvedValue({
-      items: [],
-      pagination: { offset: 0, limit: 25, total: 0 },
-      export_link: null,
-    }),
-  }
-})
-
-const FULL_PERMISSIONS = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
-}
+vi.mock('@/features/for-select/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/for-select/api')>()),
+  fetchForSelect: vi.fn().mockResolvedValue({ items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }),
+}))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-/** Spec 0039 D-3: the standalone create form preselects this resolved "Nuovo" status id. */
 const fetchSystemStatusIdMock = vi.fn<() => Promise<number | null>>()
 vi.mock('@/features/status-reorder/api', () => ({
   fetchSystemStatusId: () => fetchSystemStatusIdMock(),
 }))
 
-/**
- * Stubs every single-select field, keyed by its accessible trigger label
- * (mirrors `project-form-body.test.tsx`). Renders as a button calling
- * `onChange` so standalone-create tests can satisfy the 3 required
- * classification selects without a real dropdown.
- */
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({
-    value,
-    onChange,
-    disabled,
-    labels,
-  }: {
-    value: number | null
-    onChange: (value: number) => void
-    disabled?: boolean
-    labels: { triggerLabel: string }
-  }) => (
-    <button
-      type="button"
-      disabled={disabled}
-      data-testid={`select-${labels.triggerLabel}`}
-      onClick={() => onChange(3)}
-    >
-      {value ?? ''}
-    </button>
-  ),
+const defaultCountryIdMock = vi.fn<() => number | null>()
+vi.mock('@/features/geo/use-default-country', () => ({
+  useDefaultCountryId: () => defaultCountryIdMock(),
 }))
 
-/** Local, clickable double (mirrors `AsyncPaginatedSelect` above): the shared read-only stub exposes no "pick" affordance. */
-vi.mock('@/features/product-lines/product-category-tree-select', () => ({
-  ProductCategoryTreeSelect: ({
-    value,
-    onChange,
-    scope,
-    disabled,
-    triggerLabel,
-  }: {
-    value: number | null
-    onChange: (id: number) => void
-    scope: { kind: 'root'; rootCategoryId: number | null }
-    disabled?: boolean
-    triggerLabel: string
-  }) => {
-    const isDisabled = Boolean(disabled) || scope.rootCategoryId === null
-    return (
-      <div>
-        <span data-testid={`value-${triggerLabel}`}>{value ?? ''}</span>
-        <span data-testid={`disabled-${triggerLabel}`}>{String(isDisabled)}</span>
-        <button
-          type="button"
-          disabled={isDisabled}
-          data-testid={`select-${triggerLabel}`}
-          onClick={() => onChange(4)}
-        >
-          {`select ${triggerLabel}`}
-        </button>
-      </div>
-    )
-  },
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/campaigns/campaign-test-stubs')).StubAsyncSelect,
+}))
+vi.mock('@/features/product-lines/product-category-tree-select', async () => ({
+  ProductCategoryTreeSelect: (await import('@/features/campaigns/campaign-test-stubs')).StubTreeSelect,
+}))
+vi.mock('@/features/product-lines/product-category-root-select', async () => ({
+  ProductCategoryRootSelect: (await import('@/features/campaigns/campaign-test-stubs')).StubRootSelect,
+}))
+vi.mock('@/features/geo/geo-select', async () => ({
+  GeoSelect: (await import('@/features/campaigns/campaign-test-stubs')).StubGeoSelect,
+}))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
-/** The row's FIRST step (spec 0132): same clickable-double style as the category picker above. */
-vi.mock('@/features/product-lines/product-category-root-select', () => ({
-  ProductCategoryRootSelect: ({
-    value,
-    onChange,
-    disabled,
-    triggerLabel,
-  }: {
-    value: number | null
-    onChange: (rootCategoryId: number) => void
-    disabled?: boolean
-    triggerLabel: string
-  }) => (
-    <button
-      type="button"
-      disabled={disabled}
-      data-testid={`select-${triggerLabel}`}
-      onClick={() => onChange(3)}
-    >
-      {value ?? ''}
-    </button>
-  ),
-}))
-
-/**
- * `GeoSelect` is covered by its own test (`features/geo/geo-select.test.tsx`);
- * here a controllable stub lets standalone-create tests satisfy the
- * `country_id` required field (spec 0027 BR-4) without a real cascade.
- */
-vi.mock('@/features/geo/geo-select', () => ({
-  GeoSelect: ({
-    value,
-    onChange,
-  }: {
-    value: { country_id: number | null }
-    onChange: (next: {
-      country_id: number | null
-      state_id: number | null
-      province_id: number | null
-      city_id: number | null
-    }) => void
-  }) => (
-    <button
-      type="button"
-      data-testid="geo-select"
-      data-country={value.country_id ?? ''}
-      onClick={() => onChange({ country_id: 10, state_id: null, province_id: null, city_id: null })}
-    >
-      geo
-    </button>
-  ),
-}))
-
-/** `code` field-permission fixtures mirroring the spec 0025 contract's create/update ceilings. */
-const CODE_EDITABLE_PERMISSION: FieldPermission = {
-  visible: true,
-  hidden: false,
-  editable: true,
-  readonly: false,
-  required: false,
-  disabled: false,
-}
-const CODE_READONLY_PERMISSION: FieldPermission = {
-  visible: true,
-  hidden: false,
-  editable: false,
-  readonly: true,
-  required: false,
-  disabled: false,
+function renderCreate(source?: CampaignDetailWithPermissions) {
+  const { client, wrapper } = campaignWrapper()
+  render(<CampaignForm source={source} onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
+  return client
 }
 
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
-}
-
-function campaign(
-  overrides: Partial<CampaignDetailWithPermissions> = {},
-): CampaignDetailWithPermissions {
-  return {
-    id: 9,
-    code: 'CMP-0009',
-    project_id: null,
-    project: null,
-    name: 'Spring push',
-    description: null,
-    partner_id: null,
-    partner: null,
-    operational_site_id: null,
-    operational_site: null,
-    source_id: null,
-    source: null,
-    derived_from_project: false,
-    pipeline_status_id: 1,
-    pipeline_status: { id: 1, name: 'Active', color: 'blue' },
-    country_id: 10,
-    country: { id: 10, name: 'Italy' },
-    state_id: 3,
-    state: { id: 3, name: 'Lombardy' },
-    province_id: null,
-    province: null,
-    city_id: null,
-    city: null,
-    geo_scope: 'state',
-    geo_locked_levels: [],
-    product_lines: [{ id: 1, business_function: { id: 2, name: 'Sales' }, product_category: { id: 4, name: 'Hardware' } }],
-    start_date: '2026-01-01',
-    end_date: '2026-12-31',
-    total_budget: null,
-    target_lead: null,
-    created_at: '2026-01-01T00:00:00Z',
-    permissions: FULL_PERMISSIONS,
-    ...overrides,
-  }
+function renderDetail(campaign: CampaignDetailWithPermissions) {
+  const { client, wrapper } = campaignWrapper()
+  render(<CampaignDetailView campaign={campaign} />, { wrapper })
+  return client
 }
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
-  // `campaigns` is not yet wired into `en.ts` (pending the wiring lane, see
-  // handoff): registered here so the feature's own copy renders for real.
-  i18n.addResourceBundle('en', 'translation', { campaigns: campaignsEn }, true, true)
 })
 
 beforeEach(() => {
+  vi.restoreAllMocks()
   createCampaignMock.mockReset()
   updateCampaignMock.mockReset()
   fetchCampaignNextCodeMock.mockReset()
   fetchCampaignNextCodeMock.mockResolvedValue('CMP-0100')
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_PERMISSIONS })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
   fetchSystemStatusIdMock.mockReset()
   fetchSystemStatusIdMock.mockResolvedValue(null)
-})
-
-/**
- * Fills the now-required planning dates on the create form (collapsed
- * Planning & budget section, opened first). `code` is auto-filled from
- * `fetchCampaignNextCode`; classification selects are clicked per-test.
- */
-function fillRequiredDates() {
-  fireEvent.click(screen.getByRole('button', { name: /Planning & budget/ }))
-  fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-01-01' } })
-  fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-12-31' } })
-}
-
-/** Fills the standalone-required product_lines row 1 (spec 0132). */
-function fillRequiredClassification() {
-  fireEvent.click(screen.getByTestId('select-Parent category 1'))
-  fireEvent.click(screen.getByTestId('select-Product category 1'))
-}
-
-describe('CampaignForm — default status preselection (spec 0039 D-3, AC-012)', () => {
-  it('preselects the resolved "Nuovo" status id on a standalone create once it resolves', async () => {
-    fetchSystemStatusIdMock.mockResolvedValue(42)
-
-    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Status')).toHaveTextContent('42'))
-  })
-
-  it('does not preselect in edit mode', async () => {
-    fetchSystemStatusIdMock.mockResolvedValue(42)
-
-    render(
-      <CampaignForm mode={{ type: 'edit', campaign: campaign() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    await waitFor(() => expect(screen.getByTestId('select-Status')).toBeInTheDocument())
-    expect(screen.getByTestId('select-Status')).toHaveTextContent('1')
-    expect(fetchSystemStatusIdMock).not.toHaveBeenCalled()
+  defaultCountryIdMock.mockReset()
+  defaultCountryIdMock.mockReturnValue(null)
+  fetchProjectsForSelectMock.mockReset()
+  fetchProjectsForSelectMock.mockResolvedValue({
+    items: [projectForSelectItem()],
+    export_link: null,
+    pagination: { total: 1, offset: 0, limit: 25, total_pages: 1 },
   })
 })
 
-describe('CampaignForm — manual code (spec 0025 AC-010/AC-011)', () => {
-  it('auto-fills the enabled, required code field with the next sequential suggestion on create (AC-010)', async () => {
-    fetchCampaignNextCodeMock.mockResolvedValue('CMP-0042')
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: { ...FULL_PERMISSIONS, fields: { code: CODE_EDITABLE_PERMISSION } },
-    })
+describe('Campaign — default status and country (spec 0039 D-3, spec 0221 D-6)', () => {
+  it('preselects the resolved "Nuovo" status id on a standalone create', async () => {
+    fetchSystemStatusIdMock.mockResolvedValue(7)
+    createCampaignMock.mockResolvedValue(campaignFixture())
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByLabelText('Code')).toBeInTheDocument())
-    const code = screen.getByLabelText('Code') as HTMLInputElement
-    expect(code).not.toBeDisabled()
-    expect(code.value).toBe('CMP-0042')
-  })
-
-  it('sends the trimmed manual code on create submit when the user fills it (AC-010)', async () => {
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: { ...FULL_PERMISSIONS, fields: { code: CODE_EDITABLE_PERMISSION } },
-    })
-    createCampaignMock.mockResolvedValue(campaign({ code: 'ACME-2026' }))
-
-    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByLabelText('Code')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '  ACME-2026  ' } })
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Spring push' } })
-    fireEvent.click(screen.getByTestId('select-Status'))
-    fillRequiredClassification()
-    fireEvent.click(screen.getByTestId('geo-select'))
-    fillRequiredDates()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    completeRequiredCreateRows()
+    clickCreateSave()
 
     await waitFor(() => expect(createCampaignMock).toHaveBeenCalledTimes(1))
-    const payload = createCampaignMock.mock.calls[0][0] as Record<string, unknown>
-    expect(payload.code).toBe('ACME-2026')
+    expect(createCampaignMock.mock.calls[0][0].pipeline_status_id).toBe(7)
   })
 
-  it('shows the saved code value, disabled/read-only, on edit (AC-011)', () => {
-    render(
-      <CampaignForm
-        mode={{
-          type: 'edit',
-          campaign: campaign({ permissions: { ...FULL_PERMISSIONS, fields: { code: CODE_READONLY_PERMISSION } } }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('takes the national default country without opening the geography row', async () => {
+    defaultCountryIdMock.mockReturnValue(380)
+    createCampaignMock.mockResolvedValue(campaignFixture())
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    const code = screen.getByLabelText('Code') as HTMLInputElement
-    expect(code).toBeDisabled()
-    expect(code).toHaveAttribute('readonly')
-    expect(code.value).toBe('CMP-0009')
+    typeInRow('Name', 'Spring push')
+    fireEvent.click(pencilOf('Product lines'))
+    pickProductLine()
+    confirmOpenRow('Done')
+    typeInRow('Start date', '2026-01-01')
+    clickCreateSave()
+
+    await waitFor(() => expect(createCampaignMock).toHaveBeenCalledTimes(1))
+    expect(createCampaignMock.mock.calls[0][0].country_id).toBe(380)
   })
 
-  it('never sends a code field on edit submit (AC-011)', async () => {
-    updateCampaignMock.mockResolvedValue(campaign({ name: 'Renamed push' }))
+  it('refuses the save with the required message when no country is chosen', async () => {
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    render(
-      <CampaignForm
-        mode={{
-          type: 'edit',
-          campaign: campaign({ permissions: { ...FULL_PERMISSIONS, fields: { code: CODE_READONLY_PERMISSION } } }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    typeInRow('Name', 'Spring push')
+    clickCreateSave()
 
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Renamed push' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateCampaignMock).toHaveBeenCalledTimes(1))
-    const payload = updateCampaignMock.mock.calls[0][1] as Record<string, unknown>
-    expect(payload).not.toHaveProperty('code')
-    expect(payload).toEqual({ name: 'Renamed push' })
+    expect(await screen.findByText('Country is required when the linked project does not provide one.')).toBeInTheDocument()
+    expect(createCampaignMock).not.toHaveBeenCalled()
   })
 })
 
-describe('CampaignForm — 422 duplicate code (spec 0025 AC-012)', () => {
-  it('maps a 422 on the code field onto the field itself, not only a toast', async () => {
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: { ...FULL_PERMISSIONS, fields: { code: CODE_EDITABLE_PERMISSION } },
-    })
-    createCampaignMock.mockRejectedValue(
-      new AxiosError(
-        'Unprocessable',
-        '422',
-        undefined,
-        undefined,
-        {
-          status: 422,
-          data: { success: false, message: 'Validation failed.', errors: { code: ['The code has already been taken.'] } },
-        } as never,
-      ),
-    )
+describe('Campaign — manual code (spec 0025 AC-010/AC-011/AC-012)', () => {
+  it('starts the create code row with the next sequential suggestion (AC-010)', async () => {
+    renderCreate()
+
+    expect(await screen.findAllByText('CMP-0100')).not.toHaveLength(0)
+  })
+
+  it('sends the trimmed manual code on create (AC-010)', async () => {
+    createCampaignMock.mockResolvedValue(campaignFixture())
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
+
+    typeInRow('Code', '  CMP-CUSTOM  ')
+    completeRequiredCreateRows()
+    clickCreateSave()
+
+    await waitFor(() => expect(createCampaignMock).toHaveBeenCalledTimes(1))
+    expect(createCampaignMock.mock.calls[0][0].code).toBe('CMP-CUSTOM')
+  })
+
+  it('shows the saved code without a pencil on the detail and never sends it (AC-011)', async () => {
+    updateCampaignMock.mockResolvedValue(campaignFixture({ name: 'Renamed' }))
+    renderDetail(campaignFixture())
+
+    expect(screen.getByText('CMP-0009', { selector: 'span' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Code' })).not.toBeInTheDocument()
+
+    typeInRow('Name', 'Renamed', 'Save')
+
+    await waitFor(() => expect(updateCampaignMock).toHaveBeenCalledWith(9, { name: 'Renamed' }))
+  })
+
+  it('maps a 422 on the code onto its row, not only a toast (AC-012)', async () => {
     vi.spyOn(axios, 'isAxiosError').mockReturnValue(true)
-
-    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByLabelText('Code')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'ACME-2026' } })
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Spring push' } })
-    fireEvent.click(screen.getByTestId('select-Status'))
-    fillRequiredClassification()
-    fireEvent.click(screen.getByTestId('geo-select'))
-    fillRequiredDates()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() =>
-      expect(screen.getByText('The code has already been taken.')).toBeInTheDocument(),
+    createCampaignMock.mockRejectedValue(
+      Object.assign(new AxiosError('Unprocessable'), {
+        response: { status: 422, data: { message: 'Invalid', errors: { code: ['The code has already been taken.'] } } },
+      }),
     )
-    expect(screen.queryByText('Something went wrong. Please try again.')).not.toBeInTheDocument()
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    vi.restoreAllMocks()
+    completeRequiredCreateRows()
+    clickCreateSave()
+
+    expect(await screen.findByText('The code has already been taken.')).toBeInTheDocument()
+    expect(screen.queryByText('Something went wrong. Please try again.')).not.toBeInTheDocument()
   })
 })
 
-describe('CampaignForm — Fonte (spec 0176 D-1, optional)', () => {
-  it('renders the Fonte field, editable in create', async () => {
-    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+describe('Campaign — product lines, Sede and Fonte', () => {
+  it('sends the complete product line, the picked Sede and Fonte on a standalone create', async () => {
+    createCampaignMock.mockResolvedValue(campaignFixture())
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    await waitFor(() => expect(screen.getByTestId('select-Source')).toBeInTheDocument())
-    expect(screen.getByTestId('select-Source')).not.toBeDisabled()
-  })
-
-  it('submits successfully with no Fonte chosen (optional)', async () => {
-    createCampaignMock.mockResolvedValue(campaign())
-
-    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByLabelText('Code')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Spring push' } })
-    fireEvent.click(screen.getByTestId('select-Status'))
-    fillRequiredClassification()
-    fireEvent.click(screen.getByTestId('geo-select'))
-    fillRequiredDates()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    completeRequiredCreateRows()
+    clickInRow('Site', 'select-Site')
+    clickInRow('Source', 'select-Source')
+    clickCreateSave()
 
     await waitFor(() => expect(createCampaignMock).toHaveBeenCalledTimes(1))
-    const payload = createCampaignMock.mock.calls[0][0] as Record<string, unknown>
-    expect(payload.source_id).toBeNull()
-  })
-
-  it('sends the picked Fonte in the create payload', async () => {
-    createCampaignMock.mockResolvedValue(campaign())
-
-    render(<CampaignForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByLabelText('Code')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Spring push' } })
-    fireEvent.click(screen.getByTestId('select-Status'))
-    fillRequiredClassification()
-    fireEvent.click(screen.getByTestId('geo-select'))
-    fillRequiredDates()
-    fireEvent.click(screen.getByTestId('select-Source'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(createCampaignMock).toHaveBeenCalledTimes(1))
-    const payload = createCampaignMock.mock.calls[0][0] as Record<string, unknown>
+    const payload = createCampaignMock.mock.calls[0][0]
+    expect(payload.product_lines).toEqual([{ product_category_id: 4 }])
+    expect(payload.operational_site_id).toBe(3)
     expect(payload.source_id).toBe(3)
   })
-})
 
-// `product_lines` (spec 0094, AC-045) and Sede (operational site) coverage
-// lives in `campaign-form-product-lines.test.tsx` (engineering.md §6 size split).
+  it('creates with no Fonte chosen (optional, spec 0176 D-1)', async () => {
+    createCampaignMock.mockResolvedValue(campaignFixture())
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
+
+    completeRequiredCreateRows()
+    clickCreateSave()
+
+    await waitFor(() => expect(createCampaignMock).toHaveBeenCalledTimes(1))
+    expect(createCampaignMock.mock.calls[0][0].source_id).toBeNull()
+  })
+
+  it('refuses a standalone create without product lines', async () => {
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
+
+    typeInRow('Name', 'Spring push')
+    clickInRow('Geography', 'geo-select')
+    typeInRow('Start date', '2026-01-01')
+    clickCreateSave()
+
+    await waitFor(() => expect(screen.getAllByRole('alert').length).toBeGreaterThan(0))
+    expect(createCampaignMock).not.toHaveBeenCalled()
+  })
+
+  it('offers no pencil on a field the actor cannot edit', () => {
+    renderDetail(campaignFixture({ permissions: permissionsFor({ code: READ_ONLY, source_id: READ_ONLY }) }))
+
+    expect(screen.queryByRole('button', { name: 'Edit Source' })).not.toBeInTheDocument()
+    expect(pencilOf('Site')).toBeInTheDocument()
+  })
+})

@@ -9,6 +9,7 @@ use App\Http\Requests\Concerns\ValidatesProductLines;
 use App\Http\Requests\Concerns\ValidatesRewards;
 use App\Models\Lead;
 use App\Models\Opportunity;
+use App\Rules\ActiveCategoryProduct;
 use App\Services\Opportunities\LeadOpportunityDefaultsResolver;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -102,7 +103,7 @@ class UpdateOpportunityRequest extends FormRequest
             // record's persisted lines, so it is checked service-side
             // (OpportunityProductInterestWriter), not here.
             'products_of_interest' => ['sometimes', 'array'],
-            'products_of_interest.*' => ['integer', Rule::exists('products', 'id')],
+            'products_of_interest.*' => ['integer', new ActiveCategoryProduct($this->exemptProductsOfInterestIds())],
         ], $this->managerSlotsRules(), $this->productLinesRules(required: false), $this->rewardsRules());
     }
 
@@ -187,5 +188,20 @@ class UpdateOpportunityRequest extends FormRequest
         $validated = $this->validated();
 
         return UpdateOpportunityData::fromValidated($validated);
+    }
+
+    /**
+     * Products already linked to the record being updated: they stay valid
+     * even once their category is deactivated (spec 0208 D-2).
+     *
+     * @return array<int, int>
+     */
+    private function exemptProductsOfInterestIds(): array
+    {
+        $record = $this->route('opportunity');
+
+        return $record instanceof Opportunity
+            ? $record->productsOfInterest()->pluck('products.id')->map(static fn (mixed $id): int => (int) $id)->all()
+            : [];
     }
 }

@@ -5,6 +5,11 @@ import type {
 } from '@/features/payment-methods/types'
 import type { PaymentMethodFormValues } from '@/features/payment-methods/use-payment-method-form'
 
+/** The single-line text rows keep what was typed; the wire wants a cleared box as `null`. */
+function blankToNull(value: string | null): string | null {
+  return value === null || value === '' ? null : value
+}
+
 /**
  * The installment configuration (spec 0194 D-10). `days_between_installments`
  * is null in the form when untouched on a single installment: the server needs
@@ -28,7 +33,7 @@ export function buildCreatePayload(values: PaymentMethodFormValues): CreatePayme
   return {
     name: values.name,
     code: values.code,
-    payment_method_code: values.payment_method_code,
+    payment_method_code: blankToNull(values.payment_method_code),
     description: values.description,
     payment_instructions: values.payment_instructions,
     payment_days: values.payment_days,
@@ -52,8 +57,8 @@ export function buildUpdatePayload(
   if (values.name !== original.name) {
     payload.name = values.name
   }
-  if (values.payment_method_code !== original.payment_method_code) {
-    payload.payment_method_code = values.payment_method_code
+  if (blankToNull(values.payment_method_code) !== original.payment_method_code) {
+    payload.payment_method_code = blankToNull(values.payment_method_code)
   }
   if (values.description !== original.description) {
     payload.description = values.description

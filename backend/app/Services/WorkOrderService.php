@@ -16,6 +16,7 @@ use App\Services\WorkOrders\WorkOrderAttributeValueWriter;
 use App\Services\WorkOrders\WorkOrderLineWriter;
 use App\Services\WorkOrders\WorkOrderTaskForceCloser;
 use App\Services\WorkOrders\WorkOrderTaskGenerator;
+use App\Services\WorkOrders\WorkOrderTitleWriter;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Support\ManagerPositions;
 use App\Support\PositionalPivotSync;
@@ -83,6 +84,7 @@ class WorkOrderService
         private readonly WorkOrderAttributeValueWriter $attributeValueWriter,
         private readonly WorkOrderTaskGenerator $taskGenerator,
         private readonly WorkOrderTaskForceCloser $taskForceCloser,
+        private readonly WorkOrderTitleWriter $titleWriter,
     ) {}
 
     public function loadDetail(WorkOrder $workOrder): WorkOrder
@@ -213,6 +215,9 @@ class WorkOrderService
             // Step 2: validate + sync the REVENUE line membership (D-7).
             $this->lineWriter->writeSubmitted($workOrder, $data->quoteId, $data->quoteLineIds);
 
+            // Step 2a (spec 0215, D-2): the title, AFTER the lines it derives from.
+            $this->titleWriter->write($workOrder, $data->title);
+
             // Step 2b (spec 0098, D-6): "Informazioni aggiuntive" — written
             // AFTER the quote lines, so the applicable set validated against
             // is the one THOSE lines' categories produce, exactly the set the
@@ -281,6 +286,15 @@ class WorkOrderService
             }
 
             $this->lineWriter->writeSubmitted($workOrder, $workOrder->quote_id, $data->quoteLineIds);
+
+            // Spec 0215, D-2: a submitted title (even null) is applied against
+            // the lines as they are NOW; otherwise new lines re-derive an
+            // automatic title.
+            if ($data->hasTitle()) {
+                $this->titleWriter->write($workOrder, $data->title);
+            } elseif ($data->hasQuoteLineIds()) {
+                $this->titleWriter->recalculate($workOrder);
+            }
 
             // "Informazioni aggiuntive" (spec 0098, D-6): validated against
             // the applicable set as it is AFTER any submitted

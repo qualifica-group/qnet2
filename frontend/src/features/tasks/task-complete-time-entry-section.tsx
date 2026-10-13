@@ -11,9 +11,6 @@ import type { Control } from 'react-hook-form'
 import { TimeEntryEditor } from '@/features/time-entries/form/time-entry-editor'
 import type { TaskTimeEntryFormValues } from '@/features/time-entries/task/task-time-entry-schema'
 
-/** No-op forwarded to `TimeEntryEditor`'s context-field handlers, unreachable with `showContext={false}`. */
-function noop(): void {}
-
 interface TaskCompleteTimeEntrySectionProps {
   control: Control<TaskTimeEntryFormValues>
   disabled: boolean
@@ -33,19 +30,8 @@ export function TaskCompleteTimeEntrySection({
     <TimeEntryEditor
       control={control}
       disabled={disabled}
-      showTitle={false}
-      showContext={false}
       headerTitle={t('tasks.actions.completeDialog.timeEntryTitle')}
       headerDescription={t('tasks.actions.completeDialog.timeEntryDescription')}
-      isTaskLinked
-      taskDetail={undefined}
-      registry={null}
-      opportunity={null}
-      workOrder={null}
-      task={null}
-      onRegistryChange={noop}
-      onOpportunityItemChange={noop}
-      onWorkOrderItemChange={noop}
       onStartTimeChange={onStartTimeChange}
       onEndTimeChange={onEndTimeChange}
       serverError={null}

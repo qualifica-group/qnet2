@@ -1,90 +1,28 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
-import { UserForm } from '@/features/users/user-form'
-import { UserDetailView } from '@/features/users/user-detail'
-import type { EmploymentDetail, UserDetailWithPermissions } from '@/features/users/types'
 import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
-import type { EnumOption } from '@/features/config/types'
-import type { PersonalDataCard } from '@/features/personal-data/types'
+import { UserDetailView } from '@/features/users/user-detail'
+import { UserForm } from '@/features/users/user-form'
+import {
+  HIDDEN,
+  confirmOpenRow,
+  employmentFixture,
+  pencilOf,
+  permissionsFor,
+  userFixture,
+  userWrapper,
+} from '@/features/users/user-test-fixtures'
+import type { EmploymentDetail, UserDetailWithPermissions } from '@/features/users/types'
 
 /**
- * User directive 2026-09-11: competence and Sedi are ONE configuration — the
- * one that decides whether an offer can be matched to a person — so the form
- * gathers them in a single section and both surfaces tell the operator whether
- * the configuration actually works.
- *
- * What is asserted here is the WIRING of that verdict, not the rule itself
- * (`user-assignment.test.ts` owns the rule) nor the row editor
- * (`features/product-lines` owns it, stubbed below): the section groups the
- * three controls, the identity bar and the side column agree with the fields
- * live, the scheda counts them in its KPI strip, and a role that cannot see
- * the fields is told nothing about them.
- *
- * Same boilerplate shape as `user-form-employment-sites.test.tsx`, this
- * codebase's established per-concern test split.
+ * The assignment configuration (user directive 2026-09-11) on the record
+ * layout of spec 0222: one section gathering the Assignable flag, the
+ * competence rows and BOTH Sedi; the verdict live in the KPI strip and in the
+ * callout while creating, persisted on the detail. REQUIREMENT CHANGED (spec
+ * 0222): the verdict follows the rows confirmed with Fatto, and it lives in the
+ * KPI strip (the identity bar and side recap are gone).
  */
-
-const fetchUserMock = vi.fn()
-
-vi.mock('@/features/users/api', () => ({
-  createUser: vi.fn(),
-  updateUser: vi.fn(),
-  uploadUserAvatar: vi.fn(),
-  deleteUserAvatar: vi.fn(),
-  fetchUser: (...args: unknown[]) => fetchUserMock(...args),
-}))
-
-const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: { upload_avatar: true, delete_avatar: true, view_activity: false },
-}
-
-const formMetaPermissions = vi.fn<() => ResourcePermissions>(() => FULL_ACCESS_PERMISSIONS)
-vi.mock('@/features/users/use-user-form-meta', () => ({
-  useUserFormMeta: () => ({ status: 'ready', permissions: formMetaPermissions() }),
-}))
-
-// The quick-create "+" (spec 0028) is gated by `Can`/`useAbilities`, which needs
-// an `AuthProvider` this suite does not render: deny everything so it never mounts.
-vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
-}))
-
-const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
-vi.mock('@/features/authorization/api', () => ({
-  fetchResourceMeta: () => fetchResourceMetaMock(),
-}))
-
-const enums: Record<string, EnumOption[]> = {
-  personal_data_type: [
-    { value: 'individual', label: 'Individual', color: null, icon: null, is_default: true, hidden_on_form: false },
-    { value: 'company', label: 'Company', color: null, icon: null, is_default: false, hidden_on_form: false },
-  ],
-  contact_type: [],
-  locale: [
-    { value: 'en', label: 'English', color: null, icon: null, is_default: true, hidden_on_form: false },
-  ],
-}
-
-vi.mock('@/features/config/use-config', () => ({
-  useConfig: () => ({ data: { enums } }),
-  useEnumOptions: (key: string) => enums[key] ?? [],
-}))
-
-const personalDataData = vi.fn<() => PersonalDataCard | null | undefined>()
-vi.mock('@/features/personal-data/use-personal-data', () => ({
-  usePersonalDataByOwner: () => ({
-    data: personalDataData(),
-    isPending: false,
-    isError: false,
-    refetch: vi.fn(),
-  }),
-}))
 
 /**
  * The row editor has its own suite: here it only has to publish how many rows
@@ -101,164 +39,75 @@ vi.mock('@/features/product-lines/competence-lines-field', () => ({
   }) => (
     <div>
       <output aria-label="competence rows">{value.length}</output>
-      <button
-        type="button"
-        onClick={() => onChange([...value, { business_function_id: 4, product_category_id: 21 }])}
-      >
+      <button type="button" onClick={() => onChange([...value, { business_function_id: 4, product_category_id: 21 }])}>
         add competence
       </button>
     </div>
   ),
 }))
 
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({
-    resource,
-    onChange,
-    labels,
-  }: {
-    resource: string
-    onChange: (value: number | null) => void
-    labels: { triggerLabel: string }
-  }) => (
-    <div>
-      <span data-testid={`resource-${labels.triggerLabel}`}>{resource}</span>
-      <button type="button" onClick={() => onChange(8)}>{`pick-${labels.triggerLabel}`}</button>
-    </div>
-  ),
+const fetchUserMock = vi.fn()
+const createUserMock = vi.fn()
+const updateUserMock = vi.fn()
+
+vi.mock('@/features/users/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/users/api')>()),
+  fetchUser: (...args: unknown[]) => fetchUserMock(...args),
+  createUser: (...args: unknown[]) => createUserMock(...args),
+  updateUser: (...args: unknown[]) => updateUserMock(...args),
+  uploadUserAvatar: vi.fn(),
+  deleteUserAvatar: vi.fn(),
 }))
 
-vi.mock('@/components/ui/async-paginated-multi-select', () => ({
-  AsyncPaginatedMultiSelect: ({
-    resource,
-    value,
-    onChange,
-    labels,
-  }: {
-    resource: string
-    value: number[]
-    onChange: (value: number[]) => void
-    labels: { triggerLabel: string }
-  }) => (
-    <div>
-      <span data-testid={`resource-${labels.triggerLabel}`}>{resource}</span>
-      <button type="button" onClick={() => onChange([...value, 9])}>{`pick-${labels.triggerLabel}`}</button>
-    </div>
-  ),
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+// The quick-create "+" (spec 0028) is gated by `Can`/`useAbilities`, which needs
+// an `AuthProvider` these suites do not render: deny everything so it never mounts.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
+
+const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
+vi.mock('@/features/authorization/api', () => ({
+  fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-    </QueryClientProvider>
-  )
-}
-
-const UNCONFIGURED_EMPLOYMENT: EmploymentDetail = {
-  id: 1,
-  is_manager: false,
-  job_description: null,
-  relationship_type: null,
-  qualification_type: null,
-  hired_at: null,
-  terminated_at: null,
-  standard_daily_minutes: null,
-  break_daily_minutes: null,
-  reports_to_ids: [],
-  company_id: null,
-  primary_operational_site_id: null,
-  remote_operational_site_ids: [],
-  is_assignable: true,
-  covers_all_product_categories: false,
-  product_lines: [],
-  reports_to: [],
-  company: null,
-  primary_operational_site: null,
-  remote_operational_sites: [],
-}
-
-const CONFIGURED_EMPLOYMENT: EmploymentDetail = {
-  ...UNCONFIGURED_EMPLOYMENT,
-  primary_operational_site_id: 8,
-  remote_operational_site_ids: [9, 10],
-  product_lines: [
-    {
-      id: 91,
-      business_function: { id: 4, name: 'Sales' },
-      product_category: { id: 21, name: 'Photovoltaic' },
-    },
-  ],
-  primary_operational_site: { id: 8, label: 'Via Roma 1' },
-  remote_operational_sites: [
-    { id: 9, label: 'Via Milano 2' },
-    { id: 10, label: 'Via Torino 3' },
-  ],
-}
-
-function user(employment: EmploymentDetail): UserDetailWithPermissions {
+vi.mock('@/features/config/use-config', async () => {
+  const { USER_ENUMS } = await import('@/features/users/user-test-fixtures')
   return {
-    id: 7,
-    name: 'Ada Lovelace',
-    email: 'ada@example.com',
-    locale: 'en',
-    is_active: true,
-    roles: [],
-    avatar_url: null,
-    must_set_password: false,
-    created_at: null,
-    employment,
-    permissions: FULL_ACCESS_PERMISSIONS,
+    useConfig: () => ({ data: { enums: USER_ENUMS } }),
+    useEnumOptions: (key: string) => USER_ENUMS[key] ?? [],
   }
+})
+
+vi.mock('@/features/for-select/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/for-select/api')>()),
+  fetchForSelect: vi.fn().mockResolvedValue({ items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }),
+}))
+
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/users/user-test-stubs')).StubAsyncSelect,
+}))
+vi.mock('@/components/ui/async-paginated-multi-select', async () => ({
+  AsyncPaginatedMultiSelect: (await import('@/features/users/user-test-stubs')).StubMultiSelect,
+}))
+vi.mock('@/features/activity-log/activity-log-section', () => ({
+  ActivityLogSection: () => <div>activity-log-section</div>,
+}))
+
+function renderCreate() {
+  const { client, wrapper } = userWrapper()
+  render(<UserForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
+  return client
 }
 
-/** A role that sees none of the five assignment fields (spec 0129 added the all-categories flag, spec 0194 the Assignable flag). */
-function permissionsWithAssignmentHidden(): ResourcePermissions {
-  const hidden = {
-    visible: false,
-    hidden: true,
-    editable: false,
-    required: false,
-    disabled: true,
-    readonly: false,
-  }
-  return {
-    ...FULL_ACCESS_PERMISSIONS,
-    fields: {
-      'employment.product_lines': hidden,
-      'employment.is_assignable': hidden,
-      'employment.covers_all_product_categories': hidden,
-      'employment.primary_operational_site_id': hidden,
-      'employment.remote_operational_site_ids': hidden,
-    },
-  }
-}
-
-function renderForm(employment: EmploymentDetail) {
-  render(
-    <UserForm mode={{ type: 'edit', user: user(employment) }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-    { wrapper: wrapper() },
-  )
-}
-
-/** The identity bar, where the one-word verdict lives. */
-function identityBar(): HTMLElement {
-  return screen.getByRole('banner')
-}
-
-/**
- * The form's verdict band. Scoped to the side column (`<aside>` =
- * `complementary`): the personal-data card raises its own `role="status"`
- * notices elsewhere on the same screen.
- */
-function formVerdictBand(): HTMLElement {
-  return within(screen.getByRole('complementary')).getByRole('status')
-}
-
-/** The scheda's band — the only `role="status"` on that surface. */
-function detailVerdictBand(): HTMLElement {
-  return screen.getByRole('status')
+async function renderDetail(user: UserDetailWithPermissions) {
+  fetchUserMock.mockResolvedValue(user)
+  const { client, wrapper } = userWrapper()
+  render(<UserDetailView userId={user.id} />, { wrapper })
+  await screen.findByRole('button', { name: 'Edit Personal details' })
+  return client
 }
 
 beforeAll(async () => {
@@ -266,126 +115,143 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  vi.restoreAllMocks()
   fetchUserMock.mockReset()
-  personalDataData.mockReset()
-  personalDataData.mockReturnValue(undefined)
+  createUserMock.mockReset()
+  updateUserMock.mockReset()
+  createUserMock.mockResolvedValue(userFixture())
+  updateUserMock.mockResolvedValue(userFixture())
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_ACCESS_PERMISSIONS })
-  formMetaPermissions.mockReset()
-  formMetaPermissions.mockReturnValue(FULL_ACCESS_PERMISSIONS)
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
 })
 
-describe('UserForm — the assignment configuration is one section', () => {
-  it('gathers the competence rows and BOTH Sedi in the same block', () => {
-    renderForm(CONFIGURED_EMPLOYMENT)
+const CONFIGURED_EMPLOYMENT: EmploymentDetail = employmentFixture({
+  primary_operational_site_id: 8,
+  remote_operational_site_ids: [9, 10],
+  product_lines: [{ id: 91, business_function: { id: 4, name: 'Sales' }, product_category: { id: 21, name: 'Photovoltaic' } }],
+  primary_operational_site: { id: 8, label: 'Via Roma 1' },
+  remote_operational_sites: [
+    { id: 9, label: 'Via Milano 2' },
+    { id: 10, label: 'Via Torino 3' },
+  ],
+})
 
-    const section = screen.getByText('Assignment configuration').closest('section') as HTMLElement
-    expect(within(section).getByLabelText('competence rows')).toHaveTextContent('1')
-    expect(within(section).getByTestId('resource-Physical site')).toHaveTextContent(
-      'operational-sites',
-    )
-    expect(within(section).getByTestId('resource-Remote sites')).toHaveTextContent(
-      'operational-sites',
-    )
+/** A role that sees none of the five assignment fields (spec 0129 added the all-categories flag, spec 0194 the Assignable flag). */
+const ASSIGNMENT_HIDDEN: Record<string, typeof HIDDEN> = {
+  'employment.product_lines': HIDDEN,
+  'employment.is_assignable': HIDDEN,
+  'employment.covers_all_product_categories': HIDDEN,
+  'employment.primary_operational_site_id': HIDDEN,
+  'employment.remote_operational_site_ids': HIDDEN,
+}
+
+function userWith(employment: EmploymentDetail, permissions: ResourcePermissions = permissionsFor()): UserDetailWithPermissions {
+  return userFixture({ employment, permissions })
+}
+
+/** The KPI tile labelled "Matching", where the one-word verdict lives. */
+function verdictTile(): HTMLElement {
+  return screen.getByText('Matching').parentElement?.parentElement as HTMLElement
+}
+
+function addCompetenceRow() {
+  fireEvent.click(pencilOf('Competence'))
+  fireEvent.click(screen.getByRole('button', { name: 'add competence' }))
+  confirmOpenRow('Done')
+}
+
+describe('UserForm — the assignment configuration is one section', () => {
+  it('gathers the Assignable flag, the competence rows and BOTH Sedi in the same block', async () => {
+    renderCreate()
+
+    const section = (await screen.findByText('Assignment configuration')).closest('section') as HTMLElement
+    for (const row of ['Assignable', 'Competent for all categories', 'Competence', 'Physical site', 'Remote sites']) {
+      expect(within(section).getByRole('button', { name: `Edit ${row}` })).toBeInTheDocument()
+    }
   })
 })
 
 describe('UserForm — live assignment verdict', () => {
-  it('refuses nothing but says the person is unreachable, and names BOTH reasons', () => {
-    renderForm(UNCONFIGURED_EMPLOYMENT)
+  it('refuses nothing but says the person is unreachable, and names BOTH reasons', async () => {
+    renderCreate()
 
-    expect(within(identityBar()).getByText('Not assignable')).toBeInTheDocument()
-    expect(formVerdictBand()).toHaveTextContent(/No competence configured/)
-    expect(formVerdictBand()).toHaveTextContent(/No operational site/)
-    // The save is never blocked by the verdict: it is guidance, not a gate.
-    expect(within(identityBar()).getByRole('button', { name: 'Save' })).toBeEnabled()
+    await screen.findByText('Assignment configuration')
+    expect(verdictTile()).toHaveTextContent('Not assignable')
+    expect(screen.getByRole('status')).toHaveTextContent(/No competence configured/)
+    expect(screen.getByRole('status')).toHaveTextContent(/No operational site/)
+    // The verdict is guidance, not a gate.
+    expect(screen.getAllByRole('button', { name: 'Save' })[0]).toBeEnabled()
   })
 
   it('flips to assignable as soon as a competence row and a Sede are set', async () => {
-    renderForm(UNCONFIGURED_EMPLOYMENT)
+    renderCreate()
+    await screen.findByText('Assignment configuration')
 
-    fireEvent.click(screen.getByRole('button', { name: 'add competence' }))
+    addCompetenceRow()
+    fireEvent.click(pencilOf('Physical site'))
     fireEvent.click(screen.getByText('pick-Physical site'))
+    confirmOpenRow('Done')
 
-    await waitFor(() =>
-      expect(within(identityBar()).getByText('Assignable')).toBeInTheDocument(),
-    )
-    expect(formVerdictBand()).not.toHaveTextContent(/No operational site/)
+    await waitFor(() => expect(verdictTile()).toHaveTextContent('Assignable'))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('counts a REMOTE site as a full Sede, exactly as the server does', async () => {
-    renderForm(UNCONFIGURED_EMPLOYMENT)
+    renderCreate()
+    await screen.findByText('Assignment configuration')
 
-    fireEvent.click(screen.getByRole('button', { name: 'add competence' }))
+    addCompetenceRow()
+    fireEvent.click(pencilOf('Remote sites'))
     fireEvent.click(screen.getByText('pick-Remote sites'))
+    confirmOpenRow('Done')
 
-    await waitFor(() =>
-      expect(within(identityBar()).getByText('Assignable')).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(verdictTile()).not.toHaveTextContent('Not assignable'))
   })
 
-  it('tells a role that cannot see the fields nothing at all about assignment', () => {
-    formMetaPermissions.mockReturnValue(permissionsWithAssignmentHidden())
-    renderForm(UNCONFIGURED_EMPLOYMENT)
+  it('tells a role that cannot see the fields nothing about assignment in the section', async () => {
+    fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor(ASSIGNMENT_HIDDEN) })
+    renderCreate()
 
+    await screen.findByRole('button', { name: 'Edit Personal details' })
     expect(screen.queryByText('Assignment configuration')).not.toBeInTheDocument()
-    expect(screen.queryByText('Not assignable')).not.toBeInTheDocument()
-    expect(
-      within(screen.getByRole('complementary')).queryByRole('status'),
-    ).not.toBeInTheDocument()
-    // Not even the recap may name a field the actor is not allowed to see.
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(screen.queryByText('Physical site')).not.toBeInTheDocument()
     expect(screen.queryByText('Remote sites')).not.toBeInTheDocument()
   })
 
-  it('still shows the assignment section to a role that sees only the all-categories flag', () => {
-    const permissions = permissionsWithAssignmentHidden()
-    const fields = { ...permissions.fields }
+  it('still shows the assignment section to a role that sees only the all-categories flag', async () => {
+    const fields = { ...ASSIGNMENT_HIDDEN }
     delete fields['employment.covers_all_product_categories']
-    formMetaPermissions.mockReturnValue({ ...permissions, fields })
-    renderForm(UNCONFIGURED_EMPLOYMENT)
+    fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor(fields) })
+    renderCreate()
 
-    expect(screen.getByText('Assignment configuration')).toBeInTheDocument()
+    expect(await screen.findByText('Assignment configuration')).toBeInTheDocument()
     expect(screen.queryByText('Physical site')).not.toBeInTheDocument()
     expect(screen.queryByText('Remote sites')).not.toBeInTheDocument()
   })
 })
 
-describe('UserDetailView — the assignment configuration on the scheda', () => {
-  function renderDetail(employment: EmploymentDetail) {
-    fetchUserMock.mockResolvedValue(user(employment))
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    render(
-      <QueryClientProvider client={client}>
-        <UserDetailView userId={7} />
-      </QueryClientProvider>,
-    )
-  }
-
+describe('UserDetailView — the assignment configuration on the record', () => {
   it('counts competence and Sedi in the KPI strip, with no warning band when it all works', async () => {
-    renderDetail(CONFIGURED_EMPLOYMENT)
+    await renderDetail(userWith(CONFIGURED_EMPLOYMENT))
 
-    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
-    expect(screen.getByText('Competences').parentElement).toHaveTextContent('Competences')
-    expect(screen.getByText('Matching').parentElement?.parentElement).toHaveTextContent('Assignable')
+    expect(verdictTile()).toHaveTextContent('Assignable')
     expect(screen.getByText('1 physical · 2 remote')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('spec 0194 AC-008 — says "Not assignable" with the dedicated reason when the flag is off', async () => {
-    renderDetail({ ...CONFIGURED_EMPLOYMENT, is_assignable: false })
+    await renderDetail(userWith({ ...CONFIGURED_EMPLOYMENT, is_assignable: false }))
 
-    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
-    expect(detailVerdictBand()).toHaveTextContent('Not assignable')
-    expect(detailVerdictBand()).toHaveTextContent(/Assignment turned off by the Assignable setting/)
-    expect(detailVerdictBand()).not.toHaveTextContent(/No competence configured/)
+    expect(screen.getByRole('status')).toHaveTextContent('Not assignable')
+    expect(screen.getByRole('status')).toHaveTextContent(/Assignment turned off by the Assignable setting/)
+    expect(screen.getByRole('status')).not.toHaveTextContent(/No competence configured/)
   })
 
   it('raises the band, and names the reason, for a person no record can reach', async () => {
-    renderDetail(UNCONFIGURED_EMPLOYMENT)
+    await renderDetail(userWith(employmentFixture()))
 
-    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
-    expect(detailVerdictBand()).toHaveTextContent(/No competence configured/)
-    expect(detailVerdictBand()).toHaveTextContent(/No operational site/)
+    expect(screen.getByRole('status')).toHaveTextContent(/No competence configured/)
+    expect(screen.getByRole('status')).toHaveTextContent(/No operational site/)
   })
 })

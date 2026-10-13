@@ -32,10 +32,7 @@ export const emailTemplates = {
     subtitle: 'Visualizzazione in sola lettura del modello selezionato.',
     loadError: 'Impossibile caricare il modello email. Riprova.',
     module: 'Modulo',
-    subject: 'Oggetto',
     body: 'Corpo',
-    description: 'Descrizione',
-    isActive: 'Attivo',
     created_at: 'Creato il',
     updated_at: 'Aggiornato il',
   },
@@ -70,6 +67,12 @@ export const emailTemplates = {
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il modello email. Riprova.',
     deleteForbidden: 'Non puoi eliminare questo modello email.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il modello email non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',

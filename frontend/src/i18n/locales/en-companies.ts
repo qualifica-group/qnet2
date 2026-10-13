@@ -1,6 +1,6 @@
 /**
  * Localized strings for the companies module (spec 0010): grid columns, the
- * read-only detail sheet and the create/edit form (general + single embedded
+ * in-place editable detail and the create form (general + single embedded
  * address section).
  *
  * Extracted from `en.ts` to keep that file within the engineering size limits
@@ -23,25 +23,18 @@ export const companies = {
   },
   detail: {
     title: 'Company details',
-    subtitle: 'Read-only view of the selected company.',
+    subtitle: 'View and edit the selected company.',
     loadError: 'Unable to load the company. Please try again.',
-    summary: {
-      title: 'Summary',
-      description: 'Updated as you type.',
-    },
     // The card's own labels, the way `operationalSites.detail` has them:
     // the ones under `columns` are table headers, not card labels.
     city: 'City',
     province: 'Province',
-    region: 'Region',
     country: 'Country',
   },
   form: {
     newCompany: 'New company',
     createTitle: 'Create company',
     createSubtitle: 'Add a new company to your application.',
-    editTitle: 'Edit company',
-    editSubtitle: 'Update the selected company.',
     denomination: 'Denomination',
     vatNumber: 'VAT number',
     line1: 'Address',
@@ -60,6 +53,12 @@ export const companies = {
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the company. Please try again.',
     deleteForbidden: 'You cannot delete this company.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The company has not been created yet: the data you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       general: {
         title: 'General',

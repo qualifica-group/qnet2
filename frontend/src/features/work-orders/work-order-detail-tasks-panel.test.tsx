@@ -64,6 +64,7 @@ function workOrder(): WorkOrderDetailWithPermissions {
     id: 4,
     code: 'COM-0001',
     title: 'Installazione impianto',
+    title_is_manual: true,
     type: 'processing',
     status: { value: 'open', is_force_closed: false },
     completion_percentage: 0,

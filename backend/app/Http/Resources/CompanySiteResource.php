@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Authorization\LegacyIdVisibility;
 use App\Models\CompanySite;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -24,16 +25,17 @@ class CompanySiteResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return array_merge($this->coreFields(), $this->settingsFields());
+        return array_merge($this->coreFields($request), $this->settingsFields());
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function coreFields(): array
+    private function coreFields(Request $request): array
     {
         return [
             'id' => $this->id,
+            'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id),
             'name' => $this->name,
             'notes' => $this->notes,
             'is_default' => $this->is_default,

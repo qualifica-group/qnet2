@@ -48,6 +48,21 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'manage',
+      title: 'Creare e modificare',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Premi **Nuova tipologia prodotto**.',
+            'Si apre la scheda con le righe chiuse: per ogni riga premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com\'era. Poi premi **Salva**.',
+            'Per modificare non c\'è un modulo a parte: apri la scheda con **Visualizza**, premi la matita sulla riga, cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com\'era.',
+            'Il **Codice** si inserisce solo alla creazione. **Calcolo commissione Fornitore** e **Verso** sono una riga sola: si aprono, si salvano e si annullano insieme.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'constraints',
       title: 'Vincoli',
       blocks: [

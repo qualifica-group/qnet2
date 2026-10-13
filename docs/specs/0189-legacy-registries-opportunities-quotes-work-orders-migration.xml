@@ -52,6 +52,46 @@
       G-11 anagrafica: `is_private=1` -> scheda persona fisica (nome/cognome separati dal legacy con la sua stessa
       regola `separaNomeCognome`), altrimenti azienda; P.IVA segnaposto (`0`,`1`,`.`, solo zeri) scartata, prefisso
       `IT` rimosso; sede legale = indirizzo primario `legal_seat`, `company_addresses` = indirizzi aggiuntivi.
+    - Emendamento 2026-10-12 (richiesta utente: "inseriscilo nelle /migrations e esponilo nell'opportunity del legacy
+      tramite righe prodotto dell'offerta"): 7.711 opportunita' importate su 19.561 non avevano categorie
+      (`opportunityservicecategories` vuota), quindi nessuna funzione aziendale.
+      G-12 l'API espone `quote_product_category_ids`: le categorie (`services.category_service`, solo categorie
+      esistenti) dei prodotti sulle righe (`quotationservices`) delle offerte dell'opportunita'. Se l'opportunita' non
+      ha categorie proprie risolte, `OpportunitiesSource` usa queste: sono le stesse righe che
+      `OpportunityProductLineCoverage` aggiunge quando un'offerta nasce in qnet-2 (categoria del prodotto, non la
+      radice). Un rilancio completa le righe prodotto di un'opportunita' gia' importata che non ne ha (mai
+      sovrascritte), riga `skipped` con nota "Missing product categories back-filled.". Copertura sul DB legacy:
+      6.435 delle 7.711 recuperabili.
+    - Emendamento 2026-10-12 bis (verifica campi offerte, decisioni utente): G-8 partiva da un dato sbagliato
+      (`quotationequipments` e' vuota; le 85 righe erano `quotationemployees`). I costi veri sono
+      `quotationexpensereports`: 8.027 righe su 1.604 offerte esportate (~9,64 M EUR).
+      G-13 costi offerta: ogni `quotationexpensereports` diventa una riga COSTO (prodotto `old_source=expense_reports`,
+      `old_id=expensereport_id`; quantita', prezzo, IVA `rate`, `note` -> descrizione aggiuntiva). Imputata alla riga
+      ricavo dell'offerta con lo stesso `service_id` (la prima per id legacy; `offer_line_id`); riga ricavo assente o
+      scartata -> costo generico con warning. Prodotto non migrato o non utilizzabile come costo -> riga scartata con
+      warning. Il fornitore NON si scrive (sta gia' sul prodotto): se il `supplier_id` legacy differisce dal fornitore
+      del prodotto (o il prodotto non ne ha) -> warning. `quotationemployees` (80 righe, costo orario per livello)
+      resta fuori: nessun prodotto di costo corrispondente. Le righe costo non hanno `old_id` (l'unicita' di
+      `quote_lines.old_id` e' sullo spazio id di `quotationservices`). Sul DB legacy nessuna riga ricavo con costi
+      imputati ha provvigioni a percentuale: la base a margine (spec 0145) non cambia importi importati.
+      G-14 date: `quote_date` (datequotation) -> `quotes.quote_date` (spec 0228); prossimo richiamo =
+      `opportunities.recall_date` dell'opportunita' padre -> `quotes.next_callback_at` (00:00), come il travaso
+      2026-09-04 (ogni offerta eredita quello della propria opportunita'), scritto senza log ne' promemoria.
+      G-15 cliente: l'offerta non puo' avere un cliente diverso dall'opportunita'. Il legacy espone
+      `registry_id` (quotations.customer_id); se differisce dall'anagrafica dell'opportunita' -> warning, l'offerta
+      resta sotto l'opportunita' (253 offerte sul DB legacy).
+      G-16 gestori offerta (decisione utente 2026-10-12): qnet-2 importa cio' che il legacy dice. L'API offerte espone
+      in `manager_user_ids` i gestori dell'OPPORTUNITA' (stessa regola di `migration/opportunities`, helper legacy
+      `LegacyOpportunityManagers`) seguiti da `quotations.assigned_to`/`assigned2_to`; distinti, max 12. Un gestore
+      dell'offerta assente sull'opportunita' viene aggiunto all'opportunita' (promozione gia' esistente in qnet-2).
+      G-17 campi flessibili offerta (decisione utente 2026-10-12, stessa migrazione delle offerte): i valori delle
+      "Info preliminari" legacy (`pre_info_*`, una riga per OPPORTUNITA', la prima per id) vanno su OGNI offerta
+      dell'opportunita' in `quotes.attribute_values`, con i codici del contesto Offerta della spec 0183. Il legacy
+      espone `attribute_values` per le sole card (`services.spec_service`) dei prodotti delle righe dell'offerta;
+      qnet-2 scrive solo i codici applicabili alle categorie delle righe importate (QuoteAttributeResolver): codice non
+      applicabile, valore non valido per il tipo, utente non migrato -> valore saltato con warning, l'offerta si
+      importa comunque. Esclusi: note libere (F-1), card 16 (F-3), allegati (F-7), `orderisos` (commesse). Sedi ISO
+      (F-8): righe di `pre_info_iso_addresses` dell'opportunita', indirizzo ricostruito da `company_addresses`.
   </context>
 
   <scope>
@@ -65,9 +105,10 @@
       <item>Etichette `/migrations` IT/EN, guida in-app `migrations` IT/EN, manuale Claude Docs.</item>
     </in>
     <out>
-      <item>Note (activity_log legacy), documenti/allegati, valori campi flessibili (`pre_info_*`, `orderisos`),
-        fasi/task delle commesse, storico fasi opportunita', tag e ATECO delle anagrafiche, referenti "responsabile"
-        testuali delle anagrafiche, richieste GOL senza cliente (G-1), costi legacy delle offerte.</item>
+      <item>Note (activity_log legacy), documenti/allegati, valori campi flessibili delle commesse (`orderisos`;
+        quelli delle offerte entrano con G-17),
+        fasi/task delle commesse, storico fasi opportunita', ATECO delle anagrafiche, referenti "responsabile"
+        testuali delle anagrafiche, richieste GOL senza cliente (G-1), costi orari delle offerte (`quotationemployees`, G-13).</item>
     </out>
   </scope>
 
@@ -87,6 +128,7 @@
         supervisor_user_id:?int (commercial_supervisor_id), manager_user_ids:int[] (assigned_id, assigned2_id; ordine
         = posizione), commercial_referent_id:?int (agent_id), reporter_referent_id:?int (signaler_id),
         referent_ids:int[] (company_contacts.contact_id distinti, solo contatti esistenti),
+        tag_ids:int[] (company_tags.tag_id distinti, solo tag esistenti; ordine = company_tags.id),
         email, pec, phone, phone2, fax, website: ?string,
         country, region, province, city, street, postal_code: ?string (sede legale),
         addresses: [{ site_type:("delivery"|"billing"|"operational_site"), country, region, province, city, street,
@@ -101,6 +143,7 @@
         assigned4_to, poi responsabile_opportunities.id_utente; distinti, ordine = posizione, max 12),
         source_id:?int (source, 0 -> null), operational_site_id:?int (sede_id),
         product_category_ids:int[] (opportunityservicecategories.service_category_id distinti),
+        quote_product_category_ids:int[] (services.category_service distinti dei prodotti delle righe delle offerte, G-12),
         start_date:?date (date_start), expected_close_date:?date (data_chiusura_stimata ?? date_end),
         estimated_value:?number (value ?? valore_stimato), notes:?string (colonna note),
         reserved_notes:?string, status:?int (fase legacy), status_label:?string, created_at, updated_at }
@@ -110,14 +153,32 @@
       { id:int, opportunity_id:int, title:?string, description:?string, quote_date:?date (datequotation),
         status:int (status_quotation), accepted_at:?date (accepted_data), validated_at:?date (validated_data),
         declined_at:?date, renewal_date:?date, commercial_referent_id:?int (agent_id),
-        reporter_referent_id:?int (signaler_id), supervisor_user_id:?int, manager_user_ids:int[] (assigned_to,
-        assigned2_to), company_site_id:?int (business_unit -> company_profiles), operational_site_id:?int (sede_id),
+        reporter_referent_id:?int (signaler_id), supervisor_user_id:?int, manager_user_ids:int[] (gestori
+        dell'opportunita' come in migration/opportunities, poi assigned_to, assigned2_to; distinti, max 12, G-16),
+        company_site_id:?int (business_unit -> company_profiles), operational_site_id:?int (sede_id),
         payment_method_id:?int (payment_id),
+        registry_id:?int (customer_id, G-15), callback_date:?date (opportunities.recall_date, G-14),
+        cost_lines: [{ id:int (quotationexpensereports.id), product_id:?int (expensereport_id; 0 -> null),
+          description:?string (note), quantity:?number, unit_price:?number (price), vat_rate_id:?int (rate),
+          supplier_id:?int (companies.id), offer_line_id:?int (min quotationservices.id della stessa offerta con lo
+          stesso service_id) }] (G-13),
         lines: [{ id:int (quotationservices.id), product_id:?int (service_id; 0 -> null), description:?string,
           quantity:?number, unit_price:?number (price), vat_rate_id:?int (rate),
           commissions: [{ role:("commercial"|"reporter"|"supervisor"|"supplier"),
             recipient_id:int (contacts.id per commercial/reporter, users.id per supervisor, companies.id per supplier),
             percentage:?number, amount:?number }] }],
+        attribute_values: { code: value } (G-17; {} se nessuno). Solo valori non vuoti dei codici Offerta (spec 0183)
+          delle card dei prodotti delle righe; ISO con tutti i gruppi grp1..grp6. Valore come nel legacy: testo, numero,
+          data Y-m-d, enum = valore dell'opzione; `categorie_mepa` lista di valori; `ps_user_id`/`responsabile_progetto`
+          = id utente legacy (0 -> assente); tabelle = { rows: [{ colonna: valore }] }:
+          `pre_info_iso_addresses` { indirizzo, cap, citta, provincia (sigla), tipo_sede ("1"|"2"|"3"),
+          request_certification:bool, performed_activities, employees_per_site:int },
+          `pre_info_progetti_ruoli` { ruolo, utente (nome utente legacy), mansione }.
+          Colonne legacy con nome diverso: legal_request_certification=legal_site_certificate;
+          descrizione_azienda=pre_info_res.note; res_degree=degree; ps_user_id=user_id; ps_date_first_tel_call,
+          ps_date_tel_recall, ps_partner, ps_email, ps_phone, ps_regione, ps_citta, ps_fonte = colonne senza `ps_`;
+          inizio_programmato, fine_programmata, inizio_effettivo, fine_effettiva = date_inizio_programmato,
+          date_fine_programmato, date_inizio_effettivo, date_fine_effettivo; status_progetto=step_operativo.
         created_at, updated_at }
     </shape>
     <shape name="GET migration/work-orders">
@@ -146,5 +207,21 @@
     <ac id="AC-007">Commessa: codice G-5, righe G-10, supervisori/partecipanti rimappati, chiusura forzata G-10,
       nessun task/stage creato.</ac>
     <ac id="AC-008">Le 4 sorgenti compaiono in `/migrations` (etichette IT/EN) e nel piano nelle fasi 7-10.</ac>
+    <ac id="AC-009">Opportunita' senza categorie proprie: righe prodotto dalle categorie dei prodotti delle sue offerte
+      (G-12); con categorie proprie le categorie delle offerte sono ignorate; un rilancio completa le righe di
+      un'opportunita' gia' importata senza righe, senza toccare quelle che ne hanno.</ac>
+    <ac id="AC-010">Offerta: le righe costo legacy diventano righe COSTO imputate alla riga ricavo con lo stesso
+      prodotto (G-13), totali costo e margine ricalcolati; fornitore legacy diverso da quello del prodotto -> warning.</ac>
+    <ac id="AC-011">Offerta: `quote_date` = data offerta legacy, `next_callback_at` = richiamo dell'opportunita' legacy
+      (G-14); cliente legacy diverso da quello dell'opportunita' -> warning (G-15).</ac>
+    <ac id="AC-011b">Offerta: gestori = gestori dell'opportunita' legacy piu' quelli propri dell'offerta (G-16); un
+      gestore dell'offerta assente sull'opportunita' viene aggiunto ai Gestori Account dell'opportunita'.</ac>
+    <ac id="AC-011c">Offerta: `attribute_values` legacy scritti in `quotes.attribute_values` per i soli codici
+      applicabili alle categorie delle righe (G-17); utenti rimappati via `old_id`; codice non applicabile, valore non
+      valido o utente non migrato -> valore saltato con warning, offerta importata. Piu' offerte della stessa
+      opportunita' ricevono gli stessi valori.</ac>
+    <ac id="AC-012">Anagrafica: `tag_ids` rimappati via `old_id` dei tag (dipendenza opzionale `tags`) e scritti nel
+      campo personalizzato `registries.tags` (relation many -> tags, template cliente); tag non migrato -> warning;
+      campo non definito -> anagrafica creata senza tag e warning (decisione utente 2026-10-12).</ac>
   </acceptance_criteria>
 </spec>

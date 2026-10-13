@@ -1,123 +1,65 @@
-import { FolderArchive } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FormSection } from '@/components/form-section'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
-import { Form, FormControl } from '@/components/ui/form'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
+import { useWatch } from 'react-hook-form'
+import { FolderArchive } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
+import { Form } from '@/components/ui/form'
+import { DocumentBundleRows } from '@/features/document-bundles/document-bundle-rows'
 import { useDocumentBundleForm } from '@/features/document-bundles/use-document-bundle-form'
-import type { DocumentBundle, DocumentBundleFormMode } from '@/features/document-bundles/types'
+import type { DocumentBundle } from '@/features/document-bundles/types'
+
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const DOCUMENT_BUNDLE_FORM_ID = 'document-bundle-form'
+
+/** Create mode is static: a fresh object per render would rebuild the form's defaults. */
+const CREATE_MODE = { type: 'create' } as const
 
 interface DocumentBundleFormBodyProps {
-  mode: DocumentBundleFormMode
   onSuccess: (documentBundle: DocumentBundle) => void
   onCancel: () => void
 }
 
-/** The metadata keys this form owns, in render order. */
-const FIELD_KEYS = ['name', 'description', 'is_active'] as const
-
 /**
- * The document bundle create/edit form UI. Every field is wrapped in
- * `MetaField` (spec 0004): hidden means absent, non-editable means disabled,
- * `required` comes from the resolved `ResourcePermissions` — no hardcoded
- * permission logic lives here. Files are NOT a field of this form: they are
- * managed by the detail's `DocumentsSection` once the bundle exists (data
- * contract: files pass through the generic `/api/attachments` endpoints).
- * All non-render logic lives in `useDocumentBundleForm`.
+ * The document bundle create form as a replica of the detail (wave 3 of the
+ * "no edit pages" plan): the same rows, closed until clicked (Fatto/Ripristina,
+ * nothing saved per row); Salva validates and creates everything at once.
+ * Files are not a field: the detail's `DocumentsSection` manages them once the
+ * bundle exists.
  */
-export function DocumentBundleFormBody({ mode, onSuccess, onCancel }: DocumentBundleFormBodyProps) {
+export function DocumentBundleFormBody({ onSuccess, onCancel }: DocumentBundleFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit } = useDocumentBundleForm({ mode, onSuccess })
-
-  const identityVisible = FIELD_KEYS.some((key) => fieldPermission(key).visible)
+  const { form, serverError, onSubmit } = useDocumentBundleForm({ mode: CREATE_MODE, onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const name = useWatch({ control: form.control, name: 'name' })
+  const heading = name.trim() || t('documentBundles.form.createTitle')
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4" noValidate>
-          {identityVisible && (
-            <FormSection
-              icon={FolderArchive}
-              title={t('documentBundles.form.sections.identity.title')}
-              description={t('documentBundles.form.sections.identity.description')}
-            >
-              <MetaField
-                control={form.control}
-                name="name"
-                metaKey="name"
-                label={t('documentBundles.form.name')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="description"
-                metaKey="description"
-                label={t('documentBundles.form.description')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Textarea
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={field.value ?? ''}
-                      onChange={(event) => field.onChange(event.target.value || null)}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="is_active"
-                metaKey="is_active"
-                label={t('documentBundles.form.isActive')}
-                layout="inline"
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
-                  </FormControl>
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-card"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('documentBundles.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('documentBundles.form.saving') : t('documentBundles.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+    <Form {...form}>
+      <RecordCreateLayout
+        formId={DOCUMENT_BUNDLE_FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        title={heading}
+        subtitle={t('documentBundles.form.createSubtitle')}
+        media={<DetailMonogram name={heading} icon={<FolderArchive />} />}
+        isSubmitting={form.formState.isSubmitting}
+        serverError={serverError}
+        onCancel={onCancel}
+        labels={{
+          save: t('documentBundles.form.save'),
+          saving: t('documentBundles.form.saving'),
+          cancel: t('documentBundles.form.cancel'),
+        }}
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('documentBundles.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <DocumentBundleRows inline={draft} canEdit />
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
+      </RecordCreateLayout>
+    </Form>
   )
 }

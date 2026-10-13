@@ -62,6 +62,8 @@ final class OnlineUsersService
     {
         return DB::table('personal_access_tokens')
             ->where('tokenable_type', (new User)->getMorphClass())
+            // Tokens issued through an API client (spec 0210) are not people at the keyboard.
+            ->whereNull('api_client_id')
             ->where('last_used_at', '>=', now()->subMinutes($window))
             ->get(['tokenable_id', 'impersonated_by', 'last_used_at']);
     }
@@ -95,7 +97,7 @@ final class OnlineUsersService
      */
     private function loadUsers(array $ids)
     {
-        return User::query()->whereIn('id', $ids)->get(['id', 'name', 'email', 'is_active'])->keyBy('id');
+        return User::query()->excludingServiceAccounts()->whereIn('id', $ids)->get(['id', 'name', 'email', 'is_active'])->keyBy('id');
     }
 
     /**

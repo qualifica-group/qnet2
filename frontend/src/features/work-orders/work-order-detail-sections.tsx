@@ -42,7 +42,7 @@ interface DetailSectionProps {
 
 /**
  * Contratto: the client and the contract are reached through the offer
- * (read-only, server-derived). The contract data have their own full-width
+ * (read-only, server-derived; the contract expiry sits in the KPI strip). The contract data have their own full-width
  * section right after (`WorkOrderContractDataPanel`).
  */
 function WorkOrderContractSection({ workOrder }: { workOrder: WorkOrderDetailWithPermissions }) {
@@ -63,7 +63,7 @@ function WorkOrderContractSection({ workOrder }: { workOrder: WorkOrderDetailWit
         <RecordField label={t('workOrders.detail.contract')}>
           {workOrder.contract ? (
             <RecordLink domain="contracts" id={workOrder.contract.id} className="font-medium text-primary">
-              {workOrder.contract.title}
+              {`${workOrder.contract.code} — ${workOrder.contract.title}`}
             </RecordLink>
           ) : (
             <DetailEmpty />

@@ -115,9 +115,9 @@ export interface TaskDetail {
   description: string | null
   /**
    * Spec 0154 D-2: when `true`, only the creator, requester, assignees and
-   * watchers see this task — `tasks.viewAll` and the by-site visibility do
-   * not (the super-admin `Gate::before` stays the one exception). Sanitized
-   * HTML, same treatment as `description`.
+   * watchers see this task — `tasks.viewAll` and the by-site and team
+   * visibility do not (the super-admin `Gate::before` stays the one
+   * exception). Sanitized HTML, same treatment as `description`.
    */
   is_private: boolean
   registry_id: number | null

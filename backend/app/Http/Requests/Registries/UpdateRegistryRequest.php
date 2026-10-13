@@ -10,6 +10,7 @@ use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
 use App\Models\Registry;
+use App\Rules\ActiveSector;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -68,7 +69,7 @@ class UpdateRegistryRequest extends FormRequest
         return array_merge([
             'source_id' => ['sometimes', 'nullable', 'integer', Rule::exists('sources', 'id')],
             'sector_ids' => ['sometimes', 'array'],
-            'sector_ids.*' => ['integer', Rule::exists('sectors', 'id')],
+            'sector_ids.*' => ['integer', new ActiveSector($this->linkedSectorIds())],
             'referent_ids' => ['sometimes', 'array'],
             'referent_ids.*' => ['integer', Rule::exists('referents', 'id')],
             // Supervisor is an INTERNAL user (like managers); commercial/reporter
@@ -85,6 +86,24 @@ class UpdateRegistryRequest extends FormRequest
             'size_class' => ['sometimes', 'nullable', Rule::enum(SizeClassEnum::class)],
             'employee_count' => ['sometimes', 'nullable', 'integer', 'min:0'],
         ], $this->managerSlotsRules(), $this->profileRules());
+    }
+
+    /**
+     * Sectors already linked to the registry under edit: they stay valid even
+     * once deactivated (spec 0212 D-2), only a NEW link must be active.
+     *
+     * @return array<int, int>
+     */
+    private function linkedSectorIds(): array
+    {
+        /** @var Registry|null $registry */
+        $registry = $this->route('registry');
+
+        if ($registry === null) {
+            return [];
+        }
+
+        return $registry->sectors()->pluck('sectors.id')->map(static fn ($id): int => (int) $id)->all();
     }
 
     /**

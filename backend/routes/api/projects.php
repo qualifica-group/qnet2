@@ -7,6 +7,7 @@ use App\Http\Controllers\PipelineStatuses\PipelineStatusController;
 use App\Http\Controllers\PipelineStatuses\PipelineStatusForSelectController;
 use App\Http\Controllers\ProductCategories\ProductCategoryBranchForSelectController;
 use App\Http\Controllers\ProductCategories\ProductCategoryForSelectController;
+use App\Http\Controllers\ProductCategories\ProductCategoryNodeForSelectController;
 use App\Http\Controllers\Projects\ProjectController;
 use App\Http\Controllers\Projects\ProjectForSelectController;
 use App\Http\Controllers\Projects\ProjectSummaryController;
@@ -113,4 +114,7 @@ Route::get('product-categories/for-select', ProductCategoryForSelectController::
 // SEPARATE resource segment, so the sibling above keeps its unconditional
 // `is_selectable` filter (spec 0074 D-4) untouched.
 Route::get('product-category-branches/for-select', ProductCategoryBranchForSelectController::class);
+// Every active category, containers included (spec 0223 D-5): the commission
+// configurator's picker, again a separate segment for the same reason.
+Route::get('product-category-nodes/for-select', ProductCategoryNodeForSelectController::class);
 Route::get('states/for-select', StateForSelectController::class);

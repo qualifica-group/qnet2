@@ -6,6 +6,7 @@ use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Migration\MigrationPreviewRequest;
 use App\Http\Resources\Migration\MigrationRunResource;
 use App\Http\Resources\Migration\MigrationSourceResource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationQuery;
 use App\Migrations\MigrationRegistry;
 use App\Migrations\MigrationSource;
@@ -37,12 +38,25 @@ class MigrationController extends BaseApiController
     ) {}
 
     /**
-     * GET /api/migrations — the registered sources for the picker.
+     * GET /api/migrations — the registered sources for the picker, each with
+     * its migration state (latest run, last completed migration).
      */
     public function index(): JsonResponse
     {
         try {
-            return $this->ok(['sources' => MigrationSourceResource::collection($this->registry->all())]);
+            $latestRuns = $this->service->latestRunsBySource();
+            $migratedAt = $this->service->migratedAtBySource();
+
+            $sources = array_map(
+                fn (MigrationSource $source): MigrationSourceResource => new MigrationSourceResource(
+                    $source,
+                    $latestRuns->get($source->key()),
+                    $migratedAt->get($source->key()),
+                ),
+                $this->registry->all(),
+            );
+
+            return $this->ok(['sources' => $sources]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -61,6 +75,10 @@ class MigrationController extends BaseApiController
             $definition = $this->registry->resolve($source); // 404 if unknown
 
             return $this->ok([
+                'dependencies' => array_map(
+                    static fn (MigrationDependency $dependency): array => $dependency->toArray(),
+                    $definition->dependencies(),
+                ),
                 'columns' => $definition->columns(),
                 'request' => $this->buildRequestInfo($definition),
                 'sample' => $definition->sampleResponse(),

@@ -32,10 +32,7 @@ export const emailTemplates = {
     subtitle: 'Read-only view of the selected template.',
     loadError: 'Unable to load the email template. Please retry.',
     module: 'Module',
-    subject: 'Subject',
     body: 'Body',
-    description: 'Description',
-    isActive: 'Active',
     created_at: 'Created at',
     updated_at: 'Updated at',
   },
@@ -70,6 +67,12 @@ export const emailTemplates = {
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the email template. Please retry.',
     deleteForbidden: 'You cannot delete this email template.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The email template has not been created yet: the data you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',

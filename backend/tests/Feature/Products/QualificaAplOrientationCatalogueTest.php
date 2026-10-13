@@ -3,6 +3,7 @@
 use App\Enums\AttributeContext;
 use App\Enums\FormMode;
 use App\Enums\LayoutFormScope;
+use App\Enums\WorkflowStatusGroup;
 use App\Models\Attribute;
 use App\Models\Opportunity;
 use App\Models\Product;
@@ -135,10 +136,23 @@ it('gives the orientation practices their own working states, winning over the A
         ->and($workflow->criteria->first()->field)->toBe(WorkflowStatusCatalogue::DEFAULT_CRITERION_FIELD)
         ->and($workflow->criteria->first()->value_id)->toBe($category->id)
         ->and($statuses->pluck('name')->all())->toBe([
-            'Da convocare', 'Convocato', 'Presa in carico', 'Monitoraggio SFL', 'Fine pratica', 'Perso',
+            'Da Richiamare', 'Attesa esito SFL/ADI', 'Attesa _ App. CPI', 'OK App. Fissato CPI', 'Attesa Documenti',
+            'NO _ Non ha Requisiti', 'Non interessato/a', 'Irreperibile', 'Non pertinente - Altra regione',
+            'Numero Inesistente/Errato', 'Doppione', 'Doppione già associato',
+            'Da convocare', 'Convocato', 'Presa in carico', 'Monitoraggio SFL', 'Perso',
+            'Fine pratica', 'Associato NO _ Altro Ente',
         ])
-        ->and($statuses->map(fn (QuoteWorkflowStatus $status): ?string => $status->system_key)->all())
-        ->toBe(['open', null, null, null, 'closed_won', 'closed_lost']);
+        ->and($statuses->filter(fn (QuoteWorkflowStatus $status): bool => $status->system_key !== null)->pluck('system_key', 'name')->all())
+        ->toBe(['Da Richiamare' => 'open', 'Fine pratica' => 'closed_won', 'Associato NO _ Altro Ente' => 'closed_lost']);
+
+    // The APL sector's states (user directive 2026-10-09): every pesca cell a
+    // loss, "Da convocare" the validated hand-over to an APL operator.
+    $groupOf = fn (string $name): WorkflowStatusGroup => $statuses->firstWhere('name', $name)->group;
+
+    expect($groupOf('Attesa esito SFL/ADI'))->toBe(WorkflowStatusGroup::Open)
+        ->and($groupOf('Attesa Documenti'))->toBe(WorkflowStatusGroup::Pending)
+        ->and($groupOf('Doppione già associato'))->toBe(WorkflowStatusGroup::ClosedLost)
+        ->and($groupOf('Da convocare'))->toBe(WorkflowStatusGroup::Validated);
 
     // An offer on the category resolves its own set, not the "APL" branch one.
     $product = Product::factory()->create(['category_id' => $category->id]);

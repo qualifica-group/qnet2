@@ -21,7 +21,7 @@ const CUSTOM_FIELDS_DOMAIN = 'custom-fields'
  * Thin admin adapter over the generic table (spec 0021 AC-025). It mounts
  * `<TableView>` with the `custom-fields` domain, its custom cell renderers
  * and a row-action handler, and delegates the open mode (modal Sheet vs
- * dedicated page) of view/edit/create to `useModuleOpener`, resolved from the
+ * dedicated page) of view/create to `useModuleOpener`, resolved from the
  * user's preference (spec 0042). It still owns the delete flow (confirm +
  * toast + grid refresh) and refreshes the SSRM grid after every mutation.
  * Permission gating is an affordance only: the backend re-authorizes each
@@ -36,7 +36,7 @@ export function CustomFieldsTable() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
-  // After a modal create/edit succeeds the Sheet closes itself; the grid is
+  // After a modal create succeeds the Sheet closes itself; the grid is
   // this adapter's to refresh. The detail query is invalidated inside
   // `CustomFieldFormScreen`. Page mode never calls this.
   const onSaved = useCallback(() => {

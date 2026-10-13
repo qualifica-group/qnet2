@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
+import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ProjectsView } from '@/features/projects/projects-view'
 import type { ModuleStats } from '@/features/stats/types'
 import type { ProjectDetail } from '@/features/projects/types'
@@ -127,7 +128,9 @@ function renderView() {
     ...render(
       <QueryClientProvider client={client}>
         <MemoryRouter>
-          <ProjectsView />
+          <ConfirmDialogProvider>
+            <ProjectsView />
+          </ConfirmDialogProvider>
         </MemoryRouter>
       </QueryClientProvider>,
     ),
@@ -262,13 +265,15 @@ describe('ProjectsView — "New project" opens the SAME create Sheet in both vie
     expect(screen.queryByText('stub-save')).not.toBeInTheDocument()
   })
 
-  it('closes the Sheet on cancel without refreshing anything', async () => {
+  // REQUIREMENT CHANGED (spec 0220): leaving the create Sheet asks first (spec 0195 D-9).
+  it('closes the Sheet on a confirmed cancel without refreshing anything', async () => {
     renderView()
 
     fireEvent.click(screen.getByRole('button', { name: /new project/i }))
     expect(await screen.findByText('stub-cancel')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('stub-cancel'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave without saving' }))
 
     await waitFor(() => expect(screen.queryByText('stub-cancel')).not.toBeInTheDocument())
     expect(tableRefreshMock).not.toHaveBeenCalled()

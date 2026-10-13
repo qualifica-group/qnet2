@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\PersonalData;
 
+use App\Models\PersonalData;
 use Illuminate\Contracts\Validation\Validator;
 
 /**
@@ -24,10 +25,16 @@ class UpdatePersonalDataRequest extends StorePersonalDataRequest
     }
 
     /**
-     * No owner validation on update (the owner is immutable).
+     * No owner validation on update (the owner is immutable); the fiscal
+     * uniqueness runs against the owner the card already has.
      */
     public function withValidator(Validator $validator): void
     {
-        // Intentionally empty: the card keeps its existing owner.
+        $validator->after(function (Validator $validator): void {
+            /** @var PersonalData $card */
+            $card = $this->route('personalData');
+
+            $this->validateNamespaceFiscalIdentity($validator, $card->personable);
+        });
     }
 }

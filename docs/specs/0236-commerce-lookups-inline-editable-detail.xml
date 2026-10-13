@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0236-commerce-lookups-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Onda 3 del piano "nessuna pagina di modifica" (kit condiviso: spec 0233): Tipologie Prodotto, Unita' di Misura,
+    Aliquote IVA e Modalita' di Pagamento si modificano sul posto nel dettaglio e si creano come il dettaglio. Backend
+    invariato.
+  </goal>
+
+  <context>
+    - D-1 (contratto per modulo, come 0233 D-2): `api.update*` restituisce il dettaglio CON `permissions` ed esporta
+      `*DetailQueryKey`; l'hook del form in edit ha `values` + `keepDirtyValues` e `clearServerError`; dettaglio =
+      provider + `Form` + righe del kit; creazione = `RecordCreateLayout` + stesse righe con `useDraftInlineEdit`;
+      wrapper del form solo creazione (`useResourceMeta`), via i `use-*-form-meta.ts`; screens `generateEditRoute:
+      false`, `detailOwnsEditAction: true`, `formOwnsHeader: true`, `useFormLeaveGuard` + `form.leaveConfirm.*`.
+    - D-2: `code` (Tipologie, Unita', Modalita') e' solo-creazione: sul dettaglio resta il sottotitolo della banda
+      d'identita', in creazione e' una riga della bozza.
+    - D-3 (righe raggruppate): Tipologie = "Calcolo commissione Fornitore" + "Verso" in UNA riga (il verso e'
+      obbligatorio solo ad interruttore attivo); Modalita' = "Numero di rate" + "Giorni tra le rate" in una riga,
+      "Fine mese" + "Giorni dopo fine mese" in una riga, "Ripartizione IVA" riga a se' (select). Un errore su un campo
+      secondario della riga raggruppata si mostra anche sulla riga chiusa.
+    - D-4: Aliquote IVA: i campi flessibili (spec 0021) diventano righe in-place (`CustomFieldRecordSections`) sia sul
+      dettaglio sia sulla bozza di creazione; prima il dettaglio non li mostrava.
+    - D-5: Modalita' di Pagamento: `payment_method_code` svuotato si invia `null`, non stringa vuota; l'ordine
+      (`sort_order`) resta in sola lettura (si cambia dal Riordina).
+  </context>
+
+  <acceptance>
+    <ac id="AC-001">Per modulo: nessuna rotta `:id/edit` ne' pulsante Modifica; ogni riga salva solo il proprio
+      campo (le righe raggruppate, i propri campi); Annulla non chiama; 422 sulla riga; senza `update` o su campo non
+      modificabile nessuna matita.</ac>
+    <ac id="AC-002">Creazione a righe chiuse con Fatto/Ripristina; Salva valida tutto (errori sulle righe chiuse);
+      uscita con conferma.</ac>
+    <ac id="AC-003">Guide in-app IT/EN `product-typologies`, `units-of-measure`, `vat-rates`, `payment-methods`
+      aggiornate (sezione `manage`).</ac>
+  </acceptance>
+</spec>

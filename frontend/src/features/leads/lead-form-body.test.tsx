@@ -1,129 +1,71 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
-import axios, { AxiosError } from 'axios'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { LeadForm } from '@/features/leads/lead-form'
-import type { LeadDetailWithPermissions } from '@/features/leads/types'
 import type { ResourceMeta } from '@/features/authorization/types'
+import {
+  EDITABLE,
+  HIDDEN,
+  READ_ONLY,
+  clickCreateSave,
+  confirmOpenRow,
+  leadFixture,
+  leadWrapper,
+  pencilOf,
+  permissionsFor,
+  pickInRow,
+} from '@/features/leads/lead-test-fixtures'
 
 /**
- * AC-061 (the 6 fields render, 5 relational as `AsyncPaginatedSelect`, notes
- * as a textarea), AC-062 (field permissions: hidden vs disabled) and AC-064
- * (server 422 mapped inline, with the full a11y triad — `aria-invalid`,
- * `aria-describedby` and `role="alert"` — wired via the shared `FormControl`/
- * `FormMessage`).
+ * The lead create form (spec 0217 D-4), a replica of the in-place detail:
+ * every row CLOSED until clicked, "Done"/"Revert" per row, the header's Save
+ * validating and creating the whole draft. Covers AC-061 (the fields), AC-062
+ * (field permissions), AC-014 (extra fields) and spec 0044 (conversion).
+ * REQUIREMENT CHANGED (spec 0217): the controls are no longer laid out open,
+ * and there is no edit mode — the edit cases live in
+ * `lead-detail-inline-edit.test.tsx`.
  */
 
 const createLeadMock = vi.fn()
-const updateLeadMock = vi.fn()
 
-vi.mock('@/features/leads/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/leads/api')>('@/features/leads/api')
-  return {
-    ...actual,
-    createLead: (...args: unknown[]) => createLeadMock(...args),
-    updateLead: (...args: unknown[]) => updateLeadMock(...args),
-  }
-})
+vi.mock('@/features/leads/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/leads/api')>()),
+  createLead: (...args: unknown[]) => createLeadMock(...args),
+}))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
-
-const FULL_PERMISSIONS = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
-}
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-/** Grants `opportunities.create` by default so the convert checkbox (AC-040) renders in every test unless overridden. */
+/** Grants `opportunities.create` by default so the conversion row (AC-040) renders unless overridden. */
 const canMock = vi.fn<(permission: string) => boolean>()
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: canMock, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
-/**
- * Stubs every single-select field, keyed by its accessible trigger label
- * (mirrors `campaign-form-body.test.tsx`). Renders as a button calling
- * `onChange(3)` so the AC-043 submit test can drive it without a real dropdown.
- */
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({
-    value,
-    onChange,
-    labels,
-    disabled,
-  }: {
-    value: number | null
-    onChange: (value: number) => void
-    labels: { triggerLabel: string }
-    disabled?: boolean
-  }) => (
-    <button
-      type="button"
-      data-testid={`select-${labels.triggerLabel}`}
-      data-disabled={disabled ? 'true' : 'false'}
-      disabled={disabled}
-      onClick={() => onChange(3)}
-    >
-      {value ?? ''}
-    </button>
-  ),
+// The closed rows link the picked anagrafica/campaign (`RecordLink`), which resolves the user's open mode.
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
+
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/leads/lead-test-stubs')).StubSelect,
+}))
+vi.mock('@/components/ui/async-paginated-multi-select', async () => ({
+  AsyncPaginatedMultiSelect: (await import('@/features/leads/lead-test-stubs')).StubMultiSelect,
 }))
 
-/** Stubs the "Prodotti di interesse" picker: not exercised by this suite. */
-vi.mock('@/components/ui/async-paginated-multi-select', () => ({
-  AsyncPaginatedMultiSelect: ({
-    value,
-    labels,
-    disabled,
-  }: {
-    value: number[]
-    labels: { triggerLabel: string }
-    disabled?: boolean
-  }) => (
-    <div data-testid={`multi-${labels.triggerLabel}`} data-disabled={disabled ? 'true' : 'false'}>
-      {value.join(',')}
-    </div>
-  ),
-}))
-
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-    </QueryClientProvider>
-  )
+function renderForm() {
+  const { wrapper } = leadWrapper()
+  render(<LeadForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
 }
 
-function lead(overrides: Partial<LeadDetailWithPermissions> = {}): LeadDetailWithPermissions {
-  return {
-    id: 9,
-    registry_id: 10,
-    registry: { id: 10, name: 'Mario Rossi' },
-    campaign_id: 20,
-    campaign: { id: 20, code: 'CMP-0001', name: 'Spring push' },
-    lead_status: 'not_associated',
-    operational_site_id: null,
-    operational_site: null,
-    source_id: 1,
-    source: { id: 1, name: 'Web' },
-    operator_id: null,
-    operator: null,
-    notes: 'Original note.',
-    extra_fields: null,
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z',
-    permissions: FULL_PERMISSIONS,
-    ...overrides,
-  }
+/** The three required rows: Registry (id 3), Campaign (the plain one, no prefill), Source (id 3). */
+function fillRequired() {
+  pickInRow('Registry', 'Registry')
+  pickInRow('Campaign', 'Campaign')
+  pickInRow('Source', 'Source')
 }
 
 beforeAll(async () => {
@@ -132,166 +74,74 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createLeadMock.mockReset()
-  updateLeadMock.mockReset()
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_PERMISSIONS })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
   canMock.mockReset()
   canMock.mockReturnValue(true)
 })
 
-describe('LeadForm — fields render (AC-061, AC-016)', () => {
-  it('renders the 5 relational selects and a notes textarea', async () => {
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+describe('LeadForm — create as closed rows (AC-061, spec 0217)', () => {
+  it('starts every row closed, each opening on its own control', async () => {
+    renderForm()
 
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-    expect(screen.getByTestId('select-Campaign')).toBeInTheDocument()
-    expect(screen.getByTestId('select-Site')).toBeInTheDocument()
-    expect(screen.getByTestId('select-Source')).toBeInTheDocument()
-    expect(screen.getByTestId('select-Operator')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Edit Registry' })).toBeInTheDocument()
+    for (const field of ['Campaign', 'Site', 'Operator', 'Source', 'Products of interest', 'Imported data', 'Notes']) {
+      expect(pencilOf(field)).toBeInTheDocument()
+    }
+    expect(screen.queryByTestId('select-Registry')).not.toBeInTheDocument()
+
+    fireEvent.click(pencilOf('Notes'))
     expect(screen.getByRole('textbox', { name: 'Notes' })).toBeInTheDocument()
+  })
+
+  it('refuses the save while a required row is empty, marking it on its closed row', async () => {
+    renderForm()
+    await screen.findByRole('button', { name: 'Edit Registry' })
+
+    clickCreateSave()
+
+    expect(await screen.findByText('Registry is required.')).toBeInTheDocument()
+    expect(screen.getByText('Campaign is required.')).toBeInTheDocument()
+    expect(createLeadMock).not.toHaveBeenCalled()
   })
 })
 
 describe('LeadForm — field permissions (AC-062)', () => {
-  it('does not render a field marked hidden (visible: false)', async () => {
-    fetchResourceMetaMock.mockResolvedValue({
-      fields: [],
-      permissions: {
-        ...FULL_PERMISSIONS,
-        fields: {
-          operator_id: {
-            visible: false,
-            hidden: true,
-            editable: false,
-            readonly: false,
-            required: false,
-            disabled: false,
-          },
-        },
-      },
-    })
+  it('does not render a row marked hidden', async () => {
+    fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor({ operator_id: HIDDEN }) })
+    renderForm()
 
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-    expect(screen.queryByTestId('select-Operator')).not.toBeInTheDocument()
+    await screen.findByRole('button', { name: 'Edit Registry' })
+    expect(screen.queryByText('Operator', { selector: 'dt' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Operator' })).not.toBeInTheDocument()
   })
 
-  it('renders a non-editable field disabled rather than hiding it', async () => {
+  it('shows a non-editable row without a pencil', async () => {
+    fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor({ notes: READ_ONLY }) })
+    renderForm()
+
+    await screen.findByRole('button', { name: 'Edit Registry' })
+    expect(screen.queryByRole('button', { name: 'Edit Notes' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the Site row closed when the Operator its change clears is not editable (spec 0195 D-6c)', async () => {
     fetchResourceMetaMock.mockResolvedValue({
       fields: [],
-      permissions: {
-        ...FULL_PERMISSIONS,
-        fields: {
-          operator_id: {
-            visible: true,
-            hidden: false,
-            editable: false,
-            readonly: true,
-            required: false,
-            disabled: false,
-          },
-        },
-      },
+      permissions: permissionsFor({ operator_id: READ_ONLY, operational_site_id: EDITABLE }),
     })
+    renderForm()
 
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    const operator = await screen.findByTestId('select-Operator')
-    expect(operator).toHaveAttribute('data-disabled', 'true')
+    await screen.findByRole('button', { name: 'Edit Registry' })
+    expect(screen.queryByRole('button', { name: 'Edit Site' })).not.toBeInTheDocument()
   })
 })
 
-describe('LeadForm — server 422 mapping (AC-064)', () => {
-  it('maps a 422 error onto the notes field and wires the full a11y triad', async () => {
-    // Edit mode so the required Registry/Campaign already carry valid
-    // defaultValues (client-side Zod validation passes trivially) and the
-    // submit reaches the mocked server call under test.
-    updateLeadMock.mockRejectedValue(
-      new AxiosError('Unprocessable', '422', undefined, undefined, {
-        status: 422,
-        data: { success: false, message: 'Validation failed', errors: { notes: ['Notes are too long.'] } },
-      } as never),
-    )
-    vi.spyOn(axios, 'isAxiosError').mockReturnValue(true)
+describe('LeadForm — imported data editor (AC-014)', () => {
+  it('opens on the empty state, adds, edits and removes rows', async () => {
+    renderForm()
 
-    render(
-      <LeadForm mode={{ type: 'edit', lead: lead() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Notes' })).toBeInTheDocument())
-
-    // Before any error: the field is clean, so no alert-role element must
-    // exist yet — a permanent role on static/neutral text would be constant
-    // screen-reader noise, not just a missing-positive-case gap.
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveAttribute('aria-invalid', 'false')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(screen.getByText('Notes are too long.')).toBeInTheDocument())
-    expect(updateLeadMock).toHaveBeenCalledTimes(1)
-
-    const notes = screen.getByRole('textbox', { name: 'Notes' })
-    expect(notes).toHaveAttribute('aria-invalid', 'true')
-    expect(notes.getAttribute('aria-describedby')).toContain('form-item-message')
-
-    const message = screen.getByRole('alert')
-    expect(message).toHaveTextContent('Notes are too long.')
-    expect(notes.getAttribute('aria-describedby')).toContain(message.id)
-
-    vi.restoreAllMocks()
-  })
-})
-
-describe('LeadForm — extra fields editor (AC-014)', () => {
-  it('shows the empty state with no rows', async () => {
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Imported data' }))
     expect(screen.getByText('No extra fields.')).toBeInTheDocument()
-    expect(screen.queryByRole('textbox', { name: 'Key' })).not.toBeInTheDocument()
-  })
-
-  it('adds a row on "Add field", accepts input, and removes it on "Remove field"', async () => {
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-
-    fireEvent.click(screen.getByRole('button', { name: 'Add field' }))
-    expect(screen.getAllByRole('textbox', { name: 'Key' })).toHaveLength(1)
-    expect(screen.getAllByRole('textbox', { name: 'Value' })).toHaveLength(1)
-    expect(screen.queryByText('No extra fields.')).not.toBeInTheDocument()
-
-    fireEvent.change(screen.getByRole('textbox', { name: 'Key' }), {
-      target: { value: 'Original column' },
-    })
-    fireEvent.change(screen.getByRole('textbox', { name: 'Value' }), { target: { value: 'foo' } })
-    expect(screen.getByRole('textbox', { name: 'Key' })).toHaveValue('Original column')
-    expect(screen.getByRole('textbox', { name: 'Value' })).toHaveValue('foo')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Remove field' }))
-    expect(screen.queryAllByRole('textbox', { name: 'Key' })).toHaveLength(0)
-    expect(screen.getByText('No extra fields.')).toBeInTheDocument()
-  })
-
-  it('adds multiple rows independently', async () => {
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
 
     fireEvent.click(screen.getByRole('button', { name: 'Add field' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add field' }))
@@ -299,127 +149,75 @@ describe('LeadForm — extra fields editor (AC-014)', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Remove field' })[0])
     expect(screen.getAllByRole('textbox', { name: 'Key' })).toHaveLength(1)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Key' }), { target: { value: 'Original column' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Value' }), { target: { value: 'foo' } })
+    confirmOpenRow('Done')
+
+    expect(screen.getByText('Original column')).toBeInTheDocument()
+    expect(screen.getByText('foo')).toBeInTheDocument()
   })
 
-  it('pre-populates rows from the lead extra_fields in edit mode', async () => {
-    render(
-      <LeadForm
-        mode={{ type: 'edit', lead: lead({ extra_fields: { 'Original column': 'foo' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('sends the kept pairs as extra_fields', async () => {
+    createLeadMock.mockResolvedValue(leadFixture())
+    renderForm()
+    await screen.findByRole('button', { name: 'Edit Registry' })
 
-    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Key' })).toBeInTheDocument())
-    expect(screen.getByRole('textbox', { name: 'Key' })).toHaveValue('Original column')
-    expect(screen.getByRole('textbox', { name: 'Value' })).toHaveValue('foo')
+    fillRequired()
+    fireEvent.click(pencilOf('Imported data'))
+    fireEvent.click(screen.getByRole('button', { name: 'Add field' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Key' }), { target: { value: 'Original column' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Value' }), { target: { value: 'foo' } })
+    confirmOpenRow('Done')
+    clickCreateSave()
+
+    await waitFor(() => expect(createLeadMock).toHaveBeenCalledTimes(1))
+    expect(createLeadMock.mock.calls[0][0].extra_fields).toEqual({ 'Original column': 'foo' })
   })
 })
 
 describe('LeadForm — convert to opportunity (spec 0044, AC-040..AC-043)', () => {
-  it('AC-040: shows the control in create mode when the actor has opportunities.create', async () => {
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('AC-040: shows the row, ON by default, when the actor has opportunities.create', async () => {
+    renderForm()
 
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-    // Defaults ON for an actor who can create Opportunities.
-    expect(
-      screen.getByRole('switch', { name: 'Automatically convert to Opportunity' }),
-    ).toBeChecked()
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Automatically convert to Opportunity' }))
+    expect(screen.getByRole('switch', { name: 'Automatically convert to Opportunity' })).toBeChecked()
   })
 
-  it('AC-040: hides the control without opportunities.create', async () => {
+  it('AC-040: hides the row without opportunities.create', async () => {
     canMock.mockReturnValue(false)
+    renderForm()
 
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-    expect(
-      screen.queryByRole('switch', { name: 'Automatically convert to Opportunity' }),
-    ).not.toBeInTheDocument()
+    await screen.findByRole('button', { name: 'Edit Registry' })
+    expect(screen.queryByText('Automatically convert to Opportunity')).not.toBeInTheDocument()
   })
 
-  it('AC-040: hides the control in edit mode regardless of permission', async () => {
-    render(
-      <LeadForm mode={{ type: 'edit', lead: lead() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('directive 2026-07-21 (supersedes AC-041): submits with the conversion on and Operator/Site empty', async () => {
+    createLeadMock.mockResolvedValue(leadFixture())
+    renderForm()
+    await screen.findByRole('button', { name: 'Edit Registry' })
 
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-    expect(
-      screen.queryByRole('switch', { name: 'Automatically convert to Opportunity' }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('directive 2026-07-21 (supersedes AC-041): submitting with the control on and Operator/Site empty still submits, with a null supervisor-deriving pair', async () => {
-    createLeadMock.mockResolvedValue(lead())
-
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-    fireEvent.click(screen.getByTestId('select-Registry'))
-    fireEvent.click(screen.getByTestId('select-Campaign'))
-    fireEvent.click(screen.getByTestId('select-Source'))
-
-    // The control is ON by default; submit straight away with Operator/Site empty.
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fillRequired()
+    clickCreateSave()
 
     await waitFor(() => expect(createLeadMock).toHaveBeenCalledTimes(1))
     const payload = createLeadMock.mock.calls[0][0]
-    expect(payload.convert_to_opportunity).toBe(true)
+    expect(payload).toMatchObject({ registry_id: 3, campaign_id: 20, source_id: 3, convert_to_opportunity: true })
     expect(payload.operator_id).toBeNull()
     expect(payload.operational_site_id).toBeNull()
   })
 
-  it('AC-042: Operator and Site stay optional and the form submits with the control off', async () => {
-    createLeadMock.mockResolvedValue(lead())
+  it('AC-042: the conversion can be turned off', async () => {
+    createLeadMock.mockResolvedValue(leadFixture())
+    renderForm()
+    await screen.findByRole('button', { name: 'Edit Registry' })
 
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-    fireEvent.click(screen.getByTestId('select-Registry'))
-    fireEvent.click(screen.getByTestId('select-Campaign'))
-    fireEvent.click(screen.getByTestId('select-Source'))
-    // Turn the default-ON control OFF so Operator/Site stay optional.
+    fillRequired()
+    fireEvent.click(pencilOf('Automatically convert to Opportunity'))
     fireEvent.click(screen.getByRole('switch', { name: 'Automatically convert to Opportunity' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    confirmOpenRow('Done')
+    clickCreateSave()
 
     await waitFor(() => expect(createLeadMock).toHaveBeenCalledTimes(1))
-    const payload = createLeadMock.mock.calls[0][0]
-    expect(payload.operator_id).toBeNull()
-    expect(payload.operational_site_id).toBeNull()
-    expect(payload.convert_to_opportunity).toBe(false)
-  })
-
-  it('AC-043: the create payload carries convert_to_opportunity: true once Operator/Site are set', async () => {
-    createLeadMock.mockResolvedValue(lead())
-
-    render(<LeadForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    await waitFor(() => expect(screen.getByTestId('select-Registry')).toBeInTheDocument())
-
-    fireEvent.click(screen.getByTestId('select-Registry'))
-    fireEvent.click(screen.getByTestId('select-Campaign'))
-    fireEvent.click(screen.getByTestId('select-Source'))
-    // The control is ON by default; just fill the Operator/Site it requires.
-    fireEvent.click(screen.getByTestId('select-Operator'))
-    fireEvent.click(screen.getByTestId('select-Site'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(createLeadMock).toHaveBeenCalledTimes(1))
-    const payload = createLeadMock.mock.calls[0][0]
-    expect(payload.convert_to_opportunity).toBe(true)
-    expect(payload.operator_id).toBe(3)
-    expect(payload.operational_site_id).toBe(3)
+    expect(createLeadMock.mock.calls[0][0].convert_to_opportunity).toBe(false)
   })
 })

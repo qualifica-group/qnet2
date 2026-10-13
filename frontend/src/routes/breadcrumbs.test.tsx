@@ -74,4 +74,17 @@ describe('AppBreadcrumbs', () => {
 
     expect(screen.getByText('Time tracking')).toBeInTheDocument()
   })
+
+  it('labels the Develop section and its pages', () => {
+    renderAt('/dev/api-docs', null)
+
+    expect(screen.getByRole('link', { name: 'Develop' })).toHaveAttribute('href', '/dev')
+    expect(screen.getByText('API documentation')).toBeInTheDocument()
+  })
+
+  it('labels the API clients page', () => {
+    renderAt('/dev/api-clients', null)
+
+    expect(screen.getByText('API & integrations')).toBeInTheDocument()
+  })
 })

@@ -17,7 +17,8 @@ import type { ResourceMeta, ResourcePermissions } from '@/features/authorization
 const createProductCategoryMock = vi.fn()
 const updateProductCategoryMock = vi.fn()
 
-vi.mock('@/features/product-categories/api', () => ({
+vi.mock('@/features/product-categories/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/product-categories/api')>()),
   createProductCategory: (...args: unknown[]) => createProductCategoryMock(...args),
   updateProductCategory: (...args: unknown[]) => updateProductCategoryMock(...args),
   fetchProductCategoryTree: () => Promise.resolve([]),
@@ -67,6 +68,7 @@ const SOURCE: ProductCategoryDetailWithPermissions = {
   effective_business_function: null,
   requires_quote_source_category: null,
   is_selectable: true,
+  is_active: true,
   is_reportable: null,
   effective_is_reportable: false,
   is_reportable_source_category: null,
@@ -110,13 +112,14 @@ beforeEach(() => {
 })
 
 describe('ProductCategoryForm — duplicate mode', () => {
-  it('pre-fills the name with the copy suffix and renders the create heading', async () => {
+  it('pre-fills the name with the copy suffix, shown by the closed row and the identity band', async () => {
     render(<ProductCategoryForm mode={{ type: 'duplicate', source: SOURCE }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
       wrapper: wrapper(),
     })
 
-    expect(await screen.findByDisplayValue('Laptops (copy)')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: i18n.t('productCategories.form.createTitle') })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Laptops (copy)' })).toBeInTheDocument()
+    expect(screen.getAllByText('Laptops (copy)').length).toBeGreaterThan(1)
+    expect(screen.queryByRole('textbox', { name: /^Name/ })).not.toBeInTheDocument()
   })
 
   it('submits through the create path with the source fields and layout_source_id', async () => {
@@ -125,7 +128,7 @@ describe('ProductCategoryForm — duplicate mode', () => {
       wrapper: wrapper(),
     })
 
-    await screen.findByDisplayValue('Laptops (copy)')
+    await screen.findByRole('heading', { name: 'Laptops (copy)' })
     fireEvent.click(screen.getAllByRole('button', { name: i18n.t('productCategories.form.save') })[0])
 
     await waitFor(() => expect(createProductCategoryMock).toHaveBeenCalledTimes(1))
@@ -141,5 +144,22 @@ describe('ProductCategoryForm — duplicate mode', () => {
       layout_source_id: 4,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(expect.objectContaining({ id: 11 })))
+  })
+
+  it('carries the source is_active flag onto the copy', async () => {
+    render(
+      <ProductCategoryForm
+        mode={{ type: 'duplicate', source: { ...SOURCE, is_active: false } }}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+      { wrapper: wrapper() },
+    )
+
+    await screen.findByRole('heading', { name: 'Laptops (copy)' })
+    fireEvent.click(screen.getAllByRole('button', { name: i18n.t('productCategories.form.save') })[0])
+
+    await waitFor(() => expect(createProductCategoryMock).toHaveBeenCalledTimes(1))
+    expect(createProductCategoryMock.mock.calls[0][0]).toMatchObject({ is_active: false })
   })
 })

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Form } from '@/components/ui/form'
-import { RecordBody } from '@/components/detail/record-body'
+import { RecordFormBody } from '@/components/record-form/record-form-body'
 import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
@@ -78,7 +78,7 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
           boundary, it must not become an extra box around the canvas. */}
       <form id={OPPORTUNITY_FORM_ID} onSubmit={form.handleSubmit(onSubmit)} className="contents" noValidate>
         <RecordCanvas>
-          <RecordBody side={null}>
+          <RecordFormBody>
             <RecordCard>
               <OpportunityFormHeader
                 control={form.control}
@@ -107,7 +107,7 @@ export function OpportunityFormBody({ mode, onSuccess, onCancel }: OpportunityFo
               submittingLabel={t('opportunities.form.saving')}
               cancel={{ label: t('opportunities.form.cancel'), onCancel }}
             />
-          </RecordBody>
+          </RecordFormBody>
         </RecordCanvas>
       </form>
     </Form>

@@ -5,20 +5,11 @@
  * into the `users.*` namespace from there.
  */
 
-/** `FormSection` header (title/description) for the three employment sections. */
+/** Section titles of the three employment sections (spec 0222: the record sections carry no description). */
 export const usersFormEmploymentSections = {
-  profile: {
-    title: 'Profilo',
-    description: 'Ruolo organizzativo, mansione e linea di riporto.',
-  },
-  contract: {
-    title: 'Rapporto contrattuale',
-    description: 'Tipo di rapporto e società di riferimento.',
-  },
-  contractData: {
-    title: 'Dati contrattuali',
-    description: 'Qualifica, date del rapporto e durate giornaliere.',
-  },
+  profile: { title: 'Profilo' },
+  contract: { title: 'Rapporto contrattuale' },
+  contractData: { title: 'Dati contrattuali' },
 }
 
 /** Field labels, placeholders e messaggi di validazione per `employment.*`. */
@@ -106,8 +97,6 @@ export const usersDetailEmployment = {
  */
 export const usersAssignment = {
   title: 'Configurazione assegnazione',
-  description: 'Competenze e sedi: da qui dipende quali offerte possono essere abbinate a questa persona.',
-  rule: 'Una richiesta raggiunge questa persona solo se appartiene alla sede della richiesta E una sua competenza copre la categoria prodotto richiesta.',
   sitesHint: "Sede fisica e sedi remote valgono allo stesso modo per l'assegnazione: conta appartenere alla sede, non come ci si lavora.",
   assignable: 'Assegnabile',
   notAssignable: 'Non assegnabile',
@@ -134,8 +123,5 @@ export const usersAssignment = {
       site: 'Manca la sede',
     },
   },
-  summary: {
-    title: 'Riepilogo',
-    description: 'Si aggiorna mentre compili.',
-  },
+  summary: { title: 'Riepilogo' },
 }

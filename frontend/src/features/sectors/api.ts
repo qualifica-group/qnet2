@@ -32,13 +32,18 @@ export async function createSector(payload: CreateSectorPayload): Promise<Sector
   return data.data
 }
 
-/** Partially updates a sector (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a sector (PATCH). Returns the saved record with the
+ * actor's permissions, so the in-place detail re-syncs on it as is.
+ */
 export async function updateSector(
   id: number,
   payload: UpdateSectorPayload,
-): Promise<SectorDetail> {
-  const { data } = await apiClient.patch<ApiResponse<SectorDetail>>(`/sectors/${id}`, payload)
-  return data.data
+): Promise<SectorDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<SectorDetail, ResourcePermissions>
+  >(`/sectors/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a sector. Backend responds 204 with no body (409 if it has children). */

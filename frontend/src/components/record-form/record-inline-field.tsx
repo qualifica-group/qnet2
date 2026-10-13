@@ -216,7 +216,9 @@ export function RecordInlineField({
   }
 
   const handleValueClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (event.target instanceof Element && event.target.closest(INTERACTIVE_SELECTOR)) {
+    // Another row's save still in flight: opening this one now would reset the
+    // form under that save, whose success then closes this editor again.
+    if (inline.isSaving || (event.target instanceof Element && event.target.closest(INTERACTIVE_SELECTOR))) {
       return
     }
     inline.start(field)
@@ -239,6 +241,7 @@ export function RecordInlineField({
               'pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-visible:opacity-100',
             )}
             aria-label={t('common.inlineEdit.edit', { field: label })}
+            disabled={inline.isSaving}
             onClick={() => inline.start(field)}
           >
             <Pencil className="size-3.5" aria-hidden="true" />

@@ -1,242 +1,86 @@
-import { Building2, MapPin } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
-import { FormSection } from '@/components/form-section'
-import {
-  MAIN_COLUMN_CLASS,
-  PANEL_GRID_CLASS,
-  SIDE_COLUMN_CLASS,
-} from '@/components/record-form/layout'
-import { RecordFormActions } from '@/components/record-form/record-form-actions'
-import { CompanyFormHeader } from '@/features/companies/company-form-header'
-import { CompanyFormSummary } from '@/features/companies/company-form-summary'
-import { Input } from '@/components/ui/input'
-import { formatOnBlur } from '@/lib/formatting/format-on-blur'
-import { formatVatNumber } from '@/lib/formatting/input-format'
-import { Form, FormControl } from '@/components/ui/form'
-import { GeoSelect, type GeoValue } from '@/features/geo/geo-select'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
+import { Building2 } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
+import { Form } from '@/components/ui/form'
+import { CompanyRows } from '@/features/companies/company-rows'
 import { useCompanyForm } from '@/features/companies/use-company-form'
-import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
+import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field-record-sections'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
+import { useGeoNames } from '@/features/geo/use-geo-names'
 import type { CompanyDetail } from '@/features/companies/types'
-import type { CompanyFormMode } from '@/features/companies/company-form'
 
-/**
- * DOM id bridging the sticky header's save action to the RHF `<form>` below,
- * exactly as every other record form does: the same id serves the footer
- * actions, so both copies of the button submit this form without either of them
- * nesting the other.
- */
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
 const COMPANY_FORM_ID = 'company-form'
 
+/** Create mode is static: a fresh object per render would rebuild the form's defaults. */
+const CREATE_MODE = { type: 'create' } as const
+
 interface CompanyFormBodyProps {
-  mode: CompanyFormMode
   onSuccess: (company: CompanyDetail) => void
   onCancel: () => void
 }
 
 /**
- * The company create/edit form UI. `denomination`/`vat_number` and every
- * address subfield are wrapped in `MetaField` (spec 0004): hidden fields are
- * absent, non-editable fields render disabled, `required` comes from the
- * resolved `ResourcePermissions` — no hardcoded permission logic lives here.
- * All non-render logic lives in `useCompanyForm`. The address is a single
- * embedded block (ADR 0010: one address per company, no add/remove
- * affordance), gated as a whole on the `address` field permission; its
- * `<GeoSelect>` bridge lives inline (single call site — no reusable wrapper).
- * `<CustomFieldsSection>` (spec 0021 pilot) mounts the resource's admin-defined
- * custom fields with zero companies-specific rendering/validation logic.
+ * The company create form as a replica of the detail (wave 3 of the "no edit
+ * pages" plan): the same rows, closed until clicked (Fatto/Ripristina, nothing
+ * saved per row); Salva validates and creates everything at once. The
+ * identity band follows the denomination being typed.
  */
-export function CompanyFormBody({ mode, onSuccess, onCancel }: CompanyFormBodyProps) {
+export function CompanyFormBody({ onSuccess, onCancel }: CompanyFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit } = useCompanyForm({ mode, onSuccess })
-
-  const generalVisible =
-    fieldPermission('denomination').visible || fieldPermission('vat_number').visible
-  const addressPermission = fieldPermission('address')
-  const addressDisabled = addressPermission.disabled || !addressPermission.editable
-
-  const geoValue: GeoValue = {
-    country_id: useWatch({ control: form.control, name: 'address.country_id' }) ?? null,
-    state_id: useWatch({ control: form.control, name: 'address.state_id' }) ?? null,
-    province_id: useWatch({ control: form.control, name: 'address.province_id' }) ?? null,
-    city_id: useWatch({ control: form.control, name: 'address.city_id' }) ?? null,
-  }
+  const { form, serverError, onSubmit } = useCompanyForm({ mode: CREATE_MODE, onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const [denomination, countryId, stateId, provinceId, cityId, customFields] = useWatch({
+    control: form.control,
+    name: [
+      'denomination',
+      'address.country_id',
+      'address.state_id',
+      'address.province_id',
+      'address.city_id',
+      'custom_fields',
+    ],
+  })
+  const geo = useGeoNames({
+    country_id: countryId ?? null,
+    state_id: stateId ?? null,
+    province_id: provinceId ?? null,
+    city_id: cityId ?? null,
+  })
+  const place = [geo.city, geo.province, geo.state, geo.country].flatMap((level) => (level ? [level.name] : []))
+  const heading = denomination.trim() || t('companies.form.createTitle')
 
   return (
-    <div className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
-      <Form {...form}>
-        <CompanyFormHeader
-          isEdit={mode.type === 'edit'}
-          formId={COMPANY_FORM_ID}
-          isSubmitting={form.formState.isSubmitting}
-          submitError={serverError}
-          onCancel={onCancel}
-        />
-
-        <div className={PANEL_GRID_CLASS}>
-          <aside className={SIDE_COLUMN_CLASS}>
-            <CompanyFormSummary
-              control={form.control}
-              persistedCity={mode.type === 'edit' ? (mode.company.address?.city ?? null) : null}
-              persistedCityId={mode.type === 'edit' ? (mode.company.address?.city_id ?? null) : null}
-            />
-          </aside>
-
-          <div className={MAIN_COLUMN_CLASS}>
-            {/* `display: contents`: this native `<form>` only scopes the HTML
-                submit boundary, it must not become an extra flex box. */}
-            <form
-              id={COMPANY_FORM_ID}
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="contents"
-              noValidate
-            >
-              {generalVisible && (
-                <FormSection
-                  icon={Building2}
-                  title={t('companies.form.sections.general.title')}
-                  description={t('companies.form.sections.general.description')}
-                >
-                  <MetaField
-                    control={form.control}
-                    name="denomination"
-                    metaKey="denomination"
-                    label={t('companies.form.denomination')}
-                  >
-                    {({ field, disabled, readOnly }) => (
-                      <FormControl>
-                        <Input
-                          autoComplete="organization"
-                          disabled={disabled}
-                          readOnly={readOnly}
-                          {...field}
-                        />
-                      </FormControl>
-                    )}
-                  </MetaField>
-
-                  <MetaField
-                    control={form.control}
-                    name="vat_number"
-                    metaKey="vat_number"
-                    label={t('companies.form.vatNumber')}
-                  >
-                    {({ field, disabled, readOnly }) => (
-                      <FormControl>
-                        <Input
-                          autoComplete="off"
-                          disabled={disabled}
-                          readOnly={readOnly}
-                          {...field}
-                          onBlur={formatOnBlur(field, formatVatNumber)}
-                        />
-                      </FormControl>
-                    )}
-                  </MetaField>
-                </FormSection>
-              )}
-
-              {addressPermission.visible && (
-                <FormSection
-                  icon={MapPin}
-                  title={t('companies.form.sections.address.title')}
-                  description={t('companies.form.sections.address.description')}
-                >
-                  {/* Street + postal code share the first row; line2 and the geo
-                      cascade span it. The column span sits on each MetaField so a
-                      hidden field leaves no empty cell. */}
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <MetaField
-                      control={form.control}
-                      name="address.line1"
-                      metaKey="address"
-                      label={t('companies.form.line1')}
-                      className="sm:col-span-2"
-                    >
-                      {({ field, disabled, readOnly }) => (
-                        <FormControl>
-                          <Input
-                            autoComplete="address-line1"
-                            disabled={disabled}
-                            readOnly={readOnly}
-                            {...field}
-                          />
-                        </FormControl>
-                      )}
-                    </MetaField>
-
-                    <MetaField
-                      control={form.control}
-                      name="address.postal_code"
-                      metaKey="address"
-                      label={t('companies.form.postalCode')}
-                    >
-                      {({ field, disabled, readOnly }) => (
-                        <FormControl>
-                          <Input
-                            autoComplete="postal-code"
-                            disabled={disabled}
-                            readOnly={readOnly}
-                            {...field}
-                          />
-                        </FormControl>
-                      )}
-                    </MetaField>
-
-                    <MetaField
-                      control={form.control}
-                      name="address.line2"
-                      metaKey="address"
-                      label={t('companies.form.line2')}
-                      className="sm:col-span-3"
-                    >
-                      {({ field, disabled, readOnly }) => (
-                        <FormControl>
-                          <Input
-                            autoComplete="address-line2"
-                            disabled={disabled}
-                            readOnly={readOnly}
-                            {...field}
-                          />
-                        </FormControl>
-                      )}
-                    </MetaField>
-
-                    <div className="sm:col-span-3">
-                      <GeoSelect
-                        value={geoValue}
-                        onChange={(next) => {
-                          form.setValue('address.country_id', next.country_id)
-                          form.setValue('address.state_id', next.state_id)
-                          form.setValue('address.province_id', next.province_id)
-                          form.setValue('address.city_id', next.city_id)
-                        }}
-                        disabled={addressDisabled}
-                        layout="compact"
-                      />
-                    </div>
-                  </div>
-                </FormSection>
-              )}
-
-              <CustomFieldsSection resource="companies" control={form.control} />
-
-              {/* The same actions the identity bar carries, repeated where the
-                  form ends: the operator finishes typing far from the sticky bar. */}
-              <RecordFormActions
-                formId={COMPANY_FORM_ID}
-                isSubmitting={form.formState.isSubmitting}
-                submitLabel={t('companies.form.save')}
-                submittingLabel={t('companies.form.saving')}
-                cancel={{ label: t('companies.form.cancel'), onCancel }}
-              />
-            </form>
-          </div>
-        </div>
-      </Form>
-    </div>
+    <Form {...form}>
+      <RecordCreateLayout
+        formId={COMPANY_FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        title={heading}
+        subtitle={t('companies.form.createSubtitle')}
+        media={<DetailMonogram name={heading} icon={<Building2 />} />}
+        isSubmitting={form.formState.isSubmitting}
+        serverError={serverError}
+        onCancel={onCancel}
+        labels={{
+          save: t('companies.form.save'),
+          saving: t('companies.form.saving'),
+          cancel: t('companies.form.cancel'),
+        }}
+      >
+        <RecordSectionsGrid>
+          <CompanyRows form={form} inline={draft} place={place} />
+          <CustomFieldRecordSections
+            resource="companies"
+            values={(customFields ?? {}) as Record<string, CustomFieldValue>}
+            inline={draft}
+            control={form.control}
+          />
+        </RecordSectionsGrid>
+      </RecordCreateLayout>
+    </Form>
   )
 }

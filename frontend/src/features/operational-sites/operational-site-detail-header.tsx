@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next'
 import { Globe, Map, MapPin, MapPinned } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
 import type { OperationalSiteDetailWithPermissions } from '@/features/operational-sites/types'
 
 /**
@@ -13,8 +12,6 @@ import type { OperationalSiteDetailWithPermissions } from '@/features/operationa
 
 interface OperationalSiteDetailHeaderProps {
   operationalSite: OperationalSiteDetailWithPermissions
-  /** Opens the module's existing edit surface; absent = no edit affordance. */
-  onEdit?: () => void
 }
 
 /**
@@ -23,15 +20,11 @@ interface OperationalSiteDetailHeaderProps {
  * as the previous card decided.
  *
  * Deliberately NO subtitle: the street would have to be it, and the address
- * section already shows the street under precisely the same condition (only
- * when an alias took the title). A subtitle here printed it twice.
+ * section already shows the street row. There is no edit action: the rows edit
+ * in place.
  */
-export function OperationalSiteDetailHeader({
-  operationalSite,
-  onEdit,
-}: OperationalSiteDetailHeaderProps) {
+export function OperationalSiteDetailHeader({ operationalSite }: OperationalSiteDetailHeaderProps) {
   const title = operationalSite.alias ?? operationalSite.line1
-  const canEdit = Boolean(onEdit) && operationalSite.permissions.resource.update
 
   return (
     <RecordCardHeader
@@ -43,7 +36,7 @@ export function OperationalSiteDetailHeader({
         />
       }
       title={title}
-      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+      legacyId={operationalSite.old_id}
     />
   )
 }

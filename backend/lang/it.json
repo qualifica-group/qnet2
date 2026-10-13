@@ -54,6 +54,10 @@
     "The selected value does not exist or is not available.": "Il valore selezionato non esiste o non è disponibile.",
     "The selected product category is invalid.": "La categoria prodotto selezionata non è valida.",
     "This product category is not selectable.": "Questa categoria prodotto non è selezionabile.",
+    "This product category is not active.": "Questa categoria prodotto non è attiva.",
+    "This product belongs to an inactive category.": "Questo prodotto appartiene a una categoria non attiva.",
+    "The selected sector is invalid.": "Il settore selezionato non è valido.",
+    "This sector is not active.": "Questo settore non è attivo.",
     "An unexpected error occurred.": "Si è verificato un errore imprevisto.",
     "Resource not found.": "Risorsa non trovata.",
     "This action is unauthorized.": "Non hai i permessi per questa azione.",
@@ -200,5 +204,6 @@
     "The settlement must be a draft of the same agent and company.": "L'estratto deve essere una bozza dello stesso agente e della stessa società.",
     "The adjustment amount cannot be zero.": "L'importo della rettifica non può essere zero.",
     "This fiscal profile is used by a commission settlement.": "Il profilo fiscale è usato da un estratto provvigioni.",
-    "This VAT rate is used by an agent fiscal profile.": "L'aliquota IVA è usata da un profilo fiscale agente."
+    "This VAT rate is used by an agent fiscal profile.": "L'aliquota IVA è usata da un profilo fiscale agente.",
+    "The documentation is being prepared, try again in a few seconds.": "La documentazione è in preparazione, riprova tra qualche secondo."
 }

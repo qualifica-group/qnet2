@@ -42,6 +42,7 @@ vi.mock('@/features/attachments/documents-section', () => ({
 }))
 
 const refreshMock = vi.fn()
+const setFilterModelMock = vi.fn()
 
 const ROW: TableRow = { id: 12, actions: ['view', 'edit'] }
 const action = (key: string): TableActionDefinition => ({
@@ -54,12 +55,24 @@ const action = (key: string): TableActionDefinition => ({
 
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
-    { refresh: () => void },
-    { domain: string; onAction: RowActionHandler }
-  >(function TableViewStub({ domain, onAction }, ref) {
-    useImperativeHandle(ref, () => ({ refresh: refreshMock }))
+    { refresh: () => void; setFilterModel: (patch: Record<string, unknown>) => void },
+    {
+      domain: string
+      onAction: RowActionHandler
+      onFilterModelChange?: (model: Record<string, unknown>) => void
+    }
+  >(function TableViewStub({ domain, onAction, onFilterModelChange }, ref) {
+    useImperativeHandle(ref, () => ({ refresh: refreshMock, setFilterModel: setFilterModelMock }))
     return (
       <div role="region" aria-label={`table-${domain}`}>
+        <button
+          type="button"
+          onClick={() =>
+            onFilterModelChange?.({ registry_type: { filterType: 'set', values: ['company'] } })
+          }
+        >
+          grid-filters-companies
+        </button>
         <button type="button" onClick={() => onAction(action('view'), ROW)}>
           row-view
         </button>
@@ -102,6 +115,7 @@ beforeEach(() => {
   canMock.mockReset()
   canMock.mockReturnValue(true)
   refreshMock.mockReset()
+  setFilterModelMock.mockReset()
   documentsSectionMock.mockReset()
 })
 
@@ -160,5 +174,30 @@ describe('RegistriesTable — "documents" row action (spec 0173)', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(refreshMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('RegistriesTable — individuals / companies tabs', () => {
+  it('starts on All and writes the registry_type filter through the grid handle', () => {
+    renderTable()
+
+    expect(screen.getByRole('tab', { name: 'All' })).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Individuals' }))
+    expect(setFilterModelMock).toHaveBeenLastCalledWith({
+      registry_type: { filterType: 'set', values: ['individual'] },
+    })
+
+    fireEvent.click(screen.getByRole('tab', { name: 'All' }))
+    expect(setFilterModelMock).toHaveBeenLastCalledWith({ registry_type: null })
+  })
+
+  it('follows the live grid filter model', () => {
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'grid-filters-companies' }))
+
+    expect(screen.getByRole('tab', { name: 'Companies' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'All' })).toHaveAttribute('aria-selected', 'false')
   })
 })

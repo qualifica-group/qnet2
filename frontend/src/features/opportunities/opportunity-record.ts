@@ -1,7 +1,6 @@
 import type { UseFormReturn } from 'react-hook-form'
 import type { InlineEdit } from '@/components/record-form/record-inline-field'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
-import { useResourcePermissions } from '@/features/authorization/permissions'
 import type {
   OpportunityLeadRef,
   OpportunityManagerRef,
@@ -42,15 +41,3 @@ export interface OpportunityRecordSectionProps {
   lockedFields: ReadonlySet<string>
 }
 
-/**
- * Whether every field an editor's cascade writes is editable too (spec 0195
- * D-6c applied to Opportunita'): otherwise the editor must not open, or its
- * save would carry a write the server refuses.
- */
-export function useCascadeEditable(fields: readonly string[]): boolean {
-  const { field } = useResourcePermissions()
-  return fields.every((name) => {
-    const permission = field(name)
-    return permission.editable && !permission.disabled
-  })
-}

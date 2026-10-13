@@ -1,10 +1,17 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
+import { ProductCategoryDetailView } from '@/features/product-categories/product-category-detail'
 import { ProductCategoryForm } from '@/features/product-categories/product-category-form'
+import {
+  EDITABLE,
+  applyRow,
+  categoryWrapper,
+  category as baseCategory,
+  permissionsFor,
+  saveRow,
+} from '@/features/product-categories/product-category-test-fixtures'
 import type { ProductCategoryDetailWithPermissions } from '@/features/product-categories/types'
 import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
 import type { CustomFieldDescriptor } from '@/features/custom-fields/types'
@@ -21,14 +28,15 @@ import type { CustomFieldDescriptor } from '@/features/custom-fields/types'
 const createProductCategoryMock = vi.fn()
 const updateProductCategoryMock = vi.fn()
 
-vi.mock('@/features/product-categories/api', () => ({
+vi.mock('@/features/product-categories/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/product-categories/api')>()),
   createProductCategory: (...args: unknown[]) => createProductCategoryMock(...args),
   updateProductCategory: (...args: unknown[]) => updateProductCategoryMock(...args),
   fetchProductCategoryTree: () => Promise.resolve([]),
   fetchEffectiveAttributes: () => Promise.resolve([]),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
@@ -43,15 +51,6 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
-const FULL_ACCESS: ResourcePermissions['resource'] = {
-  view: true,
-  create: true,
-  update: true,
-  delete: true,
-  export: true,
-  import: true,
-}
-
 const NOTES_FIELD: CustomFieldDescriptor = {
   key: 'custom.notes',
   type: 'text',
@@ -62,73 +61,19 @@ const NOTES_FIELD: CustomFieldDescriptor = {
 }
 
 function permissionsWithNotes(): ResourcePermissions {
-  return {
-    resource: FULL_ACCESS,
-    fields: {
-      'custom.notes': {
-        visible: true,
-        hidden: false,
-        editable: true,
-        readonly: false,
-        required: false,
-        disabled: false,
-      },
-    },
-    actions: {},
-  }
+  return permissionsFor({ 'custom.notes': EDITABLE })
 }
 
 function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
+  return categoryWrapper().wrapper
 }
 
-function category(
-  overrides: Partial<ProductCategoryDetailWithPermissions> = {},
-): ProductCategoryDetailWithPermissions {
-  return {
-    id: 4,
-    name: 'Laptops',
-    parent_id: null,
-    parent: null,
-    inherits_product_attributes: true,
-    inherits_quote_attributes: true,
-    inherits_work_order_attributes: true,
-    description: null,
-    attributes: [],
-    inherited_attributes: [],
-    created_at: '2026-01-01T00:00:00Z',
-    business_function_id: null,
-    requires_quote: false,
-    business_function: null,
-    effective_business_function: null,
-    requires_quote_source_category: null,
-    is_selectable: true,
-    is_reportable: false,
-    effective_is_reportable: false,
-    is_reportable_source_category: null,
-    report_columns: null,
-    effective_report_columns: [],
-    report_columns_source_category: null,
-    inherited_report_columns: [],
-    inherited_report_columns_source_category: null,
-    management_mode: 'multiple',
-    single_quote_per_opportunity: false,
-    generates_contract: true,
-    management_mode_source_category: null,
-    single_quote_per_opportunity_source_category: null,
-    generates_contract_source_category: null,
-    simplified_offer_line: false,
-    simplified_offer_line_override: null,
-    simplified_offer_line_source_category: null,
-    manager_labels: {},
-    inherits_manager_labels: true,
-    inherited_manager_labels: {},
-    permissions: permissionsWithNotes(),
-    ...overrides,
-  }
+function renderDetail(detail: ProductCategoryDetailWithPermissions) {
+  return render(<ProductCategoryDetailView category={detail} />, { wrapper: wrapper() })
+}
+
+function category(overrides: Partial<ProductCategoryDetailWithPermissions> = {}): ProductCategoryDetailWithPermissions {
+  return baseCategory({ permissions: permissionsWithNotes(), ...overrides })
 }
 
 beforeAll(async () => {
@@ -142,12 +87,14 @@ beforeEach(() => {
   fetchResourceMetaMock.mockResolvedValue({ fields: [NOTES_FIELD], permissions: permissionsWithNotes() })
 })
 
-describe('ProductCategoryForm — custom fields (spec 0021)', () => {
+describe('custom fields rows (spec 0021, spec 0229)', () => {
   it('renders the resource custom field control in create mode', async () => {
     render(
       <ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Notes' }))
 
     expect(await screen.findByRole('textbox', { name: 'Notes' })).toBeInTheDocument()
   })
@@ -161,11 +108,15 @@ describe('ProductCategoryForm — custom fields (spec 0021)', () => {
       { wrapper: wrapper() },
     )
 
-    fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'Laptops' } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Name' }))
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Laptops' } })
+    applyRow()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Notes' }))
     fireEvent.change(await screen.findByRole('textbox', { name: 'Notes' }), {
       target: { value: 'Key category' },
     })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    applyRow()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(createProductCategoryMock).toHaveBeenCalledTimes(1))
     const payload = createProductCategoryMock.mock.calls[0][0]
@@ -173,14 +124,9 @@ describe('ProductCategoryForm — custom fields (spec 0021)', () => {
   })
 
   it('seeds the custom field value from the loaded category detail in edit mode', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{ type: 'edit', category: category({ custom_fields: { notes: 'Existing note' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(category({ custom_fields: { notes: 'Existing note' } }))
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Notes' }))
 
     expect(await screen.findByRole('textbox', { name: 'Notes' })).toHaveValue('Existing note')
   })
@@ -189,14 +135,12 @@ describe('ProductCategoryForm — custom fields (spec 0021)', () => {
     const original = category({ custom_fields: { notes: 'Existing note' } })
     updateProductCategoryMock.mockResolvedValue(original)
 
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: original }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(original)
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Notes' }))
     const notes = await screen.findByRole('textbox', { name: 'Notes' })
     fireEvent.change(notes, { target: { value: 'Updated note' } })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    saveRow()
 
     await waitFor(() => expect(updateProductCategoryMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateProductCategoryMock.mock.calls[0]
@@ -222,17 +166,11 @@ describe('ProductCategoryForm — custom fields (spec 0021)', () => {
     )
     vi.spyOn(axios, 'isAxiosError').mockReturnValue(true)
 
-    render(
-      <ProductCategoryForm
-        mode={{ type: 'edit', category: category({ custom_fields: { notes: 'Existing note' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(category({ custom_fields: { notes: 'Existing note' } }))
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Notes' }))
     await screen.findByRole('textbox', { name: 'Notes' })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    saveRow()
 
     await waitFor(() => expect(screen.getByText('Notes must be shorter.')).toBeInTheDocument())
     expect(updateProductCategoryMock).toHaveBeenCalledTimes(1)

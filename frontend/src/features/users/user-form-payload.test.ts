@@ -370,16 +370,30 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
 })
 
 describe('buildUpdatePayload — employment (spec 0015)', () => {
-  it('always includes the employment object (upsert semantics)', () => {
+  // REQUIREMENT CHANGED (spec 0222 D-3): the in-place detail saves one row at
+  // a time, so the profile travels only when one of its fields changed — and
+  // then whole, since the server upserts the object.
+  it('omits the employment object when none of its fields changed', () => {
+    const payload = buildUpdatePayload({ ...formValues, password: '', password_confirmation: '' }, original(), draft())
+
+    expect(payload).not.toHaveProperty('employment')
+  })
+
+  it('sends the whole employment object when one of its fields changed (upsert semantics)', () => {
     const payload = buildUpdatePayload(
-      { ...formValues, password: '', password_confirmation: '' },
+      {
+        ...formValues,
+        password: '',
+        password_confirmation: '',
+        employment: { ...formValues.employment, job_description: 'Analyst' },
+      },
       original(),
       draft(),
     )
 
     expect(payload.employment).toEqual({
       is_manager: false,
-      job_description: null,
+      job_description: 'Analyst',
       reports_to_ids: [],
       relationship_type: null,
       company_id: null,

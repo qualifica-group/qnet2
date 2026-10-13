@@ -1,9 +1,9 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Flag } from 'lucide-react'
-import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
+import { DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,91 +12,81 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
+import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
+import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
-import { cn } from '@/lib/utils'
-import type { ContractStatusDetailWithPermissions } from '@/features/contract-statuses/types'
+import { ContractStatusRows } from '@/features/contract-statuses/contract-status-rows'
+import { useContractStatusForm, type ContractStatusFormValues } from '@/features/contract-statuses/use-contract-status-form'
+import type { ContractStatusDetailWithPermissions, ContractStatusFormMode } from '@/features/contract-statuses/types'
 
 interface ContractStatusDetailViewProps {
   contractStatus: ContractStatusDetailWithPermissions
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the record (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single contract status, rendered as an
- * enterprise-CRM record (Opportunita' reference layout): the
- * identity/fields card on the left, the activity card on the right, a
- * metadata footer.
+ * Detail of a single contract status on the record kit: identity band, the
+ * "Dettagli" rows, the activity in the side column, a metadata
+ * footer. There is no edit page (spec 0235): every row edits IN PLACE, one at
+ * a time, each save a PATCH of that field alone.
  */
-export function ContractStatusDetailView({ contractStatus, onEdit }: ContractStatusDetailViewProps) {
+export function ContractStatusDetailView(props: ContractStatusDetailViewProps) {
+  // The rows read the field permissions, so the provider wraps the whole detail.
+  return (
+    <ResourcePermissionsProvider permissions={props.contractStatus.permissions}>
+      <ContractStatusDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function ContractStatusDetailContent({ contractStatus, onChanged }: ContractStatusDetailViewProps) {
   const { t } = useTranslation()
+  const editing = useInlineEditingField()
+  // Stable per saved record: the form re-syncs its values on a new one.
+  const mode = useMemo<ContractStatusFormMode>(() => ({ type: 'edit', contractStatus }), [contractStatus])
+  const { form, onSubmit, serverError, clearServerError } = useContractStatusForm({
+    mode,
+    onSuccess: () => {
+      editing.close()
+      onChanged?.()
+    },
+  })
+  const inline = useRecordInlineEdit<ContractStatusFormValues>({
+    editing,
+    form,
+    onSubmit,
+    serverError,
+    clearServerError,
+    genericErrorMessage: t('contractStatuses.form.genericError'),
+  })
   const canEdit = contractStatus.permissions.resource.update
   const createdAt = formatDateTime(contractStatus.created_at)
-  const swatch = swatchClassFor(contractStatus.color)
-  const canViewActivity = contractStatus.permissions.actions.view_activity
+  const tabs = contractStatus.permissions.actions.view_activity
+    ? [activityLogTab('contract-statuses', contractStatus.id, t('activityLog.title'))]
+    : []
 
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab('contract-statuses', contractStatus.id, t('activityLog.title'))]}
-            />
-          ) : null
+        collaborationTabs={tabs}
+        header={
+          <RecordCardHeader media={<DetailMonogram name={contractStatus.name} icon={<Flag />} />} title={contractStatus.name} />
         }
       >
-        <RecordCard>
-          <RecordCardHeader
-            media={
-              <DetailMonogram
-                name={contractStatus.name}
-                icon={<Flag />}
-                className="size-10 text-base [&>svg]:size-5"
-              />
-            }
-            title={contractStatus.name}
-            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
-          />
+        {/* Provider only (no DOM): the in-place rows share the edit form. */}
+        <Form {...form}>
           <RecordSectionsGrid>
             <RecordSection title={t('contractStatuses.form.sections.identity.title')} full>
               <RecordFieldList>
-                <RecordField label={t('contractStatuses.detail.description')}>
-                  {contractStatus.description ? contractStatus.description : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('contractStatuses.detail.color')}>
-                  {contractStatus.color ? (
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
-                        aria-hidden="true"
-                      />
-                      {t(`customFields.colors.${contractStatus.color}`)}
-                    </span>
-                  ) : (
-                    <DetailEmpty />
-                  )}
-                </RecordField>
-                <RecordField label={t('contractStatuses.detail.sort_order')}>
-                  {contractStatus.sort_order}
-                </RecordField>
-                <RecordField label={t('contractStatuses.detail.group')}>
-                  {t(`contractStatuses.form.group.${contractStatus.group}`)}
-                </RecordField>
-                <RecordField label={t('contractStatuses.detail.isActive')}>
-                  {contractStatus.is_active ? t('common.yes') : t('common.no')}
-                </RecordField>
-                <RecordField label={t('contractStatuses.detail.isDefault')}>
-                  {contractStatus.is_default ? t('common.yes') : t('common.no')}
-                </RecordField>
+                <ContractStatusRows inline={inline} canEdit={canEdit} isSystemRow={contractStatus.system_key !== null} isCurrentDefault={contractStatus.is_default} />
+                <RecordField label={t('contractStatuses.detail.sort_order')}>{contractStatus.sort_order}</RecordField>
               </RecordFieldList>
             </RecordSection>
           </RecordSectionsGrid>
-        </RecordCard>
+        </Form>
       </RecordBody>
 
       {createdAt ? (

@@ -21,8 +21,12 @@ export function buildCommissionConfigurationSchema(t: TFunction) {
       recipient_type: z.enum(COMMISSION_RECIPIENT_TYPES),
       recipient_id: z.number().nullable(),
       commission_type: z.enum(COMMISSION_TYPES),
-      value: z.number().min(0, t('commissionConfigurations.form.errors.valueInvalid')),
-      priority: z.number().int(t('commissionConfigurations.form.errors.priorityInvalid')),
+      value: z
+        .number(t('commissionConfigurations.form.errors.valueInvalid'))
+        .min(0, t('commissionConfigurations.form.errors.valueInvalid')),
+      priority: z
+        .number(t('commissionConfigurations.form.errors.priorityInvalid'))
+        .int(t('commissionConfigurations.form.errors.priorityInvalid')),
       valid_from: z.string().min(1, t('commissionConfigurations.form.errors.validFromRequired')),
       valid_until: z.string().nullable(),
       status: z.enum(COMMISSION_STATUSES),

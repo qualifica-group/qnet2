@@ -18,7 +18,8 @@ import { CompletionCell } from '@/features/table/completion-cell'
  * own `BooleanBadgeCell` (mirrors `contract-statuses`/`payment-methods`
  * `is_active`, shared `common.yes`/`common.no`). `code` renders as a compact
  * monospace badge (mirrors `unitOfMeasureColumnRenderers`); `callback_date`
- * and `start_date` (spec 0096) are date-only columns; `created_at`/
+ * and `start_date` (spec 0096) are date-only columns, like the read-only
+ * `contract_expiry_date` (the contract's own expiry); `created_at`/
  * `updated_at` reuse the shared datetime renderer. `supervisors`
  * ("Responsabili", spec 0096) is a to-many of `{id,name,avatar_url}` and
  * reuses the SAME `UserStackCell` the Offerta's and Opportunita's own
@@ -35,6 +36,7 @@ export const workOrderColumnRenderers: TableRendererMap = {
   is_force_closed: (params) => <BooleanBadgeCell {...params} />,
   callback_date: (params) => <DateCell {...params} />,
   start_date: (params) => <DateCell {...params} />,
+  contract_expiry_date: (params) => <DateCell {...params} />,
   supervisors: (params) => <UserStackCell {...params} />,
   completion_percentage: (params) => (
     <CompletionCell {...params} label={i18n.t('workOrders.columns.completion_percentage')} />

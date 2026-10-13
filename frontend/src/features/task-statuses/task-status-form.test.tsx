@@ -2,7 +2,6 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { TaskStatusForm } from '@/features/task-statuses/task-status-form'
 import type { TaskStatusDetailWithPermissions } from '@/features/task-statuses/types'
@@ -11,9 +10,9 @@ import type { FieldPermission, ResourcePermissions } from '@/features/authorizat
 /**
  * Spec 0101 AC-087: the form composes the SHARED `ColorTokenPicker` and
  * `IconPicker`, so a color is picked as a palette token (never typed as a hex)
- * and an icon as a curated lucide name. AC-043: a system row keeps only
- * name/color/icon/completion_percentage writable, so its `group` phase is
- * locked like `description`/`is_active`.
+ * and an icon as a curated lucide name. Wave 3 of the "no edit pages" plan:
+ * the form is create-only, a replica of the detail with its rows closed
+ * (the in-place edits live in `task-status-detail.test.tsx`).
  *
  * Labels are resolved through `i18n.t` rather than hardcoded English: the
  * locale catalogue for this module is delivered by its own microtask, and the
@@ -21,11 +20,9 @@ import type { FieldPermission, ResourcePermissions } from '@/features/authorizat
  */
 
 const createTaskStatusMock = vi.fn()
-const updateTaskStatusMock = vi.fn()
 
 vi.mock('@/features/task-statuses/api', () => ({
   createTaskStatus: (...args: unknown[]) => createTaskStatusMock(...args),
-  updateTaskStatus: (...args: unknown[]) => updateTaskStatusMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
@@ -46,8 +43,8 @@ const ALL_EDITABLE: ResourcePermissions = {
     description: EDITABLE,
     color: EDITABLE,
     icon: EDITABLE,
-    group: EDITABLE,
     is_active: EDITABLE,
+    group: EDITABLE,
     completion_percentage: EDITABLE,
   },
   actions: {},
@@ -55,8 +52,8 @@ const ALL_EDITABLE: ResourcePermissions = {
 
 let metaPermissions: ResourcePermissions = ALL_EDITABLE
 
-vi.mock('@/features/task-statuses/use-task-status-form-meta', () => ({
-  useTaskStatusFormMeta: () => ({ status: 'ready', permissions: metaPermissions }),
+vi.mock('@/features/authorization/use-resource-meta', () => ({
+  useResourceMeta: () => ({ data: { permissions: metaPermissions }, isError: false, refetch: vi.fn() }),
 }))
 
 /** A QueryClient per test, never per render: a shared cache makes suites flaky. */
@@ -72,18 +69,15 @@ function labelFor(key: string): RegExp {
   return new RegExp(`^${i18n.t(key).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
 }
 
-/** The completion percentage input, the one field only this configurator has (D-4). */
-function percentageInput(): HTMLElement {
-  return screen.getByLabelText(labelFor('taskStatuses.form.completionPercentage'))
-}
-
-/** The group phase picker, wired as a `Select` exactly like the contract statuses one. */
-function groupCombobox(): HTMLElement {
-  return screen.getByRole('combobox', { name: i18n.t('taskStatuses.form.group.label') })
-}
-
 const COLOR_PLACEHOLDER = 'customFields.form.colorPickerPlaceholder'
 const ICON_PLACEHOLDER = 'customFields.form.iconPickerPlaceholder'
+
+/** Opens a closed row through its pencil. */
+function openRow(key: string) {
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t(key) }) }))
+}
+
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: i18n.t('taskStatuses.form.save') })[0])
 
 function taskStatus(
   overrides: Partial<TaskStatusDetailWithPermissions> = {},
@@ -97,8 +91,8 @@ function taskStatus(
     sort_order: 3,
     is_active: true,
     system_key: null,
-    group: 'pending',
-    completion_percentage: 25,
+    group: 'open',
+    completion_percentage: 0,
     created_at: null,
     updated_at: null,
     permissions: ALL_EDITABLE,
@@ -112,59 +106,54 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createTaskStatusMock.mockReset()
-  updateTaskStatusMock.mockReset()
   metaPermissions = ALL_EDITABLE
 })
 
 describe('TaskStatusForm — create (spec 0101)', () => {
-  it('renders the name, description, color and icon controls', () => {
-    render(<TaskStatusForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('starts with every row closed; the name row opens on its own control', () => {
+    render(<TaskStatusForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+
+    openRow('taskStatuses.form.name')
     expect(screen.getByLabelText(labelFor('taskStatuses.form.name'))).toBeInTheDocument()
-    expect(screen.getByLabelText(labelFor('taskStatuses.form.description'))).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: i18n.t(COLOR_PLACEHOLDER) }),
-    ).toBeInTheDocument()
+  })
+
+  it('opens the shared color and icon pickers from their rows', () => {
+    render(<TaskStatusForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
+
+    openRow('taskStatuses.form.color')
+    expect(screen.getByRole('button', { name: i18n.t(COLOR_PLACEHOLDER) })).toBeInTheDocument()
+
+    openRow('taskStatuses.form.icon')
     // The picker trigger takes the field id, so its accessible name is the LABEL;
     // the placeholder is its visible content.
     expect(screen.getByLabelText(labelFor('taskStatuses.form.icon'))).toBeInTheDocument()
     expect(screen.getByText(i18n.t(ICON_PLACEHOLDER))).toBeInTheDocument()
-    expect(percentageInput()).toBeInTheDocument()
-    expect(groupCombobox()).toHaveTextContent(i18n.t('taskStatuses.form.group.open'))
   })
 
-  it('shows an accessible inline error and does not call the API when name is empty', async () => {
-    render(<TaskStatusForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('shows the error on the closed row, wires the aria triad and does not call the API when name is empty', async () => {
+    render(<TaskStatusForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskStatuses.form.save') }))
+    save()
 
-    const nameInput = await screen.findByLabelText(labelFor('taskStatuses.form.name'))
-    await waitFor(() => expect(nameInput).toHaveAttribute('aria-invalid', 'true'))
-    const describedBy = nameInput.getAttribute('aria-describedby')
-    expect(describedBy).toBeTruthy()
-    const message = screen.getByText(i18n.t('taskStatuses.form.nameRequired'))
-    expect(message).toHaveAttribute('role', 'alert')
-    expect(describedBy).toContain(message.id)
+    expect(await screen.findByText(i18n.t('taskStatuses.form.nameRequired'))).toHaveAttribute('role', 'alert')
+
+    openRow('taskStatuses.form.name')
+    const nameInput = screen.getByLabelText(labelFor('taskStatuses.form.name'))
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput.getAttribute('aria-describedby')).toBeTruthy()
     expect(createTaskStatusMock).not.toHaveBeenCalled()
   })
 
   it('blocks the submit while no palette color is picked (D-4: the column is NOT NULL)', async () => {
-    render(<TaskStatusForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<TaskStatusForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.change(screen.getByLabelText(labelFor('taskStatuses.form.name')), {
-      target: { value: 'In progress' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskStatuses.form.save') }))
+    openRow('taskStatuses.form.name')
+    fireEvent.change(screen.getByLabelText(labelFor('taskStatuses.form.name')), { target: { value: 'In progress' } })
+    save()
 
-    await waitFor(() =>
-      expect(screen.getByText(i18n.t('taskStatuses.form.colorRequired'))).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.getByText(i18n.t('taskStatuses.form.colorRequired'))).toBeInTheDocument())
     expect(createTaskStatusMock).not.toHaveBeenCalled()
   })
 
@@ -172,16 +161,14 @@ describe('TaskStatusForm — create (spec 0101)', () => {
     createTaskStatusMock.mockResolvedValue(taskStatus())
     const onSuccess = vi.fn()
 
-    render(<TaskStatusForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<TaskStatusForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.change(screen.getByLabelText(labelFor('taskStatuses.form.name')), {
-      target: { value: 'In progress' },
-    })
+    openRow('taskStatuses.form.name')
+    fireEvent.change(screen.getByLabelText(labelFor('taskStatuses.form.name')), { target: { value: 'In progress' } })
+    openRow('taskStatuses.form.color')
     fireEvent.click(screen.getByRole('button', { name: i18n.t(COLOR_PLACEHOLDER) }))
     fireEvent.click(screen.getByRole('option', { name: i18n.t('customFields.colors.emerald') }))
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskStatuses.form.save') }))
+    save()
 
     await waitFor(() => expect(createTaskStatusMock).toHaveBeenCalledTimes(1))
     expect(createTaskStatusMock).toHaveBeenCalledWith({
@@ -194,119 +181,5 @@ describe('TaskStatusForm — create (spec 0101)', () => {
       completion_percentage: 0,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(taskStatus()))
-  })
-})
-
-describe('TaskStatusForm — edit (spec 0101)', () => {
-  it('hydrates every field from the loaded detail', () => {
-    render(
-      <TaskStatusForm
-        mode={{ type: 'edit', taskStatus: taskStatus() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.getByLabelText(labelFor('taskStatuses.form.name'))).toHaveValue('In progress')
-    expect(screen.getByLabelText(labelFor('taskStatuses.form.description'))).toHaveValue('Follow-up on the client request')
-    expect(
-      screen.getByRole('button', { name: i18n.t('customFields.colors.blue') }),
-    ).toBeInTheDocument()
-    expect(screen.getByLabelText(labelFor('taskStatuses.form.icon'))).toHaveTextContent('star')
-    expect(percentageInput()).toHaveValue(25)
-    expect(groupCombobox()).toHaveTextContent(i18n.t('taskStatuses.form.group.pending'))
-  })
-
-  it('submits only the changed field on a partial update, never sort_order', async () => {
-    updateTaskStatusMock.mockResolvedValue(taskStatus({ name: 'Renamed' }))
-
-    render(
-      <TaskStatusForm
-        mode={{ type: 'edit', taskStatus: taskStatus() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(labelFor('taskStatuses.form.name')), {
-      target: { value: 'Renamed' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskStatuses.form.save') }))
-
-    await waitFor(() => expect(updateTaskStatusMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateTaskStatusMock.mock.calls[0]
-    expect(id).toBe(9)
-    expect(payload).toEqual({ name: 'Renamed' })
-    expect(payload).not.toHaveProperty('sort_order')
-  })
-
-  it('maps a server 422 onto the matching form field', async () => {
-    updateTaskStatusMock.mockRejectedValue(
-      new AxiosError('Unprocessable', '422', undefined, undefined, {
-        status: 422,
-        data: {
-          success: false,
-          message: 'Validation failed',
-          errors: { name: ['Name already taken.'] },
-        },
-      } as never),
-    )
-
-    render(
-      <TaskStatusForm
-        mode={{ type: 'edit', taskStatus: taskStatus() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(labelFor('taskStatuses.form.name')), {
-      target: { value: 'Duplicate' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskStatuses.form.save') }))
-
-    await waitFor(() => expect(screen.getByText('Name already taken.')).toBeInTheDocument())
-  })
-
-  it('locks description, the group phase and the active switch on a system row (AC-043)', () => {
-    render(
-      <TaskStatusForm
-        mode={{ type: 'edit', taskStatus: taskStatus({ system_key: 'closed_positive' }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.getByLabelText(labelFor('taskStatuses.form.description'))).toBeDisabled()
-    expect(groupCombobox()).toBeDisabled()
-    expect(screen.getByRole('switch')).toBeDisabled()
-    // name / color / icon / completion_percentage stay writable (MUTABLE_SYSTEM_FIELDS).
-    expect(screen.getByLabelText(labelFor('taskStatuses.form.name'))).toBeEnabled()
-    expect(percentageInput()).toBeEnabled()
-  })
-
-  it('sends the new percentage of a system row, so every task in it follows (AC-021/AC-044)', async () => {
-    updateTaskStatusMock.mockResolvedValue(
-      taskStatus({ system_key: 'closed_negative', completion_percentage: 10 }),
-    )
-
-    render(
-      <TaskStatusForm
-        mode={{ type: 'edit', taskStatus: taskStatus({ system_key: 'closed_negative', completion_percentage: 0 }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(percentageInput(), { target: { value: '10' } })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskStatuses.form.save') }))
-
-    await waitFor(() => expect(updateTaskStatusMock).toHaveBeenCalledTimes(1))
-    expect(updateTaskStatusMock.mock.calls[0][1]).toEqual({ completion_percentage: 10 })
   })
 })

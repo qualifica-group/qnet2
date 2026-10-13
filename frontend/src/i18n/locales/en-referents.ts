@@ -18,7 +18,7 @@ export const referents = {
   },
   detail: {
     title: 'Referent details',
-    subtitle: 'Read-only view of the selected referent.',
+    subtitle: 'Details of the selected referent, editable in place.',
     loadError: 'Unable to load the referent. Please try again.',
     details: 'Details',
     // The KPI strip's own labels, not the side column's Contacts/Addresses
@@ -28,17 +28,11 @@ export const referents = {
       addresses: 'Locations',
       cardType: 'Card type',
     },
-    summary: {
-      title: 'Summary',
-      description: 'Updated as you type.',
-    },
   },
   form: {
     newReferent: 'New referent',
     createTitle: 'Create referent',
     createSubtitle: 'Add a new referent to your organization.',
-    editTitle: 'Edit referent',
-    editSubtitle: 'Update the selected referent.',
     referentType: 'Referent type',
     referentTypePlaceholder: 'Select a referent type…',
     referentTypeSearch: 'Search referent types…',
@@ -50,8 +44,6 @@ export const referents = {
     linkedUserEmpty: 'No users found.',
     linkedUserError: 'Unable to load users.',
     contactScope: 'Contact scope',
-    activitySectors: 'Activity sectors',
-    activitySectorsComingSoon: 'Coming soon',
     notes: 'Notes',
     notesMax: 'Notes must be at most 5000 characters.',
     save: 'Save',
@@ -62,23 +54,25 @@ export const referents = {
     deleted: 'Referent deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the referent. Please try again.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The referent has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     deleteForbidden: 'You cannot delete this referent.',
     sections: {
       identity: {
         title: 'Personal details',
-        description: 'Identifying details of the referent.',
       },
       details: {
         title: 'Referent details',
-        description: 'Type, linked user, contact scope and notes.',
       },
       contacts: {
         title: 'Contacts',
-        description: 'Phone and email contact details.',
       },
       addresses: {
         title: 'Addresses',
-        description: 'Registered offices and billing addresses.',
       },
     },
   },
@@ -94,7 +88,7 @@ export const referentTypes = {
   },
   detail: {
     title: 'Referent type details',
-    subtitle: 'Read-only view of the selected referent type.',
+    subtitle: 'Details of the selected referent type, editable in place.',
     loadError: 'Unable to load the referent type. Please try again.',
     created_at: 'Created at',
   },
@@ -102,8 +96,6 @@ export const referentTypes = {
     newReferentType: 'New referent type',
     createTitle: 'Create referent type',
     createSubtitle: 'Add a new referent type to your organization.',
-    editTitle: 'Edit referent type',
-    editSubtitle: 'Update the selected referent type.',
     name: 'Name',
     save: 'Save',
     saving: 'Saving…',
@@ -116,10 +108,15 @@ export const referentTypes = {
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the referent type. Please try again.',
     deleteForbidden: 'You cannot delete this referent type.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The referent type has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name of the referent type.',
       },
     },
   },

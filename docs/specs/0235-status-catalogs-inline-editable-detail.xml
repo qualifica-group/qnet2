@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0235-status-catalogs-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Onda 3 del piano "nessuna pagina di modifica": i cataloghi di stato Stati Progetto/Campagna (pipeline-statuses),
+    Stati Contratto (contract-statuses), Stati pagamento commessa (work-order-payment-statuses), Stati premio
+    (reward-statuses) e Tipologie premio (reward-types) modificano sul posto nel dettaglio e si creano come il
+    dettaglio, con il KIT CONDIVISO della spec 0233 (pilota: Priorita' Task).
+  </goal>
+
+  <context>
+    - D-1 (come 0233 D-2): `api.update*` restituisce il dettaglio CON `permissions`; `*DetailQueryKey` esportata da
+      `api.ts`; l'hook del form in edit ha `values` + `resetOptions.keepDirtyValues` e `clearServerError`; dettaglio =
+      `ResourcePermissionsProvider` + `Form` + righe del kit; creazione = `RecordCreateLayout` + stesse righe con
+      `useDraftInlineEdit`; il form wrapper e' solo creazione (`useResourceMeta`), via i `use-*-form-meta.ts`; screens
+      con `generateEditRoute: false`, `detailOwnsEditAction: true`, `formOwnsHeader: true`, `useFormLeaveGuard` e
+      `form.leaveConfirm.*`.
+    - D-2: il selettore di gruppo (pipeline/contract/reward-status) e' un `RecordInlineField` diretto sul `Select`
+      esistente (il kit non ha una riga a select); i campi flessibili di pipeline-statuses usano
+      `CustomFieldRecordSections`, come product-categories.
+    - D-3 (righe bloccate, comportamento invariato): una riga di sistema (`system_key` valorizzata) modifica solo nome
+      e colore; su Stati Contratto la riga predefinita (BR-5) non puo' disattivare `is_default` (si riassegna
+      rendendo predefinita un'altra riga) e il vincolo "predefinita richiede attiva" resta nello schema. Le righe
+      bloccate non mostrano la matita; i suggerimenti (`hints.system*`, `cannotUnsetDefault`) vivevano solo
+      nell'editor e sono rimossi.
+    - D-4: l'ordine (`sort_order`) resta server-managed, riga di sola lettura; `old_id` resta il badge dell'identita'
+      (Stati pagamento commessa). Backend invariato.
+    - D-5: le voci di quick-create di pipeline-statuses e reward-types passano `mode` al form: ora e' solo creazione
+      (la prop `mode` e' rimossa).
+  </context>
+
+  <acceptance>
+    <ac id="AC-001">Per ognuno dei 5 moduli: nessuna rotta `:id/edit` ne' pulsante Modifica; ogni riga salva solo il
+      proprio campo; Annulla non chiama; 422 sulla riga; senza `update` nessuna matita; sulle righe bloccate nessuna
+      matita.</ac>
+    <ac id="AC-002">Creazione a righe chiuse con Fatto/Ripristina; Salva valida tutto (colore obbligatorio dove lo era);
+      uscita con conferma.</ac>
+    <ac id="AC-003">Guide in-app IT/EN `pipeline-statuses`, `contract-statuses`, `work-order-payment-statuses`,
+      `reward-statuses`, `reward-types` aggiornate (sezione `managing`).</ac>
+  </acceptance>
+</spec>

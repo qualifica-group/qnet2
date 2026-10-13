@@ -165,6 +165,22 @@ export function selectableIdsUnderRoot(
 }
 
 /**
+ * The optional INTERMEDIATE filter a card row may add between its root and
+ * its category (user directive 2026-10-08, e.g. Consulenza › ISO › ISO 9001):
+ * the root's direct children that still have selectable categories beneath
+ * them, containers included — a filter only narrows the last select, it is
+ * never the row's target. Never persisted: the row keeps saving its category
+ * alone. Empty for an unknown root or one with no such grouping child.
+ */
+export function filterCategoriesUnderRoot(
+  nodes: ProductCategoryTreeNode[],
+  rootCategoryId: number,
+): ProductCategoryTreeNode[] {
+  const root = findNode(nodes, rootCategoryId)
+  return root === null ? [] : root.children.filter((child) => collectSelectableIds(child.children).size > 0)
+}
+
+/**
  * Walks the tree from a persisted category up to its ROOT ancestor (spec 0132
  * AC-017): the id an edit-loaded row's `root_category_id` preselects, off the
  * same cached tree — no request of its own. A category that IS a root

@@ -1,94 +1,106 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Gift } from 'lucide-react'
 import { DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
-  RecordField,
   RecordFieldList,
   RecordMeta,
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
+import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
+import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
-import { cn } from '@/lib/utils'
-import type { RewardTypeDetailWithPermissions } from '@/features/reward-types/types'
+import { RewardTypeRows } from '@/features/reward-types/reward-type-rows'
+import { useRewardTypeForm, type RewardTypeFormValues } from '@/features/reward-types/use-reward-type-form'
+import type { RewardTypeDetailWithPermissions, RewardTypeFormMode } from '@/features/reward-types/types'
 
 interface RewardTypeDetailViewProps {
   rewardType: RewardTypeDetailWithPermissions
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the record (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single reward type, rendered as an enterprise-CRM
- * record (Opportunita' reference layout): the identity/fields card on the
- * left, the activity card on the right. Unlike some of its siblings,
- * `color` is always set (D-5) and both `created_at`/`updated_at` are shown
- * (spec 0058 data_contract), so both dates sit in the footer meta strip.
+ * Detail of a single reward type on the record kit: identity band, the
+ * "Dettagli" rows, the activity in the side column, a metadata
+ * footer. There is no edit page (spec 0235): every row edits IN PLACE, one at
+ * a time, each save a PATCH of that field alone.
  */
-export function RewardTypeDetailView({ rewardType, onEdit }: RewardTypeDetailViewProps) {
+export function RewardTypeDetailView(props: RewardTypeDetailViewProps) {
+  // The rows read the field permissions, so the provider wraps the whole detail.
+  return (
+    <ResourcePermissionsProvider permissions={props.rewardType.permissions}>
+      <RewardTypeDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function RewardTypeDetailContent({ rewardType, onChanged }: RewardTypeDetailViewProps) {
   const { t } = useTranslation()
+  const editing = useInlineEditingField()
+  // Stable per saved record: the form re-syncs its values on a new one.
+  const mode = useMemo<RewardTypeFormMode>(() => ({ type: 'edit', rewardType }), [rewardType])
+  const { form, onSubmit, serverError, clearServerError } = useRewardTypeForm({
+    mode,
+    onSuccess: () => {
+      editing.close()
+      onChanged?.()
+    },
+  })
+  const inline = useRecordInlineEdit<RewardTypeFormValues>({
+    editing,
+    form,
+    onSubmit,
+    serverError,
+    clearServerError,
+    genericErrorMessage: t('rewardTypes.form.genericError'),
+  })
   const canEdit = rewardType.permissions.resource.update
-  const swatch = swatchClassFor(rewardType.color)
-  const canViewActivity = rewardType.permissions.actions.view_activity
+  const createdAt = formatDateTime(rewardType.created_at)
+  const updatedAt = formatDateTime(rewardType.updated_at)
+  const tabs = rewardType.permissions.actions.view_activity
+    ? [activityLogTab('reward-types', rewardType.id, t('activityLog.title'))]
+    : []
 
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab('reward-types', rewardType.id, t('activityLog.title'))]}
-            />
-          ) : null
+        collaborationTabs={tabs}
+        header={
+          <RecordCardHeader media={<DetailMonogram name={rewardType.name} icon={<Gift />} />} title={rewardType.name} />
         }
       >
-        <RecordCard>
-          <RecordCardHeader
-            media={
-              <DetailMonogram
-                name={rewardType.name}
-                icon={<Gift />}
-                className="size-10 text-base [&>svg]:size-5"
-              />
-            }
-            title={rewardType.name}
-            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
-          />
+        {/* Provider only (no DOM): the in-place rows share the edit form. */}
+        <Form {...form}>
           <RecordSectionsGrid>
             <RecordSection title={t('rewardTypes.form.sections.identity.title')} full>
               <RecordFieldList>
-                <RecordField label={t('rewardTypes.detail.color')}>
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
-                      aria-hidden="true"
-                    />
-                    {t(`customFields.colors.${rewardType.color}`)}
-                  </span>
-                </RecordField>
+                <RewardTypeRows inline={inline} canEdit={canEdit} />
               </RecordFieldList>
             </RecordSection>
           </RecordSectionsGrid>
-        </RecordCard>
+        </Form>
       </RecordBody>
 
       <RecordMeta>
-        <span>
-          <span className="font-medium">{t('rewardTypes.detail.created_at')}</span>{' '}
-          <span aria-hidden="true">·</span> {formatDateTime(rewardType.created_at)}
-        </span>
-        <span>
-          <span className="font-medium">{t('rewardTypes.detail.updated_at')}</span>{' '}
-          <span aria-hidden="true">·</span> {formatDateTime(rewardType.updated_at)}
-        </span>
+        {createdAt ? (
+          <span>
+            <span className="font-medium">{t('rewardTypes.detail.created_at')}</span>{' '}
+            <span aria-hidden="true">·</span> {createdAt}
+          </span>
+        ) : null}
+        {updatedAt ? (
+          <span>
+            <span className="font-medium">{t('rewardTypes.detail.updated_at')}</span>{' '}
+            <span aria-hidden="true">·</span> {updatedAt}
+          </span>
+        ) : null}
       </RecordMeta>
     </RecordCanvas>
   )

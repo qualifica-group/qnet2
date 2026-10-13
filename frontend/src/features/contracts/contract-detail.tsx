@@ -1,12 +1,10 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Paperclip } from 'lucide-react'
-import { RecordCanvas, RecordCard, RecordMeta } from '@/components/detail/record-panel'
+import { Form } from '@/components/ui/form'
+import { RecordCanvas, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
@@ -15,6 +13,8 @@ import { CONTRACT_ATTACHABLE_ALIAS, CONTRACTS_DOMAIN } from '@/features/contract
 import { ContractActionsBar } from '@/features/contracts/contract-actions-bar'
 import { ContractDetailHeader } from '@/features/contracts/contract-detail-header'
 import { ContractDetailSections } from '@/features/contracts/contract-detail-fields'
+import { contractLifecycleActions } from '@/features/contracts/contract-lifecycle'
+import { useContractInlineEdit } from '@/features/contracts/use-contract-inline-edit'
 import {
   ContractWorkOrdersSection,
   type ContractWorkOrdersSectionHandle,
@@ -81,7 +81,7 @@ function useCollaborationTabs(contract: ContractDetailWithPermissions): RecordCo
 }
 
 /**
- * Read-only detail of a single contract (spec 0072, AC-043), rendered on the
+ * Detail of a single contract (spec 0072, AC-043), rendered on the
  * same `RecordCanvas` kit as `/quotes/:id` (user directive 2026-08-31): on the
  * left ONE card carrying identity + domain actions + titled sections and, as
  * its closing band, the read-only product lines; the collaboration card (documenti, attività) on
@@ -89,9 +89,9 @@ function useCollaborationTabs(contract: ContractDetailWithPermissions): RecordCo
  *
  * Every field is a live projection through the quote (BR-7/AC-040, nothing is
  * duplicated on `contracts`); the domain actions
- * (validate/schedule/terminate/reactivate/edit/change-status) live in
+ * (validate/program/terminate/reactivate/change-status) live in
  * `ContractActionsBar`, each gated on its own permission and on the lifecycle
- * (AC-044).
+ * (AC-044). The contract's own fields edit in place (spec 0219).
  */
 export function ContractDetailView({ contract: initialContract }: ContractDetailViewProps) {
   const { t } = useTranslation()
@@ -99,6 +99,10 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
   const collaborationTabs = useCollaborationTabs(contract)
   const createdAt = formatDateTime(contract.created_at)
   const updatedAt = formatDateTime(contract.updated_at)
+
+  // Spec 0219: the contract's own fields edit in place while it is still working.
+  const editor = useContractInlineEdit(contract, setContract)
+  const canEdit = contract.permissions.resource.update && contractLifecycleActions(contract).edit
 
   // "Programma" lives in the actions bar (a SIBLING of the Commesse tab
   // below), so its success is bubbled here and forwarded through this ref
@@ -109,26 +113,31 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
     <ResourcePermissionsProvider permissions={contract.permissions}>
       <RecordCanvas>
         <RecordBody
-          side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+          collaborationTabs={collaborationTabs}
+          header={
+            <>
+              <ContractDetailHeader contract={contract} />
+              <ContractActionsBar
+                contract={contract}
+                onChanged={setContract}
+                onWorkOrderCreated={() => workOrdersRef.current?.refresh()}
+              />
+            </>
+          }
         >
-          <RecordCard>
-            <ContractDetailHeader contract={contract} />
-            <ContractActionsBar
-              contract={contract}
-              onChanged={setContract}
-              onWorkOrderCreated={() => workOrdersRef.current?.refresh()}
-            />
-            <ContractDetailSections contract={contract} />
+          {/* Provider only (no DOM): the inline editors share the edit form. */}
+          <Form {...editor.form}>
+            <ContractDetailSections contract={contract} editor={editor} canEdit={canEdit} />
+          </Form>
 
-            {/* Banda di chiusura: le sole righe di ricavo del preventivo
-                (BR-7), read-only. Nessuna strip (qui c'e' una sola collezione,
-                non due come sull'Offerta) e nessun riepilogo economico —
-                ricavi/costi/margine attesi sono usciti dalla scheda per
-                direttiva utente 2026-08-31. */}
-            <div className="min-w-0 border-t p-4">
-              <QuoteLinesReadOnlyList lines={contract.offer_lines} />
-            </div>
-          </RecordCard>
+          {/* Banda di chiusura: le sole righe di ricavo del preventivo
+              (BR-7), read-only. Nessuna strip (qui c'e' una sola collezione,
+              non due come sull'Offerta) e nessun riepilogo economico —
+              ricavi/costi/margine attesi sono usciti dalla scheda per
+              direttiva utente 2026-08-31. */}
+          <div className="min-w-0 border-t p-4">
+            <QuoteLinesReadOnlyList lines={contract.offer_lines} />
+          </div>
         </RecordBody>
 
         {/*

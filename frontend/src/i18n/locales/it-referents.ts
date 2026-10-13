@@ -18,7 +18,7 @@ export const referents = {
   },
   detail: {
     title: 'Dettaglio referente',
-    subtitle: 'Visualizzazione in sola lettura del referente selezionato.',
+    subtitle: 'Dettaglio del referente selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare il referente. Riprova.',
     details: 'Dettagli',
     // Etichette della striscia KPI: sono SUE, non i titoli dei blocchi laterali
@@ -28,17 +28,11 @@ export const referents = {
       addresses: 'Sedi',
       cardType: 'Tipo anagrafica',
     },
-    summary: {
-      title: 'Riepilogo',
-      description: 'Si aggiorna mentre compili.',
-    },
   },
   form: {
     newReferent: 'Nuovo referente',
     createTitle: 'Crea referente',
     createSubtitle: 'Aggiungi un nuovo referente alla tua organizzazione.',
-    editTitle: 'Modifica referente',
-    editSubtitle: 'Aggiorna il referente selezionato.',
     referentType: 'Tipo referente',
     referentTypePlaceholder: 'Seleziona un tipo referente…',
     referentTypeSearch: 'Cerca tipi referente…',
@@ -50,8 +44,6 @@ export const referents = {
     linkedUserEmpty: 'Nessun utente trovato.',
     linkedUserError: 'Impossibile caricare gli utenti.',
     contactScope: 'Ambito contatto',
-    activitySectors: 'Settori attività',
-    activitySectorsComingSoon: 'Prossimamente',
     notes: 'Note',
     notesMax: 'Le note possono contenere al massimo 5000 caratteri.',
     save: 'Salva',
@@ -62,23 +54,25 @@ export const referents = {
     deleted: 'Referente eliminato con successo.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il referente. Riprova.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il referente non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     deleteForbidden: 'Non puoi eliminare questo referente.',
     sections: {
       identity: {
         title: 'Dati anagrafici',
-        description: 'Dati identificativi del referente.',
       },
       details: {
         title: 'Dettagli referente',
-        description: 'Tipo, utente collegato, ambito di contatto e note.',
       },
       contacts: {
         title: 'Contatti',
-        description: 'Recapiti telefonici ed email.',
       },
       addresses: {
         title: 'Indirizzi',
-        description: 'Sedi e indirizzi di fatturazione.',
       },
     },
   },
@@ -94,7 +88,7 @@ export const referentTypes = {
   },
   detail: {
     title: 'Dettaglio tipo referente',
-    subtitle: 'Visualizzazione in sola lettura del tipo referente selezionato.',
+    subtitle: 'Dettaglio del tipo referente selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare il tipo referente. Riprova.',
     created_at: 'Creato il',
   },
@@ -102,8 +96,6 @@ export const referentTypes = {
     newReferentType: 'Nuovo tipo referente',
     createTitle: 'Crea tipo referente',
     createSubtitle: 'Aggiungi un nuovo tipo referente alla tua organizzazione.',
-    editTitle: 'Modifica tipo referente',
-    editSubtitle: 'Aggiorna il tipo referente selezionato.',
     name: 'Nome',
     save: 'Salva',
     saving: 'Salvataggio…',
@@ -116,10 +108,15 @@ export const referentTypes = {
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il tipo referente. Riprova.',
     deleteForbidden: 'Non puoi eliminare questo tipo referente.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il tipo referente non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome del tipo referente.',
       },
     },
   },

@@ -49,7 +49,7 @@ export const projects = {
   },
   detail: {
     title: 'Dettagli progetto',
-    subtitle: 'Vista di sola lettura del progetto selezionato.',
+    subtitle: 'Dettaglio del progetto selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare il progetto. Riprova.',
     budget: 'Budget',
     allocatedBudget: 'Budget allocato',
@@ -64,24 +64,18 @@ export const projects = {
     newProject: 'Nuovo progetto',
     createTitle: 'Crea progetto',
     createSubtitle: "Aggiungi un nuovo progetto all'organizzazione.",
-    editTitle: 'Modifica progetto',
-    editSubtitle: 'Aggiorna il progetto selezionato.',
     sections: {
       identity: {
         title: 'Identità',
-        description: 'Codice, denominazione e descrizione del progetto.',
       },
       classification: {
         title: 'Classificazione',
-        description: 'Stato e le altre relazioni di classificazione.',
       },
       geography: {
         title: 'Ambito geografico',
-        description: 'Paese, regione, provincia e città del progetto.',
       },
       planning: {
         title: 'Pianificazione e budget',
-        description: 'Tempistiche, budget e target lead.',
       },
     },
     hints: {
@@ -90,7 +84,6 @@ export const projects = {
       targetLead: 'Numero di lead atteso da raggiungere.',
       partner: 'Compila se il progetto è richiesto dal partner (i costi sono imputati al partner).',
       operationalSite: 'Ereditata come precompilazione da ogni campagna/lead creato in questo progetto; resta modificabile.',
-      geography: 'Seleziona il paese, poi restringi a regione, provincia e città.',
     },
     code: 'Codice',
     codePlaceholder: 'Codice suggerito, modificabile',
@@ -129,6 +122,12 @@ export const projects = {
     deleted: 'Progetto eliminato con successo.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare il progetto. Riprova.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il progetto non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     deleteForbidden: 'Non puoi eliminare questo progetto.',
     deleteHasCampaigns: 'Questo progetto non può essere eliminato: ha ancora campagne collegate.',
   },

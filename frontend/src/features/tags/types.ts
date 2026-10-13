@@ -14,6 +14,8 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
  */
 export interface TagDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   created_at: string
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
@@ -44,7 +46,7 @@ export interface CreateTagPayload {
 export type UpdateTagPayload = Partial<CreateTagPayload>
 
 /**
- * Discriminated form mode shared by the form hook/meta-resolver and the
+ * Discriminated form mode shared by the form hook and the
  * `TagForm` component (mirrors `ReferentTypeFormMode`).
  */
 export type TagFormMode = { type: 'create' } | { type: 'edit'; tag: TagDetailWithPermissions }

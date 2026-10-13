@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
 import i18n from '@/i18n'
+import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { LeadsTable } from '@/features/leads/leads-table'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
@@ -167,7 +168,9 @@ function renderTable() {
     ...render(
       <QueryClientProvider client={client}>
         <MemoryRouter>
-          <LeadsTable />
+          <ConfirmDialogProvider>
+            <LeadsTable />
+          </ConfirmDialogProvider>
         </MemoryRouter>
       </QueryClientProvider>,
     ),
@@ -217,16 +220,16 @@ describe('LeadsTable — Sheet-based CRUD (AC-024)', () => {
     expect(await screen.findAllByText('Jane Doe')).not.toHaveLength(0)
   })
 
-  it('ignores the retired edit row action and opens the edit sheet from the detail Edit button', async () => {
+  // REQUIREMENT CHANGED (spec 0217): the detail edits in place, there is no edit sheet to open.
+  it('ignores the retired edit row action, and the detail offers no Edit button', async () => {
     renderTable()
 
     fireEvent.click(screen.getByText('trigger-edit'))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('trigger-view'))
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
-
-    expect(await screen.findByText('Edit lead')).toBeInTheDocument()
+    expect(await screen.findAllByText('Jane Doe')).not.toHaveLength(0)
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
   })
 
   it('opens the create sheet from the New lead button', async () => {
@@ -344,16 +347,15 @@ describe('LeadsTable — mutation success closes the sheet and refreshes (AC-023
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['leads', 'detail', 33] })
   })
 
-  it('closes the edit sheet on cancel without refreshing the grid', async () => {
+  // REQUIREMENT CHANGED (spec 0217): no edit sheet; leaving the create sheet asks first (spec 0195 D-9).
+  it('closes the create sheet on a confirmed cancel without refreshing the grid', async () => {
     renderTable()
 
-    fireEvent.click(screen.getByText('trigger-view'))
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
-    expect(await screen.findByText('Edit lead')).toBeInTheDocument()
-
+    fireEvent.click(screen.getByRole('button', { name: /new lead/i }))
     fireEvent.click(await screen.findByText('stub-cancel'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave without saving' }))
 
-    await waitFor(() => expect(screen.queryByText('Edit lead')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Create lead')).not.toBeInTheDocument())
     expect(refreshMock).not.toHaveBeenCalled()
   })
 })

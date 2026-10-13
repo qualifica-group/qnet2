@@ -47,7 +47,7 @@ export const quotes = {
     registry: 'Anagrafica',
     referent: 'Referente',
     source: 'Fonte',
-    productLines: 'Funzioni aziendali e categorie prodotto',
+    productLines: 'Linee prodotto',
     opportunityGeneralNotes: "Note generali dell'opportunità",
     commercial: 'Commerciale',
     reporter: 'Segnalatore',
@@ -95,6 +95,8 @@ export const quotes = {
     titleHint:
       "Proposto come codice dell'offerta seguito dai prodotti delle sue righe di ricavo (es. QUO-0042 - ISO 9001 + SOA). Se lo modifichi resta il tuo; svuota il campo per tornare al titolo automatico.",
     titleMax: 'Il titolo può contenere al massimo 191 caratteri.',
+    quoteDate: 'Data offerta',
+    quoteDateRequired: 'La data offerta è obbligatoria.',
     opportunity: 'Opportunità',
     opportunitySearch: 'Cerca opportunità…',
     opportunityRequired: "L'opportunità è obbligatoria.",

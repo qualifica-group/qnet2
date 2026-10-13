@@ -29,8 +29,8 @@ const guide: HelpGuide = {
           rows: [
             [
               'Dati offerta',
-              '**Codice**, **Titolo**, **Opportunità**',
-              "L'opportunità non si cambia dopo la creazione.",
+              '**Codice**, **Titolo**, **Data offerta**, **Opportunità**',
+              "La data offerta è proposta con la data di oggi. L'opportunità non si cambia dopo la creazione.",
             ],
             ['Anagrafica e contatti', '**Commerciale**, **Segnalatore** (con i suoi **Buoni**)', "Precompilati dall'opportunità."],
             ['Team', '**Supervisore**, **Gestori account**', "Sincronizzati con l'opportunità."],
@@ -50,6 +50,10 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: "Il **Titolo** è facoltativo: se lo lasci vuoto QNet usa il codice dell'offerta seguito dai prodotti delle sue righe di ricavo (per esempio QUO-0042 - ISO 9001 + SOA) e lo aggiorna quando cambi le righe. Se scrivi un titolo tuo resta quello; svuota il campo per tornare al titolo automatico.",
+        },
+        {
+          type: 'note',
+          text: "La **Data offerta** è obbligatoria e si può cambiare anche dal dettaglio. Un'offerta creata da **Gestione Richieste** o dalla conversione di un lead prende la data del giorno in cui viene creata.",
         },
       ],
     },
@@ -76,7 +80,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Codice, Opportunità). Anagrafica, Referente, Fonte, Funzioni aziendali e Note generali vengono dall'opportunità e restano in sola lettura.",
+          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Codice, Opportunità). Anagrafica, Referente, Fonte, Linee prodotto e Note generali vengono dall'opportunità e restano in sola lettura.",
         },
         {
           type: 'list',

@@ -30,7 +30,7 @@ export const leads = {
   },
   detail: {
     title: 'Dettagli lead',
-    subtitle: 'Visualizzazione in sola lettura del lead selezionato.',
+    subtitle: 'Dettaglio del lead selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare il lead. Riprova.',
     unknownRegistry: 'Anagrafica sconosciuta',
     importedData: {
@@ -48,32 +48,18 @@ export const leads = {
     importLeads: 'Importa lead',
     createTitle: 'Crea lead',
     createSubtitle: "Aggiungi un nuovo lead all'organizzazione.",
-    editTitle: 'Modifica lead',
-    editSubtitle: 'Aggiorna il lead selezionato.',
     sections: {
       conversion: {
         title: 'Conversione in Opportunità',
-        description: "Genera automaticamente l'Opportunità collegata alla creazione del Lead.",
       },
       contact: {
         title: 'Anagrafica e campagna',
-        description: "L'anagrafica, la campagna che l'ha generata e lo stato del lead.",
       },
       details: {
         title: 'Dettagli',
-        description: 'Sede e operatore incaricato, e la fonte da cui proviene il lead.',
       },
       productsOfInterest: {
         title: 'Prodotti di interesse',
-        description: 'I prodotti che interessano il lead, filtrati dalle categorie della Campagna scelta.',
-      },
-      notes: {
-        title: 'Note',
-        description: 'Annotazioni libere sul lead.',
-      },
-      extraFields: {
-        title: 'Campi extra / Dati importati',
-        description: 'Coppie chiave/valore libere, di solito provenienti da un import.',
       },
     },
     registry: 'Anagrafica',
@@ -132,6 +118,12 @@ export const leads = {
     deleted: 'Lead eliminato con successo.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare il lead. Riprova.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il lead non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     deleteForbidden: 'Non puoi eliminare questo lead.',
   },
   assign: {

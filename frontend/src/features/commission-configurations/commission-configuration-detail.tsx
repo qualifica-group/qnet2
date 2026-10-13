@@ -1,209 +1,99 @@
-import { CalendarRange, CircleDollarSign, Settings2 } from 'lucide-react'
+import { useMemo } from 'react'
+import { CircleDollarSign } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import i18n from '@/i18n'
-import { Badge } from '@/components/ui/badge'
 import { DetailMonogram } from '@/components/detail/detail-panel'
-import {
-  RecordCanvas,
-  RecordCard,
-  RecordCardHeader,
-  RecordField,
-  RecordFieldList,
-  RecordMeta,
-  RecordSection,
-  RecordSectionsGrid,
-} from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
-import { RecordLink } from '@/components/detail/record-link'
+import { RecordCanvas, RecordCardHeader, RecordMeta } from '@/components/detail/record-panel'
+import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
+import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import type { CommissionConfigurationDetailWithPermissions, CommissionRecipientType } from './types'
-import { formatDate } from '@/lib/formatting/date-display'
-
-/** Placeholder for an open-ended validity bound. */
-const EMPTY_DATE = '–'
-
-/**
- * Record module of each recipient type. A `user` recipient has no entry: people
- * are not linked as records (see `RecordLink`), so it stays plain text.
- */
-const RECIPIENT_DOMAINS: Partial<Record<CommissionRecipientType, string>> = {
-  referent: 'referents',
-  registry: 'registries',
-}
+import { CommissionConfigurationSections } from './commission-configuration-rows'
+import type { CommissionConfigurationFormValues } from './commission-configuration-schema'
+import { useCommissionConfigurationForm } from './use-commission-configuration-form'
+import type {
+  CommissionConfigurationDetailWithPermissions,
+  CommissionConfigurationFormMode,
+  CommissionConfigurationRefs,
+} from './types'
 
 interface CommissionConfigurationDetailViewProps {
   configuration: CommissionConfigurationDetailWithPermissions
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the record (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single commission configuration, rendered as an
- * enterprise-CRM record on the same kit Opportunita' uses: the identity/
- * fields card on the left, the activity card on the right, a metadata
- * footer. Every field is additionally gated on its own per-field
- * `permissions.fields[key].visible` (spec 0004), on top of the record-level
- * Edit affordance gated on `permissions.resource.update`.
+ * Detail of a single commission configuration on the record kit: identity
+ * band, the three sections of rows, the activity card, a metadata footer.
+ * There is no edit page (wave 4 of the "no edit pages" plan): every row edits
+ * IN PLACE, one at a time, each save a PATCH of that row's field(s) alone;
+ * the fields the server validates together are grouped in one row.
  */
-export function CommissionConfigurationDetailView({
-  configuration,
-  onEdit,
-}: CommissionConfigurationDetailViewProps) {
+export function CommissionConfigurationDetailView(props: CommissionConfigurationDetailViewProps) {
+  // The rows read the field permissions, so the provider wraps the whole detail.
+  return (
+    <ResourcePermissionsProvider permissions={props.configuration.permissions}>
+      <CommissionConfigurationDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function CommissionConfigurationDetailContent({ configuration, onChanged }: CommissionConfigurationDetailViewProps) {
   const { t } = useTranslation()
-  const canEdit = configuration.permissions.resource.update
-  const canViewActivity = configuration.permissions.actions.view_activity
-  const visible = (field: string) =>
-    configuration.permissions.fields[field]?.visible ?? true
-  const scopeRelationField =
-    configuration.application_scope === 'PRODUCT'
-      ? 'product_id'
-      : configuration.application_scope === 'PRODUCT_CATEGORY'
-        ? 'product_category_id'
-        : null
-  const scopeSectionVisible =
-    visible('recipient_role') ||
-    visible('application_scope') ||
-    (scopeRelationField ? visible(scopeRelationField) : false) ||
-    visible('recipient_id')
-  const calculationSectionVisible =
-    visible('commission_type') ||
-    visible('value') ||
-    visible('priority') ||
-    visible('status')
-  const validitySectionVisible =
-    visible('valid_from') ||
-    visible('valid_until') ||
-    visible('internal_note')
-  const option = (field: string, value: string) =>
-    t(`commissionConfigurations.options.${field}.${value}`)
-  const recipientDomain = configuration.recipient_type
-    ? RECIPIENT_DOMAINS[configuration.recipient_type]
-    : undefined
-  const formattedValue =
-    configuration.commission_type === 'PERCENTAGE'
-      ? `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 4 }).format(Number(configuration.value))}%`
-      : new Intl.NumberFormat(i18n.language, { minimumFractionDigits: 2 }).format(Number(configuration.value))
-  const title = visible('name') ? configuration.name : t('commissionConfigurations.detail.title')
+  const editing = useInlineEditingField()
+  // Stable per saved record: the form re-syncs its values on a new one.
+  const mode = useMemo<CommissionConfigurationFormMode>(() => ({ type: 'edit', configuration }), [configuration])
+  const { form, onSubmit, serverError, clearServerError } = useCommissionConfigurationForm({
+    mode,
+    onSuccess: () => {
+      editing.close()
+      onChanged?.()
+    },
+  })
+  const inline = useRecordInlineEdit<CommissionConfigurationFormValues>({
+    editing,
+    form,
+    onSubmit,
+    serverError,
+    clearServerError,
+    genericErrorMessage: t('commissionConfigurations.form.genericError'),
+  })
+  const refs = useMemo<CommissionConfigurationRefs>(
+    () => ({
+      category: configuration.product_category,
+      product: configuration.product,
+      recipient: configuration.recipient ?? null,
+    }),
+    [configuration],
+  )
+  const permissions = configuration.permissions
+  const title = permissions.fields.name?.visible === false ? t('commissionConfigurations.detail.title') : configuration.name
 
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab('commission-configurations', configuration.id, t('activityLog.title'))]}
-            />
-          ) : null
+        collaborationTabs={
+          permissions.actions.view_activity
+            ? [activityLogTab('commission-configurations', configuration.id, t('activityLog.title'))]
+            : []
         }
-      >
-        <RecordCard>
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={title} icon={<CircleDollarSign />} />}
             title={title}
-            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+            legacyId={configuration.old_id}
           />
-          <RecordSectionsGrid>
-            {scopeSectionVisible ? (
-              <RecordSection title={t('commissionConfigurations.detail.scope')} icon={<Settings2 />}>
-                <RecordFieldList>
-                  {visible('recipient_role') ? (
-                    <RecordField label={t('commissionConfigurations.form.recipient_role')}>
-                      {option('recipient_role', configuration.recipient_role)}
-                    </RecordField>
-                  ) : null}
-                  {visible('application_scope') ? (
-                    <RecordField label={t('commissionConfigurations.form.application_scope')}>
-                      {option('application_scope', configuration.application_scope)}
-                    </RecordField>
-                  ) : null}
-                  {scopeRelationField && visible(scopeRelationField) ? (
-                    <RecordField
-                      label={
-                        configuration.application_scope === 'PRODUCT'
-                          ? t('commissionConfigurations.form.product_id')
-                          : t('commissionConfigurations.form.product_category_id')
-                      }
-                    >
-                      {configuration.product ? (
-                        <RecordLink domain="products" id={configuration.product.id}>
-                          {configuration.product.name}
-                        </RecordLink>
-                      ) : (
-                        (configuration.product_category?.name ?? '–')
-                      )}
-                    </RecordField>
-                  ) : null}
-                  {visible('recipient_id') ? (
-                    <RecordField label={t('commissionConfigurations.form.recipient_id')}>
-                      {configuration.recipient && recipientDomain ? (
-                        <RecordLink domain={recipientDomain} id={configuration.recipient.id}>
-                          {configuration.recipient.name}
-                        </RecordLink>
-                      ) : (
-                        (configuration.recipient?.name ?? '–')
-                      )}
-                    </RecordField>
-                  ) : null}
-                </RecordFieldList>
-              </RecordSection>
-            ) : null}
-
-            {calculationSectionVisible ? (
-              <RecordSection title={t('commissionConfigurations.detail.calculation')} icon={<CircleDollarSign />}>
-                <RecordFieldList>
-                  {visible('commission_type') ? (
-                    <RecordField label={t('commissionConfigurations.form.commission_type')}>
-                      {option('commission_type', configuration.commission_type)}
-                    </RecordField>
-                  ) : null}
-                  {visible('value') ? (
-                    <RecordField label={t('commissionConfigurations.form.value')}>{formattedValue}</RecordField>
-                  ) : null}
-                  {visible('priority') ? (
-                    <RecordField label={t('commissionConfigurations.form.priority')}>
-                      {configuration.priority}
-                    </RecordField>
-                  ) : null}
-                  {visible('status') ? (
-                    <RecordField label={t('commissionConfigurations.form.status')}>
-                      <Badge variant={configuration.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                        {option('status', configuration.status)}
-                      </Badge>
-                    </RecordField>
-                  ) : null}
-                </RecordFieldList>
-              </RecordSection>
-            ) : null}
-
-            {validitySectionVisible ? (
-              <RecordSection title={t('commissionConfigurations.detail.validity')} icon={<CalendarRange />}>
-                <RecordFieldList>
-                  {visible('valid_from') ? (
-                    <RecordField label={t('commissionConfigurations.form.valid_from')}>
-                      {formatDate(configuration.valid_from) || EMPTY_DATE}
-                    </RecordField>
-                  ) : null}
-                  {visible('valid_until') ? (
-                    <RecordField label={t('commissionConfigurations.form.valid_until')}>
-                      {formatDate(configuration.valid_until) || EMPTY_DATE}
-                    </RecordField>
-                  ) : null}
-                  {visible('internal_note') ? (
-                    <RecordField label={t('commissionConfigurations.form.internal_note')}>
-                      {configuration.internal_note ?? '–'}
-                    </RecordField>
-                  ) : null}
-                </RecordFieldList>
-              </RecordSection>
-            ) : null}
-          </RecordSectionsGrid>
-        </RecordCard>
+        }
+      >
+        {/* Provider only (no DOM): the in-place rows share the edit form. */}
+        <Form {...form}>
+          <CommissionConfigurationSections inline={inline} canEdit={permissions.resource.update} refs={refs} />
+        </Form>
       </RecordBody>
 
-      {visible('updated_at') ? (
+      {permissions.fields.updated_at?.visible !== false ? (
         <RecordMeta>
           <span>
             <span className="font-medium">{t('commissionConfigurations.detail.updated_at')}</span>{' '}

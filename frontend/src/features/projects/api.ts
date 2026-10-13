@@ -16,7 +16,7 @@ export const PROJECT_CARDS_PAGE_SIZE = 12
 
 /**
  * Query key of a single project's detail (fresh-on-open pattern). Shared by
- * the detail/edit pages and by the post-mutation invalidation, so they can
+ * the detail page and by the post-mutation invalidation, so they can
  * never drift apart. `null` (an unparsable route param) is a key that is never
  * fetched.
  */
@@ -89,13 +89,20 @@ export async function createProject(payload: CreateProjectPayload): Promise<Proj
   return data.data
 }
 
-/** Partially updates a project (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a project (PATCH). Returns the updated resource with the
+ * actor's re-authorized `permissions`, so the in-place detail (spec 0220) can
+ * seed its cache with the full shape.
+ */
 export async function updateProject(
   id: number,
   payload: UpdateProjectPayload,
-): Promise<ProjectDetail> {
-  const { data } = await apiClient.patch<ApiResponse<ProjectDetail>>(`/projects/${id}`, payload)
-  return data.data
+): Promise<ProjectDetailWithPermissions> {
+  const { data } = await apiClient.patch<ApiResponseWithPermissions<ProjectDetail, ResourcePermissions>>(
+    `/projects/${id}`,
+    payload,
+  )
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a project. Backend responds 204 with no body (409 if it still has campaigns, BR-5). */

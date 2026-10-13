@@ -13,6 +13,7 @@ const VALID_PAYLOAD = {
   name: 'EMEA workflow',
   is_active: true,
   criteria: [{ field: 'business_function_id', value_id: 1 }],
+  statuses: [],
 }
 
 describe('buildCreateQuoteWorkflowSchema', () => {
@@ -31,6 +32,13 @@ describe('buildCreateQuoteWorkflowSchema', () => {
     const schema = buildCreateQuoteWorkflowSchema(i18n.t)
     const result = schema.safeParse({ ...VALID_PAYLOAD, name: 'a'.repeat(192) })
     expect(result.success).toBe(false)
+  })
+
+  it('rejects a status without a name', () => {
+    const schema = buildCreateQuoteWorkflowSchema(i18n.t)
+    const row = { id: 'c1', name: '  ', description: null, color: null, group: 'pending', system_key: null, requires_note: false }
+    expect(schema.safeParse({ ...VALID_PAYLOAD, statuses: [row] }).success).toBe(false)
+    expect(schema.safeParse({ ...VALID_PAYLOAD, statuses: [{ ...row, name: 'Review' }] }).success).toBe(true)
   })
 
   it('rejects an empty criteria array (min:1)', () => {

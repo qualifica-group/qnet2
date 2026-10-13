@@ -3,6 +3,7 @@
 namespace App\Migrations\Sources;
 
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Models\WorkOrder;
@@ -33,6 +34,16 @@ class WorkOrderLinePaymentsSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Work order line payments';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::required('work-orders'),
+        ];
     }
 
     public function endpoint(): string

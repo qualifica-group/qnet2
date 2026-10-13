@@ -68,6 +68,9 @@ final class CategoryTreeBuilder
                 // travels with each node so the pickers built on this cache
                 // (the product form's category picker) can filter themselves.
                 'is_selectable' => (bool) $category->is_selectable,
+                // Spec 0208: the node's OWN flag; the tree stays complete and
+                // the destination pickers prune it on the client (D-8).
+                'is_active' => (bool) $category->is_active,
                 // Spec 0131: the node's OWN report override (null = inherit),
                 // like business_function_id: the form resolves the inherited
                 // value by walking this cached tree.

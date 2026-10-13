@@ -7,6 +7,7 @@ use App\Http\Requests\Concerns\HasOperatorsBySiteRules;
 use App\Imports\Leads\LeadImportProductCoherence;
 use App\Models\ImportRun;
 use App\Models\ImportRunRow;
+use App\Rules\ActiveCategoryProduct;
 use App\Services\Assignment\ImportRunRowSelection;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Http\FormRequest;
@@ -77,7 +78,7 @@ class BulkAssignRequest extends FormRequest
             'operator_id' => ['required_if:mode,single', 'integer', 'exists:users,id'],
             'operational_site_id' => ['prohibited'],
             'product_ids' => ['sometimes', 'array', 'min:1'],
-            'product_ids.*' => ['integer', 'exists:products,id'],
+            'product_ids.*' => ['integer', new ActiveCategoryProduct],
             'mode' => ['sometimes', Rule::enum(LeadAssignmentMode::class)],
             'select_all' => ['nullable', 'boolean'],
             'row_ids' => ['array'],

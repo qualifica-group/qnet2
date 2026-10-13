@@ -4,16 +4,28 @@ import {
   fetchMigrationPreview,
   fetchMigrationSources,
 } from '@/features/migrations/api'
+import { resolveMigrationSourceState } from '@/features/migrations/migration-source-state'
 import { migrationKeys } from '@/features/migrations/query-keys'
 
 /** Default page size for the read-only external preview (fase 1). */
 export const MIGRATION_PREVIEW_PER_PAGE = 20
 
-/** The registered migration sources, populating the source selector. */
+/** How often the source list refreshes while one of its sources is importing, in ms. */
+const SOURCES_POLL_INTERVAL_MS = 3000
+
+/**
+ * The registered migration sources with their migration state, populating the
+ * source selector and the status overview. Re-polled while a source imports,
+ * so its state moves on even when the import dialog was closed.
+ */
 export function useMigrationSources() {
   return useQuery({
     queryKey: migrationKeys.sources,
     queryFn: fetchMigrationSources,
+    refetchInterval: (query) =>
+      query.state.data?.some((source) => resolveMigrationSourceState(source) === 'running')
+        ? SOURCES_POLL_INTERVAL_MS
+        : false,
   })
 }
 

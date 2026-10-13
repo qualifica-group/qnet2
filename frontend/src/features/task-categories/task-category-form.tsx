@@ -1,55 +1,47 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
-import { useTaskCategoryFormMeta } from '@/features/task-categories/use-task-category-form-meta'
+import { useResourceMeta } from '@/features/authorization/use-resource-meta'
 import { TaskCategoryFormBody } from '@/features/task-categories/task-category-form-body'
-import type { TaskCategoryDetail, TaskCategoryFormMode } from '@/features/task-categories/types'
+import type { TaskCategoryDetail } from '@/features/task-categories/types'
 
 interface TaskCategoryFormProps {
-  mode: TaskCategoryFormMode
-  /** Called after a successful create/update so the caller can close + refresh. */
+  /** Called after a successful create so the caller can navigate to the detail. */
   onSuccess: (taskCategory: TaskCategoryDetail) => void
   /** Called when the user cancels the form. */
   onCancel: () => void
 }
 
 /**
- * Reusable RHF + Zod form used for both creating and editing a task category.
- * Metadata-driven (spec 0004): resolves the resource's `ResourcePermissions`
- * before rendering — edit mode from the loaded instance detail, create mode
- * from `GET /meta/task-categories` — then hands off to `TaskCategoryFormBody`, which
- * reads every field from that context via `MetaField`/`useResourcePermissions()`.
+ * The task category create form (there is no edit form: the detail edits in
+ * place). Metadata-driven (spec 0004): resolves the create-context
+ * `ResourcePermissions` (`GET /meta/task-categories`) before rendering
+ * `TaskCategoryFormBody`.
  */
 export function TaskCategoryForm(props: TaskCategoryFormProps) {
   const { t } = useTranslation()
-  const meta = useTaskCategoryFormMeta(props.mode)
+  const metaQuery = useResourceMeta('task-categories')
 
-  if (meta.status === 'loading') {
-    return (
-      <div className="flex flex-col gap-4 p-4" aria-hidden="true">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
-  }
-
-  if (meta.status === 'error') {
+  if (metaQuery.isError) {
     return (
       <div className="flex flex-col items-start gap-3 p-4">
         <p className="text-sm text-destructive" role="alert">
           {t('authorization.loadError')}
         </p>
-        <Button variant="outline" size="sm" className="bg-card" onClick={meta.retry}>
+        <Button variant="outline" size="sm" className="bg-card" onClick={() => void metaQuery.refetch()}>
           {t('common.retry')}
         </Button>
       </div>
     )
   }
 
+  if (!metaQuery.data) {
+    return <RecordFormSkeleton />
+  }
+
   return (
-    <ResourcePermissionsProvider permissions={meta.permissions}>
+    <ResourcePermissionsProvider permissions={metaQuery.data.permissions}>
       <TaskCategoryFormBody {...props} />
     </ResourcePermissionsProvider>
   )

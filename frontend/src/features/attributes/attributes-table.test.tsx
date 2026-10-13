@@ -40,6 +40,7 @@ vi.mock('@/features/modules/use-module-open-mode', () => ({
 const fetchAttributeMock = vi.fn<(id: number) => Promise<never>>(() => new Promise(() => {}))
 
 vi.mock('@/features/attributes/api', () => ({
+  attributeDetailQueryKey: (id: number) => ['attributes', 'detail', id],
   fetchAttribute: (id: number) => fetchAttributeMock(id),
   deleteAttribute: vi.fn(),
 }))

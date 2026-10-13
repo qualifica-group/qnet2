@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -12,17 +12,14 @@ import { parseEntityId } from '@/routes/entity-id'
 import NotFoundPage from '@/pages/not-found-page'
 
 /**
- * Dedicated read-only page of a single product (spec 0022, replaces the view
- * Sheet). Mirrors `RegistryDetailPage`: fresh re-authorized fetch on mount,
- * unchanged presentational `ProductDetailView`; the record card owns the
- * single "Edit" affordance (the record kit's `detailOwnsEditAction`
- * convention, Opportunità/Anagrafiche), gated by the `permissions` block of
- * THIS response.
+ * Dedicated page of a single product (spec 0022, replaces the view Sheet).
+ * Mirrors `RegistryDetailPage`: fresh re-authorized fetch on mount, then
+ * `ProductDetailView`, which edits its fields in place (spec 0218) under the
+ * `permissions` block of THIS response. There is no edit page.
  */
 export default function ProductDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams()
-  const navigate = useNavigate()
   const productId = parseEntityId(id)
 
   const {
@@ -56,7 +53,9 @@ export default function ProductDetailPage() {
         }
       />
 
-      <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
+      {/* No `bg-card`: the record canvas paints its own `bg-surface` and the
+          cards inside it are the `bg-card` rung (ui-design.md §1-bis). */}
+      <div className="flex flex-1 flex-col overflow-hidden rounded-lg border">
         {isError ? (
           <DetailError
             error={error}
@@ -67,10 +66,7 @@ export default function ProductDetailPage() {
         ) : isLoading || !product ? (
           <DetailLoading />
         ) : (
-          <ProductDetailView
-            product={product}
-            onEdit={() => void navigate(`/products/${productId}/edit`)}
-          />
+          <ProductDetailView product={product} />
         )}
       </div>
     </div>

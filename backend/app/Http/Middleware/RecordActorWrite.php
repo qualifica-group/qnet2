@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Support\Cache\AggregateCache;
 use Closure;
 use Illuminate\Http\Request;
@@ -38,7 +39,9 @@ final class RecordActorWrite
     {
         $user = $request->user();
 
-        if ($user === null
+        // The aggregate cache is per user; an API client (spec 0209) has no
+        // dashboards, so its writes have nothing to invalidate.
+        if (! $user instanceof User
             || ! in_array($request->method(), self::WRITE_METHODS, true)
             || $response->getStatusCode() < 200
             || $response->getStatusCode() >= 300

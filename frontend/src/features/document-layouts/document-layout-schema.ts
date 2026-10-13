@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import type { DocumentLayoutConfig } from '@/features/document-layouts/layout-config'
 import { DOCUMENT_LAYOUT_MODULES } from '@/features/document-layouts/types'
 
 /**
@@ -11,9 +12,10 @@ import { DOCUMENT_LAYOUT_MODULES } from '@/features/document-layouts/types'
  * create and edit schemas: on edit both render disabled (backend field
  * permissions report them readonly outside create) and
  * `buildUpdatePayload` never emits them, so the value here is always the
- * server's own, already-valid one. `config` (the block/zone tree) is NOT a
- * field of this schema: it is owned by the visual editor (wave 2), not the
- * metadata form.
+ * server's own, already-valid one. `config` (the block/zone tree) is a form
+ * value owned by the visual editor, so a cancelled row or a discarded draft
+ * restores it like any other field; its shape is the server's to validate
+ * (path-based 422, AC-129), this schema only guarantees it is present.
  */
 
 /** Backend `name` column limit (`max:191`). */
@@ -46,6 +48,7 @@ function baseFields(t: TFunction) {
     }),
     is_active: z.boolean(),
     is_default: z.boolean(),
+    config: z.custom<DocumentLayoutConfig>((value) => typeof value === 'object' && value !== null),
   }
 }
 

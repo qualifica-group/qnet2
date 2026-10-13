@@ -1,47 +1,88 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Database } from 'lucide-react'
 import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCanvas, RecordCard, RecordCardHeader, RecordMeta } from '@/components/detail/record-panel'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
+import { RecordCanvas, RecordCardHeader, RecordMeta } from '@/components/detail/record-panel'
+import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
+import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { SourceSections } from '@/features/sources/source-rows'
+import { useSourceForm, type SourceFormValues } from '@/features/sources/use-source-form'
+import type { SourceDetailWithPermissions, SourceFormMode } from '@/features/sources/types'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import type { SourceDetailWithPermissions } from '@/features/sources/types'
+
+const NO_CUSTOM_FIELDS = {}
 
 interface SourceDetailViewProps {
   source: SourceDetailWithPermissions
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the record (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single source, rendered as an enterprise-CRM record
- * (Opportunita' reference kit): the identity card on the left, the Attivita'
- * tab on the right when authorized, a metadata footer.
+ * Detail of a single source on the record kit: identity band, the "Dettagli"
+ * row and the custom fields, the activity in the side column, a metadata
+ * footer. There is no edit page (wave 3 of the "no edit pages" plan): every
+ * row edits IN PLACE, one at a time, each save a PATCH of that field alone.
  */
-export function SourceDetailView({ source, onEdit }: SourceDetailViewProps) {
-  const { t } = useTranslation()
-  const canEdit = source.permissions.resource.update
-  const createdAt = formatDateTime(source.created_at)
+export function SourceDetailView(props: SourceDetailViewProps) {
+  // The rows read the field permissions, so the provider wraps the whole detail.
+  return (
+    <ResourcePermissionsProvider permissions={props.source.permissions}>
+      <SourceDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
 
+function SourceDetailContent({ source, onChanged }: SourceDetailViewProps) {
+  const { t } = useTranslation()
+  const editing = useInlineEditingField()
+  // Stable per saved record: the form re-syncs its values on a new one.
+  const mode = useMemo<SourceFormMode>(() => ({ type: 'edit', source }), [source])
+  const { form, onSubmit, serverError, clearServerError } = useSourceForm({
+    mode,
+    onSuccess: () => {
+      editing.close()
+      onChanged?.()
+    },
+  })
+  const inline = useRecordInlineEdit<SourceFormValues>({
+    editing,
+    form,
+    onSubmit,
+    serverError,
+    clearServerError,
+    genericErrorMessage: t('sources.form.genericError'),
+  })
+  const createdAt = formatDateTime(source.created_at)
   const tabs: RecordCollaborationTab[] = source.permissions.actions.view_activity
     ? [activityLogTab('sources', source.id, t('activityLog.title'))]
     : []
 
   return (
     <RecordCanvas>
-      <RecordBody side={tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}>
-        <RecordCard>
+      <RecordBody
+        collaborationTabs={tabs}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={source.name} icon={<Database />} />}
             title={source.name}
-            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
+            legacyId={source.old_id}
           />
-        </RecordCard>
+        }
+      >
+        {/* Provider only (no DOM): the in-place rows share the edit form. */}
+        <Form {...form}>
+          <SourceSections
+            form={form}
+            inline={inline}
+            canEdit={source.permissions.resource.update}
+            customFieldValues={source.custom_fields ?? NO_CUSTOM_FIELDS}
+          />
+        </Form>
       </RecordBody>
 
       {createdAt ? (

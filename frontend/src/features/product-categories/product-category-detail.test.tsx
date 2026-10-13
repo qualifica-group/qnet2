@@ -2,20 +2,21 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import { ProductCategoryDetailView } from '@/features/product-categories/product-category-detail'
+import { categoryWrapper } from '@/features/product-categories/product-category-test-fixtures'
 import type { ProductCategoryDetailWithPermissions } from '@/features/product-categories/types'
 
 /**
- * Spec 0061 follow-up: the read-only detail view splits `attributes` +
- * `inherited_attributes` into the SAME two context-scoped sections the
- * editor uses, instead of one flat, context-unlabeled list.
+ * What the detail shows before any row opens (spec 0229 keeps every closed
+ * value as the read-only detail rendered it): the attribute lists split by
+ * usage context (spec 0061 follow-up), the rule values with the root they are
+ * inherited from, the G.A. denominations. The in-place editing is covered by
+ * `product-category-detail-inline-edit.test.tsx`.
  *
  * Spec 0062 (MT-3.2) added `ProductCategoryAttributeLayoutSection` to this
  * same view; its own fetch/save wiring is covered by
  * `product-category-attribute-layout-section.test.tsx`, so here its data
- * hook is stubbed to keep this suite focused on the attribute sections above
- * it (and QueryClient-free, since the stub replaces the only `useQuery` call
- * in the tree). Spec 0141's report-columns catalogue (`ProductCategoryDetailRules`)
- * is stubbed the same way, for the same reason.
+ * hook is stubbed. Spec 0141's report-columns catalogue is stubbed the same
+ * way.
  */
 vi.mock('@/features/product-categories/use-report-columns-catalog', () => ({
   useReportColumnsCatalog: () => ({ data: undefined, isPending: false, isError: false }),
@@ -62,6 +63,7 @@ function category(
     effective_business_function: null,
     requires_quote_source_category: null,
     is_selectable: true,
+    is_active: true,
     is_reportable: false,
     effective_is_reportable: false,
     is_reportable_source_category: null,
@@ -87,44 +89,40 @@ function category(
   }
 }
 
+function renderView(detail: ProductCategoryDetailWithPermissions) {
+  return render(<ProductCategoryDetailView category={detail} />, { wrapper: categoryWrapper().wrapper })
+}
+
+/** The usage-context list whose title is `title` (the title's parent is the list root). */
+function contextList(title: string): HTMLElement {
+  return screen.getByText(title).parentElement as HTMLElement
+}
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
 describe('ProductCategoryDetailView — context-scoped attribute sections (spec 0061)', () => {
-  it('renders both section titles with their description', () => {
-    render(
-      <ProductCategoryDetailView
-        category={category({
+  it('renders the context title of every context that has an attribute', () => {
+    renderView(category({
           attributes: [
             { attribute_id: 1, code: 'color', name: 'Color', type: 'enum', is_required: false, sort_order: 0, context: 'product' },
           ],
-        })}
-      />,
-    )
+        }))
 
-    expect(screen.getByRole('heading', { name: 'Product attributes' })).toBeInTheDocument()
-    expect(
-      screen.getByText('Loaded in the Product card (create/edit) for products in this category.'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Product attributes')).toBeInTheDocument()
   })
 
   it('shows an own attribute only under its own context section', () => {
-    render(
-      <ProductCategoryDetailView
-        category={category({
+    renderView(category({
           attributes: [
             { attribute_id: 1, code: 'color', name: 'Color', type: 'enum', is_required: false, sort_order: 0, context: 'product' },
             { attribute_id: 2, code: 'ram_gb', name: 'RAM (GB)', type: 'integer', is_required: true, sort_order: 0, context: 'quote' },
           ],
-        })}
-      />,
-    )
+        }))
 
-    const productSection = screen.getByRole('heading', { name: 'Product attributes' }).closest('section') as HTMLElement
-    const quoteSection = screen
-      .getByRole('heading', { name: 'Quote attributes' })
-      .closest('section') as HTMLElement
+    const productSection = contextList('Product attributes')
+    const quoteSection = contextList('Quote attributes')
 
     expect(within(productSection).getByText('Color')).toBeInTheDocument()
     expect(within(productSection).queryByText('RAM (GB)')).not.toBeInTheDocument()
@@ -133,64 +131,48 @@ describe('ProductCategoryDetailView — context-scoped attribute sections (spec 
   })
 
   it('shows an inherited attribute only under its own context section, under the "inherited" heading', () => {
-    render(
-      <ProductCategoryDetailView
-        category={category({
+    renderView(category({
           inherited_attributes: [
             { attribute_id: 3, code: 'weight_kg', name: 'Weight (kg)', type: 'decimal', is_required: false, context: 'product' },
           ],
-        })}
-      />,
-    )
+        }))
 
-    const productSection = screen.getByRole('heading', { name: 'Product attributes' }).closest('section') as HTMLElement
+    const productSection = contextList('Product attributes')
 
     expect(within(productSection).getByText('Inherited from ancestor categories')).toBeInTheDocument()
     expect(within(productSection).getByText('Weight (kg)')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Quote attributes' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Quote attributes')).not.toBeInTheDocument()
   })
 
-  it('renders neither section when the category has no attribute in either context', () => {
-    render(<ProductCategoryDetailView category={category()} />)
+  it('renders no context list when the category has no attribute in any context', () => {
+    renderView(category())
 
-    expect(screen.queryByRole('heading', { name: 'Product attributes' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Quote attributes' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Work order attributes' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Product attributes')).not.toBeInTheDocument()
+    expect(screen.queryByText('Quote attributes')).not.toBeInTheDocument()
+    expect(screen.queryByText('Work order attributes')).not.toBeInTheDocument()
   })
 
   // Spec 0098: a third, independent context section.
   it('shows an own attribute under its own "Work order attributes" section', () => {
-    render(
-      <ProductCategoryDetailView
-        category={category({
+    renderView(category({
           attributes: [
             { attribute_id: 4, code: 'site_access', name: 'Site access', type: 'text', is_required: false, sort_order: 0, context: 'work_order' },
           ],
-        })}
-      />,
-    )
+        }))
 
-    const workOrderSection = screen
-      .getByRole('heading', { name: 'Work order attributes' })
-      .closest('section') as HTMLElement
+    const workOrderSection = contextList('Work order attributes')
     expect(within(workOrderSection).getByText('Site access')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Quote attributes' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Quote attributes')).not.toBeInTheDocument()
   })
 
   it('marks a required own attribute with the "Required" badge', () => {
-    render(
-      <ProductCategoryDetailView
-        category={category({
+    renderView(category({
           attributes: [
             { attribute_id: 2, code: 'ram_gb', name: 'RAM (GB)', type: 'integer', is_required: true, sort_order: 0, context: 'quote' },
           ],
-        })}
-      />,
-    )
+        }))
 
-    const quoteSection = screen
-      .getByRole('heading', { name: 'Quote attributes' })
-      .closest('section') as HTMLElement
+    const quoteSection = contextList('Quote attributes')
     expect(within(quoteSection).getByText('Required')).toBeInTheDocument()
   })
 })
@@ -206,13 +188,13 @@ function ruleValue(label: string): HTMLElement {
 
 describe('ProductCategoryDetailView — management rules', () => {
   it('groups every rule under one section', () => {
-    render(<ProductCategoryDetailView category={category()} />)
+    renderView(category())
 
     expect(screen.getByRole('heading', { name: 'Management rules' })).toBeInTheDocument()
   })
 
   it('shows the quote flag with no source badge on a root category', () => {
-    render(<ProductCategoryDetailView category={category({ requires_quote: true })} />)
+    renderView(category({ requires_quote: true }))
 
     const field = ruleValue('Quoted')
     expect(within(field).getByText('Yes')).toBeInTheDocument()
@@ -220,14 +202,10 @@ describe('ProductCategoryDetailView — management rules', () => {
   })
 
   it('names the root the quote flag is inherited from on a child category', () => {
-    render(
-      <ProductCategoryDetailView
-        category={category({
+    renderView(category({
           requires_quote: true,
           requires_quote_source_category: { id: 1, name: 'Electronics' },
-        })}
-      />,
-    )
+        }))
 
     const field = ruleValue('Quoted')
     expect(within(field).getByText('Yes')).toBeInTheDocument()
@@ -235,20 +213,16 @@ describe('ProductCategoryDetailView — management rules', () => {
   })
 
   it('shows the one-offer rule, with the root it is inherited from', () => {
-    render(<ProductCategoryDetailView category={category()} />)
+    renderView(category())
     expect(within(ruleValue('One offer per opportunity')).getByText('No')).toBeInTheDocument()
 
     cleanup()
-    render(
-      <ProductCategoryDetailView
-        category={category({
+    renderView(category({
           single_quote_per_opportunity: true,
           generates_contract: true,
           single_quote_per_opportunity_source_category: { id: 1, name: 'Electronics' },
           generates_contract_source_category: { id: 1, name: 'Electronics' },
-        })}
-      />,
-    )
+        }))
 
     const field = ruleValue('One offer per opportunity')
     expect(within(field).getByText('Yes')).toBeInTheDocument()
@@ -257,7 +231,7 @@ describe('ProductCategoryDetailView — management rules', () => {
 
   // Spec 0114 AC-022.
   it('shows the simplified-offer-line rule with no source badge on a root category', () => {
-    render(<ProductCategoryDetailView category={category({ simplified_offer_line: true })} />)
+    renderView(category({ simplified_offer_line: true }))
 
     const field = ruleValue('Simplified offer line')
     expect(within(field).getByText('Yes')).toBeInTheDocument()
@@ -265,15 +239,11 @@ describe('ProductCategoryDetailView — management rules', () => {
   })
 
   it('names the root the simplified-offer-line rule is inherited from on a child category', () => {
-    render(
-      <ProductCategoryDetailView
-        category={category({
+    renderView(category({
           simplified_offer_line: true,
           simplified_offer_line_override: null,
           simplified_offer_line_source_category: { id: 1, name: 'Electronics' },
-        })}
-      />,
-    )
+        }))
 
     const field = ruleValue('Simplified offer line')
     expect(within(field).getByText('Yes')).toBeInTheDocument()
@@ -282,15 +252,11 @@ describe('ProductCategoryDetailView — management rules', () => {
 
   // Spec 0188 AC-014.
   it('shows the effective value of a forced simplified-offer-line with no source badge', () => {
-    render(
-      <ProductCategoryDetailView
-        category={category({
+    renderView(category({
           simplified_offer_line: false,
           simplified_offer_line_override: false,
           simplified_offer_line_source_category: null,
-        })}
-      />,
-    )
+        }))
 
     const field = ruleValue('Simplified offer line')
     expect(within(field).getByText('No')).toBeInTheDocument()
@@ -298,15 +264,11 @@ describe('ProductCategoryDetailView — management rules', () => {
   })
 
   it('names the nearest overriding ancestor as source of an inherited simplified-offer-line', () => {
-    render(
-      <ProductCategoryDetailView
-        category={category({
+    renderView(category({
           simplified_offer_line: false,
           simplified_offer_line_override: null,
           simplified_offer_line_source_category: { id: 7, name: 'E-Campus' },
-        })}
-      />,
-    )
+        }))
 
     const field = ruleValue('Simplified offer line')
     expect(within(field).getByText('No')).toBeInTheDocument()
@@ -315,22 +277,18 @@ describe('ProductCategoryDetailView — management rules', () => {
 
   // Spec 0141 AC-003/AC-006.
   it('omits the report-columns row entirely while the category is not effectively reportable', () => {
-    render(<ProductCategoryDetailView category={category()} />)
+    renderView(category())
 
     expect(screen.queryByText('Report columns')).not.toBeInTheDocument()
   })
 
   it('shows the own report columns with no source badge', () => {
-    render(
-      <ProductCategoryDetailView
-        category={category({
+    renderView(category({
           effective_is_reportable: true,
           report_columns: ['telefonate', 'richiami'],
           effective_report_columns: ['telefonate', 'richiami'],
           report_columns_source_category: null,
-        })}
-      />,
-    )
+        }))
 
     const field = screen.getByText('Report columns').nextElementSibling as HTMLElement
     expect(within(field).getByText('telefonate')).toBeInTheDocument()
@@ -339,16 +297,12 @@ describe('ProductCategoryDetailView — management rules', () => {
   })
 
   it('names the ancestor the report columns are inherited from', () => {
-    render(
-      <ProductCategoryDetailView
-        category={category({
+    renderView(category({
           effective_is_reportable: true,
           report_columns: null,
           effective_report_columns: ['telefonate'],
           report_columns_source_category: { id: 1, name: 'Electronics' },
-        })}
-      />,
-    )
+        }))
 
     const field = screen.getByText('Report columns').nextElementSibling as HTMLElement
     expect(within(field).getByText('telefonate')).toBeInTheDocument()
@@ -356,21 +310,23 @@ describe('ProductCategoryDetailView — management rules', () => {
   })
 
   it('shows the empty state when no column applies even though the category is reportable', () => {
-    render(<ProductCategoryDetailView category={category({ effective_is_reportable: true })} />)
+    renderView(category({ effective_is_reportable: true }))
 
     expect(screen.getByText('Report columns')).toBeInTheDocument()
   })
 })
 
 describe('ProductCategoryDetailView — manager labels (spec 0080)', () => {
-  it('renders nothing when the category has neither own nor inherited labels', () => {
-    render(<ProductCategoryDetailView category={category()} />)
+  it('shows the empty marker when the category has neither own nor inherited labels', () => {
+    renderView(category())
 
-    expect(screen.queryByRole('heading', { name: 'Account managers' })).not.toBeInTheDocument()
+    const section = screen.getByRole('heading', { name: 'Account managers' }).closest('section') as HTMLElement
+    expect(within(section).queryByText(/A\.M\./)).not.toBeInTheDocument()
+    expect(within(section).getByText('—')).toBeInTheDocument()
   })
 
   it('shows an own label with no "Inherited" badge', () => {
-    render(<ProductCategoryDetailView category={category({ manager_labels: { '1': 'Commercial' } })} />)
+    renderView(category({ manager_labels: { '1': 'Commercial' } }))
 
     const section = screen.getByRole('heading', { name: 'Account managers' }).closest('section') as HTMLElement
     expect(within(section).getByText('Commercial')).toBeInTheDocument()
@@ -378,14 +334,10 @@ describe('ProductCategoryDetailView — manager labels (spec 0080)', () => {
   })
 
   it('shows an inherited label with the "Inherited" badge, own winning over inherited on the same position', () => {
-    render(
-      <ProductCategoryDetailView
-        category={category({
+    renderView(category({
           manager_labels: { '1': 'Commercial' },
           inherited_manager_labels: { '1': 'Sales rep', '2': 'Operator' },
-        })}
-      />,
-    )
+        }))
 
     const section = screen.getByRole('heading', { name: 'Account managers' }).closest('section') as HTMLElement
     // Position 1: own wins, no badge; position 2: inherited only, badge shown.
@@ -397,7 +349,7 @@ describe('ProductCategoryDetailView — manager labels (spec 0080)', () => {
 
   // Spec 0080 amendment A1: positions are no longer bounded to 1..4.
   it('shows positions beyond the 4th, sorted ascending (AC-050, AC-053)', () => {
-    render(<ProductCategoryDetailView category={category({ manager_labels: { '12': 'Director', '5': 'Regional lead' } })} />)
+    renderView(category({ manager_labels: { '12': 'Director', '5': 'Regional lead' } }))
 
     const section = screen.getByRole('heading', { name: 'Account managers' }).closest('section') as HTMLElement
     const rows = within(section).getAllByText(/A\.M\./)

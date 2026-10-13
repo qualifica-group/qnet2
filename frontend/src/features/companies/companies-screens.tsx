@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
-import { DetailError } from '@/components/detail/detail-panel'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
+import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchCompany } from '@/features/companies/api'
+import { fetchCompany, companyDetailQueryKey } from '@/features/companies/api'
 import { CompanyForm } from '@/features/companies/company-form'
 import { CompanyDetailView } from '@/features/companies/company-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -15,50 +15,13 @@ import type {
 } from '@/features/modules/types'
 import type { CompanyDetail } from '@/features/companies/types'
 
-/** Same detail query key `CompanyDetailView`/the former `EditCompanyLoader` used. */
-function detailQueryKey(id: number) {
-  return ['companies', 'detail', id] as const
-}
-
 /**
- * Content-only `companies` screens for the module registry (spec 0042):
- * `CompanyDetailView` already fetches its own detail, so the detail screen is
- * a direct passthrough. Reused as-is by the modal Sheet (`useModuleOpener`)
- * and by the generic dedicated pages (`ModuleDetailPage`/`ModuleFormPage`),
- * which own the surrounding chrome.
+ * Content-only `companies` screens for the module registry (spec
+ * 0042): fetch + the presentational view/form, no page chrome. The detail
+ * edits its rows in place, so `onEdit` is never used; each save reports
+ * through `onChanged`.
  */
-export function CompanyDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
-  return <CompanyDetailView companyId={id} onEdit={onEdit} />
-}
-
-export function CompanyFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (company: CompanyDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(company.id) })
-    onSuccess(company.id)
-  }
-
-  if (mode.type === 'create') {
-    return <CompanyForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
-  }
-
-  return <CompanyEditLoader companyId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-}
-
-interface CompanyEditLoaderProps {
-  companyId: number
-  onSuccess: (company: CompanyDetail) => void
-  onCancel: () => void
-}
-
-/**
- * Fetches the fresh, re-authorized company detail before mounting the edit
- * form, so the partial PATCH starts from authoritative values rather than a
- * stale snapshot (moved here unchanged from the former `companies-table.tsx`
- * inline loader).
- */
-function CompanyEditLoader({ companyId, onSuccess, onCancel }: CompanyEditLoaderProps) {
+export function CompanyDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: company,
@@ -66,7 +29,7 @@ function CompanyEditLoader({ companyId, onSuccess, onCancel }: CompanyEditLoader
     isError,
     error,
     refetch,
-  } = useEntityDetail(detailQueryKey(companyId), () => fetchCompany(companyId))
+  } = useEntityDetail(companyDetailQueryKey(id), () => fetchCompany(id))
 
   if (isError) {
     return (
@@ -80,16 +43,53 @@ function CompanyEditLoader({ companyId, onSuccess, onCancel }: CompanyEditLoader
   }
 
   if (isLoading || !company) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+    return <DetailLoading />
   }
 
-  return <CompanyForm mode={{ type: 'edit', company }} onSuccess={onSuccess} onCancel={onCancel} />
+  return <CompanyDetailView company={company} onChanged={onChanged} />
+}
+
+/**
+ * Create only: there is no edit form, and the registry generates no
+ * `:id/edit` route. Leaving a company being created — Cancel, the Sheet's
+ * X/overlay/Esc, a link, a reload — always asks first.
+ */
+export function CompanyFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('companies.form.leaveConfirm.title'),
+    description: t('companies.form.leaveConfirm.description'),
+    confirmLabel: t('companies.form.leaveConfirm.confirm'),
+    cancelLabel: t('companies.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
+
+  if (mode.type !== 'create') {
+    return null
+  }
+
+  const handleSuccess = (company: CompanyDetail) => {
+    queryClient.invalidateQueries({ queryKey: companyDetailQueryKey(company.id) })
+    // Saved: the navigation to the new company's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(company.id)
+  }
+
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
+  }
+
+  return (
+    <>
+      {leaveGuard.navigationGuard}
+      <CompanyForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
+  )
 }
 
 /** Auto-registered in the module registry (spec 0042). */
@@ -100,9 +100,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.companies',
   DetailScreen: CompanyDetailScreen,
   FormScreen: CompanyFormScreen,
-  // The record card renders its own Edit action and the form its own identity
-  // bar, so the generic hosts must not stack a second heading or button — the
-  // same registration Opportunita', Utenti and Lead carry.
+  // The detail IS the edit form: no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
   formOwnsHeader: true,
 }

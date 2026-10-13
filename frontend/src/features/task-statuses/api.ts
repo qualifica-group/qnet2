@@ -8,6 +8,11 @@ import type {
   UpdateTaskStatusPayload,
 } from '@/features/task-statuses/types'
 
+/** Query key of a single task status's detail, shared by the detail screen and its in-place saves. */
+export function taskStatusDetailQueryKey(id: number) {
+  return ['task-statuses', 'detail', id] as const
+}
+
 /**
  * Fetches a single task status detail together with the actor's authorization
  * metadata for it (`permissions`, a top-level envelope sibling of `data`).
@@ -28,14 +33,17 @@ export async function createTaskStatus(payload: CreateTaskStatusPayload): Promis
 /**
  * Partially updates a task status (PATCH). `system_key` and `sort_order` are
  * never keys of `UpdateTaskStatusPayload` (spec 0101 `data_contract`): the backend
- * rejects their mere presence with 422.
+ * rejects their mere presence with 422. Returns the saved record with the
+ * actor's permissions, so the in-place detail re-syncs on it as is.
  */
 export async function updateTaskStatus(
   id: number,
   payload: UpdateTaskStatusPayload,
-): Promise<TaskStatusDetail> {
-  const { data } = await apiClient.patch<ApiResponse<TaskStatusDetail>>(`/task-statuses/${id}`, payload)
-  return data.data
+): Promise<TaskStatusDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<TaskStatusDetail, ResourcePermissions>
+  >(`/task-statuses/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

@@ -20,22 +20,14 @@ export const businessFunctions = {
   },
   detail: {
     title: 'Dettaglio funzione aziendale',
-    subtitle: 'Visualizzazione in sola lettura della funzione aziendale selezionata.',
+    subtitle: 'Dettaglio della funzione aziendale selezionata, modificabile sul posto.',
     loadError: 'Impossibile caricare la funzione aziendale. Riprova.',
-    name: 'Nome',
-    type: 'Tipo',
-    manager: 'Responsabile',
-    users: 'Utenti associati',
-    parent: 'Funzione padre',
-    operationalSites: 'Sedi operative',
     created_at: 'Creato il',
   },
   form: {
     newBusinessFunction: 'Nuova funzione aziendale',
     createTitle: 'Crea funzione aziendale',
     createSubtitle: 'Aggiungi una nuova funzione aziendale alla tua organizzazione.',
-    editTitle: 'Modifica funzione aziendale',
-    editSubtitle: 'Aggiorna la funzione aziendale selezionata.',
     name: 'Nome',
     manager: 'Responsabile',
     managerPlaceholder: 'Seleziona un responsabile…',
@@ -73,18 +65,21 @@ export const businessFunctions = {
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la funzione aziendale. Riprova.',
     deleteForbidden: 'Non puoi eliminare questa funzione aziendale.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'La funzione aziendale non è ancora stata creata: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome e tipo della funzione aziendale.',
       },
       assignment: {
         title: 'Assegnazione',
-        description: 'Responsabile e utenti associati.',
       },
       locations: {
         title: 'Sedi operative',
-        description: 'Sedi fisiche in cui opera questa funzione aziendale.',
       },
     },
   },

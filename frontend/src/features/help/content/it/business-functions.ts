@@ -36,7 +36,7 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Creare, modificare, disattivare o eliminare',
       blocks: [
-        { type: 'paragraph', text: 'Dall’elenco premi il pulsante per creare una nuova funzione aziendale, oppure usa **Visualizza** ed **Elimina** sulla riga (se il tuo ruolo lo consente). Per modificare apri la scheda con **Visualizza** e premi **Modifica**.' },
+        { type: 'paragraph', text: 'Dall’elenco premi il pulsante per creare una nuova funzione aziendale: si apre la scheda con le righe chiuse, per ogni riga premi la matita (o il valore), compila e premi **Fatto** (**Ripristina** riporta la riga com’era), poi **Salva**. Usa **Visualizza** ed **Elimina** sulla riga (se il tuo ruolo lo consente). Per modificare non c’è un modulo a parte: apri la scheda con **Visualizza**, premi la matita sulla riga (nome, tipo, padre, responsabile, utenti associati, sedi operative), cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com’era.' },
         { type: 'warning', text: 'Una funzione aziendale con funzioni figlie non si può eliminare: sposta prima le funzioni figlie su un altro padre, oppure eliminale.' },
       ],
     },

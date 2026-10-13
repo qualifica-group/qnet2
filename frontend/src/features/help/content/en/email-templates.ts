@@ -27,13 +27,22 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Open **Configuration › Email templates** and press **New email template**.',
-            'Fill in **Name**, **Module** and **Subject**.',
-            "Write the **Body** with the text editor: images are not allowed in an email body.",
-            'If needed, add a **Description** for internal use and set **Active**.',
-            'Save the template.',
+            'The sheet opens with closed rows: for **Name**, **Module**, **Subject**, **Description** and **Active** press the pencil (or the value), fill in and press **Done**; **Revert** puts the row back as it was.',
+            'The **Body** is already open: write it with the text editor (no images, they are not allowed in an email body).',
+            'Press **Save**: the template is created with everything at once.',
           ],
         },
         { type: 'warning', text: 'After creation, **Module** can no longer be changed.' },
+      ],
+    },
+    {
+      id: 'edit-template',
+      title: 'Editing a template',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'There is no separate edit form: open the template with **View**, press the pencil on the row (**Name**, **Subject**, **Description**, **Active**), change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was. The **Body** is a full-width row: its pencil opens the same editor as creation, with the placeholder panel, and **Save** stores the body alone.',
+        },
       ],
     },
     {

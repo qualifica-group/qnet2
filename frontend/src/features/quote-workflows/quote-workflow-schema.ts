@@ -1,14 +1,15 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import type { WorkflowStatusFormRow } from '@/features/quote-workflows/types'
 
 /**
  * Zod schema for the opportunity workflow create/edit form (spec 0047 Lane
  * C), built as a factory so validation messages are localized. Mirrors the
  * frozen backend contract: `criteria` requires at least one row with a
  * DISTINCT `field` and a picked `value_id` (AC-008). `statuses` (the
- * pinned open/closed + reorderable custom rows) is edited as local state via
- * `<SortableList>`, not an RHF field array, so it is validated separately by
- * the submit hook rather than here.
+ * pinned open/closed + reorderable custom rows) is a plain form value edited
+ * through `<SortableList>`, so a cancelled row restores it with the rest of
+ * the form; every row needs a name.
  */
 
 /** Backend `quote_workflows.name` column limit (`max:191`). */
@@ -70,6 +71,11 @@ function baseFields(t: TFunction) {
           }
           seenFields.add(row.field)
         })
+      }),
+    statuses: z
+      .array(z.custom<WorkflowStatusFormRow>())
+      .refine((rows) => rows.every((row) => row.name.trim() !== ''), {
+        message: t('quoteWorkflows.form.statuses.nameRequired'),
       }),
   }
 }

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0234-task-lookups-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Onda 3 del piano "nessuna pagina di modifica": Stati Task, Tipologie Task, Categorie Task e Importanza Task
+    modificano il record sul posto e creano come il dettaglio, con il kit condiviso della spec 0233
+    (pilota: Priorita' Task). Backend invariato.
+  </goal>
+
+  <context>
+    - D-1: contratto per modulo come 0233 D-2: `api.update*` restituisce il dettaglio CON `permissions`,
+      `*DetailQueryKey` esportata, hook del form con `values` + `keepDirtyValues` e `clearServerError`,
+      dettaglio = provider + `Form` + righe, creazione = `RecordCreateLayout` + stesse righe con
+      `useDraftInlineEdit`, wrapper solo creazione via `useResourceMeta` (via i `use-*-form-meta.ts`),
+      screens con `generateEditRoute: false`, `detailOwnsEditAction`, `formOwnsHeader`, `useFormLeaveGuard`.
+    - D-2 (Stati Task): le righe dei tre stati di sistema (D-5 spec 0101) senza matita per descrizione, fase e
+      attivo (`SystemStatusGuard::assertUpdatable`); nome, colore, icona e percentuale restano modificabili.
+      Fase = select (`RecordInlineField` diretto), percentuale = `NumberInlineRow` 0-100. Il suggerimento
+      `form.hints.systemStatusFields` non ha piu' un editor in cui mostrarsi ed e' rimosso.
+    - D-3 (Categorie Task): il padre e' una riga `RecordInlineField` col `RelationSelectField` ad albero; in
+      modifica self e discendenti sono disabilitati (UX, il guard server resta). Il valore chiuso della bozza
+      di creazione ricorda il nome scelto per id (la bozza tiene solo `parent_id`).
+    - D-4 (Tipologie Task): `requires_time_entry` e' una riga `SwitchInlineRow` (default ON, spec 0162 D-1).
+    - D-5: chiavi i18n obsolete rimosse (`form.editTitle`, `form.editSubtitle`, `form.sections.identity.description`);
+      `form.leaveConfirm.*` aggiunto a Stati Task (gli altri lo hanno dal `lookupBundle`).
+  </context>
+
+  <acceptance>
+    <ac id="AC-001">Per ciascun modulo: nessuna rotta `:id/edit` ne' pulsante Modifica; ogni riga salva solo il
+      proprio campo; Annulla non chiama; 422 sulla riga; senza `update` nessuna matita.</ac>
+    <ac id="AC-002">Stati Task: sui tre stati di sistema nessuna matita su descrizione, fase, attivo.</ac>
+    <ac id="AC-003">Creazione a righe chiuse con Fatto/Ripristina; Salva valida tutto; uscita con conferma.</ac>
+    <ac id="AC-004">Guide in-app IT/EN dei quattro moduli aggiornate (parity test verde).</ac>
+  </acceptance>
+</spec>

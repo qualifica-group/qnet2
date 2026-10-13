@@ -6,7 +6,11 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createBusinessFunction, updateBusinessFunction } from '@/features/business-functions/api'
+import {
+  businessFunctionDetailQueryKey,
+  createBusinessFunction,
+  updateBusinessFunction,
+} from '@/features/business-functions/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -43,9 +47,11 @@ interface UseBusinessFunctionFormArgs {
 }
 
 /**
- * Owns every non-render concern of `BusinessFunctionForm`: RHF/Zod wiring,
- * default values, server 422 mapping and the create/update submit. The
- * component stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * Owns every non-render concern of the business-function form: RHF/Zod
+ * wiring, default values, server 422 mapping and the create/update submit.
+ * Create backs `BusinessFunctionForm`; edit backs the detail's in-place rows
+ * (diff PATCH). The component stays UI-only; this hook is the orchestration
+ * point (`onSubmit`).
  */
 export function useBusinessFunctionForm({ mode, onSuccess }: UseBusinessFunctionFormArgs) {
   const { t } = useTranslation()
@@ -55,7 +61,7 @@ export function useBusinessFunctionForm({ mode, onSuccess }: UseBusinessFunction
   const isEdit = mode.type === 'edit'
 
   // Custom fields (spec 0021): the single reusable integration — builds the
-  // dynamic schema, defaults and 422 paths; `<CustomFieldsSection>` renders.
+  // dynamic schema, defaults and 422 paths; the record sections render.
   const customFields = useCustomFieldsForm(
     'business-functions',
     mode.type === 'edit'
@@ -94,41 +100,13 @@ export function useBusinessFunctionForm({ mode, onSuccess }: UseBusinessFunction
     }
   }, [mode, customFields.defaultValues])
 
-  // EDIT: pre-known {id, label} for the responsabile/associated-users/parent/
-  // operational-sites pickers so they show their current selection
-  // immediately (no hydration round-trip) — the labels come from the
-  // resource itself.
-  const selectedManagerItem = useMemo(
-    () =>
-      mode.type === 'edit' && mode.businessFunction.manager
-        ? { id: mode.businessFunction.manager.id, label: mode.businessFunction.manager.name }
-        : null,
-    [mode],
-  )
-  const selectedUserItems = useMemo(
-    () =>
-      mode.type === 'edit'
-        ? mode.businessFunction.users.map((user) => ({ id: user.id, label: user.name }))
-        : [],
-    [mode],
-  )
-  const selectedParentItem = useMemo(
-    () =>
-      mode.type === 'edit' && mode.businessFunction.parent
-        ? { id: mode.businessFunction.parent.id, label: mode.businessFunction.parent.name }
-        : null,
-    [mode],
-  )
-  // `operational_sites` already carries `{id, label}` (label = "line1 - city"),
-  // the exact `ForSelectItem` projection the multiselect hydrates from.
-  const selectedSiteItems = useMemo(
-    () => (mode.type === 'edit' ? mode.businessFunction.operational_sites : []),
-    [mode],
-  )
-
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<BusinessFunctionFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: BusinessFunctionFormValues) => {
@@ -143,7 +121,7 @@ export function useBusinessFunctionForm({ mode, onSuccess }: UseBusinessFunction
           mode.businessFunction.id,
           buildUpdatePayload(values, mode.businessFunction),
         )
-        queryClient.setQueryData(['business-functions', 'detail', mode.businessFunction.id], saved)
+        queryClient.setQueryData(businessFunctionDetailQueryKey(mode.businessFunction.id), saved)
         toast.success(t('businessFunctions.form.updated'))
         onSuccess(saved)
         return
@@ -161,12 +139,8 @@ export function useBusinessFunctionForm({ mode, onSuccess }: UseBusinessFunction
 
   return {
     form,
-    isEdit,
     serverError,
-    selectedManagerItem,
-    selectedUserItems,
-    selectedParentItem,
-    selectedSiteItems,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

@@ -1,10 +1,10 @@
 import type { ReactElement } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render as rtlRender, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { projects as projectsEn } from '@/i18n/locales/en-projects'
 import { ProjectDetailView } from '@/features/projects/project-detail'
+import { permissionsFor, projectWrapper } from '@/features/projects/project-test-fixtures'
 import type { ProjectDetailWithPermissions } from '@/features/projects/types'
 
 // Related-record links render only for an actor who can view the target
@@ -16,13 +16,18 @@ vi.mock('@/features/auth/use-abilities', () => ({
 /** AC-044: the over-allocation warning shows only when `remaining_budget` is a negative amount. */
 
 /**
- * Every render goes through a Router: since the card moved onto the
- * enterprise-CRM record kit it links the related records (Partner, Sede) with
- * real `<Link>`s, which need one.
+ * Every render goes through a Router (the card links Partner and Sede with
+ * real `<Link>`s), a QueryClient and the confirm dialog.
  */
 function render(ui: ReactElement) {
-  return rtlRender(ui, { wrapper: MemoryRouter })
+  // The rows edit in place (spec 0220): the detail now builds its edit form,
+  // which reads the custom-field metadata through a QueryClient.
+  return rtlRender(ui, { wrapper: projectWrapper().wrapper })
 }
+
+vi.mock('@/features/authorization/api', () => ({
+  fetchResourceMeta: () => Promise.resolve({ fields: [], permissions: permissionsFor() }),
+}))
 
 const activityLogSectionMock = vi.fn()
 

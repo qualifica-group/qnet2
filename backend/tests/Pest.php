@@ -27,6 +27,7 @@ use Tests\TestCase;
 */
 
 require_once __DIR__.'/Helpers/MigrationHelpers.php';
+require_once __DIR__.'/Helpers/QuoteMigrationHelpers.php';
 require_once __DIR__.'/Helpers/TaskHelpers.php';
 require_once __DIR__.'/Helpers/TaskConfigHelpers.php';
 require_once __DIR__.'/Helpers/ProductHelpers.php';
@@ -60,6 +61,8 @@ require_once __DIR__.'/Helpers/CommissionAccrualHelpers.php';
 require_once __DIR__.'/Helpers/CommissionSettlementHelpers.php';
 require_once __DIR__.'/Helpers/CommissionSettlementTableHelpers.php';
 require_once __DIR__.'/Helpers/PurchaseInvoiceInstallmentHelpers.php';
+require_once __DIR__.'/Helpers/ApiClientAdminHelpers.php';
+require_once __DIR__.'/Helpers/ApiDocsHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

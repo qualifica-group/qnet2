@@ -9,6 +9,14 @@ import type {
 } from '@/features/users/types'
 
 /**
+ * Query key of a single user's detail, shared by the detail (and the shared
+ * user sheet), its in-place saves and every invalidation.
+ */
+export function userDetailQueryKey(id: number) {
+  return ['users', 'detail', id] as const
+}
+
+/**
  * Fetches a single user detail together with the actor's authorization
  * metadata for it (`permissions`, a top-level envelope sibling of `data`).
  */
@@ -30,16 +38,16 @@ export async function createUser(
   return data.data
 }
 
-/** Partially updates a user (PATCH). Returns the updated resource. */
+/** Partially updates a user (PATCH). Returns the updated resource with the actor's re-evaluated permissions (spec 0222). */
 export async function updateUser(
   id: number,
   payload: UpdateUserPayload,
-): Promise<UserDetail> {
-  const { data } = await apiClient.patch<ApiResponse<UserDetail>>(
+): Promise<UserDetailWithPermissions> {
+  const { data } = await apiClient.patch<ApiResponseWithPermissions<UserDetail, ResourcePermissions>>(
     `/users/${id}`,
     payload,
   )
-  return data.data
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Re-sends the welcome (invite) email to a user awaiting first access (spec 0177). Returns the backend message. */

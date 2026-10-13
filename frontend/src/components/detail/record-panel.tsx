@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { LegacyIdBadge } from '@/components/detail/legacy-id-badge'
 import { cn } from '@/lib/utils'
 
 /**
@@ -32,16 +33,21 @@ interface RecordCardHeaderProps {
   subtitle?: ReactNode
   badges?: ReactNode
   actions?: ReactNode
+  /** The record's legacy `old_id`, as the API sends it: shown as a badge beside the title when present. */
+  legacyId?: number | null
   className?: string
 }
 
 /** Identity band of a `RecordCard`: media + title (`<h2>`) + subtitle + badges, actions pinned top-right. */
-export function RecordCardHeader({ media, title, subtitle, badges, actions, className }: RecordCardHeaderProps) {
+export function RecordCardHeader({ media, title, subtitle, badges, actions, legacyId, className }: RecordCardHeaderProps) {
   return (
     <div className={cn('flex items-start gap-3 border-b p-4', className)}>
       {media}
       <div className="min-w-0 flex-1">
-        <h2 className="truncate text-base font-semibold text-foreground">{title}</h2>
+        <div className="flex min-w-0 items-center gap-2">
+          <h2 className="truncate text-base font-semibold text-foreground">{title}</h2>
+          {legacyId != null ? <LegacyIdBadge id={legacyId} /> : null}
+        </div>
         {subtitle ? <p className="mt-0.5 truncate text-sm text-muted-foreground">{subtitle}</p> : null}
         {badges ? <div className="mt-2 flex flex-wrap items-center gap-1.5">{badges}</div> : null}
       </div>
@@ -122,9 +128,13 @@ export function RecordSection({ title, icon, action, full, children, className }
   )
 }
 
-/** Dense, hairline-separated field rows. */
+/**
+ * Dense, hairline-separated field rows. Its own `@container`: a row goes
+ * label/value side by side on the LIST's width, not the column's — in a
+ * two-column sections grid the column is wide while each section is not.
+ */
 export function RecordFieldList({ children, className }: { children: ReactNode; className?: string }) {
-  return <dl className={cn('divide-y divide-border/60', className)}>{children}</dl>
+  return <dl className={cn('@container divide-y divide-border/60', className)}>{children}</dl>
 }
 
 interface RecordFieldProps {
@@ -134,7 +144,7 @@ interface RecordFieldProps {
   className?: string
 }
 
-/** One row inside a `RecordFieldList`: stacked when narrow, a spec-sheet row (~40% label column) at `@md`. */
+/** One row inside a `RecordFieldList`: stacked when the list is narrow, a spec-sheet row (~40% label column) at `@md`. */
 export function RecordField({ label, icon, children, className }: RecordFieldProps) {
   return (
     <div className={cn('flex flex-col gap-1 py-2 @md:flex-row @md:items-baseline @md:gap-3', className)}>

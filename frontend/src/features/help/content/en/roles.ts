@@ -13,10 +13,10 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'create-edit-role',
-      title: 'Creating or editing a role',
+      id: 'create-role',
+      title: 'Creating a role',
       blocks: [
-        { type: 'steps', items: ['Open **Administration › Roles**.', 'Click **New role**, or open a role with **View** and press **Edit**.', 'In **Role details** type the **Name**. If you want, pick the users right away in **Members**.', 'In the **Permissions** section, choose what the role can do.', 'Click **Save**.'] },
+        { type: 'steps', items: ['Open **Administration › Roles**.', 'Click **New role**: the new role\'s record opens, with the same sections as a saved role.', 'In **Role details** the **Name** and **Members** rows are closed: press the pencil (or the value), fill it in and press **Done**; **Revert** puts the row back as it was.', 'The **Permissions** section is already open: choose what the role can do. If the module has custom fields, they appear in a separate section (**Other fields**).', 'Click **Save**. If you leave before, QNet asks you to confirm: the role has not been created yet.'] },
         {
           type: 'table',
           headers: ['Field', 'What to enter'],
@@ -26,6 +26,15 @@ const guide: HelpGuide = {
             ['**Permissions**', 'The allowed actions, module by module.'],
           ],
         },
+      ],
+    },
+    {
+      id: 'editing-a-role',
+      title: 'Editing a role',
+      blocks: [
+        { type: 'paragraph', text: 'A role\'s record has no edit form: every row is edited in place. Press the pencil on **Name** or **Members**, change the value and press **Save**; **Cancel** or Esc leave the row as it was. Each save sends only the row you changed.' },
+        { type: 'paragraph', text: '**Permissions** is a single full-width row: the pencil opens the same explorer used when creating (actions and field permissions). Press **Save** to save the permissions, **Cancel** to discard the changes.' },
+        { type: 'note', text: 'If the role cannot be edited (like **super-admin**) or you lack the edit permission, the rows have no pencil and stay read-only.' },
       ],
     },
     {
@@ -46,6 +55,7 @@ const guide: HelpGuide = {
         },
         { type: 'paragraph', text: 'The other actions sit under **Advanced configuration**, in the **Additional actions** box: for example **Export**, **Import**, **View activity** and **Impersonate**. Some modules have their own actions, such as **Validate**, **Change status** or **View all**.' },
         { type: 'paragraph', text: 'The **Cross-cutting** area also holds **Saved filters**, with the **Publish shared filters** permission: without it, a user can only save private views and custom filters, never shared with colleagues, on any module with a list.' },
+        { type: 'paragraph', text: 'The **Cross-cutting** area also holds **Legacy IDs**, with the **View** permission: it shows the old system\'s id, as the **Legacy ID** column in lists and as the **OLD ID #123** badge next to record titles. Without it the id appears nowhere; the super-admin always sees it.' },
         { type: 'list', items: ['**Search modules or permissions…** filters the tree.', '**Select area** turns on every permission of an area.', '**Select all** turns on every permission of a module.', '**Select all permissions** turns on the whole catalog.', 'Next to each area and module, a counter shows the permissions chosen out of the total.'] },
       ],
     },

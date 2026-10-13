@@ -1,62 +1,56 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
 import axios, { AxiosError } from 'axios'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
+import type { ResourceMeta } from '@/features/authorization/types'
+import { ProductDetailView } from '@/features/products/product-detail'
 import { ProductForm } from '@/features/products/product-form'
+import {
+  EDITABLE,
+  clickCreateSave,
+  completeRequiredCreateRows,
+  confirmOpenRow,
+  pencilOf,
+  permissionsFor,
+  productFixture,
+  productWrapper,
+} from '@/features/products/product-test-fixtures'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
-import type { CustomFieldDescriptor } from '@/features/custom-fields/types'
 
 /**
- * Spec 0021: products is one of the universal custom-fields rollout
- * modules — mounting `<CustomFieldsSection>` is the ONLY products-specific
- * integration. This suite exercises the wiring (schema, defaults, payload,
- * 422) without touching the section's own per-type rendering (covered by
- * `CustomFieldsSection.test.tsx`).
+ * Spec 0021: the universal custom fields on the product — a closed row of
+ * the create draft, a row editing in place on the detail (only that field in
+ * the PATCH), a 422 shown on it. REQUIREMENT CHANGED (spec 0218).
  */
 
 const createProductMock = vi.fn()
 const updateProductMock = vi.fn()
+const fetchProductNextCodeMock = vi.fn<() => Promise<string>>()
 
-vi.mock('@/features/products/api', () => ({
+vi.mock('@/features/products/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/products/api')>()),
   createProduct: (...args: unknown[]) => createProductMock(...args),
   updateProduct: (...args: unknown[]) => updateProductMock(...args),
-  fetchProductNextCode: () => Promise.resolve('PRD-0100'),
+  fetchProductNextCode: () => fetchProductNextCodeMock(),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-vi.mock('@/features/config/use-config', () => ({
-  useEnumOptions: () => [
-    { value: 'SERVICE', label: 'Service', color: null, icon: null, is_default: true, hidden_on_form: false },
-  ],
-}))
+vi.mock('@/features/config/use-config', async () => {
+  const { PRODUCT_ENUMS } = await import('@/features/products/product-test-fixtures')
+  return { useEnumOptions: (key: string) => PRODUCT_ENUMS[key] ?? [] }
+})
 
 vi.mock('@/features/product-categories/use-product-category-tree', () => ({
   useProductCategoryTree: () => ({ data: [], isPending: false, isError: false, refetch: () => {} }),
 }))
 
-// Isolates the form from the real category picker popover with a lightweight
-// controllable stub, so this suite focuses on the form's own logic, not the
-// network-backed select (covered by its own component test).
-vi.mock('@/components/ui/searchable-select', () => ({
-  SearchableSelect: ({ onChange }: { onChange: (id: number) => void }) => (
-    <button type="button" onClick={() => onChange(3)}>
-      select-category-3
-    </button>
-  ),
+vi.mock('@/components/ui/searchable-select', async () => ({
+  SearchableSelect: (await import('@/features/products/product-test-stubs')).StubSearchableSelect,
 }))
 
-// Isolates the form from the real VAT rate / supplier pickers with a
-// lightweight controllable stub (mirrors `registry-form-custom-fields.test.tsx`),
-// so this suite focuses on the form's own logic, not the network-backed
-// select (covered by its own component test).
-vi.mock('@/components/ui/async-paginated-select', () => ({
-  AsyncPaginatedSelect: ({ value }: { value: number | null }) => (
-    <div data-testid="product-select-value">{value ?? ''}</div>
-  ),
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/products/product-test-stubs')).StubAsyncSelect,
 }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
@@ -64,78 +58,31 @@ vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-// Spec 0062: this suite is not about the attribute layout, so no layout is
-// ever configured — keeps the category-picked flow deterministic (no real
-// network round-trip) without touching the custom-fields assertions below.
-vi.mock('@/features/products/use-product-attribute-layout', () => ({
-  useProductAttributeLayout: () => ({ data: null, isLoading: false }),
+const fetchEffectiveAttributesMock = vi.fn()
+vi.mock('@/features/product-categories/api', () => ({
+  fetchEffectiveAttributes: (...args: unknown[]) => fetchEffectiveAttributesMock(...args),
 }))
 
-const FULL_ACCESS: ResourcePermissions['resource'] = {
-  view: true,
-  create: true,
-  update: true,
-  delete: true,
-  export: true,
-  import: true,
+const productAttributeLayoutMock = vi.fn()
+vi.mock('@/features/products/use-product-attribute-layout', () => ({
+  useProductAttributeLayout: (...args: unknown[]) => productAttributeLayoutMock(...args),
+}))
+
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
+}))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
+
+function renderCreate(onSuccess = vi.fn()) {
+  const { client, wrapper } = productWrapper()
+  render(<ProductForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper })
+  return client
 }
 
-const NOTES_FIELD: CustomFieldDescriptor = {
-  key: 'custom.notes',
-  type: 'text',
-  label: 'Notes',
-  group: null,
-  mandatory: false,
-  source: 'custom',
-}
-
-function permissionsWithNotes(): ResourcePermissions {
-  return {
-    resource: FULL_ACCESS,
-    fields: {
-      'custom.notes': {
-        visible: true,
-        hidden: false,
-        editable: true,
-        readonly: false,
-        required: false,
-        disabled: false,
-      },
-    },
-    actions: {},
-  }
-}
-
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
-}
-
-function product(overrides: Partial<ProductDetailWithPermissions> = {}): ProductDetailWithPermissions {
-  return {
-    id: 5,
-    code: 'PRD-0005',
-    name: 'ThinkPad X1',
-    description: null,
-    cost: 800,
-    price: 1200,
-    category_id: 3,
-    category: { id: 3, name: 'Laptops' },
-    product_type: 'SERVICE',
-    created_at: '2026-01-01T00:00:00Z',
-    vat_rate_id: null,
-    vat_rate: null,
-    supplier_id: null,
-    supplier: null,
-    unit_of_measure_id: 1,
-    unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
-    product_typology_id: 1,
-    product_typology: { id: 1, name: 'Ente', color: 'violet' },
-    permissions: permissionsWithNotes(),
-    ...overrides,
-  }
+function renderDetail(product: ProductDetailWithPermissions) {
+  const { client, wrapper } = productWrapper()
+  render(<ProductDetailView product={product} />, { wrapper })
+  return client
 }
 
 beforeAll(async () => {
@@ -143,109 +90,83 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  vi.restoreAllMocks()
   createProductMock.mockReset()
   updateProductMock.mockReset()
+  fetchProductNextCodeMock.mockReset()
+  fetchProductNextCodeMock.mockResolvedValue('PRD-0100')
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [NOTES_FIELD], permissions: permissionsWithNotes() })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
+  fetchEffectiveAttributesMock.mockReset()
+  fetchEffectiveAttributesMock.mockResolvedValue([])
+  productAttributeLayoutMock.mockReset()
+  productAttributeLayoutMock.mockReturnValue({ data: null, isLoading: false })
 })
 
-describe('ProductForm — custom fields (spec 0021)', () => {
-  it('renders the resource custom field control in create mode', async () => {
-    render(
-      <ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+const WARRANTY_FIELD = {
+  key: 'custom.warranty_months',
+  type: 'text' as const,
+  label: 'Warranty',
+  group: null,
+  mandatory: false,
+  source: 'custom' as const,
+}
 
-    expect(await screen.findByRole('textbox', { name: 'Notes' })).toBeInTheDocument()
+beforeEach(() => {
+  fetchResourceMetaMock.mockResolvedValue({
+    fields: [WARRANTY_FIELD],
+    permissions: permissionsFor({ 'custom.warranty_months': EDITABLE }),
   })
+})
 
+describe('Product — custom fields (spec 0021)', () => {
   it('includes the valued custom field in the create payload', async () => {
-    createProductMock.mockResolvedValue(product())
-    const onSuccess = vi.fn()
+    createProductMock.mockResolvedValue(productFixture())
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    render(
-      <ProductForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'ThinkPad X1' } })
-    fireEvent.click(screen.getByText('select-category-3'))
-    fireEvent.change(screen.getByLabelText(/^Price/), { target: { value: '1200' } })
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Notes' }), {
-      target: { value: 'Key product' },
-    })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    completeRequiredCreateRows()
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Warranty' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Warranty' }), { target: { value: '24' } })
+    confirmOpenRow('Done')
+    clickCreateSave()
 
     await waitFor(() => expect(createProductMock).toHaveBeenCalledTimes(1))
-    const payload = createProductMock.mock.calls[0][0]
-    expect(payload.custom_fields).toEqual({ notes: 'Key product' })
+    expect(createProductMock.mock.calls[0][0].custom_fields).toEqual({ warranty_months: '24' })
   })
 
-  it('seeds the custom field value from the loaded product detail in edit mode', async () => {
-    render(
-      <ProductForm
-        mode={{ type: 'edit', product: product({ custom_fields: { notes: 'Existing note' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
+  it('shows the value on the detail and PATCHes only the changed custom field', async () => {
+    updateProductMock.mockResolvedValue(productFixture({ custom_fields: { warranty_months: '36' } }))
+    renderDetail(productFixture({ custom_fields: { warranty_months: '12' } }))
+
+    expect(await screen.findByText('12')).toBeInTheDocument()
+    fireEvent.click(pencilOf('Warranty'))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Warranty' }), { target: { value: '36' } })
+    confirmOpenRow('Save')
+
+    await waitFor(() =>
+      expect(updateProductMock).toHaveBeenCalledWith(5, { custom_fields: { warranty_months: '36' } }),
     )
-
-    expect(await screen.findByRole('textbox', { name: 'Notes' })).toHaveValue('Existing note')
   })
 
-  it('sends only the changed custom field on a partial update', async () => {
-    const original = product({ custom_fields: { notes: 'Existing note' } })
-    updateProductMock.mockResolvedValue(original)
-
-    render(
-      <ProductForm mode={{ type: 'edit', product: original }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    const notes = await screen.findByRole('textbox', { name: 'Notes' })
-    fireEvent.change(notes, { target: { value: 'Updated note' } })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateProductMock).toHaveBeenCalledTimes(1))
-    const [, payload] = updateProductMock.mock.calls[0]
-    expect(payload).toEqual({ custom_fields: { notes: 'Updated note' } })
-  })
-
-  it('maps a 422 on custom_fields.<key> inline on the matching control', async () => {
+  it('maps a 422 on custom_fields.<key> inside the open row', async () => {
     updateProductMock.mockRejectedValue(
-      new AxiosError(
-        'Unprocessable',
-        '422',
-        undefined,
-        undefined,
-        {
-          status: 422,
-          data: {
-            success: false,
-            message: 'Validation failed',
-            errors: { 'custom_fields.notes': ['Notes must be shorter.'] },
-          },
-        } as never,
-      ),
+      new AxiosError('Unprocessable', '422', undefined, undefined, {
+        status: 422,
+        data: {
+          success: false,
+          message: 'Validation failed',
+          errors: { 'custom_fields.warranty_months': ['Warranty is invalid.'] },
+        },
+      } as never),
     )
     vi.spyOn(axios, 'isAxiosError').mockReturnValue(true)
+    renderDetail(productFixture({ custom_fields: { warranty_months: '12' } }))
 
-    render(
-      <ProductForm
-        mode={{ type: 'edit', product: product({ custom_fields: { notes: 'Existing note' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Warranty' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Warranty' }), { target: { value: 'x' } })
+    confirmOpenRow('Save')
 
-    await screen.findByRole('textbox', { name: 'Notes' })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(screen.getByText('Notes must be shorter.')).toBeInTheDocument())
-    expect(updateProductMock).toHaveBeenCalledTimes(1)
-
-    vi.restoreAllMocks()
+    expect(await screen.findByText('Warranty is invalid.')).toBeInTheDocument()
   })
 })

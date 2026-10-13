@@ -1,21 +1,32 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
+import { fireEvent, render as renderWithoutClient, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { PaymentMethodDetailView } from '@/features/payment-methods/payment-method-detail'
 import type { PaymentMethodDetailWithPermissions } from '@/features/payment-methods/types'
 
 /**
- * Spec 0068, AC-107: the detail shows name, code, description,
- * payment_instructions, payment_days, status and both timestamps, with the
- * shared detail kit's placeholder on the nullable fields. Purely
- * presentational (the caller fetches and passes the detail down), so the
- * Activity Log section gate is exercised directly on the
- * `permissions.actions.view_activity` prop (mirrors `RewardTypeDetailView`'s
- * suite).
+ * Spec 0068, AC-107: the detail shows name, code (hero subtitle), the
+ * fiscal code, description, payment_instructions, payment_days, the
+ * installment rules, status and both timestamps. Wave 3 of the "no edit
+ * pages" plan (spec 0236): every row edits in place, each save a PATCH of
+ * that row's field(s) alone; the schedule (count + gap) and the end of month
+ * (switch + extra days) are one row each. The Activity Log gate is exercised
+ * on the `permissions.actions.view_activity` prop.
  */
 
 const activityLogSectionMock = vi.fn()
+const updatePaymentMethodMock = vi.fn()
+
+vi.mock('@/features/payment-methods/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/payment-methods/api')>()),
+  updatePaymentMethod: (...args: unknown[]) => updatePaymentMethodMock(...args),
+}))
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 vi.mock('@/features/activity-log/activity-log-section', () => ({
   ActivityLogSection: (props: { resource: string; id: number }) => {
@@ -53,34 +64,18 @@ function paymentMethod(
   }
 }
 
-describe('PaymentMethodDetailView — edit action', () => {
-  it('shows the Edit button when update is granted and onEdit is wired', () => {
-    const onEdit = vi.fn()
-    render(<PaymentMethodDetailView paymentMethod={paymentMethod()} onEdit={onEdit} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-    expect(onEdit).toHaveBeenCalled()
+/** One QueryClient per test: the in-place rows save through React Query. */
+function render(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return renderWithoutClient(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
   })
+}
 
-  it('hides the Edit button when onEdit is absent', () => {
-    render(<PaymentMethodDetailView paymentMethod={paymentMethod()} />)
+const pencilOf = (key: string) =>
+  screen.queryByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t(key) }) })
 
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-  })
-
-  it('hides the Edit button when update is not granted, even with onEdit wired', () => {
-    render(
-      <PaymentMethodDetailView
-        paymentMethod={paymentMethod({
-          permissions: { ...paymentMethod().permissions, resource: { ...paymentMethod().permissions.resource, update: false } },
-        })}
-        onEdit={vi.fn()}
-      />,
-    )
-
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-  })
-})
+const saveRow = () => fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.save') }))
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -88,6 +83,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   activityLogSectionMock.mockReset()
+  updatePaymentMethodMock.mockReset()
 })
 
 describe('PaymentMethodDetailView — detail fields (AC-107)', () => {
@@ -96,6 +92,7 @@ describe('PaymentMethodDetailView — detail fields (AC-107)', () => {
 
     expect(screen.getByRole('heading', { name: 'Bank transfer' })).toBeInTheDocument()
     expect(screen.getByText('bank_transfer')).toBeInTheDocument()
+    expect(screen.getByText('MP05')).toBeInTheDocument()
     expect(screen.getByText('Standard bank transfer')).toBeInTheDocument()
     expect(screen.getByText('Use the company IBAN')).toBeInTheDocument()
     expect(screen.getByText('30')).toBeInTheDocument()
@@ -108,6 +105,7 @@ describe('PaymentMethodDetailView — detail fields (AC-107)', () => {
     render(
       <PaymentMethodDetailView
         paymentMethod={paymentMethod({
+          payment_method_code: null,
           description: null,
           payment_instructions: null,
           payment_days: null,
@@ -115,13 +113,29 @@ describe('PaymentMethodDetailView — detail fields (AC-107)', () => {
       />,
     )
 
-    expect(screen.getAllByText('—')).toHaveLength(3)
+    expect(screen.getAllByText('—')).toHaveLength(4)
   })
 
   it('shows the inactive status', () => {
-    render(<PaymentMethodDetailView paymentMethod={paymentMethod({ is_active: false, end_of_month: true })} />)
+    render(<PaymentMethodDetailView paymentMethod={paymentMethod({ is_active: false })} />)
 
-    expect(screen.getByText('No')).toBeInTheDocument()
+    expect(screen.getByText('No', { selector: 'span' })).toBeInTheDocument()
+  })
+
+  it('summarises the schedule and the end of month on one row each', () => {
+    render(
+      <PaymentMethodDetailView
+        paymentMethod={paymentMethod({
+          installments_count: 3,
+          days_between_installments: 30,
+          end_of_month: true,
+          end_of_month_extra_days: 10,
+        })}
+      />,
+    )
+
+    expect(screen.getByText('3 installments, one every 30 days')).toBeInTheDocument()
+    expect(screen.getByText('Yes, +10 days')).toBeInTheDocument()
   })
 })
 
@@ -144,5 +158,131 @@ describe('PaymentMethodDetailView — activity log section', () => {
 
     expect(screen.queryByText('Activity log')).not.toBeInTheDocument()
     expect(activityLogSectionMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('PaymentMethodDetailView — in-place editing', () => {
+  it('has no Edit button: every row is closed with its pencil, and code is not a row', () => {
+    render(<PaymentMethodDetailView paymentMethod={paymentMethod()} />)
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(pencilOf('paymentMethods.form.name')).toBeInTheDocument()
+    expect(pencilOf('paymentMethods.form.installmentsCount')).toBeInTheDocument()
+    expect(pencilOf('paymentMethods.form.vatAllocation')).toBeInTheDocument()
+    expect(pencilOf('paymentMethods.form.code')).not.toBeInTheDocument()
+  })
+
+  it('Save sends only the changed field, never code', async () => {
+    updatePaymentMethodMock.mockResolvedValue(paymentMethod({ name: 'Wire transfer' }))
+    render(<PaymentMethodDetailView paymentMethod={paymentMethod()} />)
+
+    fireEvent.click(pencilOf('paymentMethods.form.name') as HTMLElement)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Wire transfer' } })
+    saveRow()
+
+    await waitFor(() => expect(updatePaymentMethodMock).toHaveBeenCalledWith(4, { name: 'Wire transfer' }))
+  })
+
+  it('clearing the fiscal code sends null, not an empty string', async () => {
+    updatePaymentMethodMock.mockResolvedValue(paymentMethod({ payment_method_code: null }))
+    render(<PaymentMethodDetailView paymentMethod={paymentMethod()} />)
+
+    fireEvent.click(pencilOf('paymentMethods.form.paymentMethodCode') as HTMLElement)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
+    saveRow()
+
+    await waitFor(() => expect(updatePaymentMethodMock).toHaveBeenCalledWith(4, { payment_method_code: null }))
+  })
+
+  it('saves the schedule row as one PATCH of count and gap', async () => {
+    updatePaymentMethodMock.mockResolvedValue(paymentMethod())
+    render(<PaymentMethodDetailView paymentMethod={paymentMethod()} />)
+
+    fireEvent.click(pencilOf('paymentMethods.form.installmentsCount') as HTMLElement)
+    fireEvent.change(screen.getByLabelText(/^Number of installments/), { target: { value: '3' } })
+    fireEvent.change(screen.getByLabelText(/^Days between installments/), { target: { value: '30' } })
+    saveRow()
+
+    await waitFor(() =>
+      expect(updatePaymentMethodMock).toHaveBeenCalledWith(4, {
+        installments_count: 3,
+        days_between_installments: 30,
+      }),
+    )
+  })
+
+  it('does not save several installments without a gap, and says so on the row', async () => {
+    render(<PaymentMethodDetailView paymentMethod={paymentMethod()} />)
+
+    fireEvent.click(pencilOf('paymentMethods.form.installmentsCount') as HTMLElement)
+    fireEvent.change(screen.getByLabelText(/^Number of installments/), { target: { value: '3' } })
+    fireEvent.change(screen.getByLabelText(/^Days between installments/), { target: { value: '' } })
+    saveRow()
+
+    expect(
+      await screen.findByText('Days between installments are required with more than one installment.'),
+    ).toBeInTheDocument()
+    expect(updatePaymentMethodMock).not.toHaveBeenCalled()
+  })
+
+  it('the end-of-month row shows the extra days only while the switch is on, and saves both together', async () => {
+    updatePaymentMethodMock.mockResolvedValue(paymentMethod())
+    render(<PaymentMethodDetailView paymentMethod={paymentMethod()} />)
+
+    fireEvent.click(pencilOf('paymentMethods.form.endOfMonth') as HTMLElement)
+    expect(screen.queryByLabelText(/^Days after end of month/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('switch', { name: /^End of month/ }))
+    fireEvent.change(await screen.findByLabelText(/^Days after end of month/), { target: { value: '10' } })
+    saveRow()
+
+    await waitFor(() =>
+      expect(updatePaymentMethodMock).toHaveBeenCalledWith(4, { end_of_month: true, end_of_month_extra_days: 10 }),
+    )
+  })
+
+  it('Cancel restores the row without calling the API', () => {
+    render(<PaymentMethodDetailView paymentMethod={paymentMethod()} />)
+
+    fireEvent.click(pencilOf('paymentMethods.form.name') as HTMLElement)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Renamed' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.cancel') }))
+
+    expect(screen.queryByText('Renamed')).not.toBeInTheDocument()
+    expect(updatePaymentMethodMock).not.toHaveBeenCalled()
+  })
+
+  it('maps a server 422 onto the open row', async () => {
+    updatePaymentMethodMock.mockRejectedValue(
+      new AxiosError('Unprocessable', '422', undefined, undefined, {
+        status: 422,
+        data: { success: false, message: 'Validation failed', errors: { name: ['Name already taken.'] } },
+      } as never),
+    )
+    render(<PaymentMethodDetailView paymentMethod={paymentMethod()} />)
+
+    fireEvent.click(pencilOf('paymentMethods.form.name') as HTMLElement)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Duplicate' } })
+    saveRow()
+
+    expect(await screen.findByText('Name already taken.')).toBeInTheDocument()
+  })
+
+  it('offers no pencil when update is not allowed, nor on a read-only field', () => {
+    const readonly = { visible: true, hidden: false, editable: false, readonly: true, required: false, disabled: false }
+    const base = paymentMethod().permissions
+    const { unmount } = render(
+      <PaymentMethodDetailView
+        paymentMethod={paymentMethod({ permissions: { ...base, resource: { ...base.resource, update: false } } })}
+      />,
+    )
+    expect(pencilOf('paymentMethods.form.name')).not.toBeInTheDocument()
+    expect(pencilOf('paymentMethods.form.installmentsCount')).not.toBeInTheDocument()
+    expect(pencilOf('paymentMethods.form.vatAllocation')).not.toBeInTheDocument()
+    unmount()
+
+    render(<PaymentMethodDetailView paymentMethod={paymentMethod({ permissions: { ...base, fields: { name: readonly } } })} />)
+    expect(pencilOf('paymentMethods.form.name')).not.toBeInTheDocument()
+    expect(pencilOf('paymentMethods.form.paymentDays')).toBeInTheDocument()
   })
 })

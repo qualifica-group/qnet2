@@ -6,7 +6,12 @@ use App\DataObjects\PersonalData\CreateContact;
 use App\Enums\ContactTypeEnum;
 use App\Http\Requests\Concerns\FormatsPersonalDataInput;
 use App\Http\Requests\Concerns\ResolvesOwner;
+use App\Models\Contact;
+use App\Models\PersonalData;
+use App\Support\ContactValueNormalizer;
+use App\Support\IdentityUniquenessScope;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -72,11 +77,51 @@ class StoreContactRequest extends FormRequest
     }
 
     /**
-     * Enforce a valid, existing owner.
+     * Enforce a valid, existing owner, then the namespace-wide phone
+     * uniqueness on it.
      */
     public function withValidator(Validator $validator): void
     {
-        $validator->after(fn (Validator $validator) => $this->validateOwner($validator));
+        $validator->after(function (Validator $validator): void {
+            $this->validateOwner($validator);
+
+            if ($validator->errors()->isEmpty()) {
+                $this->validateNamespacePhone($validator, $this->owner());
+            }
+        });
+    }
+
+    /**
+     * A phone added to a card of the identity namespace must not be held by
+     * any other card of it (user directive 2026-10-08): the anagrafica,
+     * referente and profile details add contacts through this endpoint, and
+     * without this check they were the one door the form-level gate
+     * (`ValidatesPhoneUniqueness`) left open. A card outside the namespace (a
+     * company site) is never checked, exactly as on the forms.
+     *
+     * $current is the contact under update: a number it already holds is a
+     * no-op, not a new duplicate, so a legacy collision never locks the row.
+     */
+    protected function validateNamespacePhone(Validator $validator, ?Model $owner, ?Contact $current = null): void
+    {
+        if ($validator->errors()->isNotEmpty() || $this->input('type') !== ContactTypeEnum::Phone->value) {
+            return;
+        }
+
+        if (! $owner instanceof PersonalData || ! IdentityUniquenessScope::covers($owner->personable_type)) {
+            return;
+        }
+
+        $normalized = ContactValueNormalizer::contact(ContactTypeEnum::Phone, (string) $this->input('value'));
+        $unchanged = $current !== null && $current->type === ContactTypeEnum::Phone && $current->normalized_value === $normalized;
+
+        if ($normalized === '' || $unchanged) {
+            return;
+        }
+
+        if (IdentityUniquenessScope::phoneTaken(IdentityUniquenessScope::cards()->whereKeyNot($owner->getKey()), $normalized)) {
+            $validator->errors()->add('value', __('The phone number is already assigned to another record.'));
+        }
     }
 
     protected function ownerConfigKey(): string

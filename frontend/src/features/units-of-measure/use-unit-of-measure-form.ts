@@ -6,7 +6,11 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createUnitOfMeasure, updateUnitOfMeasure } from '@/features/units-of-measure/api'
+import {
+  createUnitOfMeasure,
+  unitOfMeasureDetailQueryKey,
+  updateUnitOfMeasure,
+} from '@/features/units-of-measure/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -35,8 +39,9 @@ interface UseUnitOfMeasureFormArgs {
 
 /**
  * Owns every non-render concern of `UnitOfMeasureForm`: RHF/Zod wiring,
- * default values, server 422 mapping and the create/update submit. The
- * component stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * default values, server 422 mapping and the create/update submit. Create
+ * backs `UnitOfMeasureForm`; edit backs the detail's in-place rows (diff
+ * PATCH). The component stays UI-only; this hook is the orchestration point.
  */
 export function useUnitOfMeasureForm({ mode, onSuccess }: UseUnitOfMeasureFormArgs) {
   const { t } = useTranslation()
@@ -62,9 +67,13 @@ export function useUnitOfMeasureForm({ mode, onSuccess }: UseUnitOfMeasureFormAr
     return { name: '', symbol: '', code: '', description: null }
   }, [mode])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<UnitOfMeasureFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: UnitOfMeasureFormValues) => {
@@ -76,7 +85,7 @@ export function useUnitOfMeasureForm({ mode, onSuccess }: UseUnitOfMeasureFormAr
           mode.unitOfMeasure.id,
           buildUpdatePayload(values, mode.unitOfMeasure),
         )
-        queryClient.setQueryData(['units-of-measure', 'detail', mode.unitOfMeasure.id], saved)
+        queryClient.setQueryData(unitOfMeasureDetailQueryKey(mode.unitOfMeasure.id), saved)
         toast.success(t('unitsOfMeasure.form.updated'))
         onSuccess(saved)
         return
@@ -94,8 +103,8 @@ export function useUnitOfMeasureForm({ mode, onSuccess }: UseUnitOfMeasureFormAr
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

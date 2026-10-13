@@ -169,6 +169,52 @@ it('skips already imported opportunities on a second run', function () {
         ->and(Opportunity::query()->where('old_id', 905)->count())->toBe(1);
 });
 
+it('falls back to the quote line categories only when the opportunity has none of its own', function () {
+    opportunitiesSourceRegistry(14);
+    [$own, $fromQuote] = ProductCategory::factory()->count(2)->create(['business_function_id' => BusinessFunction::factory()->create()->id]);
+    $own->forceFill(['old_id' => 41])->save();
+    $fromQuote->forceFill(['old_id' => 42])->save();
+    fakeLegacyOpportunities([
+        ['id' => 906, 'registry_id' => 14, 'product_category_ids' => [41], 'quote_product_category_ids' => [42]],
+        ['id' => 907, 'registry_id' => 14, 'product_category_ids' => [], 'quote_product_category_ids' => [42]],
+    ]);
+
+    $run = runOpportunitiesMigration();
+    $lines = fn (int $oldId): array => Opportunity::query()->where('old_id', $oldId)->firstOrFail()
+        ->productLines()->pluck('product_category_id')->all();
+
+    expect($run->created_rows)->toBe(2)
+        ->and($run->report ?? [])->toBe([])
+        ->and($lines(906))->toBe([$own->id])
+        ->and($lines(907))->toBe([$fromQuote->id]);
+});
+
+it('back-fills the product lines of an imported opportunity that has none on a re-run, never overwriting', function () {
+    opportunitiesSourceRegistry(15);
+    [$own, $fromQuote] = ProductCategory::factory()->count(2)->create(['business_function_id' => BusinessFunction::factory()->create()->id]);
+    $own->forceFill(['old_id' => 44])->save();
+    fakeLegacyOpportunities([
+        ['id' => 908, 'registry_id' => 15, 'product_category_ids' => [], 'quote_product_category_ids' => [43]],
+        ['id' => 909, 'registry_id' => 15, 'product_category_ids' => [44], 'quote_product_category_ids' => [43]],
+    ]);
+    $first = runOpportunitiesMigration();
+    $fromQuote->forceFill(['old_id' => 43])->save();
+
+    $second = runOpportunitiesMigration();
+    $third = runOpportunitiesMigration();
+    $lines = fn (int $oldId): array => Opportunity::query()->where('old_id', $oldId)->firstOrFail()
+        ->productLines()->pluck('product_category_id')->all();
+
+    expect(collect($first->report)->pluck('message')->all())->toBe(['Unresolved quote_product_category_ids (legacy id 43).'])
+        ->and($second->skipped_rows)->toBe(2)
+        ->and($second->created_rows)->toBe(0)
+        ->and(collect($second->report)->pluck('message')->all())->toBe(['Missing product categories back-filled.'])
+        ->and($lines(908))->toBe([$fromQuote->id])
+        ->and($lines(909))->toBe([$own->id])
+        ->and($third->skipped_rows)->toBe(2)
+        ->and($third->report ?? [])->toBe([]);
+});
+
 it('refuses a lead on the import path', function () {
     $data = new CreateOpportunityData(
         registryId: Registry::factory()->create()->id, referentId: null, commercialId: null, reporterId: null,

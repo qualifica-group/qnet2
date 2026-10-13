@@ -1,34 +1,44 @@
 import type { ReactNode } from 'react'
-import {
-  RECORD_BODY_GRID_CLASS,
-  RECORD_BODY_WITH_SIDE_CLASS,
-  RECORD_COLUMN_CLASS,
-} from '@/components/detail/record-layout'
-import { cn } from '@/lib/utils'
+import { RecordCollaborationBody } from '@/components/detail/record-collaboration-body'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
+import { RECORD_BODY_GRID_CLASS, RECORD_COLUMN_CLASS } from '@/components/detail/record-layout'
+import { RecordCard } from '@/components/detail/record-panel'
+
+const NO_TABS: RecordCollaborationTab[] = []
 
 interface RecordBodyProps {
-  /** Main column: the record card (identity header with Edit, KPI strip, sections). */
-  children: ReactNode
-  /**
-   * Side column (collaboration card, related cards). Pass `null` when there is
-   * nothing to show: the layout cannot inspect whether a child renders, so
-   * the caller decides, and the record then keeps the full width.
-   */
-  side?: ReactNode
+  /** Top of the record card: identity band, domain actions, KPI strip. Always visible. */
+  header: ReactNode
+  /** The record's sections, under the header — the "Dettagli" tab on narrow bodies. None for a header-only record. */
+  children?: ReactNode
+  /** Already filtered by the caller's authorization gates; none = no side column, full-width record. */
+  collaborationTabs?: RecordCollaborationTab[]
 }
 
 /**
- * Two-column body of every record detail (Opportunita' reference layout): the
- * record on the left, the side column on the right at wide container widths,
- * stacked in that order while narrow.
+ * The ONE layout of every record detail: a single record card (header, then
+ * the sections) and, when there are collaboration tabs, the side column that
+ * carries them — collapsible on wide bodies, merged into the card's own tab
+ * strip on narrow ones (`RecordCollaborationBody`). A module only says what
+ * goes in the header, in the sections and in the tabs.
  */
-export function RecordBody({ children, side }: RecordBodyProps) {
-  const hasSide = side !== null && side !== undefined && side !== false
+export function RecordBody({ header, children, collaborationTabs = NO_TABS }: RecordBodyProps) {
+  if (collaborationTabs.length > 0) {
+    return (
+      <RecordCollaborationBody header={header} tabs={collaborationTabs}>
+        {children}
+      </RecordCollaborationBody>
+    )
+  }
 
   return (
-    <div className={cn(RECORD_BODY_GRID_CLASS, hasSide && RECORD_BODY_WITH_SIDE_CLASS)}>
-      <div className={RECORD_COLUMN_CLASS}>{children}</div>
-      {hasSide ? <div className={RECORD_COLUMN_CLASS}>{side}</div> : null}
+    <div className={RECORD_BODY_GRID_CLASS}>
+      <div className={RECORD_COLUMN_CLASS}>
+        <RecordCard>
+          {header}
+          {children}
+        </RecordCard>
+      </div>
     </div>
   )
 }

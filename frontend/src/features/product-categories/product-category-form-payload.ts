@@ -64,6 +64,8 @@ export function buildCreatePayload(
     // inherited and the server resolves it (a divergent value is a 422).
     ...(values.parent_id === null ? { requires_quote: values.requires_quote } : {}),
     is_selectable: values.is_selectable,
+    // Per-node (spec 0208): the effective value is resolved on read.
+    is_active: values.is_active,
     // Per-node and never inherited, same shape as `is_selectable`.
     is_reportable: values.is_reportable,
     // Own statistics-column selection (spec 0141): null inherits the nearest
@@ -138,6 +140,10 @@ export function buildUpdatePayload(
   // parent-dependent guard around it.
   if (values.is_selectable !== original.is_selectable) {
     payload.is_selectable = values.is_selectable
+  }
+
+  if (values.is_active !== original.is_active) {
+    payload.is_active = values.is_active
   }
 
   // Same per-node, never-inherited shape as `is_selectable`.

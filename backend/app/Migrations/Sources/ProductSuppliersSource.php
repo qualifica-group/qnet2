@@ -3,6 +3,7 @@
 namespace App\Migrations\Sources;
 
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Models\Product;
@@ -32,6 +33,17 @@ class ProductSuppliersSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Product suppliers';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::required('products'),
+            MigrationDependency::required('registries'),
+        ];
     }
 
     public function endpoint(): string

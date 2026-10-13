@@ -101,6 +101,7 @@ export const personalData = {
     quickPhone: 'Telefono',
     quickPec: 'PEC',
     quickFax: 'Fax',
+    quickWebsite: 'Sito web',
   },
   addresses: {
     title: 'Indirizzi',

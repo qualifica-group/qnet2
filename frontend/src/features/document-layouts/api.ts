@@ -8,6 +8,11 @@ import type {
   UpdateDocumentLayoutPayload,
 } from '@/features/document-layouts/types'
 
+/** Query key of a single document layout's detail, shared by the detail screen and its in-place saves. */
+export function documentLayoutDetailQueryKey(id: number) {
+  return ['document-layouts', 'detail', id] as const
+}
+
 /**
  * Fetches a single document layout detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -35,17 +40,17 @@ export async function createDocumentLayout(
  * Partially updates a document layout (PATCH). `code`/`module` are never
  * keys of `UpdateDocumentLayoutPayload` (spec 0069 `validation`): the
  * backend rejects their mere presence with 422 regardless of role. Returns
- * the updated resource.
+ * the saved record with the actor's permissions, so the in-place detail
+ * re-syncs on it as is.
  */
 export async function updateDocumentLayout(
   id: number,
   payload: UpdateDocumentLayoutPayload,
-): Promise<DocumentLayoutDetail> {
-  const { data } = await apiClient.patch<ApiResponse<DocumentLayoutDetail>>(
-    `/document-layouts/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<DocumentLayoutDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<DocumentLayoutDetail, ResourcePermissions>
+  >(`/document-layouts/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

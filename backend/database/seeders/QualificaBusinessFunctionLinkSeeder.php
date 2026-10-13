@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Migrations\Sources\ProductsSource;
 use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
@@ -21,7 +22,11 @@ use Illuminate\Database\Seeder;
  *     keep resolving the root's;
  *   - "Presa Appuntamenti", the Consulenza leaf (user directive 2026-09-28):
  *     linked to "Consulenza", the one function this seeder CREATES itself
- *     (OWN_FUNCTIONS) instead of expecting it from the import.
+ *     (OWN_FUNCTIONS) instead of expecting it from the import;
+ *   - "No categoria", the holding root of the legacy products imported without
+ *     a category (user decision 2026-10-12): linked to "No funzione aziendale",
+ *     another OWN function, so an offer line on one of those products can
+ *     still extend its opportunity's coverage, which requires a function.
  *
  * The category is resolved by NAME at any depth: `name` is the catalogue's
  * natural key (QualificaCatalogSeeder seeds every node with `firstOrCreate` on
@@ -59,16 +64,24 @@ class QualificaBusinessFunctionLinkSeeder extends Seeder
         'Formazione' => 'Formazione',
         'APL' => 'APL',
         'Presa Appuntamenti' => 'Consulenza',
+        ProductsSource::UNCATEGORIZED_CATEGORY => self::UNCATEGORIZED_FUNCTION,
     ];
 
     /**
+     * The function of the "No categoria" holding root (user decision
+     * 2026-10-12): without one, every legacy offer carrying one of its
+     * products failed the import.
+     */
+    private const string UNCATEGORIZED_FUNCTION = 'No funzione aziendale';
+
+    /**
      * Business functions the legacy system does not supply, created here when
-     * no function of that name exists yet (user directive 2026-09-28). `name`
-     * is the natural key, as for the imported ones.
+     * no function of that name exists yet (user directives 2026-09-28 and
+     * 2026-10-12). `name` is the natural key, as for the imported ones.
      *
      * @var list<string>
      */
-    private const array OWN_FUNCTIONS = ['Consulenza'];
+    private const array OWN_FUNCTIONS = ['Consulenza', self::UNCATEGORIZED_FUNCTION];
 
     public function __construct(private readonly CategoryHierarchy $hierarchy) {}
 

@@ -3,7 +3,6 @@ import { Tags } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,7 +11,6 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -35,34 +33,28 @@ export function CostTypeDetailView({ costType, onEdit }: CostTypeDetailViewProps
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab(COST_TYPES_DOMAIN, costType.id, t('activityLog.title'))]}
-            />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab(COST_TYPES_DOMAIN, costType.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={costType.name} icon={<Tags />} />}
             title={costType.name}
             actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
-          <RecordSectionsGrid>
-            <RecordSection title={t('costTypes.form.sections.identity.title')} full>
-              <RecordFieldList>
-                <RecordField label={t('costTypes.detail.description')}>
-                  {costType.description ? costType.description : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('costTypes.detail.sortOrder')}>{costType.sort_order}</RecordField>
-                <RecordField label={t('costTypes.detail.status')}>
-                  {costType.is_active ? t('costTypes.detail.active') : t('costTypes.detail.inactive')}
-                </RecordField>
-              </RecordFieldList>
-            </RecordSection>
-          </RecordSectionsGrid>
-        </RecordCard>
+        }
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('costTypes.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <RecordField label={t('costTypes.detail.description')}>
+                {costType.description ? costType.description : <DetailEmpty />}
+              </RecordField>
+              <RecordField label={t('costTypes.detail.sortOrder')}>{costType.sort_order}</RecordField>
+              <RecordField label={t('costTypes.detail.status')}>
+                {costType.is_active ? t('costTypes.detail.active') : t('costTypes.detail.inactive')}
+              </RecordField>
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
       </RecordBody>
 
       {createdAt || updatedAt ? (

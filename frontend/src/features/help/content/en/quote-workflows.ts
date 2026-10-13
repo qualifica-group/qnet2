@@ -17,6 +17,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'edit-in-place',
+      title: 'Editing a workflow',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'There is no edit page: open the workflow from the list and edit it right in the detail. Hover **Name**, **Active**, **Criteria** or **Statuses** (on touch the pencil is always visible) and click the pencil: that row\'s editor appears, which you confirm with **Save** or dismiss with **Cancel**. One row is edited at a time and saving only affects that row. Pencils only show if you have edit permission.',
+        },
+        {
+          type: 'paragraph',
+          text: '**New workflow** opens the same detail in creation: **Name** and **Active** are rows you confirm with **Done** (or **Revert**), while the **Criteria** and **Statuses** editors are already open. The workflow is only created with **Save**; if you leave first, QNet asks for confirmation.',
+        },
+      ],
+    },
+    {
       id: 'criteria',
       title: 'Criteria',
       blocks: [

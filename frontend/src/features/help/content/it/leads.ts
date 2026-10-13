@@ -11,7 +11,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'steps',
-          items: ['Apri **Marketing e Lead › Lead** e clicca **Nuovo lead**.', 'Compila i campi (vedi tabella).', 'Clicca **Salva**.'],
+          items: [
+            'Apri **Marketing e Lead › Lead** e clicca **Nuovo lead**: il modulo ha lo stesso aspetto della scheda, con le stesse sezioni e **righe chiuse**.',
+            "Fai clic su una riga (o sulla matita) per aprirla, scegli il valore e premi **Fatto** per tenerlo o **Ripristina** per riportarlo com'era (vedi tabella).",
+            'Clicca **Salva**: QNet controlla tutto e crea il lead. Se esci senza salvare ti viene chiesta conferma.',
+          ],
         },
         {
           type: 'table',
@@ -24,7 +28,7 @@ const guide: HelpGuide = {
             ['**Fonte**', 'Obbligatoria. Precompilata dalla Fonte della campagna, se presente; modificabile.'],
             ['Prodotti di interesse', 'Limitati alle categorie della campagna.'],
             ['**Note**', 'Testo libero, massimo 5000 caratteri.'],
-            ['Campi extra / Dati importati', 'Coppie **Chiave** e **Valore**, di solito da un import.'],
+            ['Dati importati', 'Coppie **Chiave** e **Valore**, di solito da un import: si apre la riga e si aggiungono con **Aggiungi campo**.'],
           ],
         },
         {
@@ -34,6 +38,33 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: "Attiva **Converti automaticamente in Opportunità** per creare subito l'opportunità insieme al lead (serve il permesso di creare opportunità).",
+        },
+      ],
+    },
+    {
+      id: 'editing-a-lead',
+      title: 'Modificare un lead',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Non esiste una pagina di modifica separata: il lead si modifica **direttamente dalla sua scheda**, un campo alla volta.',
+        },
+        {
+          type: 'steps',
+          items: [
+            "Apri il lead dall'elenco.",
+            'Passa col mouse sul campo da cambiare e premi la **matita** (o fai clic sul valore).',
+            'Modifica il valore nel controllo che compare.',
+            "Premi **Salva** per salvare quel campo; **Annulla** (o Esc, o un clic fuori dal campo aperto) lo chiude lasciandolo com'era, senza salvare.",
+          ],
+        },
+        {
+          type: 'note',
+          text: "Alcuni campi ne aggiornano altri, come in creazione: cambiare la **Campagna** precompila Sede e Fonte (se la campagna le ha) e può chiedere di rimuovere i prodotti non più coperti; cambiare la **Sede** svuota l'Operatore; scegliere un **Operatore** compila la Sede se è vuota. Il salvataggio porta con sé anche questi campi.",
+        },
+        {
+          type: 'note',
+          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura (oppure non puoi modificare un campo che quel cambio aggiornerebbe).',
         },
       ],
     },

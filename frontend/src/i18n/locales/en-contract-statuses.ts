@@ -33,7 +33,7 @@ export const contractStatuses = {
   },
   detail: {
     title: 'Contract status details',
-    subtitle: 'Read-only view of the selected contract status.',
+    subtitle: 'Details of the selected record, editable in place.',
     loadError: 'Unable to load the contract status. Please try again.',
     description: 'Description',
     color: 'Color',
@@ -47,8 +47,6 @@ export const contractStatuses = {
     newContractStatus: 'New status',
     createTitle: 'Create contract status',
     createSubtitle: 'Add a new status for contracts.',
-    editTitle: 'Edit contract status',
-    editSubtitle: 'Update the selected contract status.',
     name: 'Name',
     description: 'Description',
     color: 'Color',
@@ -76,15 +74,16 @@ export const contractStatuses = {
     deleteError: 'Unable to delete the contract status. Please try again.',
     deleteForbidden: 'You cannot delete this contract status.',
     deleteInUseFallback: 'This contract status is used by a contract and cannot be deleted.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The record has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name, description, color, group and status of the contract.',
       },
-    },
-    hints: {
-      systemStatusFields: 'A system status has fixed fields — only name and color can be changed.',
-      cannotUnsetDefault: 'To remove the default, reassign it to another status.',
     },
   },
   reorder: {

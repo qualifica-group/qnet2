@@ -1,218 +1,132 @@
-import { useRef } from 'react'
-import { IdCard, MapPin, Phone } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Badge } from '@/components/ui/badge'
 import { Form } from '@/components/ui/form'
-import { FormSection } from '@/components/form-section'
-import {
-  MAIN_COLUMN_CLASS,
-  PANEL_GRID_CLASS,
-  SPLIT_SIDE_COLUMN_CLASS,
-} from '@/components/record-form/layout'
+import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
-import { useResourcePermissions } from '@/features/authorization/permissions'
-import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
-import { AddressesManager } from '@/features/personal-data/addresses-manager'
-import { ContactsManager } from '@/features/personal-data/contacts-manager'
-import { PersonalDataCardForm } from '@/features/personal-data/personal-data-card-form'
-import { cardOwnerRef } from '@/features/personal-data/drafts'
+import { RecordFormBody } from '@/components/record-form/record-form-body'
+import { IdentityDuplicateWarning } from '@/features/identity-duplicates/identity-duplicate-warning'
+import { useIdentityDuplicateCheck } from '@/features/identity-duplicates/use-identity-duplicate-check'
+import { emptyPersonalDataDraft } from '@/features/personal-data/drafts'
+import { PERSONAL_DATA_CARD_FIELD } from '@/features/personal-data/personal-data-identity-record-section'
+import { PersonalDataChildCards } from '@/features/personal-data/personal-data-record-cards'
+import type { QuickContactType } from '@/features/personal-data/quick-contacts'
+import type { PersonalDataDraft } from '@/features/personal-data/types'
+import { usePersonalDataDraftInlineEdit } from '@/features/personal-data/use-personal-data-draft-inline-edit'
 import {
   anagraphicSectionProps,
   useRevealBlockedSection,
 } from '@/features/personal-data/use-reveal-blocked-section'
-import { DetailsTabContent } from '@/features/referents/referent-form-details-tab'
+import { ReferentCreateSections } from '@/features/referents/referent-create-sections'
 import { ReferentFormHeader } from '@/features/referents/referent-form-header'
-import { ReferentFormSummary } from '@/features/referents/referent-form-summary'
-import { IdentityDuplicateWarning } from '@/features/identity-duplicates/identity-duplicate-warning'
-import { useIdentityDuplicateCheck } from '@/features/identity-duplicates/use-identity-duplicate-check'
 import { useReferentForm } from '@/features/referents/use-referent-form'
-import type { QuickContactType } from '@/features/personal-data/quick-contacts'
-import type { ReferentDetail, ReferentFormMode } from '@/features/referents/types'
+import { useReferentFormSubmit } from '@/features/referents/use-referent-form-submit'
+import type { ReferentDetail } from '@/features/referents/types'
 
 /**
  * A referent must be reachable by phone at creation (user directive
- * 2026-07-31): the quick field carries the asterisk, `useReferentForm` blocks
- * the save, and StoreReferentRequest enforces it server-side.
+ * 2026-07-31): the quick field carries the asterisk, `useReferentFormSubmit`
+ * blocks the save, and StoreReferentRequest enforces it server-side.
  */
 const REQUIRED_CREATE_CONTACT_TYPES: QuickContactType[] = ['phone']
 
-/**
- * DOM id bridging the sticky header's save action to the RHF `<form>` below,
- * exactly as the Opportunità and Gestione Richieste screens do: the same id
- * serves the footer actions, so both copies of the button submit this form
- * without either of them nesting the other.
- */
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
 const REFERENT_FORM_ID = 'referent-form'
 
+/** Stable create mode: a fresh object per render would rebuild the form's defaults. */
+const CREATE_MODE = { type: 'create' } as const
+
 interface ReferentFormBodyProps {
-  mode: ReferentFormMode
   onSuccess: (referent: ReferentDetail) => void
   onCancel: () => void
 }
 
 /**
- * The referente create/edit form UI (spec 0016), rebuilt as the TWIN of the
- * Opportunità form and of its own sibling `RegistryFormBody` (user directive
- * 2026-09-11). Not a resemblance: the layout primitives are literally the same
- * objects (`@/components/record-form`), so none of the record forms can drift
- * apart with a later edit to another.
+ * The referente create form UI, aligned with the in-place detail (spec 0216,
+ * spec 0195 D-8 applied to Referenti): the same `RecordCanvas`, the record card
+ * with its identity band, KPI strip and sections, every row closed until
+ * clicked — the anagraphic card too (`ReferentCreateSections`) — and the
+ * Contatti/Indirizzi cards in the side column, kept in the draft until Salva
+ * with their quick fields ready to fill, the phone one required (the twin of
+ * `RegistryFormBody`). There is no edit form: the detail edits a persisted
+ * referente in place.
  *
- * The **duplicate warning moved to the side column**, for the same reason it
- * did on the anagrafica: it used to sit under the custom fields, i.e.
- * off-screen exactly while the operator was typing the name that triggers it.
- * It still refuses nothing — the save goes through either way.
- *
- * Each block keeps its own visibility gate; every field is wrapped in
- * `MetaField` (spec 0004); all non-render logic lives in `useReferentForm`.
+ * The duplicate warning heads the side column. It refuses nothing: the save
+ * goes through either way.
  */
-export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBodyProps) {
+export function ReferentFormBody({ onSuccess, onCancel }: ReferentFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  // The form's own scroll container: what a refused save scrolls, and the
-  // boundary that keeps it from scrolling another owner form's blocks.
+  // The form's own scroll scope: what a refused save reveals, never another owner form's blocks.
   const containerRef = useRef<HTMLDivElement>(null)
-  const {
+  const [profileDraft, setProfileDraft] = useState<PersonalDataDraft>(emptyPersonalDataDraft)
+  const { form, customFieldErrorPaths } = useReferentForm({ mode: CREATE_MODE })
+  const { inline, cardSignal } = usePersonalDataDraftInlineEdit(form, profileDraft, setProfileDraft)
+  const submit = useReferentFormSubmit({
     form,
-    serverError,
+    mode: CREATE_MODE,
     profileDraft,
-    setProfileDraft,
-    revalidateSignal,
-    blockedSection,
-    selectedReferentTypeItem,
-    selectedUserItem,
-    onSubmit,
-    personalDataFieldPermission,
-  } = useReferentForm({ mode, onSuccess })
-
-  // The blocks are all on screen, but the offending one can be far above the
-  // save button: a refused save brings it back under the user's eyes.
-  useRevealBlockedSection(revalidateSignal, blockedSection, containerRef)
-  const { matches: duplicateMatches } = useIdentityDuplicateCheck({
-    enabled: mode.type === 'create',
-    profileDraft,
+    customFieldErrorPaths,
+    onSuccess,
+    // An incomplete card refuses the save: open its row, where the card marks the fields.
+    onRefused: (section) => {
+      if (section === 'card') {
+        inline.start(PERSONAL_DATA_CARD_FIELD)
+      }
+    },
   })
+  const fieldPermission = submit.personalDataFieldPermission
 
-  // Section visibility, read from the same authorization context `MetaField`
-  // uses (the anagraphic card has no permission-gated field, so it is always
-  // shown).
-  const detailsVisible =
-    fieldPermission('referent_type_id').visible ||
-    fieldPermission('user_id').visible ||
-    fieldPermission('contact_scope').visible ||
-    fieldPermission('notes').visible
-  const contactsVisible = personalDataFieldPermission('personal_data.contacts').visible
-  const addressesVisible = personalDataFieldPermission('personal_data.addresses').visible
-
-  // Contacts/addresses persist immediately once the card exists; otherwise they
-  // stay buffered until the form is saved (parity with the Users module).
-  const persistence = cardOwnerRef(profileDraft)
+  useRevealBlockedSection(submit.revalidateSignal, submit.blockedSection, containerRef)
+  const { matches: duplicateMatches } = useIdentityDuplicateCheck({ enabled: true, profileDraft })
   const { isSubmitting } = form.formState
 
+  const side = (
+    <>
+      <IdentityDuplicateWarning matches={duplicateMatches} />
+      <PersonalDataChildCards
+        draft={profileDraft}
+        contactsTitle={t('referents.form.sections.contacts.title')}
+        addressesTitle={t('referents.form.sections.addresses.title')}
+        fieldPermission={fieldPermission}
+        onChange={(patch) => setProfileDraft({ ...profileDraft, ...patch })}
+        createMode
+        requiredCreateTypes={REQUIRED_CREATE_CONTACT_TYPES}
+        contactsBoxProps={anagraphicSectionProps('contacts')}
+        addressesBoxProps={anagraphicSectionProps('addresses')}
+      />
+    </>
+  )
+
   return (
-    <div ref={containerRef} className="@container flex flex-1 flex-col overflow-y-auto bg-surface">
+    <div ref={containerRef} className="contents">
       <Form {...form}>
-        <ReferentFormHeader
-          control={form.control}
-          isEdit={mode.type === 'edit'}
-          formId={REFERENT_FORM_ID}
-          isSubmitting={isSubmitting}
-          submitError={serverError}
-          onCancel={onCancel}
-        />
-
-        <div className={PANEL_GRID_CLASS}>
-          {/* On a single column the duplicate warning stays above the form,
-              where the name is typed, while the recap drops below it. */}
-          <aside className={SPLIT_SIDE_COLUMN_CLASS}>
-            <IdentityDuplicateWarning matches={duplicateMatches} />
-            <div className="order-last min-w-0">
-              <ReferentFormSummary
-                control={form.control}
-                selectedReferentTypeItem={selectedReferentTypeItem}
-                selectedUserItem={selectedUserItem}
-                profileDraft={profileDraft}
-              />
-            </div>
-          </aside>
-
-          <div className={MAIN_COLUMN_CLASS}>
-            {/* `display: contents`: this native `<form>` only scopes the HTML
-                submit boundary, it must not become an extra flex box. */}
-            <form
-              id={REFERENT_FORM_ID}
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="contents"
-              noValidate
-            >
-              <div {...anagraphicSectionProps('card')}>
-                <FormSection
-                  icon={IdCard}
-                  title={t('referents.form.sections.identity.title')}
-                  description={t('referents.form.sections.identity.description')}
-                >
-                  <PersonalDataCardForm
-                    value={profileDraft}
-                    onChange={setProfileDraft}
-                    fieldPermission={personalDataFieldPermission}
-                    revalidateSignal={revalidateSignal}
-                  />
-                </FormSection>
-              </div>
-
-              {detailsVisible && (
-                <DetailsTabContent
+        {/* `display: contents`: this native `<form>` only scopes the HTML submit
+            boundary, it must not become an extra box around the canvas. */}
+        <form id={REFERENT_FORM_ID} onSubmit={form.handleSubmit(submit.onSubmit)} className="contents" noValidate>
+          <RecordCanvas>
+            <RecordFormBody side={side}>
+              <RecordCard>
+                <ReferentFormHeader
                   control={form.control}
-                  selectedReferentTypeItem={selectedReferentTypeItem}
-                  selectedUserItem={selectedUserItem}
+                  profileDraft={profileDraft}
+                  formId={REFERENT_FORM_ID}
+                  isSubmitting={isSubmitting}
+                  submitError={submit.serverError}
+                  onCancel={onCancel}
                 />
-              )}
+                <ReferentCreateSections
+                  form={form}
+                  draft={inline}
+                  card={{
+                    draft: profileDraft,
+                    setDraft: setProfileDraft,
+                    revalidateSignal: submit.revalidateSignal + cardSignal,
+                    fieldPermission,
+                  }}
+                />
+              </RecordCard>
 
-              {contactsVisible && (
-                <div {...anagraphicSectionProps('contacts')}>
-                  <FormSection
-                    icon={Phone}
-                    title={t('referents.form.sections.contacts.title')}
-                    description={t('referents.form.sections.contacts.description')}
-                    aside={<Badge variant="secondary">{profileDraft.contacts.length}</Badge>}
-                  >
-                    <ContactsManager
-                      value={profileDraft.contacts}
-                      onChange={(contacts) => setProfileDraft({ ...profileDraft, contacts })}
-                      fieldPermission={personalDataFieldPermission}
-                      showHeader={false}
-                      persistence={persistence}
-                      createMode={mode.type === 'create'}
-                      requiredCreateTypes={REQUIRED_CREATE_CONTACT_TYPES}
-                    />
-                  </FormSection>
-                </div>
-              )}
-
-              {addressesVisible && (
-                <div {...anagraphicSectionProps('addresses')}>
-                  <FormSection
-                    icon={MapPin}
-                    title={t('referents.form.sections.addresses.title')}
-                    description={t('referents.form.sections.addresses.description')}
-                    aside={<Badge variant="secondary">{profileDraft.addresses.length}</Badge>}
-                  >
-                    <AddressesManager
-                      value={profileDraft.addresses}
-                      onChange={(addresses) => setProfileDraft({ ...profileDraft, addresses })}
-                      fieldPermission={personalDataFieldPermission}
-                      showHeader={false}
-                      persistence={persistence}
-                      createMode={mode.type === 'create'}
-                    />
-                  </FormSection>
-                </div>
-              )}
-
-              <CustomFieldsSection resource="referents" control={form.control} />
-
-              {/* The same actions the identity bar carries, repeated where the
-                  form ends: it is long enough that the operator finishes typing
-                  far from the sticky bar. */}
+              {/* The same actions the identity band carries, repeated where the
+                  form ends: the operator finishes typing far from the top. */}
               <RecordFormActions
                 formId={REFERENT_FORM_ID}
                 isSubmitting={isSubmitting}
@@ -220,9 +134,9 @@ export function ReferentFormBody({ mode, onSuccess, onCancel }: ReferentFormBody
                 submittingLabel={t('referents.form.saving')}
                 cancel={{ label: t('referents.form.cancel'), onCancel }}
               />
-            </form>
-          </div>
-        </div>
+            </RecordFormBody>
+          </RecordCanvas>
+        </form>
       </Form>
     </div>
   )

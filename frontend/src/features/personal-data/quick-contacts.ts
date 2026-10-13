@@ -6,7 +6,7 @@
 import type { ContactDraft } from '@/features/personal-data/types'
 
 /** The contact types with a dedicated quick field (real `contact_type` enum values). */
-export const QUICK_CONTACT_TYPES = ['email', 'phone', 'pec', 'fax'] as const
+export const QUICK_CONTACT_TYPES = ['email', 'phone', 'pec', 'fax', 'website'] as const
 export type QuickContactType = (typeof QUICK_CONTACT_TYPES)[number]
 
 /** The first buffered draft of `type` — the one a quick field owns. */

@@ -64,6 +64,11 @@ describe('workOrderColumnRenderers date columns', () => {
     expect(screen.getByText(formatDate('2026-09-30'))).toBeInTheDocument()
   })
 
+  it('renders the read-only contract_expiry_date without a time part', () => {
+    renderCell('contract_expiry_date', '2027-03-31T00:00:00.000000Z')
+    expect(screen.getByText(formatDate('2027-03-31T00:00:00.000000Z'))).toBeInTheDocument()
+  })
+
   it.each(['created_at', 'updated_at'])('renders %s as a datetime', (columnId) => {
     renderCell(columnId, '2026-09-30T14:30:00Z')
     expect(screen.queryByText('—')).not.toBeInTheDocument()

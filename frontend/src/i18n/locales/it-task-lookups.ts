@@ -49,7 +49,7 @@ function lookupBundle({ singular, Singular, plural }: LookupCopy) {
     },
     detail: {
       title: `Dettaglio ${singular}`,
-      subtitle: 'Visualizzazione in sola lettura del record selezionato.',
+      subtitle: 'Dettaglio del record selezionato, modificabile sul posto.',
       loadError: `Impossibile caricare la ${singular}. Riprova.`,
       description: 'Descrizione',
       color: 'Colore',
@@ -62,8 +62,6 @@ function lookupBundle({ singular, Singular, plural }: LookupCopy) {
     form: {
       createTitle: `Nuova ${singular}`,
       createSubtitle: `Crea una nuova ${singular}.`,
-      editTitle: `Modifica ${singular}`,
-      editSubtitle: `Aggiorna la ${singular} selezionata.`,
       name: 'Nome',
       description: 'Descrizione',
       color: 'Colore',
@@ -88,10 +86,15 @@ function lookupBundle({ singular, Singular, plural }: LookupCopy) {
       // backend, che nomina la risorsa. Questa si vede solo se il body non ne
       // porta uno.
       deleteInUse: `Questa ${singular} è usata da un task e non può essere eliminata.`,
+      leaveConfirm: {
+        title: 'Uscire senza salvare?',
+        description: `La ${singular} non è ancora stata creata: i dati inseriti andranno persi.`,
+        confirm: 'Esci senza salvare',
+        cancel: 'Continua a compilare',
+      },
       sections: {
         identity: {
           title: 'Dettagli',
-          description: 'Nome, descrizione, colore, icona e stato.',
         },
       },
     },
@@ -228,7 +231,7 @@ export const taskStatuses = {
   },
   detail: {
     title: 'Dettaglio stato task',
-    subtitle: 'Visualizzazione in sola lettura del record selezionato.',
+    subtitle: 'Dettaglio del record selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare lo stato task. Riprova.',
     description: 'Descrizione',
     color: 'Colore',
@@ -243,8 +246,6 @@ export const taskStatuses = {
   form: {
     createTitle: 'Nuovo stato task',
     createSubtitle: 'Crea un nuovo stato task.',
-    editTitle: 'Modifica stato task',
-    editSubtitle: 'Aggiorna lo stato task selezionato.',
     newTaskStatus: 'Nuovo stato',
     name: 'Nome',
     description: 'Descrizione',
@@ -279,17 +280,15 @@ export const taskStatuses = {
     completionPercentageRequired: 'La percentuale di completamento è obbligatoria.',
     completionPercentageInvalid: 'La percentuale deve essere un numero intero.',
     completionPercentageRange: 'La percentuale deve essere compresa tra 0 e 100.',
-    hints: {
-      // Nomina di proposito QUATTRO campi: il messaggio del backend dice
-      // ancora "only name and color" ed è rimasto invariato per non rompere
-      // AC-048, ma il modulo non lo mostra. Questa è la dicitura corretta.
-      systemStatusFields:
-        'Uno stato di sistema ha campi fissi: puoi modificare solo nome, colore, icona e percentuale.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Lo stato task non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
     },
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome, descrizione, colore, icona, fase e stato.',
       },
     },
   },

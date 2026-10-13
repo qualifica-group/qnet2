@@ -13,11 +13,15 @@ namespace Database\Seeders\QualificaCatalog;
  * because the lists differ (user directive 2026-10-05: "se gli stati sono gli
  * stessi unisci, altrimenti ognuno il proprio").
  *
- * The sheet carries no legend: a first classification, to be refined with
- * the client. "Da convocare" is the open entry point (pinned open row), every
- * step of the path is pending, "Fine pratica" the positive outcome and
- * "Perso" the loss (the pinned closed rows). No "Non risponde": a practice
- * list, like the internships' and the apprenticeships'.
+ * The client prepended the APL sector's call-centre states, classified by the
+ * sheet's fill (user directive 2026-10-09): "Da Richiamare" is now the open
+ * entry point (pinned open row) and "Associato NO _ Altro Ente" the first loss
+ * (pinned closed_lost row), every pesca cell a NEGATIVE outcome. "Da
+ * convocare" follows "Doppione già associato" and is VALIDATED: it hands the
+ * contact over to an APL operator. "Fine pratica" stays the positive outcome.
+ * No "Non risponde": a practice list, like the internships' and the
+ * apprenticeships'. A set already seeded is left as it stands: the change
+ * reaches a fresh seed only (same directive).
  */
 final class AplOrientationWorkflowStatusCatalogue
 {
@@ -30,7 +34,20 @@ final class AplOrientationWorkflowStatusCatalogue
      * @var array<string, array{legend: string, description: string}>
      */
     public const array STATUSES = [
-        'Da convocare' => ['legend' => WorkflowStatusCatalogue::OPEN, 'description' => 'Pratica aperta, utente da convocare.'],
+        'Da Richiamare' => ['legend' => WorkflowStatusCatalogue::OPEN, 'description' => 'Contatto da ricontattare per completare la lavorazione o fornire ulteriori informazioni.'],
+        'Attesa esito SFL/ADI' => ['legend' => WorkflowStatusCatalogue::OPEN, 'description' => 'In attesa dell\'esito relativo alla pratica SFL/ADI del candidato.'],
+        'Attesa _ App. CPI' => ['legend' => WorkflowStatusCatalogue::PENDING, 'description' => 'In attesa della definizione dell\'appuntamento presso il CPI.'],
+        'OK App. Fissato CPI' => ['legend' => WorkflowStatusCatalogue::PENDING, 'description' => 'Appuntamento presso CPI fissato e confermato.'],
+        'Attesa Documenti' => ['legend' => WorkflowStatusCatalogue::PENDING, 'description' => 'In attesa della ricezione della documentazione necessaria per procedere con la gestione della pratica.'],
+        'Associato NO _ Altro Ente' => ['legend' => WorkflowStatusCatalogue::NEGATIVE, 'description' => 'Candidato associato a un altro ente diverso da NOI.'],
+        'NO _ Non ha Requisiti' => ['legend' => WorkflowStatusCatalogue::NEGATIVE, 'description' => 'Candidato non idoneo per mancanza dei requisiti previsti.'],
+        'Non interessato/a' => ['legend' => WorkflowStatusCatalogue::NEGATIVE, 'description' => 'Candidato che ha comunicato di non essere interessato al percorso.'],
+        'Irreperibile' => ['legend' => WorkflowStatusCatalogue::NEGATIVE, 'description' => 'Impossibile contattare il candidato dopo i tentativi effettuati.'],
+        'Non pertinente - Altra regione' => ['legend' => WorkflowStatusCatalogue::NEGATIVE, 'description' => 'Candidato non pertinente perché appartenente a un\'altra regione in cui non siamo accreditati.'],
+        'Numero Inesistente/Errato' => ['legend' => WorkflowStatusCatalogue::NEGATIVE, 'description' => 'Recapito telefonico non valido o inesistente.'],
+        'Doppione' => ['legend' => WorkflowStatusCatalogue::NEGATIVE, 'description' => 'Record duplicato presente nel sistema.'],
+        'Doppione già associato' => ['legend' => WorkflowStatusCatalogue::NEGATIVE, 'description' => 'Record duplicato già collegato a un\'associazione esistente.'],
+        'Da convocare' => ['legend' => WorkflowStatusCatalogue::VALIDATED, 'description' => 'Contatto validato, da assegnare a un operatore APL per la convocazione.'],
         'Convocato' => ['legend' => WorkflowStatusCatalogue::PENDING, 'description' => 'Utente convocato, in attesa della presa in carico.'],
         'Presa in carico' => ['legend' => WorkflowStatusCatalogue::PENDING, 'description' => 'Utente preso in carico: politiche attive da erogare.'],
         'Monitoraggio SFL' => ['legend' => WorkflowStatusCatalogue::PENDING, 'description' => 'Politiche attive in corso: rinnovo SFL da monitorare mese per mese.'],

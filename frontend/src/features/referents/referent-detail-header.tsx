@@ -2,9 +2,9 @@ import { useTranslation } from 'react-i18next'
 import { IdCard, Mail, MapPin, Radar } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
 import { enumLabelOf } from '@/features/config/enum-label'
+import type { PersonalDataType } from '@/features/personal-data/types'
 import type { ReferentDetailWithPermissions } from '@/features/referents/types'
 
 /**
@@ -13,28 +13,21 @@ import type { ReferentDetailWithPermissions } from '@/features/referents/types'
  * together — the same split `opportunity-detail-header.tsx` makes.
  */
 
-interface ReferentDetailHeaderProps {
-  referent: ReferentDetailWithPermissions
-  /** Opens the module's edit surface; absent = no edit affordance. */
-  onEdit?: () => void
-}
-
 /**
  * Identity band: monogram, name, the referent type as subtitle, the contact
- * ambit as a pill, edit action.
+ * ambit as a pill. No edit action: the record edits in place (spec 0216).
  *
  * The linked system user (spec 0090 D-2) is deliberately NOT a pill here: an
  * unlabelled name next to the record's own name reads as a second identity for
  * the same person. It stays a labelled row in the details section, where
  * "Linked user: Ada" says exactly what it is.
  */
-export function ReferentDetailHeader({ referent, onEdit }: ReferentDetailHeaderProps) {
-  const canEdit = referent.permissions.resource.update
-
+export function ReferentDetailHeader({ referent }: { referent: ReferentDetailWithPermissions }) {
   return (
     <RecordCardHeader
       media={<DetailMonogram name={referent.name} className="size-10 text-base" />}
       title={referent.name}
+      legacyId={referent.old_id}
       subtitle={referent.referent_type?.name}
       badges={
         <Badge variant="secondary" className="gap-1.5">
@@ -42,40 +35,38 @@ export function ReferentDetailHeader({ referent, onEdit }: ReferentDetailHeaderP
           {enumLabelOf('referent_contact_scope', referent.contact_scope)}
         </Badge>
       }
-      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }
 
+interface ReferentStatsStripProps {
+  contacts: number
+  addresses: number
+  /** The anagraphic card's kind, `null` when there is none (yet). */
+  cardType: PersonalDataType | null
+}
+
 /**
- * KPI strip: how reachable this person is, plus the kind of card behind them.
+ * KPI strip: how reachable this person is, plus the kind of card behind them —
+ * the persisted counts on the detail, the draft's, live, on create (spec 0216).
  *
  * Three tiles, not four, and none of them repeats the header: the type and the
  * ambit are already pills up there, and a strip echoing them would read as the
  * same field twice rather than as a summary of the record. Its labels are its
- * OWN (`referents.detail.stats.*`) for the same reason — the side column
- * already titles the contacts and addresses blocks.
+ * OWN (`referents.detail.stats.*`) for the same reason — the record already
+ * titles the contacts and addresses blocks.
  */
-export function ReferentDetailStats({ referent }: { referent: ReferentDetailWithPermissions }) {
+export function ReferentStatsStrip({ contacts, addresses, cardType }: ReferentStatsStripProps) {
   const { t } = useTranslation()
-  const card = referent.personal_data
 
   return (
     <RecordStatStrip>
-      <RecordStat
-        icon={<Mail />}
-        label={t('referents.detail.stats.contacts')}
-        value={card?.contacts.length ?? 0}
-      />
-      <RecordStat
-        icon={<MapPin />}
-        label={t('referents.detail.stats.addresses')}
-        value={card?.addresses.length ?? 0}
-      />
+      <RecordStat icon={<Mail />} label={t('referents.detail.stats.contacts')} value={contacts} />
+      <RecordStat icon={<MapPin />} label={t('referents.detail.stats.addresses')} value={addresses} />
       <RecordStat
         icon={<IdCard />}
         label={t('referents.detail.stats.cardType')}
-        value={card ? enumLabelOf('personal_data_type', card.type) : <DetailEmpty />}
+        value={cardType ? enumLabelOf('personal_data_type', cardType) : <DetailEmpty />}
       />
     </RecordStatStrip>
   )

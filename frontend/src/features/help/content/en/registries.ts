@@ -32,6 +32,8 @@ const guide: HelpGuide = {
           items: [
             'Open Registries › Registries.',
             'Type in the Search… field at the top of the table: the list updates as you type.',
+            'The search finds the name or company name (even a part inside it), the VAT number or tax code, a phone number of the registry (primary or not, with or without spaces) and the name or phone of a linked referent. For VAT number, tax code, phones and referents type the start of the word or number, at least 3 characters: for example "ros" finds the referent Rossi, "02 6885" finds 02 6885 7892.',
+            'Use the tabs above the table to split the registries: All, Individuals or Companies. The Type column shows which group each row belongs to.',
             'To narrow the search use the column filters, for example Source, Supplier or Agreement status.',
             "The Commercial, Supervisor, Reporter and Operators columns show the registry's team: Operators lists the Account managers in their order. You can filter them by name and sort them, except Operators, which can only be filtered.",
             'To see the card, open the row Actions menu and choose View.',
@@ -49,7 +51,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "To create a card press **New registry**: the form looks like the detail, with the same sections and **closed rows**. Click a row (or its pencil) to open it, then **Done** to keep the value or **Revert** to put it back as it was. In the **Personal details** first choose the Type, Individual or Company (fields change accordingly): on Done the name appears at the top of the card. Contacts and Addresses are in the right-hand column, with their fields ready to fill: Email, Phone (required), PEC and Fax, plus **Add contact** for more, and one address with its Site type, plus **Add address** for further sites. **Save** checks everything and creates the registry; leaving without saving asks for confirmation.",
+          text: "To create a card press **New registry**: the form looks like the detail, with the same sections and **closed rows**. Click a row (or its pencil) to open it, then **Done** to keep the value or **Revert** to put it back as it was. In the **Personal details** first choose the Type, Individual or Company (fields change accordingly): on Done the name appears at the top of the card. Contacts and Addresses are in the right-hand column, with their fields ready to fill: Email, Phone (required), PEC, Fax and Website, plus **Add contact** for more, and one address with its Site type, plus **Add address** for further sites. **Save** checks everything and creates the registry; leaving without saving asks for confirmation.",
         },
         {
           type: 'table',
@@ -59,8 +61,8 @@ const guide: HelpGuide = {
             ['Relations', 'Source, Business sectors, Commercial referent and Reporter.'],
             ['Team', 'Supervisor and Account managers, in order of importance from the top; reorder them with Move up and Move down.'],
             ['Business data', 'VAT group, Supplier, Qualified supplier (suppliers only), Agreement status (In negotiation, Rejected or Agreed), Size class, Employee count and Agreement notes.'],
-            ['General notes', 'The yellow box at the top of the right-hand column, the same as in Request management: free text (up to 5000 characters) with what whoever opens the registry should read first.'],
-            ['Contacts', 'Email, Phone (required), PEC and Fax; with Add contact you enter more and set the Primary contact.'],
+            ['General notes', 'The yellow box, the same as in Request management (at the top of the registry data on the record view, at the top of the right-hand column when creating): free text (up to 5000 characters) with what whoever opens the registry should read first.'],
+            ['Contacts', 'Email, Phone (required), PEC, Fax and Website; with Add contact you enter more and set the Primary contact.'],
             ['Addresses', 'One or more addresses, each with a Site type: Registered office, Delivery, Billing or Operational site.'],
             ['Referents', "The client's contact people, full width below the other sections."],
             ['Other fields', 'The registry custom fields, including Tag: pick one or more tags from the list managed in the Tags module. They also appear on the detail, grouped as in the form.'],
@@ -91,7 +93,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "The **Personal details** (type, name or denomination, tax code, VAT number…) are edited together: the pencil opens the whole card and Save also updates the registry's name. **Contacts** and **Addresses**, in the right-hand column, are added, edited and deleted right there and saved at once.",
+          text: "The **Personal details** (type, name or denomination, tax code, VAT number…) are edited together: the pencil opens the whole card and Save also updates the registry's name. **Contacts** and **Addresses**, at the bottom of the record data, are added, edited and deleted right there and saved at once.",
         },
         {
           type: 'note',
@@ -99,7 +101,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "The **General notes** are written inside their box at the top of the right-hand column: click the text (or the pencil), type and press **Save**. If the registry has no notes and you cannot edit them, the box does not appear.",
+          text: "The **General notes** are written inside their box at the top of the registry data: click the text (or the pencil), type and press **Save**. If the registry has no notes and you cannot edit them, the box does not appear.",
         },
       ],
     },
@@ -221,7 +223,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'When you create a registry or a referent, QNet looks for similar cards. If it finds one, it shows Possible duplicate, with the card type (User, Registry or Referent) and the matching data: email, phone, tax code or VAT number.',
+          text: 'When you create a registry or a referent, QNet looks for similar cards. If it finds one, it shows Possible duplicate, with the card type (User, Registry or Referent) and the matching data: email, phone, tax code or VAT number. The same notice appears when you enter a new client from Request management.',
+        },
+        {
+          type: 'paragraph',
+          text: "Tax code and VAT number are compared with each other: a company's tax code is usually its VAT number, so a tax code equal to another card's VAT number is a duplicate.",
         },
         {
           type: 'steps',
@@ -234,7 +240,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'The notice does not block saving. It is up to you to decide whether the card is really a duplicate.',
+          text: 'A tax code, VAT number or phone already on another card blocks saving, wherever you enter it: creation, editing, the contacts of the detail and Request management. An email only raises the notice: it is up to you to decide whether the card is really a duplicate.',
         },
       ],
     },

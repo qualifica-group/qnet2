@@ -17,6 +17,7 @@ use App\RequestManagement\AttributeValueNormalizer;
 use App\RequestManagement\AttributeValueValidator;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\ProductCategories\AttributeLayoutService;
+use App\Services\ProductCategories\CategoryActivity;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +78,7 @@ class ProductService
 
     public function __construct(
         private readonly CategoryHierarchy $hierarchy,
+        private readonly CategoryActivity $categoryActivity,
         private readonly ProductAttributeResolver $attributeResolver,
         private readonly AttributeValueValidator $attributeValueValidator,
         private readonly AttributeValueNormalizer $attributeValueNormalizer,
@@ -310,6 +312,14 @@ class ProductService
         // may use; the `ids[]` hydration below bypasses it like the rest.
         if ($query->productUsage !== null) {
             $base->whereJsonContains('usages', $query->productUsage->value);
+        }
+
+        // Spec 0208 D-4: products of an effectively inactive category are not
+        // offered for a new link; `ids[]` hydration below stays exempt.
+        $inactiveCategoryIds = $this->categoryActivity->inactiveCategoryIds();
+
+        if ($inactiveCategoryIds !== []) {
+            $base->whereNotIn('category_id', $inactiveCategoryIds);
         }
 
         $window = $query->page($base, static fn ($ordered) => $ordered->orderBy('name')->orderBy('id'));

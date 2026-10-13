@@ -113,8 +113,9 @@ export interface LeadDetail {
 
 /**
  * A `LeadDetail` carrying the actor's authorization metadata for this
- * instance (spec 0004), as returned by `GET /leads/{id}`. Used to seed the
- * edit form's `ResourcePermissionsProvider` without a second request.
+ * instance (spec 0004), as returned by `GET`/`PATCH /leads/{id}`. Seeds the
+ * in-place detail's `ResourcePermissionsProvider` (spec 0217) without a
+ * second request.
  */
 export interface LeadDetailWithPermissions extends LeadDetail {
   permissions: ResourcePermissions
@@ -152,7 +153,7 @@ export interface CreateLeadPayload {
 /** Payload for PATCH /leads/{id} (partial update). Every field is optional (sparse diff). */
 export type UpdateLeadPayload = Partial<CreateLeadPayload>
 
-/** Discriminated form mode shared by the form hook/meta-resolver and `LeadForm`. */
+/** Discriminated form mode of `useLeadForm`: the create form, or the in-place detail (edit). */
 export type LeadFormMode = { type: 'create' } | { type: 'edit'; lead: LeadDetailWithPermissions }
 
 export type LeadLifecycleStatus = 'not_associated' | 'associated' | 'converted_to_opportunity'

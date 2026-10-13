@@ -7,7 +7,9 @@ namespace App\Services\Tasks;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\RoleAssignmentGuard;
+use App\Services\TimeEntries\TimeEntrySubordinateResolver;
 use Illuminate\Database\Eloquent\Builder;
+use WeakMap;
 
 /**
  * THE single implementation of the Task visibility-by-membership rule (spec
@@ -23,8 +25,17 @@ use Illuminate\Database\Eloquent\Builder;
  * to the Task is still decided by TaskAbilityResolver's record-role matrix.
  * A Task with no assignee, or an actor with no Sede, never matches the tier.
  *
- * Spec 0154 D-2 adds `is_private`: a PRIVATE Task narrows BOTH wider tiers at
- * once — `viewAll` and `viewSite` see it ONLY through the membership tier,
+ * Spec 0214 adds the tier `tasks.viewTeam`: the actor also sees every Task
+ * with at least one ASSEGNATARIO among their sottoposti, direct or indirect
+ * at any depth, deactivated users and deactivated intermediate managers
+ * included (TimeEntrySubordinateResolver::allDescendantIds()). Requester,
+ * creator or watcher being a sottoposto is not enough. Like `viewSite` it is a
+ * UNION with membership and `viewSite`, absorbed by `viewAll`, read-only.
+ * The chain is resolved at most once per actor instance (memoized below), as
+ * isVisibleTo() runs once per grid row.
+ *
+ * Spec 0154 D-2 adds `is_private`: a PRIVATE Task narrows ALL the wider tiers at
+ * once — `viewAll`, `viewSite` and `viewTeam` see it ONLY through the membership tier,
  * never through the resource permission or the shared-Sede bypass — while
  * leaving the membership tier itself untouched (creator/requester/assignee/
  * watcher always see their own Task, private or not). The super-admin is the
@@ -58,6 +69,11 @@ final class TaskVisibilityScope
 
     public const string VIEW_SITE_PERMISSION = 'tasks.viewSite';
 
+    public const string VIEW_TEAM_PERMISSION = 'tasks.viewTeam';
+
+    /** @var WeakMap<User, array<int, int>>|null */
+    private static ?WeakMap $teamIdsByActor = null;
+
     /**
      * @template TModel of Task
      *
@@ -75,26 +91,35 @@ final class TaskVisibilityScope
         }
 
         $hasViewAll = $user->can(self::VIEW_ALL_PERMISSION);
-        $siteIds = self::actorSiteIds($user);
+        $siteIds = $hasViewAll ? [] : self::actorSiteIds($user);
+        $teamIds = $hasViewAll ? [] : self::actorTeamIds($user);
 
-        return $query->where(function (Builder $scoped) use ($user, $siteIds, $hasViewAll): void {
+        return $query->where(function (Builder $scoped) use ($user, $siteIds, $teamIds, $hasViewAll): void {
             $scoped
                 ->where('tasks.creator_id', $user->id)
                 ->orWhere('tasks.requester_id', $user->id)
                 ->orWhereHas('assignees', fn (Builder $assignees) => $assignees->whereKey($user->id))
                 ->orWhereHas('watchers', fn (Builder $watchers) => $watchers->whereKey($user->id));
 
-            // D-2 (spec 0154): both wider tiers below see a PRIVATE Task
+            // D-2 (spec 0154): the wider tiers below see a PRIVATE Task
             // ONLY through the membership branch above — never through
-            // `viewAll` nor the shared-Sede bypass.
+            // `viewAll`, the shared-Sede bypass nor the team tier.
             if ($hasViewAll) {
                 $scoped->orWhere('tasks.is_private', false);
-            } elseif ($siteIds !== []) {
-                $scoped->orWhere(function (Builder $bySite) use ($siteIds): void {
-                    $bySite->where('tasks.is_private', false)->whereHas(
-                        'assignees.employment.operationalSites',
-                        fn (Builder $sites) => $sites->whereIn('operational_sites.id', $siteIds),
-                    );
+            } elseif ($siteIds !== [] || $teamIds !== []) {
+                $scoped->orWhere(function (Builder $wide) use ($siteIds, $teamIds): void {
+                    $wide->where('tasks.is_private', false)->where(function (Builder $tiers) use ($siteIds, $teamIds): void {
+                        if ($siteIds !== []) {
+                            $tiers->orWhereHas(
+                                'assignees.employment.operationalSites',
+                                fn (Builder $sites) => $sites->whereIn('operational_sites.id', $siteIds),
+                            );
+                        }
+
+                        if ($teamIds !== []) {
+                            $tiers->orWhereHas('assignees', fn (Builder $assignees) => $assignees->whereIn('users.id', $teamIds));
+                        }
+                    });
                 });
             }
         });
@@ -132,6 +157,10 @@ final class TaskVisibilityScope
                 return true;
             }
 
+            if (self::hasTeamAssigneeInMemory($user, $task)) {
+                return true;
+            }
+
             $sharesSite = self::sharesSiteInMemory($user, $task);
 
             if ($sharesSite !== null) {
@@ -160,6 +189,34 @@ final class TaskVisibilityScope
 
         return $user->loadMissing('employment.operationalSites')
             ->employment?->operationalSites->pluck('id')->all() ?? [];
+    }
+
+    /**
+     * The `viewTeam` tier (spec 0214): the actor's sottoposti ids, empty
+     * without the permission so the tier drops out of the predicate. Memoized
+     * per actor instance: the rule is asked once per grid row and the chain
+     * is a single projection query plus a BFS. A WeakMap (not a static array
+     * by id) so the cache dies with the instance and can never leak across
+     * requests or tests.
+     *
+     * @return array<int, int>
+     */
+    private static function actorTeamIds(User $user): array
+    {
+        if (! $user->can(self::VIEW_TEAM_PERMISSION)) {
+            return [];
+        }
+
+        self::$teamIdsByActor ??= new WeakMap;
+
+        return self::$teamIdsByActor[$user] ??= (new TimeEntrySubordinateResolver)->allDescendantIds($user->id);
+    }
+
+    private static function hasTeamAssigneeInMemory(User $user, Task $task): bool
+    {
+        $teamIds = self::actorTeamIds($user);
+
+        return $teamIds !== [] && array_intersect($teamIds, $task->assignees->modelKeys()) !== [];
     }
 
     /**

@@ -53,8 +53,8 @@ it('parent()/children() are self-referencing relations', function () {
     expect($sector->children())->toBeInstanceOf(HasMany::class);
 });
 
-it('has name and parent_id as the only fillable attributes', function () {
-    expect((new Sector)->getFillable())->toBe(['name', 'parent_id']);
+it('has code, name, parent_id and is_active as the only fillable attributes', function () {
+    expect((new Sector)->getFillable())->toBe(['code', 'name', 'parent_id', 'is_active']);
 });
 
 it('logs model activity', function () {

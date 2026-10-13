@@ -49,7 +49,7 @@ export const projects = {
   },
   detail: {
     title: 'Project details',
-    subtitle: 'Read-only view of the selected project.',
+    subtitle: 'Details of the selected project, editable in place.',
     loadError: 'Unable to load the project. Please try again.',
     budget: 'Budget',
     allocatedBudget: 'Allocated budget',
@@ -64,24 +64,18 @@ export const projects = {
     newProject: 'New project',
     createTitle: 'Create project',
     createSubtitle: 'Add a new project to your organization.',
-    editTitle: 'Edit project',
-    editSubtitle: 'Update the selected project.',
     sections: {
       identity: {
         title: 'Identity',
-        description: 'Code, name and description of the project.',
       },
       classification: {
         title: 'Classification',
-        description: 'Status and the other classification relations.',
       },
       geography: {
         title: 'Geography',
-        description: 'Country, region, province and city of the project.',
       },
       planning: {
         title: 'Planning & budget',
-        description: 'Timeline, budget and lead target.',
       },
     },
     hints: {
@@ -90,7 +84,6 @@ export const projects = {
       targetLead: 'Expected number of leads to reach.',
       partner: 'Fill in if the project is requested by the partner (costs are charged to the partner).',
       operationalSite: 'Inherited as a prefill by every campaign/lead created under this project; still editable.',
-      geography: 'Select a country, then narrow down to region, province and city.',
     },
     code: 'Code',
     codePlaceholder: 'Suggested code, editable',
@@ -129,6 +122,12 @@ export const projects = {
     deleted: 'Project deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the project. Please try again.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The project has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     deleteForbidden: 'You cannot delete this project.',
     deleteHasCampaigns: 'This project cannot be deleted: it still has campaigns linked to it.',
   },

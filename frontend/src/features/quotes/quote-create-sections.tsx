@@ -58,7 +58,13 @@ export function QuoteCreateSections({ quoteForm, draft, defaults }: QuoteCreateS
       />
 
       <QuoteIdentitySection
-        values={{ code: values.code ?? '', title: values.title ?? '', status: null, opportunity: refs.opportunity }}
+        values={{
+          code: values.code ?? '',
+          title: values.title ?? '',
+          quoteDate: values.quote_date ?? '',
+          status: null,
+          opportunity: refs.opportunity,
+        }}
         control={form.control}
         inline={draft}
         opportunity={{

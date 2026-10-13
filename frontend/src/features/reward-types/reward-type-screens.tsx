@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchRewardType } from '@/features/reward-types/api'
+import { fetchRewardType, rewardTypeDetailQueryKey } from '@/features/reward-types/api'
 import { RewardTypeForm } from '@/features/reward-types/reward-type-form'
 import { RewardTypeDetailView } from '@/features/reward-types/reward-type-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -15,19 +15,13 @@ import type {
 } from '@/features/modules/types'
 import type { RewardTypeDetail } from '@/features/reward-types/types'
 
-/** Query key for a single reward type's detail (fresh-on-open pattern). */
-function detailQueryKey(id: number) {
-  return ['reward-types', 'detail', id] as const
-}
-
 /**
- * Content-only `reward-types` screens for the module registry (spec 0058,
- * MT-9), cloned from `opportunity-statuses`: fetch + the existing
- * presentational view/form, no page chrome. Reused as-is by the modal Sheet
- * (`useModuleOpener`) and by the generic dedicated pages
- * (`ModuleDetailPage`/`ModuleFormPage`).
+ * Content-only `reward-types` screens for the module registry (spec 0042):
+ * fetch + the presentational view/form, no page chrome. The detail edits its
+ * rows in place, so `onEdit` is never used; each save reports through
+ * `onChanged`.
  */
-export function RewardTypeDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function RewardTypeDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: rewardType,
@@ -35,7 +29,7 @@ export function RewardTypeDetailScreen({ id, onEdit }: ModuleDetailScreenProps) 
     isError,
     error,
     refetch,
-  } = useEntityDetail(detailQueryKey(id), () => fetchRewardType(id))
+  } = useEntityDetail(rewardTypeDetailQueryKey(id), () => fetchRewardType(id))
 
   if (isError) {
     return (
@@ -52,70 +46,49 @@ export function RewardTypeDetailScreen({ id, onEdit }: ModuleDetailScreenProps) 
     return <DetailLoading />
   }
 
-  return <RewardTypeDetailView rewardType={rewardType} onEdit={onEdit} />
-}
-
-export function RewardTypeFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (saved: RewardTypeDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(saved.id) })
-    onSuccess(saved.id)
-  }
-
-  if (mode.type === 'create') {
-    return <RewardTypeForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
-  }
-
-  return (
-    <RewardTypeEditScreen rewardTypeId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-  )
-}
-
-interface RewardTypeEditScreenProps {
-  rewardTypeId: number
-  onSuccess: (rewardType: RewardTypeDetail) => void
-  onCancel: () => void
+  return <RewardTypeDetailView rewardType={rewardType} onChanged={onChanged} />
 }
 
 /**
- * Fetches the fresh, re-authorized reward type detail before mounting the
- * edit form, so the partial PATCH starts from authoritative values rather
- * than a stale snapshot.
+ * Create only: there is no edit form, and the registry generates no
+ * `:id/edit` route. Leaving a record being created — Cancel, the Sheet's
+ * X/overlay/Esc, a link, a reload — always asks first.
  */
-function RewardTypeEditScreen({ rewardTypeId, onSuccess, onCancel }: RewardTypeEditScreenProps) {
+export function RewardTypeFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const { t } = useTranslation()
-  const {
-    data: rewardType,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(detailQueryKey(rewardTypeId), () => fetchRewardType(rewardTypeId))
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('rewardTypes.form.leaveConfirm.title'),
+    description: t('rewardTypes.form.leaveConfirm.description'),
+    confirmLabel: t('rewardTypes.form.leaveConfirm.confirm'),
+    cancelLabel: t('rewardTypes.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('rewardTypes.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
+  if (mode.type !== 'create') {
+    return null
   }
 
-  if (isLoading || !rewardType) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+  const handleSuccess = (saved: RewardTypeDetail) => {
+    queryClient.invalidateQueries({ queryKey: rewardTypeDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new record's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(saved.id)
+  }
+
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
   }
 
   return (
-    <RewardTypeForm mode={{ type: 'edit', rewardType }} onSuccess={onSuccess} onCancel={onCancel} />
+    <>
+      {leaveGuard.navigationGuard}
+      <RewardTypeForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
   )
 }
 
@@ -127,8 +100,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.rewardTypes',
   DetailScreen: RewardTypeDetailScreen,
   FormScreen: RewardTypeFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button — the same registration Opportunita',
-  // Utenti and Lead carry.
+  // The detail IS the edit form: no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

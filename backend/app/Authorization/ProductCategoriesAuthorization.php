@@ -54,6 +54,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('business_function_id', 'select'),
             new FieldDefinition('requires_quote', 'boolean'),
             new FieldDefinition('is_selectable', 'boolean'),
+            new FieldDefinition('is_active', 'boolean'),
             new FieldDefinition('is_reportable', 'boolean'),
             // Spec 0141: the report column picker, next to is_reportable.
             new FieldDefinition('report_columns', 'multiselect'),
@@ -95,6 +96,7 @@ class ProductCategoriesAuthorization extends AbstractResourceAuthorization
             'business_function_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'requires_quote' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'is_selectable' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'is_reportable' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'report_columns' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'management_mode' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

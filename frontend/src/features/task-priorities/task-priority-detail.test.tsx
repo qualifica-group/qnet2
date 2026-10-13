@@ -1,5 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
+import { fireEvent, render as renderWithoutClient, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { TaskPriorityDetailView } from '@/features/task-priorities/task-priority-detail'
@@ -8,8 +11,9 @@ import type { TaskPriorityDetailWithPermissions } from '@/features/task-prioriti
 /**
  * Spec 0101: the detail shows the name (hero title), description, the palette
  * color as its localized token name, the icon as its canonical lucide name,
- * the server-managed order and the active flag. Purely
- * presentational, so the Activity Log gate is exercised directly on the
+ * the server-managed order and the active flag; every row but the order edits
+ * in place (wave 3 of the "no edit pages" plan), each save a PATCH of that
+ * field alone. The Activity Log gate is exercised directly on the
  * `permissions.actions.view_activity` prop.
  *
  * The fixture values deliberately never read like a field LABEL: the detail
@@ -19,6 +23,14 @@ import type { TaskPriorityDetailWithPermissions } from '@/features/task-prioriti
  */
 
 const activityLogSectionMock = vi.fn()
+const updateTaskPriorityMock = vi.fn()
+
+vi.mock('@/features/task-priorities/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/task-priorities/api')>()),
+  updateTaskPriority: (...args: unknown[]) => updateTaskPriorityMock(...args),
+}))
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 vi.mock('@/features/activity-log/activity-log-section', () => ({
   ActivityLogSection: (props: { resource: string; id: number }) => {
@@ -50,12 +62,24 @@ function taskPriority(
   }
 }
 
+/** One QueryClient per test: the in-place rows save through React Query. */
+function render(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return renderWithoutClient(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+  })
+}
+
+const pencilOf = (key: string) =>
+  screen.queryByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t(key) }) })
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
 beforeEach(() => {
   activityLogSectionMock.mockReset()
+  updateTaskPriorityMock.mockReset()
 })
 
 describe('TaskPriorityDetailView — detail fields', () => {
@@ -101,20 +125,55 @@ describe('TaskPriorityDetailView — activity log section', () => {
   })
 })
 
-describe('TaskPriorityDetailView — edit action', () => {
-  it('shows the Edit button when update is allowed and onEdit is wired', () => {
-    render(<TaskPriorityDetailView taskPriority={taskPriority()} onEdit={vi.fn()} />)
-
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
-  })
-
-  it('omits the Edit button when onEdit is absent', () => {
+describe('TaskPriorityDetailView — in-place editing', () => {
+  it('has no Edit button: every row is closed, with its pencil', () => {
     render(<TaskPriorityDetailView taskPriority={taskPriority()} />)
 
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(pencilOf('taskPriorities.form.name')).toBeInTheDocument()
+    expect(pencilOf('taskPriorities.form.isDefault')).toBeInTheDocument()
   })
 
-  it('omits the Edit button when update is not allowed', () => {
+  it('Save sends only the changed field, never sort_order', async () => {
+    updateTaskPriorityMock.mockResolvedValue(taskPriority({ name: 'Renamed' }))
+    render(<TaskPriorityDetailView taskPriority={taskPriority()} />)
+
+    fireEvent.click(pencilOf('taskPriorities.form.name') as HTMLElement)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Renamed' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.save') }))
+
+    await waitFor(() => expect(updateTaskPriorityMock).toHaveBeenCalledWith(4, { name: 'Renamed' }))
+  })
+
+  it('Cancel restores the row without calling the API', () => {
+    render(<TaskPriorityDetailView taskPriority={taskPriority()} />)
+
+    fireEvent.click(pencilOf('taskPriorities.form.name') as HTMLElement)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Renamed' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.cancel') }))
+
+    expect(screen.queryByText('Renamed')).not.toBeInTheDocument()
+    expect(updateTaskPriorityMock).not.toHaveBeenCalled()
+  })
+
+  it('maps a server 422 onto the open row', async () => {
+    updateTaskPriorityMock.mockRejectedValue(
+      new AxiosError('Unprocessable', '422', undefined, undefined, {
+        status: 422,
+        data: { success: false, message: 'Validation failed', errors: { name: ['Name already taken.'] } },
+      } as never),
+    )
+    render(<TaskPriorityDetailView taskPriority={taskPriority()} />)
+
+    fireEvent.click(pencilOf('taskPriorities.form.name') as HTMLElement)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Duplicate' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.save') }))
+
+    expect(await screen.findByText('Name already taken.')).toBeInTheDocument()
+  })
+
+  it('offers no pencil when update is not allowed', () => {
     render(
       <TaskPriorityDetailView
         taskPriority={taskPriority({
@@ -123,10 +182,10 @@ describe('TaskPriorityDetailView — edit action', () => {
             resource: { ...taskPriority().permissions.resource, update: false },
           },
         })}
-        onEdit={vi.fn()}
       />,
     )
 
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(pencilOf('taskPriorities.form.name')).not.toBeInTheDocument()
+    expect(pencilOf('taskPriorities.form.color')).not.toBeInTheDocument()
   })
 })

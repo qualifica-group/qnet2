@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0216-referent-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Il Referente riceve le stesse modifiche di Task, Commesse, Offerte, Opportunita' e Anagrafiche (spec 0195-0200):
+    niente pagina di modifica, il dettaglio (`/referents/:id` e lo stesso schermo nel pannello modale) si edita in
+    place campo per campo, campi flessibili compresi; la creazione e' una replica del dettaglio a righe chiuse.
+    Primo modulo dell'onda 1 (moduli operativi) del piano "nessuna pagina di modifica".
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-12, "cosi' come fatto con task, opportunita', offerte voglio che si eliminino le pagine di
+      edit anche per altri moduli e rendere tutto modificabile inline, anche la creazione"; scelte utente: onda 1
+      operativi, un modulo alla volta, tabelle di impostazione dopo con un kit condiviso). Regole 0195
+      D-2/D-3/D-6/D-7/D-8/D-9 applicate ai Referenti con `RecordInlineField`, `useDraftInlineEdit`,
+      `useFormLeaveGuard` condivisi.
+    - D-2: sezioni del dettaglio (stesso ordine in creazione): Dati anagrafici (UNA riga sul
+      `PersonalDataCardForm`, come spec 0200 D-4), Dettagli referente (Tipo referente, Ambito di contatto, Utente
+      collegato, Note), Campi personalizzati (`CustomFieldRecordSections`), poi Contatti e Indirizzi nella card
+      (persistenza immediata, gated da `personal_data.contacts`/`personal_data.addresses`). Tipo e Ambito restano
+      anche sottotitolo e pillola dell'intestazione: la riga e' dove si modificano.
+    - D-3: creazione = replica del dettaglio (monogramma e nome live dalla scheda, pillola Ambito live, striscia KPI
+      live Contatti/Indirizzi/Tipo scheda, righe chiuse con Fatto/Ripristina, Salva valida tutto). Colonna laterale:
+      avviso Possibile duplicato + Contatti/Indirizzi con campi rapidi, telefono obbligatorio (come le Anagrafiche).
+      Sparisce il Riepilogo laterale e il segnaposto "Settori attivita'" (mai salvato). Uscire senza salvare chiede
+      conferma. La creazione rapida (quick-create da un selettore) usa lo stesso form.
+    - D-4: i pezzi della scheda anagrafica comuni ad Anagrafiche e Referenti escono da `features/registries` verso
+      `features/personal-data` (riga Dati anagrafici, bozza della riga in creazione, adattatore dei permessi, messaggio
+      422 `personal_data.*`), senza cambio di comportamento per le Anagrafiche.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica: PATCH /api/referents/{id} parziale esistente (gia' restituisce `permissions`).</backend>
+    <frontend>
+      Rotta `referents/:id/edit` rimossa; `ReferentFormPage` solo creazione; `ReferentDetailView` perde `onEdit`,
+      guadagna `onChanged`; registry `referents`: `generateEditRoute: false`. `updateReferent` restituisce
+      `ReferentDetailWithPermissions`. `useReferentForm` in edit = `values` + `keepDirtyValues`, reset dopo PATCH;
+      submit in `useReferentFormSubmit`. Nuovi `useReferentInlineEdit`, `GuardedReferentForm`. `ReferentForm` solo
+      creazione (`{onSuccess, onCancel}`, nessun `mode`).
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/referents/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su un campo editabile (campi personalizzati compresi): Salva invia il solo campo cambiato;
+      Annulla/Esc/clic fuori non chiamano.</ac>
+    <ac id="AC-003">Senza permesso di modifica del campo nessuna matita; senza `update` Contatti/Indirizzi in sola
+      lettura.</ac>
+    <ac id="AC-004">Dati anagrafici: Salva invia `personal_data`; scheda invalida = nessun PATCH, errori nell'editor.</ac>
+    <ac id="AC-005">Creazione: righe chiuse, Fatto/Ripristina, Salva valida tutto (nessun POST se scheda incompleta o
+      senza telefono), uscita con conferma.</ac>
+    <ac id="AC-006">Anagrafiche invariate nel comportamento (test esistenti verdi).</ac>
+    <ac id="AC-007">Guida in-app IT/EN `referents` aggiornata (modifica dal dettaglio, creazione).</ac>
+  </acceptance>
+</spec>

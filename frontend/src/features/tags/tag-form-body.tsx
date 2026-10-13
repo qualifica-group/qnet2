@@ -1,88 +1,56 @@
-import { Tag as TagIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FormSection } from '@/components/form-section'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Form, FormControl } from '@/components/ui/form'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
+import { useWatch } from 'react-hook-form'
+import { Tag as TagIcon } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
+import { Form } from '@/components/ui/form'
+import { TagSections } from '@/features/tags/tag-rows'
 import { useTagForm } from '@/features/tags/use-tag-form'
-import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
-import type { TagDetail, TagFormMode } from '@/features/tags/types'
+import type { TagDetail } from '@/features/tags/types'
+
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const TAG_FORM_ID = 'tag-form'
+
+/** Create mode is static: a fresh object per render would rebuild the form's defaults. */
+const CREATE_MODE = { type: 'create' } as const
 
 interface TagFormBodyProps {
-  mode: TagFormMode
   onSuccess: (tag: TagDetail) => void
   onCancel: () => void
 }
 
 /**
- * The tag create/edit form UI. The single `name` field is wrapped in
- * `MetaField` (spec 0004): hidden means absent, non-editable means disabled,
- * `required` comes from the resolved `ResourcePermissions` — no hardcoded
- * permission logic lives here. All non-render logic lives in `useTagForm`.
- * `<CustomFieldsSection>` (spec 0021) mounts the resource's admin-defined
- * custom fields with zero tags-specific rendering/validation logic.
+ * The tag create form as a replica of the detail (wave 3 of the "no edit
+ * pages" plan): the same rows, closed until clicked (Fatto/Ripristina,
+ * nothing saved per row); Salva validates and creates everything at once.
  */
-export function TagFormBody({ mode, onSuccess, onCancel }: TagFormBodyProps) {
+export function TagFormBody({ onSuccess, onCancel }: TagFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit } = useTagForm({ mode, onSuccess })
-
-  const identityVisible = fieldPermission('name').visible
+  const { form, serverError, onSubmit } = useTagForm({ mode: CREATE_MODE, onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const [name, customFields] = useWatch({ control: form.control, name: ['name', 'custom_fields'] })
+  const heading = name.trim() || t('tags.form.createTitle')
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4 p-4"
-          noValidate
-        >
-          {identityVisible && (
-            <FormSection
-              icon={TagIcon}
-              title={t('tags.form.sections.identity.title')}
-              description={t('tags.form.sections.identity.description')}
-            >
-              <MetaField
-                control={form.control}
-                name="name"
-                metaKey="name"
-                label={t('tags.form.name')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          <CustomFieldsSection resource="tags" control={form.control} />
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('tags.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('tags.form.saving') : t('tags.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+    <Form {...form}>
+      <RecordCreateLayout
+        formId={TAG_FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        title={heading}
+        subtitle={t('tags.form.createSubtitle')}
+        media={<DetailMonogram name={heading} icon={<TagIcon />} />}
+        isSubmitting={form.formState.isSubmitting}
+        serverError={serverError}
+        onCancel={onCancel}
+        labels={{
+          save: t('tags.form.save'),
+          saving: t('tags.form.saving'),
+          cancel: t('tags.form.cancel'),
+        }}
+      >
+        <TagSections form={form} inline={draft} canEdit customFieldValues={customFields} />
+      </RecordCreateLayout>
+    </Form>
   )
 }

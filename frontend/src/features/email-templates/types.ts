@@ -16,6 +16,8 @@ export type EmailTemplateModule = (typeof EMAIL_TEMPLATE_MODULES)[number]
  */
 export interface EmailTemplate {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   module: EmailTemplateModule
   subject: string
@@ -53,8 +55,8 @@ export interface CreateEmailTemplatePayload {
 export type UpdateEmailTemplatePayload = Partial<Omit<CreateEmailTemplatePayload, 'module'>>
 
 /**
- * Discriminated form mode shared by the form hook/meta-resolver and the
- * `EmailTemplateForm` component (mirrors `TaskImportanceFormMode`).
+ * Discriminated form mode of `useEmailTemplateForm`: `create` backs the
+ * create form, `edit` the detail's in-place rows.
  */
 export type EmailTemplateFormMode =
   | { type: 'create' }

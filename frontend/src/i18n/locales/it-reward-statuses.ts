@@ -31,7 +31,7 @@ export const rewardStatuses = {
   },
   detail: {
     title: 'Dettaglio stato buono',
-    subtitle: 'Visualizzazione in sola lettura dello stato selezionato.',
+    subtitle: 'Dettaglio del record selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare lo stato del buono. Riprova.',
     description: 'Descrizione',
     color: 'Colore',
@@ -45,8 +45,6 @@ export const rewardStatuses = {
     newRewardStatus: 'Nuovo stato',
     createTitle: 'Crea stato buono',
     createSubtitle: 'Aggiungi un nuovo stato per i buoni collegati.',
-    editTitle: 'Modifica stato buono',
-    editSubtitle: 'Aggiorna lo stato buono selezionato.',
     name: 'Nome',
     description: 'Descrizione',
     color: 'Colore',
@@ -73,14 +71,16 @@ export const rewardStatuses = {
     deleteError: 'Impossibile eliminare lo stato buono. Riprova.',
     deleteForbidden: 'Non puoi eliminare questo stato buono.',
     deleteInUseFallback: 'Questo stato buono è usato da un buono collegato e non può essere eliminato.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il record non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome, descrizione, colore e stato attivo/disattivo.',
       },
-    },
-    hints: {
-      systemStatusLocked: 'Gli stati di sistema hanno questi campi fissi e non possono essere modificati.',
     },
   },
   reorder: {

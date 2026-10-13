@@ -9,13 +9,14 @@ import { QuoteFormBody } from '@/features/quotes/quote-form-body'
 import { clickCreateSave, rowValue } from '@/features/quotes/quote-test-helpers'
 import { createQuote } from '@/features/quotes/api'
 import type { ResourcePermissions } from '@/features/authorization/types'
+import { formatDate } from '@/lib/formatting/date-display'
 
 /**
  * Spec 0070 AC-310: the create draft's Layout row precompiles with the
  * `quotes` module's active default (without the user picking it) and the
- * create payload carries it. Only the HTTP layer is mocked. The detail's
- * side (AC-312, a deactivated layout still shown) lives in
- * `quote-detail.test.tsx`/`quote-detail-inline-edit.test.tsx`.
+ * create payload carries it. Spec 0228: the quote date row opens on today.
+ * Only the HTTP layer is mocked. The detail's side (AC-312, a deactivated
+ * layout still shown) lives in `quote-detail.test.tsx`/`quote-detail-inline-edit.test.tsx`.
  */
 
 vi.mock('@/features/quotes/api', async () => {
@@ -162,5 +163,22 @@ describe('Quote create form — default layout (spec 0070 AC-310)', () => {
 
     await waitFor(() => expect(createQuote).toHaveBeenCalled())
     expect(vi.mocked(createQuote).mock.calls[0][0]).toMatchObject({ layout_id: 12 })
+  })
+})
+
+describe('Quote create form — quote date (spec 0228 AC-004)', () => {
+  it("prefills the quote date with today's local date", () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 12, 23, 30))
+
+    render(
+      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+        <QuoteFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} initialCode="QUO-0001" />
+      </ResourcePermissionsProvider>,
+      { wrapper: wrapper() },
+    )
+
+    expect(rowValue('Quote date')).toBe(formatDate('2026-10-12'))
+    vi.useRealTimers()
   })
 })

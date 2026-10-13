@@ -7,7 +7,8 @@ import { RecordFieldList, RecordSection } from '@/components/detail/record-panel
 import { RECORD_PERSON_ROW_CLASS, RecordPerson } from '@/components/detail/record-person'
 import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import { managerPositionLabel } from '@/features/shared/manager-position-label'
-import { useCascadeEditable, type OpportunityRecordSectionProps } from '@/features/opportunities/opportunity-record'
+import { useCascadeEditable } from '@/components/record-form/use-cascade-editable'
+import type { OpportunityRecordSectionProps } from '@/features/opportunities/opportunity-record'
 import {
   OpportunityManagersField,
   OpportunityProductLinesFormField,

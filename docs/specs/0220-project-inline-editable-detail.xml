@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0220-project-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Il Progetto riceve le stesse modifiche dei moduli gia' migrati (spec 0195-0200, 0216-0219): niente pagina di
+    modifica, il dettaglio si edita in place campo per campo, campi personalizzati compresi; la creazione (e la
+    "Duplica", che e' una creazione precompilata) e' una replica del dettaglio a righe chiuse. Quinto modulo
+    dell'onda 1 del piano "nessuna pagina di modifica".
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-12, "continua con la tua onda"): regole 0195 D-2/D-3/D-6/D-7/D-8/D-9 con
+      `RecordInlineField`, `useDraftInlineEdit`, `CustomFieldRecordSections`, `useFormLeaveGuard`.
+    - D-2: sezioni (stesso ordine in creazione): avviso budget superato (solo dettaglio); Anagrafica (Codice solo in
+      creazione, Nome, Descrizione); Classificazione (Stato, Partner, Sede, Righe di prodotto a tutta larghezza);
+      Area geografica (UNA riga per l'intera cascata Paese/Regione/Provincia/Comune, un solo editor `GeoSelect`);
+      Pianificazione (Data inizio, Data fine, Budget totale, Lead obiettivo); Campi personalizzati. La striscia KPI
+      budget resta in testa (live in creazione).
+    - D-3: la "Duplica" resta: apre la creazione precompilata dal progetto sorgente (codice nuovo, nome con suffisso
+      copia, stato copiato). La creazione semplice preseleziona lo stato di sistema "Nuovo" (spec 0039 D-3).
+      Preseleziona anche il paese predefinito (spec 0027): con la riga geografica chiusa l'editor non e' montato,
+      quindi lo applica il form e non `GeoSelect`, sempre solo se il campo e' intatto.
+    - D-4: nella vista a schede la matita della scheda apre il dettaglio (modificabile sul posto) nel pannello, non
+      piu' un modulo di modifica.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica: PATCH /api/projects/{id} parziale esistente (gia' restituisce `permissions`).</backend>
+    <frontend>
+      Registry `projects`: `generateEditRoute: false`, `formOwnsHeader: true`; `ProjectDetailView` perde `onEdit`,
+      guadagna `onChanged`; `updateProject` restituisce `ProjectDetailWithPermissions`; `useProjectForm` in edit =
+      `values` + `keepDirtyValues`, submit in `useProjectFormSubmit`, nuovo `useProjectInlineEdit`. `ProjectForm`
+      solo creazione (`{source?, onSuccess, onCancel}`).
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/projects/:id/edit`, nessun "Modifica" nel dettaglio; la matita della scheda apre
+      il dettaglio.</ac>
+    <ac id="AC-002">Matita su un campo editabile: Salva invia il solo campo cambiato (l'area geografica invia i suoi
+      quattro livelli cambiati); Annulla/Esc/clic fuori non chiamano.</ac>
+    <ac id="AC-003">Codice senza matita nel dettaglio; senza permesso di modifica nessuna matita.</ac>
+    <ac id="AC-004">Creazione e Duplica: righe chiuse, codice suggerito, Fatto/Ripristina, Salva valida tutto, uscita
+      con conferma.</ac>
+    <ac id="AC-005">Guida in-app IT/EN `projects` aggiornata.</ac>
+  </acceptance>
+</spec>

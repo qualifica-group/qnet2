@@ -4,6 +4,7 @@ import {
   buildCreateDocumentLayoutSchema,
   buildUpdateDocumentLayoutSchema,
 } from '@/features/document-layouts/document-layout-schema'
+import { createEmptyDocumentLayoutConfig } from '@/features/document-layouts/layout-config-defaults'
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -16,12 +17,18 @@ const VALID_PAYLOAD = {
   module: 'quotes',
   is_active: true,
   is_default: false,
+  config: createEmptyDocumentLayoutConfig(),
 }
 
 describe('buildCreateDocumentLayoutSchema (spec 0069, AC-110)', () => {
   it('accepts a valid payload', () => {
     const schema = buildCreateDocumentLayoutSchema(i18n.t)
     expect(schema.safeParse(VALID_PAYLOAD).success).toBe(true)
+  })
+
+  it('rejects a missing config', () => {
+    const schema = buildCreateDocumentLayoutSchema(i18n.t)
+    expect(schema.safeParse({ ...VALID_PAYLOAD, config: undefined }).success).toBe(false)
   })
 
   it('rejects an empty name', () => {

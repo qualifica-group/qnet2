@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Authorization\LegacyIdVisibility;
 use App\Models\Role;
 use App\Models\RoleFieldPermission;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ class RoleResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id),
             'name' => $this->name,
             'description' => $this->description,
             'permissions' => $this->getPermissionNames(),
@@ -53,9 +55,10 @@ class RoleResource extends JsonResource
      */
     private function memberIds(): array
     {
+        // The technical users of the API clients (spec 0210) are not listed.
         $ids = $this->relationLoaded('users')
-            ? $this->users->pluck('id')
-            : $this->users()->pluck('users.id');
+            ? $this->users->reject->isServiceAccount()->pluck('id')
+            : $this->users()->excludingServiceAccounts()->pluck('users.id');
 
         return $ids->map(static fn ($id): int => (int) $id)->values()->all();
     }

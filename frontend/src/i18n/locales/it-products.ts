@@ -15,19 +15,14 @@ export const attributes = {
     created_at: 'Creato il',
   },
   detail: {
-    title: 'Dettagli attributo',
-    subtitle: "Vista di sola lettura dell'attributo selezionato.",
     loadError: "Impossibile caricare l'attributo. Riprova.",
     details: 'Dettagli',
-    options: 'Opzioni',
     created_at: 'Creato il',
   },
   form: {
     newAttribute: 'Nuovo attributo',
     createTitle: 'Crea attributo',
     createSubtitle: 'Aggiungi un nuovo attributo dinamico riutilizzabile.',
-    editTitle: 'Modifica attributo',
-    editSubtitle: "Aggiorna l'attributo selezionato.",
     code: 'Codice',
     name: 'Nome',
     save: 'Salva',
@@ -45,20 +40,17 @@ export const attributes = {
     deleteError: "Impossibile eliminare l'attributo. Riprova.",
     deleteForbidden: 'Non puoi eliminare questo attributo.',
     deleteInUse: 'Questo attributo è assegnato a una categoria o ha valori prodotto.',
-    sections: {
-      identity: {
-        title: 'Dettagli',
-        description: "Codice, nome e tipo dell'attributo.",
-      },
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: "L'attributo non è ancora stato creato: i dati inseriti andranno persi.",
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
     },
     optionValueRequired: 'Il valore è obbligatorio.',
     optionValueMax: 'Il valore deve avere al massimo 191 caratteri.',
     optionLabelRequired: "L'etichetta è obbligatoria.",
     optionLabelMax: "L'etichetta deve avere al massimo 191 caratteri.",
     optionsRequiredForEnum: 'Aggiungi almeno una opzione per un attributo a elenco.',
-    // Stato vuoto in SOLA LETTURA del dettaglio: descrive, non chiede
-    // (a differenza di `optionsRequiredForEnum`, che e' un errore di form).
-    optionsEmpty: 'Nessuna opzione definita.',
     optionValuesDuplicate: 'I valori delle opzioni devono essere unici.',
     relationEntityTypeRequired: 'Il modulo di destinazione della relazione è obbligatorio.',
     relationForSelectResourceRequired: 'La risorsa del selettore è obbligatoria.',
@@ -79,6 +71,7 @@ export const productCategories = {
   badges: {
     root: 'Radice',
     notSelectable: 'Non selezionabile',
+    notActive: 'Non attiva',
     reportable: 'Visibile nei report',
   },
   columns: {
@@ -90,6 +83,7 @@ export const productCategories = {
     business_function: 'Funzione aziendale',
     requires_quote: 'Prevede preventivo',
     is_selectable: 'Selezionabile',
+    is_active: 'Attiva',
     is_reportable: 'Visibile nei report',
     management_mode: 'Modalità di gestione',
     single_quote_per_opportunity: 'Offerta unica per opportunità',
@@ -136,8 +130,6 @@ export const productCategories = {
     newRootCategory: 'Nuova categoria',
     createTitle: 'Crea categoria',
     createSubtitle: 'Aggiungi una nuova categoria prodotto.',
-    editTitle: 'Modifica categoria',
-    editSubtitle: 'Aggiorna la categoria selezionata.',
     name: 'Nome',
     nameRequired: 'Il nome è obbligatorio.',
     nameMax: 'Il nome deve avere al massimo 191 caratteri.',
@@ -188,6 +180,10 @@ export const productCategories = {
     isSelectable: 'Selezionabile',
     isSelectableHint:
       'Se disattivo, la categoria serve solo a raggruppare sottocategorie: sparisce dalle liste di scelta e non è più associabile a un prodotto, a una linea di prodotto, a un progetto, a una campagna o a una regola provvigionale. Le associazioni già esistenti restano.',
+    isActive: 'Attiva',
+    isActiveHint:
+      'Se disattiva, la categoria sparisce con tutto il suo ramo e i suoi prodotti dai campi di inserimento. I collegamenti esistenti restano.',
+    isActiveInheritedNotice: 'Non attiva perché lo è «{{category}}»',
     isReportable: 'Visibile nei report',
     isReportableHint:
       'La categoria compare nei report e nella dashboard di Gestione Richieste e Gestione Iscritti; selezionandola si vedono anche le sue sottocategorie.',
@@ -246,6 +242,9 @@ export const productCategories = {
     isSelectableInfo:
       "Trasforma la categoria in un puro contenitore. Resta padre delle sue sottocategorie e conserva tutte le associazioni già fatte, ma non compare più nelle liste di scelta. A differenza delle altre regole questa appartiene SOLO a questa categoria: non viene mai ereditata, quindi un padre non selezionabile può avere figli selezionabili.",
     isSelectableInfoLabel: 'Maggiori informazioni su Selezionabile',
+    isActiveInfo:
+      "Quando la categoria non è attiva sparisce, insieme a tutte le sue sottocategorie e ai prodotti di quel ramo, dai campi di inserimento e di modifica: non si può più collegare a nulla di nuovo. I collegamenti già esistenti restano validi e vengono ancora mostrati, e i filtri delle griglie continuano a vedere la categoria. A differenza di Selezionabile (che lascia la categoria visibile come contenitore) il flag Attiva si propaga a tutto il ramo, senza modificare il flag delle sottocategorie.",
+    isActiveInfoLabel: 'Maggiori informazioni su Attiva',
     isReportableInfo:
       'Decide se la categoria compare come riga selezionabile nei report e nella dashboard di Gestione Richieste e di Gestione Iscritti. Una sottocategoria eredita il valore del padre: se il padre è visibile nei report lo sono anche i figli, ma ogni figlio può essere forzato a "no" (e con lui le sue sottocategorie). Una categoria esclusa non viene conteggiata neanche nei totali del padre.',
     isReportableInfoLabel: 'Maggiori informazioni su Visibile nei report',
@@ -281,13 +280,15 @@ export const productCategories = {
     inheritsManagerLabelsHint:
       'Se disattivato, questa categoria ignora i suoi antenati: né lei né le sue sottocategorie ereditano queste etichette dai livelli superiori.',
     inheritedManagerLabels: 'Ereditate dalle categorie antenate',
-    summary: {
-      title: 'Riepilogo',
-      description: 'Quello che stai per salvare.',
-    },
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'La categoria non è ancora stata creata: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     created: 'Categoria creata con successo.',
     updated: 'Categoria aggiornata con successo.',
     deleted: 'Categoria eliminata con successo.',
@@ -298,16 +299,12 @@ export const productCategories = {
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome, padre e descrizione della categoria.',
       },
       rules: {
         title: 'Regole di gestione',
-        description:
-          "Cosa impone questa categoria a valle: preventivo, righe di scheda, offerte per opportunità e selezionabilità.",
       },
       attributes: {
         title: 'Attributi',
-        description: 'Attributi assegnati a questa categoria, più quelli ereditati.',
       },
       productAttributes: {
         title: 'Attributi Prodotto',
@@ -325,8 +322,6 @@ export const productCategories = {
       },
       managerLabels: {
         title: 'Gestori Account',
-        description:
-          'Personalizza la denominazione di ogni livello di Gestore Account per questa categoria. I campi lasciati vuoti usano la denominazione predefinita.',
       },
     },
   },
@@ -357,8 +352,7 @@ export const products = {
     hintNoCategories: 'Aggiungi prima una funzione aziendale con la sua categoria prodotto.',
   },
   empty: 'Nessun prodotto selezionato.',
-  // Differenza prezzo/costo, mostrata sia nella scheda (KPI) sia nel form
-  // (riquadro sotto i due campi e riga del riepilogo laterale).
+  // Differenza prezzo/costo, mostrata nella striscia KPI della scheda e della creazione.
   margin: 'Margine',
   marginPercent: '{{percent}}% sul prezzo',
   columns: {
@@ -376,17 +370,16 @@ export const products = {
   },
   detail: {
     title: 'Dettagli prodotto',
-    subtitle: 'Vista di sola lettura del prodotto selezionato.',
+    subtitle: 'Dettaglio del prodotto selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare il prodotto. Riprova.',
     details: 'Dettagli',
     created_at: 'Creato il',
+    newAttributes: 'Attributi della nuova categoria',
   },
   form: {
     newProduct: 'Nuovo prodotto',
     createTitle: 'Crea prodotto',
     createSubtitle: 'Aggiungi un nuovo prodotto.',
-    editTitle: 'Modifica prodotto',
-    editSubtitle: 'Aggiorna il prodotto selezionato.',
     code: 'Codice',
     codePlaceholder: 'Codice suggerito, modificabile',
     codeMax: 'Il codice deve avere al massimo 32 caratteri.',
@@ -439,23 +432,22 @@ export const products = {
     deleted: 'Prodotto eliminato con successo.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare il prodotto. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo prodotto.',
-    summary: {
-      title: 'Riepilogo',
-      description: 'Quello che stai per salvare.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il prodotto non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
     },
+    deleteForbidden: 'Non puoi eliminare questo prodotto.',
     sections: {
       identity: {
         title: 'Anagrafica',
-        description: 'Codice, nome e descrizione del prodotto.',
       },
       classification: {
         title: 'Classificazione',
-        description: 'Categoria, tipologia, unita di misura e tipo del prodotto.',
       },
       pricing: {
         title: 'Prezzi e fornitura',
-        description: 'Costo, prezzo, aliquota IVA e fornitore.',
       },
     },
     hints: {
@@ -463,7 +455,6 @@ export const products = {
     },
     dynamicFields: {
       title: 'Attributi',
-      empty: 'Seleziona una categoria per vedere i suoi attributi.',
     },
   },
 }

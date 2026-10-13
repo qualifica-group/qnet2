@@ -6,16 +6,15 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { useResourcePermissions } from '@/features/authorization/permissions'
-import { createRole, updateRole } from '@/features/roles/api'
+import { createRole } from '@/features/roles/api'
 import {
   buildCreateRoleSchema,
   buildUpdateRoleSchema,
   type CreateRoleFormValues,
   type UpdateRoleFormValues,
 } from '@/features/roles/role-schema'
-import { buildCreatePayload, buildUpdatePayload } from '@/features/roles/role-form-payload'
-import type { RoleDetail } from '@/features/roles/types'
-import type { RoleFormMode } from '@/features/roles/role-form'
+import { buildCreatePayload } from '@/features/roles/role-form-payload'
+import type { RoleDetail, RoleDetailWithPermissions } from '@/features/roles/types'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
 
 /** Server-side field names mapped onto the form for 422 handling. */
@@ -23,28 +22,25 @@ const SERVER_ERROR_FIELDS = ['name', 'permissions', 'users', 'field_permissions'
 
 export type RoleFormValues = CreateRoleFormValues & UpdateRoleFormValues
 
-interface UseRoleFormArgs {
-  mode: RoleFormMode
-  onSuccess: (role: RoleDetail) => void
-}
+/** `edit` is the in-place detail (spec 0230); the create form is the only screen left on `create`. */
+export type RoleFormMode = { type: 'create' } | { type: 'edit'; role: RoleDetailWithPermissions }
+
+const CREATE_MODE: RoleFormMode = { type: 'create' }
 
 /**
- * Owns every non-render concern of `RoleForm`: RHF/Zod wiring, the
- * field-permission matrix gating (spec 0006) and server 422 mapping. The
- * permission explorer's own tree/search/selection state lives in
- * `permission-explorer/` (spec 0076) — this hook only exposes the flat
- * `permissions`/`field_permissions` RHF fields it reads/writes. The
- * component stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * The RHF/Zod wiring shared by the create form and the detail's in-place
+ * rows: schema (custom fields included, spec 0021), defaults seeded from the
+ * role being edited, the 422 field list and the field-permission matrix
+ * gating (spec 0006). `mode` must be referentially stable per role: the form
+ * re-syncs its values on a new one.
  */
-export function useRoleForm({ mode, onSuccess }: UseRoleFormArgs) {
+export function useRoleFormState(mode: RoleFormMode) {
   const { t } = useTranslation()
   const { canResource } = useResourcePermissions()
-  const [serverError, setServerError] = useState<string | null>(null)
-
   const isEdit = mode.type === 'edit'
 
   // Custom fields (spec 0021): the single reusable integration — builds the
-  // dynamic schema, defaults and 422 paths; `<CustomFieldsSection>` renders.
+  // dynamic schema, defaults and 422 paths; `<CustomFieldRecordSections>` renders.
   const customFields = useCustomFieldsForm(
     'roles',
     mode.type === 'edit'
@@ -91,24 +87,41 @@ export function useRoleForm({ mode, onSuccess }: UseRoleFormArgs) {
 
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(schema),
-    defaultValues,
+    // Edit: `values` re-syncs the rows on the saved role, `keepDirtyValues` spares an open editor.
+    ...(isEdit ? { values: defaultValues, resetOptions: { keepDirtyValues: true } } : { defaultValues }),
   })
+
+  const errorFields: Path<RoleFormValues>[] = [
+    ...SERVER_ERROR_FIELDS,
+    ...(customFields.errorPaths as Path<RoleFormValues>[]),
+  ]
+
+  return { form, errorFields, canManageFieldPermissions }
+}
+
+interface UseRoleFormArgs {
+  onSuccess: (role: RoleDetail) => void
+}
+
+/**
+ * Owns every non-render concern of the role create form: the shared form
+ * state plus the create submit and server 422 mapping. The permission
+ * explorer's own tree/search/selection state lives in `permission-explorer/`
+ * (spec 0076) — this hook only exposes the flat `permissions`/`field_permissions`
+ * RHF fields it reads/writes. The component stays UI-only; this hook is the
+ * orchestration point (`onSubmit`).
+ */
+export function useRoleForm({ onSuccess }: UseRoleFormArgs) {
+  const { t } = useTranslation()
+  const [serverError, setServerError] = useState<string | null>(null)
+  const { form, errorFields, canManageFieldPermissions } = useRoleFormState(CREATE_MODE)
 
   const onSubmit = async (values: RoleFormValues) => {
     setServerError(null)
-    const errorFields: Path<RoleFormValues>[] = [
-      ...SERVER_ERROR_FIELDS,
-      ...(customFields.errorPaths as Path<RoleFormValues>[]),
-    ]
     try {
-      const saved =
-        mode.type === 'edit'
-          ? await updateRole(mode.role.id, buildUpdatePayload(values, mode.role))
-          : await createRole(buildCreatePayload(values))
+      const saved = await createRole(buildCreatePayload(values))
 
-      toast.success(
-        t(mode.type === 'edit' ? 'roles.form.updated' : 'roles.form.created'),
-      )
+      toast.success(t('roles.form.created'))
       onSuccess(saved)
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
@@ -117,12 +130,5 @@ export function useRoleForm({ mode, onSuccess }: UseRoleFormArgs) {
     }
   }
 
-  return {
-    t,
-    form,
-    isEdit,
-    serverError,
-    onSubmit,
-    canManageFieldPermissions,
-  }
+  return { form, serverError, onSubmit, canManageFieldPermissions }
 }

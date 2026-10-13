@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0211-registry-quick-search-extended" status="implemented" owner="utente" date="2026-10-09">
+
+  <goal>
+    La ricerca rapida della tabella Anagrafiche trova un'anagrafica anche per partita IVA, per un suo numero
+    di telefono e per il nome (o il telefono) di un referente collegato, non solo per il nome/ragione sociale.
+  </goal>
+
+  <context>
+    Oggi `RegistryColumnCatalog` dichiara ricercabile solo `name` (`LIKE '%termine%'`, spec 0009). Per le
+    aziende `registries.name` e' gia' la ragione sociale (`company_name` della scheda, copiata da
+    `RegistryProfileWriter`), quindi la ragione sociale e' gia' coperta. Partita IVA (`personal_data.vat_number`),
+    telefoni (`contacts`, morph `contactable` = `personal_data`) e referenti (`referent_registry` ->
+    `referents.name`, scheda propria con contatti) non sono cercati.
+
+    I telefoni sono salvati con spazi (es. "02 6885 7892"): un FULLTEXT su `contacts.value` scarterebbe "02"
+    (sotto `innodb_ft_min_token_size`) e non troverebbe "0268857892". `contacts.normalized_value` (spec 0136,
+    solo cifre e `+`, indice `(type, normalized_value)`) permette invece un "inizia con" indicizzato.
+
+    Decisioni utente 2026-10-09: referenti cercati per nome E telefono; semantica "inizio parola" (FULLTEXT,
+    come spec 0179); tutti i telefoni dell'anagrafica, non solo il principale.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione: FULLTEXT(name) su `referents`; no-op su SQLite.</item>
+      <item>`App\Tables\Shared\WordPrefixMatcher`: divisione in parole e corrispondenza "inizio parola" (FULLTEXT su MySQL/MariaDB, LIKE su SQLite) estratte da `RequestClientSearch`, che ora le usa senza cambiare comportamento.</item>
+      <item>`App\Tables\Registries\RegistrySearch` + `RegistriesTableDefinition::applyGroupedSearch()`: un ramo aggiuntivo dell'OR della ricerca rapida.</item>
+      <item>`config/table-search.php`: tetto `registry_match_cap` (default 5000) per passo.</item>
+      <item>Guide in-app IT/EN `registries` (sezione "Cercare un'anagrafica") e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Ricerca su `name`: invariata ("contiene", nessuna soglia minima, nessun `searchMinLength`).</item>
+      <item>Tendine di selezione anagrafica nei form (`for-select`): invariate.</item>
+      <item>Numeri salvati con prefisso internazionale (es. "+39 333...") cercati senza prefisso ("333..."): non trovati, limite noto.</item>
+      <item>Email/PEC/altri contatti: non cercati (non richiesti).</item>
+    </out>
+  </scope>
+
+  <decisions>
+    <decision id="D-1">
+      Un'anagrafica corrisponde se vale ALMENO UNO di: (a) `name` contiene il termine (invariato); (b) tutte le
+      parole del termine iniziano una parola della sua scheda (nome, cognome, codice fiscale, partita IVA: lo
+      stesso indice FULLTEXT della spec 0179, quindi anche il codice fiscale); (c) il termine e' un numero di
+      telefono e un contatto telefono della sua scheda inizia con quelle cifre; (d) tutte le parole iniziano una
+      parola del nome di un referente collegato; (e) come (c) ma sui telefoni di un referente collegato.
+    </decision>
+    <decision id="D-2">
+      Parole (b, d): stesse regole della spec 0179 D-1/D-2 (lettere/cifre, almeno 3 caratteri, stopword InnoDB
+      escluse), stessa emulazione LIKE su SQLite (D-4 di 0179). Se non resta nessuna parola, (b) e (d) non
+      trovano nulla; (a) resta attivo.
+    </decision>
+    <decision id="D-3">
+      Telefono (c, e): il termine e' un numero se, tolti spazi e `( ) . -`, resta un `+` iniziale opzionale
+      seguito da almeno 3 cifre. Si confronta `contacts.normalized_value LIKE '&lt;cifre&gt;%'` con
+      `type = phone`, principali e non. Es. "02 6885", "026885" e "0268857892" trovano "02 6885 7892".
+    </decision>
+    <decision id="D-4">
+      Due passi come la spec 0179 D-3: ogni passo legge al massimo `registry_match_cap` id (anagrafiche o
+      referenti; referenti -> anagrafiche via `referent_registry`), poi un unico ramo `registries.id IN (...)`.
+      Termini molto generici mostrano al massimo le anagrafiche entro il tetto (limite noto).
+    </decision>
+  </decisions>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/tables/registries/columns">
+      <response status="200">Invariato: `searchable` = ["name"], nessun `searchMinLength`.</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/registries/rows">
+      <request>Invariato: `search` stringa opzionale; cambia solo l'insieme delle righe trovate (D-1).</request>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Cercando la partita IVA (o le sue prime cifre) compare l'anagrafica che la possiede e non le altre.</criterion>
+    <criterion id="AC-002">Cercando la ragione sociale (anche una parte interna, es. "cme" per "Acme") compare l'anagrafica (comportamento invariato).</criterion>
+    <criterion id="AC-003">Cercando un telefono dell'anagrafica, principale o no, con o senza spazi ("02 6885", "0268857892") compare l'anagrafica.</criterion>
+    <criterion id="AC-004">Cercando nome o cognome di un referente collegato compare l'anagrafica; un referente non collegato non la fa comparire.</criterion>
+    <criterion id="AC-005">Cercando un telefono di un referente collegato compare l'anagrafica.</criterion>
+    <criterion id="AC-006">La ricerca resta in AND con i filtri di colonna e la tab tipo (persona/azienda).</criterion>
+    <criterion id="AC-007">Un termine di testo (es. "acme") non attiva il passo telefono; la ricerca di Gestione Richieste resta invariata (test esistenti verdi).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Nessun whereRaw/orderByRaw con input: `whereFullText` e LIKE con valore legato
+    (le cifre del telefono e le parole contengono solo caratteri ammessi). Autorizzazione invariata
+    (`registries.viewAny`): la ricerca aggiunge solo una condizione AND.
+  </constraints>
+
+</spec>

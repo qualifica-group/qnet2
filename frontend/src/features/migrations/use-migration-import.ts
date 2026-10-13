@@ -59,6 +59,8 @@ export function useMigrationImport({ source }: UseMigrationImportArgs) {
         migrationKeys.run(source, created.id),
         migrationRunFromCreated(created),
       )
+      // The source list shows each source's state: it now has a running run.
+      void queryClient.invalidateQueries({ queryKey: migrationKeys.sources })
     },
   })
 
@@ -96,11 +98,12 @@ export function useMigrationImport({ source }: UseMigrationImportArgs) {
     void refetchRun()
   }, [resetStall, refetchRun])
 
-  /** Clears the run and mutation state, e.g. when the dialog closes. */
+  /** Clears the run and mutation state, e.g. when the dialog closes, and refreshes the source states. */
   const reset = useCallback(() => {
     setRunId(null)
     startMutation.reset()
-  }, [startMutation])
+    void queryClient.invalidateQueries({ queryKey: migrationKeys.sources })
+  }, [startMutation, queryClient])
 
   return {
     run: runId != null ? runQuery.data : undefined,

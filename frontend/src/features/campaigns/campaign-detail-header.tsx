@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next'
 import { CalendarRange, Megaphone, Target, Wallet } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { GeoScopeBadge } from '@/features/geo/geo-scope-badge'
@@ -10,6 +9,7 @@ import { geoScopePlaceName } from '@/features/geo/geo-scope'
 import { formatDecimal } from '@/features/products/column-renderers'
 import { statusBadgeClassName } from '@/features/projects/status-badge-classes'
 import { formatDate } from '@/lib/formatting/date-display'
+import type { CampaignRecordValues } from '@/features/campaigns/campaign-record'
 import type { CampaignDetailWithPermissions as CampaignDetailData } from '@/features/campaigns/types'
 
 /**
@@ -18,23 +18,16 @@ import type { CampaignDetailWithPermissions as CampaignDetailData } from '@/feat
  * together — the same split `opportunity-detail-header.tsx` makes.
  */
 
-interface CampaignDetailHeaderProps {
-  campaign: CampaignDetailData
-  /** Opens the module's existing edit surface; absent = no edit affordance. */
-  onEdit?: () => void
-}
-
 /**
  * Identity band: monogram, name, code subtitle, and the three badges that say
  * WHAT KIND of campaign this is — its pipeline status, whether it stands alone
  * or inherits from a project (BR-2), and the geographic scope it covers.
  *
- * The status is NOT repeated in the sections below: it lives here, the way
- * Opportunita' keeps its own status badge in the band alone.
+ * The status badge is also a row of "Classificazione", where it changes. No
+ * edit action: the record edits in place (spec 0221).
  */
-export function CampaignDetailHeader({ campaign, onEdit }: CampaignDetailHeaderProps) {
+export function CampaignDetailHeader({ campaign }: { campaign: CampaignDetailData }) {
   const { t } = useTranslation()
-  const canEdit = Boolean(onEdit) && campaign.permissions.resource.update
   const geoPlace = campaign.geo_scope ? geoScopePlaceName(campaign.geo_scope, campaign) : null
 
   return (
@@ -68,13 +61,13 @@ export function CampaignDetailHeader({ campaign, onEdit }: CampaignDetailHeaderP
           ) : null}
         </>
       }
-      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }
 
 interface CampaignDetailStatsProps {
-  campaign: CampaignDetailData
+  /** The persisted figures on the detail, the draft's, live, on create (spec 0221). */
+  campaign: Pick<CampaignRecordValues, 'total_budget' | 'target_lead' | 'start_date' | 'end_date'>
 }
 
 /** KPI strip: what the campaign costs, what it is meant to produce, and the window it runs in. */

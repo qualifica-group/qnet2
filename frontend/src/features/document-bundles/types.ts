@@ -14,6 +14,8 @@ import type { ResourcePermissions } from '@/features/authorization/types'
  */
 export interface DocumentBundle {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   name: string
   description: string | null
   is_active: boolean
@@ -25,8 +27,7 @@ export interface DocumentBundle {
 /**
  * A `DocumentBundle` carrying the actor's authorization metadata for this
  * instance (spec 0004), as returned by `GET /document-bundles/{id}` (`show`).
- * Used to seed the edit form's `ResourcePermissionsProvider` without a second
- * request.
+ * Seeds the detail's `ResourcePermissionsProvider` without a second request.
  */
 export interface DocumentBundleWithPermissions extends DocumentBundle {
   permissions: ResourcePermissions
@@ -43,8 +44,8 @@ export interface CreateDocumentBundlePayload {
 export type UpdateDocumentBundlePayload = Partial<CreateDocumentBundlePayload>
 
 /**
- * Discriminated form mode shared by the form hook/meta-resolver and the
- * `DocumentBundleForm` component (mirrors `TaskImportanceFormMode`).
+ * Discriminated form mode of `useDocumentBundleForm`: `create` backs the
+ * create form, `edit` the detail's in-place rows.
  */
 export type DocumentBundleFormMode =
   | { type: 'create' }

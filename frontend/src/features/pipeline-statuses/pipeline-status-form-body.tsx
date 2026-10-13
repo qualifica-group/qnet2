@@ -1,161 +1,71 @@
-import { Flag } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FormSection } from '@/components/form-section'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Form, FormControl } from '@/components/ui/form'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
-import { ColorTokenPicker } from '@/features/custom-fields/components/color-token-picker'
-import { STATUS_GROUPS, type StatusGroupValue } from '@/features/status-reorder/types'
+import { useWatch } from 'react-hook-form'
+import { Flag } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
+import { Form } from '@/components/ui/form'
+import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field-record-sections'
+import { PipelineStatusRows } from '@/features/pipeline-statuses/pipeline-status-rows'
 import { usePipelineStatusForm } from '@/features/pipeline-statuses/use-pipeline-status-form'
-import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
-import type { PipelineStatusDetail, PipelineStatusFormMode } from '@/features/pipeline-statuses/types'
+import type { PipelineStatusDetail } from '@/features/pipeline-statuses/types'
+
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const PIPELINE_STATUS_FORM_ID = 'pipeline-status-form'
+
+/** Create mode is static: a fresh object per render would rebuild the form's defaults. */
+const CREATE_MODE = { type: 'create' } as const
 
 interface PipelineStatusFormBodyProps {
-  mode: PipelineStatusFormMode
   onSuccess: (pipelineStatus: PipelineStatusDetail) => void
   onCancel: () => void
 }
 
-/** i18n key per fixed group value, kept out of the JSX so the option list stays a plain map. */
-const GROUP_LABEL_KEYS: Record<StatusGroupValue, string> = {
-  open: 'pipelineStatuses.form.group.open',
-  pending: 'pipelineStatuses.form.group.pending',
-  closed: 'pipelineStatuses.form.group.closed',
-}
-
 /**
- * The project status create/edit form UI. `name`, `color` and `group` are
- * each wrapped in `MetaField` (spec 0004): hidden means absent, non-editable
- * means disabled, `required` comes from the resolved `ResourcePermissions` —
- * no hardcoded permission logic lives here. A system row ("Nuovo"/"Chiuso",
- * spec 0039 D-2) forces the group picker disabled regardless of field
- * permissions: its group is fixed in migration and only `name`/`color` are
- * editable. `sort_order` has no form field (D-5, server-managed). All
- * non-render logic lives in `usePipelineStatusForm`. `<CustomFieldsSection>`
- * (spec 0021) mounts the resource's admin-defined custom fields with zero
- * pipeline-statuses-specific rendering/validation logic.
+ * The project status create form as a replica of the detail (spec 0235): the
+ * same rows, closed until clicked (Fatto/Ripristina, nothing saved per row);
+ * Salva validates and creates everything at once.
  */
-export function PipelineStatusFormBody({ mode, onSuccess, onCancel }: PipelineStatusFormBodyProps) {
+export function PipelineStatusFormBody({ onSuccess, onCancel }: PipelineStatusFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit } = usePipelineStatusForm({ mode, onSuccess })
-
-  const isSystemRow = mode.type === 'edit' && mode.pipelineStatus.system_key !== null
-
-  const identityVisible =
-    fieldPermission('name').visible ||
-    fieldPermission('color').visible ||
-    fieldPermission('group').visible
+  const { form, serverError, onSubmit } = usePipelineStatusForm({ mode: CREATE_MODE, onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const name = useWatch({ control: form.control, name: 'name' })
+  const customFieldValues = useWatch({ control: form.control, name: 'custom_fields' })
+  const heading = name.trim() || t('pipelineStatuses.form.createTitle')
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4 p-4"
-          noValidate
-        >
-          {identityVisible && (
-            <FormSection
-              icon={Flag}
-              title={t('pipelineStatuses.form.sections.identity.title')}
-              description={t('pipelineStatuses.form.sections.identity.description')}
-            >
-              <MetaField
-                control={form.control}
-                name="name"
-                metaKey="name"
-                label={t('pipelineStatuses.form.name')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="color"
-                metaKey="color"
-                label={t('pipelineStatuses.form.color')}
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <ColorTokenPicker
-                      value={field.value}
-                      onChange={field.onChange}
-                      disabled={disabled}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="group"
-                metaKey="group"
-                label={t('pipelineStatuses.form.group.label')}
-                hint={isSystemRow ? t('pipelineStatuses.form.hints.systemStatusGroup') : undefined}
-              >
-                {({ field, disabled }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={(next) => field.onChange(next as StatusGroupValue)}
-                    disabled={disabled || isSystemRow}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {STATUS_GROUPS.map((group) => (
-                        <SelectItem key={group} value={group}>
-                          {t(GROUP_LABEL_KEYS[group])}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          <CustomFieldsSection resource="pipeline-statuses" control={form.control} />
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('pipelineStatuses.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting
-                ? t('pipelineStatuses.form.saving')
-                : t('pipelineStatuses.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+    <Form {...form}>
+      <RecordCreateLayout
+        formId={PIPELINE_STATUS_FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        title={heading}
+        subtitle={t('pipelineStatuses.form.createSubtitle')}
+        media={<DetailMonogram name={heading} icon={<Flag />} />}
+        isSubmitting={form.formState.isSubmitting}
+        serverError={serverError}
+        onCancel={onCancel}
+        labels={{
+          save: t('pipelineStatuses.form.save'),
+          saving: t('pipelineStatuses.form.saving'),
+          cancel: t('pipelineStatuses.form.cancel'),
+        }}
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('pipelineStatuses.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <PipelineStatusRows inline={draft} canEdit />
+            </RecordFieldList>
+          </RecordSection>
+          <CustomFieldRecordSections
+            resource="pipeline-statuses"
+            values={customFieldValues}
+            inline={draft}
+            control={form.control}
+          />
+        </RecordSectionsGrid>
+      </RecordCreateLayout>
+    </Form>
   )
 }

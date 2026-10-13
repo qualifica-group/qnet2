@@ -132,6 +132,12 @@ final class PermissionCatalogueBuilder
 
             $resource = $this->resourcePrefixOf($permission);
 
+            if (in_array($resource, array_column($resources, 'resource'), true)) {
+                // Two menu entries sharing one permission prefix (e.g.
+                // `api-integrations` and `api-docs`) are one module.
+                continue;
+            }
+
             if (! isset($permissionsByResource[$resource])) {
                 // A module in navigation with no assignable permissions of its
                 // own does not appear (spec 0076 data_contract).

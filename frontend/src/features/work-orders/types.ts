@@ -47,12 +47,14 @@ export interface WorkOrderQuoteRef {
 /**
  * `WorkOrderResource.contract` projection: the Contratto born from the linked
  * quote (`code`/`title` are the quote's own, as on the Contract detail),
- * `null` while the quote has not been won.
+ * `null` while the quote has not been won. `expiry_date` (`Y-m-d`) is the
+ * contract's own, read-only on the commessa.
  */
 export interface WorkOrderContractRef {
   id: number
   code: string
   title: string
+  expiry_date: string | null
 }
 
 /**
@@ -127,9 +129,13 @@ export interface WorkOrderFormContext {
  */
 export interface WorkOrderDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   /** `COM-0001`, unique, immutable after create (D-1). */
   code: string
   title: string
+  /** Spec 0215 D-2: false = automatic `<code> - <products>` title, recomputed when the lines change. */
+  title_is_manual: boolean
   type: WorkOrderType
   status: WorkOrderStatus
   /** Spec 0149 D-5: mean completion of the non-cancelled root tasks, 0..100, computed server-side. */
@@ -198,7 +204,8 @@ export interface WorkOrderDetailWithPermissions extends WorkOrderDetail {
 export interface CreateWorkOrderPayload {
   code?: string | null
   quote_id: number
-  title: string
+  /** `null`/absent = automatic title (spec 0215 D-2). */
+  title: string | null
   type: WorkOrderType
   start_date: string
   supervisor_ids: number[]

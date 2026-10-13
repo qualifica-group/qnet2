@@ -1,99 +1,114 @@
-import { ShieldCheck } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { useWatch } from 'react-hook-form'
+import { Loader2, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordCanvas, RecordCard, RecordCardHeader, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordFormActions } from '@/components/record-form/record-form-actions'
+import { RecordFormBody } from '@/components/record-form/record-form-body'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Form, FormControl } from '@/components/ui/form'
-import { RelationMultiSelectField } from '@/components/form/relation-multi-select-field'
-import { FormSection } from '@/components/form-section'
-import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
-import { MetaField } from '@/features/authorization/MetaField'
-import { PermissionsSection } from '@/features/roles/permission-explorer/permissions-section'
+import { Form } from '@/components/ui/form'
+import { useResourcePermissions } from '@/features/authorization/permissions'
+import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field-record-sections'
+import { PermissionsEditor } from '@/features/roles/permission-explorer/permissions-editor'
+import { RoleIdentityRecordSection, RolePermissionsRecordSection } from '@/features/roles/role-record-sections'
 import { useRoleForm } from '@/features/roles/use-role-form'
-import { CustomFieldsSection } from '@/features/custom-fields/CustomFieldsSection'
-import type { RoleFormMode } from '@/features/roles/role-form'
 import type { RoleDetail } from '@/features/roles/types'
 
+type RoleCustomFields = NonNullable<RoleDetail['custom_fields']>
+
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const ROLE_FORM_ID = 'role-form'
+
 interface RoleFormBodyProps {
-  mode: RoleFormMode
   onSuccess: (role: RoleDetail) => void
   onCancel: () => void
 }
 
 /**
- * The role create/edit form UI. Every field is wrapped in `MetaField` (spec
- * 0004): hidden fields are absent, non-editable fields render disabled,
- * `required` comes from the resolved `ResourcePermissions` — no hardcoded
- * permission logic lives here. All non-render logic lives in `useRoleForm`.
- * Presentation is grouped into three `FormSection` cards: role details, the
- * two-panel permission explorer (spec 0076 — `PermissionsSection`, which
- * unifies the module actions and its field-permission matrix in one scheda),
- * and `<CustomFieldsSection>` (spec 0021), which mounts the resource's
- * admin-defined custom fields with zero roles-specific rendering/validation
- * logic.
+ * The role create form UI as a replica of the detail (spec 0230 D-4): the
+ * record card with its identity band (monogram and title follow the name
+ * being typed, Annulla/Salva), the "Dettagli ruolo" rows closed until clicked
+ * (Fatto/Ripristina, nothing saved per row), the permissions explorer OPEN
+ * (an editor rather than a field) and the custom fields (spec 0021). Every
+ * field stays wrapped in `MetaField` (spec 0004): hidden fields are absent,
+ * non-editable ones disabled. All non-render logic lives in `useRoleForm`.
  */
-export function RoleFormBody({ mode, onSuccess, onCancel }: RoleFormBodyProps) {
-  const { t, form, serverError, onSubmit, canManageFieldPermissions } = useRoleForm({ mode, onSuccess })
+export function RoleFormBody({ onSuccess, onCancel }: RoleFormBodyProps) {
+  const { t } = useTranslation()
+  const { field: fieldPermission } = useResourcePermissions()
+  const { form, serverError, onSubmit, canManageFieldPermissions } = useRoleForm({ onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const values = useWatch({ control: form.control })
+  const { isSubmitting } = form.formState
+  const permissionsVisible = fieldPermission('permissions').visible
+  const heading = values.name?.trim() || t('roles.form.createTitle')
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="flex flex-1 flex-col gap-4 overflow-y-auto p-4"
-        noValidate
-      >
-        <FormSection
-          icon={ShieldCheck}
-          title={t('roles.form.sections.details.title')}
-          description={t('roles.form.sections.details.description')}
-        >
-          <MetaField control={form.control} name="name" metaKey="name" label={t('roles.form.name')}>
-            {({ field, disabled, readOnly }) => (
-              <FormControl>
-                <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-              </FormControl>
-            )}
-          </MetaField>
+      {/* `display: contents`: this native `<form>` only scopes the HTML submit
+          boundary, it must not become an extra box around the canvas. */}
+      <form id={ROLE_FORM_ID} onSubmit={form.handleSubmit(onSubmit)} className="contents" noValidate>
+        <RecordCanvas>
+          <RecordFormBody>
+            <RecordCard>
+              <RecordCardHeader
+                media={<DetailMonogram name={heading} icon={<ShieldCheck />} />}
+                title={heading}
+                subtitle={t('roles.form.createSubtitle')}
+                actions={
+                  <>
+                    <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
+                      {t('roles.form.cancel')}
+                    </Button>
+                    <Button type="submit" form={ROLE_FORM_ID} disabled={isSubmitting}>
+                      {isSubmitting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+                      {isSubmitting ? t('roles.form.saving') : t('roles.form.save')}
+                    </Button>
+                  </>
+                }
+              />
+              {serverError ? (
+                <div
+                  role="alert"
+                  className="mx-4 mt-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive"
+                >
+                  <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                  {serverError}
+                </div>
+              ) : null}
+              <RecordSectionsGrid>
+                <RoleIdentityRecordSection
+                  values={{ name: values.name ?? '', users: values.users ?? [] }}
+                  form={form}
+                  inline={draft}
+                  canEdit
+                />
+                {permissionsVisible ? (
+                  <RolePermissionsRecordSection count={values.permissions?.length ?? 0}>
+                    <PermissionsEditor control={form.control} canManageFieldPermissions={canManageFieldPermissions} />
+                  </RolePermissionsRecordSection>
+                ) : null}
+                <CustomFieldRecordSections
+                  resource="roles"
+                  values={(values.custom_fields ?? {}) as RoleCustomFields}
+                  inline={draft}
+                  control={form.control}
+                />
+              </RecordSectionsGrid>
+            </RecordCard>
 
-          <RelationMultiSelectField
-            control={form.control}
-            name="users"
-            metaKey="users"
-            label={t('roles.form.users')}
-            resource={USERS_FOR_SELECT_RESOURCE}
-            searchPlaceholder={t('roles.form.usersSearch')}
-            showAvatar
-            placeholder={t('roles.form.usersPlaceholder')}
-            emptyLabel={t('roles.form.usersEmpty')}
-            errorLabel={t('roles.form.usersError')}
-            removeLabel={t('roles.form.usersRemove')}
-            retryLabel={t('common.retry')}
-          />
-        </FormSection>
-
-        <PermissionsSection control={form.control} canManageFieldPermissions={canManageFieldPermissions} />
-
-        <CustomFieldsSection resource="roles" control={form.control} />
-
-        {serverError && (
-          <p className="text-sm font-medium text-destructive" role="alert">
-            {serverError}
-          </p>
-        )}
-
-        <div className="mt-auto flex justify-end gap-2 pt-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={form.formState.isSubmitting}
-          >
-            {t('roles.form.cancel')}
-          </Button>
-          <Button type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting
-              ? t('roles.form.saving')
-              : t('roles.form.save')}
-          </Button>
-        </div>
+            {/* The same actions the identity band carries, repeated where the
+                form ends: the operator finishes the permissions far from the top. */}
+            <RecordFormActions
+              formId={ROLE_FORM_ID}
+              isSubmitting={isSubmitting}
+              submitLabel={t('roles.form.save')}
+              submittingLabel={t('roles.form.saving')}
+              cancel={{ label: t('roles.form.cancel'), onCancel }}
+            />
+          </RecordFormBody>
+        </RecordCanvas>
       </form>
     </Form>
   )

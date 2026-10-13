@@ -4,25 +4,27 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { VatRateForm } from '@/features/vat-rates/vat-rate-form'
+import { VatRateDetailView } from '@/features/vat-rates/vat-rate-detail'
 import type { VatRateDetailWithPermissions } from '@/features/vat-rates/types'
 import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
 import type { CustomFieldDescriptor } from '@/features/custom-fields/types'
 
 /**
- * Spec 0021: the vat-rates module wires the universal custom-fields renderer
- * (mirrors `source-form-custom-fields.test.tsx`) — mounting
- * `<CustomFieldsSection>` is the only vat-rates-specific integration.
+ * Spec 0021: the vat-rates module wires the universal custom-fields renderer.
+ * Wave 3 (spec 0236): they render as in-place record rows, on the detail
+ * (saved alone) and on the create draft (kept until Salva).
  */
 
 const createVatRateMock = vi.fn()
 const updateVatRateMock = vi.fn()
 
-vi.mock('@/features/vat-rates/api', () => ({
+vi.mock('@/features/vat-rates/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/vat-rates/api')>()),
   createVatRate: (...args: unknown[]) => createVatRateMock(...args),
   updateVatRate: (...args: unknown[]) => updateVatRateMock(...args),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
@@ -60,7 +62,7 @@ function permissionsWithNotes(): ResourcePermissions {
         disabled: false,
       },
     },
-    actions: {},
+    actions: { view_activity: false },
   }
 }
 
@@ -82,6 +84,9 @@ function vatRate(overrides: Partial<VatRateDetailWithPermissions> = {}): VatRate
   }
 }
 
+const pencilOf = async (label: string) =>
+  screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: label }) })
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
@@ -94,44 +99,41 @@ beforeEach(() => {
 })
 
 describe('VatRateForm — custom fields (spec 0021)', () => {
-  it('renders the resource custom field control in create mode', async () => {
-    render(<VatRateForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    expect(await screen.findByRole('textbox', { name: 'Notes' })).toBeInTheDocument()
-  })
-
   it('includes the valued custom field in the create payload', async () => {
     createVatRateMock.mockResolvedValue(vatRate())
-    const onSuccess = vi.fn()
 
-    render(<VatRateForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<VatRateForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'Standard' } })
+    fireEvent.click(await pencilOf('Name'))
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Standard' } })
+    fireEvent.click(await pencilOf('Rate'))
     fireEvent.change(screen.getByLabelText(/^Rate/), { target: { value: '22' } })
+    fireEvent.click(await pencilOf('Notes'))
     fireEvent.change(await screen.findByRole('textbox', { name: 'Notes' }), {
       target: { value: 'Key rate' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(createVatRateMock).toHaveBeenCalledTimes(1))
-    const payload = createVatRateMock.mock.calls[0][0]
-    expect(payload.custom_fields).toEqual({ notes: 'Key rate' })
+    expect(createVatRateMock.mock.calls[0][0].custom_fields).toEqual({ notes: 'Key rate' })
   })
+})
 
-  it('seeds the custom field value from the loaded VAT rate detail in edit mode', async () => {
-    render(
-      <VatRateForm
-        mode={{ type: 'edit', vatRate: vatRate({ custom_fields: { notes: 'Existing note' } }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+describe('VatRateDetailView — custom fields (spec 0021)', () => {
+  it('shows the persisted value and saves a changed one alone', async () => {
+    updateVatRateMock.mockResolvedValue(vatRate({ custom_fields: { notes: 'Changed' } }))
 
-    expect(await screen.findByRole('textbox', { name: 'Notes' })).toHaveValue('Existing note')
+    render(<VatRateDetailView vatRate={vatRate({ custom_fields: { notes: 'Existing note' } })} />, {
+      wrapper: wrapper(),
+    })
+
+    expect(await screen.findByText('Existing note')).toBeInTheDocument()
+    fireEvent.click(await pencilOf('Notes'))
+    const input = await screen.findByRole('textbox', { name: 'Notes' })
+    expect(input).toHaveValue('Existing note')
+    fireEvent.change(input, { target: { value: 'Changed' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.save') }))
+
+    await waitFor(() => expect(updateVatRateMock).toHaveBeenCalledWith(9, { custom_fields: { notes: 'Changed' } }))
   })
 })

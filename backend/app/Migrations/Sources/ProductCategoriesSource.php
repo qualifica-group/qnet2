@@ -4,6 +4,7 @@ namespace App\Migrations\Sources;
 
 use App\DataObjects\ProductCategories\CreateProductCategoryData;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Support\CategoryBusinessFunctionLinker;
@@ -87,6 +88,16 @@ class ProductCategoriesSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Product categories';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::optional('business-functions'),
+        ];
     }
 
     /**

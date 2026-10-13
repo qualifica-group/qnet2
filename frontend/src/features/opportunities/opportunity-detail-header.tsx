@@ -34,6 +34,7 @@ export function OpportunityDetailHeader({ opportunity }: OpportunityDetailHeader
         />
       }
       title={opportunity.name}
+      legacyId={opportunity.old_id}
       subtitle={opportunity.registry?.name}
       badges={<OpportunityStatusBadge summary={opportunity.status} />}
     />

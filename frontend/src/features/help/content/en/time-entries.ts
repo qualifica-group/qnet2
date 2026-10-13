@@ -22,9 +22,9 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Press **New time entry**.',
-            'Fill in the fields.',
-            'Press **Add**.',
+            'Press **New time entry**: the record opens with its rows closed.',
+            'On each row press the pencil (or the value), fill it in and press **Done**; **Revert** puts it back as it was.',
+            'Press **Add**: it checks every row and creates the time entry.',
           ],
         },
         {
@@ -32,16 +32,16 @@ const guide: HelpGuide = {
           headers: ['Field', 'Notes'],
           rows: [
             ['Title, Date, Type', 'Required (type: for example meeting or call).'],
-            ['From / To', 'Optional, but if you set one you need both.'],
-            ['Time', 'Minutes, from 1 to 1440; calculated from the times, editable by hand.'],
+            ['Schedule: From / To', 'Optional, but if you set one you need both.'],
+            ['Schedule: Time', 'Minutes, from 1 to 1440; calculated from the times, editable by hand.'],
             ['Notes', 'Optional.'],
-            ['Customer, Opportunity, Work order, Task', 'Optional links.'],
+            ['Links: Customer, Opportunity, Work order, Activity', 'Optional, all on a single row.'],
             ['Phase', 'Shown only with a Work order and no Task: one of the work order\'s open phases, or none.'],
           ],
         },
         {
           type: 'warning',
-          text: "If you link a task in the **Task** field, title, customer, opportunity, work order and phase are taken from the task.",
+          text: "If you link a task in the **Activity** field, title, customer, opportunity, work order and phase are taken from the task.",
         },
         {
           type: 'note',
@@ -77,7 +77,11 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Expand a day to see its entries and add a note for the day. On every entry use **Edit**, **Delete** or Change type, then update. Filters and Sorting narrow and sort the days; Export downloads the filtered report or a user's monthly report.",
+          text: "Expand a day to see its entries and add a note for the day. On every entry use **Open** (or click the title), **Delete** or Change type. Filters and Sorting narrow and sort the days; Export downloads the filtered report or a user's monthly report.",
+        },
+        {
+          type: 'paragraph',
+          text: 'An entry has no edit form: each row edits in place. Press the pencil (or the value), change the field and press **Save**; **Cancel** or Esc leave the row as it was. Schedule (From, To, Time) and Links (Customer, Opportunity, Work order, Phase, Activity) each edit on a single row. With an Activity linked the Title cannot be edited, the task sets it. **Delete**, at the bottom of the record, removes the entry after a confirmation. Without the edit permission the rows show no pencil.',
         },
       ],
     },

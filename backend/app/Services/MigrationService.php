@@ -10,6 +10,8 @@ use App\Migrations\MigrationRegistry;
 use App\Models\MassMigrationRun;
 use App\Models\MigrationRun;
 use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -25,6 +27,8 @@ use Throwable;
  *   MassMigrationRun and dispatch RunMassMigrationJob to run them in order.
  * - runMassSync(): same orchestrator on a caller-provided source list, run
  *   inline instead of queued (the template seed's legacy import).
+ * - latestRunsBySource() / migratedAtBySource(): what each source's migration
+ *   state is, for the source list (every actor's runs: the data is shared).
  */
 class MigrationService
 {
@@ -106,6 +110,35 @@ class MigrationService
         RunMassMigrationJob::dispatchSync($run->id);
 
         return $run->refresh();
+    }
+
+    /**
+     * The most recent run of every source that ran at least once.
+     *
+     * @return Collection<string, MigrationRun> keyed by source key
+     */
+    public function latestRunsBySource(): Collection
+    {
+        return MigrationRun::query()
+            ->whereIn('id', MigrationRun::query()->selectRaw('MAX(id)')->groupBy('source'))
+            ->get()
+            ->keyBy('source');
+    }
+
+    /**
+     * When each source last completed a run: the moment its data was migrated,
+     * kept even when a later run failed.
+     *
+     * @return Collection<string, Carbon> source key => completion time
+     */
+    public function migratedAtBySource(): Collection
+    {
+        return MigrationRun::query()
+            ->where('status', MigrationStatus::Completed)
+            ->groupBy('source')
+            ->selectRaw('source, MAX(updated_at) as migrated_at')
+            ->pluck('migrated_at', 'source')
+            ->map(fn (string $migratedAt): Carbon => Carbon::parse($migratedAt));
     }
 
     /**

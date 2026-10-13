@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0227-task-template-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Il Modello di task riceve le stesse modifiche dei moduli gia' migrati (spec 0195-0200, 0216-0222, 0226): niente
+    pagina di modifica, il dettaglio si edita sul posto riga per riga; la creazione e' una replica del dettaglio.
+    Secondo modulo dell'onda 2 del piano "nessuna pagina di modifica" (utente 2026-10-12: "committa e passa avanti").
+  </goal>
+
+  <context>
+    - D-1: regole 0195 D-2/D-3/D-6/D-8 con `RecordInlineField`, `useDraftInlineEdit`, `useFormLeaveGuard`; nessuna
+      modifica backend (PATCH /api/task-templates/{id} parziale esistente, gia' con `permissions` nella risposta).
+    - D-2: sezione "Dettagli": Nome, Descrizione (testo ricco), Attivo, una riga ciascuno; il salvataggio invia il
+      solo campo cambiato.
+    - D-3: "Fasi" (fasi + righe + sotto-task + allegati) e' UNA riga a tutta larghezza (`layout="block"`, chiave
+      `items`, il permesso di campo che gia' governa la board, spec 0124 D-1): la matita apre la stessa board della
+      creazione, Salva invia `items` e `stages` soltanto (sincronizzazione completa, spec 0124 D-1/0146 D-2), poi
+      carica gli allegati messi in coda sulle righe nuove (posizionale, D-9). Precedente: le righe offerta (0197).
+    - D-4: creazione = replica del dettaglio: banda d'identita' con nome live e Annulla/Salva, "Dettagli" a righe
+      chiuse (Fatto/Ripristina), board APERTA (e' un editor, non un campo: come le griglie offerta in 0197), azioni
+      ripetute in fondo, conferma di uscita.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica.</backend>
+    <frontend>
+      Registry `task-templates`: `generateEditRoute: false`, `formOwnsHeader: true`; `TaskTemplateDetailView` perde
+      `onEdit`, guadagna `onChanged`; `updateTaskTemplate` restituisce `TaskTemplateDetailWithPermissions`; nuovo
+      `taskTemplateDetailQueryKey`. Stato della board estratto in `useTaskTemplateBoard`; `useTaskTemplateForm` solo
+      creazione; nuovo `useTaskTemplateInlineEdit`; `buildUpdatePayload` -> `buildBoardUpdatePayload`. Rimossi
+      `useTaskTemplateFormMeta`, `TaskTemplateFormMode`, i18n `form.editTitle/editSubtitle`.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/task-templates/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su Nome/Descrizione/Attivo: Salva invia il solo campo; Annulla/Esc non chiamano.</ac>
+    <ac id="AC-003">Matita su Fasi: Salva invia solo `items` e `stages`, le righe esistenti con il loro id e
+      nell'ordine mostrato; una riga senza titolo blocca il salvataggio senza chiamate.</ac>
+    <ac id="AC-004">Senza permesso di modifica nessuna matita.</ac>
+    <ac id="AC-005">Creazione: Dettagli a righe chiuse, board aperta, Salva crea tutto, uscita con conferma.</ac>
+    <ac id="AC-006">Guida in-app IT/EN `task-templates` aggiornata.</ac>
+  </acceptance>
+</spec>

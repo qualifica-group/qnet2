@@ -16,12 +16,11 @@ import { AdvancedFilterPanel, ADVANCED_FILTER_PANEL_ANIMATION } from '@/features
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { useTableAdvancedFilters } from '@/features/table/advanced-filters/use-table-advanced-filters'
 import { useTableConfig } from '@/features/table/use-table-config'
-import { projectCardsQueryKeyPrefix, projectDetailQueryKey } from '@/features/projects/api'
+import { projectCardsQueryKeyPrefix } from '@/features/projects/api'
 import { ProjectCard } from '@/features/projects/project-card'
 import { ProjectCardSkeleton } from '@/features/projects/project-card-skeleton'
-import { ProjectEditLoader } from '@/features/projects/project-edit-loader'
+import { ProjectDetailScreen } from '@/features/projects/project-screens'
 import { useProjectCards } from '@/features/projects/use-project-cards'
-import type { ProjectDetail } from '@/features/projects/types'
 
 const INITIAL_SKELETON_COUNT = 6
 const NEXT_PAGE_SKELETON_COUNT = 3
@@ -51,7 +50,8 @@ export function ProjectCardGrid() {
   const invalidateStats = useInvalidateModuleStats(PROJECTS_DOMAIN)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
-  const [editingId, setEditingId] = useState<number | null>(null)
+  // The card's pencil opens the project's detail, which edits in place (spec 0220 D-4).
+  const [openedId, setOpenedId] = useState<number | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
 
   const { data: tableConfig } = useTableConfig(PROJECTS_DOMAIN)
@@ -88,17 +88,13 @@ export function ProjectCardGrid() {
     return () => observer.disconnect()
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, cards.length])
 
-  const closeEdit = useCallback(() => setEditingId(null), [])
+  const closeDetail = useCallback(() => setOpenedId(null), [])
 
-  const handleEditSuccess = useCallback(
-    (project: ProjectDetail) => {
-      setEditingId(null)
-      void queryClient.invalidateQueries({ queryKey: projectCardsQueryKeyPrefix() })
-      void queryClient.invalidateQueries({ queryKey: projectDetailQueryKey(project.id) })
-      invalidateStats()
-    },
-    [queryClient, invalidateStats],
-  )
+  // An in-place save keeps the detail open: only the cards and the stats refresh.
+  const handleDetailChanged = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: projectCardsQueryKeyPrefix() })
+    invalidateStats()
+  }, [queryClient, invalidateStats])
 
   let body: ReactNode
   if (isError) {
@@ -125,7 +121,7 @@ export function ProjectCardGrid() {
       <div className="flex flex-col gap-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {cards.map((project) => (
-            <ProjectCard key={project.id} project={project} onEdit={setEditingId} />
+            <ProjectCard key={project.id} project={project} onEdit={setOpenedId} />
           ))}
           {isFetchingNextPage
             ? Array.from({ length: NEXT_PAGE_SKELETON_COUNT }).map((_, index) => (
@@ -185,19 +181,13 @@ export function ProjectCardGrid() {
 
       {body}
 
-      <Sheet open={editingId !== null} onOpenChange={(open) => (open ? undefined : closeEdit())}>
+      <Sheet open={openedId !== null} onOpenChange={(open) => (open ? undefined : closeDetail())}>
         <SheetContent className="gap-0" storageKey={`sheet-width:${PROJECTS_DOMAIN}`}>
-          <SheetHeader>
-            <SheetTitle>{t('projects.form.editTitle')}</SheetTitle>
-            <SheetDescription>{t('projects.form.editSubtitle')}</SheetDescription>
+          <SheetHeader className="sr-only">
+            <SheetTitle>{t('projects.detail.title')}</SheetTitle>
+            <SheetDescription>{t('projects.detail.subtitle')}</SheetDescription>
           </SheetHeader>
-          {editingId !== null ? (
-            <ProjectEditLoader
-              projectId={editingId}
-              onSuccess={handleEditSuccess}
-              onCancel={closeEdit}
-            />
-          ) : null}
+          {openedId !== null ? <ProjectDetailScreen id={openedId} onChanged={handleDetailChanged} /> : null}
         </SheetContent>
       </Sheet>
     </div>

@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Requests\Concerns;
 
 use App\Enums\ContactTypeEnum;
-use App\Models\Contact;
-use App\Models\PersonalData;
 use App\Support\ContactValueNormalizer;
 use App\Support\IdentityUniquenessScope;
 use Illuminate\Contracts\Validation\Validator;
@@ -112,26 +110,13 @@ trait ValidatesPhoneUniqueness
 
     /**
      * Whether another card in the namespace already carries this number.
-     *
-     * Matched through the indexed `normalized_value` column (spec 0136 D-6):
-     * `Contact::saving` keeps it in sync with `value`/`type`, so this is an
-     * indexed lookup instead of fetching every phone row in the
-     * namespace and comparing in PHP. Mirrors
-     * `IdentityDuplicateFinder::matchContactType` verbatim.
      */
     private function phoneValueTaken(string $normalized): bool
     {
-        $cards = IdentityUniquenessScope::cards(
-            $this->identityUniquenessOwner(),
-            $this->identityUniquenessOwnerId(),
-        )->select('id');
-
-        return Contact::query()
-            ->where('contactable_type', (new PersonalData)->getMorphClass())
-            ->whereIn('type', self::PHONE_CONTACT_TYPES)
-            ->where('normalized_value', $normalized)
-            ->whereIn('contactable_id', $cards)
-            ->exists();
+        return IdentityUniquenessScope::phoneTaken(
+            IdentityUniquenessScope::cards($this->identityUniquenessOwner(), $this->identityUniquenessOwnerId()),
+            $normalized,
+        );
     }
 
     private function normalizePhone(string $value): string

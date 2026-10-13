@@ -29,6 +29,14 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'manage',
+      title: 'Creare, modificare ed eliminare',
+      blocks: [
+        { type: 'steps', items: ['Apri **Anagrafiche › Tipi referente** e premi il pulsante per creare un nuovo tipo referente.', 'Si apre la scheda con le righe chiuse: premi la matita (o il valore) su **Nome**, scrivilo e premi **Fatto** (**Ripristina** riporta la riga com’era).', 'Premi **Salva**.'] },
+        { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza** ed **Elimina**, se il tuo ruolo lo consente. Per modificare non c’è un modulo a parte: apri la scheda con **Visualizza**, premi la matita sulla riga, cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com’era.' },
+      ],
+    },
+    {
       id: 'usage',
       title: 'Dove si usa',
       blocks: [

@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The page is under **Administration › System health** and is reserved to the **super-admin** role: for other users the menu entry does not appear. At the top you see the **overall result** and the time of the last check; below, the **Online users** card and one card per subsystem.',
+          text: 'The page is under **Develop › System health** and is reserved to the **super-admin** role: for other users the menu entry does not appear. At the top you see the **overall result** and the time of the last check; below, the **Online users** card and one card per subsystem.',
         },
       ],
     },

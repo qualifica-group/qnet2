@@ -11,7 +11,7 @@ import { useAbilities } from '@/features/auth/use-abilities'
 const PRIVILEGED_ROLE = 'super-admin'
 
 /**
- * Route guard for `/migrations`: renders the nested route only for a
+ * Route guard for `/dev/migrations`: renders the nested route only for a
  * super-admin, redirecting everyone else to the dashboard. Sits inside
  * `ProtectedRoute`, so a session is already guaranteed here.
  */

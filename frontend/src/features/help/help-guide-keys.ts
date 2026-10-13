@@ -78,4 +78,6 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'custom-fields',
   'migrations',
   'system-health',
+  'api-integrations',
+  'api-docs',
 ]

@@ -1,13 +1,14 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { createCommissionConfiguration, updateCommissionConfiguration } from './api'
+import { commissionConfigurationDetailKey, createCommissionConfiguration, updateCommissionConfiguration } from './api'
 import { useCommissionConfigurationForm } from './use-commission-configuration-form'
 import type { CommissionConfigurationDetailWithPermissions } from './types'
 
 const applyErrors = vi.hoisted(() => vi.fn(() => false))
-vi.mock('./api', () => ({
+vi.mock('./api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./api')>()),
   createCommissionConfiguration: vi.fn(),
   updateCommissionConfiguration: vi.fn(),
 }))
@@ -15,6 +16,12 @@ vi.mock('@/features/auth/form-errors', () => ({
   applyServerValidationErrors: applyErrors,
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+
+const PERMISSIONS: CommissionConfigurationDetailWithPermissions['permissions'] = {
+  resource: { view: true, create: true, update: true, delete: true, export: true, import: false },
+  fields: {},
+  actions: {},
+}
 
 const saved = {
   id: 1,
@@ -82,28 +89,44 @@ describe('useCommissionConfigurationForm', () => {
     expect(onSuccess).toHaveBeenCalledWith(saved)
   })
 
-  it('updates a product rule from authoritative edit defaults', async () => {
-    vi.mocked(updateCommissionConfiguration).mockResolvedValue(saved)
-    const configuration = {
-      ...saved,
-      permissions: { resource: {}, fields: {}, actions: {} },
-    } as CommissionConfigurationDetailWithPermissions
+  it('updates through a diff payload and caches the saved record under the detail key', async () => {
+    const configuration: CommissionConfigurationDetailWithPermissions = { ...saved, permissions: PERMISSIONS }
+    const refreshed = { ...configuration, priority: 7 }
+    vi.mocked(updateCommissionConfiguration).mockResolvedValue(refreshed)
+    const client = new QueryClient()
+    const onSuccess = vi.fn()
     const { result } = renderHook(
-      () => useCommissionConfigurationForm({
-        mode: { type: 'edit', configuration },
-        onSuccess: vi.fn(),
-      }),
-      { wrapper: wrapper() },
+      () => useCommissionConfigurationForm({ mode: { type: 'edit', configuration }, onSuccess }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        ),
+      },
     )
     expect(result.current.form.getValues('value')).toBe(5)
-    await act(() => result.current.onSubmit({
-      ...result.current.form.getValues(),
-      product_category_id: 20,
-    }))
-    expect(updateCommissionConfiguration).toHaveBeenCalledWith(1, expect.objectContaining({
-      product_category_id: null,
-      product_id: 3,
-    }))
+
+    await act(() => result.current.onSubmit({ ...result.current.form.getValues(), priority: 7 }))
+
+    expect(updateCommissionConfiguration).toHaveBeenCalledWith(1, { priority: 7 })
+    expect(client.getQueryData(commissionConfigurationDetailKey(1))).toEqual(refreshed)
+    expect(onSuccess).toHaveBeenCalledWith(refreshed)
+  })
+
+  it('re-syncs the form on a newly saved record and clears the server error on demand', async () => {
+    const configuration: CommissionConfigurationDetailWithPermissions = { ...saved, permissions: PERMISSIONS }
+    vi.mocked(updateCommissionConfiguration).mockRejectedValue(new Error('network'))
+    const { result, rerender } = renderHook(
+      ({ record }) => useCommissionConfigurationForm({ mode: { type: 'edit', configuration: record }, onSuccess: vi.fn() }),
+      { wrapper: wrapper(), initialProps: { record: configuration } },
+    )
+
+    await act(() => result.current.onSubmit(result.current.form.getValues()))
+    expect(result.current.serverError).toBeTruthy()
+    act(() => result.current.clearServerError())
+    expect(result.current.serverError).toBeNull()
+
+    rerender({ record: { ...configuration, name: 'Renamed elsewhere' } })
+    await waitFor(() => expect(result.current.form.getValues('name')).toBe('Renamed elsewhere'))
   })
 
   it('shows a generic error only when server validation did not map the failure', async () => {

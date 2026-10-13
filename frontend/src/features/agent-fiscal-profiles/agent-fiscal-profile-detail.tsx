@@ -3,7 +3,6 @@ import { IdCard } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,7 +11,6 @@ import {
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
 import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
@@ -45,15 +43,8 @@ export function AgentFiscalProfileDetailView({ profile, onEdit }: AgentFiscalPro
   return (
     <RecordCanvas>
       <RecordBody
-        side={
-          canViewActivity ? (
-            <RecordCollaborationCard
-              tabs={[activityLogTab(AGENT_FISCAL_PROFILES_DOMAIN, profile.id, t('activityLog.title'))]}
-            />
-          ) : null
-        }
-      >
-        <RecordCard>
+        collaborationTabs={canViewActivity ? [activityLogTab(AGENT_FISCAL_PROFILES_DOMAIN, profile.id, t('activityLog.title'))] : []}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={profile.referent.name} icon={<IdCard />} />}
             title={profile.referent.name}

@@ -3,6 +3,7 @@
 namespace Database\Seeders\Concerns;
 
 use App\Enums\CategoryManagementMode;
+use App\Enums\ProductUsage;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
@@ -201,6 +202,9 @@ trait PicksDemoOffers
      * at — the only shape the coherence rule accepts (user directive
      * 2026-08-05). A category with none is simply not an offer.
      *
+     * SALE products only (spec 0142): the draw becomes an offer's REVENUE
+     * row, and QuoteLineWriter rejects a cost-only product there.
+     *
      * @param  array<int, true>  $selectableIds
      * @return array<int, list<int>>
      */
@@ -208,6 +212,7 @@ trait PicksDemoOffers
     {
         return Product::query()
             ->whereIn('category_id', array_keys($selectableIds))
+            ->whereJsonContains('usages', ProductUsage::Sale->value)
             ->orderBy('id')
             ->get(['id', 'category_id'])
             ->groupBy('category_id')

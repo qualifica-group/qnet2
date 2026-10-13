@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0210-api-clients-direct-access" status="approved" owner="utente" date="2026-10-09">
+
+  <goal>
+    I sistemi esterni usano le stesse API di QNet (/api/...) tramite un client API.
+    Con la sola chiave del client agiscono come utente tecnico super-admin.
+    Con la chiave del client possono anche fare il login di un utente QNet e agire con i suoi permessi.
+    La documentazione delle API esistenti si genera da sola ed è esportabile in Postman.
+    Sostituisce la spec 0209 (il layer /api/v1/external) e la precedente 0210 (attore esterno).
+  </goal>
+
+  <context>
+    <!-- Decisioni utente 2026-10-09 -->
+    <decision id="F-1">Il layer /api/v1/external va eliminato: niente controller, request o resource dedicate, niente scope per rotta. Si usano le API esistenti.</decision>
+    <decision id="F-2">Dall'esterno si usano le API solo come client. Con la chiave del client si agisce come super-admin, tramite un utente tecnico per client. Oppure, con la chiave, si fa il login di un utente e si agisce con i suoi permessi.</decision>
+    <decision id="F-3">Si elimina tutto ciò che non serve a questo modello.</decision>
+    <decision id="F-4">Restano invariate le decisioni di 0209 su: gestione dei client (chiave mostrata una sola volta, rotazione, revoca, scadenza, rate limit per client), documentazione auto-aggiornata in QNet con download OpenAPI e Postman, sezione in Amministrazione con permesso api-clients.view.</decision>
+
+    <limit id="L-1">Non si può impedire tecnicamente che un utente copi il token di login dell'app (localStorage) e lo usi da fuori: il backend non distingue la SPA da un'altra chiamata con lo stesso token. Il client è l'unico accesso previsto e documentato. Per chiudere davvero questo caso serve un progetto separato: autenticazione a cookie per la SPA.</limit>
+
+    <fact>Stato del working tree (niente committato): 0209 completa; 0210 "acting user" con B1 fatto (migrazioni is_service_account, service_user_id, api_client_id) e F1 fatto (UI dell'utente tecnico, scope auth:login). B2 e B3 sono stati interrotti a metà: AppServiceProvider.php, bootstrap/app.php, bootstrap/providers.php, i test ExternalApi e gli helper possono contenere modifiche parziali da verificare.</fact>
+    <fact>Le API interne usano policy su User (BasePolicy, Gate::before per super-admin), EnforcesFieldPermissions nelle FormRequest e l'envelope di BaseApiController. Con un attore User funzionano senza modifiche.</fact>
+    <fact>Le liste in QNet passano dal framework tabellare: POST /api/tables/{domain}/rows (SSRM). Non ci sono index REST.</fact>
+    <fact>Le migrazioni di 0209 e 0210 NON sono committate, quindi si possono riscrivere nella forma finale. Il DB di sviluppo locale potrebbe averle già eseguite (permissions:sync è stato lanciato su dev).</fact>
+  </context>
+
+  <scope>
+    <in>
+      <item>Eliminazione completa: routes/api/external-v1.php e la sua registrazione; app/Http/{Controllers,Requests,Resources}/External/**; EnforceTokenActorBoundary; il catalogo scope (config, endpoint api-clients/scopes, colonna scopes, regole di validazione); ExternalScopeOperationExtension ed ExternalEnvelopeInferExtension; i test ExternalApi legati al layer esterno; scope picker, tipi e i18n degli scope nel frontend; la spec 0210 "acting user" (file da rimuovere, mai committato).</item>
+      <item>Migrazioni riscritte nella forma finale (non committate): api_clients senza scopes e con service_user_id; users.is_service_account; personal_access_tokens.api_client_id.</item>
+      <item>Utente tecnico per client: creato con il client ("API · &lt;nome&gt;", email sintetica, password casuale, is_service_account, ruolo super-admin), rinominato con il client, disattivato e conservato quando il client viene eliminato. Non può fare login (né app né client-login) né il reset della password. È escluso dalla tabella Utenti, da users/for-select e dagli utenti online; GET/PUT/DELETE /api/users/{id} su di lui → 404.</item>
+      <item>Chiave del client = token Sanctum dell'utente tecnico con api_client_id valorizzato. Vale su tutte le /api (attore = utente tecnico, super-admin), finché il client è attivo e non scaduto, senza la scadenza globale di 30 giorni.</item>
+      <item>Login utente da client: POST /api/auth/client-login, autenticato con la chiave del client. Emette un token dell'utente con api_client_id = client e scadenza config (default 24 h). L'attore è l'utente, con i suoi permessi. Il logout (POST /api/auth/logout esistente) revoca il token corrente.</item>
+      <item>Rate limit per client (default 60/min, rate_limit_per_minute) applicato SOLO alle richieste fatte con un token che ha api_client_id (chiave o login da client). Le chiamate dell'app restano senza throttle. client-login ha in più throttle:6,1.</item>
+      <item>Activity log: il causer è l'utente attore (utente tecnico o utente loggato). Per le richieste con token di un client si aggiunge properties.api_client_id.</item>
+      <item>Documentazione: Scramble su api_path "api", esclusi i prefissi solo-interni in config (migrations, impersonation, presence/heartbeat, il login e logout dell'app, auth/me/*). OpenAPI e Postman serviti dagli endpoint admin esistenti; cache invalidata dalla firma di route e controller/request/resource. La sezione Autenticazione descrive le due modalità client.</item>
+      <item>Frontend: client senza scope (form, tabella, dettaglio); dettaglio con l'utente tecnico; tab Documentazione su tutte le API, con ricerca per path/tag; sezione Autenticazione riscritta; guide in-app IT+EN riscritte.</item>
+      <item>.claude/rules backend.md §2 e security.md §4: l'eccezione del rate limit diventa "solo sulle richieste con token di un client".</item>
+    </in>
+    <out>
+      <item>API versionate o un contratto esterno stabile (le API interne possono cambiare a ogni rilascio: la doc si aggiorna, gli integratori vanno avvisati a parte).</item>
+      <item>Scope e permessi per area sulla chiave: la chiave è super-admin per scelta (F-2).</item>
+      <item>Blocco tecnico dei token dell'app usati da fuori (L-1) e passaggio della SPA ai cookie.</item>
+      <item>Ruoli diversi da super-admin per l'utente tecnico, nuovi endpoint di dominio, index REST.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <schema>
+      <table name="api_clients">id, name string(120) unique, description text null, rate_limit_per_minute unsigned smallint null, expires_at timestamp null, is_active bool default true, key_last_four char(4) null, service_user_id FK users restrict unique, created_by FK users nullOnDelete, timestamps</table>
+      <change table="users">+ is_service_account bool default false, indice (non fillable)</change>
+      <change table="personal_access_tokens">+ api_client_id FK api_clients null cascadeOnDelete, indice</change>
+    </schema>
+
+    <shape name="ApiClientResource">{ id, name, description, rate_limit_per_minute, effective_rate_limit_per_minute, expires_at, is_active, is_expired, key_last_four, last_used_at, service_user: {id,name}, created_by: {id,name}|null, created_at, updated_at }  (rimossa la chiave scopes)</shape>
+
+    <endpoint method="POST|PUT|PATCH|GET|DELETE" path="/api/api-clients[/{apiClient}]">Come 0209, senza il campo scopes. Rimosso GET /api/api-clients/scopes. POST /api/api-clients/{apiClient}/rotate-key invariato: revoca solo le chiavi del client (token dell'utente tecnico), non i token di login utente emessi tramite il client.</endpoint>
+
+    <endpoint method="POST" path="/api/auth/client-login" auth="Bearer chiave client">
+      <request>{ email: string required, password: string required, device_name?: string max:120 }</request>
+      <response status="200">{ success: true, message, data: { token: string, token_type: "Bearer", expires_at: ISO8601, user: { id, name, email } } }</response>
+      <errors>401 senza chiave o con chiave non valida; 403 { success:false, message } se il Bearer non è una chiave client (es. un token dell'app); 422 errors.email = auth.failed per credenziali errate, utente inattivo o utente tecnico (stesso messaggio); 429</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/api-clients/docs/openapi | /api/api-clients/docs/postman">Come 0209, con documento esteso alle API /api non escluse. Postman: variabili base_url, api_key, user_token; la request client-login salva user_token in uno script di test.</endpoint>
+
+    <rule id="R-1">Token con api_client_id e tokenable = utente tecnico (chiave): valido se il client è attivo e non scaduto. Ignora la scadenza globale di Sanctum.</rule>
+    <rule id="R-2">Token con api_client_id e tokenable = utente umano (login da client): valido se expires_at non è passata, l'utente è attivo e il client è attivo e non scaduto.</rule>
+    <rule id="R-3">Token senza api_client_id (app): comportamento invariato.</rule>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Eliminazione: route:list non contiene rotte api/v1/external né api-clients/scopes. I namespace External\V1, EnforceTokenActorBoundary, ExternalScopeOperationExtension ed ExternalEnvelopeInferExtension non esistono più. config/external-api.php non ha scopes. Nessun riferimento orfano (grep vuoto), suite verde.</criterion>
+    <criterion id="AC-002">Creare un client crea il suo utente tecnico super-admin e restituisce plain_text_key una sola volta. Rinominare il client rinomina l'utente; eliminarlo disattiva l'utente e cancella chiavi e login da client (cascade). ApiClientResource non ha scopes e ha service_user.</criterion>
+    <criterion id="AC-003">Chiave come super-admin: con la chiave, GET /api/leads/{id} → 200 e POST /api/leads → 201. L'activity log ha causer = utente tecnico e properties.api_client_id.</criterion>
+    <criterion id="AC-004">Validità della chiave: client disattivato, scaduto o chiave ruotata → 401. Chiave più vecchia di 30 giorni con client attivo senza scadenza → 200.</criterion>
+    <criterion id="AC-005">Login da client: con la chiave e credenziali valide → 200 con token. Il token su GET /api/auth/me restituisce quell'utente. Credenziali errate, utente inattivo o utente tecnico → 422 con lo stesso messaggio. Senza Bearer → 401. Con un token dell'app come Bearer → 403. La settima richiesta in un minuto → 429.</criterion>
+    <criterion id="AC-006">Permessi dell'utente loggato da client: un utente con leads.view senza leads.create → 200 su GET /api/leads/{id} e 403 su POST /api/leads. Il lead creato da un utente con permesso ha causer = quell'utente e properties.api_client_id.</criterion>
+    <criterion id="AC-007">Validità del login da client: dopo POST /api/auth/logout, dopo expires_at, con l'utente disattivato, con il client disattivato o eliminato → 401. Dopo una rotate-key resta valido.</criterion>
+    <criterion id="AC-008">Rate limit: con rate_limit_per_minute=2 la terza richiesta con la chiave → 429 con Retry-After e envelope. Le richieste con login da client consumano lo stesso contatore. Un token dell'app non subisce throttle.</criterion>
+    <criterion id="AC-009">Utente tecnico escluso: login dell'app → 422 auth.failed; forgot-password non invia email; assente da tables/users/rows e users/for-select; GET /api/users/{id} → 404; non compare tra gli utenti online.</criterion>
+    <criterion id="AC-010">custom_fields: POST /api/leads con la chiave e un custom field valido → 201 con il valore salvato (nessun 500).</criterion>
+    <criterion id="AC-011">Doc: l'OpenAPI contiene le rotte /api registrate meno i prefissi esclusi in config (parity test sul Router). Contiene POST /api/auth/client-login e lo schema di sicurezza bearer, mentre non contiene migrations, impersonation e il login dell'app. Aggiungendo o togliendo una rotta il documento cambia senza interventi.</criterion>
+    <criterion id="AC-012">Postman: una request per ogni operation, variabili base_url, api_key e user_token, script di test su client-login che imposta user_token.</criterion>
+    <criterion id="AC-013">Frontend: form, tabella e dettaglio del client senza scope; il dettaglio mostra l'utente tecnico; la tab Documentazione ha la ricerca per path o tag e la sezione Autenticazione con le due modalità (curl della chiave e curl di client-login); nessuna chiave i18n o tipo degli scope residuo.</criterion>
+    <criterion id="AC-014">Guide in-app IT+EN api-integrations riscritte senza scope, con le sezioni sull'utente tecnico e sul login da client; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Sul DB di sviluppo locale le migrazioni 0209/0210 già eseguite vanno annullate PRIMA di riscrivere i file: migrate:rollback dei soli step nuovi, verificato con migrate:status. Si perdono solo i client API di prova. Mai sul DB di produzione.</item>
+    <item>Nessuna nuova dipendenza (dedoc/scramble resta). Nessuna modifica a routes/api.php se non strettamente necessaria (499 righe): le nuove rotte vanno in routes/api/api-clients.php o in un file dedicato registrato dal callback then.</item>
+    <item>Il login da client riusa AuthService; i messaggi d'errore non distinguono i casi.</item>
+    <item>Test esistenti cambiati per requisito modificato: vanno dichiarati. I test del layer esterno eliminato si cancellano insieme al codice.</item>
+    <item>File sotto 300 righe (soft) e 500 (hard), identificatori in inglese, niente dead code; Pint, ESLint, `tsc -b --force`.</item>
+  </constraints>
+
+</spec>

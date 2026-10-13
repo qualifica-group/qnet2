@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Authorization\LegacyIdVisibility;
 use App\Enums\FormMode;
 use App\Models\QuoteLine;
 use App\Models\User;
@@ -47,8 +48,10 @@ class WorkOrderResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'old_id' => $this->when(LegacyIdVisibility::allows($request->user()), $this->old_id),
             'code' => $this->code,
             'title' => $this->title,
+            'title_is_manual' => $this->title_is_manual,
             'type' => $this->type?->value,
             'status' => [
                 'value' => $progress->status->value,
@@ -174,9 +177,10 @@ class WorkOrderResource extends JsonResource
      * The Contratto born from the linked quote (spec 0072: one per quote,
      * `code`/`title` are the quote's own, as on the Contract detail), `null`
      * while the quote has not been won. The detail names this record, not the
-     * offer underneath it (user directive 2026-09-16).
+     * offer underneath it (user directive 2026-09-16). `expiry_date` is the
+     * contract's own, shown read-only on the commessa.
      *
-     * @return array{id: int, code: string, title: string}|null
+     * @return array{id: int, code: string, title: string, expiry_date: string|null}|null
      */
     private function summarizeContract(): ?array
     {
@@ -186,7 +190,12 @@ class WorkOrderResource extends JsonResource
             return null;
         }
 
-        return ['id' => $contract->id, 'code' => $this->quote->code, 'title' => $this->quote->title];
+        return [
+            'id' => $contract->id,
+            'code' => $this->quote->code,
+            'title' => $this->quote->title,
+            'expiry_date' => $this->formatDate($contract->expiry_date),
+        ];
     }
 
     /**

@@ -1,15 +1,15 @@
 /**
  * Right-hand Sheet creating a new time entry (spec 0122 MT-F2, q-net's
- * `WorkActivityCreateModal`). `defaultDate`/`userId` come from the caller's
- * own context (a day card's "+", a team member's dashboard) — never a field
- * in this form.
+ * `WorkActivityCreateModal`), with the record's rows closed (spec 0226 D-6).
+ * `defaultDate`/`userId` come from the caller's own context (a day card's "+",
+ * a team member's dashboard) — never a field in this form.
  */
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useConfirm } from '@/components/confirm-dialog-context'
-import { TimeEntryFormBody } from '@/features/time-entries/form/time-entry-form-body'
+import { TimeEntryCreateForm } from '@/features/time-entries/form/time-entry-create-form'
 
 interface TimeEntryCreateSheetProps {
   open: boolean
@@ -45,13 +45,12 @@ export function TimeEntryCreateSheet({ open, onOpenChange, defaultDate, userId }
           <SheetDescription>{t('timeEntries.form.createSubtitle')}</SheetDescription>
         </SheetHeader>
 
-        <TimeEntryFormBody
-          mode={{ type: 'create', userId, defaultDate }}
+        <TimeEntryCreateForm
+          userId={userId}
+          defaultDate={defaultDate}
           onSuccess={() => onOpenChange(false)}
           onCancel={() => void guardedOpenChange(false)}
           onDirtyChange={setIsDirty}
-          headerTitle={t('timeEntries.form.createTitle')}
-          headerDescription={t('timeEntries.form.createSubtitle')}
           footerClassName="sticky bottom-0 z-20 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80"
         />
       </SheetContent>

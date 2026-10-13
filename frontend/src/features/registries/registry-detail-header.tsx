@@ -31,6 +31,7 @@ export function RegistryDetailHeader({ registry }: { registry: RegistryDetailWit
     <RecordCardHeader
       media={<DetailMonogram name={registry.name} className="size-10 text-base" />}
       title={registry.name}
+      legacyId={registry.old_id}
       subtitle={cardKind}
       badges={
         <>

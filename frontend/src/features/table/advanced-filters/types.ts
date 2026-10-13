@@ -97,7 +97,7 @@ export interface AdvancedFilterDescriptor {
   /** Relevant for select/autocomplete/relation: whether multiple values are picked. */
   multiple: boolean
   /** for-select resource, for autocomplete/relation/async_search. */
-  source?: { resource: string }
+  source?: { resource: string; params?: Record<string, string | number | boolean> }
   /** Static options, for select/radio inline lists. */
   options?: AdvancedFilterOption[]
   /** `enums.<enumKey>.<value>` i18n lookup, for enum/radio backed by a domain enum. */

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Form } from '@/components/ui/form'
-import { RecordBody } from '@/components/detail/record-body'
+import { RecordFormBody } from '@/components/record-form/record-form-body'
 import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
@@ -48,7 +48,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
           boundary, it must not become an extra box around the canvas. */}
       <form id={QUOTE_FORM_ID} onSubmit={form.handleSubmit(onSubmit)} className="contents" noValidate>
         <RecordCanvas>
-          <RecordBody side={null}>
+          <RecordFormBody>
             <RecordCard>
               <QuoteFormHeader quoteForm={quoteForm} formId={QUOTE_FORM_ID} onCancel={onCancel} />
               <QuoteCreateSections quoteForm={quoteForm} draft={draft} defaults={defaults} />
@@ -64,7 +64,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
               submittingLabel={t('quotes.form.saving')}
               cancel={{ label: t('quotes.form.cancel'), onCancel }}
             />
-          </RecordBody>
+          </RecordFormBody>
         </RecordCanvas>
       </form>
     </Form>

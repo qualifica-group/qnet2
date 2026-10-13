@@ -8,6 +8,11 @@ import type {
   UpdateBusinessFunctionPayload,
 } from '@/features/business-functions/types'
 
+/** Query key of a single business function's detail, shared by the detail screen and its in-place saves. */
+export function businessFunctionDetailQueryKey(id: number) {
+  return ['business-functions', 'detail', id] as const
+}
+
 /**
  * Fetches a single business function detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -33,16 +38,18 @@ export async function createBusinessFunction(
   return data.data
 }
 
-/** Partially updates a business function (PATCH). Returns the updated resource. */
+/**
+ * Partially updates a business function (PATCH). Returns the saved record with
+ * the actor's permissions, so the in-place detail re-syncs on it as is.
+ */
 export async function updateBusinessFunction(
   id: number,
   payload: UpdateBusinessFunctionPayload,
-): Promise<BusinessFunctionDetail> {
-  const { data } = await apiClient.patch<ApiResponse<BusinessFunctionDetail>>(
-    `/business-functions/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<BusinessFunctionDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<BusinessFunctionDetail, ResourcePermissions>
+  >(`/business-functions/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes a business function. Backend responds 204 with no body. */

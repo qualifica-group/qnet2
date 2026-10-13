@@ -5,40 +5,52 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ReferentTypeForm } from '@/features/referent-types/referent-type-form'
 import type { ReferentTypeDetailWithPermissions } from '@/features/referent-types/types'
-import type { ResourcePermissions } from '@/features/authorization/types'
+import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
+import type { CustomFieldDescriptor } from '@/features/custom-fields/types'
+
+/**
+ * Spec 0237: the referent type form is create-only, a replica of the detail with its
+ * rows closed (the in-place edits live in `referent-type-detail.test.tsx`). Covers the
+ * metadata-driven behaviour (spec 0004: a hidden field is absent, a required
+ * one is marked) and the custom fields wiring (spec 0021).
+ */
 
 const createReferentTypeMock = vi.fn()
-const updateReferentTypeMock = vi.fn()
 
 vi.mock('@/features/referent-types/api', () => ({
   createReferentType: (...args: unknown[]) => createReferentTypeMock(...args),
-  updateReferentType: (...args: unknown[]) => updateReferentTypeMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
 
-/**
- * Not about authorization metadata (covered by
- * `referent-type-form-metadata.test.tsx`): every field resolves as
- * visible+editable (the `MetaField` fallback, since `fields` is empty).
- */
-const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
+const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
+vi.mock('@/features/authorization/api', () => ({
+  fetchResourceMeta: () => fetchResourceMetaMock(),
+}))
+
+const FULL_ACCESS: ResourcePermissions['resource'] = {
+  view: true,
+  create: true,
+  update: true,
+  delete: true,
+  export: true,
+  import: true,
 }
 
-vi.mock('@/features/referent-types/use-referent-type-form-meta', () => ({
-  useReferentTypeFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
-}))
+const NOTES_FIELD: CustomFieldDescriptor = {
+  key: 'custom.notes',
+  type: 'text',
+  label: 'Notes',
+  group: null,
+  mandatory: false,
+  source: 'custom',
+}
 
-// `useReferentTypeForm` reads `/meta/referent-types` (spec 0021) to build the
-// dynamic custom-fields schema; this suite has no custom fields to exercise
-// (covered by `referent-type-form-custom-fields.test.tsx`), so it resolves to
-// an empty catalogue.
-vi.mock('@/features/authorization/api', () => ({
-  fetchResourceMeta: () => Promise.resolve({ fields: [], permissions: FULL_ACCESS_PERMISSIONS }),
-}))
+const EDITABLE = { visible: true, hidden: false, editable: true, readonly: false, required: false, disabled: false }
+
+function permissions(fields: ResourcePermissions['fields'] = {}): ResourcePermissions {
+  return { resource: FULL_ACCESS, fields: { 'custom.notes': EDITABLE, ...fields }, actions: {} }
+}
 
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -47,16 +59,19 @@ function wrapper() {
   )
 }
 
-function referentType(
-  overrides: Partial<ReferentTypeDetailWithPermissions> = {},
-): ReferentTypeDetailWithPermissions {
-  return {
-    id: 9,
-    name: 'Sponsor',
-    created_at: null as unknown as string,
-    permissions: FULL_ACCESS_PERMISSIONS,
-    ...overrides,
-  }
+function referentType(): ReferentTypeDetailWithPermissions {
+  return { id: 9, name: 'Sponsor', created_at: '2026-01-01T00:00:00Z', permissions: permissions() }
+}
+
+/** Opens a closed row through its pencil. */
+function openRow(label: string) {
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: label }) }))
+}
+
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: i18n.t('referentTypes.form.save') })[0])
+
+function renderForm(onSuccess = vi.fn()) {
+  return render(<ReferentTypeForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
 }
 
 beforeAll(async () => {
@@ -65,67 +80,78 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createReferentTypeMock.mockReset()
-  updateReferentTypeMock.mockReset()
+  fetchResourceMetaMock.mockReset()
+  fetchResourceMetaMock.mockResolvedValue({ fields: [NOTES_FIELD], permissions: permissions() })
 })
 
-describe('ReferentTypeForm — create/edit (AC-024)', () => {
-  it('renders the name field in create mode', () => {
-    render(
-      <ReferentTypeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+describe('ReferentTypeForm — create (spec 0237)', () => {
+  it('starts with every row closed; the name row opens on its own control', async () => {
+    renderForm()
 
+    await screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Notes' }) })
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+
+    openRow(i18n.t('referentTypes.form.name'))
     expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
   })
 
+  it('shows the error on the closed row, wires the aria triad and does not call the API when name is empty', async () => {
+    renderForm()
+    await screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Notes' }) })
+
+    save()
+
+    expect(await screen.findByText(i18n.t('referentTypes.form.nameRequired'))).toHaveAttribute('role', 'alert')
+
+    openRow(i18n.t('referentTypes.form.name'))
+    const nameInput = screen.getByLabelText(/^Name/)
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput.getAttribute('aria-describedby')).toBeTruthy()
+    expect(createReferentTypeMock).not.toHaveBeenCalled()
+  })
+
   it('submits the create payload on save', async () => {
+    fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissions() })
     createReferentTypeMock.mockResolvedValue(referentType())
     const onSuccess = vi.fn()
+    renderForm(onSuccess)
+    await screen.findAllByRole('button', { name: i18n.t('referentTypes.form.save') })
 
-    render(
-      <ReferentTypeForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
+    openRow(i18n.t('referentTypes.form.name'))
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Sponsor' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
     await waitFor(() => expect(createReferentTypeMock).toHaveBeenCalledTimes(1))
     expect(createReferentTypeMock).toHaveBeenCalledWith({ name: 'Sponsor' })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(referentType()))
   })
 
-  it('hydrates the name in edit mode', () => {
-    render(
-      <ReferentTypeForm
-        mode={{ type: 'edit', referentType: referentType() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('includes the valued custom field in the create payload', async () => {
+    createReferentTypeMock.mockResolvedValue(referentType())
+    renderForm()
+    await screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Notes' }) })
 
-    expect(screen.getByLabelText(/^Name/)).toHaveValue('Sponsor')
+    openRow(i18n.t('referentTypes.form.name'))
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Sponsor' } })
+    openRow('Notes')
+    fireEvent.change(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: 'A note' } })
+    save()
+
+    await waitFor(() => expect(createReferentTypeMock).toHaveBeenCalledTimes(1))
+    expect(createReferentTypeMock.mock.calls[0][0].custom_fields).toEqual({ notes: 'A note' })
   })
 
-  it('submits only the changed name on a partial update', async () => {
-    updateReferentTypeMock.mockResolvedValue(referentType({ name: 'Partner' }))
+  it('hides a hidden field from the create-context metadata', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [],
+      permissions: permissions({
+        name: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
+      }),
+    })
+    renderForm()
 
-    render(
-      <ReferentTypeForm
-        mode={{ type: 'edit', referentType: referentType() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Partner' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateReferentTypeMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateReferentTypeMock.mock.calls[0]
-    expect(id).toBe(9)
-    expect(payload).toEqual({ name: 'Partner' })
+    await waitFor(() => expect(fetchResourceMetaMock).toHaveBeenCalled())
+    await screen.findAllByRole('button', { name: i18n.t('referentTypes.form.save') })
+    expect(screen.queryByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t('referentTypes.form.name') }) })).not.toBeInTheDocument()
   })
 })

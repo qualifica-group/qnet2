@@ -122,3 +122,15 @@ describe('buildCreateWorkOrderSchema / buildUpdateWorkOrderSchema — attribute_
     expect(result.success).toBe(true)
   })
 })
+
+// Spec 0215 AC-029: the title is optional (blank = automatic), only its length is capped.
+describe('work order schema - optional title', () => {
+  it('accepts a blank title in create and update, rejects one over 191 characters', () => {
+    const create = buildCreateWorkOrderSchema(i18n.t.bind(i18n))
+    const update = buildUpdateWorkOrderSchema(i18n.t.bind(i18n))
+
+    expect(create.safeParse({ ...VALID_BASE, title: '' }).success).toBe(true)
+    expect(update.safeParse({ ...VALID_BASE, title: '' }).success).toBe(true)
+    expect(create.safeParse({ ...VALID_BASE, title: 'a'.repeat(192) }).success).toBe(false)
+  })
+})

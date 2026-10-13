@@ -17,8 +17,8 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Creating, editing and deleting',
       blocks: [
-        { type: 'steps', items: ['Open **Configuration › Sources** and press **New source**.', 'Type the **Name**.', 'Press **Save**.'] },
-        { type: 'paragraph', text: 'On the list rows you find **View** and **Delete**, if your role allows it. To edit, open the record with **View** and press **Edit**.' },
+        { type: 'steps', items: ['Open **Configuration › Sources** and press **New source**.', 'The record opens with its rows closed: press the pencil (or the value) on **Name**, type it and press **Done** (**Revert** puts the row back as it was).', 'Press **Save**.'] },
+        { type: 'paragraph', text: 'On the list rows you find **View** and **Delete**, if your role allows it. There is no separate edit form: open the record with **View**, press the pencil on the row, change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.' },
         { type: 'note', text: 'If a source is already used by some record, you cannot delete it: a message explains why.' },
         { type: 'tip', text: 'If the **Source** field on a record is protected, whoever uses it can propose a change from the **Change Requests** guide.' },
       ],

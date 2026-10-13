@@ -25,6 +25,8 @@ export interface GeoReference {
  */
 export interface OperationalSiteDetail {
   id: number
+  /** Legacy id; sent only to an actor allowed to see it (`legacy-ids.view`). */
+  old_id?: number | null
   /** The site's own free-text label (legacy `comune` when migrated). */
   alias: string | null
   line1: string
@@ -76,7 +78,7 @@ export interface CreateOperationalSitePayload {
 export type UpdateOperationalSitePayload = Partial<CreateOperationalSitePayload>
 
 /**
- * Discriminated form mode shared by the form hook/meta-resolver and the
+ * Discriminated form mode shared by the form hook (create form, in-place detail) and the
  * `OperationalSiteForm` component, mirroring the `business-functions`
  * convention.
  */

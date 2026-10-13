@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createTaskPriority, updateTaskPriority } from '@/features/task-priorities/api'
+import { createTaskPriority, taskPriorityDetailQueryKey, updateTaskPriority } from '@/features/task-priorities/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -38,8 +38,9 @@ interface UseTaskPriorityFormArgs {
 }
 
 /**
- * Owns every non-render concern of `TaskPriorityForm`: RHF/Zod wiring, default
- * values, server 422 mapping and the create/update submit. The component stays
+ * Owns every non-render concern of the task priority form: RHF/Zod wiring,
+ * default values, server 422 mapping and the create/update submit. Create
+ * backs `TaskPriorityForm`; edit backs the detail's in-place rows (diff PATCH). The component stays
  * UI-only; this hook is the orchestration point (`onSubmit`).
  */
 export function useTaskPriorityForm({ mode, onSuccess }: UseTaskPriorityFormArgs) {
@@ -75,9 +76,13 @@ export function useTaskPriorityForm({ mode, onSuccess }: UseTaskPriorityFormArgs
     }
   }, [mode])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<TaskPriorityFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: TaskPriorityFormValues) => {
@@ -89,7 +94,7 @@ export function useTaskPriorityForm({ mode, onSuccess }: UseTaskPriorityFormArgs
           mode.taskPriority.id,
           buildUpdatePayload(values, mode.taskPriority),
         )
-        queryClient.setQueryData(['task-priorities', 'detail', mode.taskPriority.id], saved)
+        queryClient.setQueryData(taskPriorityDetailQueryKey(mode.taskPriority.id), saved)
         toast.success(t('taskPriorities.form.updated'))
         onSuccess(saved)
         return
@@ -107,8 +112,8 @@ export function useTaskPriorityForm({ mode, onSuccess }: UseTaskPriorityFormArgs
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

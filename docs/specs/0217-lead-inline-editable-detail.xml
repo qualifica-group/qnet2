@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0217-lead-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Il Lead riceve le stesse modifiche dei moduli gia' migrati (spec 0195-0200, 0216): niente pagina di modifica, il
+    dettaglio (`/leads/:id` e lo stesso schermo nel pannello modale) si edita in place campo per campo; la creazione
+    e' una replica del dettaglio a righe chiuse. Secondo modulo dell'onda 1 del piano "nessuna pagina di modifica".
+  </goal>
+
+  <context>
+    - D-1 (utente 2026-10-12, "procedi direttamente al lead"): regole 0195 D-2/D-3/D-6/D-7/D-8/D-9 applicate ai Lead
+      con `RecordInlineField`, `useDraftInlineEdit`, `NotesCalloutRow`, `useFormLeaveGuard` condivisi. Il Lead non ha
+      campi personalizzati (spec 0021): i suoi campi liberi sono gli `extra_fields` (spec 0033).
+    - D-2: sezioni del dettaglio (stesso ordine in creazione): Note (callout in testa, scritte dentro il riquadro),
+      Anagrafica e campagna (Anagrafica con i contatti principali, Campagna), Dettagli (Sede, Operatore, Fonte),
+      Prodotti di interesse (una riga a tutta larghezza), Dati importati (una riga a tutta larghezza che apre l'editor
+      chiave/valore). Prodotti e Dati importati compaiono anche vuoti, per poterli compilare.
+    - D-3 (cascate, invariate nel comportamento, ora dentro l'editor della riga aperta): la Campagna precompila Sede e
+      Fonte se ne ha e chiede conferma se i prodotti scelti non sono coperti (spec 0094 D-5); cambiare la Sede azzera
+      l'Operatore (AC-062); l'Operatore compila la Sede solo se vuota (spec 0103). Il salvataggio della riga porta
+      con se' i campi scritti dalla cascata (un solo PATCH). Regola 0195 D-6c: la riga non e' modificabile se un
+      campo che la sua cascata scrive non e' modificabile. Il riferimento ("valore prima della scelta") e' quello
+      della riga appena aperta. I prodotti sono filtrati sulle categorie della Campagna scelta (letta dal for-select
+      delle campagne), non piu' solo su quelle dei prodotti gia' scelti.
+    - D-4: creazione = replica del dettaglio (monogramma e Anagrafica live, Campagna come sottotitolo, striscia KPI
+      live Operatore/Sede/Fonte/Prodotti, righe chiuse con Fatto/Ripristina, Salva valida tutto). In testa, solo con
+      `opportunities.create`, la riga "Converti automaticamente in Opportunita'" (Si' di default, spec 0044).
+      Uscire senza salvare chiede conferma.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica: PATCH /api/leads/{id} parziale esistente (gia' restituisce `permissions`).</backend>
+    <frontend>
+      Il registry `leads` smette di generare `:id/edit` (`generateEditRoute: false`, `formOwnsHeader: true`);
+      `LeadDetailView` perde `onEdit`, guadagna `onChanged`; `updateLead` restituisce `LeadDetailWithPermissions`;
+      `useLeadForm` in edit = `values` + `keepDirtyValues`, submit in `useLeadFormSubmit`, cascate in
+      `useLeadCascades`; nuovo `useLeadInlineEdit`. `LeadForm` solo creazione (`{onSuccess, onCancel}`).
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/leads/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Matita su un campo editabile: Salva invia il solo campo cambiato (piu' i campi della sua cascata);
+      Annulla/Esc/clic fuori non chiamano.</ac>
+    <ac id="AC-003">Senza permesso di modifica del campo (o di un campo della sua cascata) nessuna matita.</ac>
+    <ac id="AC-004">Cascate D-3 invariate in creazione e nel dettaglio (prefill da Campagna, conferma prodotti,
+      Sede azzera Operatore, Operatore compila Sede vuota).</ac>
+    <ac id="AC-005">Creazione: righe chiuse, Fatto/Ripristina, Salva valida tutto (Anagrafica, Campagna e Fonte
+      obbligatorie), conversione automatica di default con il permesso, uscita con conferma.</ac>
+    <ac id="AC-006">Guida in-app IT/EN `leads` aggiornata (modifica dal dettaglio, creazione).</ac>
+  </acceptance>
+</spec>

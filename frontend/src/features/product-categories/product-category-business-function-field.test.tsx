@@ -1,11 +1,19 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
+import { ProductCategoryDetailView } from '@/features/product-categories/product-category-detail'
 import { ProductCategoryForm } from '@/features/product-categories/product-category-form'
+import {
+  applyRow,
+  categoryWrapper,
+  category as baseCategory,
+  pencilOf,
+  permissionsFor,
+  saveRow,
+  treeNode as baseTreeNode,
+} from '@/features/product-categories/product-category-test-fixtures'
 import type { ProductCategoryDetailWithPermissions, ProductCategoryTreeNode } from '@/features/product-categories/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
+import type { ResourceMeta } from '@/features/authorization/types'
 import type { ForSelectItem } from '@/features/for-select/types'
 
 /**
@@ -24,14 +32,15 @@ const createProductCategoryMock = vi.fn()
 const updateProductCategoryMock = vi.fn()
 const fetchProductCategoryTreeMock = vi.fn<() => Promise<ProductCategoryTreeNode[]>>()
 
-vi.mock('@/features/product-categories/api', () => ({
+vi.mock('@/features/product-categories/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/product-categories/api')>()),
   createProductCategory: (...args: unknown[]) => createProductCategoryMock(...args),
   updateProductCategory: (...args: unknown[]) => updateProductCategoryMock(...args),
   fetchProductCategoryTree: () => fetchProductCategoryTreeMock(),
   fetchEffectiveAttributes: () => Promise.resolve([]),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
@@ -57,45 +66,16 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
-const FULL_ACCESS: ResourcePermissions['resource'] = {
-  view: true,
-  create: true,
-  update: true,
-  delete: true,
-  export: true,
-  import: true,
-}
-
-function permissivePermissions(): ResourcePermissions {
-  return { resource: FULL_ACCESS, fields: {}, actions: {} }
-}
-
 function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
+  return categoryWrapper().wrapper
+}
+
+function renderDetail(detail: ProductCategoryDetailWithPermissions) {
+  return render(<ProductCategoryDetailView category={detail} />, { wrapper: wrapper() })
 }
 
 function treeNode(overrides: Partial<ProductCategoryTreeNode> = {}): ProductCategoryTreeNode {
-  return {
-    id: 1,
-    name: 'Node',
-    parent_id: null,
-    children: [],
-    attributes_count: 0,
-    products_count: 0,
-    business_function_id: null,
-    requires_quote: false,
-    is_selectable: true,
-    is_reportable: false,
-    management_mode: 'multiple',
-    single_quote_per_opportunity: false,
-    generates_contract: true,
-    simplified_offer_line: false,
-    simplified_offer_line_override: null,
-    ...overrides,
-  }
+  return baseTreeNode(overrides)
 }
 
 /** Two root branches: one carries its own business function, the other does not (spec 0023 AC-018/AC-019). */
@@ -106,50 +86,9 @@ function branchingTree(): ProductCategoryTreeNode[] {
   ]
 }
 
-function category(
-  overrides: Partial<ProductCategoryDetailWithPermissions> = {},
-): ProductCategoryDetailWithPermissions {
-  return {
-    id: 4,
-    name: 'Laptops',
-    parent_id: 1,
-    parent: { id: 1, name: 'Electronics' },
-    inherits_product_attributes: true,
-    inherits_quote_attributes: true,
-    inherits_work_order_attributes: true,
-    description: null,
-    attributes: [],
-    inherited_attributes: [],
-    created_at: '2026-01-01T00:00:00Z',
-    business_function_id: null,
-    requires_quote: false,
-    business_function: null,
-    effective_business_function: null,
-    requires_quote_source_category: null,
-    is_selectable: true,
-    is_reportable: false,
-    effective_is_reportable: false,
-    is_reportable_source_category: null,
-    report_columns: null,
-    effective_report_columns: [],
-    report_columns_source_category: null,
-    inherited_report_columns: [],
-    inherited_report_columns_source_category: null,
-    management_mode: 'multiple',
-    single_quote_per_opportunity: false,
-    generates_contract: true,
-    management_mode_source_category: null,
-    single_quote_per_opportunity_source_category: null,
-    generates_contract_source_category: null,
-    simplified_offer_line: false,
-    simplified_offer_line_override: null,
-    simplified_offer_line_source_category: null,
-    manager_labels: {},
-    inherits_manager_labels: true,
-    inherited_manager_labels: {},
-    permissions: permissivePermissions(),
-    ...overrides,
-  }
+/** A category under "Electronics" that owns no business function (the shared root fixture, reparented). */
+function category(overrides: Partial<ProductCategoryDetailWithPermissions> = {}): ProductCategoryDetailWithPermissions {
+  return baseCategory({ parent_id: 1, parent: { id: 1, name: 'Electronics' }, ...overrides })
 }
 
 /** The parent category picker (`SearchableSelect`), located by its accessible name. */
@@ -179,59 +118,46 @@ beforeEach(() => {
   fetchProductCategoryTreeMock.mockReset()
   fetchProductCategoryTreeMock.mockResolvedValue([])
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissivePermissions() })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
   useForSelectMock.mockReset()
   useForSelectMock.mockReturnValue(queryState())
 })
 
-describe('ProductCategoryForm — business function field (spec 0023 AC-015/AC-016)', () => {
-  it('disables the picker and shows the inherited hint when the category inherits one', async () => {
+describe('business function row (spec 0023 AC-015/AC-016, spec 0229)', () => {
+  it('shows the inherited function with its source and offers no pencil', async () => {
     fetchProductCategoryTreeMock.mockResolvedValue([
       treeNode({ id: 1, name: 'Electronics', business_function_id: 1 }),
     ])
 
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({
-            effective_business_function: {
-              id: 1,
-              name: 'Sales',
-              inherited: true,
-              source_category: { id: 1, name: 'Electronics' },
-            },
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
+    renderDetail(
+      category({
+        effective_business_function: {
+          id: 1,
+          name: 'Sales',
+          inherited: true,
+          source_category: { id: 1, name: 'Electronics' },
+        },
+      }),
     )
 
-    const trigger = await screen.findByRole('combobox', { name: 'Business function' })
-    await waitFor(() => expect(trigger).toBeDisabled())
-    expect(screen.getByText('Sales')).toBeInTheDocument()
-    expect(
-      screen.getByText('Inherited from "Electronics". To change it, edit that category instead.'),
-    ).toBeInTheDocument()
+    expect(pencilOf('businessFunction')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Sales').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Inherited from Electronics').length).toBeGreaterThan(0)
   })
 
   it('keeps the picker enabled and lets the user pick a business function when not inherited', async () => {
     useForSelectMock.mockReturnValue(queryState([{ id: 7, label: 'Support' }]))
     updateProductCategoryMock.mockResolvedValue(category())
 
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(category())
 
+    fireEvent.click(pencilOf('businessFunction') as HTMLElement)
     const trigger = await screen.findByRole('combobox', { name: 'Business function' })
     expect(trigger).not.toBeDisabled()
 
     fireEvent.click(trigger)
     fireEvent.click(screen.getByRole('option', { name: 'Support' }))
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    saveRow()
 
     await waitFor(() => expect(updateProductCategoryMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateProductCategoryMock.mock.calls[0]
@@ -253,13 +179,11 @@ describe('ProductCategoryForm — business function field (spec 0023 AC-015/AC-0
     })
     updateProductCategoryMock.mockResolvedValue(inheriting)
 
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: inheriting }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(inheriting)
 
+    fireEvent.click(pencilOf('name') as HTMLElement)
     fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: 'Laptops Pro' } })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    saveRow()
 
     await waitFor(() => expect(updateProductCategoryMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateProductCategoryMock.mock.calls[0]
@@ -268,8 +192,8 @@ describe('ProductCategoryForm — business function field (spec 0023 AC-015/AC-0
   })
 })
 
-describe('ProductCategoryForm — business function field reacts to the SELECTED parent (spec 0023 AC-019)', () => {
-  it('(a) create: choosing a parent that carries a function disables the picker and shows its source', async () => {
+describe('business function row follows the parent (spec 0023 AC-019)', () => {
+  it('create: choosing a parent that carries a function makes the row inherited, without a pencil', async () => {
     fetchProductCategoryTreeMock.mockResolvedValue(branchingTree())
 
     render(
@@ -277,77 +201,46 @@ describe('ProductCategoryForm — business function field reacts to the SELECTED
       { wrapper: wrapper() },
     )
 
-    const parentTrigger = await findParentTrigger()
-    expect(await screen.findByRole('combobox', { name: 'Business function' })).not.toBeDisabled()
+    expect(await screen.findByRole('button', { name: 'Edit Business function' })).toBeInTheDocument()
 
-    fireEvent.click(parentTrigger)
+    fireEvent.click(pencilOf('parent') as HTMLElement)
+    fireEvent.click(await findParentTrigger())
     fireEvent.click(await screen.findByRole('option', { name: 'Sales Branch' }))
+    applyRow()
 
-    await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Business function' })).toBeDisabled(),
-    )
-    expect(
-      screen.getByText('Inherited from "Sales Branch". To change it, edit that category instead.'),
-    ).toBeInTheDocument()
+    await waitFor(() => expect(pencilOf('businessFunction')).not.toBeInTheDocument())
+    expect(screen.getAllByText('Inherited from Sales Branch').length).toBeGreaterThan(0)
   })
 
-  it('(b) edit: moving the category under a branch with a function disables the picker', async () => {
+  it('create: choosing a parent without a function leaves the row editable', async () => {
     fetchProductCategoryTreeMock.mockResolvedValue(branchingTree())
 
     render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({ parent_id: 20, parent: { id: 20, name: 'No Function Branch' } }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
+      <ProductCategoryForm mode={{ type: 'create', parentId: null }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
       { wrapper: wrapper() },
     )
 
-    const parentTrigger = await findParentTrigger()
-    expect(await screen.findByRole('combobox', { name: 'Business function' })).not.toBeDisabled()
-
-    fireEvent.click(parentTrigger)
-    fireEvent.click(await screen.findByRole('option', { name: 'Sales Branch' }))
-
-    await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Business function' })).toBeDisabled(),
-    )
-    expect(
-      screen.getByText('Inherited from "Sales Branch". To change it, edit that category instead.'),
-    ).toBeInTheDocument()
-  })
-
-  it('(c) edit: moving the category under a branch without a function re-enables the picker', async () => {
-    fetchProductCategoryTreeMock.mockResolvedValue(branchingTree())
-
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({ parent_id: 10, parent: { id: 10, name: 'Sales Branch' } }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    const parentTrigger = await findParentTrigger()
-    await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Business function' })).toBeDisabled(),
-    )
-
-    fireEvent.click(parentTrigger)
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Parent category' }))
+    fireEvent.click(await findParentTrigger())
     fireEvent.click(await screen.findByRole('option', { name: 'No Function Branch' }))
+    applyRow()
 
-    await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Business function' })).not.toBeDisabled(),
-    )
-    expect(
-      screen.queryByText('Inherited from "Sales Branch". To change it, edit that category instead.'),
-    ).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Edit Business function' })).toBeInTheDocument()
+  })
+
+  it('edit: moving the category sends the parent alone, the server re-aligns the function', async () => {
+    fetchProductCategoryTreeMock.mockResolvedValue(branchingTree())
+    updateProductCategoryMock.mockResolvedValue(category({ parent_id: 10, parent: { id: 10, name: 'Sales Branch' } }))
+
+    renderDetail(category({ parent_id: 20, parent: { id: 20, name: 'No Function Branch' } }))
+
+    fireEvent.click(pencilOf('parent') as HTMLElement)
+    fireEvent.click(await findParentTrigger())
+    fireEvent.click(await screen.findByRole('option', { name: 'Sales Branch' }))
+    saveRow()
+
+    await waitFor(() => expect(updateProductCategoryMock).toHaveBeenCalledTimes(1))
+    const [, payload] = updateProductCategoryMock.mock.calls[0]
+    expect(payload).toEqual({ parent_id: 10 })
   })
 })

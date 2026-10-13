@@ -4,7 +4,7 @@ import { ProtectedRoute } from '@/routes/protected-route'
 import { AGENT_COMMISSION_ROUTES } from '@/routes/agent-commission-routes'
 import { PURCHASING_ROUTES } from '@/routes/purchasing-routes'
 import { AppLayout } from '@/layouts/app-layout'
-import { MigrationRouteGuard } from '@/features/migrations/migration-route-guard'
+import { devRoutes } from '@/routes/dev-routes'
 import { buildModuleRoutes } from '@/features/modules/module-routes'
 import ModuleDetailPage from '@/features/modules/module-detail-page'
 
@@ -63,7 +63,7 @@ const TaskImportancesPage = lazyRoute(() => import('@/pages/task-importances-pag
 const TaskTemplatesPage = lazyRoute(() => import('@/pages/task-templates-page'))
 const TimeEntriesPage = lazyRoute(() => import('@/pages/time-entries-page'))
 const TimeEntryNewPage = lazyRoute(() => import('@/pages/time-entry-new-page'))
-const TimeEntryEditPage = lazyRoute(() => import('@/pages/time-entry-edit-page'))
+const TimeEntryDetailPage = lazyRoute(() => import('@/pages/time-entry-detail-page'))
 const CommissionConfigurationsPage = lazyRoute(() => import('@/pages/commission-configurations-page'))
 const RequestManagementPage = lazyRoute(() => import('@/pages/request-management-page'))
 const RequestStatisticsPage = lazyRoute(() => import('@/pages/request-statistics-page'))
@@ -82,8 +82,6 @@ const RequestManagementDetailPage = lazyRoute(() => import('@/pages/request-mana
 const LeadImportPage = lazyRoute(() => import('@/pages/lead-import-page'))
 const LeadImportHistoryPage = lazyRoute(() => import('@/pages/lead-import-history-page'))
 const LeadImportDetailPage = lazyRoute(() => import('@/pages/lead-import-detail-page'))
-const MigrationsPage = lazyRoute(() => import('@/features/migrations/migrations-page'))
-const SystemHealthPage = lazyRoute(() => import('@/features/system-health/system-health-page'))
 const SettingsPage = lazyRoute(() => import('@/pages/settings-page'))
 const FieldChangeRequestsPage = lazyRoute(() => import('@/pages/field-change-requests-page'))
 const NotFoundPage = lazyRoute(() => import('@/pages/not-found-page'))
@@ -156,10 +154,6 @@ export const router = createBrowserRouter([
             element: <ReferentDetailPage />,
           },
           {
-            path: 'referents/:id/edit',
-            element: <ReferentFormPage />,
-          },
-          {
             path: 'registries',
             element: <RegistriesPage />,
           },
@@ -206,10 +200,6 @@ export const router = createBrowserRouter([
           {
             path: 'products/:id',
             element: <ProductDetailPage />,
-          },
-          {
-            path: 'products/:id/edit',
-            element: <ProductFormPage />,
           },
           {
             path: 'sources',
@@ -354,7 +344,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'time-entries/:id',
-            element: <TimeEntryEditPage />,
+            element: <TimeEntryDetailPage />,
           },
           {
             path: 'commission-configurations',
@@ -462,24 +452,7 @@ export const router = createBrowserRouter([
             path: 'imports/:runId',
             element: <LeadImportDetailPage />,
           },
-          {
-            // Breadcrumb target of `/admin/system-health`: `/admin` has no page of its own.
-            path: 'admin',
-            element: <Navigate to="/dashboard" replace />,
-          },
-          {
-            element: <MigrationRouteGuard />,
-            children: [
-              {
-                path: 'migrations',
-                element: <MigrationsPage />,
-              },
-              {
-                path: 'admin/system-health',
-                element: <SystemHealthPage />,
-              },
-            ],
-          },
+          ...devRoutes,
           {
             path: 'settings',
             element: <SettingsPage />,

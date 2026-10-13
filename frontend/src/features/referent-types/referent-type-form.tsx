@@ -1,59 +1,47 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
-import { useReferentTypeFormMeta } from '@/features/referent-types/use-referent-type-form-meta'
+import { useResourceMeta } from '@/features/authorization/use-resource-meta'
 import { ReferentTypeFormBody } from '@/features/referent-types/referent-type-form-body'
-import type {
-  ReferentTypeDetail,
-  ReferentTypeFormMode,
-} from '@/features/referent-types/types'
+import type { ReferentTypeDetail } from '@/features/referent-types/types'
 
 interface ReferentTypeFormProps {
-  mode: ReferentTypeFormMode
-  /** Called after a successful create/update so the caller can close + refresh. */
+  /** Called after a successful create so the caller can navigate to the detail. */
   onSuccess: (referentType: ReferentTypeDetail) => void
   /** Called when the user cancels the form. */
   onCancel: () => void
 }
 
 /**
- * Reusable RHF + Zod form used for both creating and editing a referent type.
- * Metadata-driven (spec 0004): resolves the resource's `ResourcePermissions`
- * before rendering — edit mode from the loaded instance detail, create mode
- * from `GET /meta/referent-types` — then hands off to `ReferentTypeFormBody`,
- * which reads every field from that context via `MetaField`/
- * `useResourcePermissions()`.
+ * The referent type create form (there is no edit form: the detail edits in
+ * place). Metadata-driven (spec 0004): resolves the create-context
+ * `ResourcePermissions` (`GET /meta/referent-types`) before rendering
+ * `ReferentTypeFormBody`.
  */
 export function ReferentTypeForm(props: ReferentTypeFormProps) {
   const { t } = useTranslation()
-  const meta = useReferentTypeFormMeta(props.mode)
+  const metaQuery = useResourceMeta('referent-types')
 
-  if (meta.status === 'loading') {
-    return (
-      <div className="flex flex-col gap-4 p-4" aria-hidden="true">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
-  }
-
-  if (meta.status === 'error') {
+  if (metaQuery.isError) {
     return (
       <div className="flex flex-col items-start gap-3 p-4">
         <p className="text-sm text-destructive" role="alert">
           {t('authorization.loadError')}
         </p>
-        <Button variant="outline" size="sm" onClick={meta.retry}>
+        <Button variant="outline" size="sm" className="bg-card" onClick={() => void metaQuery.refetch()}>
           {t('common.retry')}
         </Button>
       </div>
     )
   }
 
+  if (!metaQuery.data) {
+    return <RecordFormSkeleton />
+  }
+
   return (
-    <ResourcePermissionsProvider permissions={meta.permissions}>
+    <ResourcePermissionsProvider permissions={metaQuery.data.permissions}>
       <ReferentTypeFormBody {...props} />
     </ResourcePermissionsProvider>
   )

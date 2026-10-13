@@ -19,10 +19,8 @@ interface AttributeLayoutFieldProps<TFieldValues extends AttributeLayoutFormShap
  * One `EffectiveAttribute`-backed field bound to `attribute_values.<code>`,
  * dispatched through `CUSTOM_FIELD_COMPONENT_REGISTRY` via
  * `AttributeControlBridge` — the leaf both the flat fallback and the
- * layout-grid renderer share, mirroring `ProductDynamicField`
- * (`features/products/product-dynamic-fields.tsx`) byte-for-byte in markup
- * so the flat fallback stays an exact regression match (spec 0062 AC-007),
- * generic over the host form's value shape instead of `ProductFormValues`.
+ * layout-grid renderer share (and the in-place attribute rows open on),
+ * generic over the host form's value shape.
  */
 export function AttributeLayoutField<TFieldValues extends AttributeLayoutFormShape>({
   control,

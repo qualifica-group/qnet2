@@ -18,10 +18,8 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
   return {
     code: z.string().max(CODE_MAX_LENGTH, t('workOrders.form.codeMax')),
     quote_id: z.number().nullable(),
-    title: z
-      .string()
-      .min(1, t('workOrders.form.titleRequired'))
-      .max(TITLE_MAX_LENGTH, t('workOrders.form.titleMax')),
+    // Spec 0215 D-2: optional, blank = the automatic `<code> - <products>` title.
+    title: z.string().max(TITLE_MAX_LENGTH, t('workOrders.form.titleMax')),
     type: z.enum(['processing', 'project'], { message: t('workOrders.form.typeRequired') }),
     start_date: z.string().min(1, t('workOrders.form.startDateRequired')),
     // "Responsabili" (spec 0096): at least one, mirroring the backend's own

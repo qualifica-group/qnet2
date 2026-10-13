@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchTaskCategory } from '@/features/task-categories/api'
+import { fetchTaskCategory, taskCategoryDetailQueryKey } from '@/features/task-categories/api'
 import { TaskCategoryForm } from '@/features/task-categories/task-category-form'
 import { TaskCategoryDetailView } from '@/features/task-categories/task-category-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -15,18 +15,13 @@ import type {
 } from '@/features/modules/types'
 import type { TaskCategoryDetail } from '@/features/task-categories/types'
 
-/** Query key for a single task category's detail (fresh-on-open pattern). */
-function detailQueryKey(id: number) {
-  return ['task-categories', 'detail', id] as const
-}
-
 /**
- * Content-only `task-categories` screens for the module registry (spec 0042): fetch
- * + the existing presentational view/form, no page chrome. Reused as-is by the
- * modal Sheet (`useModuleOpener`) and by the generic dedicated pages
- * (`ModuleDetailPage`/`ModuleFormPage`).
+ * Content-only `task-categories` screens for the module registry (spec 0042):
+ * fetch + the presentational view/form, no page chrome. The detail edits its
+ * rows in place, so `onEdit` is never used; each save reports through
+ * `onChanged`.
  */
-export function TaskCategoryDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function TaskCategoryDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: taskCategory,
@@ -34,7 +29,7 @@ export function TaskCategoryDetailScreen({ id, onEdit }: ModuleDetailScreenProps
     isError,
     error,
     refetch,
-  } = useEntityDetail(detailQueryKey(id), () => fetchTaskCategory(id))
+  } = useEntityDetail(taskCategoryDetailQueryKey(id), () => fetchTaskCategory(id))
 
   if (isError) {
     return (
@@ -51,70 +46,49 @@ export function TaskCategoryDetailScreen({ id, onEdit }: ModuleDetailScreenProps
     return <DetailLoading />
   }
 
-  return <TaskCategoryDetailView taskCategory={taskCategory} onEdit={onEdit} />
-}
-
-export function TaskCategoryFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (saved: TaskCategoryDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(saved.id) })
-    onSuccess(saved.id)
-  }
-
-  if (mode.type === 'create') {
-    return <TaskCategoryForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
-  }
-
-  return (
-    <TaskCategoryEditScreen taskCategoryId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-  )
-}
-
-interface TaskCategoryEditScreenProps {
-  taskCategoryId: number
-  onSuccess: (taskCategory: TaskCategoryDetail) => void
-  onCancel: () => void
+  return <TaskCategoryDetailView taskCategory={taskCategory} onChanged={onChanged} />
 }
 
 /**
- * Fetches the fresh, re-authorized task category detail before mounting the edit
- * form, so the partial PATCH starts from authoritative values rather than a
- * stale snapshot.
+ * Create only: there is no edit form, and the registry generates no
+ * `:id/edit` route. Leaving a record being created — Cancel, the Sheet's
+ * X/overlay/Esc, a link, a reload — always asks first.
  */
-function TaskCategoryEditScreen({ taskCategoryId, onSuccess, onCancel }: TaskCategoryEditScreenProps) {
+export function TaskCategoryFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const { t } = useTranslation()
-  const {
-    data: taskCategory,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(detailQueryKey(taskCategoryId), () => fetchTaskCategory(taskCategoryId))
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('taskCategories.form.leaveConfirm.title'),
+    description: t('taskCategories.form.leaveConfirm.description'),
+    confirmLabel: t('taskCategories.form.leaveConfirm.confirm'),
+    cancelLabel: t('taskCategories.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('taskCategories.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
+  if (mode.type !== 'create') {
+    return null
   }
 
-  if (isLoading || !taskCategory) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+  const handleSuccess = (saved: TaskCategoryDetail) => {
+    queryClient.invalidateQueries({ queryKey: taskCategoryDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new record's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(saved.id)
+  }
+
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
   }
 
   return (
-    <TaskCategoryForm mode={{ type: 'edit', taskCategory }} onSuccess={onSuccess} onCancel={onCancel} />
+    <>
+      {leaveGuard.navigationGuard}
+      <TaskCategoryForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
   )
 }
 
@@ -126,7 +100,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.taskCategories',
   DetailScreen: TaskCategoryDetailScreen,
   FormScreen: TaskCategoryFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button.
+  // The detail IS the edit form: no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

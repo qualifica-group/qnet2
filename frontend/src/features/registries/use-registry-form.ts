@@ -2,10 +2,8 @@ import { useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
-import { useResourcePermissions } from '@/features/authorization/permissions'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
-import type { PersonalDataFieldPermission } from '@/features/personal-data/types'
 import {
   buildCreateRegistrySchema,
   buildUpdateRegistrySchema,
@@ -62,25 +60,6 @@ function createDefaults(
     employee_count: null,
     general_notes: '',
     custom_fields: customFields,
-  }
-}
-
-/**
- * Adapts the resolved authorization metadata to the personal-data domain's
- * own gating shape (spec 0008 D3): the shared PersonalDataCardForm/
- * ContactsManager/AddressesManager stay decoupled from `@/features/authorization`.
- */
-export function usePersonalDataFieldPermission(): (key: string) => PersonalDataFieldPermission {
-  const { field: fieldPermission } = useResourcePermissions()
-  return (key: string) => {
-    const permission = fieldPermission(key)
-    return {
-      visible: permission.visible,
-      editable: permission.editable,
-      required: permission.required,
-      disabled: permission.disabled,
-      readonly: permission.readonly,
-    }
   }
 }
 

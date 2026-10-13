@@ -1,59 +1,57 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
+import type { ResourceMeta } from '@/features/authorization/types'
+import { ProductDetailView } from '@/features/products/product-detail'
 import { ProductForm } from '@/features/products/product-form'
+import {
+  clickCreateSave,
+  confirmOpenRow,
+  inputOf,
+  pencilOf,
+  permissionsFor,
+  productFixture,
+  productWrapper,
+  typeInRow,
+} from '@/features/products/product-test-fixtures'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
 
 /**
- * Spec 0191 AC-009/AC-010/AC-012: Cost and Price follow the usages — each
- * field (and the margin) appears only when pertinent, a hidden value survives
- * the toggle, and a hidden field is neither required nor sent in a PATCH.
+ * Spec 0191: the usages decide which amount applies — the price for a
+ * Sellable product, the cost for a Usable-as-cost one, the margin only with
+ * both. REQUIREMENT CHANGED (spec 0218): the amounts are closed rows that
+ * follow the draft's usages, and the margin is the live KPI strip in the
+ * create header (no side recap any more).
  */
 
 const createProductMock = vi.fn()
 const updateProductMock = vi.fn()
+const fetchProductNextCodeMock = vi.fn<() => Promise<string>>()
 
-vi.mock('@/features/products/api', () => ({
+vi.mock('@/features/products/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/products/api')>()),
   createProduct: (...args: unknown[]) => createProductMock(...args),
   updateProduct: (...args: unknown[]) => updateProductMock(...args),
-  fetchProductNextCode: () => Promise.resolve('PRD-0100'),
+  fetchProductNextCode: () => fetchProductNextCodeMock(),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-vi.mock('@/features/config/use-config', () => ({
-  useEnumOptions: (key: string) =>
-    (key === 'product_usage'
-      ? [
-          { value: 'SALE', label: 'Sellable' },
-          { value: 'COST', label: 'Usable as cost' },
-        ]
-      : [{ value: 'SERVICE', label: 'Service' }]
-    ).map((option) => ({ ...option, color: null, icon: null, is_default: false, hidden_on_form: false })),
-}))
+vi.mock('@/features/config/use-config', async () => {
+  const { PRODUCT_ENUMS } = await import('@/features/products/product-test-fixtures')
+  return { useEnumOptions: (key: string) => PRODUCT_ENUMS[key] ?? [] }
+})
 
 vi.mock('@/features/product-categories/use-product-category-tree', () => ({
   useProductCategoryTree: () => ({ data: [], isPending: false, isError: false, refetch: () => {} }),
 }))
 
-/** Stubs the category picker as a button calling `onChange(3)`, mirroring `project-form-body.test.tsx`'s select stubs. */
-vi.mock('@/components/ui/searchable-select', () => ({
-  SearchableSelect: ({
-    value,
-    onChange,
-    disabled,
-  }: {
-    value: number | null
-    onChange: (id: number) => void
-    disabled?: boolean
-  }) => (
-    <button type="button" disabled={disabled} data-testid="category-select" onClick={() => onChange(3)}>
-      {value ?? ''}
-    </button>
-  ),
+vi.mock('@/components/ui/searchable-select', async () => ({
+  SearchableSelect: (await import('@/features/products/product-test-stubs')).StubSearchableSelect,
+}))
+
+vi.mock('@/components/ui/async-paginated-select', async () => ({
+  AsyncPaginatedSelect: (await import('@/features/products/product-test-stubs')).StubAsyncSelect,
 }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
@@ -61,69 +59,31 @@ vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
+const fetchEffectiveAttributesMock = vi.fn()
+vi.mock('@/features/product-categories/api', () => ({
+  fetchEffectiveAttributes: (...args: unknown[]) => fetchEffectiveAttributesMock(...args),
+}))
+
+const productAttributeLayoutMock = vi.fn()
 vi.mock('@/features/products/use-product-attribute-layout', () => ({
-  useProductAttributeLayout: () => ({ data: null, isLoading: false }),
+  useProductAttributeLayout: (...args: unknown[]) => productAttributeLayoutMock(...args),
 }))
 
-const useForSelectMock = vi.fn()
-vi.mock('@/features/for-select/use-for-select', async () => {
-  const actual = await vi.importActual<
-    typeof import('@/features/for-select/use-for-select')
-  >('@/features/for-select/use-for-select')
-  return {
-    flattenForSelectPages: actual.flattenForSelectPages,
-    useForSelect: (args: unknown) => useForSelectMock(args),
-    useForSelectLabels: () => new Map(),
-  }
-})
-
-const canMock = vi.fn<(permission: string) => boolean>()
 vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({
-    can: (permission: string) => canMock(permission),
-    hasRole: () => false,
-    roles: [],
-    isLoading: false,
-  }),
+  useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
 }))
+vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
 
-const FULL_PERMISSIONS: ResourcePermissions = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
+function renderCreate(onSuccess = vi.fn()) {
+  const { client, wrapper } = productWrapper()
+  render(<ProductForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper })
+  return client
 }
 
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
-}
-
-function product(overrides: Partial<ProductDetailWithPermissions> = {}): ProductDetailWithPermissions {
-  return {
-    id: 5,
-    code: 'PRD-0005',
-    name: 'ThinkPad X1',
-    description: null,
-    cost: 800,
-    price: 1200,
-    category_id: 3,
-    category: { id: 3, name: 'Laptops' },
-    product_type: 'SERVICE',
-    usages: ['SALE'],
-    created_at: '2026-01-01T00:00:00Z',
-    vat_rate_id: null,
-    vat_rate: null,
-    supplier_id: null,
-    supplier: null,
-    unit_of_measure_id: 1,
-    unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
-    product_typology_id: 1,
-    product_typology: { id: 1, name: 'Ente', color: 'violet' },
-    permissions: FULL_PERMISSIONS,
-    ...overrides,
-  }
+function renderDetail(product: ProductDetailWithPermissions) {
+  const { client, wrapper } = productWrapper()
+  render(<ProductDetailView product={product} />, { wrapper })
+  return client
 }
 
 beforeAll(async () => {
@@ -131,114 +91,93 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  vi.restoreAllMocks()
   createProductMock.mockReset()
   updateProductMock.mockReset()
+  fetchProductNextCodeMock.mockReset()
+  fetchProductNextCodeMock.mockResolvedValue('PRD-0100')
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_PERMISSIONS })
-  canMock.mockReset()
-  canMock.mockReturnValue(true)
-  useForSelectMock.mockReset()
-  useForSelectMock.mockReturnValue({
-    data: { pages: [{ items: [] }] },
-    isPending: false,
-    isError: false,
-    fetchNextPage: vi.fn(),
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    refetch: vi.fn(),
-  })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
+  fetchEffectiveAttributesMock.mockReset()
+  fetchEffectiveAttributesMock.mockResolvedValue([])
+  productAttributeLayoutMock.mockReset()
+  productAttributeLayoutMock.mockReturnValue({ data: null, isLoading: false })
 })
 
-function fillNameAndCategory() {
-  fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'ThinkPad X1' } })
-  fireEvent.click(screen.getByTestId('category-select'))
+/** Opens the usages row and toggles the usage checkbox named `label`, keeping it with Done. */
+function toggleUsage(label: string) {
+  fireEvent.click(pencilOf('Offer usage'))
+  fireEvent.click(screen.getByRole('checkbox', { name: label }))
+  confirmOpenRow('Done')
 }
 
-function save() {
-  fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
-}
+describe('Product — cost/price by usage (spec 0191)', () => {
+  it('AC-009: shows only the price row by default, adds the cost with the cost usage, drops the price without Sellable', async () => {
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-describe('ProductForm — cost/price by usage (spec 0191)', () => {
-  it('AC-009: shows only the price by default, adds the cost with the cost usage, drops the price without Sellable', async () => {
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    expect(pencilOf('Price')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Cost' })).not.toBeInTheDocument()
 
-    await screen.findByRole('checkbox', { name: 'Sellable' })
-    expect(screen.getByLabelText('Price')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Cost')).not.toBeInTheDocument()
+    toggleUsage('Usable as cost')
+    expect(pencilOf('Cost')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Usable as cost' }))
-    expect(screen.getByLabelText('Cost')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Sellable' }))
-    expect(screen.queryByLabelText('Price')).not.toBeInTheDocument()
+    toggleUsage('Sellable')
+    expect(screen.queryByRole('button', { name: 'Edit Price' })).not.toBeInTheDocument()
   })
 
   it('AC-009: a cost-only product saves without a price, sending it as null', async () => {
-    createProductMock.mockResolvedValue(product())
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    createProductMock.mockResolvedValue(productFixture())
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'Usable as cost' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Sellable' }))
-    fillNameAndCategory()
-    fireEvent.change(screen.getByLabelText('Cost'), { target: { value: '800' } })
-    save()
+    typeInRow('Name', 'Service fee')
+    toggleUsage('Usable as cost')
+    toggleUsage('Sellable')
+    typeInRow('Cost', '40')
+    fireEvent.click(pencilOf('Category'))
+    fireEvent.click(screen.getByTestId('category-select'))
+    confirmOpenRow('Done')
+    clickCreateSave()
 
     await waitFor(() => expect(createProductMock).toHaveBeenCalledTimes(1))
-    expect(createProductMock.mock.calls[0][0]).toMatchObject({ usages: ['COST'], cost: 800, price: null })
+    expect(createProductMock.mock.calls[0][0]).toMatchObject({ usages: ['COST'], cost: 40, price: null })
   })
 
   it('AC-010: a typed price is still there after Sellable is unticked and ticked again', async () => {
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    await screen.findByRole('checkbox', { name: 'Sellable' })
-    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '1200' } })
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Usable as cost' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Sellable' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Sellable' }))
+    typeInRow('Price', '99')
+    toggleUsage('Usable as cost')
+    toggleUsage('Sellable')
+    toggleUsage('Sellable')
 
-    expect(screen.getByLabelText('Price')).toHaveValue(1200)
+    fireEvent.click(pencilOf('Price'))
+    expect(inputOf('Price')).toHaveValue(99)
   })
 
-  it('AC-010: dropping a usage in edit does not put cost/price in the PATCH', async () => {
-    updateProductMock.mockResolvedValue(product({ usages: ['COST'] }))
-    render(
-      <ProductForm
-        mode={{ type: 'edit', product: product({ usages: ['SALE', 'COST'] }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+  it('AC-010: dropping a usage on the detail does not put cost/price in the PATCH', async () => {
+    updateProductMock.mockResolvedValue(productFixture())
+    renderDetail(productFixture({ usages: ['SALE', 'COST'] }))
 
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'Sellable' }))
-    save()
+    fireEvent.click(pencilOf('Offer usage'))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Usable as cost' }))
+    confirmOpenRow('Save')
 
-    await waitFor(() => expect(updateProductMock).toHaveBeenCalledTimes(1))
-    expect(updateProductMock.mock.calls[0]).toContainEqual({ usages: ['COST'] })
+    await waitFor(() => expect(updateProductMock).toHaveBeenCalledWith(5, { usages: ['SALE'] }))
   })
 
-  it('AC-012: the margin readout and the summary rows follow the usages', async () => {
-    render(<ProductForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('AC-012: the live margin in the create header follows the usages', async () => {
+    renderCreate()
+    await screen.findByRole('button', { name: 'Edit Code' })
 
-    await screen.findByRole('checkbox', { name: 'Sellable' })
     expect(screen.queryByText('Margin')).not.toBeInTheDocument()
-    expect(screen.getAllByText('Price').length).toBeGreaterThan(1)
-    expect(screen.queryAllByText('Cost')).toHaveLength(0)
+    toggleUsage('Usable as cost')
+    typeInRow('Price', '100')
+    typeInRow('Cost', '40')
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Usable as cost' }))
-    expect(screen.getAllByText('Margin').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Cost').length).toBeGreaterThan(1)
-
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Sellable' }))
-    expect(screen.queryByText('Margin')).not.toBeInTheDocument()
-    expect(screen.queryAllByText('Price')).toHaveLength(0)
+    expect(screen.getByText('Margin')).toBeInTheDocument()
+    expect(screen.getByText('60.00')).toBeInTheDocument()
   })
 })

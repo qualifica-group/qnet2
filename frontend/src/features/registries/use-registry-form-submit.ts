@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { Path, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { hasPhoneContact } from '@/features/personal-data/create-validation'
@@ -13,15 +12,13 @@ import {
   isPersonalDataCardValid,
   type BlockedSection,
 } from '@/features/personal-data/personal-data-issues'
+import { personalDataServerErrorMessage } from '@/features/personal-data/personal-data-server-error'
 import type { PersonalDataDraft } from '@/features/personal-data/types'
+import { usePersonalDataFieldPermission } from '@/features/personal-data/use-personal-data-field-permission'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
 import { createRegistry, registryDetailQueryKey, updateRegistry } from '@/features/registries/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/registries/registry-form-payload'
-import {
-  editDefaults,
-  usePersonalDataFieldPermission,
-  type RegistryFormValues,
-} from '@/features/registries/use-registry-form'
+import { editDefaults, type RegistryFormValues } from '@/features/registries/use-registry-form'
 import type {
   RegistryDetail,
   RegistryDetailWithPermissions,
@@ -31,7 +28,7 @@ import type {
 /**
  * Server-side field names mapped onto the form for 422 handling. The nested
  * `personal_data.*` paths are NOT here — that buffer lives outside RHF (see
- * `personalDataServerErrorMessage` below) — mirroring `referents`.
+ * `personalDataServerErrorMessage`) — mirroring `referents`.
  */
 const SERVER_ERROR_FIELDS = [
   'source_id',
@@ -53,28 +50,6 @@ const SERVER_ERROR_FIELDS = [
 
 /** Domain key of the module statistics (mirrors `REGISTRIES_DOMAIN` in `registries-table.tsx`). */
 const REGISTRIES_DOMAIN = 'registries'
-
-/**
- * Collects every `personal_data.*` (or bare `personal_data`) message from a
- * 422 response into a single banner string. The buffered anagraphic draft is
- * NOT an RHF field (mirroring `referents`), so its server errors cannot be
- * routed inline into `PersonalDataCardForm`/`ContactsManager`/
- * `AddressesManager` (owner-agnostic, reused unchanged) — they surface here
- * instead, alongside the per-field mapped scalar errors.
- */
-function personalDataServerErrorMessage(error: unknown): string | null {
-  if (!axios.isAxiosError(error) || error.response?.status !== 422) {
-    return null
-  }
-  const errors = error.response.data?.errors as Record<string, string[]> | undefined
-  if (!errors) {
-    return null
-  }
-  const messages = Object.entries(errors)
-    .filter(([key]) => key === 'personal_data' || key.startsWith('personal_data.'))
-    .flatMap(([, fieldMessages]) => fieldMessages)
-  return messages.length > 0 ? messages.join(' ') : null
-}
 
 interface UseRegistryFormSubmitArgs {
   form: UseFormReturn<RegistryFormValues>

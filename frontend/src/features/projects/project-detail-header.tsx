@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next'
 import { FolderKanban, Megaphone, Wallet } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
@@ -21,15 +20,11 @@ import type { ProjectDetailWithPermissions as ProjectDetailData } from '@/featur
 /** Allocation at or above this share of the total budget is no longer "healthy". */
 const BUDGET_WARNING_RATIO = 0.9
 
-interface ProjectDetailHeaderProps {
-  project: ProjectDetailData
-  /** Opens the module's existing edit surface; absent = no edit affordance. */
-  onEdit?: () => void
-}
-
-/** Identity band: monogram, name, code subtitle, pipeline status and geographic scope. */
-export function ProjectDetailHeader({ project, onEdit }: ProjectDetailHeaderProps) {
-  const canEdit = Boolean(onEdit) && project.permissions.resource.update
+/**
+ * Identity band: monogram, name, code subtitle, pipeline status and geographic
+ * scope. No edit action: the record edits in place (spec 0220).
+ */
+export function ProjectDetailHeader({ project }: { project: ProjectDetailData }) {
   const geoPlace = project.geo_scope
     ? geoScopePlaceName(project.geo_scope, {
         country: project.country,
@@ -63,41 +58,44 @@ export function ProjectDetailHeader({ project, onEdit }: ProjectDetailHeaderProp
           ) : null}
         </>
       }
-      actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
     />
   )
 }
 
-interface ProjectDetailStatsProps {
-  project: ProjectDetailData
+interface ProjectStatsStripProps {
+  totalBudget: string | number | null
+  allocatedBudget: string | number
+  remainingBudget: string | number | null
+  campaignsCount: number
 }
 
 /**
  * KPI strip: the BR-7 budget triplet plus how many campaigns hang off the
- * project. The allocated tile carries the share bar — "how much of this budget
- * is already committed" is the one question the three raw numbers make you do
- * arithmetic for.
+ * project — the persisted figures on the detail, the draft's, live, on create
+ * (spec 0220). The allocated tile carries the share bar — "how much of this
+ * budget is already committed" is the one question the three raw numbers make
+ * you do arithmetic for.
  *
  * The count is a number, not a link: the list screens read no filters from the
  * URL, so a link would land on every campaign rather than this project's
  * (user decision 2026-09-11).
  */
-export function ProjectDetailStats({ project }: ProjectDetailStatsProps) {
+export function ProjectStatsStrip({ totalBudget, allocatedBudget, remainingBudget, campaignsCount }: ProjectStatsStripProps) {
   const { t } = useTranslation()
-  const share = allocationShare(project.total_budget, project.allocated_budget)
+  const share = allocationShare(totalBudget, allocatedBudget)
 
   return (
     <RecordStatStrip>
       <RecordStat
         label={t('projects.form.totalBudget')}
         icon={<Wallet />}
-        value={project.total_budget !== null ? formatDecimal(project.total_budget) : <DetailEmpty />}
+        value={totalBudget !== null ? formatDecimal(totalBudget) : <DetailEmpty />}
       />
       <RecordStat
         label={t('projects.detail.allocatedBudget')}
         value={
           <span className="flex items-center gap-2">
-            <span className="tabular-nums">{formatDecimal(project.allocated_budget)}</span>
+            <span className="tabular-nums">{formatDecimal(allocatedBudget)}</span>
             {share !== null ? (
               <Progress
                 value={Math.min(share, 100)}
@@ -113,19 +111,9 @@ export function ProjectDetailStats({ project }: ProjectDetailStatsProps) {
       />
       <RecordStat
         label={t('projects.detail.remainingBudget')}
-        value={
-          project.remaining_budget !== null ? (
-            formatDecimal(project.remaining_budget)
-          ) : (
-            <DetailEmpty />
-          )
-        }
+        value={remainingBudget !== null ? formatDecimal(remainingBudget) : <DetailEmpty />}
       />
-      <RecordStat
-        label={t('projects.detail.campaignsLabel')}
-        icon={<Megaphone />}
-        value={project.campaigns_count}
-      />
+      <RecordStat label={t('projects.detail.campaignsLabel')} icon={<Megaphone />} value={campaignsCount} />
     </RecordStatStrip>
   )
 }
@@ -135,7 +123,7 @@ export function ProjectDetailStats({ project }: ProjectDetailStatsProps) {
  * total to measure against (A-1: `total_budget` unset means there is no residual
  * either). A zero total would divide by zero, so it answers null too.
  */
-function allocationShare(totalBudget: string | null, allocatedBudget: string): number | null {
+function allocationShare(totalBudget: string | number | null, allocatedBudget: string | number): number | null {
   const total = totalBudget === null ? null : Number(totalBudget)
 
   if (total === null || !Number.isFinite(total) || total <= 0) {

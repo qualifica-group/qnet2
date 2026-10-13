@@ -9,6 +9,7 @@ use App\DataObjects\Users\ProfileData;
 use App\Enums\ContactTypeEnum;
 use App\Enums\PersonalDataTypeEnum;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsExternalProfileRecord;
@@ -44,6 +45,16 @@ class CompanySitesSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Company sites';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::optional('companies'),
+        ];
     }
 
     /**

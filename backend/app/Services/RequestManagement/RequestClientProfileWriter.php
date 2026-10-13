@@ -40,6 +40,10 @@ use Illuminate\Validation\ValidationException;
  *    edits the card's PRIMARY address; a client may legitimately own others
  *    (registries allow many) and those must survive a request-panel save.
  *
+ * Both channels pass RequestClientUniquenessGuard before writing: a codice
+ * fiscale, partita IVA or phone held by another card of the identity
+ * namespace is refused here, the one place both reach.
+ *
  * The caller owns the surrounding transaction (RequestManagementService::
  * updateWork already opens one), so this writer never opens an outer one.
  */
@@ -100,6 +104,7 @@ final class RequestClientProfileWriter
         private readonly PersonalDataService $personalData,
         private readonly ContactService $contacts,
         private readonly AddressService $addresses,
+        private readonly RequestClientUniquenessGuard $uniqueness,
     ) {}
 
     /**
@@ -160,6 +165,12 @@ final class RequestClientProfileWriter
      */
     public function write(Opportunity $opportunity, ?CreatePersonalData $identity, ?array $contacts, ?AddressInput $address): void
     {
+        $registry = $opportunity->registry;
+
+        if ($registry instanceof Registry) {
+            $this->uniqueness->assertBlocksFree($registry, $registry->personalData, $identity, $contacts);
+        }
+
         if ($identity !== null) {
             $this->writeIdentity($opportunity, $identity);
         }
@@ -227,7 +238,8 @@ final class RequestClientProfileWriter
      *
      * A client with no anagraphic card is a 422, never a silent create: this
      * channel has no way to know whether the card should be an individual or
-     * a company.
+     * a company. A codice fiscale, partita IVA or phone another card already
+     * holds is a 422 too (RequestClientUniquenessGuard).
      *
      * Returns the value held BEFORE the write, so the caller can log the
      * operational change (spec 0055, D-9) without resolving the card a second
@@ -239,6 +251,9 @@ final class RequestClientProfileWriter
     public function writeClientField(Opportunity $opportunity, string $key, ?string $value): ?string
     {
         $card = $this->resolveCard($opportunity, $key);
+        /** @var Registry $registry resolveCard() has just read the card off it */
+        $registry = $opportunity->registry;
+        $this->uniqueness->assertFieldFree($registry, $card, $key, $value);
 
         if (isset(self::CONTACT_KEY_TYPES[$key])) {
             return $this->writePrimaryContact($card, self::CONTACT_KEY_TYPES[$key], $value);

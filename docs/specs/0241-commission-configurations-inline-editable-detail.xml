@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0241-commission-configurations-inline-editable-detail" status="approved" owner="utente" date="2026-10-13">
+
+  <goal>
+    Onda 4 del piano "nessuna pagina di modifica" (utente 2026-10-13): il Configuratore Commissioni perde la pagina di
+    modifica; il dettaglio si edita sul posto, la creazione e' una replica del dettaglio.
+  </goal>
+
+  <context>
+    - D-1: kit della spec 0233 + contratto per modulo 0233 D-2. Backend invariato: `PATCH
+      /api/commission-configurations/{id}` e' parziale e risponde gia' con `permissions`; le regole incrociate
+      restano server-side (ambito vs categoria/prodotto, `valid_until >= valid_from`, cambio ruolo vs destinatario,
+      spec 0089/0090).
+    - D-2: i campi che il server valida INSIEME stanno in UNA riga raggruppata, che salva tutti i suoi campi cambiati:
+      (a) Destinatario = ruolo + tipo destinatario + destinatario (ruolo che cambia senza destinatario valido e'
+      rifiutato, 0090 D-9); (b) Ambito = ambito di applicazione + categoria prodotto / prodotto; (c) Validita' = dal +
+      al. Gli altri campi (tipo commissione, valore, priorita', stato, nota interna) una riga ciascuno; valore con
+      suffisso coerente col tipo. 422 di una regola incrociata mostrato sulla riga aperta.
+    - D-3: creazione = replica del dettaglio (righe chiuse Fatto/Ripristina, uscita con conferma). Il parametro di
+      creazione `COMMISSION_CREATE_REGISTRY_PARAM` (fornitore precompilato dal pannello dell'anagrafica) resta.
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica.</backend>
+    <frontend>
+      Registry `commission-configurations`: `generateEditRoute: false`, `detailOwnsEditAction: true`,
+      `formOwnsHeader: true`; `CommissionConfigurationDetailView` perde `onEdit`, guadagna `onChanged`;
+      `updateCommissionConfiguration` restituisce `CommissionConfigurationDetailWithPermissions`;
+      `commissionConfigurationDetailKey` gia' esportata; hook del form in edit con `values`/`keepDirtyValues`/
+      `clearServerError`; wrapper solo creazione (`useResourceMeta`); `EditLoader` rimosso; i18n
+      `form.leaveConfirm.*`.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/commission-configurations/:id/edit`, nessun "Modifica" nel dettaglio.</ac>
+    <ac id="AC-002">Ogni riga salva solo i propri campi; le righe raggruppate salvano i loro campi insieme; Annulla non chiama; 422 sulla riga.</ac>
+    <ac id="AC-003">Senza permesso `update` nessuna matita; campi non modificabili per permesso di campo senza matita.</ac>
+    <ac id="AC-004">Creazione a righe chiuse, anche dal pannello dell'anagrafica col fornitore precompilato; uscita con conferma.</ac>
+    <ac id="AC-005">Guida in-app IT/EN `commission-configurations` aggiornata.</ac>
+  </acceptance>
+</spec>

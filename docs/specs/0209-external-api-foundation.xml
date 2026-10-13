@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0209-external-api-foundation" status="superseded" superseded_by="0210-api-clients-direct-access" owner="utente" date="2026-10-09">
+
+  <goal>
+    Permettere a sistemi esterni di usare le API di QNet in modo autenticato e limitato per scope,
+    e consegnare agli integratori una documentazione sempre allineata al codice, consultabile in
+    QNet ed esportabile in Postman. Questa spec costruisce la fondazione e la prima area (Lead);
+    le altre aree v1 arrivano con spec successive che si limitano ad aggiungere endpoint.
+  </goal>
+
+  <context>
+    <!-- Decisioni utente 2026-10-09 -->
+    <decision id="D-1">Perimetro: subset dedicato e versionato sotto /api/v1/external. Le 494 rotte interne della SPA NON sono esposte e restano libere di cambiare.</decision>
+    <decision id="D-2">Auth: "client di integrazione" creato in QNet (nome, scope, scadenza, rate limit), con chiave mostrata una sola volta, revocabile e ruotabile. Basato su Sanctum, senza OAuth.</decision>
+    <decision id="D-3">Generazione doc: dedoc/scramble (MIT, supporta illuminate ^13) AUTORIZZATO come nuova dipendenza composer. OpenAPI 3.1 derivata da rotte, FormRequest e Resource; collection Postman derivata dall'OpenAPI.</decision>
+    <decision id="D-4">Doc consultabile solo in QNet (sezione Amministrazione, permesso dedicato) con download di OpenAPI JSON e collection Postman v2.1. Nessun portale pubblico.</decision>
+    <decision id="D-5">Rate limit per client SOLO su /api/v1/external (default 60 req/min, configurabile per client). È un'eccezione esplicita alla regola del 2026-07-15 (throttle solo su endpoint di credenziali), da riportare in backend.md §2 e security.md §4.</decision>
+    <decision id="D-6">Aree v1 richieste: lead, anagrafiche, opportunità, preventivi, prodotti, categorie prodotto, commesse, task, segnatempo, contratti. Split: questa spec = fondazione + Lead (pilota); spec 0210 = anagrafiche, opportunità, preventivi; 0211 = prodotti, categorie prodotto; 0212 = commesse, task, segnatempo, contratti.</decision>
+
+    <!-- Fatti verificati nel repo -->
+    <fact>Sanctum 4 con Bearer token (AuthService::login → User::createToken). La tabella personal_access_tokens è polimorfica (morphs tokenable) e ha già la colonna impersonated_by (spec 0050).</fact>
+    <fact>config/sanctum.php: expiration = 30 giorni (SANCTUM_EXPIRATION), applicata a OGNI token. Sanctum\Guard::isValidAccessToken invoca Sanctum::$accessTokenAuthenticationCallback DOPO il controllo di scadenza, quindi è il punto in cui dare ai token dei client la scadenza del client invece di quella globale.</fact>
+    <fact>Il guard Sanctum non ha provider (config/auth.php), quindi hasValidProvider() accetta qualsiasi tokenable con HasApiTokens: un token di un ApiClient passerebbe oggi anche su `auth:sanctum` delle rotte interne. Il confine va imposto esplicitamente (AC-004).</fact>
+    <fact>OnlineUsersService filtra già i token su tokenable_type = User, quindi i token dei client non compaiono tra gli utenti online.</fact>
+    <fact>Le policy (Policies/Abstracts/BasePolicy) sono solo per permesso, senza visibilità per riga, e ricevono un User. Le rotte esterne autorizzano tramite le abilities del token (scope), non tramite policy User.</fact>
+    <fact>routes/api.php ha 499 righe (hard limit 500): le nuove rotte si registrano dal callback `then` di withRouting in bootstrap/app.php, senza toccare routes/api.php.</fact>
+    <fact>Permessi: il comando permissions:sync li deriva dalla navigation config e dalle policy. Il menu Amministrazione sta in config/navigation/administration.php.</fact>
+    <fact>Lead: model App\Models\Lead, LeadService, StoreLeadRequest e UpdateLeadRequest (registry_id, campaign_id, source_id obbligatorio se la campagna non nomina una fonte, operational_site_id, operator_id, notes, extra_fields, products_of_interest con regola ActiveCategoryProduct). LeadResource interno con chiave lead_status. Il list interno passa dal framework tabellare SSRM: non esiste un index REST.</fact>
+    <fact>Nessuno strumento OpenAPI, Swagger o Postman è presente oggi in composer.json o package.json.</fact>
+    <fact>Envelope di progetto: { success, message, data }. Gli errori non espongono classi interne (bootstrap/app.php).</fact>
+  </context>
+
+  <scope>
+    <in>
+      <item>Entità ApiClient (tabella api_clients) che possiede i token Sanctum dei sistemi esterni; CRUD admin, rotazione e revoca della chiave.</item>
+      <item>Catalogo degli scope in config/external-api.php (in questa spec: leads:read, leads:write, lookups:read), come unica fonte per validazione, middleware e documentazione.</item>
+      <item>Confine degli attori: i token ApiClient sono accettati SOLO su /api/v1/external; i token User NON sono accettati su /api/v1/external.</item>
+      <item>Scadenza della chiave = api_clients.expires_at (non la scadenza globale di 30 giorni); un client disattivato o scaduto riceve 401.</item>
+      <item>Rate limiter `external-api` per client, con header X-RateLimit-* e risposta 429 con Retry-After.</item>
+      <item>Endpoint esterni v1: Lead (index paginato con filtro updated_since, show, store, update) e lookup minimi necessari a creare un lead (campaigns, sources, operational-sites).</item>
+      <item>Resource e FormRequest esterni DEDICATI (namespace External\V1): il contratto esterno non cambia quando cambiano le Resource interne.</item>
+      <item>Integrazione di Scramble limitata a /api/v1/external, con un'estensione che legge lo scope richiesto dalla rotta e lo pubblica nell'OpenAPI (security + x-required-scopes).</item>
+      <item>Endpoint admin che servono l'OpenAPI e la collection Postman v2.1, sempre rigenerate dal codice corrente (cache invalidata dalla firma dei file sorgente esterni).</item>
+      <item>Test di parità: ogni rotta registrata sotto /api/v1/external compare nell'OpenAPI, nessuna operazione documentata è priva di rotta, e ogni rotta esterna dichiara esattamente uno scope del catalogo.</item>
+      <item>Pagina frontend /admin/api-integrations con due tab: "Client API" (lista, creazione, modifica, rotazione, revoca, dialog con la chiave mostrata una volta) e "Documentazione" (reference navigabile generata dall'OpenAPI, guida all'autenticazione, download OpenAPI/Postman).</item>
+      <item>Voce di menu in Amministrazione con permesso api-clients.view; permessi api-clients.view/create/update/delete.</item>
+      <item>Activity log: create/update/rotazione/revoca dei client; le scritture sui lead via API hanno come causer l'ApiClient.</item>
+      <item>Guida in-app IT+EN `api-integrations` e chiave in HELP_GUIDE_KEYS; aggiornamento del Manuale Utente QNet (Claude Docs) o segnalazione esplicita delle sezioni da aggiornare.</item>
+      <item>Eccezione rate limit documentata in .claude/rules/backend.md §2 e security.md §4.</item>
+    </in>
+    <out>
+      <item>Endpoint esterni di anagrafiche, opportunità, preventivi (spec 0210), prodotti e categorie prodotto (0211), commesse, task, segnatempo e contratti (0212).</item>
+      <item>DELETE di lead via API e conversione lead → opportunità via API (convert_to_opportunity escluso dal contratto esterno).</item>
+      <item>Portale pubblico della documentazione, pagina "try it" con chiamate live dalla doc, SDK client generati.</item>
+      <item>OAuth2, webhook in uscita, IP allow-list, firma delle richieste.</item>
+      <item>Changelog automatico o diff tra versioni dell'OpenAPI; versione v2.</item>
+      <item>Dashboard di utilizzo o statistiche per client (oltre a last_used_at).</item>
+      <item>Visibilità per riga dei dati per client: un client vede tutti i record delle aree dei suoi scope.</item>
+      <item>Modifiche a routes/api.php, alle rotte interne, alle Resource interne e al flusso di login della SPA.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- ============ Admin: gestione client (auth:sanctum, attore User) ============ -->
+    <!-- Lista: framework tabellare SSRM esistente, nuova TableDefinition domain "api-clients"
+         (GET /api/tables/api-clients/columns|rows). Colonne: name, scopes, is_active, expires_at,
+         key_last_four, last_used_at, created_by, created_at. Authz: api-clients.view. -->
+
+    <model name="ApiClient" table="api_clients">
+      <column name="id" type="bigint pk"/>
+      <column name="name" type="string(120)" unique="true"/>
+      <column name="description" type="text nullable"/>
+      <column name="scopes" type="json" note="array di stringhe del catalogo config('external-api.scopes')"/>
+      <column name="rate_limit_per_minute" type="unsigned smallint nullable" note="null = config('external-api.rate_limit.default') (60)"/>
+      <column name="expires_at" type="timestamp nullable" note="null = non scade"/>
+      <column name="is_active" type="boolean default true"/>
+      <column name="key_last_four" type="char(4) nullable" note="ultime 4 cifre della chiave corrente, per riconoscerla in UI"/>
+      <column name="created_by" type="foreignId users nullOnDelete"/>
+      <column name="timestamps"/>
+    </model>
+
+    <shape name="ApiClientResource">
+      { id: int, name: string, description: string|null, scopes: string[],
+        rate_limit_per_minute: int|null, effective_rate_limit_per_minute: int,
+        expires_at: ISO8601|null, is_active: bool, is_expired: bool,
+        key_last_four: string|null, last_used_at: ISO8601|null,
+        created_by: { id: int, name: string }|null, created_at: ISO8601, updated_at: ISO8601 }
+      <!-- MAI il token in chiaro né l'hash. last_used_at = max(personal_access_tokens.last_used_at) del client. -->
+    </shape>
+
+    <endpoint method="GET" path="/api/api-clients/scopes">
+      <response status="200">{ success: true, data: [ { key: "leads:read", label_key: "apiIntegrations.scopes.leadsRead", group: "leads" }, ... ] }</response>
+      <errors>401; 403 senza api-clients.view</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/api-clients/{apiClient}">
+      <response status="200">{ success: true, data: ApiClientResource }</response>
+      <errors>401; 403 senza api-clients.view; 404</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/api-clients">
+      <request>{ name: string required max:120 unique, description?: string|null max:2000,
+        scopes: string[] required min:1 (ogni voce in config('external-api.scopes')),
+        rate_limit_per_minute?: int|null between:1,1000, expires_at?: date|null after:now }</request>
+      <response status="201">{ success: true, message, data: { client: ApiClientResource, plain_text_key: string } }
+        <!-- plain_text_key restituita SOLO qui e in /rotate-key; mai più leggibile. -->
+      </response>
+      <errors>401; 403 senza api-clients.create; 422</errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/api-clients/{apiClient}">
+      <request>{ name?, description?, scopes?, rate_limit_per_minute?, expires_at?, is_active?: bool } (stesse regole di POST)</request>
+      <response status="200">{ success: true, message, data: ApiClientResource }</response>
+      <errors>401; 403 senza api-clients.update; 404; 422</errors>
+      <!-- La modifica degli scope si applica ai token esistenti: le abilities del token si
+           risincronizzano con gli scope del client (la chiave non cambia). -->
+    </endpoint>
+
+    <endpoint method="POST" path="/api/api-clients/{apiClient}/rotate-key">
+      <response status="200">{ success: true, message, data: { client: ApiClientResource, plain_text_key: string } }</response>
+      <errors>401; 403 senza api-clients.update; 404</errors>
+      <!-- Revoca TUTTI i token precedenti del client ed emette una sola nuova chiave. -->
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/api-clients/{apiClient}">
+      <response status="200">{ success: true, message }</response>
+      <errors>401; 403 senza api-clients.delete; 404</errors>
+      <!-- Elimina il client e tutti i suoi token. -->
+    </endpoint>
+
+    <!-- ============ Admin: documentazione (auth:sanctum, attore User, api-clients.view) ============ -->
+    <endpoint method="GET" path="/api/api-clients/docs/openapi">
+      <response status="200">Documento OpenAPI 3.1 (application/json, NON nell'envelope: è il file consegnato all'integratore).
+        info.version = config('external-api.version') ("1.0"); servers[0].url = APP_URL + "/api/v1/external";
+        components.securitySchemes.apiKey = { type: http, scheme: bearer }; ogni operation ha
+        security: [{ apiKey: [] }] e x-required-scopes: [scope].</response>
+      <errors>401; 403 senza api-clients.view</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/api-clients/docs/postman">
+      <response status="200">Postman Collection v2.1 (application/json, Content-Disposition attachment "qnet-external-api-v1.postman_collection.json").
+        Variabili di collection: base_url (= servers[0].url), api_key (vuota). Auth di collection: bearer {{api_key}}.
+        Una cartella per tag OpenAPI, una request per operation, con path params come :param,
+        query params dichiarati (disabilitati se opzionali) e body d'esempio JSON per POST/PUT/PATCH.</response>
+      <errors>401; 403 senza api-clients.view</errors>
+    </endpoint>
+
+    <!-- ============ Esterne v1 (Bearer chiave ApiClient, throttle:external-api) ============ -->
+    <common>
+      Header: Authorization: Bearer &lt;chiave&gt;, Accept: application/json.
+      Header di risposta su ogni chiamata autenticata: X-RateLimit-Limit, X-RateLimit-Remaining.
+      Errori comuni: 401 { success:false, message } chiave assente/invalida/revocata/scaduta o client disattivato;
+      403 { success:false, message } scope mancante; 429 { success:false, message } + Retry-After;
+      422 { success:false, message, errors:{campo:[...]} }; 404 { success:false, message }.
+      Paginazione list: query page (>=1), per_page (1..100, default 25);
+      response { success:true, data:[...], meta:{ current_page, per_page, total, last_page } }.
+    </common>
+
+    <shape name="ExternalLeadResource">
+      { id: int, registry_id: int, campaign_id: int, source_id: int|null, operational_site_id: int|null,
+        operator_id: int|null, status: string (valore di Lead::lifecycleStatus()), notes: string|null,
+        extra_fields: object|null, products_of_interest: int[], opportunity_id: int|null,
+        created_at: ISO8601, updated_at: ISO8601 }
+    </shape>
+
+    <endpoint method="GET" path="/api/v1/external/leads" scope="leads:read">
+      <request>query: page?, per_page?, updated_since?: ISO8601 (updated_at >= valore). Ordine fisso: id asc.</request>
+      <response status="200">{ success, data: ExternalLeadResource[], meta }</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/v1/external/leads/{lead}" scope="leads:read">
+      <response status="200">{ success, data: ExternalLeadResource }</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/v1/external/leads" scope="leads:write">
+      <request>{ registry_id: int required, campaign_id: int required, source_id?: int|null (obbligatorio se la campagna non nomina una fonte),
+        operational_site_id?: int|null, operator_id?: int|null, notes?: string|null max:5000,
+        extra_fields?: object&lt;string,string&gt;|null, products_of_interest?: int[] (prodotti di categoria attiva) }
+        Stesse regole di StoreLeadRequest, senza convert_to_opportunity.</request>
+      <response status="201">{ success, message, data: ExternalLeadResource }</response>
+    </endpoint>
+    <endpoint method="PUT|PATCH" path="/api/v1/external/leads/{lead}" scope="leads:write">
+      <request>Stessi campi di POST, tutti opzionali (regole di UpdateLeadRequest).</request>
+      <response status="200">{ success, message, data: ExternalLeadResource }</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/v1/external/campaigns" scope="lookups:read">
+      <request>query: page?, per_page?, search?: string</request>
+      <response status="200">{ success, data: [ { id: int, name: string, source_id: int|null } ], meta }
+        <!-- source_id = colonna propria campaigns.source_id: la fonte NON è ereditata dal progetto
+             (verificato su CampaignResource e LeadSourceResolver in implementazione, rev. 2026-10-09). -->
+      </response>
+    </endpoint>
+    <endpoint method="GET" path="/api/v1/external/sources" scope="lookups:read">
+      <response status="200">{ success, data: [ { id: int, name: string } ], meta }</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/v1/external/operational-sites" scope="lookups:read">
+      <response status="200">{ success, data: [ { id: int, label: string } ], meta }
+        <!-- OperationalSite non ha colonna name: label = OperationalSiteLabel (alias o indirizzo). Solo is_active = true. -->
+      </response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Autenticazione e gestione client -->
+    <criterion id="AC-001">Dato un utente con api-clients.create, quando fa POST /api/api-clients con scopes validi, allora riceve 201 con plain_text_key; il DB contiene il client e un solo token Sanctum con tokenable = ApiClient e abilities = scopes; la risposta non contiene l'hash del token; GET /api/api-clients/{id} non contiene mai la chiave.</criterion>
+    <criterion id="AC-002">Dato un utente senza il permesso relativo, quando chiama un endpoint /api/api-clients (show/store/update/rotate-key/destroy/scopes/docs), allora riceve 403 e non avviene alcuna scrittura.</criterion>
+    <criterion id="AC-003">Dato un POST con uno scope fuori catalogo, scopes vuoto, name duplicato o expires_at nel passato, allora riceve 422 con l'errore sul campo e nessun client viene creato.</criterion>
+    <criterion id="AC-004">Confine attori: una chiave ApiClient valida su una rotta interna (es. GET /api/auth/me, GET /api/leads/{id}) riceve 401; un token di login User su GET /api/v1/external/leads riceve 401.</criterion>
+    <criterion id="AC-005">Dato un client con expires_at nel passato, oppure is_active=false, oppure con la chiave revocata (rotate-key o destroy), quando chiama un endpoint esterno, allora riceve 401 { success:false, message }.</criterion>
+    <criterion id="AC-006">Dato un client senza expires_at e una chiave creata più di 30 giorni fa (oltre SANCTUM_EXPIRATION), quando chiama un endpoint esterno, allora riceve 200; un token User della stessa età continua a ricevere 401 (comportamento interno invariato).</criterion>
+    <criterion id="AC-007">rotate-key: la chiave precedente riceve 401, la nuova 200, il client ha esattamente un token e key_last_four aggiornato.</criterion>
+    <criterion id="AC-008">PATCH scopes ["leads:read"] su un client che aveva ["leads:read","leads:write"]: la stessa chiave riceve poi 403 su POST /api/v1/external/leads e 200 su GET.</criterion>
+    <criterion id="AC-009">Rate limit: con rate_limit_per_minute = 2, la terza chiamata nel minuto riceve 429 con header Retry-After e body { success:false, message }; un secondo client non è influenzato; le rotte interne non hanno throttle.</criterion>
+    <criterion id="AC-010">Activity log: create, update, rotate-key e destroy di un client generano voci con causer = utente admin, e nessuna voce contiene la chiave; un lead creato via API ha una voce "created" con causer = ApiClient.</criterion>
+
+    <!-- Endpoint esterni Lead -->
+    <criterion id="AC-011">GET /api/v1/external/leads con scope leads:read restituisce data[] con la shape ExternalLeadResource esatta e meta; per_page=101 dà 422; updated_since filtra per updated_at >= valore.</criterion>
+    <criterion id="AC-012">POST /api/v1/external/leads con payload valido crea il lead (201, ExternalLeadResource); con registry_id inesistente o un prodotto di categoria inattiva dà 422; il campo convert_to_opportunity, se inviato, viene ignorato (nessuna opportunità creata).</criterion>
+    <criterion id="AC-013">PATCH /api/v1/external/leads/{id} aggiorna solo i campi inviati (200); id inesistente dà 404 { success:false, message } senza nomi di classe.</criterion>
+    <criterion id="AC-014">Una chiave con solo lookups:read riceve 403 { success:false, message } su GET /api/v1/external/leads; con lookups:read riceve 200 su campaigns, sources e operational-sites con la shape del contratto.</criterion>
+
+    <!-- Documentazione auto-aggiornata -->
+    <criterion id="AC-015">GET /api/api-clients/docs/openapi restituisce un OpenAPI 3.1 che contiene TUTTE e SOLE le rotte registrate sotto api/v1/external (confronto con il Router, metodo+path); nessuna rotta interna compare.</criterion>
+    <criterion id="AC-016">Ogni operation dell'OpenAPI ha security apiKey e x-required-scopes uguale allo scope middleware della rotta; il test fallisce se una rotta esterna non dichiara esattamente uno scope del catalogo.</criterion>
+    <criterion id="AC-017">Auto-aggiornamento: in un test che registra una rotta esterna aggiuntiva (fixture con scope dichiarato), l'OpenAPI la contiene senza alcun intervento manuale; rimuovendola sparisce. La cache viene invalidata da una nuova firma dei sorgenti (route file + controller, request e resource External\V1).</criterion>
+    <criterion id="AC-018">L'OpenAPI documenta per POST /leads i campi richiesti registry_id e campaign_id (derivati dal FormRequest) e per GET /leads lo schema di risposta con i campi di ExternalLeadResource.</criterion>
+    <criterion id="AC-019">GET /api/api-clients/docs/postman restituisce una collection con schema v2.1, variabili base_url e api_key, auth bearer {{api_key}}, una request per ogni operation dell'OpenAPI (stesso conteggio) raggruppata per tag e body d'esempio per i POST; header Content-Disposition attachment.</criterion>
+
+    <!-- Frontend -->
+    <criterion id="AC-020">Pagina /admin/api-integrations: con api-clients.view la voce di menu "API e integrazioni" è visibile e la pagina mostra i tab "Client API" e "Documentazione"; senza permesso la voce non c'è e la rotta mostra lo stato di accesso negato esistente.</criterion>
+    <criterion id="AC-021">Creazione client: il form (RHF + Zod: name obbligatorio, almeno uno scope) invia il payload del contratto; al 201 si apre un dialog con la chiave, un pulsante copia e l'avviso che non sarà più visibile; chiuso il dialog la chiave non è più nel DOM né nella cache di React Query.</criterion>
+    <criterion id="AC-022">Rotazione e revoca chiedono conferma; la rotazione mostra la nuova chiave nello stesso dialog; i pulsanti sono nascosti senza api-clients.update/delete.</criterion>
+    <criterion id="AC-023">Tab Documentazione: elenca le operation raggruppate per tag con metodo, path, scope richiesto, parametri e schema di request/response letti dall'OpenAPI dell'endpoint (nessun elenco hard-coded); i pulsanti "Scarica OpenAPI" e "Scarica collection Postman" scaricano i due file; c'è la sezione autenticazione con base URL ed esempio di header.</criterion>
+    <criterion id="AC-024">Responsive: a 375px nessuna scrollbar orizzontale di pagina (i blocchi di codice e gli schemi scorrono dentro il proprio contenitore); a11y: tab e dialog navigabili da tastiera, errori di campo con aria-invalid e aria-describedby.</criterion>
+
+    <!-- Manuale -->
+    <criterion id="AC-025">Esiste la guida in-app `api-integrations` IT+EN con gli stessi id di sezione, la chiave è in HELP_GUIDE_KEYS e help-content-parity.test.ts è verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Unica nuova dipendenza autorizzata: dedoc/scramble (composer). Nessuna nuova dipendenza frontend: la reference viene renderizzata con i componenti di components/ui. Il converter Postman è codice nostro.</item>
+    <item>Nessuna modifica a routes/api.php (499 righe): rotte admin ed esterne registrate da file dedicati tramite il callback `then` di withRouting.</item>
+    <item>Authz server-side: rotte admin con ApiClientPolicy (BasePolicy, resource api-clients); rotte esterne con middleware abilities dello scope più il confine attori. Ogni rotta esterna ha esattamente uno scope.</item>
+    <item>Chiave: mai salvata in chiaro, mai loggata, mai nell'activity log, mai nelle Resource tranne la risposta di creazione e rotazione.</item>
+    <item>Contratto esterno isolato: Resource e Request in App\Http\{Resources,Requests}\External\V1; la logica riusa i Service esistenti (LeadService), senza duplicarla.</item>
+    <item>Rate limit solo sul gruppo esterno (decisione D-5); backend.md e security.md vanno aggiornati con l'eccezione.</item>
+    <item>Ordinamento e filtri delle list esterne da allow-list fissa: niente orderByRaw/whereRaw da input.</item>
+    <item>File sotto 300 righe (soft) e 500 (hard). Identificatori in inglese. Envelope { success, message, data }.</item>
+    <item>Test: Pest (tests/Feature/ExternalApi/*, tests/Feature/ApiClients/*); helper condivisi in tests/Helpers/ExternalApiHelpers.php. Vitest per schema, hook e pagina. Typecheck con `npx tsc -b --force`.</item>
+  </constraints>
+
+</spec>

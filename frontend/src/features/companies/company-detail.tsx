@@ -1,68 +1,72 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Hash, MapPin } from 'lucide-react'
-import { DetailEmpty, DetailError, DetailLoading } from '@/components/detail/detail-panel'
-import {
-  RecordCanvas,
-  RecordCard,
-  RecordField,
-  RecordFieldList,
-  RecordMeta,
-  RecordSection,
-  RecordSectionsGrid,
-} from '@/components/detail/record-panel'
+import { RecordCanvas, RecordMeta, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordCollaborationCard } from '@/components/detail/record-collaboration-card'
-import { formatDateTime } from '@/features/table/cell-renderers'
+import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
+import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
-import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchCompany } from '@/features/companies/api'
-import {
-  CompanyDetailHeader,
-  CompanyDetailStats,
-} from '@/features/companies/company-detail-header'
-import type { CompanyAddress } from '@/features/companies/types'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { CompanyDetailHeader, CompanyDetailStats } from '@/features/companies/company-detail-header'
+import { CompanyRows } from '@/features/companies/company-rows'
+import { useCompanyForm, type CompanyFormValues } from '@/features/companies/use-company-form'
+import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field-record-sections'
+import type { CustomFieldValue } from '@/features/custom-fields/types'
+import { formatDateTime } from '@/features/table/cell-renderers'
+import type { CompanyAddress, CompanyDetailWithPermissions, CompanyFormMode } from '@/features/companies/types'
 
-interface CompanyDetailProps {
-  companyId: number
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+/** Stable empty set: a fresh object per render would break the sections' memo. */
+const NO_CUSTOM_FIELDS: Record<string, CustomFieldValue> = {}
+
+/** The persisted address' place names, comune first (the order every address surface reads in). */
+function placeOf(address: CompanyAddress | null): string[] {
+  return address ? [address.city, address.province, address.region, address.country].filter((name) => name !== null) : []
+}
+
+interface CompanyDetailViewProps {
+  company: CompanyDetailWithPermissions
+  /** Called after an in-place save, so the host refreshes whatever lists the company (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single company, rendered as an enterprise-CRM record on
- * the same kit Opportunita', Lead, Campagne, Progetti e Sedi use: the
- * identity/KPI/sections card on the left, the activity card on the right, a
- * metadata footer. Container-query driven (`RecordCanvas`) so the same tree
- * renders correctly both inside a resizable Sheet and on a full-bleed page.
- *
- * It owns its own fetch (like `UserDetailView`): every caller opens this card
- * by id.
+ * Detail of a single company, rendered as an enterprise-CRM record on the same
+ * kit Opportunita', Lead, Campagne, Progetti e Sedi use: the identity/KPI/
+ * sections card on the left, the activity card on the right, a metadata
+ * footer. There is no edit page (wave 3 of the "no edit pages" plan): every
+ * row — custom fields included — edits IN PLACE, one at a time, each save a
+ * PATCH of that field alone. Container-query driven (`RecordCanvas`) so the
+ * same tree renders correctly both inside a resizable Sheet and on a
+ * full-bleed page. Purely presentational: the caller fetches the detail.
  */
-export function CompanyDetailView({ companyId, onEdit }: CompanyDetailProps) {
+export function CompanyDetailView(props: CompanyDetailViewProps) {
+  // The rows read the field permissions, so the provider wraps the whole detail.
+  return (
+    <ResourcePermissionsProvider permissions={props.company.permissions}>
+      <CompanyDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function CompanyDetailContent({ company, onChanged }: CompanyDetailViewProps) {
   const { t } = useTranslation()
-  const {
-    data: company,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(['companies', 'detail', companyId], () => fetchCompany(companyId))
-
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('companies.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
-  }
-
-  if (isLoading || !company) {
-    return <DetailLoading />
-  }
-
+  const editing = useInlineEditingField()
+  // Stable per saved record: the form re-syncs its values on a new one.
+  const mode = useMemo<CompanyFormMode>(() => ({ type: 'edit', company }), [company])
+  const { form, onSubmit, serverError, clearServerError } = useCompanyForm({
+    mode,
+    onSuccess: () => {
+      editing.close()
+      onChanged?.()
+    },
+  })
+  const inline = useRecordInlineEdit<CompanyFormValues>({
+    editing,
+    form,
+    onSubmit,
+    serverError,
+    clearServerError,
+    genericErrorMessage: t('companies.form.genericError'),
+  })
   const createdAt = formatDateTime(company.created_at)
   const collaborationTabs = company.permissions.actions.view_activity
     ? [activityLogTab('companies', company.id, t('activityLog.title'))]
@@ -71,18 +75,26 @@ export function CompanyDetailView({ companyId, onEdit }: CompanyDetailProps) {
   return (
     <RecordCanvas>
       <RecordBody
-        side={collaborationTabs.length > 0 ? <RecordCollaborationCard tabs={collaborationTabs} /> : null}
+        collaborationTabs={collaborationTabs}
+        header={
+          <>
+            <CompanyDetailHeader company={company} />
+            <CompanyDetailStats company={company} />
+          </>
+        }
       >
-        <RecordCard>
-          <CompanyDetailHeader company={company} onEdit={onEdit} />
-          <CompanyDetailStats company={company} />
-
+        {/* Provider only (no DOM): the in-place rows share the edit form. */}
+        <Form {...form}>
           <RecordSectionsGrid>
-            <RecordSection title={t('companies.form.sections.address.title')} icon={<MapPin />} full>
-              <AddressFields address={company.address} />
-            </RecordSection>
+            <CompanyRows form={form} inline={inline} place={placeOf(company.address)} />
+            <CustomFieldRecordSections
+              resource="companies"
+              values={company.custom_fields ?? NO_CUSTOM_FIELDS}
+              inline={inline}
+              control={form.control}
+            />
           </RecordSectionsGrid>
-        </RecordCard>
+        </Form>
       </RecordBody>
 
       {createdAt ? (
@@ -94,34 +106,5 @@ export function CompanyDetailView({ companyId, onEdit }: CompanyDetailProps) {
         </RecordMeta>
       ) : null}
     </RecordCanvas>
-  )
-}
-
-/**
- * The address of record: street, second line, postal code and the region. The
- * comune/province/country are NOT repeated here — the KPI strip above already
- * answers "where", and printing the same three values twice on one card is the
- * duplication the record kit exists to avoid.
- */
-function AddressFields({ address }: { address: CompanyAddress | null }) {
-  const { t } = useTranslation()
-
-  if (!address) {
-    return <DetailEmpty />
-  }
-
-  return (
-    <RecordFieldList>
-      <RecordField label={t('companies.form.line1')}>{address.line1 || <DetailEmpty />}</RecordField>
-      {address.line2 ? (
-        <RecordField label={t('companies.form.line2')}>{address.line2}</RecordField>
-      ) : null}
-      <RecordField label={t('companies.form.postalCode')} icon={<Hash />}>
-        {address.postal_code || <DetailEmpty />}
-      </RecordField>
-      <RecordField label={t('companies.detail.region')}>
-        {address.region || <DetailEmpty />}
-      </RecordField>
-    </RecordFieldList>
   )
 }

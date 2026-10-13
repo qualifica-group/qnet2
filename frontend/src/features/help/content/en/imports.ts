@@ -76,7 +76,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Duplicates are recognized by email, phone, tax code and VAT number.',
+          text: "Duplicates are recognized by email, phone, tax code and VAT number. Tax code and VAT number are also compared with each other: a tax code equal to a registry's VAT number is a duplicate.",
         },
         {
           type: 'paragraph',

@@ -5,6 +5,7 @@ namespace App\Migrations\Sources;
 use App\DataObjects\Products\CreateProductData;
 use App\Enums\ProductType;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsExternalProductRecord;
@@ -59,6 +60,13 @@ class ProductsSource extends AbstractMigrationSource
      */
     public const string OLD_SOURCE = 'services';
 
+    /**
+     * The category a legacy product WITHOUT a category is filed under, seeded
+     * by QualificaCatalogSeeder (user decision 2026-10-12): a holding place to
+     * reclassify from, instead of a failed row.
+     */
+    public const string UNCATEGORIZED_CATEGORY = 'No categoria';
+
     public function __construct(
         ExternalApiClient $client,
         private readonly ProductService $service,
@@ -75,6 +83,17 @@ class ProductsSource extends AbstractMigrationSource
     public function label(): string
     {
         return 'Products';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [
+            MigrationDependency::required('product-categories'),
+            MigrationDependency::optional('vat-rates'),
+        ];
     }
 
     public function endpoint(): string
@@ -153,7 +172,7 @@ class ProductsSource extends AbstractMigrationSource
             description: $this->trimmedText($record['description'] ?? null),
             cost: (float) ($record['cost'] ?? 0),
             price: (float) ($record['price'] ?? 0),
-            categoryId: $this->aplBranch->productCategoryFor($this->resolveCategory($record['category_id'] ?? null), $warnings),
+            categoryId: $this->aplBranch->productCategoryFor($this->resolveCategory($record['category_id'] ?? null, $warnings), $warnings),
             productType: $this->mapProductType($record['product_type'] ?? null, $warnings),
             vatRateId: $this->resolveVatRate($record['vat_rate_id'] ?? null, $warnings),
             supplierId: $this->unresolvableReference('supplier_id', $record['supplier_id'] ?? null, $warnings),
@@ -169,14 +188,17 @@ class ProductsSource extends AbstractMigrationSource
     }
 
     /**
-     * Remap the required external category reference to the qnet category id via
-     * `old_id`. A product cannot exist without a category, so an absent or
+     * Remap the external category reference to the qnet category id via
+     * `old_id`. A product cannot exist without a category: one the legacy left
+     * without any goes under UNCATEGORIZED_CATEGORY with a warning, while an
      * unmigrated reference is a fatal per-row error (isolated by importRow()).
+     *
+     * @param  array<int, string>  $warnings
      */
-    private function resolveCategory(mixed $externalRef): int
+    private function resolveCategory(mixed $externalRef, array &$warnings): int
     {
         if ($externalRef === null || $externalRef === '') {
-            throw new RuntimeException('category_id is required.');
+            return $this->uncategorizedCategory($warnings);
         }
 
         $id = $this->resolveOldId(ProductCategory::class, $externalRef);
@@ -184,6 +206,22 @@ class ProductsSource extends AbstractMigrationSource
         if ($id === null) {
             throw new RuntimeException("Unresolved category_id (external id {$externalRef}); migrate product-categories first.");
         }
+
+        return $id;
+    }
+
+    /**
+     * @param  array<int, string>  $warnings
+     */
+    private function uncategorizedCategory(array &$warnings): int
+    {
+        $id = ProductCategory::query()->where('name', self::UNCATEGORIZED_CATEGORY)->value('id');
+
+        if ($id === null) {
+            throw new RuntimeException("category_id is missing and the '".self::UNCATEGORIZED_CATEGORY."' category does not exist; run QualificaCatalogSeeder first.");
+        }
+
+        $warnings[] = "No category in the legacy record; filed under '".self::UNCATEGORIZED_CATEGORY."'.";
 
         return $id;
     }

@@ -5,10 +5,30 @@
  * 1:1 -- no field is invented here.
  */
 
-/** A registered migration source, as returned by `GET /migrations`. */
+/**
+ * A registered migration source, as returned by `GET /migrations`: its
+ * 1-based import `phase` (null when outside the recommended order), its
+ * latest run of any status (null when it never ran) and when a run last
+ * completed (null when it was never migrated).
+ */
 export interface MigrationSourceSummary {
   key: string
   label: string
+  phase: number | null
+  last_run: MigrationLastRun | null
+  migrated_at: string | null
+}
+
+/** A source's latest run as listed by `GET /migrations` (report flag only). */
+export type MigrationLastRun = Omit<MigrationRunCreated, 'status'> & { status: MigrationRunStatus }
+
+/**
+ * A source to import before the selected one. `required`: without it the
+ * rows fail or are skipped; otherwise the link is left empty with a warning.
+ */
+export interface MigrationDependency {
+  source: string
+  required: boolean
 }
 
 /** A column exposed by a source's external records, driving the preview table. */
@@ -47,6 +67,7 @@ export interface MigrationColumnsSample {
 
 /** Response shape of `GET /migrations/{source}/columns` (envelope `data`). */
 export interface MigrationColumnsTemplate {
+  dependencies: MigrationDependency[]
   columns: MigrationColumn[]
   request: MigrationColumnsRequest
   sample: MigrationColumnsSample

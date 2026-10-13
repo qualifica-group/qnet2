@@ -19,12 +19,13 @@ const guide: HelpGuide = {
           rows: [
             ['None (default)', 'Only your own tasks: the ones you created or requested, or where you are an assignee or a watcher.'],
             ['**View by site**', 'Your tasks plus those where at least one assignee works at one of your sites (physical or remote).'],
+            ['**View team**', 'Your tasks plus those where at least one assignee is your subordinate, even indirectly (all the way down the chain of managers), deactivated colleagues included.'],
             ['**View all**', 'Every task.'],
           ],
         },
         {
           type: 'note',
-          text: 'Seeing a task of your site does not let you edit it: for that you need a role on it (creator, requester, assignee) or the **Manage all** permission.',
+          text: 'Seeing a task of your site or team does not let you edit it: for that you need a role on it (creator, requester, assignee) or the **Manage all** permission.',
         },
         {
           type: 'tip',
@@ -52,7 +53,7 @@ const guide: HelpGuide = {
             ['Due', 'Today, Overdue, This week or This month, on the end date (or the start date when missing).'],
             [
               'Assignment',
-              'Pick **one or more** values together (preset: Assigned to me): assigned to you, requested by you, assigned by you (you are the requester but not an assignee), created by you (you created it but are neither the requester, nor an assignee, nor a watcher) or observed by you. **All** shows every task where you have any role at all (requester, assignee, watcher or creator), even if you hold the View all permission. If you hold View all or View site you also get **All visible**, which shows every task you may see, including your colleagues\u2019.',
+              'Pick **one or more** values together (preset: Assigned to me): assigned to you, requested by you, assigned by you (you are the requester but not an assignee), created by you (you created it but are neither the requester, nor an assignee, nor a watcher) or observed by you. **All** shows every task where you have any role at all (requester, assignee, watcher or creator), even if you hold the View all permission. If you hold View all, View by site or View team you also get **All visible**, which shows every task you may see, including your colleagues\u2019.',
             ],
             ['Account', 'One or more Account records the task is linked to.'],
             ['Work order', 'One or more work orders the task is linked to.'],
@@ -167,7 +168,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A **Private task** is visible only to its creator, requester, assignees and watchers: the View all and View by site permissions do not show it (the super-admin stays the one exception).',
+          text: 'A **Private task** is visible only to its creator, requester, assignees and watchers: the View all, View by site and View team permissions do not show it (the super-admin stays the one exception).',
         },
         {
           type: 'note',
@@ -393,7 +394,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "In the task's detail you find **Notes**, **Documents**, **History** and **Time tracking**. You receive a notification (bell and email) when:",
+          text: "In the task's detail you find **Notes**, **Documents**, **History** and **Time tracking**.",
+        },
+        {
+          type: 'paragraph',
+          text: 'On wide screens they sit in a column on the right, which starts collapsed: an icon bar leaves all the room to the task data. Click an icon to see that tab in a floating panel without opening the column (click outside or press Esc to close it). **Expand side panel** opens the column, **Collapse side panel** closes it again. The choice is remembered in the browser and applies to every record view. On narrow screens (tablet, phone, modal panel) there is no column: below the header and the indicators you find the **Details**, **Notes**, **Documents**, **Activity log** and **Time tracking** tabs.',
+        },
+        {
+          type: 'paragraph',
+          text: 'You receive a notification (bell and email) when:',
         },
         {
           type: 'list',

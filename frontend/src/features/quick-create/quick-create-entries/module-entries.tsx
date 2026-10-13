@@ -30,7 +30,6 @@ const sources: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <SourceForm
-          mode={{ type: 'create' }}
           onSuccess={(source) => onSuccess({ id: source.id, name: source.name })}
           onCancel={onCancel}
         />
@@ -48,7 +47,6 @@ const referents: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <ReferentForm
-          mode={{ type: 'create' }}
           onSuccess={(referent) => onSuccess({ id: referent.id, name: referent.name })}
           onCancel={onCancel}
         />
@@ -66,7 +64,6 @@ const referentTypes: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <ReferentTypeForm
-          mode={{ type: 'create' }}
           onSuccess={(referentType) => onSuccess({ id: referentType.id, name: referentType.name })}
           onCancel={onCancel}
         />
@@ -84,7 +81,6 @@ const businessFunctions: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <BusinessFunctionForm
-          mode={{ type: 'create' }}
           onSuccess={(businessFunction) => onSuccess({ id: businessFunction.id, name: businessFunction.name })}
           onCancel={onCancel}
         />
@@ -102,7 +98,6 @@ const pipelineStatuses: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <PipelineStatusForm
-          mode={{ type: 'create' }}
           onSuccess={(pipelineStatus) => onSuccess({ id: pipelineStatus.id, name: pipelineStatus.name })}
           onCancel={onCancel}
         />
@@ -120,7 +115,6 @@ const rewardTypes: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <RewardTypeForm
-          mode={{ type: 'create' }}
           onSuccess={(rewardType) => onSuccess({ id: rewardType.id, name: rewardType.name })}
           onCancel={onCancel}
         />
@@ -156,7 +150,6 @@ const campaigns: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <CampaignForm
-          mode={{ type: 'create' }}
           onSuccess={(campaign) => onSuccess({ id: campaign.id, name: campaign.name })}
           onCancel={onCancel}
         />
@@ -174,7 +167,6 @@ const tags: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <TagForm
-          mode={{ type: 'create' }}
           onSuccess={(tag) => onSuccess({ id: tag.id, name: tag.name })}
           onCancel={onCancel}
         />
@@ -192,7 +184,6 @@ const users: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <UserForm
-          mode={{ type: 'create' }}
           onSuccess={(user) => onSuccess({ id: user.id, name: user.name })}
           onCancel={onCancel}
         />
@@ -210,7 +201,6 @@ const companies: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <CompanyForm
-          mode={{ type: 'create' }}
           onSuccess={(company) => onSuccess({ id: company.id, name: company.denomination })}
           onCancel={onCancel}
         />
@@ -228,7 +218,6 @@ const products: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <ProductForm
-          mode={{ type: 'create' }}
           onSuccess={(product) => onSuccess({ id: product.id, name: product.name })}
           onCancel={onCancel}
         />

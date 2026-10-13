@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createTaskType, updateTaskType } from '@/features/task-types/api'
+import { createTaskType, taskTypeDetailQueryKey, updateTaskType } from '@/features/task-types/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -39,8 +39,9 @@ interface UseTaskTypeFormArgs {
 }
 
 /**
- * Owns every non-render concern of `TaskTypeForm`: RHF/Zod wiring, default
- * values, server 422 mapping and the create/update submit. The component stays
+ * Owns every non-render concern of the task type form: RHF/Zod wiring, default
+ * values, server 422 mapping and the create/update submit. Create backs
+ * `TaskTypeForm`; edit backs the detail's in-place rows (diff PATCH). The component stays
  * UI-only; this hook is the orchestration point (`onSubmit`).
  */
 export function useTaskTypeForm({ mode, onSuccess }: UseTaskTypeFormArgs) {
@@ -79,9 +80,13 @@ export function useTaskTypeForm({ mode, onSuccess }: UseTaskTypeFormArgs) {
     }
   }, [mode])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<TaskTypeFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: TaskTypeFormValues) => {
@@ -93,7 +98,7 @@ export function useTaskTypeForm({ mode, onSuccess }: UseTaskTypeFormArgs) {
           mode.taskType.id,
           buildUpdatePayload(values, mode.taskType),
         )
-        queryClient.setQueryData(['task-types', 'detail', mode.taskType.id], saved)
+        queryClient.setQueryData(taskTypeDetailQueryKey(mode.taskType.id), saved)
         toast.success(t('taskTypes.form.updated'))
         onSuccess(saved)
         return
@@ -111,8 +116,8 @@ export function useTaskTypeForm({ mode, onSuccess }: UseTaskTypeFormArgs) {
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

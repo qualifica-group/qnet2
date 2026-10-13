@@ -18,7 +18,7 @@ import type {
  * Spec 0122 MT-F7: page assembly. `TimeEntriesPeriodCard`/`TimeEntriesViewSwitch`/
  * `TimeEntriesTeamPulse`/`TimeEntriesStatsPanels` are mounted for real (AC-037
  * needs the actual footer + team tree click-through); `TimeEntryCreateSheet`/
- * `TimeEntryEditSheet`/`TimeEntriesDayList` are shallow stubs so this suite
+ * `TimeEntryDetailSheet`/`TimeEntriesDayList` are shallow stubs so this suite
  * does not depend on `features/time-entries/{form,days}` internals owned by
  * other in-flight work.
  */
@@ -65,7 +65,7 @@ interface CreateSheetStubProps {
   defaultDate?: string
   userId?: number
 }
-interface EditSheetStubProps {
+interface DetailSheetStubProps {
   open: boolean
   timeEntryId: number
 }
@@ -82,9 +82,9 @@ vi.mock('@/features/time-entries/form/time-entry-create-sheet', () => ({
       <div data-testid="create-sheet" data-default-date={defaultDate ?? ''} data-user-id={userId ?? ''} />
     ) : null,
 }))
-vi.mock('@/features/time-entries/form/time-entry-edit-sheet', () => ({
-  TimeEntryEditSheet: ({ open, timeEntryId }: EditSheetStubProps) =>
-    open ? <div data-testid="edit-sheet" data-time-entry-id={timeEntryId} /> : null,
+vi.mock('@/features/time-entries/form/time-entry-detail-sheet', () => ({
+  TimeEntryDetailSheet: ({ open, timeEntryId }: DetailSheetStubProps) =>
+    open ? <div data-testid="detail-sheet" data-time-entry-id={timeEntryId} /> : null,
 }))
 vi.mock('@/features/time-entries/days/time-entries-day-list', () => ({
   TimeEntriesDayList: ({ canWrite, selectedUserId, onEditEntry, onCreateForDate }: DayListStubProps) => (
@@ -207,12 +207,12 @@ describe('TimeEntriesDashboard — day list callbacks', () => {
     expect(sheet).toHaveAttribute('data-default-date', '2026-02-02')
   })
 
-  it('opens the edit sheet with the clicked entry id', async () => {
+  it('opens the detail sheet with the clicked entry id', async () => {
     renderDashboard()
 
     fireEvent.click(await screen.findByText('trigger-edit'))
 
-    const sheet = await screen.findByTestId('edit-sheet')
+    const sheet = await screen.findByTestId('detail-sheet')
     expect(sheet).toHaveAttribute('data-time-entry-id', '42')
   })
 })

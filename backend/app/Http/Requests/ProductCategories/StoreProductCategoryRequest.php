@@ -57,6 +57,7 @@ class StoreProductCategoryRequest extends FormRequest
             // Spec 0074: whether the category may be picked as a
             // classification target. Omitted = true (selectable).
             'is_selectable' => ['sometimes', 'boolean'],
+            'is_active' => ['sometimes', 'boolean'],
             // Spec 0131 (user directive 2026-09-18): the node's own override of
             // the inherited report flag. Omitted or null = inherit from the parent.
             'is_reportable' => ['sometimes', 'nullable', 'boolean'],

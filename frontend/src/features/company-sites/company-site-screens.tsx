@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
-import { DetailError } from '@/components/detail/detail-panel'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
+import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchCompanySite } from '@/features/company-sites/api'
+import { fetchCompanySite, companySiteDetailQueryKey } from '@/features/company-sites/api'
 import { CompanySiteForm } from '@/features/company-sites/company-site-form'
 import { CompanySiteDetailView } from '@/features/company-sites/company-site-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -15,60 +15,13 @@ import type {
 } from '@/features/modules/types'
 import type { CompanySiteDetail } from '@/features/company-sites/types'
 
-/** Same detail query key `CompanySiteDetailView`/the former `EditCompanySiteLoader` used. */
-function detailQueryKey(id: number) {
-  return ['company-sites', 'detail', id] as const
-}
-
 /**
- * Content-only `company-sites` screens for the module registry (spec 0042):
- * `CompanySiteDetailView` already fetches its own detail, so the detail
- * screen is a direct passthrough. Reused as-is by the modal Sheet
- * (`useModuleOpener`) and by the generic dedicated pages
- * (`ModuleDetailPage`/`ModuleFormPage`), which own the surrounding chrome.
- *
- * `onDefaultChange`/`onSiteChange` (the former table's live grid refresh on
- * "set default"/logo change while the Sheet stayed open) have no slot in the
- * registry's generic `ModuleDetailScreenProps`/`ModuleFormScreenProps` (both
- * only carry `id`), so they are not wired here — flagged to the module
- * registry owner, not invented.
+ * Content-only `company-sites` screens for the module registry (spec
+ * 0042): fetch + the presentational view/form, no page chrome. The detail
+ * edits its rows in place, so `onEdit` is never used; each save reports
+ * through `onChanged`.
  */
-export function CompanySiteDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
-  return <CompanySiteDetailView companySiteId={id} onEdit={onEdit} />
-}
-
-export function CompanySiteFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (companySite: CompanySiteDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(companySite.id) })
-    onSuccess(companySite.id)
-  }
-
-  if (mode.type === 'create') {
-    return (
-      <CompanySiteForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
-    )
-  }
-
-  return (
-    <CompanySiteEditLoader companySiteId={mode.id} onSuccess={handleSuccess} onCancel={onCancel} />
-  )
-}
-
-interface CompanySiteEditLoaderProps {
-  companySiteId: number
-  onSuccess: (companySite: CompanySiteDetail) => void
-  onCancel: () => void
-}
-
-/**
- * Fetches the fresh, re-authorized company-site detail before mounting the
- * edit form, so the partial PATCH starts from authoritative values rather
- * than a stale snapshot (moved here unchanged from the former
- * `company-sites-table.tsx` inline loader).
- */
-function CompanySiteEditLoader({ companySiteId, onSuccess, onCancel }: CompanySiteEditLoaderProps) {
+export function CompanySiteDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: companySite,
@@ -76,7 +29,7 @@ function CompanySiteEditLoader({ companySiteId, onSuccess, onCancel }: CompanySi
     isError,
     error,
     refetch,
-  } = useEntityDetail(detailQueryKey(companySiteId), () => fetchCompanySite(companySiteId))
+  } = useEntityDetail(companySiteDetailQueryKey(id), () => fetchCompanySite(id))
 
   if (isError) {
     return (
@@ -90,21 +43,52 @@ function CompanySiteEditLoader({ companySiteId, onSuccess, onCancel }: CompanySi
   }
 
   if (isLoading || !companySite) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+    return <DetailLoading />
+  }
+
+  return <CompanySiteDetailView companySite={companySite} onChanged={onChanged} />
+}
+
+/**
+ * Create only: there is no edit form, and the registry generates no
+ * `:id/edit` route. Leaving a company site being created — Cancel, the Sheet's
+ * X/overlay/Esc, a link, a reload — always asks first.
+ */
+export function CompanySiteFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('companySites.form.leaveConfirm.title'),
+    description: t('companySites.form.leaveConfirm.description'),
+    confirmLabel: t('companySites.form.leaveConfirm.confirm'),
+    cancelLabel: t('companySites.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
+
+  if (mode.type !== 'create') {
+    return null
+  }
+
+  const handleSuccess = (companySite: CompanySiteDetail) => {
+    queryClient.invalidateQueries({ queryKey: companySiteDetailQueryKey(companySite.id) })
+    // Saved: the navigation to the new site's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(companySite.id)
+  }
+
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
   }
 
   return (
-    <CompanySiteForm
-      mode={{ type: 'edit', companySite }}
-      onSuccess={onSuccess}
-      onCancel={onCancel}
-    />
+    <>
+      {leaveGuard.navigationGuard}
+      <CompanySiteForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
   )
 }
 
@@ -116,9 +100,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.companySites',
   DetailScreen: CompanySiteDetailScreen,
   FormScreen: CompanySiteFormScreen,
-  // The record card renders its own Edit action and the form its own identity
-  // bar, so the generic hosts must not stack a second heading or button — the
-  // same registration Opportunita', Utenti and Lead carry.
+  // The detail IS the edit form: no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
   formOwnsHeader: true,
 }

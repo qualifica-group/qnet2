@@ -2,7 +2,6 @@ import type {
   CreateTaskTemplateItemPayload,
   CreateTaskTemplatePayload,
   CreateTaskTemplateStagePayload,
-  TaskTemplateDetail,
   TaskTemplateItemFormRow,
   TaskTemplateStageFormRow,
   UpdateTaskTemplateItemPayload,
@@ -56,42 +55,17 @@ export function buildCreatePayload(
 }
 
 /**
- * Builds the update payload: `name`/`description`/`is_active` only when they
- * actually changed from `original`, but `items`/`stages` are ALWAYS the full
- * authoritative sync (a row missing from either array is deleted
- * server-side, D-1/D-2/AC-004/AC-002/AC-005) — never a sparse diff, mirrors
- * `quote-workflow-form-payload.ts`'s `buildStatusesUpdatePayload`.
+ * Builds the board's update payload (spec 0227 D-3): `items`/`stages` only,
+ * ALWAYS the full authoritative sync (a row missing from either array is
+ * deleted server-side, D-1/D-2/AC-004) — the header fields save on their own
+ * rows, so they never ride along.
  */
-export function buildUpdatePayload(
-  values: TaskTemplateFormValues,
+export function buildBoardUpdatePayload(
   itemRows: TaskTemplateItemFormRow[],
   stageRows: TaskTemplateStageFormRow[],
-  original: TaskTemplateDetail,
 ): UpdateTaskTemplatePayload {
-  const payload: UpdateTaskTemplatePayload = {}
-
-  if (values.name !== original.name) {
-    payload.name = values.name
+  return {
+    items: itemRows.map((row): UpdateTaskTemplateItemPayload => ({ id: row.itemId, ...buildItemFields(row) })),
+    stages: stageRows.map((row): UpdateTaskTemplateStagePayload => ({ id: row.stageId, ...buildStageFields(row) })),
   }
-  if (values.description !== original.description) {
-    payload.description = values.description
-  }
-  if (values.is_active !== original.is_active) {
-    payload.is_active = values.is_active
-  }
-
-  payload.items = itemRows.map(
-    (row): UpdateTaskTemplateItemPayload => ({
-      id: row.itemId,
-      ...buildItemFields(row),
-    }),
-  )
-  payload.stages = stageRows.map(
-    (row): UpdateTaskTemplateStagePayload => ({
-      id: row.stageId,
-      ...buildStageFields(row),
-    }),
-  )
-
-  return payload
 }

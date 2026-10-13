@@ -27,6 +27,7 @@ function original(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
     id: 7,
     code: 'COM-0001',
     title: 'Installazione impianto',
+    title_is_manual: true,
     type: 'processing',
     status: { value: 'open', is_force_closed: false },
     completion_percentage: 0,
@@ -93,6 +94,13 @@ describe('buildCreatePayload (spec 0093, D-1)', () => {
   })
 })
 
+describe('buildCreatePayload - automatic title (spec 0215 AC-029)', () => {
+  it('sends title null when the field is blank', () => {
+    expect(buildCreatePayload({ ...formValues, title: '' }).title).toBeNull()
+    expect(buildCreatePayload(formValues).title).toBe('Installazione impianto')
+  })
+})
+
 describe('buildUpdatePayload (spec 0093, AC-077)', () => {
   it('omits every field when nothing changed (diff-only)', () => {
     expect(buildUpdatePayload(formValues, original())).toEqual({})
@@ -102,6 +110,10 @@ describe('buildUpdatePayload (spec 0093, AC-077)', () => {
     expect(buildUpdatePayload({ ...formValues, title: 'Nuovo titolo' }, original())).toEqual({
       title: 'Nuovo titolo',
     })
+  })
+
+  it('sends null when the title is cleared: back to the automatic one (spec 0215 AC-029)', () => {
+    expect(buildUpdatePayload({ ...formValues, title: '  ' }, original())).toEqual({ title: null })
   })
 
   it('includes only the changed type', () => {

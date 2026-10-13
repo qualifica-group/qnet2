@@ -112,7 +112,7 @@ final class OpportunityAdvancedFilterCatalog
                 'visible' => true,
                 'width' => 'md',
                 'multiple' => true,
-                'source' => ['resource' => 'product-categories'],
+                'source' => ['resource' => 'product-categories', 'params' => ['include_inactive' => 1]],
                 'target' => 'productLines.productCategory',
             ],
             [

@@ -44,6 +44,7 @@ export function QuoteDetailHeader({ quote }: QuoteDetailHeaderProps) {
         />
       }
       title={quote.title}
+      legacyId={quote.old_id}
       subtitle={quote.code}
       badges={
         <WorkflowStatusBadge

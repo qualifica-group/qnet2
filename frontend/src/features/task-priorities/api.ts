@@ -8,6 +8,11 @@ import type {
   UpdateTaskPriorityPayload,
 } from '@/features/task-priorities/types'
 
+/** Query key of a single task priority's detail, shared by the detail screen and its in-place saves. */
+export function taskPriorityDetailQueryKey(id: number) {
+  return ['task-priorities', 'detail', id] as const
+}
+
 /**
  * Fetches a single task priority detail together with the actor's authorization
  * metadata for it (`permissions`, a top-level envelope sibling of `data`).
@@ -28,14 +33,17 @@ export async function createTaskPriority(payload: CreateTaskPriorityPayload): Pr
 /**
  * Partially updates a task priority (PATCH). `system_key` and `sort_order` are
  * never keys of `UpdateTaskPriorityPayload` (spec 0101 `data_contract`): the backend
- * rejects their mere presence with 422.
+ * rejects their mere presence with 422. Returns the saved record with the
+ * actor's permissions, so the in-place detail re-syncs on it as is.
  */
 export async function updateTaskPriority(
   id: number,
   payload: UpdateTaskPriorityPayload,
-): Promise<TaskPriorityDetail> {
-  const { data } = await apiClient.patch<ApiResponse<TaskPriorityDetail>>(`/task-priorities/${id}`, payload)
-  return data.data
+): Promise<TaskPriorityDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<TaskPriorityDetail, ResourcePermissions>
+  >(`/task-priorities/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

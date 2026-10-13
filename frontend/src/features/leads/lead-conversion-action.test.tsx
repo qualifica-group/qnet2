@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
 import i18n from '@/i18n'
+import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { LeadDetailScreen } from '@/features/leads/lead-screens'
 import type { ModuleFormScreenMode, OpenMode } from '@/features/modules/types'
 import type { LeadDetail } from '@/features/leads/types'
@@ -97,6 +98,8 @@ function lead(overrides: Partial<LeadDetail> = {}): LeadDetail {
     campaign: { id: 20, code: 'CMP-0001', name: 'Spring push' },
     lead_status: 'associated',
     opportunity: null,
+    notes: null,
+    extra_fields: null,
     operator_id: 7,
     operational_site_id: 3,
     permissions: {
@@ -114,7 +117,9 @@ function renderActions() {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <LeadDetailScreen id={9} />
+        <ConfirmDialogProvider>
+          <LeadDetailScreen id={9} />
+        </ConfirmDialogProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   )

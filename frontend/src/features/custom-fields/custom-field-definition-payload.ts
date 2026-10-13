@@ -81,8 +81,9 @@ function textChanged(next: string, original: string | null | undefined): string 
 /**
  * Builds a partial PATCH payload carrying only fields that changed from the
  * original definition (spec AC-019: `entity_type`/`type`/`key` are immutable
- * once the field has values — the server enforces that; sending them
- * unchanged, as the read-only edit fields do, is always safe).
+ * once the field has values — the server enforces that, and the detail has
+ * no row for them, so they never differ). The detail's rows pick their own
+ * keys from this diff (spec 0231).
  */
 export function buildUpdatePayload(
   values: CustomFieldDefinitionFormValues,

@@ -32,21 +32,22 @@ if (! function_exists('runMigrationJobFor')) {
 }
 
 // ---------------------------------------------------------------------------
-// AC-012 — a single row's commit-time failure is isolated, others proceed
+// AC-012 — a single row's failure is isolated, others proceed
 // ---------------------------------------------------------------------------
 
-it('isolates a per-row commit-time failure without blocking the other rows', function () {
+it('isolates a per-row failure without blocking the other rows', function () {
     seedMigrationsConfig();
-    $existing = User::factory()->create(['email' => 'collision@example.test']);
+    $existing = User::factory()->create(['email' => 'collision@example.test', 'old_id' => 999]);
     $password = Hash::make('external-secret');
 
     Http::fake([
         fakeMigrationsBaseUrl().'/users*' => Http::response([
             'items' => [
                 ['id' => 301, 'email' => 'valid-one@example.test', 'password' => $password, 'first_name' => 'One', 'last_name' => 'Ok'],
-                // Duplicates an EXISTING (non-migrated) user's email: the
-                // UserService::create() unique-email constraint fails at
-                // commit time, isolated to this row only.
+                // The email of a user already linked to ANOTHER legacy id: the
+                // row cannot adopt it nor create a duplicate, so it fails,
+                // isolated to this row only. (An unlinked user with that email
+                // would be adopted instead: UsersSourceAdoptionTest.)
                 ['id' => 302, 'email' => $existing->email, 'password' => $password, 'first_name' => 'Two', 'last_name' => 'Bad'],
                 ['id' => 303, 'email' => 'valid-three@example.test', 'password' => $password, 'first_name' => 'Three', 'last_name' => 'Ok'],
             ],

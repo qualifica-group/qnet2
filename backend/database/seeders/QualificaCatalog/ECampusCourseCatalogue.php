@@ -15,14 +15,18 @@ namespace Database\Seeders\QualificaCatalog;
  * A course is sold as one SERVICE product per fee of its degree level, named
  * "<course> <fee>" and priced at the fee: the sheet lists each course as
  * "<course>: Online, N anni, Accesso Libero", and the product name stops
- * before the colon. No fee is quoted "+ iva", so no product carries a VAT rate.
+ * before the colon. The course code leads the name ("[LM-56] Scienze
+ * dell'Economia", user directive 2026-10-08): an installation still holding
+ * the trailing-code names is renamed on re-seed (ECampusProducts). No fee is
+ * quoted "+ iva", so no product carries a VAT rate.
  *
  * The sheet's "Corsi di laurea Magistrali a ciclo unico" (Giurisprudenza
  * [LMG/01]) quotes no fee, so it is deliberately not transcribed.
  *
- * The sheet's "PROGETTO FORM" fee is not a product either (user directive
- * 2026-10-02): the offer's "Corso Form" flag records it
- * (ECampusAttributeCatalogue).
+ * "FORM" is a fee of every course again (user directive 2026-10-08), beside
+ * the offer's "Corso Form" flag (ECampusAttributeCatalogue). The thesis and
+ * the tutoring are no longer a fee of every course but one product each
+ * (SINGLE_PRODUCTS, same directive).
  *
  * Names are user-facing domain values, kept as the sheet spells them.
  */
@@ -32,11 +36,22 @@ final class ECampusCourseCatalogue
 
     /**
      * Fees an earlier revision sold as a product of every course: their
-     * products are withdrawn on re-seed (CatalogProducts).
+     * products are withdrawn on re-seed (ECampusProducts).
      *
      * @var list<string>
      */
-    public const array RETIRED_FEES = ['PROGETTO FORM'];
+    public const array RETIRED_FEES = ['PROGETTO FORM', 'ASSISTENZA E TUTORAGGIO', 'TESI'];
+
+    /**
+     * The services sold once for the whole branch, not per course: product
+     * name => price.
+     *
+     * @var array<string, float>
+     */
+    public const array SINGLE_PRODUCTS = [
+        'TESI' => 300.0,
+        'ASSISTENZA E TUTORAGGIO' => 500.0,
+    ];
 
     /**
      * Degree level => its fees (product suffix => price) and its courses
@@ -49,48 +64,46 @@ final class ECampusCourseCatalogue
     public const array DEGREES = [
         'Corsi di Laurea Triennali' => [
             'fees' => [
-                'ASSISTENZA E TUTORAGGIO' => 500.0,
                 '1°ANNO' => 2856.0,
                 '2°ANNO' => 2856.0,
                 '3°ANNO' => 2856.0,
-                'TESI' => 300.0,
+                'FORM' => 1500.0,
             ],
             'courses' => [
-                'Ingegneria Civile e Ambientale [L-7]' => 'Ingegneria',
-                'Ingegneria Informatica e dell\'Automazione [L-8]' => 'Ingegneria',
-                'Ingegneria Industriale [L-9]' => 'Ingegneria',
-                'Letteratura, Arte, Musica e Spettacolo [L-10]' => 'Letteratura',
-                'Lingue e Culture Europee e del Resto del Mondo [L-11]' => 'Letteratura',
-                'Design e Discipline della Moda [L-3]' => 'Letteratura',
-                'Scienze Biologiche [L-13]' => 'Psicologia',
-                'Scienze dell\'Educazione e della Formazione [L-19]' => 'Psicologia',
-                'Scienze delle Attività Motorie e Sportive [L-22]' => 'Psicologia',
-                'Scienze e Tecniche Psicologiche [L-24]' => 'Psicologia',
-                'Scienze del Turismo per il Management e i Beni Culturali [L-15]' => 'Economia',
-                'Economia [L-33]' => 'Economia',
-                'Servizi Giuridici [L-14]' => 'Giurisprudenza',
-                'Scienze della Comunicazione [L-20]' => 'Giurisprudenza',
-                'Scienze Politiche e Sociali [L-36]' => 'Giurisprudenza',
+                '[L-7] Ingegneria Civile e Ambientale' => 'Ingegneria',
+                '[L-8] Ingegneria Informatica e dell\'Automazione' => 'Ingegneria',
+                '[L-9] Ingegneria Industriale' => 'Ingegneria',
+                '[L-10] Letteratura, Arte, Musica e Spettacolo' => 'Letteratura',
+                '[L-11] Lingue e Culture Europee e del Resto del Mondo' => 'Letteratura',
+                '[L-3] Design e Discipline della Moda' => 'Letteratura',
+                '[L-13] Scienze Biologiche' => 'Psicologia',
+                '[L-19] Scienze dell\'Educazione e della Formazione' => 'Psicologia',
+                '[L-22] Scienze delle Attività Motorie e Sportive' => 'Psicologia',
+                '[L-24] Scienze e Tecniche Psicologiche' => 'Psicologia',
+                '[L-15] Scienze del Turismo per il Management e i Beni Culturali' => 'Economia',
+                '[L-33] Economia' => 'Economia',
+                '[L-14] Servizi Giuridici' => 'Giurisprudenza',
+                '[L-20] Scienze della Comunicazione' => 'Giurisprudenza',
+                '[L-36] Scienze Politiche e Sociali' => 'Giurisprudenza',
             ],
         ],
         'Corsi di Laurea Magistrali' => [
             'fees' => [
-                'ASSISTENZA E TUTORAGGIO' => 500.0,
                 '1°ANNO' => 3056.0,
                 '2°ANNO' => 3056.0,
-                'TESI' => 300.0,
+                'FORM' => 1500.0,
             ],
             'courses' => [
-                'Letteratura, Lingua e Cultura Italiana [LM-14]' => 'Letteratura',
-                'Lingue e Letterature Moderne e Traduzione Interculturale [LM-37]' => 'Letteratura',
-                'Ingegneria Civile [LM-23]' => 'Ingegneria',
-                'Ingegneria Informatica e dell\'Automazione [LM-32]' => 'Ingegneria',
-                'Ingegneria Industriale [LM-33]' => 'Ingegneria',
-                'Psicologia [LM-51]' => 'Psicologia',
-                'Scienze dell\'Esercizio Fisico per il Benessere e la Salute [LM-67]' => 'Psicologia',
-                'Scienze Pedagogiche [LM-85]' => 'Psicologia',
-                'Scienze della Nutrizione Umana [LM-61]' => 'Psicologia',
-                'Scienze dell\'Economia [LM-56]' => 'Economia',
+                '[LM-14] Letteratura, Lingua e Cultura Italiana' => 'Letteratura',
+                '[LM-37] Lingue e Letterature Moderne e Traduzione Interculturale' => 'Letteratura',
+                '[LM-23] Ingegneria Civile' => 'Ingegneria',
+                '[LM-32] Ingegneria Informatica e dell\'Automazione' => 'Ingegneria',
+                '[LM-33] Ingegneria Industriale' => 'Ingegneria',
+                '[LM-51] Psicologia' => 'Psicologia',
+                '[LM-67] Scienze dell\'Esercizio Fisico per il Benessere e la Salute' => 'Psicologia',
+                '[LM-85] Scienze Pedagogiche' => 'Psicologia',
+                '[LM-61] Scienze della Nutrizione Umana' => 'Psicologia',
+                '[LM-56] Scienze dell\'Economia' => 'Economia',
             ],
         ],
     ];

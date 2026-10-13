@@ -6,7 +6,11 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createProductTypology, updateProductTypology } from '@/features/product-typologies/api'
+import {
+  createProductTypology,
+  productTypologyDetailQueryKey,
+  updateProductTypology,
+} from '@/features/product-typologies/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -45,8 +49,9 @@ interface UseProductTypologyFormArgs {
 
 /**
  * Owns every non-render concern of `ProductTypologyForm`: RHF/Zod wiring,
- * default values, server 422 mapping and the create/update submit. The
- * component stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * default values, server 422 mapping and the create/update submit. Create
+ * backs `ProductTypologyForm`; edit backs the detail's in-place rows (diff
+ * PATCH). The component stays UI-only; this hook is the orchestration point.
  */
 export function useProductTypologyForm({ mode, onSuccess }: UseProductTypologyFormArgs) {
   const { t } = useTranslation()
@@ -81,9 +86,13 @@ export function useProductTypologyForm({ mode, onSuccess }: UseProductTypologyFo
     }
   }, [mode])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<ProductTypologyFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: ProductTypologyFormValues) => {
@@ -95,7 +104,7 @@ export function useProductTypologyForm({ mode, onSuccess }: UseProductTypologyFo
           mode.productTypology.id,
           buildUpdatePayload(values, mode.productTypology),
         )
-        queryClient.setQueryData(['product-typologies', 'detail', mode.productTypology.id], saved)
+        queryClient.setQueryData(productTypologyDetailQueryKey(mode.productTypology.id), saved)
         toast.success(t('productTypologies.form.updated'))
         onSuccess(saved)
         return
@@ -113,8 +122,8 @@ export function useProductTypologyForm({ mode, onSuccess }: UseProductTypologyFo
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

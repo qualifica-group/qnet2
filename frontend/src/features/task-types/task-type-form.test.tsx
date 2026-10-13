@@ -2,7 +2,6 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { TaskTypeForm } from '@/features/task-types/task-type-form'
 import type { TaskTypeDetailWithPermissions } from '@/features/task-types/types'
@@ -11,7 +10,9 @@ import type { FieldPermission, ResourcePermissions } from '@/features/authorizat
 /**
  * Spec 0101 AC-087: the form composes the SHARED `ColorTokenPicker` and
  * `IconPicker`, so a color is picked as a palette token (never typed as a hex)
- * and an icon as a curated lucide name.
+ * and an icon as a curated lucide name. Wave 3 of the "no edit pages" plan:
+ * the form is create-only, a replica of the detail with its rows closed
+ * (the in-place edits live in `task-type-detail.test.tsx`).
  *
  * Labels are resolved through `i18n.t` rather than hardcoded English: the
  * locale catalogue for this module is delivered by its own microtask, and the
@@ -19,11 +20,9 @@ import type { FieldPermission, ResourcePermissions } from '@/features/authorizat
  */
 
 const createTaskTypeMock = vi.fn()
-const updateTaskTypeMock = vi.fn()
 
 vi.mock('@/features/task-types/api', () => ({
   createTaskType: (...args: unknown[]) => createTaskTypeMock(...args),
-  updateTaskType: (...args: unknown[]) => updateTaskTypeMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
@@ -46,15 +45,14 @@ const ALL_EDITABLE: ResourcePermissions = {
     icon: EDITABLE,
     is_active: EDITABLE,
     is_default: EDITABLE,
-    requires_time_entry: EDITABLE,
   },
   actions: {},
 }
 
 let metaPermissions: ResourcePermissions = ALL_EDITABLE
 
-vi.mock('@/features/task-types/use-task-type-form-meta', () => ({
-  useTaskTypeFormMeta: () => ({ status: 'ready', permissions: metaPermissions }),
+vi.mock('@/features/authorization/use-resource-meta', () => ({
+  useResourceMeta: () => ({ data: { permissions: metaPermissions }, isError: false, refetch: vi.fn() }),
 }))
 
 /** A QueryClient per test, never per render: a shared cache makes suites flaky. */
@@ -73,12 +71,19 @@ function labelFor(key: string): RegExp {
 const COLOR_PLACEHOLDER = 'customFields.form.colorPickerPlaceholder'
 const ICON_PLACEHOLDER = 'customFields.form.iconPickerPlaceholder'
 
+/** Opens a closed row through its pencil. */
+function openRow(key: string) {
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t(key) }) }))
+}
+
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: i18n.t('taskTypes.form.save') })[0])
+
 function taskType(
   overrides: Partial<TaskTypeDetailWithPermissions> = {},
 ): TaskTypeDetailWithPermissions {
   return {
     id: 9,
-    name: 'Call',
+    name: 'High',
     description: 'Follow-up on the client request',
     color: 'blue',
     icon: 'star',
@@ -99,57 +104,54 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createTaskTypeMock.mockReset()
-  updateTaskTypeMock.mockReset()
   metaPermissions = ALL_EDITABLE
 })
 
 describe('TaskTypeForm — create (spec 0101)', () => {
-  it('renders the name, description, color and icon controls', () => {
-    render(<TaskTypeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('starts with every row closed; the name row opens on its own control', () => {
+    render(<TaskTypeForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+
+    openRow('taskTypes.form.name')
     expect(screen.getByLabelText(labelFor('taskTypes.form.name'))).toBeInTheDocument()
-    expect(screen.getByLabelText(labelFor('taskTypes.form.description'))).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: i18n.t(COLOR_PLACEHOLDER) }),
-    ).toBeInTheDocument()
+  })
+
+  it('opens the shared color and icon pickers from their rows', () => {
+    render(<TaskTypeForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
+
+    openRow('taskTypes.form.color')
+    expect(screen.getByRole('button', { name: i18n.t(COLOR_PLACEHOLDER) })).toBeInTheDocument()
+
+    openRow('taskTypes.form.icon')
     // The picker trigger takes the field id, so its accessible name is the LABEL;
     // the placeholder is its visible content.
     expect(screen.getByLabelText(labelFor('taskTypes.form.icon'))).toBeInTheDocument()
     expect(screen.getByText(i18n.t(ICON_PLACEHOLDER))).toBeInTheDocument()
   })
 
-  it('shows an accessible inline error and does not call the API when name is empty', async () => {
-    render(<TaskTypeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('shows the error on the closed row, wires the aria triad and does not call the API when name is empty', async () => {
+    render(<TaskTypeForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskTypes.form.save') }))
+    save()
 
-    const nameInput = await screen.findByLabelText(labelFor('taskTypes.form.name'))
-    await waitFor(() => expect(nameInput).toHaveAttribute('aria-invalid', 'true'))
-    const describedBy = nameInput.getAttribute('aria-describedby')
-    expect(describedBy).toBeTruthy()
-    const message = screen.getByText(i18n.t('taskTypes.form.nameRequired'))
-    expect(message).toHaveAttribute('role', 'alert')
-    expect(describedBy).toContain(message.id)
+    expect(await screen.findByText(i18n.t('taskTypes.form.nameRequired'))).toHaveAttribute('role', 'alert')
+
+    openRow('taskTypes.form.name')
+    const nameInput = screen.getByLabelText(labelFor('taskTypes.form.name'))
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput.getAttribute('aria-describedby')).toBeTruthy()
     expect(createTaskTypeMock).not.toHaveBeenCalled()
   })
 
   it('blocks the submit while no palette color is picked (D-4: the column is NOT NULL)', async () => {
-    render(<TaskTypeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<TaskTypeForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.change(screen.getByLabelText(labelFor('taskTypes.form.name')), {
-      target: { value: 'Call' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskTypes.form.save') }))
+    openRow('taskTypes.form.name')
+    fireEvent.change(screen.getByLabelText(labelFor('taskTypes.form.name')), { target: { value: 'High' } })
+    save()
 
-    await waitFor(() =>
-      expect(screen.getByText(i18n.t('taskTypes.form.colorRequired'))).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.getByText(i18n.t('taskTypes.form.colorRequired'))).toBeInTheDocument())
     expect(createTaskTypeMock).not.toHaveBeenCalled()
   })
 
@@ -157,20 +159,18 @@ describe('TaskTypeForm — create (spec 0101)', () => {
     createTaskTypeMock.mockResolvedValue(taskType())
     const onSuccess = vi.fn()
 
-    render(<TaskTypeForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<TaskTypeForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.change(screen.getByLabelText(labelFor('taskTypes.form.name')), {
-      target: { value: 'Call' },
-    })
+    openRow('taskTypes.form.name')
+    fireEvent.change(screen.getByLabelText(labelFor('taskTypes.form.name')), { target: { value: 'High' } })
+    openRow('taskTypes.form.color')
     fireEvent.click(screen.getByRole('button', { name: i18n.t(COLOR_PLACEHOLDER) }))
     fireEvent.click(screen.getByRole('option', { name: i18n.t('customFields.colors.emerald') }))
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskTypes.form.save') }))
+    save()
 
     await waitFor(() => expect(createTaskTypeMock).toHaveBeenCalledTimes(1))
     expect(createTaskTypeMock).toHaveBeenCalledWith({
-      name: 'Call',
+      name: 'High',
       color: 'emerald',
       icon: null,
       description: null,
@@ -181,107 +181,21 @@ describe('TaskTypeForm — create (spec 0101)', () => {
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(taskType()))
   })
 
-  it('renders the "Segnatempo obbligatorio" switch ON by default (spec 0162 D-1)', () => {
-    render(<TaskTypeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('creates with "Segnatempo obbligatorio" ON by default (spec 0162 D-1) and keeps it when turned off in the draft', async () => {
+    createTaskTypeMock.mockResolvedValue(taskType())
+    render(<TaskTypeForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    openRow('taskTypes.form.name')
+    fireEvent.change(screen.getByLabelText(labelFor('taskTypes.form.name')), { target: { value: 'High' } })
+    openRow('taskTypes.form.color')
+    fireEvent.click(screen.getByRole('button', { name: i18n.t(COLOR_PLACEHOLDER) }))
+    fireEvent.click(screen.getByRole('option', { name: i18n.t('customFields.colors.emerald') }))
+    openRow('taskTypes.form.requiresTimeEntry')
     expect(screen.getByRole('switch', { name: i18n.t('taskTypes.form.requiresTimeEntry') })).toBeChecked()
-  })
-})
-
-describe('TaskTypeForm — edit (spec 0101)', () => {
-  it('hydrates every field from the loaded detail', () => {
-    render(
-      <TaskTypeForm
-        mode={{ type: 'edit', taskType: taskType() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.getByLabelText(labelFor('taskTypes.form.name'))).toHaveValue('Call')
-    expect(screen.getByLabelText(labelFor('taskTypes.form.description'))).toHaveValue('Follow-up on the client request')
-    expect(
-      screen.getByRole('button', { name: i18n.t('customFields.colors.blue') }),
-    ).toBeInTheDocument()
-    expect(screen.getByLabelText(labelFor('taskTypes.form.icon'))).toHaveTextContent('star')
-  })
-
-  it('submits only the changed field on a partial update, never sort_order', async () => {
-    updateTaskTypeMock.mockResolvedValue(taskType({ name: 'Renamed' }))
-
-    render(
-      <TaskTypeForm
-        mode={{ type: 'edit', taskType: taskType() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(labelFor('taskTypes.form.name')), {
-      target: { value: 'Renamed' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskTypes.form.save') }))
-
-    await waitFor(() => expect(updateTaskTypeMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateTaskTypeMock.mock.calls[0]
-    expect(id).toBe(9)
-    expect(payload).toEqual({ name: 'Renamed' })
-    expect(payload).not.toHaveProperty('sort_order')
-  })
-
-  it('maps a server 422 onto the matching form field', async () => {
-    updateTaskTypeMock.mockRejectedValue(
-      new AxiosError('Unprocessable', '422', undefined, undefined, {
-        status: 422,
-        data: {
-          success: false,
-          message: 'Validation failed',
-          errors: { name: ['Name already taken.'] },
-        },
-      } as never),
-    )
-
-    render(
-      <TaskTypeForm
-        mode={{ type: 'edit', taskType: taskType() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(labelFor('taskTypes.form.name')), {
-      target: { value: 'Duplicate' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskTypes.form.save') }))
-
-    await waitFor(() => expect(screen.getByText('Name already taken.')).toBeInTheDocument())
-  })
-
-  /** Spec 0162 AC-007: the flag is read back from the loaded detail and re-saved on change. */
-  it('hydrates requires_time_entry from the detail and saves it when turned off', async () => {
-    updateTaskTypeMock.mockResolvedValue(taskType({ requires_time_entry: false }))
-
-    render(
-      <TaskTypeForm
-        mode={{ type: 'edit', taskType: taskType({ requires_time_entry: false }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.getByRole('switch', { name: i18n.t('taskTypes.form.requiresTimeEntry') })).not.toBeChecked()
-
     fireEvent.click(screen.getByRole('switch', { name: i18n.t('taskTypes.form.requiresTimeEntry') }))
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskTypes.form.save') }))
+    save()
 
-    await waitFor(() => expect(updateTaskTypeMock).toHaveBeenCalledTimes(1))
-    const [, payload] = updateTaskTypeMock.mock.calls[0]
-    expect(payload).toEqual({ requires_time_entry: true })
+    await waitFor(() => expect(createTaskTypeMock).toHaveBeenCalledTimes(1))
+    expect(createTaskTypeMock.mock.calls[0][0]).toMatchObject({ requires_time_entry: false })
   })
 })

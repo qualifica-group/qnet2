@@ -6,15 +6,25 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createTag, updateTag } from '@/features/tags/api'
-import { buildCreatePayload, buildUpdatePayload } from '@/features/tags/tag-form-payload'
+import {
+  createTag,
+  tagDetailQueryKey,
+  updateTag,
+} from '@/features/tags/api'
+import {
+  buildCreatePayload,
+  buildUpdatePayload,
+} from '@/features/tags/tag-form-payload'
 import {
   buildCreateTagSchema,
   buildUpdateTagSchema,
   type CreateTagFormValues,
   type UpdateTagFormValues,
 } from '@/features/tags/tag-schema'
-import type { TagDetail, TagFormMode } from '@/features/tags/types'
+import type {
+  TagDetail,
+  TagFormMode,
+} from '@/features/tags/types'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
 
 /** Server-side field names mapped onto the form for 422 handling. */
@@ -29,9 +39,11 @@ interface UseTagFormArgs {
 }
 
 /**
- * Owns every non-render concern of `TagForm`: RHF/Zod wiring, default
- * values, server 422 mapping and the create/update submit. The component
- * stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * Owns every non-render concern of the tag form: RHF/Zod wiring,
+ * default values, server 422 mapping and the create/update submit. Create
+ * backs `TagForm`; edit backs the detail's in-place rows (diff
+ * PATCH). The component stays UI-only; this hook is the orchestration point
+ * (`onSubmit`).
  */
 export function useTagForm({ mode, onSuccess }: UseTagFormArgs) {
   const { t } = useTranslation()
@@ -41,7 +53,7 @@ export function useTagForm({ mode, onSuccess }: UseTagFormArgs) {
   const isEdit = mode.type === 'edit'
 
   // Custom fields (spec 0021): the single reusable integration — builds the
-  // dynamic schema, defaults and 422 paths; `<CustomFieldsSection>` renders.
+  // dynamic schema, defaults and 422 paths; the record sections render.
   const customFields = useCustomFieldsForm(
     'tags',
     mode.type === 'edit'
@@ -64,9 +76,13 @@ export function useTagForm({ mode, onSuccess }: UseTagFormArgs) {
     return { name: '', custom_fields: customFields.defaultValues }
   }, [mode, customFields.defaultValues])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<TagFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: TagFormValues) => {
@@ -77,8 +93,11 @@ export function useTagForm({ mode, onSuccess }: UseTagFormArgs) {
     ]
     try {
       if (mode.type === 'edit') {
-        const saved = await updateTag(mode.tag.id, buildUpdatePayload(values, mode.tag))
-        queryClient.setQueryData(['tags', 'detail', mode.tag.id], saved)
+        const saved = await updateTag(
+          mode.tag.id,
+          buildUpdatePayload(values, mode.tag),
+        )
+        queryClient.setQueryData(tagDetailQueryKey(mode.tag.id), saved)
         toast.success(t('tags.form.updated'))
         onSuccess(saved)
         return
@@ -96,8 +115,8 @@ export function useTagForm({ mode, onSuccess }: UseTagFormArgs) {
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Requests\Leads;
 use App\DataObjects\Leads\UpdateLeadData;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\Lead;
+use App\Rules\ActiveCategoryProduct;
 use App\Services\Leads\LeadSourceResolver;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -56,7 +57,7 @@ class UpdateLeadRequest extends FormRequest
             'extra_fields' => ['sometimes', 'nullable', 'array'],
             'extra_fields.*' => ['string'],
             'products_of_interest' => ['sometimes', 'array'],
-            'products_of_interest.*' => ['integer', Rule::exists('products', 'id')],
+            'products_of_interest.*' => ['integer', new ActiveCategoryProduct($this->exemptProductsOfInterestIds())],
         ];
     }
 
@@ -103,5 +104,20 @@ class UpdateLeadRequest extends FormRequest
         $validated = $this->validated();
 
         return UpdateLeadData::fromValidated($validated);
+    }
+
+    /**
+     * Products already linked to the record being updated: they stay valid
+     * even once their category is deactivated (spec 0208 D-2).
+     *
+     * @return array<int, int>
+     */
+    private function exemptProductsOfInterestIds(): array
+    {
+        $record = $this->route('lead');
+
+        return $record instanceof Lead
+            ? $record->productsOfInterest()->pluck('products.id')->map(static fn (mixed $id): int => (int) $id)->all()
+            : [];
     }
 }

@@ -1,11 +1,10 @@
-import type { ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
-import { ProductCategoryForm } from '@/features/product-categories/product-category-form'
+import { ProductCategoryDetailView } from '@/features/product-categories/product-category-detail'
+import { categoryWrapper, pencilOf, permissionsFor } from '@/features/product-categories/product-category-test-fixtures'
 import type { ProductCategoryDetailWithPermissions } from '@/features/product-categories/types'
-import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
+import type { ResourceMeta } from '@/features/authorization/types'
 
 /**
  * Spec 0141 AC-009 (rev-1): the report-columns picker inside "Regole di
@@ -23,7 +22,8 @@ const createProductCategoryMock = vi.fn()
 const updateProductCategoryMock = vi.fn()
 const fetchReportColumnsCatalogMock = vi.fn()
 
-vi.mock('@/features/product-categories/api', () => ({
+vi.mock('@/features/product-categories/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/product-categories/api')>()),
   createProductCategory: (...args: unknown[]) => createProductCategoryMock(...args),
   updateProductCategory: (...args: unknown[]) => updateProductCategoryMock(...args),
   fetchProductCategoryTree: () => Promise.resolve([]),
@@ -31,7 +31,7 @@ vi.mock('@/features/product-categories/api', () => ({
   fetchReportColumnsCatalog: () => fetchReportColumnsCatalogMock(),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
@@ -61,24 +61,19 @@ vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
 }))
 
-const FULL_ACCESS: ResourcePermissions['resource'] = {
-  view: true,
-  create: true,
-  update: true,
-  delete: true,
-  export: true,
-  import: true,
-}
-
-function permissivePermissions(): ResourcePermissions {
-  return { resource: FULL_ACCESS, fields: {}, actions: {} }
-}
-
 function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
+  return categoryWrapper().wrapper
+}
+
+function renderDetail(detail: ProductCategoryDetailWithPermissions) {
+  return render(<ProductCategoryDetailView category={detail} />, { wrapper: wrapper() })
+}
+
+/** The report columns row, opened on its picker (the pencil of the row). */
+function renderOpen(detail: ProductCategoryDetailWithPermissions) {
+  const view = renderDetail(detail)
+  fireEvent.click(pencilOf('reportColumns') as HTMLElement)
+  return view
 }
 
 function category(
@@ -102,6 +97,7 @@ function category(
     requires_quote: false,
     requires_quote_source_category: null,
     is_selectable: true,
+    is_active: true,
     is_reportable: true,
     effective_is_reportable: true,
     is_reportable_source_category: null,
@@ -122,7 +118,7 @@ function category(
     manager_labels: {},
     inherits_manager_labels: true,
     inherited_manager_labels: {},
-    permissions: permissivePermissions(),
+    permissions: permissionsFor(),
     ...overrides,
   }
 }
@@ -142,30 +138,19 @@ beforeEach(() => {
   updateProductCategoryMock.mockReset()
   fetchReportColumnsCatalogMock.mockReset().mockResolvedValue(CATALOG)
   fetchResourceMetaMock.mockReset()
-  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissivePermissions() })
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
 })
 
-describe('ProductCategoryReportColumnsField', () => {
+describe('report columns row (spec 0141, spec 0229)', () => {
   it('is not rendered while the category is not effectively reportable', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{ type: 'edit', category: category({ is_reportable: false, effective_is_reportable: false }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    renderDetail(category({ is_reportable: false, effective_is_reportable: false }))
 
-    await screen.findAllByRole('button', { name: 'Save' })
+    expect(pencilOf('reportColumns')).not.toBeInTheDocument()
     expect(screen.queryByText('Report columns')).not.toBeInTheDocument()
   })
 
   it('shows the inherited columns, checked, with the source category named', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({
+    renderOpen(category({
             parent_id: 1,
             parent: { id: 1, name: 'Electronics' },
             report_columns: null,
@@ -173,13 +158,7 @@ describe('ProductCategoryReportColumnsField', () => {
             report_columns_source_category: { id: 1, name: 'Electronics' },
             inherited_report_columns: ['phone_calls'],
             inherited_report_columns_source_category: { id: 1, name: 'Electronics' },
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+          }))
 
     expect(await screen.findByRole('checkbox', { name: 'Phone calls' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Callbacks' })).not.toBeChecked()
@@ -188,10 +167,7 @@ describe('ProductCategoryReportColumnsField', () => {
   })
 
   it('no ancestor configures anything: unchecked, with the "no source" hint', async () => {
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderOpen(category())
 
     expect(await screen.findByRole('checkbox', { name: 'Phone calls' })).not.toBeChecked()
     expect(
@@ -202,11 +178,7 @@ describe('ProductCategoryReportColumnsField', () => {
   })
 
   it('checking a catalogue chip under a configured ancestor overrides it, and the reset action appears', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({
+    renderOpen(category({
             parent_id: 1,
             parent: { id: 1, name: 'Electronics' },
             report_columns: null,
@@ -214,13 +186,7 @@ describe('ProductCategoryReportColumnsField', () => {
             report_columns_source_category: { id: 1, name: 'Electronics' },
             inherited_report_columns: ['phone_calls'],
             inherited_report_columns_source_category: { id: 1, name: 'Electronics' },
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+          }))
 
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Callbacks' }))
 
@@ -234,23 +200,13 @@ describe('ProductCategoryReportColumnsField', () => {
   // configured (the configuration's own origin, e.g. GOL under a plain
   // Formazione) must never offer a reset that has nothing to fall back to.
   it('origin category (own columns, no configured ancestor): never shows the reset action', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({
+    renderOpen(category({
             report_columns: ['phone_calls'],
             effective_report_columns: ['phone_calls'],
             report_columns_source_category: null,
             inherited_report_columns: [],
             inherited_report_columns_source_category: null,
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+          }))
 
     expect(await screen.findByRole('checkbox', { name: 'Phone calls' })).toBeChecked()
     expect(screen.getByText('Set on this category: every subcategory inherits it.')).toBeInTheDocument()
@@ -258,23 +214,13 @@ describe('ProductCategoryReportColumnsField', () => {
   })
 
   it('origin category: unchecking every own column goes back to inheriting nothing (AC-009 "deselezionare tutte = null")', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({
+    renderOpen(category({
             report_columns: ['phone_calls'],
             effective_report_columns: ['phone_calls'],
             report_columns_source_category: null,
             inherited_report_columns: [],
             inherited_report_columns_source_category: null,
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+          }))
 
     const phoneCalls = await screen.findByRole('checkbox', { name: 'Phone calls' })
     expect(phoneCalls).toBeChecked()
@@ -286,11 +232,7 @@ describe('ProductCategoryReportColumnsField', () => {
   })
 
   it('child under a configured ancestor: "Back to inherited" resets to null and shows the ancestor columns', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({
+    renderOpen(category({
             parent_id: 1,
             parent: { id: 1, name: 'Electronics' },
             report_columns: ['phone_calls', 'new_contacts'],
@@ -298,13 +240,7 @@ describe('ProductCategoryReportColumnsField', () => {
             report_columns_source_category: null,
             inherited_report_columns: ['phone_calls'],
             inherited_report_columns_source_category: { id: 1, name: 'Electronics' },
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+          }))
 
     fireEvent.click(await screen.findByRole('button', { name: 'Back to inherited' }))
 
@@ -319,16 +255,13 @@ describe('ProductCategoryReportColumnsField', () => {
     const saved = category({ report_columns: ['phone_calls', 'callbacks'] })
     updateProductCategoryMock.mockResolvedValue(saved)
 
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderOpen(category())
 
     // Catalog order is phone_calls, callbacks, new_contacts: clicking the
     // last two first still sends them in catalog order.
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Callbacks' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Phone calls' }))
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(updateProductCategoryMock).toHaveBeenCalledTimes(1))
     const [, payload] = updateProductCategoryMock.mock.calls[0]
@@ -336,11 +269,7 @@ describe('ProductCategoryReportColumnsField', () => {
   })
 
   it('the grid is an accessible group named by the card title, with the counter and status chips', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({
+    renderOpen(category({
             parent_id: 1,
             parent: { id: 1, name: 'Electronics' },
             report_columns: null,
@@ -348,13 +277,7 @@ describe('ProductCategoryReportColumnsField', () => {
             report_columns_source_category: { id: 1, name: 'Electronics' },
             inherited_report_columns: ['phone_calls'],
             inherited_report_columns_source_category: { id: 1, name: 'Electronics' },
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+          }))
 
     expect(await screen.findByRole('group', { name: 'Report columns' })).toBeInTheDocument()
     expect(screen.getByText('1/3')).toBeInTheDocument()
@@ -362,17 +285,7 @@ describe('ProductCategoryReportColumnsField', () => {
   })
 
   it('"Own" chip and counter when the category has its own selection', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{
-          type: 'edit',
-          category: category({ report_columns: ['phone_calls', 'new_contacts'] }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    renderOpen(category({ report_columns: ['phone_calls', 'new_contacts'] }))
 
     await screen.findByRole('group', { name: 'Report columns' })
     expect(screen.getByText('2/3')).toBeInTheDocument()
@@ -380,10 +293,7 @@ describe('ProductCategoryReportColumnsField', () => {
   })
 
   it('"No columns" chip when nothing is own or inherited', async () => {
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderOpen(category())
 
     await screen.findByRole('group', { name: 'Report columns' })
     expect(screen.getByText('0/3')).toBeInTheDocument()
@@ -391,10 +301,7 @@ describe('ProductCategoryReportColumnsField', () => {
   })
 
   it('"All" selects every catalogue key and then disables itself', async () => {
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderOpen(category())
 
     fireEvent.click(await screen.findByRole('button', { name: 'All' }))
 
@@ -406,14 +313,7 @@ describe('ProductCategoryReportColumnsField', () => {
   })
 
   it('"None" clears an origin category\'s own selection (no "Back to inherited" alongside it)', async () => {
-    render(
-      <ProductCategoryForm
-        mode={{ type: 'edit', category: category({ report_columns: ['phone_calls'] }) }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+    renderOpen(category({ report_columns: ['phone_calls'] }))
 
     expect(await screen.findByRole('checkbox', { name: 'Phone calls' })).toBeChecked()
     expect(screen.queryByRole('button', { name: 'Back to inherited' })).not.toBeInTheDocument()
@@ -432,12 +332,9 @@ describe('ProductCategoryReportColumnsField', () => {
       }),
     )
 
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderOpen(category())
 
-    await screen.findByText('Report columns')
+    await screen.findAllByText('Report columns')
     expect(screen.queryByRole('group')).not.toBeInTheDocument()
 
     resolveCatalog(CATALOG)
@@ -448,10 +345,7 @@ describe('ProductCategoryReportColumnsField', () => {
   it('shows a retryable error when the catalogue fails to load', async () => {
     fetchReportColumnsCatalogMock.mockReset().mockRejectedValueOnce(new Error('network'))
 
-    render(
-      <ProductCategoryForm mode={{ type: 'edit', category: category() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderOpen(category())
 
     expect(await screen.findByText('Unable to load the column catalogue. Try again.')).toBeInTheDocument()
 

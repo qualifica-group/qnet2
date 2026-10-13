@@ -1,10 +1,10 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Shapes } from 'lucide-react'
-import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
+import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -12,90 +12,86 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import {
-  RecordCollaborationCard,
-  type RecordCollaborationTab,
-} from '@/components/detail/record-collaboration-card'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
+import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
+import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
-import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
-import { DynamicIcon } from '@/features/custom-fields/dynamic-icon'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { cn } from '@/lib/utils'
-import type { TaskTypeDetailWithPermissions } from '@/features/task-types/types'
+import { TaskTypeRows } from '@/features/task-types/task-type-rows'
+import { useTaskTypeForm, type TaskTypeFormValues } from '@/features/task-types/use-task-type-form'
+import type { TaskTypeDetailWithPermissions, TaskTypeFormMode } from '@/features/task-types/types'
 
 interface TaskTypeDetailViewProps {
   taskType: TaskTypeDetailWithPermissions
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the record (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single task type, rendered as an enterprise-CRM
- * record (Opportunita' reference kit): the identity/fields card on the left,
- * the Attivita' tab on the right when authorized, a metadata footer. `color`
- * is shown as its swatch + localized token name and `icon` as the resolved
- * glyph + its canonical name, both from the shared palette/catalogue.
+ * Detail of a single task type on the record kit: identity band, the
+ * "Dettagli" rows, the activity in the side column, a metadata footer. There
+ * is no edit page (wave 3 of the "no edit pages" plan): every row edits IN
+ * PLACE, one at a time, each save a PATCH of that field alone.
  */
-export function TaskTypeDetailView({ taskType, onEdit }: TaskTypeDetailViewProps) {
+export function TaskTypeDetailView(props: TaskTypeDetailViewProps) {
+  // The rows read the field permissions, so the provider wraps the whole detail.
+  return (
+    <ResourcePermissionsProvider permissions={props.taskType.permissions}>
+      <TaskTypeDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function TaskTypeDetailContent({ taskType, onChanged }: TaskTypeDetailViewProps) {
   const { t } = useTranslation()
+  const editing = useInlineEditingField()
+  // Stable per saved record: the form re-syncs its values on a new one.
+  const mode = useMemo<TaskTypeFormMode>(() => ({ type: 'edit', taskType }), [taskType])
+  const { form, onSubmit, serverError, clearServerError } = useTaskTypeForm({
+    mode,
+    onSuccess: () => {
+      editing.close()
+      onChanged?.()
+    },
+  })
+  const inline = useRecordInlineEdit<TaskTypeFormValues>({
+    editing,
+    form,
+    onSubmit,
+    serverError,
+    clearServerError,
+    genericErrorMessage: t('taskTypes.form.genericError'),
+  })
   const canEdit = taskType.permissions.resource.update
   const createdAt = formatDateTime(taskType.created_at)
   const updatedAt = formatDateTime(taskType.updated_at)
-  const swatch = swatchClassFor(taskType.color)
-
   const tabs: RecordCollaborationTab[] = taskType.permissions.actions.view_activity
     ? [activityLogTab('task-types', taskType.id, t('activityLog.title'))]
     : []
 
   return (
     <RecordCanvas>
-      <RecordBody side={tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}>
-        <RecordCard>
+      <RecordBody
+        collaborationTabs={tabs}
+        header={
           <RecordCardHeader
             media={<DetailMonogram name={taskType.name} icon={<Shapes />} />}
             title={taskType.name}
-            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
+        }
+      >
+        {/* Provider only (no DOM): the in-place rows share the edit form. */}
+        <Form {...form}>
           <RecordSectionsGrid>
             <RecordSection title={t('taskTypes.form.sections.identity.title')} full>
               <RecordFieldList>
-                <RecordField label={t('taskTypes.detail.description')}>
-                  {taskType.description ? taskType.description : <DetailEmpty />}
-                </RecordField>
-                <RecordField label={t('taskTypes.detail.color')}>
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={cn('size-3.5 shrink-0 rounded-full border', swatch ?? 'bg-transparent')}
-                      aria-hidden="true"
-                    />
-                    {t(`customFields.colors.${taskType.color}`)}
-                  </span>
-                </RecordField>
-                <RecordField label={t('taskTypes.detail.icon')}>
-                  {taskType.icon ? (
-                    <span className="flex items-center gap-2">
-                      <DynamicIcon name={taskType.icon} className="size-3.5 text-muted-foreground" />
-                      {taskType.icon}
-                    </span>
-                  ) : (
-                    <DetailEmpty />
-                  )}
-                </RecordField>
+                <TaskTypeRows inline={inline} canEdit={canEdit} />
                 <RecordField label={t('taskTypes.detail.sort_order')}>{taskType.sort_order}</RecordField>
-                <RecordField label={t('taskTypes.detail.isActive')}>
-                  {taskType.is_active ? t('common.yes') : t('common.no')}
-                </RecordField>
-                <RecordField label={t('taskTypes.detail.isDefault')}>
-                  {taskType.is_default ? t('common.yes') : t('common.no')}
-                </RecordField>
-                <RecordField label={t('taskTypes.detail.requiresTimeEntry')}>
-                  {taskType.requires_time_entry ? t('common.yes') : t('common.no')}
-                </RecordField>
               </RecordFieldList>
             </RecordSection>
           </RecordSectionsGrid>
-        </RecordCard>
+        </Form>
       </RecordBody>
 
       <RecordMeta>

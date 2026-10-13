@@ -2,10 +2,10 @@ import { useTranslation } from 'react-i18next'
 import { FileDown, FileText } from 'lucide-react'
 import { DetailEmpty, DetailError, DetailLoading, DetailMonogram } from '@/components/detail/detail-panel'
 import { Button } from '@/components/ui/button'
-import { RecordCollaborationCard, type RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
+import { RecordBody } from '@/components/detail/record-body'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
@@ -44,25 +44,29 @@ function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermiss
 
   return (
     <RecordCanvas>
-      <RecordCard>
-        <RecordCardHeader
-          media={<DetailMonogram name={invoice.number_label} icon={<FileText />} />}
-          title={t('invoices.detail.title', { number: invoice.number_label })}
-          subtitle={invoice.customer.name}
-          actions={
-            <Button variant="secondary" size="sm" disabled={isDownloading} onClick={() => void download(invoice.id)}>
-              <FileDown className="size-3.5" aria-hidden="true" />
-              {t('invoices.actions.pdf')}
-            </Button>
-          }
-          badges={
-            <>
-              <InvoiceTypeBadge type={invoice.type} />
-              {invoice.tag ? <InvoiceTagBadge tag={invoice.tag} /> : null}
-              <PaymentStatusIndicator status={invoice.payment_status} />
-            </>
-          }
-        />
+      <RecordBody
+        collaborationTabs={tabs}
+        header={
+          <RecordCardHeader
+            media={<DetailMonogram name={invoice.number_label} icon={<FileText />} />}
+            title={t('invoices.detail.title', { number: invoice.number_label })}
+            subtitle={invoice.customer.name}
+            actions={
+              <Button variant="secondary" size="sm" disabled={isDownloading} onClick={() => void download(invoice.id)}>
+                <FileDown className="size-3.5" aria-hidden="true" />
+                {t('invoices.actions.pdf')}
+              </Button>
+            }
+            badges={
+              <>
+                <InvoiceTypeBadge type={invoice.type} />
+                {invoice.tag ? <InvoiceTagBadge tag={invoice.tag} /> : null}
+                <PaymentStatusIndicator status={invoice.payment_status} />
+              </>
+            }
+          />
+        }
+      >
         <RecordSectionsGrid>
           <RecordSection title={t('invoices.detail.header')}>
             <RecordFieldList>
@@ -112,8 +116,7 @@ function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermiss
         <div className="border-t p-4">
           <InvoiceDocumentSections invoice={invoice} onChanged={onChanged} />
         </div>
-        {tabs.length > 0 ? <RecordCollaborationCard tabs={tabs} /> : null}
-      </RecordCard>
+      </RecordBody>
     </RecordCanvas>
   )
 }

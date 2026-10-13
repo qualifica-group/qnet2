@@ -2,7 +2,6 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { TaskCategoryForm } from '@/features/task-categories/task-category-form'
 import type { TaskCategoryDetailWithPermissions } from '@/features/task-categories/types'
@@ -11,7 +10,9 @@ import type { FieldPermission, ResourcePermissions } from '@/features/authorizat
 /**
  * Spec 0101 AC-087: the form composes the SHARED `ColorTokenPicker` and
  * `IconPicker`, so a color is picked as a palette token (never typed as a hex)
- * and an icon as a curated lucide name.
+ * and an icon as a curated lucide name. Wave 3 of the "no edit pages" plan:
+ * the form is create-only, a replica of the detail with its rows closed
+ * (the in-place edits live in `task-category-detail.test.tsx`).
  *
  * Labels are resolved through `i18n.t` rather than hardcoded English: the
  * locale catalogue for this module is delivered by its own microtask, and the
@@ -19,11 +20,9 @@ import type { FieldPermission, ResourcePermissions } from '@/features/authorizat
  */
 
 const createTaskCategoryMock = vi.fn()
-const updateTaskCategoryMock = vi.fn()
 
 vi.mock('@/features/task-categories/api', () => ({
   createTaskCategory: (...args: unknown[]) => createTaskCategoryMock(...args),
-  updateTaskCategory: (...args: unknown[]) => updateTaskCategoryMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
@@ -52,8 +51,8 @@ const ALL_EDITABLE: ResourcePermissions = {
 
 let metaPermissions: ResourcePermissions = ALL_EDITABLE
 
-vi.mock('@/features/task-categories/use-task-category-form-meta', () => ({
-  useTaskCategoryFormMeta: () => ({ status: 'ready', permissions: metaPermissions }),
+vi.mock('@/features/authorization/use-resource-meta', () => ({
+  useResourceMeta: () => ({ data: { permissions: metaPermissions }, isError: false, refetch: vi.fn() }),
 }))
 
 /** A QueryClient per test, never per render: a shared cache makes suites flaky. */
@@ -72,12 +71,19 @@ function labelFor(key: string): RegExp {
 const COLOR_PLACEHOLDER = 'customFields.form.colorPickerPlaceholder'
 const ICON_PLACEHOLDER = 'customFields.form.iconPickerPlaceholder'
 
+/** Opens a closed row through its pencil. */
+function openRow(key: string) {
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t(key) }) }))
+}
+
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: i18n.t('taskCategories.form.save') })[0])
+
 function taskCategory(
   overrides: Partial<TaskCategoryDetailWithPermissions> = {},
 ): TaskCategoryDetailWithPermissions {
   return {
     id: 9,
-    name: 'Commercial',
+    name: 'High',
     description: 'Follow-up on the client request',
     color: 'blue',
     icon: 'star',
@@ -98,57 +104,54 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createTaskCategoryMock.mockReset()
-  updateTaskCategoryMock.mockReset()
   metaPermissions = ALL_EDITABLE
 })
 
 describe('TaskCategoryForm — create (spec 0101)', () => {
-  it('renders the name, description, color and icon controls', () => {
-    render(<TaskCategoryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('starts with every row closed; the name row opens on its own control', () => {
+    render(<TaskCategoryForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+
+    openRow('taskCategories.form.name')
     expect(screen.getByLabelText(labelFor('taskCategories.form.name'))).toBeInTheDocument()
-    expect(screen.getByLabelText(labelFor('taskCategories.form.description'))).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: i18n.t(COLOR_PLACEHOLDER) }),
-    ).toBeInTheDocument()
+  })
+
+  it('opens the shared color and icon pickers from their rows', () => {
+    render(<TaskCategoryForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
+
+    openRow('taskCategories.form.color')
+    expect(screen.getByRole('button', { name: i18n.t(COLOR_PLACEHOLDER) })).toBeInTheDocument()
+
+    openRow('taskCategories.form.icon')
     // The picker trigger takes the field id, so its accessible name is the LABEL;
     // the placeholder is its visible content.
     expect(screen.getByLabelText(labelFor('taskCategories.form.icon'))).toBeInTheDocument()
     expect(screen.getByText(i18n.t(ICON_PLACEHOLDER))).toBeInTheDocument()
   })
 
-  it('shows an accessible inline error and does not call the API when name is empty', async () => {
-    render(<TaskCategoryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('shows the error on the closed row, wires the aria triad and does not call the API when name is empty', async () => {
+    render(<TaskCategoryForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskCategories.form.save') }))
+    save()
 
-    const nameInput = await screen.findByLabelText(labelFor('taskCategories.form.name'))
-    await waitFor(() => expect(nameInput).toHaveAttribute('aria-invalid', 'true'))
-    const describedBy = nameInput.getAttribute('aria-describedby')
-    expect(describedBy).toBeTruthy()
-    const message = screen.getByText(i18n.t('taskCategories.form.nameRequired'))
-    expect(message).toHaveAttribute('role', 'alert')
-    expect(describedBy).toContain(message.id)
+    expect(await screen.findByText(i18n.t('taskCategories.form.nameRequired'))).toHaveAttribute('role', 'alert')
+
+    openRow('taskCategories.form.name')
+    const nameInput = screen.getByLabelText(labelFor('taskCategories.form.name'))
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput.getAttribute('aria-describedby')).toBeTruthy()
     expect(createTaskCategoryMock).not.toHaveBeenCalled()
   })
 
   it('blocks the submit while no palette color is picked (D-4: the column is NOT NULL)', async () => {
-    render(<TaskCategoryForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<TaskCategoryForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.change(screen.getByLabelText(labelFor('taskCategories.form.name')), {
-      target: { value: 'Commercial' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskCategories.form.save') }))
+    openRow('taskCategories.form.name')
+    fireEvent.change(screen.getByLabelText(labelFor('taskCategories.form.name')), { target: { value: 'High' } })
+    save()
 
-    await waitFor(() =>
-      expect(screen.getByText(i18n.t('taskCategories.form.colorRequired'))).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.getByText(i18n.t('taskCategories.form.colorRequired'))).toBeInTheDocument())
     expect(createTaskCategoryMock).not.toHaveBeenCalled()
   })
 
@@ -156,20 +159,18 @@ describe('TaskCategoryForm — create (spec 0101)', () => {
     createTaskCategoryMock.mockResolvedValue(taskCategory())
     const onSuccess = vi.fn()
 
-    render(<TaskCategoryForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<TaskCategoryForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.change(screen.getByLabelText(labelFor('taskCategories.form.name')), {
-      target: { value: 'Commercial' },
-    })
+    openRow('taskCategories.form.name')
+    fireEvent.change(screen.getByLabelText(labelFor('taskCategories.form.name')), { target: { value: 'High' } })
+    openRow('taskCategories.form.color')
     fireEvent.click(screen.getByRole('button', { name: i18n.t(COLOR_PLACEHOLDER) }))
     fireEvent.click(screen.getByRole('option', { name: i18n.t('customFields.colors.emerald') }))
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskCategories.form.save') }))
+    save()
 
     await waitFor(() => expect(createTaskCategoryMock).toHaveBeenCalledTimes(1))
     expect(createTaskCategoryMock).toHaveBeenCalledWith({
-      name: 'Commercial',
+      name: 'High',
       color: 'emerald',
       icon: null,
       description: null,
@@ -177,78 +178,5 @@ describe('TaskCategoryForm — create (spec 0101)', () => {
       parent_id: null,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(taskCategory()))
-  })
-})
-
-describe('TaskCategoryForm — edit (spec 0101)', () => {
-  it('hydrates every field from the loaded detail', () => {
-    render(
-      <TaskCategoryForm
-        mode={{ type: 'edit', taskCategory: taskCategory() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.getByLabelText(labelFor('taskCategories.form.name'))).toHaveValue('Commercial')
-    expect(screen.getByLabelText(labelFor('taskCategories.form.description'))).toHaveValue('Follow-up on the client request')
-    expect(
-      screen.getByRole('button', { name: i18n.t('customFields.colors.blue') }),
-    ).toBeInTheDocument()
-    expect(screen.getByLabelText(labelFor('taskCategories.form.icon'))).toHaveTextContent('star')
-  })
-
-  it('submits only the changed field on a partial update, never sort_order', async () => {
-    updateTaskCategoryMock.mockResolvedValue(taskCategory({ name: 'Renamed' }))
-
-    render(
-      <TaskCategoryForm
-        mode={{ type: 'edit', taskCategory: taskCategory() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(labelFor('taskCategories.form.name')), {
-      target: { value: 'Renamed' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskCategories.form.save') }))
-
-    await waitFor(() => expect(updateTaskCategoryMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateTaskCategoryMock.mock.calls[0]
-    expect(id).toBe(9)
-    expect(payload).toEqual({ name: 'Renamed' })
-    expect(payload).not.toHaveProperty('sort_order')
-  })
-
-  it('maps a server 422 onto the matching form field', async () => {
-    updateTaskCategoryMock.mockRejectedValue(
-      new AxiosError('Unprocessable', '422', undefined, undefined, {
-        status: 422,
-        data: {
-          success: false,
-          message: 'Validation failed',
-          errors: { name: ['Name already taken.'] },
-        },
-      } as never),
-    )
-
-    render(
-      <TaskCategoryForm
-        mode={{ type: 'edit', taskCategory: taskCategory() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(labelFor('taskCategories.form.name')), {
-      target: { value: 'Duplicate' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('taskCategories.form.save') }))
-
-    await waitFor(() => expect(screen.getByText('Name already taken.')).toBeInTheDocument())
   })
 })

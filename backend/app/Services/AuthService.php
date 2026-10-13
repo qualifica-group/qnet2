@@ -24,9 +24,28 @@ class AuthService
      */
     public function login(string $email, string $password, string $deviceName): LoginResult
     {
+        $user = $this->authenticate($email, $password);
+
+        $token = $user->createToken($deviceName)->plainTextToken;
+
+        return new LoginResult(user: $user, token: $token);
+    }
+
+    /**
+     * Check the credentials of a human user able to sign in. Shared by the app
+     * login and by client-login (spec 0210). The app login tells an inactive
+     * account apart; client-login does not ($revealInactive = false), so it
+     * answers every failure with the same message.
+     *
+     * @throws ValidationException
+     */
+    public function authenticate(string $email, string $password, bool $revealInactive = true): User
+    {
         $user = User::where('email', $email)->first();
 
-        if (! $user || ! Hash::check($password, $user->password)) {
+        // A technical user (API client) never signs in: same message as a wrong
+        // password, so the caller cannot tell it exists.
+        if (! $user || ! Hash::check($password, $user->password) || $user->isServiceAccount()) {
             throw ValidationException::withMessages([
                 'email' => [__('auth.failed')],
             ]);
@@ -37,13 +56,11 @@ class AuthService
         // which accounts are inactive.
         if (! $user->is_active) {
             throw ValidationException::withMessages([
-                'email' => [__('auth.inactive')],
+                'email' => [__($revealInactive ? 'auth.inactive' : 'auth.failed')],
             ]);
         }
 
-        $token = $user->createToken($deviceName)->plainTextToken;
-
-        return new LoginResult(user: $user, token: $token);
+        return $user;
     }
 
     /**
@@ -61,10 +78,24 @@ class AuthService
     public function refresh(User $user): string
     {
         $current = $user->currentAccessToken();
+
+        // A client key is rotated only from the administration (spec 0210).
+        abort_if($user->isServiceAccount() && $user->currentApiClientId() !== null, 403, __('An API client key cannot be refreshed.'));
+
         $deviceName = $current->name;
+        $apiClientId = $user->currentApiClientId();
+        $expiresAt = $current->expires_at;
         $current->delete();
 
-        return $user->createToken($deviceName)->plainTextToken;
+        // A client-login token keeps its client and its expiry, so a refresh
+        // never leaves the client's rate limit nor its validity rule (R-2).
+        $newToken = $user->createToken($deviceName, ['*'], $apiClientId === null ? null : $expiresAt);
+
+        if ($apiClientId !== null) {
+            $newToken->accessToken->forceFill(['api_client_id' => $apiClientId])->save();
+        }
+
+        return $newToken->plainTextToken;
     }
 
     /**
@@ -130,6 +161,11 @@ class AuthService
      */
     public function sendPasswordResetLink(string $email): string
     {
+        // A technical user has no mailbox: report the generic success without sending.
+        if ($this->isServiceAccountEmail($email)) {
+            return Password::RESET_LINK_SENT;
+        }
+
         return Password::sendResetLink(['email' => $email]);
     }
 
@@ -141,6 +177,10 @@ class AuthService
      */
     public function resetPassword(array $data): string
     {
+        if ($this->isServiceAccountEmail($data['email'])) {
+            return Password::INVALID_TOKEN;
+        }
+
         return Password::reset($data, function (User $user, string $password): void {
             $user->forceFill([
                 'password' => Hash::make($password),
@@ -163,6 +203,10 @@ class AuthService
      */
     public function setPassword(array $data): string
     {
+        if ($this->isServiceAccountEmail($data['email'])) {
+            return Password::INVALID_TOKEN;
+        }
+
         return Password::broker(UserOnboardingService::BROKER)->reset($data, function (User $user, string $password): void {
             $user->forceFill([
                 'password' => Hash::make($password),
@@ -174,5 +218,10 @@ class AuthService
 
             event(new PasswordReset($user));
         });
+    }
+
+    private function isServiceAccountEmail(string $email): bool
+    {
+        return User::query()->where('email', $email)->where('is_service_account', true)->exists();
     }
 }

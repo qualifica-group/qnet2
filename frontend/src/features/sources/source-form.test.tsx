@@ -5,39 +5,52 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { SourceForm } from '@/features/sources/source-form'
 import type { SourceDetailWithPermissions } from '@/features/sources/types'
-import type { ResourcePermissions } from '@/features/authorization/types'
+import type { ResourceMeta, ResourcePermissions } from '@/features/authorization/types'
+import type { CustomFieldDescriptor } from '@/features/custom-fields/types'
+
+/**
+ * Spec 0237: the source form is create-only, a replica of the detail with its
+ * rows closed (the in-place edits live in `source-detail.test.tsx`). Covers the
+ * metadata-driven behaviour (spec 0004: a hidden field is absent, a required
+ * one is marked) and the custom fields wiring (spec 0021).
+ */
 
 const createSourceMock = vi.fn()
-const updateSourceMock = vi.fn()
 
 vi.mock('@/features/sources/api', () => ({
   createSource: (...args: unknown[]) => createSourceMock(...args),
-  updateSource: (...args: unknown[]) => updateSourceMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
 
-/**
- * Not about authorization metadata (covered by
- * `source-form-metadata.test.tsx`): every field resolves as visible+editable
- * (the `MetaField` fallback, since `fields` is empty).
- */
-const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
+const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
+vi.mock('@/features/authorization/api', () => ({
+  fetchResourceMeta: () => fetchResourceMetaMock(),
+}))
+
+const FULL_ACCESS: ResourcePermissions['resource'] = {
+  view: true,
+  create: true,
+  update: true,
+  delete: true,
+  export: true,
+  import: true,
 }
 
-vi.mock('@/features/sources/use-source-form-meta', () => ({
-  useSourceFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
-}))
+const NOTES_FIELD: CustomFieldDescriptor = {
+  key: 'custom.notes',
+  type: 'text',
+  label: 'Notes',
+  group: null,
+  mandatory: false,
+  source: 'custom',
+}
 
-// `useSourceForm` reads `/meta/sources` (spec 0021) to build the dynamic
-// custom-fields schema; this suite has no custom fields to exercise (covered
-// by `source-form-custom-fields.test.tsx`), so it resolves to an empty catalogue.
-vi.mock('@/features/authorization/api', () => ({
-  fetchResourceMeta: () => Promise.resolve({ fields: [], permissions: FULL_ACCESS_PERMISSIONS }),
-}))
+const EDITABLE = { visible: true, hidden: false, editable: true, readonly: false, required: false, disabled: false }
+
+function permissions(fields: ResourcePermissions['fields'] = {}): ResourcePermissions {
+  return { resource: FULL_ACCESS, fields: { 'custom.notes': EDITABLE, ...fields }, actions: {} }
+}
 
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -46,14 +59,19 @@ function wrapper() {
   )
 }
 
-function source(overrides: Partial<SourceDetailWithPermissions> = {}): SourceDetailWithPermissions {
-  return {
-    id: 9,
-    name: 'Sponsor',
-    created_at: null as unknown as string,
-    permissions: FULL_ACCESS_PERMISSIONS,
-    ...overrides,
-  }
+function source(): SourceDetailWithPermissions {
+  return { id: 9, name: 'Website', created_at: '2026-01-01T00:00:00Z', permissions: permissions() }
+}
+
+/** Opens a closed row through its pencil. */
+function openRow(label: string) {
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: label }) }))
+}
+
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: i18n.t('sources.form.save') })[0])
+
+function renderForm(onSuccess = vi.fn()) {
+  return render(<SourceForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
 }
 
 beforeAll(async () => {
@@ -62,57 +80,78 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createSourceMock.mockReset()
-  updateSourceMock.mockReset()
+  fetchResourceMetaMock.mockReset()
+  fetchResourceMetaMock.mockResolvedValue({ fields: [NOTES_FIELD], permissions: permissions() })
 })
 
-describe('SourceForm — create/edit (AC-024)', () => {
-  it('renders the name field in create mode', () => {
-    render(<SourceForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+describe('SourceForm — create (spec 0237)', () => {
+  it('starts with every row closed; the name row opens on its own control', async () => {
+    renderForm()
 
+    await screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Notes' }) })
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+
+    openRow(i18n.t('sources.form.name'))
     expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
   })
 
+  it('shows the error on the closed row, wires the aria triad and does not call the API when name is empty', async () => {
+    renderForm()
+    await screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Notes' }) })
+
+    save()
+
+    expect(await screen.findByText(i18n.t('sources.form.nameRequired'))).toHaveAttribute('role', 'alert')
+
+    openRow(i18n.t('sources.form.name'))
+    const nameInput = screen.getByLabelText(/^Name/)
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput.getAttribute('aria-describedby')).toBeTruthy()
+    expect(createSourceMock).not.toHaveBeenCalled()
+  })
+
   it('submits the create payload on save', async () => {
+    fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissions() })
     createSourceMock.mockResolvedValue(source())
     const onSuccess = vi.fn()
+    renderForm(onSuccess)
+    await screen.findAllByRole('button', { name: i18n.t('sources.form.save') })
 
-    render(<SourceForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Sponsor' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    openRow(i18n.t('sources.form.name'))
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Website' } })
+    save()
 
     await waitFor(() => expect(createSourceMock).toHaveBeenCalledTimes(1))
-    expect(createSourceMock).toHaveBeenCalledWith({ name: 'Sponsor' })
+    expect(createSourceMock).toHaveBeenCalledWith({ name: 'Website' })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(source()))
   })
 
-  it('hydrates the name in edit mode', () => {
-    render(
-      <SourceForm mode={{ type: 'edit', source: source() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('includes the valued custom field in the create payload', async () => {
+    createSourceMock.mockResolvedValue(source())
+    renderForm()
+    await screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Notes' }) })
 
-    expect(screen.getByLabelText(/^Name/)).toHaveValue('Sponsor')
+    openRow(i18n.t('sources.form.name'))
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Website' } })
+    openRow('Notes')
+    fireEvent.change(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: 'A note' } })
+    save()
+
+    await waitFor(() => expect(createSourceMock).toHaveBeenCalledTimes(1))
+    expect(createSourceMock.mock.calls[0][0].custom_fields).toEqual({ notes: 'A note' })
   })
 
-  it('submits only the changed name on a partial update', async () => {
-    updateSourceMock.mockResolvedValue(source({ name: 'Partner' }))
+  it('hides a hidden field from the create-context metadata', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [],
+      permissions: permissions({
+        name: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
+      }),
+    })
+    renderForm()
 
-    render(
-      <SourceForm mode={{ type: 'edit', source: source() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Partner' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateSourceMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateSourceMock.mock.calls[0]
-    expect(id).toBe(9)
-    expect(payload).toEqual({ name: 'Partner' })
+    await waitFor(() => expect(fetchResourceMetaMock).toHaveBeenCalled())
+    await screen.findAllByRole('button', { name: i18n.t('sources.form.save') })
+    expect(screen.queryByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t('sources.form.name') }) })).not.toBeInTheDocument()
   })
 })

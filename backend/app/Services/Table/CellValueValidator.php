@@ -75,7 +75,7 @@ final class CellValueValidator
      * the per-row rules are the SAME ones the Offerte FormRequests apply,
      * read from their one shared definition.
      */
-    private const string OFFER_LINES_EDITOR = 'offer_lines';
+    public const string OFFER_LINES_EDITOR = 'offer_lines';
 
     /** The `format` names a column may declare, each mapping to an InputFormat canonicalizer. */
     private const string FORMAT_PERSON_NAME = 'person_name';
@@ -92,10 +92,11 @@ final class CellValueValidator
 
     /**
      * @param  array<string, mixed>  $column  the raw column declaration (id/type/nullable/rules/options/relation/editableField)
+     * @param  array<int, int>  $exemptProductIds  products already persisted on the edited record, honoured by the `offer_lines` editor only (spec 0208 D-2)
      *
      * @throws ValidationException
      */
-    public function validate(array $column, mixed $value): mixed
+    public function validate(array $column, mixed $value, array $exemptProductIds = []): mixed
     {
         // Checked BEFORE the relation branch: a multiselect column declares
         // `relation` too (it is what names the resource whose ids it holds),
@@ -109,7 +110,7 @@ final class CellValueValidator
         }
 
         if (($column['editor'] ?? null) === self::OFFER_LINES_EDITOR) {
-            return $this->validateQuoteLineListValue($value);
+            return $this->validateQuoteLineListValue($value, $exemptProductIds);
         }
 
         if (isset($column['relation'])) {
@@ -315,16 +316,17 @@ final class CellValueValidator
      * QuoteService::update()), exactly like the `select` editor's membership
      * rule.
      *
+     * @param  array<int, int>  $exemptProductIds
      * @return array<int, array<string, mixed>>
      *
      * @throws ValidationException
      */
-    private function validateQuoteLineListValue(mixed $value): array
+    private function validateQuoteLineListValue(mixed $value, array $exemptProductIds): array
     {
         Validator::make(
             ['value' => $value],
             [
-                ...QuoteLineRules::fieldRules('value', withCommissions: false),
+                ...QuoteLineRules::fieldRules('value', withCommissions: false, exemptProductIds: $exemptProductIds),
                 // Overrides the shared `sometimes`: a cell PATCH always
                 // carries its value, and an absent one is a malformed request
                 // rather than an untouched collection.

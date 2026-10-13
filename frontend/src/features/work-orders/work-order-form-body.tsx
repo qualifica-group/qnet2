@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Form } from '@/components/ui/form'
-import { RecordBody } from '@/components/detail/record-body'
+import { RecordFormBody } from '@/components/record-form/record-form-body'
 import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
@@ -49,7 +49,7 @@ export function WorkOrderFormBody({ onSuccess, onCancel, initialCode, registryId
           boundary, it must not become an extra box around the canvas. */}
       <form id={WORK_ORDER_FORM_ID} onSubmit={form.handleSubmit(onSubmit)} className="contents" noValidate>
         <RecordCanvas>
-          <RecordBody side={null}>
+          <RecordFormBody>
             <RecordCard>
               <WorkOrderFormHeader
                 control={form.control}
@@ -70,7 +70,7 @@ export function WorkOrderFormBody({ onSuccess, onCancel, initialCode, registryId
               submittingLabel={t('workOrders.form.saving')}
               cancel={{ label: t('workOrders.form.cancel'), onCancel }}
             />
-          </RecordBody>
+          </RecordFormBody>
         </RecordCanvas>
       </form>
     </Form>
