@@ -6,6 +6,7 @@ import {
   type CostTypeDetail,
   type CostTypeDetailWithPermissions,
   type CostTypePayload,
+  type UpdateCostTypePayload,
 } from '@/features/cost-types/types'
 
 const ENDPOINT = `/${COST_TYPES_DOMAIN}`
@@ -45,9 +46,12 @@ export async function createCostType(payload: CostTypePayload): Promise<CostType
   return data.data
 }
 
-export async function updateCostType(id: number, payload: CostTypePayload): Promise<CostTypeDetail> {
-  const { data } = await apiClient.put<ApiResponse<CostTypeDetail>>(`${ENDPOINT}/${id}`, payload)
-  return data.data
+/** Partial update (PATCH): the in-place detail saves one field at a time. */
+export async function updateCostType(id: number, payload: UpdateCostTypePayload): Promise<CostTypeDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<CostTypeDetail, ResourcePermissions | undefined>
+  >(`${ENDPOINT}/${id}`, payload)
+  return { ...data.data, permissions: data.permissions ?? permissionsFromAbilities(data.data.abilities) }
 }
 
 /** 409 when the cost type is used by purchase order lines: the caller maps it. */

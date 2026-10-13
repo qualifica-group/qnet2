@@ -135,6 +135,19 @@ describe('CostTypesTable - new button', () => {
   })
 })
 
+describe('CostTypesTable - reorder (spec 0249 AC-006)', () => {
+  it('shows the Reorder button with update and hides it without', () => {
+    canMock.mockImplementation((permission) => permission === 'cost-types.update')
+    const { unmount } = renderWith(<CostTypesTable />)
+    expect(screen.getByRole('button', { name: 'Reorder' })).toBeInTheDocument()
+    unmount()
+
+    canMock.mockReturnValue(false)
+    renderWith(<CostTypesTable />)
+    expect(screen.queryByRole('button', { name: 'Reorder' })).not.toBeInTheDocument()
+  })
+})
+
 describe('CostTypesTable - delete', () => {
   it('shows the success toast on a successful delete', async () => {
     deleteCostTypeMock.mockResolvedValue(undefined)

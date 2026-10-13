@@ -67,7 +67,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Elemento', 'Significato'],
           rows: [
-            ['**Tipo costo**', '**Obbligatorio** su ogni riga. I tipi si gestiscono in Acquisti › Tipi di costo (vedi la sua guida).'],
+            ['**Tipo costo**', '**Obbligatorio** su ogni riga. Nel menu compare con il colore del tipo. I tipi si gestiscono in Acquisti › Tipi di costo (vedi la sua guida).'],
             ['**Imponibile / IVA / Totale**', 'Calcolati dal server (quantità × prezzo, poi IVA) e in sola lettura; l’anteprima nel form si allinea al salvataggio. I totali della testata sono la somma delle righe.'],
             ['**Scorpora l’IVA dal prezzo**', 'Se conosci solo il prezzo IVA inclusa, inseriscilo e premi l’icona: il prezzo torna all’imponibile con l’aliquota della riga (122,00 al 22% diventa 100,00). Serve un’aliquota maggiore di zero.'],
             ['**Badge RDA #n**', 'Compare sulle righe generate da una richiesta di acquisto (vedi **Collegamento con le RDA**).'],

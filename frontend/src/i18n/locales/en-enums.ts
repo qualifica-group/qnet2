@@ -1,4 +1,5 @@
 import { customFields } from './en-custom-fields'
+import { costTypes } from './en-cost-types'
 
 /**
  * Localized labels for backend domain enums. Keyed by the snake_case enum key
@@ -14,6 +15,8 @@ export const enums = {
   // copy so the 13 labels have ONE source; both `type` badge columns declare
   // this enum key, so cell and Set Filter resolve through the same path.
   custom_field_type: customFields.types,
+  // Spec 0249: one source with the cost type detail/form (`costTypes.nature`).
+  cost_type_nature: costTypes.nature,
   locale: {
     en: 'English',
     it: 'Italiano',

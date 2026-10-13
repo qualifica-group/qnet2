@@ -3,7 +3,9 @@
 namespace App\Http\Requests\CostTypes;
 
 use App\DataObjects\CostTypes\CreateCostTypeData;
+use App\Enums\CostTypeNature;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Support\BadgeTokens;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -35,7 +37,9 @@ class StoreCostTypeRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:'.self::NAME_MAX, Rule::unique('cost_types', 'name')],
             'description' => ['sometimes', 'nullable', 'string', 'max:'.self::DESCRIPTION_MAX],
-            'sort_order' => ['sometimes', 'integer', 'min:0'],
+            'nature' => ['required', Rule::enum(CostTypeNature::class)],
+            'color' => ['required', 'string', Rule::in(BadgeTokens::colors())],
+            'sort_order' => ['prohibited'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

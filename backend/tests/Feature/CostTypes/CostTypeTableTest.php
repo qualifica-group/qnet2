@@ -17,7 +17,7 @@ it('AC-016: the cost-types grid exposes the contract columns, lines_count and ab
     $used = $rows->firstWhere('id', $line->cost_type_id);
 
     expect($rows)->toHaveCount(5)
-        ->and(array_keys($used))->toEqualCanonicalizing(['id', 'name', 'description', 'sort_order', 'is_active', 'lines_count', 'abilities', 'actions', 'editable'])
+        ->and(array_keys($used))->toEqualCanonicalizing(['id', 'name', 'description', 'nature', 'color', 'sort_order', 'is_active', 'lines_count', 'abilities', 'actions', 'editable'])
         ->and($used['lines_count'])->toBe(1)
         ->and($used['abilities'])->toBe(['update' => true, 'delete' => false])
         ->and($rows->firstWhere('name', 'Fitti')['lines_count'])->toBe(0);

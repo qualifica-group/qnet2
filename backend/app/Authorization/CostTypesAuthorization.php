@@ -33,7 +33,8 @@ class CostTypesAuthorization extends AbstractResourceAuthorization
         return [
             new FieldDefinition('name', 'text', mandatory: true),
             new FieldDefinition('description', 'textarea'),
-            new FieldDefinition('sort_order', 'number'),
+            new FieldDefinition('nature', 'select', mandatory: true),
+            new FieldDefinition('color', 'color', mandatory: true),
             new FieldDefinition('is_active', 'boolean'),
         ];
     }
@@ -56,7 +57,8 @@ class CostTypesAuthorization extends AbstractResourceAuthorization
         return [
             'name' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'sort_order' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'nature' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
+            'color' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }

@@ -1,138 +1,63 @@
-import { Tags } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FormSection } from '@/components/form-section'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
-import { Form, FormControl } from '@/components/ui/form'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
+import { useWatch } from 'react-hook-form'
+import { Tags } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
+import { Form } from '@/components/ui/form'
+import { CostTypeRows } from '@/features/cost-types/cost-type-rows'
 import { useCostTypeForm } from '@/features/cost-types/use-cost-type-form'
-import type { CostTypeDetail, CostTypeFormMode } from '@/features/cost-types/types'
+import type { CostTypeDetail } from '@/features/cost-types/types'
+
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const COST_TYPE_FORM_ID = 'cost-type-form'
+
+/** Create mode is static: a fresh object per render would rebuild the form's defaults. */
+const CREATE_MODE = { type: 'create' } as const
 
 interface CostTypeFormBodyProps {
-  mode: CostTypeFormMode
   onSuccess: (costType: CostTypeDetail) => void
   onCancel: () => void
 }
 
 /**
- * The cost type create/edit form UI. Every field is wrapped in `MetaField`
- * (hidden means absent, non-editable means disabled, `required` from the
- * resolved `ResourcePermissions`); all non-render logic lives in `useCostTypeForm`.
+ * The cost type create form as a replica of the detail: the same rows, closed
+ * until clicked (nothing saved per row); Save validates and creates everything
+ * at once. There is no order field: new rows go to the end of the list.
  */
-export function CostTypeFormBody({ mode, onSuccess, onCancel }: CostTypeFormBodyProps) {
+export function CostTypeFormBody({ onSuccess, onCancel }: CostTypeFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit } = useCostTypeForm({ mode, onSuccess })
-
-  const identityVisible =
-    fieldPermission('name').visible ||
-    fieldPermission('description').visible ||
-    fieldPermission('sort_order').visible ||
-    fieldPermission('is_active').visible
+  const { form, serverError, onSubmit } = useCostTypeForm({ mode: CREATE_MODE, onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const name = useWatch({ control: form.control, name: 'name' })
+  const heading = name.trim() || t('costTypes.form.createTitle')
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4" noValidate>
-          {identityVisible && (
-            <FormSection
-              icon={Tags}
-              title={t('costTypes.form.sections.identity.title')}
-              description={t('costTypes.form.sections.identity.description')}
-            >
-              <MetaField control={form.control} name="name" metaKey="name" label={t('costTypes.form.name')}>
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="description"
-                metaKey="description"
-                label={t('costTypes.form.description')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Textarea
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={field.value ?? ''}
-                      onChange={(event) => field.onChange(event.target.value || null)}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="sort_order"
-                metaKey="sort_order"
-                label={t('costTypes.form.sortOrder')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="1"
-                      min={0}
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={Number.isNaN(field.value) ? '' : String(field.value)}
-                      onChange={(event) => field.onChange(event.target.value === '' ? Number.NaN : Number(event.target.value))}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="is_active"
-                metaKey="is_active"
-                label={t('costTypes.form.isActive')}
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
-                  </FormControl>
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-card"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('costTypes.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('costTypes.form.saving') : t('costTypes.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+    <Form {...form}>
+      <RecordCreateLayout
+        formId={COST_TYPE_FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        title={heading}
+        subtitle={t('costTypes.form.createSubtitle')}
+        media={<DetailMonogram name={heading} icon={<Tags />} />}
+        isSubmitting={form.formState.isSubmitting}
+        serverError={serverError}
+        onCancel={onCancel}
+        labels={{
+          save: t('costTypes.form.save'),
+          saving: t('costTypes.form.saving'),
+          cancel: t('costTypes.form.cancel'),
+        }}
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('costTypes.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <CostTypeRows inline={draft} canEdit />
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
+      </RecordCreateLayout>
+    </Form>
   )
 }

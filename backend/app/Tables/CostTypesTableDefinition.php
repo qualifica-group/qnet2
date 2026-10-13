@@ -2,6 +2,8 @@
 
 namespace App\Tables;
 
+use App\DataObjects\Enums\EnumMeta;
+use App\Enums\CostTypeNature;
 use App\Models\CostType;
 use App\Models\User;
 use App\Services\CostTypeService;
@@ -97,6 +99,8 @@ class CostTypesTableDefinition extends AbstractTableDefinition
             'id' => $row->id,
             'name' => $row->name,
             'description' => $row->description,
+            'nature' => $row->nature->value,
+            'color' => $row->color,
             'sort_order' => $row->sort_order,
             'is_active' => $row->is_active,
             'lines_count' => (int) $row->lines_count,
@@ -105,6 +109,27 @@ class CostTypesTableDefinition extends AbstractTableDefinition
                 'delete' => Gate::forUser($actor)->allows('delete', $row),
             ],
         ];
+    }
+
+    /**
+     * Badge metadata of the `nature` column, driven by CostTypeNature.
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    protected function badgesFor(string $columnId, User $actor): ?array
+    {
+        return $columnId === 'nature'
+            ? array_map(static fn (EnumMeta $meta): array => $meta->toArray(), CostTypeNature::options())
+            : null;
+    }
+
+    /**
+     * Frontend `enums.cost_type_nature` key (config/config.php form_enums): the
+     * cells and the Set Filter checklist read the same localized labels.
+     */
+    protected function enumKeyFor(string $columnId, User $actor): ?string
+    {
+        return $columnId === 'nature' ? 'cost_type_nature' : null;
     }
 
     /**

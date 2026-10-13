@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
@@ -94,6 +95,8 @@ interface LineRelationSelectProps extends LineFieldBase {
   resource: string
   placeholder: string
   onItemChange?: (item: ForSelectItem | null) => void
+  /** Custom option/trigger content (e.g. the colored cost type badge). */
+  renderItem?: (item: ForSelectItem) => ReactNode
 }
 
 /** Compact for-select picker of one id of a line (cost type, U.m., VAT rate, work order). */
@@ -106,6 +109,7 @@ export function LineRelationSelect({
   resource,
   placeholder,
   onItemChange,
+  renderItem,
 }: LineRelationSelectProps) {
   const labels = useSelectLabels(placeholder, label)
   return (
@@ -120,6 +124,7 @@ export function LineRelationSelect({
               value={field.value}
               onChange={field.onChange}
               onItemChange={onItemChange}
+              renderItem={renderItem}
               className={COMPACT_SELECT}
               disabled={disabled}
               labels={labels}

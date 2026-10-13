@@ -3,7 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0248 — Stati ODA e righe RDA configurabili (solo presentazione, audit Onda 2-B) — VERDE, NON COMMITTATO (2026-10-13)
+## Spec 0249 — Tipi di costo: natura, colore, modifica in linea, riordino (audit Onda 2-C) — VERDE, NON COMMITTATO (2026-10-13)
+
+- Spec `docs/specs/0249-cost-types-nature-inline-edit.xml` (D-1..D-6, AC-001..008 PASS). Onda 2 completata.
+- `App\Enums\CostTypeNature` (direct|indirect|general, enumKey `cost_type_nature` in config form_enums, alias FE
+  enums.cost_type_nature -> costTypes.nature); cost_types.nature (default direct) e color (default slate), migrazione
+  2026_10_17_170000. sort_order solo via POST /api/cost-types/reorder (LookupOrderManager, placeNew); prohibited nei form.
+- for-select meta {color, nature}; colonna nature in tables/cost-types; cella cost_type delle Scadenze passive
+  {name,color}|null (StatusBadgeCell); PurchaseOrderResource lines[].cost_type ha anche color.
+- FE: dettaglio inline (generateEditRoute: false), PATCH parziale, riordino in lista, badge nei select righe ODA /
+  Genera ODA, dettaglio ODA, Scadenze passive. Guide cost-types e purchase-orders aggiornate.
+- Contatori --step: PurchaseOrderMigrationTest 31, SupplierCommissionDirectionTest 46, QuoteWorkflowMigrationTest 182.
+- Prossimo: Onda 3 "modello dei costi" (COS-01 consuntivo da ODA/fatture passive, COS-02 tassonomia unica, COS-04,
+  COS-16, COS-09/ATT-06 calcolo importi e IVA per aliquota): richiede ADR e decisione utente sulla tassonomia.
+
+## Spec 0248 — Stati ODA e righe RDA configurabili (solo presentazione, audit Onda 2-B) — COMMITTATO 5a322dd7 (2026-10-13)
 
 - Spec `docs/specs/0248-purchasing-status-presentation-catalogs.xml` (D-1..D-7, AC-001..011 PASS).
 - Tabelle `purchase_order_statuses` (7) e `purchase_request_line_statuses` (6), sole righe di sistema create dalla

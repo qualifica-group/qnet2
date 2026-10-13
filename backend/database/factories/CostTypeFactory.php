@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\CostTypeNature;
 use App\Models\CostType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -20,6 +21,8 @@ class CostTypeFactory extends Factory
         return [
             'name' => fake()->unique()->words(2, true),
             'description' => fake()->optional()->sentence(),
+            'nature' => CostTypeNature::Direct,
+            'color' => 'slate',
             'sort_order' => fake()->numberBetween(10, 99),
             'is_active' => true,
         ];

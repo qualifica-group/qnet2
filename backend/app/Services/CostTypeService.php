@@ -7,18 +7,39 @@ use App\DataObjects\CostTypes\UpdateCostTypeData;
 use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\CostType;
+use App\Services\Lookups\LookupOrderManager;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 /**
  * Business logic for the `cost-types` resource (spec 0210): the lookup
- * classifying purchase order lines.
+ * classifying purchase order lines. `sort_order` is server-managed (spec 0249).
  */
 class CostTypeService
 {
+    public function __construct(private readonly LookupOrderManager $orderManager) {}
+
     public function create(CreateCostTypeData $data): CostType
     {
-        return CostType::create($data->attributes());
+        return CostType::create([
+            ...$data->attributes(),
+            'sort_order' => $this->orderManager->placeNew(CostType::class),
+        ]);
+    }
+
+    /**
+     * Resequences every cost type to $orderedIds' order.
+     *
+     * @param  array<int, int>  $orderedIds
+     * @return EloquentCollection<int, CostType>
+     */
+    public function reorder(array $orderedIds): EloquentCollection
+    {
+        /** @var EloquentCollection<int, CostType> $reordered */
+        $reordered = $this->orderManager->reorder(CostType::class, $orderedIds);
+
+        return $reordered;
     }
 
     public function update(CostType $costType, UpdateCostTypeData $data): CostType
@@ -72,7 +93,7 @@ class CostTypeService
      */
     private function orderedQuery(): Builder
     {
-        return CostType::query()->select(['id', 'name', 'is_active', 'sort_order'])
+        return CostType::query()->select(['id', 'name', 'nature', 'color', 'is_active', 'sort_order'])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->orderBy('id');

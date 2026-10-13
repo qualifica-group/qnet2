@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CostTypeNature;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\CostTypeFactory;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * Cost type lookup (spec 0210, D-3): classifies every purchase order line.
  * Configurable, with an active flag and a display order.
  */
-#[Fillable(['name', 'description', 'sort_order', 'is_active'])]
+#[Fillable(['name', 'description', 'nature', 'color', 'sort_order', 'is_active'])]
 class CostType extends BaseModel
 {
     /** @use HasFactory<CostTypeFactory> */
@@ -25,6 +26,7 @@ class CostType extends BaseModel
     protected function casts(): array
     {
         return [
+            'nature' => CostTypeNature::class,
             'sort_order' => 'int',
             'is_active' => 'bool',
         ];

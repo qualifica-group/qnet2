@@ -1,52 +1,45 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
-import { useCostTypeFormMeta } from '@/features/cost-types/use-cost-type-form-meta'
+import { useResourceMeta } from '@/features/authorization/use-resource-meta'
 import { CostTypeFormBody } from '@/features/cost-types/cost-type-form-body'
-import type { CostTypeDetail, CostTypeFormMode } from '@/features/cost-types/types'
+import { COST_TYPES_DOMAIN, type CostTypeDetail } from '@/features/cost-types/types'
 
 interface CostTypeFormProps {
-  mode: CostTypeFormMode
-  /** Called after a successful create/update so the caller can close + refresh. */
+  /** Called after a successful create so the caller can navigate to the detail. */
   onSuccess: (costType: CostTypeDetail) => void
   onCancel: () => void
 }
 
 /**
- * Create/edit form of a cost type. Resolves the resource `ResourcePermissions`
- * first (edit: from the loaded detail; create: `GET /meta/cost-types`), then
- * hands off to `CostTypeFormBody`.
+ * The cost type create form (there is no edit form: the detail edits in
+ * place). Resolves the create-context `ResourcePermissions`
+ * (`GET /meta/cost-types`) before rendering `CostTypeFormBody`.
  */
 export function CostTypeForm(props: CostTypeFormProps) {
   const { t } = useTranslation()
-  const meta = useCostTypeFormMeta(props.mode)
+  const metaQuery = useResourceMeta(COST_TYPES_DOMAIN)
 
-  if (meta.status === 'loading') {
-    return (
-      <div className="flex flex-col gap-4 p-4" aria-hidden="true">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
-  }
-
-  if (meta.status === 'error') {
+  if (metaQuery.isError) {
     return (
       <div className="flex flex-col items-start gap-3 p-4">
         <p className="text-sm text-destructive" role="alert">
           {t('authorization.loadError')}
         </p>
-        <Button variant="outline" size="sm" className="bg-card" onClick={meta.retry}>
+        <Button variant="outline" size="sm" className="bg-card" onClick={() => void metaQuery.refetch()}>
           {t('common.retry')}
         </Button>
       </div>
     )
   }
 
+  if (!metaQuery.data) {
+    return <RecordFormSkeleton />
+  }
+
   return (
-    <ResourcePermissionsProvider permissions={meta.permissions}>
+    <ResourcePermissionsProvider permissions={metaQuery.data.permissions}>
       <CostTypeFormBody {...props} />
     </ResourcePermissionsProvider>
   )

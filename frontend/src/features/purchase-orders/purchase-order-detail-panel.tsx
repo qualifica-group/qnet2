@@ -4,6 +4,7 @@ import type { ICellRendererParams } from 'ag-grid-community'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
+import { CostTypeBadge } from '@/features/cost-types/cost-type-badge'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import type { TableRow } from '@/features/table/types'
 import { fetchPurchaseOrder, purchaseOrderKeys } from '@/features/purchase-orders/api'
@@ -21,7 +22,9 @@ function LineRow({ line }: { line: PurchaseOrderLine }) {
       <td className={`${CELL} max-w-80`}>
         <div className="truncate" title={line.description}>{line.description}</div>
       </td>
-      <td className={CELL}>{line.cost_type.name}</td>
+      <td className={CELL}>
+        <CostTypeBadge name={line.cost_type.name} color={line.cost_type.color} />
+      </td>
       <td className={CELL}>{line.unit_of_measure?.symbol ?? line.unit_of_measure?.name ?? '—'}</td>
       <td className={NUM_CELL}>{Number(line.quantity)}</td>
       <td className={NUM_CELL}>{formatQuoteAmount(Number(line.unit_price))}</td>

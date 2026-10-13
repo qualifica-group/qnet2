@@ -43,7 +43,7 @@ final class PurchaseInstallmentColumnCatalog
             self::column('status', 'badge', sortable: true, filter: 'set', options: PurchaseInstallmentStatus::values()),
             self::column('overdue', 'badge', filter: 'set', options: self::OVERDUE_VALUES),
             self::column('supplier', 'text', sortable: true, filter: 'set'),
-            self::column('cost_type', 'text', sortable: true, filter: 'set'),
+            self::column('cost_type', 'badge', sortable: true, filter: 'set'),
             self::column('work_order', 'text', sortable: true, filter: 'set'),
             self::column('company', 'text', sortable: true, filter: 'set'),
             self::column('company_site', 'text', sortable: true, filter: 'set'),

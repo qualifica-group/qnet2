@@ -86,7 +86,7 @@ it('AC-003: rows carry the contract fields, the supplier, work order, sites, lin
         'status' => 'unpaid', 'supplier' => 'Forniture Srl', 'company_site' => 'HQ Milano', 'operational_site' => 'Plant 1',
         'payment_method_code' => 'RB30', 'amount' => '100.00', 'paid_amount' => null, 'residual_amount' => '100.00',
         'paid_at' => null, 'financial_account' => 'Banca Uno', 'company' => $document->company->denomination,
-        'cost_type' => 'Collaboratori',
+        'cost_type' => ['name' => 'Collaboratori', 'color' => 'slate'],
     ])
         ->and($row['work_order'])->toBe($document->workOrder->code.' - '.$document->workOrder->title)
         ->and($row['actions'])->toBe(['record_payment']);
@@ -251,4 +251,18 @@ it('AC-012: exports the filtered installments as csv and refuses without purchas
 
     Sanctum::actingAs(purchaseInstallmentUserWith(['viewAny', 'view']));
     $this->postJson('/api/exports/purchase-invoice-installments', ['format' => 'csv', 'columns' => [['colId' => 'supplier', 'header' => 'Supplier']]])->assertForbidden();
+});
+
+it('AC-005 (spec 0249): the cost_type cell carries name and color, null without a type, and the set filter stays by name', function () {
+    purchaseViewer();
+    $costType = CostType::factory()->create(['name' => 'Trasferte', 'color' => 'teal']);
+    $typed = purchaseInstallmentOf(purchaseDocument(null, ['cost_type_id' => $costType->id]));
+    $untyped = purchaseInstallmentOf(purchaseDocument(null, ['cost_type_id' => null]));
+
+    $rows = collect(purchaseRows()['items'])->keyBy('id');
+    $filtered = purchaseRows(['filterModel' => ['cost_type' => ['filterType' => 'set', 'values' => ['Trasferte']]]]);
+
+    expect($rows[$typed->id]['cost_type'])->toBe(['name' => 'Trasferte', 'color' => 'teal'])
+        ->and($rows[$untyped->id]['cost_type'])->toBeNull()
+        ->and(collect($filtered['items'])->pluck('id')->all())->toBe([$typed->id]);
 });

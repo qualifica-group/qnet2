@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0249-cost-types-nature-inline-edit" status="draft" owner="ciro" date="2026-10-13">
+
+  <goal>
+    Arricchire il catalogo Tipi di costo con natura e colore e portarlo allo standard degli altri cataloghi
+    (modifica in linea, riordino trascinando), audit 2026-10-13 Onda 2-C: COS-10, COS-11.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-10-13:
+    - D-1 (COS-10) Nuovo campo obbligatorio `nature` con elenco fisso nel codice (enum App\Enums\CostTypeNature):
+      direct (Diretto: imputabile a una commessa), indirect (Indiretto: di produzione, ripartito), general (Generale:
+      struttura/overhead). Etichette via i18n.
+    - D-2 Lista piatta: nessuna gerarchia.
+    - D-3 I tipi di costo esistenti prendono nature = direct alla migrazione.
+    - D-4 Nuovo campo `color` (BadgeTokens, obbligatorio, default 'slate' per gli esistenti): badge colorato dove il
+      tipo compare.
+
+    Decisioni tecniche proposte:
+    - D-5 (COS-11) Dettaglio con modifica in linea (useRecordInlineEdit, come Priorita' RDA / Tipologie prodotto) al
+      posto della pagina di modifica separata; creazione resta un form (come gli altri cataloghi). `sort_order` non si
+      scrive piu' a mano: POST /api/cost-types/reorder (ReorderStatusesRequest + LookupOrderManager, tutte le righe),
+      nuove righe in coda (LookupOrderManager::placeNew); sort_order prohibited in store/update.
+    - D-6 Badge colorato: lista Tipi di costo; select del tipo di costo nelle righe ODA e in Genera ODA (opzione con
+      pallino/badge del colore, da for-select meta.color); dettaglio ODA (righe); griglia Scadenze passive colonna
+      cost_type (badge con colore, filtro set per nome invariato). La natura e' esposta nel Resource, nella griglia Tipi di
+      costo (colonna con filtro set) e nel for-select (meta.nature), per i futuri report (Onda 3).
+
+    Fatti verificati: CostType fillable [name, description, sort_order, is_active]; rotte cost-types for-select, show,
+    store, update, destroy (nessun reorder); FE features/cost-types con cost-type-detail.tsx + RecordEditButton e form
+    separato; CostTypesTableDefinition; delete guard 0246; cost_type nei FE purchase-order-line-inputs/line-row/
+    detail-panel e generate-orders-dialog; griglia PurchaseInvoiceInstallmentsTableDefinition (join cost_types, colonna
+    text con filtro set su cost_types.name). Modello inline: features/purchase-request-priorities (spec 0247),
+    features/product-typologies (0236).
+  </context>
+
+  <scope>
+    <in>
+      <item>BE: enum CostTypeNature; migrazione (nature string 16 required default direct per esistenti, color string 32 default slate; down); model/request/authorization/resource/for-select/table definition (colonne nature e color, badge); reorder endpoint; sort_order gestito dal manager; i18n etichette natura lato BE se servono alle colonne (enumKey/badges).</item>
+      <item>BE: griglia Scadenze passive: cost_type come badge col colore del tipo (mapRow + catalogo colonne), nessuna query per riga.</item>
+      <item>FE: dettaglio inline Tipi di costo (nome, descrizione, natura, colore, attivo), riordino nella lista, form di creazione con natura/colore senza sort_order; badge nei punti D-6; guide IT+EN cost-types (+ purchase-orders/purchase-invoice-installments se citano il tipo).</item>
+    </in>
+    <out>
+      <item>Gerarchia (D-2), conto contabile / centro di costo.</item>
+      <item>Report "costi per natura" e tassonomia unica dei costi (Onda 3, COS-01/COS-02).</item>
+      <item>Natura sulle categorie prodotto o sui costi commessa.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET|POST|PUT|PATCH" path="/api/cost-types[/{costType}]">
+      <request>{ name, description?, nature: "direct"|"indirect"|"general", color, is_active? } — sort_order prohibited (422).</request>
+      <response>{ id, name, description, nature, color, sort_order, is_active, ... } + permissions (campo nature select, color select).</response>
+      <errors>422 nature o color non ammessi; 403 senza permesso; delete 409 in uso (0246, invariato).</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/cost-types/reorder">{ ordered_ids: int[] (tutte le righe) } -> [{id, sort_order}]; permesso cost-types.update.</endpoint>
+    <endpoint method="GET" path="/api/cost-types/for-select">items[].meta += { color, nature } (oltre a quanto gia' esposto).</endpoint>
+    <endpoint method="SSRM" path="tables/cost-types">colonne nature (badge con etichetta i18n, filtro set) e color; sort default sort_order.</endpoint>
+    <endpoint method="SSRM" path="tables/purchase-invoice-installments">cost_type: { name, color } oppure name + colonna color secondo la convenzione dei badge lookup gia' usata (allinearsi a StatusBadgeCell); filtro set per nome invariato.</endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dopo la migrazione ogni tipo di costo esistente ha nature=direct e color=slate; rollback rimuove le colonne.</criterion>
+    <criterion id="AC-002">POST/PATCH con nature e color validi 201/200; nature o color fuori elenco 422; sort_order nel payload 422; 403 senza permesso.</criterion>
+    <criterion id="AC-003">POST /api/cost-types/reorder con tutte le righe aggiorna sort_order; insieme incompleto 422; senza cost-types.update 403; un nuovo tipo va in coda.</criterion>
+    <criterion id="AC-004">for-select espone meta.color e meta.nature; tables/cost-types espone le colonne nature (filtro set) e color.</criterion>
+    <criterion id="AC-005">Griglia Scadenze passive: la cella del tipo di costo porta nome e colore; filtro per nome invariato; nessuna query per riga.</criterion>
+    <criterion id="AC-006">(Vitest) Dettaglio Tipi di costo modificabile in linea (natura, colore, nome, descrizione, attivo); nessuna pagina di modifica separata; riordino nella lista; form di creazione senza ordine manuale.</criterion>
+    <criterion id="AC-007">(Vitest) Badge colorato del tipo di costo nel select delle righe ODA / Genera ODA, nel dettaglio ODA e nella griglia Scadenze passive.</criterion>
+    <criterion id="AC-008">Guide IT+EN aggiornate; help-content-parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; riuso LookupOrderManager, BadgeTokens, StatusReorderToggle, useRecordInlineEdit, StatusBadgeCell.</item>
+    <item>Migrazione reversibile, solo Schema/query builder; aggiornare i contatori --step dei test di migrazione.</item>
+    <item>Nessuna query per riga; messaggi via __(); file sotto 300 righe; FE con TanStack Query.</item>
+    <item>Test Pest (happy, 403, 422) e Vitest; suite completa dal verifier; tsc -b --force.</item>
+    <item>Nessun commit senza ordine esplicito.</item>
+  </constraints>
+
+</spec>

@@ -35,6 +35,23 @@ final class CostTypeColumnCatalog
                 'filterType' => 'text',
             ],
             [
+                'id' => 'nature',
+                'label' => 'costTypes.columns.nature',
+                'type' => 'badge',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
+            [
+                'id' => 'color',
+                'label' => 'costTypes.columns.color',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => false,
+            ],
+            [
                 'id' => 'sort_order',
                 'label' => 'costTypes.columns.sort_order',
                 'type' => 'number',
@@ -70,6 +87,7 @@ final class CostTypeColumnCatalog
         return [
             ['columnId' => 'name', 'type' => 'text'],
             ['columnId' => 'description', 'type' => 'text'],
+            ['columnId' => 'nature', 'type' => 'set'],
             ['columnId' => 'is_active', 'type' => 'boolean'],
         ];
     }

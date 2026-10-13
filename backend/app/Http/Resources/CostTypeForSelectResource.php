@@ -21,6 +21,10 @@ class CostTypeForSelectResource extends ForSelectResource
         return [
             'id' => $this->id,
             'label' => $this->name,
+            'meta' => [
+                'color' => $this->color,
+                'nature' => $this->nature->value,
+            ],
         ];
     }
 }

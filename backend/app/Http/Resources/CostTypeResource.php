@@ -22,6 +22,8 @@ class CostTypeResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'description' => $this->description,
+            'nature' => $this->nature->value,
+            'color' => $this->color,
             'sort_order' => $this->sort_order,
             'is_active' => $this->is_active,
             'created_at' => $this->created_at,

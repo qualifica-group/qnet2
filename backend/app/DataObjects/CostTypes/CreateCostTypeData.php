@@ -2,15 +2,19 @@
 
 namespace App\DataObjects\CostTypes;
 
+use App\Enums\CostTypeNature;
+
 /**
- * Validated payload for creating a cost type (POST /api/cost-types, spec 0210).
+ * Validated payload for creating a cost type (POST /api/cost-types, specs 0210,
+ * 0249). `sort_order` is server-managed (CostTypeService places a new row last).
  */
 final readonly class CreateCostTypeData
 {
     public function __construct(
         public string $name,
         public ?string $description,
-        public int $sortOrder,
+        public CostTypeNature $nature,
+        public string $color,
         public bool $isActive,
     ) {}
 
@@ -22,7 +26,8 @@ final readonly class CreateCostTypeData
         return new self(
             name: (string) $data['name'],
             description: $data['description'] ?? null,
-            sortOrder: (int) ($data['sort_order'] ?? 0),
+            nature: CostTypeNature::from((string) $data['nature']),
+            color: (string) $data['color'],
             isActive: (bool) ($data['is_active'] ?? true),
         );
     }
@@ -35,7 +40,8 @@ final readonly class CreateCostTypeData
         return [
             'name' => $this->name,
             'description' => $this->description,
-            'sort_order' => $this->sortOrder,
+            'nature' => $this->nature,
+            'color' => $this->color,
             'is_active' => $this->isActive,
         ];
     }

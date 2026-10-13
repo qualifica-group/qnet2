@@ -104,7 +104,7 @@ class PurchaseOrderResource extends JsonResource
             'position' => $line->position,
             'product' => $this->namedRef($line->product),
             'description' => $line->description,
-            'cost_type' => ['id' => $line->costType->id, 'name' => $line->costType->name],
+            'cost_type' => ['id' => $line->costType->id, 'name' => $line->costType->name, 'color' => $line->costType->color],
             'unit_of_measure' => $line->unitOfMeasure === null ? null : [
                 'id' => $line->unitOfMeasure->id,
                 'name' => $line->unitOfMeasure->name,

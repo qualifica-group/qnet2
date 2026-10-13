@@ -1,5 +1,5 @@
 import { MoneyCell } from '@/features/invoices/invoice-cells'
-import { DateCell } from '@/features/table/rich-cells'
+import { DateCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import {
   PurchaseDaysOverdueCell,
@@ -14,6 +14,8 @@ export const purchaseInstallmentColumnRenderers: TableRendererMap = {
   document_date: (params) => <DateCell {...params} />,
   due_date: (params) => <DateCell {...params} />,
   paid_at: (params) => <DateCell {...params} />,
+  // Spec 0249 D-6: the cost type reads as a badge in its own color ({ name, color }).
+  cost_type: (params) => <StatusBadgeCell {...params} />,
   status: (params) => <PurchaseStatusCell {...params} />,
   overdue: (params) => <PurchaseOverdueCell {...params} />,
   days_overdue: (params) => <PurchaseDaysOverdueCell {...params} />,

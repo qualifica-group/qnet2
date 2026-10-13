@@ -16,7 +16,7 @@ it('AC-016: the migration seeds Collaboratori, Fitti, Utenze and Altro, active a
 it('AC-016: create persists the cost type and returns the abilities', function () {
     Sanctum::actingAs(costTypeUserWith(['create', 'update']));
 
-    $this->postJson('/api/cost-types', ['name' => 'Trasferte', 'description' => 'Viaggi', 'sort_order' => 9])
+    $this->postJson('/api/cost-types', ['name' => 'Trasferte', 'description' => 'Viaggi', 'nature' => 'indirect', 'color' => 'teal'])
         ->assertCreated()
         ->assertJsonPath('success', true)
         ->assertJsonPath('data.name', 'Trasferte')
@@ -24,16 +24,16 @@ it('AC-016: create persists the cost type and returns the abilities', function (
         ->assertJsonPath('data.abilities.update', true)
         ->assertJsonPath('data.abilities.delete', false);
 
-    $this->assertDatabaseHas('cost_types', ['name' => 'Trasferte', 'sort_order' => 9, 'is_active' => true]);
+    $this->assertDatabaseHas('cost_types', ['name' => 'Trasferte', 'nature' => 'indirect', 'color' => 'teal', 'is_active' => true]);
 });
 
 it('AC-016: a duplicated name is a 422, on create and on update', function () {
     Sanctum::actingAs(costTypeUserWith(['create', 'update']));
     $other = CostType::factory()->create(['name' => 'Licenze']);
 
-    $this->postJson('/api/cost-types', ['name' => 'Fitti'])->assertStatus(422)->assertJsonValidationErrors('name');
+    $this->postJson('/api/cost-types', ['name' => 'Fitti', 'nature' => 'direct', 'color' => 'slate'])->assertStatus(422)->assertJsonValidationErrors('name');
     $this->putJson("/api/cost-types/{$other->id}", ['name' => 'Fitti'])->assertStatus(422)->assertJsonValidationErrors('name');
-    $this->putJson("/api/cost-types/{$other->id}", ['name' => 'Licenze', 'sort_order' => 3])->assertOk();
+    $this->putJson("/api/cost-types/{$other->id}", ['name' => 'Licenze', 'color' => 'blue'])->assertOk();
 });
 
 it('AC-016: update changes only the submitted fields', function () {
@@ -77,7 +77,7 @@ it('AC-016: every write endpoint needs its permission (403)', function () {
     Sanctum::actingAs(costTypeUserWith(['view']));
     $costType = CostType::factory()->create();
 
-    $this->postJson('/api/cost-types', ['name' => 'Nuovo'])->assertForbidden();
+    $this->postJson('/api/cost-types', ['name' => 'Nuovo', 'nature' => 'direct', 'color' => 'slate'])->assertForbidden();
     $this->putJson("/api/cost-types/{$costType->id}", ['name' => 'Nuovo'])->assertForbidden();
     $this->deleteJson("/api/cost-types/{$costType->id}")->assertForbidden();
 

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
 import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import { PAYMENT_METHODS_FOR_SELECT_RESOURCE } from '@/features/payment-methods/for-select-api'
 import { purchaseOrderKeys } from '@/features/purchase-orders/api'
@@ -111,6 +112,7 @@ export function GenerateOrdersDialog({ targets, onOpenChange, onGenerated }: Gen
                 resource={COST_TYPES_FOR_SELECT_RESOURCE}
                 value={costTypeId}
                 onChange={setCostTypeId}
+                renderItem={costTypeOptionRenderer}
                 labels={labels(t('purchaseRequests.generateOrders.costTypePlaceholder'), t('purchaseRequests.generateOrders.costType'))}
               />
             </div>

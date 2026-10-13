@@ -62,7 +62,8 @@ export interface PurchaseOrderLine {
   position: number
   product: NamedRef | null
   description: string
-  cost_type: NamedRef
+  /** `color` is the cost type's palette token (spec 0249 D-6). */
+  cost_type: NamedRef & { color?: string | null }
   unit_of_measure: UnitOfMeasureRef | null
   quantity: string
   unit_price: string

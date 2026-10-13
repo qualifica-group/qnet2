@@ -17,7 +17,7 @@ it('rolls back the six purchase order tables (and the payable ones built on them
         'purchase_order_sector', 'purchase_order_merge_logs',
     ];
 
-    expect(Artisan::call('migrate:rollback', ['--step' => 30]))->toBe(0);
+    expect(Artisan::call('migrate:rollback', ['--step' => 31]))->toBe(0);
 
     foreach ($tables as $table) {
         expect(Schema::hasTable($table))->toBeFalse($table);

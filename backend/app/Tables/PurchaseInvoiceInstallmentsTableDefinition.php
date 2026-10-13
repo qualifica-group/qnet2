@@ -64,7 +64,7 @@ class PurchaseInvoiceInstallmentsTableDefinition extends AbstractTableDefinition
         return PurchaseInvoiceInstallment::query()
             ->select('purchase_invoice_installments.*')
             ->selectRaw('purchase_invoices.supplier_id as supplier_id, purchase_invoices.document_type as doc_type, purchase_invoices.document_number as doc_number, purchase_invoices.document_date as doc_date')
-            ->selectRaw('registries.name as supplier_name, cost_types.name as cost_type_name, companies.denomination as company_name, company_sites.name as company_site_name, financial_accounts.name as financial_account_name')
+            ->selectRaw('registries.name as supplier_name, cost_types.name as cost_type_name, cost_types.color as cost_type_color, companies.denomination as company_name, company_sites.name as company_site_name, financial_accounts.name as financial_account_name')
             ->selectRaw('work_orders.code as work_order_code, work_orders.title as work_order_title')
             ->selectRaw(PurchaseInstallmentSql::operationalSiteLabel().' as operational_site_label')
             ->selectRaw(PurchaseInstallmentSql::purchaseOrderCodes('purchase_invoices.id').' as purchase_orders_label')
@@ -182,7 +182,7 @@ class PurchaseInvoiceInstallmentsTableDefinition extends AbstractTableDefinition
             'status' => $row->status()->value,
             'overdue' => $daysOverdue > 0 ? 'yes' : 'no',
             'supplier' => $row->getAttribute('supplier_name'),
-            'cost_type' => $row->getAttribute('cost_type_name'),
+            'cost_type' => $this->costTypeBadge($row),
             'work_order' => $workOrder === null ? null : $workOrder.' - '.$row->getAttribute('work_order_title'),
             'company' => $row->getAttribute('company_name'),
             'company_site' => $row->getAttribute('company_site_name'),
@@ -317,6 +317,19 @@ class PurchaseInvoiceInstallmentsTableDefinition extends AbstractTableDefinition
         $field = PurchaseInstallmentColumnCatalog::FIELD_BY_COLUMN[$columnId] ?? null;
 
         return $field === null || $this->fieldVisible($actor, $field);
+    }
+
+    /**
+     * The `cost_type` badge cell `{name, color}` (spec 0249, D-6), read from the
+     * joined columns: no query per row. Null when the invoice has no cost type.
+     *
+     * @return array{name: string, color: string}|null
+     */
+    private function costTypeBadge(Model $row): ?array
+    {
+        $name = $row->getAttribute('cost_type_name');
+
+        return $name === null ? null : ['name' => $name, 'color' => $row->getAttribute('cost_type_color')];
     }
 
     private function fieldVisible(User $actor, string $field): bool

@@ -2,6 +2,7 @@
 
 use App\Enums\AgreementStatusEnum;
 use App\Enums\ContactTypeEnum;
+use App\Enums\CostTypeNature;
 use App\Enums\DocumentLayoutModule;
 use App\Enums\GenderEnum;
 use App\Enums\LocaleEnum;
@@ -94,6 +95,9 @@ return [
         // Product typology Supplier commission direction (spec 0202): the
         // typology form's Received/Paid select and the grid's badge column.
         'supplier_commission_direction' => SupplierCommissionDirection::class,
+        // Cost type nature (spec 0249): the cost-types form/detail select and
+        // the grid's `nature` badge, which declares `enumKey: cost_type_nature`.
+        'cost_type_nature' => CostTypeNature::class,
     ],
 
 ];

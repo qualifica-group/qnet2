@@ -67,7 +67,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Item', 'Meaning'],
           rows: [
-            ['**Cost type**', '**Required** on every line. Types are managed under Purchasing › Cost types (see its guide).'],
+            ['**Cost type**', '**Required** on every line. It shows in the type’s color in the picker. Types are managed under Purchasing › Cost types (see its guide).'],
             ['**Taxable / VAT / Total**', 'Computed by the server (quantity × price, then VAT) and read-only; the preview in the form matches the saved result. Header totals are the sum of the lines.'],
             ['**Extract VAT from price**', 'If you only know the VAT-inclusive price, enter it and press the icon: the price goes back to the taxable amount using the line rate (122.00 at 22% becomes 100.00). A rate above zero is needed.'],
             ['**RDA #n badge**', 'Appears on lines generated from a purchase request (see **Link with RDA**).'],

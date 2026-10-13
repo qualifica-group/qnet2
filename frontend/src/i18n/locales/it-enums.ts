@@ -1,4 +1,5 @@
 import { customFields } from './it-custom-fields'
+import { costTypes } from './it-cost-types'
 
 /**
  * Localized labels for backend domain enums. Keyed by the snake_case enum key
@@ -13,6 +14,8 @@ export const enums = {
   // (config/custom-fields.php, non un enum PHP). Alias della copy di
   // `customFields`: una sola sorgente per le 13 etichette.
   custom_field_type: customFields.types,
+  // Spec 0249: one source with the cost type detail/form (`costTypes.nature`).
+  cost_type_nature: costTypes.nature,
   locale: {
     en: 'Inglese',
     it: 'Italiano',

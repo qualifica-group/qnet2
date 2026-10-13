@@ -20,7 +20,7 @@ final readonly class UpdateCostTypeData
      */
     public static function fromValidated(array $data): self
     {
-        return new self(array_intersect_key($data, array_flip(['name', 'description', 'sort_order', 'is_active'])));
+        return new self(array_intersect_key($data, array_flip(['name', 'description', 'nature', 'color', 'is_active'])));
     }
 
     /**

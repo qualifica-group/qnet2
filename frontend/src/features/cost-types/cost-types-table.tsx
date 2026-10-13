@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
+import { StatusReorderToggle } from '@/features/status-reorder/status-reorder-toggle'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
@@ -82,12 +83,30 @@ export function CostTypesTable() {
     <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         actions={
-          <Can permission="cost-types.create">
-            <Button onClick={openCreate}>
-              <Plus aria-hidden="true" />
-              {t('costTypes.form.newCostType')}
-            </Button>
-          </Can>
+          <>
+            <StatusReorderToggle
+              resource={COST_TYPES_DOMAIN}
+              permission="cost-types.update"
+              labels={{
+                openButton: t('costTypes.reorder.openButton'),
+                title: t('costTypes.reorder.title'),
+                subtitle: t('costTypes.reorder.subtitle'),
+                dragHandleLabel: t('costTypes.reorder.dragHandleLabel'),
+                inactiveBadge: t('costTypes.reorder.inactiveBadge'),
+                loadError: t('costTypes.reorder.loadError'),
+                saved: t('costTypes.reorder.saved'),
+                forbidden: t('costTypes.reorder.forbidden'),
+                genericError: t('costTypes.reorder.genericError'),
+              }}
+              onReordered={refreshGrid}
+            />
+            <Can permission="cost-types.create">
+              <Button onClick={openCreate}>
+                <Plus aria-hidden="true" />
+                {t('costTypes.form.newCostType')}
+              </Button>
+            </Can>
+          </>
         }
       />
 

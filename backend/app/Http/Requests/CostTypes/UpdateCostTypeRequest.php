@@ -3,8 +3,10 @@
 namespace App\Http\Requests\CostTypes;
 
 use App\DataObjects\CostTypes\UpdateCostTypeData;
+use App\Enums\CostTypeNature;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\CostType;
+use App\Support\BadgeTokens;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -34,7 +36,9 @@ class UpdateCostTypeRequest extends FormRequest
         return [
             'name' => ['sometimes', 'required', 'string', 'max:'.StoreCostTypeRequest::NAME_MAX, Rule::unique('cost_types', 'name')->ignore($ignoreId)],
             'description' => ['sometimes', 'nullable', 'string', 'max:'.StoreCostTypeRequest::DESCRIPTION_MAX],
-            'sort_order' => ['sometimes', 'integer', 'min:0'],
+            'nature' => ['sometimes', 'required', Rule::enum(CostTypeNature::class)],
+            'color' => ['sometimes', 'required', 'string', Rule::in(BadgeTokens::colors())],
+            'sort_order' => ['prohibited'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

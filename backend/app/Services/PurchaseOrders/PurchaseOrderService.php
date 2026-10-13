@@ -40,7 +40,7 @@ class PurchaseOrderService
         'sectors:id,name',
         'createdBy:id,name',
         'lines.product:id,name',
-        'lines.costType:id,name',
+        'lines.costType:id,name,color',
         'lines.unitOfMeasure:id,name,symbol',
         'lines.vatRate:id,name,rate',
         'lines.workOrder:id,code,title',

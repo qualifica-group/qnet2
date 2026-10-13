@@ -6,9 +6,9 @@ beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
-const VALID = { name: 'Collaboratori', description: null, sort_order: 0, is_active: true }
+const VALID = { name: 'Collaboratori', description: null, nature: 'direct', color: 'slate', is_active: true }
 
-describe('buildCostTypeSchema (spec 0210)', () => {
+describe('buildCostTypeSchema (specs 0210, 0249)', () => {
   const schema = () => buildCostTypeSchema(i18n.t)
 
   it('accepts a valid payload', () => {
@@ -27,7 +27,15 @@ describe('buildCostTypeSchema (spec 0210)', () => {
     expect(schema().safeParse({ ...VALID, description: 'a'.repeat(501) }).success).toBe(false)
   })
 
-  it.each([-1, 1.5, Number.NaN])('rejects an invalid sort order (%s)', (sortOrder) => {
-    expect(schema().safeParse({ ...VALID, sort_order: sortOrder }).success).toBe(false)
+  it.each(['direct', 'indirect', 'general'])('accepts the nature %s', (nature) => {
+    expect(schema().safeParse({ ...VALID, nature }).success).toBe(true)
+  })
+
+  it.each(['', 'other'])('rejects an unknown nature (%j)', (nature) => {
+    expect(schema().safeParse({ ...VALID, nature }).success).toBe(false)
+  })
+
+  it.each(['', 'not-a-token'])('rejects a missing or unknown color (%j)', (color) => {
+    expect(schema().safeParse({ ...VALID, color }).success).toBe(false)
   })
 })

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
 import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import {
   LineDescriptionField,
@@ -97,6 +98,7 @@ export function PurchaseOrderLineRow({ index, control, setValue, line, readOnly,
           name="cost_type_id"
           resource={COST_TYPES_FOR_SELECT_RESOURCE}
           placeholder={t('purchaseOrderForm.lines.costTypePlaceholder')}
+          renderItem={costTypeOptionRenderer}
         />
       </div>
       <LineRelationSelect
