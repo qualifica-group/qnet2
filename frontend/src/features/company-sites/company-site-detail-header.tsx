@@ -3,7 +3,6 @@ import { Building2, Landmark, Receipt, Star } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/user-avatar'
@@ -17,8 +16,6 @@ import type { CompanySiteDetailWithPermissions } from '@/features/company-sites/
 
 interface CompanySiteDetailHeaderProps {
   site: CompanySiteDetailWithPermissions
-  /** Opens the module's existing edit surface; absent = no edit affordance. */
-  onEdit?: () => void
   /** Promotes this site to the organization's default one; absent when the actor may not, or it already is. */
   onSetDefault?: () => void
   isSettingDefault?: boolean
@@ -26,17 +23,15 @@ interface CompanySiteDetailHeaderProps {
 
 /**
  * Identity band: logo, site name, the owning company as subtitle, the "default"
- * pill and the two actions this record offers. The pill is ABSENT when the site
+ * pill and the set-default action (the rows below edit in place). The pill is ABSENT when the site
  * is not the default — the bar states what this site IS, not what it is not.
  */
 export function CompanySiteDetailHeader({
   site,
-  onEdit,
   onSetDefault,
   isSettingDefault = false,
 }: CompanySiteDetailHeaderProps) {
   const { t } = useTranslation()
-  const canEdit = Boolean(onEdit) && site.permissions.resource.update
 
   return (
     <RecordCardHeader
@@ -50,23 +45,12 @@ export function CompanySiteDetailHeader({
         ) : null
       }
       actions={
-        <>
-          {onSetDefault ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={onSetDefault}
-              disabled={isSettingDefault}
-            >
-              <Star aria-hidden="true" />
-              {isSettingDefault
-                ? t('companySites.form.settingDefault')
-                : t('companySites.form.setDefault')}
-            </Button>
-          ) : null}
-          {canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
-        </>
+        onSetDefault ? (
+          <Button type="button" variant="secondary" size="sm" onClick={onSetDefault} disabled={isSettingDefault}>
+            <Star aria-hidden="true" />
+            {isSettingDefault ? t('companySites.form.settingDefault') : t('companySites.form.setDefault')}
+          </Button>
+        ) : null
       }
     />
   )

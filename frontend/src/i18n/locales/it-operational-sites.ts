@@ -1,6 +1,6 @@
 /**
  * Localized strings for the operational-sites module (spec 0011): grid
- * columns, the read-only detail sheet and the create/edit form (single
+ * columns, the in-place editable detail and the create form (single
  * embedded address — the site has no own name/label, it IS its address).
  *
  * Extracted from `it.ts` to keep that file within the engineering size limits
@@ -22,28 +22,18 @@ export const operationalSites = {
   },
   detail: {
     title: 'Dettagli sede operativa',
-    subtitle: 'Visualizzazione in sola lettura della sede operativa selezionata.',
+    subtitle: 'Consulta e modifica la sede operativa selezionata.',
     loadError: 'Impossibile caricare la sede operativa. Riprova.',
-    alias: 'Alias',
-    line1: 'Via',
-    postal_code: 'CAP',
     city: 'Comune',
     province: 'Provincia',
     region: 'Regione',
     country: 'Nazione',
-    is_active: 'Attiva',
     created_at: 'Creato il',
-    summary: {
-      title: 'Riepilogo',
-      description: 'Si aggiorna mentre compili.',
-    },
   },
   form: {
     newOperationalSite: 'Nuova sede operativa',
     createTitle: 'Crea sede operativa',
     createSubtitle: 'Aggiungi una nuova sede operativa alla tua organizzazione.',
-    editTitle: 'Modifica sede operativa',
-    editSubtitle: 'Aggiorna la sede operativa selezionata.',
     alias: 'Alias',
     line1: 'Via',
     postalCode: 'CAP',
@@ -62,6 +52,12 @@ export const operationalSites = {
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la sede operativa. Riprova.',
     deleteForbidden: 'Non puoi eliminare questa sede operativa.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'La sede operativa non è ancora stata creata: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       address: {
         title: 'Indirizzo',

@@ -20,7 +20,6 @@ const operationalSites: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <OperationalSiteForm
-          mode={{ type: 'create' }}
           onSuccess={(site) =>
             onSuccess({
               id: site.id,

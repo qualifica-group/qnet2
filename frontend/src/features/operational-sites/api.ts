@@ -8,6 +8,11 @@ import type {
   UpdateOperationalSitePayload,
 } from '@/features/operational-sites/types'
 
+/** Query key of a single operational site's detail, shared by the detail screen and its in-place saves. */
+export function operationalSiteDetailQueryKey(id: number) {
+  return ['operational-sites', 'detail', id] as const
+}
+
 /**
  * Fetches a single operational site detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -33,16 +38,18 @@ export async function createOperationalSite(
   return data.data
 }
 
-/** Partially updates an operational site (PATCH). Returns the updated resource. */
+/**
+ * Partially updates an operational site (PATCH). Returns the saved record with
+ * the actor's permissions, so the in-place detail re-syncs on it as is.
+ */
 export async function updateOperationalSite(
   id: number,
   payload: UpdateOperationalSitePayload,
-): Promise<OperationalSiteDetail> {
-  const { data } = await apiClient.patch<ApiResponse<OperationalSiteDetail>>(
-    `/operational-sites/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<OperationalSiteDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<OperationalSiteDetail, ResourcePermissions>
+  >(`/operational-sites/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes an operational site. Backend responds 204 with no body. */

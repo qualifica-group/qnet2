@@ -3,9 +3,10 @@ import { useForm } from 'react-hook-form'
 import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createCompany, updateCompany } from '@/features/companies/api'
+import { companyDetailQueryKey, createCompany, updateCompany } from '@/features/companies/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/companies/company-form-payload'
 import {
   buildCreateCompanySchema,
@@ -13,8 +14,7 @@ import {
   type CreateCompanyFormValues,
   type UpdateCompanyFormValues,
 } from '@/features/companies/company-schema'
-import type { CompanyDetail } from '@/features/companies/types'
-import type { CompanyFormMode } from '@/features/companies/company-form'
+import type { CompanyDetail, CompanyFormMode } from '@/features/companies/types'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
 
 /** Server-side field names mapped onto the form for 422 handling. */
@@ -50,10 +50,11 @@ interface UseCompanyFormArgs {
 }
 
 /**
- * Owns every non-render concern of `CompanyForm`: RHF/Zod wiring, default
+ * Owns every non-render concern of the company form: RHF/Zod wiring, default
  * values (including the single embedded address block and any custom
- * fields), server 422 mapping and the create/update submit. The component
- * stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * fields), server 422 mapping and the create/update submit. Create backs
+ * `CompanyForm`; edit backs the detail's in-place rows (diff PATCH). The
+ * component stays UI-only; this hook is the orchestration point (`onSubmit`).
  *
  * Custom fields (spec 0021, pilot rollout): reads `/meta/companies` via the
  * SAME `useResourceMeta` query the mounted `<CustomFieldsSection>` reads from
@@ -62,6 +63,7 @@ interface UseCompanyFormArgs {
  */
 export function useCompanyForm({ mode, onSuccess }: UseCompanyFormArgs) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const isEdit = mode.type === 'edit'
@@ -111,9 +113,13 @@ export function useCompanyForm({ mode, onSuccess }: UseCompanyFormArgs) {
     }
   }, [mode, customFields.defaultValues])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<CompanyFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: CompanyFormValues) => {
@@ -128,6 +134,7 @@ export function useCompanyForm({ mode, onSuccess }: UseCompanyFormArgs) {
           mode.company.id,
           buildUpdatePayload(values, mode.company),
         )
+        queryClient.setQueryData(companyDetailQueryKey(mode.company.id), saved)
         toast.success(t('companies.form.updated'))
         onSuccess(saved)
         return
@@ -143,5 +150,5 @@ export function useCompanyForm({ mode, onSuccess }: UseCompanyFormArgs) {
     }
   }
 
-  return { form, isEdit, serverError, onSubmit }
+  return { form, serverError, clearServerError: () => setServerError(null), onSubmit }
 }

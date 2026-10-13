@@ -8,6 +8,11 @@ import type {
   UpdateCompanySitePayload,
 } from '@/features/company-sites/types'
 
+/** Query key of a single company site's detail, shared by the detail screen and its in-place saves. */
+export function companySiteDetailQueryKey(id: number) {
+  return ['company-sites', 'detail', id] as const
+}
+
 /**
  * Fetches a single company-site detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -31,16 +36,25 @@ export async function createCompanySite(
   return data.data
 }
 
-/** Partially updates a company site (PATCH). Returns the updated resource. */
-export async function updateCompanySite(
+/** What every write on an existing site answers: the saved record with the actor's permissions. */
+async function saved(
+  request: Promise<{ data: ApiResponseWithPermissions<CompanySiteDetail, ResourcePermissions> }>,
+): Promise<CompanySiteDetailWithPermissions> {
+  const { data } = await request
+  return { ...data.data, permissions: data.permissions }
+}
+
+type SavedEnvelope = ApiResponseWithPermissions<CompanySiteDetail, ResourcePermissions>
+
+/**
+ * Partially updates a company site (PATCH). Returns the saved record with the
+ * actor's permissions, so the in-place detail re-syncs on it as is.
+ */
+export function updateCompanySite(
   id: number,
   payload: UpdateCompanySitePayload,
-): Promise<CompanySiteDetail> {
-  const { data } = await apiClient.patch<ApiResponse<CompanySiteDetail>>(
-    `/company-sites/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<CompanySiteDetailWithPermissions> {
+  return saved(apiClient.patch<SavedEnvelope>(`/company-sites/${id}`, payload))
 }
 
 /** Deletes a company site. Backend responds 204 with no body. */
@@ -53,31 +67,18 @@ export async function deleteCompanySite(id: number): Promise<void> {
  * transaction, every other site's `is_default` is cleared (spec 0020: at
  * most one default site at a time).
  */
-export async function setDefaultCompanySite(id: number): Promise<CompanySiteDetail> {
-  const { data } = await apiClient.post<ApiResponse<CompanySiteDetail>>(
-    `/company-sites/${id}/set-default`,
-  )
-  return data.data
+export function setDefaultCompanySite(id: number): Promise<CompanySiteDetailWithPermissions> {
+  return saved(apiClient.post<SavedEnvelope>(`/company-sites/${id}/set-default`))
 }
 
 /** Uploads (replacing any previous) logo for an existing company site. */
-export async function uploadCompanySiteLogo(
-  id: number,
-  file: File,
-): Promise<CompanySiteDetail> {
+export function uploadCompanySiteLogo(id: number, file: File): Promise<CompanySiteDetailWithPermissions> {
   const formData = new FormData()
   formData.append('logo', file)
-  const { data } = await apiClient.post<ApiResponse<CompanySiteDetail>>(
-    `/company-sites/${id}/logo`,
-    formData,
-  )
-  return data.data
+  return saved(apiClient.post<SavedEnvelope>(`/company-sites/${id}/logo`, formData))
 }
 
 /** Removes the current logo of an existing company site. */
-export async function deleteCompanySiteLogo(id: number): Promise<CompanySiteDetail> {
-  const { data } = await apiClient.delete<ApiResponse<CompanySiteDetail>>(
-    `/company-sites/${id}/logo`,
-  )
-  return data.data
+export function deleteCompanySiteLogo(id: number): Promise<CompanySiteDetailWithPermissions> {
+  return saved(apiClient.delete<SavedEnvelope>(`/company-sites/${id}/logo`))
 }

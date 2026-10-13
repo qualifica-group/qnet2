@@ -117,3 +117,8 @@ export interface BankDraft {
   /** The site's preferred bank (single-primary across the list). */
   is_primary: boolean
 }
+
+/** Discriminated form mode shared by the form hooks: create form, or the in-place detail (edit). */
+export type CompanySiteFormMode =
+  | { type: 'create' }
+  | { type: 'edit'; companySite: CompanySiteDetailWithPermissions }

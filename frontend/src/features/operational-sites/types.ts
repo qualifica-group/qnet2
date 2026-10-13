@@ -78,7 +78,7 @@ export interface CreateOperationalSitePayload {
 export type UpdateOperationalSitePayload = Partial<CreateOperationalSitePayload>
 
 /**
- * Discriminated form mode shared by the form hook/meta-resolver and the
+ * Discriminated form mode shared by the form hook (create form, in-place detail) and the
  * `OperationalSiteForm` component, mirroring the `business-functions`
  * convention.
  */

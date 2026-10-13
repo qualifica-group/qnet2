@@ -1,102 +1,71 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
+import type { ResourceMeta } from '@/features/authorization/types'
 import { CompanyForm } from '@/features/companies/company-form'
-import type { CompanyDetailWithPermissions } from '@/features/companies/types'
-import type { ResourcePermissions } from '@/features/authorization/types'
-
-const createCompanyMock = vi.fn()
-const updateCompanyMock = vi.fn()
-
-vi.mock('@/features/companies/api', () => ({
-  createCompany: (...args: unknown[]) => createCompanyMock(...args),
-  updateCompany: (...args: unknown[]) => updateCompanyMock(...args),
-}))
-
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+import {
+  EDITABLE,
+  HIDDEN,
+  clickCreateSave,
+  companyFixture,
+  companyWrapper,
+  confirmOpenRow,
+  permissionsFor,
+} from '@/features/companies/company-test-fixtures'
+import type { CustomFieldDescriptor } from '@/features/custom-fields/types'
+import type { GeoValue } from '@/features/geo/geo-select'
 
 /**
- * This suite is not about authorization metadata (covered by
- * `company-form-metadata.test.tsx`): every field resolves as visible+editable
- * (the `MetaField` fallback, since `fields` is empty) so create/edit render
- * exactly as they would before spec 0004.
+ * The company create form is a replica of the detail (wave 3 of the "no edit
+ * pages" plan): the same rows, closed until clicked, nothing saved per row;
+ * Salva validates and creates the whole draft. Custom fields included.
  */
-const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {},
-  actions: {},
-}
 
-vi.mock('@/features/companies/use-company-form-meta', () => ({
-  useCompanyFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
+const createCompanyMock = vi.fn()
+vi.mock('@/features/companies/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/companies/api')>()),
+  createCompany: (...args: unknown[]) => createCompanyMock(...args),
 }))
 
-// `useCompanyForm` reads `/meta/companies` (spec 0021) to build the dynamic
-// custom-fields schema; this suite has no custom fields to exercise (covered
-// by `company-form-custom-fields.test.tsx`), so it resolves to an empty catalogue.
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+const fetchResourceMetaMock = vi.fn<() => Promise<ResourceMeta>>()
 vi.mock('@/features/authorization/api', () => ({
-  fetchResourceMeta: () => Promise.resolve({ fields: [], permissions: FULL_ACCESS_PERMISSIONS }),
+  fetchResourceMeta: () => fetchResourceMetaMock(),
 }))
 
-// The cascading geo selects are network-backed (covered by their own
-// component test); stub them so this suite focuses on the company form's own
-// logic without touching `@/features/geo/api`.
-// Same reason for the national default of the cascade (public config + country
-// list): stubbed to international mode, covered by `use-default-country.test.ts`.
-vi.mock('@/features/geo/use-default-country', () => ({
-  useDefaultCountryId: () => null,
+vi.mock('@/features/geo/geo-select', () => ({
+  GeoSelect: ({ onChange }: { value: GeoValue; onChange: (next: GeoValue) => void }) => (
+    <button
+      type="button"
+      data-testid="geo-select"
+      onClick={() => onChange({ country_id: 5, state_id: 6, province_id: 8, city_id: 7 })}
+    >
+      geo
+    </button>
+  ),
 }))
 
-vi.mock('@/features/geo/use-geo', () => ({
-  useCountries: () => ({ data: [{ id: 1, name: 'Italy', iso2: 'IT' }], isPending: false, isError: false }),
-  useStates: () => ({ data: [{ id: 10, name: 'Lombardy', country_id: 1 }], isPending: false, isError: false }),
-  useProvinces: () => ({ data: [{ id: 50, name: 'Milan', state_id: 10 }], isPending: false, isError: false }),
-  useCities: () => ({
-    data: { pages: [[{ id: 100, name: 'Milan', state_id: 10, province_id: 50 }]] },
-    isPending: false,
-    isError: false,
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    fetchNextPage: () => {},
-    refetch: () => {},
-  }),
-}))
-
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
+const NOTES_FIELD: CustomFieldDescriptor = {
+  key: 'custom.notes',
+  type: 'text',
+  label: 'Notes',
+  group: null,
+  mandatory: false,
+  source: 'custom',
 }
 
-function company(
-  overrides: Partial<CompanyDetailWithPermissions> = {},
-): CompanyDetailWithPermissions {
-  return {
-    id: 7,
-    denomination: 'Acme Srl',
-    vat_number: 'IT12345678903',
-    address: {
-      id: 3,
-      line1: '221B Baker Street',
-      line2: null,
-      postal_code: '20100',
-      country_id: 1,
-      state_id: 10,
-      province_id: 50,
-      city_id: 100,
-      country: 'Italy',
-      region: 'Lombardy',
-      province: 'Milan',
-      city: 'Milan',
-      is_primary: true,
-    },
-    created_at: null,
-    permissions: FULL_ACCESS_PERMISSIONS,
-    ...overrides,
-  }
+function renderForm(onSuccess = vi.fn()) {
+  const { wrapper } = companyWrapper()
+  render(<CompanyForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper })
+  return onSuccess
+}
+
+/** Opens a row, types into its control and keeps the value with Done. */
+async function fillRow(field: string, label: RegExp, value: string) {
+  fireEvent.click(await screen.findByRole('button', { name: `Edit ${field}` }))
+  fireEvent.change(await screen.findByLabelText(label), { target: { value } })
+  confirmOpenRow('Done')
 }
 
 beforeAll(async () => {
@@ -105,51 +74,29 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createCompanyMock.mockReset()
-  updateCompanyMock.mockReset()
+  fetchResourceMetaMock.mockReset()
+  fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: permissionsFor() })
 })
 
-describe('CompanyForm — create/edit', () => {
-  it('renders the denomination, VAT number and address fields in create mode', () => {
-    render(
-      <CompanyForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+describe('CompanyForm — create', () => {
+  it('opens on closed rows: nothing is editable until a pencil is clicked', async () => {
+    renderForm()
 
-    expect(screen.getByLabelText(/^Denomination/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/^VAT number/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/^Address$/)).toBeInTheDocument()
-    // Comune-first layout: only the comune is a control until the disclosure
-    // is opened; nazione/regione/provincia are derived from it and reachable
-    // behind "Change geographic area".
-    expect(screen.getAllByRole('combobox')).toHaveLength(1)
-
-    fireEvent.click(screen.getByRole('button', { name: /Change geographic area/ }))
-    expect(screen.getAllByRole('combobox')).toHaveLength(4)
+    expect(await screen.findByRole('button', { name: 'Edit Denomination' })).toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
-  it('submits one createCompany call carrying denomination, vat_number and address', async () => {
-    createCompanyMock.mockResolvedValue(company())
-    const onSuccess = vi.fn()
+  it('creates the company with denomination, VAT number and address built row by row', async () => {
+    const created = companyFixture()
+    createCompanyMock.mockResolvedValue(created)
+    const onSuccess = renderForm()
 
-    render(
-      <CompanyForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(/^Denomination/), {
-      target: { value: 'Acme Srl' },
-    })
-    fireEvent.change(screen.getByLabelText(/^VAT number/), {
-      target: { value: 'IT12345678903' },
-    })
-    fireEvent.change(screen.getByLabelText(/^Address$/), {
-      target: { value: '221B Baker Street' },
-    })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    await fillRow('Denomination', /^Denomination/, 'Acme Srl')
+    await fillRow('VAT number', /^VAT number/, 'IT12345678903')
+    await fillRow('Address', /^Address$/, '221B Baker Street')
+    clickCreateSave()
 
     await waitFor(() => expect(createCompanyMock).toHaveBeenCalledTimes(1))
-    expect(updateCompanyMock).not.toHaveBeenCalled()
-
     const payload = createCompanyMock.mock.calls[0][0]
     expect(payload.denomination).toBe('Acme Srl')
     expect(payload.vat_number).toBe('IT12345678903')
@@ -162,77 +109,108 @@ describe('CompanyForm — create/edit', () => {
       province_id: null,
       city_id: null,
     })
-    await waitFor(() => expect(onSuccess).toHaveBeenCalled())
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(created))
+  })
+
+  it('carries the geo cascade picked on the place row', async () => {
+    createCompanyMock.mockResolvedValue(companyFixture())
+    renderForm()
+
+    await fillRow('Denomination', /^Denomination/, 'Acme Srl')
+    await fillRow('Address', /^Address$/, 'Via Roma 1')
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit City' }))
+    fireEvent.click(screen.getByTestId('geo-select'))
+    confirmOpenRow('Done')
+    clickCreateSave()
+
+    await waitFor(() => expect(createCompanyMock).toHaveBeenCalledTimes(1))
+    expect(createCompanyMock.mock.calls[0][0].address).toMatchObject({ state_id: 6, province_id: 8, city_id: 7 })
   })
 
   it('omits the address entirely when it is left blank', async () => {
-    createCompanyMock.mockResolvedValue(company({ address: null }))
+    createCompanyMock.mockResolvedValue(companyFixture({ address: null }))
+    renderForm()
 
-    render(
-      <CompanyForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(/^Denomination/), {
-      target: { value: 'Acme Srl' },
-    })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    await fillRow('Denomination', /^Denomination/, 'Acme Srl')
+    clickCreateSave()
 
     await waitFor(() => expect(createCompanyMock).toHaveBeenCalledTimes(1))
-    const payload = createCompanyMock.mock.calls[0][0]
-    expect('address' in payload).toBe(false)
+    expect('address' in createCompanyMock.mock.calls[0][0]).toBe(false)
   })
 
   it('blocks the save when the address is started but the required line1 is left blank', async () => {
-    render(
-      <CompanyForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    renderForm()
 
-    fireEvent.change(screen.getByLabelText(/^Denomination/), {
-      target: { value: 'Acme Srl' },
-    })
-    fireEvent.change(screen.getByLabelText(/^Postal code/), {
-      target: { value: '20100' },
-    })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    await fillRow('Denomination', /^Denomination/, 'Acme Srl')
+    await fillRow('Postal code', /^Postal code/, '20100')
+    clickCreateSave()
 
-    await waitFor(() =>
-      expect(
-        screen.getByText('Address is required when an address is provided.'),
-      ).toBeInTheDocument(),
-    )
+    expect(await screen.findByText('Address is required when an address is provided.')).toBeInTheDocument()
     expect(createCompanyMock).not.toHaveBeenCalled()
   })
 
-  it('hydrates the company and its address in edit mode', () => {
-    render(
-      <CompanyForm mode={{ type: 'edit', company: company() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('refuses a draft without denomination, marking the row', async () => {
+    renderForm()
+    await screen.findByRole('button', { name: 'Edit Denomination' })
 
-    expect(screen.getByLabelText(/^Denomination/)).toHaveValue('Acme Srl')
-    expect(screen.getByLabelText(/^VAT number/)).toHaveValue('IT12345678903')
-    expect(screen.getByLabelText(/^Address$/)).toHaveValue('221B Baker Street')
-    expect(screen.getByLabelText(/^Postal code/)).toHaveValue('20100')
+    clickCreateSave()
+
+    expect(await screen.findByText(i18n.t('companies.form.denominationRequired'))).toBeInTheDocument()
+    expect(createCompanyMock).not.toHaveBeenCalled()
   })
 
-  it('submits only the changed fields on a partial update', async () => {
-    updateCompanyMock.mockResolvedValue(company({ denomination: 'Acme Srl EU' }))
+  it('the identity band follows the denomination being typed', async () => {
+    renderForm()
 
-    render(
-      <CompanyForm mode={{ type: 'edit', company: company() }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    expect(await screen.findByRole('heading', { name: i18n.t('companies.form.createTitle') })).toBeInTheDocument()
+    await fillRow('Denomination', /^Denomination/, 'Acme Srl')
+    expect(screen.getByRole('heading', { name: 'Acme Srl' })).toBeInTheDocument()
+  })
 
-    fireEvent.change(screen.getByLabelText(/^Denomination/), {
-      target: { value: 'Acme Srl EU' },
+  it('includes the valued custom field in the create payload', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [NOTES_FIELD],
+      permissions: permissionsFor({ 'custom.notes': EDITABLE }),
     })
-    fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Save' }))
+    createCompanyMock.mockResolvedValue(companyFixture())
+    renderForm()
 
-    await waitFor(() => expect(updateCompanyMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateCompanyMock.mock.calls[0]
-    expect(id).toBe(7)
-    expect(payload).toEqual({ denomination: 'Acme Srl EU' })
+    await fillRow('Denomination', /^Denomination/, 'Acme Srl')
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Notes' }))
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Notes' }), { target: { value: 'Key account' } })
+    confirmOpenRow('Done')
+    clickCreateSave()
+
+    await waitFor(() => expect(createCompanyMock).toHaveBeenCalledTimes(1))
+    expect(createCompanyMock.mock.calls[0][0].custom_fields).toEqual({ notes: 'Key account' })
+  })
+})
+
+describe('CompanyForm — metadata-driven authorization (spec 0004)', () => {
+  it('hides a hidden field and the whole address section when its permission is hidden', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [],
+      permissions: permissionsFor({ vat_number: HIDDEN, address: HIDDEN }),
+    })
+    renderForm()
+
+    expect(await screen.findByRole('button', { name: 'Edit Denomination' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit VAT number' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Address' })).not.toBeInTheDocument()
+  })
+
+  it('marks a required field in its editor from the create-context metadata', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [],
+      permissions: permissionsFor({ denomination: { ...EDITABLE, required: true } }),
+    })
+    renderForm()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Denomination' }))
+
+    const label = screen.getByText(
+      (_, element) => element?.tagName === 'LABEL' && element.textContent?.startsWith('Denomination') === true,
+    )
+    expect(label.textContent).toContain('*')
   })
 })

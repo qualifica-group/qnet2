@@ -199,7 +199,6 @@ const companies: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <CompanyForm
-          mode={{ type: 'create' }}
           onSuccess={(company) => onSuccess({ id: company.id, name: company.denomination })}
           onCancel={onCancel}
         />

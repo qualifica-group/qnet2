@@ -89,3 +89,8 @@ export interface UpdateCompanyPayload {
   /** Only the custom fields that changed, keyed by raw key (spec 0021, sparse diff). */
   custom_fields?: Record<string, CustomFieldValue>
 }
+
+/** Discriminated form mode shared by the form hook: create form, or the in-place detail (edit). */
+export type CompanyFormMode =
+  | { type: 'create' }
+  | { type: 'edit'; company: CompanyDetailWithPermissions }

@@ -1,7 +1,6 @@
 /**
  * Localized strings for the Company Sites module (spec 0020): grid columns,
- * the read-only detail sheet and the multi-tab create/edit form (Profilo /
- * Impostazioni / Banche).
+ * the in-place editable detail and the create form.
  *
  * Extracted from `en.ts` to keep that file within the engineering size limits
  * (see `.claude/rules/engineering.md` §6). Public API of `en.ts` is unchanged.
@@ -27,20 +26,14 @@ export const companySites = {
   },
   detail: {
     title: 'Company site details',
-    subtitle: 'Read-only view of the selected company site.',
+    subtitle: 'View and edit the selected company site.',
     loadError: 'Unable to load the company site. Please try again.',
     defaultBadge: 'Default',
-    summary: {
-      title: 'Summary',
-      description: 'Updated as you type.',
-    },
   },
   form: {
     newCompanySite: 'New site',
     createTitle: 'Create company site',
     createSubtitle: "Add a new site to your company's application.",
-    editTitle: 'Edit company site',
-    editSubtitle: 'Update the selected company site.',
     logoLabel: 'Logo',
     name: 'Name',
     company: 'Company',
@@ -64,30 +57,30 @@ export const companySites = {
     settingDefault: 'Setting as default…',
     defaultSet: 'This site is now the default one.',
     defaultError: 'Unable to set this site as default. Please try again.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The company site has not been created yet: the data you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       general: {
         title: 'General',
-        description: 'Site name, notes and logo.',
       },
       identity: {
         title: 'Company details',
-        description: 'Company name, VAT number, tax code and SDI recipient code.',
       },
       contacts: {
         title: 'Contacts',
-        description: 'Phone, email, PEC and other contact channels.',
       },
       address: {
         title: 'Address',
-        description: 'The site address (one at most).',
       },
       company: {
         title: 'Company',
-        description: 'The company this site belongs to.',
       },
       banks: {
         title: 'Banks',
-        description: 'The banks associated with this site.',
       },
     },
     banks: {
