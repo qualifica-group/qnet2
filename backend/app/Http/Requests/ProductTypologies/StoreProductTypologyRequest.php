@@ -3,6 +3,7 @@
 namespace App\Http\Requests\ProductTypologies;
 
 use App\DataObjects\ProductTypologies\CreateProductTypologyData;
+use App\Enums\ProformaRequestKind;
 use App\Enums\SupplierCommissionDirection;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Support\BadgeTokens;
@@ -50,6 +51,7 @@ class StoreProductTypologyRequest extends FormRequest
             'color' => ['required', 'string', Rule::in(BadgeTokens::colors())],
             'supplier_commission_enabled' => ['sometimes', 'boolean'],
             'supplier_commission_direction' => $this->directionRules(),
+            'proforma_kind' => ['sometimes', 'nullable', Rule::enum(ProformaRequestKind::class)],
         ];
     }
 

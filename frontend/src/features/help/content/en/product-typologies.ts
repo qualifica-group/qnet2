@@ -29,6 +29,7 @@ const guide: HelpGuide = {
             ['Description', 'Optional free text.'],
             ['Supplier commission calculation', 'Switch: when on, the Supplier commission is calculated on the new offer lines of this typology.'],
             ['Direction', 'Shown and required only while the switch is on. **Received**: the commission is the line revenue and the taxable amount goes to the supplier. **Paid**: it is a cost towards the supplier.'],
+            ['Proforma request type', 'In the **Billing** section. Decides which proforma request the product lines of this typology go into: **Consultancy**, **Institution** or **None**.'],
           ],
         },
       ],
@@ -44,6 +45,20 @@ const guide: HelpGuide = {
         {
           type: 'warning',
           text: 'The setting is frozen on the offer line when the line is created: changing the typology only affects new lines, existing lines do not change.',
+        },
+      ],
+    },
+    {
+      id: 'proforma-kind',
+      title: 'Proforma request type',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'When you request the proformas from the work order, the product lines with type **Consultancy** go into a single consultancy request; those with type **Institution** make one request per supplier. The same lines are the ones offered in the invoice draft of that request.',
+        },
+        {
+          type: 'tip',
+          text: 'With **None** (empty field) the product lines of this typology are not billed through a proforma request. The type can be set on any typology, new ones included: what counts is the chosen type, not the typology’s name or code.',
         },
       ],
     },

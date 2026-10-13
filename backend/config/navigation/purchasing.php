@@ -39,5 +39,12 @@ return [
             'route' => '/cost-types',
             'permission' => 'cost-types.view',
         ],
+        [
+            'key' => 'purchase-request-priorities',
+            'label' => 'navigation.purchaseRequestPriorities',
+            'icon' => 'flag',
+            'route' => '/purchase-request-priorities',
+            'permission' => 'purchase-request-priorities.view',
+        ],
     ],
 ];

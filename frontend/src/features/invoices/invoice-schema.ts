@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { isPartialCollection } from '@/features/invoices/invoice-collection-residual'
-import { INVOICE_TAGS, RESIDUAL_MODES } from '@/features/invoices/types'
+import { RESIDUAL_MODES } from '@/features/invoices/types'
 
 /**
  * Zod schemas of the invoice forms, mirroring the frozen server rules of
@@ -17,7 +17,7 @@ const EXTERNAL_NUMBER_MAX = 30
 const QUANTITY_MAX = 9_999_999
 const UNIT_PRICE_LIMIT = 9_999_999_999
 
-const tagSchema = z.enum(INVOICE_TAGS).nullable()
+const tagSchema = z.number().int().nullable()
 
 /** One document line; amounts are numbers, the server recomputes net/VAT/total. */
 export function buildInvoiceLineSchema(t: TFunction) {
@@ -52,7 +52,7 @@ export function buildInvoiceWriteSchema(t: TFunction) {
     layout_id: z.number().int().nullable(),
     notes: z.string().max(NOTES_MAX, t('invoiceEditor.errors.notesMax')).nullable(),
     internal_note: z.string().max(NOTES_MAX, t('invoiceEditor.errors.notesMax')).nullable(),
-    tag: tagSchema,
+    invoice_tag_id: tagSchema,
     lines: z
       .array(buildInvoiceLineSchema(t))
       .min(INVOICE_LINES_MIN, t('invoiceEditor.errors.linesRequired'))
@@ -71,7 +71,7 @@ export function buildInvoiceDetailsSchema(t: TFunction) {
         .max(EXTERNAL_NUMBER_MAX, t('invoices.details.errors.externalNumberMax'))
         .nullable(),
       external_date: z.string().nullable(),
-      tag: tagSchema,
+      invoice_tag_id: tagSchema,
       layout_id: z.number().int().nullable(),
       deviation: z.number(t('invoices.details.errors.deviationInvalid')).nullable(),
       internal_note: z.string().max(NOTES_MAX, t('invoices.details.errors.internalNoteMax')).nullable(),

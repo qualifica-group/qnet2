@@ -4,7 +4,6 @@ namespace App\Tables;
 
 use App\Enums\PurchaseRequestCapability;
 use App\Enums\PurchaseRequestLineStatus;
-use App\Enums\PurchaseRequestPriority;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
 use App\Models\User;
@@ -15,6 +14,7 @@ use App\Tables\PurchaseRequests\PurchaseRequestLineColumnCatalog as Catalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -56,7 +56,8 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
     public function baseQuery(): Builder
     {
         $query = PurchaseRequestLine::query()->with([
-            'purchaseRequest:id,subject,priority,requested_at,requester_id,function_manager_id,created_by,status',
+            'purchaseRequest:id,subject,purchase_request_priority_id,requested_at,requester_id,function_manager_id,created_by,status',
+            'purchaseRequest.purchaseRequestPriority:id,name,color,icon',
             'purchaseRequest.requester:id,name',
             'purchaseRequest.functionManager:id,name',
             'supplier:id,name',
@@ -123,7 +124,7 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
             'id' => $row->id,
             'purchase_request_id' => $row->purchase_request_id,
             'purchase_request_subject' => $request->subject,
-            'priority' => $request->priority->value,
+            'priority' => ['id' => $request->purchaseRequestPriority->id, 'name' => $request->purchaseRequestPriority->name, 'color' => $request->purchaseRequestPriority->color, 'icon' => $request->purchaseRequestPriority->icon],
             'requester' => ['id' => $request->requester->id, 'name' => $request->requester->name],
             'function_manager' => ['id' => $request->functionManager->id, 'name' => $request->functionManager->name],
             'requested_at' => $request->requested_at->toDateString(),
@@ -171,7 +172,7 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
         if ($columnId === self::PRIORITY_COLUMN) {
-            Derived::applySet($query, 'purchaseRequest', 'priority', PurchaseRequestPriority::values(), $filter);
+            Derived::applyText($query, ['purchaseRequest.purchaseRequestPriority', 'name'], $filter);
 
             return true;
         }
@@ -196,6 +197,15 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
             return true;
         }
 
+        if ($columnId === self::PRIORITY_COLUMN) {
+            $query->orderBy(
+                DB::table('purchase_request_priorities')->select('sort_order')->whereIn('id', DB::table('purchase_requests')->select('purchase_request_priority_id')->whereColumn('purchase_requests.id', 'purchase_request_lines.purchase_request_id')),
+                $direction,
+            );
+
+            return true;
+        }
+
         if (! isset(Catalog::PARENT_SORTS[$columnId])) {
             return false;
         }
@@ -213,7 +223,7 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
         return match (true) {
-            $columnId === self::PRIORITY_COLUMN => PurchaseRequestPriority::values(),
+            $columnId === self::PRIORITY_COLUMN => Derived::activePriorityNames(),
             $columnId === 'status' => PurchaseRequestLineStatus::values(),
             isset(Catalog::TEXT_RELATIONS[$columnId]) => Derived::distinctRelated($query, Catalog::TEXT_RELATIONS[$columnId], $search, $limit),
             default => null,

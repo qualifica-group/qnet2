@@ -11,3 +11,4 @@ require __DIR__.'/proforma-requests.php';
 require __DIR__.'/invoices.php';
 require __DIR__.'/invoice-emails.php';
 require __DIR__.'/agent-commissions.php';
+require __DIR__.'/invoice-tags.php';

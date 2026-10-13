@@ -49,7 +49,7 @@ const guide: HelpGuide = {
             'La finestra riepiloga le **Righe selezionate** (numero, descrizione, quantità con unità di misura, totale e stato attuale) e, sotto **Stai operando come**, i tuoi ruoli su di esse: Responsabile di funzione, Evasione o Gestione stati.',
             'Scegli il **Nuovo stato** con i pulsanti: sono proposti solo gli stati consentiti **a tutte** le righe selezionate. Se non ce ne sono in comune lo vedi in un messaggio e non puoi confermare. Con una sola riga lo stato attuale è già selezionato e il pulsante di conferma si abilita solo scegliendone un altro.',
             'Se scegli **Ordinato**, ogni riga deve avere un **Fornitore**: quelle che ne hanno già uno lo mostrano, per le altre scegli il fornitore nella colonna **Fornitore** (la conferma resta disabilitata finché ne manca uno).',
-            'Scrivi una **motivazione** (facoltativa; con più righe vale per tutte) e conferma con **Conferma** (o **Conferma su N righe**).',
+            'Scrivi una **motivazione** (**obbligatoria** se il nuovo stato è Rifiutato o Stand by, anche in massa; altrimenti facoltativa; con più righe vale per tutte) e conferma con **Conferma** (o **Conferma su N righe**).',
           ],
         },
         {

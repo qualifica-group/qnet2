@@ -21,6 +21,7 @@ class PurchaseRequestService
 {
     /** Relations PurchaseRequestResource reads (lazy loading is forbidden). */
     public const array RESOURCE_RELATIONS = [
+        'purchaseRequestPriority:id,name,color,icon',
         'requester:id,name',
         'functionManager:id,name',
         'customer:id,name',

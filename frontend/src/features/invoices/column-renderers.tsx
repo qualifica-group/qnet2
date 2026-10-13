@@ -1,7 +1,6 @@
-import { CodeBadgeCell } from '@/features/table/rich-cells'
+import { CodeBadgeCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import {
-  InvoiceTagCell,
   InvoiceTypeCell,
   MoneyCell,
   PaymentStatusCell,
@@ -13,7 +12,7 @@ export const invoiceColumnRenderers: TableRendererMap = {
   work_order_code: (params) => <CodeBadgeCell {...params} />,
   quote_code: (params) => <CodeBadgeCell {...params} />,
   type: (params) => <InvoiceTypeCell {...params} />,
-  tag: (params) => <InvoiceTagCell {...params} />,
+  tag: (params) => <StatusBadgeCell {...params} />,
   payment_status: (params) => <PaymentStatusCell {...params} />,
   net_amount: (params) => <MoneyCell {...params} />,
   vat_amount: (params) => <MoneyCell {...params} />,

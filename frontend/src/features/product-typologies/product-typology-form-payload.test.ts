@@ -13,6 +13,7 @@ const formValues: ProductTypologyFormValues = {
   color: 'blue',
   supplier_commission_enabled: false,
   supplier_commission_direction: null,
+  proforma_kind: null,
 }
 
 function original(
@@ -26,6 +27,7 @@ function original(
     color: 'blue',
     supplier_commission_enabled: false,
     supplier_commission_direction: null,
+    proforma_kind: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     permissions: {
@@ -46,6 +48,7 @@ describe('buildCreatePayload (spec 0099)', () => {
       color: 'blue',
       supplier_commission_enabled: false,
       supplier_commission_direction: null,
+      proforma_kind: null,
     })
   })
 })
@@ -111,5 +114,11 @@ describe('buildUpdatePayload (spec 0099, D-1)', () => {
         enabledOriginal,
       ),
     ).toEqual({ supplier_commission_direction: 'PAID' })
+  })
+  it('sends the proforma kind only when it changed (spec 0247)', () => {
+    expect(buildUpdatePayload({ ...formValues, proforma_kind: 'institution' }, original())).toEqual({ proforma_kind: 'institution' })
+    expect(buildUpdatePayload({ ...formValues, proforma_kind: null }, original({ proforma_kind: 'consultancy' }))).toEqual({
+      proforma_kind: null,
+    })
   })
 })

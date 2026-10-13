@@ -2,6 +2,7 @@
 
 use App\Enums\PurchaseRequestLineStatus as LineStatus;
 use App\Models\ExportRun;
+use App\Models\PurchaseRequestPriority;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -94,13 +95,15 @@ it('AC-014: the RDA grid carries the contract columns and the status tab keeps r
 
 it('AC-014: filters, search and sort run from the allow-list; unknown columns are ignored or refused, never interpolated', function () {
     Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll']));
-    $alpha = purchaseRequestWithLines([LineStatus::Approved], ['subject' => 'Alpha order', 'priority' => 'low']);
-    $beta = purchaseRequestWithLines([LineStatus::Approved], ['subject' => 'Beta order', 'priority' => 'urgent']);
+    $low = PurchaseRequestPriority::query()->where('name', 'Bassa')->firstOrFail();
+    $urgent = PurchaseRequestPriority::query()->where('name', 'Urgente')->firstOrFail();
+    $alpha = purchaseRequestWithLines([LineStatus::Approved], ['subject' => 'Alpha order', 'purchase_request_priority_id' => $low->id]);
+    $beta = purchaseRequestWithLines([LineStatus::Approved], ['subject' => 'Beta order', 'purchase_request_priority_id' => $urgent->id]);
 
     $subject = fn (array $state) => collect(requestRows($this, $state))->pluck('subject')->all();
 
     expect($subject(['filterModel' => ['subject' => ['filterType' => 'text', 'type' => 'contains', 'filter' => 'Alpha']]]))->toBe(['Alpha order'])
-        ->and($subject(['filterModel' => ['priority' => ['filterType' => 'set', 'values' => ['urgent']]]]))->toBe(['Beta order'])
+        ->and($subject(['filterModel' => ['priority' => ['filterType' => 'set', 'values' => ['Urgente']]]]))->toBe(['Beta order'])
         ->and($subject(['filterModel' => ['requester' => ['filterType' => 'text', 'filter' => $beta->requester->name]]]))->toBe(['Beta order'])
         ->and($subject(['search' => 'Alpha']))->toBe(['Alpha order'])
         ->and($subject(['sortModel' => [['colId' => 'subject', 'sort' => 'desc']]]))->toBe(['Beta order', 'Alpha order'])

@@ -3,9 +3,9 @@
 namespace App\Tables;
 
 use App\Enums\PurchaseRequestLineStatus;
-use App\Enums\PurchaseRequestPriority;
 use App\Enums\PurchaseRequestStatus;
 use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestPriority;
 use App\Models\User;
 use App\Services\PurchaseRequests\PurchaseRequestService;
 use App\Services\PurchaseRequests\PurchaseRequestVisibilityScope;
@@ -50,6 +50,7 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
     public function baseQuery(): Builder
     {
         $query = PurchaseRequest::query()->with([
+            'purchaseRequestPriority:id,name,color,icon',
             'requester:id,name',
             'functionManager:id,name',
             'customer:id,name',
@@ -120,7 +121,7 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
             'id' => $row->id,
             'subject' => $row->subject,
             'requested_at' => $row->requested_at->toDateString(),
-            'priority' => $row->priority->value,
+            'priority' => $this->priorityBadge($row->purchaseRequestPriority),
             'requester' => $this->summary($row->requester),
             'function_manager' => $this->summary($row->functionManager),
             'customer' => $this->summary($row->customer),
@@ -193,6 +194,12 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
             return true;
         }
 
+        if ($columnId === Catalog::PRIORITY_COLUMN) {
+            Derived::applyText($query, ['purchaseRequestPriority', 'name'], $filter);
+
+            return true;
+        }
+
         if (! isset(Catalog::TEXT_RELATIONS[$columnId])) {
             return false;
         }
@@ -243,7 +250,7 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
         return match (true) {
             $columnId === Catalog::LINE_STATUS_COLUMN => PurchaseRequestLineStatus::values(),
             $columnId === 'status' => PurchaseRequestStatus::values(),
-            $columnId === 'priority' => PurchaseRequestPriority::values(),
+            $columnId === Catalog::PRIORITY_COLUMN => Derived::activePriorityNames(),
             $columnId === Catalog::SUPPLIERS_COLUMN => Derived::distinctLineSuppliers($query, $search, $limit),
             isset(Catalog::TEXT_RELATIONS[$columnId]) => Derived::distinctRelated($query, Catalog::TEXT_RELATIONS[$columnId], $search, $limit),
             default => null,
@@ -260,6 +267,14 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
         return $row->lines->pluck('supplier')->filter()->unique('id')->sortBy('name')
             ->map(fn (object $supplier): array => ['id' => $supplier->id, 'name' => $supplier->name])
             ->values()->all();
+    }
+
+    /**
+     * @return array{id: int, name: string, color: string, icon: string|null}
+     */
+    private function priorityBadge(PurchaseRequestPriority $priority): array
+    {
+        return ['id' => $priority->id, 'name' => $priority->name, 'color' => $priority->color, 'icon' => $priority->icon];
     }
 
     /**

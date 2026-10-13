@@ -3,6 +3,8 @@ import {
   purchaseRequestLines as enLines,
   purchaseRequests as en,
 } from '@/i18n/locales/en-purchase-requests'
+import { purchaseRequestPriorities as enPriorities } from '@/i18n/locales/en-purchase-request-priorities'
+import { purchaseRequestPriorities as itPriorities } from '@/i18n/locales/it-purchase-request-priorities'
 import {
   purchaseRequestLines as itLines,
   purchaseRequests as itLocale,
@@ -25,6 +27,7 @@ function leafEntries(tree: I18nTree, prefix = ''): [string, string][] {
 describe.each([
   ['purchaseRequests', en, itLocale],
   ['purchaseRequestLines', enLines, itLines],
+  ['purchaseRequestPriorities', enPriorities, itPriorities],
 ])('%s i18n parity (spec 0208)', (_name, enTree, itTree) => {
   it('has the exact same set of keys in en and it, recursively', () => {
     const enKeys = leafEntries(enTree).map(([path]) => path).sort()

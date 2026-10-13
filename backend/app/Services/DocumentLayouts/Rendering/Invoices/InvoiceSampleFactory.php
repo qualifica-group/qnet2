@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\DocumentLayouts\Rendering\Invoices;
 
-use App\Enums\InvoiceTag;
 use App\Enums\InvoiceType;
 use App\Models\Company;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
 use App\Models\InvoiceLine;
+use App\Models\InvoiceTag;
 use App\Models\Registry;
 use Illuminate\Support\Carbon;
 
@@ -33,7 +33,6 @@ final class InvoiceSampleFactory
 
         $invoice = (new Invoice)->forceFill([
             'type' => InvoiceType::Invoice,
-            'tag' => InvoiceTag::Final,
             'number' => 1,
             'year' => (int) $today->format('Y'),
             'document_date' => $today,
@@ -51,6 +50,7 @@ final class InvoiceSampleFactory
         $invoice->setRelation('financialAccount', null);
         $invoice->setRelation('workOrder', null);
         $invoice->setRelation('quote', null);
+        $invoice->setRelation('invoiceTag', (new InvoiceTag)->forceFill(['name' => 'Final', 'color' => 'teal']));
         $invoice->setRelation('lines', collect([$this->line('Sample item A', '1.00', '100.00'), $this->line('Sample item B', '2.00', '100.00')]));
         $invoice->setRelation('installments', collect([$this->installment(1, $today, '183.00'), $this->installment(2, $today->copy()->addDays(30), '183.00')]));
 

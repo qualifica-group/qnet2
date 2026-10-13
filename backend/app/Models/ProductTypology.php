@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProformaRequestKind;
 use App\Enums\SupplierCommissionDirection;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
@@ -25,7 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * (D-5): the typology classifies the Product and is read live through it, so
  * `products` is the ONLY referenced-by set the delete guard checks (D-8).
  */
-#[Fillable(['name', 'code', 'description', 'color', 'supplier_commission_enabled', 'supplier_commission_direction'])]
+#[Fillable(['name', 'code', 'description', 'color', 'supplier_commission_enabled', 'supplier_commission_direction', 'proforma_kind'])]
 class ProductTypology extends BaseModel
 {
     /** @use HasFactory<ProductTypologyFactory> */
@@ -39,6 +40,7 @@ class ProductTypology extends BaseModel
         return [
             'supplier_commission_enabled' => 'boolean',
             'supplier_commission_direction' => SupplierCommissionDirection::class,
+            'proforma_kind' => ProformaRequestKind::class,
         ];
     }
 

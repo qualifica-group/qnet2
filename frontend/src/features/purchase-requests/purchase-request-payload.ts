@@ -10,7 +10,6 @@ import type {
   PurchaseRequestLineFormValues,
 } from '@/features/purchase-requests/purchase-request-schema'
 
-const DEFAULT_PRIORITY = 'medium'
 const DEFAULT_QUANTITY = 1
 
 /** Today as ISO `Y-m-d` in local time (the default of the request date). */
@@ -49,7 +48,7 @@ export function emptyFormValues(requesterId: number | null, now: Date = new Date
   return {
     subject: '',
     requested_at: todayIso(now),
-    priority: DEFAULT_PRIORITY,
+    purchase_request_priority_id: null,
     requester_id: requesterId,
     function_manager_id: null,
     customer_id: null,
@@ -99,7 +98,7 @@ export function toFormValues(request: PurchaseRequest): PurchaseRequestFormValue
   return {
     subject: request.subject,
     requested_at: request.requested_at,
-    priority: request.priority,
+    purchase_request_priority_id: request.priority?.id ?? null,
     requester_id: request.requester.id,
     function_manager_id: request.function_manager.id,
     customer_id: request.customer?.id ?? null,
@@ -142,9 +141,17 @@ function toLinePayload(line: PurchaseRequestLineFormValues): PurchaseRequestLine
  * guaranteed non-null by the schema; the guard keeps the type honest.
  */
 export function buildPayload(values: PurchaseRequestFormValues): PurchaseRequestPayload {
-  const { requester_id, function_manager_id, company_id, company_site_id, operational_site_id, business_function_id } =
-    values
+  const {
+    purchase_request_priority_id,
+    requester_id,
+    function_manager_id,
+    company_id,
+    company_site_id,
+    operational_site_id,
+    business_function_id,
+  } = values
   if (
+    purchase_request_priority_id === null ||
     requester_id === null ||
     function_manager_id === null ||
     company_id === null ||
@@ -157,7 +164,7 @@ export function buildPayload(values: PurchaseRequestFormValues): PurchaseRequest
   return {
     subject: values.subject,
     requested_at: values.requested_at,
-    priority: values.priority,
+    purchase_request_priority_id,
     requester_id,
     function_manager_id,
     customer_id: values.customer_id,

@@ -5,7 +5,7 @@ import type { PurchaseRequest, RequestFieldPermission } from '@/features/purchas
 export const REQUEST_FIELD_KEYS = [
   'subject',
   'requested_at',
-  'priority',
+  'purchase_request_priority_id',
   'requester_id',
   'function_manager_id',
   'customer_id',

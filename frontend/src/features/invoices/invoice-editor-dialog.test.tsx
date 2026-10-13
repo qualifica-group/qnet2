@@ -126,7 +126,7 @@ describe('InvoiceEditorDialog create (spec 0194 AC-009)', () => {
       layout_id: null,
       notes: null,
       internal_note: null,
-      tag: null,
+      invoice_tag_id: null,
       lines: [
         { quote_line_id: 11, product_id: 1, description: 'Consulting day', quantity: 2, unit_price: 100, vat_rate_id: 1 },
         { quote_line_id: 12, product_id: 2, description: 'Final report', quantity: 1, unit_price: 50.5, vat_rate_id: 1 },

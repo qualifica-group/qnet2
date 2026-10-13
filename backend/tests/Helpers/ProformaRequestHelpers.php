@@ -44,7 +44,7 @@ if (! function_exists('proformaUserWith')) {
 if (! function_exists('proformaWorkOrder')) {
     /**
      * A work order covering one revenue line per entry. Each entry is the
-     * typology code (`consultancy`/`institution`/null for none) and, for an
+     * typology code (`consultancy`/`institution`, created with the matching proforma_kind; null for a typology with none) and, for an
      * institution, an optional supplier registry.
      *
      * @param  array<int, array{0: string|null, 1?: Registry|null}>  $lines
@@ -57,7 +57,7 @@ if (! function_exists('proformaWorkOrder')) {
         foreach ($lines as $line) {
             $typology = $line[0] === null
                 ? ProductTypology::factory()->create()
-                : ProductTypology::query()->firstOrCreate(['code' => $line[0]], ['name' => $line[0]]);
+                : ProductTypology::query()->firstOrCreate(['code' => $line[0]], ['name' => $line[0], 'proforma_kind' => $line[0]]);
             $product = Product::factory()->create([
                 'product_typology_id' => $typology->id,
                 'supplier_id' => ($line[1] ?? null)?->id,

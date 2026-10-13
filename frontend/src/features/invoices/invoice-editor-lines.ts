@@ -71,7 +71,7 @@ const HEADER_FIELDS = [
   'layout_id',
   'notes',
   'internal_note',
-  'tag',
+  'invoice_tag_id',
 ] as const
 const LINE_FIELD_PATTERN = /^lines(\.\d+\.(quote_line_id|product_id|description|quantity|unit_price|vat_rate_id))?$/
 

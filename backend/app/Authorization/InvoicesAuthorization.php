@@ -44,7 +44,7 @@ class InvoicesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('financial_account_id', 'select'),
             new FieldDefinition('notes', 'textarea'),
             new FieldDefinition('internal_note', 'textarea'),
-            new FieldDefinition('tag', 'select'),
+            new FieldDefinition('invoice_tag_id', 'select'),
             new FieldDefinition('external_number', 'text'),
             new FieldDefinition('external_date', 'date'),
             new FieldDefinition('deviation', 'number'),

@@ -23,16 +23,19 @@ import {
   dialogOptions,
   hasMissingSupplier,
   pickedAssignments,
+  REASON_REQUIRED_STATUSES,
   sharedRequest,
   SUPPLIER_REQUIRED_STATUS,
   type LineTarget,
   type PickedSuppliers,
 } from '@/features/purchase-requests/line-status-transitions'
-import { serverMessage } from '@/features/purchase-requests/purchase-request-server-errors'
+import { fieldError, serverMessage } from '@/features/purchase-requests/purchase-request-server-errors'
 import type { LineStatus, LineStatusChangeResult, NamedRef } from '@/features/purchase-requests/types'
 
 const REASON_MAX = 2000
 const STATUS_LABEL_ID = 'purchase-line-status-target'
+const REASON_ID = 'purchase-line-status-reason'
+const REASON_ERROR_ID = 'purchase-line-status-reason-error'
 
 interface LineStatusDialogProps {
   /**
@@ -70,10 +73,15 @@ export function LineStatusDialog({ targets, onOpenChange, onChanged }: LineStatu
   const [choice, setChoice] = useState<LineStatus | null>(null)
   const [reason, setReason] = useState('')
   const [picked, setPicked] = useState<Record<number, NamedRef>>({})
+  const [reasonAttempted, setReasonAttempted] = useState(false)
+  const [serverReasonError, setServerReasonError] = useState<string | null>(null)
   const { options, current } = dialogOptions(targets)
   const selected = choice !== null && options.includes(choice) ? choice : current
   const needsSupplier = selected === SUPPLIER_REQUIRED_STATUS
   const canConfirm = selected !== null && selected !== current && !(needsSupplier && hasMissingSupplier(targets, picked))
+  const reasonRequired = selected !== null && REASON_REQUIRED_STATUSES.includes(selected)
+  const reasonMissing = reasonRequired && reason.trim() === ''
+  const reasonError = reasonAttempted && reasonMissing ? t('purchaseRequests.statusDialog.reasonMissing') : serverReasonError
   const count = targets.length
   const isBulk = count > 1
   const request = sharedRequest(targets)
@@ -107,8 +115,26 @@ export function LineStatusDialog({ targets, onOpenChange, onChanged }: LineStatu
       }
       onChanged(result)
     },
-    onError: (error) => toast.error(serverMessage(error) ?? t('purchaseRequests.statusDialog.error')),
+    onError: (error) => {
+      const reasonMessage = fieldError(error, 'reason')
+      if (reasonMessage !== null) {
+        setServerReasonError(reasonMessage)
+        return
+      }
+      toast.error(serverMessage(error) ?? t('purchaseRequests.statusDialog.error'))
+    },
   })
+
+  const confirm = () => {
+    if (!canConfirm || selected === null) {
+      return
+    }
+    if (reasonMissing) {
+      setReasonAttempted(true)
+      return
+    }
+    mutation.mutate(selected)
+  }
 
   return (
     <Dialog open={count > 0} onOpenChange={onOpenChange}>
@@ -166,16 +192,28 @@ export function LineStatusDialog({ targets, onOpenChange, onChanged }: LineStatu
                 {isBulk ? <Note>{t('purchaseRequests.statusDialog.commonStatesNote')}</Note> : null}
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="purchase-line-status-reason" className="text-xs">
-                  {t('purchaseRequests.statusDialog.reason')}
+                <Label htmlFor={REASON_ID} className="text-xs">
+                  {reasonRequired ? t('purchaseRequests.statusDialog.reasonRequired') : t('purchaseRequests.statusDialog.reason')}
+                  {reasonRequired ? <span aria-hidden="true" className="text-destructive">*</span> : null}
                 </Label>
                 <Textarea
-                  id="purchase-line-status-reason"
+                  id={REASON_ID}
                   className="min-h-16 text-sm"
                   maxLength={REASON_MAX}
                   value={reason}
-                  onChange={(event) => setReason(event.target.value)}
+                  required={reasonRequired}
+                  aria-invalid={reasonError !== null}
+                  aria-describedby={reasonError !== null ? REASON_ERROR_ID : undefined}
+                  onChange={(event) => {
+                    setReason(event.target.value)
+                    setServerReasonError(null)
+                  }}
                 />
+                {reasonError !== null ? (
+                  <span id={REASON_ERROR_ID} role="alert" className="text-xs text-destructive">
+                    {reasonError}
+                  </span>
+                ) : null}
                 {isBulk ? <Note>{t('purchaseRequests.statusDialog.reasonBulkNote', { count })}</Note> : null}
               </div>
             </>
@@ -188,7 +226,7 @@ export function LineStatusDialog({ targets, onOpenChange, onChanged }: LineStatu
           <Button
             type="button"
             disabled={!canConfirm || mutation.isPending}
-            onClick={() => canConfirm && selected !== null && mutation.mutate(selected)}
+            onClick={confirm}
           >
             {isBulk ? t('purchaseRequests.statusDialog.confirmBulk', { count }) : t('purchaseRequests.statusDialog.confirm')}
           </Button>

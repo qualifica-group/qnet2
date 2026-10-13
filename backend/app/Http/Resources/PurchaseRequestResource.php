@@ -41,7 +41,7 @@ class PurchaseRequestResource extends JsonResource
             'id' => $this->id,
             'subject' => $this->subject,
             'requested_at' => $this->requested_at->toDateString(),
-            'priority' => $this->priority,
+            'priority' => ['id' => $this->purchaseRequestPriority->id, 'name' => $this->purchaseRequestPriority->name, 'color' => $this->purchaseRequestPriority->color, 'icon' => $this->purchaseRequestPriority->icon],
             'requester' => $this->userSummary($this->requester),
             'function_manager' => $this->userSummary($this->functionManager),
             'customer' => $this->registrySummary($this->customer),

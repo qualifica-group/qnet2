@@ -55,16 +55,6 @@ export function RequestStatusCell({ value }: ICellRendererParams) {
   )
 }
 
-/** Priority as a translated plain label. */
-export function PriorityCell({ value }: ICellRendererParams) {
-  const { t } = useTranslation()
-  return typeof value === 'string' && value !== '' ? (
-    <span className="truncate">{t(`purchaseRequests.priorities.${value}`)}</span>
-  ) : (
-    <EmptyCell align="left" />
-  )
-}
-
 /** Work order `{id, code, title}` as its code, the title on hover. */
 export function WorkOrderCell({ value }: ICellRendererParams) {
   const workOrder = value as { code?: string; title?: string | null } | null | undefined

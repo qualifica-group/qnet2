@@ -8,7 +8,7 @@ import { commissionSettlementRuns, commissionSettlements } from './it-commission
 import { financialAccounts } from './it-financial-accounts'
 import { invoiceEditor } from './it-invoice-editor'
 import { invoiceInstallments } from './it-invoice-installments'
-import { invoices } from './it-invoices'
+import { invoices, invoiceTags } from './it-invoices'
 import { paymentMethods } from './it-payment-methods'
 import { proformaRequests } from './it-proforma-requests'
 import { purchaseInvoiceInstallments } from './it-purchase-invoice-installments'
@@ -18,6 +18,7 @@ export const accounting = {
   proformaRequests,
   paymentMethods,
   invoices,
+  invoiceTags,
   invoiceInstallments,
   purchaseInvoiceInstallments,
   agentFiscalProfiles,

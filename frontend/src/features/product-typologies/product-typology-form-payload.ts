@@ -14,6 +14,7 @@ export function buildCreatePayload(values: ProductTypologyFormValues): CreatePro
     color: values.color,
     supplier_commission_enabled: values.supplier_commission_enabled,
     supplier_commission_direction: normalizedDirection(values),
+    proforma_kind: values.proforma_kind,
   }
 }
 
@@ -49,6 +50,9 @@ export function buildUpdatePayload(
   const direction = normalizedDirection(values)
   if (direction !== original.supplier_commission_direction) {
     payload.supplier_commission_direction = direction
+  }
+  if (values.proforma_kind !== original.proforma_kind) {
+    payload.proforma_kind = values.proforma_kind
   }
 
   return payload

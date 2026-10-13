@@ -49,6 +49,7 @@ final class InvoiceRenderSubject implements DocumentRenderSubject
         'lines.product',
         'lines.vatRate',
         'installments',
+        'invoiceTag',
     ];
 
     public function __construct(

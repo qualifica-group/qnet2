@@ -19,7 +19,7 @@ uses(RefreshDatabase::class);
 function lineActions(object $test, int $lineId): array
 {
     return [
-        fn () => changeStatus($test, [$lineId], 'on_hold'),
+        fn () => changeStatus($test, [$lineId], 'on_hold', ['reason' => 'Waiting']),
         fn () => $test->postJson('/api/purchase-request-lines/supplier', ['line_ids' => [$lineId], 'supplier_id' => Registry::factory()->create(['is_supplier' => true])->id]),
         fn () => $test->postJson('/api/purchase-request-lines/purchase-orders', ['line_ids' => [$lineId], 'cost_type_id' => CostType::factory()->create()->id]),
     ];

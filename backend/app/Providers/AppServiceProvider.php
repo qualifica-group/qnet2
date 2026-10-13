@@ -38,6 +38,7 @@ use App\Models\FieldChangeRequest;
 use App\Models\FinancialAccount;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
+use App\Models\InvoiceTag;
 use App\Models\Lead;
 use App\Models\Note;
 use App\Models\OperationalSite;
@@ -57,6 +58,7 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
+use App\Models\PurchaseRequestPriority;
 use App\Models\Quote;
 use App\Models\QuoteLineCommission;
 use App\Models\QuoteWorkflow;
@@ -223,6 +225,8 @@ class AppServiceProvider extends ServiceProvider
             'purchase_order' => PurchaseOrder::class,
             'purchase_order_line' => PurchaseOrderLine::class,
             'cost_type' => CostType::class,
+            'purchase_request_priority' => PurchaseRequestPriority::class,
+            'invoice_tag' => InvoiceTag::class,
             'invoice' => Invoice::class,
             'invoice_installment' => InvoiceInstallment::class,
             'product_typology' => ProductTypology::class,

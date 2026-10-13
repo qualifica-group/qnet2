@@ -26,7 +26,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Press **New RDA** and fill in the header: **Subject**, **Request date**, **Priority**, **Requester** and the organization fields (**Company**, **Company site**, **Operational site**, **Business function**).',
+            'Press **New RDA** and fill in the header: **Subject**, **Request date**, **Priority** (picked from the configurable list, prefilled with the default one and shown as a colored badge), **Requester** and the organization fields (**Company**, **Company site**, **Operational site**, **Business function**).',
             'The **Function manager** is picked among the **requester’s direct superiors** (company profile in **Users**): with a single superior it is proposed automatically, and changing the requester updates the list. If the requester has no superiors the manager of the **Business function** is used; if that is missing too, a message under the field says so and the RDA cannot be saved. The requester cannot approve their own RDA. **Company site** only lists the sites of the chosen company.',
             'Optional: **Customer** and **Work order**. The **Supplier** is no longer in the header but on each line. The **+** next to a field creates a new supplier, customer or product on the spot.',
             'Add the lines (at least one) and the documents if needed, then press **Save**.',
@@ -58,7 +58,7 @@ const guide: HelpGuide = {
             ['**Status**', 'To approve, Approved, Ordered, Received, Rejected or On hold. It is not edited like a field: use the **Change line status** icon.'],
             ['**ODA**', 'Read-only: shows the code of the ODA generated from the line, as a link to the order, or a dash if the line is not linked. The link is removed if the ODA is deleted or cancelled, or if the line is removed from the ODA.'],
             ['**Line documents**', 'Attachments of the single line.'],
-            ['**Change line status**', 'Shown on a saved line only when you can change its status: the assigned function manager approves or rejects lines To approve, whoever has the fulfilment permission moves Approved lines to Ordered or On hold and Ordered lines to Received or On hold. Pick the new status and an optional reason. Choosing **Ordered** adds a **Supplier** column to the dialog: lines that already have one show it, lines without one get a picker, and the confirm button stays disabled until none is missing.'],
+            ['**Change line status**', 'Shown on a saved line only when you can change its status: the assigned function manager approves or rejects lines To approve, whoever has the fulfilment permission moves Approved lines to Ordered or On hold and Ordered lines to Received or On hold. Pick the new status and a reason, **mandatory** for **Rejected** and **On hold** (optional for the other statuses). Choosing **Ordered** adds a **Supplier** column to the dialog: lines that already have one show it, lines without one get a picker, and the confirm button stays disabled until none is missing.'],
             ['**Trash**', 'Deletes the line, if your role allows it and it is To approve or Rejected.'],
           ],
         },

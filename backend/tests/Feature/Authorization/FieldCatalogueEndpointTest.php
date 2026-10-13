@@ -81,10 +81,14 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0197 `invoice-installments` (InvoiceInstallmentsAuthorization: due date/payment method code editable,
         // amounts and collection state visible-readonly).
         'invoice-installments',
+        // spec 0247 `invoice-tags` (InvoiceTagsAuthorization: the invoice tag lookup).
+        'invoice-tags',
         // spec 0208 `purchase-requests` (PurchaseRequestsAuthorization: RDA header and footer fields).
         'purchase-requests',
         // spec 0210 `cost-types` (CostTypesAuthorization: the purchase order line cost type lookup).
         'cost-types',
+        // spec 0247 `purchase-request-priorities` (PurchaseRequestPrioritiesAuthorization: the RDA priority lookup).
+        'purchase-request-priorities',
         // spec 0210 `purchase-orders` (PurchaseOrdersAuthorization: the ODA header fields).
         'purchase-orders',
         // spec 0211 `purchase-invoice-installments` (PurchaseInvoiceInstallmentsAuthorization: due date/payment

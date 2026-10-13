@@ -53,6 +53,8 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'purchase-request-lines',
   'purchase-orders',
   'cost-types',
+  'purchase-request-priorities',
+  'invoice-tags',
   'invoices',
   'invoice-installments',
   'purchase-invoice-installments',

@@ -157,6 +157,9 @@ export function sharedRequest(targets: readonly LineTarget[]): { id: number; sub
 /** Status that needs a supplier on every line (spec 0209 D-2). */
 export const SUPPLIER_REQUIRED_STATUS: LineStatus = 'ordered'
 
+/** Statuses that need a reason from the actor (spec 0247 D-2); the server answers 422 on `reason` without one. */
+export const REASON_REQUIRED_STATUSES: readonly LineStatus[] = ['rejected', 'on_hold']
+
 /** Suppliers picked in the dialog, by line id; only lines without a supplier need one. */
 export type PickedSuppliers = Readonly<Record<number, NamedRef>>
 

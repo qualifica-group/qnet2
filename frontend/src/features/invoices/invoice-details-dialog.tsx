@@ -3,16 +3,14 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { InvoiceLayoutField } from '@/features/invoices/invoice-layout-field'
+import { InvoiceTagField } from '@/features/invoices/invoice-tag-field'
 import { parseNumberInput } from '@/features/invoices/invoice-format'
 import { useInvoiceDetailsForm } from '@/features/invoices/use-invoice-details-form'
 import { useInvoice } from '@/features/invoices/use-invoice-queries'
-import { INVOICE_TAGS, type InvoiceTag, type InvoiceWithPermissions } from '@/features/invoices/types'
-
-const NO_TAG = 'none'
+import type { InvoiceWithPermissions } from '@/features/invoices/types'
 
 function DetailsForm({ invoice, onClose }: { invoice: InvoiceWithPermissions; onClose: () => void }) {
   const { t } = useTranslation()
@@ -53,34 +51,7 @@ function DetailsForm({ invoice, onClose }: { invoice: InvoiceWithPermissions; on
         </div>
         <p className="-mt-1 text-xs text-muted-foreground">{t(externalLocked ? 'invoices.details.externalLockedHint' : 'invoices.details.externalNumberHint')}</p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="tag"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('invoices.details.tag')}</FormLabel>
-                <Select
-                  value={field.value ?? NO_TAG}
-                  onValueChange={(value) => field.onChange(value === NO_TAG ? null : (value as InvoiceTag))}
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full bg-card">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value={NO_TAG}>{t('invoices.tags.none')}</SelectItem>
-                    {INVOICE_TAGS.map((tag) => (
-                      <SelectItem key={tag} value={tag}>
-                        {t(`invoices.tags.${tag}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <InvoiceTagField control={form.control} selected={invoice.tag} />
           <FormField
             control={form.control}
             name="deviation"

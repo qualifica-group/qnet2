@@ -40,6 +40,7 @@ class ProductTypologiesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('color', 'color', mandatory: true),
             new FieldDefinition('supplier_commission_enabled', 'boolean'),
             new FieldDefinition('supplier_commission_direction', 'select'),
+            new FieldDefinition('proforma_kind', 'select'),
         ];
     }
 
@@ -69,6 +70,7 @@ class ProductTypologiesAuthorization extends AbstractResourceAuthorization
             'color' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'supplier_commission_enabled' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'supplier_commission_direction' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'proforma_kind' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

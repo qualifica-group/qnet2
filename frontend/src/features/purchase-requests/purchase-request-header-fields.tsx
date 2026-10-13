@@ -40,7 +40,7 @@ export function PurchaseRequestHeaderFields({
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <PurchaseTextField control={control} name="subject" required className="sm:col-span-2" />
       <PurchaseTextField control={control} name="requested_at" type="date" required />
-      <PrioritySelectField control={control} />
+      <PrioritySelectField control={control} selected={refs.purchase_request_priority_id} />
       <PurchaseRelationField
         control={control}
         name="requester_id"

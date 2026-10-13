@@ -18,6 +18,7 @@ import { ResourcePermissionsProvider } from '@/features/authorization/permission
 import {
   ProductTypologyCommissionRow,
   ProductTypologyIdentityRows,
+  ProductTypologyProformaKindRow,
 } from '@/features/product-typologies/product-typology-rows'
 import {
   useProductTypologyForm,
@@ -104,6 +105,11 @@ function ProductTypologyDetailContent({ productTypology, onChanged }: ProductTyp
             <RecordSection title={t('productTypologies.form.sections.commission.title')} full>
               <RecordFieldList>
                 <ProductTypologyCommissionRow inline={inline} canEdit={canEdit} />
+              </RecordFieldList>
+            </RecordSection>
+            <RecordSection title={t('productTypologies.form.sections.billing.title')} full>
+              <RecordFieldList>
+                <ProductTypologyProformaKindRow inline={inline} canEdit={canEdit} />
               </RecordFieldList>
             </RecordSection>
           </RecordSectionsGrid>

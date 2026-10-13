@@ -72,9 +72,9 @@ it('AC-014: without downgrade, changing or clearing the external number is 403 w
     $this->patchJson($url, ['external_number' => 'FT-9', 'external_date' => '2026-04-02'])->assertForbidden();
     expect(Invoice::query()->findOrFail($invoice['id'])->type->value)->toBe('invoice');
 
-    $this->patchJson($url, ['external_number' => 'FT-9', 'external_date' => '2026-04-01', 'tag' => 'final', 'deviation' => '1.5', 'internal_note' => 'ok'])
-        ->assertOk()->assertJsonPath('data.type', 'invoice')->assertJsonPath('data.tag', 'final');
-    $this->patchJson($url, ['tag' => 'estimate'])->assertOk();
+    $this->patchJson($url, ['external_number' => 'FT-9', 'external_date' => '2026-04-01', 'invoice_tag_id' => referenceInvoiceTag('Consuntivo')->id, 'deviation' => '1.5', 'internal_note' => 'ok'])
+        ->assertOk()->assertJsonPath('data.type', 'invoice')->assertJsonPath('data.tag.name', 'Consuntivo');
+    $this->patchJson($url, ['invoice_tag_id' => referenceInvoiceTag('Preventivo')->id])->assertOk()->assertJsonPath('data.tag.name', 'Preventivo');
 });
 
 it('AC-015: with downgrade, clearing the external number reverts to proforma and the activity log records it', function () {
@@ -114,7 +114,7 @@ it('AC-016: the detail exposes the downgrade action and the read-only header fie
         ->assertJsonPath('permissions.actions.delete', false)
         ->assertJsonPath('permissions.fields.external_number.editable', true)
         ->assertJsonPath('permissions.fields.external_date.editable', true)
-        ->assertJsonPath('permissions.fields.tag.editable', true)
+        ->assertJsonPath('permissions.fields.invoice_tag_id.editable', true)
         ->assertJsonPath('permissions.fields.internal_note.editable', true)
         ->assertJsonPath('permissions.fields.deviation.editable', true);
 
@@ -132,7 +132,7 @@ it('AC-016: the detail exposes the downgrade action and the read-only header fie
         ->assertJsonPath('permissions.actions.downgrade', false)
         ->assertJsonPath('permissions.fields.external_number.editable', false)
         ->assertJsonPath('permissions.fields.external_date.editable', false)
-        ->assertJsonPath('permissions.fields.tag.editable', true);
+        ->assertJsonPath('permissions.fields.invoice_tag_id.editable', true);
 });
 
 it('AC-017: permissions:sync creates invoices.downgrade and the super-admin receives it', function () {

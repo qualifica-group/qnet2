@@ -4,7 +4,6 @@ namespace App\Http\Requests\PurchaseRequests;
 
 use App\DataObjects\PurchaseRequests\PurchaseRequestData;
 use App\Enums\HttpStatusEnum;
-use App\Enums\PurchaseRequestPriority;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\BusinessFunction;
 use App\Models\PurchaseRequest;
@@ -44,7 +43,10 @@ class PurchaseRequestWriteRequest extends FormRequest
         return [
             'subject' => ['required', 'string', 'max:255'],
             'requested_at' => ['required', 'date_format:Y-m-d'],
-            'priority' => ['required', Rule::enum(PurchaseRequestPriority::class)],
+            // Active priorities only; the one already assigned stays valid even if deactivated since.
+            'purchase_request_priority_id' => ['required', 'integer', Rule::exists('purchase_request_priorities', 'id')->where(
+                fn ($priorities) => $priorities->where('is_active', true)->orWhere('id', $this->authorizationModel()?->getAttribute('purchase_request_priority_id')),
+            )],
             'requester_id' => ['required', 'integer', Rule::exists('users', 'id')],
             // Active users only; the manager already assigned stays valid even if deactivated since.
             'function_manager_id' => ['required', 'integer', Rule::exists('users', 'id')->where(

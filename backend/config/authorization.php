@@ -22,6 +22,7 @@ use App\Authorization\EnrolleeManagementAuthorization;
 use App\Authorization\FinancialAccountsAuthorization;
 use App\Authorization\InvoiceInstallmentsAuthorization;
 use App\Authorization\InvoicesAuthorization;
+use App\Authorization\InvoiceTagsAuthorization;
 use App\Authorization\LeadsAuthorization;
 use App\Authorization\OperationalSitesAuthorization;
 use App\Authorization\OpportunitiesAuthorization;
@@ -34,6 +35,7 @@ use App\Authorization\ProformaRequestsAuthorization;
 use App\Authorization\ProjectsAuthorization;
 use App\Authorization\PurchaseInvoiceInstallmentsAuthorization;
 use App\Authorization\PurchaseOrdersAuthorization;
+use App\Authorization\PurchaseRequestPrioritiesAuthorization;
 use App\Authorization\PurchaseRequestsAuthorization;
 use App\Authorization\QuotesAuthorization;
 use App\Authorization\QuoteWorkflowsAuthorization;
@@ -133,6 +135,9 @@ return [
         'units-of-measure' => UnitsOfMeasureAuthorization::class,
         // spec 0210: tipi di costo (righe ODA).
         'cost-types' => CostTypesAuthorization::class,
+        // spec 0247: catalogs of the simple purchasing/accounting lists.
+        'purchase-request-priorities' => PurchaseRequestPrioritiesAuthorization::class,
+        'invoice-tags' => InvoiceTagsAuthorization::class,
         // spec 0189: conti finanziari (conto corrente, carta, cassa).
         'financial-accounts' => FinancialAccountsAuthorization::class,
         // spec 0212: profili fiscali degli agenti.

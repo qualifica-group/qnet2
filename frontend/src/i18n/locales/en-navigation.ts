@@ -80,6 +80,8 @@ export const navigation = {
   purchaseRequestLines: 'RDA line management',
   purchaseOrders: 'ODA',
   costTypes: 'Cost types',
+  purchaseRequestPriorities: 'RDA priorities',
+  invoiceTags: 'Invoice tags',
   management: 'Management',
   configuration: 'Configuration',
   administration: 'Administration',

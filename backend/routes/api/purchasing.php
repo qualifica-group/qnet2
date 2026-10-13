@@ -14,6 +14,7 @@
 
 require __DIR__.'/purchase-requests.php';
 require __DIR__.'/cost-types.php';
+require __DIR__.'/purchase-request-priorities.php';
 require __DIR__.'/purchase-orders.php';
 require __DIR__.'/purchase-order-emails.php';
 require __DIR__.'/purchase-invoices.php';

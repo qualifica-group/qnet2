@@ -144,6 +144,8 @@ export const permissions = {
     'purchase-requests': 'Purchase requests (RDA)',
     'purchase-orders': 'Purchase orders (ODA)',
     'cost-types': 'Cost types',
+    'purchase-request-priorities': 'RDA priorities',
+    'invoice-tags': 'Invoice tags',
     invoices: 'Active invoices',
     'invoice-installments': 'Due dates',
     'purchase-invoices': 'Passive invoices',

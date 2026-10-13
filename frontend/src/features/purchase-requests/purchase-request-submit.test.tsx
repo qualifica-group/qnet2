@@ -18,6 +18,11 @@ const FOR_SELECT_ITEMS: Record<string, unknown[]> = {
   'company-sites': [{ id: 2, label: 'Napoli' }],
   'operational-sites': [{ id: 3, label: 'Sede Napoli' }],
   registries: [{ id: 12, label: 'Rossi Srl' }],
+  'purchase-request-priorities': [
+    { id: 1, label: 'Low', meta: { color: 'slate', icon: null, is_default: false } },
+    { id: 2, label: 'Medium', meta: { color: 'blue', icon: null, is_default: true } },
+    { id: 3, label: 'High', meta: { color: 'amber', icon: null, is_default: false } },
+  ],
 }
 
 const forSelectMock = vi.fn(async (resource: string) => ({
@@ -87,6 +92,9 @@ describe('PurchaseRequestForm submit (AC-016, D-15)', () => {
     )
 
     fireEvent.change(screen.getByLabelText(/^Subject/), { target: { value: 'Cables' } })
+    // The new RDA starts on the catalog default (AC-013), shown as its badge, and the user can change it
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^Priority/ })).toHaveTextContent('Medium'))
+    await pick(/^Priority/, /High/)
     await pick(/Business function/, /IT/)
     await pick(/^Company$/, /Qualifica/)
     await pick(/Company site/, /Napoli/)
@@ -110,7 +118,7 @@ describe('PurchaseRequestForm submit (AC-016, D-15)', () => {
     const payload = createMock.mock.calls[0]?.[0]
     expect(payload).toMatchObject({
       subject: 'Cables',
-      priority: 'medium',
+      purchase_request_priority_id: 3,
       requester_id: 3,
       function_manager_id: 9,
       company_id: 1,

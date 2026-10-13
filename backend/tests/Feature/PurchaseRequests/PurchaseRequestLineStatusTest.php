@@ -53,7 +53,7 @@ it('AC-004: the manager can reject but cannot order', function () {
     $request = purchaseRequestWithLines([LineStatus::PendingApproval, LineStatus::PendingApproval], ['function_manager_id' => $manager->id]);
     Sanctum::actingAs($manager);
 
-    changeStatus($this, [$request->lines[0]->id], 'rejected')->assertOk();
+    changeStatus($this, [$request->lines[0]->id], 'rejected', ['reason' => 'Not needed'])->assertOk();
     changeStatus($this, [$request->lines[1]->id], 'ordered')->assertUnprocessable()->assertJsonValidationErrors('line_ids.0');
 
     expect($request->lines[0]->fresh()->status)->toBe(LineStatus::Rejected)
@@ -81,7 +81,7 @@ it('AC-005: fulfill parks an approved line on hold but cannot approve', function
     Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'fulfill']));
     $request = purchaseRequestWithLines([LineStatus::Approved, LineStatus::PendingApproval]);
 
-    changeStatus($this, [$request->lines[0]->id], 'on_hold')->assertOk();
+    changeStatus($this, [$request->lines[0]->id], 'on_hold', ['reason' => 'Waiting'])->assertOk();
     changeStatus($this, [$request->lines[1]->id], 'approved')->assertUnprocessable();
 });
 
@@ -179,7 +179,7 @@ it('AC-008: the request closes by itself when the last open line reaches a termi
     $request = purchaseRequestWithLines([LineStatus::Received, LineStatus::Rejected, LineStatus::Approved, LineStatus::Ordered]);
     Sanctum::actingAs($actor);
 
-    changeStatus($this, [$request->lines[2]->id], 'on_hold')
+    changeStatus($this, [$request->lines[2]->id], 'on_hold', ['reason' => 'Waiting'])
         ->assertOk()
         ->assertJsonPath('data.closed_purchase_request_ids', []);
     expect($request->fresh()->status->value)->toBe('open');
@@ -200,7 +200,7 @@ it('AC-008: a rejection that leaves nothing to work on closes the request too', 
     $request = purchaseRequestWithLines([LineStatus::Received, LineStatus::PendingApproval], ['function_manager_id' => $manager->id]);
     Sanctum::actingAs($manager);
 
-    changeStatus($this, [$request->lines[1]->id], 'rejected')
+    changeStatus($this, [$request->lines[1]->id], 'rejected', ['reason' => 'Not needed'])
         ->assertOk()
         ->assertJsonPath('data.closed_purchase_request_ids', [$request->id]);
 });

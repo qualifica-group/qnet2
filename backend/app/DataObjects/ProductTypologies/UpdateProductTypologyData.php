@@ -2,6 +2,7 @@
 
 namespace App\DataObjects\ProductTypologies;
 
+use App\Enums\ProformaRequestKind;
 use App\Enums\SupplierCommissionDirection;
 
 /**
@@ -27,6 +28,8 @@ final readonly class UpdateProductTypologyData
         public ?bool $supplierCommissionEnabled = null,
         public ?SupplierCommissionDirection $supplierCommissionDirection = null,
         public bool $supplierCommissionDirectionSubmitted = false,
+        public ?ProformaRequestKind $proformaKind = null,
+        public bool $proformaKindSubmitted = false,
     ) {}
 
     /**
@@ -46,6 +49,8 @@ final readonly class UpdateProductTypologyData
                 ? SupplierCommissionDirection::from($data['supplier_commission_direction'])
                 : null,
             supplierCommissionDirectionSubmitted: array_key_exists('supplier_commission_direction', $data),
+            proformaKind: isset($data['proforma_kind']) ? ProformaRequestKind::from($data['proforma_kind']) : null,
+            proformaKindSubmitted: array_key_exists('proforma_kind', $data),
         );
     }
 
@@ -77,6 +82,10 @@ final readonly class UpdateProductTypologyData
 
         if ($this->supplierCommissionDirectionSubmitted) {
             $attributes['supplier_commission_direction'] = $this->supplierCommissionDirection;
+        }
+
+        if ($this->proformaKindSubmitted) {
+            $attributes['proforma_kind'] = $this->proformaKind;
         }
 
         return $attributes;

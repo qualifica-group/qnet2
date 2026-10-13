@@ -3,7 +3,7 @@
 namespace App\Http\Requests\Invoices;
 
 use App\Enums\DocumentLayoutModule;
-use App\Enums\InvoiceTag;
+use App\Models\Invoice;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -37,7 +37,7 @@ class InvoiceWriteRequest extends FormRequest
             'financial_account_id' => ['nullable', 'integer', Rule::exists('financial_accounts', 'id')],
             'notes' => ['nullable', 'string', 'max:'.self::NOTES_MAX_LENGTH],
             'internal_note' => ['nullable', 'string', 'max:'.self::NOTES_MAX_LENGTH],
-            'tag' => ['nullable', Rule::enum(InvoiceTag::class)],
+            'invoice_tag_id' => self::invoiceTagRules($this->route('invoice')),
             'layout_id' => ['nullable', 'integer', Rule::exists('document_layouts', 'id')->where('module', DocumentLayoutModule::Invoices->value)->where('is_active', true)],
             'lines' => ['required', 'array', 'min:1', 'max:'.self::MAX_LINES],
             'lines.*.quote_line_id' => ['nullable', 'integer'],
@@ -47,6 +47,21 @@ class InvoiceWriteRequest extends FormRequest
             'lines.*.unit_price' => ['required', 'numeric', 'between:-9999999999,9999999999'],
             'lines.*.vat_rate_id' => ['required', 'integer', Rule::exists('vat_rates', 'id')],
         ];
+    }
+
+    /**
+     * Tag rule shared with the details request: an active tag, or the one the
+     * invoice already carries even if deactivated since.
+     *
+     * @return array<int, mixed>
+     */
+    public static function invoiceTagRules(mixed $invoice): array
+    {
+        $currentTagId = $invoice instanceof Invoice ? $invoice->invoice_tag_id : null;
+
+        return ['nullable', 'integer', Rule::exists('invoice_tags', 'id')->where(
+            fn ($tags) => $tags->where('is_active', true)->orWhere('id', $currentTagId),
+        )];
     }
 
     /**

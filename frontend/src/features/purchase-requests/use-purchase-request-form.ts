@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { useDefaultPurchaseRequestPriorityId } from '@/features/purchase-request-priorities/use-default-purchase-request-priority'
 import {
   createPurchaseRequest,
   purchaseRequestKeys,
@@ -59,6 +60,14 @@ export function usePurchaseRequestForm({ request, requesterId, onSaved }: UsePur
   const lines = useWatch({ control, name: 'lines' })
   const companyId = useWatch({ control, name: 'company_id' })
   const [formErrors, setFormErrors] = useState<string[]>([])
+
+  // A new RDA starts on the catalog's default priority, like the server would when the field is omitted.
+  const defaultPriorityId = useDefaultPurchaseRequestPriorityId(!request)
+  useEffect(() => {
+    if (defaultPriorityId !== null && getValues('purchase_request_priority_id') === null) {
+      form.setValue('purchase_request_priority_id', defaultPriorityId, { shouldDirty: true })
+    }
+  }, [defaultPriorityId, form, getValues])
 
   /** A new row inherits the VAT of the last one, like the invoice editor. */
   const addLine = useCallback(() => {

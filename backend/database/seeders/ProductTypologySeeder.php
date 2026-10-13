@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\ProformaRequestKind;
 use App\Enums\SupplierCommissionDirection;
 use App\Models\ProductTypology;
 use Illuminate\Database\Seeder;
@@ -29,23 +30,24 @@ use Illuminate\Database\Seeder;
 class ProductTypologySeeder extends Seeder
 {
     /**
-     * [code, name, Supplier commission direction, badge color] (specs 0202, 0204): both enabled.
+     * [code, name, Supplier commission direction, badge color, proforma kind] (specs 0202, 0204, 0247): both enabled.
      *
-     * @var array<int, array{0: string, 1: string, 2: SupplierCommissionDirection, 3: string}>
+     * @var array<int, array{0: string, 1: string, 2: SupplierCommissionDirection, 3: string, 4: ProformaRequestKind}>
      */
     private const array TYPOLOGIES = [
-        ['institution', 'Ente', SupplierCommissionDirection::Received, 'violet'],
-        ['consultancy', 'Consulenza', SupplierCommissionDirection::Paid, 'blue'],
+        ['institution', 'Ente', SupplierCommissionDirection::Received, 'violet', ProformaRequestKind::Institution],
+        ['consultancy', 'Consulenza', SupplierCommissionDirection::Paid, 'blue', ProformaRequestKind::Consultancy],
     ];
 
     public function run(): void
     {
-        foreach (self::TYPOLOGIES as [$code, $name, $direction, $color]) {
+        foreach (self::TYPOLOGIES as [$code, $name, $direction, $color, $proformaKind]) {
             ProductTypology::firstOrCreate(['code' => $code], [
                 'name' => $name,
                 'color' => $color,
                 'supplier_commission_enabled' => true,
                 'supplier_commission_direction' => $direction,
+                'proforma_kind' => $proformaKind,
             ]);
         }
     }

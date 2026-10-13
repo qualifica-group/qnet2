@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\InvoiceTag;
 use App\Enums\InvoiceType;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
@@ -22,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'type', 'company_id', 'number', 'year', 'document_date', 'proforma_request_id',
     'work_order_id', 'quote_id', 'customer_registry_id', 'payment_method_id',
     'financial_account_id', 'net_amount', 'vat_amount', 'total_amount', 'external_number',
-    'external_date', 'notes', 'internal_note', 'tag', 'deviation', 'created_by', 'layout_id',
+    'external_date', 'notes', 'internal_note', 'invoice_tag_id', 'deviation', 'created_by', 'layout_id',
 ])]
 class Invoice extends BaseModel
 {
@@ -36,7 +35,6 @@ class Invoice extends BaseModel
     {
         return [
             'type' => InvoiceType::class,
-            'tag' => InvoiceTag::class,
             'number' => 'int',
             'year' => 'int',
             'document_date' => 'date',
@@ -108,6 +106,14 @@ class Invoice extends BaseModel
     public function quote(): BelongsTo
     {
         return $this->belongsTo(Quote::class);
+    }
+
+    /**
+     * @return BelongsTo<InvoiceTag, $this>
+     */
+    public function invoiceTag(): BelongsTo
+    {
+        return $this->belongsTo(InvoiceTag::class);
     }
 
     /**

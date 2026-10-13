@@ -2,13 +2,13 @@
 
 namespace Database\Factories;
 
-use App\Enums\PurchaseRequestPriority;
 use App\Enums\PurchaseRequestStatus;
 use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\OperationalSite;
 use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestPriority;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -30,7 +30,7 @@ class PurchaseRequestFactory extends Factory
         return [
             'subject' => fake()->sentence(4),
             'requested_at' => now()->toDateString(),
-            'priority' => PurchaseRequestPriority::Medium,
+            'purchase_request_priority_id' => fn (): int => PurchaseRequestPriority::query()->where('is_default', true)->value('id') ?? PurchaseRequestPriority::factory()->default()->create()->id,
             'requester_id' => User::factory(),
             'function_manager_id' => User::factory(),
             'company_id' => Company::factory(),

@@ -9,6 +9,7 @@ import { Form } from '@/components/ui/form'
 import {
   ProductTypologyCommissionRow,
   ProductTypologyIdentityRows,
+  ProductTypologyProformaKindRow,
 } from '@/features/product-typologies/product-typology-rows'
 import { useProductTypologyForm } from '@/features/product-typologies/use-product-typology-form'
 import type { ProductTypologyDetail } from '@/features/product-typologies/types'
@@ -63,6 +64,11 @@ export function ProductTypologyFormBody({ onSuccess, onCancel }: ProductTypology
           <RecordSection title={t('productTypologies.form.sections.commission.title')} full>
             <RecordFieldList>
               <ProductTypologyCommissionRow inline={draft} canEdit />
+            </RecordFieldList>
+          </RecordSection>
+          <RecordSection title={t('productTypologies.form.sections.billing.title')} full>
+            <RecordFieldList>
+              <ProductTypologyProformaKindRow inline={draft} canEdit />
             </RecordFieldList>
           </RecordSection>
         </RecordSectionsGrid>

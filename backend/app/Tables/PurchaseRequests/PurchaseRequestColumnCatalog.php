@@ -3,7 +3,6 @@
 namespace App\Tables\PurchaseRequests;
 
 use App\Enums\PurchaseRequestLineStatus;
-use App\Enums\PurchaseRequestPriority;
 use App\Enums\PurchaseRequestStatus;
 
 /**
@@ -32,7 +31,11 @@ final class PurchaseRequestColumnCatalog
         'requester' => ['users', 'purchase_requests.requester_id', 'name'],
         'function_manager' => ['users', 'purchase_requests.function_manager_id', 'name'],
         'customer' => ['registries', 'purchase_requests.customer_id', 'name'],
+        'priority' => ['purchase_request_priorities', 'purchase_requests.purchase_request_priority_id', 'sort_order'],
     ];
+
+    /** Lookup column: filtered by priority name, sorted by the priority's sort_order. */
+    public const string PRIORITY_COLUMN = 'priority';
 
     public const string LINE_STATUS_COLUMN = 'line_status';
 
@@ -49,7 +52,7 @@ final class PurchaseRequestColumnCatalog
         $columns = [
             self::column('subject', 'text', sortable: true, filter: 'text', searchable: true),
             self::column('requested_at', 'date', sortable: true, filter: 'date'),
-            self::column('priority', 'badge', sortable: true, filter: 'set', options: PurchaseRequestPriority::values()),
+            self::column(self::PRIORITY_COLUMN, 'badge', sortable: true, filter: 'set'),
             self::column('status', 'badge', sortable: true, filter: 'set', options: PurchaseRequestStatus::values()),
             self::column('line_status_counts', 'text'),
         ];

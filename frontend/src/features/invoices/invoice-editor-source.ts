@@ -7,6 +7,7 @@ import type {
   BankAccountRef,
   Invoice,
   InvoiceDraft,
+  InvoiceTagRef,
   NamedRef,
   VatRateRef,
 } from '@/features/invoices/types'
@@ -46,6 +47,8 @@ export interface EditorSource {
   financialAccount: BankAccountRef | null
   /** Saved print layout (edit); null in create and for "Predefinito". */
   layout: NamedRef | null
+  /** Saved tag (edit); null in create and for "no tag". */
+  tag: InvoiceTagRef | null
   context: EditorContext
   /** "12/2026" when editing. */
   numberLabel: string | null
@@ -71,7 +74,7 @@ export function sourceFromDraft(draft: InvoiceDraft): EditorSource {
       layout_id: defaults.layout?.id ?? null,
       notes: defaults.notes,
       internal_note: null,
-      tag: null,
+      invoice_tag_id: null,
       lines: [],
     },
     vatRefs: vatRefsOf(draft.available_lines),
@@ -82,6 +85,7 @@ export function sourceFromDraft(draft: InvoiceDraft): EditorSource {
     paymentMethod: defaults.payment_method,
     financialAccount: defaults.financial_account,
     layout: defaults.layout,
+    tag: null,
     context: {
       workOrderCode: draft.work_order.code,
       quoteCode: draft.quote.code,
@@ -104,7 +108,7 @@ export function sourceFromInvoice(invoice: Invoice): EditorSource {
       layout_id: invoice.layout?.id ?? null,
       notes: invoice.notes,
       internal_note: invoice.internal_note,
-      tag: invoice.tag,
+      invoice_tag_id: invoice.tag?.id ?? null,
       lines: invoice.lines.map((line) => ({
         quote_line_id: line.quote_line_id,
         product_id: line.product?.id ?? null,
@@ -122,6 +126,7 @@ export function sourceFromInvoice(invoice: Invoice): EditorSource {
     paymentMethod: invoice.payment_method,
     financialAccount: invoice.financial_account,
     layout: invoice.layout,
+    tag: invoice.tag,
     context: {
       workOrderCode: invoice.work_order?.code ?? null,
       quoteCode: invoice.quote?.code ?? null,

@@ -19,6 +19,7 @@ use App\Models\EnasarcoParameter;
 use App\Models\FieldChangeRequest;
 use App\Models\FinancialAccount;
 use App\Models\Invoice;
+use App\Models\InvoiceTag;
 use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
@@ -31,6 +32,7 @@ use App\Models\ProformaRequest;
 use App\Models\Project;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestPriority;
 use App\Models\Quote;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
@@ -286,6 +288,13 @@ return [
         // spec 0210: ordini di acquisto (ODA) e tipi di costo.
         'purchase-orders' => [
             'model' => PurchaseOrder::class,
+        ],
+        // spec 0247: priorita' RDA e tag fattura.
+        'purchase-request-priorities' => [
+            'model' => PurchaseRequestPriority::class,
+        ],
+        'invoice-tags' => [
+            'model' => InvoiceTag::class,
         ],
         'cost-types' => [
             'model' => CostType::class,

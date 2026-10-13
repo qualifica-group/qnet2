@@ -49,6 +49,7 @@
     Decisioni tecniche proposte (D-8..D-12, da validare con la spec):
     - D-8 Tabella `proforma_requests` (nomi inglesi, FK vere), stato come stringa enum
       pending|issued (non smallint 0/1), `issued_at` per la futura evasione/rigenerazione.
+      Confermato enum fisso, non configurabile (decisione utente 2026-10-13, spec 0247 D-1 / audit ATT-11).
     - D-9 La modalita' di pagamento dell'offerta viene mostrata in modale E salvata come snapshot
       `payment_method_id` sulla richiesta (se l'offerta cambia dopo, la richiesta resta coerente).
     - D-10 Modale: titolo "Richiesta emissione Proforma: Commessa #{code}", riga "Modalita' di

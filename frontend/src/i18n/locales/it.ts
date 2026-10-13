@@ -20,6 +20,7 @@ import { customFields } from './it-custom-fields'
 import { sectors } from './it-sectors'
 import { accounting } from './it-accounting'
 import { purchaseRequestLines, purchaseRequests } from './it-purchase-requests'
+import { purchaseRequestPriorities } from './it-purchase-request-priorities'
 import { purchaseOrders } from './it-purchase-orders'
 import { purchaseOrderForm } from './it-purchase-order-form'
 import { purchaseOrderActions } from './it-purchase-order-actions'
@@ -416,6 +417,7 @@ export const it: TranslationResources = {
   ...accounting,
   purchaseRequests,
   purchaseRequestLines,
+  purchaseRequestPriorities,
   purchaseOrders,
   purchaseOrderForm,
   purchaseOrderActions,

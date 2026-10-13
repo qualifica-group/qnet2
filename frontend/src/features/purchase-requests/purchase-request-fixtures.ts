@@ -36,7 +36,7 @@ export function makeRequest(overrides: Partial<PurchaseRequest> = {}): PurchaseR
     id: 5,
     subject: 'Office equipment',
     requested_at: '2026-10-09',
-    priority: 'medium',
+    priority: { id: 2, name: 'Media', color: 'blue', icon: null },
     requester: { id: 3, name: 'Mario Rossi' },
     function_manager: { id: 4, name: 'Anna Verdi' },
     customer: null,

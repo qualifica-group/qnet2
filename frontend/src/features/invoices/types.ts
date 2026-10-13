@@ -13,8 +13,12 @@ export type InvoiceType = (typeof INVOICE_TYPES)[number]
 /** Tab filter of the list: every document, or a single type. */
 export type InvoiceTypeFilter = 'all' | InvoiceType
 
-export const INVOICE_TAGS = ['estimate', 'final'] as const
-export type InvoiceTag = (typeof INVOICE_TAGS)[number]
+/** Configurable tag of the `invoice-tags` catalog (spec 0247); `color` is a badge palette token. */
+export interface InvoiceTagRef {
+  id: number
+  name: string
+  color: string
+}
 
 export const INVOICE_PAYMENT_STATUSES = ['paid', 'not_due', 'overdue', 'seriously_overdue'] as const
 export type InvoicePaymentStatus = (typeof INVOICE_PAYMENT_STATUSES)[number]
@@ -93,7 +97,7 @@ export interface Invoice {
   external_date: string | null
   notes: string | null
   internal_note: string | null
-  tag: InvoiceTag | null
+  tag: InvoiceTagRef | null
   deviation: string | null
   has_collections: boolean
   lines: InvoiceLine[]
@@ -129,7 +133,7 @@ export interface InvoiceWritePayload {
   layout_id: number | null
   notes: string | null
   internal_note: string | null
-  tag: InvoiceTag | null
+  invoice_tag_id: number | null
   lines: InvoiceLinePayload[]
 }
 
@@ -137,7 +141,7 @@ export interface InvoiceWritePayload {
 export interface InvoiceDetailsPayload {
   external_number: string | null
   external_date: string | null
-  tag: InvoiceTag | null
+  invoice_tag_id: number | null
   deviation: number | null
   internal_note: string | null
   layout_id: number | null
@@ -246,7 +250,7 @@ export interface InvoiceRow {
   collected_amount: string
   residual_amount: string
   payment_status: InvoicePaymentStatus
-  tag: InvoiceTag | null
+  tag: InvoiceTagRef | null
   deviation: string | null
   last_reminder_at: string | null
   actions: InvoiceRowAction[]

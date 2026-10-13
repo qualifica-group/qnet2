@@ -41,10 +41,6 @@ export const invoiceEditor = {
     selectEmpty: 'No results.',
     selectError: 'Unable to load the options.',
   },
-  tags: {
-    estimate: 'Estimate',
-    final: 'Final',
-  },
   available: {
     empty: 'No lines available for this request.',
     add: 'Add',

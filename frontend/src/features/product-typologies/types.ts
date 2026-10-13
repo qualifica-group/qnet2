@@ -19,6 +19,16 @@ export const SUPPLIER_COMMISSION_DIRECTIONS: readonly SupplierCommissionDirectio
 ]
 
 /**
+ * Which proforma request the lines of this typology feed (spec 0247 D-6);
+ * null = never billed through a proforma request. Mirrors the backend
+ * `ProformaRequestKind` enum.
+ */
+export type ProformaKind = 'consultancy' | 'institution'
+
+/** Ordered options for the proforma kind picker (after "none"). */
+export const PROFORMA_KINDS: readonly ProformaKind[] = ['consultancy', 'institution']
+
+/**
  * Single product typology detail returned by GET/POST/PATCH /product-typologies
  * (envelope `data`). Matches `ProductTypologyResource`.
  */
@@ -34,6 +44,8 @@ export interface ProductTypologyDetail {
   supplier_commission_enabled: boolean
   /** Required when enabled, null when disabled (spec 0202 D-7). */
   supplier_commission_direction: SupplierCommissionDirection | null
+  /** Proforma request the lines of this typology feed, null = none (spec 0247 D-6). */
+  proforma_kind: ProformaKind | null
   created_at: string
   updated_at: string
 }
@@ -56,6 +68,7 @@ export interface CreateProductTypologyPayload {
   color: string
   supplier_commission_enabled: boolean
   supplier_commission_direction: SupplierCommissionDirection | null
+  proforma_kind: ProformaKind | null
 }
 
 /**

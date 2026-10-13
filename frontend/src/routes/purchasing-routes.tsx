@@ -9,6 +9,7 @@ const PurchaseRequestLinesPage = lazyRoute(() => import('@/pages/purchase-reques
 const PurchaseOrdersPage = lazyRoute(() => import('@/pages/purchase-orders-page'))
 const PurchaseOrderFormPage = lazyRoute(() => import('@/pages/purchase-order-form-page'))
 const CostTypesPage = lazyRoute(() => import('@/pages/cost-types-page'))
+const PurchaseRequestPrioritiesPage = lazyRoute(() => import('@/pages/purchase-request-priorities-page'))
 const PurchaseInvoiceInstallmentsPage = lazyRoute(() => import('@/pages/purchase-invoice-installments-page'))
 
 export const PURCHASING_ROUTES: RouteObject[] = [
@@ -20,5 +21,6 @@ export const PURCHASING_ROUTES: RouteObject[] = [
   { path: 'purchase-orders/new', element: <PurchaseOrderFormPage /> },
   { path: 'purchase-orders/:id', element: <PurchaseOrderFormPage /> },
   { path: 'cost-types', element: <CostTypesPage /> },
+  { path: 'purchase-request-priorities', element: <PurchaseRequestPrioritiesPage /> },
   { path: 'purchase-invoice-installments', element: <PurchaseInvoiceInstallmentsPage /> },
 ]

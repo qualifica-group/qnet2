@@ -62,6 +62,7 @@ export const productTypologies = {
     supplierCommissionDirection: "Verso",
     supplierCommissionDirectionPlaceholder: "Seleziona il verso",
     supplierCommissionDirectionRequired: "Il verso è obbligatorio quando la commissione Fornitore è attiva.",
+    proformaKind: 'Tipo richiesta proforma',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la tipologia prodotto. Riprova.',
     deleteForbidden: 'Non puoi eliminare questa tipologia prodotto.',
@@ -74,6 +75,10 @@ export const productTypologies = {
       cancel: 'Continua a compilare',
     },
     sections: {
+      billing: {
+        title: 'Fatturazione',
+        description: 'In quale richiesta proforma confluiscono le righe di questa tipologia.',
+      },
       commission: {
         title: "Commissione Fornitore",
         description: "Se e come si calcola la commissione Fornitore.",
@@ -86,10 +91,17 @@ export const productTypologies = {
     hints: {
       supplierCommissionDirection:
         "Ricevuta: la commissione è il ricavo della riga, l'imponibile passa al fornitore. Pagata: è un costo verso il fornitore.",
+      proformaKind:
+        'Decide in quale richiesta proforma confluiscono le righe dei prodotti di questa tipologia. Nessuna: le righe non si fatturano tramite richiesta proforma.',
     },
   },
   supplierCommissionDirection: {
     RECEIVED: "Ricevuta",
     PAID: "Pagata",
+  },
+  proformaKind: {
+    none: 'Nessuna',
+    consultancy: 'Consulenza',
+    institution: 'Ente',
   },
 }

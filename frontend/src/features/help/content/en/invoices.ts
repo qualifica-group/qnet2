@@ -22,7 +22,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Part', 'What to do'],
           rows: [
-            ['**Header**', 'Document date, issuing company (locked when editing), addressee, payment method, company bank, **Quote/Final** tag, notes and internal notes.'],
+            ['**Header**', 'Document date, issuing company (locked when editing), addressee, payment method, company bank, optional **tag** (picked from the **Invoice tags** catalog), notes and internal notes.'],
             ['**Available lines**', 'The work order lines not used yet: **Add** one line or **Add all**. A quote line is invoiced **only once**: lines already in another invoice do not appear.'],
             ['**Document lines**', 'You can edit quantity, price and VAT; each line is a catalog product or a free description.'],
             ['**Due dates**', 'Preview of the installments computed from the payment method (see the Payment Methods guide).'],
@@ -84,7 +84,7 @@ const guide: HelpGuide = {
           rows: [
             ['**View**', 'Opens the document read-only.'],
             ['**Edit**', 'Proformas only (not registered invoices). Reopens the issue dialog, even with collections present (**rebalancing**): document date, customer and payment method become read-only, collected installments stay and the residual (new total minus collected) is split equally across the installments not collected, which keep their due date. The total cannot be lower than the amount collected; if equal, the open installments are removed. With no open installments and a higher total, a new installment is created 30 days after the last due date. The due date preview already shows the rebalanced plan.'],
-            ['**Details**', 'Records the **external number and date** from Fatture in Cloud: the proforma becomes an **Invoice**. Tag, deviation, internal notes and print layout are here too and stay editable after registration.'],
+            ['**Details**', 'Records the **external number and date** from Fatture in Cloud: the proforma becomes an **Invoice**. The tag (from the **Invoice tags** catalog), deviation, internal notes and print layout are here too and stay editable after registration.'],
             ['**Delete**', 'Removes a **proforma** after confirmation. Not possible if it has collections, nor on a registered invoice.'],
             ['**Activity**', 'Shows the change history.'],
           ],

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Company;
+use App\Models\InvoiceTag;
 use App\Models\PaymentMethod;
 use App\Models\ProformaRequest;
 use App\Models\Registry;
@@ -32,6 +33,17 @@ if (! function_exists('invoiceUserWith')) {
         }
 
         return $user;
+    }
+}
+
+if (! function_exists('referenceInvoiceTag')) {
+    /**
+     * One of the two reference tags the invoice_tags migration creates
+     * (Preventivo, Consuntivo).
+     */
+    function referenceInvoiceTag(string $name): InvoiceTag
+    {
+        return InvoiceTag::query()->where('name', $name)->firstOrFail();
     }
 }
 

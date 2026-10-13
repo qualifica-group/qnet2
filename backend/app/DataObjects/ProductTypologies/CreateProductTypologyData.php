@@ -2,6 +2,7 @@
 
 namespace App\DataObjects\ProductTypologies;
 
+use App\Enums\ProformaRequestKind;
 use App\Enums\SupplierCommissionDirection;
 
 /**
@@ -22,6 +23,7 @@ final readonly class CreateProductTypologyData
         public string $color,
         public bool $supplierCommissionEnabled = false,
         public ?SupplierCommissionDirection $supplierCommissionDirection = null,
+        public ?ProformaRequestKind $proformaKind = null,
     ) {}
 
     /**
@@ -43,6 +45,7 @@ final readonly class CreateProductTypologyData
             supplierCommissionDirection: $enabled && isset($data['supplier_commission_direction'])
                 ? SupplierCommissionDirection::from($data['supplier_commission_direction'])
                 : null,
+            proformaKind: isset($data['proforma_kind']) ? ProformaRequestKind::from($data['proforma_kind']) : null,
         );
     }
 
@@ -58,6 +61,7 @@ final readonly class CreateProductTypologyData
             'color' => $this->color,
             'supplier_commission_enabled' => $this->supplierCommissionEnabled,
             'supplier_commission_direction' => $this->supplierCommissionDirection,
+            'proforma_kind' => $this->proformaKind,
         ];
     }
 }

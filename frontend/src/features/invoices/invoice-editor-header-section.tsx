@@ -2,19 +2,16 @@ import type { UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
 import { PAYMENT_METHODS_FOR_SELECT_RESOURCE } from '@/features/payment-methods/for-select-api'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { InvoiceEditorBankField } from '@/features/invoices/invoice-editor-bank-field'
 import { InvoiceLayoutField } from '@/features/invoices/invoice-layout-field'
+import { InvoiceTagField } from '@/features/invoices/invoice-tag-field'
 import { InvoiceEditorRelationField } from '@/features/invoices/invoice-editor-relation-field'
 import type { EditorSource } from '@/features/invoices/invoice-editor-source'
 import type { InvoiceWriteFormValues } from '@/features/invoices/invoice-schema'
-import { INVOICE_TAGS } from '@/features/invoices/types'
-
-const NO_TAG = 'none'
 
 interface InvoiceEditorHeaderSectionProps {
   form: UseFormReturn<InvoiceWriteFormValues>
@@ -95,34 +92,7 @@ export function InvoiceEditorHeaderSection({ form, source, companyId, companyLoc
           selected={source.financialAccount}
         />
         <InvoiceLayoutField control={control} selected={source.layout} />
-        <FormField
-          control={control}
-          name="tag"
-          render={({ field }) => (
-            <FormItem className="gap-1">
-              <FormLabel className="text-xs">{t('invoiceEditor.fields.tag')}</FormLabel>
-              <Select
-                value={field.value ?? NO_TAG}
-                onValueChange={(value) => field.onChange(value === NO_TAG ? null : value)}
-              >
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value={NO_TAG}>{t('invoiceEditor.fields.noTag')}</SelectItem>
-                  {INVOICE_TAGS.map((tag) => (
-                    <SelectItem key={tag} value={tag}>
-                      {t(`invoiceEditor.tags.${tag}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage className="text-xs" />
-            </FormItem>
-          )}
-        />
+        <InvoiceTagField control={control} selected={source.tag} labelClassName="text-xs" />
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         {(['notes', 'internal_note'] as const).map((name) => (

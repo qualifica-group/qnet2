@@ -48,6 +48,7 @@ function productTypology(): ProductTypologyDetailWithPermissions {
     color: 'gray',
     supplier_commission_enabled: false,
     supplier_commission_direction: null,
+    proforma_kind: null,
     created_at: null as unknown as string,
     updated_at: null as unknown as string,
     permissions: CREATE_PERMISSIONS,
@@ -135,6 +136,7 @@ describe('ProductTypologyForm — create (spec 0099)', () => {
       color: 'gray',
       supplier_commission_enabled: false,
       supplier_commission_direction: null,
+      proforma_kind: null,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(productTypology()))
   })

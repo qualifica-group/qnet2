@@ -23,7 +23,7 @@ it('AC-010: an ordered line linked to an order line cannot leave ordered through
     Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'manageStatuses']));
     $line = linkedLine(LineStatus::Ordered);
 
-    $response = changeStatus($this, [$line->id], $to)->assertUnprocessable()->assertJsonValidationErrors('line_ids.0');
+    $response = changeStatus($this, [$line->id], $to, ['reason' => 'Not needed'])->assertUnprocessable()->assertJsonValidationErrors('line_ids.0');
 
     expect($response->json('errors')['line_ids.0'])->toBe([__('purchase_request_lines.line_linked_to_order')]);
 
@@ -35,7 +35,7 @@ it('AC-010: a received line linked to an order line is guarded too', function ()
     Sanctum::actingAs(purchaseRequestUserWith(['view', 'viewAll', 'manageStatuses']));
     $line = linkedLine(LineStatus::Received);
 
-    changeStatus($this, [$line->id], 'on_hold')->assertUnprocessable()->assertJsonValidationErrors('line_ids.0');
+    changeStatus($this, [$line->id], 'on_hold', ['reason' => 'Waiting'])->assertUnprocessable()->assertJsonValidationErrors('line_ids.0');
 
     expect($line->fresh()->status)->toBe(LineStatus::Received);
 });

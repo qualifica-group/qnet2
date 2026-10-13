@@ -34,6 +34,7 @@ const SERVER_ERROR_FIELDS = [
   'color',
   'supplier_commission_enabled',
   'supplier_commission_direction',
+  'proforma_kind',
 ] as const
 
 /** Colour a new typology starts with (spec 0204 D-3). */
@@ -74,6 +75,7 @@ export function useProductTypologyForm({ mode, onSuccess }: UseProductTypologyFo
         color: mode.productTypology.color,
         supplier_commission_enabled: mode.productTypology.supplier_commission_enabled,
         supplier_commission_direction: mode.productTypology.supplier_commission_direction,
+        proforma_kind: mode.productTypology.proforma_kind,
       }
     }
     return {
@@ -83,6 +85,7 @@ export function useProductTypologyForm({ mode, onSuccess }: UseProductTypologyFo
       color: DEFAULT_COLOR,
       supplier_commission_enabled: false,
       supplier_commission_direction: null,
+      proforma_kind: null,
     }
   }, [mode])
 

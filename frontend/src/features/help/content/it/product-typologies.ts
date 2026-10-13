@@ -29,6 +29,7 @@ const guide: HelpGuide = {
             ['Descrizione', 'Testo libero facoltativo.'],
             ['Calcolo commissione Fornitore', 'Interruttore: se attivo, sulle nuove righe d\'offerta di questa tipologia si calcola la commissione Fornitore.'],
             ['Verso', 'Visibile e obbligatorio solo con l\'interruttore attivo. **Ricevuta**: la commissione è il ricavo della riga e l\'imponibile passa al fornitore. **Pagata**: è un costo verso il fornitore.'],
+            ['Tipo richiesta proforma', 'Nella sezione **Fatturazione**. Decide in quale richiesta proforma confluiscono le righe dei prodotti di questa tipologia: **Consulenza**, **Ente** oppure **Nessuna**.'],
           ],
         },
       ],
@@ -44,6 +45,20 @@ const guide: HelpGuide = {
         {
           type: 'warning',
           text: 'L\'impostazione si congela sulla riga d\'offerta quando la riga viene creata: cambiare la tipologia vale solo per le righe nuove, le righe esistenti non cambiano.',
+        },
+      ],
+    },
+    {
+      id: 'proforma-kind',
+      title: 'Tipo richiesta proforma',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Quando dalla commessa chiedi le proforma, le righe dei prodotti con tipo **Consulenza** confluiscono in un’unica richiesta di consulenza; quelle con tipo **Ente** formano una richiesta per ogni fornitore. Le stesse righe sono quelle proposte nella bozza della fattura di quella richiesta.',
+        },
+        {
+          type: 'tip',
+          text: 'Con **Nessuna** (campo vuoto) le righe dei prodotti di questa tipologia non si fatturano tramite richiesta proforma. Il tipo si imposta su qualsiasi tipologia, anche su quelle nuove: conta il tipo scelto, non il nome o il codice della tipologia.',
         },
       ],
     },

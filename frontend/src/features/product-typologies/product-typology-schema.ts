@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import {
+  PROFORMA_KINDS,
   SUPPLIER_COMMISSION_DIRECTIONS,
   type SupplierCommissionDirection,
 } from '@/features/product-typologies/types'
@@ -53,6 +54,7 @@ function baseFields(t: TFunction) {
       .max(COLOR_MAX_LENGTH, t('productTypologies.form.colorMax')),
     supplier_commission_enabled: z.boolean(),
     supplier_commission_direction: z.enum(SUPPLIER_COMMISSION_DIRECTIONS).nullable(),
+    proforma_kind: z.enum(PROFORMA_KINDS).nullable(),
   }
 }
 

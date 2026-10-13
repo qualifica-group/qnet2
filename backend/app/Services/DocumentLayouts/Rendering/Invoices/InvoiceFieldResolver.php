@@ -54,7 +54,7 @@ final class InvoiceFieldResolver
             'external_number' => ValueFormatter::text($invoice->external_number),
             'external_date' => ValueFormatter::date($invoice->external_date),
             'notes' => ValueFormatter::text($invoice->notes),
-            'tag_label' => $invoice->tag?->label() ?? '',
+            'tag_label' => ValueFormatter::text($invoice->invoiceTag?->name),
             default => '',
         };
     }

@@ -24,6 +24,15 @@ export function isConflict(error: unknown): boolean {
   return axios.isAxiosError(error) && error.response?.status === CONFLICT_STATUS
 }
 
+/** First 422 message of one field of a rejected request, or null. */
+export function fieldError(error: unknown, field: string): string | null {
+  if (!axios.isAxiosError(error) || error.response?.status !== UNPROCESSABLE_STATUS) {
+    return null
+  }
+  const errors = (error.response.data as { errors?: Record<string, string[]> } | undefined)?.errors
+  return errors?.[field]?.[0] ?? null
+}
+
 /**
  * Puts each 422 error on its input and returns the messages that map to no
  * input (`lines`, `lines.N`: a row that is not editable or deletable) so the

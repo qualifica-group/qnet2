@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\PurchaseRequestLineStatus;
-use App\Enums\PurchaseRequestPriority;
 use App\Enums\PurchaseRequestStatus;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\HasAttachments;
@@ -20,7 +19,7 @@ use Spatie\Activitylog\LogOptions;
  * columns are NOT fillable: the service writes them (D-12, D-7), never the client.
  */
 #[Fillable([
-    'subject', 'requested_at', 'priority', 'requester_id', 'function_manager_id', 'customer_id',
+    'subject', 'requested_at', 'purchase_request_priority_id', 'requester_id', 'function_manager_id', 'customer_id',
     'work_order_id', 'company_id', 'company_site_id', 'operational_site_id',
     'business_function_id', 'notes', 'delivery_terms', 'procurement_plan',
     'technical_requirements', 'special_conditions',
@@ -41,7 +40,6 @@ class PurchaseRequest extends BaseModel
     {
         return [
             'requested_at' => 'date:Y-m-d',
-            'priority' => PurchaseRequestPriority::class,
             'status' => PurchaseRequestStatus::class,
             'taxable_total' => 'decimal:2',
             'vat_total' => 'decimal:2',
@@ -98,6 +96,14 @@ class PurchaseRequest extends BaseModel
         $city = $address?->city?->localizedName();
 
         return $city === null ? (string) $address?->line1 : "{$address?->line1} - {$city}";
+    }
+
+    /**
+     * @return BelongsTo<PurchaseRequestPriority, $this>
+     */
+    public function purchaseRequestPriority(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseRequestPriority::class);
     }
 
     /**

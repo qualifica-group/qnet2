@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0247-purchasing-accounting-simple-catalogs" status="draft" owner="ciro" date="2026-10-13">
+
+  <goal>
+    Rendere configurabili dall'utente le liste di valori semplici di Acquisti e Contabilita' attiva che oggi
+    sono cablate nel codice (audit 2026-10-13, Onda 2-A: RDA-03, ATT-10, ATT-12, RDA-13, ATT-11), sul modello
+    gia' in uso per Priorita' Task.
+  </goal>
+
+  <context>
+    Fonte: audit 2026-10-13, Onda 2 divisa in tre spec (decisione utente): 0247 liste semplici, 0248 stati ODA e
+    righe RDA (solo presentazione), 0249 tipi di costo. Branch: feature/amministrazione.
+
+    Decisioni utente 2026-10-13:
+    - D-1 (ATT-11) Lo stato delle richieste proforma (pending/issued) RESTA un enum fisso guidato dal sistema;
+      nessuna tabella. Va dichiarato nella spec 0193 con un rimando.
+    - D-2 (RDA-13) Motivazione obbligatoria quando una riga RDA passa a `rejected` o `on_hold` (anche in massa).
+
+    Decisioni tecniche proposte (da validare con la spec):
+    - D-3 (RDA-03) Nuova tabella `purchase_request_priorities` copiata da `task_priorities`: name (unique, 191),
+      description (500, null), color (BadgeTokens), icon (BadgeTokens, null), sort_order, is_active, is_default,
+      timestamps; indice [is_active, sort_order]. Default unico (DefaultRowManager), riordino (LookupOrderManager,
+      POST /reorder), delete 409 se usata da RDA. Nuova colonna `purchase_requests.purchase_request_priority_id`
+      (FK restrictOnDelete, required dopo backfill); la colonna stringa `priority` e l'enum PurchaseRequestPriority
+      vengono rimossi.
+    - D-4 (RDA-03) Migrazione dati nella stessa migrazione (query builder, niente SQL grezzo): crea le 5 righe
+      Bassa (slate, sort 1), Media (blue, 2, default), Alta (amber, 3), Urgente (orange, 4), Critica (red, 5) con
+      icone coerenti con TaskTaxonomyCatalogue, backfill dal vecchio valore (low..critical), poi drop della colonna.
+      down() reversibile (ricrea la stringa dal nome mappato). Righe di riferimento create dalla migrazione, NON da
+      seeder demo (devono esistere anche in produzione e nei test).
+    - D-5 (ATT-10) Nuova tabella `invoice_tags`: name (unique), description (null), color, sort_order, is_active,
+      timestamps (niente is_default: il tag e' facoltativo). Riordino, delete 409 se usato. Colonna
+      `invoices.invoice_tag_id` nullable FK restrictOnDelete; backfill estimate -> "Preventivo" (amber, 1),
+      final -> "Consuntivo" (teal, 2) (nomi da 0194 D-4); drop di `invoices.tag` e dell'enum InvoiceTag.
+      La variabile layout `tag_label` resta, valorizzata col nome del tag.
+    - D-6 (ATT-12) Nuova colonna `product_typologies.proforma_kind` nullable (valori dell'enum ProformaRequestKind:
+      consultancy | institution), backfill per code consultancy/institution. ProformaRequestService e
+      InvoiceDraftBuilder leggono proforma_kind, non piu' il code: righe di tipologie senza proforma_kind restano
+      escluse come oggi. Editabile nel dettaglio Tipologie prodotto (select "Tipo richiesta proforma": nessuna /
+      Consulenza / Ente). Il permesso e' quello gia' esistente product-typologies.update.
+    - D-7 Menu: "Priorita' RDA" in Acquisti dopo Tipi di costo (permesso purchase-request-priorities.view);
+      "Tag fattura" in Contabilita' > Attiva dopo Scadenze attive (permesso invoice-tags.view). Nuove chiavi help.
+    - D-8 Contratto RDA: `priority` (stringa) diventa `purchase_request_priority_id` in scrittura e
+      `priority: {id, name, color, icon} | null` in lettura (detail e righe SSRM); filtro set della colonna su id;
+      ordinamento della colonna per sort_order della priorita'. Stesso schema per le fatture:
+      `invoice_tag_id` in scrittura, `tag: {id, name, color} | null` in lettura, filtro set su id.
+      [revised 2026-10-13, build] Filtri set di priorita' RDA e tag fattura per NOME (non per id), come task_priority
+      e le altre colonne lookup delle griglie: /values restituisce i nomi attivi in sort_order, cosi' il filtro mostra
+      etichette leggibili. Ordinamento priorita' sempre per sort_order.
+
+    Fatti verificati: modello TaskPriority (model, migrazione, Policy BasePolicy, TaskPrioritiesAuthorization,
+    TableDefinition registrata in config/tables.php, for-select, reorder con ReorderStatusesRequest +
+    LookupOrderManager, DefaultRowManager, routes in routes/api/lookups.php, FE features/task-priorities con
+    useRecordInlineEdit e StatusReorderToggle, help key in help-guide-keys.ts). Usi attuali di priority e tag
+    censiti (WriteRequest, ColumnCatalog, TableDefinition, Resource, Notifier, factory, DemoPurchaseRequestSeeder,
+    InvoiceDetailsRequest/InvoiceWriteRequest, InvoiceService OPTIONAL_HEADER_KEYS, InvoiceFieldResolver tag_label,
+    InvoiceSampleFactory, FE types/schema/payload/fields/cells/badges/dialog/editor). product_typologies: code
+    immutabile, CRUD e dettaglio inline gia' esistenti. PurchaseRequestLineStatusRequest: reason nullable max 2000;
+    FE line-status-dialog.tsx.
+  </context>
+
+  <scope>
+    <in>
+      <item>Catalogo Priorita' RDA completo (BE: migrazione+backfill, model, Policy, Authorization, TableDefinition, for-select, CRUD, reorder, guard delete; FE: lista, dettaglio inline, riordino, menu, help).</item>
+      <item>RDA: form con select priorita' da for-select (default preimpostato), badge colorato in griglia e dettaglio, filtro/sort per priorita'; notifiche con il nome.</item>
+      <item>Catalogo Tag fattura completo (stesso schema, senza default).</item>
+      <item>Fatture: select tag da for-select in editor e dialog dettagli, badge col colore del tag, filtro per tag; tag_label nei layout.</item>
+      <item>Tipologie prodotto: colonna proforma_kind + select nel dettaglio; servizi proforma/bozza letti da proforma_kind.</item>
+      <item>Motivazione obbligatoria per rejected/on_hold (BE 422 + FE campo required).</item>
+      <item>Nota in 0193 (D-1); guide IT+EN: purchase-requests, purchase-request-lines, invoices, product-typologies, nuove purchase-request-priorities e invoice-tags; permessi e navigazione i18n.</item>
+    </in>
+    <out>
+      <item>Stati ODA e stati riga RDA configurabili (spec 0248); tipi di costo (spec 0249).</item>
+      <item>Stato richieste proforma configurabile (D-1).</item>
+      <item>Gestione di piu' tipologie che puntano allo stesso tipo di richiesta oltre al comportamento attuale (una richiesta consulenza per commessa, una per fornitore per enti).</item>
+      <item>Import/export dei nuovi cataloghi oltre a quanto il framework tabellare offre gia'.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET|POST|PUT|PATCH|DELETE" path="/api/purchase-request-priorities[/{id}]">
+      <response>Come /api/task-priorities: { id, name, description, color, icon, sort_order, is_active, is_default } (Resource); permessi purchase-request-priorities.*.</response>
+      <errors>409 __('purchase_request_priorities.in_use') su delete di priorita' usata; 422 default inattivo.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/purchase-request-priorities/for-select">attive, per sort_order; ids[] per idratazione; include is_default, color, icon.</endpoint>
+    <endpoint method="POST" path="/api/purchase-request-priorities/reorder">{ ordered_ids: int[] } -> [{id, sort_order}]</endpoint>
+    <endpoint method="*" path="/api/invoice-tags[/{id}], /for-select, /reorder">Stesso schema senza is_default e icon; permessi invoice-tags.*; 409 __('invoice_tags.in_use').</endpoint>
+
+    <endpoint method="POST|PUT" path="/api/purchase-requests">
+      <request>purchase_request_priority_id: int (required, exists attiva o gia' assegnata) al posto di priority.</request>
+      <response>detail: priority: { id, name, color, icon }.</response>
+    </endpoint>
+    <endpoint method="SSRM" path="tables/purchase-requests, tables/purchase-request-lines">colonna priority: valore { id, name, color, icon } o name+color secondo la convenzione badge delle altre lookup (seguire task_priority in TasksTableDefinition); filtro set su id con opzioni da catalogo; sort per sort_order.</endpoint>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/proforma-requests/{id}/invoice, /api/invoices/{id}, /api/invoices/{id}/details">
+      <request>invoice_tag_id: int|null (exists attivo o gia' assegnato) al posto di tag.</request>
+      <response>tag: { id, name, color } | null.</response>
+    </endpoint>
+    <endpoint method="SSRM" path="tables/invoices">colonna tag come badge della lookup; filtro set su id.</endpoint>
+
+    <endpoint method="GET|PATCH" path="/api/product-typologies/{id}">
+      <request>proforma_kind: "consultancy" | "institution" | null</request>
+      <response>proforma_kind incluso nel Resource; campo nel blocco permissions come gli altri.</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/purchase-request-lines/status">
+      <errors>422 errors.reason = [__('purchase_request_lines.reason_required')] se to_status in {rejected, on_hold} e reason vuota.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dopo la migrazione esistono le 5 priorita' (Media default) e ogni RDA ha purchase_request_priority_id corrispondente al vecchio valore; la colonna priority non esiste piu'; rollback ripristina la colonna con i valori.</criterion>
+    <criterion id="AC-002">CRUD priorita' RDA: create/update/delete con permessi (403 senza), default unico (impostarne una toglie le altre), default inattivo 422, delete di priorita' usata 409, reorder aggiorna sort_order.</criterion>
+    <criterion id="AC-003">POST/PUT RDA con purchase_request_priority_id valido 201/200; con id inesistente o inattivo (non gia' assegnato) 422; il detail espone priority {id,name,color,icon}.</criterion>
+    <criterion id="AC-004">[revised] Griglia RDA e righe RDA: la colonna priority mostra la lookup, il filtro set per nome restituisce solo quelle RDA, l'ordinamento segue sort_order (non alfabetico).</criterion>
+    <criterion id="AC-005">La notifica al responsabile riporta il nome della priorita'.</criterion>
+    <criterion id="AC-006">Dopo la migrazione esistono i tag Preventivo e Consuntivo; ogni fattura con tag estimate/final ha invoice_tag_id corrispondente; colonna tag rimossa; rollback reversibile.</criterion>
+    <criterion id="AC-007">CRUD tag fattura con permessi, reorder, delete di tag usato 409.</criterion>
+    <criterion id="AC-008">Editor e PATCH details accettano invoice_tag_id (anche null); su fattura registrata il tag resta modificabile (0243 D-3); il detail espone tag {id,name,color}; filtro griglia per nome del tag.</criterion>
+    <criterion id="AC-009">Un layout documento con la variabile tag_label stampa il nome del tag.</criterion>
+    <criterion id="AC-010">Dopo la migrazione le tipologie consultancy e institution hanno proforma_kind valorizzato; una nuova tipologia con proforma_kind=institution genera richieste ente come oggi la tipologia institution, e le sue righe compaiono nella bozza fattura; una tipologia senza proforma_kind e' ignorata.</criterion>
+    <criterion id="AC-011">PATCH product-typologies/{id} con proforma_kind valido 200, valore non ammesso 422.</criterion>
+    <criterion id="AC-012">Cambio stato righe RDA verso rejected o on_hold senza reason (anche in massa) 422 su reason; con reason 200; verso altri stati reason facoltativa.</criterion>
+    <criterion id="AC-013">(Vitest) Form RDA: select priorita' da catalogo con default preimpostato; badge priorita' colorato in griglia/dettaglio.</criterion>
+    <criterion id="AC-014">(Vitest) Fatture: select tag da catalogo in editor e dettagli, opzione "nessun tag"; badge col colore del tag.</criterion>
+    <criterion id="AC-015">(Vitest) Dialog cambio stato righe RDA: con Rifiutata o In sospeso la motivazione e' obbligatoria (errore accessibile, conferma disabilitata o validazione).</criterion>
+    <criterion id="AC-016">(Vitest) Liste e dettagli inline dei due nuovi cataloghi con riordino; Tipologie prodotto: select Tipo richiesta proforma nel dettaglio inline.</criterion>
+    <criterion id="AC-017">Menu, permessi e help: voci di navigazione visibili col permesso, etichette permessi IT/EN (parity verde), nuove guide in HELP_GUIDE_KEYS, help-content-parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Copiare il modello TaskPriority senza astrazioni nuove (stessi manager condivisi: LookupOrderManager, DefaultRowManager, BadgeTokens, StatusReorderToggle, useRecordInlineEdit).</item>
+    <item>Migrazioni nuove, reversibili, solo Schema/query builder; le righe di riferimento nascono dalla migrazione.</item>
+    <item>Nessuna query per riga nelle TableDefinition (eager load / join della lookup).</item>
+    <item>Identificatori inglesi; etichette via i18n; seed demo eventuali con prefisso Demo solo se servono.</item>
+    <item>Test Pest per ogni endpoint (happy, errore, 403); Vitest per i componenti; suite completa dal verifier; tsc -b --force.</item>
+    <item>Nessun commit senza ordine esplicito.</item>
+  </constraints>
+
+</spec>

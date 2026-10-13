@@ -41,7 +41,7 @@ class PurchaseRequestsAuthorization extends AbstractResourceAuthorization
         return [
             new FieldDefinition('subject', 'text', mandatory: true),
             new FieldDefinition('requested_at', 'date', mandatory: true),
-            new FieldDefinition('priority', 'select', mandatory: true),
+            new FieldDefinition('purchase_request_priority_id', 'select', mandatory: true),
             new FieldDefinition('requester_id', 'select'),
             new FieldDefinition('function_manager_id', 'select'),
             new FieldDefinition('customer_id', 'select'),

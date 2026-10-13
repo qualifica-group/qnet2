@@ -3,7 +3,6 @@
 namespace App\Tables\Invoices;
 
 use App\Enums\InvoicePaymentStatus;
-use App\Enums\InvoiceTag;
 use App\Enums\InvoiceType;
 
 /**
@@ -41,7 +40,7 @@ final class InvoiceColumnCatalog
             self::column('residual_amount', 'number'),
             self::column('payment_status', 'badge', options: InvoicePaymentStatus::values()),
             self::column(InvoiceReminderColumn::ID, 'date', sortable: true, filter: 'date'),
-            self::column('tag', 'badge', filter: 'set', options: InvoiceTag::values()),
+            self::column('tag', 'badge', filter: 'set'),
             self::column('deviation', 'number'),
             self::column('document_year', 'number', visible: false, filter: 'set'),
             self::column('document_month', 'number', visible: false, filter: 'set', options: self::MONTHS),

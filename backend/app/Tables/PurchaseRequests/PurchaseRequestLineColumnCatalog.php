@@ -3,7 +3,6 @@
 namespace App\Tables\PurchaseRequests;
 
 use App\Enums\PurchaseRequestLineStatus;
-use App\Enums\PurchaseRequestPriority;
 
 /**
  * Declarative column/filter/action catalogue for the `purchase-request-lines`
@@ -26,7 +25,6 @@ final class PurchaseRequestLineColumnCatalog
     /** Parent columns sortable through a subquery on purchase_requests: id => column. */
     public const array PARENT_SORTS = [
         'purchase_request_subject' => 'subject',
-        'priority' => 'priority',
         'requested_at' => 'requested_at',
     ];
 
@@ -40,7 +38,7 @@ final class PurchaseRequestLineColumnCatalog
         return [
             $column('purchase_request_id', 'number', visible: false, sortable: true),
             $column('purchase_request_subject', 'text', sortable: true, filter: 'text'),
-            $column('priority', 'badge', sortable: true, filter: 'set', options: PurchaseRequestPriority::values()),
+            $column(PurchaseRequestColumnCatalog::PRIORITY_COLUMN, 'badge', sortable: true, filter: 'set'),
             $column('requester', 'text', filter: 'text'),
             $column('function_manager', 'text', filter: 'text'),
             $column('requested_at', 'date', sortable: true),

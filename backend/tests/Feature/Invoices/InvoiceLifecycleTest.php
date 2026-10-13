@@ -29,8 +29,8 @@ it('AC-005: details switch the type, edits recompute, collections rebalance the 
     [$request, $invoice] = issuedInvoice();
     $url = "/api/invoices/{$invoice['id']}";
 
-    $this->patchJson("{$url}/details", ['external_number' => 'FT-9', 'external_date' => '2026-04-01', 'tag' => 'final', 'deviation' => '5.5'])
-        ->assertOk()->assertJsonPath('data.type', 'invoice')->assertJsonPath('data.tag', 'final')->assertJsonPath('data.deviation', '5.50');
+    $this->patchJson("{$url}/details", ['external_number' => 'FT-9', 'external_date' => '2026-04-01', 'invoice_tag_id' => referenceInvoiceTag('Consuntivo')->id, 'deviation' => '5.5'])
+        ->assertOk()->assertJsonPath('data.type', 'invoice')->assertJsonPath('data.tag.name', 'Consuntivo')->assertJsonPath('data.deviation', '5.50');
     $this->patchJson("{$url}/details", ['external_number' => null])
         ->assertOk()->assertJsonPath('data.type', 'proforma')->assertJsonPath('data.external_date', null);
     $this->patchJson("{$url}/details", ['external_number' => 'FT-9'])->assertUnprocessable()->assertJsonValidationErrors('external_date');
@@ -77,7 +77,7 @@ it('AC-006: every endpoint answers 403 without its ability; preview needs create
         ['create', 'postJson', "/api/proforma-requests/{$pending->id}/invoice", $write],
         ['view', 'getJson', "/api/invoices/{$invoice['id']}", []],
         ['update', 'putJson', "/api/invoices/{$invoice['id']}", $write],
-        ['update', 'patchJson', "/api/invoices/{$invoice['id']}/details", ['tag' => 'estimate']],
+        ['update', 'patchJson', "/api/invoices/{$invoice['id']}/details", ['invoice_tag_id' => null]],
         ['delete', 'deleteJson', "/api/invoices/{$invoice['id']}", []],
         ['collect', 'putJson', "/api/invoice-installments/{$installmentId}/collection", $collection],
         ['collect', 'deleteJson', "/api/invoice-installments/{$installmentId}/collection", []],

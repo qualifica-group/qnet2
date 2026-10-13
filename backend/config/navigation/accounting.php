@@ -48,6 +48,14 @@ return [
                     'route' => '/invoice-installments',
                     'permission' => 'invoice-installments.view',
                 ],
+                // spec 0247: tags of the active invoices.
+                [
+                    'key' => 'invoice-tags',
+                    'label' => 'navigation.invoiceTags',
+                    'icon' => 'tag',
+                    'route' => '/invoice-tags',
+                    'permission' => 'invoice-tags.view',
+                ],
             ],
         ],
         // "Passiva" (spec 0211): payables; a group with no route of its own.

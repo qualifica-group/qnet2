@@ -43,7 +43,7 @@ it('AC-007: the supplier is required even with the manage capability, and not fo
     $request = purchaseRequestWithLines([LineStatus::Approved, LineStatus::Approved]);
 
     changeStatus($this, [$request->lines[0]->id], 'ordered')->assertUnprocessable()->assertJsonValidationErrors('line_ids.0');
-    changeStatus($this, [$request->lines[0]->id], 'on_hold')->assertOk();
+    changeStatus($this, [$request->lines[0]->id], 'on_hold', ['reason' => 'Waiting'])->assertOk();
 });
 
 it('AC-008: the supplied suppliers are saved with the change to ordered', function () {

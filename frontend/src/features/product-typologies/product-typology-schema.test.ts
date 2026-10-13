@@ -16,6 +16,7 @@ const VALID_PAYLOAD = {
   color: 'blue',
   supplier_commission_enabled: false,
   supplier_commission_direction: null,
+  proforma_kind: null,
 }
 
 describe('buildCreateProductTypologySchema (spec 0099)', () => {
@@ -108,5 +109,12 @@ describe('supplier commission direction (spec 0202 D-7)', () => {
         supplier_commission_direction: 'OTHER',
       }).success,
     ).toBe(false)
+  })
+  it('accepts the proforma kinds and null, rejects anything else (spec 0247)', () => {
+    const schema = buildCreateProductTypologySchema(i18n.t)
+    for (const kind of ['consultancy', 'institution', null]) {
+      expect(schema.safeParse({ ...VALID_PAYLOAD, proforma_kind: kind }).success).toBe(true)
+    }
+    expect(schema.safeParse({ ...VALID_PAYLOAD, proforma_kind: 'supplier' }).success).toBe(false)
   })
 })

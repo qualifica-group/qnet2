@@ -21,8 +21,13 @@ export const LINE_STATUSES = [
 ] as const
 export type LineStatus = (typeof LINE_STATUSES)[number]
 
-export const PRIORITIES = ['low', 'medium', 'high', 'urgent', 'critical'] as const
-export type PurchaseRequestPriority = (typeof PRIORITIES)[number]
+/** The configured priority of an RDA (catalog `purchase-request-priorities`), as read from the detail and the grids. */
+export interface PurchaseRequestPriorityRef {
+  id: number
+  name: string
+  color: string
+  icon: string | null
+}
 
 export type PurchaseRequestStatus = 'open' | 'closed'
 
@@ -108,7 +113,7 @@ export interface PurchaseRequest {
   id: number
   subject: string
   requested_at: string
-  priority: PurchaseRequestPriority
+  priority: PurchaseRequestPriorityRef | null
   requester: NamedRef
   function_manager: NamedRef
   customer: NamedRef | null
@@ -154,7 +159,7 @@ export interface PurchaseRequestLinePayload {
 export interface PurchaseRequestPayload {
   subject: string
   requested_at: string
-  priority: PurchaseRequestPriority
+  purchase_request_priority_id: number
   requester_id: number
   function_manager_id: number
   customer_id: number | null

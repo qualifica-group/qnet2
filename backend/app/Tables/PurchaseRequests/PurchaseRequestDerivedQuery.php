@@ -83,6 +83,23 @@ final class PurchaseRequestDerivedQuery
     }
 
     /**
+     * Names of the active priorities, in display order: the value list of the
+     * `priority` column filter, which filters by name like the other lookups.
+     *
+     * @return array<int, string>
+     */
+    public static function activePriorityNames(): array
+    {
+        return DB::table('purchase_request_priorities')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->pluck('name')
+            ->map(static fn (mixed $name): string => (string) $name)
+            ->all();
+    }
+
+    /**
      * Distinct values of a related column over the rows of `$query` (the
      * `/values` endpoint). `$target` is a chain of BelongsTo relations, walked
      * key by key through subqueries so no JOIN can multiply rows.

@@ -5,6 +5,7 @@ import type { PurchaseRequest } from '@/features/purchase-requests/types'
 export type RequestRefs = Record<RelationFieldName, RelationFieldRef | null>
 
 const EMPTY_REFS: RequestRefs = {
+  purchase_request_priority_id: null,
   requester_id: null,
   function_manager_id: null,
   customer_id: null,
@@ -24,6 +25,9 @@ export function requestRefs(request: PurchaseRequest | undefined): RequestRefs {
     return EMPTY_REFS
   }
   return {
+    purchase_request_priority_id: request.priority
+      ? { id: request.priority.id, name: request.priority.name, meta: { color: request.priority.color, icon: request.priority.icon } }
+      : null,
     requester_id: request.requester,
     function_manager_id: request.function_manager,
     customer_id: request.customer,

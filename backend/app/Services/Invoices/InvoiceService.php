@@ -41,10 +41,11 @@ class InvoiceService
         'installments',
         'createdBy:id,name',
         'layout:id,name',
+        'invoiceTag:id,name,color',
     ];
 
     /** Optional header keys: written only when the payload carries them. */
-    private const array OPTIONAL_HEADER_KEYS = ['financial_account_id', 'notes', 'internal_note', 'tag'];
+    private const array OPTIONAL_HEADER_KEYS = ['financial_account_id', 'notes', 'internal_note', 'invoice_tag_id'];
 
     public function __construct(
         private readonly InvoiceAmountCalculator $amounts,
@@ -132,7 +133,7 @@ class InvoiceService
     }
 
     /**
-     * External number/date, tag, deviation and internal note.
+     * External number/date, invoice tag, deviation and internal note.
      * The external number decides the type (proforma becomes invoice, D-3/D-14);
      * on a registered invoice changing it needs the downgrade permission (spec 0243).
      *
@@ -140,7 +141,7 @@ class InvoiceService
      */
     public function updateDetails(Invoice $invoice, array $data, User $actor): Invoice
     {
-        $attributes = Arr::only($data, ['external_number', 'external_date', 'tag', 'deviation', 'internal_note', 'layout_id']);
+        $attributes = Arr::only($data, ['external_number', 'external_date', 'invoice_tag_id', 'deviation', 'internal_note', 'layout_id']);
 
         if (array_key_exists('external_number', $attributes)) {
             $registered = filled($attributes['external_number']);

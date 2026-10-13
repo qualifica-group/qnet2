@@ -187,9 +187,65 @@ describe('LineStatusDialog supplier for ordered (spec 0209 AC-015)', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'On hold' }))
 
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    // On hold needs a reason (spec 0247 D-2), so the change is confirmed with one
+    fireEvent.change(screen.getByLabelText(/^Reason/), { target: { value: 'Waiting for budget' } })
     fireEvent.click(screen.getByRole('button', { name: 'Confirm on 2 lines' }))
     await waitFor(() => expect(changeMock).toHaveBeenCalledTimes(1))
-    expect(changeMock.mock.calls[0]?.[0]).toEqual({ line_ids: [1, 2], to_status: 'on_hold' })
+    expect(changeMock.mock.calls[0]?.[0]).toEqual({ line_ids: [1, 2], to_status: 'on_hold', reason: 'Waiting for budget' })
+  })
+})
+
+describe('LineStatusDialog mandatory reason (spec 0247 AC-015)', () => {
+  const movable = { status: 'pending_approval' as const, transitions: ['approved' as const, 'rejected' as const, 'on_hold' as const] }
+
+  it.each([
+    ['Rejected', 'rejected'],
+    ['On hold', 'on_hold'],
+  ])('requires a reason for %s, with an accessible error and no request until it is given', async (label, status) => {
+    renderDialog([target({ id: 1, ...movable })])
+
+    fireEvent.click(screen.getByRole('radio', { name: label }))
+    const reason = screen.getByLabelText(/^Reason/)
+    expect(reason).toBeRequired()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The reason is required for this status.')
+    expect(reason).toHaveAttribute('aria-invalid', 'true')
+    expect(reason).toHaveAccessibleDescription('The reason is required for this status.')
+    expect(changeMock).not.toHaveBeenCalled()
+
+    fireEvent.change(reason, { target: { value: '  Not needed  ' } })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() => expect(changeMock).toHaveBeenCalledWith({ line_ids: [1], to_status: status, reason: 'Not needed' }))
+  })
+
+  it('keeps the reason optional for the other statuses', async () => {
+    renderDialog([target({ id: 1, ...movable })])
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Approved' }))
+    expect(screen.getByLabelText('Reason (optional)')).not.toBeRequired()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() => expect(changeMock).toHaveBeenCalledWith({ line_ids: [1], to_status: 'approved' }))
+  })
+
+  it('shows a server 422 on the reason field instead of a generic toast', async () => {
+    const error = Object.assign(new Error('422'), {
+      isAxiosError: true,
+      response: { status: 422, data: { errors: { reason: ['Server says: reason needed.'] } } },
+    })
+    changeMock.mockRejectedValueOnce(error)
+    renderDialog([target({ id: 1, ...movable })])
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Approved' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Server says: reason needed.')
   })
 })
 

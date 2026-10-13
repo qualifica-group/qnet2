@@ -26,7 +26,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Premi **Nuova RDA** e compila la testata: **Oggetto**, **Data richiesta**, **Priorità**, **Richiedente** e i campi organizzativi (**Società aziendale**, **Società / Sede**, **Sede operativa**, **Funzione aziendale**).',
+            'Premi **Nuova RDA** e compila la testata: **Oggetto**, **Data richiesta**, **Priorità** (scelta dall’elenco configurabile, precompilata con quella predefinita e mostrata come badge colorato), **Richiedente** e i campi organizzativi (**Società aziendale**, **Società / Sede**, **Sede operativa**, **Funzione aziendale**).',
             'Il **Responsabile di funzione** si sceglie tra i **diretti superiori del richiedente** (profilo aziendale in **Utenti**): con un solo superiore viene proposto in automatico, cambiando il richiedente l’elenco si aggiorna. Se il richiedente non ha superiori si usa il responsabile della **Funzione aziendale**; se manca anche quello un messaggio sotto il campo lo segnala e la RDA non si può salvare. Chi è il richiedente non può approvare la propria RDA. **Società / Sede** mostra solo le sedi della società scelta.',
             'Facoltativi: **Cliente** e **Commessa**. Il **Fornitore** non è più nella testata ma sulle singole righe. Il pulsante **+** accanto a un campo crea al volo un nuovo fornitore, cliente o prodotto.',
             'Aggiungi le righe (almeno una) e, se serve, i documenti, poi premi **Salva**.',
@@ -58,7 +58,7 @@ const guide: HelpGuide = {
             ['**Stato**', 'Da approvare, Approvato, Ordinato, Ricevuto, Rifiutato o Stand by. Non si modifica come un campo: si usa l’icona **Cambia stato della riga**.'],
             ['**ODA**', 'In sola lettura: mostra il codice dell’ODA generata dalla riga, come link all’ordine, oppure un trattino se la riga non è collegata. Il collegamento viene tolto se l’ODA è eliminata o annullata, o se la riga è rimossa dall’ODA.'],
             ['**Documenti della riga**', 'Allegati della singola riga.'],
-            ['**Cambia stato della riga**', 'Compare su una riga salvata solo se puoi cambiarne lo stato: il Responsabile di funzione assegnato approva o rifiuta le righe Da approvare, chi ha il permesso di evasione porta le righe Approvate a Ordinato o Stand by e quelle Ordinate a Ricevuto o Stand by. Si sceglie il nuovo stato e una motivazione facoltativa. Scegliendo **Ordinato** la finestra mostra una colonna **Fornitore**: le righe che ne hanno già uno lo mostrano, quelle senza hanno un elenco da compilare, e la conferma resta disabilitata finché ne manca uno.'],
+            ['**Cambia stato della riga**', 'Compare su una riga salvata solo se puoi cambiarne lo stato: il Responsabile di funzione assegnato approva o rifiuta le righe Da approvare, chi ha il permesso di evasione porta le righe Approvate a Ordinato o Stand by e quelle Ordinate a Ricevuto o Stand by. Si sceglie il nuovo stato e una motivazione, **obbligatoria** per **Rifiutato** e **Stand by** (facoltativa per gli altri stati). Scegliendo **Ordinato** la finestra mostra una colonna **Fornitore**: le righe che ne hanno già uno lo mostrano, quelle senza hanno un elenco da compilare, e la conferma resta disabilitata finché ne manca uno.'],
             ['**Cestino**', 'Elimina la riga, se il tuo ruolo lo consente e se è Da approvare o Rifiutata.'],
           ],
         },

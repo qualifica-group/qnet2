@@ -41,10 +41,6 @@ export const invoiceEditor = {
     selectEmpty: 'Nessun risultato.',
     selectError: 'Impossibile caricare le opzioni.',
   },
-  tags: {
-    estimate: 'Preventivo',
-    final: 'Consuntivo',
-  },
   available: {
     empty: 'Nessuna riga disponibile per questa richiesta.',
     add: 'Aggiungi',

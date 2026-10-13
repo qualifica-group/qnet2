@@ -1,11 +1,10 @@
-import { RelationCell } from '@/features/table/rich-cells'
+import { RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import { UserCell } from '@/features/table/user-cell'
 import {
   LineStatusCell,
   LineStatusCountsCell,
   OdaCell,
-  PriorityCell,
   RequestStatusCell,
   SuppliersCell,
   WorkOrderCell,
@@ -13,7 +12,7 @@ import {
 
 /** Custom cell renderers of the RDA grid, keyed by the backend column `id` (spec 0208 `data_contract`). */
 export const purchaseRequestColumnRenderers: TableRendererMap = {
-  priority: (params) => <PriorityCell {...params} />,
+  priority: (params) => <StatusBadgeCell {...params} />,
   requester: (params) => <UserCell {...params} />,
   function_manager: (params) => <UserCell {...params} />,
   created_by: (params) => <UserCell {...params} />,
@@ -30,7 +29,7 @@ export const purchaseRequestColumnRenderers: TableRendererMap = {
 
 /** Custom cell renderers of the "RDA lines" grid. */
 export const purchaseRequestLineColumnRenderers: TableRendererMap = {
-  priority: (params) => <PriorityCell {...params} />,
+  priority: (params) => <StatusBadgeCell {...params} />,
   requester: (params) => <UserCell {...params} />,
   function_manager: (params) => <UserCell {...params} />,
   approved_by: (params) => <UserCell {...params} />,

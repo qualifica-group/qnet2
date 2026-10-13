@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import { LINE_STATUSES, PRIORITIES } from '@/features/purchase-requests/types'
+import { LINE_STATUSES } from '@/features/purchase-requests/types'
 
 /**
  * Zod schema of the RDA form, mirroring the frozen server rules of spec 0208
@@ -73,7 +73,7 @@ export function buildPurchaseRequestSchema(t: TFunction) {
       .min(1, t('purchaseRequests.errors.subjectRequired'))
       .max(SUBJECT_MAX, t('purchaseRequests.errors.subjectMax')),
     requested_at: z.string().min(1, t('purchaseRequests.errors.requestedAtRequired')),
-    priority: z.enum(PRIORITIES),
+    purchase_request_priority_id: requiredId(t('purchaseRequests.errors.priorityRequired')),
     requester_id: requiredId(t('purchaseRequests.errors.requesterRequired')),
     function_manager_id: requiredId(t('purchaseRequests.errors.functionManagerRequired')),
     customer_id: z.number().int().nullable(),

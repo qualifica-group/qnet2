@@ -25,6 +25,14 @@ final class InvoiceDerivedQuery
     private const array NAMED_RELATIONS = [
         'company' => ['company', 'denomination'],
         'payment_method' => ['paymentMethod', 'name'],
+        'tag' => ['invoiceTag', 'name'],
+    ];
+
+    /** Table and foreign key behind each named set column. */
+    private const array NAMED_TABLES = [
+        'company' => ['companies', 'company_id'],
+        'payment_method' => ['payment_methods', 'payment_method_id'],
+        'tag' => ['invoice_tags', 'invoice_tag_id'],
     ];
 
     /**
@@ -84,8 +92,7 @@ final class InvoiceDerivedQuery
             return null;
         }
 
-        $table = $columnId === 'company' ? 'companies' : 'payment_methods';
-        $foreignKey = $columnId === 'company' ? 'company_id' : 'payment_method_id';
+        [$table, $foreignKey] = self::NAMED_TABLES[$columnId];
         $nameColumn = self::NAMED_RELATIONS[$columnId][1];
 
         return DB::table($table)

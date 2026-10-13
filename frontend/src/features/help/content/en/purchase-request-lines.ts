@@ -49,7 +49,7 @@ const guide: HelpGuide = {
             'The dialog recaps the **Selected lines** (number, description, quantity with unit of measure, total and current status) and, under **You are acting as**, your roles on them: Function manager, Fulfilment or Status management.',
             'Pick the **New status** with the buttons: only the statuses allowed to **all** the selected lines are offered. If none is in common a message tells you and you cannot confirm. With a single line the current status is preselected and the confirm button only enables once you pick a different one.',
             'If you pick **Ordered**, every line needs a **Supplier**: lines that already have one show it, for the others pick the supplier in the **Supplier** column (confirm stays disabled until none is missing).',
-            'Write a **reason** (optional; with several lines it applies to all of them) and confirm with **Confirm** (or **Confirm on N lines**).',
+            'Write a **reason** (**mandatory** when the new status is Rejected or On hold, also in bulk; otherwise optional; with several lines it applies to all of them) and confirm with **Confirm** (or **Confirm on N lines**).',
           ],
         },
         {

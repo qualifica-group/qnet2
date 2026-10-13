@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
+import { BADGE_BASE, BADGE_COLOR_CLASSES, badgeColorClass } from '@/features/table/cell-renderers'
 import type {
   InstallmentStatus,
   InvoicePaymentStatus,
-  InvoiceTag,
+  InvoiceTagRef,
   InvoiceType,
 } from '@/features/invoices/types'
 
@@ -20,11 +20,6 @@ const PAYMENT_STATUS_DOT: Record<InvoicePaymentStatus, string> = {
 const TYPE_COLORS: Record<InvoiceType, string> = {
   proforma: BADGE_COLOR_CLASSES.blue,
   invoice: BADGE_COLOR_CLASSES.green,
-}
-
-const TAG_COLORS: Record<InvoiceTag, string> = {
-  estimate: BADGE_COLOR_CLASSES.amber,
-  final: BADGE_COLOR_CLASSES.teal,
 }
 
 const INSTALLMENT_COLORS: Record<InstallmentStatus, string> = {
@@ -52,11 +47,11 @@ export function InvoiceTypeBadge({ type }: { type: InvoiceType }) {
   )
 }
 
-export function InvoiceTagBadge({ tag }: { tag: InvoiceTag }) {
-  const { t } = useTranslation()
+/** Badge of the configurable tag: the colour comes from the server, never from the code. */
+export function InvoiceTagBadge({ tag }: { tag: InvoiceTagRef }) {
   return (
-    <Badge variant="secondary" className={cn(BADGE_BASE, TAG_COLORS[tag])}>
-      {t(`invoices.tags.${tag}`)}
+    <Badge variant="secondary" className={cn(BADGE_BASE, badgeColorClass(tag.color))}>
+      {tag.name}
     </Badge>
   )
 }

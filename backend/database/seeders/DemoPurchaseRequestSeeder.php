@@ -3,12 +3,12 @@
 namespace Database\Seeders;
 
 use App\Enums\PurchaseRequestLineStatus;
-use App\Enums\PurchaseRequestPriority;
 use App\Models\BusinessFunction;
 use App\Models\CompanySite;
 use App\Models\OperationalSite;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
+use App\Models\PurchaseRequestPriority;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\VatRate;
@@ -46,13 +46,13 @@ class DemoPurchaseRequestSeeder extends Seeder
         $supplierId = Registry::query()->where('is_supplier', true)->orderBy('id')->value('id');
         $vatRateId = VatRate::query()->orderByDesc('rate')->value('id');
 
-        $this->request('Portatili per il nuovo team (demo)', PurchaseRequestPriority::High, $header, $vatRateId, $supplierId, [
+        $this->request('Portatili per il nuovo team (demo)', 'Alta', $header, $vatRateId, $supplierId, [
             ['Portatile 14 pollici', '3', '950.00', PurchaseRequestLineStatus::Approved],
             ['Docking station USB-C', '3', '120.00', PurchaseRequestLineStatus::PendingApproval],
             ['Monitor 27 pollici', '2', '280.00', PurchaseRequestLineStatus::Rejected],
             ['Mouse e tastiera', '3', '45.00', PurchaseRequestLineStatus::Ordered],
         ]);
-        $this->request('Cancelleria trimestrale (demo)', PurchaseRequestPriority::Low, $header, $vatRateId, $supplierId, [
+        $this->request('Cancelleria trimestrale (demo)', 'Bassa', $header, $vatRateId, $supplierId, [
             ['Risme di carta A4', '20', '4.50', PurchaseRequestLineStatus::PendingApproval],
         ]);
     }
@@ -61,16 +61,19 @@ class DemoPurchaseRequestSeeder extends Seeder
      * @param  array<string, mixed>  $header
      * @param  array<int, array{0: string, 1: string, 2: string, 3: PurchaseRequestLineStatus}>  $lines
      */
-    private function request(string $subject, PurchaseRequestPriority $priority, array $header, ?int $vatRateId, ?int $supplierId, array $lines): void
+    private function request(string $subject, string $priorityName, array $header, ?int $vatRateId, ?int $supplierId, array $lines): void
     {
         if (PurchaseRequest::query()->where('subject', $subject)->exists()) {
             return;
         }
 
+        $priorityId = PurchaseRequestPriority::query()->where('name', $priorityName)->value('id')
+            ?? PurchaseRequestPriority::query()->where('is_default', true)->value('id');
+
         $calculator = new PurchaseRequestAmountCalculator;
         $rate = $vatRateId === null ? null : (string) VatRate::query()->whereKey($vatRateId)->value('rate');
 
-        $request = new PurchaseRequest(['subject' => $subject, 'priority' => $priority] + $header);
+        $request = new PurchaseRequest(['subject' => $subject, 'purchase_request_priority_id' => $priorityId] + $header);
         $request->forceFill(['created_by' => $header['requester_id']])->save();
 
         $computed = [];

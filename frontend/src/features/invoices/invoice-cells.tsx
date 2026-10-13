@@ -2,16 +2,13 @@ import type { ICellRendererParams } from 'ag-grid-community'
 import { CELL_WRAPPER, EmptyCell } from '@/features/table/cell-renderers'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import {
-  InvoiceTagBadge,
   InvoiceTypeBadge,
   PaymentStatusIndicator,
 } from '@/features/invoices/invoice-status-badges'
 import {
   INVOICE_PAYMENT_STATUSES,
-  INVOICE_TAGS,
   INVOICE_TYPES,
   type InvoicePaymentStatus,
-  type InvoiceTag,
   type InvoiceType,
 } from '@/features/invoices/types'
 
@@ -33,16 +30,6 @@ export function InvoiceTypeCell({ value }: ICellRendererParams) {
   return isOneOf<InvoiceType>(INVOICE_TYPES, value) ? (
     <div className={CELL_WRAPPER}>
       <InvoiceTypeBadge type={value} />
-    </div>
-  ) : (
-    <EmptyCell />
-  )
-}
-
-export function InvoiceTagCell({ value }: ICellRendererParams) {
-  return isOneOf<InvoiceTag>(INVOICE_TAGS, value) ? (
-    <div className={CELL_WRAPPER}>
-      <InvoiceTagBadge tag={value} />
     </div>
   ) : (
     <EmptyCell />

@@ -40,6 +40,7 @@ const UnitsOfMeasurePage = lazyRoute(() => import('@/pages/units-of-measure-page
 const FinancialAccountsPage = lazyRoute(() => import('@/pages/financial-accounts-page'))
 const ProformaRequestsPage = lazyRoute(() => import('@/pages/proforma-requests-page'))
 const InvoicesPage = lazyRoute(() => import('@/pages/invoices-page'))
+const InvoiceTagsPage = lazyRoute(() => import('@/pages/invoice-tags-page'))
 const InvoiceInstallmentsPage = lazyRoute(() => import('@/pages/invoice-installments-page'))
 const ProductTypologiesPage = lazyRoute(() => import('@/pages/product-typologies-page'))
 const PaymentMethodsPage = lazyRoute(() => import('@/pages/payment-methods-page'))
@@ -230,6 +231,10 @@ export const router = createBrowserRouter([
           {
             path: 'invoice-installments',
             element: <InvoiceInstallmentsPage />,
+          },
+          {
+            path: 'invoice-tags',
+            element: <InvoiceTagsPage />,
           },
           {
             path: 'product-typologies',

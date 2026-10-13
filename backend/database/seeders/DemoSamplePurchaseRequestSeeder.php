@@ -4,10 +4,10 @@ namespace Database\Seeders;
 
 use App\DataObjects\PurchaseRequests\PurchaseRequestData;
 use App\Enums\PurchaseRequestLineStatus;
-use App\Enums\PurchaseRequestPriority;
 use App\Models\BusinessFunction;
 use App\Models\CompanySite;
 use App\Models\OperationalSite;
+use App\Models\PurchaseRequestPriority;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\VatRate;
@@ -83,7 +83,7 @@ class DemoSamplePurchaseRequestSeeder extends Seeder
     }
 
     /**
-     * @return array{users: Collection<int, User>, sites: Collection<int, CompanySite>, operational_site_ids: Collection<int, int>, functions: Collection<int, BusinessFunction>, supplier_ids: Collection<int, int>, vat_rate_id: int}|null
+     * @return array{users: Collection<int, User>, sites: Collection<int, CompanySite>, operational_site_ids: Collection<int, int>, functions: Collection<int, BusinessFunction>, supplier_ids: Collection<int, int>, vat_rate_id: int, priority_ids: Collection<int, int>}|null
      */
     private function context(): ?array
     {
@@ -94,6 +94,7 @@ class DemoSamplePurchaseRequestSeeder extends Seeder
             'functions' => BusinessFunction::query()->orderBy('id')->get(['id', 'manager_id']),
             'supplier_ids' => Registry::query()->where('is_supplier', true)->orderBy('id')->pluck('id'),
             'vat_rate_id' => VatRate::query()->orderByDesc('rate')->value('id'),
+            'priority_ids' => PurchaseRequestPriority::query()->where('is_active', true)->orderBy('sort_order')->pluck('id'),
         ];
 
         $missing = collect($context)->contains(fn (mixed $value): bool => $value === null || ($value instanceof Collection && $value->isEmpty()));
@@ -102,7 +103,7 @@ class DemoSamplePurchaseRequestSeeder extends Seeder
     }
 
     /**
-     * @param  array{users: Collection<int, User>, sites: Collection<int, CompanySite>, operational_site_ids: Collection<int, int>, functions: Collection<int, BusinessFunction>, supplier_ids: Collection<int, int>, vat_rate_id: int}  $context
+     * @param  array{users: Collection<int, User>, sites: Collection<int, CompanySite>, operational_site_ids: Collection<int, int>, functions: Collection<int, BusinessFunction>, supplier_ids: Collection<int, int>, vat_rate_id: int, priority_ids: Collection<int, int>}  $context
      * @return array<int, int> the ids of the new lines
      */
     private function create(int $index, array $context, User $actor): array
@@ -110,12 +111,12 @@ class DemoSamplePurchaseRequestSeeder extends Seeder
         [$subject, $lines] = self::REQUESTS[$index % count(self::REQUESTS)];
         $site = $context['sites']->random();
         $function = $context['functions']->random();
-        $priorities = PurchaseRequestPriority::cases();
+        $priorityIds = $context['priority_ids'];
 
         $request = $this->requests->create(new PurchaseRequestData([
             'subject' => sprintf('%s (demo)', $subject),
             'requested_at' => now()->subDays(random_int(0, 60))->toDateString(),
-            'priority' => $priorities[$index % count($priorities)],
+            'purchase_request_priority_id' => $priorityIds[$index % count($priorityIds)],
             'requester_id' => $context['users']->random()->id,
             'function_manager_id' => $function->manager_id ?? $actor->id,
             'company_id' => $site->company_id,

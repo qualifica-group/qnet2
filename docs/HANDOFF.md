@@ -3,7 +3,31 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0245 RDA + 0246 Tipi di costo (audit 2026-10-13, Onda 1 chiusa) — VERDE, COMMITTATO (2026-10-13)
+## Spec 0247 — Cataloghi semplici Acquisti/Contabilita' (audit Onda 2-A) — VERDE, NON COMMITTATO (2026-10-13)
+
+- Spec `docs/specs/0247-purchasing-accounting-simple-catalogs.xml` (D-1..D-8, AC-001..017 PASS; D-8/AC-004/AC-008
+  [revised]: filtri set di priorita' e tag per NOME, non per id).
+- Priorita' RDA = catalogo `purchase_request_priorities` (modello TaskPriority: default unico, riordino, 409 in uso);
+  `purchase_requests.purchase_request_priority_id` (FK restrict), enum PurchaseRequestPriority rimosso. API: scrittura
+  `purchase_request_priority_id`, lettura `priority {id,name,color,icon}`. Menu Acquisti, permessi
+  purchase-request-priorities.*. FE features/purchase-request-priorities, i18n root `purchaseRequestPriorities`
+  ({it,en}-purchase-request-priorities.ts).
+- Tag fattura = catalogo `invoice_tags` (Preventivo/Consuntivo, niente default/icona); `invoices.invoice_tag_id`
+  nullable FK restrict, enum InvoiceTag rimosso; `tag_label` nei layout = nome. Menu Contabilita' > Attiva,
+  permessi invoice-tags.*. FE features/invoice-tags, i18n `invoiceTags` (in {it,en}-invoices.ts, esposto da *-accounting.ts).
+- `product_typologies.proforma_kind` (consultancy|institution|null): ProformaRequestService e InvoiceDraftBuilder
+  leggono proforma_kind, non piu' il code; campo nel dettaglio Tipologie prodotto.
+- Motivazione obbligatoria per righe RDA -> rejected / on_hold (BE required_if + FE dialog). In UI on_hold = "Stand by".
+- Stato richieste proforma resta enum fisso (nota in 0193).
+- Migrazioni 2026_10_17_120000/130000/140000 (reversibili, rinominano anche role_field_permissions). Contatori
+  --step aggiornati in PurchaseOrderMigrationTest (28), SupplierCommissionDirectionTest (43), QuoteWorkflowMigrationTest
+  (179): ogni nuova migrazione successiva li fara' crescere di nuovo.
+- Aperti: flaky CampaignCrudTest AC-028 e Vitest chart/dashboard sotto carico; manuale Claude Docs da aggiornare
+  (RDA, righe RDA, Priorita' RDA, Fatture, Tag fattura, Tipologie prodotto).
+- Prossimo: spec 0248 stati ODA e stati riga RDA configurabili (solo presentazione), poi 0249 tipi di costo
+  (natura/gruppo, modifica in linea, riordino).
+
+## Spec 0245 RDA + 0246 Tipi di costo (audit 2026-10-13, Onda 1 chiusa) — COMMITTATO 101af875 (2026-10-13)
 
 - 0245 `docs/specs/0245-purchase-request-integrity-fixes.xml` (D-1..D-8, AC-001..012 PASS): approvatore RDA =
   diretto superiore attivo del RICHIEDENTE (`User::employment` -> `EmploymentProfile::reportsTo()`), ripiego sul manager

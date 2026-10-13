@@ -20,12 +20,6 @@ use Illuminate\Support\Collection;
  */
 final class InvoiceDraftBuilder
 {
-    /** Product typology codes are immutable: never resolve by name. */
-    private const array KIND_TYPOLOGY = [
-        'consultancy' => 'consultancy',
-        'institution' => 'institution',
-    ];
-
     /**
      * @return array<string, mixed>
      */
@@ -75,18 +69,18 @@ final class InvoiceDraftBuilder
     }
 
     /**
+     * Lines whose product typology feeds this request kind (spec 0247, D-6).
+     *
      * @return Collection<int, QuoteLine>
      */
     private function availableLines(ProformaRequest $request): Collection
     {
-        $code = self::KIND_TYPOLOGY[$request->kind->value];
-
         return $request->workOrder->quoteLines()
             ->where('line_type', QuoteLineType::Revenue->value)
             ->whereNotIn('quote_lines.id', InvoiceLine::query()->whereNotNull('quote_line_id')->select('quote_line_id'))
-            ->with('product:id,name,supplier_id,product_typology_id,vat_rate_id', 'product.productTypology:id,code', 'product.vatRate:id,name,rate', 'vatRate:id,name,rate')
+            ->with('product:id,name,supplier_id,product_typology_id,vat_rate_id', 'product.productTypology:id,proforma_kind', 'product.vatRate:id,name,rate', 'vatRate:id,name,rate')
             ->get()
-            ->filter(fn (QuoteLine $line): bool => $line->product?->productTypology?->code === $code)
+            ->filter(fn (QuoteLine $line): bool => $line->product?->productTypology?->proforma_kind === $request->kind)
             ->filter(fn (QuoteLine $line): bool => $request->kind === ProformaRequestKind::Consultancy
                 || $line->product->supplier_id === $request->supplier_id);
     }

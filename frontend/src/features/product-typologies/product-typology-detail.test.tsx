@@ -44,6 +44,7 @@ function productTypology(
     color: 'blue',
     supplier_commission_enabled: false,
     supplier_commission_direction: null,
+    proforma_kind: null,
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-02-15T14:30:00Z',
     permissions: {
@@ -259,5 +260,61 @@ describe('ProductTypologyDetailView — supplier commission row (spec 0202)', ()
       await screen.findByText('The direction is required when the Supplier commission is enabled.'),
     ).toBeInTheDocument()
     expect(updateProductTypologyMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('ProductTypologyDetailView — proforma request type (spec 0247 AC-016)', () => {
+  it('shows None when the typology feeds no proforma request', () => {
+    render(<ProductTypologyDetailView productTypology={productTypology()} />)
+
+    expect(screen.getByText('Proforma request type')).toBeInTheDocument()
+    expect(screen.getByText('None')).toBeInTheDocument()
+  })
+
+  it('shows the chosen type', () => {
+    render(<ProductTypologyDetailView productTypology={productTypology({ proforma_kind: 'institution' })} />)
+
+    expect(screen.getByText('Institution')).toBeInTheDocument()
+  })
+
+  it('saves the type picked in the select as a PATCH of that field alone', async () => {
+    updateProductTypologyMock.mockResolvedValue(productTypology({ proforma_kind: 'consultancy' }))
+    render(<ProductTypologyDetailView productTypology={productTypology()} />)
+
+    fireEvent.click(pencilOf('productTypologies.form.proformaKind') as HTMLElement)
+    fireEvent.click(await screen.findByRole('combobox', { name: /Proforma request type/ }))
+    expect(await screen.findByRole('option', { name: 'None' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Institution' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('option', { name: 'Consultancy' }))
+    saveRow()
+
+    await waitFor(() => expect(updateProductTypologyMock).toHaveBeenCalledWith(4, { proforma_kind: 'consultancy' }))
+  })
+
+  it('clears the type back to null with None', async () => {
+    updateProductTypologyMock.mockResolvedValue(productTypology())
+    render(<ProductTypologyDetailView productTypology={productTypology({ proforma_kind: 'institution' })} />)
+
+    fireEvent.click(pencilOf('productTypologies.form.proformaKind') as HTMLElement)
+    fireEvent.click(await screen.findByRole('combobox', { name: /Proforma request type/ }))
+    fireEvent.click(await screen.findByRole('option', { name: 'None' }))
+    saveRow()
+
+    await waitFor(() => expect(updateProductTypologyMock).toHaveBeenCalledWith(4, { proforma_kind: null }))
+  })
+
+  it('offers no pencil on the type without update permission', () => {
+    render(
+      <ProductTypologyDetailView
+        productTypology={productTypology({
+          permissions: {
+            ...productTypology().permissions,
+            resource: { ...productTypology().permissions.resource, update: false },
+          },
+        })}
+      />,
+    )
+
+    expect(pencilOf('productTypologies.form.proformaKind')).not.toBeInTheDocument()
   })
 })

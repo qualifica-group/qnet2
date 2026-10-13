@@ -9,6 +9,7 @@ use App\Models\CompanySite;
 use App\Models\OperationalSite;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
+use App\Models\PurchaseRequestPriority;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\VatRate;
@@ -71,7 +72,7 @@ if (! function_exists('purchaseRequestPayload')) {
         return array_merge([
             'subject' => 'Laptops',
             'requested_at' => '2026-10-09',
-            'priority' => 'high',
+            'purchase_request_priority_id' => PurchaseRequestPriority::query()->where('name', 'Alta')->value('id'),
             'requester_id' => User::factory()->reportsTo($approver)->create()->id,
             'function_manager_id' => $approver->id,
             'company_id' => $company->id,
@@ -146,7 +147,7 @@ if (! function_exists('purchaseRequestUpdatePayload')) {
             'business_function_id' => $request->business_function_id,
             'subject' => $request->subject,
             'requested_at' => $request->requested_at->toDateString(),
-            'priority' => $request->priority->value,
+            'purchase_request_priority_id' => $request->purchase_request_priority_id,
         ]);
         $payload['lines'] = $request->lines->map(fn (PurchaseRequestLine $line): array => [
             'id' => $line->id,

@@ -13,7 +13,7 @@ final readonly class PurchaseRequestData
 {
     /** Header and footer columns a client may write. */
     public const array HEADER_KEYS = [
-        'subject', 'requested_at', 'priority', 'requester_id', 'function_manager_id', 'customer_id',
+        'subject', 'requested_at', 'purchase_request_priority_id', 'requester_id', 'function_manager_id', 'customer_id',
         'work_order_id', 'company_id', 'company_site_id', 'operational_site_id',
         'business_function_id', 'notes', 'delivery_terms', 'procurement_plan',
         'technical_requirements', 'special_conditions',

@@ -17,9 +17,20 @@ class PurchaseRequestLineStatusRequest extends FormRequest
 
     public const int REASON_MAX_LENGTH = 2000;
 
+    /** Target statuses that need a reason. */
+    private const array REASON_REQUIRED_STATUSES = [PurchaseRequestLineStatus::Rejected->value, PurchaseRequestLineStatus::OnHold->value];
+
     public function authorize(): bool
     {
         return true;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return ['reason.required_if' => __('purchase_request_lines.reason_required')];
     }
 
     /**
@@ -31,7 +42,8 @@ class PurchaseRequestLineStatusRequest extends FormRequest
             'line_ids' => ['required', 'array', 'min:1', 'max:'.self::MAX_LINES],
             'line_ids.*' => ['required', 'integer', 'distinct', Rule::exists('purchase_request_lines', 'id')],
             'to_status' => ['required', Rule::enum(PurchaseRequestLineStatus::class)],
-            'reason' => ['nullable', 'string', 'max:'.self::REASON_MAX_LENGTH],
+            // Mandatory when the lines are rejected or put on hold (spec 0247, D-2).
+            'reason' => ['nullable', 'string', 'max:'.self::REASON_MAX_LENGTH, 'required_if:to_status,'.implode(',', self::REASON_REQUIRED_STATUSES)],
             // Supplied for the lines that miss one when ordering (spec 0209, D-2).
             'suppliers' => ['nullable', 'array', 'max:'.self::MAX_LINES, 'prohibited_unless:to_status,'.PurchaseRequestLineStatus::Ordered->value],
             'suppliers.*.line_id' => ['required', 'integer', 'distinct', Rule::in(array_filter((array) $this->input('line_ids'), 'is_scalar'))],

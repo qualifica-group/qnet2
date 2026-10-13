@@ -24,6 +24,7 @@ use App\Tables\FieldChangeRequestsTableDefinition;
 use App\Tables\FinancialAccountsTableDefinition;
 use App\Tables\InvoiceInstallmentsTableDefinition;
 use App\Tables\InvoicesTableDefinition;
+use App\Tables\InvoiceTagsTableDefinition;
 use App\Tables\LeadImportsTableDefinition;
 use App\Tables\LeadsTableDefinition;
 use App\Tables\NotificationsTableDefinition;
@@ -39,6 +40,7 @@ use App\Tables\ProjectsTableDefinition;
 use App\Tables\PurchaseInvoiceInstallmentsTableDefinition;
 use App\Tables\PurchaseOrdersTableDefinition;
 use App\Tables\PurchaseRequestLinesTableDefinition;
+use App\Tables\PurchaseRequestPrioritiesTableDefinition;
 use App\Tables\PurchaseRequestsTableDefinition;
 use App\Tables\QuotesTableDefinition;
 use App\Tables\QuoteWorkflowsTableDefinition;
@@ -138,6 +140,9 @@ return [
         'units-of-measure' => UnitsOfMeasureTableDefinition::class,
         // spec 0210: tipi di costo (righe ODA).
         'cost-types' => CostTypesTableDefinition::class,
+        // spec 0247: catalogs of the simple purchasing/accounting lists.
+        'purchase-request-priorities' => PurchaseRequestPrioritiesTableDefinition::class,
+        'invoice-tags' => InvoiceTagsTableDefinition::class,
         'financial-accounts' => FinancialAccountsTableDefinition::class,
         // spec 0212: profili fiscali degli agenti.
         'agent-fiscal-profiles' => AgentFiscalProfilesTableDefinition::class,

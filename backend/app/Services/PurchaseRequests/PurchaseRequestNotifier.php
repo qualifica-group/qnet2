@@ -51,7 +51,7 @@ class PurchaseRequestNotifier
             $actor->name,
             [
                 'Subject' => $purchaseRequest->subject,
-                'Priority' => $purchaseRequest->priority->label(),
+                'Priority' => $purchaseRequest->loadMissing('purchaseRequestPriority:id,name')->purchaseRequestPriority->name,
                 'Requested on' => $purchaseRequest->requested_at->toDateString(),
                 'Total' => (string) $purchaseRequest->grand_total,
             ],

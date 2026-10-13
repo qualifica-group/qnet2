@@ -63,7 +63,7 @@ it('AC-001: POST/PUT save an active invoices layout, refuse quotes/inactive ones
         'residual_due_date' => '2026-05-01',
     ])->assertOk();
     $this->patchJson("{$url}/details", ['layout_id' => $other->id])->assertOk()->assertJsonPath('data.layout.id', $other->id);
-    $this->patchJson("{$url}/details", ['tag' => 'final'])->assertOk()->assertJsonPath('data.layout.id', $other->id);
+    $this->patchJson("{$url}/details", ['invoice_tag_id' => referenceInvoiceTag('Consuntivo')->id])->assertOk()->assertJsonPath('data.layout.id', $other->id);
     $this->patchJson("{$url}/details", ['layout_id' => null])->assertOk()->assertJsonPath('data.layout', null);
 });
 

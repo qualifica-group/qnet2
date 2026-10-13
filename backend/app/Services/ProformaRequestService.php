@@ -18,11 +18,6 @@ use Illuminate\Support\Facades\DB;
  */
 class ProformaRequestService
 {
-    /** Product typology codes are immutable (ProductTypologySeeder): never resolve by name. */
-    private const string CONSULTANCY_TYPOLOGY = 'consultancy';
-
-    private const string INSTITUTION_TYPOLOGY = 'institution';
-
     /** Relations the ProformaRequestResource reads. */
     private const array RESOURCE_RELATIONS = [
         'workOrder:id,code,title,quote_id',
@@ -143,22 +138,23 @@ class ProformaRequestService
     /**
      * One consultancy request for all consultancy lines, one institution
      * request per distinct supplier (null supplier = one shared request).
-     * Lines with no/other typology are ignored (D-2).
+     * The product typology's proforma_kind decides the group (spec 0247,
+     * D-6): lines whose typology has none are ignored (D-2).
      *
      * @return array<int, array{kind: ProformaRequestKind, supplier_id: int|null}>
      */
     private function buildDrafts(WorkOrder $workOrder): array
     {
         $lines = $workOrder->quoteLines()
-            ->with('product:id,supplier_id,product_typology_id', 'product.productTypology:id,code')
+            ->with('product:id,supplier_id,product_typology_id', 'product.productTypology:id,proforma_kind')
             ->get();
         $drafts = [];
 
-        if ($this->linesOfTypology($lines, self::CONSULTANCY_TYPOLOGY)->isNotEmpty()) {
+        if ($this->linesOfKind($lines, ProformaRequestKind::Consultancy)->isNotEmpty()) {
             $drafts[] = ['kind' => ProformaRequestKind::Consultancy, 'supplier_id' => null];
         }
 
-        $suppliers = $this->linesOfTypology($lines, self::INSTITUTION_TYPOLOGY)
+        $suppliers = $this->linesOfKind($lines, ProformaRequestKind::Institution)
             ->map(fn (QuoteLine $line): ?int => $line->product->supplier_id)
             ->unique();
 
@@ -173,9 +169,9 @@ class ProformaRequestService
      * @param  Collection<int, QuoteLine>  $lines
      * @return Collection<int, QuoteLine>
      */
-    private function linesOfTypology(Collection $lines, string $code): Collection
+    private function linesOfKind(Collection $lines, ProformaRequestKind $kind): Collection
     {
-        return $lines->filter(fn (QuoteLine $line): bool => $line->product?->productTypology?->code === $code);
+        return $lines->filter(fn (QuoteLine $line): bool => $line->product?->productTypology?->proforma_kind === $kind);
     }
 
     /**

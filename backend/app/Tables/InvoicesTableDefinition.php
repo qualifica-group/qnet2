@@ -59,6 +59,7 @@ class InvoicesTableDefinition extends AbstractTableDefinition
                 'paymentMethod:id,name',
                 'workOrder:id,code',
                 'quote:id,code',
+                'invoiceTag:id,name,color',
             ])
             ->withSum('installments', 'collected_amount')
             ->addSelect([InvoiceReminderColumn::ID => InvoiceReminderColumn::subquery()])
@@ -147,7 +148,7 @@ class InvoicesTableDefinition extends AbstractTableDefinition
                 ? app(InvoicePaymentStatusResolver::class)->forDueDate(Carbon::parse($dueDate), Carbon::today())
                 : InvoicePaymentStatus::Paid)->value,
             InvoiceReminderColumn::ID => is_string($lastReminder) ? Carbon::parse($lastReminder)->toDateString() : null,
-            'tag' => $row->tag?->value,
+            'tag' => $row->invoiceTag === null ? null : ['id' => $row->invoiceTag->id, 'name' => $row->invoiceTag->name, 'color' => $row->invoiceTag->color],
             'deviation' => $row->deviation,
         ];
     }

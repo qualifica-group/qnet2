@@ -60,7 +60,7 @@ class InvoiceResource extends JsonResource
             'external_date' => $this->external_date,
             'notes' => $this->notes,
             'internal_note' => $this->internal_note,
-            'tag' => $this->tag,
+            'tag' => $this->invoiceTag === null ? null : ['id' => $this->invoiceTag->id, 'name' => $this->invoiceTag->name, 'color' => $this->invoiceTag->color],
             'deviation' => $this->deviation,
             'layout' => $this->layout === null ? null : ['id' => $this->layout->id, 'name' => $this->layout->name],
             'has_collections' => bccomp($collected, '0', 2) > 0,

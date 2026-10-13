@@ -60,6 +60,7 @@ export const productTypologies = {
     supplierCommissionDirection: "Direction",
     supplierCommissionDirectionPlaceholder: "Select the direction",
     supplierCommissionDirectionRequired: "The direction is required when the Supplier commission is enabled.",
+    proformaKind: 'Proforma request type',
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the product typology. Please retry.',
     deleteForbidden: 'You cannot delete this product typology.',
@@ -72,6 +73,10 @@ export const productTypologies = {
       cancel: 'Keep editing',
     },
     sections: {
+      billing: {
+        title: 'Billing',
+        description: 'Which proforma request the lines of this typology go into.',
+      },
       commission: {
         title: "Supplier commission",
         description: "Whether and how the Supplier commission is calculated.",
@@ -84,10 +89,17 @@ export const productTypologies = {
     hints: {
       supplierCommissionDirection:
         "Received: the commission is the line revenue, the taxable amount goes to the supplier. Paid: it is a cost towards the supplier.",
+      proformaKind:
+        'Decides which proforma request the product lines of this typology go into. None: the lines are not billed through a proforma request.',
     },
   },
   supplierCommissionDirection: {
     RECEIVED: "Received",
     PAID: "Paid",
+  },
+  proformaKind: {
+    none: 'None',
+    consultancy: 'Consultancy',
+    institution: 'Institution',
   },
 }

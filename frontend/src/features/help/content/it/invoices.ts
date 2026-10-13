@@ -22,7 +22,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Parte', 'Cosa fare'],
           rows: [
-            ['**Intestazione**', 'Data documento, società emittente (non modificabile in modifica), cliente, modalità di pagamento, banca della società, tag **Preventivo/Consuntivo**, note e note interne.'],
+            ['**Intestazione**', 'Data documento, società emittente (non modificabile in modifica), cliente, modalità di pagamento, banca della società, **tag** (facoltativo, scelto dal catalogo **Tag fattura**), note e note interne.'],
             ['**Righe disponibili**', 'Le righe della commessa non ancora usate: **Aggiungi** una riga oppure **Aggiungi tutte**. Una riga d\'offerta si fattura **una sola volta**: quelle già presenti in un\'altra fattura non compaiono.'],
             ['**Righe del documento**', 'Puoi modificare quantità, prezzo e IVA; ogni riga è un prodotto a catalogo oppure una descrizione libera.'],
             ['**Scadenze**', 'Anteprima delle rate calcolata dalla modalità di pagamento (vedi la guida Modalità di Pagamento).'],
@@ -84,7 +84,7 @@ const guide: HelpGuide = {
           rows: [
             ['**Visualizza**', 'Apre il documento in sola lettura.'],
             ['**Modifica**', 'Solo sui **proforma** (non sulle fatture registrate). Riapre la finestra di emissione, anche con incassi presenti (**rimodulazione**): data documento, cliente e modalità di pagamento diventano di sola lettura, le rate incassate restano e il residuo (nuovo totale meno incassato) è diviso in parti uguali tra le rate non incassate, che mantengono la scadenza. Il totale non può essere inferiore all\'incassato; se è uguale, le rate aperte vengono eliminate. Se non ci sono rate aperte e il totale cresce, viene creata una nuova rata a +30 giorni dall\'ultima scadenza. L\'anteprima delle scadenze mostra già il piano rimodulato.'],
-            ['**Dettagli**', 'Registra **numero e data esterni** di Fatture in Cloud: il proforma diventa **Fattura**. Qui trovi anche tag, scostamento, note interne e layout di stampa, che restano modificabili anche dopo la registrazione.'],
+            ['**Dettagli**', 'Registra **numero e data esterni** di Fatture in Cloud: il proforma diventa **Fattura**. Qui trovi anche il tag (dal catalogo **Tag fattura**), scostamento, note interne e layout di stampa, che restano modificabili anche dopo la registrazione.'],
             ['**Elimina**', 'Rimuove un **proforma** dopo conferma. Non è possibile se ha incassi, né su una fattura registrata.'],
             ['**Attività**', 'Mostra lo storico delle modifiche.'],
           ],
