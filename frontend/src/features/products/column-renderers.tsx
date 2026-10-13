@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- renderer registry module: cells are AG Grid render functions, not route/page components */
+import { CostTypeBadge } from '@/features/cost-types/cost-type-badge'
 import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { Info } from 'lucide-react'
@@ -14,6 +15,7 @@ import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import type {
   ProductCategorySummary,
+  ProductCostTypeSummary,
   ProductTypologySummary,
   ProductUnitOfMeasureSummary,
 } from '@/features/products/types'
@@ -63,6 +65,16 @@ function ProductTypologyCell({ value }: ICellRendererParams) {
   const typology = value as ProductTypologySummary | null
   return typology ? (
     <ProductTypologyBadge name={typology.name} color={typology.color} />
+  ) : (
+    <span className="text-muted-foreground">—</span>
+  )
+}
+
+/** Renders the `cost_type` column (spec 0251): the default cost type as its coloured badge, em dash when unset. */
+function CostTypeCell({ value }: ICellRendererParams) {
+  const costType = value as Pick<ProductCostTypeSummary, 'name'> & { color?: string | null } | null
+  return costType ? (
+    <CostTypeBadge name={costType.name} color={costType.color} />
   ) : (
     <span className="text-muted-foreground">—</span>
   )
@@ -119,5 +131,6 @@ export const productColumnRenderers: TableRendererMap = {
   category: (params) => <CategoryCell {...params} />,
   unit_of_measure: (params) => <UnitOfMeasureCell {...params} />,
   product_typology: (params) => <ProductTypologyCell {...params} />,
+  cost_type: (params) => <CostTypeCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
 }

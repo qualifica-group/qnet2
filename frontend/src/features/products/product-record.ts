@@ -8,6 +8,7 @@ import type { ProductCategoryPicker } from '@/features/products/use-product-cate
 import type {
   ProductBusinessFunctionSummary,
   ProductCategorySummary,
+  ProductCostTypeSummary,
   ProductDetail,
   ProductType,
   ProductTypologySummary,
@@ -28,6 +29,8 @@ export interface ProductRecordValues {
   product_typology: ProductTypologySummary | RelationFieldRef | null
   unit_of_measure: RelationFieldRef | null
   product_type: ProductType
+  /** Default cost type (spec 0251); the draft carries the colour once the picker has resolved it. */
+  cost_type: ProductCostTypeSummary | null
   usages: ProductUsage[]
   vat_rate: RelationFieldRef | null
   supplier: RelationFieldRef | null
@@ -65,6 +68,7 @@ export function persistedProductValues(product: ProductDetail): ProductRecordVal
     product_typology: product.product_typology,
     unit_of_measure: product.unit_of_measure,
     product_type: product.product_type,
+    cost_type: product.cost_type ?? null,
     usages: product.usages ?? DEFAULT_PRODUCT_USAGES,
     vat_rate: product.vat_rate,
     supplier: product.supplier,

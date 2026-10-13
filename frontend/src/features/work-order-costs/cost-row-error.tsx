@@ -8,6 +8,7 @@ export type CostRowErrors = Partial<
     | 'unit_price'
     | 'vat_rate_id'
     | 'quote_line_id'
+    | 'cost_type_id'
     | 'incurred_on'
     | 'supplier_id'
     | 'document_reference'

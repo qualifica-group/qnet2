@@ -43,6 +43,7 @@ final readonly class CreateProductData
         public ?array $attributeValues = null,
         public ?string $code = null,
         public ?array $usages = null,
+        public ?int $costTypeId = null,
     ) {}
 
     /**
@@ -65,6 +66,7 @@ final readonly class CreateProductData
             productTypologyId: array_key_exists('product_typology_id', $data) && $data['product_typology_id'] !== null ? (int) $data['product_typology_id'] : null,
             attributeValues: array_key_exists('attribute_values', $data) ? (array) $data['attribute_values'] : null,
             usages: array_key_exists('usages', $data) ? array_map(static fn (mixed $usage): ProductUsage => ProductUsage::from((string) $usage), (array) $data['usages']) : null,
+            costTypeId: array_key_exists('cost_type_id', $data) && $data['cost_type_id'] !== null ? (int) $data['cost_type_id'] : null,
             code: array_key_exists('code', $data) && $data['code'] !== null && $data['code'] !== '' ? (string) $data['code'] : null,
         );
     }

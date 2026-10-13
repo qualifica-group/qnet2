@@ -13,6 +13,7 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 
 /**
  * Validates the payload for PUT/PATCH /api/products/{product} (spec 0017;
@@ -69,6 +70,9 @@ class UpdateProductRequest extends FormRequest
             // ProductService (the column is NOT NULL).
             'unit_of_measure_id' => ['sometimes', 'nullable', 'integer', 'exists:units_of_measure,id'],
             'product_typology_id' => ['sometimes', 'nullable', 'integer', 'exists:product_typologies,id'],
+            // Spec 0251: active cost types, plus the one already assigned so a
+            // resubmit keeps passing once that type is deactivated.
+            'cost_type_id' => ['sometimes', 'nullable', 'integer', $this->costTypeRule()],
             'attribute_values' => ['sometimes', 'array'],
         ];
     }
@@ -99,6 +103,16 @@ class UpdateProductRequest extends FormRequest
         return $product instanceof Product && $product->category_id !== null
             ? [(int) $product->category_id]
             : [];
+    }
+
+    private function costTypeRule(): Exists
+    {
+        $product = $this->route('product');
+        $currentId = $product instanceof Product ? $product->cost_type_id : null;
+
+        return Rule::exists('cost_types', 'id')->where(
+            static fn ($query) => $query->where('is_active', true)->when($currentId !== null, static fn ($inner) => $inner->orWhere('id', $currentId)),
+        );
     }
 
     protected function authorizationModel(): ?Model

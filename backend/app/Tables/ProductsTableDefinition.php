@@ -60,7 +60,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
     {
         // Eager-load the derived relations to avoid N+1 when every row
         // projects them.
-        return Product::query()->with(['category', 'unitOfMeasure', 'productTypology']);
+        return Product::query()->with(['category', 'unitOfMeasure', 'productTypology', 'costType']);
     }
 
     /**
@@ -152,6 +152,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
             'category' => $this->categorySummary($row->category),
             'unit_of_measure' => $this->unitOfMeasureSummary($row->unitOfMeasure),
             'product_typology' => $this->productTypologySummary($row->productTypology),
+            'cost_type' => $row->costType === null ? null : ['id' => $row->costType->id, 'name' => $row->costType->name, 'color' => $row->costType->color],
             'product_type' => $row->product_type,
             'usages' => $row->usages?->map(static fn (ProductUsage $usage): string => $usage->value)->values()->all() ?? [],
             'created_at' => $row->created_at,

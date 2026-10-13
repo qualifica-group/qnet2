@@ -72,6 +72,7 @@ final class WorkOrderCostWriter
         $cost->fill([
             'product_id' => $row['product_id'],
             'quote_line_id' => $row['quote_line_id'] ?? null,
+            'cost_type_id' => $row['cost_type_id'] ?? null,
             'quantity' => $row['quantity'],
             'unit_of_measure_id' => $isNew || $productChanged ? ($units[$row['product_id']] ?? null) : $cost->unit_of_measure_id,
             'unit_price' => $row['unit_price'],

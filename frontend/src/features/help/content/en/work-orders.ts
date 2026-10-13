@@ -126,8 +126,8 @@ const guide: HelpGuide = {
           items: [
             'Open the **Actual costs** tab (read-only without the permission to manage costs).',
             'Press **Add row**: the cost date defaults to today.',
-            'Pick the cost **product**: unit price, VAT rate and unit of measure are prefilled from the product.',
-            'Enter quantity, price, VAT, **supplier**, **document reference** and the **reference offer line**.',
+            'Pick the cost **product**: unit price, VAT rate, unit of measure and **cost type** (if the product has a default one) are prefilled from the product.',
+            'Enter quantity, price, VAT, **cost type** (optional, editable), **supplier**, **document reference** and the **reference offer line**.',
             'Press **Save** to replace the whole list of costs, or **Cancel** to go back to the last saved state.',
           ],
         },

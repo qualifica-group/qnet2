@@ -16,10 +16,12 @@ import { AttributeLayoutField } from '@/features/attributes/attribute-layout-fie
 import { MetaField } from '@/features/authorization/MetaField'
 import { useEnumOptions } from '@/features/config/use-config'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
+import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
+import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import { PRODUCT_TYPOLOGIES_FOR_SELECT_RESOURCE } from '@/features/product-typologies/for-select-api'
 import { UNITS_OF_MEASURE_FOR_SELECT_RESOURCE } from '@/features/units-of-measure/for-select-api'
 import type { ProductCategoryPicker } from '@/features/products/use-product-category-picker'
-import type { ProductType } from '@/features/products/types'
+import type { ProductCostTypeSummary, ProductType } from '@/features/products/types'
 import type { ProductFormValues } from '@/features/products/use-product-form'
 
 /*
@@ -166,6 +168,32 @@ export function ProductTypologyField({ control, selected }: SelectedFieldProps) 
       errorLabel={t('products.form.productTypologyError')}
       clearLabel={t('common.clear')}
       retryLabel={t('common.retry')}
+    />
+  )
+}
+
+interface CostTypeFieldProps extends FieldProps {
+  selected: ProductCostTypeSummary | null
+}
+
+/** "Tipo di costo" (spec 0251): the default classification of the product's costs, with the coloured badge. */
+export function ProductCostTypeField({ control, selected }: CostTypeFieldProps) {
+  const { t } = useTranslation()
+  return (
+    <RelationSelectField
+      control={control}
+      name="cost_type_id"
+      metaKey="cost_type_id"
+      label={t('products.form.costType')}
+      resource={COST_TYPES_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('products.form.costTypeSearch')}
+      selected={selected ? { id: selected.id, name: selected.name, meta: { color: selected.color } } : null}
+      placeholder={t('products.form.costTypePlaceholder')}
+      emptyLabel={t('products.form.costTypeEmpty')}
+      errorLabel={t('products.form.costTypeError')}
+      clearLabel={t('common.clear')}
+      retryLabel={t('common.retry')}
+      renderItem={costTypeOptionRenderer}
     />
   )
 }

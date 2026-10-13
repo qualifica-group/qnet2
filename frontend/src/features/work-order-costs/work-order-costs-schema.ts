@@ -18,6 +18,8 @@ const displaySchema = z.object({
   vat_name: z.string().nullable(),
   vat_percent: z.number().nullable(),
   supplier_name: z.string().nullable(),
+  cost_type_name: z.string().nullable(),
+  cost_type_color: z.string().nullable(),
 })
 
 export type WorkOrderCostRowDisplay = z.infer<typeof displaySchema>
@@ -30,6 +32,8 @@ export const EMPTY_ROW_DISPLAY: WorkOrderCostRowDisplay = {
   vat_name: null,
   vat_percent: null,
   supplier_name: null,
+  cost_type_name: null,
+  cost_type_color: null,
 }
 
 function hasMaxTwoDecimals(value: number): boolean {
@@ -59,6 +63,8 @@ export function workOrderCostRowSchema(t: TFunction) {
       unit_price: z.number().nullable(),
       vat_rate_id: z.number().nullable(),
       quote_line_id: z.number().nullable(),
+      // Spec 0251 D-3: optional; precompiled from the product, editable.
+      cost_type_id: z.number().nullable(),
       incurred_on: z.string(),
       supplier_id: z.number().nullable(),
       document_reference: z.string().nullable(),
@@ -107,6 +113,7 @@ export function createEmptyCostRow(): WorkOrderCostRowValues {
     unit_price: null,
     vat_rate_id: null,
     quote_line_id: null,
+    cost_type_id: null,
     incurred_on: todayIsoDate(),
     supplier_id: null,
     document_reference: null,
@@ -126,6 +133,7 @@ export function rowsFromCostLines(lines: WorkOrderCostLine[]): WorkOrderCostRowV
       unit_price: Number(line.unit_price),
       vat_rate_id: line.vat_rate_id,
       quote_line_id: line.quote_line_id,
+      cost_type_id: line.cost_type_id ?? null,
       incurred_on: line.incurred_on,
       supplier_id: line.supplier_id,
       document_reference: line.document_reference,
@@ -138,6 +146,8 @@ export function rowsFromCostLines(lines: WorkOrderCostLine[]): WorkOrderCostRowV
         vat_name: line.vat_rate?.name ?? null,
         vat_percent: line.vat_rate ? Number(line.vat_rate.rate) : null,
         supplier_name: line.supplier?.name ?? null,
+        cost_type_name: line.cost_type?.name ?? null,
+        cost_type_color: line.cost_type?.color ?? null,
       },
     }))
 }
@@ -152,6 +162,7 @@ export function toCostsPayload(values: WorkOrderCostsFormValues): SyncWorkOrderC
       unit_price: row.unit_price as number,
       vat_rate_id: row.vat_rate_id,
       quote_line_id: row.quote_line_id,
+      cost_type_id: row.cost_type_id,
       incurred_on: row.incurred_on,
       supplier_id: row.supplier_id,
       document_reference: row.document_reference?.trim() ? row.document_reference.trim() : null,

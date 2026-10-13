@@ -68,6 +68,8 @@ class StoreProductRequest extends FormRequest
             // "submitted null" apart via array_key_exists().
             'unit_of_measure_id' => ['sometimes', 'nullable', 'integer', 'exists:units_of_measure,id'],
             'product_typology_id' => ['sometimes', 'nullable', 'integer', 'exists:product_typologies,id'],
+            // Spec 0251: optional default cost type, active ones only.
+            'cost_type_id' => ['sometimes', 'nullable', 'integer', Rule::exists('cost_types', 'id')->where('is_active', true)],
             'attribute_values' => ['sometimes', 'array'],
         ];
     }

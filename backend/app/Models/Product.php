@@ -35,10 +35,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * `product_typology_id` (spec 0099, D-3) is the exact same arrangement,
  * defaulting to the `code='institution'` typology.
  *
+ * `cost_type_id` (spec 0251) is the optional default cost type of a product
+ * used as a cost: it pre-fills the type of order, invoice and commessa cost lines.
+ *
  * `usages` (spec 0142) is the set of App\Enums\ProductUsage values deciding
  * which Offerta tab may pick the product; it defaults to Sellable only.
  */
-#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'usages', 'vat_rate_id', 'supplier_id', 'unit_of_measure_id', 'product_typology_id'])]
+#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'usages', 'vat_rate_id', 'supplier_id', 'unit_of_measure_id', 'product_typology_id', 'cost_type_id'])]
 class Product extends BaseModel
 {
     /** @use HasFactory<ProductFactory> */
@@ -111,5 +114,10 @@ class Product extends BaseModel
     public function productTypology(): BelongsTo
     {
         return $this->belongsTo(ProductTypology::class);
+    }
+
+    public function costType(): BelongsTo
+    {
+        return $this->belongsTo(CostType::class);
     }
 }

@@ -61,6 +61,9 @@ class ProductForSelectResource extends ForSelectResource
                 // round trip. Read live through the product (D-5), never
                 // frozen onto the line.
                 'product_typology' => $this->productTypologySummary($this->productTypology),
+                // Spec 0251: the default cost type, so ODA / invoice / commessa
+                // cost rows pre-fill it from the pick.
+                'cost_type' => $this->costType === null ? null : ['id' => $this->costType->id, 'name' => $this->costType->name, 'color' => $this->costType->color],
             ],
         ];
     }

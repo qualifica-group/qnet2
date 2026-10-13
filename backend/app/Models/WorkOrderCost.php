@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'work_order_id',
     'product_id',
     'quote_line_id',
+    'cost_type_id',
     'quantity',
     'unit_of_measure_id',
     'unit_price',
@@ -74,6 +75,12 @@ class WorkOrderCost extends BaseModel
     public function quoteLine(): BelongsTo
     {
         return $this->belongsTo(QuoteLine::class);
+    }
+
+    /** @return BelongsTo<CostType, $this> */
+    public function costType(): BelongsTo
+    {
+        return $this->belongsTo(CostType::class);
     }
 
     /** @return BelongsTo<UnitOfMeasure, $this> */

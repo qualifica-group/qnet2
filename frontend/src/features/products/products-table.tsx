@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
-import { Plus } from 'lucide-react'
+import { Plus, Tags } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
+import { useAbilities } from '@/features/auth/use-abilities'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { ModuleStatsPanel } from '@/features/stats/module-stats-panel'
 import { StatsToggleButton } from '@/features/stats/stats-toggle-button'
@@ -15,11 +16,16 @@ import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
+import type { BulkAction } from '@/features/table/use-bulk-actions-slot'
 import { productColumnRenderers } from '@/features/products/column-renderers'
 import { deleteProduct } from '@/features/products/api'
+import { ProductCostTypeDialog, type ProductCostTypeTarget } from '@/features/products/product-cost-type-dialog'
 
 /** Domain key used to mount the generic table for products. */
 const PRODUCTS_DOMAIN = 'products'
+
+const UPDATE_PERMISSION = 'products.update'
+const NO_TARGETS: readonly ProductCostTypeTarget[] = []
 
 /**
  * Thin Products adapter over the generic table. It mounts `<TableView>` with
@@ -42,6 +48,9 @@ export function ProductsTable() {
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
+  const [costTypeTargets, setCostTypeTargets] = useState<readonly ProductCostTypeTarget[]>(NO_TARGETS)
+  const { can } = useAbilities()
+  const canUpdate = can(UPDATE_PERMISSION)
 
   // After a modal create/edit succeeds the Sheet closes itself; the grid and
   // the stats panel are this adapter's to refresh. The detail query is
@@ -92,6 +101,23 @@ export function ProductsTable() {
     [openView, runDelete],
   )
 
+  // The server re-authorizes: hiding the action is only an affordance.
+  const getBulkActions = useCallback(
+    (selection: { rows: TableRow[] }): BulkAction[] =>
+      canUpdate
+        ? [
+            {
+              key: 'set-cost-type',
+              label: t('products.bulkCostType.bulkAction'),
+              icon: Tags,
+              onSelect: () =>
+                setCostTypeTargets(selection.rows.map((row) => ({ id: Number(row.id), name: String(row.name ?? row.id) }))),
+            },
+          ]
+        : [],
+    [canUpdate, t],
+  )
+
   const isBusy = useCallback((row: TableRow) => row.id === deletingId, [deletingId])
 
   return (
@@ -122,6 +148,17 @@ export function ProductsTable() {
         renderers={productColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}
+        getBulkActions={getBulkActions}
+      />
+
+      <ProductCostTypeDialog
+        key={costTypeTargets.map((target) => target.id).join(',')}
+        targets={costTypeTargets}
+        onOpenChange={(open) => (open ? undefined : setCostTypeTargets(NO_TARGETS))}
+        onApplied={() => {
+          setCostTypeTargets(NO_TARGETS)
+          refreshGrid()
+        }}
       />
 
       {sheet}

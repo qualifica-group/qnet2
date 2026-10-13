@@ -112,6 +112,18 @@ final class ProductColumnCatalog
                 'filterType' => 'set',
             ],
             [
+                // The default cost type's name, derived from the costType()
+                // relation (spec 0251); rows carry {id, name, color} and the
+                // client renders the coloured badge.
+                'id' => 'cost_type',
+                'label' => 'products.columns.cost_type',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
+            [
                 // Real DB column rendered as a badge (ProductType), driven by
                 // config/config.php form_enums `product_type`.
                 'id' => 'product_type',
@@ -150,6 +162,7 @@ final class ProductColumnCatalog
             ['columnId' => 'category', 'type' => 'set'],
             ['columnId' => 'unit_of_measure', 'type' => 'set'],
             ['columnId' => 'product_typology', 'type' => 'set'],
+            ['columnId' => 'cost_type', 'type' => 'set'],
             ['columnId' => 'product_type', 'type' => 'set'],
             ['columnId' => ProductUsageColumn::COLUMN_ID, 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],

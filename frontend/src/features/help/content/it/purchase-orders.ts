@@ -61,7 +61,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Ogni riga può avere un **Prodotto** del catalogo oppure solo una **Descrizione** libera (obbligatoria). Scegliendo un prodotto il form propone **descrizione**, **U.m.**, **prezzo** (il costo d’acquisto del prodotto) e **Aliquota IVA**: restano modificabili. Ogni riga può avere una **Commessa** propria, proposta da quella di testata.',
+          text: 'Ogni riga può avere un **Prodotto** del catalogo oppure solo una **Descrizione** libera (obbligatoria). Scegliendo un prodotto il form propone **descrizione**, **U.m.**, **prezzo** (il costo d’acquisto del prodotto) e **Aliquota IVA**: restano modificabili. Se il prodotto ha un **tipo di costo** predefinito, viene proposto solo se la riga non ne ha già uno. Ogni riga può avere una **Commessa** propria, proposta da quella di testata.',
         },
         {
           type: 'table',

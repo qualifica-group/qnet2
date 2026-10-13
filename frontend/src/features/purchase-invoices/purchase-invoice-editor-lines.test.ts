@@ -40,6 +40,11 @@ describe('purchase invoice editor lines', () => {
     expect(newLine({ description: 'X' }, NO_DEFAULTS).cost_type_id).toBe(NO_ID)
   })
 
+  it('spec 0251 AC-009: a catalog product cost type applies only when the header gave none', () => {
+    expect(newLine({ description: 'X', cost_type_id: 8 }, NO_DEFAULTS).cost_type_id).toBe(8)
+    expect(newLine({ description: 'X', cost_type_id: 8 }, { cost_type_id: 5, work_order_id: null }).cost_type_id).toBe(5)
+  })
+
   it('sums rows with 3-decimal quantities and treats a missing VAT as zero', () => {
     const rows = [
       newLine({ description: 'A', quantity: 2.5, unit_price: 100, vat_rate_id: 1, cost_type_id: 1 }, NO_DEFAULTS),

@@ -56,6 +56,7 @@ class ProductsAuthorization extends AbstractResourceAuthorization
             // by the role field-permission matrix.
             new FieldDefinition('unit_of_measure_id', 'select'),
             new FieldDefinition('product_typology_id', 'select'),
+            new FieldDefinition('cost_type_id', 'select'),
         ];
     }
 
@@ -92,6 +93,7 @@ class ProductsAuthorization extends AbstractResourceAuthorization
             'supplier_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'unit_of_measure_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'product_typology_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'cost_type_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

@@ -79,6 +79,16 @@ describe('row mapping', () => {
     expect(rows[0].display).toMatchObject({ vat_percent: 22, supplier_name: 'Fornitore Uno', unit_symbol: 'pz' })
   })
 
+  it('spec 0251: hydrates the cost type of a persisted line and sends its id (null when none)', () => {
+    const line = { ...COST_LINE, cost_type_id: 6, cost_type: { id: 6, name: 'Travel', color: 'blue' } }
+
+    const [row] = rowsFromCostLines([line])
+
+    expect(row.cost_type_id).toBe(6)
+    expect(row.display).toMatchObject({ cost_type_name: 'Travel', cost_type_color: 'blue' })
+    expect(toCostsPayload({ lines: [row] }).lines[0].cost_type_id).toBe(6)
+  })
+
   it('builds the exact PUT payload: inputs only, no amounts, blank text as null', () => {
     const payload = toCostsPayload({
       lines: [validRow(), validRow({ id: undefined, document_reference: '  ', additional_description: '', quote_line_id: null })],
@@ -93,6 +103,7 @@ describe('row mapping', () => {
           unit_price: 50,
           vat_rate_id: 3,
           quote_line_id: 11,
+          cost_type_id: null,
           incurred_on: '2026-09-15',
           supplier_id: 40,
           document_reference: 'FT-12',
@@ -104,6 +115,7 @@ describe('row mapping', () => {
           unit_price: 50,
           vat_rate_id: 3,
           quote_line_id: null,
+          cost_type_id: null,
           incurred_on: '2026-09-15',
           supplier_id: 40,
           document_reference: null,

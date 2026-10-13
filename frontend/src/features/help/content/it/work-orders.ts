@@ -126,8 +126,8 @@ const guide: HelpGuide = {
           items: [
             'Apri la scheda **Costi effettivi** (solo lettura senza il permesso di gestire i costi).',
             'Premi **Aggiungi riga**: la data del costo è precompilata a oggi.',
-            'Scegli il **prodotto** di costo: prezzo unitario, aliquota IVA e unità di misura si precompilano dal prodotto.',
-            'Indica quantità, prezzo, IVA, **fornitore**, **riferimento documento** e la **riga offerta di riferimento**.',
+            'Scegli il **prodotto** di costo: prezzo unitario, aliquota IVA, unità di misura e **tipo di costo** (se il prodotto ne ha uno predefinito) si precompilano dal prodotto.',
+            'Indica quantità, prezzo, IVA, **tipo di costo** (facoltativo, modificabile), **fornitore**, **riferimento documento** e la **riga offerta di riferimento**.',
             'Premi **Salva** per sostituire l\'intero elenco dei costi, oppure **Annulla** per tornare all\'ultimo salvataggio.',
           ],
         },

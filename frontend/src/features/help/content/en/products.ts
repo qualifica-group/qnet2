@@ -82,6 +82,7 @@ const guide: HelpGuide = {
           rows: [
             ['Category', "The product's category. Required."],
             ['Typology', 'Chosen from the Product Typologies list.'],
+            ['Cost type', 'Optional. The product’s default cost type (for example Collaboratori or Fitti), meant for products Usable as cost: it is proposed on purchase order lines, passive invoice lines and work order costs when you pick the product. It also shows as a colored badge in the grid (filterable by name).'],
             ['Unit of measure', 'For example hours or pieces.'],
             ['Type', 'Today the only value is Service.'],
             ['Offer usage', 'Where the product can be used in an offer (see below).'],
@@ -94,6 +95,25 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "Some categories appear in the list but cannot be chosen: they only group subcategories. In that case choose a subcategory. Inactive categories (with their whole branch) are not offered; when editing, the category already saved stays visible. The product's Business function derives from the category and is read-only on the card.",
+        },
+      ],
+    },
+    {
+      id: 'bulk-cost-type',
+      title: 'Setting the cost type in bulk',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Open Products › Products and, if needed, filter by Category or Offer usage.',
+            'Select the rows with the checkboxes on the left.',
+            'From the selection actions menu choose **Set cost type** (it only appears if you can edit products).',
+            'In the dialog pick the cost type, or **None** to remove it, and confirm: it applies to all the selected products or to none.',
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'No mapping between category and cost type is preset: existing products start without a type and you assign them with this action.',
         },
       ],
     },

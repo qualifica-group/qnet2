@@ -47,4 +47,20 @@ class CostType extends BaseModel
     {
         return $this->hasMany(PurchaseInvoice::class);
     }
+
+    /**
+     * @return HasMany<Product, $this>
+     */
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
+    }
+
+    /**
+     * @return HasMany<WorkOrderCost, $this>
+     */
+    public function workOrderCosts(): HasMany
+    {
+        return $this->hasMany(WorkOrderCost::class);
+    }
 }

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0251-cost-type-on-products-and-work-order-costs" status="draft" owner="ciro" date="2026-10-13">
+
+  <goal>
+    Rendere i tipi di costo la classificazione di tutti i costi (ADR 0018, decisione 1; audit COS-02): tipo di costo
+    predefinito sui prodotti usati come costo, tipo di costo sulle righe dei costi commessa, precompilazione dal prodotto
+    nelle righe di ODA e fatture passive, assegnazione in massa dalla griglia Prodotti.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-10-13:
+    - D-1 Nessuna corrispondenza cablata categoria -> tipo di costo: la migrazione lascia vuoto il campo; la Contabilita'
+      assegna i tipi con un'azione massiva "Imposta tipo di costo" sui prodotti selezionati nella griglia Prodotti
+      (filtrabile per categoria).
+    - D-2 `products.cost_type_id` facoltativo (nullable, FK restrictOnDelete), modificabile nel dettaglio/form prodotto;
+      significativo per i prodotti con uso Costo (il campo si mostra/si usa anche se il prodotto ha piu' usi).
+    - D-3 `work_order_costs.cost_type_id` facoltativo (nullable, FK restrictOnDelete): nel costo commessa si precompila
+      dal tipo del prodotto alla scelta del prodotto, modificabile. Backfill: righe esistenti prendono il tipo del
+      prodotto se valorizzato.
+    - D-4 Righe ODA e righe fattura passiva: scegliendo un prodotto, il tipo di costo si precompila dal prodotto solo se
+      la riga non ne ha gia' uno; resta modificabile (il campo resta obbligatorio su quelle righe come oggi).
+
+    Decisioni tecniche proposte:
+    - D-5 Guard di eliminazione del tipo di costo (spec 0246) esteso: un tipo usato da prodotti o da costi commessa non
+      si elimina (409 cost_types.in_use) — FK restrictOnDelete come rete.
+    - D-6 Azione massiva: POST /api/products/cost-type { product_ids: int[] (1..500), cost_type_id: int|null } con
+      permesso products.update; aggiorna in una transazione; null = rimuove il tipo. Activity log per prodotto.
+    - D-7 Esposizione: ProductResource e for-select prodotti espongono cost_type {id,name,color}|null (for-select: in
+      meta, cosi' i form ODA/fattura/costi commessa precompilano senza chiamate extra); colonna cost_type nella griglia
+      Prodotti (badge, filtro set per nome); WorkOrderCost resource/editor con cost_type.
+
+    Fatti verificati: products.category_id NOT NULL, products.usages JSON (ProductUsage::Cost), 23 prodotti di costo nei
+    dati demo, nessun ramo "Costi" nel DB di sviluppo (presente in produzione da spec 0174, non visibile qui);
+    work_order_costs senza cost_type_id; WorkOrderCostWriter full-replace; cost_types con delete guard 0246;
+    azione massiva analoga: assegnazione fornitore righe RDA (purchase-request-lines/supplier).
+  </context>
+
+  <scope>
+    <in>
+      <item>BE: migrazione (products.cost_type_id, work_order_costs.cost_type_id + backfill); model/request/resource/authorization prodotti; for-select prodotti meta.cost_type; colonna griglia Prodotti; endpoint azione massiva; WorkOrderCostWriter/resource/validazione cost_type_id (nullable, esistente); delete guard tipi di costo esteso.</item>
+      <item>FE: campo Tipo di costo nel dettaglio/form prodotto; azione massiva nella griglia Prodotti (selezione + dialog con select tipo di costo o "nessuno"); editor costi commessa con colonna tipo di costo precompilata dal prodotto; precompilazione dal prodotto nelle righe ODA (purchase-order-line-row) e fattura passiva (purchase-invoice-editor-line-row) e Genera ODA se sceglie un prodotto.</item>
+      <item>Guide IT+EN: products, work-order costs (sezione costi della commessa), purchase-orders, purchase-invoices, cost-types (in uso anche da prodotti/costi commessa).</item>
+    </in>
+    <out>
+      <item>Consuntivo per tipo di costo (spec 0252).</item>
+      <item>Tipo di costo sulle righe costo delle offerte.</item>
+      <item>Modifiche alle categorie prodotto.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET|POST|PUT|PATCH" path="/api/products[/{product}]">cost_type_id?: int|null in scrittura; cost_type: {id,name,color}|null in lettura; campo nel blocco permissions.</endpoint>
+    <endpoint method="GET" path="/api/products/for-select">items[].meta.cost_type = {id,name,color}|null (in aggiunta a meta esistenti, es. cost).</endpoint>
+    <endpoint method="POST" path="/api/products/cost-type">
+      <request>{ product_ids: int[] (1..500, distinct, esistenti), cost_type_id: int|null (attivo) }</request>
+      <response>{ success, message, data: { updated: int } }</response>
+      <errors>403 senza products.update; 422 validazione.</errors>
+    </endpoint>
+    <endpoint method="SSRM" path="tables/products">colonna cost_type (badge {name,color}, filtro set per nome).</endpoint>
+    <endpoint method="GET|PUT" path="/api/work-orders/{workOrder}/costs">righe con cost_type_id?: int|null in scrittura e cost_type {id,name,color}|null in lettura.</endpoint>
+    <endpoint method="DELETE" path="/api/cost-types/{costType}">409 anche se usato da prodotti o costi commessa.</endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Migrazione: colonne create, backfill dei costi commessa dal tipo del prodotto; rollback reversibile.</criterion>
+    <criterion id="AC-002">Prodotto: PATCH cost_type_id valido 200, inesistente 422, null ammesso; il detail espone cost_type.</criterion>
+    <criterion id="AC-003">Azione massiva: imposta (e con null rimuove) il tipo su N prodotti in una transazione; 403 senza permesso; 422 id non validi; activity log per ogni prodotto.</criterion>
+    <criterion id="AC-004">for-select prodotti espone meta.cost_type; la griglia Prodotti mostra e filtra per tipo di costo.</criterion>
+    <criterion id="AC-005">Costi commessa: PUT con cost_type_id salva; senza resta null; GET restituisce cost_type.</criterion>
+    <criterion id="AC-006">Un tipo di costo usato da un prodotto o da un costo commessa non si elimina (409).</criterion>
+    <criterion id="AC-007">(Vitest) Dettaglio prodotto con campo Tipo di costo; azione massiva dalla griglia Prodotti con dialog.</criterion>
+    <criterion id="AC-008">(Vitest) Editor costi commessa: scegliendo un prodotto con tipo predefinito il tipo si precompila; modificabile.</criterion>
+    <criterion id="AC-009">(Vitest) Righe ODA e righe fattura passiva: scegliendo un prodotto con tipo predefinito il tipo si precompila solo se vuoto.</criterion>
+    <criterion id="AC-010">Guide IT+EN aggiornate; help-content-parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; migrazione reversibile senza SQL grezzo; aggiornare i contatori --step dei test di migrazione.</item>
+    <item>FormRequest + Policy; Resource; nessuna query per riga; messaggi via __(); file sotto 300 righe.</item>
+    <item>FE: TanStack Query, RHF+Zod, componenti esistenti (cost-type-option-renderer, CostTypeBadge).</item>
+    <item>Test Pest e Vitest; suite completa dal verifier; tsc -b --force. Nessun commit senza ordine esplicito.</item>
+  </constraints>
+
+</spec>

@@ -24,6 +24,7 @@ const SERVER_ERROR_FIELDS = [
   'supplier_id',
   'unit_of_measure_id',
   'product_typology_id',
+  'cost_type_id',
 ] as const
 
 /** Domain key of the module statistics (mirrors `PRODUCTS_DOMAIN` in `products-table.tsx`). */

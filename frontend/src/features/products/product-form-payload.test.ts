@@ -53,6 +53,7 @@ function values(overrides: Partial<ProductFormValues> = {}): ProductFormValues {
     // assertions below stay accurate; individual tests override them.
     unit_of_measure_id: 1,
     product_typology_id: 1,
+    cost_type_id: null,
     custom_fields: {},
     attribute_values: {},
     ...overrides,
@@ -127,6 +128,11 @@ describe('buildCreatePayload', () => {
     })
   })
 
+  it('spec 0251: sends the cost type only when one is chosen', () => {
+    expect(buildCreatePayload(values({ cost_type_id: 4 }), [])).toMatchObject({ cost_type_id: 4 })
+    expect(buildCreatePayload(values(), [])).not.toHaveProperty('cost_type_id')
+  })
+
   it('AC-079: omits code when left empty, so the server generates the sequential one', () => {
     expect(buildCreatePayload(values({ code: '' }), [])).not.toHaveProperty('code')
   })
@@ -197,6 +203,14 @@ describe('buildUpdatePayload', () => {
     expect(
       buildUpdatePayload(values({ attribute_values: { ram_gb: 8 } }), withAttributes, ['ram_gb']),
     ).toEqual({})
+  })
+
+  it('spec 0251: sends the cost type only when it changed, null included to remove it', () => {
+    expect(buildUpdatePayload(values({ cost_type_id: 4 }), original(), [])).toEqual({ cost_type_id: 4 })
+    expect(buildUpdatePayload(values({ cost_type_id: null }), original({ cost_type_id: 4 }), [])).toEqual({
+      cost_type_id: null,
+    })
+    expect(buildUpdatePayload(values({ cost_type_id: 4 }), original({ cost_type_id: 4 }), [])).toEqual({})
   })
 
   it('AC-080: never sends code, even when the form value differs from the original (immutable)', () => {

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Products\ProductController;
+use App\Http\Controllers\Products\ProductCostTypeController;
 use App\Http\Controllers\Products\ProductForSelectController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,6 +32,9 @@ Route::get('products/for-select', ProductForSelectController::class);
 // segment wins over the bound wildcard. Gated by products.create
 // server-side in ProductController.
 Route::get('products/next-code', [ProductController::class, 'nextCode']);
+
+// Mass default-cost-type assignment (spec 0251, D-6), gated by products.update.
+Route::post('products/cost-type', [ProductCostTypeController::class, 'assign']);
 
 Route::get('products/{product}', [ProductController::class, 'show']);
 Route::post('products', [ProductController::class, 'store']);

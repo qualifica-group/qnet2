@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
+import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
+import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
 import { QuoteProductSelect, type QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
@@ -93,6 +95,10 @@ export function WorkOrderCostRow({
       : null
   const vatItem: ForSelectItem | null =
     row.vat_rate_id !== null && row.display.vat_name ? { id: row.vat_rate_id, label: row.display.vat_name } : null
+  const costTypeItem: (ForSelectItem & { meta: { color: string | null } }) | null =
+    row.cost_type_id !== null && row.display.cost_type_name
+      ? { id: row.cost_type_id, label: row.display.cost_type_name, meta: { color: row.display.cost_type_color } }
+      : null
   const supplierItem: ForSelectItem | null =
     row.supplier_id !== null && row.display.supplier_name
       ? { id: row.supplier_id, label: row.display.supplier_name }
@@ -225,7 +231,7 @@ export function WorkOrderCostRow({
         )}
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-[140px_minmax(180px,1fr)_minmax(160px,1fr)_minmax(200px,2fr)]">
+      <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-[140px_minmax(160px,1fr)_minmax(180px,1fr)_minmax(160px,1fr)_minmax(200px,2fr)]">
         <div className="flex flex-col gap-1">
           <Input
             type="date"
@@ -236,6 +242,36 @@ export function WorkOrderCostRow({
             {...errorAria(errorId('incurredOn'), error?.incurred_on)}
           />
           <CostRowError id={errorId('incurredOn')} error={error?.incurred_on} />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <AsyncPaginatedSelect
+            resource={COST_TYPES_FOR_SELECT_RESOURCE}
+            value={row.cost_type_id}
+            onChange={() => {}}
+            onItemChange={(item) => {
+              const color = (item as (ForSelectItem & { meta?: { color?: string | null } }) | null)?.meta?.color
+              onChangeField({
+                cost_type_id: item?.id ?? null,
+                display: { ...row.display, cost_type_name: item?.label ?? null, cost_type_color: color ?? null },
+              })
+            }}
+            selectedItem={costTypeItem}
+            renderItem={costTypeOptionRenderer}
+            disabled={disabled}
+            id={id('costType')}
+            {...errorAria(errorId('costType'), error?.cost_type_id)}
+            labels={{
+              placeholder: t('workOrders.costs.editor.costTypePlaceholder'),
+              searchPlaceholder: t('workOrders.costs.editor.costTypeSearch'),
+              empty: t('workOrders.costs.editor.costTypeEmpty'),
+              error: t('workOrders.costs.editor.costTypeLoadError'),
+              clearLabel: t('common.clear'),
+              triggerLabel: t('workOrders.costs.editor.costType', { n }),
+              retry: t('common.retry'),
+            }}
+          />
+          <CostRowError id={errorId('costType')} error={error?.cost_type_id} />
         </div>
 
         <div className="flex flex-col gap-1">

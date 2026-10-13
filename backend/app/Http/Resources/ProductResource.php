@@ -66,6 +66,9 @@ class ProductResource extends JsonResource
             // Spec 0099, D-3: always populated (NOT NULL, defaulted server-side).
             'product_typology_id' => $this->product_typology_id,
             'product_typology' => $this->productTypologySummary($this->productTypology),
+            // Spec 0251: optional default cost type.
+            'cost_type_id' => $this->cost_type_id,
+            'cost_type' => $this->costType === null ? null : ['id' => $this->costType->id, 'name' => $this->costType->name, 'color' => $this->costType->color],
             // Read-only, derived from the category (spec 0023): never
             // writable via POST/PATCH (not in $fillable, no FormRequest rule).
             'business_function' => $this->effectiveBusinessFunction,

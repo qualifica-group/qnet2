@@ -52,7 +52,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Premi **Nuova fattura passiva** e scegli **Fornitore**, **Società**, **Data documento** e **Modalità di pagamento** (e, se serve, conto, sedi, note).',
-            'Aggiungi le **righe**: dal catalogo prodotti oppure libere. Per ogni riga indica descrizione, quantità, prezzo, IVA, **tipo di costo** (obbligatorio) e **commessa**. Il tipo di costo e la commessa di testata sono solo il valore proposto alle nuove righe.',
+            'Aggiungi le **righe**: dal catalogo prodotti oppure libere. Per ogni riga indica descrizione, quantità, prezzo, IVA, **tipo di costo** (obbligatorio) e **commessa**. Il tipo di costo e la commessa di testata sono solo il valore proposto alle nuove righe; per una riga dal catalogo, se la testata non ne ha uno, il tipo di costo si propone dal prodotto (se ne ha uno predefinito).',
             'Controlla i **totali** e l’**anteprima delle scadenze**, generate dalla modalità di pagamento.',
             'Premi **Salva**.',
           ],

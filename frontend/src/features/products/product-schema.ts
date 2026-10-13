@@ -57,6 +57,8 @@ function baseFields(t: TFunction) {
     // `null`/unset resolves server-side to the default unit (spec 0088, D-4).
     unit_of_measure_id: z.number().nullable(),
     product_typology_id: z.number().nullable(),
+    // Spec 0251: optional default cost type of the product.
+    cost_type_id: z.number().nullable(),
   }
 }
 

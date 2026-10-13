@@ -65,7 +65,7 @@ class ProductService
      *
      * @var array<int, string>
      */
-    private const array HYDRATED_RELATIONS = ['category', 'vatRate', 'supplier', 'unitOfMeasure', 'productTypology'];
+    private const array HYDRATED_RELATIONS = ['category', 'vatRate', 'supplier', 'unitOfMeasure', 'productTypology', 'costType'];
 
     /**
      * Columns projected by the for-select standard (ADR 0011; spec 0065,
@@ -74,7 +74,7 @@ class ProductService
      *
      * @var array<int, string>
      */
-    private const array FOR_SELECT_COLUMNS = ['id', 'code', 'name', 'description', 'category_id', 'price', 'cost', 'vat_rate_id', 'unit_of_measure_id', 'product_typology_id'];
+    private const array FOR_SELECT_COLUMNS = ['id', 'code', 'name', 'description', 'category_id', 'price', 'cost', 'vat_rate_id', 'unit_of_measure_id', 'product_typology_id', 'cost_type_id'];
 
     public function __construct(
         private readonly CategoryHierarchy $hierarchy,
@@ -128,6 +128,7 @@ class ProductService
                 'supplier_id' => $data->supplierId,
                 'unit_of_measure_id' => $data->unitOfMeasureId,
                 'product_typology_id' => $data->productTypologyId,
+                'cost_type_id' => $data->costTypeId,
             ]);
 
             // Spec 0142, D-3: absent keeps the model's default (Sellable only).
@@ -328,7 +329,7 @@ class ProductService
         $page = $window->items;
 
         $items = $this->appendHydratedIds($page, $query);
-        $items->load(['category:id,name', 'vatRate:id,name,rate', 'unitOfMeasure:id,name,symbol', 'productTypology:id,name,color']);
+        $items->load(['category:id,name', 'vatRate:id,name,rate', 'unitOfMeasure:id,name,symbol', 'productTypology:id,name,color', 'costType:id,name,color']);
 
         return $window->withItems($items);
     }

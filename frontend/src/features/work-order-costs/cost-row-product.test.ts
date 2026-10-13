@@ -22,6 +22,13 @@ function productItem(meta: Partial<QuoteProductForSelectItem['meta']> = {}): Quo
   }
 }
 
+/** The for-select item as the backend sends it once spec 0251 adds `meta.cost_type`. */
+function withCostType(costType: { id: number; name: string; color: string }): QuoteProductForSelectItem {
+  const base = productItem()
+  const meta = { ...base.meta, cost_type: costType }
+  return { ...base, meta }
+}
+
 describe('costRowPatchFromProduct (D-8)', () => {
   it('prefills unit price from products.cost (never price), VAT rate and unit of measure', () => {
     const patch = costRowPatchFromProduct(productItem(), createEmptyCostRow())
@@ -48,6 +55,17 @@ describe('costRowPatchFromProduct (D-8)', () => {
 
     expect(patch).not.toHaveProperty('supplier_id')
     expect(patch.display?.supplier_name).toBe('Fornitore Uno')
+  })
+
+  it('spec 0251 AC-008: takes the cost type from the product default, keeps the row one when the product has none', () => {
+    const costType = { id: 6, name: 'Travel', color: 'blue' }
+    const patch = costRowPatchFromProduct(withCostType(costType), createEmptyCostRow())
+
+    expect(patch.cost_type_id).toBe(6)
+    expect(patch.display).toMatchObject({ cost_type_name: 'Travel', cost_type_color: 'blue' })
+
+    const kept = costRowPatchFromProduct(productItem(), { ...createEmptyCostRow(), cost_type_id: 9 })
+    expect(kept).not.toHaveProperty('cost_type_id')
   })
 
   it('handles a product with no cost, VAT rate or unit', () => {

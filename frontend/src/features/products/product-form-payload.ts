@@ -69,6 +69,7 @@ export function buildCreatePayload(
     supplier_id: values.supplier_id,
     unit_of_measure_id: values.unit_of_measure_id,
     product_typology_id: values.product_typology_id,
+    ...(values.cost_type_id !== null ? { cost_type_id: values.cost_type_id } : {}),
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
     ...(Object.keys(attributeValues).length > 0 ? { attribute_values: attributeValues } : {}),
   }
@@ -119,6 +120,9 @@ export function buildUpdatePayload(
   }
   if (values.product_typology_id !== original.product_typology_id) {
     payload.product_typology_id = values.product_typology_id
+  }
+  if (values.cost_type_id !== (original.cost_type_id ?? null)) {
+    payload.cost_type_id = values.cost_type_id
   }
 
   const customFields = buildCustomFieldsUpdate(values.custom_fields, original.custom_fields ?? {})

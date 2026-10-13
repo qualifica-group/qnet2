@@ -55,6 +55,14 @@ export interface ProductTypologySummary {
   color: string
 }
 
+/** Minimal cost type projection of a product (spec 0251): the default classification of its costs. */
+export interface ProductCostTypeSummary {
+  id: number
+  name: string
+  /** Badge colour token of the cost type (spec 0249). */
+  color: string
+}
+
 /**
  * Single product detail returned by GET/POST/PATCH /products (envelope
  * `data`). Matches `ProductResource`.
@@ -113,6 +121,12 @@ export interface ProductDetail {
    */
   product_typology_id: number
   product_typology: ProductTypologySummary | null
+  /**
+   * Default cost type of the product (spec 0251 D-2), optional like the other
+   * additive projections; `null` when none is set.
+   */
+  cost_type_id?: number | null
+  cost_type?: ProductCostTypeSummary | null
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
   /**
@@ -165,6 +179,8 @@ export interface CreateProductPayload {
   unit_of_measure_id: number | null
   /** `null`/omitted resolves server-side to the default typology (spec 0099, D-3). */
   product_typology_id: number | null
+  /** Default cost type (spec 0251); `null` removes it. */
+  cost_type_id?: number | null
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
   /** Valued attribute values, keyed by attribute `code` (spec 0061, additive). */
@@ -173,6 +189,17 @@ export interface CreateProductPayload {
 
 /** Payload for PATCH /products/{id} (partial update). Generic fields are sparse (only what changed). */
 export type UpdateProductPayload = Partial<CreateProductPayload>
+
+/** Payload for POST /products/cost-type (spec 0251 D-6): `cost_type_id: null` removes the type. */
+export interface BulkProductCostTypePayload {
+  product_ids: number[]
+  cost_type_id: number | null
+}
+
+/** `data` of POST /products/cost-type. */
+export interface BulkProductCostTypeResult {
+  updated: number
+}
 
 /** Discriminated form mode of `useProductForm`: the create form, or the in-place detail (edit). */
 export type ProductFormMode = { type: 'create' } | { type: 'edit'; product: ProductDetailWithPermissions }

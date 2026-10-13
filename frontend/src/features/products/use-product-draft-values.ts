@@ -1,6 +1,7 @@
 import { useWatch, type Control } from 'react-hook-form'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { useForSelectLabels } from '@/features/for-select/use-for-select'
+import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import { PRODUCT_TYPOLOGIES_FOR_SELECT_RESOURCE } from '@/features/product-typologies/for-select-api'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { UNITS_OF_MEASURE_FOR_SELECT_RESOURCE } from '@/features/units-of-measure/for-select-api'
@@ -42,7 +43,19 @@ export function useProductDraftValues(
   const units = useForSelectLabels({ resource: UNITS_OF_MEASURE_FOR_SELECT_RESOURCE, ids: idsOf(draft.unit_of_measure_id) })
   const vatRates = useForSelectLabels({ resource: VAT_RATES_FOR_SELECT_RESOURCE, ids: idsOf(draft.vat_rate_id) })
   const suppliers = useForSelectLabels({ resource: REGISTRIES_FOR_SELECT_RESOURCE, ids: idsOf(draft.supplier_id) })
+  const costTypes = useForSelectLabels({ resource: COST_TYPES_FOR_SELECT_RESOURCE, ids: idsOf(draft.cost_type_id) })
   const category = categories.options.find((option) => option.id === draft.category_id)
+
+  const costTypeId = draft.cost_type_id
+  const costTypeItem = costTypeId != null ? costTypes.get(costTypeId) : undefined
+  const costType =
+    costTypeId != null
+      ? {
+          id: costTypeId,
+          name: costTypeItem?.label ?? PENDING_LABEL,
+          color: (costTypeItem as { meta?: { color?: string } } | undefined)?.meta?.color ?? '',
+        }
+      : null
 
   return {
     code: draft.code ?? '',
@@ -55,6 +68,7 @@ export function useProductDraftValues(
     product_typology: refOf(typologies, draft.product_typology_id),
     unit_of_measure: refOf(units, draft.unit_of_measure_id),
     product_type: draft.product_type ?? 'SERVICE',
+    cost_type: costType,
     usages: (draft.usages as ProductRecordValues['usages'] | undefined) ?? DEFAULT_PRODUCT_USAGES,
     vat_rate: refOf(vatRates, draft.vat_rate_id),
     supplier: refOf(suppliers, draft.supplier_id),

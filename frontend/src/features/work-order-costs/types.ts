@@ -4,6 +4,7 @@
  * STRINGS; convert with `Number(...)` only at the point of calculation.
  */
 
+import type { ProductCostTypeSummary } from '@/features/products/types'
 import type { QuoteLine, QuoteLineProductRef, QuoteLineUnitOfMeasureRef, QuoteLineVatRateRef } from '@/features/quotes/types'
 
 /** One persisted real cost row of the work order. */
@@ -20,6 +21,9 @@ export interface WorkOrderCostLine {
   vat_amount: string
   total_amount: string
   quote_line_id: number | null
+  /** Cost type of the row (spec 0251 D-3); optional on the wire like the other additive projections. */
+  cost_type_id?: number | null
+  cost_type?: ProductCostTypeSummary | null
   /** `YYYY-MM-DD`. */
   incurred_on: string
   supplier_id: number | null
@@ -74,6 +78,7 @@ export interface WorkOrderCostLineInput {
   unit_price: number
   vat_rate_id: number | null
   quote_line_id: number | null
+  cost_type_id: number | null
   incurred_on: string
   supplier_id: number | null
   document_reference: string | null

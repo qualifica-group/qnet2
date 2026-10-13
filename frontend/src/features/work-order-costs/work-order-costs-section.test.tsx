@@ -35,6 +35,7 @@ const PRODUCT_ITEM = {
     vat_rate: '22.00',
     unit_of_measure: { id: 1, name: 'Giorno', symbol: 'gg' },
     product_typology: null,
+    cost_type: { id: 6, name: 'Travel', color: 'blue' },
   },
 }
 
@@ -69,7 +70,12 @@ beforeEach(() => {
   syncCostsMock.mockReset().mockResolvedValue(OVERVIEW)
   fetchForSelectMock.mockReset().mockImplementation((resource: string) =>
     Promise.resolve({
-      items: resource === 'products' ? [PRODUCT_ITEM] : [{ id: 41, label: 'Fornitore Due' }],
+      items:
+        resource === 'products'
+          ? [PRODUCT_ITEM]
+          : resource === 'cost-types'
+            ? [{ id: 12, label: 'Fuel', meta: { color: 'amber' } }]
+            : [{ id: 41, label: 'Fornitore Due' }],
       pagination: PAGINATION,
       export_link: null,
     }),
@@ -159,6 +165,7 @@ describe('WorkOrderCostsSection — Actual costs editor (AC-012)', () => {
           unit_price: 50,
           vat_rate_id: 3,
           quote_line_id: 11,
+          cost_type_id: null,
           incurred_on: '2026-09-15',
           supplier_id: 40,
           document_reference: 'FT-12',
@@ -170,6 +177,7 @@ describe('WorkOrderCostsSection — Actual costs editor (AC-012)', () => {
           unit_price: 12.5,
           vat_rate_id: 3,
           quote_line_id: null,
+          cost_type_id: 6,
           incurred_on: todayIsoDate(),
           supplier_id: 41,
           document_reference: 'FT-99',
@@ -177,6 +185,28 @@ describe('WorkOrderCostsSection — Actual costs editor (AC-012)', () => {
         },
       ],
     })
+  })
+
+  it('AC-008: precompiles the cost type from the picked product and lets the user change it', async () => {
+    await openEditor(true)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add row' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Cost product, row 2' }))
+    fireEvent.click(await screen.findByRole('option', { name: /Noleggio auto/ }))
+    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(screen.getByRole('combobox', { name: 'Cost type, row 2' })).toHaveTextContent('Travel')
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Cost type, row 2' }))
+    fireEvent.click(await screen.findByRole('option', { name: /Fuel/ }))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Cost type, row 2' })).toHaveTextContent('Fuel'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(syncCostsMock).toHaveBeenCalledTimes(1))
+    const lines = (syncCostsMock.mock.calls[0][1] as { lines: Array<{ cost_type_id: number | null }> }).lines
+    expect(lines.map((line) => line.cost_type_id)).toEqual([null, 12])
   })
 
   it('does not call the server while a row is invalid and shows the field error', async () => {

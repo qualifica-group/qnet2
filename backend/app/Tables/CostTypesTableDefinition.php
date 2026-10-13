@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Gate;
 
 /**
  * Table definition for the `cost-types` domain (spec 0210). Every column is a
- * real DB column except `lines_count` (`withCount`); `used_by_invoices` (`withExists`) only hides the delete action.
+ * real DB column except `lines_count` (`withCount`); the `used_by_*` flags (`withExists`: invoices, products, commessa costs) only hide the delete action.
  */
 class CostTypesTableDefinition extends AbstractTableDefinition
 {
@@ -43,7 +43,7 @@ class CostTypesTableDefinition extends AbstractTableDefinition
     {
         return CostType::query()
             ->withCount(['purchaseOrderLines as lines_count'])
-            ->withExists(['purchaseInvoices as used_by_invoices']);
+            ->withExists(['purchaseInvoices as used_by_invoices', 'products as used_by_products', 'workOrderCosts as used_by_costs']);
     }
 
     /**
@@ -144,7 +144,7 @@ class CostTypesTableDefinition extends AbstractTableDefinition
             $allowed[] = 'view';
         }
 
-        $inUse = $row->lines_count > 0 || $row->used_by_invoices;
+        $inUse = $row->lines_count > 0 || $row->used_by_invoices || $row->used_by_products || $row->used_by_costs;
 
         if (! $inUse && Gate::forUser($actor)->allows('delete', $row)) {
             $allowed[] = 'delete';

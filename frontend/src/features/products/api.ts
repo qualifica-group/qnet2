@@ -2,6 +2,8 @@ import { apiClient } from '@/api/client'
 import type { ApiResponse, ApiResponseWithPermissions } from '@/api/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
+  BulkProductCostTypePayload,
+  BulkProductCostTypeResult,
   CreateProductPayload,
   ProductDetail,
   ProductDetailWithPermissions,
@@ -64,4 +66,10 @@ export async function updateProduct(
 /** Deletes a product. Backend responds 204 with no body. */
 export async function deleteProduct(id: number): Promise<void> {
   await apiClient.delete(`/products/${id}`)
+}
+
+/** Bulk "Set cost type" (spec 0251 D-6): one cost type (or none) for every selected product, all-or-nothing server-side. */
+export async function setProductsCostType(payload: BulkProductCostTypePayload): Promise<BulkProductCostTypeResult> {
+  const { data } = await apiClient.post<ApiResponse<BulkProductCostTypeResult>>('/products/cost-type', payload)
+  return data.data
 }

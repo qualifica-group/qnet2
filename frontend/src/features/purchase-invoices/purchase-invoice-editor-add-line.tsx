@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { VatRateRef } from '@/features/invoices/types'
+import { productCostTypeOf } from '@/features/products/for-select-api'
 import type { PurchaseInvoiceLineFormValues } from '@/features/purchase-invoices/purchase-invoice-schema'
 import { QuoteProductSelect, type QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
 
@@ -32,8 +33,10 @@ export function PurchaseInvoiceEditorAddLine({ onAdd, onRememberVat }: PurchaseI
     if (meta.vat_rate_id !== null && meta.vat_rate !== null) {
       onRememberVat({ id: meta.vat_rate_id, name: meta.vat_rate_name ?? meta.vat_rate, rate: meta.vat_rate })
     }
+    const costType = productCostTypeOf(item)
     onAdd({
       product_id: productId,
+      ...(costType === null ? {} : { cost_type_id: costType.id }),
       description: item.label,
       unit_price: Number(meta.cost ?? 0),
       ...(meta.vat_rate_id === null ? {} : { vat_rate_id: meta.vat_rate_id }),

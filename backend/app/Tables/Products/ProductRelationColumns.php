@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * The relation-derived column machinery for the `products` domain, extracted
  * out of ProductsTableDefinition (file-size split, engineering.md §6):
- * `category` (spec 0017), `unit_of_measure` (spec 0088) and
- * `product_typology` (spec 0099) have no real DB column of their own, they
+ * `category` (spec 0017), `unit_of_measure` (spec 0088),
+ * `product_typology` (spec 0099) and `cost_type` (spec 0251) have no real DB column of their own, they
  * project the related row's `name`. Each gets a
  * `whereHas` set filter (allow-listed columns only, never whereRaw on raw
  * input — backend.md §8), a correlated subquery sort and Excel-like distinct
@@ -38,6 +38,7 @@ final class ProductRelationColumns
         'category' => ['relation' => 'category', 'table' => 'product_categories', 'fk' => 'category_id'],
         'unit_of_measure' => ['relation' => 'unitOfMeasure', 'table' => 'units_of_measure', 'fk' => 'unit_of_measure_id'],
         'product_typology' => ['relation' => 'productTypology', 'table' => 'product_typologies', 'fk' => 'product_typology_id'],
+        'cost_type' => ['relation' => 'costType', 'table' => 'cost_types', 'fk' => 'cost_type_id'],
     ];
 
     /**

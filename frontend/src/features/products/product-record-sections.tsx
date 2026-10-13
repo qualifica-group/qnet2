@@ -6,11 +6,13 @@ import { RecordField, RecordFieldList, RecordSection } from '@/components/detail
 import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import { Badge } from '@/components/ui/badge'
 import { enumLabelOf } from '@/features/config/enum-label'
+import { CostTypeBadge } from '@/features/cost-types/cost-type-badge'
 import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import { formatDecimal } from '@/features/products/column-renderers'
 import {
   ProductCategoryField,
   ProductCodeField,
+  ProductCostTypeField,
   ProductDescriptionField,
   ProductNameField,
   ProductTypeField,
@@ -122,6 +124,14 @@ export function ProductClassificationRecordSection(props: ProductRecordSectionPr
           editor={<ProductUnitField control={control} selected={values.unit_of_measure} />}
         >
           {values.unit_of_measure?.name ?? <DetailEmpty />}
+        </RecordInlineField>
+        <RecordInlineField
+          field="cost_type_id"
+          label={t('products.form.costType')}
+          inline={inline}
+          editor={<ProductCostTypeField control={control} selected={values.cost_type} />}
+        >
+          {values.cost_type ? <CostTypeBadge name={values.cost_type.name} color={values.cost_type.color} /> : <DetailEmpty />}
         </RecordInlineField>
         <RecordInlineField
           field="product_type"

@@ -56,6 +56,7 @@ export function editDefaults(
     supplier_id: product.supplier_id,
     unit_of_measure_id: product.unit_of_measure_id,
     product_typology_id: product.product_typology_id,
+    cost_type_id: product.cost_type_id ?? null,
     custom_fields: customFields,
     attribute_values: seedAttributeValues(attributes, product.attribute_values ?? {}),
   }
@@ -75,6 +76,7 @@ function createDefaults(customFields: Record<string, CustomFieldValue>, initialC
     supplier_id: null,
     unit_of_measure_id: null,
     product_typology_id: null,
+    cost_type_id: null,
     custom_fields: customFields,
     attribute_values: {},
   }

@@ -59,6 +59,7 @@ class SyncWorkOrderCostsRequest extends FormRequest
 
         return $rules + [
             'lines.*.id' => ['nullable', 'integer', 'distinct', Rule::exists('work_order_costs', 'id')->where('work_order_id', $workOrderId)],
+            'lines.*.cost_type_id' => ['nullable', 'integer', Rule::exists('cost_types', 'id')],
             'lines.*.quote_line_id' => ['nullable', 'integer', Rule::exists('quote_line_work_order', 'quote_line_id')->where('work_order_id', $workOrderId)],
             'lines.*.incurred_on' => ['required', 'date_format:Y-m-d'],
             'lines.*.supplier_id' => ['nullable', 'integer', Rule::exists('registries', 'id')->where('is_supplier', true)],

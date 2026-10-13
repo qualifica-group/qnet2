@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'A cost type classifies the expense of a purchase order (ODA) line. The type is **required on every line** and appears as a badge in its own color (the picker on ODA lines and in Generate ODA, the ODA detail, the Cost types and Payable installments grids). Collaboratori, Fitti, Utenze and Altro are already available; you can add more or edit them.',
+          text: 'A cost type classifies the expense of a purchase order (ODA) line. The type is **required on every line** and appears as a badge in its own color (the picker on ODA lines and in Generate ODA, the ODA detail, the Cost types and Payable installments grids). The same type can be set as the default of a product and indicated on work order costs. Collaboratori, Fitti, Utenze and Altro are already available; you can add more or edit them.',
         },
       ],
     },
@@ -66,7 +66,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'You cannot delete a cost type already used by purchase order lines or purchase invoices: deactivate it instead. In the grid the Delete action is not available for types in use.',
+          text: 'You cannot delete a cost type already used by purchase order lines, purchase invoices, products or work order costs: deactivate it instead. In the grid the Delete action is not available for types in use.',
         },
       ],
     },

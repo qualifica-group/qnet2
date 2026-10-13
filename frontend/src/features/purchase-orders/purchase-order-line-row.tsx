@@ -54,7 +54,7 @@ export function PurchaseOrderLineRow({ index, control, setValue, line, readOnly,
   const { t } = useTranslation()
   const n = index + 1
   const amounts = previewLineAmounts(line)
-  const applyProduct = useOrderLineProductDefaults(index, setValue)
+  const applyProduct = useOrderLineProductDefaults(index, setValue, line.cost_type_id)
 
   const handleExtractVat = () => {
     try {

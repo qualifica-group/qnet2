@@ -32,6 +32,7 @@ function baseValues() {
     supplier_id: null,
     unit_of_measure_id: null,
     product_typology_id: null,
+    cost_type_id: null,
     custom_fields: {},
     attribute_values: {},
   }

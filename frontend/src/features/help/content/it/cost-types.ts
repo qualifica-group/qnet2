@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Un tipo di costo classifica la spesa di una riga di un ordine di acquisto (ODA). Il tipo è **obbligatorio su ogni riga** e compare come badge colorato nel suo colore (menu di scelta delle righe ODA e di Genera ODA, dettaglio ODA, griglie Tipi di costo e Scadenze passive). Sono già presenti Collaboratori, Fitti, Utenze e Altro; puoi aggiungerne altri o modificarli.',
+          text: 'Un tipo di costo classifica la spesa di una riga di un ordine di acquisto (ODA). Il tipo è **obbligatorio su ogni riga** e compare come badge colorato nel suo colore (menu di scelta delle righe ODA e di Genera ODA, dettaglio ODA, griglie Tipi di costo e Scadenze passive). Lo stesso tipo si può impostare come predefinito su un prodotto e indicare sui costi di una commessa. Sono già presenti Collaboratori, Fitti, Utenze e Altro; puoi aggiungerne altri o modificarli.',
         },
       ],
     },
@@ -66,7 +66,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'warning',
-          text: 'Non puoi eliminare un tipo di costo già usato da righe di ordini di acquisto o da fatture passive: disattivalo. Nella griglia i tipi in uso non offrono Elimina.',
+          text: 'Non puoi eliminare un tipo di costo già usato da righe di ordini di acquisto, da fatture passive, da prodotti o da costi di commessa: disattivalo. Nella griglia i tipi in uso non offrono Elimina.',
         },
       ],
     },

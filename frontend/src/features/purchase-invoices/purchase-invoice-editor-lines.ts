@@ -28,7 +28,11 @@ export interface LineDefaults {
   work_order_id: number | null
 }
 
-/** New free or catalog row; the header cost type and work order are only a proposal. */
+/**
+ * New free or catalog row; the header cost type and work order are only a
+ * proposal. A catalog product's default cost type (spec 0251 D-4) applies only
+ * when the row has no cost type from the header yet.
+ */
 export function newLine(
   fields: Partial<PurchaseInvoiceLineFormValues> & Pick<PurchaseInvoiceLineFormValues, 'description'>,
   defaults: LineDefaults,
@@ -40,9 +44,9 @@ export function newLine(
     quantity: DEFAULT_LINE_QUANTITY,
     unit_price: 0,
     vat_rate_id: null,
-    cost_type_id: defaults.cost_type_id ?? NO_ID,
     work_order_id: defaults.work_order_id,
     ...fields,
+    cost_type_id: defaults.cost_type_id ?? fields.cost_type_id ?? NO_ID,
   }
 }
 

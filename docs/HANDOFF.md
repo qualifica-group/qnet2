@@ -3,7 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## ADR 0018 + Spec 0250 — Fatture passive fase 2 (audit Onda 3, primo passo) — VERDE, NON COMMITTATO (2026-10-13)
+## Spec 0251 — Tipo di costo su prodotti e costi commessa (ADR 0018 decisione 1, COS-02) — COMMITTATO (2026-10-13)
+
+- Spec `docs/specs/0251-cost-type-on-products-and-work-order-costs.xml` (D-1..D-7, AC-001..010 PASS).
+- products.cost_type_id e work_order_costs.cost_type_id nullable FK restrict (migrazione 2026_10_17_190000; il
+  backfill dei costi commessa dal prodotto e' inerte alla migrazione perche' i prodotti partono vuoti, D-1).
+- Nessuna mappatura categorie -> tipi: azione massiva POST /api/products/cost-type {product_ids, cost_type_id|null}
+  (products.update, activity log per prodotto) + dialog nella griglia Prodotti. for-select prodotti meta.cost_type;
+  colonna cost_type (text con {id,name,color}) nella griglia Prodotti.
+- Precompilazione dal prodotto: righe ODA (solo se vuota), nuove righe fattura passiva (prevale il default di
+  testata), costi commessa (sempre, modificabile). Delete guard tipi di costo esteso a prodotti e costi commessa.
+- Contatori --step: PurchaseOrderMigrationTest 33, SupplierCommissionDirectionTest 48, QuoteWorkflowMigrationTest 184.
+- Aperti: work-order-cost-row.tsx 331 righe (soft limit); "Genera ODA" non precompila dal prodotto (non sceglie prodotti).
+- Prossimo: spec 0252 consuntivo commessa ibrido per tipo di costo (manuali + righe ODA impegnate + righe fattura
+  passiva al posto dell'ODA quando fatturato), poi 0253 motore importi unico + IVA per aliquota.
+
+## ADR 0018 + Spec 0250 — Fatture passive fase 2 (audit Onda 3, primo passo) — COMMITTATO d254c6c6 (2026-10-13)
 
 - ADR `docs/adr/0018-unified-cost-model.md`: tipi di costo = tassonomia unica dei costi (categorie solo vendite);
   consuntivo commessa ibrido in lettura; fatture passive con righe; IVA attive per aliquota. Ordine: 0250 -> 0251

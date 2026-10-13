@@ -35,7 +35,7 @@ final class WorkOrderCostOverviewBuilder
     public function build(WorkOrder $workOrder): array
     {
         // Step 1: load the actual costs, the commessa's revenue lines and the offer's COST lines
-        $costs = $workOrder->costs()->with(['product.category', 'product.unitOfMeasure', 'vatRate', 'unitOfMeasure', 'supplier'])->get();
+        $costs = $workOrder->costs()->with(['product.category', 'product.unitOfMeasure', 'vatRate', 'unitOfMeasure', 'supplier', 'costType'])->get();
         $revenueLines = $workOrder->quoteLines()->with(['product', 'commissions'])->get();
         $budgetLines = $this->budgetLines($workOrder);
         $allocated = $budgetLines->whereIn('offer_line_id', $revenueLines->modelKeys())->values();

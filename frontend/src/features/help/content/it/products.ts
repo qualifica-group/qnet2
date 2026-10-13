@@ -82,6 +82,7 @@ const guide: HelpGuide = {
           rows: [
             ['Categoria', 'La categoria del prodotto. Obbligatoria.'],
             ['Tipologia', "Scelta dall'elenco Tipologie Prodotto."],
+            ['Tipo di costo', 'Facoltativo. Il tipo di costo predefinito del prodotto (per esempio Collaboratori o Fitti), pensato per i prodotti Utilizzabili come costo: viene proposto sulle righe di ordini di acquisto, fatture passive e costi commessa quando scegli il prodotto. Si mostra come badge colorato anche nella griglia (con filtro per nome).'],
             ['Unità di misura', 'Per esempio ore o pezzi.'],
             ['Tipo', "Oggi l'unico valore è Servizio."],
             ['Utilizzo in offerta', "Dove si può usare il prodotto in un'offerta (vedi sotto)."],
@@ -94,6 +95,25 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "Alcune categorie compaiono nell'elenco ma non si possono scegliere: servono solo a raggruppare le sottocategorie. In quel caso scegli una sottocategoria. Le categorie non attive (con tutto il loro ramo) non compaiono tra le scelte; in modifica, la categoria già salvata resta visibile. La Funzione aziendale del prodotto deriva dalla categoria e nella scheda è in sola lettura.",
+        },
+      ],
+    },
+    {
+      id: 'bulk-cost-type',
+      title: 'Impostare il tipo di costo in massa',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Apri Prodotti › Prodotti e, se serve, filtra per Categoria o Utilizzo in offerta.',
+            'Seleziona le righe con le caselle a sinistra.',
+            'Dal menu delle azioni sulla selezione scegli **Imposta tipo di costo** (compare solo se puoi modificare i prodotti).',
+            'Nella finestra scegli il tipo di costo, oppure **Nessuno** per toglierlo, e conferma: l’operazione vale per tutti i prodotti selezionati o per nessuno.',
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'Nessuna corrispondenza tra categoria e tipo di costo è preimpostata: i prodotti esistenti partono senza tipo e si assegnano con questa azione.',
         },
       ],
     },

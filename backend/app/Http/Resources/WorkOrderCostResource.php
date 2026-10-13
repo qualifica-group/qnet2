@@ -44,6 +44,8 @@ class WorkOrderCostResource extends JsonResource
             'vat_amount' => $this->vat_amount,
             'total_amount' => $this->total_amount,
             'quote_line_id' => $this->quote_line_id,
+            'cost_type_id' => $this->cost_type_id,
+            'cost_type' => $this->costType === null ? null : ['id' => $this->costType->id, 'name' => $this->costType->name, 'color' => $this->costType->color],
             'incurred_on' => $this->incurred_on->format('Y-m-d'),
             'supplier_id' => $this->supplier_id,
             'supplier' => $this->supplier === null ? null : ['id' => $this->supplier->id, 'name' => $this->supplier->name],

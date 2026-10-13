@@ -60,6 +60,8 @@ final readonly class UpdateProductData
         public bool $productTypologyIdSubmitted = false,
         public ?array $attributeValues = null,
         public ?array $usages = null,
+        public ?int $costTypeId = null,
+        public bool $costTypeIdSubmitted = false,
     ) {}
 
     /**
@@ -91,6 +93,8 @@ final readonly class UpdateProductData
             productTypologyIdSubmitted: array_key_exists('product_typology_id', $data),
             attributeValues: array_key_exists('attribute_values', $data) ? (array) $data['attribute_values'] : null,
             usages: array_key_exists('usages', $data) ? array_map(static fn (mixed $usage): ProductUsage => ProductUsage::from((string) $usage), (array) $data['usages']) : null,
+            costTypeId: array_key_exists('cost_type_id', $data) && $data['cost_type_id'] !== null ? (int) $data['cost_type_id'] : null,
+            costTypeIdSubmitted: array_key_exists('cost_type_id', $data),
         );
     }
 
@@ -151,6 +155,10 @@ final readonly class UpdateProductData
 
         if ($this->productTypologyIdSubmitted) {
             $attributes['product_typology_id'] = $this->productTypologyId;
+        }
+
+        if ($this->costTypeIdSubmitted) {
+            $attributes['cost_type_id'] = $this->costTypeId;
         }
 
         return $attributes;

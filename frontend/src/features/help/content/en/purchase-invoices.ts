@@ -52,7 +52,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Press **New passive invoice** and choose **Supplier**, **Company**, **Document date** and **Payment method** (and, if needed, account, sites, notes).',
-            'Add the **lines**: from the product catalog or free ones. For each line set description, quantity, price, VAT, **cost type** (required) and **work order**. The header cost type and work order are only the value proposed to new lines.',
+            'Add the **lines**: from the product catalog or free ones. For each line set description, quantity, price, VAT, **cost type** (required) and **work order**. The header cost type and work order are only the value proposed to new lines; for a catalog line, if the header has none, the cost type is proposed from the product (when it has a default one).',
             'Check the **totals** and the **installment preview**, generated from the payment method.',
             'Press **Save**.',
           ],

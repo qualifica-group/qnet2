@@ -1,3 +1,4 @@
+import type { ProductCostTypeSummary } from '@/features/products/types'
 import { fetchForSelect } from '@/features/for-select/api'
 import type {
   ForSelectItem,
@@ -32,4 +33,15 @@ export function fetchProductsForSelect(
   params: ForSelectParams = {},
 ): Promise<PaginatedResponse<ForSelectItem>> {
   return fetchForSelect(PRODUCTS_FOR_SELECT_RESOURCE, params)
+}
+
+/**
+ * The product's default cost type from its for-select `meta` (spec 0251 D-7):
+ * what order lines, invoice lines and cost rows precompile without an extra
+ * request. `null` when the product has none.
+ */
+export function productCostTypeOf(item: ForSelectItem): ProductCostTypeSummary | null {
+  const meta = (item as { meta?: { cost_type?: ProductCostTypeSummary | null } }).meta
+
+  return meta?.cost_type ?? null
 }
