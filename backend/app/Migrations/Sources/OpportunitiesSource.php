@@ -9,6 +9,7 @@ use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
 use App\Migrations\Support\ExternalApiClient;
+use App\Migrations\Support\LegacyOpportunityNotes;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
@@ -33,6 +34,10 @@ use RuntimeException;
  * the same rows OpportunityProductLineCoverage adds when a quote is built
  * here. A re-import fills them in on an already imported opportunity that
  * still has no product line (never overwriting existing ones).
+ *
+ * The general notes carry the legacy notes, the reserved notes and the "Note"
+ * of the Info preliminari cards (LegacyOpportunityNotes); a re-import appends
+ * the card notes an already imported opportunity still lacks.
  */
 class OpportunitiesSource extends AbstractMigrationSource
 {
@@ -40,14 +45,15 @@ class OpportunitiesSource extends AbstractMigrationSource
 
     private const int NAME_MAX_LENGTH = 191;
 
-    private const string RESERVED_NOTES_LABEL = 'Note riservate:';
-
     private const string BACKFILLED_PRODUCT_LINES_NOTE = 'Missing product categories back-filled.';
+
+    private const string BACKFILLED_NOTES_NOTE = 'Missing preliminary info notes back-filled.';
 
     public function __construct(
         ExternalApiClient $client,
         private readonly OpportunityService $service,
         private readonly ProductLineWriter $productLineWriter,
+        private readonly LegacyOpportunityNotes $notes,
     ) {
         parent::__construct($client);
     }
@@ -129,7 +135,7 @@ class OpportunitiesSource extends AbstractMigrationSource
 
         return activity()->withoutLogs(fn (): MigrationRowOutcome => $existing === null
             ? $this->importRecord($externalId, $record)
-            : $this->backfillProductLines($existing, $record));
+            : $this->backfillExisting($existing, $record));
     }
 
     /**
@@ -153,29 +159,63 @@ class OpportunitiesSource extends AbstractMigrationSource
     }
 
     /**
-     * Skipped row (idempotent re-import, AC-002) that still fills in the
-     * product lines of an opportunity imported without any (G-12). Warnings
-     * are reported only alongside a write: a row with nothing to fill stays a
-     * silent skip on every re-run.
+     * Skipped row (idempotent re-import, AC-002) that still fills in what an
+     * opportunity was imported without. Warnings are reported only alongside
+     * a write: a row with nothing to fill stays a silent skip on every re-run.
      *
      * @param  array<string, mixed>  $record
      */
-    private function backfillProductLines(Opportunity $opportunity, array $record): MigrationRowOutcome
+    private function backfillExisting(Opportunity $opportunity, array $record): MigrationRowOutcome
+    {
+        return MigrationRowOutcome::skipped([
+            ...$this->backfillProductLines($opportunity, $record),
+            ...$this->backfillPreliminaryInfoNotes($opportunity, $record),
+        ]);
+    }
+
+    /**
+     * The product lines of an opportunity imported without any (G-12).
+     *
+     * @param  array<string, mixed>  $record
+     * @return array<int, string> the report entries, empty when nothing was written
+     */
+    private function backfillProductLines(Opportunity $opportunity, array $record): array
     {
         if ($opportunity->productLines()->exists()) {
-            return MigrationRowOutcome::skipped();
+            return [];
         }
 
         $warnings = [];
         $productLines = $this->productLines($record, $warnings);
 
         if ($productLines === []) {
-            return MigrationRowOutcome::skipped();
+            return [];
         }
 
         $this->productLineWriter->sync($opportunity, $productLines);
 
-        return MigrationRowOutcome::skipped([...$warnings, self::BACKFILLED_PRODUCT_LINES_NOTE]);
+        return [...$warnings, self::BACKFILLED_PRODUCT_LINES_NOTE];
+    }
+
+    /**
+     * The Info preliminari notes the general notes still lack, appended
+     * without touching the legacy timestamps.
+     *
+     * @param  array<string, mixed>  $record
+     * @return array<int, string> the report entries, empty when nothing was written
+     */
+    private function backfillPreliminaryInfoNotes(Opportunity $opportunity, array $record): array
+    {
+        $notes = $this->notes->withMissingPreliminaryInfo($opportunity->general_notes, $record);
+
+        if ($notes === null) {
+            return [];
+        }
+
+        $opportunity->timestamps = false;
+        $opportunity->forceFill(['general_notes' => $notes])->saveQuietly();
+
+        return [self::BACKFILLED_NOTES_NOTE];
     }
 
     /**
@@ -236,7 +276,7 @@ class OpportunitiesSource extends AbstractMigrationSource
             expectedCloseDate: $this->blankToNull($record['expected_close_date'] ?? null),
             successProbability: null,
             operationalSiteId: $this->remapLegacyId(OperationalSite::class, $record['operational_site_id'] ?? null, 'operational_site_id', $warnings),
-            generalNotes: $this->generalNotes($record),
+            generalNotes: $this->notes->compose($record),
             name: $this->name($record),
         );
     }
@@ -252,24 +292,6 @@ class OpportunitiesSource extends AbstractMigrationSource
         $title = $this->blankToNull($record['title'] ?? null);
 
         return $title === null ? null : mb_substr($title, 0, self::NAME_MAX_LENGTH);
-    }
-
-    /**
-     * The legacy notes, then the reserved notes under their own label.
-     *
-     * @param  array<string, mixed>  $record
-     */
-    private function generalNotes(array $record): ?string
-    {
-        $notes = $this->blankToNull($record['notes'] ?? null);
-        $reserved = $this->blankToNull($record['reserved_notes'] ?? null);
-
-        $parts = array_filter([
-            $notes,
-            $reserved === null ? null : self::RESERVED_NOTES_LABEL."\n".$reserved,
-        ]);
-
-        return $parts === [] ? null : implode("\n\n", $parts);
     }
 
     private function blankToNull(mixed $value): ?string

@@ -215,6 +215,46 @@ it('back-fills the product lines of an imported opportunity that has none on a r
         ->and($third->report ?? [])->toBe([]);
 });
 
+it('appends the Info preliminari card notes to the general notes', function () {
+    opportunitiesSourceRegistry(16);
+    fakeLegacyOpportunities([[
+        'id' => 910, 'registry_id' => 16, 'notes' => 'Cliente storico', 'reserved_notes' => null,
+        'preliminary_info_notes' => [
+            ['card' => 'Info Preliminari APL-PAL', 'note' => 'In attesa di atto di concessione'],
+            ['card' => 'Info Preliminari Sicurezza', 'note' => '  '],
+        ],
+    ]]);
+
+    runOpportunitiesMigration();
+
+    expect(Opportunity::query()->where('old_id', 910)->value('general_notes'))
+        ->toBe("Cliente storico\n\nInfo Preliminari APL-PAL:\nIn attesa di atto di concessione");
+});
+
+it('back-fills the missing Info preliminari notes of an imported opportunity on a re-run, once', function () {
+    opportunitiesSourceRegistry(17);
+    fakeLegacyOpportunities([[
+        'id' => 911, 'registry_id' => 17, 'notes' => 'Cliente storico', 'updated_at' => '2020-07-01 18:30:00',
+        'preliminary_info_notes' => [
+            ['card' => 'Info Preliminari Soa', 'note' => 'Classifica III'],
+            ['card' => 'Info Preliminari Gara', 'note' => 'Scadenza a marzo'],
+        ],
+    ]]);
+    runOpportunitiesMigration();
+    // As imported before the card notes existed, the SOA one already written by hand.
+    Opportunity::query()->where('old_id', 911)->toBase()->update(['general_notes' => "Cliente storico\n\nInfo Preliminari Soa:\nClassifica III"]);
+
+    $second = runOpportunitiesMigration();
+    $third = runOpportunitiesMigration();
+    $opportunity = Opportunity::query()->where('old_id', 911)->firstOrFail();
+
+    expect($opportunity->general_notes)
+        ->toBe("Cliente storico\n\nInfo Preliminari Soa:\nClassifica III\n\nInfo Preliminari Gara:\nScadenza a marzo")
+        ->and($opportunity->updated_at->format('Y-m-d H:i:s'))->toBe('2020-07-01 18:30:00')
+        ->and(collect($second->report)->pluck('message')->all())->toBe(['Missing preliminary info notes back-filled.'])
+        ->and($third->report ?? [])->toBe([]);
+});
+
 it('refuses a lead on the import path', function () {
     $data = new CreateOpportunityData(
         registryId: Registry::factory()->create()->id, referentId: null, commercialId: null, reporterId: null,

@@ -13,6 +13,7 @@ use App\Migrations\Sources\Concerns\MapsLegacyQuoteCostLines;
 use App\Migrations\Sources\Concerns\MapsLegacyQuoteLines;
 use App\Migrations\Support\ExternalApiClient;
 use App\Migrations\Support\LegacyQuoteAttributeValueApplier;
+use App\Migrations\Support\LegacyQuoteState;
 use App\Migrations\Support\LegacyQuoteStatusApplier;
 use App\Models\CompanySite;
 use App\Models\OperationalSite;
@@ -38,8 +39,9 @@ use RuntimeException;
  * Nobody is notified (G-2): the service receives an empty manager set, the
  * legacy managers are written afterwards through QuoteManagerWriter (which
  * notifies no one; promotion keeps them Gestori Account of the opportunity).
- * The status (G-6) and the contract (G-7) are applied afterwards by
- * LegacyQuoteStatusApplier, quietly. The whole row runs without activity log
+ * The status (G-6, refined by the opportunity phase for a presented offer)
+ * and the contract (G-7) are applied afterwards by LegacyQuoteStatusApplier,
+ * quietly. The whole row runs without activity log
  * (G-3). Costs come in as COST lines (G-13); the offer date and the parent
  * opportunity's callback are written as is (G-14); a legacy customer other
  * than the opportunity's is reported, the offer stays under the opportunity
@@ -114,6 +116,8 @@ class QuotesSource extends AbstractMigrationSource
             ['id' => 'title', 'label' => 'Title', 'type' => 'string'],
             ['id' => 'quote_date', 'label' => 'Quote date', 'type' => 'date'],
             ['id' => 'status', 'label' => 'Status', 'type' => 'number'],
+            ['id' => 'opportunity_phase', 'label' => 'Opportunity phase', 'type' => 'number'],
+            ['id' => 'won_by_other_quote', 'label' => 'Won by another quote', 'type' => 'boolean'],
             ['id' => 'accepted_at', 'label' => 'Accepted at', 'type' => 'date'],
             ['id' => 'manager_user_ids', 'label' => 'Managers (external ids)', 'type' => 'string'],
             ['id' => 'lines', 'label' => 'Lines', 'type' => 'number'],
@@ -134,6 +138,17 @@ class QuotesSource extends AbstractMigrationSource
     protected function mapNativeRow(array $record): array
     {
         return $this->legacyPreviewCells($record);
+    }
+
+    /**
+     * Walks every legacy record with the import's own paging, for
+     * `quotes:realign-legacy-status`.
+     *
+     * @param  callable(array<string, mixed>): mixed  $handle
+     */
+    public function eachLegacyRecord(callable $handle): void
+    {
+        $this->eachRecord($handle);
     }
 
     protected function processRow(MigrationImportContext $context, array $record): MigrationRowOutcome
@@ -180,12 +195,7 @@ class QuotesSource extends AbstractMigrationSource
 
         // Step 5: legacy status and contract, the additional information (G-17),
         // then old_id, callback and timestamps in the final quiet save.
-        $this->statusApplier->apply($quote, (int) ($record['status'] ?? 0), [
-            'accepted_at' => $this->legacyTimestamp($record['accepted_at'] ?? null),
-            'validated_at' => $this->legacyTimestamp($record['validated_at'] ?? null),
-            'renewal_date' => $this->legacyTimestamp($record['renewal_date'] ?? null),
-            'declined_at' => $this->legacyTimestamp($record['declined_at'] ?? null),
-        ], $warnings);
+        $this->statusApplier->apply($quote, LegacyQuoteState::fromRecord($record), $warnings);
         $this->attributeValueApplier->apply($quote, (array) ($record['attribute_values'] ?? []), $warnings);
         $this->finalizeLegacyRecord($quote, $externalId, $record, [
             'next_callback_at' => $this->legacyTimestamp($record['callback_date'] ?? null)?->startOfDay(),

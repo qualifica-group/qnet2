@@ -177,15 +177,19 @@ it('terminates the contract of a legacy terminated offer on its declined date', 
         ->and($contract->terminated_at->toDateString())->toBe('2024-06-30');
 });
 
-it('leaves a won offer without product lines open, with a warning and no contract', function () {
-    $run = runLegacyQuotesImport([legacyQuoteRecord(['status' => 2, 'lines' => []])]);
+// REQUIREMENT CHANGED (user decision 2026-10-13): a legacy offer closed without
+// migrated lines keeps its outcome instead of staying open.
+it('closes a legacy offer without product lines, with a warning', function (int $legacyStatus, string $systemKey) {
+    $run = runLegacyQuotesImport([legacyQuoteRecord(['status' => $legacyStatus, 'lines' => []])]);
 
     $quote = Quote::query()->where('old_id', 42)->sole();
 
-    expect(QuoteWorkflowStatus::query()->whereKey($quote->quote_workflow_status_id)->value('system_key'))->toBe('open')
-        ->and(Contract::query()->where('quote_id', $quote->id)->exists())->toBeFalse()
-        ->and(legacyQuoteWarnings($run))->toContain('Legacy status 2 needs at least one product line; the offer was left open.');
-});
+    expect(QuoteWorkflowStatus::query()->whereKey($quote->quote_workflow_status_id)->value('system_key'))->toBe($systemKey)
+        ->and(legacyQuoteWarnings($run))->toContain("Legacy status {$legacyStatus} closed the offer without product lines.");
+})->with([
+    'won' => [2, 'closed_won'],
+    'rejected' => [5, 'closed_lost'],
+]);
 
 it('writes the legacy managers without notifying anyone nor logging activity', function () {
     Notification::fake();

@@ -3,6 +3,30 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MIGRAZIONE OFFERTE: STATI LEGACY + NOTE INFO PRELIMINARI OPPORTUNITA' (2026-10-13) — VERDE, COMMITTATO
+
+- Spec 0189 aggiornata: G-6 riscritto, nuovi G-18 (fase opportunita' -> stato offerta Presentata), G-19 (note Info
+  preliminari), AC-013/AC-014, contratti API `migration/quotes` (+`opportunity_phase`, `won_by_other_quote`) e
+  `migration/opportunities` (+`preliminary_info_notes`).
+- Legacy (`../qnet`, branch master, committato): `QuoteMigrationController` (+2 campi, const WON_STATUSES),
+  `OpportunityMigrationController` (+`preliminary_info_notes`), nuovo `App\Support\Migration\LegacyPreliminaryInfoNotes`
+  (tabelle pre_info_* tranne R&S, prima riga per id). Verificati via curl su qnet.test.
+- qnet-2: `LegacyQuoteState` (DTO dal record), `LegacyQuoteStatusResolver` (mapping, per nome poi per gruppo),
+  `LegacyQuoteStatusApplier` (non applica piu' il vincolo riga ricavo: warning "Legacy status N closed the offer without
+  product lines."), `QuotesSource::eachLegacyRecord()`, comando `quotes:realign-legacy-status [--dry-run]` (solo offerte
+  su stato di sistema `open` e senza activity_log). `LegacyOpportunityNotes` (note + riservate + card),
+  `OpportunitiesSource::backfillExisting()` (categorie + note mancanti, senza toccare updated_at).
+- Decisioni utente: Rifiutata con accepted_data resta closed_lost; Accettata dal cliente senza pending -> primo validated;
+  Pro-forma/Accettato -> closed_lost se altra offerta vinta, altrimenti "In trattativa".
+- Test: REQUIREMENT CHANGED `QuotesSourceImportTest` (offerta chiusa senza righe ora si chiude); nuovi
+  `QuotesSourceStatusImportTest`, `RealignLegacyQuoteStatusCommandTest`, 2 test in `OpportunitiesSourceImportTest`.
+  Pest parallelo 10432 verdi (rossi solo i 3 `QuoteDocumentPdfTest`, LibreOffice assente); Pint pulito;
+  Vitest help 122/122, ESLint + `tsc -b --force` puliti.
+- Dry-run sui dati locali: 975 offerte da riallineare (388 -> Persa, 253 -> In trattativa, 121 -> VINTO, 106 -> Da
+  Richiamare, 52 -> Rimandata, 33/12 globale chiuse, 7 -> Validato). NON eseguito in scrittura.
+- Manuale: guida `migrations` IT/EN + manuale Claude Docs (sezione Migrazioni). PDF da rigenerare.
+- Prossimi passi: eseguire `php artisan quotes:realign-legacy-status`; rilanciare la sorgente Opportunita' per le note.
+
 ## OLD ID FILTRABILE, ORDINABILE E CERCABILE IN OGNI GRIGLIA (2026-10-13) — VERDE, COMMITTATO
 
 - Richiesta utente: "la colonna id legacy deve essere filtrabile e sortabile ovunque".

@@ -29,10 +29,26 @@
       aperta per anagrafica" (nel legacy 2.035 clienti ne hanno piu' di una), senza notifiche, lead e loadDetail.
       G-5 codici: offerta `QUO-%04d` dell'id legacy, commessa `COM-%04d` dell'id legacy; se il codice e' gia' preso
       si genera il successivo con warning. Il `number` legacy non e' usabile (vuoto o "10" sul 96%).
-      G-6 stato offerta, risolto DOPO la create dentro il workflow risolto dell'offerta (mai id fissi): legacy 0
-      Presentata -> stato `open` del set; 6 Accettata dal cliente -> primo stato del gruppo `pending` del set, se
-      manca `open`; 1,2,3,4,8 (contratti) -> stato di sistema `closed_won`; 5 Rifiutata -> `closed_lost`. Se il
-      set non ha lo stato o l'offerta non ha righe ricavo (vincolo closed_won/closed_lost) resta `open` + warning.
+      G-6 stato offerta, risolto DOPO la create dentro il workflow risolto dell'offerta (mai id fissi;
+      LegacyQuoteStatusResolver): legacy 0 Presentata -> secondo la fase dell'opportunita' legacy (G-18); 6 Accettata
+      dal cliente -> primo stato del gruppo `pending` del set, altrimenti primo `validated`; 1,2,3,4,8 (contratti) ->
+      stato di sistema `closed_won`; 5 Rifiutata -> `closed_lost` (anche se `accepted_data` valorizzata, contratto
+      annullato: decisione utente 2026-10-13). Se il set non ha lo stato resta `open` + warning. Decisione utente
+      2026-10-13: il vincolo "serve una riga ricavo" (spec 0102) NON si applica in migrazione: un'offerta chiusa nel
+      legacy senza righe migrate si chiude comunque, con warning "Legacy status N closed the offer without product lines."
+      G-18 offerta Presentata per fase dell'opportunita' (`opportunities.status` = `fases.id`, decisione utente
+      2026-10-13); lo stato si cerca per nome nel set dell'offerta: 4 Offerta Inviata -> "In trattativa", se manca primo
+      `pending`; 8 Da Richiamare -> "Da Richiamare"; 11 Stand-by -> "Rimandata", poi "In Standby"; 6 Persa ->
+      `closed_lost`; 5 Attesa Pro-forma e 7 Accettato -> `closed_lost` se un'altra offerta della stessa opportunita' e'
+      vinta (legacy 1,2,3,4,8), altrimenti come Offerta Inviata; 1 Nuova, 12 Lead, fase assente/orfana -> resta
+      `open`. Stato mancante nel set -> resta `open` + warning. Le offerte gia' importate si riallineano con
+      `php artisan quotes:realign-legacy-status [--dry-run]`: tocca solo le offerte ancora sullo stato di sistema
+      `open` e senza attivita' dopo l'import.
+      G-19 note Info preliminari (decisione utente 2026-10-13): il campo "Note" di ogni card delle Info preliminari
+      (`pre_info_*`, prima riga per id; R&S esclusa, gia' "Descrizione Sintetica Azienda" dell'offerta) si accoda alle
+      note generali dell'opportunita' dopo note e note riservate, come "<titolo card>:\n<nota>". Un rilancio della
+      sorgente Opportunita' accoda a quelle gia' importate le sole note mancanti (warning "Missing preliminary info
+      notes back-filled."), senza toccare i timestamp legacy.
       G-7 contratto: per i closed_won si crea con `ContractLifecycleManager` (rispetta ContractEligibility), poi si
       allinea al legacy: `accepted_at`=accepted_data, `validated_at`=validated_data, `renewal_date`; stato per nome
       1 "Da validare", 3 "Da programmare", 2 "Programmato", 4 "In scadenza", 8 stato di sistema `terminated`.
@@ -90,7 +106,7 @@
       espone `attribute_values` per le sole card (`services.spec_service`) dei prodotti delle righe dell'offerta;
       qnet-2 scrive solo i codici applicabili alle categorie delle righe importate (QuoteAttributeResolver): codice non
       applicabile, valore non valido per il tipo, utente non migrato -> valore saltato con warning, l'offerta si
-      importa comunque. Esclusi: note libere (F-1), card 16 (F-3), allegati (F-7), `orderisos` (commesse). Sedi ISO
+      importa comunque. Esclusi: note libere (F-1; vanno sulle note generali dell'opportunita', G-19), card 16 (F-3), allegati (F-7), `orderisos` (commesse). Sedi ISO
       (F-8): righe di `pre_info_iso_addresses` dell'opportunita', indirizzo ricostruito da `company_addresses`.
   </context>
 
@@ -146,12 +162,15 @@
         quote_product_category_ids:int[] (services.category_service distinti dei prodotti delle righe delle offerte, G-12),
         start_date:?date (date_start), expected_close_date:?date (data_chiusura_stimata ?? date_end),
         estimated_value:?number (value ?? valore_stimato), notes:?string (colonna note),
-        reserved_notes:?string, status:?int (fase legacy), status_label:?string, created_at, updated_at }
+        reserved_notes:?string, preliminary_info_notes:{card:string, note:string}[] (G-19),
+        status:?int (fase legacy), status_label:?string, created_at, updated_at }
     </shape>
     <shape name="GET migration/quotes">
       Solo offerte la cui opportunita' e' esportata (G-1).
       { id:int, opportunity_id:int, title:?string, description:?string, quote_date:?date (datequotation),
-        status:int (status_quotation), accepted_at:?date (accepted_data), validated_at:?date (validated_data),
+        status:int (status_quotation), opportunity_phase:?int (opportunities.status, G-18),
+        won_by_other_quote:bool (altra offerta dell'opportunita' con status 1,2,3,4,8, G-18),
+        accepted_at:?date (accepted_data), validated_at:?date (validated_data),
         declined_at:?date, renewal_date:?date, commercial_referent_id:?int (agent_id),
         reporter_referent_id:?int (signaler_id), supervisor_user_id:?int, manager_user_ids:int[] (gestori
         dell'opportunita' come in migration/opportunities, poi assigned_to, assigned2_to; distinti, max 12, G-16),
@@ -223,5 +242,10 @@
     <ac id="AC-012">Anagrafica: `tag_ids` rimappati via `old_id` dei tag (dipendenza opzionale `tags`) e scritti nel
       campo personalizzato `registries.tags` (relation many -> tags, template cliente); tag non migrato -> warning;
       campo non definito -> anagrafica creata senza tag e warning (decisione utente 2026-10-12).</ac>
+    <ac id="AC-013">Offerta Presentata: stato secondo la fase dell'opportunita' legacy (G-18); offerta chiusa senza
+      righe migrate chiusa comunque con warning (G-6); `quotes:realign-legacy-status` riallinea le offerte gia'
+      importate rimaste sullo stato `open` e mai toccate, idempotente, con `--dry-run`.</ac>
+    <ac id="AC-014">Opportunita': note delle card Info preliminari accodate alle note generali (G-19); un rilancio
+      completa quelle gia' importate una sola volta, senza cambiare `updated_at`.</ac>
   </acceptance_criteria>
 </spec>
