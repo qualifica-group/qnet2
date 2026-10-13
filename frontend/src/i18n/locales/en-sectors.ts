@@ -16,7 +16,7 @@ export const sectors = {
   },
   detail: {
     title: 'Sector details',
-    subtitle: 'Read-only view of the selected sector.',
+    subtitle: 'Details of the selected sector, editable in place.',
     loadError: 'Unable to load the sector. Please try again.',
   },
   badges: {
@@ -26,8 +26,6 @@ export const sectors = {
     newSector: 'New sector',
     createTitle: 'Create sector',
     createSubtitle: 'Add a new sector.',
-    editTitle: 'Edit sector',
-    editSubtitle: 'Update the selected sector.',
     code: 'Code',
     codePlaceholder: 'E.g. 01, 07a, NA',
     codeMax: 'Code must be at most 20 characters.',
@@ -55,10 +53,15 @@ export const sectors = {
     deleteError: 'Unable to delete the sector. Please try again.',
     deleteForbidden: 'You cannot delete this sector.',
     deleteInUse: 'This sector has sub-sectors and cannot be deleted.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The sector has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Code, name, parent and status of the sector.',
       },
     },
   },

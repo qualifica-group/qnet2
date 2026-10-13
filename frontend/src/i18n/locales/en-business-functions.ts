@@ -21,22 +21,14 @@ export const businessFunctions = {
   },
   detail: {
     title: 'Business function details',
-    subtitle: 'Read-only view of the selected business function.',
+    subtitle: 'Details of the selected business function, editable in place.',
     loadError: 'Unable to load the business function. Please try again.',
-    name: 'Name',
-    type: 'Type',
-    manager: 'Responsible',
-    users: 'Associated users',
-    parent: 'Parent function',
-    operationalSites: 'Operational sites',
     created_at: 'Created at',
   },
   form: {
     newBusinessFunction: 'New business function',
     createTitle: 'Create business function',
     createSubtitle: 'Add a new business function to your organization.',
-    editTitle: 'Edit business function',
-    editSubtitle: 'Update the selected business function.',
     name: 'Name',
     manager: 'Responsible',
     managerPlaceholder: 'Select a responsible…',
@@ -74,18 +66,21 @@ export const businessFunctions = {
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the business function. Please try again.',
     deleteForbidden: 'You cannot delete this business function.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The business function has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name and type of the business function.',
       },
       assignment: {
         title: 'Assignment',
-        description: 'Responsible and associated users.',
       },
       locations: {
         title: 'Operational sites',
-        description: 'Physical sites where this business function operates.',
       },
     },
   },

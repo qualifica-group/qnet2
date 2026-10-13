@@ -29,9 +29,10 @@ interface UseSectorFormArgs {
 }
 
 /**
- * Owns every non-render concern of `SectorForm`: RHF/Zod wiring, default
- * values, server 422 mapping and the create/update submit. The component
- * stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * Owns every non-render concern of the sector form: RHF/Zod wiring, default
+ * values, server 422 mapping and the create/update submit. Create backs
+ * `SectorForm`; edit backs the detail's in-place rows (diff PATCH). The
+ * component stays UI-only; this hook is the orchestration point (`onSubmit`).
  */
 export function useSectorForm({ mode, onSuccess }: UseSectorFormArgs) {
   const { t } = useTranslation()
@@ -41,7 +42,7 @@ export function useSectorForm({ mode, onSuccess }: UseSectorFormArgs) {
   const isEdit = mode.type === 'edit'
 
   // Custom fields (spec 0021): the single reusable integration — builds the
-  // dynamic schema, defaults and 422 paths; `<CustomFieldsSection>` renders.
+  // dynamic schema, defaults and 422 paths; the record sections render.
   const customFields = useCustomFieldsForm(
     'sectors',
     mode.type === 'edit'
@@ -70,15 +71,19 @@ export function useSectorForm({ mode, onSuccess }: UseSectorFormArgs) {
     return {
       code: '',
       name: '',
-      parent_id: mode.parentId,
+      parent_id: null,
       is_active: true,
       custom_fields: customFields.defaultValues,
     }
   }, [mode, customFields.defaultValues])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<SectorFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: SectorFormValues) => {
@@ -110,8 +115,8 @@ export function useSectorForm({ mode, onSuccess }: UseSectorFormArgs) {
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

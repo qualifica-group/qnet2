@@ -6,7 +6,11 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createReferentType, updateReferentType } from '@/features/referent-types/api'
+import {
+  createReferentType,
+  referentTypeDetailQueryKey,
+  updateReferentType,
+} from '@/features/referent-types/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -35,9 +39,11 @@ interface UseReferentTypeFormArgs {
 }
 
 /**
- * Owns every non-render concern of `ReferentTypeForm`: RHF/Zod wiring,
- * default values, server 422 mapping and the create/update submit. The
- * component stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * Owns every non-render concern of the referent-type form: RHF/Zod wiring,
+ * default values, server 422 mapping and the create/update submit. Create
+ * backs `ReferentTypeForm`; edit backs the detail's in-place rows (diff
+ * PATCH). The component stays UI-only; this hook is the orchestration point
+ * (`onSubmit`).
  */
 export function useReferentTypeForm({ mode, onSuccess }: UseReferentTypeFormArgs) {
   const { t } = useTranslation()
@@ -47,7 +53,7 @@ export function useReferentTypeForm({ mode, onSuccess }: UseReferentTypeFormArgs
   const isEdit = mode.type === 'edit'
 
   // Custom fields (spec 0021): the single reusable integration — builds the
-  // dynamic schema, defaults and 422 paths; `<CustomFieldsSection>` renders.
+  // dynamic schema, defaults and 422 paths; the record sections render.
   const customFields = useCustomFieldsForm(
     'referent-types',
     mode.type === 'edit'
@@ -70,9 +76,13 @@ export function useReferentTypeForm({ mode, onSuccess }: UseReferentTypeFormArgs
     return { name: '', custom_fields: customFields.defaultValues }
   }, [mode, customFields.defaultValues])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<ReferentTypeFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: ReferentTypeFormValues) => {
@@ -87,7 +97,7 @@ export function useReferentTypeForm({ mode, onSuccess }: UseReferentTypeFormArgs
           mode.referentType.id,
           buildUpdatePayload(values, mode.referentType),
         )
-        queryClient.setQueryData(['referent-types', 'detail', mode.referentType.id], saved)
+        queryClient.setQueryData(referentTypeDetailQueryKey(mode.referentType.id), saved)
         toast.success(t('referentTypes.form.updated'))
         onSuccess(saved)
         return
@@ -105,8 +115,8 @@ export function useReferentTypeForm({ mode, onSuccess }: UseReferentTypeFormArgs
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

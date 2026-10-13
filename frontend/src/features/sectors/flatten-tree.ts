@@ -56,6 +56,20 @@ export function findInactiveAncestor(
   return visit(nodes, null) ?? null
 }
 
+/** The name of the sector `id` in the tree, `null` when it is not there (not loaded yet, or deleted). */
+export function findSectorName(nodes: SectorTreeNode[], id: number): string | null {
+  for (const node of nodes) {
+    if (node.id === id) {
+      return node.name
+    }
+    const found = findSectorName(node.children, id)
+    if (found !== null) {
+      return found
+    }
+  }
+  return null
+}
+
 /** Collects every descendant id of `nodeId` (inclusive), used to forbid picking a cyclic parent client-side. */
 export function collectSubtreeIds(nodes: SectorTreeNode[], nodeId: number): Set<number> {
   const ids = new Set<number>()

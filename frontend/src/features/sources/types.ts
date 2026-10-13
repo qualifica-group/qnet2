@@ -46,7 +46,7 @@ export interface CreateSourcePayload {
 export type UpdateSourcePayload = Partial<CreateSourcePayload>
 
 /**
- * Discriminated form mode shared by the form hook/meta-resolver and the
+ * Discriminated form mode shared by the form hook and the
  * `SourceForm` component (mirrors `ReferentTypeFormMode`).
  */
 export type SourceFormMode =

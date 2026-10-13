@@ -16,7 +16,7 @@ export const sectors = {
   },
   detail: {
     title: 'Dettagli settore',
-    subtitle: 'Vista di sola lettura del settore selezionato.',
+    subtitle: 'Dettaglio del settore selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare il settore. Riprova.',
   },
   badges: {
@@ -26,8 +26,6 @@ export const sectors = {
     newSector: 'Nuovo settore',
     createTitle: 'Crea settore',
     createSubtitle: 'Aggiungi un nuovo settore.',
-    editTitle: 'Modifica settore',
-    editSubtitle: 'Aggiorna il settore selezionato.',
     code: 'Codice',
     codePlaceholder: 'Es. 01, 07a, NA',
     codeMax: 'Il codice deve avere al massimo 20 caratteri.',
@@ -55,10 +53,15 @@ export const sectors = {
     deleteError: 'Impossibile eliminare il settore. Riprova.',
     deleteForbidden: 'Non puoi eliminare questo settore.',
     deleteInUse: 'Questo settore ha sotto-settori e non può essere eliminato.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il settore non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Codice, nome, padre e stato del settore.',
       },
     },
   },

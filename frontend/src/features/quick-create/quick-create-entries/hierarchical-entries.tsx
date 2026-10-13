@@ -19,7 +19,6 @@ const sectors: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <SectorForm
-          mode={{ type: 'create', parentId: null }}
           onSuccess={(sector) => onSuccess({ id: sector.id, name: sector.name })}
           onCancel={onCancel}
         />

@@ -95,14 +95,7 @@ export interface CreateBusinessFunctionPayload {
  */
 export type UpdateBusinessFunctionPayload = Partial<CreateBusinessFunctionPayload>
 
-/**
- * Discriminated form mode shared by the form hook/meta-resolver and the
- * (owned elsewhere) `BusinessFunctionForm` component. Defined here — rather
- * than re-exported from a `business-function-form.tsx` module, as the
- * `users`/`roles` convention does — because this microtask's ownership is
- * split across teammates and the form component does not exist yet; the form
- * component imports this type from here instead.
- */
+/** Discriminated form mode: create (a blank draft) or edit (the detail's in-place rows). */
 export type BusinessFunctionFormMode =
   | { type: 'create' }
   | { type: 'edit'; businessFunction: BusinessFunctionDetailWithPermissions }

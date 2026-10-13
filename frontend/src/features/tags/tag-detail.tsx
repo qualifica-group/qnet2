@@ -1,46 +1,89 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tag as TagIcon } from 'lucide-react'
 import { DetailMonogram } from '@/components/detail/detail-panel'
-import { RecordCanvas, RecordCardHeader, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
+import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
+import { RecordCanvas, RecordCardHeader, RecordMeta } from '@/components/detail/record-panel'
+import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
+import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { TagSections } from '@/features/tags/tag-rows'
+import { useTagForm, type TagFormValues } from '@/features/tags/use-tag-form'
+import type { TagDetailWithPermissions, TagFormMode } from '@/features/tags/types'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import type { TagDetailWithPermissions } from '@/features/tags/types'
+
+const NO_CUSTOM_FIELDS = {}
 
 interface TagDetailViewProps {
   tag: TagDetailWithPermissions
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the record (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single tag, rendered as an enterprise-CRM record
- * (Opportunita' reference layout): the identity card on the left, the
- * activity card on the right, a metadata footer. A tag has no field beyond
- * its name, so the record card carries no `RecordSection`.
+ * Detail of a single tag on the record kit: identity band, the "Dettagli"
+ * row and the custom fields, the activity in the side column, a metadata
+ * footer. There is no edit page (wave 3 of the "no edit pages" plan): every
+ * row edits IN PLACE, one at a time, each save a PATCH of that field alone.
  */
-export function TagDetailView({ tag, onEdit }: TagDetailViewProps) {
+export function TagDetailView(props: TagDetailViewProps) {
+  // The rows read the field permissions, so the provider wraps the whole detail.
+  return (
+    <ResourcePermissionsProvider permissions={props.tag.permissions}>
+      <TagDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function TagDetailContent({ tag, onChanged }: TagDetailViewProps) {
   const { t } = useTranslation()
-  const canEdit = tag.permissions.resource.update
+  const editing = useInlineEditingField()
+  // Stable per saved record: the form re-syncs its values on a new one.
+  const mode = useMemo<TagFormMode>(() => ({ type: 'edit', tag }), [tag])
+  const { form, onSubmit, serverError, clearServerError } = useTagForm({
+    mode,
+    onSuccess: () => {
+      editing.close()
+      onChanged?.()
+    },
+  })
+  const inline = useRecordInlineEdit<TagFormValues>({
+    editing,
+    form,
+    onSubmit,
+    serverError,
+    clearServerError,
+    genericErrorMessage: t('tags.form.genericError'),
+  })
   const createdAt = formatDateTime(tag.created_at)
-  const canViewActivity = tag.permissions.actions.view_activity
+  const tabs: RecordCollaborationTab[] = tag.permissions.actions.view_activity
+    ? [activityLogTab('tags', tag.id, t('activityLog.title'))]
+    : []
 
   return (
     <RecordCanvas>
       <RecordBody
-        collaborationTabs={canViewActivity ? [activityLogTab('tags', tag.id, t('activityLog.title'))] : []}
+        collaborationTabs={tabs}
         header={
           <RecordCardHeader
-            media={
-              <DetailMonogram name={tag.name} icon={<TagIcon />} className="size-10 text-base [&>svg]:size-5" />
-            }
+            media={<DetailMonogram name={tag.name} icon={<TagIcon />} />}
             title={tag.name}
             legacyId={tag.old_id}
-            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
         }
-      />
+      >
+        {/* Provider only (no DOM): the in-place rows share the edit form. */}
+        <Form {...form}>
+          <TagSections
+            form={form}
+            inline={inline}
+            canEdit={tag.permissions.resource.update}
+            customFieldValues={tag.custom_fields ?? NO_CUSTOM_FIELDS}
+          />
+        </Form>
+      </RecordBody>
 
       {createdAt ? (
         <RecordMeta>

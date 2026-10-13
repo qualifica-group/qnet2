@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- registry adapter: components + moduleScreen descriptor colocated by design (spec 0042) */
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
-import { fetchReferentType } from '@/features/referent-types/api'
+import { fetchReferentType, referentTypeDetailQueryKey } from '@/features/referent-types/api'
 import { ReferentTypeForm } from '@/features/referent-types/referent-type-form'
 import { ReferentTypeDetailView } from '@/features/referent-types/referent-type-detail'
+import { useFormLeaveGuard } from '@/features/modules/use-form-leave-guard'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import type {
   ModuleDetailScreenProps,
@@ -15,19 +15,13 @@ import type {
 } from '@/features/modules/types'
 import type { ReferentTypeDetail } from '@/features/referent-types/types'
 
-/** Query key for a single referent type's detail (fresh-on-open pattern). Same shape used by `use-referent-type-form.ts`'s own cache write. */
-function detailQueryKey(id: number) {
-  return ['referent-types', 'detail', id] as const
-}
-
 /**
  * Content-only `referent-types` screens for the module registry (spec 0042):
- * fetch + the existing presentational view/form, no page chrome. Reused
- * as-is by the modal Sheet (`useModuleOpener`) and by the generic dedicated
- * pages (`ModuleDetailPage`/`ModuleFormPage`). Moved verbatim from
- * `ReferentTypesTable`'s inline loaders, which the rewire removed.
+ * fetch + the presentational view/form, no page chrome. The detail edits its
+ * rows in place, so `onEdit` is never used; each save reports through
+ * `onChanged`.
  */
-export function ReferentTypeDetailScreen({ id, onEdit }: ModuleDetailScreenProps) {
+export function ReferentTypeDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
   const { t } = useTranslation()
   const {
     data: referentType,
@@ -35,7 +29,7 @@ export function ReferentTypeDetailScreen({ id, onEdit }: ModuleDetailScreenProps
     isError,
     error,
     refetch,
-  } = useEntityDetail(detailQueryKey(id), () => fetchReferentType(id))
+  } = useEntityDetail(referentTypeDetailQueryKey(id), () => fetchReferentType(id))
 
   if (isError) {
     return (
@@ -52,80 +46,49 @@ export function ReferentTypeDetailScreen({ id, onEdit }: ModuleDetailScreenProps
     return <DetailLoading />
   }
 
-  return <ReferentTypeDetailView referentType={referentType} onEdit={onEdit} />
-}
-
-export function ReferentTypeFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
-  const queryClient = useQueryClient()
-
-  const handleSuccess = (saved: ReferentTypeDetail) => {
-    queryClient.invalidateQueries({ queryKey: detailQueryKey(saved.id) })
-    onSuccess(saved.id)
-  }
-
-  if (mode.type === 'create') {
-    return (
-      <ReferentTypeForm mode={{ type: 'create' }} onSuccess={handleSuccess} onCancel={onCancel} />
-    )
-  }
-
-  return (
-    <ReferentTypeEditScreen
-      referentTypeId={mode.id}
-      onSuccess={handleSuccess}
-      onCancel={onCancel}
-    />
-  )
-}
-
-interface ReferentTypeEditScreenProps {
-  referentTypeId: number
-  onSuccess: (referentType: ReferentTypeDetail) => void
-  onCancel: () => void
+  return <ReferentTypeDetailView referentType={referentType} onChanged={onChanged} />
 }
 
 /**
- * Fetches the fresh, re-authorized referent-type detail before mounting the
- * edit form, so the partial PATCH starts from authoritative values rather
- * than a stale snapshot.
+ * Create only: there is no edit form, and the registry generates no
+ * `:id/edit` route. Leaving a referent type being created — Cancel, the Sheet's
+ * X/overlay/Esc, a link, a reload — always asks first.
  */
-function ReferentTypeEditScreen({ referentTypeId, onSuccess, onCancel }: ReferentTypeEditScreenProps) {
+export function ReferentTypeFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
   const { t } = useTranslation()
-  const {
-    data: referentType,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useEntityDetail(detailQueryKey(referentTypeId), () => fetchReferentType(referentTypeId))
+  const queryClient = useQueryClient()
+  const leaveGuard = useFormLeaveGuard({
+    title: t('referentTypes.form.leaveConfirm.title'),
+    description: t('referentTypes.form.leaveConfirm.description'),
+    confirmLabel: t('referentTypes.form.leaveConfirm.confirm'),
+    cancelLabel: t('referentTypes.form.leaveConfirm.cancel'),
+    tone: 'warning',
+  })
 
-  if (isError) {
-    return (
-      <DetailError
-        error={error}
-        message={t('referentTypes.detail.loadError')}
-        retryLabel={t('common.retry')}
-        onRetry={() => refetch()}
-      />
-    )
+  if (mode.type !== 'create') {
+    return null
   }
 
-  if (isLoading || !referentType) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    )
+  const handleSuccess = (saved: ReferentTypeDetail) => {
+    queryClient.invalidateQueries({ queryKey: referentTypeDetailQueryKey(saved.id) })
+    // Saved: the navigation to the new record's detail is no "leaving".
+    leaveGuard.allowLeave()
+    onSuccess(saved.id)
+  }
+
+  const handleCancel = () => {
+    void leaveGuard.confirmLeave().then((leave) => {
+      if (leave) {
+        onCancel()
+      }
+    })
   }
 
   return (
-    <ReferentTypeForm
-      mode={{ type: 'edit', referentType }}
-      onSuccess={onSuccess}
-      onCancel={onCancel}
-    />
+    <>
+      {leaveGuard.navigationGuard}
+      <ReferentTypeForm onSuccess={handleSuccess} onCancel={handleCancel} />
+    </>
   )
 }
 
@@ -137,8 +100,10 @@ export const moduleScreen: ModuleRegistryEntry = {
   labelKey: 'navigation.referentTypes',
   DetailScreen: ReferentTypeDetailScreen,
   FormScreen: ReferentTypeFormScreen,
-  // The record card renders its own Edit action, so the generic page header
-  // must not stack a second button — the same registration Opportunita',
-  // Utenti and Lead carry.
+  // The detail IS the edit form: no edit route, no Edit button.
+  generateEditRoute: false,
   detailOwnsEditAction: true,
+  // The form renders its own identity band (title + actions on one row), so
+  // the hosts must not stack a second heading above it.
+  formOwnsHeader: true,
 }

@@ -15,7 +15,7 @@ export const tags = {
   },
   detail: {
     title: 'Tag details',
-    subtitle: 'Read-only view of the selected tag.',
+    subtitle: 'Details of the selected tag, editable in place.',
     loadError: 'Unable to load the tag. Please try again.',
     created_at: 'Created at',
   },
@@ -23,8 +23,6 @@ export const tags = {
     newTag: 'New tag',
     createTitle: 'Create tag',
     createSubtitle: 'Add a new tag to your organization.',
-    editTitle: 'Edit tag',
-    editSubtitle: 'Update the selected tag.',
     name: 'Name',
     save: 'Save',
     saving: 'Saving…',
@@ -38,10 +36,15 @@ export const tags = {
     deleteError: 'Unable to delete the tag. Please try again.',
     deleteForbidden: 'You cannot delete this tag.',
     deleteInUse: 'Cannot delete: the tag is attached to at least one record.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The tag has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name of the tag.',
       },
     },
   },

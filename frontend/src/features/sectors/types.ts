@@ -61,11 +61,7 @@ export interface CreateSectorPayload {
 /** Payload for PATCH /sectors/{id} (partial update). */
 export type UpdateSectorPayload = Partial<CreateSectorPayload>
 
-/**
- * Discriminated form mode. Create optionally pre-selects a parent (an
- * "add sub-sector" affordance on a given tree node, mirrors
- * `ProductCategoryFormMode`).
- */
+/** Discriminated form mode: create (a blank draft) or edit (the detail's in-place rows). */
 export type SectorFormMode =
-  | { type: 'create'; parentId: number | null }
+  | { type: 'create' }
   | { type: 'edit'; sector: SectorDetailWithPermissions }

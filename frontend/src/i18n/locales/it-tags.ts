@@ -15,7 +15,7 @@ export const tags = {
   },
   detail: {
     title: 'Dettaglio tag',
-    subtitle: 'Visualizzazione in sola lettura del tag selezionato.',
+    subtitle: 'Dettaglio del tag selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare il tag. Riprova.',
     created_at: 'Creato il',
   },
@@ -23,8 +23,6 @@ export const tags = {
     newTag: 'Nuovo tag',
     createTitle: 'Crea tag',
     createSubtitle: 'Aggiungi un nuovo tag alla tua organizzazione.',
-    editTitle: 'Modifica tag',
-    editSubtitle: 'Aggiorna il tag selezionato.',
     name: 'Nome',
     save: 'Salva',
     saving: 'Salvataggio…',
@@ -38,10 +36,15 @@ export const tags = {
     deleteError: 'Impossibile eliminare il tag. Riprova.',
     deleteForbidden: 'Non puoi eliminare questo tag.',
     deleteInUse: 'Impossibile eliminare: il tag è associato ad almeno un record.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il tag non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
-        description: 'Nome del tag.',
       },
     },
   },

@@ -14,7 +14,7 @@ export const sources = {
   },
   detail: {
     title: 'Source details',
-    subtitle: 'Read-only view of the selected source.',
+    subtitle: 'Details of the selected source, editable in place.',
     loadError: 'Unable to load the source. Please try again.',
     created_at: 'Created at',
   },
@@ -22,8 +22,6 @@ export const sources = {
     newSource: 'New source',
     createTitle: 'Create source',
     createSubtitle: 'Add a new source to your organization.',
-    editTitle: 'Edit source',
-    editSubtitle: 'Update the selected source.',
     name: 'Name',
     save: 'Save',
     saving: 'Saving…',
@@ -36,10 +34,15 @@ export const sources = {
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the source. Please try again.',
     deleteForbidden: 'You cannot delete this source.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The source has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name of the source.',
       },
     },
   },

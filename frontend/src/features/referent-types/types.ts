@@ -46,7 +46,7 @@ export interface CreateReferentTypePayload {
 export type UpdateReferentTypePayload = Partial<CreateReferentTypePayload>
 
 /**
- * Discriminated form mode shared by the form hook/meta-resolver and the
+ * Discriminated form mode shared by the form hook and the
  * `ReferentTypeForm` component (mirrors `BusinessFunctionFormMode`).
  */
 export type ReferentTypeFormMode =

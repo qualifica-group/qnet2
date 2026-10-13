@@ -88,7 +88,7 @@ export const referentTypes = {
   },
   detail: {
     title: 'Referent type details',
-    subtitle: 'Read-only view of the selected referent type.',
+    subtitle: 'Details of the selected referent type, editable in place.',
     loadError: 'Unable to load the referent type. Please try again.',
     created_at: 'Created at',
   },
@@ -96,8 +96,6 @@ export const referentTypes = {
     newReferentType: 'New referent type',
     createTitle: 'Create referent type',
     createSubtitle: 'Add a new referent type to your organization.',
-    editTitle: 'Edit referent type',
-    editSubtitle: 'Update the selected referent type.',
     name: 'Name',
     save: 'Save',
     saving: 'Saving…',
@@ -110,10 +108,15 @@ export const referentTypes = {
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the referent type. Please try again.',
     deleteForbidden: 'You cannot delete this referent type.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The referent type has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
-        description: 'Name of the referent type.',
       },
     },
   },

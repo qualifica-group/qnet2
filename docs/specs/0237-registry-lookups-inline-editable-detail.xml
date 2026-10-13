@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0237-registry-lookups-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Onda 3 del piano "nessuna pagina di modifica" (kit condiviso: spec 0233): Tipi referente, Fonti, Tag, Settori e
+    Funzioni aziendali perdono la pagina di modifica. Il dettaglio modifica sul posto, riga per riga; la creazione e'
+    la replica del dettaglio a righe chiuse.
+  </goal>
+
+  <context>
+    - D-1: stesso contratto per modulo della 0233 D-2 (`api.update*` col dettaglio CON `permissions`, query key del
+      dettaglio esportata, hook del form in edit con `values` + `keepDirtyValues` e `clearServerError`, dettaglio =
+      provider + Form + righe del kit, creazione = `RecordCreateLayout` + `useDraftInlineEdit`, form wrapper solo
+      creazione via `useResourceMeta`, via i `use-*-form-meta.ts`, screens con `generateEditRoute: false`,
+      `detailOwnsEditAction: true`, `formOwnsHeader: true`, `useFormLeaveGuard` + i18n `form.leaveConfirm.*`).
+    - D-2: Tipi referente, Fonti, Tag: riga Nome + le sezioni dei campi personalizzati (`CustomFieldRecordSections`).
+    - D-3: Settori: righe Codice, Nome, Padre (albero dei settori, con l'esclusione del sotto-albero del settore
+      modificato), Attivo (con l'avviso dell'antenato non attivo, spec 0212) + campi personalizzati. Il form di
+      creazione non riceve piu' `mode`: parte sempre senza padre.
+    - D-4: Funzioni aziendali: righe Nome, Tipo, Padre, Responsabile, Utenti associati, Sedi operative (ognuna col
+      suo picker esistente, le liste sincronizzate per intero) + campi personalizzati. I nomi delle relazioni nelle
+      righe chiuse arrivano dal record (dettaglio) o da `useForSelectLabels` (bozza di creazione).
+    - D-5: backend invariato.
+  </context>
+
+  <acceptance>
+    <ac id="AC-001">Per ciascun modulo: nessuna rotta `:id/edit` ne' pulsante Modifica; ogni riga salva solo il proprio
+      campo; Annulla non chiama; 422 sulla riga; senza `update` nessuna matita.</ac>
+    <ac id="AC-002">Creazione a righe chiuse con Fatto/Ripristina; Salva valida tutto; uscita con conferma.</ac>
+    <ac id="AC-003">Guide in-app IT/EN (`referent-types`, `sources`, `tags`, `sectors`, `business-functions`) aggiornate.</ac>
+  </acceptance>
+</spec>

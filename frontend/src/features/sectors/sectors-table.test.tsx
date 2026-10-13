@@ -161,16 +161,16 @@ describe('SectorsTable — adapter (AC-020)', () => {
     expect(await screen.findAllByText('Applications')).not.toHaveLength(0)
   })
 
-  it('ignores the retired edit row action and opens the edit sheet from the detail Edit button', async () => {
+  it('ignores the retired edit row action; the detail has no Edit button and edits in place (spec 0237)', async () => {
     renderTable()
 
     fireEvent.click(screen.getByText('trigger-edit'))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('trigger-view'))
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
 
-    expect(await screen.findByText('Edit sector')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Edit Name$/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
   })
 
   it('deletes the row, refreshes the grid and shows a success toast', async () => {

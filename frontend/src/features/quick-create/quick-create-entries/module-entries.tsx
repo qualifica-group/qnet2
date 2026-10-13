@@ -29,7 +29,6 @@ const sources: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <SourceForm
-          mode={{ type: 'create' }}
           onSuccess={(source) => onSuccess({ id: source.id, name: source.name })}
           onCancel={onCancel}
         />
@@ -64,7 +63,6 @@ const referentTypes: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <ReferentTypeForm
-          mode={{ type: 'create' }}
           onSuccess={(referentType) => onSuccess({ id: referentType.id, name: referentType.name })}
           onCancel={onCancel}
         />
@@ -82,7 +80,6 @@ const businessFunctions: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <BusinessFunctionForm
-          mode={{ type: 'create' }}
           onSuccess={(businessFunction) => onSuccess({ id: businessFunction.id, name: businessFunction.name })}
           onCancel={onCancel}
         />
@@ -168,7 +165,6 @@ const tags: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <TagForm
-          mode={{ type: 'create' }}
           onSuccess={(tag) => onSuccess({ id: tag.id, name: tag.name })}
           onCancel={onCancel}
         />
