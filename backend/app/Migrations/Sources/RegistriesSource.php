@@ -2,6 +2,8 @@
 
 namespace App\Migrations\Sources;
 
+use App\CustomFields\CustomFieldProvider;
+use App\CustomFields\CustomFieldWriter;
 use App\DataObjects\Registries\CreateRegistryData;
 use App\Enums\AgreementStatusEnum;
 use App\Enums\SizeClassEnum;
@@ -18,6 +20,7 @@ use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Sector;
 use App\Models\Source;
+use App\Models\Tag;
 use App\Models\User;
 use App\Services\RegistryService;
 use App\Support\ManagerPositions;
@@ -31,18 +34,24 @@ use RuntimeException;
  * addresses via MapsLegacyRegistryProfile (G-11). Supervisor and managers are
  * written AFTER the create, never passed to the service, so no assignment
  * notification is sent (G-2); the whole row runs with the activity log off
- * (G-3).
+ * (G-3). The legacy `company_tags` land in the `tags` custom field (a relation
+ * many -> tags provisioned by the client template), the only place a registry
+ * keeps its tags.
  */
 class RegistriesSource extends AbstractMigrationSource
 {
     use MapsLegacyOperationalRecord;
     use MapsLegacyRegistryProfile;
 
+    private const string TAGS_CUSTOM_FIELD = 'tags';
+
     public function __construct(
         ExternalApiClient $client,
         private readonly RegistryService $service,
         private readonly MigrationGeoResolver $geoResolver,
         private readonly PersonNameSplitter $nameSplitter,
+        private readonly CustomFieldProvider $customFields,
+        private readonly CustomFieldWriter $customFieldWriter,
     ) {
         parent::__construct($client);
     }
@@ -67,6 +76,7 @@ class RegistriesSource extends AbstractMigrationSource
             MigrationDependency::optional('referents'),
             MigrationDependency::optional('sources'),
             MigrationDependency::optional('sectors'),
+            MigrationDependency::optional('tags'),
         ];
     }
 
@@ -92,6 +102,7 @@ class RegistriesSource extends AbstractMigrationSource
             ['id' => 'source_label', 'label' => 'Source', 'type' => 'string'],
             ['id' => 'sectors', 'label' => 'Sectors', 'type' => 'string'],
             ['id' => 'manager_user_ids', 'label' => 'Managers (external ids)', 'type' => 'string'],
+            ['id' => 'tag_ids', 'label' => 'Tags (external ids)', 'type' => 'string'],
             ['id' => 'email', 'label' => 'Email', 'type' => 'string'],
             ['id' => 'phone', 'label' => 'Phone', 'type' => 'string'],
             ['id' => 'city', 'label' => 'City', 'type' => 'string'],
@@ -152,6 +163,9 @@ class RegistriesSource extends AbstractMigrationSource
             'supervisor_id' => $this->remapLegacyId(User::class, $record['supervisor_user_id'] ?? null, 'supervisor_user_id', $warnings),
         ]);
 
+        // Step 5: the legacy tags, into the tags custom field.
+        $this->writeTags($registry, $record['tag_ids'] ?? [], $warnings);
+
         return MigrationRowOutcome::created($warnings, $registry);
     }
 
@@ -177,6 +191,30 @@ class RegistriesSource extends AbstractMigrationSource
             sizeClass: $this->enumValue(SizeClassEnum::class, $record['size_class'] ?? null, 'size_class', $warnings),
             employeeCount: $this->blankToInt($record['employee_count'] ?? null),
         );
+    }
+
+    /**
+     * Remapped tag ids written to the `tags` custom field. Without that
+     * definition (client template not seeded) the tags are reported, never
+     * silently dropped.
+     *
+     * @param  array<int, string>  $warnings
+     */
+    private function writeTags(Registry $registry, mixed $externalTagIds, array &$warnings): void
+    {
+        $tagIds = $this->remapLegacyIds(Tag::class, $externalTagIds, 'tag_ids', $warnings);
+
+        if ($tagIds === []) {
+            return;
+        }
+
+        if ($this->customFields->definitionsFor($this->key())->doesntContain('key', self::TAGS_CUSTOM_FIELD)) {
+            $warnings[] = 'Tags not imported: the registries "'.self::TAGS_CUSTOM_FIELD.'" custom field is not defined.';
+
+            return;
+        }
+
+        $this->customFieldWriter->write($registry, $this->key(), [self::TAGS_CUSTOM_FIELD => $tagIds]);
     }
 
     /**

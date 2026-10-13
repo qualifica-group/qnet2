@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## "NO CATEGORIA" HA LA FUNZIONE AZIENDALE "NO FUNZIONE AZIENDALE" (2026-10-12) — VERDE, NON COMMITTATO
+
+- Causa: run quotes #37 = 348 offerte fallite, tutte per `OpportunityProductLineCoverage::ensure()` ("has no business
+  function"): righe ricavo su prodotti in "No categoria" (24 prodotti, soprattutto sconti), radice senza funzione.
+- Decisione utente: "No categoria" ha la funzione aziendale "No funzione aziendale". `QualificaBusinessFunctionLinkSeeder`:
+  nuova funzione propria (`OWN_FUNCTIONS`, costante `UNCATEGORIZED_FUNCTION`) + link
+  `ProductsSource::UNCATEGORIZED_CATEGORY` => essa. Docblock `QualificaCatalogSeeder` allineato.
+- Test (requisito cambiato): `QualificaBusinessFunctionLinkSeederTest` elenco funzioni/categorie collegate + nuovo caso
+  "No categoria" (9/9). Suite Pest completa 9991/9995 (solo i 3 `QuoteDocumentPdfTest`, LibreOffice assente).
+  Vitest help+migrations 145. `tsc -b` rosso SOLO su `task-priorities` (refactor in corso di un'altra sessione).
+- DB locale: seeder eseguito (funzione #30). Dry-run delle 348 offerte (transazione annullata): 348/348 ok. Da fare:
+  rilanciare l'import "quotes" da /migrations.
+- Manuale: guida `migrations` IT/EN + paragrafo "No categoria" del manuale Claude Docs.
+
 ## CAMPI FLESSIBILI OFFERTE LEGACY = INFO PRELIMINARI DELL'OPPORTUNITA' (spec 0189 G-17, 2026-10-12) — VERDE, COMMITTATO
 
 - Decisione utente: i valori `pre_info_*` (sull'opportunita' legacy) vanno sull'offerta, nella STESSA migrazione
@@ -144,6 +158,23 @@
 - Fuori scope segnalati: colonna/filtro "Data offerta" nella griglia Offerte e nei documenti; `quotationemployees`
   (80 costi orari); 498 provvigioni legacy con valore ma senza destinatario (qnet-2 richiede recipient_id).
 
+## MIGRAZIONE ANAGRAFICHE: ANCHE I TAG (spec 0189 AC-012, 2026-10-12) — VERDE, NON COMMITTATO
+
+- Richiesta utente: "in anagrafiche su /migrations devi tirarti anche i tags".
+- Legacy (`/Users/Repository/qnet`, non committato): `RegistryMigrationController` emette `tag_ids:int[]`
+  (`company_tags.tag_id` distinti, solo tag esistenti, ordine `company_tags.id`). Provato sul DB legacy: 6480 righe
+  `company_tags`, 4049 aziende con tag; pagina da 100 -> 5 aziende con tag.
+- qnet-2 `RegistriesSource`: dipendenza opzionale `tags`, colonna anteprima `tag_ids`, Step 5 `writeTags()`: rimappa
+  via `old_id` (`remapLegacyIds`, warning "Unresolved tag_ids (legacy id N).") e scrive `custom_fields.tags` con
+  `CustomFieldWriter::write` (const `TAGS_CUSTOM_FIELD`). Campo `registries.tags` non definito (template
+  `QualificaTemplateSeeder` non eseguito) -> anagrafica creata senza tag + warning. Chiave legacy `tag_ids`, NON
+  `tags`: la seam generica `persistCustomFields` scriverebbe gli id legacy grezzi.
+- Anagrafiche gia' importate: lo skip per `old_id` NON aggiunge i tag a posteriori (serve un re-import pulito o una
+  sorgente "— collega" dedicata, non richiesta).
+- Test: `RegistriesSourceImportTest` +2; Pest `tests/Feature/Migration` 387 pass; Pint ok. Guide in-app migrations
+  IT/EN (Vitest help 115 pass, ESLint ok, `tsc -b --force` pulito). Manuale Claude Docs: nuovo paragrafo sulla
+  sorgente Anagrafiche prima di quello sulle Opportunita'.
+
 ## MODELLI DI TASK MODIFICABILI SUL POSTO + CREAZIONE COME IL DETTAGLIO (spec 0227, 2026-10-12) — VERDE, COMMITTATO (999c63a8)
 
 - Richiesta utente: "committa e passa avanti" (onda 2, dopo Segnatempo). Solo frontend: PATCH /task-templates/{id}
@@ -237,6 +268,28 @@
   7391 test, ESLint, `tsc -b` puliti sui miei file (errori `time-entries` = lavoro in corso di un'altra sessione).
 - Prossimo passo: commit su ordine esplicito; ricordare all'utente di assegnare "ID legacy > Visualizza" ai ruoli
   (dopo `php artisan permissions:sync` in deploy).
+
+## OPPORTUNITA' LEGACY: CATEGORIE DALLE RIGHE DELLE OFFERTE (spec 0189 emendata, G-12, 2026-10-12) — VERDE, NON COMMITTATO
+
+- Problema: 7.711 opportunita' importate su 19.561 senza categorie prodotto (`opportunityservicecategories` vuota
+  nel legacy) -> nessuna funzione aziendale. Richiesta utente: "inseriscilo nelle /migrations e esponilo
+  nell'opportunity del legacy tramite righe prodotto dell'offerta".
+- Legacy (`/Users/Repository/qnet`, non committato): `OpportunityMigrationController` espone
+  `quote_product_category_ids` = `services.category_service` distinti dei prodotti in `quotationservices` delle
+  offerte dell'opportunita' (join su `service_categories`: solo categorie esistenti). Sono categorie foglia
+  (es. 77 Sic_Lavorazione), non la radice: e' quello che fa `OpportunityProductLineCoverage::ensure` in qnet-2.
+- qnet-2 `OpportunitiesSource`: categorie proprie risolte vuote -> `quote_product_category_ids` (`productLines()`).
+  Sul rilancio un'opportunita' gia' importata SENZA righe prodotto viene completata via `ProductLineWriter`
+  (riga skipped + nota "Missing product categories back-filled."); con righe non si tocca; nulla da scrivere ->
+  skip silenzioso. Precedente dello skip "self-healing": `UsersSource::reconcileEmployment`.
+- Nota: il workflow delle offerte gia' importate non cambia (si risolve dalle righe dell'offerta; le righe
+  prodotto dell'opportunita' sono solo il ripiego per offerte senza righe ricavo).
+- Guida in-app `migrations` IT/EN e manuale Claude Docs (paragrafo "La sorgente Opportunita'...") aggiornati.
+- Test: Pest Migration 379 (2 nuovi in `OpportunitiesSourceImportTest`), Vitest help 115, ESLint, Pint,
+  `tsc -b` puliti; legacy `php -l` ok (nessuna suite legacy sui controller di migrazione).
+- DB locale: import "opportunities" rilanciato (run 36: 19.561 skipped, 0 falliti, 6.435 completate con la nota);
+  restano 1.276 opportunita' senza righe prodotto (ne' categorie proprie ne' offerte con prodotti categorizzati).
+- Prossimo passo: commit separati nei due repo (qnet-2 e legacy), su ordine esplicito.
 
 ## PROVINCE COME DESTINAZIONE DEI CAMPI RELAZIONE (spec 0225, 2026-10-12) — VERDE, COMMITTATO
 

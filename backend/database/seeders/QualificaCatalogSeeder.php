@@ -70,11 +70,12 @@ use Illuminate\Database\Seeder;
  *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
  *     category and carrying its own working-state pick list;
  *   - the business function links (spec 0023) of the "Formazione" root, of
- *     the "APL" subcategory and of "Presa Appuntamenti", delegated to
- *     QualificaBusinessFunctionLinkSeeder as the very last step: the first
- *     two functions are imported from the external qnet CRM, not seeded
- *     here, so those links are a documented no-op whenever the import did
- *     not run; "Consulenza" is created by that seeder itself.
+ *     the "APL" subcategory, of "Presa Appuntamenti" and of "No categoria",
+ *     delegated to QualificaBusinessFunctionLinkSeeder as the very last step:
+ *     the first two functions are imported from the external qnet CRM, not
+ *     seeded here, so those links are a documented no-op whenever the import
+ *     did not run; "Consulenza" and "No funzione aziendale" are created by
+ *     that seeder itself.
  *
  * Deliberately separate from QualificaTemplateSeeder, which provisions
  * STRUCTURE ONLY (the custom field definitions) and creates no domain row.
