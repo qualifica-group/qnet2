@@ -33,7 +33,7 @@ export const migrationRequirements = {
   attributes:
     'No prerequisites. An attribute with the same code already in QNet is reused.',
   'product-categories':
-    'Without Business functions the category has no function, with a warning. The parent category is linked automatically at the end of the import and a category with the same name already in QNet is reused. Categories of the legacy APL branch and those of the “FORMAZIONE OLD” and “APL OLD” functions arrive not selectable.',
+    'Without Business functions the category has no function, with a warning. The parent category is linked automatically at the end of the import. Every legacy category is created with the [OLD] prefix, even when QNet already has a category with the same name, and keeps its business function, Formazione and APL included. Categories of the [OLD] APL branch arrive not selectable.',
   'product-category-attributes':
     'Creates no records: it links the attributes to the categories already imported. Links already in QNet are not changed.',
   'attribute-layouts':

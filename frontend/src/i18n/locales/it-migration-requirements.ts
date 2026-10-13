@@ -33,7 +33,7 @@ export const migrationRequirements = {
   attributes:
     'Nessun prerequisito. Un attributo con lo stesso codice già presente in QNet viene riusato.',
   'product-categories':
-    'Senza Funzioni aziendali la categoria resta senza funzione, con un avviso. La categoria padre si collega da sola a fine import e una categoria con lo stesso nome già presente in QNet viene riusata. Le categorie del ramo APL legacy e quelle delle funzioni “FORMAZIONE OLD” e “APL OLD” arrivano non selezionabili.',
+    'Senza Funzioni aziendali la categoria resta senza funzione, con un avviso. La categoria padre si collega da sola a fine import. Ogni categoria legacy viene creata con il prefisso [OLD], anche se in QNet esiste già una categoria con lo stesso nome, e mantiene la sua funzione aziendale, Formazione e APL comprese. Le categorie del ramo [OLD] APL arrivano non selezionabili.',
   'product-category-attributes':
     'Non crea record: collega gli attributi alle categorie già importate. I collegamenti già presenti in QNet non vengono modificati.',
   'attribute-layouts':

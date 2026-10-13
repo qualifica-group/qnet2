@@ -338,13 +338,13 @@ it('REQUIREMENT CHANGED (user directive 2026-10-13): adopts no static root, and 
         ->and($manualApl->parent_id)->toBeNull()
         ->and(ProductCategory::query()->where('parent_id', $manualApl->id)->whereNotNull('old_id')->exists())->toBeFalse()
         // ...its legacy twin is nested under "Consulenza" like every legacy
-        // root (as the FORMAZIONE OLD categories are), history only, on a
-        // function of its own...
+        // root, history only, on the "APL" function as sent (user directive
+        // 2026-10-13: no "APL OLD")...
         ->and($legacyApl->is_active)->toBeFalse()
         ->and($manualApl->is_active)->toBeTrue()
         ->and($legacyApl->old_id)->toEqual(56)
         ->and($legacyApl->parent->name)->toBe('Consulenza')
-        ->and($legacyApl->businessFunction->name)->toBe('APL OLD')
+        ->and($legacyApl->businessFunction->name)->toBe('APL')
         // ...and is never a classification target, unlike the manual one.
         ->and(ProductCategory::query()->whereKey([$legacyApl->id, ...$legacyApl->children()->pluck('id')])->where('is_selectable', true)->exists())->toBeFalse()
         ->and(ProductCategory::query()->where('parent_id', $manualApl->id)->where('is_selectable', false)->exists())->toBeFalse()

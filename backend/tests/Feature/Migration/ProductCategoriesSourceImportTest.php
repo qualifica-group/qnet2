@@ -286,23 +286,21 @@ it('creates the category without a function and warns when the function is not m
 });
 
 // ---------------------------------------------------------------------------
-// Redirected functions — the legacy training tree never lands on "Formazione"
-// (user directive 2026-09-16)
+// Business functions — the legacy training tree stays on "Formazione", no
+// "FORMAZIONE OLD" replacement (user directive 2026-10-13)
 // ---------------------------------------------------------------------------
 
-it('files an imported category on "FORMAZIONE OLD" instead of the "Formazione" function, not selectable', function () {
+it('REQUIREMENT CHANGED (user directive 2026-10-13): files an imported category on the "Formazione" function as sent, with no "FORMAZIONE OLD" replacement', function () {
     seedMigrationsConfig();
     $imported = BusinessFunction::factory()->create(['old_id' => 2, 'name' => 'Formazione']);
-    BusinessFunction::factory()->create(['old_id' => 5, 'name' => 'Consulenza']);
 
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
-                ['id' => 1, 'name' => 'FOR_Corsi', 'parent_id' => null, 'business_function_id' => 2, 'is_selectable' => true],
-                ['id' => 2, 'name' => 'FOR_Classi', 'parent_id' => 1, 'business_function_id' => 2, 'is_selectable' => true],
-                ['id' => 3, 'name' => 'Bandi', 'parent_id' => null, 'business_function_id' => 5, 'is_selectable' => true],
+                ['id' => 1, 'name' => '[OLD] FOR_Corsi', 'parent_id' => null, 'business_function_id' => 2, 'is_selectable' => true],
+                ['id' => 2, 'name' => '[OLD] FOR_Classi', 'parent_id' => 1, 'business_function_id' => 2, 'is_selectable' => true],
             ],
-            'pagination' => ['total' => 3],
+            'pagination' => ['total' => 2],
         ]),
     ]);
 
@@ -311,22 +309,14 @@ it('files an imported category on "FORMAZIONE OLD" instead of the "Formazione" f
 
     runMigrationJobFor($run);
 
-    $replacement = BusinessFunction::query()->where('name', 'FORMAZIONE OLD')->first();
-
-    expect($replacement)->not->toBeNull()
-        // Created by the redirect, not claimed from the legacy catalogue.
-        ->and($replacement->old_id)->toBeNull()
-        ->and($replacement->id)->not->toBe($imported->id)
-        ->and(ProductCategory::query()->where('old_id', 1)->value('business_function_id'))->toBe($replacement->id)
-        // Same redirected function on the child: it inherits, with no mismatch
-        // warning.
+    expect(BusinessFunction::query()->where('name', 'FORMAZIONE OLD')->exists())->toBeFalse()
+        ->and(ProductCategory::query()->where('old_id', 1)->value('business_function_id'))->toBe($imported->id)
+        // Same function on the child: it inherits, with no mismatch warning.
         ->and(ProductCategory::query()->where('old_id', 2)->value('business_function_id'))->toBeNull()
         ->and($run->fresh()->report)->toBeNull()
-        // On an "OLD" function, own or inherited: never a classification
-        // target (user directive 2026-10-05). Any other function: as imported.
-        ->and(ProductCategory::query()->where('old_id', 1)->value('is_selectable'))->toBeFalsy()
-        ->and(ProductCategory::query()->where('old_id', 2)->value('is_selectable'))->toBeFalsy()
-        ->and(ProductCategory::query()->where('old_id', 3)->value('is_selectable'))->toBeTruthy();
+        // Outside the "[OLD] APL" branch the legacy selectability stands.
+        ->and(ProductCategory::query()->where('old_id', 1)->value('is_selectable'))->toBeTruthy()
+        ->and(ProductCategory::query()->where('old_id', 2)->value('is_selectable'))->toBeTruthy();
 });
 
 it('spec 0182 E-10: uses the quote/work-order flags when carried, the single flag otherwise', function () {

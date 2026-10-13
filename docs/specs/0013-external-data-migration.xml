@@ -363,6 +363,14 @@
       ramo "[OLD] APL" restano sulle loro categorie legacy, `LegacyAplBranch` non li sposta piu' sulle categorie
       manuali. L'import di opportunita', offerte (righe ricavo e costo) e commesse non verifica lo stato attivo.
     </amendment>
+    <amendment date="2026-10-13" title="ter - Niente funzioni aziendali FORMAZIONE OLD / APL OLD">
+      Decisione utente: le funzioni aziendali "FORMAZIONE OLD" e "APL OLD" non esistono piu'. Una categoria legacy
+      resta sulla funzione con cui arriva (rimappata via old_id), "Formazione" e "APL" comprese: tolti da
+      `CategoryBusinessFunctionLinker` il redirect (`REDIRECTED_FUNCTIONS`, direttive 2026-09-16 e 2026-10-05) e
+      `closeRedirected()`. Le categorie legacy restano non selezionabili come storico grazie al flag "Attiva" (emendamento
+      bis); `LegacyAplBranch` chiude ancora il ramo "[OLD] APL". I dati gia' importati non vengono spostati: vale dal
+      prossimo import pulito.
+    </amendment>
   </amendments>
 
 </spec>

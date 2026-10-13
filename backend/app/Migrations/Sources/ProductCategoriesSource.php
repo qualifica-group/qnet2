@@ -19,11 +19,9 @@ use RuntimeException;
  * tree (id, name, parent_id, inherits_attributes, inherits_quote_attributes,
  * inherits_work_order_attributes, requires_quote, is_selectable, is_active, description, business_function_id) created through
  * ProductCategoryService. `business_function_id` is an EXTERNAL business
- * function id remapped via `old_id` (CategoryBusinessFunctionLinker), which
- * also redirects the functions a created category may not be filed on
- * ("Formazione" to "FORMAZIONE OLD", user directive 2026-09-16) and imports
- * the categories filed there as not selectable (user directive 2026-10-05).
- * `is_selectable` (spec 0074) is a plain per-node flag; `requires_quote` is
+ * function id remapped via `old_id` (CategoryBusinessFunctionLinker), kept as
+ * sent: no "FORMAZIONE OLD" / "APL OLD" replacement (user directive
+ * 2026-10-13). `is_selectable` (spec 0074) is a plain per-node flag; `requires_quote` is
  * owned by the branch root and only authored on a rootless row (see
  * mapRequiresQuote()). `parent_id` is an EXTERNAL id remapped to the qnet
  * parent via `old_id`. The legacy lists parents before their children
@@ -43,8 +41,8 @@ class ProductCategoriesSource extends AbstractMigrationSource
 {
     /**
      * The qnet ids THIS run created. afterImport() closes the ones that end up
-     * in the "[OLD] APL" branch or on an "OLD" business function; a node an earlier run created is left alone, so
-     * a selectability set by hand survives a re-import.
+     * in the "[OLD] APL" branch; a node an earlier run created is left alone,
+     * so a selectability set by hand survives a re-import.
      *
      * @var list<int>
      */
@@ -212,14 +210,12 @@ class ProductCategoriesSource extends AbstractMigrationSource
     }
 
     /**
-     * Closes the legacy APL tree and every category filed on an "OLD"
-     * function: they are never a classification target (user directive
-     * 2026-10-05).
+     * Closes the legacy APL tree: it is never a classification target (user
+     * directive 2026-10-05).
      */
     protected function afterImport(MigrationImportContext $context): void
     {
         $this->aplBranch->closeLegacyBranch($this->createdIds);
-        $this->businessFunctions->closeRedirected($this->createdIds);
     }
 
     /**

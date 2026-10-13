@@ -7,14 +7,13 @@ use App\Services\ProductCategories\CategoryHierarchy;
 
 /**
  * Keeps the qnet catalogue's own "APL" branch apart from its legacy twin (user
- * directive 2026-10-05, the category-level counterpart of "FORMAZIONE OLD" in
- * CategoryBusinessFunctionLinker).
+ * directive 2026-10-05).
  *
  * The legacy sends every category name behind LEGACY_PREFIX (user directive
  * 2026-10-13), so its APL tree arrives as LEGACY_BRANCH and never shares a
  * name with the manual one. It hangs where every other legacy node does,
- * under "Consulenza" like the FORMAZIONE OLD ones (user directive
- * 2026-10-05), and nothing in its branch is selectable. Its products stay
+ * under "Consulenza" (user directive 2026-10-05), and nothing in its branch
+ * is selectable. Its products stay
  * on it, history only (user directive 2026-10-13).
  */
 final class LegacyAplBranch

@@ -81,7 +81,7 @@ it('REQUIREMENT CHANGED (user directive 2026-10-13): imports the "[OLD] APL" tre
         ->and($run->fresh()->report)->toBeNull();
 });
 
-it('files an imported category on "APL OLD" instead of the "APL" function', function () {
+it('REQUIREMENT CHANGED (user directive 2026-10-13): files an imported category on the "APL" function as sent, with no "APL OLD" replacement', function () {
     seedMigrationsConfig();
     $imported = BusinessFunction::factory()->create(['old_id' => 3, 'name' => 'APL']);
 
@@ -100,10 +100,8 @@ it('files an imported category on "APL OLD" instead of the "APL" function', func
     $actor = migrationsSuperAdminActor();
     runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
 
-    $replacement = BusinessFunction::query()->where('name', 'APL OLD')->sole();
-
-    expect($replacement->old_id)->toBeNull()
-        ->and(ProductCategory::query()->where('old_id', 1)->value('business_function_id'))->toBe($replacement->id)
+    expect(BusinessFunction::query()->where('name', 'APL OLD')->exists())->toBeFalse()
+        ->and(ProductCategory::query()->where('old_id', 1)->value('business_function_id'))->toBe($imported->id)
         ->and(ProductCategory::query()->where('old_id', 2)->value('business_function_id'))->toBeNull()
         ->and($manual->fresh()->business_function_id)->toBe($imported->id);
 });

@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MIGRAZIONE: NIENTE FUNZIONI "FORMAZIONE OLD" / "APL OLD" (2026-10-13) — VERDE, COMMITTATO
+
+- Decisione utente: le funzioni aziendali "FORMAZIONE OLD" e "APL OLD" non devono piu' esistere; le categorie legacy
+  restano sulla funzione con cui arrivano (rimappata via old_id), quindi "FORMAZIONE" e "APL".
+- `CategoryBusinessFunctionLinker`: tolti `REDIRECTED_FUNCTIONS`, `redirect()`, `closeRedirected()` (supera direttive
+  2026-09-16 e 2026-10-05 sul redirect). `ProductCategoriesSource::afterImport` chiude solo il ramo "[OLD] APL"
+  (`LegacyAplBranch`, invariato). Spec 0013 amendment "ter".
+- Testi: prerequisito `product-categories` IT/EN in `*-migration-requirements.ts` (tolta anche la frase stale
+  "categoria con lo stesso nome viene riusata"); guida in-app migrations IT+EN e manuale Claude Docs: frase sulla
+  funzione aziendale mantenuta.
+- Test: `tests/Feature/Migration` 392/392 (3 test REQUIREMENT CHANGED). Vitest help+i18n 338/338, tsc -b ok, Pint ok.
+- DB locale: le categorie gia' importate (id 46, 36, 51) sono ancora sulle funzioni OLD (id 29, 30): il cambio vale dal
+  prossimo import pulito, salvo pulizia manuale.
+
 ## MIGRAZIONE: CATALOGO LEGACY MARCATO [OLD] (2026-10-13) — VERDE, NON COMMITTATO
 
 - Decisione utente: categorie prodotto, prodotti e prodotti di costo (+ sotto-categorie di magazzino) dal legacy
