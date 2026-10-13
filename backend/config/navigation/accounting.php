@@ -89,6 +89,28 @@ return [
                     'route' => '/commission-accruals',
                     'permission' => 'commission-accruals.view',
                 ],
+                // spec 0213: liquidazione dei maturati (lanci, estratti, parametri ENASARCO).
+                [
+                    'key' => 'commission-settlement-runs',
+                    'label' => 'navigation.commissionSettlementRuns',
+                    'icon' => 'play',
+                    'route' => '/commission-settlement-runs',
+                    'permission' => 'commission-settlements.view',
+                ],
+                [
+                    'key' => 'commission-settlements',
+                    'label' => 'navigation.commissionSettlements',
+                    'icon' => 'file-spreadsheet',
+                    'route' => '/commission-settlements',
+                    'permission' => 'commission-settlements.view',
+                ],
+                [
+                    'key' => 'enasarco-parameters',
+                    'label' => 'navigation.enasarcoParameters',
+                    'icon' => 'percent',
+                    'route' => '/enasarco-parameters',
+                    'permission' => 'enasarco-parameters.view',
+                ],
             ],
         ],
     ],

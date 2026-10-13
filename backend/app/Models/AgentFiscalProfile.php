@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 #[Fillable([
     'referent_id', 'withholding_enabled', 'withholding_rate', 'withholding_base_percent',
-    'enasarco_enabled', 'enasarco_mandate_type', 'valid_from', 'valid_until', 'notes', 'created_by',
+    'enasarco_enabled', 'enasarco_mandate_type', 'vat_rate_id', 'valid_from', 'valid_until', 'notes', 'created_by',
 ])]
 class AgentFiscalProfile extends BaseModel
 {
@@ -46,6 +46,14 @@ class AgentFiscalProfile extends BaseModel
     public function referent(): BelongsTo
     {
         return $this->belongsTo(Referent::class);
+    }
+
+    /**
+     * @return BelongsTo<VatRate, $this>
+     */
+    public function vatRate(): BelongsTo
+    {
+        return $this->belongsTo(VatRate::class);
     }
 
     /**

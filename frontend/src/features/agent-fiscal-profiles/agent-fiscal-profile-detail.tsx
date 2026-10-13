@@ -82,6 +82,9 @@ export function AgentFiscalProfileDetailView({ profile, onEdit }: AgentFiscalPro
                     <DetailEmpty />
                   )}
                 </RecordField>
+                <RecordField label={t('agentFiscalProfiles.detail.vatRate')}>
+                  {profile.vat_rate ? `${profile.vat_rate.name} (${Number(profile.vat_rate.rate)}%)` : t('agentFiscalProfiles.detail.vatNone')}
+                </RecordField>
                 <RecordField label={t('agentFiscalProfiles.detail.notes')}>
                   {profile.notes ? profile.notes : <DetailEmpty />}
                 </RecordField>

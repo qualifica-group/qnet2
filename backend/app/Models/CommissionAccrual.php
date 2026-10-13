@@ -13,14 +13,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
- * One movement of the commission accrual ledger (spec 0212). Rows are never
- * updated or deleted: corrections are new REVERSAL/ACCRUAL rows, so the model
- * carries no activity log (the ledger is its own audit trail).
+ * One movement of the commission accrual ledger (spec 0212). Invoice-driven
+ * rows are never updated or deleted: corrections are new REVERSAL/ACCRUAL rows,
+ * so the model carries no activity log (the ledger is its own audit trail).
+ * Manual ADJUSTMENT rows (spec 0213, D-7) have no invoice and no recipient role.
  */
 #[Fillable([
     'invoice_id', 'quote_line_id', 'quote_line_commission_id', 'invoice_installment_id',
     'recipient_role', 'recipient_type', 'recipient_id', 'type', 'base_amount', 'amount',
-    'accrued_on', 'settled_externally_on',
+    'accrued_on', 'settled_externally_on', 'company_id', 'commission_settlement_id', 'notes', 'created_by',
 ])]
 class CommissionAccrual extends BaseModel
 {
@@ -72,6 +73,22 @@ class CommissionAccrual extends BaseModel
     public function invoiceInstallment(): BelongsTo
     {
         return $this->belongsTo(InvoiceInstallment::class);
+    }
+
+    /**
+     * @return BelongsTo<Company, $this>
+     */
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * @return BelongsTo<CommissionSettlement, $this>
+     */
+    public function settlement(): BelongsTo
+    {
+        return $this->belongsTo(CommissionSettlement::class, 'commission_settlement_id');
     }
 
     /**

@@ -36,6 +36,12 @@ class AgentFiscalProfileResource extends JsonResource
             'withholding_base_percent' => $this->withholding_base_percent,
             'enasarco_enabled' => $this->enasarco_enabled,
             'enasarco_mandate_type' => $this->enasarco_mandate_type?->value,
+            'vat_rate_id' => $this->vat_rate_id,
+            'vat_rate' => $this->vatRate === null ? null : [
+                'id' => $this->vatRate->id,
+                'name' => $this->vatRate->name,
+                'rate' => $this->vatRate->rate,
+            ],
             'valid_from' => $this->valid_from?->format('Y-m-d'),
             'valid_until' => $this->valid_until?->format('Y-m-d'),
             'notes' => $this->notes,

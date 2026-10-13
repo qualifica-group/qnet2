@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The **tabs** above narrow the list: **Open** (default), **Settled externally** and **All**. Below the table the **total** covers every movement of the current filter, not just the visible ones. As in every list you can sort, filter, export and **group** by recipient, role, accrual month, movement type or customer.',
+          text: 'The **tabs** above narrow the list: **Open** (default: not yet in a statement), **In a statement** (in a draft or an issued statement), **Settled externally** and **All**. The **Statement** column shows the number (n/year) or **Draft**; you can also group by company. Below the table the **total** covers every movement of the current filter, not just the visible ones. As in every list you can sort, filter, export and **group** by recipient, role, accrual month, movement type or customer.',
         },
       ],
     },
@@ -31,6 +31,20 @@ const guide: HelpGuide = {
             'When a collection is **cleared**, the system records a **reversal** of the same amount. Movements already recorded are never changed: a correction is always a new movement.',
             'A reversal falls on **today’s date**, even if the cleared collection belonged to a past period.',
             'Commissions of **Commercial, Reporter and Supervisor** accrue; Supplier commissions are excluded.',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'adjustments-and-statements',
+      title: 'Adjustments and statements',
+      blocks: [
+        {
+          type: 'list',
+          items: [
+            'With **New adjustment** (if you have the permission) you add a signed manual correction for an agent and a company: it stays **Open** and enters the first suitable run. The **Adjustment** movement appears here like the others.',
+            'When a run includes a movement it moves from **Open** to **In a statement**; it becomes **Settled** once the statement is issued.',
+            'If the draft is deleted or the statement cancelled, the movements become **Open** again.',
           ],
         },
       ],

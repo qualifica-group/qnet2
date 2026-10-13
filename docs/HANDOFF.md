@@ -3,6 +3,44 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0213 — Liquidazioni Agenti M2: lanci, estratti, rettifiche, ritenute/ENASARCO — VERDE, NON COMMITTATO (2026-10-13)
+
+- Spec `docs/specs/0213-agent-commission-settlements.xml` (approvata, D-1..D-9, AC-001..AC-024). Emendamento in build:
+  `commission_accruals.commission_settlement_id` restrictOnDelete (security L-2).
+- Dati: `enasarco_parameters` (year unique, total_rate, agent_share_percent, single/multi_firm_ceiling),
+  `commission_settlement_runs` (filters/skipped json), `commission_settlements` (snapshot profilo/aliquote, importi,
+  numero per company+anno all'emissione), `commission_settlement_number_sequences`; `commission_accruals` +company_id
+  (backfill dalla fattura), +commission_settlement_id, +notes, +created_by, recipient_role nullable (ADJUSTMENT);
+  `agent_fiscal_profiles.vat_rate_id`. Migrazioni 2026_10_16_100000..100500.
+- Servizi `App\Services\Commissions\Settlements\*`: SettlementCalculator (bcmath, D-2/D-3), OpenMovementSelector (lock),
+  SettlementComposer, SettlementRunner (una transazione per (referent, company), ordine lock referent -> estratto ->
+  movimenti; ordine salti draft_exists, non_positive, below_threshold, missing_profile, missing_enasarco_parameters),
+  CommissionSettlementService (ricalcola solo in aggiunta, emetti, annulla, elimina, note), CommissionAdjustmentService
+  (activity log manuale `commission-adjustment.*`). Synchronizer M1 scrive company_id; ADJUSTMENT mai stornati;
+  `--settled-before` esclude ADJUSTMENT e movimenti agganciati.
+- Endpoint in routes/api/agent-commissions.php: enasarco-parameters CRUD, POST/GET commission-settlement-runs,
+  GET/PATCH/DELETE commission-settlements/{id} + recalculate/issue/cancel, POST/PUT/DELETE commission-adjustments.
+  422 di ricalcola/emetti: `errors.reason[0]` = codice (missing_profile|missing_enasarco_parameters). Date Y-m-d strette.
+- Tabelle: commission-settlement-runs, commission-settlements (grouping + somme), enasarco-parameters; commission-accruals
+  +settlement ("n/anno"|"Bozza"), +company, status open|draft|issued|settled_externally; agent-fiscal-profiles +vat_rate.
+  Helper condiviso `App\Tables\Support\SetExpressionQuery`. Guardie 409: profilo usato da un estratto, aliquota IVA usata
+  da un profilo (anche bulk delete, VatRatesTableDefinition ora usa VatRateService).
+- FE: features commission-settlement-runs, commission-settlements (dettaglio sheet + pagina /commission-settlements/:id,
+  rettifiche), enasarco-parameters; profili con aliquota IVA; Maturato con colonne estratto/societa' e filtro "In estratto".
+  Guide IT/EN nuove/aggiornate, "in fase di sviluppo". help-guide-keys 67->70.
+- Test cambiati per requisito (6 migrazioni): rollback step PurchaseOrderMigrationTest 11->17, SupplierCommissionDirection
+  23->29, QuoteWorkflowMigration 159->165; FieldCatalogueEndpointTest (+2 risorse); CommissionAccrualsTableTest e
+  AgentFiscalProfileTableTest (colonne nuove).
+- Verifier: Pest parallelo 10273 (unici rossi QuoteDocumentPdfTest x3 = soffice, ambiente); 0213 294/294 due volte;
+  Vitest 7496/7499 (3 timeout stat-* fuori scope, verdi da soli); tsc -b e ESLint puliti; Pint pulito. Espressioni JSON
+  della tabella lanci NON provate su MySQL.
+- Aperto: manuale Claude Docs (access denied): sezioni Provvigioni agenti > Lanci, Estratti, Parametri ENASARCO, Profili
+  fiscali (IVA), Maturato (estratto, rettifiche). Review security da confermare col cliente: L-6 chi vede gli estratti vede
+  codici fattura/offerta; limite noto: annullare un estratto emesso non ricalcola il massimale ENASARCO dei successivi.
+  Dopo il deploy: permissions:sync, assegnare commission-settlements.* / enasarco-parameters.*, inserire i parametri
+  ENASARCO reali (i demo non sono di legge).
+- Prossimo: M3 (PDF estratto, email massiva, registrazione fattura/notula agente = DOCUMENT_RECEIVED, export paghe user).
+
 ## Spec 0212 — Liquidazioni Agenti M1: profili fiscali + maturato provvigioni — VERDE, NON COMMITTATO (2026-10-12)
 
 - Brief modulo completo M1-M5: `docs/specs/0212-agent-commission-settlements-brief.md`. Spec M1

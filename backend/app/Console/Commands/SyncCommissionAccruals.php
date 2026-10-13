@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Enums\CommissionAccrualType;
 use App\Models\CommissionAccrual;
 use App\Models\Invoice;
 use App\Services\Commissions\Accruals\CommissionAccrualSynchronizer;
@@ -94,6 +95,8 @@ class SyncCommissionAccruals extends Command
     {
         return CommissionAccrual::query()
             ->whereNull('settled_externally_on')
+            ->whereNull('commission_settlement_id')
+            ->where('type', '!=', CommissionAccrualType::Adjustment->value)
             ->whereDate('accrued_on', '<', $date)
             ->when($ids !== [], fn ($query) => $query->whereIn('invoice_id', $ids))
             ->update(['settled_externally_on' => $date]);

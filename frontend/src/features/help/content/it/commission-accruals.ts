@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Le **schede** in alto restringono l’elenco: **Aperto** (predefinita), **Liquidato esternamente** e **Tutti**. Sotto la tabella il **totale** riguarda tutti i movimenti del filtro corrente, non solo quelli visibili. Come in ogni elenco puoi ordinare, filtrare, esportare e **raggruppare** per destinatario, ruolo, mese di maturazione, tipo di movimento o cliente.',
+          text: 'Le **schede** in alto restringono l’elenco: **Aperto** (predefinita: non ancora in un estratto), **In estratto** (in una bozza o in un estratto emesso), **Liquidato esternamente** e **Tutti**. La colonna **Estratto** mostra il numero (n/anno) o **Bozza**; puoi raggruppare anche per società. Sotto la tabella il **totale** riguarda tutti i movimenti del filtro corrente, non solo quelli visibili. Come in ogni elenco puoi ordinare, filtrare, esportare e **raggruppare** per destinatario, ruolo, mese di maturazione, tipo di movimento o cliente.',
         },
       ],
     },
@@ -31,6 +31,20 @@ const guide: HelpGuide = {
             'Se un incasso viene **annullato**, il sistema registra uno **storno** dello stesso importo. I movimenti già registrati non si modificano mai: la correzione è sempre un nuovo movimento.',
             'Lo storno cade alla **data di oggi**, anche se l’incasso annullato era di un periodo passato.',
             'Si maturano le provvigioni di **Commerciale, Segnalatore e Supervisore**; le provvigioni del Fornitore sono escluse.',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'adjustments-and-statements',
+      title: 'Rettifiche ed estratti',
+      blocks: [
+        {
+          type: 'list',
+          items: [
+            'Con **Nuova rettifica** (se hai il permesso) aggiungi una correzione manuale con segno, per un agente e una società: resta **Aperta** ed entra nel primo lancio utile. Il movimento di tipo **Rettifica** compare qui come gli altri.',
+            'Quando un lancio include un movimento, passa da **Aperto** a **In estratto**; diventa **Liquidato** quando l’estratto è emesso.',
+            'Se la bozza viene eliminata o l’estratto annullato, i movimenti tornano **Aperti**.',
           ],
         },
       ],

@@ -6,6 +6,8 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\VatRates\CreateVatRateData;
 use App\DataObjects\VatRates\UpdateVatRateData;
+use App\Enums\HttpStatusEnum;
+use App\Models\AgentFiscalProfile;
 use App\Models\VatRate;
 use Illuminate\Support\Collection;
 
@@ -34,11 +36,15 @@ class VatRateService
     }
 
     /**
-     * Unguarded delete: products.vat_rate_id is nullOnDelete, so no other
-     * resource restricts removal of a VAT rate.
+     * products.vat_rate_id is nullOnDelete, but an agent fiscal profile
+     * restricts removal (spec 0213, M-3): 409 instead of a FK error.
      */
     public function delete(VatRate $vatRate): void
     {
+        if (AgentFiscalProfile::query()->where('vat_rate_id', $vatRate->id)->exists()) {
+            abort(HttpStatusEnum::CONFLICT->value, __('This VAT rate is used by an agent fiscal profile.'));
+        }
+
         $vatRate->delete();
     }
 

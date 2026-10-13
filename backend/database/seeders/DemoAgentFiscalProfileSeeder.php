@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\EnasarcoMandateType;
 use App\Models\AgentFiscalProfile;
+use App\Models\VatRate;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Demo fiscal profiles of the agents (spec 0212): one current profile for each
  * referent that earns a commercial, reporter or supervisor commission, mostly
- * withholding 23% on 50%, a couple with ENASARCO, and one agent with a closed
+ * withholding 23% on 50%, a couple with ENASARCO, VAT 22% on all but one forfettario-like agent (no VAT, no withholding), and one agent with a closed
  * past profile followed by the current one (ranges never overlap). Depends on
  * DemoQuoteSeeder (the commission recipients). Re-runnable: looked up by
  * [referent_id, valid_from].
@@ -31,6 +32,11 @@ class DemoAgentFiscalProfileSeeder extends Seeder
         3 => EnasarcoMandateType::Mono,
     ];
 
+    private const string VAT_RATE = '22.00';
+
+    /** Position of the agent without VAT and withholding (forfettario-like). */
+    private const int NO_VAT_POSITION = 0;
+
     /** Position of the agent that also has a closed past profile. */
     private const int HISTORY_POSITION = 2;
 
@@ -47,6 +53,7 @@ class DemoAgentFiscalProfileSeeder extends Seeder
             ->distinct()->orderBy('recipient_id')->limit(self::MAX_AGENTS)->pluck('recipient_id');
 
         $current = CarbonImmutable::today()->startOfYear()->subYear();
+        $vatRateId = VatRate::query()->where('rate', self::VAT_RATE)->value('id');
 
         // Step 2: one current profile each, plus a past one for the history agent
         foreach ($referentIds->values() as $position => $referentId) {
@@ -59,9 +66,13 @@ class DemoAgentFiscalProfileSeeder extends Seeder
 
             $mandate = self::ENASARCO_BY_POSITION[$position] ?? null;
 
+            $forfettario = $position === self::NO_VAT_POSITION;
+
             $this->profile($referentId, $current, [
                 'enasarco_enabled' => $mandate !== null,
                 'enasarco_mandate_type' => $mandate?->value,
+                'vat_rate_id' => $forfettario ? null : $vatRateId,
+                'withholding_enabled' => ! $forfettario,
             ]);
         }
     }
@@ -83,6 +94,7 @@ class DemoAgentFiscalProfileSeeder extends Seeder
             'withholding_base_percent' => self::WITHHOLDING_BASE_PERCENT,
             'enasarco_enabled' => false,
             'enasarco_mandate_type' => null,
+            'vat_rate_id' => null,
             'valid_until' => null,
         ])->save();
     }

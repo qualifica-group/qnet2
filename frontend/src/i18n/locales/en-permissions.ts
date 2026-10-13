@@ -68,6 +68,10 @@ export const permissions = {
     collect: 'Record collections',
     // Spec 0211: passive invoices.
     pay: 'Record payments',
+    // Spec 0213: commission statements.
+    issue: 'Issue',
+    cancel: 'Cancel',
+    adjust: 'Manage adjustments',
     // Spec 0208: purchase requests (RDA).
     fulfill: 'Fulfil lines (order, receive)',
     manageStatuses: 'Manage any line status',
@@ -142,6 +146,8 @@ export const permissions = {
     // Spec 0212: agent commissions.
     'agent-fiscal-profiles': 'Agent fiscal profiles',
     'commission-accruals': 'Commission accruals',
+    'commission-settlements': 'Commission statements',
+    'enasarco-parameters': 'ENASARCO parameters',
     'product-typologies': 'Product Typologies',
     // Task module and its five configurators (spec 0101).
     tasks: 'Tasks',

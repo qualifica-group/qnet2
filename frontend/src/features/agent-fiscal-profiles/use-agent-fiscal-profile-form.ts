@@ -30,6 +30,7 @@ const SERVER_ERROR_FIELDS: Path<AgentFiscalProfileFormValues>[] = [
   'withholding_base_percent',
   'enasarco_enabled',
   'enasarco_mandate_type',
+  'vat_rate_id',
   'valid_from',
   'valid_until',
   'notes',

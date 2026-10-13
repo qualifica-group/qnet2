@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0213-agent-commission-settlements" status="approved" owner="utente" date="2026-10-13">
+
+  <goal>
+    Liquidazioni Agenti — M2 Liquidazione. La Contabilita' lancia in modo massivo la liquidazione di un periodo:
+    per ogni agente `referent` e societa' emittente nasce un estratto in bozza con il maturato aperto e le rettifiche,
+    imponibile, IVA, ritenuta d'acconto, ENASARCO (agente e preponente) e netto da pagare. La bozza si ricalcola o si
+    elimina; l'emissione assegna il numero e la congela; un estratto emesso si puo' annullare. Parametri ENASARCO per
+    anno gestiti da UI. Brief: `docs/specs/0212-agent-commission-settlements-brief.md`; M1: spec 0212 (ef68edb7).
+  </goal>
+
+  <context>
+    <!-- Nomi reali verificati nel repo il 2026-10-13 -->
+    <item>M1 (spec 0212): `commission_accruals` / `App\Models\CommissionAccrual` (fillable invoice_id, quote_line_id,
+      quote_line_commission_id, invoice_installment_id, recipient_role, recipient_type, recipient_id, type, base_amount,
+      amount, accrued_on, settled_externally_on; nessun company_id), enum `CommissionAccrualType` (ACCRUAL|REVERSAL,
+      HasMeta). Synchronizer `App\Services\Commissions\Accruals\CommissionAccrualSynchronizer::syncInvoice` +
+      `AccrualStateLoader` (movimenti caricati per invoice_id). Tabella `commission-accruals`
+      (`App\Tables\CommissionAccrualsTableDefinition` + `Tables/CommissionAccruals/{CommissionAccrualColumnCatalog,
+      CommissionAccrualSql,CommissionAccrualDerivedQuery}`), status open|settled_externally.</item>
+    <item>`agent_fiscal_profiles` / `AgentFiscalProfile` (referent_id, withholding_enabled/rate/base_percent,
+      enasarco_enabled, enasarco_mandate_type mono|pluri, valid_from/until), `AgentFiscalProfilesAuthorization`,
+      `AgentFiscalProfileService` (lock sul referent), `NonOverlappingFiscalProfile::overlaps()`.</item>
+    <item>Numerazione: `InvoiceNumberAllocator::next(companyId, year)` su `invoice_number_sequences` (unique company,year,
+      lockForUpdate, mai riuso); stesso schema in `PurchaseOrderNumberAllocator`.</item>
+    <item>`invoices.company_id` (societa' emittente = preponente). `vat_rates` / `VatRate` (name, rate decimal:2).
+      Nessuna tabella settings: parametri in `config/*.php` con env.</item>
+    <item>Navigazione: gruppo `accounting-commissions` in `config/navigation/accounting.php` (figli agent-fiscal-profiles,
+      commission-accruals). FE `routes/agent-commission-routes.tsx`, features `agent-fiscal-profiles`, `commission-accruals`.</item>
+    <item>Decisioni utente 2026-10-13: domande 1-9 accettate come proposte (D-1..D-9 sotto).</item>
+  </context>
+
+  <decisions>
+    <decision id="D-1">Estratto per (agente referent, societa'). Il preponente e' `invoices.company_id`. Il libro mastro
+      guadagna `company_id`: backfill dalla fattura nella migrazione, scritto dal synchronizer sui movimenti nuovi.
+      Numerazione progressiva per (company_id, year) in `commission_settlement_number_sequences`, assegnata all'emissione.</decision>
+    <decision id="D-2">IVA: `agent_fiscal_profiles.vat_rate_id` nullable (null = operazione senza IVA, es. forfettario).
+      Formule (bcmath scala 2, half-up, arrotondamento per voce):
+      accruals_amount = somma movimenti ACCRUAL/REVERSAL inclusi; adjustments_amount = somma ADJUSTMENT inclusi;
+      taxable_amount = accruals_amount + adjustments_amount;
+      vat_amount = taxable x vat_rate/100 (0 senza aliquota);
+      withholding_amount = taxable x base_percent/100 x rate/100 (0 se ritenuta disattiva);
+      enasarco: vedi D-3; net_payable = taxable + vat - withholding - enasarco_agent_amount.
+      enasarco_principal_amount e' solo informativo (costo del preponente).</decision>
+    <decision id="D-3">ENASARCO: tabella `enasarco_parameters` (year unique, total_rate, agent_share_percent,
+      single_firm_ceiling, multi_firm_ceiling). Parametri dell'anno di period_to. Massimale = mono -&gt; single_firm,
+      pluri -&gt; multi_firm. used = somma enasarco_base_amount degli estratti ISSUED stesso (referent, company, anno di
+      period_to), escluso l'estratto corrente. enasarco_base_amount = max(0, min(taxable, ceiling - used));
+      totale = base x total_rate/100; enasarco_agent_amount = totale x agent_share_percent/100;
+      enasarco_principal_amount = totale - agente (arrotondamenti: agente arrotondato, preponente per differenza).
+      Profilo con ENASARCO e anno senza parametri -&gt; agente saltato (`missing_enasarco_parameters`). Minimale, FIRR,
+      versamenti trimestrali: fuori. Nessun valore di legge nel codice: il seed demo usa valori marcati come demo.</decision>
+    <decision id="D-4">Profilo: quello valido alla data period_to; nessun profilo -&gt; saltato (`missing_profile`). Al
+      calcolo l'estratto copia (snapshot) aliquote, basi, tipo mandato, aliquota IVA e l'id del profilo.</decision>
+    <decision id="D-5">Stati `CommissionSettlementStatus`: DRAFT, ISSUED, CANCELLED.
+      DRAFT: Ricalcola (riaggancia i movimenti aperti &lt;= period_to e ricalcola), rettifiche aggiungibili, Elimina
+      (hard delete, i movimenti tornano aperti). Emetti: ricalcolo finale + numero/anno (anno di period_to) +
+      issued_at/by; da qui l'estratto e i suoi movimenti sono immutabili. Annulla: solo da ISSUED, motivo obbligatorio,
+      i movimenti tornano aperti, il numero non si riusa. DOCUMENT_RECEIVED/APPROVED arrivano con M3/M4.
+      Transizioni non ammesse -&gt; 409.</decision>
+    <decision id="D-6">Lancio: periodo [period_from, period_to] (from informativo; entrano TUTTI i movimenti aperti con
+      accrued_on &lt;= period_to, arretrati compresi), filtri opzionali company_id, referent_ids, recipient_roles, soglia
+      min_amount (default `config('commissions.settlement_min_amount')`, env COMMISSION_SETTLEMENT_MIN_AMOUNT, 0).
+      Movimento aperto = commission_settlement_id null AND settled_externally_on null AND recipient_type='referent'.
+      I `user` non sono mai liquidati qui (brief D7). Per ogni (referent, company) con movimenti:
+      bozza gia' esistente -&gt; `draft_exists`; taxable &lt;= 0 -&gt; `non_positive`; taxable &lt; min_amount -&gt;
+      `below_threshold`; senza profilo / parametri -&gt; D-3/D-4. Saltato = movimenti restano aperti (riporto, brief D5/D6).
+      Esecuzione sincrona; ogni coppia in una transazione con lockForUpdate sul referent e sui movimenti selezionati;
+      il lancio registra creati e saltati con motivo.</decision>
+    <decision id="D-7">Rettifiche = movimenti `ADJUSTMENT` nel libro mastro: amount con segno (!= 0), accrued_on,
+      notes obbligatorie (max 500), referent, company, recipient_role null, created_by. Standalone (entrano nel lancio
+      successivo) o creati dentro una bozza (agganciati subito, stessi referent/company, ricalcolo automatico).
+      Modifica/eliminazione solo se non agganciati a un estratto ISSUED (409). Il synchronizer M1 ignora gli ADJUSTMENT
+      (invoice_id null) e non li storna mai.</decision>
+    <decision id="D-8">Permessi: risorsa `commission-settlements` (viewAny, view, create = lancio, update = ricalcola,
+      delete = elimina bozza, issue, cancel, adjust, export, viewActivity); risorsa `enasarco-parameters` (viewAny,
+      view, create, update, delete, export, viewActivity). I lanci non sono una risorsa: si leggono con
+      commission-settlements.viewAny. Permessi di campo `CommissionSettlementsAuthorization`: notes editabile in bozza;
+      importi in sola lettura e nascondibili (taxable_amount, vat_amount, withholding_amount, enasarco_agent_amount,
+      enasarco_principal_amount, net_payable).</decision>
+    <decision id="D-9">UI: nel gruppo `accounting-commissions` tre voci nuove: `commission-settlement-runs` "Lanci"
+      (/commission-settlement-runs, elenco + dialog Nuovo lancio con esito creati/saltati), `commission-settlements`
+      "Estratti" (/commission-settlements, griglia + dettaglio con movimenti, totali, rettifiche e azioni),
+      `enasarco-parameters` "Parametri ENASARCO" (/enasarco-parameters, CRUD). Maturato: colonna `settlement`
+      ("n/anno" o "Bozza") e status open|draft|issued|settled_externally. Profilo: campo `vat_rate_id`.
+      Guide in-app IT/EN aggiornate/nuove, modulo ancora "in fase di sviluppo".</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni: enasarco_parameters; commission_settlement_runs; commission_settlements;
+        commission_settlement_number_sequences; alter commission_accruals (+company_id con backfill,
+        +commission_settlement_id, +notes, +created_by, recipient_role nullable); alter agent_fiscal_profiles (+vat_rate_id).</item>
+      <item>Enum `CommissionSettlementStatus`, `CommissionAccrualType::Adjustment`, motivi di salto
+        `CommissionSettlementSkipReason` (draft_exists, non_positive, below_threshold, missing_profile,
+        missing_enasarco_parameters).</item>
+      <item>Model EnasarcoParameter, CommissionSettlementRun, CommissionSettlement, CommissionSettlementNumberSequence
+        (+ relazioni su CommissionAccrual), factory.</item>
+      <item>Servizi: calcolatore puro (D-2/D-3), runner del lancio, gestione stato estratto (ricalcola, emetti,
+        annulla, elimina), allocatore numero, servizio rettifiche; synchronizer M1 scrive company_id.</item>
+      <item>CRUD enasarco-parameters (stesso schema dei profili fiscali), endpoint lanci/estratti/rettifiche, tabelle SSRM
+        commission-settlement-runs, commission-settlements, enasarco-parameters; colonne nuove su commission-accruals e
+        agent-fiscal-profiles; config/commissions.php.</item>
+      <item>FE: features `commission-settlement-runs`, `commission-settlements`, `enasarco-parameters`; aggiornamenti a
+        `agent-fiscal-profiles` (vat_rate_id) e `commission-accruals` (colonna estratto, status); rotte, i18n, guide.</item>
+      <item>Seed demo: DemoEnasarcoParameterSeeder (anni corrente e precedente, valori demo), DemoCommissionSettlementSeeder
+        (un lancio sul mese scorso, alcune bozze emesse); DemoAgentFiscalProfileSeeder con vat_rate_id.</item>
+    </in>
+    <out>
+      <item>PDF/email dell'estratto, registrazione fattura/notula dell'agente, stato DOCUMENT_RECEIVED, export paghe dei
+        `user` (M3). Approvazione e scadenza passiva (M4). Scheda agente, KPI, accesso agente (M5).</item>
+      <item>Minimale ENASARCO, FIRR, versamenti trimestrali e F24 della ritenuta.</item>
+      <item>Rimozione manuale di singoli movimenti da una bozza; estratti multi-societa'.</item>
+      <item>Coda/job per i lanci (sincroni).</item>
+      <item>Commissione SUPPLIER, modulo Premi.</item>
+    </out>
+  </scope>
+
+  <data_model>
+    enasarco_parameters: id; year unsignedSmallInteger unique; total_rate decimal(5,2); agent_share_percent decimal(5,2);
+      single_firm_ceiling decimal(15,2); multi_firm_ceiling decimal(15,2); notes text nullable; timestamps. LogsModelActivity.
+    agent_fiscal_profiles: + vat_rate_id FK vat_rates nullable restrictOnDelete.
+    commission_accruals: + company_id FK companies nullable restrictOnDelete (backfill da invoices; null solo su
+      movimenti orfani); + commission_settlement_id FK commission_settlements nullable restrictOnDelete (emendato in build, review security L-2: un estratto non si cancella mai senza rilasciare prima i movimenti); + notes string(500)
+      nullable; + created_by FK users nullable nullOnDelete; recipient_role nullable; indice
+      (recipient_type, recipient_id, company_id, commission_settlement_id).
+    commission_settlement_runs: id; period_from date; period_to date; filters json (company_id, referent_ids,
+      recipient_roles); min_amount decimal(15,2); settlements_count unsignedInteger; skipped json
+      [{referent_id, company_id, reason}]; created_by FK users restrict; timestamps; index period_to.
+    commission_settlements: id; commission_settlement_run_id FK nullable nullOnDelete; company_id FK restrict;
+      referent_id FK restrict; agent_fiscal_profile_id FK restrict; status string(16) index; number unsignedInteger
+      nullable; year unsignedSmallInteger nullable; unique(company_id, year, number); period_from, period_to date;
+      accruals_amount, adjustments_amount, taxable_amount decimal(15,2); vat_rate decimal(5,2) nullable; vat_amount;
+      withholding_enabled bool; withholding_rate, withholding_base_percent decimal(5,2) nullable; withholding_amount;
+      enasarco_enabled bool; enasarco_mandate_type string(16) nullable; enasarco_base_amount, enasarco_agent_amount,
+      enasarco_principal_amount, net_payable decimal(15,2); notes text nullable; issued_at timestamp nullable;
+      issued_by FK users nullable; cancelled_at timestamp nullable; cancelled_by FK users nullable;
+      cancellation_reason string(500) nullable; created_by FK users restrict; timestamps.
+      Indici (referent_id, company_id, status), (status, period_to). LogsModelActivity.
+    commission_settlement_number_sequences: id; company_id FK cascade; year; last_number; unique(company_id, year).
+  </data_model>
+
+  <data_contract>
+    <!-- Envelope { success, message, data } + permissions come i moduli esistenti. auth:sanctum, rotte in
+         routes/api/agent-commissions.php. Nessun throttle. Importi sempre stringhe "0.00". -->
+
+    <endpoint method="GET|POST|PUT|PATCH|DELETE" path="/api/enasarco-parameters[/{enasarcoParameter}]">
+      <request>{ year: int 2000..2100 unique, total_rate: decimal 0..100 (2 dec), agent_share_percent: decimal 0..100,
+        single_firm_ceiling: decimal &gt;= 0, multi_firm_ceiling: decimal &gt;= 0, notes: string max 2000 | null }</request>
+      <response status="200|201">data: { id, year, total_rate, agent_share_percent, single_firm_ceiling,
+        multi_firm_ceiling, notes, created_at, updated_at } + permissions. DELETE 204.</response>
+      <errors>403 per permesso; 404; 422 (year duplicato -&gt; year). DELETE 409 se l'anno e' usato da un estratto ISSUED.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/commission-settlement-runs">
+      <request>{ period_from: date, period_to: date &gt;= period_from, company_id: int|null (exists),
+        referent_ids: int[]|null (exists referents), recipient_roles: ("COMMERCIAL"|"REPORTER"|"SUPERVISOR")[]|null,
+        min_amount: decimal &gt;= 0 | null }</request>
+      <response status="201">data: { run: { id, period_from, period_to, filters, min_amount, settlements_count,
+        created_at, created_by: {id,name} },
+        created: [{ settlement_id, referent: {id,name}, company: {id,name}, taxable_amount, net_payable }],
+        skipped: [{ referent: {id,name}, company: {id,name}, reason: "draft_exists"|"non_positive"|"below_threshold"|
+        "missing_profile"|"missing_enasarco_parameters", taxable_amount }] }</response>
+      <errors>403 senza commission-settlements.create; 422 validazione.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/commission-settlement-runs/{commissionSettlementRun}">
+      <response status="200">data: shape di POST (created ricostruito dagli estratti del lancio, skipped dal json).</response>
+      <errors>403 senza commission-settlements.viewAny; 404.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/commission-settlements/{commissionSettlement}">
+      <response status="200">data: { id, code: "n/anno"|null, status, period_from, period_to, run_id,
+        company: {id,name}, referent: {id,name}, agent_fiscal_profile_id, accruals_amount, adjustments_amount,
+        taxable_amount, vat_rate, vat_amount, withholding_enabled, withholding_rate, withholding_base_percent,
+        withholding_amount, enasarco_enabled, enasarco_mandate_type, enasarco_base_amount, enasarco_agent_amount,
+        enasarco_principal_amount, net_payable, notes, issued_at, issued_by, cancelled_at, cancelled_by,
+        cancellation_reason, created_at,
+        movements: [{ id, type, recipient_role, accrued_on, amount, base_amount, notes, invoice: {id, code}|null,
+          quote: {id, code}|null, product: string|null, can_edit: bool }],
+        abilities: { recalculate, issue, cancel, delete, adjust, update } } + permissions.
+        Importi nascosti per permesso di campo assenti (anche nei movements: amount/base_amount seguono
+        commission-accruals).</response>
+      <errors>403 senza view; 404.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/commission-settlements/{commissionSettlement}">
+      <request>{ notes: string max 2000 | null } (solo DRAFT)</request>
+      <response status="200">data: shape di GET.</response>
+      <errors>403 senza update; 409 se non DRAFT; 422.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/commission-settlements/{commissionSettlement}/recalculate">
+      <response status="200">data: shape di GET.</response>
+      <errors>403 senza update; 409 se non DRAFT; 422 { reason } se il profilo/parametri non esistono piu'.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/commission-settlements/{commissionSettlement}/issue">
+      <response status="200">data: shape di GET con status ISSUED, code valorizzato.</response>
+      <errors>403 senza issue; 409 se non DRAFT o taxable &lt;= 0 dopo il ricalcolo; 422 { reason }.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/commission-settlements/{commissionSettlement}/cancel">
+      <request>{ reason: string required max 500 }</request>
+      <response status="200">data: shape di GET con status CANCELLED, movements vuoto (rilasciati).</response>
+      <errors>403 senza cancel; 409 se non ISSUED; 422.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/commission-settlements/{commissionSettlement}">
+      <response status="204"/>
+      <errors>403 senza delete; 409 se non DRAFT.</errors>
+    </endpoint>
+
+    <endpoint method="POST|PUT|DELETE" path="/api/commission-adjustments[/{commissionAccrual}]">
+      <request>POST { referent_id, company_id, amount: decimal != 0 (2 dec, con segno), accrued_on: date,
+        notes: string required max 500, commission_settlement_id: int|null (DRAFT dello stesso referent/company) }.
+        PUT { amount, accrued_on, notes }.</request>
+      <response status="201|200">data: { id, type: "ADJUSTMENT", referent: {id,name}, company: {id,name}, amount,
+        accrued_on, notes, commission_settlement_id }. Se agganciato a una bozza la bozza e' ricalcolata. DELETE 204.</response>
+      <errors>403 senza commission-settlements.adjust; 404 (anche se il movimento non e' ADJUSTMENT); 409 se agganciato
+        a un estratto non DRAFT; 422 (bozza di altro referent/company, amount 0).</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/{commission-settlement-runs|commission-settlements|enasarco-parameters}/{columns|rows|values}">
+      <response status="200">
+        commission-settlement-runs: created_at date s | period_from date s f[date] | period_to date s f[date] |
+          company text f[set] (filtro, null = tutte) | settlements_count number s | skipped_count number s |
+          created_by text s f[set]. Default sort created_at desc. Riga { id, ... }. Sola lettura.
+        commission-settlements: code text s f[text] | status badge s f[set: DRAFT,ISSUED,CANCELLED] g | referent text s
+          f[set] g | company text s f[set] g | period_from date s f[date] | period_to date s f[date] |
+          period_month text f[set] g (YYYY-MM di period_to, nascosta) | taxable_amount number s f[number] sum |
+          vat_amount number s sum | withholding_amount number s sum | enasarco_agent_amount number s sum |
+          enasarco_principal_amount number s sum | net_payable number s f[number] sum | issued_at date s f[date].
+          Row grouping max 3 su [status, referent, company, period_month]. Default sort period_to desc, id desc.
+          Riga { id, referent_id, company_id, ..., abilities: { recalculate, issue, cancel, delete } }.
+          Quick filter FE: Bozze (status=DRAFT, default) | Emessi | Annullati | Tutti. Importi nascosti assenti + 422.
+        enasarco-parameters: year number s f[number] | total_rate | agent_share_percent | single_firm_ceiling |
+          multi_firm_ceiling (number s f[number]) | updated_at date s. Default year desc. Riga abilities {update, delete}.
+        commission-accruals (modifica M1): + settlement text s f[text] ("n/anno" | "Bozza" | null); + company text s
+          f[set] g; type set include ADJUSTMENT; status set open|draft|issued|settled_externally (open = nessun estratto
+          e non esterno; draft/issued = stato dell'estratto collegato).
+        agent-fiscal-profiles (modifica M1): + vat_rate text s f[set] ("nome (aliquota%)").
+      </response>
+      <errors>403 senza viewAny della risorsa (runs: commission-settlements.viewAny); export solo con export.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT" path="/api/agent-fiscal-profiles[...] (modifica M1)">
+      <request>+ vat_rate_id: int|null (exists vat_rates)</request>
+      <response>+ vat_rate_id, vat_rate: { id, name, rate } | null</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Backend Pest: tests/Feature/CommissionSettlements/*, tests/Feature/EnasarcoParameters/*, tests/Unit/Commissions/* -->
+    <criterion id="AC-001">Calcolatore puro: dati taxable 1000.00, IVA 22, ritenuta 23 su base 50, ENASARCO totale 17.00
+      agente 50%, massimale capiente -&gt; vat 220.00, withholding 115.00, enasarco base 1000.00, agente 85.00,
+      preponente 85.00, net 1020.00. Senza IVA/ritenuta/ENASARCO i relativi importi sono 0.00 e net = taxable.</criterion>
+    <criterion id="AC-002">Massimale: con estratti ISSUED stesso referent/company/anno per base 9500 e massimale 10000,
+      un estratto da 1000 ha enasarco_base_amount 500.00; con massimale gia' raggiunto 0.00; estratti di altra societa'
+      o di altro anno o CANCELLED/DRAFT non contano. Mono vs pluri usano il massimale giusto.</criterion>
+    <criterion id="AC-003">Lancio: con movimenti aperti di due referent su due societa', crea un estratto DRAFT per ogni
+      (referent, company), aggancia i movimenti con accrued_on &lt;= period_to (anche precedenti a period_from) e lascia
+      aperti quelli successivi; i totali rispettano D-2; risposta 201 con created/skipped del contratto.</criterion>
+    <criterion id="AC-004">Esclusioni: movimenti di recipient_type user, settled_externally o gia' agganciati non entrano;
+      filtri company_id, referent_ids, recipient_roles restringono la selezione (gli ADJUSTMENT seguono solo referent/company).</criterion>
+    <criterion id="AC-005">Salti: draft_exists, non_positive (saldo negativo), below_threshold (min_amount dal body o dal
+      config), missing_profile (nessun profilo valido a period_to), missing_enasarco_parameters; in ogni caso nessun
+      estratto e movimenti ancora aperti; il lancio salva skipped con motivo e settlements_count corretto.</criterion>
+    <criterion id="AC-006">Riporto: un saldo negativo saltato a gennaio e un maturato positivo a febbraio producono nel
+      lancio di febbraio un estratto con taxable = somma netta di entrambi.</criterion>
+    <criterion id="AC-007">Snapshot: modificare il profilo o i parametri dopo l'emissione non cambia l'estratto ISSUED;
+      in DRAFT il ricalcolo usa i valori correnti.</criterion>
+    <criterion id="AC-008">Ricalcola (DRAFT): aggancia movimenti nuovi &lt;= period_to (es. storno arrivato dopo il lancio)
+      e aggiorna i totali; su ISSUED/CANCELLED -&gt; 409.</criterion>
+    <criterion id="AC-009">Emetti: assegna numero progressivo per (company, anno di period_to) partendo da 1, issued_at/by;
+      due societa' hanno sequenze indipendenti; un numero non viene riusato dopo un annullo; DRAFT con taxable &lt;= 0
+      dopo il ricalcolo -&gt; 409; dopo l'emissione PATCH/recalculate/delete -&gt; 409.</criterion>
+    <criterion id="AC-010">Annulla: solo da ISSUED con reason obbligatoria; status CANCELLED, movimenti rilasciati
+      (commission_settlement_id null) e riprendibili dal lancio successivo; da DRAFT -&gt; 409.</criterion>
+    <criterion id="AC-011">Elimina bozza: 204, estratto rimosso, movimenti (incluse rettifiche create nella bozza) aperti;
+      su ISSUED -&gt; 409.</criterion>
+    <criterion id="AC-012">Rettifiche: create standalone entrano nel lancio successivo; create dentro una bozza vengono
+      agganciate e la bozza ricalcolata; bozza di altro referent/company -&gt; 422; amount 0 -&gt; 422; notes mancanti -&gt;
+      422; PUT/DELETE su rettifica in estratto ISSUED -&gt; 409; PUT/DELETE su un movimento non ADJUSTMENT -&gt; 404.</criterion>
+    <criterion id="AC-013">Synchronizer M1 non tocca gli ADJUSTMENT (nessuno storno anche rieseguendo sync e comando) e
+      valorizza company_id sui movimenti nuovi; la migrazione fa il backfill di company_id dai movimenti esistenti e
+      il rollback la ripristina.</criterion>
+    <criterion id="AC-014">Concorrenza: due lanci consecutivi sullo stesso periodo non agganciano lo stesso movimento due
+      volte (il secondo salta con draft_exists); la selezione usa lockForUpdate (verificata sulla query).</criterion>
+    <criterion id="AC-015">Parametri ENASARCO CRUD: happy path, 403 per azione, 404, year duplicato 422, percentuali fuori
+      range 422, DELETE di un anno usato da un estratto ISSUED -&gt; 409; activity log su create/update.</criterion>
+    <criterion id="AC-016">Permessi: permissions:sync crea le abilities di D-8; ogni endpoint risponde 403 senza la
+      relativa ability (lancio, view, recalculate, issue, cancel, delete, adjust, export); la navigazione mostra le tre
+      voci solo con il permesso view; FieldCatalogueEndpointTest include commission-settlements ed enasarco-parameters.</criterion>
+    <criterion id="AC-017">Permessi di campo: importi nascosti assenti da dettaglio, righe, aggregati ed export e 422 in
+      sort/filter/group; notes readonly fuori da DRAFT.</criterion>
+    <criterion id="AC-018">Tabelle: commission-settlement-runs, commission-settlements (row grouping con somme),
+      enasarco-parameters rispettano colonne/filtri/sort del contratto; commission-accruals espone settlement, company,
+      ADJUSTMENT e i quattro status; agent-fiscal-profiles espone vat_rate e il CRUD accetta vat_rate_id.</criterion>
+    <criterion id="AC-019">Demo seed idempotente: DemoDataSeeder crea parametri ENASARCO demo, un lancio e estratti
+      (alcuni emessi); seconda esecuzione con gli stessi conteggi; DatabaseSeeder non li richiama.</criterion>
+    <!-- Frontend Vitest -->
+    <criterion id="AC-020">FE Lanci: dialog Nuovo lancio (period_to &gt;= period_from, filtri opzionali, soglia) invia il
+      body del contratto e mostra l'esito con creati e saltati con il motivo tradotto; elenco lanci in sola lettura.</criterion>
+    <criterion id="AC-021">FE Estratti: griglia con quick filter (Bozze default), raggruppamento e footer totali; dettaglio
+      con totali D-2, movimenti e azioni abilitate secondo abilities (Ricalcola, Emetti con conferma, Annulla con motivo
+      obbligatorio, Elimina bozza con conferma, Nuova rettifica); errori 409 mostrati come toast.</criterion>
+    <criterion id="AC-022">FE Rettifiche: form con schema Zod (amount != 0, notes obbligatorie max 500, data) usato sia
+      standalone (scelta agente e societa') sia dalla bozza (agente/societa' fissi).</criterion>
+    <criterion id="AC-023">FE Parametri ENASARCO CRUD e profili con select aliquota IVA; Maturato con colonne estratto e
+      societa' e quick filter aggiornato (Aperto = status open).</criterion>
+    <criterion id="AC-024">i18n e guide: chiavi IT/EN in parita'; guide nuove commission-settlement-runs,
+      commission-settlements, enasarco-parameters e aggiornate agent-fiscal-profiles, commission-accruals, tutte "in
+      fase di sviluppo"; HELP_GUIDE_KEYS e help-content-parity verdi.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Importi solo bcmath (stessa convenzione di CommissionShareCalculator /
+      InvoiceAmountCalculator), niente float nei calcoli.</item>
+    <item>Authz server-side su ogni endpoint e tabella; sort/filtri da allow-list; `$request->safe()`; `$fillable`.</item>
+    <item>Aliquote, massimali e soglie mai nel codice: tabella enasarco_parameters, profilo, config/commissions.php.</item>
+    <item>Modifiche a M1 minime: synchronizer (company_id, ignora ADJUSTMENT), catalogo colonne commission-accruals,
+      profili (vat_rate_id). Nessuna modifica ai servizi incassi.</item>
+    <item>Migrazioni reversibili (incluso il drop di company_id e il ritorno di recipient_role NOT NULL solo se nessun
+      ADJUSTMENT esiste, altrimenti down li elimina prima). Seeder demo solo in DemoDataSeeder. I test di rollback con
+      step fisso vanno aggiornati (requisito cambiato).</item>
+    <item>File &lt; 300 righe (500 hard); `router.tsx` resta sotto 500: le rotte nuove vanno in agent-commission-routes.tsx.</item>
+    <item>Test eseguiti davvero (Pest mirati + suite parallela, Vitest, `npx tsc -b --force`, Pint, ESLint).</item>
+  </constraints>
+
+</spec>

@@ -4,6 +4,9 @@ namespace Database\Seeders;
 
 use App\Models\AgentFiscalProfile;
 use App\Models\CommissionAccrual;
+use App\Models\CommissionSettlement;
+use App\Models\CommissionSettlementNumberSequence;
+use App\Models\CommissionSettlementRun;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Opportunity;
@@ -53,7 +56,12 @@ class DemoDataSeeder extends Seeder
         // Payable documents likewise, and they restrict the purchase orders they bill.
         // The accrual ledger and the agent profiles outlive their invoices/referents
         // (nullOnDelete / restrict), so they are cleared first to keep re-runs stable.
+        // Accruals first: they restrict the settlement they belong to, which in turn
+        // restricts its profile and company (runs only null their settlements).
         CommissionAccrual::query()->delete();
+        CommissionSettlement::query()->delete();
+        CommissionSettlementRun::query()->delete();
+        CommissionSettlementNumberSequence::query()->delete();
         AgentFiscalProfile::query()->delete();
         Invoice::query()->delete();
         PurchaseInvoice::query()->delete();
@@ -156,6 +164,10 @@ class DemoDataSeeder extends Seeder
         // is rebuilt by the real synchronizer from the collected installments above.
         $this->call(DemoAgentFiscalProfileSeeder::class);
         $this->call(DemoCommissionAccrualSeeder::class);
+        // Agent settlements (spec 0213): ENASARCO parameters first, then one run on
+        // last month over the ledger above, with some drafts issued.
+        $this->call(DemoEnasarcoParameterSeeder::class);
+        $this->call(DemoCommissionSettlementSeeder::class);
         // Payable documents and their installments (spec 0211): bill the demo purchase
         // orders, so they run after DemoPurchaseOrderSeeder, and need the payment
         // methods and financial accounts seeded above.

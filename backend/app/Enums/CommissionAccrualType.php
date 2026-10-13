@@ -8,7 +8,8 @@ use App\Enums\Concerns\HasMeta;
 
 /**
  * Kind of a commission ledger movement (spec 0212): an accrual adds to the
- * amount earned, a reversal takes back a previous one.
+ * amount earned, a reversal takes back a previous one, an adjustment is a
+ * signed manual correction entered by Accounting (spec 0213, D-7).
  */
 enum CommissionAccrualType: string
 {
@@ -21,6 +22,10 @@ enum CommissionAccrualType: string
     #[Label('Reversal')]
     #[Color('red')]
     case Reversal = 'REVERSAL';
+
+    #[Label('Adjustment')]
+    #[Color('blue')]
+    case Adjustment = 'ADJUSTMENT';
 
     /**
      * @return array<int, string>

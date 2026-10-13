@@ -64,7 +64,9 @@ class CommissionAccrualsTableDefinition extends AbstractTableDefinition
         return CommissionAccrualSql::withJoins(CommissionAccrual::query())
             ->select('commission_accruals.*')
             ->selectRaw('quotes.id as quote_id, quotes.code as quote_code, products.name as product_name, registries.name as customer_name')
-            ->selectRaw('invoices.number as invoice_number, invoices.year as invoice_year')
+            ->selectRaw('invoices.number as invoice_number, invoices.year as invoice_year, companies.denomination as company_name')
+            ->selectRaw(CommissionAccrualSql::settlementLabel().' as settlement_label')
+            ->selectRaw(CommissionAccrualSql::status().' as derived_status')
             ->selectRaw(CommissionAccrualSql::recipientName().' as recipient_name');
     }
 
@@ -151,6 +153,8 @@ class CommissionAccrualsTableDefinition extends AbstractTableDefinition
             'type' => CommissionAccrualType::options(),
             'status' => [
                 new EnumMeta(CommissionAccrualSql::STATUS_OPEN, __('Open'), 'green'),
+                new EnumMeta(CommissionAccrualSql::STATUS_DRAFT, __('Draft'), 'gray'),
+                new EnumMeta(CommissionAccrualSql::STATUS_ISSUED, __('Issued'), 'blue'),
                 new EnumMeta(CommissionAccrualSql::STATUS_SETTLED_EXTERNALLY, __('Settled externally'), 'slate'),
             ],
             default => null,
@@ -178,8 +182,12 @@ class CommissionAccrualsTableDefinition extends AbstractTableDefinition
             'accrued_month' => $row->accrued_on->format('Y-m'),
             'recipient' => $row->getAttribute('recipient_name'),
             'recipient_kind' => $row->recipient_type,
-            'recipient_role' => $row->recipient_role->value,
+            'recipient_role' => $row->recipient_role?->value,
             'type' => $row->type->value,
+            'company_id' => $row->company_id,
+            'company' => $row->getAttribute('company_name'),
+            'commission_settlement_id' => $row->commission_settlement_id,
+            'settlement' => $row->getAttribute('settlement_label'),
             'invoice' => $number === null ? null : $number.'/'.$row->getAttribute('invoice_year'),
             'customer' => $row->getAttribute('customer_name'),
             'quote' => $row->getAttribute('quote_code'),
@@ -187,7 +195,7 @@ class CommissionAccrualsTableDefinition extends AbstractTableDefinition
             'base_amount' => $row->base_amount,
             'amount' => $row->amount,
             'settled_externally_on' => $row->settled_externally_on?->toDateString(),
-            'status' => $row->settled_externally_on === null ? CommissionAccrualSql::STATUS_OPEN : CommissionAccrualSql::STATUS_SETTLED_EXTERNALLY,
+            'status' => $row->getAttribute('derived_status'),
         ];
 
         foreach (Catalog::FIELD_BY_COLUMN as $column => $field) {
@@ -277,6 +285,7 @@ class CommissionAccrualsTableDefinition extends AbstractTableDefinition
             'recipient_role' => ['key' => $role, 'labels' => [$role]],
             'accrued_month' => ['key' => $month, 'labels' => [$month]],
             'type' => ['key' => $type, 'labels' => [$type]],
+            'company' => ['key' => 'commission_accruals.company_id', 'labels' => ['companies.denomination']],
             'customer' => ['key' => 'invoices.customer_registry_id', 'labels' => ['registries.name']],
         ];
     }

@@ -57,6 +57,8 @@ require_once __DIR__.'/Helpers/AgentFiscalProfileHelpers.php';
 require_once __DIR__.'/Helpers/InvoiceHelpers.php';
 require_once __DIR__.'/Helpers/InvoiceInstallmentHelpers.php';
 require_once __DIR__.'/Helpers/CommissionAccrualHelpers.php';
+require_once __DIR__.'/Helpers/CommissionSettlementHelpers.php';
+require_once __DIR__.'/Helpers/CommissionSettlementTableHelpers.php';
 require_once __DIR__.'/Helpers/PurchaseInvoiceInstallmentHelpers.php';
 
 /*

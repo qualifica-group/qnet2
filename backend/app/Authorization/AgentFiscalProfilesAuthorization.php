@@ -39,6 +39,7 @@ class AgentFiscalProfilesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('withholding_base_percent', 'number'),
             new FieldDefinition('enasarco_enabled', 'boolean'),
             new FieldDefinition('enasarco_mandate_type', 'select'),
+            new FieldDefinition('vat_rate_id', 'select'),
             new FieldDefinition('valid_from', 'date', mandatory: true),
             new FieldDefinition('valid_until', 'date'),
             new FieldDefinition('notes', 'textarea'),

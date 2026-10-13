@@ -43,6 +43,7 @@ export function buildAgentFiscalProfileSchema(t: TFunction) {
       withholding_base_percent: z.string(),
       enasarco_enabled: z.boolean(),
       enasarco_mandate_type: z.union([z.enum(ENASARCO_MANDATE_TYPES), z.literal('')]),
+      vat_rate_id: z.number().nullable(),
       valid_from: z.string().min(1, t('agentFiscalProfiles.form.validFromRequired')),
       valid_until: z.string(),
       notes: z.string().max(NOTES_MAX_LENGTH, t('agentFiscalProfiles.form.notesMax')),

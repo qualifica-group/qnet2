@@ -12,6 +12,7 @@ export const EMPTY_FORM_VALUES: AgentFiscalProfileFormValues = {
   withholding_base_percent: '',
   enasarco_enabled: false,
   enasarco_mandate_type: '',
+  vat_rate_id: null,
   valid_from: '',
   valid_until: '',
   notes: '',
@@ -25,6 +26,7 @@ export function toFormValues(profile: AgentFiscalProfileDetail): AgentFiscalProf
     withholding_base_percent: profile.withholding_base_percent ?? '',
     enasarco_enabled: profile.enasarco_enabled,
     enasarco_mandate_type: profile.enasarco_mandate_type ?? '',
+    vat_rate_id: profile.vat_rate_id,
     valid_from: profile.valid_from,
     valid_until: profile.valid_until ?? '',
     notes: profile.notes ?? '',
@@ -42,6 +44,7 @@ export function buildAgentFiscalProfilePayload(values: AgentFiscalProfileSchemaO
     enasarco_enabled: values.enasarco_enabled,
     enasarco_mandate_type:
       values.enasarco_enabled && values.enasarco_mandate_type !== '' ? values.enasarco_mandate_type : null,
+    vat_rate_id: values.vat_rate_id,
     valid_from: values.valid_from,
     valid_until: values.valid_until === '' ? null : values.valid_until,
     notes: notes === '' ? null : notes,

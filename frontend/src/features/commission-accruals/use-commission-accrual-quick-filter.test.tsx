@@ -9,6 +9,7 @@ import type { TableViewHandle } from '@/features/table/table-view'
 
 const OPEN_SET = { filterType: 'set', values: ['open'] }
 const SETTLED_SET = { filterType: 'set', values: ['settled_externally'] }
+const IN_STATEMENT_SET = { filterType: 'set', values: ['draft', 'issued'] }
 
 describe('commission accrual quick filter (spec 0212 AC-021)', () => {
   it('defaults to Aperto: forces status=open only', () => {
@@ -20,6 +21,7 @@ describe('commission accrual quick filter (spec 0212 AC-021)', () => {
 
   it.each([
     ['open', { status: OPEN_SET }],
+    ['in_statement', { status: IN_STATEMENT_SET }],
     ['settled_externally', { status: SETTLED_SET }],
     ['all', { status: null }],
   ] as const)('writes the %s filter model patch through the table handle', (filter, patch) => {
@@ -36,6 +38,7 @@ describe('commission accrual quick filter (spec 0212 AC-021)', () => {
   it('reads the active quick filter back from the live grid model', () => {
     expect(readAccrualQuickFilter({ status: OPEN_SET })).toBe('open')
     expect(readAccrualQuickFilter({ status: SETTLED_SET })).toBe('settled_externally')
+    expect(readAccrualQuickFilter({ status: IN_STATEMENT_SET })).toBe('in_statement')
     expect(readAccrualQuickFilter({})).toBe('all')
     expect(readAccrualQuickFilter({ status: { filterType: 'set', values: ['open', 'settled_externally'] } })).toBeNull()
   })

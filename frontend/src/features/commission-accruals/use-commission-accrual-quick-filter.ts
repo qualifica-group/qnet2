@@ -5,11 +5,12 @@ import type { AccrualQuickFilter } from '@/features/commission-accruals/types'
 export const STATUS_FILTER_KEY = 'status'
 const OPEN = 'open'
 const SETTLED_EXTERNALLY = 'settled_externally'
+const IN_STATEMENT_STATUSES = ['draft', 'issued']
 
 type FilterModel = Record<string, unknown>
 
-function setFilter(value: string): { filterType: 'set'; values: string[] } {
-  return { filterType: 'set', values: [value] }
+function setFilter(...values: string[]): { filterType: 'set'; values: string[] } {
+  return { filterType: 'set', values }
 }
 
 function readValues(model: FilterModel): string[] {
@@ -22,6 +23,8 @@ export function buildAccrualQuickFilterPatch(filter: AccrualQuickFilter): Filter
   switch (filter) {
     case 'open':
       return { [STATUS_FILTER_KEY]: setFilter(OPEN) }
+    case 'in_statement':
+      return { [STATUS_FILTER_KEY]: setFilter(...IN_STATEMENT_STATUSES) }
     case 'settled_externally':
       return { [STATUS_FILTER_KEY]: setFilter(SETTLED_EXTERNALLY) }
     case 'all':
@@ -37,6 +40,9 @@ export function readAccrualQuickFilter(model: FilterModel): AccrualQuickFilter |
   }
   if (statuses.length === 1 && statuses[0] === OPEN) {
     return 'open'
+  }
+  if (statuses.length === IN_STATEMENT_STATUSES.length && IN_STATEMENT_STATUSES.every((status) => statuses.includes(status))) {
+    return 'in_statement'
   }
   return statuses.length === 1 && statuses[0] === SETTLED_EXTERNALLY ? 'settled_externally' : null
 }

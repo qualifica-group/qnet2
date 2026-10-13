@@ -5,6 +5,7 @@ use App\Models\Attribute;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
 use App\Models\CommissionConfiguration;
+use App\Models\CommissionSettlement;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\Contract;
@@ -14,6 +15,7 @@ use App\Models\CustomFieldDefinition;
 use App\Models\DocumentBundle;
 use App\Models\DocumentLayout;
 use App\Models\EmailTemplate;
+use App\Models\EnasarcoParameter;
 use App\Models\FieldChangeRequest;
 use App\Models\FinancialAccount;
 use App\Models\Invoice;
@@ -262,6 +264,13 @@ return [
         // spec 0212: profili fiscali degli agenti.
         'agent-fiscal-profiles' => [
             'model' => AgentFiscalProfile::class,
+        ],
+        // spec 0213: parametri ENASARCO e estratti di liquidazione agenti.
+        'enasarco-parameters' => [
+            'model' => EnasarcoParameter::class,
+        ],
+        'commission-settlements' => [
+            'model' => CommissionSettlement::class,
         ],
         'financial-accounts' => [
             'model' => FinancialAccount::class,

@@ -19,6 +19,8 @@ use App\Models\BusinessFunction;
 use App\Models\Campaign;
 use App\Models\CommissionAccrual;
 use App\Models\CommissionConfiguration;
+use App\Models\CommissionSettlement;
+use App\Models\CommissionSettlementRun;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\Contact;
@@ -31,6 +33,7 @@ use App\Models\DocumentBundle;
 use App\Models\DocumentLayout;
 use App\Models\EmailTemplate;
 use App\Models\EmploymentProfile;
+use App\Models\EnasarcoParameter;
 use App\Models\FieldChangeRequest;
 use App\Models\FinancialAccount;
 use App\Models\Invoice;
@@ -209,6 +212,9 @@ class AppServiceProvider extends ServiceProvider
             'financial_account' => FinancialAccount::class,
             'agent_fiscal_profile' => AgentFiscalProfile::class,
             'commission_accrual' => CommissionAccrual::class,
+            'commission_settlement' => CommissionSettlement::class,
+            'commission_settlement_run' => CommissionSettlementRun::class,
+            'enasarco_parameter' => EnasarcoParameter::class,
             'proforma_request' => ProformaRequest::class,
             'purchase_request' => PurchaseRequest::class,
             'purchase_request_line' => PurchaseRequestLine::class,

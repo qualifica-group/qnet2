@@ -6,6 +6,7 @@ use App\Authorization\BusinessFunctionsAuthorization;
 use App\Authorization\CampaignsAuthorization;
 use App\Authorization\CommissionAccrualsAuthorization;
 use App\Authorization\CommissionConfigurationsAuthorization;
+use App\Authorization\CommissionSettlementsAuthorization;
 use App\Authorization\CompaniesAuthorization;
 use App\Authorization\CompanySitesAuthorization;
 use App\Authorization\ContractsAuthorization;
@@ -15,6 +16,7 @@ use App\Authorization\CustomFieldsAuthorization;
 use App\Authorization\DocumentBundlesAuthorization;
 use App\Authorization\DocumentLayoutsAuthorization;
 use App\Authorization\EmailTemplatesAuthorization;
+use App\Authorization\EnasarcoParametersAuthorization;
 use App\Authorization\EnrolleeManagementAuthorization;
 use App\Authorization\FinancialAccountsAuthorization;
 use App\Authorization\InvoiceInstallmentsAuthorization;
@@ -135,6 +137,10 @@ return [
         'agent-fiscal-profiles' => AgentFiscalProfilesAuthorization::class,
         // spec 0212: maturato provvigioni (libro mastro in sola lettura).
         'commission-accruals' => CommissionAccrualsAuthorization::class,
+        // spec 0213: estratti di liquidazione agenti (importi in sola lettura, note in bozza).
+        'commission-settlements' => CommissionSettlementsAuthorization::class,
+        // spec 0213: parametri ENASARCO per anno.
+        'enasarco-parameters' => EnasarcoParametersAuthorization::class,
         // spec 0193: richieste proforma alla Contabilita'.
         'proforma-requests' => ProformaRequestsAuthorization::class,
         // spec 0208: richieste di acquisto (RDA).

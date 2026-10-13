@@ -3,7 +3,8 @@
  * Grouped here to keep `en.ts` within the size limits (`engineering.md` §6).
  */
 
-import { agentFiscalProfiles, commissionAccruals } from './en-agent-commissions'
+import { agentFiscalProfiles, commissionAccruals, enasarcoParameters } from './en-agent-commissions'
+import { commissionSettlementRuns, commissionSettlements } from './en-commission-settlements'
 import { financialAccounts } from './en-financial-accounts'
 import { invoiceEditor } from './en-invoice-editor'
 import { invoiceInstallments } from './en-invoice-installments'
@@ -21,5 +22,8 @@ export const accounting = {
   purchaseInvoiceInstallments,
   agentFiscalProfiles,
   commissionAccruals,
+  commissionSettlementRuns,
+  commissionSettlements,
+  enasarcoParameters,
   invoiceEditor,
 }

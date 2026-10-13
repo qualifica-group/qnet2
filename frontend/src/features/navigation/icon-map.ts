@@ -50,6 +50,8 @@ import {
   HandCoins,
   IdCard,
   BookOpen,
+  FileSpreadsheet,
+  Play,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -122,6 +124,9 @@ const iconMap: Record<string, LucideIcon> = {
   'hand-coins': HandCoins,
   'id-card': IdCard,
   'book-open': BookOpen,
+  // Spec 0213: "Lanci" and "Estratti" under Provvigioni agenti (`percent` for the ENASARCO parameters already exists).
+  play: Play,
+  'file-spreadsheet': FileSpreadsheet,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

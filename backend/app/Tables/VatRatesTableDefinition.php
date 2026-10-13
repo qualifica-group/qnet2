@@ -4,6 +4,7 @@ namespace App\Tables;
 
 use App\Models\User;
 use App\Models\VatRate;
+use App\Services\VatRateService;
 use App\Tables\VatRates\VatRateColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Gate;
  */
 class VatRatesTableDefinition extends AbstractTableDefinition
 {
+    public function __construct(private readonly VatRateService $service) {}
+
     public function domain(): string
     {
         return 'vat-rates';
@@ -124,5 +127,11 @@ class VatRatesTableDefinition extends AbstractTableDefinition
         }
 
         return $allowed;
+    }
+
+    public function deleteModel(Model $model): void
+    {
+        /** @var VatRate $model */
+        $this->service->delete($model);
     }
 }

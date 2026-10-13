@@ -22,6 +22,9 @@ export interface AgentFiscalProfileDetail {
   withholding_base_percent: string | null
   enasarco_enabled: boolean
   enasarco_mandate_type: EnasarcoMandateType | null
+  /** VAT rate applied to the agent statements, null = transaction without VAT (spec 0213 D-2). */
+  vat_rate_id: number | null
+  vat_rate: { id: number; name: string; rate: string } | null
   valid_from: string
   valid_until: string | null
   notes: string | null
@@ -42,6 +45,7 @@ export interface AgentFiscalProfilePayload {
   withholding_base_percent: number | null
   enasarco_enabled: boolean
   enasarco_mandate_type: EnasarcoMandateType | null
+  vat_rate_id: number | null
   valid_from: string
   valid_until: string | null
   notes: string | null

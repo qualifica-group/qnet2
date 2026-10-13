@@ -6,6 +6,8 @@ use App\Tables\BusinessFunctionsTableDefinition;
 use App\Tables\CampaignsTableDefinition;
 use App\Tables\CommissionAccrualsTableDefinition;
 use App\Tables\CommissionConfigurationsTableDefinition;
+use App\Tables\CommissionSettlementRunsTableDefinition;
+use App\Tables\CommissionSettlementsTableDefinition;
 use App\Tables\CompaniesTableDefinition;
 use App\Tables\CompanySitesTableDefinition;
 use App\Tables\ContractsTableDefinition;
@@ -15,6 +17,7 @@ use App\Tables\CustomFieldsTableDefinition;
 use App\Tables\DocumentBundlesTableDefinition;
 use App\Tables\DocumentLayoutsTableDefinition;
 use App\Tables\EmailTemplatesTableDefinition;
+use App\Tables\EnasarcoParametersTableDefinition;
 use App\Tables\EnrolleeManagementTableDefinition;
 use App\Tables\FieldChangeRequestsTableDefinition;
 use App\Tables\FinancialAccountsTableDefinition;
@@ -138,6 +141,10 @@ return [
         'agent-fiscal-profiles' => AgentFiscalProfilesTableDefinition::class,
         // spec 0212: maturato provvigioni (libro mastro in sola lettura).
         'commission-accruals' => CommissionAccrualsTableDefinition::class,
+        // spec 0213: liquidazioni agenti (lanci, estratti) e parametri ENASARCO.
+        'commission-settlement-runs' => CommissionSettlementRunsTableDefinition::class,
+        'commission-settlements' => CommissionSettlementsTableDefinition::class,
+        'enasarco-parameters' => EnasarcoParametersTableDefinition::class,
         'proforma-requests' => ProformaRequestsTableDefinition::class,
         // spec 0208: purchase requests (RDA) and their line management grid.
         'purchase-requests' => PurchaseRequestsTableDefinition::class,

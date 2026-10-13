@@ -3,6 +3,7 @@
 use App\Models\AgentFiscalProfile;
 use App\Models\ExportRun;
 use App\Models\Referent;
+use App\Models\VatRate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -23,7 +24,7 @@ it('AC-016: exposes the contract columns with their types, sorts and filters', f
     expect($data['resource'])->toBe('agent-fiscal-profiles')
         ->and($columns->keys()->all())->toBe([
             'id', 'referent', 'withholding_enabled', 'withholding_rate', 'withholding_base_percent', 'enasarco_enabled',
-            'enasarco_mandate_type', 'valid_from', 'valid_until', 'is_current', 'updated_at',
+            'enasarco_mandate_type', 'vat_rate', 'valid_from', 'valid_until', 'is_current', 'updated_at',
         ])
         ->and($columns['referent'])->toMatchArray(['type' => 'text', 'sortable' => true, 'filterType' => 'set'])
         ->and($columns['withholding_enabled'])->toMatchArray(['type' => 'boolean', 'sortable' => true, 'filterType' => 'set'])
@@ -160,4 +161,65 @@ it('AC-016: bulk delete removes the profiles through the table endpoint', functi
     $this->postJson('/api/tables/agent-fiscal-profiles/bulk-delete', ['ids' => [$profile->id]])->assertOk();
 
     $this->assertDatabaseMissing('agent_fiscal_profiles', ['id' => $profile->id]);
+});
+
+it('AC-018: the vat_rate column shows "name (rate%)", is null without a rate, and carries the id', function () {
+    Sanctum::actingAs(agentFiscalProfileUserWith(['viewAny']));
+    $ordinary = VatRate::factory()->create(['name' => 'Ordinaria', 'rate' => '22.00']);
+    $reduced = VatRate::factory()->create(['name' => 'Ridotta', 'rate' => '5.50']);
+    $exempt = VatRate::factory()->create(['name' => 'Esente', 'rate' => '0.00']);
+    $a = AgentFiscalProfile::factory()->create(['vat_rate_id' => $ordinary->id]);
+    $b = AgentFiscalProfile::factory()->create(['vat_rate_id' => $reduced->id]);
+    $c = AgentFiscalProfile::factory()->create(['vat_rate_id' => $exempt->id]);
+    $d = AgentFiscalProfile::factory()->create(['vat_rate_id' => null]);
+
+    $rows = collect(profileRows($this))->keyBy('id');
+    $columns = collect($this->getJson('/api/tables/agent-fiscal-profiles/columns')->assertOk()->json('data.columns'))->keyBy('id');
+
+    expect($rows[$a->id])->toMatchArray(['vat_rate' => 'Ordinaria (22%)', 'vat_rate_id' => $ordinary->id])
+        ->and($rows[$b->id]['vat_rate'])->toBe('Ridotta (5.5%)')
+        ->and($rows[$c->id]['vat_rate'])->toBe('Esente (0%)')
+        ->and($rows[$d->id])->toMatchArray(['vat_rate' => null, 'vat_rate_id' => null])
+        ->and($columns['vat_rate'])->toMatchArray(['type' => 'text', 'sortable' => true, 'filterType' => 'set', 'label' => 'agentFiscalProfiles.columns.vat_rate']);
+});
+
+it('AC-018: the vat_rate set filter, blank entry, values and sort work on the derived label', function () {
+    Sanctum::actingAs(agentFiscalProfileUserWith(['viewAny']));
+    $ordinary = VatRate::factory()->create(['name' => 'Ordinaria', 'rate' => '22.00']);
+    $reduced = VatRate::factory()->create(['name' => 'Ridotta', 'rate' => '5.50']);
+    VatRate::factory()->create(['name' => 'Unused', 'rate' => '4.00']);
+    $a = AgentFiscalProfile::factory()->create(['vat_rate_id' => $ordinary->id]);
+    $b = AgentFiscalProfile::factory()->create(['vat_rate_id' => $reduced->id]);
+    $c = AgentFiscalProfile::factory()->create(['vat_rate_id' => null]);
+    $ids = fn (array $values) => collect(profileRows($this, ['filterModel' => ['vat_rate' => ['filterType' => 'set', 'values' => $values]]]))->pluck('id')->sort()->values()->all();
+    $sorted = fn (string $direction) => collect(profileRows($this, ['sortModel' => [['colId' => 'vat_rate', 'sort' => $direction]]]))->pluck('vat_rate')->all();
+
+    expect($ids(['Ordinaria (22%)']))->toBe([$a->id])
+        ->and($ids(['Ordinaria (22%)', 'Ridotta (5.5%)']))->toBe([$a->id, $b->id])
+        ->and($ids([null]))->toBe([$c->id])
+        ->and($ids(['Ridotta (5.5%)', null]))->toBe([$b->id, $c->id])
+        ->and($ids(['Nope (1%)']))->toBe([])
+        ->and($sorted('desc'))->toBe(['Ridotta (5.5%)', 'Ordinaria (22%)', null])
+        ->and($sorted('asc'))->toBe([null, 'Ordinaria (22%)', 'Ridotta (5.5%)']);
+
+    $values = $this->postJson('/api/tables/agent-fiscal-profiles/values', ['columnId' => 'vat_rate'])->assertOk()->json('data.values');
+    $searched = $this->postJson('/api/tables/agent-fiscal-profiles/values', ['columnId' => 'vat_rate', 'search' => 'rid'])->assertOk()->json('data.values');
+
+    expect($values)->toBe([null, 'Ordinaria (22%)', 'Ridotta (5.5%)'])
+        ->and($searched)->toBe(['Ridotta (5.5%)']);
+});
+
+it('AC-018: a role that cannot see vat_rate_id never receives the vat_rate column or the id, and cannot sort or filter on it', function () {
+    $user = agentFiscalProfileUserWith(['viewAny']);
+    restrictAgentFiscalProfileField($user, 'vat_rate_id', visible: false, editable: false);
+    Sanctum::actingAs($user);
+    AgentFiscalProfile::factory()->create(['vat_rate_id' => VatRate::factory()->create()->id]);
+
+    $columns = $this->getJson('/api/tables/agent-fiscal-profiles/columns')->assertOk()->json('data.columns');
+
+    expect(array_column($columns, 'id'))->not->toContain('vat_rate')
+        ->and(profileRows($this)[0])->not->toHaveKeys(['vat_rate', 'vat_rate_id']);
+
+    $this->postJson('/api/tables/agent-fiscal-profiles/rows', ['startRow' => 0, 'endRow' => 25, 'sortModel' => [['colId' => 'vat_rate', 'sort' => 'asc']]])->assertUnprocessable();
+    $this->postJson('/api/tables/agent-fiscal-profiles/rows', ['startRow' => 0, 'endRow' => 25, 'filterModel' => ['vat_rate' => ['filterType' => 'set', 'values' => ['x']]]])->assertUnprocessable();
 });

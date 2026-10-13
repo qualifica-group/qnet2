@@ -92,6 +92,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         'agent-fiscal-profiles',
         // spec 0212 `commission-accruals` (CommissionAccrualsAuthorization: read-only ledger, amounts hideable).
         'commission-accruals',
+        // spec 0213 `commission-settlements` (CommissionSettlementsAuthorization: notes editable on a draft,
+        // computed amounts visible-readonly) and `enasarco-parameters` (EnasarcoParametersAuthorization).
+        'commission-settlements', 'enasarco-parameters',
         // spec 0185 `request-statistics` (RequestStatisticsAuthorization: a view-only module, no
         // field — registered only so its permission is assignable from the Role form).
         'request-statistics',

@@ -77,11 +77,17 @@ export const enums = {
   commission_accrual_type: {
     ACCRUAL: 'Maturato',
     REVERSAL: 'Storno',
+    ADJUSTMENT: 'Rettifica',
   },
   commission_recipient_role: {
     COMMERCIAL: 'Commerciale',
     REPORTER: 'Segnalatore',
     SUPERVISOR: 'Supervisore',
+  },
+  commission_settlement_status: {
+    DRAFT: 'Bozza',
+    ISSUED: 'Emesso',
+    CANCELLED: 'Annullato',
   },
   commission_recipient_kind: {
     referent: 'Referente',
@@ -89,6 +95,8 @@ export const enums = {
   },
   commission_accrual_status: {
     open: 'Aperto',
+    draft: 'In bozza',
+    issued: 'Liquidato',
     settled_externally: 'Liquidato esternamente',
   },
   installment_overdue: {

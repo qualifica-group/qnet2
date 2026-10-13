@@ -10,6 +10,7 @@ use App\Models\Referent;
 use App\Models\User;
 use App\Services\AgentFiscalProfileService;
 use App\Tables\AgentFiscalProfiles\AgentFiscalProfileColumnCatalog as Catalog;
+use App\Tables\AgentFiscalProfiles\AgentFiscalProfileVatRateQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -34,6 +35,7 @@ class AgentFiscalProfilesTableDefinition extends AbstractTableDefinition
         'withholding_base_percent' => 'withholding_base_percent',
         'enasarco_enabled' => 'enasarco_enabled',
         'enasarco_mandate_type' => 'enasarco_mandate_type',
+        'vat_rate' => 'vat_rate_id',
         'valid_until' => 'valid_until',
     ];
 
@@ -63,7 +65,7 @@ class AgentFiscalProfilesTableDefinition extends AbstractTableDefinition
      */
     public function baseQuery(): Builder
     {
-        return AgentFiscalProfile::query()->with('referent:id,name');
+        return AgentFiscalProfile::query()->with(['referent:id,name', 'vatRate:id,name,rate']);
     }
 
     /**
@@ -144,6 +146,8 @@ class AgentFiscalProfilesTableDefinition extends AbstractTableDefinition
             'withholding_base_percent' => $row->withholding_base_percent === null ? null : (float) $row->withholding_base_percent,
             'enasarco_enabled' => $row->enasarco_enabled,
             'enasarco_mandate_type' => $row->enasarco_mandate_type?->value,
+            'vat_rate_id' => $row->vat_rate_id,
+            'vat_rate' => $row->vatRate === null ? null : Catalog::vatRateLabel($row->vatRate),
             'valid_from' => $row->valid_from?->format('Y-m-d'),
             'valid_until' => $row->valid_until?->format('Y-m-d'),
             'is_current' => $this->isCurrent($row) ? Catalog::CURRENT_YES : Catalog::CURRENT_NO,
@@ -156,6 +160,11 @@ class AgentFiscalProfilesTableDefinition extends AbstractTableDefinition
 
         foreach ($this->hiddenColumnIds($actor) as $column) {
             unset($payload[$column]);
+        }
+
+        // The id travels with its label: hiding the field hides both.
+        if (! array_key_exists('vat_rate', $payload)) {
+            unset($payload['vat_rate_id']);
         }
 
         return $payload;
@@ -185,12 +194,19 @@ class AgentFiscalProfilesTableDefinition extends AbstractTableDefinition
         return match ($columnId) {
             'referent' => $this->applyReferentFilter($query, $filter),
             'is_current' => $this->applyCurrentFilter($query, $filter),
+            'vat_rate' => AgentFiscalProfileVatRateQuery::applyFilter($query, $filter),
             default => false,
         };
     }
 
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
+        if ($columnId === 'vat_rate') {
+            AgentFiscalProfileVatRateQuery::applySort($query, $direction);
+
+            return true;
+        }
+
         if ($columnId !== 'referent') {
             return false;
         }
@@ -211,6 +227,14 @@ class AgentFiscalProfilesTableDefinition extends AbstractTableDefinition
 
         if ($columnId === 'is_current') {
             return [Catalog::CURRENT_YES, Catalog::CURRENT_NO];
+        }
+
+        if ($columnId === 'vat_rate') {
+            return $this->withBlankEntry(
+                AgentFiscalProfileVatRateQuery::labels($query, $search, $limit),
+                $search,
+                static fn (): bool => (clone $query)->reorder()->whereNull('agent_fiscal_profiles.vat_rate_id')->exists(),
+            );
         }
 
         if ($columnId !== 'referent') {

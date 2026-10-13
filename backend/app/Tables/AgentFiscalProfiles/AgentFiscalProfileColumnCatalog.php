@@ -3,11 +3,12 @@
 namespace App\Tables\AgentFiscalProfiles;
 
 use App\Enums\EnasarcoMandateType;
+use App\Models\VatRate;
 
 /**
  * Declarative column/filter/action catalogue for the `agent-fiscal-profiles`
- * domain (spec 0212): pure data. `referent` and `is_current` are DERIVED
- * (referent name; "valid today"), handled by AgentFiscalProfilesTableDefinition.
+ * domain (spec 0212, 0213): pure data. `referent`, `vat_rate` and `is_current` are DERIVED
+ * (referent name; VAT rate label; "valid today"), handled by AgentFiscalProfilesTableDefinition.
  */
 final class AgentFiscalProfileColumnCatalog
 {
@@ -15,6 +16,16 @@ final class AgentFiscalProfileColumnCatalog
     public const string CURRENT_YES = 'yes';
 
     public const string CURRENT_NO = 'no';
+
+    /**
+     * The VAT rate as shown in the grid: "name (22%)", trailing zeros of the rate dropped.
+     */
+    public static function vatRateLabel(VatRate $vatRate): string
+    {
+        $rate = rtrim(rtrim(number_format((float) $vatRate->rate, 2, '.', ''), '0'), '.');
+
+        return "{$vatRate->name} ({$rate}%)";
+    }
 
     /**
      * @return array<int, array<string, mixed>>
@@ -28,6 +39,7 @@ final class AgentFiscalProfileColumnCatalog
             self::column('withholding_base_percent', 'number', sortable: true, filterType: 'number'),
             self::column('enasarco_enabled', 'boolean', sortable: true, filterType: 'set'),
             self::column('enasarco_mandate_type', 'badge', sortable: true, filterType: 'set', options: EnasarcoMandateType::values()),
+            self::column('vat_rate', 'text', sortable: true, filterType: 'set'),
             self::column('valid_from', 'date', sortable: true, filterType: 'date'),
             self::column('valid_until', 'date', sortable: true, filterType: 'date'),
             self::column('is_current', 'badge', sortable: false, filterType: 'set', options: [self::CURRENT_YES, self::CURRENT_NO]),

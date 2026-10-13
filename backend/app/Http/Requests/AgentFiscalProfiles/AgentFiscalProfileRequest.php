@@ -48,6 +48,7 @@ class AgentFiscalProfileRequest extends FormRequest
                 'nullable', Rule::enum(EnasarcoMandateType::class),
                 Rule::requiredIf($enasarco), Rule::prohibitedIf(! $enasarco),
             ],
+            'vat_rate_id' => ['nullable', 'integer', Rule::exists('vat_rates', 'id')],
             'valid_from' => [
                 'required', 'date',
                 new NonOverlappingFiscalProfile($this->input('referent_id'), $this->input('valid_until'), $this->profile()?->id),

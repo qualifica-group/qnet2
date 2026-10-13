@@ -1,4 +1,4 @@
-import { IdCard, Landmark, Percent } from 'lucide-react'
+import { IdCard, Landmark, Percent, ReceiptEuro } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FormSection } from '@/components/form-section'
 import { RelationSelectField } from '@/components/form/relation-select-field'
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { MetaField } from '@/features/authorization/MetaField'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
+import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
 import { useAgentFiscalProfileForm } from '@/features/agent-fiscal-profiles/use-agent-fiscal-profile-form'
 import {
   EnasarcoFields,
@@ -89,6 +90,27 @@ export function AgentFiscalProfileFormBody({ mode, onSuccess, onCancel }: AgentF
             description={t('agentFiscalProfiles.form.sections.enasarco.description')}
           >
             <EnasarcoFields control={control} />
+          </FormSection>
+
+          <FormSection
+            icon={ReceiptEuro}
+            title={t('agentFiscalProfiles.form.sections.vat.title')}
+            description={t('agentFiscalProfiles.form.sections.vat.description')}
+          >
+            <RelationSelectField
+              control={control}
+              name="vat_rate_id"
+              metaKey="vat_rate_id"
+              label={t('agentFiscalProfiles.form.vatRate')}
+              resource={VAT_RATES_FOR_SELECT_RESOURCE}
+              searchPlaceholder={t('agentFiscalProfiles.form.vatRateSearch')}
+              selected={profile?.vat_rate ?? null}
+              placeholder={t('agentFiscalProfiles.form.vatRatePlaceholder')}
+              emptyLabel={t('agentFiscalProfiles.form.vatRateEmpty')}
+              errorLabel={t('agentFiscalProfiles.form.vatRateError')}
+              clearLabel={t('common.clear')}
+              retryLabel={t('common.retry')}
+            />
           </FormSection>
 
           <MetaField control={control} name="notes" metaKey="notes" label={t('agentFiscalProfiles.form.notes')}>

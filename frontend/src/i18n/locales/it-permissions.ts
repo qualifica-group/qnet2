@@ -71,6 +71,10 @@ export const permissions = {
     collect: 'Registra incassi',
     // Spec 0211: fatture passive.
     pay: 'Registra pagamenti',
+    // Spec 0213: estratti provvigioni.
+    issue: 'Emettere',
+    cancel: 'Annullare',
+    adjust: 'Gestire le rettifiche',
     // Spec 0208: richieste di acquisto (RDA).
     fulfill: 'Evadere le righe (ordinare, ricevere)',
     manageStatuses: 'Gestire qualsiasi stato riga',
@@ -145,6 +149,8 @@ export const permissions = {
     // Spec 0212: provvigioni agenti.
     'agent-fiscal-profiles': 'Profili fiscali agenti',
     'commission-accruals': 'Maturato provvigioni',
+    'commission-settlements': 'Estratti provvigioni',
+    'enasarco-parameters': 'Parametri ENASARCO',
     'product-typologies': 'Tipologie Prodotto',
     // Modulo Task e i suoi cinque configuratori (spec 0101).
     tasks: 'Task',

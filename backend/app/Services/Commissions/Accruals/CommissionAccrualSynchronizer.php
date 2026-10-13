@@ -57,8 +57,8 @@ class CommissionAccrualSynchronizer
         $delta = bcsub($expected, $state->sums[$key], 2);
 
         return match (bccomp($delta, '0', 2)) {
-            1 => $this->post($bucket, CommissionAccrualType::Accrual, $delta, $trigger?->collected_at?->toDateString() ?? $this->today(), $trigger?->id),
-            -1 => $this->post($bucket, CommissionAccrualType::Reversal, $delta, $this->today(), $trigger?->id),
+            1 => $this->post($bucket, $invoice, CommissionAccrualType::Accrual, $delta, $trigger?->collected_at?->toDateString() ?? $this->today(), $trigger?->id),
+            -1 => $this->post($bucket, $invoice, CommissionAccrualType::Reversal, $delta, $this->today(), $trigger?->id),
             default => new SyncResult,
         };
     }
@@ -83,7 +83,7 @@ class CommissionAccrualSynchronizer
             }
 
             $installmentId = $trigger?->collected_at?->toDateString() === $date ? $trigger->id : $rows->last()->id;
-            $result = $result->plus($this->post($bucket, CommissionAccrualType::Accrual, $delta, $date, $installmentId));
+            $result = $result->plus($this->post($bucket, $invoice, CommissionAccrualType::Accrual, $delta, $date, $installmentId));
             $posted = $expected;
         }
 
@@ -108,13 +108,14 @@ class CommissionAccrualSynchronizer
         );
     }
 
-    private function post(AccrualBucket $bucket, CommissionAccrualType $type, string $amount, string $accruedOn, ?int $installmentId): SyncResult
+    private function post(AccrualBucket $bucket, Invoice $invoice, CommissionAccrualType $type, string $amount, string $accruedOn, ?int $installmentId): SyncResult
     {
         CommissionAccrual::query()->create([
             'invoice_id' => $bucket->invoiceId,
             'quote_line_id' => $bucket->quoteLineId,
             'quote_line_commission_id' => $bucket->commissionId,
             'invoice_installment_id' => $installmentId,
+            'company_id' => $invoice->company_id,
             'recipient_role' => $bucket->role,
             'recipient_type' => $bucket->recipientType,
             'recipient_id' => $bucket->recipientId,

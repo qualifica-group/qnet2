@@ -7,7 +7,7 @@ use App\Enums\CommissionRecipientRole;
 
 /**
  * Declarative column/filter catalogue of the `commission-accruals` domain
- * (spec 0212). Pure data; the columns tied to a permission field are mapped in
+ * (spec 0212, 0213). Pure data; the columns tied to a permission field are mapped in
  * FIELD_BY_COLUMN so the definition can hide them per actor.
  */
 final class CommissionAccrualColumnCatalog
@@ -45,12 +45,14 @@ final class CommissionAccrualColumnCatalog
             self::column('recipient_kind', 'badge', sortable: true, filter: 'set', options: self::RECIPIENT_KINDS),
             self::column('recipient_role', 'badge', sortable: true, filter: 'set', options: self::roles()),
             self::column('type', 'badge', sortable: true, filter: 'set', options: CommissionAccrualType::values()),
+            self::column('company', 'text', sortable: true, filter: 'set'),
             self::column('invoice', 'text', sortable: true, filter: 'text'),
             self::column('customer', 'text', sortable: true, filter: 'set'),
             self::column('quote', 'text', sortable: true, filter: 'text'),
             self::column('product', 'text', sortable: true, filter: 'text'),
             self::column('base_amount', 'number', sortable: true, filter: 'number'),
             self::column('amount', 'number', sortable: true, filter: 'number'),
+            self::column('settlement', 'text', sortable: true, filter: 'text'),
             self::column('settled_externally_on', 'date', sortable: true, filter: 'date'),
             self::column('status', 'badge', filter: 'set', options: CommissionAccrualSql::STATUSES),
         ];

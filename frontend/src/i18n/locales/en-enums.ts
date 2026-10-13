@@ -78,11 +78,17 @@ export const enums = {
   commission_accrual_type: {
     ACCRUAL: 'Accrual',
     REVERSAL: 'Reversal',
+    ADJUSTMENT: 'Adjustment',
   },
   commission_recipient_role: {
     COMMERCIAL: 'Commercial',
     REPORTER: 'Reporter',
     SUPERVISOR: 'Supervisor',
+  },
+  commission_settlement_status: {
+    DRAFT: 'Draft',
+    ISSUED: 'Issued',
+    CANCELLED: 'Cancelled',
   },
   commission_recipient_kind: {
     referent: 'Referent',
@@ -90,6 +96,8 @@ export const enums = {
   },
   commission_accrual_status: {
     open: 'Open',
+    draft: 'In draft',
+    issued: 'Settled',
     settled_externally: 'Settled externally',
   },
   installment_overdue: {

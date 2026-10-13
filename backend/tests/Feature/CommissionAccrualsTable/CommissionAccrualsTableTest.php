@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\CommissionAccrual;
+use App\Models\CommissionSettlement;
+use App\Models\Company;
 use App\Models\ExportRun;
 use App\Models\Product;
 use App\Models\Quote;
@@ -62,19 +64,20 @@ it('AC-017: exposes the contract columns, the badge enum keys and the row groupi
     $columns = collect($data['columns'])->keyBy('id');
 
     expect($columns->keys()->all())->toBe([
-        'id', 'accrued_on', 'accrued_month', 'recipient', 'recipient_kind', 'recipient_role', 'type', 'invoice',
-        'customer', 'quote', 'product', 'base_amount', 'amount', 'settled_externally_on', 'status',
+        'id', 'accrued_on', 'accrued_month', 'recipient', 'recipient_kind', 'recipient_role', 'type', 'company', 'invoice',
+        'customer', 'quote', 'product', 'base_amount', 'amount', 'settlement', 'settled_externally_on', 'status',
     ])
         ->and($data['row_grouping'])->toBe([
             'enabled' => true,
             'max_depth' => 3,
-            'columns' => ['recipient', 'recipient_role', 'accrued_month', 'type', 'customer'],
+            'columns' => ['recipient', 'recipient_role', 'accrued_month', 'type', 'company', 'customer'],
         ])
         ->and($columns['amount']['aggFunc'])->toBe('sum')
         ->and($columns['accrued_month']['visible'])->toBeFalse()
         ->and($columns['accrued_month']['sortable'])->toBeFalse()
         ->and($columns['status']['sortable'])->toBeFalse()
-        ->and($columns['status']['options'])->toBe(['open', 'settled_externally'])
+        ->and($columns['status']['options'])->toBe(['open', 'draft', 'issued', 'settled_externally'])
+        ->and($columns['type']['options'])->toBe(['ACCRUAL', 'REVERSAL', 'ADJUSTMENT'])
         ->and($columns['recipient_role']['options'])->toBe(['COMMERCIAL', 'REPORTER', 'SUPERVISOR'])
         ->and($columns['recipient_kind']['enumKey'])->toBe('commission_recipient_kind')
         ->and($columns['recipient_role']['enumKey'])->toBe('commission_recipient_role')
@@ -161,7 +164,7 @@ it('AC-017: filters on every declared column', function () {
 
     expect($values)->toEqualCanonicalizing(['Mario', 'Luigi'])
         ->and($months)->toBe(['2026-03', '2026-04'])
-        ->and($status)->toBe(['open', 'settled_externally']);
+        ->and($status)->toBe(['open', 'draft', 'issued', 'settled_externally']);
 });
 
 it('AC-017: groups by recipient with the child count and the sum of the amount, then opens the leaves', function () {
@@ -295,4 +298,106 @@ it('AC-017: a quote joined through the quote line is reachable by the quote text
     $ids = array_column(ledgerRows(['filterModel' => ['quote' => ['filterType' => 'text', 'type' => 'equals', 'filter' => $quote->code]]])['items'], 'id');
 
     expect($ids)->toBe([$match->id]);
+});
+
+it('AC-018: shows the settlement label and derives the four statuses from the attached statement', function () {
+    $draft = CommissionSettlement::factory()->create();
+    $issued = CommissionSettlement::factory()->issued(12, 2026)->create();
+    $open = ledgerAccrualOf();
+    $inDraft = ledgerAccrualOf(['commission_settlement_id' => $draft->id]);
+    $inIssued = ledgerAccrualOf(['commission_settlement_id' => $issued->id]);
+    $external = ledgerAccrualOf(['settled_externally_on' => '2026-05-01']);
+    $rows = collect(ledgerRows()['items'])->keyBy('id');
+
+    expect($rows[$open->id])->toMatchArray(['settlement' => null, 'status' => 'open', 'commission_settlement_id' => null])
+        ->and($rows[$inDraft->id])->toMatchArray(['settlement' => 'Bozza', 'status' => 'draft', 'commission_settlement_id' => $draft->id])
+        ->and($rows[$inIssued->id])->toMatchArray(['settlement' => '12/2026', 'status' => 'issued', 'commission_settlement_id' => $issued->id])
+        ->and($rows[$external->id])->toMatchArray(['settlement' => null, 'status' => 'settled_externally']);
+
+    $set = static fn (array $values): array => ['filterType' => 'set', 'values' => $values];
+    $ids = static fn (array $filter): array => collect(ledgerRows(['filterModel' => $filter])['items'])->pluck('id')->sort()->values()->all();
+
+    expect($ids(['status' => $set(['open'])]))->toBe([$open->id])
+        ->and($ids(['status' => $set(['draft'])]))->toBe([$inDraft->id])
+        ->and($ids(['status' => $set(['issued'])]))->toBe([$inIssued->id])
+        ->and($ids(['status' => $set(['settled_externally'])]))->toBe([$external->id])
+        ->and($ids(['status' => $set(['draft', 'issued'])]))->toBe([$inDraft->id, $inIssued->id]);
+});
+
+it('AC-018: an externally settled movement stays settled_externally whatever its statement', function () {
+    $issued = CommissionSettlement::factory()->issued()->create();
+    $both = ledgerAccrualOf(['commission_settlement_id' => $issued->id, 'settled_externally_on' => '2026-05-01']);
+
+    expect(ledgerRows()['items'][0])->toMatchArray(['id' => $both->id, 'status' => 'settled_externally']);
+});
+
+it('AC-018: the settlement column filters as text and sorts server side', function () {
+    $ten = CommissionSettlement::factory()->issued(10, 2026)->create();
+    $draft = CommissionSettlement::factory()->create();
+    $a = ledgerAccrualOf(['commission_settlement_id' => $ten->id]);
+    $b = ledgerAccrualOf(['commission_settlement_id' => $draft->id]);
+    $c = ledgerAccrualOf();
+    $ids = static fn (array $body): array => array_column(ledgerRows($body)['items'], 'id');
+    $text = static fn (string $type, string $filter): array => ['filterModel' => ['settlement' => ['filterType' => 'text', 'type' => $type, 'filter' => $filter]]];
+
+    expect($ids($text('contains', '10/2026')))->toBe([$a->id])
+        ->and($ids($text('contains', 'Boz')))->toBe([$b->id])
+        ->and($ids(['sortModel' => [['colId' => 'settlement', 'sort' => 'asc']]]))->toHaveCount(3)
+        ->and($ids(['sortModel' => [['colId' => 'settlement', 'sort' => 'desc']]])[2])->toBe($c->id);
+});
+
+it('AC-018: the company column filters, sorts and groups with the sum of the amount', function () {
+    $acme = Company::factory()->create(['denomination' => 'Acme']);
+    $beta = Company::factory()->create(['denomination' => 'Beta']);
+    $first = ledgerAccrualOf(['company_id' => $acme->id, 'amount' => '10.00']);
+    ledgerAccrualOf(['company_id' => $acme->id, 'amount' => '5.00']);
+    $third = ledgerAccrualOf(['company_id' => $beta->id, 'amount' => '1.00']);
+    ledgerAccrualOf(['amount' => '2.00']);
+    $set = ['company' => ['filterType' => 'set', 'values' => ['Beta']]];
+
+    expect(ledgerRows()['items'][0])->toHaveKeys(['company', 'company_id'])
+        ->and(array_column(ledgerRows(['filterModel' => $set])['items'], 'id'))->toBe([$third->id])
+        ->and(ledgerRows(['sortModel' => [['colId' => 'company', 'sort' => 'desc']]])['items'][0]['company'])->toBe('Beta')
+        ->and(ledgerRows(['filterModel' => ['company' => ['filterType' => 'set', 'values' => [null]]]])['items'])->toHaveCount(1);
+
+    $groups = collect(ledgerRows(['rowGroupCols' => ['company'], 'groupKeys' => []])['items'])->keyBy('key');
+
+    expect($groups[(string) $acme->id])->toMatchArray(['label' => 'Acme', 'child_count' => 2, 'aggregates' => ['amount' => '15.00']])
+        ->and($groups['__null__']['child_count'])->toBe(1)
+        ->and(array_column(ledgerRows(['rowGroupCols' => ['company'], 'groupKeys' => [(string) $acme->id]])['items'], 'id'))->toContain($first->id);
+
+    $values = $this->postJson('/api/tables/commission-accruals/values', ['columnId' => 'company', 'filterModel' => []])->assertOk()->json('data.values');
+
+    expect($values)->toBe([null, 'Acme', 'Beta']);
+});
+
+it('AC-018: an ADJUSTMENT movement has no invoice, quote, product or role and is still listed, filtered and sorted', function () {
+    $referent = Referent::factory()->create(['name' => 'Mario Agente']);
+    $company = Company::factory()->create(['denomination' => 'Acme']);
+    $adjustment = CommissionAccrual::factory()->adjustment()->create([
+        'recipient_id' => $referent->id, 'company_id' => $company->id, 'amount' => '-12.50', 'accrued_on' => '2026-06-10',
+    ]);
+    ledgerAccrualOf();
+
+    $row = collect(ledgerRows()['items'])->firstWhere('id', $adjustment->id);
+
+    expect($row)->toMatchArray([
+        'type' => 'ADJUSTMENT', 'recipient_role' => null, 'recipient' => 'Mario Agente', 'company' => 'Acme',
+        'invoice' => null, 'invoice_id' => null, 'quote' => null, 'quote_id' => null, 'product' => null, 'customer' => null,
+        'amount' => '-12.50', 'status' => 'open',
+    ]);
+
+    $set = static fn (array $values): array => ['filterModel' => ['type' => ['filterType' => 'set', 'values' => $values]]];
+    $values = $this->postJson('/api/tables/commission-accruals/values', ['columnId' => 'type', 'filterModel' => []])->assertOk()->json('data.values');
+
+    expect(array_column(ledgerRows($set(['ADJUSTMENT']))['items'], 'id'))->toBe([$adjustment->id])
+        ->and($values)->toBe(['ACCRUAL', 'REVERSAL', 'ADJUSTMENT']);
+
+    foreach (['recipient_role', 'invoice', 'customer', 'quote', 'product', 'settlement', 'company'] as $column) {
+        expect(ledgerRows(['sortModel' => [['colId' => $column, 'sort' => 'asc']]])['items'])->toHaveCount(2);
+    }
+
+    $byRole = collect(ledgerRows(['rowGroupCols' => ['recipient_role'], 'groupKeys' => []])['items'])->keyBy('key');
+
+    expect($byRole['__null__']['child_count'])->toBe(1);
 });

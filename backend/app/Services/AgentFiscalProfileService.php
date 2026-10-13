@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\DataObjects\AgentFiscalProfiles\AgentFiscalProfileData;
+use App\Enums\HttpStatusEnum;
 use App\Models\AgentFiscalProfile;
+use App\Models\CommissionSettlement;
 use App\Models\Referent;
 use App\Models\User;
 use App\Rules\NonOverlappingFiscalProfile;
@@ -19,7 +21,7 @@ use Illuminate\Validation\ValidationException;
 class AgentFiscalProfileService
 {
     /** Relations the AgentFiscalProfileResource reads. */
-    private const array RESOURCE_RELATIONS = ['referent:id,name'];
+    private const array RESOURCE_RELATIONS = ['referent:id,name', 'vatRate:id,name,rate'];
 
     public function create(AgentFiscalProfileData $data, User $actor): AgentFiscalProfile
     {
@@ -44,10 +46,15 @@ class AgentFiscalProfileService
     }
 
     /**
-     * M1 does not consume the profile yet, so it is freely deletable (D-8).
+     * A profile referenced by a settlement (draft, issued or cancelled) is its
+     * snapshot source and cannot be deleted (spec 0213, M-3): 409.
      */
     public function delete(AgentFiscalProfile $profile): void
     {
+        if (CommissionSettlement::query()->where('agent_fiscal_profile_id', $profile->id)->exists()) {
+            abort(HttpStatusEnum::CONFLICT->value, __('This fiscal profile is used by a commission settlement.'));
+        }
+
         $profile->delete();
     }
 

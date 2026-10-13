@@ -262,8 +262,8 @@ it('AC-002: the migrations are reversible', function () {
     // ones stacked on top (spec 0195's outbound email purpose, spec 0196's
     // invoice layout and installment redistribution snapshot, spec 0197's
     // installment residual amount, spec 0207's registry general notes, spec 0208's
-    // three purchase request tables, spec 0209's line supplier move, spec 0210's six purchase order tables, spec 0211's three payable tables, spec 0212's two agent commission tables).
-    expect(Artisan::call('migrate:rollback', ['--step' => 23]))->toBe(0);
+    // three purchase request tables, spec 0209's line supplier move, spec 0210's six purchase order tables, spec 0211's three payable tables, spec 0212's two agent commission tables, spec 0213's six settlement migrations).
+    expect(Artisan::call('migrate:rollback', ['--step' => 29]))->toBe(0);
     expect(Schema::hasColumn('quote_lines', 'supplier_commission_direction'))->toBeFalse()
         ->and(Schema::hasColumn('product_typologies', 'supplier_commission_enabled'))->toBeFalse();
 });
