@@ -175,13 +175,13 @@ it('forwards the per-type config blob', function () {
     expect(Attribute::query()->where('old_id', 24)->value('config'))->toBe(['min' => 0, 'max' => 100, 'decimals' => 2]);
 });
 
-it('imports a legacy `multiple` ENUM as a multiselect', function () {
+it('imports a multi-choice ENUM sent with the multiselect display', function () {
     seedMigrationsConfig();
     Http::fake([
         fakeMigrationsBaseUrl().'/attributes*' => Http::response([
             'items' => [
                 ['id' => 25, 'code' => 'categorie_mepa', 'name' => 'Categorie ME.PA.', 'type' => 'enum',
-                    'config' => ['display' => 'select', 'multiple' => true],
+                    'config' => ['display' => 'multiselect'],
                     'options' => [['value' => '1', 'label' => 'Carta', 'sort_order' => 0]]],
             ],
             'pagination' => ['total' => 1],
@@ -191,7 +191,7 @@ it('imports a legacy `multiple` ENUM as a multiselect', function () {
     $actor = migrationsSuperAdminActor();
     runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'attributes']));
 
-    expect(Attribute::query()->where('old_id', 25)->value('config'))->toBe(['display' => 'multiselect', 'multiple' => true]);
+    expect(Attribute::query()->where('old_id', 25)->value('config'))->toBe(['display' => 'multiselect']);
 });
 
 it('imports a RELATION attribute with its relation_target', function () {
@@ -326,7 +326,7 @@ it('isolates a failed attribute row (unregistered type) without blocking the val
 });
 
 // ---------------------------------------------------------------------------
-// Spec 0181 — table config validation, adoption by code, entity_type normalization
+// Spec 0181 — table config validation, adoption by code
 // ---------------------------------------------------------------------------
 
 it('AC-004: imports a table attribute with its config and rejects an invalid one', function () {
@@ -378,25 +378,6 @@ it('AC-005: adopts an existing attribute by code without touching its name or op
         ->and(Attribute::query()->where('code', 'stato_pagamento')->count())->toBe(1)
         ->and($run->fresh()->failed_rows)->toBe(0)
         ->and($run->fresh()->created_rows)->toBe(1);
-});
-
-it('AC-006: normalizes a legacy underscore relation entity_type to hyphens', function () {
-    seedMigrationsConfig();
-    Http::fake([
-        fakeMigrationsBaseUrl().'/attributes*' => Http::response([
-            'items' => [[
-                'id' => 50, 'code' => 'site', 'name' => 'Site', 'type' => 'relation',
-                'relation_target' => ['entity_type' => 'operational_sites', 'cardinality' => 'one', 'for_select_resource' => 'operational-sites'],
-            ]],
-            'pagination' => ['total' => 1],
-        ]),
-    ]);
-
-    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'attributes']);
-    runMigrationJobFor($run);
-
-    expect(Attribute::query()->where('old_id', 50)->first()->relation_target['entity_type'])->toBe('operational-sites')
-        ->and($run->fresh()->failed_rows)->toBe(0);
 });
 
 it('spec 0182 AC-004: imports registries/users relations, scalar types, 0/1 enums and PAL-like tables', function () {

@@ -9,7 +9,6 @@ use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
 use App\Migrations\Support\ExternalApiClient;
-use App\Migrations\Support\LegacyOpportunityNotes;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
@@ -29,21 +28,24 @@ use RuntimeException;
  * legacy phase (`status`) has no column here: the status is computed from
  * the quotes.
  *
- * G-12: an opportunity with no product category of its own takes the
- * categories of the products on its quotes' lines (`quote_product_category_ids`),
- * the same rows OpportunityProductLineCoverage adds when a quote is built
- * here. A re-import fills them in on an already imported opportunity that
- * still has no product line (never overwriting existing ones).
+ * G-12: the legacy `product_category_ids` are the categories of the products
+ * on the opportunity's quotes' lines (the same rows
+ * OpportunityProductLineCoverage looks for when those quotes are imported),
+ * or its own categories when its quotes carry none. A re-import fills them
+ * in on an already imported opportunity that still has no product line
+ * (never overwriting existing ones).
  *
- * The general notes carry the legacy notes, the reserved notes and the "Note"
- * of the Info preliminari cards (LegacyOpportunityNotes); a re-import appends
- * the card notes an already imported opportunity still lacks.
+ * The legacy sends the composed `general_notes` and, apart, the Info
+ * preliminari card blocks (`preliminary_info_blocks`): a re-import appends
+ * the blocks an already imported opportunity still lacks.
  */
 class OpportunitiesSource extends AbstractMigrationSource
 {
     use MapsLegacyOperationalRecord;
 
     private const int NAME_MAX_LENGTH = 191;
+
+    private const string NOTES_SEPARATOR = "\n\n";
 
     private const string BACKFILLED_PRODUCT_LINES_NOTE = 'Missing product categories back-filled.';
 
@@ -53,7 +55,6 @@ class OpportunitiesSource extends AbstractMigrationSource
         ExternalApiClient $client,
         private readonly OpportunityService $service,
         private readonly ProductLineWriter $productLineWriter,
-        private readonly LegacyOpportunityNotes $notes,
     ) {
         parent::__construct($client);
     }
@@ -100,7 +101,6 @@ class OpportunitiesSource extends AbstractMigrationSource
             ['id' => 'supervisor_user_id', 'label' => 'Supervisor (external id)', 'type' => 'number'],
             ['id' => 'manager_user_ids', 'label' => 'Managers (external ids)', 'type' => 'string'],
             ['id' => 'product_category_ids', 'label' => 'Product categories (external ids)', 'type' => 'string'],
-            ['id' => 'quote_product_category_ids', 'label' => 'Quote product categories (external ids)', 'type' => 'string'],
             ['id' => 'start_date', 'label' => 'Start date', 'type' => 'date'],
             ['id' => 'expected_close_date', 'label' => 'Expected close date', 'type' => 'date'],
             ['id' => 'estimated_value', 'label' => 'Estimated value', 'type' => 'number'],
@@ -206,11 +206,17 @@ class OpportunitiesSource extends AbstractMigrationSource
      */
     private function backfillPreliminaryInfoNotes(Opportunity $opportunity, array $record): array
     {
-        $notes = $this->notes->withMissingPreliminaryInfo($opportunity->general_notes, $record);
+        $current = $this->blankToNull($opportunity->general_notes);
+        $missing = array_filter(
+            array_map(strval(...), (array) ($record['preliminary_info_blocks'] ?? [])),
+            static fn (string $block): bool => $block !== '' && ! str_contains((string) $current, $block),
+        );
 
-        if ($notes === null) {
+        if ($missing === []) {
             return [];
         }
+
+        $notes = implode(self::NOTES_SEPARATOR, array_filter([$current, ...$missing]));
 
         $opportunity->timestamps = false;
         $opportunity->forceFill(['general_notes' => $notes])->saveQuietly();
@@ -219,9 +225,6 @@ class OpportunitiesSource extends AbstractMigrationSource
     }
 
     /**
-     * The opportunity's own legacy categories; none resolved -> those of the
-     * products on its quotes' lines (G-12).
-     *
      * @param  array<string, mixed>  $record
      * @param  array<int, string>  $warnings
      * @return array<int, array{product_category_id: int}>
@@ -229,10 +232,6 @@ class OpportunitiesSource extends AbstractMigrationSource
     private function productLines(array $record, array &$warnings): array
     {
         $categoryIds = $this->remapLegacyIds(ProductCategory::class, $record['product_category_ids'] ?? [], 'product_category_ids', $warnings);
-
-        if ($categoryIds === []) {
-            $categoryIds = $this->remapLegacyIds(ProductCategory::class, $record['quote_product_category_ids'] ?? [], 'quote_product_category_ids', $warnings);
-        }
 
         return array_map(static fn (int $id): array => ['product_category_id' => $id], $categoryIds);
     }
@@ -276,7 +275,7 @@ class OpportunitiesSource extends AbstractMigrationSource
             expectedCloseDate: $this->blankToNull($record['expected_close_date'] ?? null),
             successProbability: null,
             operationalSiteId: $this->remapLegacyId(OperationalSite::class, $record['operational_site_id'] ?? null, 'operational_site_id', $warnings),
-            generalNotes: $this->notes->compose($record),
+            generalNotes: $this->blankToNull($record['general_notes'] ?? null),
             name: $this->name($record),
         );
     }

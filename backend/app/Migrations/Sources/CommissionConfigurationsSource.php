@@ -113,8 +113,8 @@ class CommissionConfigurationsSource extends AbstractMigrationSource
             ['id' => 'recipient_id', 'label' => 'Recipient (external id)', 'type' => 'number'],
             ['id' => 'category_id', 'label' => 'Category (external id)', 'type' => 'number'],
             ['id' => 'product_id', 'label' => 'Product (external id)', 'type' => 'number'],
-            ['id' => 'percentage', 'label' => 'Percentage', 'type' => 'number'],
-            ['id' => 'amount', 'label' => 'Amount', 'type' => 'number'],
+            ['id' => 'commission_type', 'label' => 'Commission type', 'type' => 'string'],
+            ['id' => 'value', 'label' => 'Value', 'type' => 'number'],
             ['id' => 'note', 'label' => 'Note', 'type' => 'string'],
             ['id' => 'created_at', 'label' => 'Created at', 'type' => 'string'],
         ];
@@ -166,7 +166,7 @@ class CommissionConfigurationsSource extends AbstractMigrationSource
 
         // Step 2: the destination (product wins over category) and the amount
         $destination = $this->resolveDestination($record['product_id'] ?? null, $record['category_id'] ?? null);
-        [$type, $value] = $this->resolveAmount($record['percentage'] ?? null, $record['amount'] ?? null);
+        [$type, $value] = $this->resolveAmount($record['commission_type'] ?? null, $record['value'] ?? null);
 
         // Step 3: create through the domain service, then anchor to the legacy id
         $configuration = $this->service->create(new CreateCommissionConfigurationData(
@@ -256,17 +256,15 @@ class CommissionConfigurationsSource extends AbstractMigrationSource
     /**
      * @return array{0: CommissionType, 1: string}
      */
-    private function resolveAmount(mixed $percentage, mixed $amount): array
+    private function resolveAmount(mixed $commissionType, mixed $value): array
     {
-        if (is_numeric($percentage) && (float) $percentage > 0) {
-            return [CommissionType::Percentage, number_format((float) $percentage, self::VALUE_SCALE, '.', '')];
+        $type = is_string($commissionType) ? CommissionType::tryFrom($commissionType) : null;
+
+        if ($type === null || ! is_numeric($value) || (float) $value <= 0) {
+            throw new RuntimeException('The legacy rule has no commission type or no positive value; it cannot be migrated.');
         }
 
-        if (is_numeric($amount) && (float) $amount > 0) {
-            return [CommissionType::FixedAmount, number_format((float) $amount, self::VALUE_SCALE, '.', '')];
-        }
-
-        throw new RuntimeException('The legacy rule has neither a percentage nor an amount; it cannot be migrated.');
+        return [$type, number_format((float) $value, self::VALUE_SCALE, '.', '')];
     }
 
     private function buildName(CommissionRecipientRole $role, ?Model $recipient, Model $destination): string

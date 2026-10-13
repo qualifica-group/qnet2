@@ -51,8 +51,8 @@ it('creates the quote with remapped roles, lines, VAT, commissions and legacy an
         'lines' => [[
             'id' => 900, 'product_id' => 10, 'description' => 'Extra notes', 'quantity' => 2, 'unit_price' => 50, 'vat_rate_id' => 3,
             'commissions' => [
-                ['role' => 'commercial', 'recipient_id' => 31, 'percentage' => 10, 'amount' => null],
-                ['role' => 'supplier', 'recipient_id' => 34, 'percentage' => null, 'amount' => 15],
+                ['role' => 'commercial', 'recipient_id' => 31, 'commission_type' => 'PERCENTAGE', 'value' => 10],
+                ['role' => 'supplier', 'recipient_id' => 34, 'commission_type' => 'FIXED_AMOUNT', 'value' => 15],
             ],
         ]],
     ])]);
@@ -125,25 +125,25 @@ it('skips a line whose product is not migrated with a warning, keeping the quote
         ->and(legacyQuoteWarnings($run))->toContain('Line 901 skipped: product (legacy service id 99) not migrated.');
 });
 
-it('maps the legacy status onto the quote set', function (int $legacyStatus, string $systemKey) {
+it('maps the legacy outcome onto the quote set', function (string $outcome, string $systemKey) {
     legacyQuoteServiceProduct(10);
 
-    runLegacyQuotesImport([legacyQuoteRecord(['status' => $legacyStatus])]);
+    runLegacyQuotesImport([legacyQuoteRecord(['outcome' => $outcome])]);
 
     $statusId = Quote::query()->where('old_id', 42)->value('quote_workflow_status_id');
 
     expect(QuoteWorkflowStatus::query()->whereKey($statusId)->value('system_key'))->toBe($systemKey);
 })->with([
-    'presented stays open' => [0, 'open'],
-    'rejected is closed lost' => [5, 'closed_lost'],
-    'contract is closed won' => [2, 'closed_won'],
+    'open stays open' => ['open', 'open'],
+    'lost is closed lost' => ['lost', 'closed_lost'],
+    'won is closed won' => ['won', 'closed_won'],
 ]);
 
 it('moves an offer accepted by the client to the first pending status of its set', function () {
     legacyQuoteServiceProduct(10);
     $pending = QuoteWorkflowStatus::factory()->global()->create(['group' => WorkflowStatusGroup::Pending, 'sort_order' => 5]);
 
-    runLegacyQuotesImport([legacyQuoteRecord(['status' => 6])]);
+    runLegacyQuotesImport([legacyQuoteRecord(['outcome' => 'accepted_by_client'])]);
 
     expect(Quote::query()->where('old_id', 42)->value('quote_workflow_status_id'))->toBe($pending->id);
 });
@@ -152,10 +152,14 @@ it('opens the contract of a won offer aligned to the legacy dates and status', f
     legacyQuoteServiceProduct(10);
 
     runLegacyQuotesImport([legacyQuoteRecord([
-        'status' => 2,
-        'accepted_at' => '2024-04-01',
-        'validated_at' => '2024-04-02',
-        'renewal_date' => '2025-04-01',
+        'outcome' => 'won',
+        'contract' => [
+            'status' => 'scheduled',
+            'accepted_at' => '2024-04-01',
+            'validated_at' => '2024-04-02',
+            'renewal_date' => '2025-04-01',
+            'terminated_at' => null,
+        ],
     ])]);
 
     $contract = Contract::query()->where('quote_id', Quote::query()->where('old_id', 42)->value('id'))->sole();
@@ -169,7 +173,10 @@ it('opens the contract of a won offer aligned to the legacy dates and status', f
 it('terminates the contract of a legacy terminated offer on its declined date', function () {
     legacyQuoteServiceProduct(10);
 
-    runLegacyQuotesImport([legacyQuoteRecord(['status' => 8, 'declined_at' => '2024-06-30'])]);
+    runLegacyQuotesImport([legacyQuoteRecord([
+        'outcome' => 'won',
+        'contract' => ['status' => 'terminated', 'accepted_at' => null, 'validated_at' => null, 'renewal_date' => null, 'terminated_at' => '2024-06-30'],
+    ])]);
 
     $contract = Contract::query()->where('quote_id', Quote::query()->where('old_id', 42)->value('id'))->sole();
 
@@ -179,16 +186,16 @@ it('terminates the contract of a legacy terminated offer on its declined date', 
 
 // REQUIREMENT CHANGED (user decision 2026-10-13): a legacy offer closed without
 // migrated lines keeps its outcome instead of staying open.
-it('closes a legacy offer without product lines, with a warning', function (int $legacyStatus, string $systemKey) {
-    $run = runLegacyQuotesImport([legacyQuoteRecord(['status' => $legacyStatus, 'lines' => []])]);
+it('closes a legacy offer without product lines, with a warning', function (string $outcome, string $systemKey) {
+    $run = runLegacyQuotesImport([legacyQuoteRecord(['outcome' => $outcome, 'lines' => []])]);
 
     $quote = Quote::query()->where('old_id', 42)->sole();
 
     expect(QuoteWorkflowStatus::query()->whereKey($quote->quote_workflow_status_id)->value('system_key'))->toBe($systemKey)
-        ->and(legacyQuoteWarnings($run))->toContain("Legacy status {$legacyStatus} closed the offer without product lines.");
+        ->and(legacyQuoteWarnings($run))->toContain("Legacy outcome '{$outcome}' closed the offer without product lines.");
 })->with([
-    'won' => [2, 'closed_won'],
-    'rejected' => [5, 'closed_lost'],
+    'won' => ['won', 'closed_won'],
+    'lost' => ['lost', 'closed_lost'],
 ]);
 
 it('writes the legacy managers without notifying anyone nor logging activity', function () {
@@ -199,7 +206,7 @@ it('writes the legacy managers without notifying anyone nor logging activity', f
     $actor = migrationsSuperAdminActor();
     $activityBefore = DB::table('activity_log')->count();
 
-    runLegacyQuotesImport([legacyQuoteRecord(['manager_user_ids' => [51, 52], 'supervisor_user_id' => 51, 'status' => 2])], $actor);
+    runLegacyQuotesImport([legacyQuoteRecord(['manager_user_ids' => [51, 52], 'supervisor_user_id' => 51, 'outcome' => 'won'])], $actor);
 
     $quote = Quote::query()->where('old_id', 42)->sole();
     $positions = $quote->managers()->get()->mapWithKeys(fn (User $user) => [$user->id => (int) $user->pivot->position])->all();
@@ -258,29 +265,20 @@ it('writes the legacy offer date and the opportunity callback (G-14)', function 
         ->and($quote->next_callback_reminded_at)->toBeNull();
 });
 
-it('falls back to the legacy creation date when the offer date is missing', function () {
-    legacyQuoteServiceProduct(10);
-
-    runLegacyQuotesImport([legacyQuoteRecord(['quote_date' => null])]);
-
-    expect(Quote::query()->where('old_id', 42)->sole()->quote_date->toDateString())->toBe('2024-03-01');
-});
-
 it('reports a legacy customer other than the opportunity one, keeping the opportunity (G-15)', function () {
     legacyQuoteServiceProduct(10);
-    $this->opportunity->registry->forceFill(['old_id' => 500])->saveQuietly();
 
     $run = runLegacyQuotesImport([
-        legacyQuoteRecord(['registry_id' => 500]),
-        legacyQuoteRecord(['id' => 43, 'registry_id' => 501, 'lines' => [
+        legacyQuoteRecord(['customer_differs_from_opportunity' => true]),
+        legacyQuoteRecord(['id' => 43, 'lines' => [
             ['id' => 901, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 10, 'commissions' => []],
         ]]),
     ]);
 
     expect($run->created_rows)->toBe(2)
-        ->and(Quote::query()->where('old_id', 43)->value('opportunity_id'))->toBe($this->opportunity->id)
+        ->and(Quote::query()->where('old_id', 42)->value('opportunity_id'))->toBe($this->opportunity->id)
         ->and(legacyQuoteWarnings($run))->toBe([
-            "Legacy customer (legacy id 501) differs from the opportunity's (legacy id 500); the offer stays under the opportunity's customer.",
+            "Legacy customer differs from the opportunity's; the offer stays under the opportunity's customer.",
         ]);
 });
 

@@ -11,39 +11,14 @@ use App\Models\QuoteWorkflowStatus;
 use Illuminate\Support\Collection;
 
 /**
- * The qnet status a legacy offer lands on (spec 0189 G-6), resolved inside
- * the status set the Quote already belongs to (never a fixed id). A
- * presented offer follows the phase of its legacy opportunity; a named
- * target is looked up by name, then by group. Null = the offer stays on the
- * status it was created with.
+ * The qnet status a legacy offer lands on (spec 0189 G-6/G-18): the legacy
+ * decides the `outcome`, this resolves it inside the status set the Quote
+ * already belongs to (never a fixed id). A named target is looked up by
+ * name, then by group. Null = the offer stays on the status it was created
+ * with.
  */
 final class LegacyQuoteStatusResolver
 {
-    private const int LEGACY_PRESENTED = 0;
-
-    private const int LEGACY_REJECTED = 5;
-
-    private const int LEGACY_ACCEPTED_BY_CLIENT = 6;
-
-    /** Legacy contract statuses that mean the offer was won (G-6). */
-    private const array LEGACY_WON = [1, 2, 3, 4, 8];
-
-    /** Legacy opportunity phases (`fases` ids) that move a presented offer. */
-    private const int PHASE_OFFER_SENT = 4;
-
-    private const int PHASE_PRO_FORMA = 5;
-
-    private const int PHASE_LOST = 6;
-
-    private const int PHASE_ACCEPTED = 7;
-
-    private const int PHASE_CALL_BACK = 8;
-
-    private const int PHASE_STAND_BY = 11;
-
-    /** Phases closed on the opportunity: lost when another offer won it, else still negotiating. */
-    private const array PHASES_CLOSED_ON_OPPORTUNITY = [self::PHASE_PRO_FORMA, self::PHASE_ACCEPTED];
-
     /** qnet status names per target, tried in order inside the Quote's set. */
     private const array NEGOTIATION_NAMES = ['In trattativa'];
 
@@ -56,85 +31,36 @@ final class LegacyQuoteStatusResolver
      */
     public function target(Quote $quote, LegacyQuoteState $state, array &$warnings): ?QuoteWorkflowStatus
     {
-        $statuses = $this->currentStatusSet($quote);
+        $outcome = LegacyQuoteOutcome::tryFrom($state->outcome);
 
-        return match (true) {
-            $state->status === self::LEGACY_PRESENTED => $this->presentedTarget($statuses, $state, $warnings),
-            $state->status === self::LEGACY_ACCEPTED_BY_CLIENT => $this->acceptedByClientTarget($statuses, $warnings),
-            $state->status === self::LEGACY_REJECTED => $this->required($this->bySystemKey($statuses, WorkflowStatusSystemKey::ClosedLost), $state, $warnings),
-            in_array($state->status, self::LEGACY_WON, true) => $this->required($this->bySystemKey($statuses, WorkflowStatusSystemKey::ClosedWon), $state, $warnings),
-            default => $this->unknown($state, $warnings),
-        };
-    }
+        if ($outcome === null) {
+            $warnings[] = "Unknown legacy outcome '{$state->outcome}'; the offer was left open.";
 
-    /**
-     * @param  Collection<int, QuoteWorkflowStatus>  $statuses
-     * @param  array<int, string>  $warnings
-     */
-    private function presentedTarget(Collection $statuses, LegacyQuoteState $state, array &$warnings): ?QuoteWorkflowStatus
-    {
-        $phase = $state->opportunityPhase;
-
-        if (in_array($phase, self::PHASES_CLOSED_ON_OPPORTUNITY, true) && $state->wonByOtherQuote) {
-            $phase = self::PHASE_LOST;
-        }
-
-        $target = match ($phase) {
-            self::PHASE_LOST => $this->bySystemKey($statuses, WorkflowStatusSystemKey::ClosedLost),
-            self::PHASE_OFFER_SENT, self::PHASE_PRO_FORMA, self::PHASE_ACCEPTED => $this->byName($statuses, self::NEGOTIATION_NAMES)
-                ?? $statuses->firstWhere('group', WorkflowStatusGroup::Pending),
-            self::PHASE_CALL_BACK => $this->byName($statuses, self::CALL_BACK_NAMES),
-            self::PHASE_STAND_BY => $this->byName($statuses, self::STAND_BY_NAMES),
-            default => false,
-        };
-
-        if ($target === false) {
             return null;
         }
 
+        if ($outcome === LegacyQuoteOutcome::Open) {
+            return null;
+        }
+
+        $statuses = $this->currentStatusSet($quote);
+
+        $target = match ($outcome) {
+            LegacyQuoteOutcome::Lost => $this->bySystemKey($statuses, WorkflowStatusSystemKey::ClosedLost),
+            LegacyQuoteOutcome::Won => $this->bySystemKey($statuses, WorkflowStatusSystemKey::ClosedWon),
+            LegacyQuoteOutcome::Negotiation => $this->byName($statuses, self::NEGOTIATION_NAMES)
+                ?? $statuses->firstWhere('group', WorkflowStatusGroup::Pending),
+            LegacyQuoteOutcome::CallBack => $this->byName($statuses, self::CALL_BACK_NAMES),
+            LegacyQuoteOutcome::StandBy => $this->byName($statuses, self::STAND_BY_NAMES),
+            LegacyQuoteOutcome::AcceptedByClient => $statuses->firstWhere('group', WorkflowStatusGroup::Pending)
+                ?? $statuses->firstWhere('group', WorkflowStatusGroup::Validated),
+        };
+
         if ($target === null) {
-            $warnings[] = "The offer's status set has no status for legacy opportunity phase {$state->opportunityPhase}; the offer was left open.";
+            $warnings[] = "The offer's status set has no status for legacy outcome '{$outcome->value}'; the offer was left open.";
         }
 
         return $target;
-    }
-
-    /**
-     * @param  Collection<int, QuoteWorkflowStatus>  $statuses
-     * @param  array<int, string>  $warnings
-     */
-    private function acceptedByClientTarget(Collection $statuses, array &$warnings): ?QuoteWorkflowStatus
-    {
-        $target = $statuses->firstWhere('group', WorkflowStatusGroup::Pending)
-            ?? $statuses->firstWhere('group', WorkflowStatusGroup::Validated);
-
-        if ($target === null) {
-            $warnings[] = "The offer's status set has no status for legacy status ".self::LEGACY_ACCEPTED_BY_CLIENT.'; the offer was left open.';
-        }
-
-        return $target;
-    }
-
-    /**
-     * @param  array<int, string>  $warnings
-     */
-    private function required(?QuoteWorkflowStatus $target, LegacyQuoteState $state, array &$warnings): ?QuoteWorkflowStatus
-    {
-        if ($target === null) {
-            $warnings[] = "The offer's status set has no status for legacy status {$state->status}; the offer was left open.";
-        }
-
-        return $target;
-    }
-
-    /**
-     * @param  array<int, string>  $warnings
-     */
-    private function unknown(LegacyQuoteState $state, array &$warnings): null
-    {
-        $warnings[] = "Unknown legacy status {$state->status}; the offer was left open.";
-
-        return null;
     }
 
     /**

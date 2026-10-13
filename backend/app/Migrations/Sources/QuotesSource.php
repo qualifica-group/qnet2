@@ -21,7 +21,6 @@ use App\Models\Opportunity;
 use App\Models\PaymentMethod;
 use App\Models\Quote;
 use App\Models\Referent;
-use App\Models\Registry;
 use App\Models\User;
 use App\Services\Quotes\QuoteManagerInheritance;
 use App\Services\Quotes\QuoteManagerSyncMode;
@@ -39,8 +38,8 @@ use RuntimeException;
  * Nobody is notified (G-2): the service receives an empty manager set, the
  * legacy managers are written afterwards through QuoteManagerWriter (which
  * notifies no one; promotion keeps them Gestori Account of the opportunity).
- * The status (G-6, refined by the opportunity phase for a presented offer)
- * and the contract (G-7) are applied afterwards by LegacyQuoteStatusApplier,
+ * The status (G-6, from the legacy `outcome`)
+ * and the contract (G-7, the legacy `contract` block) are applied afterwards by LegacyQuoteStatusApplier,
  * quietly. The whole row runs without activity log
  * (G-3). Costs come in as COST lines (G-13); the offer date and the parent
  * opportunity's callback are written as is (G-14); a legacy customer other
@@ -115,10 +114,7 @@ class QuotesSource extends AbstractMigrationSource
             ['id' => 'opportunity_id', 'label' => 'Opportunity (external id)', 'type' => 'number'],
             ['id' => 'title', 'label' => 'Title', 'type' => 'string'],
             ['id' => 'quote_date', 'label' => 'Quote date', 'type' => 'date'],
-            ['id' => 'status', 'label' => 'Status', 'type' => 'number'],
-            ['id' => 'opportunity_phase', 'label' => 'Opportunity phase', 'type' => 'number'],
-            ['id' => 'won_by_other_quote', 'label' => 'Won by another quote', 'type' => 'boolean'],
-            ['id' => 'accepted_at', 'label' => 'Accepted at', 'type' => 'date'],
+            ['id' => 'outcome', 'label' => 'Outcome', 'type' => 'string'],
             ['id' => 'manager_user_ids', 'label' => 'Managers (external ids)', 'type' => 'string'],
             ['id' => 'lines', 'label' => 'Lines', 'type' => 'number'],
             ['id' => 'cost_lines', 'label' => 'Cost lines', 'type' => 'number'],
@@ -175,7 +171,7 @@ class QuotesSource extends AbstractMigrationSource
 
         // Step 1: the mandatory parent, its customer check and the importable lines.
         $opportunity = $this->resolveOpportunity($record['opportunity_id'] ?? null);
-        $this->reportCustomerMismatch($opportunity, $record['registry_id'] ?? null, $warnings);
+        $this->reportCustomerMismatch((bool) ($record['customer_differs_from_opportunity'] ?? false), $warnings);
         [$lines, $legacyLineIds] = $this->legacyOfferLines($record['lines'] ?? [], $warnings);
         $costLines = $this->legacyCostLines($record['cost_lines'] ?? [], $legacyLineIds, $warnings);
 
@@ -254,31 +250,21 @@ class QuotesSource extends AbstractMigrationSource
             operationalSiteIdSubmitted: $operationalSiteId !== null,
             paymentMethodId: $this->remapLegacyId(PaymentMethod::class, $record['payment_method_id'] ?? null, 'payment_method_id', $warnings),
             managerSlots: [],
-            quoteDate: ($this->legacyTimestamp($record['quote_date'] ?? null) ?? $this->legacyTimestamp($record['created_at'] ?? null))?->toDateString(),
+            quoteDate: $this->legacyTimestamp($record['quote_date'] ?? null)?->toDateString(),
         );
     }
 
     /**
      * An offer cannot have a customer other than its opportunity's (G-15):
-     * the legacy one, when different, is only reported.
+     * the legacy one, when different (flagged by the legacy), is only reported.
      *
      * @param  array<int, string>  $warnings
      */
-    private function reportCustomerMismatch(Opportunity $opportunity, mixed $externalRegistryId, array &$warnings): void
+    private function reportCustomerMismatch(bool $differs, array &$warnings): void
     {
-        if ($externalRegistryId === null || $externalRegistryId === '' || (int) $externalRegistryId === 0) {
-            return;
+        if ($differs) {
+            $warnings[] = "Legacy customer differs from the opportunity's; the offer stays under the opportunity's customer.";
         }
-
-        $opportunityRegistryOldId = Registry::query()->whereKey($opportunity->registry_id)->value('old_id');
-
-        if ($opportunityRegistryOldId !== null && (int) $opportunityRegistryOldId === (int) $externalRegistryId) {
-            return;
-        }
-
-        $warnings[] = "Legacy customer (legacy id {$externalRegistryId}) differs from the opportunity's"
-            .($opportunityRegistryOldId === null ? '' : " (legacy id {$opportunityRegistryOldId})")
-            ."; the offer stays under the opportunity's customer.";
     }
 
     /**

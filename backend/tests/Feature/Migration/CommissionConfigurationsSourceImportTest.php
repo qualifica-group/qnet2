@@ -56,7 +56,7 @@ function legacyCommissionRule(array $overrides = []): array
 {
     return [
         'id' => 13, 'role' => 'supplier', 'recipient_kind' => 'company', 'recipient_id' => 15269,
-        'category_id' => 70, 'product_id' => null, 'percentage' => 10, 'amount' => null,
+        'category_id' => 70, 'product_id' => null, 'commission_type' => 'PERCENTAGE', 'value' => 10,
         'note' => 'Regola storica', 'created_at' => '2023-08-04 11:49:21',
         ...$overrides,
     ];
@@ -104,7 +104,7 @@ it('AC-003: a commercial rule on a contact maps to the referent, a rule on a ser
 
     $run = runLegacyCommissionRulesImport([
         legacyCommissionRule(['id' => 1, 'role' => 'commercial', 'recipient_kind' => 'contact', 'recipient_id' => 888]),
-        legacyCommissionRule(['id' => 2, 'role' => 'commercial', 'recipient_kind' => 'contact', 'recipient_id' => 888, 'category_id' => null, 'product_id' => 321, 'percentage' => null, 'amount' => 25.5]),
+        legacyCommissionRule(['id' => 2, 'role' => 'commercial', 'recipient_kind' => 'contact', 'recipient_id' => 888, 'category_id' => null, 'product_id' => 321, 'commission_type' => 'FIXED_AMOUNT', 'value' => 25.5]),
     ]);
 
     expect($run->created_rows)->toBe(2)->and($run->failed_rows)->toBe(0);
@@ -150,7 +150,8 @@ it('AC-004: unimportable rules fail with a readable message and create nothing',
     'category not migrated' => [['category_id' => 12345], 'Category not migrated'],
     'product not migrated' => [['category_id' => null, 'product_id' => 777], 'Product not migrated'],
     'no destination' => [['category_id' => null, 'product_id' => null], 'neither a category nor a product'],
-    'no amount' => [['percentage' => null, 'amount' => null], 'neither a percentage nor an amount'],
+    'no value' => [['commission_type' => 'FIXED_AMOUNT', 'value' => null], 'no commission type or no positive value'],
+    'no type' => [['commission_type' => null], 'no commission type or no positive value'],
 ]);
 
 it('spec 0223 AC-009: a rule on a container category is imported, it covers the whole branch', function () {
@@ -181,7 +182,7 @@ it('imports a rule without recipient as an active role-wide rule (user decision 
 it('imports a supplier rule without recipient as a role-wide supplier rule', function () {
     migratedCommissionRuleTargets();
 
-    $run = runLegacyCommissionRulesImport([legacyCommissionRule(['id' => 619, 'recipient_id' => null, 'percentage' => 50])]);
+    $run = runLegacyCommissionRulesImport([legacyCommissionRule(['id' => 619, 'recipient_id' => null, 'value' => 50])]);
 
     expect($run->created_rows)->toBe(1)
         ->and(CommissionConfiguration::sole()->recipient_role)->toBe(CommissionRecipientRole::Supplier)
@@ -205,7 +206,7 @@ it('AC-007: the source is registered, ordered right after registries, and previe
         ->and($phases[$registries + 1])->toBe(['product-suppliers', 'commission-configurations']);
 
     $columns = collect(app(CommissionConfigurationsSource::class)->columns())->pluck('id')->all();
-    expect($columns)->toBe(['id', 'role', 'recipient_kind', 'recipient_id', 'category_id', 'product_id', 'percentage', 'amount', 'note', 'created_at']);
+    expect($columns)->toBe(['id', 'role', 'recipient_kind', 'recipient_id', 'category_id', 'product_id', 'commission_type', 'value', 'note', 'created_at']);
 });
 
 it('AC-008: after the import a new offer line of a supplier product in the covered category creates the supplier commission', function () {
@@ -216,7 +217,7 @@ it('AC-008: after the import a new offer line of a supplier product in the cover
         'supplier_id' => $registry->id,
         'product_typology_id' => ProductTypology::factory()->supplierCommission(SupplierCommissionDirection::Paid)->create()->id,
     ]);
-    runLegacyCommissionRulesImport([legacyCommissionRule(['percentage' => 12.5])]);
+    runLegacyCommissionRulesImport([legacyCommissionRule(['value' => 12.5])]);
 
     QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
     $opportunity = Opportunity::factory()->create(['commercial_id' => Referent::factory()->create()->id]);

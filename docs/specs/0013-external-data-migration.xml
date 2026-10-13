@@ -132,6 +132,22 @@
       ADOTTA l'`old_id` sul ruolo esistente (per abilitare il remapping) invece di duplicare.
     - business_function_user e i ruoli-utente si popolano via remapping old_id; riferimenti
       non risolti → warning non fatale.
+
+    Emendamento 2026-10-13 (decisione utente, ora regola `.claude/rules/backend.md` §9) — principio
+    "la forma dei dati e' del legacy che INVIA": il sistema esterno (QNet legacy, repo
+    `/Users/Repository/qnet`, `app/Http/Controllers/Api/V2/*MigrationController.php` + helper
+    `app/Support/Migration/`) manda i dati gia' nel vocabolario di qnet: pulizia del testo (trim,
+    maiuscole, URL, P.IVA, comuni), decodifica di codici/stati/id legacy in valori semantici (enum
+    value, esiti), ripieghi su campi mancanti o sporchi, deduplica, ordinamento (padre prima dei
+    figli), riparazione di alberi, composizione di note. qnet RICEVE: lookup `old_id` -> id locale con
+    warning se non migrato, upsert idempotente, validazione difensiva minima (`tryFrom` + warning,
+    mai riparazione), regole di dominio proprie di qnet, scrittura. Un dato esterno sbagliato si
+    corregge nel controller legacy e si cancella il workaround in qnet; ogni cambio di shape va nella
+    spec della sorgente. Supera la D-7 della spec 0172 ("raw projection"). Le shape aggiornate delle
+    sorgenti che non hanno una spec propria sono in data_contract ("Sorgenti legacy, delta
+    2026-10-13"); le altre stanno nelle loro spec: registries/opportunities/quotes/work-orders 0189,
+    work-orders pagamenti 0201 D-14, task-templates 0172, cost-products 0174, commission-configurations
+    0203, attributes/product-categories 0181 (e 0183 F-9).
   </context>
 
   <scope>
@@ -234,6 +250,43 @@
       </response>
       <errors>401; 403; 404 run inesistente, non dell'actor, o source != path.</errors>
     </endpoint>
+
+    <!-- Emendamento 2026-10-13: sorgenti legacy, delta di shape (solo i campi cambiati; gli altri
+         invariati). Endpoint legacy `GET /api/v2/migration/{key}`, envelope {items, pagination}. -->
+    <shape name="Sorgenti legacy, delta 2026-10-13">
+      users:
+        relationship_type: "employee"|"self_employed"|"other"|null (da `users.tipo_rapporto` 1 Dipendente,
+          2 Partita Iva, 3 Altro; altro/null -> null; prima l'intero grezzo).
+        qualification_type: valore di `QualificationTypeEnum`|null (da `users.level_id`: 1 employee_level_5,
+          3 administrative, 4 coordinator, 5 iso_consultant, 6 teacher_cococo, 7 teacher_vat, 8 trainee_cost,
+          9 hourly_cost_me; altro/null -> null; prima la `user_levels.description`). qnet li legge con `tryFrom`,
+          valore ignoto -> null + warning.
+      company-sites:
+        province: ?string = sigla della provincia (`provincies.sigla`, come registries e referents; prima il nome
+          `provincia`). region e country restano etichette.
+      operational-sites:
+        city: ?string = comune pulito dall'etichetta di sede (`LegacyCityLabel`: tolto tutto da " - ", le parentesi
+          e un numero finale; "Roma - 2" -> "Roma"; vuoto -> null).
+        alias: ?string (NUOVO) = `sedi_operative.comune` grezzo trimmato (l'etichetta della sede), scritto come alias
+          della sede (prima qnet ricavava l'alias da `city`).
+      sources:
+        name: string trimmato; una sola fonte per nome (deduplica senza distinzione di maiuscole, vince l'id piu'
+          basso: la stessa regola con cui registries risolve `source_id`); nomi vuoti esclusi; ordine per nome;
+          `search` e paginazione sulla lista deduplicata.
+      products:
+        description: ?string trimmata (vuota -> null).
+      payment-methods:
+        code: ?string = identificatore univoco di qnet, gia' nel formato `^[a-z][a-z0-9_]*$`, max 64: slug
+          snake_case del nome, prefisso `pm_` se non inizia con una lettera; univoco su TUTTA la tabella in ordine
+          (description, id): il primo tiene lo slug, gli omonimi ricevono il suffisso `_&lt;id&gt;`; null se il nome non
+          da' uno slug (prima: slug con trattini max 10 caratteri, derivato poi di nuovo da qnet).
+        payment_method_code: ?string = modalita' FatturaPA grezza (`payments.payment_type`, MP01..MP23), condivisa
+          da piu' righe. qnet usa `code` cosi' com'e' (controllo difensivo di formato e lunghezza: non valido ->
+          riga fallita) e scrive `payment_method_code` com'e'.
+        Ordine dell'elenco: description, id.
+      ea-sectors: shape invariata; ids = posizione 1-based nel catalogo `EaSectorCatalog`, lo stesso a cui puntano
+        i `sector_ids` di registries (spec 0189).
+    </shape>
   </data_contract>
 
   <acceptance_criteria>

@@ -69,14 +69,14 @@ it('imports a company with every field, remapped relations and no notification o
 
     fakeLegacyRegistries([[
         'id' => 40, 'is_private' => false, 'company_name' => 'Acme Srl', 'first_name' => null, 'last_name' => null,
-        'tax_code' => ' 01234567890 ', 'vat_number' => 'IT01234567890', 'sdi_code' => 'ABC1234',
+        'tax_code' => '01234567890', 'vat_number' => '01234567890', 'sdi_code' => 'ABC1234',
         'vat_group' => 'GRP-1', 'is_supplier' => true, 'is_qualified_supplier' => true,
         'agreement_status' => 'agreed', 'agreement_notes' => 'Signed 2020', 'size_class' => 'small', 'employee_count' => 42,
-        'source_id' => 3, 'source_label' => 'Fiera', 'sectors' => ['EA 28'],
+        'source_id' => 3, 'source_label' => 'Fiera', 'sector_ids' => [9],
         'supervisor_user_id' => 501, 'manager_user_ids' => [502, 503],
         'commercial_referent_id' => 701, 'reporter_referent_id' => 702, 'referent_ids' => [703],
         'email' => 'info@acme.test', 'pec' => 'acme@pec.test', 'phone' => '+39 06 1234567', 'phone2' => '+39 06 7654321',
-        'fax' => '+39 06 1111111', 'website' => 'www.acme.test',
+        'fax' => '+39 06 1111111', 'website' => 'https://www.acme.test',
         'country' => 'Italy', 'city' => 'Roma', 'street' => 'Via Roma 1', 'postal_code' => '00100',
         'addresses' => [['site_type' => 'delivery', 'country' => 'Italy', 'city' => 'Milano', 'street' => 'Via Milano 2', 'postal_code' => '20100']],
         'created_at' => '2019-03-04 10:11:12', 'updated_at' => '2021-05-06 07:08:09',
@@ -127,7 +127,7 @@ it('imports a company with every field, remapped relations and no notification o
 it('imports a private person as an individual card', function () {
     fakeLegacyRegistries([[
         'id' => 41, 'is_private' => true, 'company_name' => 'ignored', 'first_name' => 'Mario', 'last_name' => 'Rossi',
-        'tax_code' => 'rssmra80a01h501u', 'vat_number' => null,
+        'tax_code' => 'RSSMRA80A01H501U', 'vat_number' => null,
     ]]);
 
     runRegistriesMigration();
@@ -140,33 +140,22 @@ it('imports a private person as an individual card', function () {
         ->and($registry->personalData->tax_code)->toBe('RSSMRA80A01H501U');
 });
 
-it('swaps a first name and surname the legacy inverted, guided by the tax code', function () {
+it('skips an additional address with an unknown site type, with a warning', function () {
     fakeLegacyRegistries([[
-        'id' => 47, 'is_private' => true, 'first_name' => 'Franzese', 'last_name' => 'Filomena',
-        'tax_code' => 'FRNFMN70A41F839X',
+        'id' => 42, 'is_private' => false, 'company_name' => 'Typed Spa',
+        'addresses' => [['site_type' => 'moon_base', 'street' => 'Via Luna 1']],
     ]]);
 
     $run = runRegistriesMigration();
-    $card = Registry::query()->where('old_id', 47)->with('personalData')->firstOrFail()->personalData;
 
-    expect($card->first_name)->toBe('Filomena')
-        ->and($card->last_name)->toBe('Franzese')
-        ->and($run->report ?? [])->toBe([]);
+    expect(Registry::query()->where('old_id', 42)->firstOrFail()->personalData->addresses()->count())->toBe(0)
+        ->and(registriesRunWarnings($run))->toContain("Unknown address site_type 'moon_base', address skipped.");
 });
-
-it('discards placeholder VAT numbers with a warning', function (string $placeholder) {
-    fakeLegacyRegistries([['id' => 42, 'is_private' => false, 'company_name' => 'Placeholder Spa', 'vat_number' => $placeholder]]);
-
-    $run = runRegistriesMigration();
-
-    expect(Registry::query()->where('old_id', 42)->firstOrFail()->personalData->vat_number)->toBeNull()
-        ->and(registriesRunWarnings($run))->toContain("Placeholder vat_number '{$placeholder}' discarded.");
-})->with(['0', '1', '.', '00000000000', 'IT00000000000', '12345']);
 
 it('warns on every unresolved reference and still creates the registry', function () {
     fakeLegacyRegistries([[
         'id' => 43, 'is_private' => false, 'company_name' => 'Orphan Srl',
-        'source_id' => null, 'source_label' => 'Passaparola', 'sectors' => ['Unknown sector'],
+        'source_id' => null, 'source_label' => 'Passaparola', 'sector_ids' => [777],
         'supervisor_user_id' => 999, 'manager_user_ids' => [998, 997], 'commercial_referent_id' => 996,
         'reporter_referent_id' => 0, 'referent_ids' => [995], 'agreement_status' => 'maybe', 'size_class' => 'huge',
         'email' => 'not-an-email',
@@ -182,7 +171,7 @@ it('warns on every unresolved reference and still creates the registry', functio
         ->and($registry->managers()->count())->toBe(0)
         ->and(registriesRunWarnings($run))->toEqualCanonicalizing([
             "Unresolved source 'Passaparola'.",
-            "Unresolved sector 'Unknown sector'.",
+            'Unresolved sector_ids (legacy id 777).',
             'Unresolved referent_ids (legacy id 995).',
             'Unresolved commercial_referent_id (legacy id 996).',
             "Unknown agreement_status 'maybe', left blank.",

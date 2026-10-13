@@ -20,9 +20,9 @@ beforeEach(function () {
     legacyQuoteServiceProduct(10);
 
     // One fake for the whole test, serving whatever the legacy says now
-    // (Http::fake keeps the first matching stub): imported under the old
-    // mapping, with no phase in the payload, the offer stays open.
-    $this->legacyRecords = [legacyQuoteRecord(['status' => 0])];
+    // (Http::fake keeps the first matching stub): imported with the
+    // open outcome, the offer stays open.
+    $this->legacyRecords = [legacyQuoteRecord()];
     Http::fake([
         fakeMigrationsBaseUrl().'/quotes*' => fn () => Http::response(['items' => $this->legacyRecords, 'pagination' => ['total' => count($this->legacyRecords)]]),
     ]);
@@ -36,8 +36,8 @@ function fakeLegacyQuotesEndpoint(array $records): void
     test()->legacyRecords = $records;
 }
 
-it('moves an untouched open offer onto the status of its opportunity phase', function () {
-    fakeLegacyQuotesEndpoint([legacyQuoteRecord(['status' => 0, 'opportunity_phase' => 8])]);
+it('moves an untouched open offer onto the status of its legacy outcome', function () {
+    fakeLegacyQuotesEndpoint([legacyQuoteRecord(['outcome' => 'call_back'])]);
 
     $this->artisan('quotes:realign-legacy-status')
         ->expectsOutputToContain('1 offer(s) realigned.')
@@ -47,7 +47,7 @@ it('moves an untouched open offer onto the status of its opportunity phase', fun
 });
 
 it('writes nothing in dry-run', function () {
-    fakeLegacyQuotesEndpoint([legacyQuoteRecord(['status' => 0, 'opportunity_phase' => 8])]);
+    fakeLegacyQuotesEndpoint([legacyQuoteRecord(['outcome' => 'call_back'])]);
     $before = $this->quote->quote_workflow_status_id;
 
     $this->artisan('quotes:realign-legacy-status', ['--dry-run' => true])
@@ -59,7 +59,7 @@ it('writes nothing in dry-run', function () {
 
 it('leaves an offer a user has touched since the import', function () {
     activity()->performedOn($this->quote)->log('updated');
-    fakeLegacyQuotesEndpoint([legacyQuoteRecord(['status' => 0, 'opportunity_phase' => 8])]);
+    fakeLegacyQuotesEndpoint([legacyQuoteRecord(['outcome' => 'call_back'])]);
     $before = $this->quote->quote_workflow_status_id;
 
     $this->artisan('quotes:realign-legacy-status')
@@ -71,7 +71,7 @@ it('leaves an offer a user has touched since the import', function () {
 
 it('leaves an offer no longer on the open system status', function () {
     $this->quote->forceFill(['quote_workflow_status_id' => QuoteWorkflowStatus::query()->whereNull('quote_workflow_id')->where('system_key', 'closed_lost')->value('id')])->saveQuietly();
-    fakeLegacyQuotesEndpoint([legacyQuoteRecord(['status' => 0, 'opportunity_phase' => 8])]);
+    fakeLegacyQuotesEndpoint([legacyQuoteRecord(['outcome' => 'call_back'])]);
 
     $this->artisan('quotes:realign-legacy-status')
         ->expectsOutputToContain('0 offer(s) realigned.')
@@ -82,8 +82,8 @@ it('leaves an offer no longer on the open system status', function () {
 
 it('is idempotent and ignores legacy offers never imported', function () {
     fakeLegacyQuotesEndpoint([
-        legacyQuoteRecord(['status' => 0, 'opportunity_phase' => 8]),
-        legacyQuoteRecord(['id' => 43, 'status' => 0, 'opportunity_phase' => 8]),
+        legacyQuoteRecord(['outcome' => 'call_back']),
+        legacyQuoteRecord(['id' => 43, 'outcome' => 'call_back']),
     ]);
 
     $this->artisan('quotes:realign-legacy-status')->expectsOutputToContain('1 offer(s) realigned.')->assertSuccessful();

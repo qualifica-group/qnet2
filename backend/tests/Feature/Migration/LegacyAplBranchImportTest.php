@@ -46,10 +46,9 @@ it('imports the legacy APL tree beside the manual one as "APL old", under its le
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
-                // A child listed before its parent: relinked by afterImport.
-                ['id' => 62, 'name' => 'Orientamento Specialistico', 'parent_id' => 61],
                 ['id' => 60, 'name' => 'Servizi', 'parent_id' => null],
                 ['id' => 61, 'name' => 'APL', 'parent_id' => 60],
+                ['id' => 62, 'name' => 'Orientamento Specialistico', 'parent_id' => 61],
                 ['id' => 63, 'name' => 'Tirocini extracurriculari privati', 'parent_id' => 61],
             ],
             'pagination' => ['total' => 4],
@@ -116,10 +115,9 @@ it('imports the whole "APL old" branch as containers, and never reopens nor clos
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
-                // Selectable in the legacy, and listed before its parent: closed
-                // once the relink has placed it in the branch.
-                ['id' => 72, 'name' => 'Ricerca e Selezione', 'parent_id' => 71, 'is_selectable' => true],
+                // Selectable in the legacy: closed once it sits in the branch.
                 ['id' => 71, 'name' => 'APL', 'parent_id' => null, 'is_selectable' => true],
+                ['id' => 72, 'name' => 'Ricerca e Selezione', 'parent_id' => 71, 'is_selectable' => true],
                 ['id' => 73, 'name' => 'Tirocinio', 'parent_id' => 71],
                 ['id' => 74, 'name' => 'Bandi', 'parent_id' => null, 'is_selectable' => true],
             ],

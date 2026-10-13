@@ -84,7 +84,7 @@ class SourcesSource extends AbstractMigrationSource
             return MigrationRowOutcome::skipped();
         }
 
-        $name = trim((string) ($record['name'] ?? ''));
+        $name = (string) ($record['name'] ?? '');
 
         if ($name === '') {
             throw new RuntimeException('name is required.');

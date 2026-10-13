@@ -34,11 +34,10 @@ if (! function_exists('legacyWorkOrderRecord')) {
             'title' => 'Legacy work order',
             'type' => 'project',
             'start_date' => '2024-05-01',
-            'end_date' => null,
             'callback_date' => '2024-06-01',
             'description' => 'Legacy description',
-            'notes' => 'Legacy notes',
-            'status' => 1,
+            'internal_notes' => 'Legacy notes',
+            'force_close_reason' => null,
             'status_label' => 'Aperta',
             'quote_line_ids' => [],
             'supervisor_user_ids' => [],
@@ -94,7 +93,7 @@ it('creates the work order with its lines, supervisors, participants and legacy 
     $activityBefore = DB::table('activity_log')->count();
 
     $run = runLegacyWorkOrdersImport([legacyWorkOrderRecord([
-        'end_date' => '2024-12-31',
+        'internal_notes' => "Legacy notes\n\nData fine (legacy): 31/12/2024",
         'quote_line_ids' => [900],
         'supervisor_user_ids' => [61],
         'participant_user_ids' => [62, 63],
@@ -136,18 +135,14 @@ it('falls back to a sequential code with a warning when COM-{id} is taken', func
         ->and(legacyWorkOrderWarnings($run))->toContain('Code COM-0017 already taken; a sequential code was generated.');
 });
 
-it('force-closes the closed legacy statuses with their legacy reason', function (int $legacyStatus, string $reason) {
-    runLegacyWorkOrdersImport([legacyWorkOrderRecord(['status' => $legacyStatus])]);
+it('force-closes a work order the legacy sends with a force-close reason', function () {
+    runLegacyWorkOrdersImport([legacyWorkOrderRecord(['force_close_reason' => 'Annullata (legacy)'])]);
 
     $workOrder = WorkOrder::query()->where('old_id', 17)->sole();
 
     expect($workOrder->is_force_closed)->toBeTrue()
-        ->and($workOrder->force_close_reason)->toBe($reason);
-})->with([
-    'closed' => [3, 'Chiusa (legacy)'],
-    'cancelled' => [4, 'Annullata (legacy)'],
-    'terminated' => [5, 'Disdetta (legacy)'],
-]);
+        ->and($workOrder->force_close_reason)->toBe('Annullata (legacy)');
+});
 
 it('links a copy of a line already programmed into another work order, with its commissions and the offer totals', function () {
     $taken = QuoteLine::factory()->create([
@@ -179,15 +174,13 @@ it('links a copy of a line already programmed into another work order, with its 
         ->and(legacyWorkOrderWarnings($run))->toContain('Quote line (legacy id 900) already belongs to another work order; duplicated on the offer (+900.00 net).');
 });
 
-it('replaces a missing or implausible start date with the legacy creation date', function (?string $startDate) {
-    $run = runLegacyWorkOrdersImport([legacyWorkOrderRecord(['start_date' => $startDate])]);
+it('fails the row without a start date', function () {
+    $run = runLegacyWorkOrdersImport([legacyWorkOrderRecord(['start_date' => null])]);
 
-    expect(WorkOrder::query()->where('old_id', 17)->sole()->start_date->toDateString())->toBe('2024-04-20')
-        ->and(legacyWorkOrderWarnings($run))->toHaveCount(1);
-})->with([
-    'missing' => [null],
-    'placeholder year' => ['1970-01-01'],
-]);
+    expect($run->failed_rows)->toBe(1)
+        ->and(WorkOrder::query()->count())->toBe(0)
+        ->and(collect($run->report)->firstWhere('level', 'error')['message'])->toContain('Start date is required.');
+});
 
 it('skips an already imported work order on a second run', function () {
     runLegacyWorkOrdersImport([legacyWorkOrderRecord()]);

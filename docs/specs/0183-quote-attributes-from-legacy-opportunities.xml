@@ -38,7 +38,9 @@
       F-8 i dati indirizzo della tabella sedi ISO (Indirizzo, Cap, Citta', Provincia) diventano colonne di testo della
       tabella (nel legacy vengono dall'anagrafica cliente: il valore andra' ricostruito nella migrazione valori);
       F-9 bug trovato: le categorie legacy con parent_id uguale al proprio id (2 "SOA", 7 "AVVALIMENTI", 8) vengono
-      importate come radici (parent null), non con un ciclo su se stesse.
+      importate come radici (parent null), non con un ciclo su se stesse. (Emendamento 2026-10-13, regola
+      `.claude/rules/backend.md` §9: il riconoscimento della radice auto-riferita e' SUPERATO in qnet-2; il legacy
+      `migration/product-categories` esporta `parent_id` null per ogni radice, auto-riferite incluse, cfr. spec 0181.)
       F-10 (decisione utente 2026-09-30): ordine delle sezioni come nel legacy anche quando un'Offerta/Commessa unisce
       piu' categorie. Il legacy esporta `sort_order` canonici e confrontabili tra categorie: card*100 + posizione*10
       (ISO Offerta: certificazione 200, organizzazione 210, grp1..grp6 220..270, consulenza 280; stessa regola per le

@@ -67,14 +67,22 @@
         `HasAttachments` rimuove i file di ogni riga.
     D-7 (utente) Endpoint legacy e sorgente qnet-2 nello stesso lavoro. Il legacy espone i dati grezzi (proiezione
         senza regole); tutte le regole di pulizia stanno nella sorgente qnet-2.
+        SUPERATA 2026-10-13 (decisione utente, regola `.claude/rules/backend.md` §9): la forma dei dati e'
+        responsabilita' del legacy che invia; qnet-2 riceve, collega via `old_id`, valida in modo minimo e scrive.
+        Il legacy pulisce l'albero (`App\Support\Migration\TaskTemplateTree`): D-9 (anomalie), D-10 (`is_active`) e la
+        stima unica di D-11 sono calcolati nel legacy; il `TaskTemplateTreeFlattener` di qnet-2 e' cancellato. Restano
+        in qnet-2: D-8 (titolo duplicato), troncamento a 191 di titoli azione e nomi fase con warning, conversione
+        della descrizione da testo semplice a HTML (formato rich text del target), `task_status_id` null e
+        `due_offset_days` 0 (D-11), chiavi `key`/`parent_key` della request.
     D-8 (utente) Titolo modello duplicato: "<titolo> (old_id N)" + warning.
     D-9 (utente) Sotto-azione anomala (padre inesistente, padre in un altro modello, ciclo, profondita' > 3):
         promossa a item radice nella fase in cui sta nel legacy, con warning. Un figlio in una fase diversa dal padre
-        segue il padre (D-3), con warning.
+        segue il padre (D-3), con warning. (Dal 2026-10-13 applicata dal legacy, `TaskTemplateTree`; in piu' un'azione
+        senza titolo e' scartata con warning. I warning arrivano nel record e qnet-2 li riporta sulla riga.)
     D-10 (utente) `is_active` = false se il titolo contiene "non attivo" (senza distinzione di maiuscole), altrimenti
-        true. Il titolo resta invariato.
+        true. Il titolo resta invariato. (Dal 2026-10-13 calcolato dal legacy ed esportato come `is_active`.)
     D-11 `stato_consulenza` ignorato (task_status_id null, vale il resolver dello stato iniziale). Stima =
-        ore*60 + minuti, null se entrambi null. `due_offset_days` = 0. Descrizione in testo semplice convertita in
+        ore*60 + minuti, null se entrambi null (dal 2026-10-13 calcolata dal legacy: `estimated_minutes` unico). `due_offset_days` = 0. Descrizione in testo semplice convertita in
         HTML: testo con escape, righe vuote -> paragrafi `<p>`, a capo singolo -> `<br>`; vuota -> null.
     D-12 Idempotenza a livello di modello: `task_templates.old_id`; un modello gia' migrato viene saltato per intero.
         Nessun `old_id` su fasi e item (il rimappaggio dei padri avviene dentro il singolo record).
@@ -134,22 +142,32 @@
       <request>search?: string (su title del modello), offset?: int >= 0 (default 0), limit?: int 1..100
         (default 50). Autenticazione: gruppo esistente `auth:api` + `v2.access`.</request>
       <response status="200">
+        Shape aggiornata il 2026-10-13 (D-7 superata: albero gia' pulito dal legacy, `TaskTemplateTree`).
         { items: [ {
-            id: number, name: string,                     // templatebtypes.title
-            stages: [ {                                    // ordinate per position, id
-              id: number, name: string, position: number|null,
-              items: [ {                                   // TUTTE le azioni della fase, ordinate per prog, id
+            id: number, name: string,                     // templatebtypes.title (invariato)
+            is_active: boolean,                            // false se il titolo contiene "non attivo" (D-10)
+            stages: [ {                                    // ordinate per position (null in fondo), id
+              id: number, name: string,                    // nome trimmato; niente piu' `position`
+              items: [ {                                   // radici della fase, ciascuna seguita in profondita' dal
+                                                           // suo sottoalbero (padre prima dei figli); fratelli per
+                                                           // prog, id
                 id: number,
-                parent_id: number|null,                    // 0 -> null; altrimenti grezzo, anche se anomalo
-                title: string, description: string|null,
-                estimated_hours: number|null,              // hours_estimed
-                estimated_minutes: number|null,            // minutes_estimed
-                position: number                           // prog
+                parent_id: number|null,                    // RISOLTO: null = radice; mai anomalo (D-9)
+                title: string,                             // trimmato, mai vuoto (azione senza titolo scartata)
+                description: string|null,                  // testo semplice grezzo (HTML lo fa qnet-2, D-11)
+                estimated_minutes: number|null             // hours_estimed*60 + minutes_estimed, null se entrambi null
               } ]
-            } ]
+            } ],
+            warnings: string[]                             // anomalie dell'albero del modello, riportate da qnet-2
+                                                           // nel report di riga
           } ],
           export_link: null,
           pagination: { total, offset, limit, total_pages } }
+        Regole dell'albero (legacy): un'azione con padre assente nel modello, auto-riferita, in ciclo o oltre 3
+        livelli sotto la radice (il limite di qnet-2, D-1) diventa radice della propria fase, con warning; un
+        sotto-item sta nella fase della sua radice, con warning se nel legacy era in un'altra fase; un'azione senza
+        titolo e' scartata con warning. Rimossi dal 2026-10-13: `stages[].position`, `items[].position`,
+        `items[].estimated_hours`.
         Modelli ordinati per id. Un'azione con fase inesistente non compare (non appartiene a nessun modello).
       </response>
       <errors>401 senza token; 422 parametri non validi (validazione esistente dei controller migrazione).</errors>
@@ -158,8 +176,9 @@
     <migration_source key="task-templates" label="Task templates" endpoint="task-templates">
       Colonne anteprima: id (number), name (string), stages_count (number), items_count (number),
       sub_items_count (number, azioni con parent_id non nullo). `sampleResponse()` restituisce la shape annidata
-      qui sopra. Report: warning per D-8, D-9, titolo troncato a 191, modello senza azioni; errore per record
-      senza id o senza name.
+      qui sopra. Report: warning per D-8, titolo/nome fase troncato a 191, modello senza azioni, piu' i `warnings`
+      del record legacy (D-9) copiati cosi' come arrivano; errore per record senza id o senza name. Gli item si
+      scrivono nell'ordine ricevuto (padre prima dei figli): la sorgente non riordina ne' ripara l'albero.
     </migration_source>
   </data_contract>
 
@@ -188,15 +207,17 @@
       colonne con i conteggi; `sampleResponse()` ha la shape annidata del contratto.</criterion>
     <criterion id="AC-012">Import (HTTP finto): fasi in ordine di position, item in profondita' per position,
       figli con parent_id corretto e senza fase, `old_id` sul modello, stima ore*60+minuti, descrizione in testo
-      semplice convertita in HTML con escape (`&lt;` resta testo).</criterion>
+      semplice convertita in HTML con escape (`&lt;` resta testo). (2026-10-13: ordine, parent_id risolto e stima
+      unica arrivano dal legacy; qnet-2 verifica di scriverli nell'ordine ricevuto, con fase solo sulle radici.)</criterion>
     <criterion id="AC-013">Un secondo import dello stesso modello lo conta come skipped e non crea righe.</criterion>
     <criterion id="AC-014">Un modello con name gia' esistente (maiuscole diverse) viene creato come
       "<name> (old_id N)" con warning.</criterion>
     <criterion id="AC-015">Sotto-azione con padre inesistente, padre in un altro modello, ciclo o profondita' > 3:
       diventa radice nella sua fase, con warning; un figlio in una fase diversa dal padre segue il padre, con
-      warning.</criterion>
+      warning. (2026-10-13: regola applicata dal legacy `TaskTemplateTree`, verifica sul legacy; in qnet-2 i
+      `warnings` del record compaiono nel report di riga.)</criterion>
     <criterion id="AC-016">Titolo con "(NON Attivo)" -> is_active false; "(Attivo)" o senza indicazione ->
-      true.</criterion>
+      true. (2026-10-13: calcolato dal legacy; in qnet-2 `is_active` del record scritto com'e', assente -> true.)</criterion>
     <criterion id="AC-017">Titolo azione di 193 caratteri -> troncato a 191 con warning; modello senza azioni ->
       creato con warning; record senza id -> riga fallita, gli altri record vengono importati.</criterion>
     <criterion id="AC-018">FE form: "Aggiungi sotto-task" su una riga crea una riga indentata sotto di essa; assente

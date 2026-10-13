@@ -137,22 +137,6 @@ final class CategoryBusinessFunctionLinker
     }
 
     /**
-     * After a detached category is relinked: once its new branch provides a
-     * function, its own value and every descendant's give way to it — the
-     * same cascade ProductCategoryService applies on a reparent.
-     */
-    public function realignAfterRelink(ProductCategory $category): void
-    {
-        if ($this->hierarchy->inheritedBusinessFunctionFor($category->parent_id) === null) {
-            return;
-        }
-
-        $ids = [$category->id, ...$this->hierarchy->descendantIds($category->id)];
-
-        ProductCategory::query()->whereIn('id', $ids)->whereNotNull('business_function_id')->update(['business_function_id' => null]);
-    }
-
-    /**
      * Swaps a REDIRECTED_FUNCTIONS match for its replacement, created on first
      * use. The replacement is a qnet row (no `old_id`), so no later import
      * claims it, and `name` is its natural key exactly as it is for the links

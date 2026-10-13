@@ -24,19 +24,19 @@ use App\Services\Contracts\ContractStatusResolver;
  */
 final class LegacyQuoteStatusApplier
 {
-    private const int LEGACY_TERMINATED = 8;
+    private const string CONTRACT_TERMINATED = 'terminated';
 
     /**
-     * Legacy contract status -> qnet contract status NAME (G-7); 8 resolves to
-     * the `terminated` system row instead.
+     * Legacy contract status key -> qnet contract status NAME (G-7);
+     * `terminated` resolves to the `terminated` system row instead.
      *
-     * @var array<int, string>
+     * @var array<string, string>
      */
-    private const array LEGACY_CONTRACT_STATUS_NAMES = [
-        1 => 'Da validare',
-        2 => 'Programmato',
-        3 => 'Da programmare',
-        4 => 'In scadenza',
+    private const array CONTRACT_STATUS_NAMES = [
+        'to_validate' => 'Da validare',
+        'scheduled' => 'Programmato',
+        'to_schedule' => 'Da programmare',
+        'expiring' => 'In scadenza',
     ];
 
     public function __construct(
@@ -76,7 +76,7 @@ final class LegacyQuoteStatusApplier
     {
         if (in_array($target->group, [WorkflowStatusGroup::ClosedWon, WorkflowStatusGroup::ClosedLost], true)
             && $quote->offerLines()->doesntExist()) {
-            $warnings[] = "Legacy status {$state->status} closed the offer without product lines.";
+            $warnings[] = "Legacy outcome '{$state->outcome}' closed the offer without product lines.";
         }
     }
 
@@ -98,16 +98,13 @@ final class LegacyQuoteStatusApplier
             'accepted_at' => $state->acceptedAt?->toDateString(),
             'validated_at' => $state->validatedAt?->toDateString(),
             'renewal_date' => $state->renewalDate?->toDateString(),
+            'terminated_at' => $state->terminatedAt?->toDateString(),
         ];
 
-        $statusId = $this->contractStatusId($state->status, $warnings);
+        $statusId = $this->contractStatusId($state->contractStatus, $warnings);
 
         if ($statusId !== null) {
             $attributes['contract_status_id'] = $statusId;
-        }
-
-        if ($state->status === self::LEGACY_TERMINATED) {
-            $attributes['terminated_at'] = $state->declinedAt?->toDateString();
         }
 
         $contract->forceFill($attributes)->saveQuietly();
@@ -116,17 +113,21 @@ final class LegacyQuoteStatusApplier
     /**
      * @param  array<int, string>  $warnings
      */
-    private function contractStatusId(int $legacyStatus, array &$warnings): ?int
+    private function contractStatusId(?string $key, array &$warnings): ?int
     {
-        if ($legacyStatus === self::LEGACY_TERMINATED) {
+        if ($key === null) {
+            return null;
+        }
+
+        if ($key === self::CONTRACT_TERMINATED) {
             return $this->contractStatusResolver->systemId(StatusSystemKey::Terminated);
         }
 
-        $name = self::LEGACY_CONTRACT_STATUS_NAMES[$legacyStatus];
-        $id = ContractStatus::query()->where('name', $name)->value('id');
+        $name = self::CONTRACT_STATUS_NAMES[$key] ?? null;
+        $id = $name === null ? null : ContractStatus::query()->where('name', $name)->value('id');
 
         if ($id === null) {
-            $warnings[] = "Contract status '{$name}' not found; the contract keeps its default status.";
+            $warnings[] = "Contract status '{$key}' not found; the contract keeps its default status.";
 
             return null;
         }

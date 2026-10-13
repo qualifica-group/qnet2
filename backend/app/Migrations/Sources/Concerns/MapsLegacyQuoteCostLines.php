@@ -59,18 +59,11 @@ trait MapsLegacyQuoteCostLines
 
         $this->reportSupplierMismatch($product, $externalLine['supplier_id'] ?? null, $lineRef, $warnings);
 
-        $quantity = $externalLine['quantity'] ?? null;
-
-        if ($quantity === null || $quantity === '') {
-            $warnings[] = "Cost line {$lineRef}: quantity missing, set to ".self::DEFAULT_QUANTITY.'.';
-            $quantity = self::DEFAULT_QUANTITY;
-        }
-
         $description = trim((string) ($externalLine['description'] ?? ''));
 
         return new QuoteLineData(
             productId: $product->id,
-            quantity: (float) $quantity,
+            quantity: (float) ($externalLine['quantity'] ?? 0),
             unitPrice: (float) ($externalLine['unit_price'] ?? 0),
             vatRateId: $this->remapLegacyId(VatRate::class, $externalLine['vat_rate_id'] ?? null, "cost line {$lineRef} vat_rate_id", $warnings),
             sortOrder: $sortOrder,

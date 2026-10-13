@@ -126,7 +126,7 @@ function fakeLegacyCatalogues(): void
         fakeMigrationsBaseUrl().'/cost-products*' => Http::response([
             'items' => [[
                 'id' => 'vehicles:3', 'source' => 'vehicles', 'source_id' => 3, 'name' => 'Tagliando Smart',
-                'cost' => 140, 'price' => 140, 'vat_rate_id' => 61, 'license_plate' => 'FE700FV',
+                'cost' => 140, 'price' => 140, 'vat_rate_id' => 61, 'license_plate' => 'FE700FV', 'attribute_values' => ['cost_license_plate' => 'FE700FV'],
             ]],
             'pagination' => ['total' => 1],
         ]),

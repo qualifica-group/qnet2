@@ -88,37 +88,23 @@ it('creates root and child categories, remapping parent_id via old_id', function
         ->and($fresh->report)->toBeNull();
 });
 
-it('relinks a child listed before its parent (forward reference) via afterImport', function () {
+it('REQUIREMENT CHANGED: creates a child detached with a warning when its parent never resolves (no relink pass)', function () {
     seedMigrationsConfig();
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
-            'items' => [
-                // Child first: its parent is not migrated yet at processRow time.
-                // It is created detached and authors requires_quote=false.
-                ['id' => 2, 'name' => 'Laptops', 'parent_id' => 1, 'requires_quote' => false],
-                ['id' => 1, 'name' => 'Electronics', 'parent_id' => null, 'requires_quote' => true],
-            ],
-            'pagination' => ['total' => 2],
+            'items' => [['id' => 2, 'name' => 'Laptops', 'parent_id' => 99, 'requires_quote' => false]],
+            'pagination' => ['total' => 1],
         ]),
     ]);
 
-    $actor = migrationsSuperAdminActor();
-    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']);
+    $run = MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'product-categories']);
 
     runMigrationJobFor($run);
 
-    $root = ProductCategory::query()->where('old_id', 1)->first();
-    $child = ProductCategory::query()->where('old_id', 2)->first();
-
-    // afterImport resolved the forward reference once the parent existed, and
-    // realigned the quote flag the detached child had authored on its own.
-    expect($child->parent_id)->toBe($root->id)
-        ->and($child->requires_quote)->toBeTrue();
-
-    // The detached-then-relinked child still surfaced a non-fatal warning.
     $fresh = $run->fresh();
-    expect($fresh->created_rows)->toBe(2)
-        ->and(collect($fresh->report)->firstWhere('level', 'warning'))->not->toBeNull();
+    expect(ProductCategory::query()->where('old_id', 2)->first()->parent_id)->toBeNull()
+        ->and($fresh->created_rows)->toBe(1)
+        ->and(json_encode($fresh->report))->toContain('Unresolved parent_id');
 });
 
 it('re-importing the same categories is idempotent (skip, no duplicate)', function () {
@@ -253,7 +239,7 @@ it('never adopts on a partial name match: adoption keys on the exact name', func
         ->and(ProductCategory::query()->where('old_id', 40)->value('name'))->toBe('Consulenza Servizi');
 });
 
-it('never relinks an ADOPTED root into the legacy tree, however many times the import runs', function () {
+it('never moves an ADOPTED root into the legacy tree, however many times the import runs', function () {
     seedMigrationsConfig();
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
@@ -271,9 +257,7 @@ it('never relinks an ADOPTED root into the legacy tree, however many times the i
 
     $actor = migrationsSuperAdminActor();
 
-    // Twice: the first run adopts, the second skips by old_id — and the relink
-    // pass runs on BOTH, so a root-level guard that only held within the
-    // adopting run would let the second one move it.
+    // Twice: the first run adopts, the second skips by old_id.
     runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
     runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
 
@@ -360,33 +344,6 @@ it('creates the category without a function and warns when the function is not m
     expect(ProductCategory::query()->where('old_id', 1)->value('business_function_id'))->toBeNull()
         ->and($fresh->created_rows)->toBe(1)
         ->and(collect($fresh->report)->firstWhere('level', 'warning'))->not->toBeNull();
-});
-
-it('clears the own function of a detached child once relinked under a branch that provides one', function () {
-    seedMigrationsConfig();
-    $function = BusinessFunction::factory()->create(['old_id' => 2]);
-    BusinessFunction::factory()->create(['old_id' => 13]);
-
-    Http::fake([
-        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
-            'items' => [
-                // Child first: created detached, so it authors its own function.
-                ['id' => 2, 'name' => 'FOR_Classi', 'parent_id' => 1, 'business_function_id' => 13],
-                ['id' => 1, 'name' => 'ISO', 'parent_id' => null, 'business_function_id' => 2],
-            ],
-            'pagination' => ['total' => 2],
-        ]),
-    ]);
-
-    $actor = migrationsSuperAdminActor();
-    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
-
-    $root = ProductCategory::query()->where('old_id', 1)->first();
-    $child = ProductCategory::query()->where('old_id', 2)->first();
-
-    expect($child->parent_id)->toBe($root->id)
-        ->and($root->business_function_id)->toBe($function->id)
-        ->and($child->business_function_id)->toBeNull();
 });
 
 it('fills the function of an adopted category only when its slot is free', function () {
@@ -563,11 +520,11 @@ it('spec 0183 F-6: adopting a category closes the quote/work-order barriers of i
         ->and($legacyChild->inherits_work_order_attributes)->toBeTrue();
 });
 
-it('spec 0183 F-9: a record whose parent_id is its own id is imported as a root, idempotently', function () {
+it('REQUIREMENT CHANGED (spec 0183 F-9): a self-referencing root arrives with a null parent_id and is imported as a root, idempotently', function () {
     seedMigrationsConfig();
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
-            'items' => [['id' => 2, 'name' => 'SOA', 'parent_id' => 2, 'inherits_attributes' => true]],
+            'items' => [['id' => 2, 'name' => 'SOA', 'parent_id' => null, 'inherits_attributes' => true]],
             'pagination' => ['total' => 1],
         ]),
     ]);

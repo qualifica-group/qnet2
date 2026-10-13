@@ -27,7 +27,8 @@ use RuntimeException;
  * `id` is "<source>:<source_id>" (what the run report shows), while the
  * product stores `old_source` = legacy table and `old_id` = `source_id`, the
  * pair idempotence is keyed on (D-4). The legacy fields with no native column
- * land in the branch's attributes (CostProductCatalogue::ATTRIBUTES, D-2).
+ * arrive as `attribute_values`, already keyed by attribute code, and land in
+ * the branch's attributes (CostProductCatalogue::ATTRIBUTES, D-2).
  *
  * A legacy `code` is kept only when free and within the column length;
  * otherwise ProductService generates the PRD-0001 sequence and a warning
@@ -143,14 +144,14 @@ class CostProductsSource extends AbstractMigrationSource
 
         $product = $this->service->create(new CreateProductData(
             name: $name,
-            description: $this->trimmedText($record['description'] ?? null),
+            description: $record['description'] ?? null,
             cost: (float) ($record['cost'] ?? 0),
             price: (float) ($record['price'] ?? 0),
-            categoryId: $this->categories->resolve($source, $this->legacyCategory($source, $record)),
+            categoryId: $this->categories->resolve($source, $record['category_name'] ?? null),
             productType: ProductType::Service,
             vatRateId: $this->resolveVatRate($record['vat_rate_id'] ?? null, $warnings),
             supplierId: $this->unresolvableReference('supplier_id', $record['supplier_id'] ?? null, $warnings),
-            attributeValues: $this->attributeValues($source, $record),
+            attributeValues: ($record['attribute_values'] ?? []) !== [] ? $record['attribute_values'] : null,
             code: $this->resolveCode($record['code'] ?? null, $warnings),
             usages: [ProductUsage::Cost],
         ));
@@ -175,49 +176,11 @@ class CostProductsSource extends AbstractMigrationSource
     }
 
     /**
-     * Only warehouse articles carry a legacy category (D-1); any other table
-     * lands directly on its branch.
-     *
-     * @param  array<string, mixed>  $record
-     */
-    private function legacyCategory(string $source, array $record): ?string
-    {
-        if ($source !== 'products') {
-            return null;
-        }
-
-        return $this->trimmedText($record['category_name'] ?? null);
-    }
-
-    /**
-     * The branch attributes this row has a value for, keyed by attribute code.
-     * Null when there is none, so ProductService leaves `attribute_values`
-     * untouched instead of writing an empty set.
-     *
-     * @param  array<string, mixed>  $record
-     * @return array<string, string>|null
-     */
-    private function attributeValues(string $source, array $record): ?array
-    {
-        $values = [];
-
-        foreach (CostProductCatalogue::ATTRIBUTES[$source] as $field => $attribute) {
-            $value = $this->trimmedText($record[$field] ?? null);
-
-            if ($value !== null) {
-                $values[$attribute['code']] = $value;
-            }
-        }
-
-        return $values !== [] ? $values : null;
-    }
-
-    /**
      * @param  array<int, string>  $warnings
      */
     private function resolveCode(mixed $externalCode, array &$warnings): ?string
     {
-        $code = $this->trimmedText($externalCode);
+        $code = $externalCode === null || $externalCode === '' ? null : (string) $externalCode;
 
         if ($code === null) {
             return null;

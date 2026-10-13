@@ -45,10 +45,16 @@
           (commercial|reporter|supervisor|supplier|null da `tipology`), `recipient_kind` (company|user|contact da
           `type`), `recipient_id`, `category_id`, `product_id` (= service_id), `percentage`, `amount`, `note`,
           `created_at`. Nessuna scrittura sul DB legacy.
+          (Emendamento 2026-10-13, decisione utente, regola `.claude/rules/backend.md` §9: la forma dei dati e' del
+          legacy che invia.) `percentage`/`amount` SUPERATI: il legacy esporta `commission_type` (PERCENTAGE se
+          `percentual` > 0, che vince, altrimenti FIXED_AMOUNT) e `value` (la percentuale o `cost`), ed esporta solo
+          regole con un valore > 0 (`percentual` > 0 o `cost` > 0; prima `cost` != 0).
     D-5 — Sorgente qnet-2 `commission-configurations`: una `CommissionConfiguration` per regola legacy, creata dal
           servizio di dominio (stesse validazioni del Configuratore). Ruolo da `role`; destinatario rimappato via
           `old_id` (company -> registry, contact -> referent, user -> user); scope PRODUCT_CATEGORY (categoria) o
-          PRODUCT (servizio); PERCENTAGE con `percentage`, altrimenti FIXED_AMOUNT con `amount`; `status` ACTIVE;
+          PRODUCT (servizio); PERCENTAGE con `percentage`, altrimenti FIXED_AMOUNT con `amount` (dal 2026-10-13:
+          `commission_type` e `value` ricevuti dal legacy, letti con `tryFrom`; tipo ignoto o valore non > 0 -> riga
+          fallita); `status` ACTIVE;
           `valid_from` = data `created_at` legacy; `priority` default; `internal_note` = nota legacy; nome
           "Legacy - &lt;ruolo&gt; - &lt;destinatario&gt; - &lt;categoria o prodotto&gt;"; `old_id` = id legacy.
     D-6 — Righe non importabili, riportate come fallite con messaggio leggibile (mai inventate): ruolo null (la
@@ -85,7 +91,10 @@
       <response status="200">Stessa envelope paginata degli altri `*MigrationController`; item:
         { "id": int, "role": "commercial"|"reporter"|"supervisor"|"supplier"|null,
           "recipient_kind": "company"|"user"|"contact"|null, "recipient_id": int|null,
-          "category_id": int|null, "product_id": int|null, "percentage": float|null, "amount": float|null,
+          "category_id": int|null, "product_id": int|null,
+          "commission_type": "PERCENTAGE"|"FIXED_AMOUNT", "value": float (> 0),
+          // shape aggiornata 2026-10-13: sostituisce "percentage": float|null, "amount": float|null; esportate solo
+          // regole con percentual > 0 o cost > 0
           "note": string|null, "created_at": string|null }</response>
       <errors>401/403 come gli altri endpoint v2 (`auth:api`, `v2.access`).</errors>
     </endpoint>

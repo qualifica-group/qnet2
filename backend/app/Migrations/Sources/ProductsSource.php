@@ -169,7 +169,7 @@ class ProductsSource extends AbstractMigrationSource
 
         $product = $this->service->create(new CreateProductData(
             name: $name,
-            description: $this->trimmedText($record['description'] ?? null),
+            description: $record['description'] ?? null,
             cost: (float) ($record['cost'] ?? 0),
             price: (float) ($record['price'] ?? 0),
             categoryId: $this->aplBranch->productCategoryFor($this->resolveCategory($record['category_id'] ?? null, $warnings), $warnings),

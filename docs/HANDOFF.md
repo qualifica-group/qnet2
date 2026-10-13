@@ -3,12 +3,83 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MIGRAZIONE: RIGHE PRODOTTO OPPORTUNITA' DALLE OFFERTE (2026-10-13) — VERDE, NON COMMITTATO
+
+- Bug: opportunita' 19561 (legacy 173033) con 2 righe prodotto e 1 solo prodotto in offerta. Il legacy mandava la
+  categoria propria "SICUREZZA 81/08" (radice non selezionabile); l'import offerta aggiungeva la sottocategoria del
+  prodotto (`OpportunityProductLineCoverage::ensure()` confronta l'id esatto). 5.781 opportunita' padre + figlia.
+- Fix nel legacy (`OpportunityMigrationController::productCategoryIds`): `product_category_ids` = categorie dei
+  prodotti delle offerte, fallback alle categorie proprie solo se le offerte non ne hanno. Verificato via tinker:
+  173033 -> [76]. 16.536 opportunita' con categorie da offerta, 10.101 avevano anche categorie proprie.
+- qnet-2: nessun cambio di codice (solo docblock `OpportunitiesSource`); spec 0189 emendamento 2026-10-13 + AC-009
+  + shape (tolto `quote_product_category_ids`, mai esposto). `tests/Feature/Migration` 396/396, Pint ok.
+- Aperto: i dati gia' importati NON si correggono con un rilancio (il backfill scrive solo su opportunita' senza
+  righe). Serve reimport pulito delle righe prodotto o una pulizia (decisione utente).
+
+## MIGRAZIONE: WORKAROUND SPOSTATI NEL LEGACY (2026-10-13) — VERDE, NON COMMITTATO
+
+- Regola nuova e permanente: `.claude/rules/backend.md §9` + riga in `CLAUDE.md §ROUTING`. Il legacy che INVIA e'
+  responsabile della forma dei dati; qnet-2 riceve, collega via old_id, valida in modo minimo, scrive. Supera D-7
+  della spec 0172.
+- Legacy (`../qnet`, master, NON committato). Nuovi helper `app/Support/Migration/`: `PersonNameSplitter`,
+  `LegacyRegistryFields` (vat/website/tax code), `EaSectorCatalog`, `LegacyCityLabel`, `TaskTemplateTree`,
+  `LegacyQuoteOutcome`. Controller toccati: Registry, EaSector, Source, OperationalSite, TaskTemplate, PaymentMethod,
+  ProductCategory, Attribute, CostProduct, Product, Opportunity, Quote, WorkOrder, CommissionConfiguration.
+  Verificati via tinker sui dati reali (task template: 41 modelli/1314 azioni/263 warning identici al vecchio
+  flattener; esiti offerta: 17.281 offerte, 0 mismatch con la vecchia logica qnet-2).
+- qnet-2: cancellati `PersonNameSplitter`, `TaskTemplateTreeFlattener`, `LegacyOpportunityNotes`; nuovo enum
+  `Support/LegacyQuoteOutcome`. Rimossi: re-split nomi, pulizia VAT/website/CF, settori per nome, trim fonti,
+  difese ridondanti (roles piatti, active stringa, date 0000, fallback site_type), decodifica stati offerta/
+  contratto/commessa, composizione note, fallback categorie/date/titolo/quote_date/quantita', regola %-vince,
+  slug codice pagamento, `_`->`-` entity_type, multiple->multiselect, radici auto-referenziate, relink categorie,
+  mapping campi costo->cost_*, filtro 0 pagamenti commessa.
+- Contratti nuovi (dettaglio nelle spec 0013/0172/0174/0189/0201/0203): registries `sector_ids`; operational-sites
+  `alias`; quotes `outcome` + `contract` + `customer_differs_from_opportunity` + commissions
+  `{commission_type: PERCENTAGE|FIXED_AMOUNT, value}`; opportunities `general_notes` + `preliminary_info_blocks`;
+  work-orders `force_close_reason` + `internal_notes`; task-templates albero pulito + `is_active` + `warnings[]`;
+  cost-products `attribute_values`. Legacy e qnet-2 vanno rilasciati INSIEME.
+- Test: `tests/Feature/Migration` 396/396, `tests/Unit/Migrations` 20/20, QuoteWorkflows 71/71, WorkOrders 250/250,
+  PaymentMethods 95/95, Pint ok; FE help 122/122, `tsc -b --force` ok. `tests/Feature/Quotes`: 3 rossi PDF per
+  LibreOffice assente in locale (non correlati). REQUIREMENT CHANGED su fixture/test di Registries, OperationalSites,
+  Attributes, ProductCategories, PaymentMethods, TaskTemplates, CostProducts, Quotes, QuotesStatus, Realign,
+  Opportunities, WorkOrders, CommissionConfigurations, LegacyAplBranch, QualificaLegacyImportSeeder.
+- Guida in-app migrazioni IT/EN: frase categorie opportunita' allineata (precedenza alle categorie delle offerte).
+  Manuale Claude Docs: stessa frase nella sezione Migrazioni.
+- Fuori lotto / aperti: id settori posizionali (stabili solo se non si inseriscono settori a meta' alfabeto);
+  `for_select_resource` legacy ancora con underscore; casi grigi (LegacyAplBranch, REDIRECTED_FUNCTIONS, ownership
+  righe condivise `QuoteLineDuplicator`, fornitore riga costo, tetto manager slot, guardia id 0 nel trait
+  condiviso); codice prodotto legacy (decisione utente pendente). Warning persi per scelta: data/titolo commessa,
+  stato commessa sconosciuto, quantita' mancante.
+
+## MIGRAZIONE: CONTRATTI LEGACY ROTTI CORRETTI (2026-10-13) — VERDE, NON COMMITTATO
+
+- Contesto: audit "sotterfugi" del modulo migrazioni (principio utente: qnet-2 pulito, il legacy si adegua e
+  manda i dati gia' nella forma di qnet-2). Questo e' il lotto 0 (contratti rotti); il resto del piano e' sotto.
+- Legacy (`../qnet`, branch master, NON committato; `AppServiceProvider.php`/`config/database.php` erano gia'
+  modificati dall'utente, non toccati):
+  - `UserMigrationController`: `relationship_type` via const `RELATIONSHIP_TYPES` (1 employee, 2 self_employed,
+    3 other; 0/null -> null), `qualification_type` via const `QUALIFICATION_TYPES` su `level_id` (8 livelli 1:1
+    con `QualificationTypeEnum`); tolto l'eager load `level`. Prima arrivavano int/descrizione -> sempre null.
+  - `WorkOrderMigrationController`: espone `stato_pagamento` (Field::id), `accordo_pagamento`, `insoluti` (bool)
+    da `orderisos` (id piu' basso per commessa). Prima mancavano: righe pagamento sempre vuote.
+  - `CompanySiteMigrationController`: `province` = `sigla` (era il nome per esteso, mai risolto dal geo resolver).
+  - `CommissionConfigurationMigrationController`: `amount` solo se > 0 (era != 0); 0 righe negative nei dati.
+  - Verificati chiamando i controller via tinker sui dati reali.
+- qnet-2: `PaymentMethodsSource` legge il codice fiscale da `payment_method_code` (prima da `code`, che il legacy
+  usa per uno slug). REQUIREMENT CHANGED: fixture di `PaymentMethodsSourceImportTest` allineate al contratto reale.
+- Spec 0201 D-14 aggiornata. Test: `tests/Feature/Migration` 416/416, `tests/Unit/Migrations` 30/30, Pint ok.
+- Aperto (decisione utente): `ProductsSource` legge `code` ma il legacy non lo manda (sempre sequenza PRD);
+  `services.code` valorizzato su 1322/1444, 77 codici duplicati, qnet-2 `code` unique max 32.
+- Prossimi lotti (audit): stati offerta/contratto/commessa -> `outcome`/`contract`/`force_close_reason` dal legacy;
+  `TaskTemplateTreeFlattener` nel legacy (supera D-7 spec 0172); categorie in ordine topologico; nomi/comuni/
+  settori dalle anagrafiche; codice modalita' di pagamento gia' univoco dal legacy.
+
 ## MIGRAZIONE OFFERTE: STATI LEGACY + NOTE INFO PRELIMINARI OPPORTUNITA' (2026-10-13) — VERDE, COMMITTATO
 
 - Spec 0189 aggiornata: G-6 riscritto, nuovi G-18 (fase opportunita' -> stato offerta Presentata), G-19 (note Info
   preliminari), AC-013/AC-014, contratti API `migration/quotes` (+`opportunity_phase`, `won_by_other_quote`) e
   `migration/opportunities` (+`preliminary_info_notes`).
-- Legacy (`../qnet`, branch master, committato): `QuoteMigrationController` (+2 campi, const WON_STATUSES),
+- Legacy (`../qnet`, branch develop, commit 2e3eb13a, non pushato): `QuoteMigrationController` (+2 campi, const WON_STATUSES),
   `OpportunityMigrationController` (+`preliminary_info_notes`), nuovo `App\Support\Migration\LegacyPreliminaryInfoNotes`
   (tabelle pre_info_* tranne R&S, prima riga per id). Verificati via curl su qnet.test.
 - qnet-2: `LegacyQuoteState` (DTO dal record), `LegacyQuoteStatusResolver` (mapping, per nome poi per gruppo),

@@ -109,9 +109,10 @@ it('files each legacy cost table under the Costi branch as a cost-only product',
         legacyCostRow('products', 2, 'Oust', [
             'code' => 'P01', 'cost' => 10, 'price' => 20, 'vat_rate_id' => 6, 'category_name' => 'Igienizzanti',
             'brand' => 'OUST', 'barcode' => '800123', 'ministerial_code' => 'MIN-1', 'storage_position' => 'scaffale 5',
+            'attribute_values' => ['cost_brand' => 'OUST', 'cost_barcode' => '800123', 'cost_ministerial_code' => 'MIN-1', 'cost_storage_position' => 'scaffale 5'],
         ]),
-        legacyCostRow('vehicles', 3, 'Tagliando Smart', ['cost' => 140, 'price' => 140, 'license_plate' => 'FE700FV']),
-        legacyCostRow('equipment', 1, 'Motosega', ['cost' => 100, 'price' => 100, 'brand' => 'Stihl', 'model' => 'GHT', 'serial_number' => '123']),
+        legacyCostRow('vehicles', 3, 'Tagliando Smart', ['cost' => 140, 'price' => 140, 'license_plate' => 'FE700FV', 'attribute_values' => ['cost_license_plate' => 'FE700FV']]),
+        legacyCostRow('equipment', 1, 'Motosega', ['cost' => 100, 'price' => 100, 'brand' => 'Stihl', 'model' => 'GHT', 'serial_number' => '123', 'attribute_values' => ['cost_brand' => 'Stihl', 'cost_model' => 'GHT', 'cost_serial_number' => '123']]),
         legacyCostRow('expense_reports', 6, 'FOR_Commissione', ['description' => "Commissione d'esame", 'cost' => 400, 'price' => 400]),
     ]);
 
@@ -173,12 +174,6 @@ it('keeps a warehouse article without a legacy category on the Articoli branch',
         ->toBe(costCategory('Articoli', $root->id)->id);
 });
 
-it('ignores a category name on a non-warehouse row', function () {
-    runCostProductsImport([legacyCostRow('vehicles', 1, 'Furgone', ['category_name' => 'Mezzi'])]);
-
-    expect(ProductCategory::query()->where('name', 'Mezzi')->exists())->toBeFalse();
-});
-
 it('warns and nulls an unmigrated VAT rate and the un-remappable supplier', function () {
     $run = runCostProductsImport([legacyCostRow('equipment', 1, 'Motosega', ['vat_rate_id' => 3, 'supplier_id' => 5])]);
 
@@ -196,7 +191,7 @@ it('warns and nulls an unmigrated VAT rate and the un-remappable supplier', func
 
 it('re-importing is idempotent and never duplicates the branch', function () {
     $items = [
-        legacyCostRow('products', 1, 'Alpha', ['category_name' => 'Veleni', 'brand' => 'ACME']),
+        legacyCostRow('products', 1, 'Alpha', ['category_name' => 'Veleni', 'brand' => 'ACME', 'attribute_values' => ['cost_brand' => 'ACME']]),
         legacyCostRow('vehicles', 1, 'Smart'),
     ];
 
