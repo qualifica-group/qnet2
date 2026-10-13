@@ -13,6 +13,7 @@ import { PurchaseOrderStatusBadge } from '@/features/purchase-orders/purchase-or
 import { EDITABLE_STATUSES, type PurchaseOrder } from '@/features/purchase-orders/types'
 import { usePurchaseOrderDelete } from '@/features/purchase-orders/use-purchase-order-actions'
 import { usePurchaseOrderForm } from '@/features/purchase-orders/use-purchase-order-form'
+import { usePurchaseOrderStatusCatalog } from '@/features/purchase-order-statuses/use-purchase-order-status-catalog'
 
 const FORM_ID = 'purchase-order-form'
 const SECTION_CLASS = 'flex flex-col gap-3 rounded-lg border bg-card p-3'
@@ -36,6 +37,7 @@ export function PurchaseOrderForm({ order, onSaved, onCancel, onDeleted }: Purch
   const { t } = useTranslation()
   const confirm = useConfirm()
   const removeOrder = usePurchaseOrderDelete()
+  const { nameOf } = usePurchaseOrderStatusCatalog()
   const { form, lineArray, lines, companyId, supplierId, supplierQualified, formErrors, addLine, proposeWorkOrder, submit, isSaving } =
     usePurchaseOrderForm({ order, onSaved })
   const readOnly = order !== undefined && isOrderReadOnly(order)
@@ -70,7 +72,7 @@ export function PurchaseOrderForm({ order, onSaved, onCancel, onDeleted }: Purch
 
         {statusLocked ? (
           <p role="status" className="rounded-md border bg-surface px-3 py-2 text-xs">
-            {t('purchaseOrderForm.readOnlyNotice', { status: t(`purchaseOrders.statuses.${order.status}`).toLowerCase() })}
+            {t('purchaseOrderForm.readOnlyNotice', { status: nameOf(order.status).toLowerCase() })}
           </p>
         ) : null}
         {formErrors.length > 0 ? (

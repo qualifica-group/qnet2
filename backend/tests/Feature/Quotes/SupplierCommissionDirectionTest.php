@@ -258,7 +258,7 @@ it('AC-002: the backfill maps institution to RECEIVED, the others to PAID, copie
 });
 
 it('AC-002: the migrations are reversible', function () {
-    // 43 steps: the two of spec 0202, then spec 0204's color migration and the
+    // 45 steps: the two of spec 0202, then spec 0204's color migration and the
     // ones stacked on top (spec 0195's outbound email purpose, spec 0196's
     // invoice layout and installment redistribution snapshot, spec 0197's
     // installment residual amount, spec 0207's registry general notes, spec 0208's
@@ -268,7 +268,7 @@ it('AC-002: the migrations are reversible', function () {
     // active flag, the api_clients table, users service-account flag and token api_client_id, the
     // referents fulltext name index, the sector active flag, the sector code, the work order title
     // flag, the quote date).
-    expect(Artisan::call('migrate:rollback', ['--step' => 43]))->toBe(0);
+    expect(Artisan::call('migrate:rollback', ['--step' => 45]))->toBe(0);
     expect(Schema::hasColumn('quote_lines', 'supplier_commission_direction'))->toBeFalse()
         ->and(Schema::hasColumn('product_typologies', 'supplier_commission_enabled'))->toBeFalse();
 });

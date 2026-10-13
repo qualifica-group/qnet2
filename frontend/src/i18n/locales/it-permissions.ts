@@ -148,6 +148,8 @@ export const permissions = {
     'purchase-orders': 'Ordini di acquisto (ODA)',
     'cost-types': 'Tipi di costo',
     'purchase-request-priorities': 'Priorità RDA',
+    'purchase-order-statuses': 'Stati ODA',
+    'purchase-request-line-statuses': 'Stati righe RDA',
     'invoice-tags': 'Tag fattura',
     invoices: 'Fatture Attive',
     'invoice-installments': 'Scadenze',

@@ -46,5 +46,19 @@ return [
             'route' => '/purchase-request-priorities',
             'permission' => 'purchase-request-priorities.view',
         ],
+        [
+            'key' => 'purchase-order-statuses',
+            'label' => 'navigation.purchaseOrderStatuses',
+            'icon' => 'circle-dot',
+            'route' => '/purchase-order-statuses',
+            'permission' => 'purchase-order-statuses.view',
+        ],
+        [
+            'key' => 'purchase-request-line-statuses',
+            'label' => 'navigation.purchaseRequestLineStatuses',
+            'icon' => 'list-checks',
+            'route' => '/purchase-request-line-statuses',
+            'permission' => 'purchase-request-line-statuses.view',
+        ],
     ],
 ];

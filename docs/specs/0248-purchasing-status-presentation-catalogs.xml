@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0248-purchasing-status-presentation-catalogs" status="draft" owner="ciro" date="2026-10-13">
+
+  <goal>
+    Permettere all'utente di rinominare, colorare, scegliere l'icona e riordinare gli stati degli ODA e delle righe
+    RDA, oggi cablati nel frontend (audit 2026-10-13, Onda 2-B: ODA-03, RDA-04), lasciando invariata la logica che
+    resta negli enum PurchaseOrderStatus e PurchaseRequestLineStatus.
+  </goal>
+
+  <context>
+    Decisione utente 2026-10-13: solo presentazione. Gli stati sono e restano i 7 dell'ODA e i 6 della riga RDA; niente
+    stati aggiunti dall'utente, niente cancellazioni, niente cambio di fase o di transizioni.
+
+    Decisioni tecniche proposte (da validare con la spec):
+    - D-1 Due nuove tabelle `purchase_order_statuses` e `purchase_request_line_statuses`, sole righe di sistema:
+      id, system_key (string 32, unique, = valore dell'enum, non modificabile), name (191, unique), color (BadgeTokens),
+      icon (BadgeTokens, null), sort_order, timestamps. Righe create dalla migrazione (7 + 6) con nomi italiani attuali
+      dell'interfaccia, colori e icone equivalenti a quelli cablati oggi (purchase-order-status-badge.tsx,
+      purchase-order-status-options.tsx, purchase-request-status-badge.tsx, line-status-options.tsx), ordine = ordine
+      attuale delle liste FE (PURCHASE_ORDER_STATUSES, LINE_STATUSES). Nessuna colonna is_active / is_default / group.
+    - D-2 Nessuna creazione ne' eliminazione: le Policy espongono solo viewAny, view, update, export, viewActivity
+      (niente create/delete: permissions:sync non li crea, nessuna rotta POST/DELETE). Modificabili solo name, color,
+      icon (FormRequest: system_key e sort_order prohibited); riordino di tutte le righe con LookupOrderManager
+      (StatusOrderManager non va bene: considera riordinabili solo le righe senza system_key).
+    - D-3 Il nome diventa un dato (come Stati Task): non e' piu' tradotto IT/EN dall'interfaccia. Le chiavi i18n
+      purchaseOrders.statuses.* e purchaseRequests.lineStatuses.* diventano dead code e si rimuovono.
+    - D-4 Le API dei documenti continuano a esporre lo `status` grezzo (valore enum, contratto invariato per la logica e
+      abilities.transitions). Il frontend ricava nome/colore/icona da un catalogo caricato una volta via TanStack Query:
+      GET /api/purchase-order-statuses/for-select e GET /api/purchase-request-line-statuses/for-select (tutte le righe,
+      per sort_order, con system_key). Un hook per catalogo (es. usePurchaseOrderStatusCatalog) sostituisce VARIANTS,
+      STATUS_ICONS, liste ordinate e label i18n in badge, tab, dialog cambio stato, storico stati, merge candidate,
+      riepilogo righe, celle griglia.
+    - D-5 Griglie: le colonne status di tables/purchase-orders e tables/purchase-request-lines espongono i badge dal
+      catalogo (badgesFor: value=system_key, label=name, color, icon) cosi' il filtro set e i chip mostrano i nomi;
+      l'ordinamento per stato segue sort_order del catalogo (subquery in applyDerivedSort, nessuna query per riga).
+    - D-6 Menu Acquisti: "Stati ODA" e "Stati righe RDA" dopo Priorita' RDA; permessi purchase-order-statuses.* e
+      purchase-request-line-statuses.*. FE: lista con riordino (StatusReorderToggle: le righe non vanno "bloccate" come
+      di sistema nel foglio di riordino perche' sono tutte riordinabili) e dettaglio inline (nome, colore, icona), senza
+      pulsante Nuovo ne' Elimina.
+    - D-7 Fuori dalla presentazione restano grezzi: activity log, export (valore enum), storico righe a DB. Le guide
+      in-app citano i nomi predefiniti e spiegano che sono rinominabili.
+
+    Fatti verificati: TaskStatus/ContractStatus (system_key, SystemStatusGuard, StatusOrderManager solo righe custom,
+    righe di sistema seminate nella migrazione); LookupOrderManager (union di model da estendere); BasePolicy abilities
+    sovrascrivibili; StatusBadgeCell; AbstractTableDefinition::badgesFor()/enumKeyFor() e formatBadgeFilterValue nel FE;
+    oggi PurchaseOrderColumnCatalog:79 e PurchaseRequestLineColumnCatalog:54 danno badge senza etichette e sort
+    alfabetico sul valore; nessun PDF/email usa lo stato; navigazione purchasing.php.
+  </context>
+
+  <scope>
+    <in>
+      <item>BE: 2 tabelle + migrazione con righe di sistema, model, Policy (senza create/delete), Authorization (name, color, icon), TableDefinition, for-select, show/update/reorder, registrazioni (tables, authorization, activity-log, navigation, morph map, routes), badgesFor + sort per sort_order sulle griglie ODA e righe RDA.</item>
+      <item>FE: 2 feature catalogo (lista + riordino + dettaglio inline), pagine, rotte, menu i18n, permessi i18n; hook catalogo e sostituzione di tutte le presentazioni cablate degli stati ODA e riga RDA; rimozione chiavi i18n e mappe dead.</item>
+      <item>Guide IT+EN: nuove purchase-order-statuses e purchase-request-line-statuses; purchase-orders, purchase-requests, purchase-request-lines (nomi rinominabili).</item>
+    </in>
+    <out>
+      <item>Stati aggiunti dall'utente, fase/group, transizioni configurabili, attivazione/disattivazione.</item>
+      <item>Stato di testata RDA (aperta/chiusa) e stato richieste proforma (enum fissi).</item>
+      <item>Traduzione multilingua dei nomi degli stati (D-3).</item>
+      <item>Etichette negli export e nell'activity log (D-7).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/purchase-order-statuses/for-select">
+      <response>{ items: [ { id, label: name, meta: { system_key, color, icon, sort_order } } ] } — tutte le 7 righe per sort_order (stessa shape for-select del progetto).</response>
+    </endpoint>
+    <endpoint method="GET|PUT|PATCH" path="/api/purchase-order-statuses/{purchaseOrderStatus}">
+      <request>{ name?, color?, icon? }; system_key e sort_order prohibited (422).</request>
+      <response>{ id, system_key, name, color, icon, sort_order } + blocco permissions come gli altri cataloghi.</response>
+      <errors>403 senza purchase-order-statuses.update; 422 nome duplicato o colore/icona non ammessi.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/purchase-order-statuses/reorder">{ ordered_ids: int[] (tutte le righe) } -> [{id, sort_order}]</endpoint>
+    <endpoint method="*" path="/api/purchase-request-line-statuses/...">Identico, 6 righe, permessi purchase-request-line-statuses.*.</endpoint>
+    <endpoint method="SSRM" path="tables/purchase-order-statuses, tables/purchase-request-line-statuses">liste catalogo (sort_order asc), nessuna azione delete.</endpoint>
+    <endpoint method="SSRM" path="tables/purchase-orders, tables/purchase-request-lines">colonna status: valore = system_key (invariato), badges dal catalogo {value, label, color, icon}; filtro set per system_key con etichette; sort per sort_order del catalogo.</endpoint>
+    <note>Nessuna rotta POST di creazione ne' DELETE. Le API ODA/RDA/righe/storico restano invariate (status grezzo).</note>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dopo la migrazione esistono 7 righe ODA e 6 righe RDA, una per valore enum, con nomi/colori/icone/ordine iniziali (D-1); rollback elimina le tabelle.</criterion>
+    <criterion id="AC-002">PATCH di name/color/icon con permesso -> 200; senza permesso 403; system_key o sort_order nel payload -> 422; nome duplicato -> 422.</criterion>
+    <criterion id="AC-003">Non esistono rotte di creazione ne' eliminazione; permissions:sync non crea purchase-order-statuses.create/delete ne' gli equivalenti RDA.</criterion>
+    <criterion id="AC-004">Reorder con tutte le righe aggiorna sort_order; con un insieme incompleto o estraneo 422.</criterion>
+    <criterion id="AC-005">Griglia ODA: le definizioni colonna espongono per status i badge del catalogo (etichetta = nome corrente); rinominando uno stato i badge seguono; l'ordinamento per stato segue sort_order; nessuna query per riga.</criterion>
+    <criterion id="AC-006">Griglia righe RDA: idem AC-005 sugli stati riga.</criterion>
+    <criterion id="AC-007">La logica non cambia: transizioni, isEditable/isSendable, guard 0244/0245 invariati (suite esistente verde senza modifiche funzionali).</criterion>
+    <criterion id="AC-008">(Vitest) Badge, tab di stato, dialog cambio stato e storico ODA mostrano nome/colore/icona dal catalogo nell'ordine del catalogo; nessuna mappa di colori/icone/etichette cablata residua.</criterion>
+    <criterion id="AC-009">(Vitest) Idem per gli stati riga RDA (badge, tab, dialog, storico, riepilogo, riga nel form).</criterion>
+    <criterion id="AC-010">(Vitest) Liste catalogo con riordino di tutte le righe e dettaglio inline di nome/colore/icona; nessun pulsante Nuovo/Elimina.</criterion>
+    <criterion id="AC-011">Menu, permessi i18n (parity), guide nuove in HELP_GUIDE_KEYS, help-content-parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Riuso: LookupOrderManager (estendere la union), BadgeTokens, StatusBadgeCell, StatusReorderToggle, useRecordInlineEdit, pattern catalogo di 0247.</item>
+    <item>Migrazione reversibile, solo Schema/query builder; righe create dalla migrazione.</item>
+    <item>Gli enum restano la fonte della logica; il catalogo e' solo presentazione (nessun codice server decide in base a name/color).</item>
+    <item>FE: catalogo via TanStack Query con chiave centralizzata, niente useEffect+fetch; file sotto 300 righe.</item>
+    <item>Test Pest per ogni endpoint (happy, 403, 422); Vitest; suite completa dal verifier; tsc -b --force.</item>
+    <item>Nessun commit senza ordine esplicito.</item>
+  </constraints>
+
+</spec>

@@ -22,6 +22,8 @@ final class PurchaseRequestLineColumnCatalog
 
     public const string SUPPLIER_COLUMN = 'supplier';
 
+    public const string STATUS_COLUMN = 'status';
+
     /** Parent columns sortable through a subquery on purchase_requests: id => column. */
     public const array PARENT_SORTS = [
         'purchase_request_subject' => 'subject',
@@ -51,7 +53,7 @@ final class PurchaseRequestLineColumnCatalog
             $column('taxable_amount', 'number', sortable: true, filter: 'number'),
             $column('vat_amount', 'number', visible: false, sortable: true, filter: 'number'),
             $column('total_amount', 'number', sortable: true, filter: 'number'),
-            $column('status', 'badge', sortable: true, filter: 'set', options: PurchaseRequestLineStatus::values()),
+            $column(self::STATUS_COLUMN, 'badge', sortable: true, filter: 'set', options: PurchaseRequestLineStatus::values()),
             $column('approved_by', 'text', filter: 'text'),
             $column('approved_at', 'datetime', sortable: true, filter: 'date'),
             $column('oda_reference', 'text', sortable: true, filter: 'text'),

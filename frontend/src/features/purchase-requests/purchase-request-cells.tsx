@@ -2,6 +2,7 @@ import type { ICellRendererParams } from 'ag-grid-community'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { CELL_WRAPPER, EmptyCell } from '@/features/table/cell-renderers'
+import { usePurchaseRequestLineStatusCatalog } from '@/features/purchase-request-line-statuses/use-purchase-request-line-status-catalog'
 import { LineStatusBadge } from '@/features/purchase-requests/purchase-request-status-badge'
 import { OdaLink } from '@/features/purchase-requests/oda-link'
 import { LINE_STATUSES, type LineStatus, type LineStatusCounts, type PurchaseOrderRef } from '@/features/purchase-requests/types'
@@ -21,19 +22,19 @@ export function LineStatusCell({ value }: ICellRendererParams) {
   )
 }
 
-/** Per-status line counts of an RDA as compact "label n" chips, zero counts left out. */
+/** Per-status line counts of an RDA as compact "name n" chips in the catalog order, zero counts left out. */
 export function LineStatusCountsCell({ value }: ICellRendererParams) {
-  const { t } = useTranslation()
+  const { statuses } = usePurchaseRequestLineStatusCatalog()
   const counts = (value ?? {}) as LineStatusCounts
-  const present = LINE_STATUSES.filter((status) => (counts[status] ?? 0) > 0)
+  const present = statuses.filter((status) => (counts[status.systemKey as LineStatus] ?? 0) > 0)
   if (present.length === 0) {
     return <EmptyCell />
   }
   return (
     <div className="flex h-full flex-wrap items-center gap-1">
       {present.map((status) => (
-        <Badge key={status} variant="outline" className="text-[11px]">
-          {t(`purchaseRequests.lineStatuses.${status}`)} {counts[status]}
+        <Badge key={status.systemKey} variant="outline" className="text-[11px]">
+          {status.name} {counts[status.systemKey as LineStatus]}
         </Badge>
       ))}
     </div>

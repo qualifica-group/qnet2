@@ -35,6 +35,8 @@ use App\Authorization\ProformaRequestsAuthorization;
 use App\Authorization\ProjectsAuthorization;
 use App\Authorization\PurchaseInvoiceInstallmentsAuthorization;
 use App\Authorization\PurchaseOrdersAuthorization;
+use App\Authorization\PurchaseOrderStatusesAuthorization;
+use App\Authorization\PurchaseRequestLineStatusesAuthorization;
 use App\Authorization\PurchaseRequestPrioritiesAuthorization;
 use App\Authorization\PurchaseRequestsAuthorization;
 use App\Authorization\QuotesAuthorization;
@@ -137,6 +139,9 @@ return [
         'cost-types' => CostTypesAuthorization::class,
         // spec 0247: catalogs of the simple purchasing/accounting lists.
         'purchase-request-priorities' => PurchaseRequestPrioritiesAuthorization::class,
+        // spec 0248: presentation catalogues of the ODA and RDA line statuses.
+        'purchase-order-statuses' => PurchaseOrderStatusesAuthorization::class,
+        'purchase-request-line-statuses' => PurchaseRequestLineStatusesAuthorization::class,
         'invoice-tags' => InvoiceTagsAuthorization::class,
         // spec 0189: conti finanziari (conto corrente, carta, cassa).
         'financial-accounts' => FinancialAccountsAuthorization::class,

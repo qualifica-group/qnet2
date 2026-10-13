@@ -98,6 +98,10 @@ const guide: HelpGuide = {
           text: 'The status cannot be edited from the form: use **Change status** on the order page, which only offers the steps allowed by the workflow and by your permissions. An order starts as **Draft**.',
         },
         {
+          type: 'note',
+          text: 'The status names in this guide are the **default** ones: under **Purchasing › ODA statuses** they can be renamed, recolored, given another icon and reordered. Tabs, badges and the **Change status** dialog follow the configured name, color, icon and order at once. The allowed steps and the rules below do not change.',
+        },
+        {
           type: 'table',
           headers: ['Status', 'Can move to'],
           rows: [

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Lookups;
 
+use App\Models\PurchaseOrderStatusLabel;
+use App\Models\PurchaseRequestLineStatusLabel;
 use App\Models\TaskCategory;
 use App\Models\TaskImportance;
 use App\Models\TaskPriority;
@@ -46,7 +48,7 @@ class LookupOrderManager
      * next to reorder(), so placement and resequencing cannot drift apart —
      * both are the single authority on this column.
      *
-     * @param  class-string<TaskType>|class-string<TaskCategory>|class-string<TaskPriority>|class-string<TaskImportance>  $modelClass
+     * @param  class-string<TaskType>|class-string<TaskCategory>|class-string<TaskPriority>|class-string<TaskImportance>|class-string<PurchaseOrderStatusLabel>|class-string<PurchaseRequestLineStatusLabel>  $modelClass
      */
     public function placeNew(string $modelClass): int
     {
@@ -67,9 +69,9 @@ class LookupOrderManager
      * equality against the DB is not something a validation rule can
      * express, and the guard must hold whatever the caller.
      *
-     * @param  class-string<TaskType>|class-string<TaskCategory>|class-string<TaskPriority>|class-string<TaskImportance>  $modelClass
+     * @param  class-string<TaskType>|class-string<TaskCategory>|class-string<TaskPriority>|class-string<TaskImportance>|class-string<PurchaseOrderStatusLabel>|class-string<PurchaseRequestLineStatusLabel>  $modelClass
      * @param  array<int, int>  $orderedIds
-     * @return Collection<int, TaskType|TaskCategory|TaskPriority|TaskImportance>
+     * @return Collection<int, TaskType|TaskCategory|TaskPriority|TaskImportance|PurchaseOrderStatusLabel|PurchaseRequestLineStatusLabel>
      *
      * @throws HttpException 422
      */
@@ -94,7 +96,7 @@ class LookupOrderManager
      * $orderedIds must be exactly the table's id set: no duplicates, no
      * unknown id, none missing.
      *
-     * @param  class-string<TaskType>|class-string<TaskCategory>|class-string<TaskPriority>|class-string<TaskImportance>  $modelClass
+     * @param  class-string<TaskType>|class-string<TaskCategory>|class-string<TaskPriority>|class-string<TaskImportance>|class-string<PurchaseOrderStatusLabel>|class-string<PurchaseRequestLineStatusLabel>  $modelClass
      * @param  array<int, int>  $orderedIds
      *
      * @throws HttpException 422

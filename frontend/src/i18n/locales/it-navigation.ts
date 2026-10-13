@@ -82,6 +82,8 @@ export const navigation = {
   purchaseOrders: 'ODA',
   costTypes: 'Tipi di costo',
   purchaseRequestPriorities: 'Priorità RDA',
+  purchaseOrderStatuses: 'Stati ODA',
+  purchaseRequestLineStatuses: 'Stati righe RDA',
   invoiceTags: 'Tag fattura',
   management: 'Gestione',
   configuration: 'Configurazione',

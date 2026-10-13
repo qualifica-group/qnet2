@@ -16,6 +16,8 @@ interface StatusReorderToggleProps {
   labels: StatusReorderToggleLabels
   /** Called after a successful reorder so the caller can refresh its own table view. */
   onReordered: () => void
+  /** Spec 0248: every row is draggable (catalogs whose `system_key` is only an enum tie, not an edge pin). */
+  allRowsReorderable?: boolean
 }
 
 /**
@@ -26,7 +28,7 @@ interface StatusReorderToggleProps {
  * engineering size limits (`engineering.md` §6) instead of duplicating this
  * wiring inline.
  */
-export function StatusReorderToggle({ resource, permission, labels, onReordered }: StatusReorderToggleProps) {
+export function StatusReorderToggle({ resource, permission, labels, onReordered, allRowsReorderable }: StatusReorderToggleProps) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -41,6 +43,7 @@ export function StatusReorderToggle({ resource, permission, labels, onReordered 
         resource={resource}
         labels={labels}
         onReordered={onReordered}
+        allRowsReorderable={allRowsReorderable}
       />
     </Can>
   )

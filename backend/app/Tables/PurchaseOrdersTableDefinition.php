@@ -2,8 +2,10 @@
 
 namespace App\Tables;
 
+use App\DataObjects\Enums\EnumMeta;
 use App\Enums\PurchaseOrderStatus;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderStatusLabel;
 use App\Models\User;
 use App\Services\PurchaseOrders\PurchaseOrderStatusService;
 use App\Support\OperationalSiteLabel;
@@ -12,6 +14,7 @@ use App\Tables\PurchaseOrders\PurchaseOrderDerivedQuery as OrderQuery;
 use App\Tables\PurchaseRequests\PurchaseRequestDerivedQuery as Derived;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -217,6 +220,12 @@ class PurchaseOrdersTableDefinition extends AbstractTableDefinition
             return true;
         }
 
+        if ($columnId === 'status') {
+            $this->orderByStatusCatalog($query, $direction);
+
+            return true;
+        }
+
         if (! isset(Catalog::SORT_RELATIONS[$columnId])) {
             return false;
         }
@@ -225,6 +234,41 @@ class PurchaseOrdersTableDefinition extends AbstractTableDefinition
         Derived::orderByRelated($query, $table, $foreignKey, $column, $direction);
 
         return true;
+    }
+
+    /**
+     * The status badges come from the presentation catalogue (spec 0248, D-5):
+     * the value stays the enum value (`system_key`), label/color/icon follow the
+     * user's edits. Resolved once per column-config build, never per row.
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    protected function badgesFor(string $columnId, User $actor): ?array
+    {
+        if ($columnId !== 'status') {
+            return null;
+        }
+
+        return PurchaseOrderStatusLabel::query()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['system_key', 'name', 'color', 'icon'])
+            ->map(static fn (PurchaseOrderStatusLabel $label): array => (new EnumMeta($label->system_key, $label->name, $label->color, $label->icon))->toArray())
+            ->all();
+    }
+
+    /**
+     * Orders by the catalogue's `sort_order` through a correlated subquery, so a
+     * reordered catalogue reorders the grid with no per-row query.
+     *
+     * @param  Builder<PurchaseOrder>  $query
+     */
+    private function orderByStatusCatalog(Builder $query, string $direction): void
+    {
+        $query->orderBy(
+            DB::table('purchase_order_statuses')->select('sort_order')->whereColumn('purchase_order_statuses.system_key', 'purchase_orders.status'),
+            $direction,
+        );
     }
 
     /**

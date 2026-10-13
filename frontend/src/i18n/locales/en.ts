@@ -26,6 +26,8 @@ import { sectors } from './en-sectors'
 import { accounting } from './en-accounting'
 import { purchaseRequestLines, purchaseRequests } from './en-purchase-requests'
 import { purchaseRequestPriorities } from './en-purchase-request-priorities'
+import { purchaseOrderStatuses } from './en-purchase-order-statuses'
+import { purchaseRequestLineStatuses } from './en-purchase-request-line-statuses'
 import { purchaseOrders } from './en-purchase-orders'
 import { purchaseOrderForm } from './en-purchase-order-form'
 import { purchaseOrderActions } from './en-purchase-order-actions'
@@ -432,6 +434,8 @@ export const en = {
   purchaseRequests,
   purchaseRequestLines,
   purchaseRequestPriorities,
+  purchaseOrderStatuses,
+  purchaseRequestLineStatuses,
   purchaseOrders,
   purchaseOrderForm,
   purchaseOrderActions,

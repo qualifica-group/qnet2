@@ -98,6 +98,10 @@ const guide: HelpGuide = {
           text: 'Lo stato non si modifica dal form: usa **Cambia stato** nella pagina dell’ordine, che propone solo i passaggi consentiti dal flusso e dai tuoi permessi. L’ordine nasce in **Bozza**.',
         },
         {
+          type: 'note',
+          text: 'I nomi degli stati in questa guida sono quelli **predefiniti**: da **Acquisti › Stati ODA** si possono rinominare, ricolorare, cambiare di icona e riordinare. Schede, badge e finestra **Cambia stato** seguono subito il nome, il colore, l’icona e l’ordine configurati. I passaggi consentiti e le regole qui sotto non cambiano.',
+        },
+        {
           type: 'table',
           headers: ['Stato', 'Può passare a'],
           rows: [

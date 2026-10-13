@@ -2,10 +2,12 @@
 
 namespace App\Tables;
 
+use App\DataObjects\Enums\EnumMeta;
 use App\Enums\PurchaseRequestCapability;
 use App\Enums\PurchaseRequestLineStatus;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
+use App\Models\PurchaseRequestLineStatusLabel;
 use App\Models\User;
 use App\Services\PurchaseRequests\PurchaseRequestCapabilityResolver;
 use App\Services\PurchaseRequests\PurchaseRequestVisibilityScope;
@@ -206,6 +208,15 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
             return true;
         }
 
+        if ($columnId === Catalog::STATUS_COLUMN) {
+            $query->orderBy(
+                DB::table('purchase_request_line_statuses')->select('sort_order')->whereColumn('purchase_request_line_statuses.system_key', 'purchase_request_lines.status'),
+                $direction,
+            );
+
+            return true;
+        }
+
         if (! isset(Catalog::PARENT_SORTS[$columnId])) {
             return false;
         }
@@ -213,6 +224,24 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
         Derived::orderByRelated($query, 'purchase_requests', 'purchase_request_lines.purchase_request_id', Catalog::PARENT_SORTS[$columnId], $direction);
 
         return true;
+    }
+
+    /**
+     * The status badges come from the editable catalog (spec 0248, D-5): value
+     * = enum value, label/color/icon = the current presentation, in catalog
+     * order. One query per column resolution, never per row.
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    protected function badgesFor(string $columnId, User $actor): ?array
+    {
+        if ($columnId !== Catalog::STATUS_COLUMN) {
+            return null;
+        }
+
+        return PurchaseRequestLineStatusLabel::query()->orderBy('sort_order')->orderBy('id')->get()
+            ->map(static fn (PurchaseRequestLineStatusLabel $status): array => (new EnumMeta($status->system_key, $status->name, $status->color, $status->icon))->toArray())
+            ->all();
     }
 
     /**
@@ -224,7 +253,7 @@ class PurchaseRequestLinesTableDefinition extends AbstractTableDefinition
     {
         return match (true) {
             $columnId === self::PRIORITY_COLUMN => Derived::activePriorityNames(),
-            $columnId === 'status' => PurchaseRequestLineStatus::values(),
+            $columnId === Catalog::STATUS_COLUMN => PurchaseRequestLineStatus::values(),
             isset(Catalog::TEXT_RELATIONS[$columnId]) => Derived::distinctRelated($query, Catalog::TEXT_RELATIONS[$columnId], $search, $limit),
             default => null,
         };

@@ -37,15 +37,6 @@ export const purchaseOrders = {
     created_by: 'Creato da',
     created_at: 'Creato il',
   },
-  statuses: {
-    draft: 'Bozza',
-    in_validation: 'In validazione',
-    approved: 'Approvato',
-    sent_to_supplier: 'Inviato al fornitore',
-    partially_fulfilled: 'Parzialmente evaso',
-    fulfilled: 'Evaso',
-    cancelled: 'Annullato',
-  },
   tabs: {
     label: 'Filtra per stato',
     all: 'Tutti',

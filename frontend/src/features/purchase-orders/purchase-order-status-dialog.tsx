@@ -18,6 +18,7 @@ import { purchaseRequestKeys } from '@/features/purchase-requests/api'
 import { PurchaseOrderStatusBadge } from '@/features/purchase-orders/purchase-order-status-badge'
 import { PurchaseOrderStatusOptions } from '@/features/purchase-orders/purchase-order-status-options'
 import type { PurchaseOrder, PurchaseOrderStatus } from '@/features/purchase-orders/types'
+import { usePurchaseOrderStatusCatalog } from '@/features/purchase-order-statuses/use-purchase-order-status-catalog'
 import { serverMessage } from '@/features/purchase-requests/purchase-request-server-errors'
 
 const STATUS_LABEL_ID = 'purchase-order-status-target'
@@ -35,6 +36,7 @@ interface PurchaseOrderStatusDialogProps {
 export function PurchaseOrderStatusDialog({ order, onOpenChange }: PurchaseOrderStatusDialogProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const { nameOf } = usePurchaseOrderStatusCatalog()
   const [choice, setChoice] = useState<PurchaseOrderStatus | null>(null)
   const options = order.abilities.transitions
 
@@ -44,7 +46,7 @@ export function PurchaseOrderStatusDialog({ order, onOpenChange }: PurchaseOrder
       void queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.all })
       // The order status and deletion move the linked RDA lines (spec 0244 D-2/D-3)
       void queryClient.invalidateQueries({ queryKey: purchaseRequestKeys.all })
-      toast.success(t('purchaseOrderActions.status.done', { status: t(`purchaseOrders.statuses.${updated.status}`) }))
+      toast.success(t('purchaseOrderActions.status.done', { status: nameOf(updated.status) }))
       onOpenChange(false)
     },
     onError: (error) => toast.error(serverMessage(error) ?? t('purchaseOrderActions.status.error')),

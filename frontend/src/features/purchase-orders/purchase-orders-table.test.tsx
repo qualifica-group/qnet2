@@ -38,6 +38,11 @@ vi.mock('@/features/purchase-orders/api', async (importOriginal) => ({
   downloadPurchaseOrderPdf: (...args: unknown[]) => downloadPurchaseOrderPdfMock(...args),
 }))
 
+vi.mock('@/features/purchase-order-statuses/for-select-api', async () => {
+  const { PURCHASE_ORDER_STATUS_CATALOG_FIXTURE } = await import('@/features/purchase-order-statuses/purchase-order-status-fixtures')
+  return { fetchPurchaseOrderStatusCatalog: async () => PURCHASE_ORDER_STATUS_CATALOG_FIXTURE }
+})
+
 const toastSuccessMock = vi.fn()
 const toastErrorMock = vi.fn()
 vi.mock('sonner', () => ({
@@ -145,10 +150,11 @@ describe('PurchaseOrdersTable', () => {
     expect(screen.queryByRole('button', { name: 'New ODA' })).not.toBeInTheDocument()
   })
 
-  it('writes the chosen status tab into the grid filter model, and clears it on "All"', () => {
+  it('writes the chosen status tab into the grid filter model, and clears it on "All"', async () => {
     renderWith(<PurchaseOrdersTable />)
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Approved' }))
+    // The tab names come from the status catalog, which loads asynchronously.
+    fireEvent.click(await screen.findByRole('tab', { name: 'Approved' }))
     expect(setFilterModelMock).toHaveBeenLastCalledWith({ status: { filterType: 'set', values: ['approved'] } })
 
     fireEvent.click(screen.getByRole('tab', { name: 'All' }))

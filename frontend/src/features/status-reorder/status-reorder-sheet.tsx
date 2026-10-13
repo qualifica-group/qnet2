@@ -46,6 +46,8 @@ interface StatusReorderSheetProps {
   labels: StatusReorderSheetLabels
   /** Called after a successful reorder so the caller can refresh its own table view. */
   onReordered: () => void
+  /** Spec 0248: no row is pinned, even when its for-select meta carries a `system_key`. */
+  allRowsReorderable?: boolean
 }
 
 /**
@@ -68,6 +70,7 @@ export function StatusReorderSheet({
   resource,
   labels,
   onReordered,
+  allRowsReorderable,
 }: StatusReorderSheetProps) {
   const { t } = useTranslation()
   const { items, isLoading, isError, refetch, onReorder } = useStatusReorder({
@@ -75,6 +78,7 @@ export function StatusReorderSheet({
     enabled: open,
     labels,
     onReordered,
+    allRowsReorderable,
   })
 
   const rows = useMemo<StatusReorderRow[]>(

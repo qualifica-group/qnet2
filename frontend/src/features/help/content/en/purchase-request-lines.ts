@@ -17,6 +17,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'Cells are read-only: to edit a line’s content open its RDA with the **Open** action. The **Supplier** column shows the line supplier and can be filtered and sorted.',
         },
+        {
+          type: 'note',
+          text: 'The names, colors and icons of the statuses (To approve, Approved, Ordered, Received, Rejected, On hold) are the defaults and can be customized in **Purchasing › RDA line statuses**: tabs, badges, filters and the status history follow the configuration. What the statuses mean and the allowed transitions do not change.',
+        },
       ],
     },
     {

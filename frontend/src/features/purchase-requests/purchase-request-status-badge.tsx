@@ -1,26 +1,27 @@
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
+import { DynamicIcon } from '@/features/custom-fields/dynamic-icon'
+import { usePurchaseRequestLineStatusCatalog } from '@/features/purchase-request-line-statuses/use-purchase-request-line-status-catalog'
+import { badgeColorClass } from '@/features/table/cell-renderers'
 import { cn } from '@/lib/utils'
 import type { LineStatus, PurchaseRequestStatus } from '@/features/purchase-requests/types'
 
-type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline'
-
-/** Token-based variant per line status; the label always travels with it (never colour alone). */
-const LINE_VARIANTS: Record<LineStatus, { variant: BadgeVariant; className?: string }> = {
-  pending_approval: { variant: 'outline' },
-  approved: { variant: 'secondary' },
-  ordered: { variant: 'default' },
-  received: { variant: 'default', className: 'bg-primary/80' },
-  rejected: { variant: 'destructive' },
-  on_hold: { variant: 'outline', className: 'border-dashed' },
-}
-
+/**
+ * Line status as the configured badge of the catalog (name, color, icon; spec
+ * 0248). The name always travels with the color (never colour alone); while
+ * the catalog loads, or for a key it does not know, the raw value is shown on
+ * a neutral badge so the status is never blank.
+ */
 export function LineStatusBadge({ status, className }: { status: LineStatus; className?: string }) {
-  const { t } = useTranslation()
-  const { variant, className: tone } = LINE_VARIANTS[status]
+  const { byKey } = usePurchaseRequestLineStatusCatalog()
+  const presentation = byKey.get(status)
   return (
-    <Badge variant={variant} className={cn('text-[11px]', tone, className)}>
-      {t(`purchaseRequests.lineStatuses.${status}`)}
+    <Badge
+      variant="secondary"
+      className={cn('gap-1 text-[11px]', presentation ? badgeColorClass(presentation.color) : undefined, className)}
+    >
+      <DynamicIcon name={presentation?.icon} className="size-3" />
+      {presentation?.name ?? status}
     </Badge>
   )
 }

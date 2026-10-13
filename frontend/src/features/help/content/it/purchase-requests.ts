@@ -17,6 +17,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'Dall’elenco puoi filtrare, ordinare ed esportare. Le **schede per stato** in alto mostrano solo le RDA che hanno almeno una riga in quello stato. Espandi una riga con la freccia per vederne le righe e cambiarne lo stato senza aprire la RDA. Vedi solo le RDA di cui sei richiedente, responsabile o autore, salvo che tu abbia il permesso di vedere tutto.',
         },
+        {
+          type: 'note',
+          text: 'I nomi, i colori e le icone degli stati delle righe (Da approvare, Approvato, Ordinato, Ricevuto, Rifiutato, Stand by) sono quelli predefiniti e si possono personalizzare in **Acquisti › Stati righe RDA**: schede, badge e finestra di cambio stato seguono la configurazione. Il significato degli stati e i passaggi consentiti non cambiano.',
+        },
       ],
     },
     {

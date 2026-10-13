@@ -1,17 +1,7 @@
-import { useTranslation } from 'react-i18next'
-import { Ban, Check, CheckCheck, Clock, FilePen, PackageCheck, Send, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { DynamicIcon } from '@/features/custom-fields/dynamic-icon'
+import { usePurchaseOrderStatusCatalog } from '@/features/purchase-order-statuses/use-purchase-order-status-catalog'
 import type { PurchaseOrderStatus } from '@/features/purchase-orders/types'
-
-const STATUS_ICONS: Record<PurchaseOrderStatus, LucideIcon> = {
-  draft: FilePen,
-  in_validation: Clock,
-  approved: Check,
-  sent_to_supplier: Send,
-  partially_fulfilled: PackageCheck,
-  fulfilled: CheckCheck,
-  cancelled: Ban,
-}
 
 interface PurchaseOrderStatusOptionsProps {
   /** Id of the element labelling the group. */
@@ -22,13 +12,21 @@ interface PurchaseOrderStatusOptionsProps {
   onValueChange: (status: PurchaseOrderStatus) => void
 }
 
-/** Target status as icon buttons; native radios (visually hidden) give group role and arrow-key navigation. */
+/**
+ * Target status as icon buttons (name and icon from the catalog, in catalog
+ * order); native radios (visually hidden) give group role and arrow-key navigation.
+ */
 export function PurchaseOrderStatusOptions({ labelledBy, options, value, onValueChange }: PurchaseOrderStatusOptionsProps) {
-  const { t } = useTranslation()
+  const { entries, byKey } = usePurchaseOrderStatusCatalog()
+  // Shown in the catalog order, which the user can rearrange.
+  const ordered = [...options].sort(
+    (a, b) => entries.findIndex((entry) => entry.systemKey === a) - entries.findIndex((entry) => entry.systemKey === b),
+  )
+
   return (
     <div role="radiogroup" aria-labelledby={labelledBy} className="flex flex-wrap gap-1.5">
-      {options.map((status) => {
-        const Icon = STATUS_ICONS[status]
+      {ordered.map((status) => {
+        const entry = byKey.get(status)
         return (
           <label key={status} className="cursor-pointer">
             <input
@@ -45,8 +43,8 @@ export function PurchaseOrderStatusOptions({ labelledBy, options, value, onValue
                 'peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground',
               )}
             >
-              <Icon className="size-3.5" aria-hidden="true" />
-              {t(`purchaseOrders.statuses.${status}`)}
+              <DynamicIcon name={entry?.icon} className="size-3.5" />
+              {entry?.name ?? status}
             </span>
           </label>
         )

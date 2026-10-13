@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ICellRendererParams } from 'ag-grid-community'
 import i18n from '@/i18n'
 import type { TableRow } from '@/features/table/types'
+import { seedLineStatusCatalog } from '@/features/purchase-request-line-statuses/line-status-catalog-fixtures'
 import { PurchaseRequestDetailPanel } from '@/features/purchase-requests/purchase-request-detail-panel'
 import { makeLine, makeRequest } from '@/features/purchase-requests/purchase-request-fixtures'
 
@@ -20,7 +21,7 @@ vi.mock('@/features/purchase-requests/api', async (importOriginal) => ({
 }))
 
 function renderPanel() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const client = seedLineStatusCatalog(new QueryClient({ defaultOptions: { queries: { retry: false } } }))
   const params = { data: { id: request.id, actions: [] } } as unknown as ICellRendererParams<TableRow>
   render(
     <QueryClientProvider client={client}>

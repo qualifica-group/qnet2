@@ -43,8 +43,12 @@ export async function reorderStatuses(
  * reorder sheet. Statuses are always ordered `sort_order,name,id` server-side,
  * so a single page covers the complete set — no pagination needed for this
  * one-shot read. INACTIVE rows are included: see `include_inactive` below.
+ * `allRowsReorderable` ignores `meta.system_key` so every row is draggable.
  */
-export async function fetchStatusesForReorder(resource: string): Promise<StatusReorderItem[]> {
+export async function fetchStatusesForReorder(
+  resource: string,
+  allRowsReorderable = false,
+): Promise<StatusReorderItem[]> {
   const response = await fetchForSelect(resource, {
     limit: STATUS_PAGE_SIZE,
     // The reorder endpoints validate `ordered_ids` against the FULL set of
@@ -63,7 +67,9 @@ export async function fetchStatusesForReorder(resource: string): Promise<StatusR
   return items.map((item) => ({
     id: item.id,
     name: item.label,
-    systemKey: item.meta?.system_key ?? null,
+    // A catalog whose rows ALL reorder (spec 0248: the `system_key` there only
+    // ties a row to its enum, it is not an edge pin) must not read as pinned.
+    systemKey: allRowsReorderable ? null : (item.meta?.system_key ?? null),
     isActive: item.meta?.is_active,
   }))
 }

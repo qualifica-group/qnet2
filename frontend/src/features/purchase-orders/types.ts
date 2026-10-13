@@ -9,7 +9,7 @@ export const PURCHASE_ORDERS_DOMAIN = 'purchase-orders'
 /** `attachable_type` alias of `config/attachments.php` (spec 0210 D-14). */
 export const PURCHASE_ORDER_ATTACHABLE = 'purchase_order'
 
-/** The server enum is the single source of truth; the client only reads `abilities.transitions` (spec constraints). */
+/** The server enum is the single source of truth for the logic; the client only reads `abilities.transitions` (spec constraints). */
 export const PURCHASE_ORDER_STATUSES = [
   'draft',
   'in_validation',
@@ -20,6 +20,11 @@ export const PURCHASE_ORDER_STATUSES = [
   'cancelled',
 ] as const
 export type PurchaseOrderStatus = (typeof PURCHASE_ORDER_STATUSES)[number]
+
+/** Narrows an arbitrary value to the enum: names, colors, icons and order come from the catalog (spec 0248), never from here. */
+export function isPurchaseOrderStatus(value: unknown): value is PurchaseOrderStatus {
+  return typeof value === 'string' && (PURCHASE_ORDER_STATUSES as readonly string[]).includes(value)
+}
 
 /** Statuses in which header, lines, deletion and merge are allowed (spec 0210 D-10). */
 export const EDITABLE_STATUSES: readonly PurchaseOrderStatus[] = ['draft', 'in_validation']

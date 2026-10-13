@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
+import { seedLineStatusCatalog } from '@/features/purchase-request-line-statuses/line-status-catalog-fixtures'
 import { LineStatusDialog } from '@/features/purchase-requests/line-status-dialog'
 import type { LineTarget } from '@/features/purchase-requests/line-status-transitions'
 import type { LineStatusChangePayload, LineStatusChangeResult } from '@/features/purchase-requests/types'
@@ -42,7 +43,7 @@ function target(overrides: Partial<LineTarget> & Pick<LineTarget, 'id'>): LineTa
 }
 
 function renderDialog(targets: LineTarget[], onChanged = vi.fn()) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const client = seedLineStatusCatalog(new QueryClient({ defaultOptions: { queries: { retry: false } } }))
   render(
     <QueryClientProvider client={client}>
       <LineStatusDialog targets={targets} onOpenChange={vi.fn()} onChanged={onChanged} />

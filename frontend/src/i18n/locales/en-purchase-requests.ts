@@ -33,14 +33,6 @@ export const purchaseRequests = {
     supplier_vat_number: 'Supplier VAT no.',
     line_status: 'Line status',
   },
-  lineStatuses: {
-    pending_approval: 'To approve',
-    approved: 'Approved',
-    ordered: 'Ordered',
-    received: 'Received',
-    rejected: 'Rejected',
-    on_hold: 'On hold',
-  },
   requestStatuses: {
     open: 'Open',
     closed: 'Closed',

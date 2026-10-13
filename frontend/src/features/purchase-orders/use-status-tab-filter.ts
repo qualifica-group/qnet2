@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, type RefObject } from 'react'
 import type { TableViewHandle } from '@/features/table/table-view'
-import { PURCHASE_ORDER_STATUSES, type PurchaseOrderStatus } from '@/features/purchase-orders/types'
+import { isPurchaseOrderStatus, type PurchaseOrderStatus } from '@/features/purchase-orders/types'
 
 export const ALL_TAB = 'all'
 export type StatusTab = PurchaseOrderStatus | typeof ALL_TAB
@@ -11,9 +11,7 @@ type FilterModel = Record<string, unknown>
 function readTab(model: FilterModel, filterKey: string): StatusTab {
   const values = (model[filterKey] as { values?: unknown } | undefined)?.values
   const only = Array.isArray(values) && values.length === 1 ? String(values[0]) : null
-  return only !== null && (PURCHASE_ORDER_STATUSES as readonly string[]).includes(only)
-    ? (only as PurchaseOrderStatus)
-    : ALL_TAB
+  return isPurchaseOrderStatus(only) ? only : ALL_TAB
 }
 
 /**

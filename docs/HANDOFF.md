@@ -3,7 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0247 — Cataloghi semplici Acquisti/Contabilita' (audit Onda 2-A) — VERDE, NON COMMITTATO (2026-10-13)
+## Spec 0248 — Stati ODA e righe RDA configurabili (solo presentazione, audit Onda 2-B) — VERDE, NON COMMITTATO (2026-10-13)
+
+- Spec `docs/specs/0248-purchasing-status-presentation-catalogs.xml` (D-1..D-7, AC-001..011 PASS).
+- Tabelle `purchase_order_statuses` (7) e `purchase_request_line_statuses` (6), sole righe di sistema create dalla
+  migrazione (2026_10_17_150000/160000): system_key = valore enum (immutabile), name/color/icon modificabili, riordino
+  di tutte le righe (LookupOrderManager). Policy senza create/delete, nessuna rotta POST/DELETE. Model
+  `PurchaseOrderStatusLabel` / `PurchaseRequestLineStatusLabel`, service `*StatusLabelService`, controller ODA
+  `PurchaseOrderStatuses\PurchaseOrderStatusController`, righe `PurchaseRequestLineStatuses\PurchaseRequestLineStatusLabelController`.
+  Gli enum restano la logica; le API documenti espongono ancora `status` grezzo.
+- Griglie ODA e righe RDA: badges della colonna status dal catalogo (filtro/chip con i nomi), sort per sort_order.
+- FE: hook `usePurchaseOrderStatusCatalog` / `usePurchaseRequestLineStatusCatalog` (for-select, staleTime 5 min) per
+  badge, tab, dialog, storico, riepilogo; rimosse mappe VARIANTS/LINE_VARIANTS/STATUS_ICONS e chiavi i18n
+  purchaseOrders.statuses / purchaseRequests.lineStatuses (i nomi sono dati, non piu' tradotti, D-3). StatusReorderToggle
+  ha la prop `allRowsReorderable`. Menu Acquisti: Stati ODA, Stati righe RDA.
+- Contatori --step migrazioni: PurchaseOrderMigrationTest 30, SupplierCommissionDirectionTest 45, QuoteWorkflowMigrationTest 181.
+- Aperti minori: il registro moduli genera /new e /:id/duplicate anche per questi cataloghi (protette da un permesso
+  inesistente: mostrano "forbidden"); naming Label non uniforme tra controller/resource ODA e RDA; sort_order iniziale
+  1..7 (ODA) vs 10..60 (RDA); PurchaseOrdersTableDefinition 323 righe. Manuale Claude Docs da aggiornare.
+- Prossimo: spec 0249 tipi di costo (COS-10 natura/gruppo, COS-11 modifica in linea + riordino), poi Onda 3.
+
+## Spec 0247 — Cataloghi semplici Acquisti/Contabilita' (audit Onda 2-A) — COMMITTATO 4b38f6f2 (2026-10-13)
 
 - Spec `docs/specs/0247-purchasing-accounting-simple-catalogs.xml` (D-1..D-8, AC-001..017 PASS; D-8/AC-004/AC-008
   [revised]: filtri set di priorita' e tag per NOME, non per id).

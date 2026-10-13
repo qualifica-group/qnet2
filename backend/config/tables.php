@@ -39,7 +39,9 @@ use App\Tables\ProformaRequestsTableDefinition;
 use App\Tables\ProjectsTableDefinition;
 use App\Tables\PurchaseInvoiceInstallmentsTableDefinition;
 use App\Tables\PurchaseOrdersTableDefinition;
+use App\Tables\PurchaseOrderStatusesTableDefinition;
 use App\Tables\PurchaseRequestLinesTableDefinition;
+use App\Tables\PurchaseRequestLineStatusesTableDefinition;
 use App\Tables\PurchaseRequestPrioritiesTableDefinition;
 use App\Tables\PurchaseRequestsTableDefinition;
 use App\Tables\QuotesTableDefinition;
@@ -142,6 +144,9 @@ return [
         'cost-types' => CostTypesTableDefinition::class,
         // spec 0247: catalogs of the simple purchasing/accounting lists.
         'purchase-request-priorities' => PurchaseRequestPrioritiesTableDefinition::class,
+        // spec 0248: presentation catalogues of the ODA and RDA line statuses.
+        'purchase-order-statuses' => PurchaseOrderStatusesTableDefinition::class,
+        'purchase-request-line-statuses' => PurchaseRequestLineStatusesTableDefinition::class,
         'invoice-tags' => InvoiceTagsTableDefinition::class,
         'financial-accounts' => FinancialAccountsTableDefinition::class,
         // spec 0212: profili fiscali degli agenti.

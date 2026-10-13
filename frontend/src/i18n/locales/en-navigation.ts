@@ -81,6 +81,8 @@ export const navigation = {
   purchaseOrders: 'ODA',
   costTypes: 'Cost types',
   purchaseRequestPriorities: 'RDA priorities',
+  purchaseOrderStatuses: 'ODA statuses',
+  purchaseRequestLineStatuses: 'RDA line statuses',
   invoiceTags: 'Invoice tags',
   management: 'Management',
   configuration: 'Configuration',

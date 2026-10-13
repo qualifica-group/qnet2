@@ -17,6 +17,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'Le celle sono in sola lettura: per modificare il contenuto di una riga apri la sua RDA con l’azione **Apri**. La colonna **Fornitore** mostra il fornitore della riga e si può filtrare e ordinare.',
         },
+        {
+          type: 'note',
+          text: 'I nomi, i colori e le icone degli stati (Da approvare, Approvato, Ordinato, Ricevuto, Rifiutato, Stand by) sono quelli predefiniti e si possono personalizzare in **Acquisti › Stati righe RDA**: schede, badge, filtri e storico stati seguono la configurazione. Il significato degli stati e i passaggi consentiti non cambiano.',
+        },
       ],
     },
     {

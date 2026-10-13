@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
+import { seedLineStatusCatalog } from '@/features/purchase-request-line-statuses/line-status-catalog-fixtures'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import type { ForSelectItem } from '@/features/for-select/types'
@@ -58,7 +59,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: v
 const CURRENT_USER = { id: 3, name: 'Mario Rossi' }
 
 function renderForm(request?: PurchaseRequest) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const client = seedLineStatusCatalog(new QueryClient({ defaultOptions: { queries: { retry: false } } }))
   const permissions = toResourcePermissions(request ?? makeRequest())
   return render(
     <QueryClientProvider client={client}>

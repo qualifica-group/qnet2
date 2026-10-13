@@ -26,6 +26,8 @@ interface UseStatusReorderArgs {
   labels: StatusReorderLabels
   /** Called after a successful reorder so the caller can refresh its own table view. */
   onReordered: () => void
+  /** Spec 0248: every row is draggable and `ordered_ids` carries all of them, whatever `system_key` says. */
+  allRowsReorderable?: boolean
 }
 
 /**
@@ -35,12 +37,12 @@ interface UseStatusReorderArgs {
  * order, reverted on a 403/422 (spec 0039 AC-011). Invalidates the shared
  * for-select cache on success so every status picker reflects the new order.
  */
-export function useStatusReorder({ resource, enabled, labels, onReordered }: UseStatusReorderArgs) {
+export function useStatusReorder({ resource, enabled, labels, onReordered, allRowsReorderable = false }: UseStatusReorderArgs) {
   const queryClient = useQueryClient()
 
   const listQuery = useQuery({
     queryKey: reorderListQueryKey(resource),
-    queryFn: () => fetchStatusesForReorder(resource),
+    queryFn: () => fetchStatusesForReorder(resource, allRowsReorderable),
     enabled,
   })
 
@@ -78,7 +80,10 @@ export function useStatusReorder({ resource, enabled, labels, onReordered }: Use
           // The whole item, not just its name: the reorder response carries
           // neither `name` nor `isActive`, and both must survive the drag.
           const previousById = new Map(nextItems.map((item) => [item.id, item]))
-          const reconciled = reconcileReorderedItems(fresh, previousById)
+          const reordered = reconcileReorderedItems(fresh, previousById)
+          const reconciled = allRowsReorderable
+            ? reordered.map((item) => ({ ...item, systemKey: null }))
+            : reordered
           setItems(reconciled)
           setSyncedFrom(reconciled)
           toast.success(labels.saved)
@@ -96,7 +101,7 @@ export function useStatusReorder({ resource, enabled, labels, onReordered }: Use
         })
         .finally(() => setIsSaving(false))
     },
-    [items, resource, labels, queryClient, onReordered],
+    [items, resource, labels, queryClient, onReordered, allRowsReorderable],
   )
 
   return {

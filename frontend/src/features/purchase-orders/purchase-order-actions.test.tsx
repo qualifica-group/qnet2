@@ -25,6 +25,11 @@ vi.mock('@/features/purchase-orders/api', async (importOriginal) => ({
   downloadPurchaseOrderPdf: vi.fn(),
 }))
 
+vi.mock('@/features/purchase-order-statuses/for-select-api', async () => {
+  const { PURCHASE_ORDER_STATUS_CATALOG_FIXTURE } = await import('@/features/purchase-order-statuses/purchase-order-status-fixtures')
+  return { fetchPurchaseOrderStatusCatalog: async () => PURCHASE_ORDER_STATUS_CATALOG_FIXTURE }
+})
+
 vi.mock('@/features/outbound-emails/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/outbound-emails/api')>()),
   createOutboundEmailDraft: vi.fn(),
@@ -157,10 +162,13 @@ describe('Status dialog (AC-021)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Change status' }))
     const dialog = await screen.findByRole('dialog')
 
-    expect(within(dialog).getAllByRole('radio').map((radio) => radio.closest('label')?.textContent)).toEqual([
-      'Approved',
-      'Cancelled',
-    ])
+    // Labels come from the status catalog, which loads asynchronously.
+    await waitFor(() =>
+      expect(within(dialog).getAllByRole('radio').map((radio) => radio.closest('label')?.textContent)).toEqual([
+        'Approved',
+        'Cancelled',
+      ]),
+    )
     expect(within(dialog).queryByRole('radio', { name: 'In validation' })).not.toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Change status' })).toBeDisabled()
 
@@ -188,7 +196,7 @@ describe('Status dialog (AC-021)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Change status' }))
     const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('radio', { name: 'Cancelled' }))
+    fireEvent.click(await within(dialog).findByRole('radio', { name: 'Cancelled' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Change status' }))
 
     await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Transition not allowed.'))

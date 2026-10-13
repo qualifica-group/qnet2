@@ -21,6 +21,8 @@ import { sectors } from './it-sectors'
 import { accounting } from './it-accounting'
 import { purchaseRequestLines, purchaseRequests } from './it-purchase-requests'
 import { purchaseRequestPriorities } from './it-purchase-request-priorities'
+import { purchaseOrderStatuses } from './it-purchase-order-statuses'
+import { purchaseRequestLineStatuses } from './it-purchase-request-line-statuses'
 import { purchaseOrders } from './it-purchase-orders'
 import { purchaseOrderForm } from './it-purchase-order-form'
 import { purchaseOrderActions } from './it-purchase-order-actions'
@@ -418,6 +420,8 @@ export const it: TranslationResources = {
   purchaseRequests,
   purchaseRequestLines,
   purchaseRequestPriorities,
+  purchaseOrderStatuses,
+  purchaseRequestLineStatuses,
   purchaseOrders,
   purchaseOrderForm,
   purchaseOrderActions,

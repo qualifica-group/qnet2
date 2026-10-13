@@ -32,14 +32,6 @@ export const purchaseRequests = {
     supplier_vat_number: 'P.IVA fornitore',
     line_status: 'Stato righe',
   },
-  lineStatuses: {
-    pending_approval: 'Da approvare',
-    approved: 'Approvato',
-    ordered: 'Ordinato',
-    received: 'Ricevuto',
-    rejected: 'Rifiutato',
-    on_hold: 'Stand by',
-  },
   requestStatuses: {
     open: 'Aperta',
     closed: 'Chiusa',

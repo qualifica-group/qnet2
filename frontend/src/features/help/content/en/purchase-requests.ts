@@ -17,6 +17,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'From the list you can filter, sort and export. The **status tabs** at the top show only the RDAs that have at least one line in that status. Expand a row with the arrow to see its lines and change their status without opening the RDA. You only see the RDAs you requested, manage or created, unless you are allowed to see everything.',
         },
+        {
+          type: 'note',
+          text: 'The names, colors and icons of the line statuses (To approve, Approved, Ordered, Received, Rejected, On hold) are the defaults and can be customized in **Purchasing › RDA line statuses**: tabs, badges and the change status dialog follow the configuration. What the statuses mean and the allowed transitions do not change.',
+        },
       ],
     },
     {

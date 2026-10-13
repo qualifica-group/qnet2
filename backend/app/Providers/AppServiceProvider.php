@@ -56,8 +56,10 @@ use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceInstallment;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
+use App\Models\PurchaseOrderStatusLabel;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
+use App\Models\PurchaseRequestLineStatusLabel;
 use App\Models\PurchaseRequestPriority;
 use App\Models\Quote;
 use App\Models\QuoteLineCommission;
@@ -226,6 +228,8 @@ class AppServiceProvider extends ServiceProvider
             'purchase_order_line' => PurchaseOrderLine::class,
             'cost_type' => CostType::class,
             'purchase_request_priority' => PurchaseRequestPriority::class,
+            'purchase_order_status_label' => PurchaseOrderStatusLabel::class,
+            'purchase_request_line_status_label' => PurchaseRequestLineStatusLabel::class,
             'invoice_tag' => InvoiceTag::class,
             'invoice' => Invoice::class,
             'invoice_installment' => InvoiceInstallment::class,

@@ -31,7 +31,9 @@ use App\Models\ProductTypology;
 use App\Models\ProformaRequest;
 use App\Models\Project;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderStatusLabel;
 use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestLineStatusLabel;
 use App\Models\PurchaseRequestPriority;
 use App\Models\Quote;
 use App\Models\QuoteWorkflow;
@@ -288,6 +290,13 @@ return [
         // spec 0210: ordini di acquisto (ODA) e tipi di costo.
         'purchase-orders' => [
             'model' => PurchaseOrder::class,
+        ],
+        // spec 0248: presentation catalogues of the ODA and RDA line statuses.
+        'purchase-order-statuses' => [
+            'model' => PurchaseOrderStatusLabel::class,
+        ],
+        'purchase-request-line-statuses' => [
+            'model' => PurchaseRequestLineStatusLabel::class,
         ],
         // spec 0247: priorita' RDA e tag fattura.
         'purchase-request-priorities' => [

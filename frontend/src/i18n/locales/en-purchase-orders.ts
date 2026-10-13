@@ -38,15 +38,6 @@ export const purchaseOrders = {
     created_by: 'Created by',
     created_at: 'Created at',
   },
-  statuses: {
-    draft: 'Draft',
-    in_validation: 'In validation',
-    approved: 'Approved',
-    sent_to_supplier: 'Sent to supplier',
-    partially_fulfilled: 'Partially fulfilled',
-    fulfilled: 'Fulfilled',
-    cancelled: 'Cancelled',
-  },
   tabs: {
     label: 'Filter by status',
     all: 'All',

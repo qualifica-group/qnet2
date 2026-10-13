@@ -20,6 +20,7 @@ import { OrderSupplierField } from '@/features/purchase-orders/purchase-order-su
 import type { PurchaseOrder } from '@/features/purchase-orders/types'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { WORK_ORDERS_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
+import { usePurchaseOrderStatusCatalog } from '@/features/purchase-order-statuses/use-purchase-order-status-catalog'
 import { QUOTES_FOR_SELECT_RESOURCE } from '@/features/work-orders/work-order-relation-fields'
 
 const NO_SECTORS: PurchaseOrder['sectors'] = []
@@ -49,6 +50,7 @@ export function PurchaseOrderHeaderFields({
   onWorkOrderChange,
 }: PurchaseOrderHeaderFieldsProps) {
   const { t } = useTranslation()
+  const { nameOf } = usePurchaseOrderStatusCatalog()
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -63,7 +65,7 @@ export function PurchaseOrderHeaderFields({
             <Input
               id="purchase-order-status"
               className="h-8 text-sm"
-              value={t(`purchaseOrders.statuses.${order.status}`)}
+              value={nameOf(order.status)}
               readOnly
               disabled
             />

@@ -10,6 +10,7 @@ import { makeOrderLine, makePurchaseOrder } from '@/features/purchase-orders/pur
 import { PurchaseOrderForm } from '@/features/purchase-orders/purchase-order-form'
 import { toOrderResourcePermissions } from '@/features/purchase-orders/purchase-order-permissions'
 import type { PurchaseOrder } from '@/features/purchase-orders/types'
+import { PURCHASE_ORDER_STATUS_FOR_SELECT_ITEMS } from '@/features/purchase-order-statuses/purchase-order-status-fixtures'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
 
 const FOR_SELECT_ITEMS: Record<string, unknown[]> = {
@@ -22,6 +23,7 @@ const FOR_SELECT_ITEMS: Record<string, unknown[]> = {
   products: [{ id: 20, label: 'Monitor' }],
   'cost-types': [{ id: 1, label: 'Collaboratori' }],
   'units-of-measure': [{ id: 2, label: 'Box' }],
+  'purchase-order-statuses': PURCHASE_ORDER_STATUS_FOR_SELECT_ITEMS,
   'vat-rates': [{ id: 1, label: 'IVA 22%', meta: { rate: '22.00' } }],
 }
 

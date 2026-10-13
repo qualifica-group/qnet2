@@ -1,15 +1,11 @@
 import type { ICellRendererParams } from 'ag-grid-community'
 import { CELL_WRAPPER, EmptyCell } from '@/features/table/cell-renderers'
 import { PurchaseOrderStatusBadge } from '@/features/purchase-orders/purchase-order-status-badge'
-import { PURCHASE_ORDER_STATUSES, type PurchaseOrderStatus } from '@/features/purchase-orders/types'
+import { isPurchaseOrderStatus } from '@/features/purchase-orders/types'
 
-function isStatus(value: unknown): value is PurchaseOrderStatus {
-  return typeof value === 'string' && (PURCHASE_ORDER_STATUSES as readonly string[]).includes(value)
-}
-
-/** Order status as the same badge the form shows. */
+/** Order status as the same catalog badge the form shows. */
 export function PurchaseOrderStatusCell({ value }: ICellRendererParams) {
-  return isStatus(value) ? (
+  return isPurchaseOrderStatus(value) ? (
     <div className={CELL_WRAPPER}>
       <PurchaseOrderStatusBadge status={value} />
     </div>
