@@ -9,7 +9,7 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Panoramica',
       blocks: [
-        { type: 'paragraph', text: 'Il modulo si trova in **Configurazione › Layout**. I **Moduli** disponibili sono **Preventivi** (il documento si scarica con **Scarica preventivo** sull’offerta) e **Fatture** (si scarica con **Scarica PDF** in Fatture Attive).' },
+        { type: 'paragraph', text: 'Il modulo si trova in **Configurazione › Layout**. I **Moduli** disponibili sono **Preventivi** (il documento si scarica con **Scarica preventivo** sull’offerta) e **Fatture** (si scarica con **Scarica PDF** in Fatture Attive) e **ODA** (si stampa con **Stampa PDF** nella pagina dell’ordine di acquisto).' },
       ],
     },
     {
@@ -32,7 +32,7 @@ const guide: HelpGuide = {
             ['**Testo**', 'Paragrafi con stile, font, colore e allineamento; qui trovi **Inserisci numero di pagina** e **Inserisci totale pagine**.'],
             ['**Immagine**', 'Per esempio un logo, **In linea** o **Dietro la pagina** come sfondo. Per caricarla salva prima il layout.'],
             ['**Tabella**', 'Una tabella libera, con righe, colonne e bordi.'],
-            ['**Tabella prodotti**', 'Per **Preventivi** elenca **Righe di offerta** o **Righe di costo**; per **Fatture** le **Righe documento** o le **Scadenze**. Scegli le colonne (Codice, Nome, Quantità, Prezzo unitario, Aliquota IVA, importi) e le righe dei totali.'],
+            ['**Tabella prodotti**', 'Per **Preventivi** elenca **Righe di offerta** o **Righe di costo**; per **Fatture** le **Righe documento** o le **Scadenze**; per **ODA** le **Righe ODA** (Descrizione, Tipo costo, Unità di misura, Quantità, Prezzo unitario, Aliquota IVA, Imponibile, IVA, Totale). Scegli le colonne (Codice, Nome, Quantità, Prezzo unitario, Aliquota IVA, importi) e le righe dei totali.'],
             ['**Interruzione di pagina**, **Spaziatore**, **Separatore**', 'Impaginazione.'],
           ],
         },

@@ -10,6 +10,7 @@ use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\DocumentLayouts\DocumentLayoutPreviewRequest;
 use App\Models\DocumentLayout;
 use App\Models\Invoice;
+use App\Models\PurchaseOrder;
 use App\Models\Quote;
 use App\Models\User;
 use App\Services\DocumentLayouts\Rendering\DocumentGenerator;
@@ -18,6 +19,8 @@ use App\Services\DocumentLayouts\Rendering\DocxToPdfConverter;
 use App\Services\DocumentLayouts\Rendering\Exceptions\InvalidDocumentLayoutConfigException;
 use App\Services\DocumentLayouts\Rendering\Invoices\InvoiceRenderSubject;
 use App\Services\DocumentLayouts\Rendering\Invoices\InvoiceSampleFactory;
+use App\Services\DocumentLayouts\Rendering\PurchaseOrders\PurchaseOrderRenderSubject;
+use App\Services\DocumentLayouts\Rendering\PurchaseOrders\PurchaseOrderSampleFactory;
 use App\Services\DocumentLayouts\Rendering\QuoteRenderSubject;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -42,7 +45,8 @@ use Throwable;
  * construction — rendered exactly like a real quote with no data.
  *
  * For an `invoices` layout (spec 0195 D-9) the same three steps apply with
- * `invoice_id` / `invoices.view` / an in-memory sample Invoice.
+ * `invoice_id` / `invoices.view` / an in-memory sample Invoice; likewise for a
+ * `purchase_orders` layout (spec 0210) with `purchase_order_id` / `purchase-orders.view`.
  */
 class DocumentLayoutPreviewController extends BaseApiController
 {
@@ -58,6 +62,7 @@ class DocumentLayoutPreviewController extends BaseApiController
         private readonly DocumentGenerator $generator,
         private readonly DocxToPdfConverter $pdfConverter,
         private readonly InvoiceSampleFactory $invoiceSamples,
+        private readonly PurchaseOrderSampleFactory $purchaseOrderSamples,
     ) {}
 
     public function __invoke(DocumentLayoutPreviewRequest $request, DocumentLayout $documentLayout): StreamedResponse|JsonResponse
@@ -83,6 +88,7 @@ class DocumentLayoutPreviewController extends BaseApiController
         return match ($layout->module) {
             DocumentLayoutModule::Invoices => InvoiceRenderSubject::for($this->resolveInvoice($request, $actor)),
             DocumentLayoutModule::Quotes => QuoteRenderSubject::for($this->resolveQuote($request, $actor)),
+            DocumentLayoutModule::PurchaseOrders => PurchaseOrderRenderSubject::for($this->resolvePurchaseOrder($request, $actor)),
         };
     }
 
@@ -100,6 +106,22 @@ class DocumentLayoutPreviewController extends BaseApiController
         $latest = $actor->can('invoices.view') ? Invoice::query()->latest('id')->first() : null;
 
         return $latest ?? $this->invoiceSamples->make();
+    }
+
+    private function resolvePurchaseOrder(DocumentLayoutPreviewRequest $request, User $actor): PurchaseOrder
+    {
+        $orderId = $request->purchaseOrderId();
+
+        if ($orderId !== null) {
+            $order = PurchaseOrder::query()->findOrFail($orderId);
+            $this->authorize('view', $order);
+
+            return $order;
+        }
+
+        $latest = $actor->can('purchase-orders.view') ? PurchaseOrder::query()->latest('id')->first() : null;
+
+        return $latest ?? $this->purchaseOrderSamples->make();
     }
 
     private function resolveQuote(DocumentLayoutPreviewRequest $request, User $actor): Quote

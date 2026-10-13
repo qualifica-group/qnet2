@@ -118,7 +118,7 @@ export interface ComposeContext {
   quote_pdf_available: boolean
   /** Default recipients (invoices: primary PEC, else email); absent on work orders, treat as `[]` (D-12). */
   default_to?: string[]
-  /** Importable attachment sources this owner supports (e.g. `invoice_pdf`); absent on work orders. */
+  /** Importable attachment sources this owner supports (e.g. `invoice_pdf`, `purchase_order_pdf`); absent on work orders. */
   sources?: string[]
   max_total_attachments_kb: number
 }
@@ -139,7 +139,7 @@ export interface OutboundEmailPayload {
   body?: string | null
 }
 
-export type AttachmentImportSource = 'documents' | 'document_bundle' | 'quote_pdf' | 'invoice_pdf'
+export type AttachmentImportSource = 'documents' | 'document_bundle' | 'quote_pdf' | 'invoice_pdf' | 'purchase_order_pdf'
 
 /** `POST .../attachments/import` request (D-7). */
 export interface ImportAttachmentsPayload {

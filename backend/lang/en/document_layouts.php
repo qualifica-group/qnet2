@@ -5,6 +5,7 @@ return [
     'modules' => [
         'quotes' => 'Quotes',
         'invoices' => 'Invoices',
+        'purchase_orders' => 'Purchase orders',
     ],
 
     // Business messages (D-7, spec 0069): thrown by
@@ -22,6 +23,8 @@ return [
     'layout_in_use_invoices' => 'This layout is used by :count invoices: you can only deactivate it.',
 
     'invoice_no_layout_available' => 'No document layout available for invoices.',
+    'purchase_order_no_layout_available' => 'No document layout available for purchase orders.',
+    'purchase_order_layout_not_available' => 'The selected layout is not available for purchase orders.',
 
     // Image guard (spec 0069, MT-4).
     'image_in_use' => 'This image is referenced by a block in the current config: remove the block before deleting it.',
@@ -42,6 +45,8 @@ return [
             'custom_fields' => 'Custom fields',
             'quote_attributes' => 'Quote attributes',
             'invoice' => 'Invoice',
+            'purchase_order' => 'Purchase order',
+            'supplier' => 'Supplier',
             'customer' => 'Customer',
             'payment' => 'Payment',
             'work_order' => 'Work order',
@@ -153,6 +158,20 @@ return [
             'external_date' => 'External date',
             'notes' => 'Notes',
             'tag_label' => 'Estimate/final',
+        ],
+
+        'purchase_order' => [
+            'code' => 'Order number',
+            'order_date' => 'Order date',
+            'description' => 'Description',
+            'general_notes' => 'General notes',
+        ],
+
+        'supplier' => [
+            'name' => 'Business name',
+            'vat_number' => 'VAT number',
+            'address' => 'Address',
+            'email' => 'Email',
         ],
 
         'customer' => [

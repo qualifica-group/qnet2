@@ -56,7 +56,7 @@ const guide: HelpGuide = {
             ['**Total**', 'Hover (or focus with the keyboard) the total to see the line taxable amount and VAT.'],
             ['**Reason**', 'The speech-bubble icon opens a small panel with the reason text; it is highlighted when a reason is written and read-only on locked lines.'],
             ['**Status**', 'To approve, Approved, Ordered, Received, Rejected or On hold. It is not edited like a field: use the **Change line status** icon.'],
-            ['**ODA**', 'Read-only placeholder: for now it always shows a dash.'],
+            ['**ODA**', 'Read-only: shows the code of the ODA generated from the line, as a link to the order, or a dash if the line is not linked.'],
             ['**Line documents**', 'Attachments of the single line.'],
             ['**Change line status**', 'Shown on a saved line only when you can change its status: the assigned function manager approves or rejects lines To approve, whoever has the fulfilment permission moves Approved lines to Ordered or On hold and Ordered lines to Received or On hold. Pick the new status and an optional reason. Choosing **Ordered** adds a **Supplier** column to the dialog: lines that already have one show it, lines without one get a picker, and the confirm button stays disabled until none is missing.'],
             ['**Trash**', 'Deletes the line, if your role allows it and it is To approve or Rejected.'],

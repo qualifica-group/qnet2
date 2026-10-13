@@ -100,6 +100,7 @@ export const outboundEmails = {
       fromDocuments: 'Da documenti',
       fromDocumentBundle: 'Da modello documenti',
       quotePdf: 'PDF offerta',
+      purchaseOrderPdf: "PDF dell'ODA",
       totalSize: '{{used}} di {{limit}} utilizzati',
       remove: 'Rimuovi allegato',
       empty: 'Nessun allegato.',

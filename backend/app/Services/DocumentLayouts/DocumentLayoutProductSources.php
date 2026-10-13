@@ -31,6 +31,11 @@ final class DocumentLayoutProductSources
     ];
 
     /** @var array<int, string> */
+    public const array PURCHASE_ORDER_LINE_COLUMNS = [
+        'description', 'cost_type', 'unit_of_measure', 'quantity', 'unit_price', 'vat_rate', 'taxable_amount', 'vat_amount', 'total_amount',
+    ];
+
+    /** @var array<int, string> */
     public const array INSTALLMENT_COLUMNS = ['sequence', 'due_date', 'amount', 'payment_method_code', 'status'];
 
     /**
@@ -46,6 +51,9 @@ final class DocumentLayoutProductSources
             DocumentLayoutModule::Invoices => [
                 'invoice_lines' => self::INVOICE_LINE_COLUMNS,
                 'installments' => self::INSTALLMENT_COLUMNS,
+            ],
+            DocumentLayoutModule::PurchaseOrders => [
+                'purchase_order_lines' => self::PURCHASE_ORDER_LINE_COLUMNS,
             ],
         };
     }

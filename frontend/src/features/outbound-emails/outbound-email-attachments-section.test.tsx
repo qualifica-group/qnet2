@@ -175,6 +175,22 @@ describe('OutboundEmailAttachmentsSection', () => {
     expect(await screen.findByRole('button', { name: 'Quote PDF' })).toBeDisabled()
   })
 
+  it('shows "Purchase order PDF" instead of the quote PDF when the owner supports purchase_order_pdf', async () => {
+    fetchOutboundEmailMock.mockResolvedValue(email())
+    fetchOutboundEmailComposeContextMock.mockResolvedValue(composeContext({ sources: ['purchase_order_pdf', 'documents'] }))
+    importOutboundEmailAttachmentsMock.mockResolvedValue(
+      email({ attachments: [{ id: 14, original_name: 'oda.pdf', mime_type: 'application/pdf', size: 4096 }] }),
+    )
+
+    renderComposer()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Purchase order PDF' }))
+    expect(screen.queryByRole('button', { name: 'Quote PDF' })).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(importOutboundEmailAttachmentsMock).toHaveBeenCalledWith(WORK_ORDER_OWNER, 1, { source: 'purchase_order_pdf' }),
+    )
+  })
+
   it('imports a document bundle from the picker stub', async () => {
     fetchOutboundEmailMock.mockResolvedValue(email())
     importOutboundEmailAttachmentsMock.mockResolvedValue(

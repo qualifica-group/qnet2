@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\PurchaseOrders\PurchaseOrderController;
 use App\Http\Controllers\PurchaseOrders\PurchaseOrderFromRequestLinesController;
+use App\Http\Controllers\PurchaseOrders\PurchaseOrderPdfController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -19,6 +20,7 @@ Route::get('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, '
 Route::post('purchase-orders', [PurchaseOrderController::class, 'store']);
 Route::match(['put', 'patch'], 'purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'update']);
 Route::delete('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy']);
+Route::get('purchase-orders/{purchaseOrder}/pdf', PurchaseOrderPdfController::class);
 Route::post('purchase-orders/{purchaseOrder}/status', [PurchaseOrderController::class, 'status']);
 Route::get('purchase-orders/{purchaseOrder}/merge-candidates', [PurchaseOrderController::class, 'mergeCandidates']);
 Route::post('purchase-orders/{purchaseOrder}/merge', [PurchaseOrderController::class, 'merge']);

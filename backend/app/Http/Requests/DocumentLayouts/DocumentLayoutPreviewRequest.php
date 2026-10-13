@@ -31,6 +31,7 @@ class DocumentLayoutPreviewRequest extends FormRequest
         return [
             'quote_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'invoice_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'purchase_order_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
         ];
     }
 
@@ -45,6 +46,14 @@ class DocumentLayoutPreviewRequest extends FormRequest
     public function invoiceId(): ?int
     {
         $value = $this->validated('invoice_id');
+
+        return $value === null ? null : (int) $value;
+    }
+
+    /** Spec 0210: the purchase order to preview a `purchase_orders` layout against. */
+    public function purchaseOrderId(): ?int
+    {
+        $value = $this->validated('purchase_order_id');
 
         return $value === null ? null : (int) $value;
     }

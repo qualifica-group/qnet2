@@ -66,7 +66,27 @@
 - Aperto: `PurchaseRequestService.php` 330 righe (soft limit); manca test della griglia Gestione righe (azione massiva);
   verifica visiva desktop/375px; manuale Claude Docs (RDA righe/testata, cambio stato Ordinato, Gestione righe) da aggiornare.
 
-## Spec 0210 — Modulo ODA (Ordini di Acquisto) — CHECKPOINT A (8473e971) + B VERDI E COMMITTATI (2026-10-12)
+## Spec 0210 — Modulo ODA (Ordini di Acquisto) — COMPLETA: A+B COMMITTATI, C VERDE NON COMMITTATO (2026-10-12)
+
+- Checkpoint C (MT-6, MT-13, MT-14) verde, gate finale: AC-001..AC-023 PASS. Pest 10104/10109 (2 QuoteDocumentPdfTest
+  = soffice; 1 SupplierCommissionDirectionTest rollback step = migrazioni 0212 di altra sessione), PurchaseOrders+CostTypes
+  144/144, Vitest 7435 (14 timeout da carico, verdi isolati), tsc -b --force EXIT=0; probe MySQL dev senza 5xx.
+- BE C: PDF = case `purchase_orders` in DocumentLayoutModule, DocumentLayoutPurchaseOrderVariableDefinitions, sorgente
+  tabella `purchase_order_lines` (DocumentLayoutProductSources), Rendering/PurchaseOrders/*, PurchaseOrderDocumentLayoutResolver
+  (layout di default attivo del modulo, 422 se assente), PurchaseOrderPdfRenderer ("ODA-{n}-{anno}.pdf"),
+  PurchaseOrderPdfController `GET /api/purchase-orders/{id}/pdf`; ramo purchase_orders in DocumentLayoutPreviewController.
+  Email = case `purchase_orders` in EmailTemplateModule, PurchaseOrderEmailOwner (alias purchase_order, view/send),
+  PurchaseOrderEmailAttachmentImporter (sorgenti purchase_order_pdf, documents), PurchaseOrderEmailService,
+  variabili email, rotte routes/api/purchase-order-emails.php (richiesto da purchasing.php), senza reminder.
+  Nessun layout/template di default seminato: l'utente crea un Layout del modulo "ODA" per stampare.
+- FE C: guide in-app complete purchase-orders (overview, create, lines, numbering, status, merge, rda-link, delete,
+  pdf-email, permissions), document-layouts e purchase-requests (colonna ODA = link) aggiornate; DOCUMENT_LAYOUT_MODULES
+  + sorgente purchase_order_lines + starter ODA (createPurchaseOrderLayoutStarter); allegato "PDF dell'ODA" nel composer.
+- Ambiente test: i test che generano docx richiedono ext-zip (`$TEMP/pestzip.sh`); il parallelo richiede PHPRC con sqlite+zip.
+- Manuale Claude Docs (KwvSrXafsGqT9qzZULxJhh): NON aggiornato, il doc non e' condiviso con la sessione (verdict access).
+  Sezioni da aggiornare: Acquisti > ODA (nuova: creazione, righe, numerazione, stati, Unifica, RDA, PDF/email, permessi),
+  Acquisti > Tipi di costo (nuova), Acquisti > Gestione righe RDA (Genera ODA), Acquisti > RDA (colonna ODA link),
+  Configurazione > Layout (modulo ODA, righe ODA), Contabilita' > Passiva > Scadenze (ODA collegata non eliminabile).
 
 - Checkpoint B committato: MT-5 (`POST /purchase-request-lines/purchase-orders` Genera ODA da righe RDA,
   `PurchaseOrderFromRequestLinesService`; Unifica `GET merge-candidates` / `POST merge` / `GET merge-logs`,

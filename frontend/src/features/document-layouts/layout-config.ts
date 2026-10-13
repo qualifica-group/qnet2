@@ -61,7 +61,7 @@ export const CELL_VERTICAL_ALIGNS = ['top', 'center', 'bottom'] as const
 export type CellVerticalAlign = (typeof CELL_VERTICAL_ALIGNS)[number]
 
 /** `products_table.source`: which record set feeds the table (quote lines, or invoice lines/installments, spec 0195 D-6). */
-export const PRODUCTS_TABLE_SOURCES = ['offer_lines', 'cost_lines', 'invoice_lines', 'installments'] as const
+export const PRODUCTS_TABLE_SOURCES = ['offer_lines', 'cost_lines', 'invoice_lines', 'installments', 'purchase_order_lines'] as const
 export type ProductsTableSource = (typeof PRODUCTS_TABLE_SOURCES)[number]
 
 export const PAGE_ORIENTATIONS = ['portrait', 'landscape'] as const
@@ -84,6 +84,9 @@ export const COLUMN_KEYS = [
   'amount',
   'payment_method_code',
   'status',
+  'unit_of_measure',
+  'cost_type',
+  'taxable_amount',
 ] as const
 export type ColumnKey = (typeof COLUMN_KEYS)[number]
 

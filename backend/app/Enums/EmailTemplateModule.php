@@ -12,4 +12,6 @@ enum EmailTemplateModule: string
     case WorkOrders = 'work_orders';
 
     case Invoices = 'invoices';
+
+    case PurchaseOrders = 'purchase_orders';
 }

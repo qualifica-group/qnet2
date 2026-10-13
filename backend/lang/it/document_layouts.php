@@ -5,6 +5,7 @@ return [
     'modules' => [
         'quotes' => 'Preventivi',
         'invoices' => 'Fatture',
+        'purchase_orders' => 'Ordini di acquisto',
     ],
 
     // Business messages (D-7, spec 0069): thrown by
@@ -22,6 +23,8 @@ return [
     'layout_in_use_invoices' => 'Layout utilizzato da :count fatture: puoi solo disattivarlo.',
 
     'invoice_no_layout_available' => 'Nessun layout documento disponibile per le fatture.',
+    'purchase_order_no_layout_available' => 'Nessun layout documento disponibile per gli ordini di acquisto.',
+    'purchase_order_layout_not_available' => 'Il layout selezionato non è disponibile per gli ordini di acquisto.',
 
     // Image guard (spec 0069, MT-4).
     'image_in_use' => 'Questa immagine è referenziata da un blocco della configurazione corrente: rimuovi il blocco prima di eliminarla.',
@@ -42,6 +45,8 @@ return [
             'custom_fields' => 'Campi personalizzati',
             'quote_attributes' => 'Attributi offerta',
             'invoice' => 'Fattura',
+            'purchase_order' => 'Ordine di acquisto',
+            'supplier' => 'Fornitore',
             'customer' => 'Cliente',
             'payment' => 'Pagamento',
             'work_order' => 'Commessa',
@@ -153,6 +158,20 @@ return [
             'external_date' => 'Data esterna',
             'notes' => 'Note',
             'tag_label' => 'Stima/definitiva',
+        ],
+
+        'purchase_order' => [
+            'code' => 'Numero ordine',
+            'order_date' => 'Data ordine',
+            'description' => 'Descrizione',
+            'general_notes' => 'Note generali',
+        ],
+
+        'supplier' => [
+            'name' => 'Ragione sociale',
+            'vat_number' => 'Partita IVA',
+            'address' => 'Indirizzo',
+            'email' => 'Email',
         ],
 
         'customer' => [

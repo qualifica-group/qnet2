@@ -63,6 +63,7 @@ final class DocumentLayoutVariableCatalog
         return match ($module) {
             DocumentLayoutModule::Quotes => $this->quoteCategories($actor),
             DocumentLayoutModule::Invoices => $this->invoiceCategories($actor),
+            DocumentLayoutModule::PurchaseOrders => $this->purchaseOrderCategories($actor),
         };
     }
 
@@ -80,6 +81,7 @@ final class DocumentLayoutVariableCatalog
         return match ($module) {
             DocumentLayoutModule::Quotes => array_map(static fn (string $key): string => "{totals.{$key}}", self::TOTALS_KEYS),
             DocumentLayoutModule::Invoices => array_map(static fn (string $key): string => "{totals.{$key}}", DocumentLayoutInvoiceVariableDefinitions::TOTALS_KEYS),
+            DocumentLayoutModule::PurchaseOrders => array_map(static fn (string $key): string => "{totals.{$key}}", DocumentLayoutPurchaseOrderVariableDefinitions::TOTALS_KEYS),
         };
     }
 
@@ -178,6 +180,30 @@ final class DocumentLayoutVariableCatalog
         foreach (DocumentLayoutInvoiceVariableDefinitions::all() as $category => $definitions) {
             if ($category === 'customer') {
                 $definitions = array_values(array_filter($definitions, static fn (array $definition): bool => ! in_array($definition['key'], $masked, true)));
+            }
+
+            $categories[] = $this->staticCategory($category, $definitions);
+        }
+
+        return $categories;
+    }
+
+    /**
+     * The `purchase_orders` module's categories (spec 0210); `supplier.vat_number`
+     * is masked exactly like `client.vat_number` (D-6, spec 0069).
+     *
+     * @return array<int, array{key: string, label: string, variables: array<int, array{variable: string, label: string, type: string, example: string}>}>
+     */
+    private function purchaseOrderCategories(User $actor): array
+    {
+        $piiKey = DocumentLayoutPurchaseOrderVariableDefinitions::SUPPLIER_PII_KEY;
+        $maskPii = $this->visiblePersonalDataFields($actor, 'registries', [$piiKey]) === [];
+
+        $categories = [];
+
+        foreach (DocumentLayoutPurchaseOrderVariableDefinitions::all() as $category => $definitions) {
+            if ($category === 'supplier' && $maskPii) {
+                $definitions = array_values(array_filter($definitions, static fn (array $definition): bool => $definition['key'] !== $piiKey));
             }
 
             $categories[] = $this->staticCategory($category, $definitions);

@@ -9,7 +9,7 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Overview',
       blocks: [
-        { type: 'paragraph', text: 'The module is found in **Configuration › Layouts**. The available **Modules** are **Quotes** (the document is downloaded with **Download quote** on the quote) and **Invoices** (downloaded with **Download PDF** in Active invoices).' },
+        { type: 'paragraph', text: 'The module is found in **Configuration › Layouts**. The available **Modules** are **Quotes** (the document is downloaded with **Download quote** on the quote) and **Invoices** (downloaded with **Download PDF** in Active invoices) and **ODA** (printed with **Print PDF** on the purchase order page).' },
       ],
     },
     {
@@ -32,7 +32,7 @@ const guide: HelpGuide = {
             ['**Text**', 'Paragraphs with style, font, color and alignment; here you find **Insert page number** and **Insert page total**.'],
             ['**Image**', 'For example a logo, **Inline** or **Behind the page** as a background. To upload it, save the layout first.'],
             ['**Table**', 'A free-form table, with rows, columns and borders.'],
-            ['**Product table**', 'For **Quotes** it lists **Quote lines** or **Cost lines**; for **Invoices** the **Document lines** or the **Due dates**. You choose the columns (Code, Name, Quantity, Unit price, VAT rate, amounts) and the total rows.'],
+            ['**Product table**', 'For **Quotes** it lists **Quote lines** or **Cost lines**; for **Invoices** the **Document lines** or the **Due dates**; for **ODA** the **Purchase order lines** (Description, Cost type, Unit of measure, Quantity, Unit price, VAT rate, Taxable amount, VAT, Total). You choose the columns (Code, Name, Quantity, Unit price, VAT rate, amounts) and the total rows.'],
             ['**Page break**, **Spacer**, **Divider**', 'Layout and pagination.'],
           ],
         },

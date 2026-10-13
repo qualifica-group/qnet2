@@ -30,6 +30,9 @@ enum DocumentLayoutModule: string
     #[Label('document_layouts.modules.invoices')]
     case Invoices = 'invoices';
 
+    #[Label('document_layouts.modules.purchase_orders')]
+    case PurchaseOrders = 'purchase_orders';
+
     /**
      * The i18n key for the module's display label, resolved with __() by the
      * consumer (e.g. `DocumentLayoutResource::module_label`, spec 0070). Kept

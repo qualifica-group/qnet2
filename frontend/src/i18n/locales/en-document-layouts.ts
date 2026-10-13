@@ -14,6 +14,7 @@ export const documentLayouts = {
   modules: {
     quotes: 'Quotes',
     invoices: 'Invoices',
+    purchase_orders: 'Purchase orders',
   },
   columns: {
     name: 'Name',
@@ -160,7 +161,7 @@ export const documentLayouts = {
     },
     productsTable: {
       source: 'Source',
-      sources: { offer_lines: 'Offer lines', cost_lines: 'Cost lines', invoice_lines: 'Invoice lines', installments: 'Installments' },
+      sources: { offer_lines: 'Offer lines', cost_lines: 'Cost lines', invoice_lines: 'Invoice lines', installments: 'Installments', purchase_order_lines: 'Purchase order lines' },
       widthPct: 'Width (%)',
       showHeader: 'Show header row',
       headerBackground: 'Header background',
@@ -193,6 +194,9 @@ export const documentLayouts = {
         amount: 'Amount',
         payment_method_code: 'Payment method',
         status: 'Status',
+        unit_of_measure: 'Unit of measure',
+        cost_type: 'Cost type',
+        taxable_amount: 'Taxable amount',
       },
     },
     divider: {

@@ -56,7 +56,7 @@ const guide: HelpGuide = {
             ['**Totale**', 'Passa il mouse (o seleziona con la tastiera) sul totale per vedere imponibile e IVA della riga.'],
             ['**Motivazione**', 'L’icona con il fumetto apre una finestrella con il testo della motivazione; è evidenziata quando la motivazione è scritta e in sola lettura sulle righe bloccate.'],
             ['**Stato**', 'Da approvare, Approvato, Ordinato, Ricevuto, Rifiutato o Stand by. Non si modifica come un campo: si usa l’icona **Cambia stato della riga**.'],
-            ['**ODA**', 'Segnaposto in sola lettura: per ora mostra sempre un trattino.'],
+            ['**ODA**', 'In sola lettura: mostra il codice dell’ODA generata dalla riga, come link all’ordine, oppure un trattino se la riga non è collegata.'],
             ['**Documenti della riga**', 'Allegati della singola riga.'],
             ['**Cambia stato della riga**', 'Compare su una riga salvata solo se puoi cambiarne lo stato: il Responsabile di funzione assegnato approva o rifiuta le righe Da approvare, chi ha il permesso di evasione porta le righe Approvate a Ordinato o Stand by e quelle Ordinate a Ricevuto o Stand by. Si sceglie il nuovo stato e una motivazione facoltativa. Scegliendo **Ordinato** la finestra mostra una colonna **Fornitore**: le righe che ne hanno già uno lo mostrano, quelle senza hanno un elenco da compilare, e la conferma resta disabilitata finché ne manca uno.'],
             ['**Cestino**', 'Elimina la riga, se il tuo ruolo lo consente e se è Da approvare o Rifiutata.'],

@@ -14,6 +14,7 @@ import { OutboundEmailDocumentsPickerDialog } from '@/features/outbound-emails/o
 import type { EmailOwnerRef, ComposeContext, OutboundEmail } from '@/features/outbound-emails/types'
 
 const BYTES_PER_KB = 1024
+const PURCHASE_ORDER_PDF_SOURCE = 'purchase_order_pdf'
 
 interface OutboundEmailAttachmentsSectionProps {
   owner: EmailOwnerRef
@@ -43,6 +44,8 @@ export function OutboundEmailAttachmentsSection({
   const titleId = useId()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isBusy = upload.isPending || importAttachments.isPending || remove.isPending || disabled
+
+  const hasPurchaseOrderPdf = composeContext?.sources?.includes(PURCHASE_ORDER_PDF_SOURCE) ?? false
 
   const maxTotalBytes = (composeContext?.max_total_attachments_kb ?? 0) * BYTES_PER_KB
   const overLimit = maxTotalBytes > 0 && email.attachments_total_size > maxTotalBytes
@@ -90,6 +93,14 @@ export function OutboundEmailAttachmentsSection({
   const handleImportQuotePdf = async () => {
     try {
       await importAttachments.mutateAsync({ source: 'quote_pdf' })
+    } catch {
+      toast.error(t('outboundEmails.composer.attachments.importError'))
+    }
+  }
+
+  const handleImportPurchaseOrderPdf = async () => {
+    try {
+      await importAttachments.mutateAsync({ source: PURCHASE_ORDER_PDF_SOURCE })
     } catch {
       toast.error(t('outboundEmails.composer.attachments.importError'))
     }
@@ -181,17 +192,24 @@ export function OutboundEmailAttachmentsSection({
           />
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => void handleImportQuotePdf()}
-          disabled={isBusy || !composeContext?.quote_pdf_available}
-          title={!composeContext?.quote_pdf_available ? t('outboundEmails.composer.attachments.quotePdfUnavailable') : undefined}
-        >
-          <FileText className="size-3.5" aria-hidden="true" />
-          {t('outboundEmails.composer.attachments.quotePdf')}
-        </Button>
+        {hasPurchaseOrderPdf ? (
+          <Button type="button" variant="outline" size="sm" onClick={() => void handleImportPurchaseOrderPdf()} disabled={isBusy}>
+            <FileText className="size-3.5" aria-hidden="true" />
+            {t('outboundEmails.composer.attachments.purchaseOrderPdf')}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void handleImportQuotePdf()}
+            disabled={isBusy || !composeContext?.quote_pdf_available}
+            title={!composeContext?.quote_pdf_available ? t('outboundEmails.composer.attachments.quotePdfUnavailable') : undefined}
+          >
+            <FileText className="size-3.5" aria-hidden="true" />
+            {t('outboundEmails.composer.attachments.quotePdf')}
+          </Button>
+        )}
       </div>
 
       {email.attachments.length === 0 ? (

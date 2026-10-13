@@ -90,6 +90,60 @@ function installmentsTable(): ProductsTableBlock {
   }
 }
 
+function purchaseOrderLinesTable(): ProductsTableBlock {
+  return {
+    ...createDefaultProductsTableBlock('purchase-order-lines'),
+    source: 'purchase_order_lines',
+    columns: [
+      column('Descrizione', 34, 'left', [['description']]),
+      column('Tipo costo', 12, 'left', [['cost_type']]),
+      column('UM', 6, 'left', [['unit_of_measure']]),
+      column('Qta', 8, 'right', [['quantity']]),
+      column('Prezzo', 12, 'right', [['unit_price']]),
+      column('IVA', 8, 'right', [['vat_rate']]),
+      column('Imponibile', 20, 'right', [['taxable_amount']]),
+    ],
+    totals: {
+      show: true,
+      rows: [
+        { label: 'Imponibile', variable: '{totals.net}', bold: false },
+        { label: 'IVA', variable: '{totals.vat}', bold: false },
+        { label: 'Totale', variable: '{totals.total}', bold: true },
+      ],
+    },
+  }
+}
+
+/** Fresh starter config for the purchase_orders module (spec 0210): company, supplier, order data, lines with totals, notes. */
+export function createPurchaseOrderLayoutStarter(): DocumentLayoutConfig {
+  return {
+    ...createEmptyDocumentLayoutConfig(),
+    header: {
+      blocks: [
+        textLine('company-name', '{company.name}', { bold: true, size: TITLE_FONT_SIZE }),
+        textLine('company-vat', 'P.IVA {company.vat_number}'),
+        textLine('company-address', '{company.address}', { spaceAfter: SPACE_SMALL_TWIPS }),
+      ],
+    },
+    body: {
+      blocks: [
+        textLine('supplier-name', '{supplier.name}', { bold: true, align: 'right' }),
+        textLine('supplier-address', '{supplier.address}', { align: 'right' }),
+        textLine('supplier-vat', 'P.IVA {supplier.vat_number}', { align: 'right' }),
+        textLine('title', 'Ordine di acquisto n. {purchase_order.code} del {purchase_order.order_date}', {
+          bold: true,
+          size: TITLE_FONT_SIZE,
+          spaceBefore: SPACE_LARGE_TWIPS,
+          spaceAfter: SPACE_SMALL_TWIPS,
+        }),
+        textLine('description', '{purchase_order.description}', { spaceAfter: SPACE_SMALL_TWIPS }),
+        purchaseOrderLinesTable(),
+        textLine('notes', '{purchase_order.general_notes}', { spaceBefore: SPACE_LARGE_TWIPS }),
+      ],
+    },
+  }
+}
+
 /** Fresh starter config for the invoices module. */
 export function createInvoiceLayoutStarter(): DocumentLayoutConfig {
   return {
@@ -129,7 +183,10 @@ export function createInvoiceLayoutStarter(): DocumentLayoutConfig {
   }
 }
 
-/** Initial config for a new layout of `module`: the starter for invoices, empty otherwise. */
+/** Initial config for a new layout of `module`: a starter for invoices and purchase orders, empty otherwise. */
 export function createStarterConfigForModule(module: DocumentLayoutModule): DocumentLayoutConfig {
-  return module === 'invoices' ? createInvoiceLayoutStarter() : createEmptyDocumentLayoutConfig()
+  if (module === 'invoices') {
+    return createInvoiceLayoutStarter()
+  }
+  return module === 'purchase_orders' ? createPurchaseOrderLayoutStarter() : createEmptyDocumentLayoutConfig()
 }

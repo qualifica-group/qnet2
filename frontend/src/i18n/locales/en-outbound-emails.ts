@@ -100,6 +100,7 @@ export const outboundEmails = {
       fromDocuments: 'From documents',
       fromDocumentBundle: 'From document bundle',
       quotePdf: 'Quote PDF',
+      purchaseOrderPdf: 'Purchase order PDF',
       totalSize: '{{used}} of {{limit}} used',
       remove: 'Remove attachment',
       empty: 'No attachments.',

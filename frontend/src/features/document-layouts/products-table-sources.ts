@@ -10,6 +10,7 @@ import type { DocumentLayoutModule } from '@/features/document-layouts/types'
 export const PRODUCTS_TABLE_SOURCES_BY_MODULE: Record<DocumentLayoutModule, readonly ProductsTableSource[]> = {
   quotes: ['offer_lines', 'cost_lines'],
   invoices: ['invoice_lines', 'installments'],
+  purchase_orders: ['purchase_order_lines'],
 }
 
 const QUOTE_LINE_KEYS: readonly ColumnKey[] = [
@@ -40,4 +41,15 @@ export const COLUMN_KEYS_BY_SOURCE: Record<ProductsTableSource, readonly ColumnK
     'total_amount',
   ],
   installments: ['sequence', 'due_date', 'amount', 'payment_method_code', 'status'],
+  purchase_order_lines: [
+    'description',
+    'cost_type',
+    'unit_of_measure',
+    'quantity',
+    'unit_price',
+    'vat_rate',
+    'taxable_amount',
+    'vat_amount',
+    'total_amount',
+  ],
 }

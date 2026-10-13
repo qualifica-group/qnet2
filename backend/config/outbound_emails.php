@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\OutboundEmails\Owners\InvoiceEmailOwner;
+use App\Services\OutboundEmails\Owners\PurchaseOrderEmailOwner;
 use App\Services\OutboundEmails\Owners\WorkOrderEmailOwner;
 
 return [
@@ -61,6 +62,7 @@ return [
     'owners' => [
         'work_order' => WorkOrderEmailOwner::class,
         'invoice' => InvoiceEmailOwner::class,
+        'purchase_order' => PurchaseOrderEmailOwner::class,
     ],
 
 ];

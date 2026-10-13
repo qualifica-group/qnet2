@@ -16,6 +16,7 @@ export const documentLayouts = {
   modules: {
     quotes: 'Preventivi',
     invoices: 'Fatture',
+    purchase_orders: 'ODA',
   },
   columns: {
     name: 'Nome',
@@ -162,7 +163,7 @@ export const documentLayouts = {
     },
     productsTable: {
       source: 'Origine',
-      sources: { offer_lines: 'Righe di offerta', cost_lines: 'Righe di costo', invoice_lines: 'Righe di fattura', installments: 'Rate di pagamento' },
+      sources: { offer_lines: 'Righe di offerta', cost_lines: 'Righe di costo', invoice_lines: 'Righe di fattura', installments: 'Rate di pagamento', purchase_order_lines: 'Righe ODA' },
       widthPct: 'Larghezza (%)',
       showHeader: 'Mostra riga di intestazione',
       headerBackground: 'Sfondo intestazione',
@@ -195,6 +196,9 @@ export const documentLayouts = {
         amount: 'Importo',
         payment_method_code: 'Metodo di pagamento',
         status: 'Stato',
+        unit_of_measure: 'Unità di misura',
+        cost_type: 'Tipo costo',
+        taxable_amount: 'Imponibile',
       },
     },
     divider: {
