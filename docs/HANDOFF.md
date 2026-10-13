@@ -41,6 +41,34 @@
 - Prossimo: spec 0245 RDA (RDA-01 responsabile = diretto superiore da employment_profile_manager, RDA-02, RDA-05,
   RDA-06), poi 0246 COS-03.
 
+## Permessi ODA/contabilita' + seeder additivo acquisti/contabilita' — VERDE, NON COMMITTATO (2026-10-13)
+
+- Causa del "Non hai il permesso di visualizzare gli ordini di acquisto": catalogo permessi del DB locale non
+  risincronizzato (mancavano 59 permessi: purchase-orders.*, purchase-invoices.*, cost-types.*, commission-*,
+  enasarco-*, agent-fiscal-*, api-clients.*, invoices.downgrade, tasks.viewTeam, legacy-ids.view). Risolto sul DB
+  con `permissions:sync` + `roles:create-super-admin` + i soli nuovi permessi dati ad `admin`. Nessun codice
+  cambiato: dopo ogni deploy di un modulo va lanciato `php artisan permissions:sync`.
+- Nuovo `DemoAccountingSampleSeeder` (SOLA AGGIUNTA, mai cancella; `php artisan db:seed --class=DemoAccountingSampleSeeder`,
+  agisce come il primo super-admin, mail silenziate): step `DemoSamplePurchaseRequestSeeder` (RDA, righe in ogni stato),
+  `DemoSamplePurchaseOrderSeeder` (meta' righe approvate -> ODA via PurchaseOrderFromRequestLinesService + ODA diretti,
+  righe su commessa, tutti i 7 stati via PurchaseOrderStatusService, righe RDA degli ODA evasi -> received),
+  `DemoSamplePurchaseInvoiceSeeder` (documento passivo per ODA fatturabile non ancora fatturato, pagamenti misti),
+  `DemoSampleInvoiceSeeder` (proforma + fattura attiva sulle commesse senza richieste, incassi, registrazione, una
+  richiesta lasciata in attesa), poi maturato/ENASARCO/profili (solo se tabelle vuote)/liquidazione.
+  Volontariamente NON richiamato da DemoDataSeeder (deroga a backend.md 3.1: quel percorso copre gia' gli stessi moduli).
+- Estratti `Database\Seeders\Support\ActiveInvoiceWriter` e `PayableDocumentWriter` (usati anche da DemoInvoiceSeeder e
+  DemoPurchaseInvoiceSeeder). Fix incluso: DemoInvoiceSeeder chiamava `updateDetails` senza `$actor` (rotto dalla 0243);
+  incasso parziale su piano a rata unica -> residuo in nuova rata (prima: 422 "no later open installments").
+- Test: `tests/Feature/Seeding/DemoAccountingSampleSeederTest.php` (3) verde; Invoices 73, CommissionAccruals 26,
+  PurchaseInvoiceInstallments 58, PurchaseRequests 102, PurchaseOrders 160/161 (rosso preesistente rollback migrazione).
+- Ambiente: il PHP locale va in segfault a caso (anche su test non toccati, es. QualificaStaffSeederTest); in seriale
+  usare `-d zend.max_allowed_stack_size=8M -d zend.reserved_stack_size=512K`. Paratest non accetta piu' path insieme.
+- Step 0 aggiunto (senza test, richiesta utente): `DemoCommissionShowcaseSeeder` (regole provvigionali + commesse
+  "Demo commissioni - ...", idempotente) prima degli acquisti, cosi' lo step fatture fattura commesse con provvigioni.
+  DB locale: 13 provvigioni su righe d'offerta, 3 movimenti di maturato aperti, 0 estratti (il lancio di settembre
+  esisteva gia' e il seeder non ripete un periodo gia' lanciato).
+- Manuale: nessun impatto (solo dati di esempio e catalogo permessi).
+
 ## Spec 0243 — Correzioni integrita' Contabilita' attiva (audit 2026-10-13, Onda 1, ATT-01..04) — COMMITTATO 857b87c4 (2026-10-13)
 
 - Spec `docs/specs/0243-active-accounting-integrity-fixes.xml` (D-1..D-4, AC-001..AC-020 tutti PASS dal verifier).
