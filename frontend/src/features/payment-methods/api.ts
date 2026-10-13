@@ -8,6 +8,11 @@ import type {
   UpdatePaymentMethodPayload,
 } from '@/features/payment-methods/types'
 
+/** Query key of a single payment method's detail, shared by the detail screen and its in-place saves. */
+export function paymentMethodDetailQueryKey(id: number) {
+  return ['payment-methods', 'detail', id] as const
+}
+
 /**
  * Fetches a single payment method detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -34,17 +39,17 @@ export async function createPaymentMethod(
 /**
  * Partially updates a payment method (PATCH). `code` is never a key of
  * `UpdatePaymentMethodPayload` (D-3): the backend rejects its mere presence
- * with 422 regardless of role. Returns the updated resource.
+ * with 422 regardless of role. Returns the saved record with the actor's
+ * permissions, so the in-place detail re-syncs on it as is.
  */
 export async function updatePaymentMethod(
   id: number,
   payload: UpdatePaymentMethodPayload,
-): Promise<PaymentMethodDetail> {
-  const { data } = await apiClient.patch<ApiResponse<PaymentMethodDetail>>(
-    `/payment-methods/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<PaymentMethodDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<PaymentMethodDetail, ResourcePermissions>
+  >(`/payment-methods/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

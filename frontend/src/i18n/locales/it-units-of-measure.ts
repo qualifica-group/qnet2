@@ -22,10 +22,8 @@ export const unitsOfMeasure = {
   },
   detail: {
     title: 'Dettaglio unita di misura',
-    subtitle: "Visualizzazione in sola lettura dell'unita di misura selezionata.",
+    subtitle: "Dettaglio dell'unita di misura selezionata, modificabile sul posto.",
     loadError: "Impossibile caricare l'unita di misura. Riprova.",
-    symbol: 'Simbolo',
-    description: 'Descrizione',
     created_at: 'Creato il',
     updated_at: 'Aggiornato il',
   },
@@ -58,14 +56,17 @@ export const unitsOfMeasure = {
     deleteError: "Impossibile eliminare l'unita di misura. Riprova.",
     deleteForbidden: 'Non puoi eliminare questa unita di misura.',
     deleteInUse: "Impossibile eliminare: l'unita di misura è usata da un prodotto o da una riga offerta.",
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: "L'unita di misura non è ancora stata creata: i dati inseriti andranno persi.",
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     sections: {
       identity: {
         title: 'Dettagli',
         description: 'Nome, simbolo, codice e descrizione.',
       },
-    },
-    hints: {
-      codeLocked: 'Il codice non può essere modificato dopo la creazione.',
     },
   },
 }

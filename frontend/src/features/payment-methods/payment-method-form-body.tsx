@@ -1,238 +1,70 @@
-import { CreditCard } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FormSection } from '@/components/form-section'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
-import { Form, FormControl } from '@/components/ui/form'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
-import { PaymentMethodRateFields } from '@/features/payment-methods/payment-method-rate-fields'
+import { useWatch } from 'react-hook-form'
+import { CreditCard } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
+import { Form } from '@/components/ui/form'
+import { PaymentMethodInstallmentRows } from '@/features/payment-methods/payment-method-installment-rows'
+import { PaymentMethodRows } from '@/features/payment-methods/payment-method-rows'
 import { usePaymentMethodForm } from '@/features/payment-methods/use-payment-method-form'
-import type {
-  PaymentMethodDetail,
-  PaymentMethodFormMode,
-} from '@/features/payment-methods/types'
+import type { PaymentMethodDetail } from '@/features/payment-methods/types'
+
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const PAYMENT_METHOD_FORM_ID = 'payment-method-form'
+
+/** Create mode is static: a fresh object per render would rebuild the form's defaults. */
+const CREATE_MODE = { type: 'create' } as const
 
 interface PaymentMethodFormBodyProps {
-  mode: PaymentMethodFormMode
   onSuccess: (paymentMethod: PaymentMethodDetail) => void
   onCancel: () => void
 }
 
-/** Formats a raw numeric field's RHF value for a controlled `<input type="number">`. */
-function numberInputValue(value: number | null): string {
-  return value === null ? '' : String(value)
-}
-
 /**
- * The payment method create/edit form UI. `name`, `code`,
- * `payment_method_code`, `description`, `payment_instructions`,
- * `payment_days` and `is_active` are each wrapped in
- * `MetaField` (spec 0004): hidden means absent, non-editable means disabled,
- * `required` comes from the resolved `ResourcePermissions` — no hardcoded
- * permission logic lives here. `code`'s immutability after create (D-3) is
- * NOT a frontend decision: the backend's field-permission ceiling reports it
- * `editable: true` only when there is no model context (create), so on edit
- * `MetaField` disables it automatically — the same mechanism every other
- * field uses, no `isSystemRow`-style hardcoding needed here. `sort_order`
- * has no form field (D-1, server-managed). All non-render logic lives in
- * `usePaymentMethodForm`.
+ * The payment method create form as a replica of the detail (wave 3 of the
+ * "no edit pages" plan): the same rows, closed until clicked (Fatto/
+ * Ripristina, nothing saved per row), plus the create-only `code`; Salva
+ * validates and creates everything at once.
  */
-export function PaymentMethodFormBody({ mode, onSuccess, onCancel }: PaymentMethodFormBodyProps) {
+export function PaymentMethodFormBody({ onSuccess, onCancel }: PaymentMethodFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit } = usePaymentMethodForm({ mode, onSuccess })
-
-  const identityVisible =
-    fieldPermission('name').visible ||
-    fieldPermission('code').visible ||
-    fieldPermission('payment_method_code').visible ||
-    fieldPermission('description').visible ||
-    fieldPermission('payment_instructions').visible ||
-    fieldPermission('payment_days').visible ||
-    fieldPermission('is_active').visible
+  const { form, serverError, onSubmit } = usePaymentMethodForm({ mode: CREATE_MODE, onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const name = useWatch({ control: form.control, name: 'name' })
+  const heading = name.trim() || t('paymentMethods.form.createTitle')
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4 p-4"
-          noValidate
-        >
-          {identityVisible && (
-            <FormSection
-              icon={CreditCard}
-              title={t('paymentMethods.form.sections.identity.title')}
-              description={t('paymentMethods.form.sections.identity.description')}
-            >
-              <MetaField
-                control={form.control}
-                name="name"
-                metaKey="name"
-                label={t('paymentMethods.form.name')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="code"
-                metaKey="code"
-                label={t('paymentMethods.form.code')}
-                hint={mode.type === 'edit' ? t('paymentMethods.form.hints.codeLocked') : undefined}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="payment_method_code"
-                metaKey="payment_method_code"
-                label={t('paymentMethods.form.paymentMethodCode')}
-                hint={t('paymentMethods.form.hints.paymentMethodCode')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input
-                      autoComplete="off"
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={field.value ?? ''}
-                      onChange={(event) => field.onChange(event.target.value || null)}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="description"
-                metaKey="description"
-                label={t('paymentMethods.form.description')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Textarea
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={field.value ?? ''}
-                      onChange={(event) => field.onChange(event.target.value || null)}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="payment_instructions"
-                metaKey="payment_instructions"
-                label={t('paymentMethods.form.paymentInstructions')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Textarea
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={field.value ?? ''}
-                      onChange={(event) => field.onChange(event.target.value || null)}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="payment_days"
-                metaKey="payment_days"
-                label={t('paymentMethods.form.paymentDays')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="1"
-                      min={0}
-                      max={3650}
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={numberInputValue(field.value)}
-                      onChange={(event) =>
-                        field.onChange(
-                          event.target.value === '' ? null : Number(event.target.value),
-                        )
-                      }
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="is_active"
-                metaKey="is_active"
-                label={t('paymentMethods.form.isActive')}
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={disabled}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          <PaymentMethodRateFields control={form.control} />
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('paymentMethods.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting
-                ? t('paymentMethods.form.saving')
-                : t('paymentMethods.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+    <Form {...form}>
+      <RecordCreateLayout
+        formId={PAYMENT_METHOD_FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        title={heading}
+        subtitle={t('paymentMethods.form.createSubtitle')}
+        media={<DetailMonogram name={heading} icon={<CreditCard />} />}
+        isSubmitting={form.formState.isSubmitting}
+        serverError={serverError}
+        onCancel={onCancel}
+        labels={{
+          save: t('paymentMethods.form.save'),
+          saving: t('paymentMethods.form.saving'),
+          cancel: t('paymentMethods.form.cancel'),
+        }}
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('paymentMethods.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <PaymentMethodRows inline={draft} canEdit withCode />
+            </RecordFieldList>
+          </RecordSection>
+          <RecordSection title={t('paymentMethods.form.sections.installments.title')} full>
+            <RecordFieldList>
+              <PaymentMethodInstallmentRows inline={draft} canEdit />
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
+      </RecordCreateLayout>
+    </Form>
   )
 }

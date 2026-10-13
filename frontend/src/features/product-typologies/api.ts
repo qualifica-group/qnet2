@@ -8,6 +8,11 @@ import type {
   UpdateProductTypologyPayload,
 } from '@/features/product-typologies/types'
 
+/** Query key of a single product typology's detail, shared by the detail screen and its in-place saves. */
+export function productTypologyDetailQueryKey(id: number) {
+  return ['product-typologies', 'detail', id] as const
+}
+
 /**
  * Fetches a single product typology detail together with the actor's
  * authorization metadata for it (`permissions`, a top-level envelope sibling
@@ -34,17 +39,17 @@ export async function createProductTypology(
 /**
  * Partially updates a product typology (PATCH). `code` is never a key of
  * `UpdateProductTypologyPayload` (D-1): the backend rejects its mere presence
- * with 422 regardless of role. Returns the updated resource.
+ * with 422 regardless of role. Returns the saved record with the actor's
+ * permissions, so the in-place detail re-syncs on it as is.
  */
 export async function updateProductTypology(
   id: number,
   payload: UpdateProductTypologyPayload,
-): Promise<ProductTypologyDetail> {
-  const { data } = await apiClient.patch<ApiResponse<ProductTypologyDetail>>(
-    `/product-typologies/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<ProductTypologyDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<ProductTypologyDetail, ResourcePermissions>
+  >(`/product-typologies/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /**

@@ -1,161 +1,72 @@
-import { Percent, Shapes } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FormSection } from '@/components/form-section'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Form, FormControl } from '@/components/ui/form'
-import { ColorTokenPicker } from '@/features/custom-fields/components/color-token-picker'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
-import { SupplierCommissionFields } from '@/features/product-typologies/supplier-commission-fields'
+import { useWatch } from 'react-hook-form'
+import { Shapes } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
+import { Form } from '@/components/ui/form'
+import {
+  ProductTypologyCommissionRow,
+  ProductTypologyIdentityRows,
+} from '@/features/product-typologies/product-typology-rows'
 import { useProductTypologyForm } from '@/features/product-typologies/use-product-typology-form'
-import type {
-  ProductTypologyDetail,
-  ProductTypologyFormMode,
-} from '@/features/product-typologies/types'
+import type { ProductTypologyDetail } from '@/features/product-typologies/types'
+
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const PRODUCT_TYPOLOGY_FORM_ID = 'product-typology-form'
+
+/** Create mode is static: a fresh object per render would rebuild the form's defaults. */
+const CREATE_MODE = { type: 'create' } as const
 
 interface ProductTypologyFormBodyProps {
-  mode: ProductTypologyFormMode
   onSuccess: (productTypology: ProductTypologyDetail) => void
   onCancel: () => void
 }
 
 /**
- * The product typology create/edit form UI. `name`, `code` and
- * `description` are each wrapped in `MetaField` (spec 0004): hidden means
- * absent, non-editable means disabled, `required` comes from the resolved
- * `ResourcePermissions` — no hardcoded permission logic lives here. `code`'s
- * immutability after create (D-2) is NOT a frontend decision: the backend's
- * field-permission ceiling reports it `editable: true` only when there is no
- * model context (create), so on edit `MetaField` disables it automatically —
- * the same mechanism every other field uses. All non-render logic lives in
- * `useProductTypologyForm`.
+ * The product typology create form as a replica of the detail (wave 3 of the
+ * "no edit pages" plan): the same rows, closed until clicked (Fatto/
+ * Ripristina, nothing saved per row), plus the create-only `code`; Salva
+ * validates and creates everything at once.
  */
-export function ProductTypologyFormBody({ mode, onSuccess, onCancel }: ProductTypologyFormBodyProps) {
+export function ProductTypologyFormBody({ onSuccess, onCancel }: ProductTypologyFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit } = useProductTypologyForm({ mode, onSuccess })
-
-  const identityVisible =
-    fieldPermission('name').visible ||
-    fieldPermission('code').visible ||
-    fieldPermission('description').visible ||
-    fieldPermission('color').visible
-  const commissionVisible =
-    fieldPermission('supplier_commission_enabled').visible ||
-    fieldPermission('supplier_commission_direction').visible
+  const { form, serverError, onSubmit } = useProductTypologyForm({ mode: CREATE_MODE, onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const name = useWatch({ control: form.control, name: 'name' })
+  const heading = name.trim() || t('productTypologies.form.createTitle')
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4 p-4"
-          noValidate
-        >
-          {identityVisible && (
-            <FormSection
-              icon={Shapes}
-              title={t('productTypologies.form.sections.identity.title')}
-              description={t('productTypologies.form.sections.identity.description')}
-            >
-              <MetaField
-                control={form.control}
-                name="name"
-                metaKey="name"
-                label={t('productTypologies.form.name')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="code"
-                metaKey="code"
-                label={t('productTypologies.form.code')}
-                hint={mode.type === 'edit' ? t('productTypologies.form.hints.codeLocked') : undefined}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="color"
-                metaKey="color"
-                label={t('productTypologies.form.color')}
-              >
-                {({ field, disabled }) => (
-                  <FormControl>
-                    <ColorTokenPicker value={field.value} onChange={field.onChange} disabled={disabled} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="description"
-                metaKey="description"
-                label={t('productTypologies.form.description')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Textarea
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={field.value ?? ''}
-                      onChange={(event) => field.onChange(event.target.value || null)}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          {commissionVisible && (
-            <FormSection
-              icon={Percent}
-              title={t('productTypologies.form.sections.commission.title')}
-              description={t('productTypologies.form.sections.commission.description')}
-            >
-              <SupplierCommissionFields form={form} />
-            </FormSection>
-          )}
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('productTypologies.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting
-                ? t('productTypologies.form.saving')
-                : t('productTypologies.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+    <Form {...form}>
+      <RecordCreateLayout
+        formId={PRODUCT_TYPOLOGY_FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        title={heading}
+        subtitle={t('productTypologies.form.createSubtitle')}
+        media={<DetailMonogram name={heading} icon={<Shapes />} className="size-10 text-base [&>svg]:size-5" />}
+        isSubmitting={form.formState.isSubmitting}
+        serverError={serverError}
+        onCancel={onCancel}
+        labels={{
+          save: t('productTypologies.form.save'),
+          saving: t('productTypologies.form.saving'),
+          cancel: t('productTypologies.form.cancel'),
+        }}
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('productTypologies.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <ProductTypologyIdentityRows inline={draft} canEdit withCode />
+            </RecordFieldList>
+          </RecordSection>
+          <RecordSection title={t('productTypologies.form.sections.commission.title')} full>
+            <RecordFieldList>
+              <ProductTypologyCommissionRow inline={draft} canEdit />
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
+      </RecordCreateLayout>
+    </Form>
   )
 }

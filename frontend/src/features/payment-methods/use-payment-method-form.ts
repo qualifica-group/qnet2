@@ -6,7 +6,11 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createPaymentMethod, updatePaymentMethod } from '@/features/payment-methods/api'
+import {
+  createPaymentMethod,
+  paymentMethodDetailQueryKey,
+  updatePaymentMethod,
+} from '@/features/payment-methods/api'
 import {
   buildCreatePayload,
   buildUpdatePayload,
@@ -48,8 +52,9 @@ interface UsePaymentMethodFormArgs {
 
 /**
  * Owns every non-render concern of `PaymentMethodForm`: RHF/Zod wiring,
- * default values, server 422 mapping and the create/update submit. The
- * component stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * default values, server 422 mapping and the create/update submit. Create
+ * backs `PaymentMethodForm`; edit backs the detail's in-place rows (diff
+ * PATCH). The component stays UI-only; this hook is the orchestration point.
  */
 export function usePaymentMethodForm({ mode, onSuccess }: UsePaymentMethodFormArgs) {
   const { t } = useTranslation()
@@ -96,9 +101,13 @@ export function usePaymentMethodForm({ mode, onSuccess }: UsePaymentMethodFormAr
     }
   }, [mode])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<PaymentMethodFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: PaymentMethodFormValues) => {
@@ -110,7 +119,7 @@ export function usePaymentMethodForm({ mode, onSuccess }: UsePaymentMethodFormAr
           mode.paymentMethod.id,
           buildUpdatePayload(values, mode.paymentMethod),
         )
-        queryClient.setQueryData(['payment-methods', 'detail', mode.paymentMethod.id], saved)
+        queryClient.setQueryData(paymentMethodDetailQueryKey(mode.paymentMethod.id), saved)
         toast.success(t('paymentMethods.form.updated'))
         onSuccess(saved)
         return
@@ -128,8 +137,8 @@ export function usePaymentMethodForm({ mode, onSuccess }: UsePaymentMethodFormAr
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

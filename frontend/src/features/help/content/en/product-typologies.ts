@@ -48,6 +48,21 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'manage',
+      title: 'Create and edit',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Press **New product typology**.',
+            'The record opens with its rows closed: on each row press the pencil (or the value), fill it in and press **Done**; **Revert** puts the row back as it was. Then press **Save**.',
+            'There is no separate edit form: open the record with **View**, press the pencil on the row, change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.',
+            'The **Code** is entered only at creation. **Supplier commission calculation** and **Direction** are a single row: they open, save and cancel together.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'constraints',
       title: 'Constraints',
       blocks: [

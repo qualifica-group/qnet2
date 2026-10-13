@@ -2,39 +2,24 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { ProductTypologyForm } from '@/features/product-typologies/product-typology-form'
 import type { ProductTypologyDetailWithPermissions } from '@/features/product-typologies/types'
-import type { FieldPermission, ResourcePermissions } from '@/features/authorization/types'
+import type { ResourcePermissions } from '@/features/authorization/types'
+
+/**
+ * Wave 3 of the "no edit pages" plan (spec 0236): the form is create-only, a
+ * replica of the detail with its rows closed plus the create-only `code`; the
+ * in-place edits live in `product-typology-detail.test.tsx`.
+ */
 
 const createProductTypologyMock = vi.fn()
-const updateProductTypologyMock = vi.fn()
 
 vi.mock('@/features/product-typologies/api', () => ({
   createProductTypology: (...args: unknown[]) => createProductTypologyMock(...args),
-  updateProductTypology: (...args: unknown[]) => updateProductTypologyMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
-
-const EDITABLE: FieldPermission = {
-  visible: true,
-  hidden: false,
-  editable: true,
-  readonly: false,
-  required: false,
-  disabled: false,
-}
-
-const READONLY: FieldPermission = {
-  visible: true,
-  hidden: false,
-  editable: false,
-  readonly: true,
-  required: false,
-  disabled: false,
-}
 
 /** Every field editable, matching the create-context metadata (`code.editable === true` while `$model === null`). */
 const CREATE_PERMISSIONS: ResourcePermissions = {
@@ -43,23 +28,8 @@ const CREATE_PERMISSIONS: ResourcePermissions = {
   actions: {},
 }
 
-/** `code` readonly, everything else editable, matching an existing record's metadata (D-1). */
-const EDIT_PERMISSIONS: ResourcePermissions = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {
-    name: EDITABLE,
-    code: READONLY,
-    description: EDITABLE,
-    supplier_commission_enabled: EDITABLE,
-    supplier_commission_direction: EDITABLE,
-  },
-  actions: {},
-}
-
-let metaPermissions: ResourcePermissions = CREATE_PERMISSIONS
-
-vi.mock('@/features/product-typologies/use-product-typology-form-meta', () => ({
-  useProductTypologyFormMeta: () => ({ status: 'ready', permissions: metaPermissions }),
+vi.mock('@/features/authorization/use-resource-meta', () => ({
+  useResourceMeta: () => ({ data: { permissions: CREATE_PERMISSIONS }, isError: false, refetch: vi.fn() }),
 }))
 
 function wrapper() {
@@ -69,22 +39,33 @@ function wrapper() {
   )
 }
 
-function productTypology(
-  overrides: Partial<ProductTypologyDetailWithPermissions> = {},
-): ProductTypologyDetailWithPermissions {
+function productTypology(): ProductTypologyDetailWithPermissions {
   return {
     id: 9,
     name: 'Kilogram',
     code: 'kilogram',
-    description: 'Mass unit',
-    color: 'blue',
+    description: null,
+    color: 'gray',
     supplier_commission_enabled: false,
     supplier_commission_direction: null,
     created_at: null as unknown as string,
     updated_at: null as unknown as string,
-    permissions: EDIT_PERMISSIONS,
-    ...overrides,
+    permissions: CREATE_PERMISSIONS,
   }
+}
+
+/** Opens a closed row through its pencil. */
+function openRow(key: string) {
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t(key) }) }))
+}
+
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+
+function fillNameAndCode(name: string, code: string) {
+  openRow('productTypologies.form.name')
+  fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: name } })
+  openRow('productTypologies.form.code')
+  fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: code } })
 }
 
 beforeAll(async () => {
@@ -93,54 +74,46 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createProductTypologyMock.mockReset()
-  updateProductTypologyMock.mockReset()
-  metaPermissions = CREATE_PERMISSIONS
 })
 
 describe('ProductTypologyForm — create (spec 0099)', () => {
-  it('renders name, code and description', () => {
-    render(
-      <ProductTypologyForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('starts with every row closed; each opens on its own control', () => {
+    render(<ProductTypologyForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+
+    openRow('productTypologies.form.name')
     expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
+    openRow('productTypologies.form.code')
     expect(screen.getByLabelText(/^Code/)).toBeInTheDocument()
+    openRow('productTypologies.form.description')
     expect(screen.getByLabelText(/^Description/)).toBeInTheDocument()
   })
 
-  it('shows an accessible inline error and does not call the API when name is empty', async () => {
-    render(
-      <ProductTypologyForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('shows the error on the closed row and does not call the API when name is empty', async () => {
+    render(<ProductTypologyForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: 'kilogram' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
-    const nameInput = await screen.findByLabelText(/^Name/)
-    await waitFor(() => expect(nameInput).toHaveAttribute('aria-invalid', 'true'))
-    const describedBy = nameInput.getAttribute('aria-describedby')
-    expect(describedBy).toBeTruthy()
-    const message = screen.getByText('Name is required.')
-    expect(message).toHaveAttribute('role', 'alert')
-    expect(describedBy).toContain(message.id)
+    expect(await screen.findByText('Name is required.')).toHaveAttribute('role', 'alert')
+
+    openRow('productTypologies.form.name')
+    const nameInput = screen.getByLabelText(/^Name/)
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput.getAttribute('aria-describedby')).toBeTruthy()
     expect(createProductTypologyMock).not.toHaveBeenCalled()
   })
 
   it('starts with the gray color and sends the one picked (spec 0204 D-3)', async () => {
     createProductTypologyMock.mockResolvedValue(productTypology())
 
-    render(
-      <ProductTypologyForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    render(<ProductTypologyForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Kilogram' } })
-    fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: 'kilogram' } })
+    fillNameAndCode('Kilogram', 'kilogram')
+    openRow('productTypologies.form.color')
     fireEvent.click(screen.getByRole('button', { name: /gray/i }))
     fireEvent.click(await screen.findByRole('option', { name: 'Blue' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
     await waitFor(() => expect(createProductTypologyMock).toHaveBeenCalledWith(expect.objectContaining({ color: 'blue' })))
   })
@@ -149,14 +122,10 @@ describe('ProductTypologyForm — create (spec 0099)', () => {
     createProductTypologyMock.mockResolvedValue(productTypology())
     const onSuccess = vi.fn()
 
-    render(
-      <ProductTypologyForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    render(<ProductTypologyForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Kilogram' } })
-    fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: 'kilogram' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fillNameAndCode('Kilogram', 'kilogram')
+    save()
 
     await waitFor(() => expect(createProductTypologyMock).toHaveBeenCalledTimes(1))
     expect(createProductTypologyMock).toHaveBeenCalledWith({
@@ -173,123 +142,21 @@ describe('ProductTypologyForm — create (spec 0099)', () => {
 
 describe('ProductTypologyForm — supplier commission (spec 0202)', () => {
   it('hides the direction until the switch is on and requires it then', async () => {
-    render(
-      <ProductTypologyForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    render(<ProductTypologyForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    openRow('productTypologies.form.supplierCommissionEnabled')
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('switch', { name: /Supplier commission calculation/ }))
     expect(await screen.findByRole('combobox', { name: /Direction/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.apply') }))
 
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Ente' } })
-    fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: 'ente' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fillNameAndCode('Ente', 'ente')
+    save()
 
+    // The closed row carries the direction's message: the editor is gone.
     expect(
       await screen.findByText('The direction is required when the Supplier commission is enabled.'),
     ).toBeInTheDocument()
     expect(createProductTypologyMock).not.toHaveBeenCalled()
-  })
-
-  it('sends a null direction after switching the commission off', async () => {
-    metaPermissions = EDIT_PERMISSIONS
-    updateProductTypologyMock.mockResolvedValue(productTypology())
-
-    render(
-      <ProductTypologyForm
-        mode={{
-          type: 'edit',
-          productTypology: productTypology({
-            supplier_commission_enabled: true,
-            supplier_commission_direction: 'PAID',
-          }),
-        }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.click(screen.getByRole('switch', { name: /Supplier commission calculation/ }))
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateProductTypologyMock).toHaveBeenCalledTimes(1))
-    expect(updateProductTypologyMock.mock.calls[0][1]).toEqual({
-      supplier_commission_enabled: false,
-      supplier_commission_direction: null,
-    })
-  })
-})
-
-describe('ProductTypologyForm — edit (spec 0099, D-1)', () => {
-  it('hydrates every field and renders code disabled', () => {
-    metaPermissions = EDIT_PERMISSIONS
-
-    render(
-      <ProductTypologyForm
-        mode={{ type: 'edit', productTypology: productTypology() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.getByLabelText(/^Name/)).toHaveValue('Kilogram')
-    expect(screen.getByLabelText(/^Code/)).toHaveValue('kilogram')
-    expect(screen.getByLabelText(/^Code/)).toBeDisabled()
-    expect(screen.getByLabelText(/^Description/)).toHaveValue('Mass unit')
-  })
-
-  it('submits only the changed field on a partial update, never code', async () => {
-    metaPermissions = EDIT_PERMISSIONS
-    updateProductTypologyMock.mockResolvedValue(productTypology({ name: 'Kilograms' }))
-
-    render(
-      <ProductTypologyForm
-        mode={{ type: 'edit', productTypology: productTypology() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Kilograms' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateProductTypologyMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateProductTypologyMock.mock.calls[0]
-    expect(id).toBe(9)
-    expect(payload).toEqual({ name: 'Kilograms' })
-    expect(payload).not.toHaveProperty('code')
-  })
-
-  it('maps a server 422 onto the matching form field', async () => {
-    metaPermissions = EDIT_PERMISSIONS
-    updateProductTypologyMock.mockRejectedValue(
-      new AxiosError('Unprocessable', '422', undefined, undefined, {
-        status: 422,
-        data: {
-          success: false,
-          message: 'Validation failed',
-          errors: { name: ['Name already taken.'] },
-        },
-      } as never),
-    )
-
-    render(
-      <ProductTypologyForm
-        mode={{ type: 'edit', productTypology: productTypology() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Duplicate name' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(screen.getByText('Name already taken.')).toBeInTheDocument())
   })
 })

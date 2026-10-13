@@ -1,5 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
+import { fireEvent, render as renderWithoutClient, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { ProductTypologyDetailView } from '@/features/product-typologies/product-typology-detail'
@@ -7,14 +10,21 @@ import type { ProductTypologyDetailWithPermissions } from '@/features/product-ty
 
 /**
  * Spec 0088: the detail shows name (hero title), code (hero subtitle),
- * description and both timestamps, with the shared detail kit's
- * placeholder on the nullable description. Purely presentational (the caller
- * fetches and passes the detail down), so the Activity Log section gate is
- * exercised directly on the `permissions.actions.view_activity` prop
- * (mirrors `PaymentMethodDetailView`'s suite).
+ * color, description and both timestamps. Wave 3 of the "no edit pages" plan
+ * (spec 0236): every row edits in place, each save a PATCH of that field
+ * alone; `code` is immutable (D-2), so it is the hero subtitle and never a
+ * row. The Activity Log gate is exercised on `permissions.actions.view_activity`.
  */
 
 const activityLogSectionMock = vi.fn()
+const updateProductTypologyMock = vi.fn()
+
+vi.mock('@/features/product-typologies/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/product-typologies/api')>()),
+  updateProductTypology: (...args: unknown[]) => updateProductTypologyMock(...args),
+}))
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 vi.mock('@/features/activity-log/activity-log-section', () => ({
   ActivityLogSection: (props: { resource: string; id: number }) => {
@@ -45,20 +55,35 @@ function productTypology(
   }
 }
 
+/** One QueryClient per test: the in-place rows save through React Query. */
+function render(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return renderWithoutClient(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+  })
+}
+
+const pencilOf = (key: string) =>
+  screen.queryByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t(key) }) })
+
+const saveRow = () => fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.save') }))
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
 beforeEach(() => {
   activityLogSectionMock.mockReset()
+  updateProductTypologyMock.mockReset()
 })
 
 describe('ProductTypologyDetailView — detail fields', () => {
-  it('shows name, code, description and both timestamps', () => {
+  it('shows name, code, color, description and both timestamps', () => {
     render(<ProductTypologyDetailView productTypology={productTypology()} />)
 
     expect(screen.getByRole('heading', { name: 'Kilogram' })).toBeInTheDocument()
     expect(screen.getByText('kilogram')).toBeInTheDocument()
+    expect(screen.getByText('Blue')).toBeInTheDocument()
     expect(screen.getByText('Mass unit')).toBeInTheDocument()
     expect(screen.getByText(formatDateTime('2026-01-01T09:00:00Z'))).toBeInTheDocument()
     expect(screen.getByText(formatDateTime('2026-02-15T14:30:00Z'))).toBeInTheDocument()
@@ -93,21 +118,56 @@ describe('ProductTypologyDetailView — activity log section', () => {
   })
 })
 
-/** The Modifica action, gated by `onEdit` AND `permissions.resource.update`. */
-describe('ProductTypologyDetailView — edit action', () => {
-  it('shows Modifica when onEdit is supplied and the actor can update', () => {
-    render(<ProductTypologyDetailView productTypology={productTypology()} onEdit={vi.fn()} />)
-
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
-  })
-
-  it('hides Modifica when onEdit is absent', () => {
+describe('ProductTypologyDetailView — in-place editing', () => {
+  it('has no Edit button: every row is closed with its pencil, and code is not a row', () => {
     render(<ProductTypologyDetailView productTypology={productTypology()} />)
 
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(pencilOf('productTypologies.form.name')).toBeInTheDocument()
+    expect(pencilOf('productTypologies.form.supplierCommissionEnabled')).toBeInTheDocument()
+    expect(pencilOf('productTypologies.form.code')).not.toBeInTheDocument()
   })
 
-  it('hides Modifica when the actor cannot update the product typology', () => {
+  it('Save sends only the changed field, never code', async () => {
+    updateProductTypologyMock.mockResolvedValue(productTypology({ name: 'Kilograms' }))
+    render(<ProductTypologyDetailView productTypology={productTypology()} />)
+
+    fireEvent.click(pencilOf('productTypologies.form.name') as HTMLElement)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Kilograms' } })
+    saveRow()
+
+    await waitFor(() => expect(updateProductTypologyMock).toHaveBeenCalledWith(4, { name: 'Kilograms' }))
+  })
+
+  it('Cancel restores the row without calling the API', () => {
+    render(<ProductTypologyDetailView productTypology={productTypology()} />)
+
+    fireEvent.click(pencilOf('productTypologies.form.name') as HTMLElement)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Kilograms' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.cancel') }))
+
+    expect(screen.queryByText('Kilograms')).not.toBeInTheDocument()
+    expect(updateProductTypologyMock).not.toHaveBeenCalled()
+  })
+
+  it('maps a server 422 onto the open row', async () => {
+    updateProductTypologyMock.mockRejectedValue(
+      new AxiosError('Unprocessable', '422', undefined, undefined, {
+        status: 422,
+        data: { success: false, message: 'Validation failed', errors: { name: ['Name already taken.'] } },
+      } as never),
+    )
+    render(<ProductTypologyDetailView productTypology={productTypology()} />)
+
+    fireEvent.click(pencilOf('productTypologies.form.name') as HTMLElement)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Duplicate' } })
+    saveRow()
+
+    expect(await screen.findByText('Name already taken.')).toBeInTheDocument()
+  })
+
+  it('offers no pencil when update is not allowed', () => {
     render(
       <ProductTypologyDetailView
         productTypology={productTypology({
@@ -116,32 +176,24 @@ describe('ProductTypologyDetailView — edit action', () => {
             resource: { ...productTypology().permissions.resource, update: false },
           },
         })}
-        onEdit={vi.fn()}
       />,
     )
 
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-  })
-
-  it('calls onEdit when Modifica is clicked', () => {
-    const onEdit = vi.fn()
-    render(<ProductTypologyDetailView productTypology={productTypology()} onEdit={onEdit} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-
-    expect(onEdit).toHaveBeenCalledOnce()
+    expect(pencilOf('productTypologies.form.name')).not.toBeInTheDocument()
+    expect(pencilOf('productTypologies.form.supplierCommissionEnabled')).not.toBeInTheDocument()
   })
 })
 
-describe('ProductTypologyDetailView — supplier commission (spec 0202)', () => {
-  it('shows the switch as off and no direction when disabled', () => {
+describe('ProductTypologyDetailView — supplier commission row (spec 0202)', () => {
+  it('shows "No" and no direction when disabled', () => {
     render(<ProductTypologyDetailView productTypology={productTypology()} />)
 
     expect(screen.getByText('Supplier commission calculation')).toBeInTheDocument()
-    expect(screen.queryByText('Direction')).not.toBeInTheDocument()
+    expect(screen.getByText('No')).toBeInTheDocument()
+    expect(screen.queryByText(/Received|Paid/)).not.toBeInTheDocument()
   })
 
-  it('shows the direction label when enabled', () => {
+  it('shows the switch and the direction together in one closed value when enabled', () => {
     render(
       <ProductTypologyDetailView
         productTypology={productTypology({
@@ -151,7 +203,61 @@ describe('ProductTypologyDetailView — supplier commission (spec 0202)', () => 
       />,
     )
 
-    expect(screen.getByText('Direction')).toBeInTheDocument()
-    expect(screen.getByText('Received')).toBeInTheDocument()
+    expect(screen.getByText('Yes · Received')).toBeInTheDocument()
+  })
+
+  it('saves the switch and its direction as one row', async () => {
+    updateProductTypologyMock.mockResolvedValue(productTypology())
+    render(<ProductTypologyDetailView productTypology={productTypology()} />)
+
+    fireEvent.click(pencilOf('productTypologies.form.supplierCommissionEnabled') as HTMLElement)
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('switch', { name: /Supplier commission calculation/ }))
+    fireEvent.click(await screen.findByRole('combobox', { name: /Direction/ }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Paid' }))
+    saveRow()
+
+    await waitFor(() =>
+      expect(updateProductTypologyMock).toHaveBeenCalledWith(4, {
+        supplier_commission_enabled: true,
+        supplier_commission_direction: 'PAID',
+      }),
+    )
+  })
+
+  it('sends a null direction after switching the commission off', async () => {
+    updateProductTypologyMock.mockResolvedValue(productTypology())
+    render(
+      <ProductTypologyDetailView
+        productTypology={productTypology({
+          supplier_commission_enabled: true,
+          supplier_commission_direction: 'PAID',
+        })}
+      />,
+    )
+
+    fireEvent.click(pencilOf('productTypologies.form.supplierCommissionEnabled') as HTMLElement)
+    fireEvent.click(screen.getByRole('switch', { name: /Supplier commission calculation/ }))
+    saveRow()
+
+    await waitFor(() =>
+      expect(updateProductTypologyMock).toHaveBeenCalledWith(4, {
+        supplier_commission_enabled: false,
+        supplier_commission_direction: null,
+      }),
+    )
+  })
+
+  it('does not save an enabled commission without a direction', async () => {
+    render(<ProductTypologyDetailView productTypology={productTypology()} />)
+
+    fireEvent.click(pencilOf('productTypologies.form.supplierCommissionEnabled') as HTMLElement)
+    fireEvent.click(screen.getByRole('switch', { name: /Supplier commission calculation/ }))
+    saveRow()
+
+    expect(
+      await screen.findByText('The direction is required when the Supplier commission is enabled.'),
+    ).toBeInTheDocument()
+    expect(updateProductTypologyMock).not.toHaveBeenCalled()
   })
 })

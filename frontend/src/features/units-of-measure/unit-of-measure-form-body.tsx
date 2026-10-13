@@ -1,146 +1,64 @@
-import { Ruler } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FormSection } from '@/components/form-section'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Form, FormControl } from '@/components/ui/form'
-import { MetaField } from '@/features/authorization/MetaField'
-import { useResourcePermissions } from '@/features/authorization/permissions'
+import { useWatch } from 'react-hook-form'
+import { Ruler } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
+import { Form } from '@/components/ui/form'
+import { UnitOfMeasureRows } from '@/features/units-of-measure/unit-of-measure-rows'
 import { useUnitOfMeasureForm } from '@/features/units-of-measure/use-unit-of-measure-form'
-import type {
-  UnitOfMeasureDetail,
-  UnitOfMeasureFormMode,
-} from '@/features/units-of-measure/types'
+import type { UnitOfMeasureDetail } from '@/features/units-of-measure/types'
+
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const UNIT_OF_MEASURE_FORM_ID = 'unit-of-measure-form'
+
+/** Create mode is static: a fresh object per render would rebuild the form's defaults. */
+const CREATE_MODE = { type: 'create' } as const
 
 interface UnitOfMeasureFormBodyProps {
-  mode: UnitOfMeasureFormMode
   onSuccess: (unitOfMeasure: UnitOfMeasureDetail) => void
   onCancel: () => void
 }
 
 /**
- * The unit of measure create/edit form UI. `name`, `symbol`, `code` and
- * `description` are each wrapped in `MetaField` (spec 0004): hidden means
- * absent, non-editable means disabled, `required` comes from the resolved
- * `ResourcePermissions` — no hardcoded permission logic lives here. `code`'s
- * immutability after create (D-1) is NOT a frontend decision: the backend's
- * field-permission ceiling reports it `editable: true` only when there is no
- * model context (create), so on edit `MetaField` disables it automatically —
- * the same mechanism every other field uses. All non-render logic lives in
- * `useUnitOfMeasureForm`.
+ * The unit of measure create form as a replica of the detail (wave 3 of the
+ * "no edit pages" plan): the same rows, closed until clicked (Fatto/
+ * Ripristina, nothing saved per row), plus the create-only `code`; Salva
+ * validates and creates everything at once.
  */
-export function UnitOfMeasureFormBody({ mode, onSuccess, onCancel }: UnitOfMeasureFormBodyProps) {
+export function UnitOfMeasureFormBody({ onSuccess, onCancel }: UnitOfMeasureFormBodyProps) {
   const { t } = useTranslation()
-  const { field: fieldPermission } = useResourcePermissions()
-  const { form, serverError, onSubmit } = useUnitOfMeasureForm({ mode, onSuccess })
-
-  const identityVisible =
-    fieldPermission('name').visible ||
-    fieldPermission('symbol').visible ||
-    fieldPermission('code').visible ||
-    fieldPermission('description').visible
+  const { form, serverError, onSubmit } = useUnitOfMeasureForm({ mode: CREATE_MODE, onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const name = useWatch({ control: form.control, name: 'name' })
+  const heading = name.trim() || t('unitsOfMeasure.form.createTitle')
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4 p-4"
-          noValidate
-        >
-          {identityVisible && (
-            <FormSection
-              icon={Ruler}
-              title={t('unitsOfMeasure.form.sections.identity.title')}
-              description={t('unitsOfMeasure.form.sections.identity.description')}
-            >
-              <MetaField
-                control={form.control}
-                name="name"
-                metaKey="name"
-                label={t('unitsOfMeasure.form.name')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="symbol"
-                metaKey="symbol"
-                label={t('unitsOfMeasure.form.symbol')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="code"
-                metaKey="code"
-                label={t('unitsOfMeasure.form.code')}
-                hint={mode.type === 'edit' ? t('unitsOfMeasure.form.hints.codeLocked') : undefined}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-
-              <MetaField
-                control={form.control}
-                name="description"
-                metaKey="description"
-                label={t('unitsOfMeasure.form.description')}
-              >
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Textarea
-                      disabled={disabled}
-                      readOnly={readOnly}
-                      value={field.value ?? ''}
-                      onChange={(event) => field.onChange(event.target.value || null)}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                )}
-              </MetaField>
-            </FormSection>
-          )}
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('unitsOfMeasure.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting
-                ? t('unitsOfMeasure.form.saving')
-                : t('unitsOfMeasure.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+    <Form {...form}>
+      <RecordCreateLayout
+        formId={UNIT_OF_MEASURE_FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        title={heading}
+        subtitle={t('unitsOfMeasure.form.createSubtitle')}
+        media={<DetailMonogram name={heading} icon={<Ruler />} />}
+        isSubmitting={form.formState.isSubmitting}
+        serverError={serverError}
+        onCancel={onCancel}
+        labels={{
+          save: t('unitsOfMeasure.form.save'),
+          saving: t('unitsOfMeasure.form.saving'),
+          cancel: t('unitsOfMeasure.form.cancel'),
+        }}
+      >
+        <RecordSectionsGrid>
+          <RecordSection title={t('unitsOfMeasure.form.sections.identity.title')} full>
+            <RecordFieldList>
+              <UnitOfMeasureRows inline={draft} canEdit withCode />
+            </RecordFieldList>
+          </RecordSection>
+        </RecordSectionsGrid>
+      </RecordCreateLayout>
+    </Form>
   )
 }

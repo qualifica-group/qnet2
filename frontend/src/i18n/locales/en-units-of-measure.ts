@@ -21,10 +21,8 @@ export const unitsOfMeasure = {
   },
   detail: {
     title: 'Unit of measure details',
-    subtitle: 'Read-only view of the selected unit of measure.',
+    subtitle: 'Details of the selected unit of measure, editable in place.',
     loadError: 'Unable to load the unit of measure. Please try again.',
-    symbol: 'Symbol',
-    description: 'Description',
     created_at: 'Created at',
     updated_at: 'Updated at',
   },
@@ -57,14 +55,17 @@ export const unitsOfMeasure = {
     deleteError: 'Unable to delete the unit of measure. Please try again.',
     deleteForbidden: 'You cannot delete this unit of measure.',
     deleteInUse: 'Cannot delete: the unit of measure is used by a product or a quote line.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The unit of measure has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',
         description: 'Name, symbol, code and description.',
       },
-    },
-    hints: {
-      codeLocked: 'The code cannot be changed after creation.',
     },
   },
 }
