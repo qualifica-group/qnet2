@@ -21,7 +21,7 @@ import type {
   ProductsTableBlock,
   TextBlock,
 } from '@/features/document-layouts/layout-config'
-import type { DocumentLayoutModule } from '@/features/document-layouts/types'
+import { DOCUMENT_LAYOUT_MODULES, type DocumentLayoutModule } from '@/features/document-layouts/types'
 
 const TITLE_FONT_SIZE = 14
 const SPACE_SMALL_TWIPS = 120
@@ -132,4 +132,16 @@ export function createInvoiceLayoutStarter(): DocumentLayoutConfig {
 /** Initial config for a new layout of `module`: the starter for invoices, empty otherwise. */
 export function createStarterConfigForModule(module: DocumentLayoutModule): DocumentLayoutConfig {
   return module === 'invoices' ? createInvoiceLayoutStarter() : createEmptyDocumentLayoutConfig()
+}
+
+/**
+ * The config to hold after the create form's module changed: the new module's
+ * starter, but only while `current` is still untouched (any module's starter).
+ */
+export function configAfterModuleChange(current: DocumentLayoutConfig, module: DocumentLayoutModule): DocumentLayoutConfig {
+  const serialized = JSON.stringify(current)
+  const isPristine = DOCUMENT_LAYOUT_MODULES.some(
+    (candidate) => JSON.stringify(createStarterConfigForModule(candidate)) === serialized,
+  )
+  return isPristine ? createStarterConfigForModule(module) : current
 }

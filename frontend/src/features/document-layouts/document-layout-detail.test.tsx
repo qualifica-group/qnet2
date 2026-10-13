@@ -1,5 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
+import { fireEvent, render as renderWithoutClient, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { DocumentLayoutDetailView } from '@/features/document-layouts/document-layout-detail'
@@ -9,13 +12,30 @@ import { createEmptyDocumentLayoutConfig } from '@/features/document-layouts/lay
 /**
  * Spec 0069: the detail shows name, code, description, module, active and
  * default status, and both timestamps, with the shared detail kit's
- * placeholder on the nullable field. Purely presentational (the caller
- * fetches and passes the detail down), so the Activity Log section gate is
- * exercised directly on the `permissions.actions.view_activity` prop
- * (mirrors `PaymentMethodDetailView`'s suite). The block/zone `config` is
- * NOT rendered here — that surface belongs to the visual editor, a
- * different owner.
+ * placeholder on the nullable field. Wave 3 of the "no edit pages" plan:
+ * every row but the immutable module edits in place, each save a PATCH of
+ * that field alone, and the content (the visual editor) is one full-width
+ * row. The Activity Log section gate is exercised directly on the
+ * `permissions.actions.view_activity` prop.
  */
+
+const updateDocumentLayoutMock = vi.fn()
+
+vi.mock('@/features/document-layouts/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/document-layouts/api')>()),
+  updateDocumentLayout: (...args: unknown[]) => updateDocumentLayoutMock(...args),
+}))
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+vi.mock('@/features/document-layouts/variables-api', () => ({
+  useDocumentLayoutVariables: () => ({ data: { module: 'quotes', categories: [] }, isLoading: false }),
+}))
+vi.mock('@/features/document-layouts/editor/images/document-layout-images-api', () => ({
+  useDocumentLayoutImages: () => ({ data: [] }),
+  useUploadDocumentLayoutImage: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteDocumentLayoutImage: () => ({ mutate: vi.fn(), isPending: false }),
+}))
 
 const activityLogSectionMock = vi.fn()
 
@@ -51,12 +71,26 @@ function documentLayout(
   }
 }
 
+/** One QueryClient per test: the in-place rows save through React Query. */
+function render(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return renderWithoutClient(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+  })
+}
+
+const pencilOf = (key: string) =>
+  screen.queryByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t(key) }) })
+
+const saveRow = () => fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.save') }))
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
 beforeEach(() => {
   activityLogSectionMock.mockReset()
+  updateDocumentLayoutMock.mockReset()
 })
 
 describe('DocumentLayoutDetailView — detail fields (AC-134)', () => {
@@ -87,12 +121,6 @@ describe('DocumentLayoutDetailView — detail fields (AC-134)', () => {
 
     expect(screen.getAllByText('No')).toHaveLength(2)
   })
-
-  it('does not render an A4 preview of the config: that surface belongs to the visual editor', () => {
-    render(<DocumentLayoutDetailView documentLayout={documentLayout()} />)
-
-    expect(screen.queryByText(/preview/i)).not.toBeInTheDocument()
-  })
 })
 
 describe('DocumentLayoutDetailView — activity log section', () => {
@@ -117,20 +145,108 @@ describe('DocumentLayoutDetailView — activity log section', () => {
   })
 })
 
-describe('DocumentLayoutDetailView — edit action', () => {
-  it('shows the Edit button when update is allowed and onEdit is wired', () => {
-    render(<DocumentLayoutDetailView documentLayout={documentLayout()} onEdit={vi.fn()} />)
-
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
-  })
-
-  it('omits the Edit button when onEdit is absent', () => {
+describe('DocumentLayoutDetailView — in-place editing', () => {
+  it('has no Edit button: every row is closed, with its pencil, except the immutable module', () => {
     render(<DocumentLayoutDetailView documentLayout={documentLayout()} />)
 
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(i18n.t('documentLayouts.form.name'))).not.toBeInTheDocument()
+    expect(pencilOf('documentLayouts.form.name')).toBeInTheDocument()
+    expect(pencilOf('documentLayouts.form.isDefault')).toBeInTheDocument()
+    expect(pencilOf('documentLayouts.form.tabs.content')).toBeInTheDocument()
+    expect(pencilOf('documentLayouts.form.module')).not.toBeInTheDocument()
+    expect(pencilOf('documentLayouts.form.code')).not.toBeInTheDocument()
   })
 
-  it('omits the Edit button when update is not allowed', () => {
+  it('Save sends only the changed field, never code or module', async () => {
+    updateDocumentLayoutMock.mockResolvedValue(documentLayout({ name: 'Renamed' }))
+    render(<DocumentLayoutDetailView documentLayout={documentLayout()} />)
+
+    fireEvent.click(pencilOf('documentLayouts.form.name') as HTMLElement)
+    fireEvent.change(screen.getByLabelText(new RegExp(`^${i18n.t('documentLayouts.form.name')}`)), {
+      target: { value: 'Renamed' },
+    })
+    saveRow()
+
+    await waitFor(() => expect(updateDocumentLayoutMock).toHaveBeenCalledWith(7, { name: 'Renamed' }))
+  })
+
+  it('the content row opens the visual editor and saves the config alone', async () => {
+    updateDocumentLayoutMock.mockResolvedValue(documentLayout())
+    render(<DocumentLayoutDetailView documentLayout={documentLayout()} />)
+
+    fireEvent.click(pencilOf('documentLayouts.form.tabs.content') as HTMLElement)
+    fireEvent.pointerDown(screen.getAllByRole('button', { name: 'Add block' })[1], { button: 0, ctrlKey: false })
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Spacer' }))
+    saveRow()
+
+    await waitFor(() => expect(updateDocumentLayoutMock).toHaveBeenCalledTimes(1))
+    const [id, payload] = updateDocumentLayoutMock.mock.calls[0]
+    expect(id).toBe(7)
+    expect(Object.keys(payload)).toEqual(['config'])
+    expect(payload.config.body.blocks[0]).toMatchObject({ type: 'spacer' })
+  })
+
+  it('Cancel restores the row without calling the API', () => {
+    render(<DocumentLayoutDetailView documentLayout={documentLayout()} />)
+
+    fireEvent.click(pencilOf('documentLayouts.form.name') as HTMLElement)
+    fireEvent.change(screen.getByLabelText(new RegExp(`^${i18n.t('documentLayouts.form.name')}`)), {
+      target: { value: 'Renamed' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.cancel') }))
+
+    expect(screen.queryByText('Renamed')).not.toBeInTheDocument()
+    expect(updateDocumentLayoutMock).not.toHaveBeenCalled()
+  })
+
+  it('maps a server 422 onto the open row', async () => {
+    updateDocumentLayoutMock.mockRejectedValue(
+      new AxiosError('Unprocessable', '422', undefined, undefined, {
+        status: 422,
+        data: { success: false, message: 'Validation failed', errors: { name: ['Name already taken.'] } },
+      } as never),
+    )
+    render(<DocumentLayoutDetailView documentLayout={documentLayout()} />)
+
+    fireEvent.click(pencilOf('documentLayouts.form.name') as HTMLElement)
+    fireEvent.change(screen.getByLabelText(new RegExp(`^${i18n.t('documentLayouts.form.name')}`)), {
+      target: { value: 'Duplicate' },
+    })
+    saveRow()
+
+    expect(await screen.findByText('Name already taken.')).toBeInTheDocument()
+  })
+
+  it('maps a config path 422 onto the offending block of the open editor (AC-129)', async () => {
+    updateDocumentLayoutMock.mockRejectedValue(
+      new AxiosError('Unprocessable', '422', undefined, undefined, {
+        status: 422,
+        data: {
+          success: false,
+          message: 'Validation failed',
+          errors: { 'config.body.blocks.0.height': ['Height must be at least 1.'] },
+        },
+      } as never),
+    )
+    const layout = documentLayout()
+    layout.config = { ...layout.config, body: { blocks: [{ id: 's1', type: 'spacer', height: 12 }] } }
+    render(<DocumentLayoutDetailView documentLayout={layout} />)
+
+    fireEvent.click(pencilOf('documentLayouts.form.tabs.content') as HTMLElement)
+    fireEvent.pointerDown(screen.getAllByRole('button', { name: 'Add block' })[0], { button: 0, ctrlKey: false })
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Spacer' }))
+    saveRow()
+
+    await waitFor(() =>
+      expect(screen.getByText(i18n.t('documentLayouts.form.configValidationError'))).toBeInTheDocument(),
+    )
+    // The block added to the header comes first in the DOM; the refused one is the body's.
+    fireEvent.click(screen.getAllByText('Spacer (12pt)')[1])
+    expect(screen.getByText('Height must be at least 1.')).toBeInTheDocument()
+  })
+
+  it('offers no pencil when update is not allowed', () => {
     render(
       <DocumentLayoutDetailView
         documentLayout={documentLayout({
@@ -139,10 +255,10 @@ describe('DocumentLayoutDetailView — edit action', () => {
             resource: { ...documentLayout().permissions.resource, update: false },
           },
         })}
-        onEdit={vi.fn()}
       />,
     )
 
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(pencilOf('documentLayouts.form.name')).not.toBeInTheDocument()
+    expect(pencilOf('documentLayouts.form.tabs.content')).not.toBeInTheDocument()
   })
 })

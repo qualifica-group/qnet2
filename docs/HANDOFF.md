@@ -24,7 +24,48 @@
 - Da verificare: e2e reale legacy -> qnet-2 (warning attesi su codici ISO dei gruppi non previsti dalla norma della
   categoria). HANDOFF oltre 50 KB: archiviare le voci vecchie in `docs/handoff-archive/`.
 
-## ONDA 2 COMPLETATA IN PARALLELO: CATEGORIE PRODOTTO, RUOLI, CAMPI PERSONALIZZATI (spec 0229/0230/0231, 2026-10-12) — VERDE, NON COMMITTATO
+## ONDA 3: TABELLE DI IMPOSTAZIONE SENZA PAGINA DI MODIFICA, KIT CONDIVISO + 25 MODULI (spec 0233-0239, 2026-10-12) — VERDE, COMMITTATO (7 commit, uno per spec)
+
+- Richiesta utente: "ok procedi" (riapertura onda 3 dopo il riepilogo). Esclusi sempre Gestione richieste/iscritti,
+  Attiva, Gestione conti. Backend invariato (tutte le PATCH restituivano gia' `permissions`).
+- KIT (lead, spec 0233) in `components/record-form/`: `use-record-inline-edit.ts` (`useInlineEditingField` +
+  `useRecordInlineEdit`), `inline-rows.tsx` (`TextInlineRow` anche multiline, `NumberInlineRow`, `ColorInlineRow`,
+  `IconInlineRow`, `SwitchInlineRow`: valore chiuso letto dal form, stessa riga per dettaglio e bozza),
+  `record-create-layout.tsx` (`RecordCreateLayout`); `components/icon-picker-control.tsx` unico (via le 6 copie).
+  Pilota: Priorita' Task.
+- 6 agenti `frontend` a ownership disgiunta: 0234 cataloghi task (stati, tipologie, categorie, importanza; i18n
+  condiviso `*-task-lookups.ts`), 0235 stati (progetto, contratto, pagamento commessa, premio, tipi premio), 0236
+  commerciale (tipologie prodotto, unita' di misura, IVA, modalita' di pagamento), 0237 anagrafiche (tipi
+  referente, fonti, tag, settori, funzioni aziendali), 0238 organizzazione (societa', sedi aziendali, sedi
+  operative), 0239 documenti (layout, modelli email, pacchetti documenti). Contratto per modulo: `update*` con
+  `permissions` + `*DetailQueryKey`, form edit con `values`/`keepDirtyValues`/`clearServerError`, dettaglio con
+  righe del kit, creazione `RecordCreateLayout` + `useDraftInlineEdit`, wrapper solo creazione (`useResourceMeta`,
+  via i `use-*-form-meta.ts`), registry `generateEditRoute:false`/`formOwnsHeader:true`, `leaveConfirm`.
+- Scelte notevoli: righe di sistema/bloccate senza matita sui campi non modificabili; Codice solo creazione;
+  modalita' di pagamento con righe raggruppate (rate+giorni, fine mese+extra); tipologie prodotto commissione
+  fornitore+verso in una riga; layout documenti `config` ora valore del form, Contenuto = riga `block` (anteprima
+  A4 chiusa, editor aperto), modelli email Corpo = riga `block`; sedi operative cascata geo = una riga
+  (`city_id`); sedi aziendali hook diviso, banche riga a bozza, contatti/indirizzo/logo/predefinita immediati,
+  `personalDataServerErrorMessage` unificato; IVA ora mostra i campi personalizzati anche nel dettaglio.
+- Lead: voci quick-create aggiornate (via `mode` per i form solo creazione; Categorie prodotto conserva `mode`
+  con `parentId`); test `module-routes` (payment-methods senza `:id/edit`, requisito cambiato). FIX PRE-ESISTENTE
+  (lead, segnalato dagli agenti): `build-custom-fields-schema.ts` ogni campo `.optional()` -> un campo
+  personalizzato di testo mai toccato non blocca piu' la creazione (gli obbligatori restano rifiutati), test nuovi.
+  L'agente task-lookups ha tolto 2 chiavi da `task-lookups-i18n-parity.test.ts` (chiavi rimosse).
+- Verifica lead: `tsc -b --force` 0; Vitest completo 980 file / 7515 verdi (dopo l'allineamento di
+  `module-routes`); ESLint: 1 errore in `features/quotes/column-renderers.tsx` = lavoro dell'altra sessione, non
+  di questa voce. Browser (Playwright, solo lettura) su 25 moduli: nessun pulsante Modifica, matita apre/Annulla
+  chiude, `/edit` non trovata, 375 px ok, creazione a righe chiuse (layout/email: editor aperti per scelta; sedi
+  aziendali: aggiunte rapide contatti/indirizzo aperte come Anagrafiche); pilota e Priorita' creati/modificati/
+  eliminati davvero; token eliminati.
+- Manuale: guide in-app IT/EN di tutti i moduli (agenti); Claude Docs: paragrafo generale delle tabelle di
+  configurazione riscritto (modifica sul posto, creazione a righe chiuse), corrette le frasi su pulsante Modifica
+  della scheda, spostamento categorie e modifica prodotti. PDF da rigenerare.
+- Aperti: riga select del "gruppo" duplicata in 3 moduli stati (candidata `SelectInlineRow` nel kit);
+  `use-module-opener.tsx` ha ancora il ramo edit (`form.editTitle`) inutilizzato dai moduli migrati;
+  `business-function-detail.test.tsx` 332 righe (>300 soft).
+
+## ONDA 2 COMPLETATA IN PARALLELO: CATEGORIE PRODOTTO, RUOLI, CAMPI PERSONALIZZATI (spec 0229/0230/0231, 2026-10-12) — VERDE, COMMITTATO (a1c326f1, f7141cc9, 2667a0a5)
 
 - Richiesta utente: "committa, pero' usa gli agenti e velocizza le modifiche in parallelo". Tre agenti `frontend`
   a ownership disgiunta (cartella feature + locale + guida + spec propri); HANDOFF, manuale e commit al lead.
@@ -569,8 +610,7 @@
   PIANO CHIUSO ALL'ONDA 1 (utente 2026-10-12): onda 2 e onda 3 annullate, i moduli restanti tengono la pagina di
   modifica. Il tentativo su Fatture (spec 0224, 7b5edbb7) e' stato annullato da 8fec3019.
   ONDA 2 RIAPERTA (utente 2026-10-12, stesso giorno): Segnatempo (FATTO, 0226) -> Modelli di task (FATTO, 0227) -> Categorie prodotto (FATTO, 0229) ->
-  Ruoli (FATTO, 0230) -> Campi personalizzati (FATTO, 0231): ONDA 2 CHIUSA; esclusi Gestione richieste, Gestione iscritti, Attiva, Gestione conti; onda 3 resta
-  annullata.
+  Ruoli (FATTO, 0230) -> Campi personalizzati (FATTO, 0231): ONDA 2 CHIUSA; esclusi Gestione richieste, Gestione iscritti, Attiva, Gestione conti; onda 3 RIAPERTA e FATTA (spec 0233-0239).
 - Referenti (solo frontend, PATCH già con `permissions`): dettaglio a righe `RecordInlineField` (Dati anagrafici = una
   riga, Dettagli referente: Tipo, Ambito, Utente collegato, Note; campi personalizzati con `CustomFieldRecordSections`;
   Contatti/Indirizzi in persistenza immediata). Creazione = replica a righe chiuse (Fatto/Ripristina, telefono

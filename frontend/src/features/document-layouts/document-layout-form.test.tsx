@@ -2,12 +2,11 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { DocumentLayoutForm } from '@/features/document-layouts/document-layout-form'
 import { createEmptyDocumentLayoutConfig } from '@/features/document-layouts/layout-config-defaults'
 import type { DocumentLayoutDetailWithPermissions } from '@/features/document-layouts/types'
-import type { FieldPermission, ResourcePermissions } from '@/features/authorization/types'
+import type { ResourcePermissions } from '@/features/authorization/types'
 
 /**
  * The `documentLayouts` i18n namespace is owned by another teammate (spec
@@ -56,32 +55,12 @@ const documentLayoutsEn = {
 }
 
 const createDocumentLayoutMock = vi.fn()
-const updateDocumentLayoutMock = vi.fn()
 
 vi.mock('@/features/document-layouts/api', () => ({
   createDocumentLayout: (...args: unknown[]) => createDocumentLayoutMock(...args),
-  updateDocumentLayout: (...args: unknown[]) => updateDocumentLayoutMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
-
-const EDITABLE: FieldPermission = {
-  visible: true,
-  hidden: false,
-  editable: true,
-  readonly: false,
-  required: false,
-  disabled: false,
-}
-
-const READONLY: FieldPermission = {
-  visible: true,
-  hidden: false,
-  editable: false,
-  readonly: true,
-  required: false,
-  disabled: false,
-}
 
 /** Every field editable, matching the create-context metadata (`code`/`module` editable while `$model === null`). */
 const CREATE_PERMISSIONS: ResourcePermissions = {
@@ -90,25 +69,27 @@ const CREATE_PERMISSIONS: ResourcePermissions = {
   actions: {},
 }
 
-/** `code`/`module` readonly, everything else editable, matching an existing record's metadata. */
-const EDIT_PERMISSIONS: ResourcePermissions = {
-  resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
-  fields: {
-    name: EDITABLE,
-    code: READONLY,
-    description: EDITABLE,
-    module: READONLY,
-    is_active: EDITABLE,
-    is_default: EDITABLE,
-  },
-  actions: {},
-}
-
 let metaPermissions: ResourcePermissions = CREATE_PERMISSIONS
 
-vi.mock('@/features/document-layouts/use-document-layout-form-meta', () => ({
-  useDocumentLayoutFormMeta: () => ({ status: 'ready', permissions: metaPermissions }),
+vi.mock('@/features/authorization/use-resource-meta', () => ({
+  useResourceMeta: () => ({ data: { permissions: metaPermissions }, isError: false, refetch: vi.fn() }),
 }))
+
+vi.mock('@/features/document-layouts/variables-api', () => ({
+  useDocumentLayoutVariables: () => ({ data: { module: 'quotes', categories: [] }, isLoading: false }),
+}))
+vi.mock('@/features/document-layouts/editor/images/document-layout-images-api', () => ({
+  useDocumentLayoutImages: () => ({ data: [] }),
+  useUploadDocumentLayoutImage: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteDocumentLayoutImage: () => ({ mutate: vi.fn(), isPending: false }),
+}))
+
+/** Opens a closed row through its pencil. */
+function openRow(label: string) {
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: label }) }))
+}
+
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -133,7 +114,7 @@ function documentLayout(
     images: [],
     created_at: null as unknown as string,
     updated_at: null as unknown as string,
-    permissions: EDIT_PERMISSIONS,
+    permissions: CREATE_PERMISSIONS,
     ...overrides,
   }
 }
@@ -145,41 +126,44 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createDocumentLayoutMock.mockReset()
-  updateDocumentLayoutMock.mockReset()
   metaPermissions = CREATE_PERMISSIONS
 })
 
 describe('DocumentLayoutForm — create (spec 0069, AC-113)', () => {
-  it('renders name, code, description, module, is_active and is_default', () => {
-    render(
-      <DocumentLayoutForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('starts with every row closed and the content editor open', () => {
+    render(<DocumentLayoutForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    expect(screen.queryByRole('textbox', { name: /^Name/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Header')).toBeInTheDocument()
+
+    openRow('Name')
     expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
+  })
+
+  it('opens code, module and the switches from their rows', () => {
+    render(<DocumentLayoutForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
+
+    openRow('Code')
     expect(screen.getByLabelText(/^Code/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/^Description/)).toBeInTheDocument()
+    openRow('Module')
     expect(screen.getByRole('combobox', { name: 'Module' })).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Active' })).toBeChecked()
+    openRow('Default')
     expect(screen.getByRole('switch', { name: 'Default' })).not.toBeChecked()
   })
 
-  it('shows an accessible inline error and does not call the API when name is empty', async () => {
-    render(
-      <DocumentLayoutForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('shows the error on the closed row, wires the aria triad and does not call the API when name is empty', async () => {
+    render(<DocumentLayoutForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    openRow('Code')
     fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: 'standard_quote' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
-    const nameInput = await screen.findByLabelText(/^Name/)
-    await waitFor(() => expect(nameInput).toHaveAttribute('aria-invalid', 'true'))
-    const describedBy = nameInput.getAttribute('aria-describedby')
-    expect(describedBy).toBeTruthy()
-    const message = screen.getByText('Name is required.')
-    expect(message).toHaveAttribute('role', 'alert')
-    expect(describedBy).toContain(message.id)
+    expect(await screen.findByText('Name is required.')).toHaveAttribute('role', 'alert')
+
+    openRow('Name')
+    const nameInput = screen.getByLabelText(/^Name/)
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput.getAttribute('aria-describedby')).toBeTruthy()
     expect(createDocumentLayoutMock).not.toHaveBeenCalled()
   })
 
@@ -187,14 +171,13 @@ describe('DocumentLayoutForm — create (spec 0069, AC-113)', () => {
     createDocumentLayoutMock.mockResolvedValue(documentLayout())
     const onSuccess = vi.fn()
 
-    render(
-      <DocumentLayoutForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    render(<DocumentLayoutForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    openRow('Name')
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Standard quote layout' } })
+    openRow('Code')
     fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: 'standard_quote' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
     await waitFor(() => expect(createDocumentLayoutMock).toHaveBeenCalledTimes(1))
     expect(createDocumentLayoutMock).toHaveBeenCalledWith({
@@ -207,80 +190,5 @@ describe('DocumentLayoutForm — create (spec 0069, AC-113)', () => {
       is_default: false,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(documentLayout()))
-  })
-})
-
-describe('DocumentLayoutForm — edit (spec 0069, AC-114)', () => {
-  it('hydrates every field and renders code/module disabled', () => {
-    metaPermissions = EDIT_PERMISSIONS
-
-    render(
-      <DocumentLayoutForm
-        mode={{ type: 'edit', documentLayout: documentLayout() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.getByLabelText(/^Name/)).toHaveValue('Standard quote layout')
-    expect(screen.getByLabelText(/^Code/)).toHaveValue('standard_quote')
-    expect(screen.getByLabelText(/^Code/)).toBeDisabled()
-    expect(screen.getByRole('combobox', { name: 'Module' })).toBeDisabled()
-    expect(screen.getByLabelText(/^Description/)).toHaveValue('The default quote layout')
-    expect(screen.getByRole('switch', { name: 'Default' })).toBeChecked()
-  })
-
-  it('submits only the changed field on a partial update, never code or module', async () => {
-    metaPermissions = EDIT_PERMISSIONS
-    updateDocumentLayoutMock.mockResolvedValue(documentLayout({ name: 'Renamed layout' }))
-
-    render(
-      <DocumentLayoutForm
-        mode={{ type: 'edit', documentLayout: documentLayout() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Renamed layout' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(updateDocumentLayoutMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateDocumentLayoutMock.mock.calls[0]
-    expect(id).toBe(9)
-    expect(payload).toEqual({ name: 'Renamed layout' })
-    expect(payload).not.toHaveProperty('code')
-    expect(payload).not.toHaveProperty('module')
-    expect(payload).not.toHaveProperty('config')
-  })
-
-  it('maps a server 422 onto the matching form field', async () => {
-    metaPermissions = EDIT_PERMISSIONS
-    updateDocumentLayoutMock.mockRejectedValue(
-      new AxiosError('Unprocessable', '422', undefined, undefined, {
-        status: 422,
-        data: {
-          success: false,
-          message: 'Validation failed',
-          errors: { name: ['Name already taken.'] },
-        },
-      } as never),
-    )
-
-    render(
-      <DocumentLayoutForm
-        mode={{ type: 'edit', documentLayout: documentLayout() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Duplicate name' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(screen.getByText('Name already taken.')).toBeInTheDocument())
   })
 })

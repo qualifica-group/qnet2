@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0239-document-modules-inline-editable-detail" status="approved" owner="utente" date="2026-10-12">
+
+  <goal>
+    Onda 3 del piano "nessuna pagina di modifica" (spec 0233): Layout documenti, Modelli email e Modelli documenti
+    perdono la pagina di modifica. Il dettaglio si edita sul posto riga per riga; la creazione e' una replica del
+    dettaglio.
+  </goal>
+
+  <context>
+    - D-1: kit condiviso della spec 0233 (`useInlineEditingField`, `useRecordInlineEdit`, righe del kit,
+      `RecordCreateLayout`, `useDraftInlineEdit`, `useFormLeaveGuard`); nessuna modifica backend (i PATCH parziali
+      esistono gia' e rispondono con `permissions`).
+    - D-2: i campi bloccati dopo la creazione restano solo-creazione: `module` dei Modelli email, `code` e `module`
+      dei Layout; sul dettaglio sono righe semplici senza matita.
+    - D-3: gli editor complessi sono UNA riga a tutta larghezza (`layout="block"`): il corpo del Modello email
+      (editor di testo ricco + pannello segnaposto, chiave `body`) e il contenuto del Layout (editor visuale a blocchi,
+      chiave `config`, valore chiuso = anteprima A4). La matita apre lo stesso editor della creazione, Salva invia il
+      solo campo. Nella creazione restano APERTI (precedente 0197/0227).
+    - D-4: l'oggetto del Modello email e' una riga con il suo editor (input + pannello segnaposto sul cursore).
+    - D-5: nei Layout `config` e' un valore del form (non piu' stato a parte) cosi' Annulla/Ripristina lo ripristinano
+      come ogni altro campo; cambiare `module` in creazione sostituisce lo starter finche' il contenuto non e' toccato.
+    - D-6: i Modelli documenti non hanno editor complessi: tre righe (Nome, Descrizione, Attivo); i file restano nella
+      sezione `DocumentsSection` del dettaglio (caricamento invariato, non fa parte della creazione).
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica.</backend>
+    <frontend>
+      Registry `document-layouts`, `email-templates`, `document-bundles`: `generateEditRoute: false`,
+      `detailOwnsEditAction: true`, `formOwnsHeader: true`; le viste di dettaglio perdono `onEdit`, guadagnano
+      `onChanged`; `update*` restituisce il dettaglio con `permissions`; nuove `*DetailQueryKey`. Form hook con
+      `values` + `resetOptions.keepDirtyValues` e `clearServerError`; `buildUpdatePayload` dei Layout non riceve piu'
+      `config` a parte. Rimossi `use-*-form-meta.ts`, la mode `edit` dai form wrapper, i tab del form Layout.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `:id/edit` ne' pulsante Modifica nei tre moduli.</ac>
+    <ac id="AC-002">Ogni riga salva solo il proprio campo; Annulla/Esc non chiamano; 422 sulla riga; senza `update`
+      nessuna matita.</ac>
+    <ac id="AC-003">Modello email: la matita del Corpo apre l'editor con i segnaposto e salva il solo `body`.</ac>
+    <ac id="AC-004">Layout: la matita del Contenuto apre l'editor visuale e salva il solo `config`; un 422 su
+      `config.*` evidenzia il blocco nell'editor aperto.</ac>
+    <ac id="AC-005">Creazione a righe chiuse con Fatto/Ripristina, editor di Corpo/Contenuto aperti, Salva valida tutto,
+      uscita con conferma.</ac>
+    <ac id="AC-006">Guide in-app IT/EN `document-layouts`, `email-templates`, `document-bundles` aggiornate.</ac>
+  </acceptance>
+</spec>

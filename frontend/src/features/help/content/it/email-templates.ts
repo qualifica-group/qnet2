@@ -27,13 +27,22 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Apri **Configurazione › Modelli email** e premi **Nuovo modello email**.',
-            'Compila **Nome**, **Modulo** e **Oggetto**.',
-            "Scrivi il **Corpo** con l'editor di testo: niente immagini, non sono ammesse nel corpo delle email.",
-            "Se serve, aggiungi una **Descrizione** a uso interno e imposta **Attivo**.",
-            'Salva il modello.',
+            "Si apre la scheda con le righe chiuse: per **Nome**, **Modulo**, **Oggetto**, **Descrizione** e **Attivo** premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com'era.",
+            "Il **Corpo** è già aperto: scrivilo con l'editor di testo (niente immagini, non sono ammesse nel corpo delle email).",
+            'Premi **Salva**: il modello viene creato con tutto insieme.',
           ],
         },
         { type: 'warning', text: 'Dopo la creazione il **Modulo** non si modifica più.' },
+      ],
+    },
+    {
+      id: 'edit-template',
+      title: 'Modificare un modello',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Non c'è un modulo di modifica a parte: apri il modello con **Visualizza**, premi la matita sulla riga (**Nome**, **Oggetto**, **Descrizione**, **Attivo**), cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com'era. Il **Corpo** è una riga a tutta larghezza: la matita apre lo stesso editor della creazione, con il pannello dei segnaposto, e **Salva** registra solo il corpo.",
+        },
       ],
     },
     {

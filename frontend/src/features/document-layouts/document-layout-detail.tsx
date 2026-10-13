@@ -1,39 +1,76 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileText } from 'lucide-react'
-import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
+import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
   RecordCanvas,
   RecordCardHeader,
-  RecordField,
   RecordFieldList,
   RecordMeta,
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
+import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
+import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { DocumentLayoutContentRow } from '@/features/document-layouts/document-layout-content'
+import { DocumentLayoutRows } from '@/features/document-layouts/document-layout-rows'
+import {
+  useDocumentLayoutForm,
+  type DocumentLayoutFormValues,
+} from '@/features/document-layouts/use-document-layout-form'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import type { DocumentLayoutDetailWithPermissions } from '@/features/document-layouts/types'
+import type {
+  DocumentLayoutDetailWithPermissions,
+  DocumentLayoutFormMode,
+} from '@/features/document-layouts/types'
 
 interface DocumentLayoutDetailViewProps {
   documentLayout: DocumentLayoutDetailWithPermissions
-  /** Opens the module's existing edit surface (sheet or page); absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the record (spec 0195 D-7). */
+  onChanged?: () => void
 }
 
 /**
- * Read-only detail of a single document layout's METADATA (name/code/
- * description/module/active/default — spec 0069 wave 1), rendered as an
- * enterprise-CRM record (Opportunita' reference kit): the identity/fields
- * card on the left, the Attivita' tab on the right when authorized, a
- * metadata footer. It deliberately does NOT render the block/zone `config`
- * or an A4 preview: that surface belongs to the visual editor
- * (`features/document-layouts/editor/`), a different owner.
+ * Detail of a single document layout on the record kit: identity band, the
+ * "Dettagli" rows, the content as one full-width row (an A4 preview until its
+ * pencil opens the visual editor), the Attivita' tab on the right when
+ * authorized, a metadata footer. There is no edit page (wave 3 of the "no
+ * edit pages" plan): every row edits IN PLACE, one at a time, each save a
+ * PATCH of that field alone. `code` and `module` are immutable after create.
  */
-export function DocumentLayoutDetailView({ documentLayout, onEdit }: DocumentLayoutDetailViewProps) {
+export function DocumentLayoutDetailView(props: DocumentLayoutDetailViewProps) {
+  // The rows read the field permissions, so the provider wraps the whole detail.
+  return (
+    <ResourcePermissionsProvider permissions={props.documentLayout.permissions}>
+      <DocumentLayoutDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function DocumentLayoutDetailContent({ documentLayout, onChanged }: DocumentLayoutDetailViewProps) {
   const { t } = useTranslation()
+  const editing = useInlineEditingField()
+  // Stable per saved record: the form re-syncs its values on a new one.
+  const mode = useMemo<DocumentLayoutFormMode>(() => ({ type: 'edit', documentLayout }), [documentLayout])
+  const { form, onSubmit, serverError, clearServerError, configErrors } = useDocumentLayoutForm({
+    mode,
+    onSuccess: () => {
+      editing.close()
+      onChanged?.()
+    },
+  })
+  const inline = useRecordInlineEdit<DocumentLayoutFormValues>({
+    editing,
+    form,
+    onSubmit,
+    serverError,
+    clearServerError,
+    genericErrorMessage: t('documentLayouts.form.genericError'),
+  })
   const canEdit = documentLayout.permissions.resource.update
   const createdAt = formatDateTime(documentLayout.created_at)
   const updatedAt = formatDateTime(documentLayout.updated_at)
@@ -51,28 +88,27 @@ export function DocumentLayoutDetailView({ documentLayout, onEdit }: DocumentLay
             media={<DetailMonogram name={documentLayout.name} icon={<FileText />} />}
             title={documentLayout.name}
             subtitle={documentLayout.code}
-            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
         }
       >
-        <RecordSectionsGrid>
-          <RecordSection title={t('documentLayouts.form.sections.identity.title')} full>
-            <RecordFieldList>
-              <RecordField label={t('documentLayouts.detail.description')}>
-                {documentLayout.description ? documentLayout.description : <DetailEmpty />}
-              </RecordField>
-              <RecordField label={t('documentLayouts.detail.module')}>
-                {documentLayout.module_label}
-              </RecordField>
-              <RecordField label={t('documentLayouts.detail.isActive')}>
-                {documentLayout.is_active ? t('common.yes') : t('common.no')}
-              </RecordField>
-              <RecordField label={t('documentLayouts.detail.isDefault')}>
-                {documentLayout.is_default ? t('common.yes') : t('common.no')}
-              </RecordField>
-            </RecordFieldList>
-          </RecordSection>
-        </RecordSectionsGrid>
+        {/* Provider only (no DOM): the in-place rows share the edit form. */}
+        <Form {...form}>
+          <RecordSectionsGrid>
+            <RecordSection title={t('documentLayouts.form.sections.identity.title')} full>
+              <RecordFieldList>
+                <DocumentLayoutRows inline={inline} canEdit={canEdit} creating={false} />
+              </RecordFieldList>
+            </RecordSection>
+            <RecordSection title={t('documentLayouts.form.tabs.content')} full>
+              <DocumentLayoutContentRow
+                inline={inline}
+                canEdit={canEdit}
+                layoutId={documentLayout.id}
+                configErrors={configErrors}
+              />
+            </RecordSection>
+          </RecordSectionsGrid>
+        </Form>
       </RecordBody>
 
       <RecordMeta>

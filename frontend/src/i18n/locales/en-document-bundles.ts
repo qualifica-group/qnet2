@@ -21,8 +21,6 @@ export const documentBundles = {
     title: 'Document bundle details',
     subtitle: 'Read-only view of the selected bundle.',
     loadError: 'Unable to load the document bundle. Please retry.',
-    description: 'Description',
-    isActive: 'Active',
     filesCount: 'Files',
     created_at: 'Created at',
     updated_at: 'Updated at',
@@ -49,6 +47,12 @@ export const documentBundles = {
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the document bundle. Please retry.',
     deleteForbidden: 'You cannot delete this document bundle.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The document bundle has not been created yet: the data you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     sections: {
       identity: {
         title: 'Details',

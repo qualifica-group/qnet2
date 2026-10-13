@@ -27,14 +27,24 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Open **Configuration › Document bundles** and press **New document bundle**.',
-            'Fill in **Name** and, if needed, **Description**; set **Active**.',
-            'Save the bundle.',
+            'The sheet opens with closed rows: for **Name**, **Description** and **Active** press the pencil (or the value), fill in and press **Done**; **Revert** puts the row back as it was.',
+            'Press **Save**: the bundle is created with all the rows at once.',
             "On the bundle's detail, in the **Files** tab, drag one or more files onto the upload area or click it to pick them.",
           ],
         },
         {
           type: 'tip',
           text: 'The number of uploaded files shows in the table\'s **Files** column; remove a file from the detail with the trash icon on its row.',
+        },
+      ],
+    },
+    {
+      id: 'edit-bundle',
+      title: 'Editing a bundle',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'There is no separate edit form: open the bundle with **View**, press the pencil on the row, change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was. One row is open at a time.',
         },
       ],
     },

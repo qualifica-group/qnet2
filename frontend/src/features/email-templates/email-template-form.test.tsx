@@ -2,7 +2,6 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { forwardRef, useImperativeHandle, type ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { EmailTemplateForm } from '@/features/email-templates/email-template-form'
 import type { EmailTemplateWithPermissions } from '@/features/email-templates/types'
@@ -14,6 +13,10 @@ import type { FieldPermission, ResourcePermissions } from '@/features/authorizat
  * picker, which inserts `{category.key}` into the subject caret and the body
  * editor selection via two independent instances.
  *
+ * Wave 3 of the "no edit pages" plan: the form is create-only, a replica of
+ * the detail with the header rows closed and the body editor open (the
+ * in-place edits live in `email-template-detail.test.tsx`).
+ *
  * Labels are resolved through `i18n.t` rather than hardcoded English.
  * Tiptap itself is covered end to end by `rich-text-editor.test.tsx`; only
  * the wiring matters here (value/onChange/disabled/ref), same stand-in as
@@ -21,11 +24,9 @@ import type { FieldPermission, ResourcePermissions } from '@/features/authorizat
  */
 
 const createEmailTemplateMock = vi.fn()
-const updateEmailTemplateMock = vi.fn()
 
 vi.mock('@/features/email-templates/api', () => ({
   createEmailTemplate: (...args: unknown[]) => createEmailTemplateMock(...args),
-  updateEmailTemplate: (...args: unknown[]) => updateEmailTemplateMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
@@ -92,8 +93,8 @@ const ALL_EDITABLE: ResourcePermissions = {
 
 let metaPermissions: ResourcePermissions = ALL_EDITABLE
 
-vi.mock('@/features/email-templates/use-email-template-form-meta', () => ({
-  useEmailTemplateFormMeta: () => ({ status: 'ready', permissions: metaPermissions }),
+vi.mock('@/features/authorization/use-resource-meta', () => ({
+  useResourceMeta: () => ({ data: { permissions: metaPermissions }, isError: false, refetch: vi.fn() }),
 }))
 
 /** A QueryClient per test, never per render: a shared cache makes suites flaky. */
@@ -103,6 +104,15 @@ function wrapper() {
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   )
 }
+
+/** Opens a closed row through its pencil. */
+function openRow(key: string) {
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: i18n.t(key) }) }))
+}
+
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: i18n.t('emailTemplates.form.save') })[0])
+
+const pickers = () => screen.getAllByRole('button', { name: i18n.t('emailTemplates.form.variablesPicker') })
 
 /** Anchors a translated label so a required field's trailing marker does not break the match. */
 function labelFor(key: string): RegExp {
@@ -133,53 +143,47 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createEmailTemplateMock.mockReset()
-  updateEmailTemplateMock.mockReset()
   metaPermissions = ALL_EDITABLE
 })
 
 describe('EmailTemplateForm — create (spec 0175)', () => {
-  it('renders the name, module, subject and body controls', () => {
-    render(<EmailTemplateForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('starts with the header rows closed and the body editor open', () => {
+    render(<EmailTemplateForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    expect(screen.getByLabelText(labelFor('emailTemplates.form.name'))).toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(screen.getByLabelText(labelFor('emailTemplates.form.body'))).toBeInTheDocument()
+    expect(pickers()).toHaveLength(1)
+
+    openRow('emailTemplates.form.module')
     expect(screen.getByRole('combobox', { name: labelFor('emailTemplates.form.module') })).toBeInTheDocument()
-    expect(screen.getByLabelText(labelFor('emailTemplates.form.subject'))).toBeInTheDocument()
-    expect(
-      screen.getAllByRole('button', { name: i18n.t('emailTemplates.form.variablesPicker') }),
-    ).toHaveLength(2)
   })
 
-  it('shows an accessible inline error and does not call the API when name is empty', async () => {
-    render(<EmailTemplateForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+  it('shows the error on the closed row, wires the aria triad and does not call the API when name is empty', async () => {
+    render(<EmailTemplateForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('emailTemplates.form.save') }))
+    save()
 
-    const nameInput = await screen.findByLabelText(labelFor('emailTemplates.form.name'))
-    await waitFor(() => expect(nameInput).toHaveAttribute('aria-invalid', 'true'))
-    const describedBy = nameInput.getAttribute('aria-describedby')
-    expect(describedBy).toBeTruthy()
-    const message = screen.getByText(i18n.t('emailTemplates.form.nameRequired'))
-    expect(message).toHaveAttribute('role', 'alert')
-    expect(describedBy).toContain(message.id)
+    expect(await screen.findByText(i18n.t('emailTemplates.form.nameRequired'))).toHaveAttribute('role', 'alert')
+
+    openRow('emailTemplates.form.name')
+    const nameInput = screen.getByLabelText(labelFor('emailTemplates.form.name'))
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput.getAttribute('aria-describedby')).toBeTruthy()
     expect(createEmailTemplateMock).not.toHaveBeenCalled()
   })
 
   it('blocks the submit while the body is empty (D-11: required rich text)', async () => {
-    render(<EmailTemplateForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<EmailTemplateForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    openRow('emailTemplates.form.name')
     fireEvent.change(screen.getByLabelText(labelFor('emailTemplates.form.name')), {
       target: { value: 'Follow-up' },
     })
+    openRow('emailTemplates.form.subject')
     fireEvent.change(screen.getByLabelText(labelFor('emailTemplates.form.subject')), {
       target: { value: 'Update' },
     })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('emailTemplates.form.save') }))
+    save()
 
     await waitFor(() =>
       expect(screen.getByText(i18n.t('emailTemplates.form.bodyRequired'))).toBeInTheDocument(),
@@ -188,56 +192,48 @@ describe('EmailTemplateForm — create (spec 0175)', () => {
   })
 
   it('the subject picker inserts the token at the input caret', async () => {
-    render(<EmailTemplateForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<EmailTemplateForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    openRow('emailTemplates.form.subject')
     const subjectInput = screen.getByLabelText(labelFor('emailTemplates.form.subject')) as HTMLInputElement
     fireEvent.change(subjectInput, { target: { value: 'Hello world' } })
     subjectInput.setSelectionRange(5, 5)
     fireEvent.select(subjectInput)
 
-    const [subjectPickerTrigger] = screen.getAllByRole('button', {
-      name: i18n.t('emailTemplates.form.variablesPicker'),
-    })
-    fireEvent.click(subjectPickerTrigger)
+    // Document order: the subject row's picker comes before the body's.
+    fireEvent.click(pickers()[0])
     fireEvent.click(await screen.findByRole('button', { name: /Codice/ }))
 
     expect(subjectInput).toHaveValue('Hello{work_order.code} world')
   })
 
   it('the body picker calls the editor ref `insertText`', async () => {
-    render(<EmailTemplateForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<EmailTemplateForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    const [, bodyPickerTrigger] = screen.getAllByRole('button', {
-      name: i18n.t('emailTemplates.form.variablesPicker'),
-    })
-    fireEvent.click(bodyPickerTrigger)
+    fireEvent.click(pickers()[0])
     fireEvent.click(await screen.findByRole('button', { name: /Codice/ }))
 
     expect(screen.getByLabelText(labelFor('emailTemplates.form.body'))).toHaveValue('{work_order.code}')
   })
 
-  it('submits the create payload with the picked module and body', async () => {
+  it('submits the create payload with the module and body', async () => {
     createEmailTemplateMock.mockResolvedValue(emailTemplate())
     const onSuccess = vi.fn()
 
-    render(<EmailTemplateForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
+    render(<EmailTemplateForm onSuccess={onSuccess} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    openRow('emailTemplates.form.name')
     fireEvent.change(screen.getByLabelText(labelFor('emailTemplates.form.name')), {
       target: { value: 'Follow-up' },
     })
+    openRow('emailTemplates.form.subject')
     fireEvent.change(screen.getByLabelText(labelFor('emailTemplates.form.subject')), {
       target: { value: 'Update' },
     })
     fireEvent.change(screen.getByLabelText(labelFor('emailTemplates.form.body')), {
       target: { value: '<p>Hello</p>' },
     })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('emailTemplates.form.save') }))
+    save()
 
     await waitFor(() => expect(createEmailTemplateMock).toHaveBeenCalledTimes(1))
     expect(createEmailTemplateMock).toHaveBeenCalledWith({
@@ -249,79 +245,5 @@ describe('EmailTemplateForm — create (spec 0175)', () => {
       is_active: true,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(emailTemplate()))
-  })
-})
-
-describe('EmailTemplateForm — edit (spec 0175)', () => {
-  it('hydrates every field from the loaded detail', () => {
-    render(
-      <EmailTemplateForm
-        mode={{ type: 'edit', emailTemplate: emailTemplate() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.getByLabelText(labelFor('emailTemplates.form.name'))).toHaveValue('Follow-up')
-    expect(screen.getByLabelText(labelFor('emailTemplates.form.subject'))).toHaveValue(
-      'Update on {work_order.code}',
-    )
-    expect(screen.getByLabelText(labelFor('emailTemplates.form.body'))).toHaveValue('<p>Hello</p>')
-  })
-
-  it('submits only the changed field on a partial update, never module', async () => {
-    updateEmailTemplateMock.mockResolvedValue(emailTemplate({ subject: 'Renamed' }))
-
-    render(
-      <EmailTemplateForm
-        mode={{ type: 'edit', emailTemplate: emailTemplate() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(labelFor('emailTemplates.form.subject')), {
-      target: { value: 'Renamed' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('emailTemplates.form.save') }))
-
-    await waitFor(() => expect(updateEmailTemplateMock).toHaveBeenCalledTimes(1))
-    const [id, payload] = updateEmailTemplateMock.mock.calls[0]
-    expect(id).toBe(9)
-    expect(payload).toEqual({ subject: 'Renamed' })
-    expect(payload).not.toHaveProperty('module')
-  })
-
-  it('maps a server 422 onto the matching form field', async () => {
-    updateEmailTemplateMock.mockRejectedValue(
-      new AxiosError('Unprocessable', '422', undefined, undefined, {
-        status: 422,
-        data: {
-          success: false,
-          message: 'Validation failed',
-          errors: { name: ['Name already taken for this module.'] },
-        },
-      } as never),
-    )
-
-    render(
-      <EmailTemplateForm
-        mode={{ type: 'edit', emailTemplate: emailTemplate() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    fireEvent.change(screen.getByLabelText(labelFor('emailTemplates.form.name')), {
-      target: { value: 'Duplicate' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('emailTemplates.form.save') }))
-
-    await waitFor(() =>
-      expect(screen.getByText('Name already taken for this module.')).toBeInTheDocument(),
-    )
   })
 })

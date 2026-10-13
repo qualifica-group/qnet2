@@ -2,7 +2,6 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { documentLayoutsEditorEn } from '@/features/document-layouts/editor/editor-i18n-fixture'
 import { DocumentLayoutFormBody } from '@/features/document-layouts/document-layout-form-body'
@@ -37,11 +36,9 @@ const documentLayoutsEn = {
 }
 
 const createDocumentLayoutMock = vi.fn()
-const updateDocumentLayoutMock = vi.fn()
 
 vi.mock('@/features/document-layouts/api', () => ({
   createDocumentLayout: (...args: unknown[]) => createDocumentLayoutMock(...args),
-  updateDocumentLayout: (...args: unknown[]) => updateDocumentLayoutMock(...args),
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
 vi.mock('@/features/document-layouts/variables-api', () => ({
@@ -90,18 +87,13 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createDocumentLayoutMock.mockReset()
-  updateDocumentLayoutMock.mockReset()
 })
 
-describe('DocumentLayoutFormBody — Content tab (spec 0069 wave 2)', () => {
-  it('shows the Content tab and its canvas zones', () => {
-    render(
-      <DocumentLayoutFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+describe('DocumentLayoutFormBody — content editor (spec 0069 wave 2)', () => {
+  it('shows the canvas zones open, without any tab', () => {
+    render(<DocumentLayoutFormBody onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Content' }))
-
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     expect(screen.getByText('Header')).toBeInTheDocument()
     expect(screen.getByText('Body')).toBeInTheDocument()
     expect(screen.getByText('Footer')).toBeInTheDocument()
@@ -110,19 +102,17 @@ describe('DocumentLayoutFormBody — Content tab (spec 0069 wave 2)', () => {
   it('round-trips an edited config into the create payload untouched (AC-128)', async () => {
     createDocumentLayoutMock.mockResolvedValue(documentLayout())
 
-    render(
-      <DocumentLayoutFormBody mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    render(<DocumentLayoutFormBody onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Name' }) }))
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Layout with content' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Code' }) }))
     fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: 'layout_with_content' } })
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Content' }))
     fireEvent.pointerDown(screen.getAllByRole('button', { name: 'Add block' })[1], { button: 0, ctrlKey: false })
     fireEvent.click(screen.getByRole('menuitem', { name: 'Spacer' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(createDocumentLayoutMock).toHaveBeenCalledTimes(1))
     const payload = createDocumentLayoutMock.mock.calls[0][0]
@@ -131,32 +121,24 @@ describe('DocumentLayoutFormBody — Content tab (spec 0069 wave 2)', () => {
     expect(payload.config.header.blocks).toHaveLength(0)
   })
 
-  it('maps a config path 422 onto the offending block and switches to the Content tab (AC-129)', async () => {
-    updateDocumentLayoutMock.mockRejectedValue(
-      new AxiosError('Unprocessable', '422', undefined, undefined, {
-        status: 422,
-        data: {
-          success: false,
-          message: 'Validation failed',
-          errors: { 'config.body.blocks.0.height': ['Height must be at least 1.'] },
-        },
-      } as never),
-    )
-    const layout = documentLayout()
-    layout.config = { ...layout.config, body: { blocks: [{ id: 's1', type: 'spacer', height: 12 }] } }
+  it('swaps in the invoice starter when the module changes while the content is untouched', async () => {
+    createDocumentLayoutMock.mockResolvedValue(documentLayout())
 
-    render(
-      <DocumentLayoutFormBody mode={{ type: 'edit', documentLayout: layout }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    render(<DocumentLayoutFormBody onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Module' }) }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Module' }))
+    fireEvent.click(await screen.findByRole('option', { name: i18n.t('documentLayouts.modules.invoices') }))
 
-    await waitFor(() =>
-      expect(screen.getByText('The layout content has validation errors — check the Content tab.')).toBeInTheDocument(),
-    )
-    // The tab auto-switched to Content; the offending block's row is reachable and, once selected, shows the exact message.
-    fireEvent.click(screen.getByText('Spacer (12pt)'))
-    expect(screen.getByText('Height must be at least 1.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Name' }) }))
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Invoice layout' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Code' }) }))
+    fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: 'invoice_layout' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+
+    await waitFor(() => expect(createDocumentLayoutMock).toHaveBeenCalledTimes(1))
+    const payload = createDocumentLayoutMock.mock.calls[0][0]
+    expect(payload.module).toBe('invoices')
+    expect(payload.config.body.blocks.length).toBeGreaterThan(0)
   })
 })

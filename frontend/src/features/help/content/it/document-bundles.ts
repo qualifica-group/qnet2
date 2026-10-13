@@ -27,14 +27,24 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Apri **Configurazione › Modelli documenti** e premi **Nuovo modello documenti**.',
-            'Compila **Nome** e, se serve, **Descrizione**; imposta **Attivo**.',
-            'Salva il modello.',
+            "Si apre la scheda con le righe chiuse: per **Nome**, **Descrizione** e **Attivo** premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com'era.",
+            'Premi **Salva**: il modello viene creato con tutte le righe insieme.',
             "Nel dettaglio del modello, nella scheda **File**, trascina uno o più file nell'area di caricamento oppure cliccala per sceglierli.",
           ],
         },
         {
           type: 'tip',
           text: 'Il numero di file caricati compare nella colonna **File** della tabella; rimuovi un file dal dettaglio con il cestino sulla sua riga.',
+        },
+      ],
+    },
+    {
+      id: 'edit-bundle',
+      title: 'Modificare un modello',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Non c'è un modulo di modifica a parte: apri il modello con **Visualizza**, premi la matita sulla riga, cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com'era. Si apre una riga alla volta.",
         },
       ],
     },
