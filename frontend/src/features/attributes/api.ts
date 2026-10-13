@@ -8,6 +8,11 @@ import type {
   UpdateAttributePayload,
 } from '@/features/attributes/types'
 
+/** Query key for a single attribute's detail (fresh-on-open pattern). */
+export function attributeDetailQueryKey(id: number) {
+  return ['attributes', 'detail', id] as const
+}
+
 /**
  * Fetches a single attribute detail together with the actor's authorization
  * metadata for it (`permissions`, a top-level envelope sibling of `data`).
@@ -27,16 +32,15 @@ export async function createAttribute(
   return data.data
 }
 
-/** Partially updates an attribute (PATCH). Returns the updated resource. */
+/** Partially updates an attribute (PATCH). Returns the updated resource with the actor's permissions, like `show`. */
 export async function updateAttribute(
   id: number,
   payload: UpdateAttributePayload,
-): Promise<AttributeDetail> {
-  const { data } = await apiClient.patch<ApiResponse<AttributeDetail>>(
-    `/attributes/${id}`,
-    payload,
-  )
-  return data.data
+): Promise<AttributeDetailWithPermissions> {
+  const { data } = await apiClient.patch<
+    ApiResponseWithPermissions<AttributeDetail, ResourcePermissions>
+  >(`/attributes/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** Deletes an attribute. Backend responds 204 with no body. */

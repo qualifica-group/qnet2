@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
@@ -8,20 +8,18 @@ import type { AttributeDetailWithPermissions } from '@/features/attributes/types
 import type { ResourcePermissions } from '@/features/authorization/types'
 
 /**
- * Spec 0017/0021: the attribute form is aligned to the custom field
- * definition form — same shared `type`-conditional sub-forms (type picker,
- * per-type config, ENUM options / RELATION target editors, presentation).
- * This suite exercises that wiring end to end; the sub-editors' own internal
- * behavior is covered by `custom-field-definition-form.test.tsx` and each
- * component's own test.
+ * Spec 0017/0021/0240: the attribute create form is a replica of the detail
+ * (rows closed until clicked, type editors open) over the same shared
+ * `type`-conditional sub-forms (type picker, per-type config, ENUM options /
+ * RELATION target editors, presentation). This suite exercises that wiring
+ * end to end; the sub-editors' own internal behavior is covered by
+ * `custom-field-definition-form.test.tsx` and each component's own test.
  */
 
 const createAttributeMock = vi.fn()
-const updateAttributeMock = vi.fn()
 
 vi.mock('@/features/attributes/api', () => ({
   createAttribute: (...args: unknown[]) => createAttributeMock(...args),
-  updateAttribute: (...args: unknown[]) => updateAttributeMock(...args),
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
@@ -43,13 +41,9 @@ const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   actions: {},
 }
 
-vi.mock('@/features/attributes/use-attribute-form-meta', () => ({
-  useAttributeFormMeta: () => ({ status: 'ready', permissions: FULL_ACCESS_PERMISSIONS }),
-}))
-
-// `useAttributeForm` reads `/meta/attributes` (spec 0021) to build the dynamic
-// custom-fields schema; this suite has no custom fields to exercise, so it
-// resolves to an empty catalogue.
+// The form reads `/meta/attributes` for its permissions and (spec 0021) the
+// dynamic custom-fields schema; this suite has no custom fields to exercise,
+// so it resolves to an empty catalogue.
 vi.mock('@/features/authorization/api', () => ({
   fetchResourceMeta: () => Promise.resolve({ fields: [], permissions: FULL_ACCESS_PERMISSIONS }),
 }))
@@ -59,6 +53,12 @@ function wrapper() {
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   )
+}
+
+/** The form renders once `GET /meta/attributes` resolves: wait for the first row. */
+async function renderForm(ui: ReactElement) {
+  render(ui, { wrapper: wrapper() })
+  await screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Name' }) })
 }
 
 function attribute(
@@ -91,30 +91,49 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createAttributeMock.mockReset()
-  updateAttributeMock.mockReset()
 })
 
+const openRow = (field: string) =>
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field }) }))
+
+function fillIdentity(code: string, name: string) {
+  openRow('Code')
+  fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: code } })
+  openRow('Name')
+  fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: name } })
+}
+
 function selectType(name: string) {
+  const pencil = screen.queryByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Type' }) })
+  if (pencil) {
+    fireEvent.click(pencil)
+  }
   fireEvent.click(screen.getByRole('combobox', { name: 'Type' }))
   fireEvent.click(screen.getByRole('option', { name }))
 }
 
 describe('AttributeForm — type-conditional sub-forms (spec 0017/0021)', () => {
-  it('hides the options editor and the relation target editor for the default text type', () => {
-    render(
-      <AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('hides the options editor and the relation target editor for the default text type', async () => {
+    await renderForm(<AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />)
 
     expect(screen.queryByRole('button', { name: 'Add option' })).not.toBeInTheDocument()
     expect(screen.queryByRole('combobox', { name: 'Target module' })).not.toBeInTheDocument()
   })
 
-  it('reveals the options editor and hides the relation target editor once List of options is selected', () => {
-    render(
-      <AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('restores a reverted draft row and creates nothing', async () => {
+    await renderForm(<AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />)
+
+    expect(screen.queryByRole('textbox', { name: 'Name' })).not.toBeInTheDocument()
+    openRow('Name')
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Draft' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.revert') }))
+
+    expect(screen.queryByRole('textbox', { name: 'Name' })).not.toBeInTheDocument()
+    expect(createAttributeMock).not.toHaveBeenCalled()
+  })
+
+  it('reveals the options editor and hides the relation target editor once List of options is selected', async () => {
+    await renderForm(<AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />)
 
     selectType('List of options')
 
@@ -122,11 +141,8 @@ describe('AttributeForm — type-conditional sub-forms (spec 0017/0021)', () => 
     expect(screen.queryByRole('combobox', { name: 'Target module' })).not.toBeInTheDocument()
   })
 
-  it('reveals the relation target editor and hides the options editor once Relation is selected', () => {
-    render(
-      <AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('reveals the relation target editor and hides the options editor once Relation is selected', async () => {
+    await renderForm(<AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />)
 
     selectType('Relation')
 
@@ -136,11 +152,8 @@ describe('AttributeForm — type-conditional sub-forms (spec 0017/0021)', () => 
     expect(screen.queryByRole('button', { name: 'Add option' })).not.toBeInTheDocument()
   })
 
-  it('offers provinces as a relation target (spec 0225)', () => {
-    render(
-      <AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('offers provinces as a relation target (spec 0225)', async () => {
+    await renderForm(<AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />)
 
     selectType('Relation')
     fireEvent.click(screen.getByRole('combobox', { name: 'Target module' }))
@@ -148,11 +161,8 @@ describe('AttributeForm — type-conditional sub-forms (spec 0017/0021)', () => 
     expect(screen.getByRole('option', { name: 'Provinces' })).toBeInTheDocument()
   })
 
-  it('shows only the per-type config fields for the selected type', () => {
-    render(
-      <AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+  it('shows only the per-type config fields for the selected type', async () => {
+    await renderForm(<AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />)
 
     selectType('Decimal number')
     expect(screen.getByText('Minimum')).toBeInTheDocument()
@@ -166,18 +176,14 @@ describe('AttributeForm — type-conditional sub-forms (spec 0017/0021)', () => 
   it('submits the create payload with options only for an enum attribute', async () => {
     createAttributeMock.mockResolvedValue(attribute())
 
-    render(
-      <AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    await renderForm(<AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />)
 
-    fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: 'color' } })
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Color' } })
+    fillIdentity('color', 'Color')
     selectType('List of options')
     fireEvent.click(screen.getByRole('button', { name: 'Add option' }))
     fireEvent.change(screen.getByLabelText('Value'), { target: { value: 'red' } })
     fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Red' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(createAttributeMock).toHaveBeenCalledTimes(1))
     const payload = createAttributeMock.mock.calls[0][0]
@@ -194,17 +200,13 @@ describe('AttributeForm — type-conditional sub-forms (spec 0017/0021)', () => 
   it('projects the per-type config into the create payload', async () => {
     createAttributeMock.mockResolvedValue(attribute({ type: 'decimal' }))
 
-    render(
-      <AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />,
-      { wrapper: wrapper() },
-    )
+    await renderForm(<AttributeForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />)
 
-    fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: 'weight_kg' } })
-    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'Weight' } })
+    fillIdentity('weight_kg', 'Weight')
     selectType('Decimal number')
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Minimum' }), { target: { value: '0' } })
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Decimal places' }), { target: { value: '2' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(createAttributeMock).toHaveBeenCalledTimes(1))
     const payload = createAttributeMock.mock.calls[0][0]
@@ -212,70 +214,45 @@ describe('AttributeForm — type-conditional sub-forms (spec 0017/0021)', () => 
     expect(payload.config).toEqual({ min: 0, decimals: 2 })
     expect(payload.options).toBeUndefined()
   })
-
-  it('hydrates the ENUM options in edit mode', () => {
-    render(
-      <AttributeForm
-        mode={{ type: 'edit', attribute: attribute() }}
-        onSuccess={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
-
-    expect(screen.getAllByLabelText('Value').map((input) => (input as HTMLInputElement).value)).toEqual([
-      'red',
-      'blue',
-    ])
-  })
 })
 
 describe('AttributeForm — duplicate mode (row action "duplicate")', () => {
-  it('pre-fills every field from the source with suffixed code and name', () => {
-    render(
-      <AttributeForm
+  it('pre-fills every field from the source with suffixed code and name', async () => {
+    await renderForm(<AttributeForm
         mode={{ type: 'duplicate', source: attribute() }}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+      />)
 
-    expect(screen.getByLabelText(/^Code/)).toHaveValue('color_copy')
-    expect(screen.getByLabelText(/^Name/)).toHaveValue('Color (copy)')
+    expect(screen.getByText('color_copy')).toBeInTheDocument()
+    expect(screen.getByText('Color (copy)', { selector: 'span.break-words' })).toBeInTheDocument()
     expect(screen.getAllByLabelText('Value').map((input) => (input as HTMLInputElement).value)).toEqual([
       'red',
       'blue',
     ])
   })
 
-  it('keeps the suffixed code within the backend 64-char limit', () => {
-    render(
-      <AttributeForm
+  it('keeps the suffixed code within the backend 64-char limit', async () => {
+    await renderForm(<AttributeForm
         mode={{ type: 'duplicate', source: attribute({ code: 'a'.repeat(64) }) }}
         onSuccess={vi.fn()}
         onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+      />)
 
-    expect(screen.getByLabelText(/^Code/)).toHaveValue(`${'a'.repeat(59)}_copy`)
+    expect(screen.getByText(`${'a'.repeat(59)}_copy`)).toBeInTheDocument()
   })
 
-  it('submits through the create path with the source options, never updating the source', async () => {
+  it('submits through the create path with the source options', async () => {
     createAttributeMock.mockResolvedValue(attribute({ id: 4, code: 'color_copy' }))
     const onSuccess = vi.fn()
 
-    render(
-      <AttributeForm
+    await renderForm(<AttributeForm
         mode={{ type: 'duplicate', source: attribute() }}
         onSuccess={onSuccess}
         onCancel={vi.fn()}
-      />,
-      { wrapper: wrapper() },
-    )
+      />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(createAttributeMock).toHaveBeenCalledTimes(1))
     expect(createAttributeMock.mock.calls[0][0]).toMatchObject({
@@ -287,7 +264,6 @@ describe('AttributeForm — duplicate mode (row action "duplicate")', () => {
         { value: 'blue', label: 'Blue', color: 'blue', is_default: true },
       ],
     })
-    expect(updateAttributeMock).not.toHaveBeenCalled()
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
   })
 })

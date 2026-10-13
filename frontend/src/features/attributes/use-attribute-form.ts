@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
-import { createAttribute, updateAttribute } from '@/features/attributes/api'
+import { attributeDetailQueryKey, createAttribute, updateAttribute } from '@/features/attributes/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/attributes/attribute-form-payload'
 import {
   buildCreateAttributeSchema,
@@ -56,9 +56,11 @@ interface UseAttributeFormArgs {
 }
 
 /**
- * Owns every non-render concern of `AttributeForm`: RHF/Zod wiring, default
- * values, server 422 mapping and the create/update submit. The component
- * stays UI-only; this hook is the orchestration point (`onSubmit`).
+ * Owns every non-render concern of the attribute form: RHF/Zod wiring, default
+ * values, server 422 mapping and the create/update submit. Create (and
+ * duplicate) back `AttributeForm`; edit backs the detail's in-place rows (diff
+ * PATCH). The component stays UI-only; this hook is the orchestration point
+ * (`onSubmit`).
  */
 export function useAttributeForm({ mode, onSuccess }: UseAttributeFormArgs) {
   const { t } = useTranslation()
@@ -115,9 +117,13 @@ export function useAttributeForm({ mode, onSuccess }: UseAttributeFormArgs) {
     }
   }, [mode, customFields.defaultValues, t])
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<AttributeFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: isEdit ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: AttributeFormValues) => {
@@ -132,7 +138,7 @@ export function useAttributeForm({ mode, onSuccess }: UseAttributeFormArgs) {
           mode.attribute.id,
           buildUpdatePayload(values, mode.attribute),
         )
-        queryClient.setQueryData(['attributes', 'detail', mode.attribute.id], saved)
+        queryClient.setQueryData(attributeDetailQueryKey(mode.attribute.id), saved)
         toast.success(t('attributes.form.updated'))
         onSuccess(saved)
         return
@@ -151,8 +157,8 @@ export function useAttributeForm({ mode, onSuccess }: UseAttributeFormArgs) {
 
   return {
     form,
-    isEdit,
     serverError,
+    clearServerError: () => setServerError(null),
     onSubmit,
   }
 }

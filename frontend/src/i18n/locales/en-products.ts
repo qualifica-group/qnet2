@@ -15,19 +15,14 @@ export const attributes = {
     created_at: 'Created at',
   },
   detail: {
-    title: 'Attribute details',
-    subtitle: 'Read-only view of the selected attribute.',
     loadError: 'Unable to load the attribute. Please try again.',
     details: 'Details',
-    options: 'Options',
     created_at: 'Created at',
   },
   form: {
     newAttribute: 'New attribute',
     createTitle: 'Create attribute',
     createSubtitle: 'Add a new reusable dynamic attribute.',
-    editTitle: 'Edit attribute',
-    editSubtitle: 'Update the selected attribute.',
     code: 'Code',
     name: 'Name',
     save: 'Save',
@@ -45,20 +40,17 @@ export const attributes = {
     deleteError: 'Unable to delete the attribute. Please try again.',
     deleteForbidden: 'You cannot delete this attribute.',
     deleteInUse: 'This attribute is assigned to a category or has product values.',
-    sections: {
-      identity: {
-        title: 'Details',
-        description: 'Code, name and type of the attribute.',
-      },
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The attribute has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
     },
     optionValueRequired: 'Value is required.',
     optionValueMax: 'Value must be at most 191 characters.',
     optionLabelRequired: 'Label is required.',
     optionLabelMax: 'Label must be at most 191 characters.',
     optionsRequiredForEnum: 'Add at least one option for a list attribute.',
-    // Read-only empty state of the detail: it describes, it does not ask
-    // (unlike `optionsRequiredForEnum`, which is a form error).
-    optionsEmpty: 'No options defined.',
     optionValuesDuplicate: 'Option values must be unique.',
     relationEntityTypeRequired: 'The relation target module is required.',
     relationForSelectResourceRequired: 'The picker resource is required.',

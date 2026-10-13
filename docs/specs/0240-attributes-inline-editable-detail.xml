@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0240-attributes-inline-editable-detail" status="approved" owner="utente" date="2026-10-13">
+
+  <goal>
+    Onda 4 del piano "nessuna pagina di modifica" (utente 2026-10-13, "ok procediamo allora con questi"): Attributi
+    perde la pagina di modifica; il dettaglio si edita sul posto riga per riga, la creazione e' una replica del
+    dettaglio. Gemello di Campi personalizzati (spec 0231): stessi editor condivisi.
+  </goal>
+
+  <context>
+    - D-1: kit della spec 0233 (`useInlineEditingField`/`useRecordInlineEdit`, `inline-rows.tsx`,
+      `RecordCreateLayout`, `useDraftInlineEdit`, `useFormLeaveGuard`) + contratto per modulo 0233 D-2. Backend
+      invariato: `PATCH /api/attributes/{id}` e' parziale (`sometimes`) e risponde gia' con `permissions`.
+    - D-2: righe come 0231 D-2..D-5: Codice e Tipo solo creazione (bloccati in modifica, senza matita), Nome riga di
+      testo; "Presentazione" (descrizione, aiuto, placeholder, icona) UNA riga raggruppata che riusa
+      `DefinitionPresentationFields`; editor dipendenti dal tipo (`config`, `options` enum, `relation_target`,
+      colonne `table`) righe `layout="block"` coi componenti condivisi `Definition*` INVARIATI; campi personalizzati
+      dell'attributo come negli altri moduli migrati. Ogni riga valida solo i propri campi; salvataggio senza
+      differenze chiude senza chiamate.
+    - D-3: creazione = replica del dettaglio (banda d'identita' con nome live, righe chiuse Fatto/Ripristina, editor
+      del tipo APERTI come 0231 D-6, anteprima live mantenuta). La rotta `:id/duplicate` resta: e' una creazione
+      precompilata dalla sorgente.
+    - D-4: i18n degli attributi nel blocco `attributes` di `{it,en}-products.ts` (solo quel blocco).
+  </context>
+
+  <contract>
+    <backend>Nessuna modifica.</backend>
+    <frontend>
+      Registry `attributes`: `generateEditRoute: false`, `detailOwnsEditAction: true`, `formOwnsHeader: true`;
+      `AttributeDetailView` perde `onEdit`, guadagna `onChanged`; `updateAttribute` restituisce
+      `AttributeDetailWithPermissions`; `attributeDetailQueryKey` esportata da `api.ts`; `useAttributeForm` in edit con
+      `values`/`keepDirtyValues`/`clearServerError`; form wrapper solo creazione/duplicazione (`useResourceMeta`), via
+      `use-attribute-form-meta.ts`; i18n `form.leaveConfirm.*`, via le chiavi orfane.
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Nessuna rotta `/attributes/:id/edit`, nessun "Modifica" nel dettaglio; `:id/duplicate` funziona.</ac>
+    <ac id="AC-002">Matita su Nome/Presentazione/Impostazioni/Opzioni/Relazione/Colonne: Salva invia solo i campi della riga; Annulla/Esc non chiamano; 422 sulla riga.</ac>
+    <ac id="AC-003">Codice e Tipo senza matita sul dettaglio; senza permesso `update` nessuna matita.</ac>
+    <ac id="AC-004">Creazione: righe chiuse, editor del tipo aperti, Salva crea tutto, uscita con conferma.</ac>
+    <ac id="AC-005">Guida in-app IT/EN `attributes` aggiornata.</ac>
+  </acceptance>
+</spec>

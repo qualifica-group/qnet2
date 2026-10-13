@@ -15,19 +15,14 @@ export const attributes = {
     created_at: 'Creato il',
   },
   detail: {
-    title: 'Dettagli attributo',
-    subtitle: "Vista di sola lettura dell'attributo selezionato.",
     loadError: "Impossibile caricare l'attributo. Riprova.",
     details: 'Dettagli',
-    options: 'Opzioni',
     created_at: 'Creato il',
   },
   form: {
     newAttribute: 'Nuovo attributo',
     createTitle: 'Crea attributo',
     createSubtitle: 'Aggiungi un nuovo attributo dinamico riutilizzabile.',
-    editTitle: 'Modifica attributo',
-    editSubtitle: "Aggiorna l'attributo selezionato.",
     code: 'Codice',
     name: 'Nome',
     save: 'Salva',
@@ -45,20 +40,17 @@ export const attributes = {
     deleteError: "Impossibile eliminare l'attributo. Riprova.",
     deleteForbidden: 'Non puoi eliminare questo attributo.',
     deleteInUse: 'Questo attributo è assegnato a una categoria o ha valori prodotto.',
-    sections: {
-      identity: {
-        title: 'Dettagli',
-        description: "Codice, nome e tipo dell'attributo.",
-      },
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: "L'attributo non è ancora stato creato: i dati inseriti andranno persi.",
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
     },
     optionValueRequired: 'Il valore è obbligatorio.',
     optionValueMax: 'Il valore deve avere al massimo 191 caratteri.',
     optionLabelRequired: "L'etichetta è obbligatoria.",
     optionLabelMax: "L'etichetta deve avere al massimo 191 caratteri.",
     optionsRequiredForEnum: 'Aggiungi almeno una opzione per un attributo a elenco.',
-    // Stato vuoto in SOLA LETTURA del dettaglio: descrive, non chiede
-    // (a differenza di `optionsRequiredForEnum`, che e' un errore di form).
-    optionsEmpty: 'Nessuna opzione definita.',
     optionValuesDuplicate: 'I valori delle opzioni devono essere unici.',
     relationEntityTypeRequired: 'Il modulo di destinazione della relazione è obbligatorio.',
     relationForSelectResourceRequired: 'La risorsa del selettore è obbligatoria.',

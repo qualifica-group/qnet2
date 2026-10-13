@@ -11,6 +11,7 @@ import { DefinitionTableColumnsEditor } from '@/features/custom-fields/component
 import { DefinitionTypeConfigFields } from '@/features/custom-fields/components/definition-type-config-fields'
 import { DefinitionValidationEditor } from '@/features/custom-fields/components/definition-validation-editor'
 import type { CustomFieldDefinitionFormValues } from '@/features/custom-fields/custom-field-definition-schema'
+import type { FieldDefinitionFormValues } from '@/features/custom-fields/field-definition-form-values'
 import {
   ConfigSummary,
   OptionsSummary,
@@ -51,14 +52,14 @@ interface TypeSectionProps {
 }
 
 /** Fetches the relation targets itself, so they are only requested while the editor is on screen. */
-function RelationTargetEditor({ control }: { control: Control<CustomFieldDefinitionFormValues> }) {
+export function RelationTargetEditor<T extends FieldDefinitionFormValues>({ control }: { control: Control<T> }) {
   const entities = useCustomFieldRelationTargets().data ?? NO_ENTITIES
 
   return <DefinitionRelationTargetEditor control={control} entities={entities} />
 }
 
 /** One full-width section holding an editor that is one block row on the detail and open on the create form. */
-function TypeSection({ title, icon, field, metaKey, creating, canEdit, inline, editor, summary }: TypeSectionProps) {
+export function TypeSection({ title, icon, field, metaKey, creating, canEdit, inline, editor, summary }: TypeSectionProps) {
   return (
     <RecordSection title={title} icon={icon} full>
       {creating ? (
