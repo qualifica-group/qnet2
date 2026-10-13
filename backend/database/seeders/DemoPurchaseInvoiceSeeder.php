@@ -14,9 +14,10 @@ use Illuminate\Support\Collection;
 
 /**
  * Seed fake payable documents (spec 0211): over the demo purchase orders, one
- * document billing two orders of the same supplier, one proforma billing the
- * rest of an order and one invoice billing the same order again (partial
- * billing, N:N). The schedules come from the planner and some installments are
+ * document billing two orders of the same supplier, one proforma and one
+ * invoice billing one order each. Every document line is linked to its order
+ * line and no order is billed twice (spec 0252, D-4); only invoiceable orders
+ * (approved or beyond) are used. The schedules come from the planner and some installments are
  * paid (fully and partially) through the payment service. Idempotent: each
  * document is keyed by its demo number. Skipped quietly when the data it hangs
  * on (purchase orders, a user, payment methods) is missing; depends on
@@ -31,9 +32,9 @@ class DemoPurchaseInvoiceSeeder extends Seeder
      * @var array<int, array{number: string, type: PurchaseInvoiceType, orders: array<int, int>, days_ago: int, method: string, pay: string}>
      */
     private const array SCENARIOS = [
-        ['number' => 'DEMO-PI-001', 'type' => PurchaseInvoiceType::Invoice, 'orders' => [0, 1], 'days_ago' => 120, 'method' => 'bank_transfer_60_90_120', 'pay' => Writer::PAY_FIRST],
+        ['number' => 'DEMO-PI-001', 'type' => PurchaseInvoiceType::Invoice, 'orders' => [1, 3], 'days_ago' => 120, 'method' => 'bank_transfer_60_90_120', 'pay' => Writer::PAY_FIRST],
         ['number' => 'DEMO-PI-002', 'type' => PurchaseInvoiceType::Proforma, 'orders' => [2], 'days_ago' => 60, 'method' => 'riba_30_60', 'pay' => Writer::PAY_PARTIAL],
-        ['number' => 'DEMO-PI-003', 'type' => PurchaseInvoiceType::Invoice, 'orders' => [2], 'days_ago' => 20, 'method' => 'bank_transfer', 'pay' => Writer::PAY_NONE],
+        ['number' => 'DEMO-PI-003', 'type' => PurchaseInvoiceType::Invoice, 'orders' => [4], 'days_ago' => 20, 'method' => 'bank_transfer', 'pay' => Writer::PAY_NONE],
     ];
 
     public function __construct(private readonly Writer $writer) {}

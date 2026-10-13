@@ -76,6 +76,28 @@ export const OVERVIEW: WorkOrderCostOverview = {
       delta_net: '20.00',
       budget_margin_net: '720.00',
       actual_margin_net: '700.00',
+      manual_cost_net: '100.00',
+      committed_order_cost_net: '40.00',
+      invoiced_cost_net: '60.00',
+      total_actual_cost_net: '200.00',
+      total_actual_margin_net: '600.00',
+      total_delta_net: '120.00',
     },
+    by_cost_type: [
+      {
+        cost_type: { id: 6, name: 'Travel', color: 'blue', nature: 'direct' },
+        manual_cost_net: '100.00',
+        committed_order_cost_net: '40.00',
+        invoiced_cost_net: '0.00',
+        total_cost_net: '140.00',
+      },
+      {
+        cost_type: null,
+        manual_cost_net: '0.00',
+        committed_order_cost_net: '0.00',
+        invoiced_cost_net: '60.00',
+        total_cost_net: '60.00',
+      },
+    ],
   },
 }

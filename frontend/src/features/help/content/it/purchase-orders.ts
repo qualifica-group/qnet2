@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina è sotto **Acquisti › ODA** e mostra gli **ordini di acquisto** ai fornitori. L’ODA è **solo l’ordine**: non diventa una fattura. La fattura passiva è un documento separato e una stessa fattura può raccogliere più ODA.',
+          text: 'La pagina è sotto **Acquisti › ODA** e mostra gli **ordini di acquisto** ai fornitori. L’ODA è **solo l’ordine**: non diventa una fattura. La fattura passiva è un documento separato e una stessa fattura può raccogliere più ODA. Gli imponibili delle righe collegate a una **commessa** alimentano il **consuntivo** della commessa finché l’ODA è impegnato e non ancora fatturato.',
         },
         {
           type: 'paragraph',

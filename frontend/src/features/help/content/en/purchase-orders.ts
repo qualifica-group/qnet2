@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The page is under **Purchasing › ODA** and lists the **purchase orders** sent to suppliers. An ODA is **only the order**: it never turns into an invoice. The purchase invoice is a separate document and a single invoice can collect several ODA.',
+          text: 'The page is under **Purchasing › ODA** and lists the **purchase orders** sent to suppliers. An ODA is **only the order**: it never turns into an invoice. The purchase invoice is a separate document and a single invoice can collect several ODA. The net amounts of lines linked to a **work order** feed the work order\'s **actual cost** while the ODA is committed and not yet invoiced.',
         },
         {
           type: 'paragraph',

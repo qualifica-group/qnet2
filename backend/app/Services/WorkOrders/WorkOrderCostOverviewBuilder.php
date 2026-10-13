@@ -20,6 +20,8 @@ use Illuminate\Support\Collection;
  * lines never enter the totals (D-1); unattributed actual costs always do.
  * A line's revenue is its effective revenue (spec 0202, D-8): the supplier
  * commission on a RECEIVED line, the net amount otherwise.
+ * Spec 0252 adds the passive cycle (committed orders, payable documents)
+ * through WorkOrderPassiveCostAggregator, next to the manual actuals.
  * Amounts are summed as integer cents to avoid float drift.
  */
 final class WorkOrderCostOverviewBuilder
@@ -27,7 +29,10 @@ final class WorkOrderCostOverviewBuilder
     /** Relations the QuoteLineResource reads per budget line. */
     private const array BUDGET_LINE_RELATIONS = ['product.category', 'product.productTypology', 'product.unitOfMeasure', 'vatRate', 'unitOfMeasure', 'quote', 'commissions'];
 
-    public function __construct(private readonly LineEffectiveRevenue $effectiveRevenue) {}
+    public function __construct(
+        private readonly LineEffectiveRevenue $effectiveRevenue,
+        private readonly WorkOrderPassiveCostAggregator $passiveCosts,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -50,6 +55,12 @@ final class WorkOrderCostOverviewBuilder
         $budget = array_sum(array_column($rows, 'budget_cents'));
         $actual = array_sum(array_column($rows, 'actual_cents')) + $unattributed;
 
+        // Step 4: the passive cycle by cost type (spec 0252): totals per source and overall
+        $byCostType = $this->passiveCosts->byCostType($workOrder);
+        $committed = (int) $byCostType->sum('committed_cents');
+        $invoiced = (int) $byCostType->sum('invoiced_cents');
+        $totalActual = $actual + $committed + $invoiced;
+
         return [
             'lines' => WorkOrderCostResource::collection($costs),
             'budget' => [
@@ -66,7 +77,14 @@ final class WorkOrderCostOverviewBuilder
                     'delta_net' => $this->format($actual - $budget),
                     'budget_margin_net' => $this->format($revenue - $budget),
                     'actual_margin_net' => $this->format($revenue - $actual),
+                    'manual_cost_net' => $this->format($actual),
+                    'committed_order_cost_net' => $this->format($committed),
+                    'invoiced_cost_net' => $this->format($invoiced),
+                    'total_actual_cost_net' => $this->format($totalActual),
+                    'total_actual_margin_net' => $this->format($revenue - $totalActual),
+                    'total_delta_net' => $this->format($totalActual - $budget),
                 ],
+                'by_cost_type' => $byCostType->map($this->publicCostTypeRow(...))->all(),
             ],
         ];
     }
@@ -117,6 +135,21 @@ final class WorkOrderCostOverviewBuilder
             'budget_cost_net' => $this->format($row['budget_cents']),
             'actual_cost_net' => $this->format($row['actual_cents']),
             'delta_net' => $this->format($row['actual_cents'] - $row['budget_cents']),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    private function publicCostTypeRow(array $row): array
+    {
+        return [
+            'cost_type' => $row['cost_type'],
+            'manual_cost_net' => $this->format($row['manual_cents']),
+            'committed_order_cost_net' => $this->format($row['committed_cents']),
+            'invoiced_cost_net' => $this->format($row['invoiced_cents']),
+            'total_cost_net' => $this->format($row['manual_cents'] + $row['committed_cents'] + $row['invoiced_cents']),
         ];
     }
 

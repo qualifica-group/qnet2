@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'A document can be created **from scratch** or **from one or more ODAs** of the same supplier and company. The linked ODAs are always visible in the document sheet.',
+          text: 'A document can be created **from scratch** or **from one or more ODAs** of the same supplier and company. The linked ODAs are always visible in the document sheet. The net amounts of lines with a **work order** feed the work order\'s **actual cost** (Costs tab), in place of the linked ODA lines.',
         },
       ],
     },

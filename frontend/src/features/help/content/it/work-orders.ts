@@ -115,6 +115,9 @@ const guide: HelpGuide = {
             ['Scostamento', 'Costo effettivo meno costo preventivato: se positivo è uno **sforamento** (segnalato con icona e testo, non solo con il colore).'],
             ['Margine', 'Ricavo delle righe della commessa meno i costi. Il ricavo è l\'imponibile, tranne sulle righe con commissione Fornitore **ricevuta**, dove è la sola commissione Fornitore (come nei Dati contrattuali). Le altre provvigioni sono escluse.'],
             ['Non attribuiti', 'Costi effettivi senza una riga offerta di riferimento: entrano nel costo effettivo totale.'],
+            ['Consuntivo complessivo', 'Somma, al netto dell\'IVA, di tre fonti: i **costi inseriti a mano**, le righe degli **ODA impegnati** della commessa (approvati, inviati al fornitore, parzialmente o interamente evasi) **non ancora fatturati**, e le righe delle **fatture passive e proforma** della commessa. Una riga ODA fatturata conta una sola volta, con l\'importo del documento passivo. Bozze, ODA in validazione e annullati sono esclusi.'],
+            ['Margine consuntivo', 'Ricavo meno il consuntivo complessivo; lo scostamento complessivo è il consuntivo complessivo meno il costo preventivato.'],
+            ['Per tipo di costo', 'Tabella con, per ogni **tipo di costo** (colore e natura: diretto, indiretto, generale), l\'importo delle tre fonti e il totale. I costi senza tipo sono nella riga **Senza tipo di costo**. Il budget non è ripartito per tipo di costo.'],
           ],
         },
         {

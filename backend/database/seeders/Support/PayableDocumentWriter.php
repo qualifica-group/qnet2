@@ -36,9 +36,10 @@ final class PayableDocumentWriter
 
     /**
      * The document is written through the real service (spec 0250), so it gets
-     * its lines, amounts and schedule exactly as the application does. Lines
-     * are copied from the orders as free lines: the demo orders are in any
-     * status and may be billed twice, which the order-line link would refuse.
+     * its lines, amounts and schedule exactly as the application does. Each line
+     * is linked to its purchase order line (spec 0252, D-4), so the orders must
+     * be invoiceable and no order may be billed by two documents: the work order
+     * actuals count an order line once, through the document that bills it.
      *
      * @param  Collection<int, PurchaseOrder>  $orders  same supplier and company
      */
@@ -74,6 +75,7 @@ final class PayableDocumentWriter
         $lines = PurchaseOrderLine::query()->whereIn('purchase_order_id', $orders->pluck('id')->all())
             ->orderBy('purchase_order_id')->orderBy('position')->orderBy('id')->get()
             ->map(fn (PurchaseOrderLine $line): array => [
+                'purchase_order_line_id' => $line->id,
                 'product_id' => $line->product_id,
                 'description' => $line->description,
                 'quantity' => (string) $line->quantity,

@@ -17,7 +17,7 @@ it('skips quietly when the reference data is missing', function () {
     expect(PurchaseOrder::query()->count())->toBe(0);
 });
 
-it('seeds three numbered orders once, whatever the number of runs', function () {
+it('seeds five numbered orders once, whatever the number of runs', function () {
     User::factory()->create();
     CompanySite::factory()->create(['company_id' => Company::factory()->create()->id]);
     Registry::factory()->supplier()->create();
@@ -27,8 +27,8 @@ it('seeds three numbered orders once, whatever the number of runs', function () 
 
     $orders = PurchaseOrder::query()->with('lines')->orderBy('id')->get();
 
-    expect($orders)->toHaveCount(3)
-        ->and($orders->pluck('status')->all())->toBe([PurchaseOrderStatus::Draft, PurchaseOrderStatus::Approved, PurchaseOrderStatus::SentToSupplier])
-        ->and($orders->pluck('number')->all())->toBe([1, 2, 3])
+    expect($orders)->toHaveCount(5)
+        ->and($orders->pluck('status')->all())->toBe([PurchaseOrderStatus::Draft, PurchaseOrderStatus::Approved, PurchaseOrderStatus::SentToSupplier, PurchaseOrderStatus::Approved, PurchaseOrderStatus::SentToSupplier])
+        ->and($orders->pluck('number')->all())->toBe([1, 2, 3, 4, 5])
         ->and($orders->every(fn (PurchaseOrder $order): bool => $order->lines->isNotEmpty() && (float) $order->grand_total > 0))->toBeTrue();
 });

@@ -13,8 +13,9 @@ use App\Services\PurchaseOrders\PurchaseOrderService;
 use Illuminate\Database\Seeder;
 
 /**
- * Seed fake purchase orders (spec 0210): a draft with two lines, one approved
- * and one already sent to the supplier. Idempotent: each order is keyed by its
+ * Seed fake purchase orders (spec 0210): a draft with two lines, two approved
+ * and two already sent to the supplier (the invoiceable ones feed the demo
+ * payable documents, one document per order line). Idempotent: each order is keyed by its
  * description. Skipped quietly when the reference data it hangs on (a user, a
  * company site, a supplier registry, the cost types of the migration) is missing.
  */
@@ -53,6 +54,12 @@ class DemoPurchaseOrderSeeder extends Seeder
         ]);
         $this->order($orders, $actor, 'Collaborazione esterna (demo)', PurchaseOrderStatus::SentToSupplier, $header, [
             $line('Prestazione professionale', '1', '3500.00', $costTypes->first()),
+        ]);
+        $this->order($orders, $actor, 'Forniture ufficio (demo)', PurchaseOrderStatus::Approved, $header, [
+            $line('Cancelleria e consumabili', '5', '60.00', $costTypes->last()),
+        ]);
+        $this->order($orders, $actor, 'Manutenzione impianti (demo)', PurchaseOrderStatus::SentToSupplier, $header, [
+            $line('Intervento di manutenzione', '2', '450.00', $costTypes->first()),
         ]);
     }
 

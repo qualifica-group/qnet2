@@ -50,12 +50,31 @@ export interface WorkOrderCostTotals {
   delta_net: string
   budget_margin_net: string
   actual_margin_net: string
+  /** Passive cycle included (spec 0252): manual costs, committed ODA lines not yet invoiced, passive invoice lines. */
+  manual_cost_net: string
+  committed_order_cost_net: string
+  invoiced_cost_net: string
+  total_actual_cost_net: string
+  total_actual_margin_net: string
+  total_delta_net: string
+}
+
+export type CostTypeNature = 'direct' | 'indirect' | 'general'
+
+/** Actual costs of one cost type split by source; `cost_type` null is the "no cost type" group. */
+export interface WorkOrderCostByType {
+  cost_type: { id: number; name: string; color: string; nature: CostTypeNature } | null
+  manual_cost_net: string
+  committed_order_cost_net: string
+  invoiced_cost_net: string
+  total_cost_net: string
 }
 
 export interface WorkOrderCostComparison {
   rows: WorkOrderCostComparisonRow[]
   unattributed_actual_cost_net: string
   totals: WorkOrderCostTotals
+  by_cost_type: WorkOrderCostByType[]
 }
 
 export interface WorkOrderCostBudget {

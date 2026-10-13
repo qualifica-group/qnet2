@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next'
 import { TriangleAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
+import { WorkOrderCostsByTypeTable } from '@/features/work-order-costs/work-order-costs-by-type-table'
+import { WorkOrderCostsSourceTotals } from '@/features/work-order-costs/work-order-costs-source-totals'
 import type { WorkOrderCostOverview } from '@/features/work-order-costs/types'
 
 const money = (value: string) => formatQuoteAmount(Number(value))
@@ -61,6 +63,8 @@ export function WorkOrderCostsComparisonTab({ overview }: { overview: WorkOrderC
         <Stat label={t('workOrders.costs.comparison.actualMargin')}>{money(totals.actual_margin_net)}</Stat>
       </dl>
 
+      <WorkOrderCostsSourceTotals totals={totals} />
+
       <div className="overflow-x-auto rounded-lg border bg-surface">
         <table className="w-full min-w-[640px] text-xs">
           <caption className="sr-only">{t('workOrders.costs.comparison.tableCaption')}</caption>
@@ -97,6 +101,8 @@ export function WorkOrderCostsComparisonTab({ overview }: { overview: WorkOrderC
           </tbody>
         </table>
       </div>
+
+      <WorkOrderCostsByTypeTable rows={comparison.by_cost_type} />
 
       <details className="rounded-lg border bg-surface text-xs">
         <summary className="cursor-pointer px-3 py-2 font-medium">

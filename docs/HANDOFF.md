@@ -3,7 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0251 — Tipo di costo su prodotti e costi commessa (ADR 0018 decisione 1, COS-02) — COMMITTATO (2026-10-13)
+## Spec 0252 — Consuntivo commessa dal ciclo passivo (ADR 0018 decisione 2, COS-01) — COMMITTATO (2026-10-13)
+
+- Spec `docs/specs/0252-work-order-actuals-from-passive-cycle.xml` (D-1..D-9, AC-001..009 PASS). 0210 D-7 superata.
+- `App\Services\WorkOrders\WorkOrderPassiveCostAggregator`: 3 query aggregate group by cost_type_id (manuali,
+  righe ODA impegnate = stati INVOICEABLE_STATUSES e non referenziate da righe passive, righe passive proforma+invoice
+  per work_order_id della riga) + 1 sui tipi; centesimi interi. GET /api/work-orders/{id}/costs: comparison.totals
+  += manual_cost_net, committed_order_cost_net, invoiced_cost_net, total_actual_cost_net, total_actual_margin_net,
+  total_delta_net (actual_cost_net resta = soli manuali); comparison.by_cost_type [{cost_type{id,name,color,nature}|null,
+  tre fonti, total}].
+- FE tab confronto: work-order-costs-source-totals.tsx + work-order-costs-by-type-table.tsx.
+- Seeder demo: PayableDocumentWriter collega le righe ODA; DemoPurchaseOrderSeeder 5 ordini; DemoPurchaseInvoiceSeeder
+  scenari [1,3],[2],[4] (nessuna riga ODA fatturata due volte). DB gia' seminati non vengono ricollegati (migrate:fresh).
+- Aperti: by_cost_type somma tutti i manuali della commessa (coincide col totale finche' quote_line_id resta valido);
+  copertura test arrotondamenti a 3 decimali sottile.
+- Prossimo: spec 0253 motore importi unico bcmath + IVA per aliquota sulle fatture attive (COS-09, ATT-06), ultima dell'Onda 3.
+
+## Spec 0251 — Tipo di costo su prodotti e costi commessa (ADR 0018 decisione 1, COS-02) — COMMITTATO b10cf647 (2026-10-13)
 
 - Spec `docs/specs/0251-cost-type-on-products-and-work-order-costs.xml` (D-1..D-7, AC-001..010 PASS).
 - products.cost_type_id e work_order_costs.cost_type_id nullable FK restrict (migrazione 2026_10_17_190000; il

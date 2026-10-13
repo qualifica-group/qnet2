@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Un documento può nascere **da zero** oppure **da uno o più ODA** dello stesso fornitore e della stessa società. Gli ODA collegati sono sempre visibili nella scheda del documento.',
+          text: 'Un documento può nascere **da zero** oppure **da uno o più ODA** dello stesso fornitore e della stessa società. Gli ODA collegati sono sempre visibili nella scheda del documento. Gli imponibili delle righe con una **commessa** alimentano il **consuntivo** della commessa (scheda Costi), al posto delle righe ODA collegate.',
         },
       ],
     },

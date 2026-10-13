@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0252-work-order-actuals-from-passive-cycle" status="draft" owner="ciro" date="2026-10-13">
+
+  <goal>
+    Il consuntivo della commessa include il ciclo passivo (ODA e fatture passive) oltre ai costi inseriti a mano, con la
+    ripartizione per tipo di costo (ADR 0018 decisione 2; audit COS-01). Supera la spec 0210 D-7.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-10-13:
+    - D-1 Costo impegnato = righe ODA con work_order_id della commessa, di ODA in stato approved, sent_to_supplier,
+      partially_fulfilled, fulfilled (bozze, in validazione, annullati esclusi).
+    - D-2 Proforma e fatture passive contano allo stesso modo: una riga di documento passivo con purchase_order_line_id
+      sostituisce l'importo della riga ODA collegata (nessun doppio conteggio); una riga senza riga ODA si somma
+      direttamente. Righe passive filtrate per work_order_id della riga.
+    - D-3 Vista: restano le righe per riga di ricavo (budget vs costi manuali, invariato); si aggiungono i totali per
+      fonte (manuali, ODA impegnato non ancora fatturato, fatturato passivo), consuntivo complessivo = somma delle tre,
+      margine consuntivo sul complessivo, e una tabella per tipo di costo (con natura) che mostra le tre fonti e il totale.
+    - D-4 Seeder demo: le fatture passive demo collegano le righe ODA (purchase_order_line_id), una riga ODA fatturata una
+      sola volta, cosi' il consuntivo demo e' realistico.
+
+    Decisioni tecniche proposte:
+    - D-5 Importi netti (imponibile), come 0190 D-5: righe ODA taxable_amount, righe passive net_amount, costi manuali
+      net_amount; somme in centesimi interi come il builder attuale. Costi senza tipo -> gruppo "Senza tipo di costo".
+    - D-6 Una riga ODA conta come "fatturata" se esiste almeno una riga passiva che la referenzia (la riga ODA non conta
+      piu', conta l'importo passivo, anche se diverso: lo scostamento e' reale).
+    - D-7 Calcolo in lettura con query aggregate (group by cost_type_id), nessuna riga generata in work_order_costs;
+      estrarre in classi dedicate (es. WorkOrderPassiveCostAggregator) per tenere WorkOrderCostOverviewBuilder < 300 righe.
+    - D-8 Il budget resta quello di 0190 (righe costo dell'offerta allocate); non si ripartisce per tipo di costo (le righe
+      costo dell'offerta non hanno tipo): la tabella per tipo mostra solo il consuntivo.
+    - D-9 Permessi invariati: work-orders.viewCosts per vedere; gli importi passivi non richiedono permessi sugli ODA o
+      sulle fatture (sono totali aggregati), ma i link ai documenti (se presenti) rispettano i permessi esistenti.
+
+    Fatti verificati: WorkOrderCostOverviewBuilder (lines, budget, comparison.rows/totals/unattributed in centesimi);
+    GET /api/work-orders/{id}/costs; FE work-order-costs-comparison-tab.tsx; purchase_order_lines (work_order_id,
+    cost_type_id, taxable_amount), purchase_invoice_lines (purchase_order_line_id unique, work_order_id, cost_type_id,
+    net_amount), cost_types (nature, color), work_order_costs.cost_type_id (0251); PayableDocumentWriter dei seeder demo.
+  </context>
+
+  <scope>
+    <in>
+      <item>BE: aggregazione passiva (D-1, D-2, D-6, D-7) e per tipo di costo; estensione della risposta GET costs; PayableDocumentWriter / seeder demo con righe collegate (D-4); nota in 0210 su D-7 superata.</item>
+      <item>FE: tab confronto con totali per fonte, consuntivo complessivo e margine, tabella per tipo di costo (badge colore, natura); responsive.</item>
+      <item>Guide IT+EN work-orders (sezione costi) e purchase-orders/purchase-invoices (gli importi alimentano il consuntivo).</item>
+    </in>
+    <out>
+      <item>Report trasversale "costi per tipo/natura" su piu' commesse.</item>
+      <item>Budget per tipo di costo (righe costo offerta senza tipo).</item>
+      <item>Collegamento ai costi del personale/ore.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/costs">
+      <response>
+        Invariati: lines, budget, comparison.rows, comparison.unattributed_actual_cost_net.
+        comparison.totals: invariati i campi esistenti (revenue_net, budget_cost_net, actual_cost_net = SOLO manuali,
+        delta_net, budget_margin_net, actual_margin_net = sui soli manuali) PIU' nuovi:
+          manual_cost_net, committed_order_cost_net (righe ODA non fatturate), invoiced_cost_net (righe passive),
+          total_actual_cost_net (somma delle tre), total_actual_margin_net (revenue_net - total_actual_cost_net),
+          total_delta_net (total_actual_cost_net - budget_cost_net).
+        comparison.by_cost_type: [ { cost_type: {id,name,color,nature}|null, manual_cost_net, committed_order_cost_net,
+          invoiced_cost_net, total_cost_net } ] ordinati per sort_order del tipo, "senza tipo" in fondo.
+        Tutti gli importi stringhe decimali a 2 cifre.
+      </response>
+      <errors>403 senza work-orders.viewCosts (invariato).</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Commessa con un costo manuale, una riga ODA approvata non fatturata e una riga ODA in bozza: committed_order_cost_net = solo la riga approvata; total_actual_cost_net = manuale + approvata.</criterion>
+    <criterion id="AC-002">La stessa riga ODA, una volta fatturata (proforma o fattura) con importo diverso: non conta piu' come impegnato, conta l'importo passivo in invoiced_cost_net; nessun doppio conteggio.</criterion>
+    <criterion id="AC-003">Riga di fattura passiva senza riga ODA ma con work_order_id della commessa: sommata in invoiced_cost_net; righe passive o ODA di altre commesse escluse; ODA annullato escluso.</criterion>
+    <criterion id="AC-004">by_cost_type raggruppa le tre fonti per tipo di costo (con natura e colore), "senza tipo" in fondo; la somma dei total_cost_net = total_actual_cost_net.</criterion>
+    <criterion id="AC-005">I campi esistenti della risposta restano invariati (compatibilita'): test esistenti dei costi commessa verdi senza modifiche funzionali.</criterion>
+    <criterion id="AC-006">Numero di query costante al crescere delle righe (aggregazioni), verificato con un test.</criterion>
+    <criterion id="AC-007">Seeder demo: nessuna riga ODA fatturata due volte; i documenti demo hanno righe collegate alle righe ODA; suite Seeding verde.</criterion>
+    <criterion id="AC-008">(Vitest) Tab confronto: totali per fonte, consuntivo complessivo e margine, tabella per tipo di costo con badge e natura; stato vuoto quando non ci sono costi passivi.</criterion>
+    <criterion id="AC-009">Guide IT+EN aggiornate; help-content-parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; nessuna migrazione prevista (solo lettura); se serve un indice per le aggregazioni, migrazione reversibile e contatori --step aggiornati.</item>
+    <item>Nessuna query per riga; somme in centesimi interi; file sotto 300 righe.</item>
+    <item>FE: TanStack Query, componenti esistenti (CostTypeBadge), compatto e responsive (tabella con overflow-x consapevole a 375px).</item>
+    <item>Test Pest e Vitest; suite completa dal verifier; tsc -b --force. Nessun commit senza ordine esplicito.</item>
+  </constraints>
+
+</spec>

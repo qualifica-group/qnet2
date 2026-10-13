@@ -57,6 +57,7 @@
     - D-6 Funzioni legacy portate: PDF + email al fornitore, avviso fornitore non qualificato
       (Abbandona/Forza), Unifica ODA con storico, N copie mensili in creazione.
     - D-7 Esclusi: migrazione dati legacy, collegamento ai costi reali della commessa (WorkOrderCost).
+      NOTA (2026-10-13): il collegamento ai costi della commessa e' superato dalla spec 0252 / ADR 0018: il consuntivo commessa include ODA impegnati e fatture passive (calcolo in lettura).
 
     Decisioni tecniche proposte (D-8..D-20, da validare con la spec):
     - D-8 Nomi inglesi: risorsa `purchase-orders`, `cost-types`; tabelle `purchase_orders`,
