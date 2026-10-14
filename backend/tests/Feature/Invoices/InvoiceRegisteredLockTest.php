@@ -98,8 +98,9 @@ it('AC-016: the table offers no update/delete on a registered invoice but keeps 
 
     $rows = collect($this->postJson('/api/tables/invoices/rows', ['startRow' => 0, 'endRow' => 25])->assertOk()->json('items'))->keyBy('id');
 
-    expect($rows[$registered->id]['actions'])->toContain('details', 'view')->not->toContain('update', 'delete')
-        ->and($rows[$proforma->id]['actions'])->toContain('update', 'details', 'delete');
+    // Spec 0261 (REQUIREMENT CHANGED): edit and details live on the record; only delete depends on registration.
+    expect($rows[$registered->id]['actions'])->toContain('view')->not->toContain('delete')
+        ->and($rows[$proforma->id]['actions'])->toContain('view', 'delete');
 });
 
 it('AC-016: the detail exposes the downgrade action and the read-only header fields of a registered invoice', function () {

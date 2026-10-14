@@ -78,10 +78,22 @@ export async function updateInvoice(
   return { ...data.data, permissions: data.permissions }
 }
 
-/** Updates external number/date, tag, deviation and internal note (always allowed). */
+/** Partial edit (PATCH, spec 0261): the keys not sent keep their stored value; 409 on a registered invoice. */
+export async function patchInvoice(
+  id: number,
+  payload: Partial<InvoiceWritePayload>,
+): Promise<InvoiceWithPermissions> {
+  const { data } = await apiClient.patch<ApiResponseWithPermissions<Invoice, ResourcePermissions>>(
+    `/invoices/${id}`,
+    payload,
+  )
+  return { ...data.data, permissions: data.permissions }
+}
+
+/** Updates external number/date, tag, deviation, internal note and layout (allowed on registered invoices too). */
 export async function updateInvoiceDetails(
   id: number,
-  payload: InvoiceDetailsPayload,
+  payload: Partial<InvoiceDetailsPayload>,
 ): Promise<InvoiceWithPermissions> {
   const { data } = await apiClient.patch<ApiResponseWithPermissions<Invoice, ResourcePermissions>>(
     `/invoices/${id}/details`,

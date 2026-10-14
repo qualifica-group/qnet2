@@ -51,7 +51,7 @@ class InvoicesTableDefinition extends AbstractTableDefinition
     private const string FIRST_UNPAID_DUE_DATE = 'first_unpaid_due_date';
 
     /** Row actions not offered for a registered invoice. */
-    private const array REGISTERED_HIDDEN_ACTIONS = ['update', 'delete'];
+    private const array REGISTERED_HIDDEN_ACTIONS = ['delete'];
 
     private const string COLLECTED_SUM = 'installments_sum_collected_amount';
 
@@ -186,11 +186,11 @@ class InvoicesTableDefinition extends AbstractTableDefinition
         $gate = Gate::forUser($actor);
         $allowed = [];
 
-        // Action key => policy ability; "details" is the PATCH, gated like update.
-        $abilities = ['view' => 'view', 'update' => 'update', 'details' => 'update', 'delete' => 'delete', 'activity' => 'viewActivity', 'pdf' => 'view', 'email' => 'sendEmail', 'remind' => 'sendEmail'];
+        // Action key => policy ability. No edit/details: the record edits in place from `view` (spec 0261).
+        $abilities = ['view' => 'view', 'delete' => 'delete', 'activity' => 'viewActivity', 'pdf' => 'view', 'email' => 'sendEmail', 'remind' => 'sendEmail'];
 
         foreach ($abilities as $key => $ability) {
-            // A registered invoice cannot be edited or deleted (spec 0243, D-3); "details" stays.
+            // A registered invoice cannot be deleted (spec 0243, D-3).
             if ($row->isRegistered() && in_array($key, self::REGISTERED_HIDDEN_ACTIONS, true)) {
                 continue;
             }

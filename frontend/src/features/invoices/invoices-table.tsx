@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react'
 import type { ICellRendererParams } from 'ag-grid-community'
-import { BellRing, FileDown, FilePen, FileText, Mail } from 'lucide-react'
+import { BellRing, FileDown, FileText, Mail } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { INVOICES_DOMAIN } from '@/features/invoices/api'
@@ -9,8 +9,6 @@ import { InvoiceDeleteDialog } from '@/features/invoices/invoice-delete-dialog'
 import { InvoiceEmailComposerHost } from '@/features/invoices/invoice-email-composer-host'
 import { InvoiceDetailPanel } from '@/features/invoices/invoice-detail-panel'
 import { InvoiceDetailSheet } from '@/features/invoices/invoice-detail-sheet'
-import { InvoiceDetailsDialog } from '@/features/invoices/invoice-details-dialog'
-import { InvoiceEditorDialog } from '@/features/invoices/invoice-editor-dialog'
 import { InvoiceListToolbar } from '@/features/invoices/invoice-list-toolbar'
 import { InvoiceTotalsFooter } from '@/features/invoices/invoice-totals-footer'
 import { useInvoiceActionState } from '@/features/invoices/use-invoice-action-state'
@@ -20,10 +18,9 @@ import type { ActionIconMap } from '@/features/table/action-icon-map'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { TableRow } from '@/features/table/types'
 
-/** Icon keys the backend catalog uses for the invoice-specific `details` action. */
+/** Icon keys the backend catalog uses for the invoice-specific actions. */
 const INVOICE_ACTION_ICONS: ActionIconMap = {
   'file-text': FileText,
-  'file-pen-line': FilePen,
   'file-down': FileDown,
   mail: Mail,
   'bell-ring': BellRing,
@@ -47,12 +44,6 @@ export function InvoicesTable() {
     [refreshGrid],
   )
 
-  const { closeEdit } = actions
-  const handleSaved = useCallback(() => {
-    closeEdit()
-    refreshGrid()
-  }, [closeEdit, refreshGrid])
-
   return (
     <div className="flex flex-1 flex-col gap-4">
       <PageHeader />
@@ -74,17 +65,7 @@ export function InvoicesTable() {
       />
 
       <InvoiceDetailSheet invoiceId={actions.viewId} onClose={actions.closeView} onChanged={refreshGrid} />
-      <InvoiceDetailsDialog invoiceId={actions.detailsId} onClose={actions.closeDetails} />
       <InvoiceDeleteDialog target={actions.deleteTarget} onClose={actions.closeDelete} onDeleted={refreshGrid} />
-      {actions.editId !== null ? (
-        <InvoiceEditorDialog
-          mode="edit"
-          invoiceId={actions.editId}
-          open
-          onClose={actions.closeEdit}
-          onSaved={handleSaved}
-        />
-      ) : null}
       <InvoiceEmailComposerHost target={actions.emailFlow.target} onClose={actions.emailFlow.closeComposer} />
       <ResourceActivityDialog
         resource={INVOICES_DOMAIN}

@@ -3,7 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0260 — Fatture attive, Scadenze attive, Tag fatture modificabili in cella (tappa 1) — VERDE, NON COMMITTATO (2026-10-14)
+## Spec 0261 — Scheda fattura attiva modificabile per campo (tappa 2) — VERDE, NON COMMITTATO (2026-10-14)
+
+- Spec `docs/specs/0261-invoice-record-inline-editing.xml` (D-1..D-4).
+- BE: `PATCH /invoices/{invoice}` (route match put/patch): `InvoiceWriteRequest::prepareForValidation` completa i campi non
+  inviati (righe comprese) col salvato, poi lo stesso `InvoiceService::update` (rate ricalcolate/ribilanciate, provvigioni).
+  Metodo di pagamento e layout salvati validi anche se disattivati. Azioni riga `update`/`details` rimosse. Test:
+  InvoicePartialUpdateTest (nuovo), InvoicesTableTest/InvoiceRegisteredLockTest aggiornati (REQUIREMENT CHANGED).
+- FE: scheda `invoice-detail.tsx` con `useInvoiceInlineEdit` (`use-invoice-inline-edit.ts`: campi details -> PATCH details,
+  testata/note -> `patchInvoice`), sezioni `invoice-record-sections.tsx`, schema `buildInvoiceRecordSchema`; "Modifica righe"
+  apre `InvoiceEditorDialog` mode edit (righe + anteprima rate). Rimossi: invoice-details-dialog(+test),
+  use-invoice-details-form, useUpdateInvoiceDetails, buildInvoiceDetailsSchema, chiavi i18n della finestra Dettagli e
+  `invoices.actions.details`. Test: invoice-detail-inline-edit.test.tsx.
+- Guide IT/EN invoices (actions) aggiornate. Manuale Claude Docs da aggiornare a mano.
+
+## Spec 0260 — Fatture attive, Scadenze attive, Tag fatture modificabili in cella (tappa 1) — VERDE, COMMITTATO 4e4a0229 (2026-10-14)
 
 - Spec `docs/specs/0260-invoicing-grids-inline-editing.xml`. Tappa 2 (scheda fattura inline al posto delle finestre
   Modifica/Dettagli) da specificare a parte.

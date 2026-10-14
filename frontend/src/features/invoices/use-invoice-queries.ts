@@ -17,12 +17,10 @@ import {
   previewInstallments,
   recordCollection,
   updateInvoice,
-  updateInvoiceDetails,
 } from '@/features/invoices/api'
 import type {
   Invoice,
   InvoiceCollectionPayload,
-  InvoiceDetailsPayload,
   InvoiceDraft,
   InvoiceWithPermissions,
   InvoiceWritePayload,
@@ -96,16 +94,6 @@ export function useUpdateInvoice(
   const queryClient = useQueryClient()
   return useMutation<InvoiceWithPermissions, AxiosError, InvoiceWritePayload>({
     mutationFn: (payload) => updateInvoice(id, payload),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: invoiceKeys.all }),
-  })
-}
-
-export function useUpdateInvoiceDetails(
-  id: number,
-): UseMutationResult<InvoiceWithPermissions, AxiosError, InvoiceDetailsPayload> {
-  const queryClient = useQueryClient()
-  return useMutation<InvoiceWithPermissions, AxiosError, InvoiceDetailsPayload>({
-    mutationFn: (payload) => updateInvoiceDetails(id, payload),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: invoiceKeys.all }),
   })
 }

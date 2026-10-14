@@ -29,7 +29,8 @@ Route::get('invoices/monthly-summary', [InvoiceController::class, 'monthlySummar
 
 Route::get('invoices/{invoice}/pdf', InvoicePdfController::class);
 Route::get('invoices/{invoice}', [InvoiceController::class, 'show']);
-Route::put('invoices/{invoice}', [InvoiceController::class, 'update']);
+// PATCH = partial edit (spec 0261): the keys not sent keep their stored value.
+Route::match(['put', 'patch'], 'invoices/{invoice}', [InvoiceController::class, 'update']);
 Route::patch('invoices/{invoice}/details', [InvoiceController::class, 'updateDetails']);
 Route::delete('invoices/{invoice}', [InvoiceController::class, 'destroy']);
 

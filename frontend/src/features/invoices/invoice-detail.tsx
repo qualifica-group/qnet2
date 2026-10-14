@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileDown, FileText } from 'lucide-react'
-import { DetailEmpty, DetailError, DetailLoading, DetailMonogram } from '@/components/detail/detail-panel'
+import { FileDown, FileText, ListOrdered, Wallet } from 'lucide-react'
+import { DetailError, DetailLoading, DetailMonogram } from '@/components/detail/detail-panel'
 import { Button } from '@/components/ui/button'
+import { Form } from '@/components/ui/form'
 import { RecordBody } from '@/components/detail/record-body'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import {
@@ -12,14 +14,17 @@ import {
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
-import { formatDate } from '@/lib/formatting/date-display'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import { InvoiceDocumentSections } from '@/features/invoices/invoice-document-sections'
+import { InvoiceEditorDialog } from '@/features/invoices/invoice-editor-dialog'
+import { InvoiceRecordSections } from '@/features/invoices/invoice-record-sections'
 import {
   InvoiceTagBadge,
   InvoiceTypeBadge,
   PaymentStatusIndicator,
 } from '@/features/invoices/invoice-status-badges'
+import { useInvoiceInlineEdit } from '@/features/invoices/use-invoice-inline-edit'
 import { useInvoicePdfDownload } from '@/features/invoices/use-invoice-pdf-download'
 import { useOutboundEmailsTab } from '@/features/outbound-emails/use-outbound-emails-tab'
 import { useInvoice } from '@/features/invoices/use-invoice-queries'
@@ -28,9 +33,13 @@ import type { InvoiceWithPermissions } from '@/features/invoices/types'
 /** "Nuova email" of a document attaches its PDF (spec 0195 D-12). */
 const INVOICE_DRAFT_PAYLOAD = { attach_pdf: true }
 
+const TOTAL_FIELDS = ['net_amount', 'vat_amount', 'total_amount', 'collected_amount', 'residual_amount'] as const
+
 function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermissions; onChanged: () => void }) {
   const { t } = useTranslation()
   const { download, isDownloading } = useInvoicePdfDownload()
+  const editor = useInvoiceInlineEdit(invoice, onChanged)
+  const [editingLines, setEditingLines] = useState(false)
   const emailsTab = useOutboundEmailsTab(
     { type: 'invoices', id: invoice.id },
     invoice.permissions.actions.view_emails,
@@ -38,9 +47,8 @@ function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermiss
     INVOICE_DRAFT_PAYLOAD,
   )
   const tabs: RecordCollaborationTab[] = emailsTab ? [emailsTab] : []
-  const externalReference = invoice.external_number
-    ? `${invoice.external_number} - ${formatDate(invoice.external_date)}`
-    : null
+  // Lines and schedule change only on a proforma, in the editor that previews the installments (spec 0261 D-4).
+  const canEditLines = invoice.type === 'proforma' && invoice.permissions.resource.update
 
   return (
     <RecordCanvas>
@@ -67,67 +75,62 @@ function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermiss
           />
         }
       >
-        <RecordSectionsGrid>
-          <RecordSection title={t('invoices.detail.header')}>
-            <RecordFieldList>
-              <RecordField label={t('invoices.columns.document_date')}>{formatDate(invoice.document_date)}</RecordField>
-              <RecordField label={t('invoices.columns.company')}>{invoice.company.name}</RecordField>
-              <RecordField label={t('invoices.columns.payment_method')}>{invoice.payment_method.name}</RecordField>
-              <RecordField label={t('invoices.detail.externalReference')}>
-                {externalReference ?? <DetailEmpty />}
-              </RecordField>
-              <RecordField label={t('invoices.columns.work_order_code')}>
-                {invoice.work_order?.code ?? <DetailEmpty />}
-              </RecordField>
-              <RecordField label={t('invoices.detail.layout')}>
-                {invoice.layout?.name ?? t('invoices.detail.layoutDefault')}
-              </RecordField>
-              <RecordField label={t('invoices.columns.quote_code')}>{invoice.quote?.code ?? <DetailEmpty />}</RecordField>
-              <RecordField label={t('invoices.detail.createdBy')}>{invoice.created_by.name}</RecordField>
-            </RecordFieldList>
-          </RecordSection>
-          <RecordSection title={t('invoices.footer.label')}>
-            <RecordFieldList>
-              <RecordField label={t('invoices.columns.net_amount')}>{formatEuro(invoice.net_amount)}</RecordField>
-              <RecordField label={t('invoices.columns.vat_amount')}>{formatEuro(invoice.vat_amount)}</RecordField>
-              <RecordField label={t('invoices.columns.total_amount')}>{formatEuro(invoice.total_amount)}</RecordField>
-              <RecordField label={t('invoices.columns.collected_amount')}>{formatEuro(invoice.collected_amount)}</RecordField>
-              <RecordField label={t('invoices.columns.residual_amount')}>{formatEuro(invoice.residual_amount)}</RecordField>
-              <RecordField label={t('invoices.columns.deviation')}>
-                {invoice.deviation === null ? <DetailEmpty /> : formatEuro(invoice.deviation)}
-              </RecordField>
-            </RecordFieldList>
-          </RecordSection>
-          <RecordSection title={t('invoices.detail.notes')} full>
-            <RecordFieldList>
-              <RecordField label={t('invoices.detail.notes')}>
-                {invoice.notes ? <span className="whitespace-pre-wrap">{invoice.notes}</span> : <DetailEmpty />}
-              </RecordField>
-              <RecordField label={t('invoices.detail.internalNote')}>
-                {invoice.internal_note ? (
-                  <span className="whitespace-pre-wrap">{invoice.internal_note}</span>
-                ) : (
-                  <DetailEmpty />
-                )}
-              </RecordField>
-            </RecordFieldList>
-          </RecordSection>
-        </RecordSectionsGrid>
-        <div className="border-t p-4">
+        <ResourcePermissionsProvider permissions={invoice.permissions}>
+          {/* Provider only (no DOM): the inline editors share the record form. */}
+          <Form {...editor.form}>
+            <RecordSectionsGrid>
+              <InvoiceRecordSections invoice={invoice} editor={editor} />
+              <RecordSection title={t('invoices.footer.label')} icon={<Wallet />}>
+                <RecordFieldList>
+                  {TOTAL_FIELDS.map((field) => (
+                    <RecordField key={field} label={t(`invoices.columns.${field}`)}>
+                      {formatEuro(invoice[field])}
+                    </RecordField>
+                  ))}
+                </RecordFieldList>
+              </RecordSection>
+            </RecordSectionsGrid>
+          </Form>
+        </ResourcePermissionsProvider>
+        <div className="flex flex-col gap-3 border-t p-4">
+          {canEditLines ? (
+            <div className="flex justify-end">
+              <Button type="button" variant="secondary" size="xs" onClick={() => setEditingLines(true)}>
+                <ListOrdered aria-hidden="true" />
+                {t('invoices.record.editLines')}
+              </Button>
+            </div>
+          ) : null}
           <InvoiceDocumentSections invoice={invoice} onChanged={onChanged} />
         </div>
       </RecordBody>
+      {editingLines ? (
+        <InvoiceEditorDialog
+          mode="edit"
+          invoiceId={invoice.id}
+          open
+          onClose={() => setEditingLines(false)}
+          onSaved={() => {
+            setEditingLines(false)
+            onChanged()
+          }}
+        />
+      ) : null}
     </RecordCanvas>
   )
 }
 
 interface InvoiceDetailViewProps {
   invoiceId: number
-  /** Called after a collection changed the document (the caller refreshes its grid). */
+  /** Called after a save or a collection changed the document (the caller refreshes its grid). */
   onChanged: () => void
 }
 
-/** Full read-only view of a document: header, totals, lines and installments. */
+/**
+ * The invoice record (spec 0261): header and registration fields edited in
+ * place one at a time, totals, then lines and installments with their
+ * collections; lines change in the editor dialog ("Modifica righe").
+ */
 export function InvoiceDetailView({ invoiceId, onChanged }: InvoiceDetailViewProps) {
   const { t } = useTranslation()
   const { data, isError, error, refetch } = useInvoice(invoiceId)
@@ -140,5 +143,6 @@ export function InvoiceDetailView({ invoiceId, onChanged }: InvoiceDetailViewPro
   if (!data) {
     return <DetailLoading />
   }
-  return <InvoiceDetailBody invoice={data} onChanged={onChanged} />
+  // Remount on every server change so the form restarts from the saved document.
+  return <InvoiceDetailBody key={`${data.id}|${data.updated_at}|${data.type}`} invoice={data} onChanged={onChanged} />
 }

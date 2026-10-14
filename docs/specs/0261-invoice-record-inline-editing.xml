@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0261-invoice-record-inline-editing" status="approved" owner="utente" date="2026-10-14">
+
+  <goal>
+    Tappa 2 di 0260: la scheda della fattura attiva si modifica campo per campo, senza le finestre "Modifica" e
+    "Dettagli". Le righe e le rate restano nell'editor esistente, aperto dalla scheda con "Modifica righe".
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-14: "committa e poi procedi" sulla proposta di tappa 2. Fatti verificati: il PUT della
+    fattura e' completo (righe incluse) e ricalcola o ribilancia le rate; PATCH details e' parziale e vale anche sulle
+    registrate; la matrice campi InvoicesAuthorization blocca la testata sulle registrate e il riferimento esterno senza
+    invoices.downgrade; con rate incassate data, cliente e pagamento sono congelati (spec 0196 D-1).
+  </context>
+
+  <decisions>
+    D-1 (contratto) PATCH /invoices/{invoice}: i campi non inviati, righe comprese, prendono il valore salvato, poi gira
+        lo stesso update completo (rate ricalcolate o ribilanciate, provvigioni). PUT invariato. Il metodo di pagamento
+        e il layout gia' sulla fattura restano validi anche se disattivati nel frattempo.
+    D-2 Le azioni di riga "Modifica" e "Dettagli" spariscono dalla lista: la scheda si apre con "Visualizza".
+    D-3 Scheda: Testata (data, cliente, pagamento, banca; societa', commessa, offerta, autore in sola lettura),
+        Registrazione e classificazione (riferimento esterno numero+data insieme, tag, scostamento, layout), Note
+        (note, note interne), Totali. Testata e note stampate -> PATCH fattura; riferimento esterno, tag, scostamento,
+        layout, note interne -> PATCH details. Le matite seguono la matrice campi del server; con rate incassate niente
+        matita su data, cliente e pagamento.
+    D-4 Righe e rate: tabelle e incassi come oggi; "Modifica righe" (solo proforma con update) apre l'editor esistente,
+        che mostra l'anteprima delle rate prima di salvare. La finestra Dettagli e il suo form sono rimossi.
+  </decisions>
+
+  <acceptance>
+    <ac id="AC-001">PATCH con le sole note aggiorna le note e lascia righe e rate; un nuovo metodo ricalcola le rate.</ac>
+    <ac id="AC-002">Con rate incassate la data documento -> 422; fattura registrata -> 409 sul PATCH testata.</ac>
+    <ac id="AC-003">Scheda: Salva su Note chiama il PATCH fattura con le sole note; su Note interne il PATCH details;
+      numero e data esterni viaggiano insieme.</ac>
+    <ac id="AC-004">Lista senza azioni update/details; guide in-app IT/EN invoices aggiornate.</ac>
+  </acceptance>
+</spec>

@@ -64,19 +64,20 @@ export function buildInvoiceWriteSchema(t: TFunction) {
 
 export type InvoiceWriteFormValues = z.infer<ReturnType<typeof buildInvoiceWriteSchema>>
 
-/** Details dialog: external number + date (required together), tag, deviation, internal note. */
-export function buildInvoiceDetailsSchema(t: TFunction) {
-  return z
-    .object({
+/**
+ * The invoice record edited in place (spec 0261): the write payload plus the
+ * details fields (external number + date, required together, and deviation).
+ * Lines ride along unchanged so the whole document validates as it is saved.
+ */
+export function buildInvoiceRecordSchema(t: TFunction) {
+  return buildInvoiceWriteSchema(t)
+    .extend({
       external_number: z
         .string()
         .max(EXTERNAL_NUMBER_MAX, t('invoices.details.errors.externalNumberMax'))
         .nullable(),
       external_date: z.string().nullable(),
-      invoice_tag_id: tagSchema,
-      layout_id: z.number().int().nullable(),
       deviation: z.number(t('invoices.details.errors.deviationInvalid')).nullable(),
-      internal_note: z.string().max(NOTES_MAX, t('invoices.details.errors.internalNoteMax')).nullable(),
     })
     .superRefine((values, ctx) => {
       if (values.external_number && !values.external_date) {
@@ -89,7 +90,7 @@ export function buildInvoiceDetailsSchema(t: TFunction) {
     })
 }
 
-export type InvoiceDetailsFormValues = z.infer<ReturnType<typeof buildInvoiceDetailsSchema>>
+export type InvoiceRecordFormValues = z.infer<ReturnType<typeof buildInvoiceRecordSchema>>
 
 interface CollectionSchemaOptions {
   installmentAmount: number
