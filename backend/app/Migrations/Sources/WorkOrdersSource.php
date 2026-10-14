@@ -31,8 +31,7 @@ use RuntimeException;
  * lines matched on `quote_lines.old_id`; a line already programmed into
  * another commessa stays with it and this one gets a copy of the line on the
  * offer (QuoteLineDuplicator, user decision 2026-10-02), never reaching
- * WorkOrderLineWriter's 422. Closed legacy statuses become a forced
- * close with a legacy reason. The whole row runs without activity log (G-3).
+ * WorkOrderLineWriter's 422. A legacy `force_close_reason` forces the close. The whole row runs without activity log (G-3).
  */
 class WorkOrdersSource extends AbstractMigrationSource
 {
@@ -86,8 +85,8 @@ class WorkOrdersSource extends AbstractMigrationSource
             ['id' => 'title', 'label' => 'Title', 'type' => 'string'],
             ['id' => 'type', 'label' => 'Type', 'type' => 'string'],
             ['id' => 'start_date', 'label' => 'Start date', 'type' => 'date'],
-            ['id' => 'end_date', 'label' => 'End date', 'type' => 'date'],
             ['id' => 'status_label', 'label' => 'Status', 'type' => 'string'],
+            ['id' => 'force_close_reason', 'label' => 'Force-close reason', 'type' => 'string'],
             ['id' => 'quote_line_ids', 'label' => 'Quote lines (external ids)', 'type' => 'string'],
             ['id' => 'supervisor_user_ids', 'label' => 'Supervisors (external ids)', 'type' => 'string'],
             ['id' => 'created_at', 'label' => 'Created at', 'type' => 'date'],
@@ -161,17 +160,17 @@ class WorkOrdersSource extends AbstractMigrationSource
      */
     private function buildData(int|string $externalId, int $quoteId, array $record, array &$warnings): CreateWorkOrderData
     {
-        $forceCloseReason = $this->forceCloseReason($record['status'] ?? null, $warnings);
+        $forceCloseReason = $this->blankToNull($record['force_close_reason'] ?? null);
 
         return new CreateWorkOrderData(
             code: $this->legacyCode($externalId, $warnings),
             quoteId: $quoteId,
-            title: $this->legacyTitle($externalId, $record['title'] ?? null, $warnings),
+            title: $this->legacyTitle($record['title'] ?? null, $warnings),
             type: $this->legacyType($record['type'] ?? null, $warnings),
-            startDate: $this->startDate($record, $warnings),
+            startDate: $this->startDate($record['start_date'] ?? null),
             callbackDate: $this->legacyTimestamp($record['callback_date'] ?? null)?->toDateString(),
             description: $this->blankToNull($record['description'] ?? null),
-            internalNotes: $this->internalNotes($record),
+            internalNotes: $this->blankToNull($record['internal_notes'] ?? null),
             isForceClosed: $forceCloseReason !== null,
             forceCloseReason: $forceCloseReason,
             quoteLineIds: $this->legacyQuoteLineIds($quoteId, $record['quote_line_ids'] ?? [], $warnings),

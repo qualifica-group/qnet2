@@ -40,6 +40,19 @@
       D-9 (lead, 2026-09-30, trovato in verifica): nel contesto work_order una categoria riceve link e layout solo dalle
       card dei PROPRI prodotti; una categoria senza prodotti propri (es. 69, padre di Ente_Iso ed Ente_Soa) non ne riceve,
       altrimenti in qnet-2 i figli erediterebbero i campi delle card sorelle (ISO riceveva i 15 `soa_*`). Contesto quote invariato.
+    - Emendamento 2026-10-13 (decisione utente, regola `.claude/rules/backend.md` §9: la forma dei dati e' del legacy che
+      invia; qnet-2 riceve, collega via `old_id`, valida in modo minimo e scrive). Le traduzioni fatte finora da qnet-2
+      passano al legacy e sono cancellate da qnet-2:
+      `migration/attributes`: `relation_target.entity_type` arriva con i trattini (`operational_sites` ->
+      `operational-sites`); un enum a scelta multipla arriva con `config.display = "multiselect"` e senza la chiave
+      `multiple` (prima `{display, multiple:true}`, tradotto da `AttributesSource`). qnet-2 scrive `entity_type` e
+      `config` come arrivano (solo trim; `config` table ancora validato con `TableFieldConfigValidator`).
+      `migration/product-categories`: `parent_id` null per OGNI radice (0, null o auto-riferita, cfr. spec 0183 F-9);
+      elementi in ordine topologico GLOBALE su tutto l'albero (profondita', poi id), paginazione applicata a
+      quell'ordine, cosi' un padre precede sempre i figli anche tra pagine (un ciclo e' tagliato al primo nodo
+      rivisitato, trattato come radice; un padre inesistente conta come radice). Il filtro `search` agisce dopo
+      l'ordinamento. qnet-2 risolve il padre in un solo passaggio: padre non risolto = anomalia vera, categoria creata
+      staccata con warning; il secondo passaggio di ricollegamento (`afterImport` relink) e' cancellato.
   </context>
 
   <scope>
@@ -48,7 +61,7 @@
       <item>Legacy `MigrationAttributeCards`: card 2 (ISO) contesto work_order = esattamente i campi della pagina; comuni = stato_pagamento, accordo_pagamento, insoluti, comunicazione_email.</item>
       <item>Legacy: nuovo endpoint `GET /api/v2/migration/attribute-layouts` (controller dedicato) con il layout a 5 sezioni per ogni categoria la cui card include 2, contesto work_order.</item>
       <item>qnet-2: nuova sorgente `AttributeLayoutsSource` (key `attribute-layouts`) registrata in config, fase 6 di `MigrationOrder::PHASES` e in `QualificaLegacyImportSeeder::SOURCES`; etichette IT/EN nella pagina /migrations.</item>
-      <item>qnet-2 `AttributesSource`: adozione per `code` di un attributo gia' esistente senza old_id (imposta old_id, non sovrascrive); validazione del `config` table con `TableFieldConfigValidator`; normalizzazione `entity_type` underscore→trattino.</item>
+      <item>qnet-2 `AttributesSource`: adozione per `code` di un attributo gia' esistente senza old_id (imposta old_id, non sovrascrive); validazione del `config` table con `TableFieldConfigValidator`; normalizzazione `entity_type` underscore→trattino (SUPERATA 2026-10-13: la normalizzazione la fa il legacy, vedi emendamento in context).</item>
       <item>Test (Pest qnet-2) + verifica end-to-end dell'import reale contro qnet.test su un database temporaneo.</item>
       <item>Guida/manuale: sezione Migrazioni (nuova sorgente) se elenca le sorgenti.</item>
     </in>
@@ -67,7 +80,8 @@
       <response status="200">
         Envelope invariato ({items, pagination}). Record (id posizionale, code, name, type, config?, options?):
         - stato_consulenza: name "Stato Lavorazione", type enum, config {display:select}, options = progress (service_id=69, escluso id 1000) value=id stringa, label=description, ordine per id.
-        - standard: name "Standard ISO", type enum, config {display:multiselect, multiple:true}, options = isos (value=id stringa, label=name).
+        - standard: name "Standard ISO", type enum, config {display:multiselect}, options = isos (value=id stringa, label=name). (Dal 2026-10-13 la chiave `multiple` non e' piu' esportata: ogni enum a scelta multipla arriva con `display: multiselect`.)
+        - Ogni record relation (2026-10-13): `relation_target.entity_type` con i trattini (`operational-sites`), gia' nel vocabolario di qnet-2.
         - stato_certificato: name "Annualità del certificato" (opzioni 1..7 invariate).
         - data_inizio_lavorazione: name "Data di assegnazione"; scopo: "Scopo proposto"; ore_lavorazione "Ore di lavorazione"; data_fine_lavorazione "Data fine lavorazione"; ente_riferimento "Ente di riferimento"; note_consulente "Note consulente".
         - scopo_confermato: enum radio, options 1=Confermato, 2=Modificato.
@@ -100,6 +114,8 @@
         stato_consulenza, scopo, scopo_confermato, scopo_annuale, note_consulente, data_verifica_ufficiale.
         Shape del link invariata: {attribute_id, attribute_code, context:'work_order', is_required:false, sort_order}.
         Contesto quote invariato. `stato_consulenza` non e' piu' tra i comuni (D-5).
+        Emendamento 2026-10-13: `parent_id` null per ogni radice (anche auto-riferita); items in ordine topologico
+        globale (profondita', poi id) con paginazione su quell'ordine (prima: ordine per `description`).
       </response>
     </endpoint>
 
@@ -145,7 +161,7 @@
     <!-- qnet-2 -->
     <criterion id="AC-004">Dato un fake HTTP con un attributo `table` e config valido, quando si importa `attributes`, allora l'attributo e' creato con quel config; con un config table invalido la riga fallisce con messaggio e nessun attributo creato. (Pest)</criterion>
     <criterion id="AC-005">Dato un attributo esistente con `code` X e senza old_id, quando si importa un record legacy con code X, allora l'attributo viene adottato (old_id impostato, nome/opzioni invariati), la riga non fallisce e i link per attribute_id legacy si risolvono. (Pest)</criterion>
-    <criterion id="AC-006">Dato un record relation con `entity_type` `operational_sites`, quando si importa, allora viene normalizzato a `operational-sites` e accettato. (Pest)</criterion>
+    <criterion id="AC-006">Dato un record relation con `entity_type` `operational_sites`, quando si importa, allora viene normalizzato a `operational-sites` e accettato. (Pest) SUPERATO 2026-10-13: il legacy esporta gia' `operational-sites`; verifica sull'endpoint legacy, il test qnet-2 della normalizzazione e' rimosso.</criterion>
     <criterion id="AC-007">Dato un fake HTTP con un item layout per una categoria importata (old_id) i cui codici sono collegati in work_order, quando si importa `attribute-layouts`, allora `attribute_layouts` ha una riga (categoria, work_order, all) con le sezioni ricevute; rieseguendo l'import nessuna modifica; con un layout gia' presente la riga e' saltata; con categoria sconosciuta riga saltata con warning; con un codice non collegato la riga fallisce e nessun layout scritto. (Pest)</criterion>
     <criterion id="AC-008">Dato il registry, allora `attribute-layouts` e' in `config/migrations.php`, in `MigrationOrder::PHASES` fase 6 e in `QualificaLegacyImportSeeder::SOURCES` dopo `product-category-attributes`; `MigrationRegistryTest`/`QualificaLegacyImportSeederTest` coprono la nuova sorgente e l'idempotenza. (Pest)</criterion>
     <criterion id="AC-009">Dato la pagina /migrations, quando si apre l'elenco sorgenti, allora `attribute-layouts` ha etichetta IT/EN tradotta. (Vitest sul file locale o test esistente della pagina)</criterion>

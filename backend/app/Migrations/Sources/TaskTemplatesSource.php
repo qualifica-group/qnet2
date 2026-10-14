@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Migrations\Sources;
 
 use App\DataObjects\TaskTemplates\CreateTaskTemplateData;
+use App\DataObjects\TaskTemplates\TaskTemplateItemData;
+use App\DataObjects\TaskTemplates\TaskTemplateStageData;
 use App\Migrations\AbstractMigrationSource;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Support\ExternalApiClient;
-use App\Migrations\Support\TaskTemplateTreeFlattener;
 use App\Models\TaskTemplate;
+use App\RichText\RichTextConverter;
 use App\Services\TaskTemplateService;
 use RuntimeException;
 
@@ -22,13 +24,15 @@ use RuntimeException;
  * writers a manual save uses, so parent-before-child ordering and
  * stage-key resolution are exercised for free, never duplicated here.
  *
- * The legacy endpoint is a raw projection (D-7): every cleanup rule below —
- * duplicate name suffixing (D-8), `is_active` from the title (D-10), the
- * sub-tree anomaly rules (D-9, TaskTemplateTreeFlattener) — lives here,
- * never upstream. `TaskTemplateService::create()` does not run the
- * FormRequest's own validation, so TaskTemplateTreeFlattener self-enforces
- * the same invariants (depth cap, no stage on a sub-item, title length)
- * that validation would.
+ * The legacy sender delivers the data clean (decision 2026-10-13, supersedes
+ * D-7): `is_active`, the tree anomalies (orphans, cycles, depth cap, untitled
+ * actions: reported in the record's `warnings`), a resolved `parent_id`,
+ * parent-before-children order and a single `estimated_minutes`. What stays
+ * here is the qnet-2 side: duplicate name suffixing (D-8), request-scoped
+ * `key`/`parentKey` minting, the column-length caps and the plain-text to
+ * HTML conversion of the description (the target's rich-text format).
+ * `TaskTemplateService::create()` does not run the FormRequest's validation,
+ * hence the title/stage-name caps enforced here (spec 0172 M4).
  *
  * Idempotence is per MODEL only (D-12): `task_templates.old_id`; a model
  * already migrated is skipped whole — its stages/items carry no `old_id` of
@@ -38,7 +42,10 @@ use RuntimeException;
  */
 class TaskTemplatesSource extends AbstractMigrationSource
 {
-    private const string INACTIVE_MARKER = 'non attivo';
+    // Mirrors Http\Requests\TaskTemplates\Concerns\ValidatesTaskTemplateItems.
+    private const int TITLE_MAX = 191;
+
+    private const int STAGE_NAME_MAX = 191;
 
     public function __construct(
         ExternalApiClient $client,
@@ -91,28 +98,25 @@ class TaskTemplatesSource extends AbstractMigrationSource
             'items' => [[
                 'id' => 1,
                 'name' => 'Sample task template',
+                'is_active' => true,
+                'warnings' => [],
                 'stages' => [[
                     'id' => 10,
                     'name' => 'Sample stage',
-                    'position' => 0,
                     'items' => [
                         [
                             'id' => 100,
                             'parent_id' => null,
                             'title' => 'Sample root action',
                             'description' => 'Sample description',
-                            'estimated_hours' => 1,
-                            'estimated_minutes' => 30,
-                            'position' => 0,
+                            'estimated_minutes' => 90,
                         ],
                         [
                             'id' => 101,
                             'parent_id' => 100,
                             'title' => 'Sample sub-action',
                             'description' => null,
-                            'estimated_hours' => null,
                             'estimated_minutes' => null,
-                            'position' => 1,
                         ],
                     ],
                 ]],
@@ -169,9 +173,8 @@ class TaskTemplatesSource extends AbstractMigrationSource
         $warnings = [];
         $finalName = $this->deduplicateName($name, $externalId, $warnings);
 
-        $flattener = new TaskTemplateTreeFlattener((array) ($record['stages'] ?? []));
-        $tree = $flattener->flatten();
-        $warnings = [...$warnings, ...$flattener->warnings()];
+        $warnings = [...$warnings, ...array_map('strval', (array) ($record['warnings'] ?? []))];
+        $tree = $this->buildTree((array) ($record['stages'] ?? []), $warnings);
 
         if ($tree['items'] === []) {
             $warnings[] = 'Task template has no actions; created with none.';
@@ -180,7 +183,7 @@ class TaskTemplatesSource extends AbstractMigrationSource
         $data = new CreateTaskTemplateData(
             name: $finalName,
             description: null,
-            isActive: mb_stripos($name, self::INACTIVE_MARKER) === false,
+            isActive: (bool) ($record['is_active'] ?? true),
             items: $tree['items'],
             stages: $tree['stages'],
         );
@@ -212,6 +215,58 @@ class TaskTemplatesSource extends AbstractMigrationSource
         }
 
         return [$items, $subItems];
+    }
+
+    /**
+     * Maps the legacy `stages[].items[]` (already ordered, parents first) to
+     * the DTOs: a root item carries its stage key, a sub-item its parent key.
+     *
+     * @param  array<int, array<string, mixed>>  $rawStages
+     * @param  array<int, string>  $warnings
+     * @return array{stages: array<int, TaskTemplateStageData>, items: array<int, TaskTemplateItemData>}
+     */
+    private function buildTree(array $rawStages, array &$warnings): array
+    {
+        $stages = [];
+        $items = [];
+
+        foreach ($rawStages as $rawStage) {
+            $stageId = (int) $rawStage['id'];
+            $stageKey = 's'.$stageId;
+            $stages[] = new TaskTemplateStageData(id: null, key: $stageKey, name: $this->capped((string) ($rawStage['name'] ?? ''), self::STAGE_NAME_MAX, 'Stage name', $stageId, $warnings));
+
+            foreach ((array) ($rawStage['items'] ?? []) as $rawItem) {
+                $parentId = $rawItem['parent_id'] ?? null;
+
+                $items[] = new TaskTemplateItemData(
+                    id: null,
+                    title: $this->capped((string) $rawItem['title'], self::TITLE_MAX, 'Action title', (int) $rawItem['id'], $warnings),
+                    description: RichTextConverter::plainTextToHtml((string) ($rawItem['description'] ?? ''), convertMentionTokens: false),
+                    estimatedMinutes: isset($rawItem['estimated_minutes']) ? (int) $rawItem['estimated_minutes'] : null,
+                    taskStatusId: null,
+                    dueOffsetDays: 0,
+                    stageKey: $parentId === null ? $stageKey : null,
+                    key: 'i'.$rawItem['id'],
+                    parentKey: $parentId === null ? null : 'i'.$parentId,
+                );
+            }
+        }
+
+        return ['stages' => $stages, 'items' => $items];
+    }
+
+    /**
+     * @param  array<int, string>  $warnings
+     */
+    private function capped(string $value, int $max, string $what, int $externalId, array &$warnings): string
+    {
+        if (mb_strlen($value) <= $max) {
+            return $value;
+        }
+
+        $warnings[] = "{$what} truncated to {$max} characters (external id {$externalId}).";
+
+        return mb_substr($value, 0, $max);
     }
 
     /**

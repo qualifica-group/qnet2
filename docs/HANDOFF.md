@@ -156,6 +156,210 @@
   RDA-06), poi 0246 COS-03.
 
 ## Permessi ODA/contabilita' + seeder additivo acquisti/contabilita' — VERDE, NON COMMITTATO (2026-10-13)
+## LINEE PRODOTTO: MENU DELLE SELECT PIU' LARGO (2026-10-14) — VERDE, COMMITTATO
+
+- Richiesta utente: in Gestione richieste le select delle linee prodotto (radice, filtro, categoria) aprivano un
+  menu largo quanto la colonna, troppo stretto; ora come il prodotto delle righe offerta (`quote-product-select.tsx`):
+  `w-[min(36rem, spazio disponibile)]`, mai piu' stretto del trigger.
+- `SearchableSelect` riceve `contentClassName` (stessa manopola di `AsyncPaginatedSelect`), unito al popup con `cn()`.
+  Costante `CATEGORY_POPUP_WIDTH_CLASS` in `features/product-lines/category-popup-width.ts`, passata dalle tre select
+  `ProductCategory{Root,Filter,Tree}Select` -> vale ovunque c'e' `ProductLinesField`/`CompetenceLinesField`.
+- Test: +1 in `searchable-select.test.tsx`; Vitest components + request-management + product-lines verdi, tsc -b ok,
+  ESLint ok. Manuale: nessun impatto (solo larghezza del menu).
+
+## MIGRAZIONE UTENTI: ACCOUNT GIUSTO + [OLD] SUGLI ATTIVI NON COLLEGATI (2026-10-14) — VERDE, COMMITTATO
+
+- Decisione utente: ogni utente legacy si collega all'account qnet-2 della stessa persona; un utente legacy ATTIVO
+  non collegato viene creato con "[OLD] " davanti al first_name (`UsersSource::UNMATCHED_NAME_MARK`; users.name ne
+  deriva). Inattivi e adottati: nessun marchio. Il marchio sta in qnet-2 perche' solo qnet-2 conosce l'esito del
+  matcher. `ExistingUserMatcher` invariato. Spec 0013 amendment "quater".
+- Legacy (`../qnet`, committato 0a8067d2): `UserMigrationController` ordina `active DESC, last_name, name, id` (negli
+  omonimi D'Aleo/De Rosa/Giordano il seed si collega al record attivo; tolto il TODO commentato `where('id', 449)`);
+  nuovo `app/Support/Migration/LegacyUserAccountAliases` (legacy id => email qnet-2) per 9 nomi scritti diversamente
+  (87, 118, 135, 300, 309, 343, 345, 424, 466).
+- Verifica su dati reali (feed legacy + account del seed, matcher simulato): 0 errori, 9 alias + 3 omonimi sui giusti
+  account, 12 attivi -> [OLD] (Ciro Creator, Admin Ciro, Api, Test, QTEST, QTASK, Supporto IT, Qualifica Backoffice,
+  Enrico Locascio, Pasquale Persico, Antimo Dalvini, Sara Mariano).
+- Test: `tests/Feature/Migration` 394/394 (UsersSourceImportTest "[OLD] Ada" e adoption test aggiornati =
+  REQUIREMENT CHANGED, +2 test). Vitest help+i18n+requirements 341/341, tsc -b ok, Pint ok. Testi: requisito
+  `users` IT/EN, guida in-app migrations IT/EN, manuale Claude Docs (paragrafo dopo "La sorgente Utenti riconosce...").
+- DB locale: l'import utenti del 2026-10-14 (run #20) e' gia' avvenuto con la regola vecchia (account doppi per i 9
+  alias e i 3 omonimi, nessun [OLD]); un re-run salta le righe con old_id: serve un import utenti pulito.
+
+## MIGRAZIONE: NIENTE FUNZIONI "FORMAZIONE OLD" / "APL OLD" (2026-10-13) — VERDE, COMMITTATO
+
+- Decisione utente: le funzioni aziendali "FORMAZIONE OLD" e "APL OLD" non devono piu' esistere; le categorie legacy
+  restano sulla funzione con cui arrivano (rimappata via old_id), quindi "FORMAZIONE" e "APL".
+- `CategoryBusinessFunctionLinker`: tolti `REDIRECTED_FUNCTIONS`, `redirect()`, `closeRedirected()` (supera direttive
+  2026-09-16 e 2026-10-05 sul redirect). `ProductCategoriesSource::afterImport` chiude solo il ramo "[OLD] APL"
+  (`LegacyAplBranch`, invariato). Spec 0013 amendment "ter".
+- Testi: prerequisito `product-categories` IT/EN in `*-migration-requirements.ts` (tolta anche la frase stale
+  "categoria con lo stesso nome viene riusata"); guida in-app migrations IT+EN e manuale Claude Docs: frase sulla
+  funzione aziendale mantenuta.
+- Test: `tests/Feature/Migration` 392/392 (3 test REQUIREMENT CHANGED). Vitest help+i18n 338/338, tsc -b ok, Pint ok.
+- DB locale: le categorie gia' importate (id 46, 36, 51) sono ancora sulle funzioni OLD (id 29, 30): il cambio vale dal
+  prossimo import pulito, salvo pulizia manuale.
+
+## MIGRAZIONE: CATALOGO LEGACY MARCATO [OLD] (2026-10-13) — VERDE, NON COMMITTATO
+
+- Decisione utente: categorie prodotto, prodotti e prodotti di costo (+ sotto-categorie di magazzino) dal legacy
+  hanno il nome "[OLD] ...". Il ramo Costi e i rami fissi (Articoli/Veicoli/Attrezzature/Note spese) restano senza.
+- Legacy (`../qnet`, NON committato): nuovo `app/Support/Migration/LegacyNameMark` (PREFIX `[OLD] `, null se
+  blank) usato da `ProductCategoryMigrationController` (name), `ProductMigrationController` (name),
+  `CostProductMigrationController` (name, category_name). Verificato via tinker: "[OLD] ISO", "[OLD] Alpha"/"[OLD] Veleni".
+- qnet-2: `ProductCategoriesSource` NON adotta piu' per nome (tolti adopt/adoptableAttributes/
+  cutManualChildrenFromLegacyFields; supera direttiva 2026-09-07 e spec 0183 F-6/AC-004).
+  `CategoryBusinessFunctionLinker::fillFreeSlot` rimosso (morto). `LegacyAplBranch`: LEGACY_BRANCH = "[OLD] APL"
+  (era "APL old"), tolti manualNodeNamed/legacyName/suffisso; PRODUCT_CATEGORIES confrontato con prefisso.
+  `QualificaLegacyImportSeeder`: tolta la guardia `$staticRootIds` (serviva solo all'adozione).
+  `MapsExternalProductRecord::productName()` taglia il nome prodotto a 191 (30 titoli legacy > 185 caratteri).
+- Spec 0013 `<amendments>` 2026-10-13; spec 0183 AC-004 marcato SUPERATO. Guida in-app migrations IT+EN e
+  manuale Claude Docs: paragrafo "[OLD]" prima di quello sui Prodotti di costo.
+- Test: `tests/Feature/Migration` 390/390 (7 test di adozione tolti, 1 nuovo sul taglio a 191); suite completa
+  10.397 verdi, 3 rossi solo in QuoteDocumentPdfTest (LibreOffice non installato, estraneo). Vitest help 122/122, tsc -b ok.
+- Aperto: i dati gia' importati (183 categorie, 1.464 prodotti nel DB dev) NON vengono rinominati: decisione utente
+  = il prefisso vale dal prossimo import pulito. Non toccate le redirect delle funzioni aziendali ("FORMAZIONE OLD",
+  "APL OLD").
+- BIS (stesso giorno): catalogo [OLD] solo storico. Legacy `ProductCategoryMigrationController` manda
+  `is_active: false`; `ProductCategoriesSource` mappa `is_active` (assente = true). `CostProductCatalogue`: ROOT
+  "[OLD] Costi" + rami "[OLD] Articoli/Veicoli/Attrezzature/Note spese"; `CostCategoryResolver` crea la radice non
+  attiva. `ProductsSource` rende non attiva "No categoria" al primo uso (il `QualificaCatalogSeeder` e' a 504 righe,
+  l'hook blocca ogni modifica: non toccato). APL: tolto lo spostamento dei prodotti sulle categorie manuali
+  (`LegacyAplBranch::productCategoryFor`/PRODUCT_CATEGORIES rimossi), restano sul ramo "[OLD] APL". Nuovi test:
+  opportunita' e offerta (ricavo + costo) importate su categorie non attive. Migration 392/392. Spec 0013 emendamento
+  bis, guida migrations IT+EN, manuale Claude Docs aggiornati.
+- Token migrazione: quello nel `.env` era firmato con chiavi Passport diverse da quelle del legacy locale (401);
+  rigenerato per l'utente legacy 449 (Nicola Eliseo) il 2026-10-13.
+- APL manuale: confermato dall'utente che bastano le categorie gia' seedate (Apprendistato, Tirocinio, Orientamento
+  specialistico, con i loro campi); nessuna categoria nuova.
+- Suite completa: 10.396 verdi. Rossi estranei: QuoteDocumentPdfTest (LibreOffice assente) e 3 casi di
+  RecordActorWriteTest causati dalla cache rotte locale `bootstrap/cache/routes-v7.php` (creata 17:08): con
+  `APP_ROUTES_CACHE` puntato altrove passa 10/10. Rimedio: `php artisan optimize:clear`.
+
+## MIGRAZIONE: RIGHE PRODOTTO OPPORTUNITA' DALLE OFFERTE (2026-10-13) — VERDE, NON COMMITTATO
+
+- Bug: opportunita' 19561 (legacy 173033) con 2 righe prodotto e 1 solo prodotto in offerta. Il legacy mandava la
+  categoria propria "SICUREZZA 81/08" (radice non selezionabile); l'import offerta aggiungeva la sottocategoria del
+  prodotto (`OpportunityProductLineCoverage::ensure()` confronta l'id esatto). 5.781 opportunita' padre + figlia.
+- Fix nel legacy (`OpportunityMigrationController::productCategoryIds`): `product_category_ids` = categorie dei
+  prodotti delle offerte, fallback alle categorie proprie solo se le offerte non ne hanno. Verificato via tinker:
+  173033 -> [76]. 16.536 opportunita' con categorie da offerta, 10.101 avevano anche categorie proprie.
+- qnet-2: nessun cambio di codice (solo docblock `OpportunitiesSource`); spec 0189 emendamento 2026-10-13 + AC-009
+  + shape (tolto `quote_product_category_ids`, mai esposto). `tests/Feature/Migration` 396/396, Pint ok.
+- Aperto: i dati gia' importati NON si correggono con un rilancio (il backfill scrive solo su opportunita' senza
+  righe). Serve reimport pulito delle righe prodotto o una pulizia (decisione utente).
+
+## MIGRAZIONE: WORKAROUND SPOSTATI NEL LEGACY (2026-10-13) — VERDE, NON COMMITTATO
+
+- Regola nuova e permanente: `.claude/rules/backend.md §9` + riga in `CLAUDE.md §ROUTING`. Il legacy che INVIA e'
+  responsabile della forma dei dati; qnet-2 riceve, collega via old_id, valida in modo minimo, scrive. Supera D-7
+  della spec 0172.
+- Legacy (`../qnet`, master, NON committato). Nuovi helper `app/Support/Migration/`: `PersonNameSplitter`,
+  `LegacyRegistryFields` (vat/website/tax code), `EaSectorCatalog`, `LegacyCityLabel`, `TaskTemplateTree`,
+  `LegacyQuoteOutcome`. Controller toccati: Registry, EaSector, Source, OperationalSite, TaskTemplate, PaymentMethod,
+  ProductCategory, Attribute, CostProduct, Product, Opportunity, Quote, WorkOrder, CommissionConfiguration.
+  Verificati via tinker sui dati reali (task template: 41 modelli/1314 azioni/263 warning identici al vecchio
+  flattener; esiti offerta: 17.281 offerte, 0 mismatch con la vecchia logica qnet-2).
+- qnet-2: cancellati `PersonNameSplitter`, `TaskTemplateTreeFlattener`, `LegacyOpportunityNotes`; nuovo enum
+  `Support/LegacyQuoteOutcome`. Rimossi: re-split nomi, pulizia VAT/website/CF, settori per nome, trim fonti,
+  difese ridondanti (roles piatti, active stringa, date 0000, fallback site_type), decodifica stati offerta/
+  contratto/commessa, composizione note, fallback categorie/date/titolo/quote_date/quantita', regola %-vince,
+  slug codice pagamento, `_`->`-` entity_type, multiple->multiselect, radici auto-referenziate, relink categorie,
+  mapping campi costo->cost_*, filtro 0 pagamenti commessa.
+- Contratti nuovi (dettaglio nelle spec 0013/0172/0174/0189/0201/0203): registries `sector_ids`; operational-sites
+  `alias`; quotes `outcome` + `contract` + `customer_differs_from_opportunity` + commissions
+  `{commission_type: PERCENTAGE|FIXED_AMOUNT, value}`; opportunities `general_notes` + `preliminary_info_blocks`;
+  work-orders `force_close_reason` + `internal_notes`; task-templates albero pulito + `is_active` + `warnings[]`;
+  cost-products `attribute_values`. Legacy e qnet-2 vanno rilasciati INSIEME.
+- Test: `tests/Feature/Migration` 396/396, `tests/Unit/Migrations` 20/20, QuoteWorkflows 71/71, WorkOrders 250/250,
+  PaymentMethods 95/95, Pint ok; FE help 122/122, `tsc -b --force` ok. `tests/Feature/Quotes`: 3 rossi PDF per
+  LibreOffice assente in locale (non correlati). REQUIREMENT CHANGED su fixture/test di Registries, OperationalSites,
+  Attributes, ProductCategories, PaymentMethods, TaskTemplates, CostProducts, Quotes, QuotesStatus, Realign,
+  Opportunities, WorkOrders, CommissionConfigurations, LegacyAplBranch, QualificaLegacyImportSeeder.
+- Guida in-app migrazioni IT/EN: frase categorie opportunita' allineata (precedenza alle categorie delle offerte).
+  Manuale Claude Docs: stessa frase nella sezione Migrazioni.
+- Fuori lotto / aperti: id settori posizionali (stabili solo se non si inseriscono settori a meta' alfabeto);
+  `for_select_resource` legacy ancora con underscore; casi grigi (LegacyAplBranch, REDIRECTED_FUNCTIONS, ownership
+  righe condivise `QuoteLineDuplicator`, fornitore riga costo, tetto manager slot, guardia id 0 nel trait
+  condiviso); codice prodotto legacy (decisione utente pendente). Warning persi per scelta: data/titolo commessa,
+  stato commessa sconosciuto, quantita' mancante.
+
+## MIGRAZIONE: CONTRATTI LEGACY ROTTI CORRETTI (2026-10-13) — VERDE, NON COMMITTATO
+
+- Contesto: audit "sotterfugi" del modulo migrazioni (principio utente: qnet-2 pulito, il legacy si adegua e
+  manda i dati gia' nella forma di qnet-2). Questo e' il lotto 0 (contratti rotti); il resto del piano e' sotto.
+- Legacy (`../qnet`, branch master, NON committato; `AppServiceProvider.php`/`config/database.php` erano gia'
+  modificati dall'utente, non toccati):
+  - `UserMigrationController`: `relationship_type` via const `RELATIONSHIP_TYPES` (1 employee, 2 self_employed,
+    3 other; 0/null -> null), `qualification_type` via const `QUALIFICATION_TYPES` su `level_id` (8 livelli 1:1
+    con `QualificationTypeEnum`); tolto l'eager load `level`. Prima arrivavano int/descrizione -> sempre null.
+  - `WorkOrderMigrationController`: espone `stato_pagamento` (Field::id), `accordo_pagamento`, `insoluti` (bool)
+    da `orderisos` (id piu' basso per commessa). Prima mancavano: righe pagamento sempre vuote.
+  - `CompanySiteMigrationController`: `province` = `sigla` (era il nome per esteso, mai risolto dal geo resolver).
+  - `CommissionConfigurationMigrationController`: `amount` solo se > 0 (era != 0); 0 righe negative nei dati.
+  - Verificati chiamando i controller via tinker sui dati reali.
+- qnet-2: `PaymentMethodsSource` legge il codice fiscale da `payment_method_code` (prima da `code`, che il legacy
+  usa per uno slug). REQUIREMENT CHANGED: fixture di `PaymentMethodsSourceImportTest` allineate al contratto reale.
+- Spec 0201 D-14 aggiornata. Test: `tests/Feature/Migration` 416/416, `tests/Unit/Migrations` 30/30, Pint ok.
+- Aperto (decisione utente): `ProductsSource` legge `code` ma il legacy non lo manda (sempre sequenza PRD);
+  `services.code` valorizzato su 1322/1444, 77 codici duplicati, qnet-2 `code` unique max 32.
+- Prossimi lotti (audit): stati offerta/contratto/commessa -> `outcome`/`contract`/`force_close_reason` dal legacy;
+  `TaskTemplateTreeFlattener` nel legacy (supera D-7 spec 0172); categorie in ordine topologico; nomi/comuni/
+  settori dalle anagrafiche; codice modalita' di pagamento gia' univoco dal legacy.
+
+## MIGRAZIONE OFFERTE: STATI LEGACY + NOTE INFO PRELIMINARI OPPORTUNITA' (2026-10-13) — VERDE, COMMITTATO
+
+- Spec 0189 aggiornata: G-6 riscritto, nuovi G-18 (fase opportunita' -> stato offerta Presentata), G-19 (note Info
+  preliminari), AC-013/AC-014, contratti API `migration/quotes` (+`opportunity_phase`, `won_by_other_quote`) e
+  `migration/opportunities` (+`preliminary_info_notes`).
+- Legacy (`../qnet`, branch develop, commit 2e3eb13a, non pushato): `QuoteMigrationController` (+2 campi, const WON_STATUSES),
+  `OpportunityMigrationController` (+`preliminary_info_notes`), nuovo `App\Support\Migration\LegacyPreliminaryInfoNotes`
+  (tabelle pre_info_* tranne R&S, prima riga per id). Verificati via curl su qnet.test.
+- qnet-2: `LegacyQuoteState` (DTO dal record), `LegacyQuoteStatusResolver` (mapping, per nome poi per gruppo),
+  `LegacyQuoteStatusApplier` (non applica piu' il vincolo riga ricavo: warning "Legacy status N closed the offer without
+  product lines."), `QuotesSource::eachLegacyRecord()`, comando `quotes:realign-legacy-status [--dry-run]` (solo offerte
+  su stato di sistema `open` e senza activity_log). `LegacyOpportunityNotes` (note + riservate + card),
+  `OpportunitiesSource::backfillExisting()` (categorie + note mancanti, senza toccare updated_at).
+- Decisioni utente: Rifiutata con accepted_data resta closed_lost; Accettata dal cliente senza pending -> primo validated;
+  Pro-forma/Accettato -> closed_lost se altra offerta vinta, altrimenti "In trattativa".
+- Test: REQUIREMENT CHANGED `QuotesSourceImportTest` (offerta chiusa senza righe ora si chiude); nuovi
+  `QuotesSourceStatusImportTest`, `RealignLegacyQuoteStatusCommandTest`, 2 test in `OpportunitiesSourceImportTest`.
+  Pest parallelo 10432 verdi (rossi solo i 3 `QuoteDocumentPdfTest`, LibreOffice assente); Pint pulito;
+  Vitest help 122/122, ESLint + `tsc -b --force` puliti.
+- Dry-run sui dati locali: 975 offerte da riallineare (388 -> Persa, 253 -> In trattativa, 121 -> VINTO, 106 -> Da
+  Richiamare, 52 -> Rimandata, 33/12 globale chiuse, 7 -> Validato). NON eseguito in scrittura.
+- Manuale: guida `migrations` IT/EN + manuale Claude Docs (sezione Migrazioni). PDF da rigenerare.
+- Prossimi passi: eseguire `php artisan quotes:realign-legacy-status`; rilanciare la sorgente Opportunita' per le note.
+
+## OLD ID FILTRABILE, ORDINABILE E CERCABILE IN OGNI GRIGLIA (2026-10-13) — VERDE, COMMITTATO
+
+- Richiesta utente: "la colonna id legacy deve essere filtrabile e sortabile ovunque".
+- `InjectsDefaultIdColumn::defaultLegacyIdColumn()`: `filterable: true`, `filterType: 'number'` (era solo sortable);
+  `LEGACY_ID_COLUMN` da `private` a `protected const`. `id` di default resta non filtrabile (invariato).
+- Bug trovato: `CommissionConfigurationsTableDefinition::resolveConfig` filtra le colonne con `visibleColumnIds()`
+  (costruita da `columns()` grezze) e scartava `old_id` iniettato -> colonna mai mostrata. Fix: `->push(self::LEGACY_ID_COLUMN)`
+  (l'iniezione resta gated da `LegacyIdVisibility`).
+- Test `TableLegacyIdColumnTest`: REQUIREMENT CHANGED `filterable` true; nuovi "filters the rows by old_id" e
+  sweep su TUTTI i domini di `config('tables.definitions')` la cui tabella ha `old_id` (28): colonna esposta,
+  sortable+filterable, rows con filtro+sort 200. Verificato che fallisce senza il fix provvigioni.
+- Verifica: Pest parallelo 10406 verdi, rossi solo i 3 `QuoteDocumentPdfTest` (LibreOffice); Pint pulito; Vitest help
+  122/122; ESLint + `tsc -b --force` puliti. Nessun codice FE (il filtro numerico e' generico).
+- Segnalazione utente: in Opportunita' la ricerca rapida "173029" non trovava il record (old_id 173029, id 19558):
+  filtri di colonna OK, ma la ricerca rapida copriva solo `name`. Fix: la colonna `old_id` iniettata e' anche
+  `searchable: true` -> entra nella ricerca rapida (OR-LIKE) di tutte le 28 griglie, solo per chi vede l'ID legacy.
+  Test: ricerca opportunita' per old_id, negativo senza permesso, sweep esteso (`searchable` contiene `old_id` +
+  search 200). Pest parallelo 10407 verdi; rossi i 3 LibreOffice + `DemoOpportunitySeederTest` INV-1/INV-2
+  instabile (1 fallimento su 6 run isolati, non legato a questa modifica).
+- Manuale: guida `general` IT/EN (righe "Colonne" e "Cerca…") + manuale Claude Docs (stesse righe). PDF da rigenerare.
+- FIX (COMMITTATO): nel filtro di colonna "ID legacy" di Opportunita' "173029" non compariva nella checklist: la
+  checklist (Set Filter) carica al massimo 200 valori (`TableValuesRequest::MAX_LIMIT`) e la sua ricerca e' client-side
+  su quei 200 (19.561 opportunita'). `defaultLegacyIdColumn()` ora ha `hasFilterValues: false` -> solo filtro numerico
+  (Uguale a / intervallo), nessuna checklist, in tutte le griglie. Nessun codice FE (`resolveFilter` gestisce gia' il
+  flag). Test nuovo "filters old_id with the number condition only..." + sweep sulle 28 griglie con `old_id` ora
+  verifica anche `hasFilterValues: false`; `tests/Feature/Table` 303 verdi, Pint pulito.
+  Manuale: nessun impatto (la guida dice gia' "filtrare come numero").
+
+## MERGE main -> feature/amministrazione — VERDE, NON COMMITTATO (2026-10-13)
 
 - Causa del "Non hai il permesso di visualizzare gli ordini di acquisto": catalogo permessi del DB locale non
   risincronizzato (mancavano 59 permessi: purchase-orders.*, purchase-invoices.*, cost-types.*, commission-*,

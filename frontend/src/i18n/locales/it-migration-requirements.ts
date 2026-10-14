@@ -8,7 +8,7 @@ export const migrationRequirements = {
   roles:
     'Nessun prerequisito. Un ruolo con lo stesso nome già presente in QNet, super-admin compreso, viene riusato e la descrizione si completa solo se è vuota. I permessi non vengono importati: assegnali da Amministrazione › Ruoli.',
   users:
-    'Senza Ruoli, Società aziendali e Sedi operative, ruolo, società e sede restano vuoti con un avviso. Il responsabile di ogni utente si collega da solo a fine import. Email, nome e cognome sono obbligatori. Un utente già presente in QNet viene riconosciuto per email, oppure per nome e cognome se non ha ancora un id legacy: riceve l’id legacy e si completano solo società, sede e responsabile vuoti; ruolo, password e contatti restano quelli di QNet. Se più utenti hanno lo stesso nome, la riga fallisce. Per gli utenti nuovi la password deve arrivare già cifrata (bcrypt). Città e provincia vengono riconosciute dall’elenco dei comuni di QNet.',
+    'Senza Ruoli, Società aziendali e Sedi operative, ruolo, società e sede restano vuoti con un avviso. Il responsabile di ogni utente si collega da solo a fine import. Email, nome e cognome sono obbligatori. Un utente già presente in QNet viene riconosciuto per email, oppure per nome e cognome se non ha ancora un id legacy: riceve l’id legacy e si completano solo società, sede e responsabile vuoti; ruolo, password e contatti restano quelli di QNet. Se più utenti hanno lo stesso nome, la riga fallisce. Un utente attivo non riconosciuto viene creato con [OLD] davanti al nome. Per gli utenti nuovi la password deve arrivare già cifrata (bcrypt). Città e provincia vengono riconosciute dall’elenco dei comuni di QNet.',
   'business-functions':
     'Nessun prerequisito. Responsabile e operatori non si collegano qui: dopo Utenti esegui “Funzioni aziendali — collega responsabile e operatori”. Al primo import il report segnala gli utenti non ancora trovati: è normale.',
   companies:
@@ -33,7 +33,7 @@ export const migrationRequirements = {
   attributes:
     'Nessun prerequisito. Un attributo con lo stesso codice già presente in QNet viene riusato.',
   'product-categories':
-    'Senza Funzioni aziendali la categoria resta senza funzione, con un avviso. La categoria padre si collega da sola a fine import e una categoria con lo stesso nome già presente in QNet viene riusata. Le categorie del ramo APL legacy e quelle delle funzioni “FORMAZIONE OLD” e “APL OLD” arrivano non selezionabili.',
+    'Senza Funzioni aziendali la categoria resta senza funzione, con un avviso. La categoria padre si collega da sola a fine import. Ogni categoria legacy viene creata con il prefisso [OLD], anche se in QNet esiste già una categoria con lo stesso nome, e mantiene la sua funzione aziendale, Formazione e APL comprese. Le categorie del ramo [OLD] APL arrivano non selezionabili.',
   'product-category-attributes':
     'Non crea record: collega gli attributi alle categorie già importate. I collegamenti già presenti in QNet non vengono modificati.',
   'attribute-layouts':

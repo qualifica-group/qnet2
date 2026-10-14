@@ -19,9 +19,10 @@ use RuntimeException;
  * another source, while the modules that consume it (quotes first) point at it
  * via `old_id`.
  *
- * The external `code` is the FISCAL classification ("MP01", "MP05", ...),
- * shared by many modalities: it is imported as-is into `payment_method_code`,
- * and qnet's own unique `code` is derived from the name instead (mapCode()).
+ * The external `payment_method_code` is the FISCAL classification ("MP01",
+ * "MP05", ...), shared by many modalities: it is imported as-is. qnet's own
+ * unique `code` arrives ready from the legacy (snake_case, unique over the
+ * whole table) and is used as sent.
  * Re-import is idempotent (skip by old_id); a method already provisioned under
  * the same derived code and not yet bound to an external record — the seeded
  * catalogue — is ADOPTED rather than duplicated (mirrors SourcesSource).
@@ -35,13 +36,9 @@ class PaymentMethodsSource extends AbstractMigrationSource
      */
     private const int PAYMENT_DAYS_MAX = 3650;
 
-    /**
-     * Prefix for a code derived from a name that does not start with a letter
-     * (`code` must match `^[a-z][a-z0-9_]*$`, D-3 of spec 0068).
-     */
-    private const string DERIVED_CODE_PREFIX = 'pm_';
+    /** Same format and ceiling as the `code` column / StorePaymentMethodRequest. */
+    private const string CODE_PATTERN = '/^[a-z][a-z0-9_]*$/';
 
-    /** Same ceiling as the `code` column / StorePaymentMethodRequest. */
     private const int CODE_MAX_LENGTH = 64;
 
     public function __construct(
@@ -69,9 +66,8 @@ class PaymentMethodsSource extends AbstractMigrationSource
         return [
             ['id' => 'id', 'label' => 'ID', 'type' => 'number'],
             ['id' => 'name', 'label' => 'Name', 'type' => 'string'],
-            // The external field name is kept (the preview mirrors the source
-            // record); it lands on qnet's `payment_method_code`.
-            ['id' => 'code', 'label' => 'Fiscal code', 'type' => 'string'],
+            ['id' => 'code', 'label' => 'Code', 'type' => 'string'],
+            ['id' => 'payment_method_code', 'label' => 'Fiscal code', 'type' => 'string'],
             ['id' => 'description', 'label' => 'Description', 'type' => 'string'],
             ['id' => 'payment_instructions', 'label' => 'Payment instructions', 'type' => 'string'],
             ['id' => 'payment_days', 'label' => 'Payment days', 'type' => 'number'],
@@ -99,6 +95,7 @@ class PaymentMethodsSource extends AbstractMigrationSource
             'id' => $record['id'] ?? null,
             'name' => $record['name'] ?? null,
             'code' => $record['code'] ?? null,
+            'payment_method_code' => $record['payment_method_code'] ?? null,
             'description' => $record['description'] ?? null,
             'payment_instructions' => $record['payment_instructions'] ?? null,
             'payment_days' => $record['payment_days'] ?? null,
@@ -119,15 +116,15 @@ class PaymentMethodsSource extends AbstractMigrationSource
             return MigrationRowOutcome::skipped();
         }
 
-        // Step 2: the name — a plain, non-unique label — and the qnet `code`
-        // derived from it, which IS the unique identity.
+        // Step 2: the name — a plain, non-unique label — and the qnet `code`,
+        // which IS the unique identity.
         $name = trim((string) ($record['name'] ?? ''));
 
         if ($name === '') {
             throw new RuntimeException('name is required.');
         }
 
-        $code = $this->mapCode($name, $externalId);
+        $code = $this->validCode($record['code'] ?? null);
 
         // Step 3: adopt the row the clean/demo catalogue already provisioned
         // under this code, instead of colliding with its unique index.
@@ -143,7 +140,7 @@ class PaymentMethodsSource extends AbstractMigrationSource
         $paymentMethod = $this->service->create(new CreatePaymentMethodData(
             name: $name,
             code: $code,
-            paymentMethodCode: $this->mapText($record['code'] ?? null),
+            paymentMethodCode: $this->mapText($record['payment_method_code'] ?? null),
             description: $this->mapText($record['description'] ?? null),
             paymentInstructions: $this->mapText($record['payment_instructions'] ?? null),
             paymentDays: $paymentDays,
@@ -179,56 +176,18 @@ class PaymentMethodsSource extends AbstractMigrationSource
     }
 
     /**
-     * qnet's unique `code` is derived from the NAME, never from the external
-     * `code`: the latter is the fiscal classification (imported as-is into
-     * `payment_method_code`) and is deliberately shared — "MP01" alone covers
-     * a dozen legacy modalities, so using it as the identity collapsed the
-     * whole catalogue onto a handful of rows.
-     *
-     * Derivation is deterministic (same name -> same code across runs), which
-     * is what keeps adoption and idempotence stable. Two DIFFERENT names that
-     * slugify identically (homonyms are legal now that `name` is not unique)
-     * fall back to a code suffixed with the external id — still deterministic,
-     * unique by construction.
+     * Defensive check of the `code` the legacy sends: the format and ceiling
+     * StorePaymentMethodRequest enforces, which the import bypasses.
      */
-    private function mapCode(string $name, int|string $externalId): string
+    private function validCode(mixed $code): string
     {
-        $base = $this->slugify($name);
-        $owner = PaymentMethod::query()->where('code', $base)->first();
+        $code = trim((string) ($code ?? ''));
 
-        // Free, or held by a row this record is about to adopt.
-        if ($owner === null || $owner->old_id === null) {
-            return $base;
+        if (preg_match(self::CODE_PATTERN, $code) !== 1 || mb_strlen($code) > self::CODE_MAX_LENGTH) {
+            throw new RuntimeException('code is required and must match '.self::CODE_PATTERN.' (max '.self::CODE_MAX_LENGTH.' characters).');
         }
 
-        $suffixed = $this->slugify($name, (string) $externalId);
-
-        if (PaymentMethod::query()->where('code', $suffixed)->exists()) {
-            throw new RuntimeException("code \"{$suffixed}\" is already taken.");
-        }
-
-        return $suffixed;
-    }
-
-    /**
-     * The name as a snake_case identifier (`^[a-z][a-z0-9_]*$`, D-3), capped
-     * at the column length with room for the optional disambiguating suffix.
-     */
-    private function slugify(string $name, string $suffix = ''): string
-    {
-        $slug = trim((string) preg_replace('/_+/', '_', (string) preg_replace('/[^a-z0-9]+/', '_', mb_strtolower($name))), '_');
-
-        if ($slug === '') {
-            throw new RuntimeException('code could not be derived from the name.');
-        }
-
-        if (! ctype_alpha($slug[0])) {
-            $slug = self::DERIVED_CODE_PREFIX.$slug;
-        }
-
-        $tail = $suffix === '' ? '' : '_'.$suffix;
-
-        return mb_substr($slug, 0, self::CODE_MAX_LENGTH - mb_strlen($tail)).$tail;
+        return $code;
     }
 
     /**

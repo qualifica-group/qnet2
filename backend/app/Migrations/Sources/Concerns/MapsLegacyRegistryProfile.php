@@ -11,28 +11,22 @@ use App\Enums\PersonalDataTypeEnum;
 use App\Enums\SiteTypeEnum;
 use App\Migrations\Sources\RegistriesSource;
 use App\Migrations\Support\MigrationGeoResolver;
-use App\Migrations\Support\PersonNameSplitter;
 use RuntimeException;
 
 /**
  * The personal-data profile of a legacy `companies` record (spec 0189, G-11):
- * person card when `is_private`, company card otherwise, cleaned fiscal codes,
- * contacts and addresses. Split out of RegistriesSource, which keeps the
- * orchestration and the relational remaps.
+ * person card when `is_private`, company card otherwise, contacts and
+ * addresses. The legacy sends the values already clean (names split, VAT and
+ * tax code normalized, website with scheme). Split out of RegistriesSource,
+ * which keeps the orchestration and the relational remaps.
  *
  * @phpstan-require-extends RegistriesSource
  *
  * @property-read MigrationGeoResolver $geoResolver
- * @property-read PersonNameSplitter $nameSplitter
  */
 trait MapsLegacyRegistryProfile
 {
     use MapsExternalProfileRecord;
-
-    private const string WEBSITE_SCHEME = 'https://';
-
-    /** Fewer digits than this cannot be an Italian or EU VAT number: a legacy placeholder. */
-    private const int VAT_MIN_DIGITS = 9;
 
     /**
      * @param  array<string, mixed>  $record
@@ -42,7 +36,7 @@ trait MapsLegacyRegistryProfile
      */
     private function buildProfile(array $record, array &$warnings): ProfileData
     {
-        $card = $this->buildCard($record, $warnings);
+        $card = $this->buildCard($record);
 
         if ($card->displayName() === '') {
             throw new RuntimeException('The registry has no name (company_name or first_name/last_name are required).');
@@ -60,73 +54,32 @@ trait MapsLegacyRegistryProfile
     }
 
     /**
-     * A private customer's first name and surname are re-split on the tax
-     * code: the legacy heuristic often inverts them.
-     *
      * @param  array<string, mixed>  $record
-     * @param  array<int, string>  $warnings
      */
-    private function buildCard(array $record, array &$warnings): CreatePersonalData
+    private function buildCard(array $record): CreatePersonalData
     {
         $isPrivate = (bool) ($record['is_private'] ?? false);
-        $taxCode = $this->blankToNull($record['tax_code'] ?? null);
-        [$firstName, $lastName] = $isPrivate
-            ? $this->nameSplitter->split($this->blankToNull($record['first_name'] ?? null), $this->blankToNull($record['last_name'] ?? null), $taxCode)
-            : [null, null];
 
         return new CreatePersonalData(
             type: $isPrivate ? PersonalDataTypeEnum::Individual : PersonalDataTypeEnum::Company,
-            firstName: $this->blankToNull($firstName),
-            lastName: $this->blankToNull($lastName),
+            firstName: $this->blankToNull($record['first_name'] ?? null),
+            lastName: $this->blankToNull($record['last_name'] ?? null),
             companyName: $isPrivate ? null : $this->blankToNull($record['company_name'] ?? null),
-            taxCode: $taxCode === null ? null : mb_strtoupper($taxCode),
-            vatNumber: $this->cleanVatNumber($record['vat_number'] ?? null, $warnings),
+            taxCode: $this->blankToNull($record['tax_code'] ?? null),
+            vatNumber: $this->blankToNull($record['vat_number'] ?? null),
             sdiCode: $this->blankToNull($record['sdi_code'] ?? null),
         );
     }
 
     /**
-     * The `IT` prefix is dropped; a placeholder (`0`, `1`, `.`, only zeros,
-     * fewer than VAT_MIN_DIGITS digits) becomes null with a warning.
-     *
-     * @param  array<int, string>  $warnings
-     */
-    private function cleanVatNumber(mixed $raw, array &$warnings): ?string
-    {
-        $value = mb_strtoupper(trim((string) ($raw ?? '')));
-
-        if ($value === '') {
-            return null;
-        }
-
-        $value = trim((string) preg_replace('/^IT/', '', $value));
-        $digits = (string) preg_replace('/\D/', '', $value);
-
-        if (strlen($digits) < self::VAT_MIN_DIGITS || trim($digits, '0') === '') {
-            $warnings[] = "Placeholder vat_number '{$raw}' discarded.";
-
-            return null;
-        }
-
-        return $value;
-    }
-
-    /**
      * Email, PEC, phone, second phone (non-primary, so the main phone stays
-     * the primary one), fax and website (an `https://` scheme is prepended
-     * when the legacy value has none).
+     * the primary one), fax and website.
      *
      * @param  array<string, mixed>  $record
      * @return array{0: array<int, ContactInput>, 1: array<int, string>}
      */
     private function buildContacts(array $record): array
     {
-        $website = $this->blankToNull($record['website'] ?? null);
-
-        if ($website !== null && ! preg_match('#^[a-z][a-z0-9+.-]*://#i', $website)) {
-            $record['website'] = self::WEBSITE_SCHEME.$website;
-        }
-
         return $this->buildContactInputs($record, [
             ['field' => 'email', 'type' => ContactTypeEnum::Email, 'label' => 'Email'],
             ['field' => 'pec', 'type' => ContactTypeEnum::Pec, 'label' => 'PEC'],
@@ -150,7 +103,14 @@ trait MapsLegacyRegistryProfile
         $candidates = [[$record, true, SiteTypeEnum::LegalSeat]];
 
         foreach ((array) ($record['addresses'] ?? []) as $extra) {
-            $siteType = SiteTypeEnum::tryFrom((string) ($extra['site_type'] ?? '')) ?? SiteTypeEnum::OperationalSite;
+            $siteType = SiteTypeEnum::tryFrom((string) ($extra['site_type'] ?? ''));
+
+            if ($siteType === null) {
+                $warnings[] = "Unknown address site_type '".($extra['site_type'] ?? '')."', address skipped.";
+
+                continue;
+            }
+
             $candidates[] = [(array) $extra, false, $siteType];
         }
 

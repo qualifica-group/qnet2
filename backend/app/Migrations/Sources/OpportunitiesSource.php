@@ -28,11 +28,16 @@ use RuntimeException;
  * legacy phase (`status`) has no column here: the status is computed from
  * the quotes.
  *
- * G-12: an opportunity with no product category of its own takes the
- * categories of the products on its quotes' lines (`quote_product_category_ids`),
- * the same rows OpportunityProductLineCoverage adds when a quote is built
- * here. A re-import fills them in on an already imported opportunity that
- * still has no product line (never overwriting existing ones).
+ * G-12: the legacy `product_category_ids` are the categories of the products
+ * on the opportunity's quotes' lines (the same rows
+ * OpportunityProductLineCoverage looks for when those quotes are imported),
+ * or its own categories when its quotes carry none. A re-import fills them
+ * in on an already imported opportunity that still has no product line
+ * (never overwriting existing ones).
+ *
+ * The legacy sends the composed `general_notes` and, apart, the Info
+ * preliminari card blocks (`preliminary_info_blocks`): a re-import appends
+ * the blocks an already imported opportunity still lacks.
  */
 class OpportunitiesSource extends AbstractMigrationSource
 {
@@ -40,9 +45,11 @@ class OpportunitiesSource extends AbstractMigrationSource
 
     private const int NAME_MAX_LENGTH = 191;
 
-    private const string RESERVED_NOTES_LABEL = 'Note riservate:';
+    private const string NOTES_SEPARATOR = "\n\n";
 
     private const string BACKFILLED_PRODUCT_LINES_NOTE = 'Missing product categories back-filled.';
+
+    private const string BACKFILLED_NOTES_NOTE = 'Missing preliminary info notes back-filled.';
 
     public function __construct(
         ExternalApiClient $client,
@@ -94,7 +101,6 @@ class OpportunitiesSource extends AbstractMigrationSource
             ['id' => 'supervisor_user_id', 'label' => 'Supervisor (external id)', 'type' => 'number'],
             ['id' => 'manager_user_ids', 'label' => 'Managers (external ids)', 'type' => 'string'],
             ['id' => 'product_category_ids', 'label' => 'Product categories (external ids)', 'type' => 'string'],
-            ['id' => 'quote_product_category_ids', 'label' => 'Quote product categories (external ids)', 'type' => 'string'],
             ['id' => 'start_date', 'label' => 'Start date', 'type' => 'date'],
             ['id' => 'expected_close_date', 'label' => 'Expected close date', 'type' => 'date'],
             ['id' => 'estimated_value', 'label' => 'Estimated value', 'type' => 'number'],
@@ -129,7 +135,7 @@ class OpportunitiesSource extends AbstractMigrationSource
 
         return activity()->withoutLogs(fn (): MigrationRowOutcome => $existing === null
             ? $this->importRecord($externalId, $record)
-            : $this->backfillProductLines($existing, $record));
+            : $this->backfillExisting($existing, $record));
     }
 
     /**
@@ -153,35 +159,72 @@ class OpportunitiesSource extends AbstractMigrationSource
     }
 
     /**
-     * Skipped row (idempotent re-import, AC-002) that still fills in the
-     * product lines of an opportunity imported without any (G-12). Warnings
-     * are reported only alongside a write: a row with nothing to fill stays a
-     * silent skip on every re-run.
+     * Skipped row (idempotent re-import, AC-002) that still fills in what an
+     * opportunity was imported without. Warnings are reported only alongside
+     * a write: a row with nothing to fill stays a silent skip on every re-run.
      *
      * @param  array<string, mixed>  $record
      */
-    private function backfillProductLines(Opportunity $opportunity, array $record): MigrationRowOutcome
+    private function backfillExisting(Opportunity $opportunity, array $record): MigrationRowOutcome
+    {
+        return MigrationRowOutcome::skipped([
+            ...$this->backfillProductLines($opportunity, $record),
+            ...$this->backfillPreliminaryInfoNotes($opportunity, $record),
+        ]);
+    }
+
+    /**
+     * The product lines of an opportunity imported without any (G-12).
+     *
+     * @param  array<string, mixed>  $record
+     * @return array<int, string> the report entries, empty when nothing was written
+     */
+    private function backfillProductLines(Opportunity $opportunity, array $record): array
     {
         if ($opportunity->productLines()->exists()) {
-            return MigrationRowOutcome::skipped();
+            return [];
         }
 
         $warnings = [];
         $productLines = $this->productLines($record, $warnings);
 
         if ($productLines === []) {
-            return MigrationRowOutcome::skipped();
+            return [];
         }
 
         $this->productLineWriter->sync($opportunity, $productLines);
 
-        return MigrationRowOutcome::skipped([...$warnings, self::BACKFILLED_PRODUCT_LINES_NOTE]);
+        return [...$warnings, self::BACKFILLED_PRODUCT_LINES_NOTE];
     }
 
     /**
-     * The opportunity's own legacy categories; none resolved -> those of the
-     * products on its quotes' lines (G-12).
+     * The Info preliminari notes the general notes still lack, appended
+     * without touching the legacy timestamps.
      *
+     * @param  array<string, mixed>  $record
+     * @return array<int, string> the report entries, empty when nothing was written
+     */
+    private function backfillPreliminaryInfoNotes(Opportunity $opportunity, array $record): array
+    {
+        $current = $this->blankToNull($opportunity->general_notes);
+        $missing = array_filter(
+            array_map(strval(...), (array) ($record['preliminary_info_blocks'] ?? [])),
+            static fn (string $block): bool => $block !== '' && ! str_contains((string) $current, $block),
+        );
+
+        if ($missing === []) {
+            return [];
+        }
+
+        $notes = implode(self::NOTES_SEPARATOR, array_filter([$current, ...$missing]));
+
+        $opportunity->timestamps = false;
+        $opportunity->forceFill(['general_notes' => $notes])->saveQuietly();
+
+        return [self::BACKFILLED_NOTES_NOTE];
+    }
+
+    /**
      * @param  array<string, mixed>  $record
      * @param  array<int, string>  $warnings
      * @return array<int, array{product_category_id: int}>
@@ -189,10 +232,6 @@ class OpportunitiesSource extends AbstractMigrationSource
     private function productLines(array $record, array &$warnings): array
     {
         $categoryIds = $this->remapLegacyIds(ProductCategory::class, $record['product_category_ids'] ?? [], 'product_category_ids', $warnings);
-
-        if ($categoryIds === []) {
-            $categoryIds = $this->remapLegacyIds(ProductCategory::class, $record['quote_product_category_ids'] ?? [], 'quote_product_category_ids', $warnings);
-        }
 
         return array_map(static fn (int $id): array => ['product_category_id' => $id], $categoryIds);
     }
@@ -236,7 +275,7 @@ class OpportunitiesSource extends AbstractMigrationSource
             expectedCloseDate: $this->blankToNull($record['expected_close_date'] ?? null),
             successProbability: null,
             operationalSiteId: $this->remapLegacyId(OperationalSite::class, $record['operational_site_id'] ?? null, 'operational_site_id', $warnings),
-            generalNotes: $this->generalNotes($record),
+            generalNotes: $this->blankToNull($record['general_notes'] ?? null),
             name: $this->name($record),
         );
     }
@@ -252,24 +291,6 @@ class OpportunitiesSource extends AbstractMigrationSource
         $title = $this->blankToNull($record['title'] ?? null);
 
         return $title === null ? null : mb_substr($title, 0, self::NAME_MAX_LENGTH);
-    }
-
-    /**
-     * The legacy notes, then the reserved notes under their own label.
-     *
-     * @param  array<string, mixed>  $record
-     */
-    private function generalNotes(array $record): ?string
-    {
-        $notes = $this->blankToNull($record['notes'] ?? null);
-        $reserved = $this->blankToNull($record['reserved_notes'] ?? null);
-
-        $parts = array_filter([
-            $notes,
-            $reserved === null ? null : self::RESERVED_NOTES_LABEL."\n".$reserved,
-        ]);
-
-        return $parts === [] ? null : implode("\n\n", $parts);
     }
 
     private function blankToNull(mixed $value): ?string

@@ -34,8 +34,8 @@ final class AplInternshipAttributeCatalogue
 {
     /**
      * Seeded under "APL"; it replaces the legacy "Tirocini extracurriculari
-     * privati", which the import files under "APL old" and whose products it
-     * moves here (LegacyAplBranch, user directive 2026-10-05).
+     * privati", which the import files, with its products, under "[OLD] APL"
+     * as history only (LegacyAplBranch, user directives 2026-10-05/2026-10-13).
      */
     public const string CATEGORY = 'Tirocinio';
 

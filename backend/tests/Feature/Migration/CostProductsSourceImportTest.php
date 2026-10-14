@@ -106,12 +106,13 @@ it('files each legacy cost table under the Costi branch as a cost-only product',
     $vatRate = VatRate::factory()->create(['old_id' => 6]);
 
     $run = runCostProductsImport([
-        legacyCostRow('products', 2, 'Oust', [
-            'code' => 'P01', 'cost' => 10, 'price' => 20, 'vat_rate_id' => 6, 'category_name' => 'Igienizzanti',
+        legacyCostRow('products', 2, '[OLD] Oust', [
+            'code' => 'P01', 'cost' => 10, 'price' => 20, 'vat_rate_id' => 6, 'category_name' => '[OLD] Igienizzanti',
             'brand' => 'OUST', 'barcode' => '800123', 'ministerial_code' => 'MIN-1', 'storage_position' => 'scaffale 5',
+            'attribute_values' => ['cost_brand' => 'OUST', 'cost_barcode' => '800123', 'cost_ministerial_code' => 'MIN-1', 'cost_storage_position' => 'scaffale 5'],
         ]),
-        legacyCostRow('vehicles', 3, 'Tagliando Smart', ['cost' => 140, 'price' => 140, 'license_plate' => 'FE700FV']),
-        legacyCostRow('equipment', 1, 'Motosega', ['cost' => 100, 'price' => 100, 'brand' => 'Stihl', 'model' => 'GHT', 'serial_number' => '123']),
+        legacyCostRow('vehicles', 3, 'Tagliando Smart', ['cost' => 140, 'price' => 140, 'license_plate' => 'FE700FV', 'attribute_values' => ['cost_license_plate' => 'FE700FV']]),
+        legacyCostRow('equipment', 1, 'Motosega', ['cost' => 100, 'price' => 100, 'brand' => 'Stihl', 'model' => 'GHT', 'serial_number' => '123', 'attribute_values' => ['cost_brand' => 'Stihl', 'cost_model' => 'GHT', 'cost_serial_number' => '123']]),
         legacyCostRow('expense_reports', 6, 'FOR_Commissione', ['description' => "Commissione d'esame", 'cost' => 400, 'price' => 400]),
     ]);
 
@@ -121,16 +122,20 @@ it('files each legacy cost table under the Costi branch as a cost-only product',
 
     $root = costCategory(CostProductCatalogue::ROOT, null);
     expect($root)->not->toBeNull()
-        ->and($root->business_function_id)->toBeNull();
+        ->and($root->name)->toBe('[OLD] Costi')
+        ->and($root->business_function_id)->toBeNull()
+        // History only: the whole branch and its products leave every input
+        // (spec 0208, user directive 2026-10-13).
+        ->and($root->is_active)->toBeFalse();
 
     foreach (CostProductCatalogue::BRANCHES as $branchName) {
         expect(costCategory($branchName, $root->id))->not->toBeNull();
     }
 
-    $articles = costCategory('Articoli', $root->id);
+    $articles = costCategory(CostProductCatalogue::BRANCHES['products'], $root->id);
     $article = Product::query()->where('old_source', 'products')->where('old_id', 2)->firstOrFail();
 
-    expect($article->category_id)->toBe(costCategory('Igienizzanti', $articles->id)->id)
+    expect($article->category_id)->toBe(costCategory('[OLD] Igienizzanti', $articles->id)->id)
         ->and($article->code)->toBe('P01')
         ->and((float) $article->cost)->toBe(10.0)
         ->and((float) $article->price)->toBe(20.0)
@@ -144,7 +149,7 @@ it('files each legacy cost table under the Costi branch as a cost-only product',
         ]);
 
     $vehicle = Product::query()->where('old_source', 'vehicles')->where('old_id', 3)->firstOrFail();
-    expect($vehicle->category_id)->toBe(costCategory('Veicoli', $root->id)->id)
+    expect($vehicle->category_id)->toBe(costCategory(CostProductCatalogue::BRANCHES['vehicles'], $root->id)->id)
         ->and($vehicle->attribute_values)->toBe(['cost_license_plate' => 'FE700FV'])
         ->and($vehicle->code)->toStartWith('PRD-');
 
@@ -152,12 +157,12 @@ it('files each legacy cost table under the Costi branch as a cost-only product',
     expect($equipment->attribute_values)->toBe(['cost_brand' => 'Stihl', 'cost_model' => 'GHT', 'cost_serial_number' => '123']);
 
     $expense = Product::query()->where('old_source', 'expense_reports')->where('old_id', 6)->firstOrFail();
-    expect($expense->category_id)->toBe(costCategory('Note spese', $root->id)->id)
+    expect($expense->category_id)->toBe(costCategory(CostProductCatalogue::BRANCHES[CostProductCatalogue::EXPENSE_REPORTS], $root->id)->id)
         ->and($expense->description)->toBe("Commissione d'esame")
         ->and((float) $expense->cost)->toBe(400.0)
         ->and($expense->attribute_values)->toBeNull();
 
-    $vehicleAttributes = costCategory('Veicoli', $root->id)->attributes()
+    $vehicleAttributes = costCategory(CostProductCatalogue::BRANCHES['vehicles'], $root->id)->attributes()
         ->wherePivot('context', AttributeContext::Product->value)
         ->pluck('code')
         ->all();
@@ -170,13 +175,7 @@ it('keeps a warehouse article without a legacy category on the Articoli branch',
     $root = costCategory(CostProductCatalogue::ROOT, null);
 
     expect(Product::query()->where('old_source', 'products')->value('category_id'))
-        ->toBe(costCategory('Articoli', $root->id)->id);
-});
-
-it('ignores a category name on a non-warehouse row', function () {
-    runCostProductsImport([legacyCostRow('vehicles', 1, 'Furgone', ['category_name' => 'Mezzi'])]);
-
-    expect(ProductCategory::query()->where('name', 'Mezzi')->exists())->toBeFalse();
+        ->toBe(costCategory(CostProductCatalogue::BRANCHES['products'], $root->id)->id);
 });
 
 it('warns and nulls an unmigrated VAT rate and the un-remappable supplier', function () {
@@ -196,7 +195,7 @@ it('warns and nulls an unmigrated VAT rate and the un-remappable supplier', func
 
 it('re-importing is idempotent and never duplicates the branch', function () {
     $items = [
-        legacyCostRow('products', 1, 'Alpha', ['category_name' => 'Veleni', 'brand' => 'ACME']),
+        legacyCostRow('products', 1, '[OLD] Alpha', ['category_name' => '[OLD] Veleni', 'brand' => 'ACME', 'attribute_values' => ['cost_brand' => 'ACME']]),
         legacyCostRow('vehicles', 1, 'Smart'),
     ];
 
@@ -207,8 +206,8 @@ it('re-importing is idempotent and never duplicates the branch', function () {
         ->and($second->created_rows)->toBe(0)
         ->and(Product::query()->count())->toBe(2)
         ->and(ProductCategory::query()->where('name', CostProductCatalogue::ROOT)->count())->toBe(1)
-        ->and(ProductCategory::query()->where('name', 'Veleni')->count())->toBe(1)
-        ->and(costCategory('Articoli', costCategory(CostProductCatalogue::ROOT, null)->id)->attributes()->count())->toBe(4);
+        ->and(ProductCategory::query()->where('name', '[OLD] Veleni')->count())->toBe(1)
+        ->and(costCategory(CostProductCatalogue::BRANCHES['products'], costCategory(CostProductCatalogue::ROOT, null)->id)->attributes()->count())->toBe(4);
 });
 
 it('creates a cost whose legacy id matches an already migrated service', function () {
@@ -249,7 +248,7 @@ it('lets the products source import a service whose id matches a migrated cost',
 it('generates a sequential code when the legacy one is already taken', function () {
     Product::factory()->create()->forceFill(['code' => 'P01'])->save();
 
-    $run = runCostProductsImport([legacyCostRow('products', 2, 'Oust', ['code' => 'P01'])]);
+    $run = runCostProductsImport([legacyCostRow('products', 2, '[OLD] Oust', ['code' => 'P01'])]);
 
     expect(Product::query()->where('old_source', 'products')->value('code'))->toStartWith('PRD-')
         ->and(collect($run->report)->where('level', 'warning'))->toHaveCount(1);

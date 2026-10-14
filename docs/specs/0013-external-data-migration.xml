@@ -132,6 +132,22 @@
       ADOTTA l'`old_id` sul ruolo esistente (per abilitare il remapping) invece di duplicare.
     - business_function_user e i ruoli-utente si popolano via remapping old_id; riferimenti
       non risolti → warning non fatale.
+
+    Emendamento 2026-10-13 (decisione utente, ora regola `.claude/rules/backend.md` §9) — principio
+    "la forma dei dati e' del legacy che INVIA": il sistema esterno (QNet legacy, repo
+    `/Users/Repository/qnet`, `app/Http/Controllers/Api/V2/*MigrationController.php` + helper
+    `app/Support/Migration/`) manda i dati gia' nel vocabolario di qnet: pulizia del testo (trim,
+    maiuscole, URL, P.IVA, comuni), decodifica di codici/stati/id legacy in valori semantici (enum
+    value, esiti), ripieghi su campi mancanti o sporchi, deduplica, ordinamento (padre prima dei
+    figli), riparazione di alberi, composizione di note. qnet RICEVE: lookup `old_id` -> id locale con
+    warning se non migrato, upsert idempotente, validazione difensiva minima (`tryFrom` + warning,
+    mai riparazione), regole di dominio proprie di qnet, scrittura. Un dato esterno sbagliato si
+    corregge nel controller legacy e si cancella il workaround in qnet; ogni cambio di shape va nella
+    spec della sorgente. Supera la D-7 della spec 0172 ("raw projection"). Le shape aggiornate delle
+    sorgenti che non hanno una spec propria sono in data_contract ("Sorgenti legacy, delta
+    2026-10-13"); le altre stanno nelle loro spec: registries/opportunities/quotes/work-orders 0189,
+    work-orders pagamenti 0201 D-14, task-templates 0172, cost-products 0174, commission-configurations
+    0203, attributes/product-categories 0181 (e 0183 F-9).
   </context>
 
   <scope>
@@ -234,6 +250,43 @@
       </response>
       <errors>401; 403; 404 run inesistente, non dell'actor, o source != path.</errors>
     </endpoint>
+
+    <!-- Emendamento 2026-10-13: sorgenti legacy, delta di shape (solo i campi cambiati; gli altri
+         invariati). Endpoint legacy `GET /api/v2/migration/{key}`, envelope {items, pagination}. -->
+    <shape name="Sorgenti legacy, delta 2026-10-13">
+      users:
+        relationship_type: "employee"|"self_employed"|"other"|null (da `users.tipo_rapporto` 1 Dipendente,
+          2 Partita Iva, 3 Altro; altro/null -> null; prima l'intero grezzo).
+        qualification_type: valore di `QualificationTypeEnum`|null (da `users.level_id`: 1 employee_level_5,
+          3 administrative, 4 coordinator, 5 iso_consultant, 6 teacher_cococo, 7 teacher_vat, 8 trainee_cost,
+          9 hourly_cost_me; altro/null -> null; prima la `user_levels.description`). qnet li legge con `tryFrom`,
+          valore ignoto -> null + warning.
+      company-sites:
+        province: ?string = sigla della provincia (`provincies.sigla`, come registries e referents; prima il nome
+          `provincia`). region e country restano etichette.
+      operational-sites:
+        city: ?string = comune pulito dall'etichetta di sede (`LegacyCityLabel`: tolto tutto da " - ", le parentesi
+          e un numero finale; "Roma - 2" -> "Roma"; vuoto -> null).
+        alias: ?string (NUOVO) = `sedi_operative.comune` grezzo trimmato (l'etichetta della sede), scritto come alias
+          della sede (prima qnet ricavava l'alias da `city`).
+      sources:
+        name: string trimmato; una sola fonte per nome (deduplica senza distinzione di maiuscole, vince l'id piu'
+          basso: la stessa regola con cui registries risolve `source_id`); nomi vuoti esclusi; ordine per nome;
+          `search` e paginazione sulla lista deduplicata.
+      products:
+        description: ?string trimmata (vuota -> null).
+      payment-methods:
+        code: ?string = identificatore univoco di qnet, gia' nel formato `^[a-z][a-z0-9_]*$`, max 64: slug
+          snake_case del nome, prefisso `pm_` se non inizia con una lettera; univoco su TUTTA la tabella in ordine
+          (description, id): il primo tiene lo slug, gli omonimi ricevono il suffisso `_&lt;id&gt;`; null se il nome non
+          da' uno slug (prima: slug con trattini max 10 caratteri, derivato poi di nuovo da qnet).
+        payment_method_code: ?string = modalita' FatturaPA grezza (`payments.payment_type`, MP01..MP23), condivisa
+          da piu' righe. qnet usa `code` cosi' com'e' (controllo difensivo di formato e lunghezza: non valido ->
+          riga fallita) e scrive `payment_method_code` com'e'.
+        Ordine dell'elenco: description, id.
+      ea-sectors: shape invariata; ids = posizione 1-based nel catalogo `EaSectorCatalog`, lo stesso a cui puntano
+        i `sector_ids` di registries (spec 0189).
+    </shape>
   </data_contract>
 
   <acceptance_criteria>
@@ -286,5 +339,49 @@
     <item>Coverage per-layer: migration old_id + skip idempotente + remapping + source/job ≥90%; MigrationController ≥85%.</item>
     <item>Ownership file disgiunta. Contratto qui = punto di sincronizzazione. File GATE (schema/models old_id, `config/migrations.php`, `routes/api.php`, `bootstrap/app.php`, `config/navigation.php`+`NavigationService`, `router.tsx`, indice i18n, `icon-map.ts`) chiusi prima delle lane parallele dipendenti.</item>
   </constraints>
+
+  <amendments>
+    <amendment date="2026-10-13" title="Catalogo legacy marcato [OLD], niente adozione delle categorie">
+      Decisione utente: tutto il catalogo che arriva dal legacy porta il prefisso "[OLD] " nel nome. Lo mette il legacy
+      (`App\Support\Migration\LegacyNameMark`, regola backend.md §9) su: `product-categories.name`, `products.name`,
+      `cost-products.name` e `cost-products.category_name` (sotto-categorie di magazzino). Il ramo "Costi" e i suoi
+      rami fissi (Articoli, Veicoli, Attrezzature, Note spese) sono di qnet-2 e restano senza prefisso.
+      qnet-2 salva il nome com'e' arrivato; taglia solo a 191 caratteri il nome prodotto (limite colonna).
+      `ProductCategoriesSource` non adotta piu' per nome una categoria qnet senza old_id (supera la direttiva
+      2026-09-07 e la F-6 / AC-004 della spec 0183): ogni categoria legacy e' creata. Il ramo APL legacy arriva come
+      "[OLD] APL" (sostituisce "APL old"); `LegacyAplBranch` non rinomina piu' i gemelli, sposta ancora i prodotti di
+      "[OLD] Formazione Apprendistato", "[OLD] Tirocini extracurriculari privati" e "[OLD] Orientamento Specialistico"
+      sulle categorie manuali. I dati gia' importati non vengono rinominati: il prefisso vale dal prossimo import pulito.
+    </amendment>
+    <amendment date="2026-10-13" title="bis - Catalogo legacy solo storico (categorie non attive)">
+      Decisione utente: le categorie e i prodotti [OLD] servono solo allo storico, mai selezionabili. Leva = flag
+      "Attiva" della spec 0208 (una categoria non attiva nasconde ramo e prodotti da ogni inserimento, lo storico resta
+      valido). Il legacy manda `is_active: false` su ogni `product-categories`; qnet-2 lo mappa (assente = true).
+      Ramo dei costi: qnet-2 lo crea come "[OLD] Costi" non attivo, con rami "[OLD] Articoli", "[OLD] Veicoli",
+      "[OLD] Attrezzature", "[OLD] Note spese" (`CostProductCatalogue`). "No categoria" diventa non attiva al primo
+      prodotto legacy archiviato li' (`ProductsSource`). Supera l'emendamento precedente sul ramo APL: i prodotti del
+      ramo "[OLD] APL" restano sulle loro categorie legacy, `LegacyAplBranch` non li sposta piu' sulle categorie
+      manuali. L'import di opportunita', offerte (righe ricavo e costo) e commesse non verifica lo stato attivo.
+    </amendment>
+    <amendment date="2026-10-13" title="ter - Niente funzioni aziendali FORMAZIONE OLD / APL OLD">
+      Decisione utente: le funzioni aziendali "FORMAZIONE OLD" e "APL OLD" non esistono piu'. Una categoria legacy
+      resta sulla funzione con cui arriva (rimappata via old_id), "Formazione" e "APL" comprese: tolti da
+      `CategoryBusinessFunctionLinker` il redirect (`REDIRECTED_FUNCTIONS`, direttive 2026-09-16 e 2026-10-05) e
+      `closeRedirected()`. Le categorie legacy restano non selezionabili come storico grazie al flag "Attiva" (emendamento
+      bis); `LegacyAplBranch` chiude ancora il ramo "[OLD] APL". I dati gia' importati non vengono spostati: vale dal
+      prossimo import pulito.
+    </amendment>
+    <amendment date="2026-10-14" title="quater - Utenti: collegamento all'account giusto, [OLD] sugli attivi non collegati">
+      Decisione utente: ogni utente legacy deve collegarsi all'account qnet-2 della stessa persona; un utente legacy
+      ATTIVO che non si collega a nessun account viene creato con "[OLD] " davanti al nome (`UsersSource`,
+      `UNMATCHED_NAME_MARK`, sul first_name: users.name ne deriva). Il marchio sta in qnet-2 perche' solo qnet-2 sa
+      se l'adozione (`ExistingUserMatcher`) e' riuscita; gli inattivi e gli adottati restano senza.
+      Legacy (§9): `UserMigrationController` ordina gli attivi per primi (poi cognome, nome, id), cosi' negli omonimi
+      il seed si collega al record attivo (D'Aleo, De Rosa, Giordano); `LegacyUserAccountAliases` manda l'email
+      dell'account qnet-2 per i 9 utenti col nome scritto diversamente (es. "Costantin" / "Constantin" Popa).
+      Il matcher di qnet-2 resta invariato (email, poi nome esatto). Gli utenti gia' importati non vengono
+      ricollegati ne' rinominati: vale dal prossimo import pulito degli utenti.
+    </amendment>
+  </amendments>
 
 </spec>

@@ -113,6 +113,7 @@ Questi elementi esistono in `.claude/`. **Usali in autonomia, senza che l'utente
 | Se il task tocca... | Leggi PRIMA |
 |---|---|
 | Endpoint, model, migrazione, service, permessi, query | `.claude/rules/backend.md` |
+| Migrazione dati dal legacy (`backend/app/Migrations/`, `../qnet` `Api/V2/*MigrationController`) | `.claude/rules/backend.md §9` — il legacy invia i dati gia' pronti, qnet-2 riceve e scrive soltanto |
 | Pagina, componente, form, stato client, fetch, routing | `.claude/rules/frontend.md` (+ `react-hooks.md`, `react-security.md` auto-attach `**/*.tsx`) |
 | Stile, design system, responsive, accessibilità | `.claude/rules/ui-design.md` |
 | Auth, dati sensibili, segreti, input esterni, CORS | `.claude/rules/security.md` |

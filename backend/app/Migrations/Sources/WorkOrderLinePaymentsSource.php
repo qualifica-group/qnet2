@@ -137,7 +137,7 @@ class WorkOrderLinePaymentsSource extends AbstractMigrationSource
      */
     private function resolveStatus(mixed $legacyKey, array &$warnings): ?int
     {
-        if ($legacyKey === null || $legacyKey === '' || $legacyKey === 0 || $legacyKey === '0') {
+        if ($legacyKey === null || $legacyKey === '') {
             return null;
         }
 

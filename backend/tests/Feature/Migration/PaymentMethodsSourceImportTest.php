@@ -70,8 +70,8 @@ function runPaymentMethodsImport(): MigrationRun
 
 it('creates payment methods with their old_id and server-managed sort order', function () {
     fakePaymentMethodsResponse([
-        ['id' => 3, 'name' => 'Bonifico bancario', 'code' => 'MP05', 'description' => 'Bonifico ordinario.', 'payment_instructions' => 'IBAN in fattura.', 'payment_days' => 30, 'is_active' => true],
-        ['id' => 4, 'name' => 'Contanti', 'code' => 'MP01', 'payment_days' => 0, 'is_active' => false],
+        ['id' => 3, 'name' => 'Bonifico bancario', 'code' => 'bonifico_bancario', 'payment_method_code' => 'MP05', 'description' => 'Bonifico ordinario.', 'payment_instructions' => 'IBAN in fattura.', 'payment_days' => 30, 'is_active' => true],
+        ['id' => 4, 'name' => 'Contanti', 'code' => 'contanti', 'payment_method_code' => 'MP01', 'payment_days' => 0, 'is_active' => false],
     ]);
 
     $run = runPaymentMethodsImport();
@@ -80,8 +80,8 @@ it('creates payment methods with their old_id and server-managed sort order', fu
     $cash = PaymentMethod::query()->where('old_id', 4)->first();
 
     expect($transfer->name)->toBe('Bonifico bancario')
-        // qnet's unique `code` is derived from the name; the external one is
-        // the fiscal classification and lands on `payment_method_code`.
+        // qnet's unique `code` is the one the legacy sends; the fiscal
+        // classification lands on `payment_method_code`.
         ->and($transfer->code)->toBe('bonifico_bancario')
         ->and($transfer->payment_method_code)->toBe('MP05')
         ->and($transfer->description)->toBe('Bonifico ordinario.')
@@ -104,7 +104,7 @@ it('creates payment methods with their old_id and server-managed sort order', fu
 
 it('re-importing the same payment methods is idempotent (skip, no duplicate)', function () {
     fakePaymentMethodsResponse([
-        ['id' => 9, 'name' => 'Assegno', 'code' => 'MP02'],
+        ['id' => 9, 'name' => 'Assegno', 'code' => 'assegno', 'payment_method_code' => 'MP02'],
     ]);
 
     runPaymentMethodsImport();
@@ -119,11 +119,11 @@ it('re-importing the same payment methods is idempotent (skip, no duplicate)', f
 // The fiscal code is a classification, not an identity
 // ---------------------------------------------------------------------------
 
-it('imports every method sharing the same fiscal code, distinguished by its own derived code', function () {
+it('imports every method sharing the same fiscal code, distinguished by its own code', function () {
     fakePaymentMethodsResponse([
-        ['id' => 60, 'name' => 'ADDEBITO CARTA DI CREDITO', 'code' => 'MP01'],
-        ['id' => 53, 'name' => 'ADDEBITO F24', 'code' => 'MP01'],
-        ['id' => 22, 'name' => 'AVVENUTO', 'code' => 'MP01'],
+        ['id' => 60, 'name' => 'ADDEBITO CARTA DI CREDITO', 'code' => 'addebito_carta_di_credito', 'payment_method_code' => 'MP01'],
+        ['id' => 53, 'name' => 'ADDEBITO F24', 'code' => 'addebito_f24', 'payment_method_code' => 'MP01'],
+        ['id' => 22, 'name' => 'AVVENUTO', 'code' => 'avvenuto', 'payment_method_code' => 'MP01'],
     ]);
 
     $run = runPaymentMethodsImport();
@@ -135,10 +135,10 @@ it('imports every method sharing the same fiscal code, distinguished by its own 
         ->and($run->fresh()->failed_rows)->toBe(0);
 });
 
-it('gives two homonymous legacy methods distinct codes, keeping both rows', function () {
+it('REQUIREMENT CHANGED: keeps both rows of two homonymous legacy methods, each under the distinct code the legacy sends', function () {
     fakePaymentMethodsResponse([
-        ['id' => 81, 'name' => 'RI.BA. 60/90 GG F.M.', 'code' => 'MP12'],
-        ['id' => 82, 'name' => 'RI.BA. 60/90 GG F.M.', 'code' => 'MP12'],
+        ['id' => 81, 'name' => 'RI.BA. 60/90 GG F.M.', 'code' => 'ri_ba_60_90_gg_f_m', 'payment_method_code' => 'MP12'],
+        ['id' => 82, 'name' => 'RI.BA. 60/90 GG F.M.', 'code' => 'ri_ba_60_90_gg_f_m_82', 'payment_method_code' => 'MP12'],
     ]);
 
     $run = runPaymentMethodsImport();
@@ -153,11 +153,11 @@ it('gives two homonymous legacy methods distinct codes, keeping both rows', func
 // Adoption of the already provisioned catalogue (unique code)
 // ---------------------------------------------------------------------------
 
-it('adopts an existing unclaimed payment method by derived code instead of duplicating it', function () {
+it('adopts an existing unclaimed payment method by code instead of duplicating it', function () {
     $seeded = PaymentMethod::factory()->create(['name' => 'Carta di credito', 'code' => 'carta_di_credito']);
 
     fakePaymentMethodsResponse([
-        ['id' => 12, 'name' => 'Carta di credito', 'code' => 'MP08'],
+        ['id' => 12, 'name' => 'Carta di credito', 'code' => 'carta_di_credito', 'payment_method_code' => 'MP08'],
     ]);
 
     $run = runPaymentMethodsImport();
@@ -171,21 +171,26 @@ it('adopts an existing unclaimed payment method by derived code instead of dupli
 // Field mapping
 // ---------------------------------------------------------------------------
 
-it('derives a snake_case code from the name, prefixing one that does not start with a letter', function () {
+it('REQUIREMENT CHANGED: uses the code sent by the legacy as is, and fails a row whose code is missing or malformed', function () {
     fakePaymentMethodsResponse([
-        ['id' => 31, 'name' => 'Pagamento rateale 12 mesi'],
-        ['id' => 32, 'name' => '30 giorni fine mese'],
+        ['id' => 31, 'name' => 'Pagamento rateale 12 mesi', 'code' => 'pagamento_rateale_12_mesi'],
+        ['id' => 32, 'name' => '30 giorni fine mese', 'code' => 'pm_30_giorni_fine_mese'],
+        ['id' => 33, 'name' => 'Senza codice'],
+        ['id' => 34, 'name' => 'Codice sporco', 'code' => 'Codice-Sporco'],
     ]);
 
-    runPaymentMethodsImport();
+    $run = runPaymentMethodsImport();
 
     expect(PaymentMethod::query()->where('old_id', 31)->value('code'))->toBe('pagamento_rateale_12_mesi')
-        ->and(PaymentMethod::query()->where('old_id', 32)->value('code'))->toBe('pm_30_giorni_fine_mese');
+        ->and(PaymentMethod::query()->where('old_id', 32)->value('code'))->toBe('pm_30_giorni_fine_mese')
+        ->and(PaymentMethod::query()->whereIn('old_id', [33, 34])->count())->toBe(0)
+        ->and($run->fresh()->created_rows)->toBe(2)
+        ->and($run->fresh()->failed_rows)->toBe(2);
 });
 
 it('defaults is_active to true and keeps blank text fields null', function () {
     fakePaymentMethodsResponse([
-        ['id' => 41, 'name' => 'Ricevuta bancaria', 'code' => '   ', 'description' => '   ', 'payment_instructions' => ''],
+        ['id' => 41, 'name' => 'Ricevuta bancaria', 'code' => 'ricevuta_bancaria', 'payment_method_code' => '   ', 'description' => '   ', 'payment_instructions' => ''],
     ]);
 
     runPaymentMethodsImport();
@@ -201,7 +206,7 @@ it('defaults is_active to true and keeps blank text fields null', function () {
 
 it('warns and leaves payment_days empty when the external value is out of range', function () {
     fakePaymentMethodsResponse([
-        ['id' => 51, 'name' => 'Dilazione anomala', 'code' => 'MP05', 'payment_days' => 99999],
+        ['id' => 51, 'name' => 'Dilazione anomala', 'code' => 'dilazione_anomala', 'payment_method_code' => 'MP05', 'payment_days' => 99999],
     ]);
 
     $run = runPaymentMethodsImport();
@@ -216,8 +221,8 @@ it('warns and leaves payment_days empty when the external value is out of range'
 
 it('isolates a failed row (missing name) without blocking the valid one', function () {
     fakePaymentMethodsResponse([
-        ['id' => 61, 'name' => '', 'code' => 'MP01'],
-        ['id' => 62, 'name' => 'Paypal', 'code' => 'MP08'],
+        ['id' => 61, 'name' => '', 'payment_method_code' => 'MP01'],
+        ['id' => 62, 'name' => 'Paypal', 'code' => 'paypal', 'payment_method_code' => 'MP08'],
     ]);
 
     $run = runPaymentMethodsImport();

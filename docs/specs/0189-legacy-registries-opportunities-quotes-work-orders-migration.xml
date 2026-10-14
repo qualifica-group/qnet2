@@ -29,10 +29,28 @@
       aperta per anagrafica" (nel legacy 2.035 clienti ne hanno piu' di una), senza notifiche, lead e loadDetail.
       G-5 codici: offerta `QUO-%04d` dell'id legacy, commessa `COM-%04d` dell'id legacy; se il codice e' gia' preso
       si genera il successivo con warning. Il `number` legacy non e' usabile (vuoto o "10" sul 96%).
-      G-6 stato offerta, risolto DOPO la create dentro il workflow risolto dell'offerta (mai id fissi): legacy 0
-      Presentata -> stato `open` del set; 6 Accettata dal cliente -> primo stato del gruppo `pending` del set, se
-      manca `open`; 1,2,3,4,8 (contratti) -> stato di sistema `closed_won`; 5 Rifiutata -> `closed_lost`. Se il
-      set non ha lo stato o l'offerta non ha righe ricavo (vincolo closed_won/closed_lost) resta `open` + warning.
+      G-6 stato offerta, risolto DOPO la create dentro il workflow risolto dell'offerta (mai id fissi;
+      LegacyQuoteStatusResolver; dal 2026-10-13 la decodifica dei codici legacy e' nel legacy, vedi emendamento
+      2026-10-13 bis): legacy 0 Presentata -> secondo la fase dell'opportunita' legacy (G-18); 6 Accettata
+      dal cliente -> primo stato del gruppo `pending` del set, altrimenti primo `validated`; 1,2,3,4,8 (contratti) ->
+      stato di sistema `closed_won`; 5 Rifiutata -> `closed_lost` (anche se `accepted_data` valorizzata, contratto
+      annullato: decisione utente 2026-10-13). Se il set non ha lo stato resta `open` + warning. Decisione utente
+      2026-10-13: il vincolo "serve una riga ricavo" (spec 0102) NON si applica in migrazione: un'offerta chiusa nel
+      legacy senza righe migrate si chiude comunque, con warning "Legacy status N closed the offer without product lines."
+      G-18 offerta Presentata per fase dell'opportunita' (`opportunities.status` = `fases.id`, decisione utente
+      2026-10-13; fase -> `outcome` calcolato dal legacy, emendamento 2026-10-13 bis); lo stato si cerca per nome nel set dell'offerta: 4 Offerta Inviata -> "In trattativa", se manca primo
+      `pending`; 8 Da Richiamare -> "Da Richiamare"; 11 Stand-by -> "Rimandata", poi "In Standby"; 6 Persa ->
+      `closed_lost`; 5 Attesa Pro-forma e 7 Accettato -> `closed_lost` se un'altra offerta della stessa opportunita' e'
+      vinta (legacy 1,2,3,4,8), altrimenti come Offerta Inviata; 1 Nuova, 12 Lead, fase assente/orfana -> resta
+      `open`. Stato mancante nel set -> resta `open` + warning. Le offerte gia' importate si riallineano con
+      `php artisan quotes:realign-legacy-status [--dry-run]`: tocca solo le offerte ancora sullo stato di sistema
+      `open` e senza attivita' dopo l'import.
+      G-19 note Info preliminari (decisione utente 2026-10-13): il campo "Note" di ogni card delle Info preliminari
+      (`pre_info_*`, prima riga per id; R&S esclusa, gia' "Descrizione Sintetica Azienda" dell'offerta) si accoda alle
+      note generali dell'opportunita' dopo note e note riservate, come "<titolo card>:\n<nota>" (composizione fatta
+      dal legacy dal 2026-10-13, emendamento 2026-10-13 bis). Un rilancio della
+      sorgente Opportunita' accoda a quelle gia' importate le sole note mancanti (warning "Missing preliminary info
+      notes back-filled."), senza toccare i timestamp legacy.
       G-7 contratto: per i closed_won si crea con `ContractLifecycleManager` (rispetta ContractEligibility), poi si
       allinea al legacy: `accepted_at`=accepted_data, `validated_at`=validated_data, `renewal_date`; stato per nome
       1 "Da validare", 3 "Da programmare", 2 "Programmato", 4 "In scadenza", 8 stato di sistema `terminated`.
@@ -48,10 +66,12 @@
       puo' stare su piu' commesse (rinnovi/cicli, pianificazione per quantita', doppioni); per ogni commessa successiva
       la riga viene DUPLICATA sull'offerta (stesso prodotto, importi e provvigioni, senza old_id) e la copia collegata
       alla commessa; totali e margine dell'offerta ricalcolati (crescono della copia). Il vincolo resta. Stato legacy 1,2 -> aperta; 3 Chiusa, 4 Annullata, 5 Disdetta ->
-      `is_force_closed` con motivo "Chiusa (legacy)" / "Annullata (legacy)" / "Disdetta (legacy)".
+      `is_force_closed` con motivo "Chiusa (legacy)" / "Annullata (legacy)" / "Disdetta (legacy)" (dal 2026-10-13 il
+      motivo arriva gia' calcolato in `force_close_reason`, emendamento 2026-10-13 bis).
       G-11 anagrafica: `is_private=1` -> scheda persona fisica (nome/cognome separati dal legacy con la sua stessa
-      regola `separaNomeCognome`), altrimenti azienda; P.IVA segnaposto (`0`,`1`,`.`, solo zeri) scartata, prefisso
-      `IT` rimosso; sede legale = indirizzo primario `legal_seat`, `company_addresses` = indirizzi aggiuntivi.
+      regola `separaNomeCognome`, poi ri-separati sul codice fiscale dal legacy, emendamento 2026-10-13 bis),
+      altrimenti azienda; P.IVA segnaposto (`0`,`1`,`.`, solo zeri, meno di 9 cifre) scartata, prefisso `IT` rimosso
+      (pulizia nel legacy dal 2026-10-13); sede legale = indirizzo primario `legal_seat`, `company_addresses` = indirizzi aggiuntivi.
     - Emendamento 2026-10-12 (richiesta utente: "inseriscilo nelle /migrations e esponilo nell'opportunity del legacy
       tramite righe prodotto dell'offerta"): 7.711 opportunita' importate su 19.561 non avevano categorie
       (`opportunityservicecategories` vuota), quindi nessuna funzione aziendale.
@@ -62,6 +82,36 @@
       radice). Un rilancio completa le righe prodotto di un'opportunita' gia' importata che non ne ha (mai
       sovrascritte), riga `skipped` con nota "Missing product categories back-filled.". Copertura sul DB legacy:
       6.435 delle 7.711 recuperabili.
+    - Emendamento 2026-10-13 (richiesta utente: "nell'import dell'opportunita' inseriamo direttamente le categorie
+      precise dei prodotti che sono in offerta"): la precedenza di G-12 si inverte, decisa dal legacy.
+      `product_category_ids` = categorie dei prodotti delle offerte se ce ne sono, altrimenti le categorie proprie
+      (`opportunityservicecategories`). Motivo: la categoria propria era spesso una radice non selezionabile in qnet-2
+      (es. "SICUREZZA 81/08") e l'import dell'offerta aggiungeva accanto la sottocategoria del prodotto
+      (`OpportunityProductLineCoverage` confronta l'id esatto): 5.781 opportunita' con riga padre + riga figlia.
+      Ora le righe prodotto dell'opportunita' coincidono con quelle che la copertura cerca, quindi l'import offerta
+      non ne aggiunge. Sul DB legacy: 16.536 opportunita' con categorie da offerta, 10.101 delle quali avevano anche
+      categorie proprie (ora ignorate).
+    - Emendamento 2026-10-13 bis (decisione utente, regola `.claude/rules/backend.md` §9): la forma dei dati e'
+      responsabilita' del legacy che INVIA; qnet-2 riceve, collega via `old_id`, valida in modo minimo (`tryFrom` +
+      warning, mai riparazione) e scrive. Le regole qui sotto restano valide nella SEMANTICA, ma la parte di
+      decodifica/pulizia si sposta nei controller legacy e i workaround in qnet-2 sono cancellati. Superato:
+      G-6/G-18 la mappa `status_quotation` + fase dell'opportunita' + "vinta da un'altra offerta" -> esito la calcola
+      il legacy (`App\Support\Migration\LegacyQuoteOutcome`) ed esporta `outcome`
+      (open|negotiation|call_back|stand_by|accepted_by_client|won|lost); qnet-2 (`LegacyQuoteStatusResolver`) cerca
+      solo lo stato corrispondente nel set dell'offerta (nomi/gruppi invariati). Un `status_quotation` fuori dai codici
+      noti arriva come `open`. G-7 il contratto arriva come blocco `contract` (chiave di stato + date) solo per
+      `outcome` = won; qnet-2 mappa la chiave sul nome dello stato contratto. G-9 tipo e valore della provvigione li
+      decide il legacy (`commission_type` PERCENTAGE se percentuale > 0, altrimenti FIXED_AMOUNT, + `value`). G-10
+      titolo di ripiego "Commessa {id}", data inizio di ripiego (creazione se assente o anno &lt; 2000), "Data fine
+      (legacy): d/m/Y" accodata alle note interne e motivo di chiusura forzata li calcola il legacy; qnet-2 scrive i
+      valori ricevuti (titolo solo troncato alla colonna). G-11 la ri-separazione nome/cognome sul codice fiscale
+      (`PersonNameSplitter`, spostato da qnet-2 al legacy), codice fiscale maiuscolo, P.IVA senza `IT` e null per i
+      segnaposto, sito web con `https://` li fa il legacy. Settori: il legacy esporta `sector_ids` (id del catalogo
+      `EaSectorCatalog`, lo stesso di `migration/ea-sectors`) al posto dei nomi; qnet-2 li rimappa via `old_id`. G-14
+      `quote_date` arriva gia' con ripiego sulla data di creazione; quantita' di righe ricavo e costo mai null (ripiego
+      1 nel legacy). G-15 il legacy non espone piu' `registry_id`: esporta `customer_differs_from_opportunity`, qnet-2
+      scrive solo il warning. G-19 le note generali arrivano composte (`general_notes`) e i blocchi card a parte
+      (`preliminary_info_blocks`) per il completamento al rilancio.
     - Emendamento 2026-10-12 bis (verifica campi offerte, decisioni utente): G-8 partiva da un dato sbagliato
       (`quotationequipments` e' vuota; le 85 righe erano `quotationemployees`). I costi veri sono
       `quotationexpensereports`: 8.027 righe su 1.604 offerte esportate (~9,64 M EUR).
@@ -90,7 +140,7 @@
       espone `attribute_values` per le sole card (`services.spec_service`) dei prodotti delle righe dell'offerta;
       qnet-2 scrive solo i codici applicabili alle categorie delle righe importate (QuoteAttributeResolver): codice non
       applicabile, valore non valido per il tipo, utente non migrato -> valore saltato con warning, l'offerta si
-      importa comunque. Esclusi: note libere (F-1), card 16 (F-3), allegati (F-7), `orderisos` (commesse). Sedi ISO
+      importa comunque. Esclusi: note libere (F-1; vanno sulle note generali dell'opportunita', G-19), card 16 (F-3), allegati (F-7), `orderisos` (commesse). Sedi ISO
       (F-8): righe di `pre_info_iso_addresses` dell'opportunita', indirizzo ricostruito da `company_addresses`.
   </context>
 
@@ -119,17 +169,23 @@
       Ogni id di riferimento e' l'id LEGACY (rimappato in qnet-2 via `old_id`); 0 e riferimenti orfani -> null.
     </shape>
     <shape name="GET migration/registries (companies)">
-      { id:int, is_private:bool, company_name:?string, first_name:?string, last_name:?string, tax_code:?string,
-        vat_number:?string, sdi_code:?string, vat_group:?string, is_supplier:bool, is_qualified_supplier:bool,
+      { id:int, is_private:bool, company_name:?string,
+        first_name:?string, last_name:?string (solo is_private: separaNomeCognome, poi ri-separati sul codice fiscale
+          da PersonNameSplitter legacy; nessuna corrispondenza col codice -> split legacy invariato, G-11),
+        tax_code:?string (maiuscolo),
+        vat_number:?string (maiuscolo, senza prefisso `IT`; segnaposto `0`/`1`/`.`/solo zeri/meno di 9 cifre -> null),
+        sdi_code:?string, vat_group:?string, is_supplier:bool, is_qualified_supplier:bool,
         agreement_status:?("negotiating"|"rejected"|"agreed"), agreement_notes:?string,
         size_class:?("micro"|"small"|"medium"|"large"), employee_count:?int,
         source_id:?int (legacy sources.id risolto per descrizione dal testo libero), source_label:?string (testo grezzo),
-        sectors:string[] (token di settore_ea separati da virgola e trimmati, come EaSectorMigrationController),
+        sector_ids:int[] (token di settore_ea separati da virgola e trimmati, risolti sul catalogo legacy
+          `EaSectorCatalog`: id = posizione 1-based nella lista ordinata dei token unici, lo stesso id esportato da
+          `migration/ea-sectors`; distinti. Sostituisce `sectors:string[]` dal 2026-10-13),
         supervisor_user_id:?int (commercial_supervisor_id), manager_user_ids:int[] (assigned_id, assigned2_id; ordine
         = posizione), commercial_referent_id:?int (agent_id), reporter_referent_id:?int (signaler_id),
         referent_ids:int[] (company_contacts.contact_id distinti, solo contatti esistenti),
         tag_ids:int[] (company_tags.tag_id distinti, solo tag esistenti; ordine = company_tags.id),
-        email, pec, phone, phone2, fax, website: ?string,
+        email, pec, phone, phone2, fax: ?string, website:?string (`https://` anteposto se manca lo schema),
         country, region, province, city, street, postal_code: ?string (sede legale),
         addresses: [{ site_type:("delivery"|"billing"|"operational_site"), country, region, province, city, street,
           postal_code }] (company_addresses; type 1/2/3, altro -> operational_site),
@@ -142,31 +198,48 @@
         supervisor_user_id:?int (supervisore_id), manager_user_ids:int[] (assigned_to, assigned2_to, assigned3_to,
         assigned4_to, poi responsabile_opportunities.id_utente; distinti, ordine = posizione, max 12),
         source_id:?int (source, 0 -> null), operational_site_id:?int (sede_id),
-        product_category_ids:int[] (opportunityservicecategories.service_category_id distinti),
-        quote_product_category_ids:int[] (services.category_service distinti dei prodotti delle righe delle offerte, G-12),
+        product_category_ids:int[] (services.category_service distinti dei prodotti delle righe delle offerte;
+          nessuno -> opportunityservicecategories.service_category_id distinti, G-12),
         start_date:?date (date_start), expected_close_date:?date (data_chiusura_stimata ?? date_end),
-        estimated_value:?number (value ?? valore_stimato), notes:?string (colonna note),
-        reserved_notes:?string, status:?int (fase legacy), status_label:?string, created_at, updated_at }
+        estimated_value:?number (value ?? valore_stimato),
+        general_notes:?string (gia' composto dal legacy: colonna `note`, poi "Note riservate:\n{reserved_note}", poi
+          un blocco "{titolo card}:\n{nota}" per card Info preliminari; blocchi non vuoti uniti da una riga vuota;
+          tutto vuoto -> null, G-19),
+        preliminary_info_blocks:string[] (i soli blocchi card "{titolo card}:\n{nota}", per accodare al rilancio
+          quelli mancanti, G-19),
+        status:?int (fase legacy, informativa: qnet-2 non la usa, lo stato si calcola dalle offerte),
+        status_label:?string, created_at, updated_at }
+      Rimossi dal 2026-10-13: `notes`, `reserved_notes`, `preliminary_info_notes`, `quote_product_category_ids`.
     </shape>
     <shape name="GET migration/quotes">
       Solo offerte la cui opportunita' e' esportata (G-1).
-      { id:int, opportunity_id:int, title:?string, description:?string, quote_date:?date (datequotation),
-        status:int (status_quotation), accepted_at:?date (accepted_data), validated_at:?date (validated_data),
-        declined_at:?date, renewal_date:?date, commercial_referent_id:?int (agent_id),
+      { id:int, opportunity_id:int, title:?string, description:?string,
+        quote_date:date (datequotation ?? data di creazione; null solo se mancano entrambe, G-14),
+        outcome:("open"|"negotiation"|"call_back"|"stand_by"|"accepted_by_client"|"won"|"lost") (LegacyQuoteOutcome,
+          G-6/G-18: status_quotation 0 Presentata -> per fase dell'opportunita' (4 -> negotiation, 8 -> call_back,
+          11 -> stand_by, 6 -> lost, 5/7 -> lost se un'altra offerta della stessa opportunita' e' vinta altrimenti
+          negotiation, altre fasi -> open); 6 -> accepted_by_client; 5 -> lost; 1,2,3,4,8 -> won; altro -> open),
+        contract:{ status:("to_validate"|"scheduled"|"to_schedule"|"expiring"|"terminated"|null) (status_quotation
+          1,2,3,4,8), accepted_at:?date (accepted_data), validated_at:?date (validated_data), renewal_date:?date,
+          terminated_at:?date (declined_data, solo per 8) }|null (valorizzato solo se outcome = won, G-7),
+        customer_differs_from_opportunity:bool (quotations.customer_id esistente e diverso dal cliente
+          dell'opportunita', G-15),
+        commercial_referent_id:?int (agent_id),
         reporter_referent_id:?int (signaler_id), supervisor_user_id:?int, manager_user_ids:int[] (gestori
         dell'opportunita' come in migration/opportunities, poi assigned_to, assigned2_to; distinti, max 12, G-16),
         company_site_id:?int (business_unit -> company_profiles), operational_site_id:?int (sede_id),
-        payment_method_id:?int (payment_id),
-        registry_id:?int (customer_id, G-15), callback_date:?date (opportunities.recall_date, G-14),
+        payment_method_id:?int (payment_id), callback_date:?date (opportunities.recall_date, G-14),
         cost_lines: [{ id:int (quotationexpensereports.id), product_id:?int (expensereport_id; 0 -> null),
-          description:?string (note), quantity:?number, unit_price:?number (price), vat_rate_id:?int (rate),
+          description:?string (note), quantity:number (null -> 1), unit_price:?number (price), vat_rate_id:?int (rate),
           supplier_id:?int (companies.id), offer_line_id:?int (min quotationservices.id della stessa offerta con lo
           stesso service_id) }] (G-13),
         lines: [{ id:int (quotationservices.id), product_id:?int (service_id; 0 -> null), description:?string,
-          quantity:?number, unit_price:?number (price), vat_rate_id:?int (rate),
+          quantity:number (null -> 1), unit_price:?number (price), vat_rate_id:?int (rate),
           commissions: [{ role:("commercial"|"reporter"|"supervisor"|"supplier"),
             recipient_id:int (contacts.id per commercial/reporter, users.id per supervisor, companies.id per supplier),
-            percentage:?number, amount:?number }] }],
+            commission_type:("PERCENTAGE"|"FIXED_AMOUNT") (PERCENTAGE se `{ruolo}_perc` > 0, altrimenti FIXED_AMOUNT),
+            value:number (la percentuale, altrimenti `{ruolo}_cost`) }] (solo con destinatario esistente e percentuale
+            > 0 o importo != 0, G-9) }],
         attribute_values: { code: value } (G-17; {} se nessuno). Solo valori non vuoti dei codici Offerta (spec 0183)
           delle card dei prodotti delle righe; ISO con tutti i gruppi grp1..grp6. Valore come nel legacy: testo, numero,
           data Y-m-d, enum = valore dell'opzione; `categorie_mepa` lista di valori; `ps_user_id`/`responsabile_progetto`
@@ -180,16 +253,27 @@
           inizio_programmato, fine_programmata, inizio_effettivo, fine_effettiva = date_inizio_programmato,
           date_fine_programmato, date_inizio_effettivo, date_fine_effettivo; status_progetto=step_operativo.
         created_at, updated_at }
+      Rimossi dal 2026-10-13: `status`, `opportunity_phase`, `won_by_other_quote`, `accepted_at`, `validated_at`,
+      `declined_at`, `renewal_date` (le date stanno in `contract`), `registry_id`; nelle provvigioni `percentage` e
+      `amount`.
     </shape>
     <shape name="GET migration/work-orders">
       Solo commesse la cui offerta e' esportata (G-1).
-      { id:int, quote_id:int (quotation_id), title:?string, type:("processing"|"project") (tipo_commessa),
-        start_date:?date (datestart), end_date:?date (dateend), callback_date:?date (recall_date),
-        description:?string, notes:?string (note), status:int (1..5), status_label:?string,
+      { id:int, quote_id:int (quotation_id), title:string (title; vuoto -> "Commessa {id}"),
+        type:("processing"|"project") (tipo_commessa),
+        start_date:date (datestart; assente o anno &lt; 2000 -> data di creazione; null solo se manca anche quella),
+        callback_date:?date (recall_date), description:?string,
+        internal_notes:?string (colonna `note`, poi "Data fine (legacy): d/m/Y" da dateend; uniti da una riga vuota),
+        force_close_reason:?string (status 3 "Chiusa (legacy)", 4 "Annullata (legacy)", 5 "Disdetta (legacy)";
+          null = aperta, G-10),
+        status_label:?string (informativa),
+        stato_pagamento:?int, accordo_pagamento:?string, insoluti:bool (riga `orderisos` della commessa, spec 0201
+          D-14),
         quote_line_ids:int[] (orderservices.quotation_service esistenti; fallback per service_id sull'offerta),
         supervisor_user_ids:int[] (responsabile_services.id_utente distinti),
         participant_user_ids:int[] (partecipant_services.id_utente distinti, ordine di inserimento, max 12),
         created_at, updated_at }
+      Rimossi dal 2026-10-13: `status`, `end_date`, `notes`.
     </shape>
   </data_contract>
 
@@ -207,8 +291,8 @@
     <ac id="AC-007">Commessa: codice G-5, righe G-10, supervisori/partecipanti rimappati, chiusura forzata G-10,
       nessun task/stage creato.</ac>
     <ac id="AC-008">Le 4 sorgenti compaiono in `/migrations` (etichette IT/EN) e nel piano nelle fasi 7-10.</ac>
-    <ac id="AC-009">Opportunita' senza categorie proprie: righe prodotto dalle categorie dei prodotti delle sue offerte
-      (G-12); con categorie proprie le categorie delle offerte sono ignorate; un rilancio completa le righe di
+    <ac id="AC-009">Opportunita' con offerte: righe prodotto dalle categorie dei prodotti delle sue offerte; senza
+      categorie da offerta, dalle categorie proprie (G-12, emendamento 2026-10-13); un rilancio completa le righe di
       un'opportunita' gia' importata senza righe, senza toccare quelle che ne hanno.</ac>
     <ac id="AC-010">Offerta: le righe costo legacy diventano righe COSTO imputate alla riga ricavo con lo stesso
       prodotto (G-13), totali costo e margine ricalcolati; fornitore legacy diverso da quello del prodotto -> warning.</ac>
@@ -223,5 +307,10 @@
     <ac id="AC-012">Anagrafica: `tag_ids` rimappati via `old_id` dei tag (dipendenza opzionale `tags`) e scritti nel
       campo personalizzato `registries.tags` (relation many -> tags, template cliente); tag non migrato -> warning;
       campo non definito -> anagrafica creata senza tag e warning (decisione utente 2026-10-12).</ac>
+    <ac id="AC-013">Offerta Presentata: stato secondo la fase dell'opportunita' legacy (G-18); offerta chiusa senza
+      righe migrate chiusa comunque con warning (G-6); `quotes:realign-legacy-status` riallinea le offerte gia'
+      importate rimaste sullo stato `open` e mai toccate, idempotente, con `--dry-run`.</ac>
+    <ac id="AC-014">Opportunita': note delle card Info preliminari accodate alle note generali (G-19); un rilancio
+      completa quelle gia' importate una sola volta, senza cambiare `updated_at`.</ac>
   </acceptance_criteria>
 </spec>
