@@ -55,7 +55,7 @@ export const migrationRequirements = {
   quotes:
     'Without its imported opportunity the row fails. A line without an imported product, for example a discount, is skipped with a warning. Missing VAT rates, payment methods, sites, referents, users and commission recipients stay empty with a warning. An accepted or contracted quote also creates the contract. A cost without an imported cost product is skipped with a warning; a cost supplier other than the product one and a customer other than the opportunity one raise a warning.',
   'work-orders':
-    'Without its imported quote the row fails. A quote line already linked to another work order is copied into the quote, with its commissions, and the quote total grows. Notes, documents, stages and tasks are not imported.',
+    'Without its imported quote the row fails. A quote line already linked to another work order is copied into the quote, with its commissions, and the quote total grows. The flexible fields come too, only those the categories of the work order lines provide (run Product categories — link attributes first): a field not provided, an invalid value or a user or registry not imported is skipped with a warning. The stages come too, open or closed as in the legacy system, without tasks. Notes, documents and tasks are not imported.',
   'work-order-line-payments':
     'Creates no records: it copies the payment status, payment agreement and unpaid amounts of the work order onto each of its lines. Without the imported work order the row fails. Every import rewrites the payment data of the lines.',
   'product-suppliers':

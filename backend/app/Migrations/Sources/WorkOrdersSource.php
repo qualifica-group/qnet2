@@ -11,6 +11,8 @@ use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
 use App\Migrations\Sources\Concerns\MapsLegacyWorkOrderFields;
 use App\Migrations\Support\ExternalApiClient;
+use App\Migrations\Support\LegacyAttributeValueApplier;
+use App\Migrations\Support\LegacyWorkOrderStageWriter;
 use App\Migrations\Support\QuoteLineDuplicator;
 use App\Models\Quote;
 use App\Models\QuoteLine;
@@ -31,7 +33,10 @@ use RuntimeException;
  * lines matched on `quote_lines.old_id`; a line already programmed into
  * another commessa stays with it and this one gets a copy of the line on the
  * offer (QuoteLineDuplicator, user decision 2026-10-02), never reaching
- * WorkOrderLineWriter's 422. A legacy `force_close_reason` forces the close. The whole row runs without activity log (G-3).
+ * WorkOrderLineWriter's 422. A legacy `force_close_reason` forces the close.
+ * The legacy flexible fields land in the attribute values applicable to the
+ * commessa's own lines (G-20/G-21) and its phases become the commessa's stages
+ * (G-22). The whole row runs without activity log (G-3).
  */
 class WorkOrdersSource extends AbstractMigrationSource
 {
@@ -44,6 +49,8 @@ class WorkOrdersSource extends AbstractMigrationSource
         ExternalApiClient $client,
         private readonly WorkOrderService $service,
         private readonly QuoteLineDuplicator $lineDuplicator,
+        private readonly LegacyAttributeValueApplier $attributeValueApplier,
+        private readonly LegacyWorkOrderStageWriter $stageWriter,
     ) {
         parent::__construct($client);
     }
@@ -66,6 +73,7 @@ class WorkOrdersSource extends AbstractMigrationSource
         return [
             MigrationDependency::required('quotes'),
             MigrationDependency::optional('users'),
+            MigrationDependency::optional('product-category-attributes'),
         ];
     }
 
@@ -89,6 +97,7 @@ class WorkOrdersSource extends AbstractMigrationSource
             ['id' => 'force_close_reason', 'label' => 'Force-close reason', 'type' => 'string'],
             ['id' => 'quote_line_ids', 'label' => 'Quote lines (external ids)', 'type' => 'string'],
             ['id' => 'supervisor_user_ids', 'label' => 'Supervisors (external ids)', 'type' => 'string'],
+            ['id' => 'stages', 'label' => 'Stages', 'type' => 'number'],
             ['id' => 'created_at', 'label' => 'Created at', 'type' => 'date'],
         ];
     }
@@ -135,7 +144,11 @@ class WorkOrdersSource extends AbstractMigrationSource
         // Step 2: create through the domain service, without task template (G-2).
         $workOrder = $this->service->create($this->buildData($externalId, $quoteId, $record, $warnings));
 
-        // Step 3: old_id and the legacy timestamps.
+        // Step 3: the legacy phases and flexible fields (G-20/G-21/G-22).
+        $this->stageWriter->write($workOrder, (array) ($record['stages'] ?? []), $warnings);
+        $this->attributeValueApplier->applyToWorkOrder($workOrder, (array) ($record['attribute_values'] ?? []), $warnings);
+
+        // Step 4: old_id, the attribute values and the legacy timestamps in one quiet save.
         $this->finalizeLegacyRecord($workOrder, $externalId, $record);
 
         return MigrationRowOutcome::created($warnings, $workOrder);

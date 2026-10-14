@@ -12,7 +12,7 @@ use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
 use App\Migrations\Sources\Concerns\MapsLegacyQuoteCostLines;
 use App\Migrations\Sources\Concerns\MapsLegacyQuoteLines;
 use App\Migrations\Support\ExternalApiClient;
-use App\Migrations\Support\LegacyQuoteAttributeValueApplier;
+use App\Migrations\Support\LegacyAttributeValueApplier;
 use App\Migrations\Support\LegacyQuoteState;
 use App\Migrations\Support\LegacyQuoteStatusApplier;
 use App\Models\CompanySite;
@@ -64,7 +64,7 @@ class QuotesSource extends AbstractMigrationSource
         private readonly QuoteManagerInheritance $managerInheritance,
         private readonly QuoteManagerSyncMode $managerSyncMode,
         private readonly LegacyQuoteStatusApplier $statusApplier,
-        private readonly LegacyQuoteAttributeValueApplier $attributeValueApplier,
+        private readonly LegacyAttributeValueApplier $attributeValueApplier,
     ) {
         parent::__construct($client);
     }
@@ -192,7 +192,7 @@ class QuotesSource extends AbstractMigrationSource
         // Step 5: legacy status and contract, the additional information (G-17),
         // then old_id, callback and timestamps in the final quiet save.
         $this->statusApplier->apply($quote, LegacyQuoteState::fromRecord($record), $warnings);
-        $this->attributeValueApplier->apply($quote, (array) ($record['attribute_values'] ?? []), $warnings);
+        $this->attributeValueApplier->applyToQuote($quote, (array) ($record['attribute_values'] ?? []), $warnings);
         $this->finalizeLegacyRecord($quote, $externalId, $record, [
             'next_callback_at' => $this->legacyTimestamp($record['callback_date'] ?? null)?->startOfDay(),
         ]);

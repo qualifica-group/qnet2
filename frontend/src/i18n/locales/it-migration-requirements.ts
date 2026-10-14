@@ -55,7 +55,7 @@ export const migrationRequirements = {
   quotes:
     'Senza la sua opportunità importata la riga fallisce. Una riga senza prodotto importato, ad esempio uno sconto, viene saltata con un avviso. Aliquote, modalità di pagamento, sedi, referenti, utenti e destinatari delle provvigioni mancanti restano vuoti con un avviso. Un’offerta accettata o contrattualizzata crea anche il contratto. Un costo senza prodotto di costo importato viene saltato con un avviso; un fornitore del costo diverso da quello del prodotto e un cliente diverso da quello dell’opportunità generano un avviso.',
   'work-orders':
-    'Senza la sua offerta importata la riga fallisce. Una riga d’offerta già collegata a un’altra commessa viene copiata nell’offerta, con le sue provvigioni, e il totale dell’offerta cresce. Note, documenti, fasi e task non vengono importati.',
+    'Senza la sua offerta importata la riga fallisce. Una riga d’offerta già collegata a un’altra commessa viene copiata nell’offerta, con le sue provvigioni, e il totale dell’offerta cresce. Arrivano anche i campi flessibili, solo quelli previsti dalle categorie delle righe della commessa (esegui prima Categorie prodotto — collega attributi): un campo non previsto, un valore non valido o un utente o un’anagrafica non importati vengono saltati con un avviso. Arrivano le fasi, aperte o chiuse come nel legacy, senza task. Note, documenti e task non vengono importati.',
   'work-order-line-payments':
     'Non crea record: copia stato pagamento, accordo di pagamento e insoluti della commessa su ogni sua riga. Senza la commessa importata la riga fallisce. Ogni import riscrive i dati di pagamento delle righe.',
   'product-suppliers':

@@ -3,6 +3,65 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEED/IMPORT: CATALOGO LEGACY SOTTO "Old category" + FUNZIONI FORMAZIONE/APL DAL SEED (2026-10-14) — VERDE, NON COMMITTATO
+
+- Decisione utente: tutte le categorie legacy (radici [OLD] e "[OLD] Costi") sotto un'unica radice "Old category",
+  non attiva, non selezionabile, senza funzione; non piu' sotto "Consulenza". Le funzioni "Formazione" e "APL" le
+  crea il seed, l'import le adotta. Spec 0013 emendamento "quinquies", 0174 AC-008.
+- Nuovo `app/Migrations/Support/LegacyCategoryContainer` (NAME, `id()`, `gather()`): sposta ogni categoria con old_id
+  appesa alla radice o a una categoria qnet (anche quelle gia' sotto Consulenza) + "[OLD] Costi" in cima. Chiamato da
+  `ProductCategoriesSource::afterImport` e `CostProductsSource::afterImport` (vale anche per l'import da UI).
+  `CostCategoryResolver` crea "[OLD] Costi" nel contenitore e la riusa per nome. Tolti
+  `QualificaLegacyImportSeeder::nestImportedCategories()`/`LEGACY_CATEGORY_ROOT`.
+- `QualificaBusinessFunctionLinkSeeder` crea ogni funzione di LINKS (Formazione, APL, Consulenza, No funzione
+  aziendale) se manca, nome confrontato senza maiuscole; ora gira PRIMA dell'offerta di import in
+  `QualificaCatalogSeeder` (497 righe) e non e' piu' ripetuto in `QualificaProductionDataSeeder`.
+  `BusinessFunctionsSource` adotta la funzione con old_id vuoto e stesso nome (LOWER): old_id + utenti in aggiunta,
+  nome qnet invariato.
+- Test: Migration 398/398, Seeding 150/150 (REQUIREMENT CHANGED: Consulenza -> Old category, funzioni seedate; +4
+  test nuovi). Suite completa 10.849 verdi, 3 rossi solo QuoteDocumentPdfTest (LibreOffice assente). Pint ok.
+  Vitest help+i18n 358/358, ESLint ok, tsc -b ok.
+- ATTENZIONE test: `backend/bootstrap/cache/routes-v7.php` (13/10) e' una cache rotte vecchia: con quella ~189 test
+  (Enasarco, provvigioni, fatture passive...) danno 404. `php artisan route:clear` prima di `composer test`.
+- Manuale: guida in-app migrations IT+EN e manuale Claude Docs (paragrafo [OLD] + Prodotti di costo) aggiornati.
+- DB locale: le 34 categorie [OLD] sotto Consulenza si spostano al prossimo import di `product-categories`.
+  Spec 0174 era gia' XML non valido in HEAD (tag `source_id` riga 46), non toccato.
+
+## MIGRAZIONE COMMESSE: CAMPI FLESSIBILI, DATI CONTABILI, FASI (spec 0189 G-20/G-21/G-22) — VERDE, NON COMMITTATO (2026-10-14)
+
+- Richiesta utente: "/migrations di commesse come il lavoro fatto con offerte: tutti i campi, campi flessibili, costi,
+  tutte le sfaccettature". Decisioni utente 2026-10-14: perimetro = campi flessibili + fasi; `status_contabile` e
+  `totale_commessa_manuale` come NUOVI campi flessibili; solo nuovi import (commesse gia' importate saltate per old_id).
+  NON scelti in questo giro: costi orari (`quotationemployees`, 85 righe), ODA legacy (`proformfora_heads` 750 ->
+  purchase_orders), note (~88k in activity_log), documenti (23.597 file), email, provvigioni maturate, task delle fasi.
+  I costi preventivo (`quotationexpensereports`) arrivano gia' come righe COSTO dell'offerta (G-13).
+- Spec 0189: G-20/G-21/G-22, shape `migration/work-orders` (+`attribute_values`, +`stages`), AC-015..017; corretto
+  XML gia' invalido (G-19: `R&S`, `<titolo card>` non escapati).
+- Legacy (`../qnet`, develop, NON committato): nuovi `app/Support/Migration/LegacyWorkOrderAttributeValues.php`
+  (formatta per tipo/opzioni del catalogo `AttributeMigrationController::attributes()`, ora public; esclusi
+  stato_pagamento/accordo/insoluti = pagamenti per riga spec 0201 C-2; stato delle righe avv/gare solo se la commessa ha
+  card 5/12) e `LegacyWorkOrderStages.php` (fasi unite per titolo, chiusa se tutte chiuse, closed_at = dateend max,
+  autore = ultima voce activity_log "ha chiuso la fase: <titolo>"). `WorkOrderMigrationController` (+service_cards,
+  attribute_values, stages). Catalogo: `standard` da enum isos a text (testo libero nel legacy), `sup_vi` opzioni 1/2
+  (`inspectionSupportOptions`), nuovi `status_contabile` boolean "Proforma emessa" e `totale_commessa_manuale` decimal
+  (`CardAttributes::accounting()`, comuni in `MigrationAttributeCards`, sezione "Dati contrattuali"); card ISO +
+  `ISO_HISTORY_ATTRIBUTES` (11 campi orderisos non mostrati da manageorder) nella sezione "Dati storici ISO".
+  `MigrationAttributeCards.php` ora 318 righe (>300 soft). Verifica: `php -l`; scansione completa via controller:
+  16.164 commesse, 0 eccezioni, 30 s; 53.448 fasi (27.293 chiuse con autore); HTTP reale qnet-2 -> legacy ok.
+- qnet-2: `LegacyQuoteAttributeValueApplier` rinominato `Migrations\Support\LegacyAttributeValueApplier`
+  (`applyToQuote` / `applyToWorkOrder`, relazioni `users` + `registries`); nuovo `LegacyWorkOrderStageWriter`;
+  `WorkOrdersSource` (+dipendenza opzionale `product-category-attributes`, colonna anteprima `stages`). Fixture
+  commesse spostate in `tests/Helpers/WorkOrderMigrationHelpers.php` (require in `tests/Pest.php`); nuovo
+  `WorkOrdersSourceAttributeValuesImportTest` (3 test).
+- Test: `tests/Feature/Migration` 401/401, `tests/Unit/Migrations` 20/20, WorkOrders 275/275, Quotes 363/366 (3 rossi
+  `QuoteDocumentPdfTest`: LibreOffice non installato, ambientale). Pint ok; Vitest help/i18n/migrations 388/388;
+  `tsc -b --force` 0; ESLint 0.
+- Manuale: guida in-app `migrations` IT/EN + requisiti `work-orders` IT/EN aggiornati. Manuale Claude Docs NON
+  accessibile da questa sessione: aggiornare in "Migrazioni" il punto Commesse (campi flessibili, fasi, solo nuovi
+  import) e la nota "non vengono importati" (restano note, documenti, task).
+- Per vedere i dati: reimport da zero di Attributi, Categorie prodotto — collega attributi, Layout attributi, poi
+  Commesse (le nuove definizioni/collegamenti non toccano un DB gia' importato).
+
 ## Spec 0252 — Consuntivo commessa dal ciclo passivo (ADR 0018 decisione 2, COS-01) — COMMITTATO (2026-10-13)
 
 - Spec `docs/specs/0252-work-order-actuals-from-passive-cycle.xml` (D-1..D-9, AC-001..009 PASS). 0210 D-7 superata.
