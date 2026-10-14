@@ -4,7 +4,7 @@ namespace App\Http\Requests\Invoices;
 
 use App\Enums\ResidualMode;
 use App\Models\InvoiceInstallment;
-use App\Services\Invoices\InvoiceAmountCalculator;
+use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -37,7 +37,7 @@ class InvoiceCollectionRequest extends FormRequest
         $isOpen = bccomp((string) ($installment->collected_amount ?? '0'), '0', 2) <= 0;
         // Same cent rounding as InvoiceCollectionService::record, so rule and service agree on "partial"
         $isPartial = fn (): bool => $isOpen && is_numeric($this->input('collected_amount'))
-            && bccomp(bcadd(app(InvoiceAmountCalculator::class)->normalize($this->input('collected_amount')), '0.005', 2), (string) $installment->amount, 2) < 0;
+            && app(LineAmountCalculator::class)->isPartial($this->input('collected_amount'), $installment->amount);
 
         return [
             'collected_amount' => ['required', 'numeric', 'gt:0', ...($isOpen ? ['max:'.$installment->amount] : [])],

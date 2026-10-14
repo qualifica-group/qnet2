@@ -12,7 +12,7 @@ use App\Models\PurchaseRequestPriority;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\VatRate;
-use App\Services\PurchaseRequests\PurchaseRequestAmountCalculator;
+use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Database\Seeder;
 
 /**
@@ -70,7 +70,7 @@ class DemoPurchaseRequestSeeder extends Seeder
         $priorityId = PurchaseRequestPriority::query()->where('name', $priorityName)->value('id')
             ?? PurchaseRequestPriority::query()->where('is_default', true)->value('id');
 
-        $calculator = new PurchaseRequestAmountCalculator;
+        $calculator = new LineAmountCalculator;
         $rate = $vatRateId === null ? null : (string) VatRate::query()->whereKey($vatRateId)->value('rate');
 
         $request = new PurchaseRequest(['subject' => $subject, 'purchase_request_priority_id' => $priorityId] + $header);
@@ -79,7 +79,7 @@ class DemoPurchaseRequestSeeder extends Seeder
         $computed = [];
 
         foreach ($lines as $index => [$description, $quantity, $unitPrice, $status]) {
-            $amounts = $calculator->line($quantity, $unitPrice, $rate);
+            $amounts = $calculator->line($quantity, $unitPrice, $rate, 3);
             $computed[] = $amounts;
 
             $line = new PurchaseRequestLine([
@@ -93,12 +93,13 @@ class DemoPurchaseRequestSeeder extends Seeder
             $line->forceFill([
                 'purchase_request_id' => $request->id,
                 'status' => $status,
-                'taxable_amount' => $amounts['taxable_amount'],
-                'vat_amount' => $amounts['vat_amount'],
-                'total_amount' => $amounts['total_amount'],
+                'taxable_amount' => $amounts['net'],
+                'vat_amount' => $amounts['vat'],
+                'total_amount' => $amounts['total'],
             ])->save();
         }
 
-        $request->forceFill($calculator->totals($computed))->save();
+        $totals = $calculator->sum($computed);
+        $request->forceFill(['taxable_total' => $totals['net'], 'vat_total' => $totals['vat'], 'grand_total' => $totals['total']])->save();
     }
 }

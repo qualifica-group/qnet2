@@ -5,7 +5,7 @@ namespace App\Http\Requests\PurchaseInvoices;
 use App\Enums\ResidualMode;
 use App\Models\FinancialAccount;
 use App\Models\PurchaseInvoiceInstallment;
-use App\Services\Invoices\InvoiceAmountCalculator;
+use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -33,7 +33,7 @@ class PurchaseInvoicePaymentRequest extends FormRequest
         $isOpen = ! $installment->isPaid();
         // Same cent rounding as PurchaseInvoicePaymentService::record, so rule and service agree on "partial"
         $isPartial = fn (): bool => $isOpen && is_numeric($this->input('paid_amount'))
-            && bccomp(bcadd(app(InvoiceAmountCalculator::class)->normalize($this->input('paid_amount')), '0.005', 2), (string) $installment->amount, 2) < 0;
+            && app(LineAmountCalculator::class)->isPartial($this->input('paid_amount'), $installment->amount);
 
         return [
             'paid_amount' => ['required', 'numeric', 'gt:0', ...($isOpen ? ['max:'.$installment->amount] : [])],

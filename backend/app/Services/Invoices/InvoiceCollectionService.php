@@ -8,6 +8,7 @@ use App\Enums\ResidualMode;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
 use App\Services\Commissions\Accruals\CommissionAccrualSynchronizer;
+use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -21,7 +22,7 @@ use Illuminate\Validation\ValidationException;
 final class InvoiceCollectionService
 {
     public function __construct(
-        private readonly InvoiceAmountCalculator $amounts,
+        private readonly LineAmountCalculator $amounts,
         private readonly InstallmentRebalancer $rebalancer,
         private readonly InvoiceService $invoices,
         private readonly CommissionAccrualSynchronizer $accruals,
@@ -41,7 +42,7 @@ final class InvoiceCollectionService
             }
 
             // Step 2: a full collection closes the installment, a partial one redistributes the residual
-            $collected = bcadd($this->amounts->normalize($payload['collected_amount']), '0.005', 2);
+            $collected = $this->amounts->roundToCents($payload['collected_amount']);
             $attributes = ['collected_amount' => $collected, 'collected_at' => $payload['collected_at']];
 
             if (bccomp($collected, (string) $current->amount, 2) >= 0) {

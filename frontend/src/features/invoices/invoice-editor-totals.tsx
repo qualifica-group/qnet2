@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { fromCents, type InvoiceTotalsCents } from '@/features/invoices/invoice-amounts'
+import { fromCents, type AmountsCents } from '@/lib/amounts/line-amounts'
 import { formatEuro } from '@/features/invoices/invoice-format'
 
 /** Imponibile / IVA / Totale of the document (client preview; the server recomputes). */
-export function InvoiceEditorTotals({ totals }: { totals: InvoiceTotalsCents }) {
+export function InvoiceEditorTotals({ totals }: { totals: AmountsCents }) {
   const { t } = useTranslation()
 
   return (

@@ -61,7 +61,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'Un documento ha da 1 a 200 righe.',
-            'Gli importi di riga si calcolano con la quantità a 3 decimali; l’IVA vuota vale 0. I totali del documento sono la somma delle righe.',
+            'Gli importi di riga si calcolano con la quantità a 3 decimali; l’IVA vuota vale 0. L’IVA è calcolata una volta per ogni aliquota sull’imponibile delle righe, come nella fattura elettronica, e ripartita sulle righe; i totali del documento sono la somma delle righe.',
             'Fornitore e società **non si cambiano** dopo la creazione.',
           ],
         },

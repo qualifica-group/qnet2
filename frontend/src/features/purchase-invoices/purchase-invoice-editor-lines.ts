@@ -1,5 +1,4 @@
 import type { FieldPath } from 'react-hook-form'
-import { computeInvoiceTotals, type InvoiceTotalsCents, type PreviewLine } from '@/features/invoices/invoice-amounts'
 import type { VatRateRef } from '@/features/invoices/types'
 import type {
   PurchaseInvoiceLineFormValues,
@@ -10,6 +9,7 @@ import type {
   PurchaseInvoiceLineWrite,
   PurchaseInvoiceWritePayload,
 } from '@/features/purchase-invoices/types'
+import { documentAmountsPerRate, type DocumentAmounts } from '@/lib/amounts/line-amounts'
 
 export type VatRefs = Record<number, VatRateRef>
 
@@ -17,6 +17,9 @@ export type VatRefs = Record<number, VatRateRef>
 export const NO_ID = Number.NaN
 
 export const DEFAULT_LINE_QUANTITY = 1
+
+/** Quantity decimals of a purchase invoice (spec 0253 D-5). */
+export const PURCHASE_INVOICE_QUANTITY_SCALE = 3
 
 export function idToSelectValue(id: number): number | null {
   return Number.isNaN(id) ? null : id
@@ -83,17 +86,16 @@ export function vatPercentOf(vatRateId: number | null, vatRefs: VatRefs): number
   return rate === undefined ? null : Number(rate)
 }
 
-export function toPreviewLine(line: PurchaseInvoiceLineFormValues, vatRefs: VatRefs): PreviewLine {
-  return {
-    quantity: Number.isFinite(line.quantity) ? line.quantity : 0,
-    unitPrice: Number.isFinite(line.unit_price) ? line.unit_price : 0,
-    vatRatePercent: vatPercentOf(line.vat_rate_id, vatRefs),
-  }
-}
-
-/** Header totals = sum of the rows (client preview; the server recomputes). */
-export function totalsOf(lines: readonly PurchaseInvoiceLineFormValues[], vatRefs: VatRefs): InvoiceTotalsCents {
-  return computeInvoiceTotals(lines.map((line) => toPreviewLine(line, vatRefs)))
+/** Per-row amounts and header totals, VAT computed once per rate (client preview; the server recomputes). */
+export function amountsOf(lines: readonly PurchaseInvoiceLineFormValues[], vatRefs: VatRefs): DocumentAmounts {
+  return documentAmountsPerRate(
+    lines.map((line) => ({
+      quantity: line.quantity,
+      unitPrice: line.unit_price,
+      vatRate: vatPercentOf(line.vat_rate_id, vatRefs),
+    })),
+    PURCHASE_INVOICE_QUANTITY_SCALE,
+  )
 }
 
 function toLineWrite(line: PurchaseInvoiceLineFormValues): PurchaseInvoiceLineWrite {

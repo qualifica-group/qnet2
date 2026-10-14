@@ -66,6 +66,7 @@ export function InvoiceEditorForm({ source, target, onSaved, onCancel }: Invoice
             form={editor.form}
             lineArray={editor.lineArray}
             lines={editor.lines}
+            lineAmounts={editor.lineAmounts}
             vatRefs={editor.vatRefs}
             onRememberVat={editor.rememberVat}
             onAddLine={editor.addLine}

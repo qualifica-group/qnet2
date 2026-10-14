@@ -9,19 +9,11 @@ import { Input } from '@/components/ui/input'
 import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
 import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import type { ForSelectItem } from '@/features/for-select/types'
-import { computeLineAmounts, fromCents } from '@/features/invoices/invoice-amounts'
+import { fromCents, type AmountsCents } from '@/lib/amounts/line-amounts'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import type { VatRateRef } from '@/features/invoices/types'
-import {
-  idToSelectValue,
-  NO_ID,
-  toPreviewLine,
-  type VatRefs,
-} from '@/features/purchase-invoices/purchase-invoice-editor-lines'
-import type {
-  PurchaseInvoiceLineFormValues,
-  PurchaseInvoiceWriteFormValues,
-} from '@/features/purchase-invoices/purchase-invoice-schema'
+import { idToSelectValue, NO_ID } from '@/features/purchase-invoices/purchase-invoice-editor-lines'
+import type { PurchaseInvoiceWriteFormValues } from '@/features/purchase-invoices/purchase-invoice-schema'
 import { WORK_ORDERS_FOR_SELECT_RESOURCE } from '@/features/tasks/for-select-api'
 import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
 
@@ -36,8 +28,7 @@ const QUANTITY_STEP = '0.001'
 interface PurchaseInvoiceEditorLineRowProps {
   index: number
   control: Control<PurchaseInvoiceWriteFormValues>
-  line: PurchaseInvoiceLineFormValues
-  vatRefs: VatRefs
+  amounts: AmountsCents
   onRememberVat: (ref: VatRateRef) => void
   onRemove: () => void
 }
@@ -134,15 +125,13 @@ function LineNumberField({ control, index, name, label, step }: NumberFieldProps
 export function PurchaseInvoiceEditorLineRow({
   index,
   control,
-  line,
-  vatRefs,
+  amounts,
   onRememberVat,
   onRemove,
 }: PurchaseInvoiceEditorLineRowProps) {
   const { t } = useTranslation()
   const n = index + 1
   const label = (key: string) => `${t(`purchaseInvoices.editor.lines.${key}`)} ${n}`
-  const amounts = computeLineAmounts(toPreviewLine(line, vatRefs))
 
   return (
     <li className="grid gap-2 rounded-md border bg-background p-2">

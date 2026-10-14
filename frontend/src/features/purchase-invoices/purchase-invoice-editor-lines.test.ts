@@ -4,7 +4,7 @@ import {
   mapServerErrors,
   newLine,
   NO_ID,
-  totalsOf,
+  amountsOf,
 } from '@/features/purchase-invoices/purchase-invoice-editor-lines'
 import type { PurchaseInvoiceWriteFormValues } from '@/features/purchase-invoices/purchase-invoice-schema'
 
@@ -51,7 +51,17 @@ describe('purchase invoice editor lines', () => {
       newLine({ description: 'B', quantity: 0.333, unit_price: 10, cost_type_id: 1 }, NO_DEFAULTS),
     ]
 
-    expect(totalsOf(rows, { 1: { id: 1, name: 'IVA', rate: '22.00' } })).toEqual({ net: 25333, vat: 5500, total: 30833 })
+    expect(amountsOf(rows, { 1: { id: 1, name: 'IVA', rate: '22.00' } }).totals).toEqual({ net: 25333, vat: 5500, total: 30833 })
+  })
+
+  it('spec 0253 AC-010: VAT is computed once per rate and split over the rows', () => {
+    const refs = { 1: { id: 1, name: 'IVA', rate: '22.00' } }
+    const rows = [1, 2, 3].map(() => newLine({ description: 'A', unit_price: 10.01, vat_rate_id: 1, cost_type_id: 1 }, NO_DEFAULTS))
+
+    const { lines, totals } = amountsOf(rows, refs)
+
+    expect(totals.vat).toBe(661)
+    expect(lines.map((line) => line.vat)).toEqual([221, 220, 220])
   })
 
   it('sends type and number only at creation, nulls empty notes and keeps persisted row ids', () => {

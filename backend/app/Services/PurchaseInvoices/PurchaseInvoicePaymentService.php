@@ -10,7 +10,7 @@ use App\Models\FinancialAccount;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceInstallment;
 use App\Services\Invoices\InstallmentRebalancer;
-use App\Services\Invoices\InvoiceAmountCalculator;
+use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -25,7 +25,7 @@ use Illuminate\Validation\ValidationException;
 final class PurchaseInvoicePaymentService
 {
     public function __construct(
-        private readonly InvoiceAmountCalculator $amounts,
+        private readonly LineAmountCalculator $amounts,
         private readonly InstallmentRebalancer $rebalancer,
     ) {}
 
@@ -47,7 +47,7 @@ final class PurchaseInvoicePaymentService
             $this->assertAccountAllowed($invoice, $accountId === null ? null : (int) $accountId);
 
             // Step 3: a full payment closes the installment, a partial one redistributes the residual
-            $paid = bcadd($this->amounts->normalize($payload['paid_amount']), '0.005', 2);
+            $paid = $this->amounts->roundToCents($payload['paid_amount']);
             $attributes = ['paid_amount' => $paid, 'paid_at' => $payload['paid_at'], 'financial_account_id' => $accountId];
 
             if (bccomp($paid, (string) $current->amount, 2) >= 0) {

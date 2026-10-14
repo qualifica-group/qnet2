@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0253-unified-amounts-vat-per-rate" status="draft" owner="ciro" date="2026-10-13">
+
+  <goal>
+    Un solo motore bcmath per gli importi delle righe di documenti e costi, e IVA dei documenti fiscali (fatture attive e
+    passive) calcolata per aliquota come nella fattura elettronica (ADR 0018 decisione 4; audit COS-09, ATT-06).
+  </goal>
+
+  <context>
+    Decisioni utente 2026-10-13:
+    - D-1 IVA per aliquota: per ogni aliquota si somma l'imponibile delle righe e si calcola l'IVA una volta
+      (arrotondamento a 2 decimali half away from zero); l'IVA di riga e' la ripartizione di quel totale: ogni riga
+      riceve la sua IVA arrotondata e la differenza di centesimi va alla riga con imponibile maggiore dell'aliquota (a
+      parita', la prima per sort_order). Somma IVA righe = IVA documento = IVA della fattura elettronica.
+    - D-2 Si applica a fatture attive e fatture passive; ODA e RDA restano con IVA per riga (non fiscali).
+    - D-3 Prezzo unitario delle fatture attive: massimo 2 decimali, validato (422 backend con messaggio tradotto, errore
+      di campo frontend); nessun troncamento silenzioso.
+    - D-4 Motore unico bcmath per fatture attive, fatture passive, RDA/ODA e costi commessa (che passano da float a
+      bcmath); le offerte (QuoteTotalsCalculator) restano escluse.
+
+    Decisioni tecniche proposte:
+    - D-5 Nuova classe App\Support\Amounts\LineAmountCalculator (bcmath): line(quantity, unitPrice, ?vatRate, quantityScale)
+      -> net/vat/total con regole di arrotondamento attuali (quantita' arrotondata alla scala del documento: 2 per
+      fatture attive e costi commessa, 3 per RDA/ODA/fatture passive; imponibile = qty x prezzo arrotondato a 2);
+      documentPerRate(lines) -> righe con IVA ripartita (D-1) e totali; roundToCents / isPartial pubblici (COS-08) da usare
+      anche nei servizi di pagamento/incasso che oggi riscrivono bcadd(normalize(x), '0.005', 2).
+      InvoiceAmountCalculator, PurchaseRequestAmountCalculator/PurchaseOrderAmountCalculator, PurchaseInvoiceAmountCalculator
+      e il calcolo in WorkOrderCostWriter delegano al motore (o vengono rimossi se diventano pass-through, aggiornando
+      i chiamanti); nessuna formula duplicata residua.
+    - D-6 Nessuna migrazione di precisione (le colonne restano come sono: le scale di quantita' sono parametri del motore).
+    - D-7 Ricalcolo: i nuovi importi valgono per i documenti creati o salvati dopo il rilascio. Fatture attive registrate e
+      fatture passive registrate sono bloccate (0243 / 0250) e non vengono ricalcolate; nessuna migrazione dati.
+    - D-8 Frontend: una funzione condivisa di anteprima (es. frontend/src/lib/amounts/line-amounts.ts) che replica D-1 e le
+      stesse regole (cent math intero), usata dagli editor di fattura attiva e passiva; ODA/RDA e costi commessa usano la
+      stessa funzione per riga. Anteprima e salvataggio coincidono (test con casi di arrotondamento).
+
+    Fatti verificati: InvoiceAmountCalculator (bcmath, qty 2 dec, IVA per riga, round private), invoice-amounts.ts FE senza
+    arrotondamento coerente; PurchaseRequestAmountCalculator (scale 8, qty 3, IVA null = 0) usato da ODA e fatture passive
+    (PurchaseInvoiceAmountCalculator); WorkOrderCostWriter con QuoteTotalsCalculator float; bcadd(normalize(x),'0.005',2)
+    ripetuto in PurchaseInvoicePaymentService, PurchaseInvoiceBulkPayer, PurchaseInvoicePaymentRequest e gemelli attivi.
+  </context>
+
+  <scope>
+    <in>
+      <item>BE: LineAmountCalculator (riga + documento per aliquota + roundToCents/isPartial); adozione in fatture attive (per aliquota), fatture passive (per aliquota), RDA/ODA (per riga), costi commessa (per riga, bcmath); sostituzione delle formule di arrotondamento duplicate nei servizi incassi/pagamenti; validazione 2 decimali del prezzo unitario fatture attive.</item>
+      <item>FE: funzione condivisa di anteprima importi (riga + per aliquota) e adozione negli editor fattura attiva/passiva, righe ODA/RDA e costi commessa; validazione Zod 2 decimali sul prezzo fattura attiva.</item>
+      <item>Test di riferimento con casi di arrotondamento (piu' righe stessa aliquota con resti, aliquote miste, IVA null, quantita' a 3 decimali) identici BE e FE.</item>
+      <item>Guide IT+EN invoices e purchase-invoices (IVA calcolata per aliquota come nella fattura elettronica; prezzo max 2 decimali nelle attive).</item>
+    </in>
+    <out>
+      <item>Offerte (QuoteTotalsCalculator) e provvigioni.</item>
+      <item>Migrazioni di precisione e ricalcolo dei documenti esistenti.</item>
+      <item>Deduplicazione dei servizi incassi/pagamenti attivo-passivo (Onda 4), oltre all'uso del motore comune per l'arrotondamento.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <note>Nessun endpoint nuovo ne' cambio di shape. Cambiano i valori di vat_amount/total_amount di riga e testata per fatture
+      attive e passive salvate dopo il rilascio (somma righe = testata, IVA per aliquota). Nuovo errore:</note>
+    <endpoint method="POST|PUT" path="/api/proforma-requests/{id}/invoice, /api/invoices/{id}">
+      <errors>422 errors["lines.N.unit_price"] = [__('invoices.unit_price_decimals')] se piu' di 2 decimali.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Unit test del motore: tre righe al 22% con imponibili 10,01 / 10,01 / 10,01 -> IVA documento 6,61 (non 6,60 della somma per riga), ripartita con il centesimo sulla prima riga di imponibile massimo; somma righe = documento.</criterion>
+    <criterion id="AC-002">Aliquote miste (22%, 10%, esente/null): IVA per aliquota indipendente; totale = imponibile + IVA; casi con quantita' a 3 decimali e IVA null = 0.</criterion>
+    <criterion id="AC-003">Fattura attiva salvata con piu' righe: vat_amount di testata = somma IVA per aliquota e = somma vat_amount di riga; anteprima scadenze coerente col nuovo totale.</criterion>
+    <criterion id="AC-004">Fattura passiva salvata: stessa regola per aliquota.</criterion>
+    <criterion id="AC-005">ODA/RDA: importi per riga invariati rispetto a oggi sugli stessi input (regressione).</criterion>
+    <criterion id="AC-006">Costi commessa: calcolati in bcmath; per gli stessi input coincidono con i valori attuali salvo i casi float di confine documentati nel test.</criterion>
+    <criterion id="AC-007">Prezzo unitario fattura attiva 0,333 -> 422 tradotto su lines.N.unit_price; 0,33 accettato.</criterion>
+    <criterion id="AC-008">Nessuna formula di arrotondamento duplicata residua: i servizi incassi/pagamenti usano roundToCents/isPartial del motore (grep di bcadd(... '0.005' ...) fuori dal motore vuoto); suite incassi/pagamenti verde.</criterion>
+    <criterion id="AC-009">Fatture registrate non ricalcolate (nessuna migrazione dati, importi invariati alla lettura).</criterion>
+    <criterion id="AC-010">(Vitest) La funzione FE condivisa produce esattamente gli stessi valori del motore BE sui casi di AC-001/AC-002 (tabella di casi condivisa nel test); editor attivo e passivo mostrano IVA per aliquota; prezzo con 3 decimali segnalato nell'editor attivo.</criterion>
+    <criterion id="AC-011">Guide IT+EN aggiornate; parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; nessuna migrazione; bcmath lato server, cent math intero lato client.</item>
+    <item>Codice morto rimosso (calcolatori pass-through eliminati e chiamanti aggiornati); file sotto 300 righe.</item>
+    <item>Test esistenti sugli importi modificati solo dove il valore atteso cambia per D-1 (dichiararlo test per test).</item>
+    <item>Suite completa dal verifier; tsc -b --force. Nessun commit senza ordine esplicito.</item>
+  </constraints>
+
+</spec>

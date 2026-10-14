@@ -1,19 +1,15 @@
 import type { UseFieldArrayReturn, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import type { VatRateRef } from '@/features/invoices/types'
+import { EMPTY_AMOUNTS_CENTS, type AmountsCents } from '@/lib/amounts/line-amounts'
 import { PurchaseInvoiceEditorAddLine, type NewLineFields } from '@/features/purchase-invoices/purchase-invoice-editor-add-line'
 import { PurchaseInvoiceEditorLineRow } from '@/features/purchase-invoices/purchase-invoice-editor-line-row'
-import type { VatRefs } from '@/features/purchase-invoices/purchase-invoice-editor-lines'
-import type {
-  PurchaseInvoiceLineFormValues,
-  PurchaseInvoiceWriteFormValues,
-} from '@/features/purchase-invoices/purchase-invoice-schema'
+import type { PurchaseInvoiceWriteFormValues } from '@/features/purchase-invoices/purchase-invoice-schema'
 
 interface PurchaseInvoiceEditorLinesSectionProps {
   form: UseFormReturn<PurchaseInvoiceWriteFormValues>
   lineArray: UseFieldArrayReturn<PurchaseInvoiceWriteFormValues, 'lines'>
-  lines: PurchaseInvoiceLineFormValues[]
-  vatRefs: VatRefs
+  lineAmounts: readonly AmountsCents[]
   generalErrors: string[]
   onRememberVat: (ref: VatRateRef) => void
   onAddLine: (fields: NewLineFields) => void
@@ -23,8 +19,7 @@ interface PurchaseInvoiceEditorLinesSectionProps {
 export function PurchaseInvoiceEditorLinesSection({
   form,
   lineArray,
-  lines,
-  vatRefs,
+  lineAmounts,
   generalErrors,
   onRememberVat,
   onAddLine,
@@ -47,8 +42,7 @@ export function PurchaseInvoiceEditorLinesSection({
               key={field.id}
               index={index}
               control={form.control}
-              line={lines[index] ?? field}
-              vatRefs={vatRefs}
+              amounts={lineAmounts[index] ?? EMPTY_AMOUNTS_CENTS}
               onRememberVat={onRememberVat}
               onRemove={() => lineArray.remove(index)}
             />

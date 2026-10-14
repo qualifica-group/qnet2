@@ -9,7 +9,7 @@ use App\Models\Product;
 use App\Models\VatRate;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderCost;
-use App\Services\Quotes\QuoteTotalsCalculator;
+use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -21,7 +21,9 @@ use Illuminate\Validation\ValidationException;
  */
 final class WorkOrderCostWriter
 {
-    public function __construct(private readonly QuoteTotalsCalculator $calculator) {}
+    private const int QUANTITY_SCALE = 2;
+
+    public function __construct(private readonly LineAmountCalculator $calculator) {}
 
     /**
      * @param  array<int, array<string, mixed>>  $rows  validated rows of SyncWorkOrderCostsRequest
@@ -54,7 +56,7 @@ final class WorkOrderCostWriter
 
     /**
      * @param  array<string, mixed>  $row
-     * @param  array<int, float>  $rates
+     * @param  array<int, string>  $rates
      * @param  array<int, int|null>  $units
      */
     private function persist(WorkOrder $workOrder, ?WorkOrderCost $cost, array $row, int $index, array $rates, array $units): void
@@ -63,10 +65,11 @@ final class WorkOrderCostWriter
         $cost ??= new WorkOrderCost(['work_order_id' => $workOrder->id]);
         $productChanged = ! $isNew && $cost->product_id !== (int) $row['product_id'];
         $vatRateId = $row['vat_rate_id'] ?? null;
-        $amounts = $this->calculator->lineAmounts(
-            (float) $row['quantity'],
-            (float) $row['unit_price'],
+        $amounts = $this->calculator->line(
+            $row['quantity'],
+            $row['unit_price'],
             $vatRateId === null ? null : ($rates[$vatRateId] ?? null),
+            self::QUANTITY_SCALE,
         );
 
         $cost->fill([
@@ -125,7 +128,7 @@ final class WorkOrderCostWriter
 
     /**
      * @param  array<int, array<string, mixed>>  $rows
-     * @return array<int, float>
+     * @return array<int, string>
      */
     private function vatRates(array $rows): array
     {
@@ -134,7 +137,7 @@ final class WorkOrderCostWriter
         return $ids === [] ? [] : VatRate::query()
             ->whereIn('id', $ids)
             ->pluck('rate', 'id')
-            ->map(static fn (mixed $rate): float => (float) $rate)
+            ->map(static fn (mixed $rate): string => (string) $rate)
             ->all();
     }
 }

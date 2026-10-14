@@ -121,6 +121,7 @@ export const invoiceEditor = {
     quantityMax: 'La quantità può essere al massimo 9.999.999.',
     unitPriceInvalid: 'Il prezzo deve essere un numero.',
     unitPriceRange: 'Il prezzo è fuori dai limiti consentiti.',
+    unitPriceDecimals: 'Il prezzo unitario può avere al massimo 2 decimali.',
     vatRateRequired: 'L’IVA è obbligatoria.',
   },
 }

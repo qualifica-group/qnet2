@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { isPartialCollection } from '@/features/invoices/invoice-collection-residual'
 import { RESIDUAL_MODES } from '@/features/invoices/types'
+import { round2 } from '@/lib/amounts/line-amounts'
 
 /**
  * Zod schemas of the invoice forms, mirroring the frozen server rules of
@@ -36,7 +37,8 @@ export function buildInvoiceLineSchema(t: TFunction) {
     unit_price: z
       .number(t('invoiceEditor.errors.unitPriceInvalid'))
       .min(-UNIT_PRICE_LIMIT, t('invoiceEditor.errors.unitPriceRange'))
-      .max(UNIT_PRICE_LIMIT, t('invoiceEditor.errors.unitPriceRange')),
+      .max(UNIT_PRICE_LIMIT, t('invoiceEditor.errors.unitPriceRange'))
+      .refine((price) => round2(price) === price, t('invoiceEditor.errors.unitPriceDecimals')),
     vat_rate_id: z.number(t('invoiceEditor.errors.vatRateRequired')).int(),
   })
 }

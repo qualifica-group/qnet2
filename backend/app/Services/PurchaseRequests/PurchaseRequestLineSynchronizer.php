@@ -9,6 +9,7 @@ use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
 use App\Models\User;
 use App\Models\VatRate;
+use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
@@ -23,8 +24,10 @@ class PurchaseRequestLineSynchronizer
     /** Line states a line may be deleted from (D-11). */
     private const array DELETABLE_STATUSES = [PurchaseRequestLineStatus::PendingApproval, PurchaseRequestLineStatus::Rejected];
 
+    private const int QUANTITY_SCALE = 3;
+
     public function __construct(
-        private readonly PurchaseRequestAmountCalculator $amounts,
+        private readonly LineAmountCalculator $amounts,
         private readonly PurchaseRequestCapabilityResolver $capabilities,
     ) {}
 
@@ -105,7 +108,7 @@ class PurchaseRequestLineSynchronizer
      */
     private function lineContent(array $line, int $position): array
     {
-        $amounts = $this->amounts->line($line['quantity'], $line['unit_price'], null);
+        $amounts = $this->amounts->line($line['quantity'], $line['unit_price'], null, self::QUANTITY_SCALE);
 
         return [
             'position' => $position,
@@ -127,18 +130,23 @@ class PurchaseRequestLineSynchronizer
      */
     private function lineAmounts(array $line, array $rates): array
     {
-        $amounts = $this->amounts->line($line['quantity'], $line['unit_price'], $rates[$line['vat_rate_id']] ?? null);
+        $amounts = $this->amounts->line($line['quantity'], $line['unit_price'], $rates[$line['vat_rate_id']] ?? null, self::QUANTITY_SCALE);
 
         return [
-            'taxable_amount' => $amounts['taxable_amount'],
-            'vat_amount' => $amounts['vat_amount'],
-            'total_amount' => $amounts['total_amount'],
+            'taxable_amount' => $amounts['net'],
+            'vat_amount' => $amounts['vat'],
+            'total_amount' => $amounts['total'],
         ];
     }
 
     private function refreshTotals(PurchaseRequest $purchaseRequest): void
     {
-        $purchaseRequest->forceFill($this->amounts->totals($purchaseRequest->lines()->get(['taxable_amount', 'vat_amount'])))->save();
+        $totals = $this->amounts->sum(
+            $purchaseRequest->lines()->get(['taxable_amount', 'vat_amount'])
+                ->map(fn (PurchaseRequestLine $line): array => ['net' => $line->taxable_amount, 'vat' => $line->vat_amount]),
+        );
+
+        $purchaseRequest->forceFill(['taxable_total' => $totals['net'], 'vat_total' => $totals['vat'], 'grand_total' => $totals['total']])->save();
     }
 
     /**

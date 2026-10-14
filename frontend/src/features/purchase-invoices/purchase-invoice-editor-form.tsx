@@ -53,8 +53,7 @@ export function PurchaseInvoiceEditorForm({ source, target, onSaved, onCancel }:
           <PurchaseInvoiceEditorLinesSection
             form={editor.form}
             lineArray={editor.lineArray}
-            lines={editor.lines}
-            vatRefs={editor.vatRefs}
+            lineAmounts={editor.lineAmounts}
             generalErrors={editor.generalErrors}
             onRememberVat={editor.rememberVat}
             onAddLine={editor.addLine}

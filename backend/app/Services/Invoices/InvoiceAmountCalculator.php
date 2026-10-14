@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace App\Services\Invoices;
 
 use App\Models\VatRate;
+use App\Support\Amounts\LineAmountCalculator;
 
 /**
- * Server-side amounts of an invoice (spec 0194, D-9): every line is recomputed
- * with bcmath and rounded half away from zero to 2 decimals; the header totals
- * are the exact sums of the rounded lines (no float accumulation).
+ * Server-side amounts of an invoice (spec 0194, D-9; spec 0253): the lines go
+ * through the shared engine with the VAT computed once per rate, so the header
+ * totals are the exact sums of the lines and match the electronic invoice.
  */
 final class InvoiceAmountCalculator
 {
-    private const int SCALE = 2;
+    private const int QUANTITY_SCALE = 2;
+
+    public function __construct(private readonly LineAmountCalculator $engine) {}
 
     /**
      * @param  array<int, array<string, mixed>>  $lines  validated payload lines
@@ -22,32 +25,35 @@ final class InvoiceAmountCalculator
      */
     public function compute(array $lines, array $vatRates): array
     {
+        $lines = array_values($lines);
+        $document = $this->engine->documentPerRate(
+            array_map(fn (array $line): array => [
+                'quantity' => $line['quantity'],
+                'unit_price' => $line['unit_price'],
+                'vat_rate' => $vatRates[$line['vat_rate_id']],
+            ], $lines),
+            self::QUANTITY_SCALE,
+        );
+
         $computed = [];
-        $net = $vat = '0.00';
 
-        foreach (array_values($lines) as $index => $line) {
-            $quantity = $this->round($this->normalize($line['quantity']));
-            $price = $this->round($this->normalize($line['unit_price']));
-            $lineNet = $this->round(bcmul($quantity, $price, 4));
-            $lineVat = $this->round(bcdiv(bcmul($lineNet, $vatRates[$line['vat_rate_id']], 4), '100', 6));
-
+        foreach ($lines as $index => $line) {
+            $amounts = $document['lines'][$index];
             $computed[] = [
                 'quote_line_id' => $line['quote_line_id'] ?? null,
                 'product_id' => $line['product_id'] ?? null,
                 'description' => $line['description'],
-                'quantity' => $quantity,
-                'unit_price' => $price,
+                'quantity' => $amounts['quantity'],
+                'unit_price' => $amounts['unit_price'],
                 'vat_rate_id' => $line['vat_rate_id'],
-                'net_amount' => $lineNet,
-                'vat_amount' => $lineVat,
-                'total_amount' => bcadd($lineNet, $lineVat, self::SCALE),
+                'net_amount' => $amounts['net'],
+                'vat_amount' => $amounts['vat'],
+                'total_amount' => $amounts['total'],
                 'sort_order' => $index,
             ];
-            $net = bcadd($net, $lineNet, self::SCALE);
-            $vat = bcadd($vat, $lineVat, self::SCALE);
         }
 
-        return ['lines' => $computed, 'net' => $net, 'vat' => $vat, 'total' => bcadd($net, $vat, self::SCALE)];
+        return ['lines' => $computed, 'net' => $document['net'], 'vat' => $document['vat'], 'total' => $document['total']];
     }
 
     /**
@@ -57,21 +63,6 @@ final class InvoiceAmountCalculator
     public function vatRates(array $vatRateIds): array
     {
         return VatRate::query()->whereIn('id', array_unique($vatRateIds))->pluck('rate', 'id')
-            ->map(fn (mixed $rate): string => $this->normalize($rate))->all();
-    }
-
-    /** A plain decimal string bcmath accepts (JSON numbers arrive as floats, possibly in exponent form). */
-    public function normalize(mixed $value): string
-    {
-        $text = is_string($value) ? trim($value) : '';
-
-        return preg_match('/^-?\d+(\.\d+)?$/', $text) === 1 ? $text : sprintf('%.6F', (float) $value);
-    }
-
-    private function round(string $value): string
-    {
-        $half = bccomp($value, '0', 6) < 0 ? '-0.005' : '0.005';
-
-        return bcadd($value, $half, self::SCALE);
+            ->map(fn (mixed $rate): string => $this->engine->normalize($rate))->all();
     }
 }

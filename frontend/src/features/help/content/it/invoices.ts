@@ -24,9 +24,9 @@ const guide: HelpGuide = {
           rows: [
             ['**Intestazione**', 'Data documento, società emittente (non modificabile in modifica), cliente, modalità di pagamento, banca della società, **tag** (facoltativo, scelto dal catalogo **Tag fattura**), note e note interne.'],
             ['**Righe disponibili**', 'Le righe della commessa non ancora usate: **Aggiungi** una riga oppure **Aggiungi tutte**. Una riga d\'offerta si fattura **una sola volta**: quelle già presenti in un\'altra fattura non compaiono.'],
-            ['**Righe del documento**', 'Puoi modificare quantità, prezzo e IVA; ogni riga è un prodotto a catalogo oppure una descrizione libera.'],
+            ['**Righe del documento**', 'Puoi modificare quantità, prezzo e IVA; ogni riga è un prodotto a catalogo oppure una descrizione libera. Il prezzo unitario può avere al massimo 2 decimali.'],
             ['**Scadenze**', 'Anteprima delle rate calcolata dalla modalità di pagamento (vedi la guida Modalità di Pagamento).'],
-            ['**Totali**', 'Imponibile, IVA e totale del documento.'],
+            ['**Totali**', 'Imponibile, IVA e totale del documento. L’IVA è calcolata una volta per ogni aliquota sull’imponibile delle righe, come nella fattura elettronica, e ripartita sulle righe: la somma dell’IVA delle righe coincide con quella del documento.'],
           ],
         },
         { type: 'paragraph', text: 'Con **Emetti** il documento riceve un numero progressivo per società emittente e anno, nel formato **N/AAAA**, e la richiesta di origine passa a **Evasa**.' },

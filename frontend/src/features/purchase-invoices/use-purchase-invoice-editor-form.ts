@@ -9,7 +9,7 @@ import {
   buildWritePayload,
   mapServerErrors,
   newLine,
-  totalsOf,
+  amountsOf,
   type VatRefs,
 } from '@/features/purchase-invoices/purchase-invoice-editor-lines'
 import type { EditorSource } from '@/features/purchase-invoices/purchase-invoice-editor-source'
@@ -75,7 +75,8 @@ export function usePurchaseInvoiceEditorForm({ source, target, onSaved }: UsePur
   const supplierId = useWatch({ control, name: 'supplier_id' })
   const documentType = useWatch({ control, name: 'document_type' })
   const orderIds = useWatch({ control, name: 'purchase_order_ids' })
-  const totals = useMemo(() => totalsOf(lines, vatRefs), [lines, vatRefs])
+  const amounts = useMemo(() => amountsOf(lines, vatRefs), [lines, vatRefs])
+  const totals = amounts.totals
   const isEdit = target.mode === 'edit'
   const preview = usePurchaseInvoiceEditorPreview({
     documentDate,
@@ -129,14 +130,13 @@ export function usePurchaseInvoiceEditorForm({ source, target, onSaved }: UsePur
   return {
     form,
     lineArray,
-    vatRefs,
     rememberVat,
-    lines,
     companyId,
     supplierId,
     documentType,
     orderIds,
     totals,
+    lineAmounts: amounts.lines,
     preview,
     generalErrors,
     addLine,

@@ -61,7 +61,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'A document has 1 to 200 lines.',
-            'Line amounts are computed with the quantity at 3 decimals; an empty VAT counts as 0. The document totals are the sum of the lines.',
+            'Line amounts are computed with the quantity at 3 decimals; an empty VAT counts as 0. VAT is computed once per rate on the taxable amount of the lines, as in the electronic invoice, and split over the lines; the document totals are the sum of the lines.',
             'Supplier and company **cannot be changed** after creation.',
           ],
         },

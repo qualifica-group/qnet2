@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import { fromCents, type InvoiceTotalsCents } from '@/features/invoices/invoice-amounts'
+import { fromCents, type AmountsCents } from '@/lib/amounts/line-amounts'
 import { idToSelectValue } from '@/features/purchase-invoices/purchase-invoice-editor-lines'
 import { usePurchaseInstallmentPreview } from '@/features/purchase-invoices/use-purchase-invoice-editor-queries'
 import type { PurchaseInstallmentPreviewPayload } from '@/features/purchase-invoices/types'
@@ -10,7 +10,7 @@ export const PREVIEW_DEBOUNCE_MS = 400
 interface PreviewInputs {
   documentDate: string
   paymentMethodId: number
-  totals: InvoiceTotalsCents
+  totals: AmountsCents
   /** Edited document: lets the server answer with the rebalanced plan when it has payments. */
   invoiceId: number | null
 }

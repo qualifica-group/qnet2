@@ -10,7 +10,7 @@ import {
   lineFromAvailable,
   newLine,
   type NewLineFields,
-  totalsOf,
+  amountsOf,
   type VatRefs,
 } from '@/features/invoices/invoice-editor-lines'
 import type { EditorSource } from '@/features/invoices/invoice-editor-source'
@@ -81,7 +81,8 @@ export function useInvoiceEditorForm({ source, target, onSaved }: UseInvoiceEdit
   const documentDate = useWatch({ control, name: 'document_date' })
   const paymentMethodId = useWatch({ control, name: 'payment_method_id' })
   const companyId = useWatch({ control, name: 'company_id' })
-  const totals = useMemo(() => totalsOf(lines, vatRefs), [lines, vatRefs])
+  const amounts = useMemo(() => amountsOf(lines, vatRefs), [lines, vatRefs])
+  const totals = amounts.totals
   const collectionsLocked = target.mode === 'edit' && source.hasCollections
   const preview = useInvoiceEditorPreview({
     documentDate,
@@ -159,6 +160,7 @@ export function useInvoiceEditorForm({ source, target, onSaved }: UseInvoiceEdit
     companyId,
     collectionsLocked,
     totals,
+    lineAmounts: amounts.lines,
     preview,
     addedQuoteLineIds,
     addAvailableLine,

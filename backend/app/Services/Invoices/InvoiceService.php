@@ -14,6 +14,7 @@ use App\Models\ProformaRequest;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\Commissions\Accruals\CommissionAccrualSynchronizer;
+use App\Support\Amounts\LineAmountCalculator;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +50,7 @@ class InvoiceService
 
     public function __construct(
         private readonly InvoiceAmountCalculator $amounts,
+        private readonly LineAmountCalculator $money,
         private readonly InvoiceInstallmentPlanner $planner,
         private readonly InvoiceNumberAllocator $numbers,
         private readonly InvoiceScheduleRebalancer $schedule,
@@ -188,15 +190,15 @@ class InvoiceService
         $invoice = isset($data['invoice_id']) ? Invoice::query()->find($data['invoice_id']) : null;
 
         if ($invoice !== null && $this->schedule->hasCollections($invoice)) {
-            return $this->schedule->preview($invoice, $this->amounts->normalize($data['total_amount']));
+            return $this->schedule->preview($invoice, $this->money->normalize($data['total_amount']));
         }
 
         $schedule = $this->planner->plan(
             CarbonImmutable::parse($data['document_date']),
             PaymentMethod::query()->findOrFail($data['payment_method_id']),
-            $this->amounts->normalize($data['net_amount']),
-            $this->amounts->normalize($data['vat_amount']),
-            $this->amounts->normalize($data['total_amount']),
+            $this->money->normalize($data['net_amount']),
+            $this->money->normalize($data['vat_amount']),
+            $this->money->normalize($data['total_amount']),
         );
 
         return $this->schedule->previewRows($schedule);

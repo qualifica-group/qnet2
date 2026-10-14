@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { ADDITIONAL_DESCRIPTION_MAX_LENGTH, MAX_LINES_PER_TAB, QUANTITY_MAX, UNIT_PRICE_MAX } from '@/features/quotes/quote-schema'
-import { round2 } from '@/features/quotes/quote-totals'
+import { round2 } from '@/lib/amounts/line-amounts'
 import type { SyncWorkOrderCostsPayload, WorkOrderCostLine } from '@/features/work-order-costs/types'
 
 /** Backend `document_reference` ceiling (`string(100)`). */

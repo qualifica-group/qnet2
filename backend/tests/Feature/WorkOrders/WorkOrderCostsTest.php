@@ -283,3 +283,22 @@ it('AC-010: the work order detail exposes view_costs / manage_costs in permissio
         ->assertJsonPath('permissions.actions.view_costs', false)
         ->assertJsonPath('permissions.actions.manage_costs', true);
 });
+
+it('spec 0253 AC-006: cost amounts come from the bcmath engine, VAT per row, half away from zero', function () {
+    ['workOrder' => $workOrder, 'product' => $product] = costsScenario();
+    $vat = VatRate::factory()->create(['rate' => 10]);
+    Sanctum::actingAs(workOrderCostsUserWith(['manageCosts']));
+
+    $this->putJson("/api/work-orders/{$workOrder->id}/costs", [
+        'lines' => [
+            costRow($product, ['quantity' => 3, 'unit_price' => 0.35, 'vat_rate_id' => $vat->id]),
+            costRow($product, ['quantity' => 1.5, 'unit_price' => 19.99, 'vat_rate_id' => null]),
+        ],
+    ])->assertOk()
+        ->assertJsonPath('data.lines.0.net_amount', '1.05')
+        ->assertJsonPath('data.lines.0.vat_amount', '0.11')
+        ->assertJsonPath('data.lines.0.total_amount', '1.16')
+        ->assertJsonPath('data.lines.1.net_amount', '29.99')
+        ->assertJsonPath('data.lines.1.vat_amount', '0.00')
+        ->assertJsonPath('data.lines.1.total_amount', '29.99');
+});

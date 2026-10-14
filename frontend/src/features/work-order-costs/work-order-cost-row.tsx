@@ -11,9 +11,9 @@ import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select
 import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
 import { QuoteProductSelect, type QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
 import { QuoteLineAdditionalDescription } from '@/features/quotes/quote-line-additional-description'
-import { computeLineAmounts } from '@/features/quotes/quote-totals'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import type { ForSelectItem } from '@/features/for-select/types'
+import { fromCents, lineAmounts } from '@/lib/amounts/line-amounts'
 import { errorAria } from '@/features/work-order-costs/cost-row-aria'
 import { CostRowError, type CostRowErrors } from '@/features/work-order-costs/cost-row-error'
 import {
@@ -29,6 +29,9 @@ export interface RevenueLineOption {
 
 /** Filters the supplier picker's `registries` for-select to `is_supplier` records only. */
 const SUPPLIER_PARAMS: Record<string, string | number> = { is_supplier: 1 }
+
+/** Quantity decimals of a work order cost (spec 0253 D-5). */
+const COST_QUANTITY_SCALE = 2
 
 /**
  * Header strip and every row share this grid; first line only, the second
@@ -82,7 +85,7 @@ export function WorkOrderCostRow({
   const { t } = useTranslation()
   const rowId = useId()
   const n = index + 1
-  const amounts = computeLineAmounts(row.quantity ?? 0, row.unit_price ?? 0, row.display.vat_percent)
+  const amounts = lineAmounts(row.quantity ?? 0, row.unit_price ?? 0, row.display.vat_percent, COST_QUANTITY_SCALE)
 
   const revenueSelectOptions = useMemo(
     () => revenueOptions.map((option) => ({ id: option.quoteLineId, name: option.label })),
@@ -210,9 +213,9 @@ export function WorkOrderCostRow({
           <CostRowError id={errorId('revenueLine')} error={error?.quote_line_id} />
         </div>
 
-        <span className="pt-2 text-right text-xs tabular-nums">{formatQuoteAmount(amounts.net)}</span>
-        <span className="pt-2 text-right text-xs tabular-nums">{formatQuoteAmount(amounts.vat)}</span>
-        <span className="pt-2 text-right text-xs font-medium tabular-nums">{formatQuoteAmount(amounts.total)}</span>
+        <span className="pt-2 text-right text-xs tabular-nums">{formatQuoteAmount(fromCents(amounts.net))}</span>
+        <span className="pt-2 text-right text-xs tabular-nums">{formatQuoteAmount(fromCents(amounts.vat))}</span>
+        <span className="pt-2 text-right text-xs font-medium tabular-nums">{formatQuoteAmount(fromCents(amounts.total))}</span>
 
         {disabled ? (
           <span />

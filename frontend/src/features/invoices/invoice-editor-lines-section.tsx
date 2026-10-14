@@ -5,11 +5,13 @@ import { InvoiceEditorLineRow, LINE_GRID_CLASS } from '@/features/invoices/invoi
 import type { InvoiceLineValues, NewLineFields, VatRefs } from '@/features/invoices/invoice-editor-lines'
 import type { InvoiceWriteFormValues } from '@/features/invoices/invoice-schema'
 import type { VatRateRef } from '@/features/invoices/types'
+import { EMPTY_AMOUNTS_CENTS, type AmountsCents } from '@/lib/amounts/line-amounts'
 
 interface InvoiceEditorLinesSectionProps {
   form: UseFormReturn<InvoiceWriteFormValues>
   lineArray: UseFieldArrayReturn<InvoiceWriteFormValues, 'lines'>
   lines: InvoiceLineValues[]
+  lineAmounts: readonly AmountsCents[]
   vatRefs: VatRefs
   onRememberVat: (ref: VatRateRef) => void
   onAddLine: (fields: NewLineFields) => void
@@ -20,6 +22,7 @@ export function InvoiceEditorLinesSection({
   form,
   lineArray,
   lines,
+  lineAmounts,
   vatRefs,
   onRememberVat,
   onAddLine,
@@ -52,6 +55,7 @@ export function InvoiceEditorLinesSection({
                 index={index}
                 control={form.control}
                 line={lines[index] ?? field}
+                amounts={lineAmounts[index] ?? EMPTY_AMOUNTS_CENTS}
                 vatRefs={vatRefs}
                 onRememberVat={onRememberVat}
                 onRemove={() => lineArray.remove(index)}

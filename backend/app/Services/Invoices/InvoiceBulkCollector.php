@@ -8,6 +8,7 @@ use App\Enums\ResidualMode;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
 use App\Models\User;
+use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -23,7 +24,7 @@ final class InvoiceBulkCollector
 {
     public function __construct(
         private readonly InvoiceCollectionService $collections,
-        private readonly InvoiceAmountCalculator $amounts,
+        private readonly LineAmountCalculator $amounts,
     ) {}
 
     /**
@@ -48,7 +49,7 @@ final class InvoiceBulkCollector
                 $installment = $installments->get($item['installment_id']);
                 $payload = ['collected_amount' => $item['collected_amount'], 'collected_at' => $collectedAt];
 
-                if ($this->isPartial($item['collected_amount'], $installment)) {
+                if ($this->amounts->isPartial($item['collected_amount'], $installment->amount)) {
                     $payload += [
                         'residual_mode' => ResidualMode::NewInstallment->value,
                         'residual_due_date' => $installment->due_date->toDateString(),
@@ -112,7 +113,7 @@ final class InvoiceBulkCollector
 
             if (bccomp((string) ($installment->collected_amount ?? '0'), '0', 2) > 0) {
                 $errors["items.{$index}.installment_id"] = ['This installment is already collected.'];
-            } elseif (bccomp($this->rounded($item['collected_amount']), (string) $installment->amount, 2) > 0) {
+            } elseif (bccomp($this->amounts->roundToCents($item['collected_amount']), (string) $installment->amount, 2) > 0) {
                 $errors["items.{$index}.collected_amount"] = ['The collected amount cannot exceed the installment amount.'];
             }
         }
@@ -120,18 +121,5 @@ final class InvoiceBulkCollector
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
-    }
-
-    private function isPartial(string $amount, InvoiceInstallment $installment): bool
-    {
-        return bccomp($this->rounded($amount), (string) $installment->amount, 2) < 0;
-    }
-
-    /**
-     * Same cent rounding as InvoiceCollectionService::record, so both agree on "partial".
-     */
-    private function rounded(string $amount): string
-    {
-        return bcadd($this->amounts->normalize($amount), '0.005', 2);
     }
 }

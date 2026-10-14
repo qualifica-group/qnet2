@@ -134,4 +134,16 @@ describe('InvoiceEditorDialog create (spec 0194 AC-009)', () => {
     })
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith(issued))
   })
+
+  it('spec 0253 AC-010: flags a unit price with 3 decimals on the row and does not issue', async () => {
+    renderDialog()
+    await screen.findByRole('heading', { name: /Work order #WO-2026-004/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Add line: Consulting day' }))
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Unit price 1' }), { target: { value: '0.333' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Issue' }))
+
+    expect(await screen.findByText('The unit price can have at most 2 decimals.')).toBeInTheDocument()
+    expect(createMock).not.toHaveBeenCalled()
+  })
 })

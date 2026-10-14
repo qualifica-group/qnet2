@@ -7,8 +7,8 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { Input } from '@/components/ui/input'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
-import { toPreviewLine, type VatRefs, type InvoiceLineValues } from '@/features/invoices/invoice-editor-lines'
-import { computeLineAmounts, fromCents } from '@/features/invoices/invoice-amounts'
+import { type VatRefs, type InvoiceLineValues } from '@/features/invoices/invoice-editor-lines'
+import { fromCents, type AmountsCents } from '@/lib/amounts/line-amounts'
 import { idToSelectValue, NO_ID } from '@/features/invoices/invoice-editor-source'
 import type { InvoiceWriteFormValues } from '@/features/invoices/invoice-schema'
 import type { VatRateRef } from '@/features/invoices/types'
@@ -25,6 +25,7 @@ export const LINE_GRID_CLASS = 'lg:grid-cols-[minmax(0,1fr)_5rem_7rem_9rem_6rem_
 interface InvoiceEditorLineRowProps {
   index: number
   control: Control<InvoiceWriteFormValues>
+  amounts: AmountsCents
   line: InvoiceLineValues
   vatRefs: VatRefs
   onRememberVat: (ref: VatRateRef) => void
@@ -36,10 +37,9 @@ function toNumber(raw: string): number {
 }
 
 /** One editable document row: description, qty, unit price, VAT and the read-only computed amounts. */
-export function InvoiceEditorLineRow({ index, control, line, vatRefs, onRememberVat, onRemove }: InvoiceEditorLineRowProps) {
+export function InvoiceEditorLineRow({ index, control, line, amounts, vatRefs, onRememberVat, onRemove }: InvoiceEditorLineRowProps) {
   const { t } = useTranslation()
   const n = index + 1
-  const amounts = computeLineAmounts(toPreviewLine(line, vatRefs))
   const vatRef = vatRefs[line.vat_rate_id]
   const vatItem: ForSelectItem | null = vatRef ? { id: vatRef.id, label: vatRef.name } : null
 

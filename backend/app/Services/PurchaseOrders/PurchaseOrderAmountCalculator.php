@@ -6,17 +6,20 @@ namespace App\Services\PurchaseOrders;
 
 use App\Models\PurchaseOrder;
 use App\Models\VatRate;
-use App\Services\PurchaseRequests\PurchaseRequestAmountCalculator;
+use App\Support\Amounts\LineAmountCalculator;
 
 /**
- * Server-side amounts of a purchase order (spec 0210, D-12): the very same
- * formulas as the purchase requests (PurchaseRequestAmountCalculator, bcmath,
- * half-up to 2 decimals), plus the order-specific plumbing: the VAT rates of a
- * payload and the persistence of the header totals as the sums of the lines.
+ * Server-side amounts of a purchase order (spec 0210, D-12; spec 0253): the
+ * shared engine with the VAT per line (not a fiscal document), plus the
+ * order-specific plumbing: the VAT rates of a payload, the mapping to the
+ * `taxable_amount` column and the persistence of the header totals as the
+ * sums of the lines.
  */
 final class PurchaseOrderAmountCalculator
 {
-    public function __construct(private readonly PurchaseRequestAmountCalculator $amounts) {}
+    public const int QUANTITY_SCALE = 3;
+
+    public function __construct(private readonly LineAmountCalculator $engine) {}
 
     /**
      * @param  array<int, array<string, mixed>>  $lines  each with `vat_rate_id`
@@ -37,7 +40,15 @@ final class PurchaseOrderAmountCalculator
      */
     public function line(array $line, array $rates): array
     {
-        return $this->amounts->line($line['quantity'], $line['unit_price'], $rates[$line['vat_rate_id']] ?? null);
+        $amounts = $this->engine->line($line['quantity'], $line['unit_price'], $rates[$line['vat_rate_id']] ?? null, self::QUANTITY_SCALE);
+
+        return [
+            'quantity' => $amounts['quantity'],
+            'unit_price' => $amounts['unit_price'],
+            'taxable_amount' => $amounts['net'],
+            'vat_amount' => $amounts['vat'],
+            'total_amount' => $amounts['total'],
+        ];
     }
 
     /**
@@ -45,6 +56,11 @@ final class PurchaseOrderAmountCalculator
      */
     public function refreshTotals(PurchaseOrder $order): void
     {
-        $order->forceFill($this->amounts->totals($order->lines()->get(['taxable_amount', 'vat_amount'])))->save();
+        $totals = $this->engine->sum(
+            $order->lines()->get(['taxable_amount', 'vat_amount'])
+                ->map(fn ($line): array => ['net' => $line->taxable_amount, 'vat' => $line->vat_amount]),
+        );
+
+        $order->forceFill(['taxable_total' => $totals['net'], 'vat_total' => $totals['vat'], 'grand_total' => $totals['total']])->save();
     }
 }

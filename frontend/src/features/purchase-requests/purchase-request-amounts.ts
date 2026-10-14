@@ -1,16 +1,13 @@
-import {
-  computeInvoiceTotals,
-  computeLineAmounts,
-  fromCents,
-  round2,
-  type PreviewLine,
-} from '@/features/invoices/invoice-amounts'
+import { EMPTY_AMOUNTS_CENTS, fromCents, lineAmounts, round2, type AmountsCents } from '@/lib/amounts/line-amounts'
 
 /**
  * Client-side PREVIEW of the RDA amounts (spec 0208 D-12): the server always
- * recomputes. Reuses the integer-cents math of the invoices preview, which
- * rounds half away from zero exactly like the backend.
+ * recomputes. VAT is per line (not fiscal documents, spec 0253 D-2), with the
+ * shared integer-cents engine.
  */
+
+/** Quantity decimals of RDA and ODA lines. */
+export const PURCHASE_QUANTITY_SCALE = 3
 
 export interface PurchaseAmounts {
   taxable: number
@@ -27,22 +24,25 @@ export interface AmountLine {
   vat_rate_percent: number | null
 }
 
-function toPreview(line: AmountLine): PreviewLine {
-  return {
-    quantity: Number.isFinite(line.quantity) ? line.quantity : 0,
-    unitPrice: Number.isFinite(line.unit_price) ? line.unit_price : 0,
-    vatRatePercent: line.vat_rate_percent,
-  }
+function toAmounts(cents: AmountsCents): PurchaseAmounts {
+  return { taxable: fromCents(cents.net), vat: fromCents(cents.vat), total: fromCents(cents.total) }
+}
+
+function lineCents(line: AmountLine): AmountsCents {
+  return lineAmounts(line.quantity, line.unit_price, line.vat_rate_percent, PURCHASE_QUANTITY_SCALE)
 }
 
 export function previewLineAmounts(line: AmountLine): PurchaseAmounts {
-  const cents = computeLineAmounts(toPreview(line))
-  return { taxable: fromCents(cents.net), vat: fromCents(cents.vat), total: fromCents(cents.total) }
+  return toAmounts(lineCents(line))
 }
 
 export function previewTotals(lines: readonly AmountLine[]): PurchaseAmounts {
-  const cents = computeInvoiceTotals(lines.map(toPreview))
-  return { taxable: fromCents(cents.net), vat: fromCents(cents.vat), total: fromCents(cents.total) }
+  return toAmounts(
+    lines.reduce<AmountsCents>((acc, line) => {
+      const cents = lineCents(line)
+      return { net: acc.net + cents.net, vat: acc.vat + cents.vat, total: acc.total + cents.total }
+    }, EMPTY_AMOUNTS_CENTS),
+  )
 }
 
 /** Thrown by {@link extractVat} when the line has no VAT rate above zero. */

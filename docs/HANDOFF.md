@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0253 — Motore importi unico bcmath + IVA per aliquota (ADR 0018 decisione 4, COS-09, ATT-06) — COMMITTATO (2026-10-14)
+
+- Spec `docs/specs/0253-unified-amounts-vat-per-rate.xml` (+ casi condivisi `0253-amount-cases.json`), AC-001..011.
+- `App\Support\Amounts\LineAmountCalculator`: line(qty, price, ?rate, quantityScale), documentPerRate (IVA per aliquota,
+  centesimo di resto alla riga con imponibile maggiore), sum, roundToCents, isPartial, normalize. Scale quantita':
+  2 fatture attive e costi commessa, 3 RDA/ODA/fatture passive. PurchaseRequestAmountCalculator rimosso; ODA, RDA,
+  fatture attive/passive, WorkOrderCostWriter e pagamenti/incassi delegano al motore (nessun '0.005' fuori dal motore,
+  restano solo le provvigioni, fuori scope).
+- FE: `frontend/src/lib/amounts/line-amounts.ts` (cent math intero) usata dagli editor attivo/passivo, RDA e costi
+  commessa; `invoice-amounts.ts` rimosso. Prezzo unitario fattura attiva max 2 decimali (422 tradotto + errore di campo).
+- Verifica 2026-10-14: Pest parallelo 10866/10870 (3 QuoteDocumentPdfTest = soffice assente, 1 skip); Vitest 8145/8149
+  con 4-6 flaky chart/dashboard/purchase-request-submit sotto carico, verdi isolati (6/6); tsc -b --force, Pint puliti;
+  ESLint 1 errore preesistente in features/quotes/column-renderers.tsx (react-refresh, file non toccato).
+- Ambiente: PHPRC verso un php.ini con pdo_sqlite/sqlite3/zip e memory_limit=2G (i -d non arrivano ai worker).
+- Aperti: manuale Claude Docs (sezioni Fatture attive/passive: IVA per aliquota, prezzo a 2 decimali) da aggiornare.
+- Prossimo: spec 0254 ricezioni ODA per riga (approvata 2026-10-14).
+
 ## Spec 0252 — Consuntivo commessa dal ciclo passivo (ADR 0018 decisione 2, COS-01) — COMMITTATO (2026-10-13)
 
 - Spec `docs/specs/0252-work-order-actuals-from-passive-cycle.xml` (D-1..D-9, AC-001..009 PASS). 0210 D-7 superata.

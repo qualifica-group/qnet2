@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "description": "Shared BE/FE table of cases for the amounts engine (spec 0253). Money and quantities are decimal strings. mode per_rate: VAT computed once per rate on the summed net and split over the lines (D-1); mode per_line: VAT per line (RDA/ODA, cost rows). A null vat_rate means VAT 0.00. Each line rounds quantity to its scale and unit_price to 2 decimals (half away from zero); net = quantity x unit_price rounded to 2.",
+  "cases": [
+    {
+      "name": "three lines 10.01 at 22%: document VAT 6.61, cent on the first line",
+      "mode": "per_rate",
+      "lines": [
+        { "quantity": "1", "unit_price": "10.01", "vat_rate": "22", "scale": 2 },
+        { "quantity": "1", "unit_price": "10.01", "vat_rate": "22", "scale": 2 },
+        { "quantity": "1", "unit_price": "10.01", "vat_rate": "22", "scale": 2 }
+      ],
+      "expected": {
+        "lines": [
+          { "quantity": "1.00", "unit_price": "10.01", "net": "10.01", "vat": "2.21", "total": "12.22" },
+          { "quantity": "1.00", "unit_price": "10.01", "net": "10.01", "vat": "2.20", "total": "12.21" },
+          { "quantity": "1.00", "unit_price": "10.01", "net": "10.01", "vat": "2.20", "total": "12.21" }
+        ],
+        "net": "30.03", "vat": "6.61", "total": "36.64"
+      }
+    },
+    {
+      "name": "mixed rates 22 / 10 / null",
+      "mode": "per_rate",
+      "lines": [
+        { "quantity": "2", "unit_price": "10.00", "vat_rate": "22", "scale": 2 },
+        { "quantity": "1", "unit_price": "5.55", "vat_rate": "10", "scale": 2 },
+        { "quantity": "3", "unit_price": "1.99", "vat_rate": null, "scale": 2 }
+      ],
+      "expected": {
+        "lines": [
+          { "quantity": "2.00", "unit_price": "10.00", "net": "20.00", "vat": "4.40", "total": "24.40" },
+          { "quantity": "1.00", "unit_price": "5.55", "net": "5.55", "vat": "0.56", "total": "6.11" },
+          { "quantity": "3.00", "unit_price": "1.99", "net": "5.97", "vat": "0.00", "total": "5.97" }
+        ],
+        "net": "31.52", "vat": "4.96", "total": "36.48"
+      }
+    },
+    {
+      "name": "quantities with 3 decimals (scale 3)",
+      "mode": "per_rate",
+      "lines": [
+        { "quantity": "1.505", "unit_price": "10.00", "vat_rate": "22", "scale": 3 },
+        { "quantity": "0.333", "unit_price": "3.00", "vat_rate": "22", "scale": 3 }
+      ],
+      "expected": {
+        "lines": [
+          { "quantity": "1.505", "unit_price": "10.00", "net": "15.05", "vat": "3.31", "total": "18.36" },
+          { "quantity": "0.333", "unit_price": "3.00", "net": "1.00", "vat": "0.22", "total": "1.22" }
+        ],
+        "net": "16.05", "vat": "3.53", "total": "19.58"
+      }
+    },
+    {
+      "name": "quantity 1.005 rounded to scale 2 half away from zero",
+      "mode": "per_rate",
+      "lines": [
+        { "quantity": "1.005", "unit_price": "10.00", "vat_rate": "22", "scale": 2 }
+      ],
+      "expected": {
+        "lines": [
+          { "quantity": "1.01", "unit_price": "10.00", "net": "10.10", "vat": "2.22", "total": "12.32" }
+        ],
+        "net": "10.10", "vat": "2.22", "total": "12.32"
+      }
+    },
+    {
+      "name": "unit price 0.01 x quantity 1.005 (scale 3)",
+      "mode": "per_line",
+      "lines": [
+        { "quantity": "1.005", "unit_price": "0.01", "vat_rate": "22", "scale": 3 }
+      ],
+      "expected": {
+        "lines": [
+          { "quantity": "1.005", "unit_price": "0.01", "net": "0.01", "vat": "0.00", "total": "0.01" }
+        ],
+        "net": "0.01", "vat": "0.00", "total": "0.01"
+      }
+    },
+    {
+      "name": "null VAT rate means VAT 0.00",
+      "mode": "per_rate",
+      "lines": [
+        { "quantity": "2", "unit_price": "4.50", "vat_rate": null, "scale": 2 },
+        { "quantity": "1", "unit_price": "0.10", "vat_rate": null, "scale": 2 }
+      ],
+      "expected": {
+        "lines": [
+          { "quantity": "2.00", "unit_price": "4.50", "net": "9.00", "vat": "0.00", "total": "9.00" },
+          { "quantity": "1.00", "unit_price": "0.10", "net": "0.10", "vat": "0.00", "total": "0.10" }
+        ],
+        "net": "9.10", "vat": "0.00", "total": "9.10"
+      }
+    },
+    {
+      "name": "per_line: same three lines 10.01 at 22% keep VAT 6.60 (RDA/ODA unchanged)",
+      "mode": "per_line",
+      "lines": [
+        { "quantity": "1", "unit_price": "10.01", "vat_rate": "22", "scale": 3 },
+        { "quantity": "1", "unit_price": "10.01", "vat_rate": "22", "scale": 3 },
+        { "quantity": "1", "unit_price": "10.01", "vat_rate": "22", "scale": 3 }
+      ],
+      "expected": {
+        "lines": [
+          { "quantity": "1.000", "unit_price": "10.01", "net": "10.01", "vat": "2.20", "total": "12.21" },
+          { "quantity": "1.000", "unit_price": "10.01", "net": "10.01", "vat": "2.20", "total": "12.21" },
+          { "quantity": "1.000", "unit_price": "10.01", "net": "10.01", "vat": "2.20", "total": "12.21" }
+        ],
+        "net": "30.03", "vat": "6.60", "total": "36.63"
+      }
+    },
+    {
+      "name": "negative difference taken from the first line on a tie",
+      "mode": "per_rate",
+      "lines": [
+        { "quantity": "1", "unit_price": "0.07", "vat_rate": "22", "scale": 2 },
+        { "quantity": "1", "unit_price": "0.07", "vat_rate": "22", "scale": 2 },
+        { "quantity": "1", "unit_price": "0.07", "vat_rate": "22", "scale": 2 }
+      ],
+      "expected": {
+        "lines": [
+          { "quantity": "1.00", "unit_price": "0.07", "net": "0.07", "vat": "0.01", "total": "0.08" },
+          { "quantity": "1.00", "unit_price": "0.07", "net": "0.07", "vat": "0.02", "total": "0.09" },
+          { "quantity": "1.00", "unit_price": "0.07", "net": "0.07", "vat": "0.02", "total": "0.09" }
+        ],
+        "net": "0.21", "vat": "0.05", "total": "0.26"
+      }
+    },
+    {
+      "name": "cent goes to the line with the greatest net, not the first",
+      "mode": "per_rate",
+      "lines": [
+        { "quantity": "1", "unit_price": "10.01", "vat_rate": "22", "scale": 2 },
+        { "quantity": "1", "unit_price": "10.01", "vat_rate": "22", "scale": 2 },
+        { "quantity": "1", "unit_price": "10.02", "vat_rate": "22", "scale": 2 }
+      ],
+      "expected": {
+        "lines": [
+          { "quantity": "1.00", "unit_price": "10.01", "net": "10.01", "vat": "2.20", "total": "12.21" },
+          { "quantity": "1.00", "unit_price": "10.01", "net": "10.01", "vat": "2.20", "total": "12.21" },
+          { "quantity": "1.00", "unit_price": "10.02", "net": "10.02", "vat": "2.21", "total": "12.23" }
+        ],
+        "net": "30.04", "vat": "6.61", "total": "36.65"
+      }
+    }
+  ]
+}

@@ -24,9 +24,9 @@ const guide: HelpGuide = {
           rows: [
             ['**Header**', 'Document date, issuing company (locked when editing), addressee, payment method, company bank, optional **tag** (picked from the **Invoice tags** catalog), notes and internal notes.'],
             ['**Available lines**', 'The work order lines not used yet: **Add** one line or **Add all**. A quote line is invoiced **only once**: lines already in another invoice do not appear.'],
-            ['**Document lines**', 'You can edit quantity, price and VAT; each line is a catalog product or a free description.'],
+            ['**Document lines**', 'You can edit quantity, price and VAT; each line is a catalog product or a free description. The unit price can have at most 2 decimals.'],
             ['**Due dates**', 'Preview of the installments computed from the payment method (see the Payment Methods guide).'],
-            ['**Totals**', 'Taxable amount, VAT and document total.'],
+            ['**Totals**', 'Taxable amount, VAT and document total. VAT is computed once per rate on the taxable amount of the lines, as in the electronic invoice, and split over the lines: the sum of the line VAT equals the document VAT.'],
           ],
         },
         { type: 'paragraph', text: 'With **Issue** the document gets a sequential number per issuing company and year, in the **N/YYYY** format, and the source request becomes **Issued**.' },

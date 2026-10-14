@@ -1,4 +1,4 @@
-import { fromCents, toCents } from '@/features/invoices/invoice-amounts'
+import { fromCents, toCents } from '@/lib/amounts/line-amounts'
 import type { InvoiceCollectionPayload, InvoiceInstallment, ResidualMode } from '@/features/invoices/types'
 
 /** Days added to the due date of the closed installment to propose the date of the residual one (spec 0196, D-6). */

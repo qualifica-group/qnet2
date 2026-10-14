@@ -44,9 +44,17 @@ class InvoiceWriteRequest extends FormRequest
             'lines.*.product_id' => ['nullable', 'integer', Rule::exists('products', 'id')],
             'lines.*.description' => ['required', 'string', 'max:500'],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0', 'max:9999999'],
-            'lines.*.unit_price' => ['required', 'numeric', 'between:-9999999999,9999999999'],
+            'lines.*.unit_price' => ['required', 'numeric', 'decimal:0,2', 'between:-9999999999,9999999999'],
             'lines.*.vat_rate_id' => ['required', 'integer', Rule::exists('vat_rates', 'id')],
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return ['lines.*.unit_price.decimal' => __('invoices.unit_price_decimals')];
     }
 
     /**

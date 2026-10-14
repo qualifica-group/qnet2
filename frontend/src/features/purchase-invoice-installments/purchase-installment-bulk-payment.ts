@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { collectedTotal, parseCollectedAmount } from '@/features/invoice-installments/installment-bulk-collection'
-import { fromCents, toCents } from '@/features/invoices/invoice-amounts'
+import { fromCents, toCents } from '@/lib/amounts/line-amounts'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import { isGroupRow } from '@/features/table/row-grouping'
 import type { TableRow } from '@/features/table/types'

@@ -18,10 +18,11 @@ describe('purchase request amounts preview (AC-016)', () => {
       vat: 44,
       total: 244,
     })
+    // The unit price is rounded to cents first (0.335 -> 0.34, as the server engine does, spec 0253).
     expect(previewLineAmounts({ quantity: 3, unit_price: 0.335, vat_rate_percent: 22 })).toEqual({
-      taxable: 1.01,
+      taxable: 1.02,
       vat: 0.22,
-      total: 1.23,
+      total: 1.24,
     })
   })
 
