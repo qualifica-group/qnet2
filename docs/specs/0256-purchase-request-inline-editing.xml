@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0256-purchase-request-inline-editing" status="approved" owner="utente" date="2026-10-14">
+
+  <goal>
+    Le RDA si allineano alle Anagrafiche (spec 0200/0206): nella lista RDA i campi di testata si modificano direttamente
+    in cella; la scheda RDA non ha piu' il pulsante "Salva": ogni campo si apre, si modifica e si conferma da solo, e
+    ogni riga della RDA si modifica e si salva per conto suo. La creazione e' la replica della scheda con un unico Salva.
+  </goal>
+
+  <context>
+    Brief utente 2026-10-14: "partendo da RDA adeguare la grafica come in altre sezioni come la lista anagrafica dove e'
+    possibile editare moltissime voci direttamente dalla lista; la scheda anagrafica consente di modificare i campi
+    semplicemente selezionandoli e senza premere il pulsante salva".
+    Decisioni utente 2026-10-14: righe della scheda modificabili una alla volta (apri riga, modifica, conferma, salva solo
+    quella); righe NON modificabili dalla lista (pannello espandibile e "Gestione righe" invariati); ODA e Fatture passive
+    con spec separate.
+    Fatti verificati: PurchaseRequestWriteRequest e' un PUT completo (tutto `required`, `lines` min:1), condiviso da
+    POST e PUT/PATCH (la rotta accetta gia' entrambi); PurchaseRequestLineSynchronizer::sync allinea l'intero insieme
+    di righe (cancella le assenti, aggiorna le pending, crea le nuove); EnforcesFieldPermissions e' change-based;
+    FormRequestCellValidator + `*CellWriter` (spec 0206 D-2) e' il canale cella che segue le regole del form.
+  </context>
+
+  <decisions>
+    D-1 (contratto backend) PATCH parziale: in modifica (rotta con {purchaseRequest}) ogni regola di testata/footer e
+        `lines` diventano `sometimes`; in creazione restano come oggi. Un campo assente non cambia. I controlli
+        incrociati leggono il valore inviato oppure quello salvato: sede societa' della societa' (`company_site_id`
+        obbligatoria insieme a `company_id`), regola approvatore 0245 (scatta solo se richiedente, approvatore o
+        funzione cambiano). `lines` assente = righe intatte; presente = insieme completo come oggi (D-10/D-11 0208).
+    D-2 PurchaseRequestData::lines diventa nullable (null = non inviate); PurchaseRequestService::update salta la
+        sincronizzazione righe quando null; la chiusura automatica resta.
+    D-3 Lista RDA, colonne modificabili in cella via PurchaseRequestCellWriter (stessa FormRequest e stesso service):
+        subject, requested_at, priority (purchase_request_priority_id), requester (requester_id), function_manager
+        (function_manager_id), customer (customer_id), work_order (work_order_id), company_site (company_site_id,
+        picker ristretto alla societa' della riga), operational_site (operational_site_id), business_function
+        (business_function_id). Sola lettura: id, status, conteggi righe, fornitori (stanno sulle righe), societa'
+        (si cambia insieme alla sede, dalla scheda), creato da, totali.
+    D-4 Una riga della lista e' modificabile solo se la RDA e' aperta e l'attore ha `update` (Policy + visibilita').
+    D-5 RelationValueScopeChecker riconosce `business-functions` e `purchase-request-priorities`.
+    D-6 Scheda RDA (frontend): niente pulsante Salva ne' sezione a form unico; testata e note sono righe
+        RecordInlineField (una aperta per volta, Salva invia solo i campi cambiati). Righe accoppiate: Societa'+Sede
+        in un'unica riga; cambiando Richiedente o Funzione aziendale l'editor mostra anche il Responsabile, che si
+        riallinea come nel form (0245).
+    D-7 Righe RDA nella scheda: ogni riga e' una banda in sola lettura con matita (se modificabile: pending con
+        `update`, oppure approvata col solo fornitore modificabile); aprendola diventa la riga di input di oggi con
+        Annulla/Salva; Salva invia `lines` con la sola riga cambiata. "Aggiungi riga" apre una riga nuova in modifica;
+        il cestino chiede conferma e salva subito. Cambio stato, documenti e motivazione restano come oggi.
+    D-8 Creazione: stessa card della scheda (RecordCreateLayout, Annulla/Salva in alto e in fondo) con i campi APERTI
+        come prima e le righe RDA in input, un solo Salva che valida tutto; uscire senza salvare chiede conferma.
+        Motivo (implementazione 2026-10-14): le righe chiuse in creazione richiederebbero di ricostruire l'etichetta di
+        ogni picker e dell'approvatore senza record salvato; il campo aperto resta il percorso piu' semplice e testato.
+  </decisions>
+
+  <contract>
+    <endpoint method="PATCH" path="/api/purchase-requests/{purchaseRequest}">
+      <request>Qualsiasi sottoinsieme di PurchaseRequestWritePayload (0208). `company_id` richiede `company_site_id`.
+        `lines`, se presente, e' l'insieme completo delle righe.</request>
+      <response status="200">data: PurchaseRequest (invariato)</response>
+      <errors>403 senza update/visibilita'; 409 RDA chiusa; 422 regole del form.</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/tables/purchase-requests/rows/{row}">
+      <request>{ column, value } — motore cella generico 0053/0054.</request>
+      <errors>403 senza update o campo bloccato; 404 fuori visibilita'; 422 regole del form.</errors>
+    </endpoint>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">PATCH con il solo `subject` aggiorna l'oggetto e lascia righe e altri campi invariati.</ac>
+    <ac id="AC-002">PATCH con `company_id` senza `company_site_id` -> 422; con sede di altra societa' -> 422.</ac>
+    <ac id="AC-003">PATCH del solo richiedente con un approvatore non ammesso -> 422 su function_manager_id.</ac>
+    <ac id="AC-004">Ogni colonna D-3 si salva in cella per chi ha update; 403 senza; RDA chiusa non modificabile (riga
+      `editable: false`); societa' non modificabile in cella.</ac>
+    <ac id="AC-005">Le regole del form valgono in cella (oggetto vuoto, sede di altra societa' -> 422).</ac>
+    <ac id="AC-006">Scheda: nessun pulsante Salva; matita su un campo -> Salva invia solo quel campo.</ac>
+    <ac id="AC-007">Scheda: modifica di una riga invia `lines` con la riga cambiata; Annulla non chiama il server.</ac>
+    <ac id="AC-008">Creazione: un solo Salva, nessun POST se invalido.</ac>
+    <ac id="AC-009">Guide in-app IT/EN `purchase-requests` aggiornate; manuale Claude Docs segnalato/aggiornato.</ac>
+  </acceptance>
+</spec>

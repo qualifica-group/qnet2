@@ -90,7 +90,7 @@ it('AC-014: the RDA grid carries the contract columns and the status tab keeps r
         )
         ->and($rows[0]['line_status_counts']['approved'])->toBe(1)
         ->and($rows[0]['line_status_counts']['received'])->toBe(1)
-        ->and($rows[0]['actions'])->toEqualCanonicalizing(['view', 'update', 'notify_manager', 'close', 'delete']);
+        ->and($rows[0]['actions'])->toEqualCanonicalizing(['view', 'notify_manager', 'close', 'delete']);
 });
 
 it('AC-014: filters, search and sort run from the allow-list; unknown columns are ignored or refused, never interpolated', function () {

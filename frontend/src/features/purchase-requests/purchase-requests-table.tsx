@@ -30,7 +30,7 @@ const PURCHASE_ACTION_ICONS: ActionIconMap = { send: Send, lock: Lock }
 
 /**
  * Thin RDA list adapter over the generic table: status tabs write into the
- * grid filter model; each row expands to its lines (master/detail); opening and editing navigate to the dedicated page;
+ * grid filter model; each row expands to its lines (master/detail); the header cells edit in place and opening navigates to the record (spec 0256);
  * close and delete run here (the generic table asks for the delete
  * confirmation). The backend re-authorizes every call.
  */
@@ -72,7 +72,6 @@ export function PurchaseRequestsTable() {
     (action: TableActionDefinition, row: TableRow) => {
       switch (action.key) {
         case 'view':
-        case 'update':
           void navigate(`/${PURCHASE_REQUESTS_DOMAIN}/${row.id}`)
           break
         case 'notify_manager':

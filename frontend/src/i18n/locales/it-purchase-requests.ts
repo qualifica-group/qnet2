@@ -79,6 +79,7 @@ export const purchaseRequests = {
     header: 'Richiesta',
     lines: 'Righe',
     footer: 'Note e condizioni',
+    organization: 'Organizzazione e riferimenti',
     documents: 'Documenti',
   },
   lines: {
@@ -107,6 +108,12 @@ export const purchaseRequests = {
     documents: 'Documenti della riga',
     extractVat: 'Scorpora l\'IVA dal prezzo',
     extractVatNeedsRate: 'Seleziona un\'aliquota IVA maggiore di zero per scorporare l\'IVA.',
+    edit: 'Modifica riga {{n}}',
+    removeConfirm: {
+      title: 'Eliminare la riga?',
+      description: 'La riga {{n}} verrà eliminata subito dalla RDA.',
+      confirm: 'Elimina riga',
+    },
   },
   totals: {
     label: 'Totali',
@@ -124,6 +131,13 @@ export const purchaseRequests = {
     createTitle: 'Nuova richiesta di acquisto',
     editTitle: 'RDA n. {{id}}',
     save: 'Salva',
+    saving: 'Salvataggio...',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'La RDA non è ancora stata creata: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     closedNotice: 'Questa RDA è chiusa e non è più modificabile. Motivo: {{reason}}',
     loadError: 'Impossibile caricare la richiesta di acquisto. Riprova.',
   },

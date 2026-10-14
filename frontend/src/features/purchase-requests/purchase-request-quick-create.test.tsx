@@ -58,13 +58,7 @@ function renderForm() {
     <QueryClientProvider client={client}>
       <ConfirmDialogProvider>
         <ResourcePermissionsProvider permissions={toResourcePermissions(request)}>
-          <PurchaseRequestForm
-            request={request}
-            currentUser={{ id: 3, name: 'Mario Rossi' }}
-            onSaved={vi.fn()}
-            onCancel={vi.fn()}
-            onDeleted={vi.fn()}
-          />
+          <PurchaseRequestForm currentUser={{ id: 3, name: 'Mario Rossi' }} onSaved={vi.fn()} onCancel={vi.fn()} />
         </ResourcePermissionsProvider>
       </ConfirmDialogProvider>
     </QueryClientProvider>,

@@ -5,11 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useDefaultPurchaseRequestPriorityId } from '@/features/purchase-request-priorities/use-default-purchase-request-priority'
-import {
-  createPurchaseRequest,
-  purchaseRequestKeys,
-  updatePurchaseRequest,
-} from '@/features/purchase-requests/api'
+import { createPurchaseRequest, purchaseRequestKeys } from '@/features/purchase-requests/api'
 import {
   buildPayload,
   emptyFormValues,
@@ -20,18 +16,46 @@ import {
   buildPurchaseRequestSchema,
   type PurchaseRequestFormValues,
 } from '@/features/purchase-requests/purchase-request-schema'
-import {
-  applyServerErrors,
-  isConflict,
-  serverMessage,
-} from '@/features/purchase-requests/purchase-request-server-errors'
+import { applyServerErrors, serverMessage } from '@/features/purchase-requests/purchase-request-server-errors'
 import { uploadQueuedFiles } from '@/features/purchase-requests/purchase-request-uploads'
 import type { PurchaseRequest } from '@/features/purchase-requests/types'
 
-interface UsePurchaseRequestFormArgs {
-  /** The loaded RDA (edit); absent while creating. */
+interface UsePurchaseRequestFormStateArgs {
+  /** The saved RDA (detail); absent while creating. */
   request?: PurchaseRequest
   /** Default requester of a new RDA: the signed-in user. */
+  requesterId: number | null
+}
+
+/**
+ * RHF + Zod state of an RDA, shared by the create form and the detail's
+ * in-place editing: the lines as a field array, their live values and the
+ * company the site picker depends on.
+ */
+export function usePurchaseRequestFormState({ request, requesterId }: UsePurchaseRequestFormStateArgs) {
+  const { t } = useTranslation()
+  const schema = useMemo(() => buildPurchaseRequestSchema(t), [t])
+  const form = useForm<PurchaseRequestFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: request ? toFormValues(request) : emptyFormValues(requesterId),
+  })
+  const { control, getValues } = form
+  const lineArray = useFieldArray({ control, name: 'lines' })
+  const { append } = lineArray
+  const lines = useWatch({ control, name: 'lines' })
+  const companyId = useWatch({ control, name: 'company_id' })
+
+  /** A new row inherits the VAT of the last one, like the invoice editor. */
+  const addLine = useCallback(() => {
+    const last = getValues('lines').at(-1)
+    append(newLineValues({ vat_rate_id: last?.vat_rate_id ?? null, vat_rate_percent: last?.vat_rate_percent ?? null }))
+  }, [append, getValues])
+
+  return { form, lineArray, lines, companyId, addLine }
+}
+
+interface UsePurchaseRequestFormArgs {
+  /** Default requester of the new RDA: the signed-in user. */
   requesterId: number | null
   onSaved: (saved: PurchaseRequest) => void
 }
@@ -42,46 +66,30 @@ interface SaveResult {
 }
 
 /**
- * State and actions of the RDA form: RHF + Zod with the lines as a field
- * array, the save (create or update, then the queued documents) and the
- * mapping of the server's 422 onto inputs.
+ * The create form of an RDA: the shared form state, the catalog's default
+ * priority, the create (then the queued documents) and the mapping of the
+ * server's 422 onto inputs. The detail edits in place instead (spec 0256).
  */
-export function usePurchaseRequestForm({ request, requesterId, onSaved }: UsePurchaseRequestFormArgs) {
+export function usePurchaseRequestForm({ requesterId, onSaved }: UsePurchaseRequestFormArgs) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const schema = useMemo(() => buildPurchaseRequestSchema(t), [t])
-  const form = useForm<PurchaseRequestFormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: request ? toFormValues(request) : emptyFormValues(requesterId),
-  })
-  const { control, setError, handleSubmit, getValues } = form
-  const lineArray = useFieldArray({ control, name: 'lines' })
-  const { append } = lineArray
-  const lines = useWatch({ control, name: 'lines' })
-  const companyId = useWatch({ control, name: 'company_id' })
+  const state = usePurchaseRequestFormState({ requesterId })
+  const { form } = state
+  const { setError, handleSubmit, getValues } = form
   const [formErrors, setFormErrors] = useState<string[]>([])
 
   // A new RDA starts on the catalog's default priority, like the server would when the field is omitted.
-  const defaultPriorityId = useDefaultPurchaseRequestPriorityId(!request)
+  const defaultPriorityId = useDefaultPurchaseRequestPriorityId(true)
   useEffect(() => {
     if (defaultPriorityId !== null && getValues('purchase_request_priority_id') === null) {
       form.setValue('purchase_request_priority_id', defaultPriorityId, { shouldDirty: true })
     }
   }, [defaultPriorityId, form, getValues])
 
-  /** A new row inherits the VAT of the last one, like the invoice editor. */
-  const addLine = useCallback(() => {
-    const last = getValues('lines').at(-1)
-    append(newLineValues({ vat_rate_id: last?.vat_rate_id ?? null, vat_rate_percent: last?.vat_rate_percent ?? null }))
-  }, [append, getValues])
-
   const mutation = useMutation<SaveResult, unknown, PurchaseRequestFormValues>({
     mutationFn: async (values) => {
       // Step 1: persist the RDA (the server recomputes every amount)
-      const payload = buildPayload(values)
-      const saved = request
-        ? await updatePurchaseRequest(request.id, payload)
-        : await createPurchaseRequest(payload)
+      const saved = await createPurchaseRequest(buildPayload(values))
       // Step 2: upload the documents queued while the owner did not exist yet
       const failedUploads = await uploadQueuedFiles(saved, values)
       return { saved, failedUploads }
@@ -89,7 +97,7 @@ export function usePurchaseRequestForm({ request, requesterId, onSaved }: UsePur
     onSuccess: ({ saved, failedUploads }) => {
       queryClient.setQueryData(purchaseRequestKeys.detail(saved.id), saved)
       void queryClient.invalidateQueries({ queryKey: ['attachments'] })
-      toast.success(t(request ? 'purchaseRequests.messages.updated' : 'purchaseRequests.messages.created'))
+      toast.success(t('purchaseRequests.messages.created'))
       if (failedUploads.length > 0) {
         toast.warning(t('purchaseRequests.messages.uploadsFailed', { names: failedUploads.join(', ') }))
       }
@@ -101,7 +109,7 @@ export function usePurchaseRequestForm({ request, requesterId, onSaved }: UsePur
         setFormErrors(unmapped)
         return
       }
-      toast.error(serverMessage(error) ?? t(isConflict(error) ? 'purchaseRequests.messages.conflict' : 'purchaseRequests.messages.saveError'))
+      toast.error(serverMessage(error) ?? t('purchaseRequests.messages.saveError'))
     },
   })
 
@@ -110,5 +118,5 @@ export function usePurchaseRequestForm({ request, requesterId, onSaved }: UsePur
     mutation.mutate(values)
   })
 
-  return { form, lineArray, lines, companyId, formErrors, addLine, submit, isSaving: mutation.isPending }
+  return { ...state, formErrors, submit, isSaving: mutation.isPending }
 }

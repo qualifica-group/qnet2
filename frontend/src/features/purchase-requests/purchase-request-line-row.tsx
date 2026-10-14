@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Control, UseFormSetValue } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -31,6 +32,9 @@ interface PurchaseRequestLineRowProps {
   onRemove: () => void
   /** Opens the status change of this saved line; shown only when the server allows a transition. */
   onChangeStatus: () => void
+  /** Full-width band under the fields (the detail's Annulla/Salva, spec 0256 D-7). */
+  footer?: ReactNode
+  className?: string
 }
 
 /**
@@ -48,6 +52,8 @@ export function PurchaseRequestLineRow({
   line,
   onRemove,
   onChangeStatus,
+  footer,
+  className,
 }: PurchaseRequestLineRowProps) {
   const { t } = useTranslation()
   const n = index + 1
@@ -74,7 +80,7 @@ export function PurchaseRequestLineRow({
   const breakdown = `${t('purchaseRequests.lines.taxable')} ${formatQuoteAmount(amounts.taxable)}, ${t('purchaseRequests.lines.vat')} ${formatQuoteAmount(amounts.vat)}`
 
   return (
-    <li className={cn(LINE_GRID, 'rounded-md border bg-card p-1.5')} aria-label={`${t('purchaseRequests.lines.line')} ${n}`}>
+    <li className={cn(LINE_GRID, 'rounded-md border bg-card p-1.5', className)} aria-label={`${t('purchaseRequests.lines.line')} ${n}`}>
       <div className={WIDE_CELL}>
         <LineProductSelect
           control={control}
@@ -157,6 +163,7 @@ export function PurchaseRequestLineRow({
           onRemove={onRemove}
         />
       </div>
+      {footer ? <div className="col-span-full">{footer}</div> : null}
     </li>
   )
 }

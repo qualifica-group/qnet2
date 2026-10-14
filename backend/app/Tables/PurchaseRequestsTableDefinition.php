@@ -9,6 +9,7 @@ use App\Models\PurchaseRequestPriority;
 use App\Models\User;
 use App\Services\PurchaseRequests\PurchaseRequestService;
 use App\Services\PurchaseRequests\PurchaseRequestVisibilityScope;
+use App\Tables\PurchaseRequests\PurchaseRequestCellWriter;
 use App\Tables\PurchaseRequests\PurchaseRequestColumnCatalog as Catalog;
 use App\Tables\PurchaseRequests\PurchaseRequestDerivedQuery as Derived;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,7 +27,31 @@ use Illuminate\Support\Facades\Gate;
  */
 class PurchaseRequestsTableDefinition extends AbstractTableDefinition
 {
-    public function __construct(private readonly PurchaseRequestService $service) {}
+    public function __construct(
+        private readonly PurchaseRequestService $service,
+        private readonly PurchaseRequestCellWriter $cellWriter,
+    ) {}
+
+    /** Spec 0256, D-4: only an open request the actor may update takes a cell edit. */
+    public function authorizeUpdate(User $actor, Model $row): bool
+    {
+        /** @var PurchaseRequest $row */
+        return ! $row->isClosed() && Gate::forUser($actor)->allows('update', $row);
+    }
+
+    /**
+     * Spec 0256, D-3: the inline cell edit follows the form's rules —
+     * PurchaseRequestWriteRequest + PurchaseRequestService::update() through
+     * PurchaseRequestCellWriter, never the generic `$row->update()`.
+     */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var PurchaseRequest $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+
+        return $this->cellWriter->write($row, $columnId, $value, $actor);
+    }
 
     public function domain(): string
     {
@@ -154,9 +179,9 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
         $gate = Gate::forUser($actor);
         $allowed = [];
 
-        // Action key => policy ability.
-        $abilities = ['view' => 'view', 'update' => 'update', 'notify_manager' => 'notifyManager', 'close' => 'close', 'delete' => 'delete', 'activity' => 'viewActivity'];
-        $openOnly = ['update', 'notify_manager', 'close'];
+        // Action key => policy ability. No `update`: the record edits in place from `view` (spec 0256).
+        $abilities = ['view' => 'view', 'notify_manager' => 'notifyManager', 'close' => 'close', 'delete' => 'delete', 'activity' => 'viewActivity'];
+        $openOnly = ['notify_manager', 'close'];
 
         foreach ($abilities as $key => $ability) {
             if ($row->isClosed() && in_array($key, $openOnly, true)) {

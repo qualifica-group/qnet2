@@ -5,9 +5,11 @@ namespace App\DataObjects\PurchaseRequests;
 use Illuminate\Support\Arr;
 
 /**
- * Validated payload of a purchase request write (POST/PUT /api/purchase-requests,
+ * Validated payload of a purchase request write (POST/PUT/PATCH /api/purchase-requests,
  * spec 0208): the header and footer columns plus the lines in submission order.
- * Totals, status and `created_by` are never part of it (D-12, D-9).
+ * A partial edit carries only the submitted header keys, and `lines` is null
+ * when they were not sent (spec 0256, D-2). Totals, status and `created_by` are
+ * never part of it (D-12, D-9).
  */
 final readonly class PurchaseRequestData
 {
@@ -26,22 +28,22 @@ final readonly class PurchaseRequestData
 
     /**
      * @param  array<string, mixed>  $header
-     * @param  array<int, array<string, mixed>>  $lines  each with an optional `id`
+     * @param  array<int, array<string, mixed>>|null  $lines  each with an optional `id`; null = not submitted
      */
-    public function __construct(public array $header, public array $lines) {}
+    public function __construct(public array $header, public ?array $lines) {}
 
     /**
      * @param  array<string, mixed>  $data
      */
     public static function fromValidated(array $data): self
     {
-        $lines = array_map(
+        $lines = isset($data['lines']) ? array_map(
             static fn (array $line): array => ['id' => $line['id'] ?? null] + array_merge(
                 array_fill_keys(self::LINE_KEYS, null),
                 Arr::only($line, self::LINE_KEYS),
             ),
             array_values($data['lines']),
-        );
+        ) : null;
 
         return new self(Arr::only($data, self::HEADER_KEYS), $lines);
     }

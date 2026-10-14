@@ -34,11 +34,12 @@ export async function createPurchaseRequest(payload: PurchaseRequestPayload): Pr
   return data.data
 }
 
+/** Partial update (spec 0256 D-1): only the sent keys change; `lines`, when sent, is the whole set. */
 export async function updatePurchaseRequest(
   id: number,
-  payload: PurchaseRequestPayload,
+  payload: Partial<PurchaseRequestPayload>,
 ): Promise<PurchaseRequest> {
-  const { data } = await apiClient.put<ApiResponse<PurchaseRequest>>(`/purchase-requests/${id}`, payload)
+  const { data } = await apiClient.patch<ApiResponse<PurchaseRequest>>(`/purchase-requests/${id}`, payload)
   return data.data
 }
 

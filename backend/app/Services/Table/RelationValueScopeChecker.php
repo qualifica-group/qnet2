@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Table;
 
 use App\DataObjects\Shared\ForSelectQuery;
+use App\Services\BusinessFunctionService;
 use App\Services\CampaignService;
 use App\Services\CompanyService;
 use App\Services\CompanySiteService;
 use App\Services\OperationalSiteService;
 use App\Services\ProductService;
+use App\Services\PurchaseRequestPriorityService;
 use App\Services\ReferentService;
 use App\Services\RegistryService;
 use App\Services\SourceService;
@@ -58,6 +60,8 @@ final class RelationValueScopeChecker
         private readonly ReferentService $referents,
         private readonly CompanyService $companies,
         private readonly CompanySiteService $companySites,
+        private readonly BusinessFunctionService $businessFunctions,
+        private readonly PurchaseRequestPriorityService $purchaseRequestPriorities,
     ) {}
 
     /**
@@ -91,6 +95,9 @@ final class RelationValueScopeChecker
             'referents' => $this->referents->forSelect($query)->items,
             'companies' => $this->companies->forSelect($query)->items,
             'company-sites' => $this->companySites->forSelect($query)->items,
+            // Spec 0256, D-5: the RDA grid's organization and priority pickers.
+            'business-functions' => $this->businessFunctions->forSelect($query)->items,
+            'purchase-request-priorities' => $this->purchaseRequestPriorities->forSelect($query)->items,
             default => null,
         };
 

@@ -80,6 +80,7 @@ export const purchaseRequests = {
     header: 'Request',
     lines: 'Lines',
     footer: 'Notes and conditions',
+    organization: 'Organization and references',
     documents: 'Documents',
   },
   lines: {
@@ -108,6 +109,12 @@ export const purchaseRequests = {
     documents: 'Line documents',
     extractVat: 'Extract the VAT from the price',
     extractVatNeedsRate: 'Select a VAT rate greater than zero to extract the VAT.',
+    edit: 'Edit line {{n}}',
+    removeConfirm: {
+      title: 'Delete the line?',
+      description: 'Line {{n}} will be deleted from the RDA right away.',
+      confirm: 'Delete line',
+    },
   },
   totals: {
     label: 'Totals',
@@ -125,6 +132,13 @@ export const purchaseRequests = {
     createTitle: 'New purchase request',
     editTitle: 'RDA #{{id}}',
     save: 'Save',
+    saving: 'Saving...',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The RDA has not been created yet: the data entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     closedNotice: 'This RDA is closed and cannot be changed. Reason: {{reason}}',
     loadError: 'Unable to load the purchase request. Please try again.',
   },

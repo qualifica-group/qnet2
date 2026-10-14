@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Calculator, ListChecks, MessageSquareText, Trash2 } from 'lucide-react'
+import { Calculator, ListChecks, MessageSquareText, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -94,9 +94,11 @@ interface LineActionsProps {
   onChangeStatus: () => void
   onExtractVat: () => void
   onRemove: () => void
+  /** Opens the line's in-place editor (detail, spec 0256 D-7); absent = no pencil. */
+  onEdit?: () => void
 }
 
-/** The five icon-only actions of a line: reason, change status, extract VAT, documents, remove. */
+/** The icon-only actions of a line: edit, reason, change status, extract VAT, documents, remove. */
 export function LineActions({
   control,
   index,
@@ -109,11 +111,13 @@ export function LineActions({
   onChangeStatus,
   onExtractVat,
   onRemove,
+  onEdit,
 }: LineActionsProps) {
   const { t } = useTranslation()
   const n = index + 1
   return (
     <div className="flex items-center justify-end gap-1">
+      {onEdit ? <IconAction label={t('purchaseRequests.lines.edit', { n })} icon={<Pencil />} onClick={onEdit} /> : null}
       <ReasonPopover
         control={control}
         index={index}

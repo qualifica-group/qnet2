@@ -12,8 +12,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Business logic of the purchase requests (spec 0208): create, full edit with
- * line sync, delete. Amounts are always computed here (D-12), never by the
+ * Business logic of the purchase requests (spec 0208): create, edit (partial
+ * since spec 0256: the lines sync only when sent), delete. Amounts are always computed here (D-12), never by the
  * client; a line is editable only while pending approval (D-10) and deletable
  * only while pending or rejected (D-11).
  */
@@ -57,7 +57,7 @@ class PurchaseRequestService
             $purchaseRequest->forceFill(['created_by' => $actor->id])->save();
 
             // Step 2: lines, all born pending approval, then the totals
-            $this->lines->createAll($purchaseRequest, $data->lines);
+            $this->lines->createAll($purchaseRequest, $data->lines ?? []);
 
             return $purchaseRequest;
         });
@@ -75,9 +75,12 @@ class PurchaseRequestService
             $locked = PurchaseRequest::query()->whereKey($purchaseRequest->getKey())->lockForUpdate()->firstOrFail();
             $this->assertOpen($locked);
 
-            // Step 2: header, then the line sync (validation, delete / update / create, totals)
+            // Step 2: header, then the line sync when the lines were sent (spec 0256, D-2)
             $locked->fill($data->header)->save();
-            $this->lines->sync($locked, $actor, $data->lines);
+
+            if ($data->lines !== null) {
+                $this->lines->sync($locked, $actor, $data->lines);
+            }
 
             // Step 3: closed by itself when no line is left to work on (D-7)
             $this->closure->closeIfComplete($locked, $actor);

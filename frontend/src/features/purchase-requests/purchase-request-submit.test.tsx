@@ -85,7 +85,6 @@ describe('PurchaseRequestForm submit (AC-016, D-15)', () => {
             currentUser={{ id: 3, name: 'Mario Rossi' }}
             onSaved={onSaved}
             onCancel={vi.fn()}
-            onDeleted={vi.fn()}
           />
         </ConfirmDialogProvider>
       </QueryClientProvider>,
@@ -112,7 +111,7 @@ describe('PurchaseRequestForm submit (AC-016, D-15)', () => {
     })
     fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0]!)
 
     await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
     const payload = createMock.mock.calls[0]?.[0]
@@ -158,13 +157,12 @@ describe('PurchaseRequestForm submit (AC-016, D-15)', () => {
             currentUser={{ id: 3, name: 'Mario Rossi' }}
             onSaved={vi.fn()}
             onCancel={vi.fn()}
-            onDeleted={vi.fn()}
           />
         </ConfirmDialogProvider>
       </QueryClientProvider>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0]!)
 
     expect(await screen.findByText('The subject is required.')).toBeInTheDocument()
     expect(screen.getByText('The company is required.')).toBeInTheDocument()

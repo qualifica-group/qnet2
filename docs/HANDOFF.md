@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0256 — RDA modificabili in lista e scheda senza Salva — VERDE, NON COMMITTATO (2026-10-14)
+
+- Spec `docs/specs/0256-purchase-request-inline-editing.xml` (D-1..D-8). ODA e Fatture passive: spec separate (utente).
+- BE: `PurchaseRequestWriteRequest` in modifica = PATCH parziale (`sometimes`), controlli incrociati su valore inviato o
+  salvato (`effective()`), `company_id` senza `company_site_id` -> 422 (`purchase_requests.company_site_required`);
+  `PurchaseRequestData::lines` nullable, il service sincronizza le righe solo se inviate. Griglia: `PurchaseRequestCellWriter`
+  (FormRequestCellValidator + service), colonne editabili in `PurchaseRequestColumnCatalog::EDITABLE_RELATIONS/SCALARS`
+  (societa' NON editabile in cella), azione di riga `update` (matita) rimossa: si apre con `view`, `authorizeUpdate` = RDA aperta + policy; `RelationValueScopeChecker` +
+  business-functions, purchase-request-priorities. Test: PurchaseRequestPartialUpdateTest, PurchaseRequestGridInlineEditTest.
+- FE: `updatePurchaseRequest` = PATCH parziale. Scheda `PurchaseRequestDetailView` (`purchase-request-detail.tsx`) con
+  `usePurchaseRequestInlineEdit` (un editor alla volta, `lines.<i>` per le righe; header diff `buildHeaderPatch`, righe =
+  insieme completo `buildLinesPayload`), sezioni `purchase-request-record-sections.tsx`, righe
+  `purchase-request-lines-record.tsx` + banda `purchase-request-line-view.tsx`. Creazione `PurchaseRequestForm` solo create
+  in `RecordCreateLayout` con leave guard; `PurchaseRequestLinesSection` solo create. Test: purchase-request-detail.test.tsx
+  (nuovo), line-supplier/form/quick-create/submit adattati (REQUIREMENT CHANGED: modifica in place).
+- Guide in-app IT/EN `purchase-requests` (overview, create, nuova sezione `edit`, lines, documents, close) aggiornate.
+
 ## Spec 0255 — Collegamento ODA <-> fatture passive — VERDE, NON COMMITTATO (2026-10-14)
 
 - Spec `docs/specs/0255-purchase-order-invoice-links.xml`. `PurchaseOrderResource.purchase_invoices` = [{id, document_type,

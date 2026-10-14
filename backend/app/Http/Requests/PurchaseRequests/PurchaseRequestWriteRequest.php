@@ -16,8 +16,10 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 
 /**
- * PurchaseRequestWritePayload (spec 0208), shared by create (POST) and the full
- * edit (PUT). Authorization stays in the controller (PurchaseRequestPolicy);
+ * PurchaseRequestWritePayload (spec 0208), shared by create (POST) and edit
+ * (PUT/PATCH). The edit is partial (spec 0256, D-1): every key is `sometimes`,
+ * an absent one keeps its stored value, and the cross-checks read the submitted
+ * value or, when absent, the stored one. Authorization stays in the controller (PurchaseRequestPolicy);
  * the rules that need the database state (line immutability D-10, deletions
  * D-11) live in PurchaseRequestService. A closed request answers 409 before the
  * payload is validated, so the conflict is not masked by field errors.
@@ -40,7 +42,7 @@ class PurchaseRequestWriteRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'subject' => ['required', 'string', 'max:255'],
             'requested_at' => ['required', 'date_format:Y-m-d'],
             // Active priorities only; the one already assigned stays valid even if deactivated since.
@@ -57,7 +59,7 @@ class PurchaseRequestWriteRequest extends FormRequest
             'company_id' => ['required', 'integer', Rule::exists('companies', 'id')],
             'company_site_id' => [
                 'required', 'integer',
-                Rule::exists('company_sites', 'id')->where('company_id', $this->input('company_id')),
+                Rule::exists('company_sites', 'id')->where('company_id', $this->effective('company_id')),
             ],
             'operational_site_id' => ['required', 'integer', Rule::exists('operational_sites', 'id')],
             'business_function_id' => ['required', 'integer', Rule::exists('business_functions', 'id')],
@@ -77,14 +79,36 @@ class PurchaseRequestWriteRequest extends FormRequest
             'lines.*.unit_price' => ['required', 'numeric', 'gte:0', 'max:999999999999'],
             'lines.*.vat_rate_id' => ['nullable', 'integer', Rule::exists('vat_rates', 'id')],
         ];
+
+        // Edit: a partial PATCH (spec 0256, D-1); a line, once sent, keeps its own rules.
+        if (! $this->isUpdate()) {
+            return $rules;
+        }
+
+        foreach ($rules as $key => $keyRules) {
+            if (! str_starts_with($key, 'lines.')) {
+                $rules[$key] = ['sometimes', ...$keyRules];
+            }
+        }
+
+        return $rules;
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
+            $this->enforceCompanySite($validator);
             $this->enforceApprover($validator);
         });
+    }
+
+    /** A partial edit that changes the company must pick a site of the new one (spec 0256, D-1). */
+    private function enforceCompanySite(Validator $validator): void
+    {
+        if ($this->isUpdate() && $this->has('company_id') && ! $this->has('company_site_id')) {
+            $validator->errors()->add('company_site_id', __('purchase_requests.company_site_required'));
+        }
     }
 
     /**
@@ -99,10 +123,10 @@ class PurchaseRequestWriteRequest extends FormRequest
         }
 
         $resolver = app(PurchaseRequestApproverResolver::class);
-        $requester = User::query()->findOrFail((int) $this->input('requester_id'));
-        $function = BusinessFunction::query()->find((int) $this->input('business_function_id'));
+        $requester = User::query()->findOrFail((int) $this->effective('requester_id'));
+        $function = BusinessFunction::query()->find((int) $this->effective('business_function_id'));
 
-        if ($resolver->allows((int) $this->input('function_manager_id'), $requester, $function)) {
+        if ($resolver->allows((int) $this->effective('function_manager_id'), $requester, $function)) {
             return;
         }
 
@@ -119,9 +143,20 @@ class PurchaseRequestWriteRequest extends FormRequest
             return true;
         }
 
-        return (int) $this->input('requester_id') !== (int) $stored->requester_id
-            || (int) $this->input('function_manager_id') !== (int) $stored->function_manager_id
-            || (int) $this->input('business_function_id') !== (int) $stored->business_function_id;
+        return (int) $this->effective('requester_id') !== (int) $stored->requester_id
+            || (int) $this->effective('function_manager_id') !== (int) $stored->function_manager_id
+            || (int) $this->effective('business_function_id') !== (int) $stored->business_function_id;
+    }
+
+    /** The submitted value of a header key, or the stored one when a partial edit leaves it out. */
+    private function effective(string $key): mixed
+    {
+        return $this->has($key) ? $this->input($key) : $this->authorizationModel()?->getAttribute($key);
+    }
+
+    private function isUpdate(): bool
+    {
+        return $this->authorizationModel() instanceof PurchaseRequest;
     }
 
     protected function prepareForValidation(): void

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { PurchaseRequestDetailView } from '@/features/purchase-requests/purchase-request-detail'
 import { PurchaseRequestForm } from '@/features/purchase-requests/purchase-request-form'
 import { makeLine, makeRequest } from '@/features/purchase-requests/purchase-request-fixtures'
 import { toResourcePermissions } from '@/features/purchase-requests/purchase-request-permissions'
@@ -41,23 +42,33 @@ vi.mock('@/features/auth/use-abilities', () => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() } }))
 
-function renderForm(request: PurchaseRequest) {
+function renderDetail(request: PurchaseRequest) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <ConfirmDialogProvider>
-        <ResourcePermissionsProvider permissions={toResourcePermissions(request)}>
-          <PurchaseRequestForm
-            request={request}
-            currentUser={{ id: 3, name: 'Mario Rossi' }}
-            onSaved={vi.fn()}
-            onCancel={vi.fn()}
-            onDeleted={vi.fn()}
-          />
+        <PurchaseRequestDetailView request={request} onBack={vi.fn()} onDeleted={vi.fn()} />
+      </ConfirmDialogProvider>
+    </QueryClientProvider>,
+  )
+}
+
+function renderCreate() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <ConfirmDialogProvider>
+        <ResourcePermissionsProvider permissions={toResourcePermissions(makeRequest())}>
+          <PurchaseRequestForm currentUser={{ id: 3, name: 'Mario Rossi' }} onSaved={vi.fn()} onCancel={vi.fn()} />
         </ResourcePermissionsProvider>
       </ConfirmDialogProvider>
     </QueryClientProvider>,
   )
+}
+
+/** Opens the in-place editor of a saved line on the detail (spec 0256 D-7). */
+function editLine(n: number) {
+  fireEvent.click(screen.getByRole('button', { name: `Edit line ${n}` }))
 }
 
 function lockedAbilities(updateSupplier: boolean) {
@@ -84,23 +95,25 @@ beforeEach(() => {
   } as unknown as ProductDetailWithPermissions)
 })
 
-describe('line supplier in the form (spec 0209 AC-012)', () => {
+describe('line supplier (spec 0209 AC-012)', () => {
   it('has no supplier in the header but one picker per line', () => {
-    renderForm(makeRequest({ lines: [makeLine({ id: 11 }), makeLine({ id: 12, position: 2 })] }))
+    renderDetail(makeRequest({ lines: [makeLine({ id: 11 }), makeLine({ id: 12, position: 2 })] }))
 
     expect(screen.queryByRole('combobox', { name: /^Supplier$/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Supplier 1' })).toBeEnabled()
+    editLine(2)
     expect(screen.getByRole('combobox', { name: 'Supplier 2' })).toBeEnabled()
   })
 
   it('shows the supplier of a saved line', () => {
-    renderForm(makeRequest({ lines: [makeLine({ supplier: { id: 12, name: 'Rossi Srl' } })] }))
+    renderDetail(makeRequest({ lines: [makeLine({ supplier: { id: 12, name: 'Rossi Srl' } })] }))
 
+    expect(within(screen.getByRole('listitem', { name: 'Line 1' })).getByText('Rossi Srl')).toBeInTheDocument()
+    editLine(1)
     expect(screen.getByRole('combobox', { name: 'Supplier 1' })).toHaveTextContent('Rossi Srl')
   })
 
   it('proposes the supplier of the picked product, still editable', async () => {
-    renderForm(makeRequest())
+    renderCreate()
 
     fireEvent.click(screen.getByRole('combobox', { name: /Product 1/ }))
     fireEvent.click(await screen.findByRole('option', { name: /Monitor/ }))
@@ -112,8 +125,9 @@ describe('line supplier in the form (spec 0209 AC-012)', () => {
 
 describe('supplier freeze on a locked line (spec 0209 AC-013)', () => {
   it('enables only the supplier of an approved line with update_supplier when the RDA is updatable', () => {
-    renderForm(makeRequest({ lines: [makeLine({ status: 'approved', abilities: lockedAbilities(true) })] }))
+    renderDetail(makeRequest({ lines: [makeLine({ status: 'approved', abilities: lockedAbilities(true) })] }))
 
+    editLine(1)
     expect(screen.getByRole('combobox', { name: 'Supplier 1' })).toBeEnabled()
     expect(screen.getByLabelText('Description 1')).toBeDisabled()
     expect(screen.getByLabelText('Quantity 1')).toBeDisabled()
@@ -124,29 +138,29 @@ describe('supplier freeze on a locked line (spec 0209 AC-013)', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
   })
 
-  it('keeps the supplier disabled and shows no Save when the RDA itself is not updatable', () => {
-    renderForm(
+  it('offers no line editor when the RDA itself is not updatable', () => {
+    renderDetail(
       makeRequest({
         lines: [makeLine({ status: 'approved', abilities: lockedAbilities(true) })],
         abilities: NO_UPDATE,
       }),
     )
 
-    expect(screen.getByRole('combobox', { name: 'Supplier 1' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Edit line 1' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
   })
 
-  it('disables everything, supplier included, without update_supplier', () => {
-    renderForm(makeRequest({ lines: [makeLine({ status: 'ordered', abilities: lockedAbilities(false) })] }))
+  it('offers no line editor without update_supplier on a locked line', () => {
+    renderDetail(makeRequest({ lines: [makeLine({ status: 'ordered', abilities: lockedAbilities(false) })] }))
 
-    expect(screen.getByRole('combobox', { name: 'Supplier 1' })).toBeDisabled()
-    expect(screen.getByLabelText('Description 1')).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Edit line 1' })).not.toBeInTheDocument()
   })
 })
 
 describe('compact line actions (spec 0209 AC-014)', () => {
   it('exposes the actions as icon-only buttons with an accessible name and no visible text', () => {
-    renderForm(makeRequest())
+    renderDetail(makeRequest())
+    editLine(1)
     const line = screen.getByRole('listitem', { name: 'Line 1' })
 
     for (const name of ['Reason 1', 'Change line status', 'Extract the VAT from the price 1', 'Line documents 1', 'Remove line 1']) {
@@ -154,8 +168,9 @@ describe('compact line actions (spec 0209 AC-014)', () => {
     }
   })
 
-  it('opens the reason popover bound to the line and highlights the icon once written', async () => {
-    renderForm(makeRequest({ lines: [makeLine({ reason: null })] }))
+  it('opens the reason popover bound to the open line and highlights the icon once written', async () => {
+    renderDetail(makeRequest({ lines: [makeLine({ reason: null })] }))
+    editLine(1)
     const emptyClass = screen.getByRole('button', { name: 'Reason 1' }).className
 
     fireEvent.click(screen.getByRole('button', { name: 'Reason 1' }))
@@ -167,8 +182,8 @@ describe('compact line actions (spec 0209 AC-014)', () => {
     expect(screen.getByRole('textbox', { name: 'Reason 1' })).toHaveValue('Replaces the broken one')
   })
 
-  it('shows the reason of a locked line read-only', async () => {
-    renderForm(makeRequest({ lines: [makeLine({ status: 'ordered', reason: 'Because', abilities: lockedAbilities(false) })] }))
+  it('shows the reason of a closed line read-only', async () => {
+    renderDetail(makeRequest({ lines: [makeLine({ status: 'ordered', reason: 'Because', abilities: lockedAbilities(false) })] }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Reason 1' }))
 
@@ -177,7 +192,7 @@ describe('compact line actions (spec 0209 AC-014)', () => {
   })
 
   it('exposes taxable and VAT of the line on the total (accessible name and tooltip)', async () => {
-    renderForm(makeRequest())
+    renderDetail(makeRequest())
 
     const total = screen.getByLabelText(/^Total 1: /)
     expect(total).toHaveAccessibleName(/Taxable 200\.00, VAT 44\.00/)

@@ -135,12 +135,14 @@ function toLinePayload(line: PurchaseRequestLineFormValues): PurchaseRequestLine
   }
 }
 
+type HeaderPayload = Omit<PurchaseRequestPayload, 'lines'>
+
 /**
- * Write payload (create and update share one shape, D contract): totals and
- * line statuses are never sent, the server owns them. Relation ids are
- * guaranteed non-null by the schema; the guard keeps the type honest.
+ * The header and footer part of the write payload: totals and line statuses
+ * are never sent, the server owns them. Relation ids are guaranteed non-null
+ * by the schema; the guard keeps the type honest.
  */
-export function buildPayload(values: PurchaseRequestFormValues): PurchaseRequestPayload {
+function headerPayload(values: PurchaseRequestFormValues): HeaderPayload {
   const {
     purchase_request_priority_id,
     requester_id,
@@ -178,6 +180,30 @@ export function buildPayload(values: PurchaseRequestFormValues): PurchaseRequest
     procurement_plan: blankToNull(values.procurement_plan),
     technical_requirements: blankToNull(values.technical_requirements),
     special_conditions: blankToNull(values.special_conditions),
-    lines: values.lines.map(toLinePayload),
   }
+}
+
+/** Create payload: the whole header plus every line. */
+export function buildPayload(values: PurchaseRequestFormValues): PurchaseRequestPayload {
+  return { ...headerPayload(values), lines: buildLinesPayload(values.lines) }
+}
+
+/** The `lines` of a partial update: always the whole set, the server deletes what is missing (spec 0256 D-1). */
+export function buildLinesPayload(lines: PurchaseRequestLineFormValues[]): PurchaseRequestLinePayload[] {
+  return lines.map(toLinePayload)
+}
+
+/**
+ * The header keys an in-place edit changed against the saved RDA (spec 0256
+ * D-6): an untouched key is never sent, so the PATCH carries one field (or one
+ * coupled group, e.g. company and site) at a time.
+ */
+export function buildHeaderPatch(
+  values: PurchaseRequestFormValues,
+  persisted: PurchaseRequestFormValues,
+): Partial<HeaderPayload> {
+  const next = headerPayload(values)
+  const saved = headerPayload(persisted)
+  const keys = Object.keys(next) as (keyof HeaderPayload)[]
+  return Object.fromEntries(keys.filter((key) => next[key] !== saved[key]).map((key) => [key, next[key]]))
 }

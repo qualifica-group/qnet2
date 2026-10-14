@@ -11,6 +11,11 @@ use App\Enums\PurchaseRequestStatus;
  * status tabs send it, and it needs a catalogue entry to reach the server.
  * `supplier_vat_number` is a hidden, search-only column (it searches the
  * suppliers of the lines).
+ *
+ * Spec 0256, D-3: the header columns the form edits as single fields are
+ * inline-editable through PurchaseRequestCellWriter (the form's own
+ * PurchaseRequestWriteRequest + PurchaseRequestService). The company stays
+ * read-only: it changes together with its site, from the detail.
  */
 final class PurchaseRequestColumnCatalog
 {
@@ -33,6 +38,25 @@ final class PurchaseRequestColumnCatalog
         'customer' => ['registries', 'purchase_requests.customer_id', 'name'],
         'priority' => ['purchase_request_priorities', 'purchase_requests.purchase_request_priority_id', 'sort_order'],
     ];
+
+    /**
+     * Editable relation columns: id => [for-select resource, form field, nullable, picker scope].
+     *
+     * @var array<string, array{0: string, 1: string, 2: bool, 3: array<string, string>}>
+     */
+    private const array EDITABLE_RELATIONS = [
+        'priority' => ['purchase-request-priorities', 'purchase_request_priority_id', false, []],
+        'requester' => ['users', 'requester_id', false, []],
+        'function_manager' => ['users', 'function_manager_id', false, []],
+        'customer' => ['registries', 'customer_id', true, []],
+        'work_order' => ['work-orders', 'work_order_id', true, []],
+        'company_site' => ['company-sites', 'company_site_id', false, ['company_id' => 'company']],
+        'operational_site' => ['operational-sites', 'operational_site_id', false, []],
+        'business_function' => ['business-functions', 'business_function_id', false, []],
+    ];
+
+    /** Editable scalar columns, written under their own id. */
+    private const array EDITABLE_SCALARS = ['subject', 'requested_at'];
 
     /** Lookup column: filtered by priority name, sorted by the priority's sort_order. */
     public const string PRIORITY_COLUMN = 'priority';
@@ -61,7 +85,7 @@ final class PurchaseRequestColumnCatalog
             $columns[] = self::column($id, 'text', visible: in_array($id, ['requester', 'function_manager', self::SUPPLIERS_COLUMN], true), sortable: isset(self::SORT_RELATIONS[$id]), filter: 'text');
         }
 
-        return [
+        $columns = [
             ...$columns,
             self::column('company_site', 'text', visible: false),
             self::column('operational_site', 'text', visible: false),
@@ -71,6 +95,32 @@ final class PurchaseRequestColumnCatalog
             self::column(self::LINE_STATUS_COLUMN, 'badge', visible: false, filter: 'set', options: PurchaseRequestLineStatus::values()),
             self::column(self::SUPPLIER_VAT_COLUMN, 'text', visible: false, searchable: true),
         ];
+
+        return array_map(self::withEditing(...), $columns);
+    }
+
+    /**
+     * The inline-editing keys of an editable column (spec 0256, D-3); any other column is returned as is.
+     *
+     * @param  array<string, mixed>  $column
+     * @return array<string, mixed>
+     */
+    private static function withEditing(array $column): array
+    {
+        $id = $column['id'];
+
+        if (in_array($id, self::EDITABLE_SCALARS, true)) {
+            return [...$column, 'editable' => true, 'nullable' => false];
+        }
+
+        if (! isset(self::EDITABLE_RELATIONS[$id])) {
+            return $column;
+        }
+
+        [$resource, $field, $nullable, $scope] = self::EDITABLE_RELATIONS[$id];
+        $relation = $scope === [] ? ['resource' => $resource] : ['resource' => $resource, 'scope' => $scope, 'lockScope' => true];
+
+        return [...$column, 'editable' => true, 'relation' => $relation, 'editableField' => $field, 'nullable' => $nullable];
     }
 
     /**
@@ -113,7 +163,6 @@ final class PurchaseRequestColumnCatalog
     {
         return [
             ['key' => 'view', 'label' => 'actions.view', 'icon' => 'eye', 'type' => 'link', 'confirm' => false, 'permission' => 'purchase-requests.view'],
-            ['key' => 'update', 'label' => 'actions.edit', 'icon' => 'pencil', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-requests.update'],
             ['key' => 'notify_manager', 'label' => 'purchaseRequests.actions.notifyManager', 'icon' => 'send', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-requests.update'],
             ['key' => 'close', 'label' => 'purchaseRequests.actions.close', 'icon' => 'lock', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-requests.close'],
             ['key' => 'delete', 'label' => 'actions.delete', 'icon' => 'trash', 'type' => 'danger', 'confirm' => true, 'permission' => 'purchase-requests.delete'],

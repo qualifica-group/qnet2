@@ -7,9 +7,8 @@ import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { PurchaseRequestForm } from '@/features/purchase-requests/purchase-request-form'
-import { makeLine, makeRequest } from '@/features/purchase-requests/purchase-request-fixtures'
+import { makeRequest } from '@/features/purchase-requests/purchase-request-fixtures'
 import { toResourcePermissions } from '@/features/purchase-requests/purchase-request-permissions'
-import type { PurchaseRequest } from '@/features/purchase-requests/types'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
 
 const USERS: ForSelectItem[] = [
@@ -58,20 +57,14 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: v
 
 const CURRENT_USER = { id: 3, name: 'Mario Rossi' }
 
-function renderForm(request?: PurchaseRequest) {
+function renderForm() {
   const client = seedLineStatusCatalog(new QueryClient({ defaultOptions: { queries: { retry: false } } }))
-  const permissions = toResourcePermissions(request ?? makeRequest())
+  const permissions = toResourcePermissions(makeRequest())
   return render(
     <QueryClientProvider client={client}>
       <ConfirmDialogProvider>
         <ResourcePermissionsProvider permissions={permissions}>
-          <PurchaseRequestForm
-            request={request}
-            currentUser={CURRENT_USER}
-            onSaved={vi.fn()}
-            onCancel={vi.fn()}
-            onDeleted={vi.fn()}
-          />
+          <PurchaseRequestForm currentUser={CURRENT_USER} onSaved={vi.fn()} onCancel={vi.fn()} />
         </ResourcePermissionsProvider>
       </ConfirmDialogProvider>
     </QueryClientProvider>,
@@ -129,92 +122,5 @@ describe('PurchaseRequestForm lines (AC-017)', () => {
     expect(screen.getByRole('combobox', { name: /VAT rate 1/ })).toHaveTextContent('IVA 22%')
     const line = screen.getByRole('listitem', { name: 'Line 1' })
     expect(within(line).getByText('242.78', { exact: false })).toBeInTheDocument()
-  })
-
-  it('renders a non-pending line read-only and keeps the trash only where the line can be deleted', () => {
-    const request = makeRequest({
-      lines: [
-        makeLine({ id: 11, description: 'Pending line' }),
-        makeLine({
-          id: 12,
-          position: 2,
-          description: 'Ordered line',
-          status: 'ordered',
-          abilities: { update: false, delete: false, transitions: ['received'], capabilities: [], update_supplier: false },
-        }),
-        makeLine({
-          id: 13,
-          position: 3,
-          description: 'Rejected line',
-          status: 'rejected',
-          abilities: { update: false, delete: true, transitions: [], capabilities: [], update_supplier: false },
-        }),
-      ],
-    })
-    renderForm(request)
-
-    expect(screen.getByLabelText('Description 1')).toBeEnabled()
-    expect(screen.getByLabelText('Description 2')).toBeDisabled()
-    expect(screen.getByLabelText('Quantity 2')).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Extract the VAT from the price 2' })).not.toBeInTheDocument()
-
-    expect(screen.getByRole('button', { name: 'Remove line 1' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Remove line 2' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Remove line 3' })).toBeInTheDocument()
-  })
-
-  it('offers the status change on a saved line only when the server allows a transition', () => {
-    renderForm(
-      makeRequest({
-        lines: [
-          makeLine({ id: 21, abilities: { update: true, delete: true, transitions: ['approved', 'rejected'], capabilities: [], update_supplier: false } }),
-          makeLine({ id: 22, position: 2, abilities: { update: true, delete: true, transitions: [], capabilities: [], update_supplier: false } }),
-        ],
-      }),
-    )
-
-    const first = screen.getByRole('listitem', { name: 'Line 1' })
-    const second = screen.getByRole('listitem', { name: 'Line 2' })
-    expect(within(second).queryByRole('button', { name: 'Change line status' })).not.toBeInTheDocument()
-
-    fireEvent.click(within(first).getByRole('button', { name: 'Change line status' }))
-    const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByText('Approved')).toBeInTheDocument()
-    expect(within(dialog).getByText('Rejected')).toBeInTheDocument()
-  })
-
-  it('shows the line status and the ODA placeholder (column header above the rows) as plain read-only text', () => {
-    renderForm(makeRequest({ lines: [makeLine({ status: 'approved' })] }))
-
-    const line = screen.getByRole('listitem', { name: 'Line 1' })
-    expect(within(line).getByText('Approved')).toBeInTheDocument()
-    expect(screen.getByText('ODA')).toBeInTheDocument()
-    expect(within(line).getByText('—')).toBeInTheDocument()
-    expect(within(line).queryByRole('textbox', { name: /Status/ })).not.toBeInTheDocument()
-  })
-
-  it('extracts the VAT from the unit price with the calculator (122.00 at 22% -> 100.00)', () => {
-    renderForm(makeRequest({ lines: [makeLine({ unit_price: '122.00', quantity: '1.000' })] }))
-
-    fireEvent.click(screen.getByRole('button', { name: 'Extract the VAT from the price 1' }))
-
-    expect(screen.getByLabelText('Unit price 1')).toHaveValue(100)
-  })
-
-  it('locks the whole form of a closed RDA', () => {
-    renderForm(makeRequest({ status: 'closed', abilities: { update: false, delete: false, close: false, notify_manager: false, view_activity: true } }))
-
-    expect(screen.getByLabelText(/^Subject/)).toBeDisabled()
-    expect(screen.getByLabelText('Description 1')).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Add line' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Remove line 1' })).not.toBeInTheDocument()
-  })
-
-  it('applies the field permissions: a read-only company is shown disabled (AC-015 client side)', () => {
-    renderForm(makeRequest({ field_permissions: { company_id: { visible: true, editable: false, required: true } } }))
-
-    expect(screen.getByRole('combobox', { name: /Company$/ })).toBeDisabled()
-    expect(screen.getByRole('combobox', { name: /Operational site/ })).toBeEnabled()
   })
 })

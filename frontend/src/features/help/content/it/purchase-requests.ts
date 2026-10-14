@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Dall’elenco puoi filtrare, ordinare ed esportare. Le **schede per stato** in alto mostrano solo le RDA che hanno almeno una riga in quello stato. Espandi una riga con la freccia per vederne le righe e cambiarne lo stato senza aprire la RDA. Vedi solo le RDA di cui sei richiedente, responsabile o autore, salvo che tu abbia il permesso di vedere tutto.',
+          text: 'Dall’elenco puoi filtrare, ordinare ed esportare, e **modificare direttamente nelle celle** Oggetto, Data richiesta, Priorità, Richiedente, Responsabile di funzione, Cliente, Commessa, Società / Sede (solo tra le sedi della società della RDA), Sede operativa e Funzione aziendale: fai doppio clic sulla cella, scegli il valore e conferma. Valgono le stesse regole della scheda; le RDA chiuse e i campi che il tuo ruolo non può modificare restano in sola lettura. La **Società aziendale** si cambia dalla scheda, insieme alla sede. Le **schede per stato** in alto mostrano solo le RDA che hanno almeno una riga in quello stato. Espandi una riga con la freccia per vederne le righe e cambiarne lo stato senza aprire la RDA. Vedi solo le RDA di cui sei richiedente, responsabile o autore, salvo che tu abbia il permesso di vedere tutto.',
         },
         {
           type: 'note',
@@ -33,12 +33,34 @@ const guide: HelpGuide = {
             'Premi **Nuova RDA** e compila la testata: **Oggetto**, **Data richiesta**, **Priorità** (scelta dall’elenco configurabile, precompilata con quella predefinita e mostrata come badge colorato), **Richiedente** e i campi organizzativi (**Società aziendale**, **Società / Sede**, **Sede operativa**, **Funzione aziendale**).',
             'Il **Responsabile di funzione** si sceglie tra i **diretti superiori del richiedente** (profilo aziendale in **Utenti**): con un solo superiore viene proposto in automatico, cambiando il richiedente l’elenco si aggiorna. Se il richiedente non ha superiori si usa il responsabile della **Funzione aziendale**; se manca anche quello un messaggio sotto il campo lo segnala e la RDA non si può salvare. Chi è il richiedente non può approvare la propria RDA. **Società / Sede** mostra solo le sedi della società scelta.',
             'Facoltativi: **Cliente** e **Commessa**. Il **Fornitore** non è più nella testata ma sulle singole righe. Il pulsante **+** accanto a un campo crea al volo un nuovo fornitore, cliente o prodotto.',
-            'Aggiungi le righe (almeno una) e, se serve, i documenti, poi premi **Salva**.',
+            'Aggiungi le righe (almeno una) e, se serve, i documenti, poi premi **Salva** (in alto o in fondo alla scheda). Se esci senza salvare ti viene chiesta conferma.',
           ],
         },
         {
           type: 'note',
           text: '**Creata da** è in sola lettura. I campi che il tuo ruolo non può modificare appaiono disabilitati o nascosti.',
+        },
+      ],
+    },
+    {
+      id: 'edit',
+      title: 'Modificare una RDA',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Aprendo una RDA salvata vedi la sua **scheda**: in alto stato, azioni e totali; sotto le sezioni **Richiesta**, **Organizzazione e riferimenti**, **Note e condizioni**, **Righe** e **Documenti**. Non c’è un pulsante Salva generale: ogni campo si modifica da solo.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Passa sul campo e premi la **matita** (o fai clic sul valore): si apre il campo da modificare.',
+            'Cambia il valore e premi **Salva**: viene salvato solo quel campo. **Annulla**, il tasto Esc o un clic fuori dal campo lo lasciano com’era.',
+            '**Società aziendale** e **Società / Sede** si modificano insieme. Cambiando **Richiedente** o **Funzione aziendale** compare anche il **Responsabile di funzione**, che si riallinea come in creazione.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Si apre un campo alla volta: aprendone un altro, le modifiche non salvate del primo vengono scartate. Senza permesso di modifica, o su una RDA chiusa, le matite non compaiono.',
         },
       ],
     },
@@ -63,12 +85,12 @@ const guide: HelpGuide = {
             ['**ODA**', 'In sola lettura: mostra il codice dell’ODA generata dalla riga, come link all’ordine, oppure un trattino se la riga non è collegata. Il collegamento viene tolto se l’ODA è eliminata o annullata, o se la riga è rimossa dall’ODA.'],
             ['**Documenti della riga**', 'Allegati della singola riga.'],
             ['**Cambia stato della riga**', 'Compare su una riga salvata solo se puoi cambiarne lo stato: il Responsabile di funzione assegnato approva o rifiuta le righe Da approvare, chi ha il permesso di evasione porta le righe Approvate a Ordinato o Stand by e quelle Ordinate a Ricevuto o Stand by. Si sceglie il nuovo stato e una motivazione, **obbligatoria** per **Rifiutato** e **Stand by** (facoltativa per gli altri stati). Scegliendo **Ordinato** la finestra mostra una colonna **Fornitore**: le righe che ne hanno già uno lo mostrano, quelle senza hanno un elenco da compilare, e la conferma resta disabilitata finché ne manca uno.'],
-            ['**Cestino**', 'Elimina la riga, se il tuo ruolo lo consente e se è Da approvare o Rifiutata.'],
+            ['**Cestino**', 'Elimina la riga dopo conferma, se il tuo ruolo lo consente e se è Da approvare o Rifiutata.'],
           ],
         },
         {
           type: 'warning',
-          text: 'Una riga si modifica **solo finché è Da approvare**: dopo l’approvazione o il rifiuto resta in sola lettura. Una RDA **chiusa** è interamente in sola lettura.',
+          text: 'Nella scheda le righe si mostrano in sola lettura: la **matita** della riga la apre per la modifica, **Salva** salva solo quella riga e **Annulla** la riporta com’era. **Aggiungi riga** apre una riga nuova allo stesso modo; il **cestino** chiede conferma ed elimina subito. Una riga si modifica **solo finché è Da approvare** (di una riga Approvata si cambia solo il fornitore, se puoi): dopo l’approvazione o il rifiuto resta in sola lettura. Una RDA **chiusa** è interamente in sola lettura.',
         },
       ],
     },
@@ -78,7 +100,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'I documenti si allegano alla RDA e alle singole righe. Finché la RDA non è salvata i file scelti restano **in coda** e vengono caricati subito dopo il salvataggio; se qualche caricamento fallisce, lo vedi in un avviso e puoi riprovare dalla RDA salvata.',
+          text: 'I documenti si allegano alla RDA e alle singole righe. Sulla RDA salvata il caricamento e l’eliminazione sono immediati. Finché la RDA non è salvata i file scelti restano **in coda** e vengono caricati subito dopo il salvataggio; se qualche caricamento fallisce, lo vedi in un avviso e puoi riprovare dalla RDA salvata.',
         },
       ],
     },
@@ -89,7 +111,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Chiusura automatica**: la RDA si chiude da sola quando non restano righe aperte, cioè tutte sono in uno stato finale (Ricevuto, Stand by o Rifiutato), anche dopo aver eliminato delle righe e salvato.',
+            '**Chiusura automatica**: la RDA si chiude da sola quando non restano righe aperte, cioè tutte sono in uno stato finale (Ricevuto, Stand by o Rifiutato), anche dopo aver eliminato delle righe.',
             '**Chiudi RDA**: chiusura a mano. Se restano righe non finali la chiusura è **forzata** e la **motivazione è obbligatoria**. Una RDA chiusa non si riapre.',
             '**Invia al responsabile**: rinvia al Responsabile di funzione la notifica (app ed email) che riceve alla creazione.',
             '**Elimina**: rimuove la RDA con righe, storico e documenti dopo conferma; non è possibile se una riga è già Ordinata o Ricevuta.',
