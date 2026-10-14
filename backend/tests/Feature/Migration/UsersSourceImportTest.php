@@ -111,7 +111,7 @@ it('creates a user with card, primary address, contacts, verbatim password hash 
     expect($ada)->not->toBeNull()
         ->and($ada->old_id)->toBe(101)
         ->and($ada->password)->toBe($externalHash) // verbatim, NOT re-hashed
-        ->and($ada->personalData?->first_name)->toBe('Ada')
+        ->and($ada->personalData?->first_name)->toBe('[OLD] Ada') // active and matched nobody
         ->and($ada->personalData?->last_name)->toBe('Lovelace')
         ->and($ada->personalData?->tax_code)->toBe('LVLADA00A00H501Z')
         ->and($ada->is_active)->toBeTrue()

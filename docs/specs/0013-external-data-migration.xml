@@ -371,6 +371,17 @@
       bis); `LegacyAplBranch` chiude ancora il ramo "[OLD] APL". I dati gia' importati non vengono spostati: vale dal
       prossimo import pulito.
     </amendment>
+    <amendment date="2026-10-14" title="quater - Utenti: collegamento all'account giusto, [OLD] sugli attivi non collegati">
+      Decisione utente: ogni utente legacy deve collegarsi all'account qnet-2 della stessa persona; un utente legacy
+      ATTIVO che non si collega a nessun account viene creato con "[OLD] " davanti al nome (`UsersSource`,
+      `UNMATCHED_NAME_MARK`, sul first_name: users.name ne deriva). Il marchio sta in qnet-2 perche' solo qnet-2 sa
+      se l'adozione (`ExistingUserMatcher`) e' riuscita; gli inattivi e gli adottati restano senza.
+      Legacy (§9): `UserMigrationController` ordina gli attivi per primi (poi cognome, nome, id), cosi' negli omonimi
+      il seed si collega al record attivo (D'Aleo, De Rosa, Giordano); `LegacyUserAccountAliases` manda l'email
+      dell'account qnet-2 per i 9 utenti col nome scritto diversamente (es. "Costantin" / "Constantin" Popa).
+      Il matcher di qnet-2 resta invariato (email, poi nome esatto). Gli utenti gia' importati non vengono
+      ricollegati ne' rinominati: vale dal prossimo import pulito degli utenti.
+    </amendment>
   </amendments>
 
 </spec>

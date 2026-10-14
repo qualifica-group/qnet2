@@ -39,13 +39,22 @@ use Throwable;
  *
  * A legacy user that already exists in qnet (same email, or same name when not
  * linked yet: ExistingUserMatcher) is ADOPTED instead of created: it gets the
- * `old_id` and only its empty employment references are filled.
+ * `old_id` and only its empty employment references are filled. An active
+ * legacy user that matches nobody is created with "[OLD] " before its first name.
  */
 class UsersSource extends AbstractMigrationSource
 {
     use MapsExternalUserRecord;
 
     private const string DEFAULT_LOCALE = 'it';
+
+    /**
+     * Prefixed to the first name of an ACTIVE legacy user no qnet account
+     * matched, so the separate account it lands on reads as the legacy one,
+     * like the "[OLD]" catalogue (user decision 2026-10-14). Only qnet knows
+     * whether the match succeeded, so the mark is set here, not by the legacy.
+     */
+    private const string UNMATCHED_NAME_MARK = '[OLD] ';
 
     /**
      * `$2a$`/`$2b$`/`$2y$`, 2-digit cost, 53-char hash+salt — the standard
@@ -196,6 +205,7 @@ class UsersSource extends AbstractMigrationSource
         }
 
         $warnings = [];
+        $isActive = $this->resolveActive($record);
 
         [$roleNames, $roleWarnings] = $this->resolveRoleNames($this->externalRoleIds($record));
         [$addressInput, $addressWarnings] = $this->buildAddress($record);
@@ -209,13 +219,13 @@ class UsersSource extends AbstractMigrationSource
                 email: $email,
                 locale: self::DEFAULT_LOCALE,
                 password: Str::password(24),
-                is_active: $this->resolveActive($record),
+                is_active: $isActive,
                 roles: $roleNames === [] ? null : $roleNames,
             ),
             new ProfileData(
                 card: new CreatePersonalData(
                     type: PersonalDataTypeEnum::Individual,
-                    firstName: $firstName,
+                    firstName: $isActive ? self::UNMATCHED_NAME_MARK.$firstName : $firstName,
                     lastName: $lastName,
                     taxCode: $this->blankToNull($record['tax_code'] ?? null),
                     vatNumber: $this->blankToNull($record['vat_number'] ?? null),

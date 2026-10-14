@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MIGRAZIONE UTENTI: ACCOUNT GIUSTO + [OLD] SUGLI ATTIVI NON COLLEGATI (2026-10-14) — VERDE, NON COMMITTATO
+
+- Decisione utente: ogni utente legacy si collega all'account qnet-2 della stessa persona; un utente legacy ATTIVO
+  non collegato viene creato con "[OLD] " davanti al first_name (`UsersSource::UNMATCHED_NAME_MARK`; users.name ne
+  deriva). Inattivi e adottati: nessun marchio. Il marchio sta in qnet-2 perche' solo qnet-2 conosce l'esito del
+  matcher. `ExistingUserMatcher` invariato. Spec 0013 amendment "quater".
+- Legacy (`../qnet`, NON committato): `UserMigrationController` ordina `active DESC, last_name, name, id` (negli
+  omonimi D'Aleo/De Rosa/Giordano il seed si collega al record attivo; tolto il TODO commentato `where('id', 449)`);
+  nuovo `app/Support/Migration/LegacyUserAccountAliases` (legacy id => email qnet-2) per 9 nomi scritti diversamente
+  (87, 118, 135, 300, 309, 343, 345, 424, 466).
+- Verifica su dati reali (feed legacy + account del seed, matcher simulato): 0 errori, 9 alias + 3 omonimi sui giusti
+  account, 12 attivi -> [OLD] (Ciro Creator, Admin Ciro, Api, Test, QTEST, QTASK, Supporto IT, Qualifica Backoffice,
+  Enrico Locascio, Pasquale Persico, Antimo Dalvini, Sara Mariano).
+- Test: `tests/Feature/Migration` 394/394 (UsersSourceImportTest "[OLD] Ada" e adoption test aggiornati =
+  REQUIREMENT CHANGED, +2 test). Vitest help+i18n+requirements 341/341, tsc -b ok, Pint ok. Testi: requisito
+  `users` IT/EN, guida in-app migrations IT/EN, manuale Claude Docs (paragrafo dopo "La sorgente Utenti riconosce...").
+- DB locale: l'import utenti del 2026-10-14 (run #20) e' gia' avvenuto con la regola vecchia (account doppi per i 9
+  alias e i 3 omonimi, nessun [OLD]); un re-run salta le righe con old_id: serve un import utenti pulito.
+
 ## MIGRAZIONE: NIENTE FUNZIONI "FORMAZIONE OLD" / "APL OLD" (2026-10-13) — VERDE, COMMITTATO
 
 - Decisione utente: le funzioni aziendali "FORMAZIONE OLD" e "APL OLD" non devono piu' esistere; le categorie legacy
