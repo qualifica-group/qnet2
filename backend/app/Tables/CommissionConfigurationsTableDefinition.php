@@ -358,6 +358,8 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
             ->filter(fn (string $column): bool => ! isset(self::COLUMN_FIELDS[$column])
                 || $this->fieldVisible($actor, $model, self::COLUMN_FIELDS[$column]))
             ->prepend('id')
+            // Injected by InjectsDefaultIdColumn only for an actor who may see it.
+            ->push(self::LEGACY_ID_COLUMN)
             ->push('updated_at')
             ->unique()
             ->values()

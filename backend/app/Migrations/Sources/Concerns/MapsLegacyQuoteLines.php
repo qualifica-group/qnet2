@@ -43,8 +43,6 @@ trait MapsLegacyQuoteLines
         'supplier' => [CommissionRecipientRole::Supplier, Registry::class],
     ];
 
-    private const int DEFAULT_QUANTITY = 1;
-
     private const int COMMISSION_VALUE_SCALE = 4;
 
     /**
@@ -115,18 +113,11 @@ trait MapsLegacyQuoteLines
             return null;
         }
 
-        $quantity = $externalLine['quantity'] ?? null;
-
-        if ($quantity === null || $quantity === '') {
-            $warnings[] = "Line {$lineRef}: quantity missing, set to ".self::DEFAULT_QUANTITY.'.';
-            $quantity = self::DEFAULT_QUANTITY;
-        }
-
         $description = trim((string) ($externalLine['description'] ?? ''));
 
         return new QuoteLineData(
             productId: $productId,
-            quantity: (float) $quantity,
+            quantity: (float) ($externalLine['quantity'] ?? 0),
             unitPrice: (float) ($externalLine['unit_price'] ?? 0),
             vatRateId: $this->remapLegacyId(VatRate::class, $externalLine['vat_rate_id'] ?? null, "line {$lineRef} vat_rate_id", $warnings),
             sortOrder: $sortOrder,
@@ -168,9 +159,9 @@ trait MapsLegacyQuoteLines
     }
 
     /**
-     * Only a legacy commission carrying a percentage or an amount becomes a
-     * manual override (G-9); one whose recipient is not migrated is dropped
-     * with a warning.
+     * A legacy commission (type and value already decided by the legacy)
+     * becomes a manual override (G-9); one whose recipient is not migrated is
+     * dropped with a warning.
      *
      * @param  array<int, string>  $warnings
      * @return array<int, QuoteLineCommissionData>
@@ -204,9 +195,11 @@ trait MapsLegacyQuoteLines
             return null;
         }
 
-        [$type, $value] = $this->legacyCommissionValue($externalCommission);
+        $type = CommissionType::tryFrom((string) ($externalCommission['commission_type'] ?? ''));
 
         if ($type === null) {
+            $warnings[] = "Line {$lineRef}: {$legacyRole} commission without a valid commission type, skipped.";
+
             return null;
         }
 
@@ -223,33 +216,10 @@ trait MapsLegacyQuoteLines
             recipientType: $role->recipientType(),
             recipientId: $recipientId,
             type: $type,
-            value: number_format($value, self::COMMISSION_VALUE_SCALE, '.', ''),
+            value: number_format((float) ($externalCommission['value'] ?? 0), self::COMMISSION_VALUE_SCALE, '.', ''),
             internalNote: null,
             origin: CommissionOrigin::ManualOverride,
             configurationId: null,
         );
-    }
-
-    /**
-     * A percentage wins over an amount; neither -> no commission.
-     *
-     * @param  array<string, mixed>  $externalCommission
-     * @return array{0: CommissionType|null, 1: float}
-     */
-    private function legacyCommissionValue(array $externalCommission): array
-    {
-        $percentage = $externalCommission['percentage'] ?? null;
-
-        if ($percentage !== null && $percentage !== '') {
-            return [CommissionType::Percentage, (float) $percentage];
-        }
-
-        $amount = $externalCommission['amount'] ?? null;
-
-        if ($amount !== null && $amount !== '') {
-            return [CommissionType::FixedAmount, (float) $amount];
-        }
-
-        return [null, 0.0];
     }
 }

@@ -26,9 +26,8 @@ use Illuminate\Support\Str;
  * others, which get every category of OperatorRoster::UNASSIGNABLE_FUNCTION.
  *
  * Runs AFTER QualificaLegacyImportSeeder and QualificaBusinessFunctionLinkSeeder:
- * the operational sites and the business functions are imported from the
- * external qnet CRM, and a competence row needs the category's EFFECTIVE
- * function. It seeds the roles itself (QualificaRoleSeeder) so it stays
+ * the operational sites are imported from the external qnet CRM, and a
+ * competence row needs the category's EFFECTIVE function. It seeds the roles itself (QualificaRoleSeeder) so it stays
  * runnable on its own.
  *
  * Idempotent and CONVERGENT: role, Sedi, competence and switch are re-synced from the

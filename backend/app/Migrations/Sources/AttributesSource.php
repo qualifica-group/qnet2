@@ -32,8 +32,7 @@ use RuntimeException;
  * idempotent (skip by old_id); `code` is unique, so an attribute qnet already
  * holds under that code without an old_id is ADOPTED (old_id set, nothing else
  * touched — spec 0181) rather than failing the row. A `table` attribute's
- * config is checked with TableFieldConfigValidator, and a legacy relation
- * `entity_type` written with underscores is normalized to qnet's hyphens.
+ * config is checked with TableFieldConfigValidator.
  */
 class AttributesSource extends AbstractMigrationSource
 {
@@ -289,11 +288,6 @@ class AttributesSource extends AbstractMigrationSource
      * StoreAttributeRequest, which validates `config` only as a nullable array
      * without per-key rules — a non-array or empty blob becomes null.
      *
-     * One translation: q-crm marks a multi-choice enum with `multiple: true`,
-     * a key no layer here reads — the display becomes `multiselect`, the one
-     * every layer recognises (see migration
-     * 2026_09_25_140000_promote_legacy_multiple_enum_attributes).
-     *
      * @param  array<string, mixed>  $record
      * @return array<string, mixed>|null
      */
@@ -309,9 +303,7 @@ class AttributesSource extends AbstractMigrationSource
             $this->assertValidTableConfig($raw);
         }
 
-        return $type === 'enum' && ($raw['multiple'] ?? false) === true
-            ? [...$raw, 'display' => 'multiselect']
-            : $raw;
+        return $raw;
     }
 
     /**
@@ -349,8 +341,7 @@ class AttributesSource extends AbstractMigrationSource
             return null;
         }
 
-        // The legacy writes entity types with underscores; qnet's registry uses hyphens.
-        $entityType = str_replace('_', '-', trim((string) ($raw['entity_type'] ?? '')));
+        $entityType = trim((string) ($raw['entity_type'] ?? ''));
         $cardinality = trim((string) ($raw['cardinality'] ?? ''));
         $forSelectResource = trim((string) ($raw['for_select_resource'] ?? ''));
 

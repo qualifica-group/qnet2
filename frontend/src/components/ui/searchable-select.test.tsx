@@ -54,6 +54,14 @@ describe('SearchableSelect', () => {
     expect(screen.queryByRole('button', { name: /Laptops/ })).not.toBeInTheDocument()
   })
 
+  it('merges contentClassName onto the popup, so a caller can widen it past the trigger', () => {
+    renderSelect({ contentClassName: 'w-[36rem]' })
+    fireEvent.click(screen.getByRole('combobox'))
+    const popup = screen.getByRole('dialog')
+    expect(popup).toHaveClass('w-[36rem]')
+    expect(popup).not.toHaveClass('w-(--radix-popover-trigger-width)')
+  })
+
   it('forwards id to the trigger so an external <label htmlFor> associates with it', () => {
     renderSelect({ id: 'parent-category-field' })
     expect(screen.getByRole('combobox')).toHaveAttribute('id', 'parent-category-field')

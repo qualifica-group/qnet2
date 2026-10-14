@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select'
+import { CATEGORY_POPUP_WIDTH_CLASS } from '@/features/product-lines/category-popup-width'
 import { activeCategoryTree } from '@/features/product-categories/active-tree'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import { filterCategoriesUnderRoot } from '@/features/product-lines/category-tree-scope'
@@ -46,6 +47,7 @@ export function ProductCategoryFilterSelect({
 
   return (
     <SearchableSelect
+      contentClassName={CATEGORY_POPUP_WIDTH_CLASS}
       value={value}
       onChange={onChange}
       options={options}

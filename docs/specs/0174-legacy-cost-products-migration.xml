@@ -57,7 +57,16 @@
       item: { id: "vehicles:3", source: "products"|"vehicles"|"equipment"|"expense_reports", source_id: int,
               code: string|null, name, description: string|null, cost: number, price: number,
               vat_rate_id: int|null, supplier_id: int|null, category_name: string|null,
-              brand, model, serial_number, license_plate, barcode, ministerial_code, storage_position: string|null }
+              brand, model, serial_number, license_plate, barcode, ministerial_code, storage_position: string|null,
+              attribute_values: { [code: string]: string } | [] }
+      Emendamento 2026-10-13 (decisione utente, regola `.claude/rules/backend.md` §9: la forma dei dati e' del
+      legacy che invia): testi trimmati dal legacy (vuoto -> null); `attribute_values` = i campi senza colonna
+      nativa gia' indicizzati per codice attributo di qnet-2 (D-2), solo se valorizzati (nessuno -> `[]`, array
+      JSON vuoto, non `{}`):
+      products -> cost_brand, cost_barcode, cost_ministerial_code, cost_storage_position; vehicles ->
+      cost_license_plate; equipment -> cost_brand, cost_model, cost_serial_number; expense_reports -> nessuno.
+      I campi piatti brand/model/... restano per l'anteprima. qnet-2 scrive `attribute_values` cosi' com'e' (vuoto ->
+      non toccato) e usa `category_name` per la sotto-categoria di "Articoli" senza ulteriore pulizia.
     qnet-2 sorgente `cost-products` (label "Cost products"), stessa shape nella preview.
   </contract>
 
@@ -73,8 +82,9 @@
     AC-005  Re-import idempotente (skipped); un costo con lo stesso id di un servizio gia' migrato viene creato.
     AC-006  La sorgente `products` non salta un servizio il cui id coincide con un costo gia' migrato.
     AC-007  Riga senza nome -> errore di riga; codice legacy gia' usato -> PRD sequenziale + warning.
-    AC-008  Il seed `QualificaLegacyImportSeeder` importa i costi nella stessa mass run, la radice "Costi" resta
-            di primo livello e il re-run non duplica.
+    AC-008  Il seed `QualificaLegacyImportSeeder` importa i costi nella stessa mass run, la radice "[OLD] Costi"
+            sta sotto il contenitore "Old category" (decisione utente 2026-10-14, spec 0013 emendamento quinquies)
+            e il re-run non duplica.
   </acceptance>
 
 </spec>

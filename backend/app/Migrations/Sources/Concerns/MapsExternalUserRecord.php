@@ -35,33 +35,19 @@ trait MapsExternalUserRecord
     use MapsExternalProfileRecord;
 
     /**
-     * The external role references, as external ids, taken from the record's
-     * `roles` array of `{id, name}` objects (the external contract's shape).
-     * A flat `roles: [id, ...]` list is also tolerated. Each id is remapped to
-     * a qnet role via `old_id` in resolveRoleNames().
+     * The external role ids, taken from the record's `roles` array of
+     * `{id, name}` objects (the external contract's shape). Each id is
+     * remapped to a qnet role via `old_id` in resolveRoleNames().
      *
      * @param  array<string, mixed>  $record
      * @return array<int, int|string>
      */
     private function externalRoleIds(array $record): array
     {
-        $roles = $record['roles'] ?? [];
-
-        if (! is_array($roles)) {
-            return [];
-        }
-
-        $ids = [];
-
-        foreach ($roles as $role) {
-            $externalId = is_array($role) ? ($role['id'] ?? null) : $role;
-
-            if ($externalId !== null && $externalId !== '') {
-                $ids[] = $externalId;
-            }
-        }
-
-        return $ids;
+        return array_values(array_filter(
+            array_column((array) ($record['roles'] ?? []), 'id'),
+            static fn (mixed $id): bool => $id !== null && $id !== '',
+        ));
     }
 
     /**
@@ -443,20 +429,13 @@ trait MapsExternalUserRecord
     }
 
     /**
-     * Absent/blank -> true (a migrated user is active unless the source
-     * explicitly opts out), mirroring CreateUserData's own default. Accepts a
-     * JSON boolean as well as the "1"/"0"/"true"/"false" string encodings.
+     * Absent -> true (a migrated user is active unless the source explicitly
+     * opts out), mirroring CreateUserData's own default.
      *
      * @param  array<string, mixed>  $record
      */
     private function resolveActive(array $record): bool
     {
-        $value = $record['is_active'] ?? null;
-
-        if ($value === null || $value === '') {
-            return true;
-        }
-
-        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        return (bool) ($record['is_active'] ?? true);
     }
 }

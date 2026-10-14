@@ -2,6 +2,7 @@
 
 use App\Jobs\RunMigrationJob;
 use App\Migrations\Support\LegacyAplBranch;
+use App\Migrations\Support\LegacyCategoryContainer;
 use App\Models\BusinessFunction;
 use App\Models\MigrationRun;
 use App\Models\ProductCategory;
@@ -37,20 +38,20 @@ if (! function_exists('runMigrationJobFor')) {
 }
 
 // ---------------------------------------------------------------------------
-// The legacy APL tree — imported beside the manual "APL" branch as "APL old",
-// never adopted into it (user directive 2026-10-05, LegacyAplBranch)
+// The legacy APL tree — sent as "[OLD] APL" and imported beside the manual
+// "APL" branch, never into it (user directives 2026-10-05 and 2026-10-13,
+// LegacyAplBranch)
 // ---------------------------------------------------------------------------
 
-it('imports the legacy APL tree beside the manual one as "APL old", under its legacy parent, idempotently', function () {
+it('REQUIREMENT CHANGED (user directive 2026-10-13): imports the "[OLD] APL" tree beside the manual one, under its legacy parent, with the names as sent, idempotently', function () {
     seedMigrationsConfig();
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
-                // A child listed before its parent: relinked by afterImport.
-                ['id' => 62, 'name' => 'Orientamento Specialistico', 'parent_id' => 61],
-                ['id' => 60, 'name' => 'Servizi', 'parent_id' => null],
-                ['id' => 61, 'name' => 'APL', 'parent_id' => 60],
-                ['id' => 63, 'name' => 'Tirocini extracurriculari privati', 'parent_id' => 61],
+                ['id' => 60, 'name' => '[OLD] Servizi', 'parent_id' => null],
+                ['id' => 61, 'name' => '[OLD] APL', 'parent_id' => 60],
+                ['id' => 62, 'name' => '[OLD] Orientamento Specialistico', 'parent_id' => 61],
+                ['id' => 63, 'name' => '[OLD] Tirocini extracurriculari privati', 'parent_id' => 61],
             ],
             'pagination' => ['total' => 4],
         ]),
@@ -70,29 +71,28 @@ it('imports the legacy APL tree beside the manual one as "APL old", under its le
     expect($manualRoot->fresh()->old_id)->toBeNull()
         ->and($manualChild->fresh()->old_id)->toBeNull()
         // The twin of the manual root hangs under its legacy parent, like any
-        // other legacy node (the seed then nests that under "Consulenza").
+        // other legacy node; that one under the "Old category" container.
         ->and($legacyTop->name)->toBe(LegacyAplBranch::LEGACY_BRANCH)
         ->and($legacyTop->parent_id)->toBe(ProductCategory::query()->where('old_id', 60)->value('id'))
-        // The twin of a manual child takes the suffix; a name the manual
-        // branch does not hold is kept.
         ->and(ProductCategory::query()->where('old_id', 62)->first()->only(['name', 'parent_id']))
-        ->toBe(['name' => 'Orientamento Specialistico old', 'parent_id' => $legacyTop->id])
+        ->toBe(['name' => '[OLD] Orientamento Specialistico', 'parent_id' => $legacyTop->id])
         ->and(ProductCategory::query()->where('old_id', 63)->first()->only(['name', 'parent_id']))
-        ->toBe(['name' => 'Tirocini extracurriculari privati', 'parent_id' => $legacyTop->id])
-        ->and(ProductCategory::query()->count())->toBe(6)
-        ->and(collect($run->fresh()->report)->pluck('message')->filter(fn (string $message) => str_contains($message, 'Legacy twin'))->count())
-        ->toBe(2);
+        ->toBe(['name' => '[OLD] Tirocini extracurriculari privati', 'parent_id' => $legacyTop->id])
+        // REQUIREMENT CHANGED (user directive 2026-10-14): + the container.
+        ->and(ProductCategory::query()->where('old_id', 60)->first()->parent?->name)->toBe(LegacyCategoryContainer::NAME)
+        ->and(ProductCategory::query()->count())->toBe(7)
+        ->and($run->fresh()->report)->toBeNull();
 });
 
-it('files an imported category on "APL OLD" instead of the "APL" function', function () {
+it('REQUIREMENT CHANGED (user directive 2026-10-13): files an imported category on the "APL" function as sent, with no "APL OLD" replacement', function () {
     seedMigrationsConfig();
     $imported = BusinessFunction::factory()->create(['old_id' => 3, 'name' => 'APL']);
 
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
-                ['id' => 1, 'name' => 'APL', 'parent_id' => null, 'business_function_id' => 3],
-                ['id' => 2, 'name' => 'Ricerca e Selezione', 'parent_id' => 1, 'business_function_id' => 3],
+                ['id' => 1, 'name' => '[OLD] APL', 'parent_id' => null, 'business_function_id' => 3],
+                ['id' => 2, 'name' => '[OLD] Ricerca e Selezione', 'parent_id' => 1, 'business_function_id' => 3],
             ],
             'pagination' => ['total' => 2],
         ]),
@@ -103,25 +103,22 @@ it('files an imported category on "APL OLD" instead of the "APL" function', func
     $actor = migrationsSuperAdminActor();
     runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'product-categories']));
 
-    $replacement = BusinessFunction::query()->where('name', 'APL OLD')->sole();
-
-    expect($replacement->old_id)->toBeNull()
-        ->and(ProductCategory::query()->where('old_id', 1)->value('business_function_id'))->toBe($replacement->id)
+    expect(BusinessFunction::query()->where('name', 'APL OLD')->exists())->toBeFalse()
+        ->and(ProductCategory::query()->where('old_id', 1)->value('business_function_id'))->toBe($imported->id)
         ->and(ProductCategory::query()->where('old_id', 2)->value('business_function_id'))->toBeNull()
         ->and($manual->fresh()->business_function_id)->toBe($imported->id);
 });
 
-it('imports the whole "APL old" branch as containers, and never reopens nor closes a node of an earlier run', function () {
+it('imports the whole "[OLD] APL" branch as containers, and never reopens nor closes a node of an earlier run', function () {
     seedMigrationsConfig();
     Http::fake([
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
-                // Selectable in the legacy, and listed before its parent: closed
-                // once the relink has placed it in the branch.
-                ['id' => 72, 'name' => 'Ricerca e Selezione', 'parent_id' => 71, 'is_selectable' => true],
-                ['id' => 71, 'name' => 'APL', 'parent_id' => null, 'is_selectable' => true],
-                ['id' => 73, 'name' => 'Tirocinio', 'parent_id' => 71],
-                ['id' => 74, 'name' => 'Bandi', 'parent_id' => null, 'is_selectable' => true],
+                // Selectable in the legacy: closed once it sits in the branch.
+                ['id' => 71, 'name' => '[OLD] APL', 'parent_id' => null, 'is_selectable' => true],
+                ['id' => 72, 'name' => '[OLD] Ricerca e Selezione', 'parent_id' => 71, 'is_selectable' => true],
+                ['id' => 73, 'name' => '[OLD] Tirocinio', 'parent_id' => 71],
+                ['id' => 74, 'name' => '[OLD] Bandi', 'parent_id' => null, 'is_selectable' => true],
             ],
             'pagination' => ['total' => 4],
         ]),

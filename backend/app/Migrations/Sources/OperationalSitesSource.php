@@ -53,6 +53,7 @@ class OperationalSitesSource extends AbstractMigrationSource
             ['id' => 'region', 'label' => 'Region', 'type' => 'string'],
             ['id' => 'province', 'label' => 'Province', 'type' => 'string'],
             ['id' => 'city', 'label' => 'City', 'type' => 'string'],
+            ['id' => 'alias', 'label' => 'Alias', 'type' => 'string'],
             ['id' => 'street', 'label' => 'Street', 'type' => 'string'],
             ['id' => 'postal_code', 'label' => 'Postal code', 'type' => 'string'],
         ];
@@ -80,6 +81,7 @@ class OperationalSitesSource extends AbstractMigrationSource
             'region' => $record['region'] ?? null,
             'province' => $record['province'] ?? null,
             'city' => $record['city'] ?? null,
+            'alias' => $record['alias'] ?? null,
             'street' => $record['street'] ?? null,
             'postal_code' => $record['postal_code'] ?? null,
         ];
@@ -103,10 +105,6 @@ class OperationalSitesSource extends AbstractMigrationSource
             throw new RuntimeException('street is required.');
         }
 
-        // The legacy `comune` is a site label (e.g. "FRATTAMAGGIORE 1 (HQ)"),
-        // not a real city — kept verbatim as the site alias.
-        $alias = trim((string) ($record['city'] ?? ''));
-
         $geo = $this->geoResolver->resolve(
             $record['country'] ?? null,
             $record['region'] ?? null,
@@ -123,7 +121,7 @@ class OperationalSitesSource extends AbstractMigrationSource
                 stateId: $geo->stateId,
                 provinceId: $geo->provinceId,
                 cityId: $geo->cityId,
-                alias: $alias === '' ? null : $alias,
+                alias: ($record['alias'] ?? null) ?: null,
             ),
         );
 

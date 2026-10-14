@@ -81,7 +81,7 @@ it('creates a site with its address, resolving geo names to ids', function () {
         ->and($fresh->report)->toBeNull();
 });
 
-it('stores the legacy comune as alias and resolves Italian names + province code', function () {
+it('stores the legacy site label as alias and resolves Italian names + province code', function () {
     seedMigrationsConfig();
     $country = Country::factory()->create(['name' => 'Italy']);
     $state = State::factory()->for($country)->create(['name' => 'Campania']);
@@ -95,7 +95,8 @@ it('stores the legacy comune as alias and resolves Italian names + province code
                 'country' => 'Italia',
                 'region' => 'Campania',
                 'province' => 'NA',
-                'city' => 'FRATTAMAGGIORE 1 (HQ)',
+                'city' => 'FRATTAMAGGIORE',
+                'alias' => 'FRATTAMAGGIORE 1 (HQ)',
                 'street' => 'Via Roma 1',
             ]],
             'pagination' => ['total' => 1],

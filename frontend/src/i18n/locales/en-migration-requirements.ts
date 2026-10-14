@@ -8,7 +8,7 @@ export const migrationRequirements = {
   roles:
     'No prerequisites. A role with the same name already in QNet, super-admin included, is reused and its description is filled only when empty. Permissions are not imported: assign them in Administration › Roles.',
   users:
-    'Without Roles, Companies and Operational sites, role, company and site stay empty with a warning. Each user’s manager is linked automatically at the end of the import. Email, first name and last name are required. A user already in QNet is recognised by email, or by first and last name when it has no legacy id yet: it gets the legacy id and only empty company, site and manager are filled; role, password and contacts stay as in QNet. When several users share the name, the row fails. For new users the password must arrive already hashed (bcrypt). City and province are matched against the QNet list of municipalities.',
+    'Without Roles, Companies and Operational sites, role, company and site stay empty with a warning. Each user’s manager is linked automatically at the end of the import. Email, first name and last name are required. A user already in QNet is recognised by email, or by first and last name when it has no legacy id yet: it gets the legacy id and only empty company, site and manager are filled; role, password and contacts stay as in QNet. When several users share the name, the row fails. An active user not recognised is created with [OLD] before its name. For new users the password must arrive already hashed (bcrypt). City and province are matched against the QNet list of municipalities.',
   'business-functions':
     'No prerequisites. Manager and operators are not linked here: after Users run “Business functions — link manager & operators”. On the first import the report lists the users not found yet: this is expected.',
   companies:
@@ -33,7 +33,7 @@ export const migrationRequirements = {
   attributes:
     'No prerequisites. An attribute with the same code already in QNet is reused.',
   'product-categories':
-    'Without Business functions the category has no function, with a warning. The parent category is linked automatically at the end of the import and a category with the same name already in QNet is reused. Categories of the legacy APL branch and those of the “FORMAZIONE OLD” and “APL OLD” functions arrive not selectable.',
+    'Without Business functions the category has no function, with a warning. The parent category is linked automatically at the end of the import. Every legacy category is created with the [OLD] prefix, even when QNet already has a category with the same name, and keeps its business function, Formazione and APL included. Categories of the [OLD] APL branch arrive not selectable.',
   'product-category-attributes':
     'Creates no records: it links the attributes to the categories already imported. Links already in QNet are not changed.',
   'attribute-layouts':
@@ -55,7 +55,7 @@ export const migrationRequirements = {
   quotes:
     'Without its imported opportunity the row fails. A line without an imported product, for example a discount, is skipped with a warning. Missing VAT rates, payment methods, sites, referents, users and commission recipients stay empty with a warning. An accepted or contracted quote also creates the contract. A cost without an imported cost product is skipped with a warning; a cost supplier other than the product one and a customer other than the opportunity one raise a warning.',
   'work-orders':
-    'Without its imported quote the row fails. A quote line already linked to another work order is copied into the quote, with its commissions, and the quote total grows. Notes, documents, stages and tasks are not imported.',
+    'Without its imported quote the row fails. A quote line already linked to another work order is copied into the quote, with its commissions, and the quote total grows. The flexible fields come too, only those the categories of the work order lines provide (run Product categories — link attributes first): a field not provided, an invalid value or a user or registry not imported is skipped with a warning. The stages come too, open or closed as in the legacy system, without tasks. Notes, documents and tasks are not imported.',
   'work-order-line-payments':
     'Creates no records: it copies the payment status, payment agreement and unpaid amounts of the work order onto each of its lines. Without the imported work order the row fails. Every import rewrites the payment data of the lines.',
   'product-suppliers':

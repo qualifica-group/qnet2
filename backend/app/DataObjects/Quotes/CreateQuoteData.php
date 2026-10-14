@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\DataObjects\Quotes;
 
+use Carbon\CarbonImmutable;
+
 /**
  * Validated payload for creating a quote (POST /api/quotes, spec 0065;
  * spec 0083 T-04 for `workflowStatusId`/`note`). `code` is a manual override
@@ -235,13 +237,16 @@ final readonly class CreateQuoteData
      * `commercial_id`/`reporter_id`/`supervisor_id` carry the RAW submitted
      * values here — QuoteService overrides them with the Opportunity's
      * snapshot for every one of the 3 that was NOT submitted (D-3).
+     * `quote_date` defaults to today here and not only in Quote's `creating`
+     * hook (spec 0228 AC-001): a seeder running WithoutModelEvents
+     * (DemoDataSeeder) silences that hook.
      *
      * @return array<string, mixed>
      */
     public function attributes(): array
     {
         return [
-            'quote_date' => $this->quoteDate,
+            'quote_date' => $this->quoteDate ?? CarbonImmutable::today()->toDateString(),
             'opportunity_id' => $this->opportunityId,
             'commercial_id' => $this->commercialId,
             'reporter_id' => $this->reporterId,

@@ -2,9 +2,12 @@
 
 use App\Enums\MigrationStatus;
 use App\Enums\ProductUsage;
+use App\Migrations\Support\CostProductCatalogue;
 use App\Migrations\Support\LegacyAplBranch;
+use App\Migrations\Support\LegacyCategoryContainer;
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
+use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\MassMigrationRun;
@@ -97,11 +100,11 @@ function fakeLegacyCatalogues(): void
         ]),
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
-                ['id' => 51, 'name' => 'Bandi', 'parent_id' => null, 'attributes' => [
+                ['id' => 51, 'name' => '[OLD] Bandi', 'parent_id' => null, 'is_active' => false, 'attributes' => [
                     ['attribute_id' => 91, 'context' => 'product'],
                     ['attribute_id' => 91, 'context' => 'work_order'],
                 ]],
-                ['id' => 52, 'name' => 'Bandi Regionali', 'parent_id' => 51],
+                ['id' => 52, 'name' => '[OLD] Bandi Regionali', 'parent_id' => 51, 'is_active' => false],
             ],
             'pagination' => ['total' => 2],
         ]),
@@ -118,15 +121,15 @@ function fakeLegacyCatalogues(): void
         ]),
         fakeMigrationsBaseUrl().'/products*' => Http::response([
             'items' => [[
-                'id' => 101, 'name' => 'Bando Sviluppo Impresa', 'price' => 1200, 'cost' => 300,
+                'id' => 101, 'name' => '[OLD] Bando Sviluppo Impresa', 'price' => 1200, 'cost' => 300,
                 'category_id' => 52, 'vat_rate_id' => 61, 'product_type' => 'service',
             ]],
             'pagination' => ['total' => 1],
         ]),
         fakeMigrationsBaseUrl().'/cost-products*' => Http::response([
             'items' => [[
-                'id' => 'vehicles:3', 'source' => 'vehicles', 'source_id' => 3, 'name' => 'Tagliando Smart',
-                'cost' => 140, 'price' => 140, 'vat_rate_id' => 61, 'license_plate' => 'FE700FV',
+                'id' => 'vehicles:3', 'source' => 'vehicles', 'source_id' => 3, 'name' => '[OLD] Tagliando Smart',
+                'cost' => 140, 'price' => 140, 'vat_rate_id' => 61, 'license_plate' => 'FE700FV', 'attribute_values' => ['cost_license_plate' => 'FE700FV'],
             ]],
             'pagination' => ['total' => 1],
         ]),
@@ -136,8 +139,8 @@ function fakeLegacyCatalogues(): void
 
 /**
  * The documented run order: QualificaLegacyImportSeeder runs AFTER
- * QualificaCatalogSeeder, which owns the "Consulenza" root it nests under and
- * the static source catalogue it must adopt. QualificaTemplateSeeder (custom
+ * QualificaCatalogSeeder, which owns the static sources and business
+ * functions it must adopt. QualificaTemplateSeeder (custom
  * field structure) plays no part here — hence its absence.
  */
 function seedCatalogThenLegacy(): void
@@ -178,12 +181,20 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         ->and(Source::query()->where('name', 'Passaparola')->value('old_id'))->toBe(81)
         ->and(Source::query()->where('name', 'Fiera')->value('old_id'))->toBe(82);
 
-    // was: 'nests the imported product taxonomy under the Consulenza root, keeping its own hierarchy'
+    // REQUIREMENT CHANGED (user directive 2026-10-14): the imported product
+    // taxonomy lands under the "Old category" container, not "Consulenza".
+    $container = ProductCategory::query()->where('name', LegacyCategoryContainer::NAME)->whereNull('parent_id')->sole();
     $consulenza = ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->sole();
     $legacyRoot = ProductCategory::query()->where('old_id', 51)->sole();
     $legacyChild = ProductCategory::query()->where('old_id', 52)->sole();
 
-    expect($legacyRoot->parent_id)->toBe($consulenza->id)
+    expect($legacyRoot->parent_id)->toBe($container->id)
+        // History only (user directive 2026-10-13), the container too.
+        ->and($legacyRoot->is_active)->toBeFalse()
+        ->and($legacyChild->is_active)->toBeFalse()
+        ->and($container->is_active)->toBeFalse()
+        ->and($container->is_selectable)->toBeFalse()
+        ->and(ProductCategory::query()->where('parent_id', $consulenza->id)->whereNotNull('old_id')->exists())->toBeFalse()
         // The legacy hierarchy survives: only top-level nodes are reparented.
         ->and($legacyChild->parent_id)->toBe($legacyRoot->id)
         // The static catalogue's own tree keeps its shape.
@@ -241,13 +252,15 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         ->and($subItem->parent_id)->toBe($rootItem->id)
         ->and($subItem->task_template_stage_id)->toBeNull();
 
-    // Spec 0174: the legacy costs land once, cost-only, under the "Costi"
-    // root, which stays at top level (no old_id, never nested).
-    $costRoot = ProductCategory::query()->where('name', 'Costi')->whereNull('parent_id')->sole();
+    // Spec 0174: the legacy costs land once, cost-only, under the
+    // "[OLD] Costi" root, history only (user directive 2026-10-13), inside the
+    // "Old category" container (user directive 2026-10-14).
+    $costRoot = ProductCategory::query()->where('name', CostProductCatalogue::ROOT)->where('parent_id', $container->id)->sole();
     $vehicle = Product::query()->where('old_source', 'vehicles')->where('old_id', 3)->sole();
 
     expect(QualificaLegacyImportSeeder::SOURCES)->toContain('cost-products')
-        ->and($vehicle->category_id)->toBe(ProductCategory::query()->where('name', 'Veicoli')->where('parent_id', $costRoot->id)->value('id'))
+        ->and($costRoot->is_active)->toBeFalse()
+        ->and($vehicle->category_id)->toBe(ProductCategory::query()->where('name', CostProductCatalogue::BRANCHES['vehicles'])->where('parent_id', $costRoot->id)->value('id'))
         ->and($vehicle->usages->all())->toBe([ProductUsage::Cost])
         ->and($vehicle->vat_rate_id)->toBe(VatRate::query()->where('old_id', 61)->value('id'))
         ->and($vehicle->attribute_values)->toBe(['cost_license_plate' => 'FE700FV']);
@@ -257,18 +270,18 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
     $service = Product::query()->where('old_source', 'services')->where('old_id', 101)->sole();
 
     expect(QualificaLegacyImportSeeder::SOURCES)->toContain('products')
-        ->and($service->name)->toBe('Bando Sviluppo Impresa')
+        ->and($service->name)->toBe('[OLD] Bando Sviluppo Impresa')
         ->and($service->category_id)->toBe($legacyChild->id)
         ->and($service->vat_rate_id)->toBe(VatRate::query()->where('old_id', 61)->value('id'));
 
     // was: 're-running the seeders never duplicates an imported catalogue'
     expect(Source::query()->count())->toBe($sourceCountAfterFirst)
         ->and(Tag::query()->where('name', 'Legacy Tag')->count())->toBe(1)
-        ->and(ProductCategory::query()->where('name', 'Bandi')->count())->toBe(1)
+        ->and(ProductCategory::query()->where('name', '[OLD] Bandi')->count())->toBe(1)
         ->and(Product::query()->where('old_source', 'vehicles')->count())->toBe(1)
-        // Already nested by the first run: the second one moves nothing.
-        ->and(ProductCategory::query()->where('old_id', 51)->value('parent_id'))
-        ->toBe(ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->value('id'))
+        // Already gathered by the first run: the second one moves nothing.
+        ->and(ProductCategory::query()->where('old_id', 51)->value('parent_id'))->toBe($container->id)
+        ->and(ProductCategory::query()->where('name', LegacyCategoryContainer::NAME)->count())->toBe(1)
         // Scoped to the imported category: the catalogue itself now owns an
         // unrelated pivot row (the "Ore complessive" attribute on Formazione),
         // so a global count no longer isolates the legacy import.
@@ -278,12 +291,13 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         ->and(MassMigrationRun::query()->latest('id')->first()->status)->toBe(MigrationStatus::Completed);
 });
 
-it('adopts the static "Formazione" root, and nests the legacy APL tree under "Consulenza" as "APL old"', function () {
+it('REQUIREMENT CHANGED (user directive 2026-10-14): adopts no static root, nests the legacy "[OLD] Formazione" and "[OLD] APL" trees under "Old category", and adopts the seeded "APL" function', function () {
     seedMigrationsConfig();
     migrationsSuperAdminActor();
 
     // The legacy catalogue repeats two ROOT names the static one ships,
-    // "Formazione" and "APL", and the APL practices under the latter.
+    // "Formazione" and "APL", and the APL practices under the latter, all
+    // behind the "[OLD] " prefix the legacy adds.
     Http::fake([
         fakeMigrationsBaseUrl().'/business-functions*' => Http::response([
             'items' => [['id' => 9, 'name' => 'APL']],
@@ -291,18 +305,18 @@ it('adopts the static "Formazione" root, and nests the legacy APL tree under "Co
         ]),
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
             'items' => [
-                ['id' => 55, 'name' => 'Formazione', 'parent_id' => null],
-                ['id' => 56, 'name' => 'APL', 'parent_id' => null, 'business_function_id' => 9],
-                ['id' => 57, 'name' => 'Orientamento Specialistico', 'parent_id' => 56, 'business_function_id' => 9],
-                ['id' => 58, 'name' => 'Tirocini extracurriculari privati', 'parent_id' => 56, 'business_function_id' => 9],
-                ['id' => 59, 'name' => 'Formazione Apprendistato', 'parent_id' => 56, 'business_function_id' => 9],
-                ['id' => 60, 'name' => 'Ricerca e Selezione', 'parent_id' => 56, 'business_function_id' => 9],
+                ['id' => 55, 'name' => '[OLD] Formazione', 'parent_id' => null, 'is_active' => false],
+                ['id' => 56, 'name' => '[OLD] APL', 'parent_id' => null, 'is_active' => false, 'business_function_id' => 9],
+                ['id' => 57, 'name' => '[OLD] Orientamento Specialistico', 'parent_id' => 56, 'is_active' => false, 'business_function_id' => 9],
+                ['id' => 58, 'name' => '[OLD] Tirocini extracurriculari privati', 'parent_id' => 56, 'is_active' => false, 'business_function_id' => 9],
+                ['id' => 59, 'name' => '[OLD] Formazione Apprendistato', 'parent_id' => 56, 'is_active' => false, 'business_function_id' => 9],
+                ['id' => 60, 'name' => '[OLD] Ricerca e Selezione', 'parent_id' => 56, 'is_active' => false, 'business_function_id' => 9],
             ],
-            'pagination' => ['total' => 7],
+            'pagination' => ['total' => 6],
         ]),
         fakeMigrationsBaseUrl().'/products*' => Http::response([
             'items' => collect([201 => 57, 202 => 58, 203 => 59, 204 => 60])
-                ->map(fn (int $categoryId, int $id) => ['id' => $id, 'name' => "Legacy {$id}", 'category_id' => $categoryId, 'product_type' => 'service'])
+                ->map(fn (int $categoryId, int $id) => ['id' => $id, 'name' => "[OLD] Legacy {$id}", 'category_id' => $categoryId, 'product_type' => 'service'])
                 ->values()->all(),
             'pagination' => ['total' => 4],
         ]),
@@ -312,40 +326,44 @@ it('adopts the static "Formazione" root, and nests the legacy APL tree under "Co
     seedCatalogThenLegacy();
 
     $formazione = ProductCategory::query()->where('name', 'Formazione')->sole();
+    $legacyFormazione = ProductCategory::query()->where('name', '[OLD] Formazione')->sole();
     $manualApl = ProductCategory::query()->where('name', 'APL')->sole();
     $legacyApl = ProductCategory::query()->where('name', LegacyAplBranch::LEGACY_BRANCH)->sole();
     $categoryOf = fn (int $oldId) => Product::query()->where('old_id', $oldId)->first()->category->name;
 
-    // "Formazione" adopted, not duplicated, and never moved: dragging it
-    // under "Consulenza" would take the whole GOL branch with it.
-    expect($formazione->old_id)->toEqual(55)
+    // The static "Formazione" is left alone, its legacy twin is a node of
+    // its own under the "Old category" container.
+    expect($formazione->old_id)->toBeNull()
         ->and($formazione->parent_id)->toBeNull()
         ->and(ProductCategory::query()->where('name', 'GOL')->value('parent_id'))->toBe($formazione->id)
-        // The manual APL branch adopts nothing (user directive 2026-10-05)...
+        ->and($legacyFormazione->old_id)->toEqual(55)
+        ->and($legacyFormazione->parent->name)->toBe(LegacyCategoryContainer::NAME)
+        // The manual APL branch takes nothing from the legacy...
         ->and($manualApl->old_id)->toBeNull()
         ->and($manualApl->parent_id)->toBeNull()
         ->and(ProductCategory::query()->where('parent_id', $manualApl->id)->whereNotNull('old_id')->exists())->toBeFalse()
-        // ...its legacy twin is nested under "Consulenza" like every legacy
-        // root (as the FORMAZIONE OLD categories are), on a function of its own...
+        // ...its legacy twin is nested under "Old category" like every legacy
+        // root, history only, on the "APL" function as sent (user directive
+        // 2026-10-13: no "APL OLD"), which is the seeded one, adopted (user
+        // directive 2026-10-14)...
+        ->and($legacyApl->is_active)->toBeFalse()
+        ->and($manualApl->is_active)->toBeTrue()
         ->and($legacyApl->old_id)->toEqual(56)
-        ->and($legacyApl->parent->name)->toBe('Consulenza')
-        ->and($legacyApl->businessFunction->name)->toBe('APL OLD')
+        ->and($legacyApl->parent->name)->toBe(LegacyCategoryContainer::NAME)
+        ->and($legacyApl->businessFunction->name)->toBe('APL')
+        ->and(BusinessFunction::query()->where('name', 'APL')->sole()->old_id)->toEqual(9)
+        ->and($manualApl->business_function_id)->toBe($legacyApl->business_function_id)
         // ...and is never a classification target, unlike the manual one.
         ->and(ProductCategory::query()->whereKey([$legacyApl->id, ...$legacyApl->children()->pluck('id')])->where('is_selectable', true)->exists())->toBeFalse()
         ->and(ProductCategory::query()->where('parent_id', $manualApl->id)->where('is_selectable', false)->exists())->toBeFalse()
         ->and(ProductCategory::query()->where('parent_id', $legacyApl->id)->orderBy('name')->pluck('name')->all())
-        ->toBe(['Formazione Apprendistato', 'Orientamento Specialistico old', 'Ricerca e Selezione', 'Tirocini extracurriculari privati'])
-        // ...and its products land on the manual categories replacing the
-        // legacy ones (LegacyAplBranch::PRODUCT_CATEGORIES, bound here to the
-        // real catalogue), save the one with no replacement.
-        ->and($categoryOf(201))->toBe('Orientamento specialistico')
-        ->and($categoryOf(202))->toBe('Tirocinio')
-        ->and($categoryOf(203))->toBe('Apprendistato')
-        ->and($categoryOf(204))->toBe('Ricerca e Selezione');
-
-    foreach (LegacyAplBranch::PRODUCT_CATEGORIES as $manualName) {
-        expect(ProductCategory::query()->where('name', $manualName)->value('parent_id'))->toBe($manualApl->id);
-    }
+        ->toBe(['[OLD] Formazione Apprendistato', '[OLD] Orientamento Specialistico', '[OLD] Ricerca e Selezione', '[OLD] Tirocini extracurriculari privati'])
+        // ...and its products stay on it, history only (user directive
+        // 2026-10-13).
+        ->and($categoryOf(201))->toBe('[OLD] Orientamento Specialistico')
+        ->and($categoryOf(202))->toBe('[OLD] Tirocini extracurriculari privati')
+        ->and($categoryOf(203))->toBe('[OLD] Formazione Apprendistato')
+        ->and($categoryOf(204))->toBe('[OLD] Ricerca e Selezione');
 });
 
 it('skips the import when no external system is configured', function () {

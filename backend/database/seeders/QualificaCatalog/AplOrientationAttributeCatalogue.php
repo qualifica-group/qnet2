@@ -38,8 +38,8 @@ final class AplOrientationAttributeCatalogue
     /**
      * The APL root's single-offer category (CatalogProducts), already seeded
      * and selectable: this catalogue only gives it a form of its own. It
-     * replaces the legacy "Orientamento Specialistico", imported under "APL
-     * old" (LegacyAplBranch, user directive 2026-10-05).
+     * replaces the legacy "Orientamento Specialistico", imported under
+     * "[OLD] APL" (LegacyAplBranch, user directive 2026-10-05).
      */
     public const string CATEGORY = 'Orientamento specialistico';
 

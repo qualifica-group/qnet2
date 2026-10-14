@@ -121,3 +121,53 @@ it('re-importing the same business functions is idempotent (skip, no duplicate)'
     expect($fresh->skipped_rows)->toBe(1)
         ->and($fresh->created_rows)->toBe(0);
 });
+
+// ---------------------------------------------------------------------------
+// User directive 2026-10-14 — the seeded "Formazione" / "APL" functions are
+// adopted by name, compared without case, never duplicated
+// ---------------------------------------------------------------------------
+
+it('adopts an unclaimed function of the same name in another case, keeping its name and adding the resolved users', function () {
+    seedMigrationsConfig();
+    $seeded = BusinessFunction::factory()->create(['name' => 'Formazione']);
+    $existingMember = User::factory()->create();
+    $seeded->users()->attach($existingMember->id);
+    $legacyMember = User::factory()->create(['old_id' => 601]);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/business-functions*' => Http::response([
+            'items' => [['id' => 13, 'name' => 'FORMAZIONE', 'user_ids' => [601]]],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'business-functions']);
+    runMigrationJobFor($run);
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'business-functions']));
+
+    expect(BusinessFunction::query()->count())->toBe(1)
+        ->and($seeded->fresh()->old_id)->toBe(13)
+        ->and($seeded->fresh()->name)->toBe('Formazione')
+        ->and($seeded->users()->pluck('users.id')->sort()->values()->all())
+        ->toBe(collect([$existingMember->id, $legacyMember->id])->sort()->values()->all())
+        ->and($run->fresh()->created_rows)->toBe(1);
+});
+
+it('never adopts a function another external id already claimed', function () {
+    seedMigrationsConfig();
+    $claimed = BusinessFunction::factory()->create(['name' => 'APL', 'old_id' => 8]);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/business-functions*' => Http::response([
+            'items' => [['id' => 30, 'name' => 'APL']],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'business-functions']));
+
+    expect(BusinessFunction::query()->where('name', 'APL')->count())->toBe(2)
+        ->and($claimed->fresh()->old_id)->toBe(8)
+        ->and(BusinessFunction::query()->where('old_id', 30)->exists())->toBeTrue();
+});

@@ -85,6 +85,12 @@ interface SearchableSelectProps {
   action?: ReactNode
   className?: string
   /**
+   * Merged onto the popup. Default width = the trigger's; a caller whose
+   * labels outgrow a narrow column widens it here (same knob as
+   * `AsyncPaginatedSelect`'s).
+   */
+  contentClassName?: string
+  /**
    * Forwarded to the trigger button so `FormControl` (Radix `Slot`) can wire up
    * the label association and the accessible error triad: `Slot` clones its
    * `id`/`aria-describedby`/`aria-invalid` onto this component's props, but a
@@ -126,6 +132,7 @@ export function SearchableSelect({
   onLoadMore,
   action,
   className,
+  contentClassName,
   id,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
@@ -291,7 +298,10 @@ export function SearchableSelect({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={4}
-          className="z-50 w-(--radix-popover-trigger-width) rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none"
+          className={cn(
+            'z-50 w-(--radix-popover-trigger-width) rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none',
+            contentClassName,
+          )}
           onOpenAutoFocus={(event) => {
             // Keep focus on the search input rather than the first option.
             event.preventDefault()

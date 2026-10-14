@@ -15,6 +15,12 @@ final class DemoAttributeValueFaker
 {
     private const string MULTISELECT_DISPLAY = 'multiselect';
 
+    private const int DEFAULT_MIN = 1;
+
+    private const int INTEGER_SPAN = 99;
+
+    private const int DECIMAL_SPAN = 999;
+
     /** @var array<string, int|null> first id per relation entity type, memoized across rows */
     private array $relationIds = [];
 
@@ -26,8 +32,8 @@ final class DemoAttributeValueFaker
     public function fake(Generator $faker, array $attribute): mixed
     {
         return match ($attribute['type']) {
-            'integer' => $faker->numberBetween(1, 100),
-            'decimal' => $faker->randomFloat(2, 1, 1000),
+            'integer' => $faker->numberBetween(...array_map(intval(...), $this->bounds($attribute, self::INTEGER_SPAN))),
+            'decimal' => $faker->randomFloat(2, ...$this->bounds($attribute, self::DECIMAL_SPAN)),
             'boolean' => $faker->boolean(),
             'date' => $faker->date('Y-m-d'),
             'datetime' => $faker->date('Y-m-d\TH:i'),
@@ -40,6 +46,21 @@ final class DemoAttributeValueFaker
             'table' => [],
             default => $faker->sentence(6),
         };
+    }
+
+    /**
+     * The attribute's own `config` min/max (the validator enforces them), the
+     * demo range around them where unset.
+     *
+     * @param  array<string, mixed>  $attribute
+     * @return array{0: int|float, 1: int|float}
+     */
+    private function bounds(array $attribute, int $span): array
+    {
+        $max = $attribute['config']['max'] ?? null;
+        $min = $attribute['config']['min'] ?? min(self::DEFAULT_MIN, $max ?? self::DEFAULT_MIN);
+
+        return [$min, $max ?? $min + $span];
     }
 
     /**

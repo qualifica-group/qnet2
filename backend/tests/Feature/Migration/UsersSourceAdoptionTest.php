@@ -139,6 +139,26 @@ it('creates the user when the only namesake is already linked to another legacy 
 
     $run = runLegacyUsersImport([legacyUserRecord()]);
 
+    $created = User::query()->where('email', 'mario.rossi@legacy.test')->first();
     expect($run->created_rows)->toBe(1)
-        ->and(User::query()->where('email', 'mario.rossi@legacy.test')->value('old_id'))->toBe(501);
+        ->and($created->old_id)->toBe(501)
+        ->and($created->personalData->first_name)->toBe('[OLD] Mario')
+        ->and($created->name)->toBe('[OLD] Mario Rossi');
+});
+
+it('leaves the name of an inactive legacy user that matched nobody unmarked', function () {
+    $run = runLegacyUsersImport([legacyUserRecord(['is_active' => false])]);
+
+    $created = User::query()->where('email', 'mario.rossi@legacy.test')->first();
+    expect($run->created_rows)->toBe(1)
+        ->and($created->personalData->first_name)->toBe('Mario')
+        ->and($created->name)->toBe('Mario Rossi');
+});
+
+it('never marks the name of an adopted user', function () {
+    $seeded = seededUser('m.rossi@qualifica.test', 'Mario', 'Rossi');
+
+    runLegacyUsersImport([legacyUserRecord()]);
+
+    expect($seeded->fresh()->personalData->first_name)->toBe('Mario');
 });

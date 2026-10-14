@@ -15,7 +15,6 @@ use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
 use App\Migrations\Sources\Concerns\MapsLegacyRegistryProfile;
 use App\Migrations\Support\ExternalApiClient;
 use App\Migrations\Support\MigrationGeoResolver;
-use App\Migrations\Support\PersonNameSplitter;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Sector;
@@ -49,7 +48,6 @@ class RegistriesSource extends AbstractMigrationSource
         ExternalApiClient $client,
         private readonly RegistryService $service,
         private readonly MigrationGeoResolver $geoResolver,
-        private readonly PersonNameSplitter $nameSplitter,
         private readonly CustomFieldProvider $customFields,
         private readonly CustomFieldWriter $customFieldWriter,
     ) {
@@ -100,7 +98,7 @@ class RegistriesSource extends AbstractMigrationSource
             ['id' => 'vat_number', 'label' => 'VAT number', 'type' => 'string'],
             ['id' => 'is_supplier', 'label' => 'Supplier', 'type' => 'boolean'],
             ['id' => 'source_label', 'label' => 'Source', 'type' => 'string'],
-            ['id' => 'sectors', 'label' => 'Sectors', 'type' => 'string'],
+            ['id' => 'sector_ids', 'label' => 'Sectors (external ids)', 'type' => 'string'],
             ['id' => 'manager_user_ids', 'label' => 'Managers (external ids)', 'type' => 'string'],
             ['id' => 'tag_ids', 'label' => 'Tags (external ids)', 'type' => 'string'],
             ['id' => 'email', 'label' => 'Email', 'type' => 'string'],
@@ -177,7 +175,7 @@ class RegistriesSource extends AbstractMigrationSource
     {
         return new CreateRegistryData(
             sourceId: $this->resolveSource($record, $warnings),
-            sectorIds: $this->resolveSectors($record['sectors'] ?? [], $warnings),
+            sectorIds: $this->remapLegacyIds(Sector::class, $record['sector_ids'] ?? [], 'sector_ids', $warnings),
             referentIds: $this->remapLegacyIds(Referent::class, $record['referent_ids'] ?? [], 'referent_ids', $warnings),
             managerSlots: null,
             supervisorId: null,
@@ -259,37 +257,5 @@ class RegistriesSource extends AbstractMigrationSource
         }
 
         return $this->remapLegacyId(Source::class, $record['source_id'] ?? null, 'source_id', $warnings);
-    }
-
-    /**
-     * Each legacy sector token matched by exact name among the migrated
-     * sectors (names are not unique: the oldest wins).
-     *
-     * @param  array<int, string>  $warnings
-     * @return array<int, int>
-     */
-    private function resolveSectors(mixed $names, array &$warnings): array
-    {
-        $ids = [];
-
-        foreach ((array) $names as $name) {
-            $name = trim((string) $name);
-
-            if ($name === '') {
-                continue;
-            }
-
-            $id = Sector::query()->whereNotNull('old_id')->where('name', $name)->orderBy('id')->value('id');
-
-            if ($id === null) {
-                $warnings[] = "Unresolved sector '{$name}'.";
-
-                continue;
-            }
-
-            $ids[$id] = (int) $id;
-        }
-
-        return array_values($ids);
     }
 }

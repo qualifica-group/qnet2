@@ -49,3 +49,15 @@ it('fakes table, time, email, url and color in the shape the validator expects',
         ->and(filter_var($faker->fake($generator, demoAttribute('url')), FILTER_VALIDATE_URL))->not->toBeFalse()
         ->and($faker->fake($generator, demoAttribute('color')))->toMatch('/^#[0-9a-fA-F]{6}$/');
 });
+
+it('fakes integers and decimals inside the attribute config min/max bounds', function (): void {
+    $faker = app(DemoAttributeValueFaker::class);
+    $generator = FakerFactory::create();
+    $generator->seed(1);
+
+    foreach (range(1, 50) as $ignored) {
+        expect($faker->fake($generator, demoAttribute('integer', ['config' => ['min' => 1, 'max' => 4]])))->toBeInt()->toBeBetween(1, 4)
+            ->and($faker->fake($generator, demoAttribute('decimal', ['config' => ['min' => 0, 'max' => 12]])))->toBeBetween(0, 12)
+            ->and($faker->fake($generator, demoAttribute('integer', ['config' => ['min' => 500]])))->toBeGreaterThanOrEqual(500);
+    }
+});

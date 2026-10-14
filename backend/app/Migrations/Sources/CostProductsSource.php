@@ -13,6 +13,7 @@ use App\Migrations\Sources\Concerns\MapsExternalProductRecord;
 use App\Migrations\Support\CostCategoryResolver;
 use App\Migrations\Support\CostProductCatalogue;
 use App\Migrations\Support\ExternalApiClient;
+use App\Migrations\Support\LegacyCategoryContainer;
 use App\Models\Product;
 use App\Services\ProductService;
 use RuntimeException;
@@ -21,13 +22,14 @@ use RuntimeException;
  * `cost-products` migration source (spec 0174): the legacy COST tables —
  * warehouse articles, vehicles, equipment and expense reports — imported as
  * products usable only on an Offerta's Costi tab (usages = [COST]), filed
- * under the "Costi" branch provisioned by CostCategoryResolver.
+ * under the "[OLD] Costi" branch provisioned by CostCategoryResolver.
  *
  * One legacy listing unions the four tables, whose ids overlap: the row's
  * `id` is "<source>:<source_id>" (what the run report shows), while the
  * product stores `old_source` = legacy table and `old_id` = `source_id`, the
  * pair idempotence is keyed on (D-4). The legacy fields with no native column
- * land in the branch's attributes (CostProductCatalogue::ATTRIBUTES, D-2).
+ * arrive as `attribute_values`, already keyed by attribute code, and land in
+ * the branch's attributes (CostProductCatalogue::ATTRIBUTES, D-2).
  *
  * A legacy `code` is kept only when free and within the column length;
  * otherwise ProductService generates the PRD-0001 sequence and a warning
@@ -43,6 +45,7 @@ class CostProductsSource extends AbstractMigrationSource
         ExternalApiClient $client,
         private readonly ProductService $service,
         private readonly CostCategoryResolver $categories,
+        private readonly LegacyCategoryContainer $container,
     ) {
         parent::__construct($client);
     }
@@ -132,25 +135,19 @@ class CostProductsSource extends AbstractMigrationSource
             return MigrationRowOutcome::skipped();
         }
 
-        $name = trim((string) ($record['name'] ?? ''));
-
-        if ($name === '') {
-            throw new RuntimeException('name is required.');
-        }
-
         // Step 2: create the cost-only product in its branch category.
         $warnings = [];
 
         $product = $this->service->create(new CreateProductData(
-            name: $name,
-            description: $this->trimmedText($record['description'] ?? null),
+            name: $this->productName($record['name'] ?? null),
+            description: $record['description'] ?? null,
             cost: (float) ($record['cost'] ?? 0),
             price: (float) ($record['price'] ?? 0),
-            categoryId: $this->categories->resolve($source, $this->legacyCategory($source, $record)),
+            categoryId: $this->categories->resolve($source, $record['category_name'] ?? null),
             productType: ProductType::Service,
             vatRateId: $this->resolveVatRate($record['vat_rate_id'] ?? null, $warnings),
             supplierId: $this->unresolvableReference('supplier_id', $record['supplier_id'] ?? null, $warnings),
-            attributeValues: $this->attributeValues($source, $record),
+            attributeValues: ($record['attribute_values'] ?? []) !== [] ? $record['attribute_values'] : null,
             code: $this->resolveCode($record['code'] ?? null, $warnings),
             usages: [ProductUsage::Cost],
         ));
@@ -161,6 +158,15 @@ class CostProductsSource extends AbstractMigrationSource
         $product->save();
 
         return MigrationRowOutcome::created($warnings, $product);
+    }
+
+    /**
+     * An "[OLD] Costi" root an earlier run left at top level joins the "Old
+     * category" container (user directive 2026-10-14).
+     */
+    protected function afterImport(MigrationImportContext $context): void
+    {
+        $this->container->gather();
     }
 
     private function resolveSource(mixed $source): string
@@ -175,49 +181,11 @@ class CostProductsSource extends AbstractMigrationSource
     }
 
     /**
-     * Only warehouse articles carry a legacy category (D-1); any other table
-     * lands directly on its branch.
-     *
-     * @param  array<string, mixed>  $record
-     */
-    private function legacyCategory(string $source, array $record): ?string
-    {
-        if ($source !== 'products') {
-            return null;
-        }
-
-        return $this->trimmedText($record['category_name'] ?? null);
-    }
-
-    /**
-     * The branch attributes this row has a value for, keyed by attribute code.
-     * Null when there is none, so ProductService leaves `attribute_values`
-     * untouched instead of writing an empty set.
-     *
-     * @param  array<string, mixed>  $record
-     * @return array<string, string>|null
-     */
-    private function attributeValues(string $source, array $record): ?array
-    {
-        $values = [];
-
-        foreach (CostProductCatalogue::ATTRIBUTES[$source] as $field => $attribute) {
-            $value = $this->trimmedText($record[$field] ?? null);
-
-            if ($value !== null) {
-                $values[$attribute['code']] = $value;
-            }
-        }
-
-        return $values !== [] ? $values : null;
-    }
-
-    /**
      * @param  array<int, string>  $warnings
      */
     private function resolveCode(mixed $externalCode, array &$warnings): ?string
     {
-        $code = $this->trimmedText($externalCode);
+        $code = $externalCode === null || $externalCode === '' ? null : (string) $externalCode;
 
         if ($code === null) {
             return null;

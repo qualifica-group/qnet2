@@ -76,7 +76,7 @@ it('imports an opportunity with every field remapped, without notifications or a
         'commercial_referent_id' => 802, 'reporter_referent_id' => 803, 'supervisor_user_id' => 601,
         'manager_user_ids' => [602], 'source_id' => 5, 'operational_site_id' => 7, 'product_category_ids' => [33],
         'start_date' => '2020-01-15', 'expected_close_date' => '2020-06-30', 'estimated_value' => 12500.5,
-        'notes' => 'Cliente storico', 'reserved_notes' => 'Sconto max 10%', 'status' => 3, 'status_label' => 'Chiusa',
+        'general_notes' => "Cliente storico\n\nNote riservate:\nSconto max 10%", 'status_label' => 'Chiusa',
         'created_at' => '2020-01-10 09:00:00', 'updated_at' => '2020-07-01 18:30:00',
     ]]);
 
@@ -169,14 +169,16 @@ it('skips already imported opportunities on a second run', function () {
         ->and(Opportunity::query()->where('old_id', 905)->count())->toBe(1);
 });
 
-it('falls back to the quote line categories only when the opportunity has none of its own', function () {
+// REQUIREMENT CHANGED (principle 2026-10-13): the quote-lines fallback is applied
+// by the legacy, which sends a single `product_category_ids`.
+it('creates the product lines from the product_category_ids the legacy sends', function () {
     opportunitiesSourceRegistry(14);
-    [$own, $fromQuote] = ProductCategory::factory()->count(2)->create(['business_function_id' => BusinessFunction::factory()->create()->id]);
-    $own->forceFill(['old_id' => 41])->save();
-    $fromQuote->forceFill(['old_id' => 42])->save();
+    [$first, $second] = ProductCategory::factory()->count(2)->create(['business_function_id' => BusinessFunction::factory()->create()->id]);
+    $first->forceFill(['old_id' => 41])->save();
+    $second->forceFill(['old_id' => 42])->save();
     fakeLegacyOpportunities([
-        ['id' => 906, 'registry_id' => 14, 'product_category_ids' => [41], 'quote_product_category_ids' => [42]],
-        ['id' => 907, 'registry_id' => 14, 'product_category_ids' => [], 'quote_product_category_ids' => [42]],
+        ['id' => 906, 'registry_id' => 14, 'product_category_ids' => [41]],
+        ['id' => 907, 'registry_id' => 14, 'product_category_ids' => [42]],
     ]);
 
     $run = runOpportunitiesMigration();
@@ -185,33 +187,81 @@ it('falls back to the quote line categories only when the opportunity has none o
 
     expect($run->created_rows)->toBe(2)
         ->and($run->report ?? [])->toBe([])
-        ->and($lines(906))->toBe([$own->id])
-        ->and($lines(907))->toBe([$fromQuote->id]);
+        ->and($lines(906))->toBe([$first->id])
+        ->and($lines(907))->toBe([$second->id]);
+});
+
+it('creates the product lines on a migrated category that is not active, history only (user directive 2026-10-13)', function () {
+    opportunitiesSourceRegistry(14);
+    $inactive = ProductCategory::factory()->create(['business_function_id' => BusinessFunction::factory()->create()->id, 'is_active' => false]);
+    $inactive->forceFill(['old_id' => 41])->save();
+    fakeLegacyOpportunities([['id' => 906, 'registry_id' => 14, 'product_category_ids' => [41]]]);
+
+    $run = runOpportunitiesMigration();
+
+    expect($run->created_rows)->toBe(1)
+        ->and($run->report ?? [])->toBe([])
+        ->and(Opportunity::query()->where('old_id', 906)->firstOrFail()->productLines()->pluck('product_category_id')->all())->toBe([$inactive->id]);
 });
 
 it('back-fills the product lines of an imported opportunity that has none on a re-run, never overwriting', function () {
     opportunitiesSourceRegistry(15);
-    [$own, $fromQuote] = ProductCategory::factory()->count(2)->create(['business_function_id' => BusinessFunction::factory()->create()->id]);
+    [$own, $late] = ProductCategory::factory()->count(2)->create(['business_function_id' => BusinessFunction::factory()->create()->id]);
     $own->forceFill(['old_id' => 44])->save();
     fakeLegacyOpportunities([
-        ['id' => 908, 'registry_id' => 15, 'product_category_ids' => [], 'quote_product_category_ids' => [43]],
-        ['id' => 909, 'registry_id' => 15, 'product_category_ids' => [44], 'quote_product_category_ids' => [43]],
+        ['id' => 908, 'registry_id' => 15, 'product_category_ids' => [43]],
+        ['id' => 909, 'registry_id' => 15, 'product_category_ids' => [44]],
     ]);
     $first = runOpportunitiesMigration();
-    $fromQuote->forceFill(['old_id' => 43])->save();
+    $late->forceFill(['old_id' => 43])->save();
 
     $second = runOpportunitiesMigration();
     $third = runOpportunitiesMigration();
     $lines = fn (int $oldId): array => Opportunity::query()->where('old_id', $oldId)->firstOrFail()
         ->productLines()->pluck('product_category_id')->all();
 
-    expect(collect($first->report)->pluck('message')->all())->toBe(['Unresolved quote_product_category_ids (legacy id 43).'])
+    expect(collect($first->report)->pluck('message')->all())->toBe(['Unresolved product_category_ids (legacy id 43).'])
         ->and($second->skipped_rows)->toBe(2)
         ->and($second->created_rows)->toBe(0)
         ->and(collect($second->report)->pluck('message')->all())->toBe(['Missing product categories back-filled.'])
-        ->and($lines(908))->toBe([$fromQuote->id])
+        ->and($lines(908))->toBe([$late->id])
         ->and($lines(909))->toBe([$own->id])
         ->and($third->skipped_rows)->toBe(2)
+        ->and($third->report ?? [])->toBe([]);
+});
+
+it('writes the general notes the legacy composed, Info preliminari blocks included', function () {
+    opportunitiesSourceRegistry(16);
+    fakeLegacyOpportunities([[
+        'id' => 910, 'registry_id' => 16,
+        'general_notes' => "Cliente storico\n\nInfo Preliminari APL-PAL:\nIn attesa di atto di concessione",
+        'preliminary_info_blocks' => ["Info Preliminari APL-PAL:\nIn attesa di atto di concessione"],
+    ]]);
+
+    runOpportunitiesMigration();
+
+    expect(Opportunity::query()->where('old_id', 910)->value('general_notes'))
+        ->toBe("Cliente storico\n\nInfo Preliminari APL-PAL:\nIn attesa di atto di concessione");
+});
+
+it('back-fills the missing Info preliminari notes of an imported opportunity on a re-run, once', function () {
+    opportunitiesSourceRegistry(17);
+    fakeLegacyOpportunities([[
+        'id' => 911, 'registry_id' => 17, 'general_notes' => 'Cliente storico', 'updated_at' => '2020-07-01 18:30:00',
+        'preliminary_info_blocks' => ["Info Preliminari Soa:\nClassifica III", "Info Preliminari Gara:\nScadenza a marzo"],
+    ]]);
+    runOpportunitiesMigration();
+    // As imported before the card notes existed, the SOA one already written by hand.
+    Opportunity::query()->where('old_id', 911)->toBase()->update(['general_notes' => "Cliente storico\n\nInfo Preliminari Soa:\nClassifica III"]);
+
+    $second = runOpportunitiesMigration();
+    $third = runOpportunitiesMigration();
+    $opportunity = Opportunity::query()->where('old_id', 911)->firstOrFail();
+
+    expect($opportunity->general_notes)
+        ->toBe("Cliente storico\n\nInfo Preliminari Soa:\nClassifica III\n\nInfo Preliminari Gara:\nScadenza a marzo")
+        ->and($opportunity->updated_at->format('Y-m-d H:i:s'))->toBe('2020-07-01 18:30:00')
+        ->and(collect($second->report)->pluck('message')->all())->toBe(['Missing preliminary info notes back-filled.'])
         ->and($third->report ?? [])->toBe([]);
 });
 

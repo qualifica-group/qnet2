@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { CATEGORY_POPUP_WIDTH_CLASS } from '@/features/product-lines/category-popup-width'
 import {
   flattenCategoryTree,
   pruneToPickable,
@@ -100,6 +101,7 @@ export function ProductCategoryTreeSelect({
 
   return (
     <SearchableSelect
+      contentClassName={CATEGORY_POPUP_WIDTH_CLASS}
       value={value}
       onChange={onChange}
       options={options}

@@ -118,13 +118,14 @@ trait MapsLegacyOperationalRecord
     }
 
     /**
-     * A legacy datetime, null when blank, zeroed (`0000-00-00`) or unparsable.
+     * A legacy datetime (the legacy already sends zeroed ones as null), null
+     * when blank or unparsable.
      */
     private function legacyTimestamp(mixed $value): ?CarbonImmutable
     {
         $value = trim((string) ($value ?? ''));
 
-        if ($value === '' || str_starts_with($value, '0000')) {
+        if ($value === '') {
             return null;
         }
 

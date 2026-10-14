@@ -70,6 +70,9 @@
           Richiede che l'API legacy `work-orders` (repo `/Users/Repository/qnet`,
           `Api/V2/WorkOrderMigrationController`) esponga `stato_pagamento`, `accordo_pagamento`,
           `insoluti` di `orderisos`: modifica FUORI da questo repo, va autorizzata a parte.
+          (2026-10-13, autorizzata ed eseguita) Il legacy espone i tre campi dalla riga `orderisos` della
+          commessa (id piu' basso se ce ne sono piu' d'una): `stato_pagamento` int|null (0 -> null),
+          `accordo_pagamento` string|null, `insoluti` bool.
 
     D-15 — (utente 2026-10-07, modifica in corso d'opera) I totali NON sono fissi Consulenze/Ente: uno
           per ogni tipologia prodotto configurata, come il riepilogo per tipologia dell'offerta (spec 0099,
