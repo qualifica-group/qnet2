@@ -9,19 +9,24 @@ use App\Models\ProductCategory;
 /**
  * Provisions the "[OLD] Costi" category branch of the legacy cost import (spec
  * 0174) on demand and returns the category a cost row lands in. The root is
- * created NOT active: the legacy costs are history only, hidden with their
- * branch from every input (spec 0208, user directive 2026-10-13); an operator
- * who reactivates it later is not overridden. Categories resolve
- * by name + parent (firstOrCreate), never by `old_id`: that id space belongs
- * to the legacy `service_categories`. Nothing is memoized, because every row
+ * created NOT active, under the "Old category" container (user directive
+ * 2026-10-14): the legacy costs are history only, hidden with their branch
+ * from every input (spec 0208, user directive 2026-10-13); an operator who
+ * reactivates it later is not overridden. The root resolves by name wherever
+ * it sits, so one an earlier run left at top level is reused, not doubled;
+ * the rest by name + parent (firstOrCreate), never by `old_id`: that id space
+ * belongs to the legacy `service_categories`. Nothing is memoized, because every row
  * runs in its own transaction and a rolled-back row would leave a stale id.
  */
 final class CostCategoryResolver
 {
+    public function __construct(private readonly LegacyCategoryContainer $container) {}
+
     public function resolve(string $source, ?string $legacyCategory): int
     {
         // Step 1: the root and the branch of this legacy table.
-        $root = ProductCategory::firstOrCreate(['name' => CostProductCatalogue::ROOT, 'parent_id' => null], ['is_active' => false]);
+        $root = ProductCategory::query()->where('name', CostProductCatalogue::ROOT)->orderBy('id')->first()
+            ?? ProductCategory::create(['name' => CostProductCatalogue::ROOT, 'parent_id' => $this->container->id(), 'is_active' => false]);
         $branch = ProductCategory::firstOrCreate(['name' => CostProductCatalogue::BRANCHES[$source], 'parent_id' => $root->id]);
 
         // Step 2: the branch's attributes, inherited by its sub-categories.

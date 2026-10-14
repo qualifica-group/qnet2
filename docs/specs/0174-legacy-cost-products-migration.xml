@@ -82,8 +82,9 @@
     AC-005  Re-import idempotente (skipped); un costo con lo stesso id di un servizio gia' migrato viene creato.
     AC-006  La sorgente `products` non salta un servizio il cui id coincide con un costo gia' migrato.
     AC-007  Riga senza nome -> errore di riga; codice legacy gia' usato -> PRD sequenziale + warning.
-    AC-008  Il seed `QualificaLegacyImportSeeder` importa i costi nella stessa mass run, la radice "Costi" resta
-            di primo livello e il re-run non duplica.
+    AC-008  Il seed `QualificaLegacyImportSeeder` importa i costi nella stessa mass run, la radice "[OLD] Costi"
+            sta sotto il contenitore "Old category" (decisione utente 2026-10-14, spec 0013 emendamento quinquies)
+            e il re-run non duplica.
   </acceptance>
 
 </spec>

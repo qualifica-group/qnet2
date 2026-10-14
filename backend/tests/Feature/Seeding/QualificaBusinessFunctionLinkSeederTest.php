@@ -8,12 +8,12 @@ use Database\Seeders\QualificaBusinessFunctionLinkSeeder;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
-// The "Formazione" root category and the "APL" subcategory are assigned to the
-// business function of the same name — functions the external qnet CRM
-// supplies, so the link runs after the import and is never fatal when one of
-// them is missing. "Presa Appuntamenti" is assigned to "Consulenza", which the
-// seeder creates itself (user directive 2026-09-28), and "No categoria" to
-// "No funzione aziendale", created the same way (user decision 2026-10-12).
+// The "Formazione" and "APL" roots are assigned to the business function of
+// the same name, "Presa Appuntamenti" to "Consulenza" (user directive
+// 2026-09-28) and "No categoria" to "No funzione aziendale" (user decision
+// 2026-10-12). Every one of those functions is created by the seeder when no
+// function of that name exists, compared without case (user directive
+// 2026-10-14): the legacy import adopts them instead of supplying them.
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
@@ -28,69 +28,36 @@ $formazione = fn (): ProductCategory => ProductCategory::query()
 
 $apl = fn (): ProductCategory => ProductCategory::query()->where('name', 'APL')->firstOrFail();
 
-/**
- * One scenario instead of three: the catalogue seeder costs ~1s per run, and
- * the "APL" track below never touches "Formazione"'s row, so the baseline
- * (no function imported), the single link and its idempotent re-run share one
- * seed instead of three.
- */
-it('leaves both roots unassigned with no imported function, then links only "APL" once its function exists, without ever touching "Formazione"', function () use ($formazione, $apl): void {
-    // Baseline: no import ran, the legacy business functions do not exist
-    // (was: 'leaves the categories unassigned, without failing, when the functions are absent').
+it('REQUIREMENT CHANGED (user directive 2026-10-14): creates the "Formazione" and "APL" functions itself and links both roots, idempotently', function () use ($formazione, $apl): void {
     test()->seed(QualificaCatalogSeeder::class);
+    test()->seed(QualificaBusinessFunctionLinkSeeder::class); // re-run: neither duplicated nor relinked.
 
-    // REQUIREMENT CHANGED (user directives 2026-09-28 and 2026-10-12): the
-    // functions the seeder owns exist even without the import.
-    expect(BusinessFunction::query()->orderBy('id')->pluck('name')->all())->toBe(['Consulenza', 'No funzione aziendale'])
-        ->and($formazione()->business_function_id)->toBeNull()
-        ->and($apl()->business_function_id)->toBeNull();
-
-    // Only one of the two functions made it through the legacy import
-    // (was: 'links each category independently, so a missing function never blocks the other').
-    $function = BusinessFunction::factory()->create(['name' => 'APL']);
-
-    test()->seed(QualificaBusinessFunctionLinkSeeder::class);
-
-    expect($apl()->business_function_id)->toBe($function->id)
-        ->and($formazione()->business_function_id)->toBeNull();
-
-    // Idempotent re-run: already linked, no change; the sibling subcategories
-    // and the Consulenza root keep resolving nothing of their own
-    // (was: 'assigns the "APL" root to the function of the same name, idempotently').
-    test()->seed(QualificaBusinessFunctionLinkSeeder::class);
-
-    expect($apl()->business_function_id)->toBe($function->id)
+    expect(BusinessFunction::query()->orderBy('id')->pluck('name')->all())->toBe(['Formazione', 'APL', 'Consulenza', 'No funzione aziendale'])
+        ->and($formazione()->businessFunction->name)->toBe('Formazione')
         ->and($apl()->businessFunction->name)->toBe('APL')
-        ->and(ProductCategory::query()->where('name', 'Orientamento specialistico')->value('business_function_id'))
-        ->toBeNull()
-        ->and(ProductCategory::query()->whereNull('parent_id')->where('name', 'Consulenza')->value('business_function_id'))
-        ->toBeNull();
+        // The sibling subcategories and the Consulenza root resolve nothing of their own.
+        ->and(ProductCategory::query()->where('name', 'Orientamento specialistico')->value('business_function_id'))->toBeNull()
+        ->and(ProductCategory::query()->whereNull('parent_id')->where('name', 'Consulenza')->value('business_function_id'))->toBeNull();
 });
 
-it('assigns the root once the imported function exists, idempotently', function () use ($formazione): void {
+it('reuses a function of the same name in another case, instead of creating a second one', function () use ($formazione): void {
+    $imported = BusinessFunction::factory()->create(['name' => 'FORMAZIONE']);
+
     test()->seed(QualificaCatalogSeeder::class);
 
-    $function = BusinessFunction::factory()->create(['name' => 'Formazione']);
-
-    test()->seed(QualificaBusinessFunctionLinkSeeder::class);
-    test()->seed(QualificaBusinessFunctionLinkSeeder::class); // re-run: already linked, no change.
-
-    expect($formazione()->business_function_id)->toBe($function->id);
+    expect(BusinessFunction::query()->whereRaw('LOWER(name) = ?', ['formazione'])->count())->toBe(1)
+        ->and($formazione()->business_function_id)->toBe($imported->id);
 });
 
 it('assigns the root, so the whole Formazione branch inherits the function', function () use ($formazione): void {
     test()->seed(QualificaCatalogSeeder::class);
 
-    BusinessFunction::factory()->create(['name' => 'Formazione']);
-    test()->seed(QualificaBusinessFunctionLinkSeeder::class);
-
     // The link sits on the root alone: descendants resolve it own-or-inherited
     // (CategoryHierarchy::effectiveBusinessFunction), they do not carry a row.
-    // "Presa Appuntamenti" and "No categoria" carry their own (user
-    // directives 2026-09-28 and 2026-10-12): they are outside the Formazione
-    // branch.
+    // "APL", "Presa Appuntamenti" and "No categoria" carry their own: they are
+    // outside the Formazione branch.
     expect(ProductCategory::query()->whereNotNull('business_function_id')->orderBy('id')->pluck('name')->all())
-        ->toBe(['Formazione', 'Presa Appuntamenti', 'No categoria'])
+        ->toBe(['Formazione', 'Presa Appuntamenti', 'APL', 'No categoria'])
         ->and($formazione()->businessFunction->name)->toBe('Formazione');
 });
 
@@ -106,15 +73,13 @@ it('never steals a slot already assigned by hand', function () use ($formazione)
     expect($formazione()->business_function_id)->toBe($manual->id);
 });
 
-it('picks the lowest id when the legacy catalogue holds the name twice', function () use ($formazione): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
+it('picks the lowest id when the name exists twice', function () use ($formazione): void {
     // `business_functions.name` carries no unique index: a legacy catalogue may
     // well hold the name more than once.
     $first = BusinessFunction::factory()->create(['name' => 'Formazione']);
     BusinessFunction::factory()->create(['name' => 'Formazione']);
 
-    test()->seed(QualificaBusinessFunctionLinkSeeder::class);
+    test()->seed(QualificaCatalogSeeder::class);
 
     expect($formazione()->business_function_id)->toBe($first->id);
 });

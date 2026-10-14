@@ -2,6 +2,7 @@
 
 use App\Enums\MigrationStatus;
 use App\Jobs\RunMigrationJob;
+use App\Migrations\Support\LegacyCategoryContainer;
 use App\Models\BusinessFunction;
 use App\Models\MigrationRun;
 use App\Models\ProductCategory;
@@ -61,7 +62,9 @@ it('creates root and child categories, remapping parent_id via old_id', function
     $child = ProductCategory::query()->where('old_id', 2)->first();
 
     expect($root->name)->toBe('[OLD] Electronics')
-        ->and($root->parent_id)->toBeNull()
+        // REQUIREMENT CHANGED (user directive 2026-10-14): every legacy root
+        // lands under the "Old category" container.
+        ->and($root->parent_id)->toBe(ProductCategory::query()->where('name', LegacyCategoryContainer::NAME)->whereNull('parent_id')->value('id'))
         ->and($root->description)->toBe('Top level')
         // The external system has ONE inheritance flag; it seeds all three qnet
         // per-context barriers identically (Product / Offerta / Commessa).
@@ -106,7 +109,8 @@ it('REQUIREMENT CHANGED: creates a child detached with a warning when its parent
     runMigrationJobFor($run);
 
     $fresh = $run->fresh();
-    expect(ProductCategory::query()->where('old_id', 2)->first()->parent_id)->toBeNull()
+    // Detached, then gathered under the "Old category" container (user directive 2026-10-14).
+    expect(ProductCategory::query()->where('old_id', 2)->first()->parent_id)->toBe(ProductCategory::query()->where('name', LegacyCategoryContainer::NAME)->whereNull('parent_id')->value('id'))
         ->and($fresh->created_rows)->toBe(1)
         ->and(json_encode($fresh->report))->toContain('Unresolved parent_id');
 });
@@ -197,11 +201,12 @@ it('REQUIREMENT CHANGED (user directive 2026-10-13): never adopts a qnet categor
     expect($consulenza->fresh()->old_id)->toBeNull()
         ->and($seeded->fresh()->only(array_keys($before)))->toBe($before)
         ->and($legacyRoot->name)->toBe('[OLD] Consulenza')
-        ->and($legacyRoot->parent_id)->toBeNull()
+        // Under the "Old category" container (user directive 2026-10-14).
+        ->and($legacyRoot->parent_id)->toBe(ProductCategory::query()->where('name', LegacyCategoryContainer::NAME)->whereNull('parent_id')->value('id'))
         ->and($legacyChild->name)->toBe('[OLD] Presa Appuntamenti')
         ->and($legacyChild->parent_id)->toBe($legacyRoot->id)
         ->and($legacyChild->description)->toBe('Fissaggio appuntamenti')
-        ->and(ProductCategory::query()->count())->toBe(4)
+        ->and(ProductCategory::query()->count())->toBe(5)
         ->and($run->fresh()->created_rows)->toBe(2)
         ->and($run->fresh()->report)->toBeNull();
 });
@@ -361,6 +366,36 @@ it('REQUIREMENT CHANGED (spec 0183 F-9): a self-referencing root arrives with a 
     }
 
     expect(ProductCategory::query()->where('name', 'SOA')->count())->toBe(1)
-        ->and(ProductCategory::query()->where('old_id', 2)->first()->parent_id)->toBeNull()
+        // A root of the legacy, under the "Old category" container (user directive 2026-10-14).
+        ->and(ProductCategory::query()->where('old_id', 2)->first()->parent_id)->toBe(ProductCategory::query()->where('name', LegacyCategoryContainer::NAME)->whereNull('parent_id')->value('id'))
         ->and(json_encode($run->fresh()->report))->not->toContain('detached');
+});
+
+it('gathers the legacy roots an earlier seed nested under "Consulenza" into the "Old category" container (user directive 2026-10-14)', function () {
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
+            'items' => [['id' => 30, 'name' => '[OLD] GDPR', 'parent_id' => null, 'is_active' => false]],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    $consulenza = ProductCategory::factory()->create(['name' => 'Consulenza', 'parent_id' => null]);
+    $presaAppuntamenti = ProductCategory::factory()->create(['name' => 'Presa Appuntamenti', 'parent_id' => $consulenza->id]);
+    $nested = ProductCategory::factory()->create(['name' => '[OLD] ISO', 'parent_id' => $consulenza->id, 'old_id' => 1, 'is_active' => false]);
+    $nestedChild = ProductCategory::factory()->create(['name' => '[OLD] ISO 9001', 'parent_id' => $nested->id, 'old_id' => 2, 'is_active' => false]);
+
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'product-categories']));
+
+    $container = ProductCategory::query()->where('name', LegacyCategoryContainer::NAME)->whereNull('parent_id')->sole();
+
+    expect($nested->fresh()->parent_id)->toBe($container->id)
+        ->and(ProductCategory::query()->where('old_id', 30)->value('parent_id'))->toBe($container->id)
+        // The legacy hierarchy and the qnet catalogue keep their shape.
+        ->and($nestedChild->fresh()->parent_id)->toBe($nested->id)
+        ->and($presaAppuntamenti->fresh()->parent_id)->toBe($consulenza->id)
+        ->and($consulenza->fresh()->parent_id)->toBeNull()
+        ->and($container->is_active)->toBeFalse()
+        ->and($container->is_selectable)->toBeFalse()
+        ->and($container->business_function_id)->toBeNull();
 });

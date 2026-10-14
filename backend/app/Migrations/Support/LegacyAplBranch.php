@@ -12,7 +12,8 @@ use App\Services\ProductCategories\CategoryHierarchy;
  * The legacy sends every category name behind LEGACY_PREFIX (user directive
  * 2026-10-13), so its APL tree arrives as LEGACY_BRANCH and never shares a
  * name with the manual one. It hangs where every other legacy node does,
- * under "Consulenza" (user directive 2026-10-05), and nothing in its branch
+ * under the "Old category" container (LegacyCategoryContainer, user directive
+ * 2026-10-14), and nothing in its branch
  * is selectable. Its products stay
  * on it, history only (user directive 2026-10-13).
  */

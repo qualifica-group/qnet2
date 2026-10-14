@@ -10,6 +10,7 @@ use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Support\CategoryBusinessFunctionLinker;
 use App\Migrations\Support\ExternalApiClient;
 use App\Migrations\Support\LegacyAplBranch;
+use App\Migrations\Support\LegacyCategoryContainer;
 use App\Models\ProductCategory;
 use App\Services\ProductCategoryService;
 use RuntimeException;
@@ -35,7 +36,8 @@ use RuntimeException;
  * migrated catalogue is history only, hidden with its products from every
  * input (spec 0208), while the records linked to it stay valid (user
  * directive 2026-10-13). The legacy APL branch arrives as "[OLD] APL" and is imported
- * as containers (LegacyAplBranch).
+ * as containers (LegacyAplBranch). Every legacy root ends up under the "Old
+ * category" container (LegacyCategoryContainer, user directive 2026-10-14).
  */
 class ProductCategoriesSource extends AbstractMigrationSource
 {
@@ -53,6 +55,7 @@ class ProductCategoriesSource extends AbstractMigrationSource
         private readonly ProductCategoryService $service,
         private readonly CategoryBusinessFunctionLinker $businessFunctions,
         private readonly LegacyAplBranch $aplBranch,
+        private readonly LegacyCategoryContainer $container,
     ) {
         parent::__construct($client);
     }
@@ -210,12 +213,15 @@ class ProductCategoriesSource extends AbstractMigrationSource
     }
 
     /**
-     * Closes the legacy APL tree: it is never a classification target (user
-     * directive 2026-10-05).
+     * Closes the legacy APL tree, never a classification target (user
+     * directive 2026-10-05), and gathers every legacy root under the "Old
+     * category" container (user directive 2026-10-14). The roots are created
+     * rootless first, so a legacy root still authors its own `requires_quote`.
      */
     protected function afterImport(MigrationImportContext $context): void
     {
         $this->aplBranch->closeLegacyBranch($this->createdIds);
+        $this->container->gather();
     }
 
     /**

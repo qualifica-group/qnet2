@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Enums\MigrationStatus;
 use App\Models\MassMigrationRun;
-use App\Models\ProductCategory;
 use App\Models\Sector;
 use App\Models\User;
 use App\Services\MigrationService;
@@ -12,28 +11,27 @@ use App\Services\UserService;
 use Illuminate\Database\Seeder;
 
 /**
- * The legacy import (spec 0013 / 0046). It is the LAST step of
- * QualificaProductionDataSeeder and stays runnable on its own
+ * The legacy import (spec 0013 / 0046). A step of QualificaProductionDataSeeder
+ * that stays runnable on its own
  * (`php artisan db:seed --class=QualificaLegacyImportSeeder`), but only AFTER
- * QualificaCatalogSeeder — it adopts that seeder's source catalogue by name,
- * and nestImportedCategories() needs the "Consulenza" root it creates.
+ * QualificaCatalogSeeder — it adopts that seeder's source catalogue and its
+ * "Formazione" / "APL" business functions by name.
  *
  * It pulls the client's real catalogues from the external system through the
- * SAME
- * engine the "Migrazioni" section uses — one MassMigrationRun with one child
- * MigrationRun per source, run inline via MigrationService::runMassSync. No
- * catalogue is hard-coded here: the values are whatever the legacy system
+ * SAME engine the "Migrazioni" section uses — one MassMigrationRun with one
+ * child MigrationRun per source, run inline via MigrationService::runMassSync.
+ * No catalogue is hard-coded here: the values are whatever the legacy system
  * holds, and the run is visible in the Migrazioni history like a UI-launched
- * one. The one shape decision the seed does impose is where the imported
- * product taxonomy lands — under the template's "Consulenza" root, see
- * nestImportedCategories().
+ * one. Where the legacy product taxonomy lands, the "Old category" container,
+ * is the sources' own rule (LegacyCategoryContainer), not this seeder's.
  *
  * Idempotent by construction: every source skips a record whose `old_id` is
- * already imported, and the source catalogue QualificaCatalogSeeder also
- * provisions by name is adopted rather than duplicated (SourcesSource). The
- * product categories are never adopted: the legacy sends them as "[OLD] ..."
- * (user directive 2026-10-13). Re-running therefore only pulls in what the
- * legacy system has that qnet does not.
+ * already imported, and the sources and business functions
+ * QualificaCatalogSeeder also provisions by name are adopted rather than
+ * duplicated (SourcesSource, BusinessFunctionsSource). The product categories
+ * are never adopted: the legacy sends them as "[OLD] ..." (user directive
+ * 2026-10-13). Re-running therefore only pulls in what the legacy system has
+ * that qnet does not.
  *
  * Both preconditions are optional, never fatal: with no external system
  * configured, or no super-admin to act as, the static catalogue stands on its
@@ -87,18 +85,9 @@ class QualificaLegacyImportSeeder extends Seeder
         // `product-categories` and its VAT through the phase-1 `vat-rates`.
         'products',
         // The legacy costs (spec 0174): cost-only products under their own
-        // "Costi" root, VAT remapped through the phase-1 `vat-rates`. That root
-        // carries no `old_id`, so nestImportedCategories() never moves it.
+        // "[OLD] Costi" branch, VAT remapped through the phase-1 `vat-rates`.
         'cost-products',
     ];
-
-    /**
-     * Root the legacy product taxonomy is nested under: the client's imported
-     * categories hang below "Consulenza" (a root the static catalogue seeds),
-     * never beside it at the top level. Must match a root name of
-     * QualificaCatalogSeeder's CATALOG.
-     */
-    private const string LEGACY_CATEGORY_ROOT = 'Consulenza';
 
     public function run(): void
     {
@@ -130,60 +119,10 @@ class QualificaLegacyImportSeeder extends Seeder
         // Step 3: one mass run over the fixed source list, executed inline.
         $run = app(MigrationService::class)->runMassSync($actor, self::SOURCES);
 
-        // Step 4: reparent the freshly imported taxonomy under the client root.
-        $this->nestImportedCategories();
-
-        // Step 5: the legacy sectors are history only (spec 0213 D-2).
+        // Step 4: the legacy sectors are history only (spec 0213 D-2).
         $this->deactivateLegacySectors();
 
         $this->report($run);
-    }
-
-    /**
-     * Move every migrated product category still sitting at top level under
-     * LEGACY_CATEGORY_ROOT: a legacy root, or one ProductCategoriesSource left
-     * detached because its own parent never migrated (the run report carries
-     * that warning) — neither belongs beside the catalogue's own roots.
-     * Categories without an `old_id` are the static catalogue's tree and are
-     * never touched, so re-running moves nothing a second time.
-     *
-     * A direct `parent_id` write, mirroring the engine's own relink pass
-     * (ProductCategoriesSource::afterImport): the tree is a plain adjacency
-     * list with no derived column to maintain.
-     */
-    private function nestImportedCategories(): void
-    {
-        $root = ProductCategory::query()
-            ->whereNull('parent_id')
-            ->where('name', self::LEGACY_CATEGORY_ROOT)
-            ->first();
-
-        if ($root === null) {
-            $this->command?->warn(sprintf(
-                'Imported product categories left at top level: no "%s" root category found.',
-                self::LEGACY_CATEGORY_ROOT,
-            ));
-
-            return;
-        }
-
-        $orphans = ProductCategory::query()
-            ->whereNotNull('old_id')
-            ->whereNull('parent_id')
-            ->whereKeyNot($root->getKey())
-            ->get();
-
-        // Per-model update (not a mass query update) so the activity log
-        // records the reparent, as every other write on this model does.
-        $orphans->each(fn (ProductCategory $category) => $category->update(['parent_id' => $root->getKey()]));
-
-        if ($orphans->isNotEmpty()) {
-            $this->command?->info(sprintf(
-                '%d imported product categories nested under "%s".',
-                $orphans->count(),
-                self::LEGACY_CATEGORY_ROOT,
-            ));
-        }
     }
 
     /**

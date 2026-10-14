@@ -69,13 +69,10 @@ use Illuminate\Database\Seeder;
  *     QualificaWorkflowSeeder as the last step: one QuoteWorkflow per
  *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
  *     category and carrying its own working-state pick list;
- *   - the business function links (spec 0023) of the "Formazione" root, of
- *     the "APL" subcategory, of "Presa Appuntamenti" and of "No categoria",
- *     delegated to QualificaBusinessFunctionLinkSeeder as the very last step:
- *     the first two functions are imported from the external qnet CRM, not
- *     seeded here, so those links are a documented no-op whenever the import
- *     did not run; "Consulenza" and "No funzione aziendale" are created by
- *     that seeder itself.
+ *   - the business functions of "Formazione", "APL", "Presa Appuntamenti"
+ *     and "No categoria", created and linked by
+ *     QualificaBusinessFunctionLinkSeeder (spec 0023, user directive
+ *     2026-10-14).
  *
  * Deliberately separate from QualificaTemplateSeeder, which provisions
  * STRUCTURE ONLY (the custom field definitions) and creates no domain row.
@@ -85,11 +82,9 @@ use Illuminate\Database\Seeder;
  * types, categories and courses — a re-run never duplicates rows nor
  * overwrites manual edits.
  *
- * Runs BEFORE QualificaLegacyImportSeeder: that step adopts the source
- * catalogue below by name instead of duplicating it, and nests its imported
- * taxonomy under the "Consulenza" root created below. Launched on its own,
- * this seeder OFFERS to chain it (see offerLegacyImport) so the pair is not
- * left half-run by hand.
+ * Runs BEFORE QualificaLegacyImportSeeder: that step adopts the sources and
+ * business functions below by name instead of duplicating them. Launched on
+ * its own, this seeder OFFERS to chain it (see offerLegacyImport).
  */
 class QualificaCatalogSeeder extends Seeder
 {
@@ -280,7 +275,7 @@ class QualificaCatalogSeeder extends Seeder
      *                                    place. True when this seeder is launched on its own — that
      *                                    import is the natural next step and depends on what lands
      *                                    here. QualificaProductionDataSeeder passes false: it runs
-     *                                    the import itself, as its own step 4.
+     *                                    the import itself, as its own step 5.
      */
     public function run(bool $askForLegacyImport = true): void
     {
@@ -309,22 +304,20 @@ class QualificaCatalogSeeder extends Seeder
         // validates each code against the category's effective set.
         $this->call(QualificaQuoteLayoutSeeder::class);
 
-        // Step 5: the optional follow-up, on demand.
+        // Step 5: the business functions of the categories of step 2, before
+        // the import below, which adopts them by name.
+        $this->call(QualificaBusinessFunctionLinkSeeder::class);
+
+        // Step 6: the optional follow-up, on demand.
         if ($askForLegacyImport) {
             $this->offerLegacyImport();
         }
-
-        // Step 6: the business function links, LAST — the functions they look
-        // for come from the import above, not from this catalogue. A no-op,
-        // never an error, when that import did not run or has no such function;
-        // QualificaProductionDataSeeder repeats it after its own import.
-        $this->call(QualificaBusinessFunctionLinkSeeder::class);
     }
 
     /**
      * Ask whether to pull the configuration tables from q-crm as well — the
-     * step that must run right after this one (it adopts the sources seeded
-     * above and nests its taxonomy under the "Consulenza" root).
+     * step that must run right after this one (it adopts the sources and the
+     * business functions seeded above).
      *
      * Silent, and never importing, when there is nobody to ask — a programmatic
      * `$this->call()`, or a `--no-interaction` run (`test()->seed()` included:

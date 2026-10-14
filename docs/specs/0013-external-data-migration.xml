@@ -382,6 +382,22 @@
       Il matcher di qnet-2 resta invariato (email, poi nome esatto). Gli utenti gia' importati non vengono
       ricollegati ne' rinominati: vale dal prossimo import pulito degli utenti.
     </amendment>
+    <amendment date="2026-10-14" title="quinquies - Catalogo legacy sotto &quot;Old category&quot;, funzioni Formazione/APL dal seed">
+      Decisione utente: tutte le categorie legacy stanno sotto un'unica radice "Old category"
+      (`LegacyCategoryContainer::NAME`), non attiva e non selezionabile, senza funzione aziendale; non piu' sotto
+      "Consulenza". La raccolta e' una regola delle sorgenti, non del seed: `ProductCategoriesSource::afterImport` e
+      `CostProductsSource::afterImport` chiamano `LegacyCategoryContainer::gather()`, che sposta ogni categoria con
+      old_id appesa alla radice o a una categoria qnet (comprese quelle che il seed aveva messo sotto "Consulenza") e
+      la radice "[OLD] Costi"; la gerarchia legacy sotto di loro resta invariata. `CostCategoryResolver` crea
+      "[OLD] Costi" dentro il contenitore e la riusa per nome ovunque sia. Tolti
+      `QualificaLegacyImportSeeder::nestImportedCategories()` e `LEGACY_CATEGORY_ROOT`.
+      Funzioni aziendali: `QualificaBusinessFunctionLinkSeeder` crea "Formazione" e "APL" (oltre a "Consulenza" e
+      "No funzione aziendale") quando manca una funzione con quel nome, confrontato senza maiuscole, e collega le
+      categorie senza aspettare l'import. `BusinessFunctionsSource` ADOTTA la funzione non ancora rivendicata
+      (old_id vuoto) con lo stesso nome senza maiuscole ("FORMAZIONE" -> "Formazione"): prende old_id e gli utenti
+      risolti, in aggiunta, e mantiene il suo nome. `QualificaProductionDataSeeder` non ripete piu' il
+      collegamento dopo l'import. "No categoria" resta una radice a parte.
+    </amendment>
   </amendments>
 
 </spec>

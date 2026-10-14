@@ -7,44 +7,32 @@ use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 /**
- * Links the catalogue categories that have a counterpart among the imported
- * business functions to it (spec 0023):
+ * Provides the business functions of the catalogue and links its categories
+ * to them (spec 0023):
  *
  *   - "Formazione", the ROOT: a category's EFFECTIVE business function is
  *     resolved own-or-inherited (CategoryHierarchy::effectiveBusinessFunction),
  *     so one row there reaches the whole branch, the GOL regions included;
- *   - "APL", a SUBCATEGORY of "Consulenza" (user directive 2026-09-07): it
- *     hosts its own offer and its own function, so the row sits on the node
- *     itself. Own-or-inherited means its own wins over anything the Consulenza
- *     root may carry, and it reaches nothing else — the sibling subcategories
- *     keep resolving the root's;
- *   - "Presa Appuntamenti", the Consulenza leaf (user directive 2026-09-28):
- *     linked to "Consulenza", the one function this seeder CREATES itself
- *     (OWN_FUNCTIONS) instead of expecting it from the import;
+ *   - "APL", the root of its own branch (user directive 2026-09-07);
+ *   - "Presa Appuntamenti", the Consulenza leaf (user directive 2026-09-28),
+ *     linked to "Consulenza";
  *   - "No categoria", the holding root of the legacy products imported without
  *     a category (user decision 2026-10-12): linked to "No funzione aziendale",
- *     another OWN function, so an offer line on one of those products can
- *     still extend its opportunity's coverage, which requires a function.
+ *     so an offer line on one of those products can still extend its
+ *     opportunity's coverage, which requires a function.
+ *
+ * Every one of those functions is CREATED here when no function of that name
+ * exists yet, compared without case (user directive 2026-10-14): the catalogue
+ * no longer waits for the legacy import to have its "Formazione" and "APL"
+ * functions. The import ADOPTS them by name (BusinessFunctionsSource) instead
+ * of adding a duplicate, so it can run before or after this seeder.
  *
  * The category is resolved by NAME at any depth: `name` is the catalogue's
  * natural key (QualificaCatalogSeeder seeds every node with `firstOrCreate` on
- * it), and only one of the links is a root.
- *
- * Runs LAST, after QualificaLegacyImportSeeder, because the business functions
- * are not part of the static catalogue: they are imported from the external
- * qnet CRM ('business-functions' is the first source of that import). Which is
- * why it is a step of BOTH entry points — QualificaCatalogSeeder chains it
- * after its own optional import offer, and QualificaProductionDataSeeder calls
- * it after the import it runs itself. Running twice is harmless: the second
- * pass finds the links already in place and does nothing.
- *
- * NEVER fatal (user requirement 2026-07-28): with no external system
- * configured — or with a legacy catalogue that simply has no function of that
- * name — the category is left unassigned and the seed carries on. Each link is
- * independent: a missing "APL" function never holds back the "Formazione" one.
- * Nor does it ever STEAL an occupied slot: a category already pointing at some
+ * it). It never STEALS an occupied slot: a category already pointing at some
  * other function keeps it, so an assignment made by hand survives the re-run,
  * in line with the rest of QualificaCatalogSeeder. The same holds for a slot
  * its branch already fills: an ancestor's function is inherited, and a second
@@ -53,10 +41,9 @@ use Illuminate\Database\Seeder;
 class QualificaBusinessFunctionLinkSeeder extends Seeder
 {
     /**
-     * Catalogue category name => the business function to assign it to. Same
-     * name on both sides, but they are two distinct catalogues: the category is
-     * seeded by QualificaCatalogSeeder::CATALOG, the function comes from the
-     * legacy import.
+     * Catalogue category name => the business function to assign it to. The
+     * category is seeded by QualificaCatalogSeeder::CATALOG, the function by
+     * this seeder.
      *
      * @var array<string, string>
      */
@@ -74,43 +61,34 @@ class QualificaBusinessFunctionLinkSeeder extends Seeder
      */
     private const string UNCATEGORIZED_FUNCTION = 'No funzione aziendale';
 
-    /**
-     * Business functions the legacy system does not supply, created here when
-     * no function of that name exists yet (user directives 2026-09-28 and
-     * 2026-10-12). `name` is the natural key, as for the imported ones.
-     *
-     * @var list<string>
-     */
-    private const array OWN_FUNCTIONS = ['Consulenza', self::UNCATEGORIZED_FUNCTION];
-
     public function __construct(private readonly CategoryHierarchy $hierarchy) {}
 
     public function run(): void
     {
-        // Step 1: the functions this seeder owns, before any link needs them.
-        foreach (self::OWN_FUNCTIONS as $functionName) {
-            $this->ensureFunction($functionName);
-        }
-
-        // Step 2: the category links, own and imported functions alike.
         foreach (self::LINKS as $categoryName => $functionName) {
-            $this->link($categoryName, $functionName);
+            // Step 1: the function, before the link needs it.
+            $function = $this->ensureFunction($functionName);
+
+            // Step 2: the category link.
+            $this->link($categoryName, $function);
         }
     }
 
-    private function ensureFunction(string $functionName): void
+    private function ensureFunction(string $functionName): BusinessFunction
     {
-        if (BusinessFunction::query()->where('name', $functionName)->exists()) {
-            return;
-        }
+        $function = $this->functionNamed($functionName);
 
-        // A per-model create, so the activity log records it like any other.
-        BusinessFunction::query()->create(['name' => $functionName]);
+        if ($function !== null) {
+            return $function;
+        }
 
         $this->command?->info(sprintf('Business function "%s" created.', $functionName));
+
+        // A per-model create, so the activity log records it like any other.
+        return BusinessFunction::query()->create(['name' => $functionName]);
     }
 
-    private function link(string $categoryName, string $functionName): void
+    private function link(string $categoryName, BusinessFunction $function): void
     {
         // Step 1: the category to assign. Absent only when this runs before the
         // catalogue, which is not a supported order.
@@ -127,23 +105,6 @@ class QualificaBusinessFunctionLinkSeeder extends Seeder
             return;
         }
 
-        // Step 3: the imported counterpart. `name` is not unique on business
-        // functions, so the lowest id wins rather than an arbitrary row.
-        $function = BusinessFunction::query()
-            ->where('name', $functionName)
-            ->orderBy('id')
-            ->first();
-
-        if ($function === null) {
-            $this->command?->warn(sprintf(
-                'Category "%s" left unassigned: no "%s" business function found.',
-                $categoryName,
-                $functionName,
-            ));
-
-            return;
-        }
-
         // A per-model update, like every other write on this model, so the
         // activity log records the assignment.
         $category->update(['business_function_id' => $function->id]);
@@ -151,7 +112,19 @@ class QualificaBusinessFunctionLinkSeeder extends Seeder
         $this->command?->info(sprintf(
             'Category "%s" assigned to the "%s" business function.',
             $categoryName,
-            $functionName,
+            $function->name,
         ));
+    }
+
+    /**
+     * `name` is not unique on business functions, so the lowest id wins rather
+     * than an arbitrary row; compared without case, as the import adopts it.
+     */
+    private function functionNamed(string $functionName): ?BusinessFunction
+    {
+        return BusinessFunction::query()
+            ->whereRaw('LOWER(name) = ?', [Str::lower($functionName)])
+            ->orderBy('id')
+            ->first();
     }
 }

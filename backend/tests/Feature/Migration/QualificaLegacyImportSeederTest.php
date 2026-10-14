@@ -4,8 +4,10 @@ use App\Enums\MigrationStatus;
 use App\Enums\ProductUsage;
 use App\Migrations\Support\CostProductCatalogue;
 use App\Migrations\Support\LegacyAplBranch;
+use App\Migrations\Support\LegacyCategoryContainer;
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
+use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\MassMigrationRun;
@@ -137,8 +139,8 @@ function fakeLegacyCatalogues(): void
 
 /**
  * The documented run order: QualificaLegacyImportSeeder runs AFTER
- * QualificaCatalogSeeder, which owns the "Consulenza" root it nests under and
- * the static source catalogue it must adopt. QualificaTemplateSeeder (custom
+ * QualificaCatalogSeeder, which owns the static sources and business
+ * functions it must adopt. QualificaTemplateSeeder (custom
  * field structure) plays no part here — hence its absence.
  */
 function seedCatalogThenLegacy(): void
@@ -179,17 +181,20 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         ->and(Source::query()->where('name', 'Passaparola')->value('old_id'))->toBe(81)
         ->and(Source::query()->where('name', 'Fiera')->value('old_id'))->toBe(82);
 
-    // was: 'nests the imported product taxonomy under the Consulenza root, keeping its own hierarchy'
+    // REQUIREMENT CHANGED (user directive 2026-10-14): the imported product
+    // taxonomy lands under the "Old category" container, not "Consulenza".
+    $container = ProductCategory::query()->where('name', LegacyCategoryContainer::NAME)->whereNull('parent_id')->sole();
     $consulenza = ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->sole();
     $legacyRoot = ProductCategory::query()->where('old_id', 51)->sole();
     $legacyChild = ProductCategory::query()->where('old_id', 52)->sole();
 
-    expect($legacyRoot->parent_id)->toBe($consulenza->id)
-        // History only (user directive 2026-10-13): the client root it is
-        // nested under stays active.
+    expect($legacyRoot->parent_id)->toBe($container->id)
+        // History only (user directive 2026-10-13), the container too.
         ->and($legacyRoot->is_active)->toBeFalse()
         ->and($legacyChild->is_active)->toBeFalse()
-        ->and($consulenza->is_active)->toBeTrue()
+        ->and($container->is_active)->toBeFalse()
+        ->and($container->is_selectable)->toBeFalse()
+        ->and(ProductCategory::query()->where('parent_id', $consulenza->id)->whereNotNull('old_id')->exists())->toBeFalse()
         // The legacy hierarchy survives: only top-level nodes are reparented.
         ->and($legacyChild->parent_id)->toBe($legacyRoot->id)
         // The static catalogue's own tree keeps its shape.
@@ -248,9 +253,9 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         ->and($subItem->task_template_stage_id)->toBeNull();
 
     // Spec 0174: the legacy costs land once, cost-only, under the
-    // "[OLD] Costi" root, which stays at top level (no old_id, never nested)
-    // and is history only (user directive 2026-10-13).
-    $costRoot = ProductCategory::query()->where('name', CostProductCatalogue::ROOT)->whereNull('parent_id')->sole();
+    // "[OLD] Costi" root, history only (user directive 2026-10-13), inside the
+    // "Old category" container (user directive 2026-10-14).
+    $costRoot = ProductCategory::query()->where('name', CostProductCatalogue::ROOT)->where('parent_id', $container->id)->sole();
     $vehicle = Product::query()->where('old_source', 'vehicles')->where('old_id', 3)->sole();
 
     expect(QualificaLegacyImportSeeder::SOURCES)->toContain('cost-products')
@@ -274,9 +279,9 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         ->and(Tag::query()->where('name', 'Legacy Tag')->count())->toBe(1)
         ->and(ProductCategory::query()->where('name', '[OLD] Bandi')->count())->toBe(1)
         ->and(Product::query()->where('old_source', 'vehicles')->count())->toBe(1)
-        // Already nested by the first run: the second one moves nothing.
-        ->and(ProductCategory::query()->where('old_id', 51)->value('parent_id'))
-        ->toBe(ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->value('id'))
+        // Already gathered by the first run: the second one moves nothing.
+        ->and(ProductCategory::query()->where('old_id', 51)->value('parent_id'))->toBe($container->id)
+        ->and(ProductCategory::query()->where('name', LegacyCategoryContainer::NAME)->count())->toBe(1)
         // Scoped to the imported category: the catalogue itself now owns an
         // unrelated pivot row (the "Ore complessive" attribute on Formazione),
         // so a global count no longer isolates the legacy import.
@@ -286,7 +291,7 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         ->and(MassMigrationRun::query()->latest('id')->first()->status)->toBe(MigrationStatus::Completed);
 });
 
-it('REQUIREMENT CHANGED (user directive 2026-10-13): adopts no static root, and nests the legacy "[OLD] Formazione" and "[OLD] APL" trees under "Consulenza"', function () {
+it('REQUIREMENT CHANGED (user directive 2026-10-14): adopts no static root, nests the legacy "[OLD] Formazione" and "[OLD] APL" trees under "Old category", and adopts the seeded "APL" function', function () {
     seedMigrationsConfig();
     migrationsSuperAdminActor();
 
@@ -327,24 +332,27 @@ it('REQUIREMENT CHANGED (user directive 2026-10-13): adopts no static root, and 
     $categoryOf = fn (int $oldId) => Product::query()->where('old_id', $oldId)->first()->category->name;
 
     // The static "Formazione" is left alone, its legacy twin is a node of
-    // its own under "Consulenza".
+    // its own under the "Old category" container.
     expect($formazione->old_id)->toBeNull()
         ->and($formazione->parent_id)->toBeNull()
         ->and(ProductCategory::query()->where('name', 'GOL')->value('parent_id'))->toBe($formazione->id)
         ->and($legacyFormazione->old_id)->toEqual(55)
-        ->and($legacyFormazione->parent->name)->toBe('Consulenza')
+        ->and($legacyFormazione->parent->name)->toBe(LegacyCategoryContainer::NAME)
         // The manual APL branch takes nothing from the legacy...
         ->and($manualApl->old_id)->toBeNull()
         ->and($manualApl->parent_id)->toBeNull()
         ->and(ProductCategory::query()->where('parent_id', $manualApl->id)->whereNotNull('old_id')->exists())->toBeFalse()
-        // ...its legacy twin is nested under "Consulenza" like every legacy
+        // ...its legacy twin is nested under "Old category" like every legacy
         // root, history only, on the "APL" function as sent (user directive
-        // 2026-10-13: no "APL OLD")...
+        // 2026-10-13: no "APL OLD"), which is the seeded one, adopted (user
+        // directive 2026-10-14)...
         ->and($legacyApl->is_active)->toBeFalse()
         ->and($manualApl->is_active)->toBeTrue()
         ->and($legacyApl->old_id)->toEqual(56)
-        ->and($legacyApl->parent->name)->toBe('Consulenza')
+        ->and($legacyApl->parent->name)->toBe(LegacyCategoryContainer::NAME)
         ->and($legacyApl->businessFunction->name)->toBe('APL')
+        ->and(BusinessFunction::query()->where('name', 'APL')->sole()->old_id)->toEqual(9)
+        ->and($manualApl->business_function_id)->toBe($legacyApl->business_function_id)
         // ...and is never a classification target, unlike the manual one.
         ->and(ProductCategory::query()->whereKey([$legacyApl->id, ...$legacyApl->children()->pluck('id')])->where('is_selectable', true)->exists())->toBeFalse()
         ->and(ProductCategory::query()->where('parent_id', $manualApl->id)->where('is_selectable', false)->exists())->toBeFalse()

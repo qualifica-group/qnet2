@@ -27,7 +27,9 @@ use Illuminate\Database\Seeder;
  *                                    with its OFFER attributes and their form
  *                                    sections, the 252 GOL training courses,
  *                                    the 29 DIL ones and the 10 self-funded
- *                                    ones.
+ *                                    ones, and the business functions its
+ *                                    categories are linked to
+ *                                    (QualificaBusinessFunctionLinkSeeder).
  *   3. QualificaTaskTaxonomySeeder — the other block of hard-coded reference
  *                                    data: the four Task classification
  *                                    lookups (tipologia, categoria, priorita',
@@ -44,43 +46,38 @@ use Illuminate\Database\Seeder;
  *      ProductTypologySeeder       — the two product typologies ("Ente",
  *                                    "Consulenza") the imported products
  *                                    are filed under by their legacy `folder`.
+ *      WorkOrderPaymentStatusSeeder — the legacy payment statuses of a
+ *                                    commessa line.
  *   5. QualificaLegacyImportSeeder — the support tables pulled from the legacy
  *                                    system through the Migrazioni engine,
- *                                    the sellable products included.
- *   6. QualificaBusinessFunctionLinkSeeder — assigns step 2's "Formazione"
- *                                    root and its "APL" subcategory to the
- *                                    business functions step 5 imports, and
- *                                    "Presa Appuntamenti" to the "Consulenza"
- *                                    function it creates itself.
- *   7. QualificaOperatorSeeder     — the client's real operators (the
+ *                                    the sellable products included, the
+ *                                    legacy catalogue under "Old category".
+ *   6. QualificaOperatorSeeder     — the client's real operators (the
  *                                    "Mansionario Operatori"), with their
  *                                    roles, Sedi and product-category
  *                                    competence.
- *   8. QualificaStaffSeeder        — the rest of the client's staff, with the
+ *   7. QualificaStaffSeeder        — the rest of the client's staff, with the
  *                                    base role (Task and Segnatempo only).
  *                                    Create-only: an account that already
  *                                    exists is never touched.
- *   9. QualificaReportsToSeeder    — who each operator reports to ("Risponde
+ *   8. QualificaReportsToSeeder    — who each operator reports to ("Risponde
  *                                    a", spec 0166), from the mansionario's
  *                                    supervision sheet.
  *
  * The order is a contract, not a preference:
- *   - step 5 adopts step 2's source catalogue by name instead of duplicating
- *     it, and nests its imported taxonomy under step 2's "Consulenza" root;
+ *   - step 5 adopts step 2's sources and business functions by name instead
+ *     of duplicating them;
  *   - step 5 acts on behalf of a super-admin, which step 4 guarantees exists
  *     (it runs `permissions:sync` and `roles:create-super-admin` itself);
  *   - step 5 resolves each product's typology BY NAME (ProductsSource), so
  *     the typologies land before it: without "Consulenza" every consultancy
  *     product would fall back on the default typology with a warning;
- *   - step 6 needs BOTH sides: step 2's category and step 5's function. Step 2
- *     already ran it once at its own end (a no-op here, the import had not run
- *     yet), which is why it is repeated — not moved — after step 5;
- *   - step 7 needs the sites step 5 imports and the category functions step 6
+ *   - step 6 needs the sites step 5 imports and the category functions step 2
  *     links: a competence row carries the category's EFFECTIVE function;
- *   - step 8 runs after step 7, so it finds the named accounts of steps 4
- *     and 7 already there and leaves them alone;
- *   - step 9 needs every account on both sides of a reports-to link: the
- *     operators of step 7 and the staff of step 8.
+ *   - step 7 runs after step 6, so it finds the named accounts of steps 4
+ *     and 6 already there and leaves them alone;
+ *   - step 8 needs every account on both sides of a reports-to link: the
+ *     operators of step 6 and the staff of step 7.
  *
  * Every step stays runnable on its own and is idempotent, so this seeder is
  * too: re-running it converges instead of duplicating. Step 5 is a no-op with
@@ -112,7 +109,6 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(ProductTypologySeeder::class);
         $this->call(WorkOrderPaymentStatusSeeder::class);
         $this->call(QualificaLegacyImportSeeder::class);
-        $this->call(QualificaBusinessFunctionLinkSeeder::class);
         $this->call(QualificaOperatorSeeder::class);
         $this->call(QualificaStaffSeeder::class);
         $this->call(QualificaReportsToSeeder::class);

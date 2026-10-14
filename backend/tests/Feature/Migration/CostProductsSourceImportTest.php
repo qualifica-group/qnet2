@@ -5,6 +5,7 @@ use App\Enums\MigrationStatus;
 use App\Enums\ProductUsage;
 use App\Jobs\RunMigrationJob;
 use App\Migrations\Support\CostProductCatalogue;
+use App\Migrations\Support\LegacyCategoryContainer;
 use App\Models\MigrationRun;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -82,6 +83,11 @@ function costCategory(string $name, ?int $parentId): ?ProductCategory
     return ProductCategory::query()->where('name', $name)->where('parent_id', $parentId)->first();
 }
 
+function legacyContainerId(): ?int
+{
+    return ProductCategory::query()->where('name', LegacyCategoryContainer::NAME)->whereNull('parent_id')->value('id');
+}
+
 // ---------------------------------------------------------------------------
 // AC-001 — (old_source, old_id) uniqueness
 // ---------------------------------------------------------------------------
@@ -120,13 +126,16 @@ it('files each legacy cost table under the Costi branch as a cost-only product',
         ->and($run->created_rows)->toBe(4)
         ->and($run->report)->toBeNull();
 
-    $root = costCategory(CostProductCatalogue::ROOT, null);
+    $root = costCategory(CostProductCatalogue::ROOT, legacyContainerId());
     expect($root)->not->toBeNull()
         ->and($root->name)->toBe('[OLD] Costi')
         ->and($root->business_function_id)->toBeNull()
         // History only: the whole branch and its products leave every input
         // (spec 0208, user directive 2026-10-13).
-        ->and($root->is_active)->toBeFalse();
+        ->and($root->is_active)->toBeFalse()
+        // REQUIREMENT CHANGED (user directive 2026-10-14): under the "Old
+        // category" container, itself not active, never at top level.
+        ->and(ProductCategory::query()->find(legacyContainerId())?->is_active)->toBeFalse();
 
     foreach (CostProductCatalogue::BRANCHES as $branchName) {
         expect(costCategory($branchName, $root->id))->not->toBeNull();
@@ -172,7 +181,7 @@ it('files each legacy cost table under the Costi branch as a cost-only product',
 it('keeps a warehouse article without a legacy category on the Articoli branch', function () {
     runCostProductsImport([legacyCostRow('products', 9, 'Varie')]);
 
-    $root = costCategory(CostProductCatalogue::ROOT, null);
+    $root = costCategory(CostProductCatalogue::ROOT, legacyContainerId());
 
     expect(Product::query()->where('old_source', 'products')->value('category_id'))
         ->toBe(costCategory(CostProductCatalogue::BRANCHES['products'], $root->id)->id);
@@ -207,7 +216,7 @@ it('re-importing is idempotent and never duplicates the branch', function () {
         ->and(Product::query()->count())->toBe(2)
         ->and(ProductCategory::query()->where('name', CostProductCatalogue::ROOT)->count())->toBe(1)
         ->and(ProductCategory::query()->where('name', '[OLD] Veleni')->count())->toBe(1)
-        ->and(costCategory(CostProductCatalogue::BRANCHES['products'], costCategory(CostProductCatalogue::ROOT, null)->id)->attributes()->count())->toBe(4);
+        ->and(costCategory(CostProductCatalogue::BRANCHES['products'], costCategory(CostProductCatalogue::ROOT, legacyContainerId())->id)->attributes()->count())->toBe(4);
 });
 
 it('creates a cost whose legacy id matches an already migrated service', function () {
@@ -264,4 +273,14 @@ it('fails a nameless row or an unknown legacy table without blocking a valid one
     expect($run->created_rows)->toBe(1)
         ->and($run->failed_rows)->toBe(2)
         ->and(Product::query()->where('old_source', 'vehicles')->where('old_id', 2)->exists())->toBeTrue();
+});
+
+it('moves an "[OLD] Costi" root an earlier run left at top level under the "Old category" container, reusing it (user directive 2026-10-14)', function () {
+    $topLevel = ProductCategory::factory()->create(['name' => CostProductCatalogue::ROOT, 'parent_id' => null, 'is_active' => false]);
+
+    runCostProductsImport([legacyCostRow('vehicles', 1, 'Smart')]);
+
+    expect(ProductCategory::query()->where('name', CostProductCatalogue::ROOT)->count())->toBe(1)
+        ->and($topLevel->fresh()->parent_id)->toBe(legacyContainerId())
+        ->and(costCategory(CostProductCatalogue::BRANCHES['vehicles'], $topLevel->id))->not->toBeNull();
 });

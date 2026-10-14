@@ -10,6 +10,7 @@ use App\Migrations\Support\ExternalApiClient;
 use App\Models\BusinessFunction;
 use App\Models\User;
 use App\Services\BusinessFunctionService;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -20,6 +21,12 @@ use RuntimeException;
  * (same as UsersSource remapping role names), never a second, duplicated
  * pivot write. An unresolved user reference is a non-fatal warning: the
  * function is created regardless, just without that user.
+ *
+ * A function the seed already provides under the same name, compared without
+ * case ("Formazione" / "FORMAZIONE"), and not yet claimed by another external
+ * id is ADOPTED instead (user directive 2026-10-14): it takes the `old_id` and
+ * the resolved users, additively, so the categories and members the later
+ * sources remap land on the one function instead of a duplicate.
  */
 class BusinessFunctionsSource extends AbstractMigrationSource
 {
@@ -95,6 +102,16 @@ class BusinessFunctionsSource extends AbstractMigrationSource
 
         [$userIds, $warnings] = $this->resolveUserIds((array) ($record['user_ids'] ?? []));
 
+        $adopted = $this->unclaimedNamed($name);
+
+        if ($adopted !== null) {
+            $adopted->old_id = $externalId;
+            $adopted->save();
+            $adopted->users()->syncWithoutDetaching($userIds);
+
+            return MigrationRowOutcome::created($warnings, $adopted);
+        }
+
         $businessFunction = $this->service->create(
             $context->actor,
             new CreateBusinessFunctionData(
@@ -108,6 +125,15 @@ class BusinessFunctionsSource extends AbstractMigrationSource
         $businessFunction->save();
 
         return MigrationRowOutcome::created($warnings, $businessFunction);
+    }
+
+    private function unclaimedNamed(string $name): ?BusinessFunction
+    {
+        return BusinessFunction::query()
+            ->whereNull('old_id')
+            ->whereRaw('LOWER(name) = ?', [Str::lower($name)])
+            ->orderBy('id')
+            ->first();
     }
 
     /**
